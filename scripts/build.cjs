@@ -1,0 +1,13 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),zlib=require('node:zlib');
+const {root,extension,files,manifest}=require('./check.cjs');
+const output=path.join(root,'dist');fs.mkdirSync(output,{recursive:true});
+const table=Array.from({length:256},(_,n)=>{for(let i=0;i<8;i++)n=(n&1)?0xedb88320^(n>>>1):n>>>1;return n>>>0;});
+const crc=buffer=>{let n=0xffffffff;for(const b of buffer)n=table[(n^b)&255]^(n>>>8);return (n^0xffffffff)>>>0;};
+const sha=buffer=>crypto.createHash('sha256').update(buffer).digest('hex');
+function zip(name,entries){const locals=[],central=[],hashes=[];let offset=0;for(const [filename,body]of entries.sort(([a],[b])=>a.localeCompare(b))){const fn=Buffer.from(filename.replaceAll('\\','/')),compressed=zlib.deflateRawSync(body),checksum=crc(body),local=Buffer.alloc(30);local.writeUInt32LE(0x04034b50);local.writeUInt16LE(20,4);local.writeUInt16LE(0x800,6);local.writeUInt16LE(8,8);local.writeUInt16LE(23851,12);local.writeUInt32LE(checksum,14);local.writeUInt32LE(compressed.length,18);local.writeUInt32LE(body.length,22);local.writeUInt16LE(fn.length,26);locals.push(local,fn,compressed);const header=Buffer.alloc(46);header.writeUInt32LE(0x02014b50);header.writeUInt16LE(20,4);header.writeUInt16LE(20,6);header.writeUInt16LE(0x800,8);header.writeUInt16LE(8,10);header.writeUInt16LE(23851,14);header.writeUInt32LE(checksum,16);header.writeUInt32LE(compressed.length,20);header.writeUInt32LE(body.length,24);header.writeUInt16LE(fn.length,28);header.writeUInt32LE(offset,42);central.push(header,fn);offset+=local.length+fn.length+compressed.length;hashes.push({path:filename,bytes:body.length,sha256:sha(body)});}const cd=Buffer.concat(central),end=Buffer.alloc(22);end.writeUInt32LE(0x06054b50);end.writeUInt16LE(entries.length,8);end.writeUInt16LE(entries.length,10);end.writeUInt32LE(cd.length,12);end.writeUInt32LE(offset,16);const buffer=Buffer.concat([...locals,cd,end]);fs.writeFileSync(path.join(output,name),buffer);return {file:name,bytes:buffer.length,sha256:sha(buffer),entries:hashes};}
+const extensionEntries=files.map(file=>[file.replaceAll('\\','/'),fs.readFileSync(path.join(extension,file))]);
+extensionEntries.push(['INSTALL.md',fs.readFileSync(path.join(root,'INSTALL.md'))]);
+const result={version:manifest.version,builtAt:new Date().toISOString(),packages:[zip(`Canvas-Harness-${manifest.version}.zip`,extensionEntries)]};
+fs.writeFileSync(path.join(output,'release-manifest.json'),JSON.stringify(result,null,2));
+for(const p of result.packages)console.log(`${p.file}: ${p.bytes} bytes · SHA-256 ${p.sha256}`);

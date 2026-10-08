@@ -1,0 +1,106 @@
+{
+  "manifest_version": 3,
+  "name": "Canvas Harness",
+  "short_name": "Canvas Harness",
+  "version": "2.18.0",
+  "description": "Canvas courses, assignments, teacher updates, saved documents, planning and study tools in a fast personal workspace.",
+  "minimum_chrome_version": "120",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.instructure.com/*"
+  ],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Open Canvas Harness",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.instructure.com/*"
+      ],
+      "js": [
+        "site.js",
+        "core.js",
+        "api.js",
+        "personal-work.js",
+        "custom-art.js",
+        "customization-model.js",
+        "storage.js",
+        "math.js",
+        "ui-utils.js",
+        "icons.js",
+        "course-art.js",
+        "views.js",
+        "app.js",
+        "session.js",
+        "dashboard-model.js",
+        "work-model.js",
+        "material-model.js",
+        "materials-ui.js",
+        "course-hub-model.js",
+        "course-hub-ui.js",
+        "grades-view.js",
+        "customize-ui.js",
+        "dashboard-view.js",
+        "motion.js",
+        "quick-open.js",
+        "toolbox-resize.js",
+        "toolbox.js",
+        "toolbox-session.js",
+        "native-appearance.js",
+        "native-page.js",
+        "native-tools.js",
+        "dashboard.js",
+        "content.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://*.instructure.com/*"
+      ],
+      "js": [
+        "site.js",
+        "startup.js"
+      ],
+      "css": [
+        "startup.css"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "app.css",
+        "dashboard.css",
+        "workspace.css",
+        "refresh.css",
+        "native-page.css",
+        "fonts/literata-latin.woff2",
+        "fonts/literata-latin-italic.woff2",
+        "customize.css"
+      ],
+      "matches": [
+        "https://*.instructure.com/*"
+      ]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'"
+  }
+}

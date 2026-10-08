@@ -1,0 +1,48 @@
+/*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. Third-party components retain their respective attribution. */
+/* Opt-in Canvas styling. No elements are hidden, reordered or replaced. */
+html[data-reserve-native-theme]{--rp-bg:#FAF9F5;--rp-surface:#FFFFFF;--rp-raised:#F0EEE6;--rp-hover:#F6F5F0;--rp-ink:#141413;--rp-muted:#5E5D59;--rp-line:#E8E6DC;--rp-line-strong:#D9D6CA;--rp-accent:#A9522F;--rp-soft:#F6ECE6;--rp-on-accent:#FFFFFF;--rp-accent-deep:color-mix(in srgb,var(--rp-accent) 80%,#141413);--rp-focus:#C96442;--ic-brand-font-color-dark:var(--rp-ink);--ic-link-color:var(--rp-accent)}
+html[data-reserve-native-theme=dark]{color-scheme:dark;--rp-bg:#1F1E1D;--rp-surface:#262624;--rp-raised:#30302E;--rp-hover:#2B2A28;--rp-ink:#F5F4EE;--rp-muted:#A8A59C;--rp-line:#3A3936;--rp-line-strong:#4A4844;--rp-accent:#E08A6A;--rp-soft:#3A2A24;--rp-on-accent:#1F1E1D;--rp-accent-deep:color-mix(in srgb,var(--rp-accent) 86%,#fff);--rp-focus:#D97757}
+html[data-reserve-native-theme=light]{color-scheme:light}
+/* Clay (the 2.15 default): #A9522F on its soft #F6ECE6 is 4.59:1; dark #E08A6A on #3A2A24 is 5.21:1. */
+html[data-reserve-native-accent=clay]{--rp-accent:#A9522F;--rp-soft:#F6ECE6}html[data-reserve-native-accent=forest]{--rp-accent:#367964;--rp-soft:#e7f0ec}html[data-reserve-native-accent=indigo]{--rp-accent:#5f5ccc;--rp-soft:#eeedfa}html[data-reserve-native-accent=ocean]{--rp-accent:#2f7185;--rp-soft:#e5f1f4}html[data-reserve-native-accent=rose]{--rp-accent:#9e4c6c;--rp-soft:#f6eaf0}html[data-reserve-native-accent=amber]{--rp-accent:#956821;--rp-soft:#f6efdf}
+html[data-reserve-native-theme=dark][data-reserve-native-accent=clay]{--rp-accent:#E08A6A;--rp-soft:#3A2A24}html[data-reserve-native-theme=dark][data-reserve-native-accent=forest]{--rp-accent:#9bd1b4;--rp-soft:#293b34}html[data-reserve-native-theme=dark][data-reserve-native-accent=indigo]{--rp-accent:#bec8ff;--rp-soft:#303246}html[data-reserve-native-theme=dark][data-reserve-native-accent=ocean]{--rp-accent:#a3d4e5;--rp-soft:#263b43}html[data-reserve-native-theme=dark][data-reserve-native-accent=rose]{--rp-accent:#efb0c0;--rp-soft:#422d38}html[data-reserve-native-theme=dark][data-reserve-native-accent=amber]{--rp-accent:#e8c68b;--rp-soft:#40372b}
+html[data-reserve-native-theme] body{background:var(--rp-bg);color:var(--rp-ink)}
+html[data-reserve-native-theme] :is(#wrapper,#main,#content-wrapper,#not_right_side){background:transparent}
+html[data-reserve-native-theme] :is(#breadcrumbs,.ic-app-nav-toggle-and-crumbs){background:var(--rp-bg);border-color:var(--rp-line);color:var(--rp-muted)}
+html[data-reserve-native-theme] #breadcrumbs a{color:var(--rp-accent)}
+html[data-reserve-native-theme] #section-tabs a{color:var(--rp-muted);border-radius:6px;margin-block:2px;transition:background-color 120ms ease,color 120ms ease}
+html[data-reserve-native-theme] #section-tabs a.active{background:var(--rp-soft);color:var(--rp-accent);font-weight:650;border-color:var(--rp-accent)}
+html[data-reserve-native-theme] :is(#section-tabs-header-subtitle,#right-side .events_list){color:var(--rp-muted)}
+html[data-reserve-native-theme] #right-side :is(h2,h3){color:var(--rp-ink);border-color:var(--rp-line)}
+html[data-reserve-native-theme] #right-side a{color:var(--rp-accent)}
+html[data-reserve-native-theme] #content :is(.ig-header,.ig-row,.item-group-condensed,.student-assignment-overview,.student-assignment-overview li,.assignment-title,.header-bar,.item-group){border-color:var(--rp-line)}
+html[data-reserve-native-theme] #content :is(.ig-header,.header-bar){background:var(--rp-raised);color:var(--rp-ink)}
+html[data-reserve-native-theme] #content :is(.ig-row,.item-group-condensed .ig-row){background:var(--rp-surface);color:var(--rp-ink)}
+html[data-reserve-native-theme] #content .ig-header-title{color:var(--rp-ink)}
+html[data-reserve-native-theme] #content .ig-header{border-radius:9px 9px 0 0}
+html[data-reserve-native-theme] #content .ig-row :is(a,.ig-title){color:var(--rp-ink)}
+html[data-reserve-native-theme] #content .ig-details{color:var(--rp-muted)}
+html[data-reserve-native-theme] #content .context_module{margin-bottom:28px}
+html[data-reserve-native-theme] #assignment_show>h1{color:var(--rp-ink);font-weight:650;letter-spacing:-.025em;line-height:1.3;overflow-wrap:anywhere}
+html[data-reserve-native-theme] #assignment_show>.student-assignment-overview{margin-block:22px;background:var(--rp-surface);border-radius:8px;padding:16px;color:var(--rp-muted)}
+html[data-reserve-native-theme] #content :is(.user_content,.user_content p){line-height:1.7}
+html[data-reserve-native-theme] #content .user_content{color:var(--rp-ink)}
+html[data-reserve-native-theme] #content .user_content a{color:var(--rp-accent)}
+/* Explicit teacher colors require their original light document surface. */
+html[data-reserve-native-theme=dark] #content .user_content:is([style*="color" i],[style*="background" i],[bgcolor],[color],:has([style*="color" i],[style*="background" i],[bgcolor],[color])){background-color:#fff;color:#272b33;border-radius:8px;color-scheme:light}
+html[data-reserve-native-theme=dark] #content .user_content:is([style*="color" i],[style*="background" i],[bgcolor],[color],:has([style*="color" i],[style*="background" i],[bgcolor],[color])) a{color:#286452}
+/* Buttons stay 8px, not pills: Canvas button groups and split buttons rely on square joins. */
+html[data-reserve-native-theme] :is(.Button,.btn){border-radius:8px;border:1px solid var(--rp-line-strong);background:var(--rp-surface);color:var(--rp-ink);box-shadow:none;text-shadow:none}
+html[data-reserve-native-theme] :is(.Button,.btn):hover{background:var(--rp-hover)}
+html[data-reserve-native-theme] :is(.Button--primary,.btn-primary){background:var(--rp-accent);color:var(--rp-on-accent);border-color:var(--rp-accent)}
+html[data-reserve-native-theme] :is(.Button--primary,.btn-primary):hover{background:var(--rp-accent-deep);border-color:var(--rp-accent-deep);color:var(--rp-on-accent)}
+html[data-reserve-native-theme] :is(.ic-Input,.ic-Form-control input:not([type=checkbox]):not([type=radio]),.ic-Form-control select,.ic-Form-control textarea){background:var(--rp-surface);color:var(--rp-ink);border-color:var(--rp-line);border-radius:6px}
+html[data-reserve-native-theme] :is(.ic-Table,.ic-Table th,.ic-Table td):not(.user_content *){border-color:var(--rp-line);color:var(--rp-ink)}
+html[data-reserve-native-theme] .ic-Table--striped tbody tr:nth-child(odd):not(.user_content *){background:var(--rp-surface)}
+html[data-reserve-native-theme] :is(#section-tabs a,.Button,.btn,.ic-Input):focus-visible{outline:3px solid var(--rp-focus);outline-offset:2px}
+/* Reading width only affects plain assignment prose, never tables or embeds. */
+html[data-reserve-native-theme][data-reserve-reading-width=comfortable] #assignment_show>.description:not(:has(table,iframe,img,video,canvas,svg,object,embed)){max-inline-size:88ch}
+html[data-reserve-native-theme][data-reserve-native-text=large] #assignment_show>.description:not(:has(table,iframe,img,video,canvas,svg,object,embed)){font-size:18px}
+@media(hover:hover) and (pointer:fine){html[data-reserve-native-theme] #section-tabs a:hover{background:var(--rp-soft);color:var(--rp-accent)}html[data-reserve-native-theme] #content .ig-row:hover{background:var(--rp-raised)}}
+@media(prefers-reduced-motion:reduce){html[data-reserve-native-theme] #section-tabs a{transition:none}}
+@media print{html[data-reserve-native-theme] body{background:#fff;color:#222}html[data-reserve-native-theme] #content .user_content{color:#222;background:#fff}html[data-reserve-native-theme] #content .user_content a{color:#174f3b}}

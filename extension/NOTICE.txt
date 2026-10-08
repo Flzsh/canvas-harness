@@ -1,0 +1,8 @@
+Canvas Harness
+Original creator: Flzsh
+Project identifier: org.flzsh.canvas-harness
+
+Retain the original-creator credit when redistributing or modifying Canvas Harness.
+Third-party components retain their respective attribution.
+
+This notice records attribution; it does not grant a separate software license.
