@@ -2,7 +2,8 @@ Canvas Harness
 Original creator: Flzsh
 Project identifier: org.flzsh.canvas-harness
 
-Retain the original-creator credit when redistributing or modifying Canvas Harness.
-Third-party components retain their respective attribution.
+Copyright (c) 2026 Flzsh
+Canvas Harness is licensed under the MIT License. See LICENSE for its terms.
 
-This notice records attribution; it does not grant a separate software license.
+Bundled Literata fonts are licensed separately under the SIL Open Font
+License 1.1. See fonts/OFL.txt for their copyright and license notice.

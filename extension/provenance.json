@@ -3,8 +3,9 @@
   "project": "Canvas Harness",
   "originalCreator": "Flzsh",
   "projectId": "org.flzsh.canvas-harness",
-  "version": "2.18.0",
+  "version": "2.18.1",
+  "license": "MIT",
   "attribution": "Canvas Harness originally created by Flzsh.",
-  "notice": "Retain this original-creator credit when redistributing or modifying Canvas Harness. Third-party components retain their respective attribution.",
+  "notice": "Copyright (c) 2026 Flzsh. Licensed under MIT; see LICENSE. Bundled Literata fonts retain their SIL Open Font License; see fonts/OFL.txt.",
   "source": "https://github.com/Flzsh/canvas-harness"
 }

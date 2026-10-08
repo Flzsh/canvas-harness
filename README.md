@@ -22,7 +22,7 @@ Settings and artwork are included in your account-specific personal backup. Appe
 
 ## Install
 
-Download **Canvas-Harness-2.18.0.zip** from [Releases](https://github.com/Flzsh/canvas-harness/releases/latest), extract it, and load the extracted folder containing `manifest.json` from Chrome or Edge's Extensions page with Developer mode enabled. See [INSTALL.md](INSTALL.md) for the full instructions.
+Download **Canvas-Harness-2.18.1.zip** from [Releases](https://github.com/Flzsh/canvas-harness/releases/latest), extract it, and load the extracted folder containing `manifest.json` from Chrome or Edge's Extensions page with Developer mode enabled. See [INSTALL.md](INSTALL.md) for the full instructions.
 
 If you download the GitHub source ZIP instead, load its **extension** subfolder. Keep the extracted folder in place after installation.
 
@@ -54,6 +54,8 @@ npm run preview
 
 The build writes an install ZIP and a SHA-256 manifest to `dist/`. The artificial preview is excluded from the install ZIP and serves only the extension and preview directories on localhost.
 
-## Notices
+## License
 
-See [NOTICE.txt](extension/NOTICE.txt). Bundled Literata fonts retain their [OFL notice](extension/fonts/OFL.txt). This repository does not grant a separate open-source license.
+Canvas Harness is licensed under the [MIT License](LICENSE). Copyright (c) 2026 Flzsh.
+
+See [NOTICE.txt](extension/NOTICE.txt) for attribution. Bundled Literata fonts remain licensed under the [SIL Open Font License 1.1](extension/fonts/OFL.txt).

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Canvas Harness",
   "short_name": "Canvas Harness",
-  "version": "2.18.0",
+  "version": "2.18.1",
   "description": "Canvas courses, assignments, teacher updates, saved documents, planning and study tools in a fast personal workspace.",
   "minimum_chrome_version": "120",
   "permissions": [
