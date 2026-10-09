@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Canvas Harness",
   "short_name": "Canvas Harness",
-  "version": "2.18.1",
+  "version": "2.19.0",
   "description": "Canvas courses, assignments, teacher updates, saved documents, planning and study tools in a fast personal workspace.",
   "minimum_chrome_version": "120",
   "permissions": [
@@ -41,6 +41,8 @@
         "math.js",
         "ui-utils.js",
         "icons.js",
+        "subject-art-data.js",
+        "subject-art.js",
         "course-art.js",
         "views.js",
         "app.js",
@@ -93,7 +95,8 @@
         "native-page.css",
         "fonts/literata-latin.woff2",
         "fonts/literata-latin-italic.woff2",
-        "customize.css"
+        "customize.css",
+        "subject-art.css"
       ],
       "matches": [
         "https://*.instructure.com/*"

@@ -27,7 +27,8 @@
 .rd .ch-art-slot { min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 9px; padding: 10px; border: 1px solid var(--rd-line); border-radius: 12px; }
 .rd .ch-art-preview { position: relative; display: grid; place-items: center; height: 76px; padding: 7px; background: var(--rd-bg); border-radius: 7px; overflow: hidden; pointer-events: none; }
 .rd .ch-art-preview > :is(svg,picture,img) { width: 100%; height: 100%; position: static; transform: none; }
-.rd .ch-art-preview .rd-frame { position: absolute; inset: 7px; width: auto; height: auto; }
+.rd .ch-art-preview > svg:is(.rd-art,.rd-mini) { height: 62px; min-height: 0; max-height: 62px; }
+.rd .ch-art-preview .rd-frame { position: absolute; inset: 7px; width: auto; height: auto; z-index: 0; }
 .rd .ch-art-preview img { width: 100%; height: 100%; object-fit: contain; }
 .rd .ch-art-preview > picture { display: block; height: 62px; max-height: 62px; min-height: 0; }
 .rd .ch-art-caption { display: flex; flex-direction: column; gap: 3px; }
@@ -71,8 +72,9 @@
 .rd[data-banner-size=large] { --ch-banner-h: 220px; --rd-band-h: clamp(230px,17cqi,320px); }
 .rd[data-show-course-icons=false] .rd-course-rail .rd-rail-art { display: none; }
 .rd[data-show-course-icons=false] :is(.rd-assignment-course,.rd-reader-course,.rd-deck-header h2,.rd-message-line,.rd-grade-table) .rd-mini { display: none; }
-.rd[data-show-course-icons=false] .rd-course-rail .rd-course-name { padding-left: 14px; }
-.rd[data-show-deadline-preview=false] .rd-rail-next { display: none; }
+.rd[data-show-course-icons=false] .rd-course-rail .rd-course-name,
+.rd[data-show-course-icons=false] .rd-course-rail .rd-rail-course:has(> .rd-frame) .rd-course-name { padding-left: 14px; }
+.rd[data-show-deadline-preview=false] .rd-rail-text > .rd-rail-next { display: none; }
 .rd[data-show-course-information=false] .rd-course-information { display: none !important; }
 .rd[data-course-card-style=rounded] .rd-course-rail :is(.rd-rail-course,.rd-rail-all) { border: 1px solid var(--rd-control-line); border-radius: 12px; }
 .rd[data-course-card-style=minimal] .rd-course-rail :is(.rd-rail-course,.rd-rail-all) { border: 0; border-bottom: 1px solid var(--rd-line-strong); border-radius: 0; }
@@ -82,9 +84,13 @@
 .rd[data-surface-style=contrast][data-theme=dark] { --rd-ink:#FFF; --rd-muted:#E0E0E0; --rd-faint:#DDD; --rd-line:#686868; --rd-line-strong:#999; --rd-control-line:#AAA; }
 @media(min-width:601px) {
  .rd[data-course-navigation=topbar][data-courses=true] .rd-shell { grid-template-columns: minmax(0,1fr); gap: 22px; }
- .rd[data-course-navigation=topbar][data-courses=true] .rd-course-rail { position: relative; display: flex; flex-direction: row; flex-wrap: nowrap; width: 100%; height: auto; min-height: 0; max-height: none; padding: 10px; gap: 8px; overflow-x: auto; overflow-y: hidden; align-items: stretch; }
+ .rd[data-course-navigation=topbar][data-courses=true] .rd-course-rail { --rd-rail-pad: 8px; position: relative; display: flex; flex-direction: row; flex-wrap: nowrap; width: 100%; height: auto; min-height: 0; max-height: none; padding: 10px; gap: 8px; overflow-x: auto; overflow-y: hidden; align-items: stretch; }
+ .rd[data-course-navigation=topbar][data-density=compact] .rd-course-rail { --rd-rail-pad: 6px; }
  .rd[data-course-navigation=topbar] .rd-course-rail > :is(.rd-rail-heading,.rd-rail-foot) { display: none; }
- .rd[data-course-navigation=topbar] .rd-course-rail > :is(.rd-rail-course,.rd-rail-all) { position: relative; flex: 0 0 225px; min-height: 84px; margin: 0; }
+ .rd[data-course-navigation=topbar] .rd-course-rail > :is(.rd-rail-course,.rd-rail-all) { position: relative; flex: 0 0 225px; margin: 0; }
+ .rd[data-course-navigation=topbar] .rd-course-rail > .rd-rail-course { min-height: 84px; }
+ .rd[data-course-navigation=topbar] .rd-course-rail > .rd-rail-all { align-self: center; min-height: 44px; }
+ .rd[data-course-navigation=topbar] .rd-rail-text > :is(.rd-rail-sub,.rd-rail-next) { -webkit-line-clamp: 1; white-space: nowrap; }
  .rd[data-course-navigation=topbar] .rd-course-rail .rd-rail-all { justify-content: flex-start; }
  .rd[data-workspace=work][data-desk-order=work-first] .rd-main { grid-template-columns: minmax(0,1.3fr) minmax(250px,1fr); }
  .rd[data-workspace=work][data-desk-order=work-first] .rd-work-column { grid-area: 1 / 1; }

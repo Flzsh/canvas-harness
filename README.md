@@ -2,9 +2,17 @@
 
 A Canvas companion that brings course information, upcoming work, assignment instructions, bookmarks, grades and study tools together in one organized workspace.
 
-Customize the layout, artwork, colors and course navigation around the way you work. Course names and content come from your own signed-in Canvas account.
+Animated subject artwork makes each course easy to recognize. Course information, upcoming assignments and instructions sit side by side, with room for the next homework directly in the course sidebar. Course names and content come from your own signed-in Canvas account.
 
-![Canvas Harness customization controls with artificial course data](preview/customization.png)
+![Canvas Harness Chemistry workspace with animated subject drawings, homework previews and assignment instructions; artificial course data](preview/subject-workspace.png)
+
+## Artwork that follows your subjects
+
+Canvas Harness automatically matches course names and familiar course codes to 22 coordinated sets of animated banners, icons and hand-drawn borders. Algebra, geometry, precalculus, calculus, biology, chemistry, physics, English, writing, reading, languages and history each have their own drawings, including AP science and Calculus AB/BC variants.
+
+Individual course cards have space for homework previews. **All courses** stays compact and keeps its general artwork; unmatched subjects use the same general drawing. Your uploaded artwork always takes priority. Personal course names are preserved, and illustrated title lettering appears only when it matches the course's displayed name.
+
+![All courses overview with subject artwork in the sidebar and upcoming work; artificial course data](preview/all-courses.png)
 
 ## Make it yours
 
@@ -22,7 +30,7 @@ Settings and artwork are included in your account-specific personal backup. Appe
 
 ## Install
 
-Download **Canvas-Harness-2.18.1.zip** from [Releases](https://github.com/Flzsh/canvas-harness/releases/latest), extract it, and load the extracted folder containing `manifest.json` from Chrome or Edge's Extensions page with Developer mode enabled. See [INSTALL.md](INSTALL.md) for the full instructions.
+Download **Canvas-Harness-2.19.0.zip** from [Releases](https://github.com/Flzsh/canvas-harness/releases/latest), extract it, and load the extracted folder containing `manifest.json` from Chrome or Edge's Extensions page with Developer mode enabled. See [INSTALL.md](INSTALL.md) for the full instructions.
 
 If you download the GitHub source ZIP instead, load its **extension** subfolder. Keep the extracted folder in place after installation.
 

@@ -306,7 +306,7 @@
   --rd-rail-w: clamp(236px, 11vw + 102px, 330px);
   --rd-rail-fs: clamp(13px, min(.8333vh + 6.17px, .18vw + 11.6px), 14.5px);
   --rd-rail-chip: clamp(24px, min(3.333vh - 3.33px, .45vw + 22.8px), 30px);
-  --rd-rail-pad: clamp(8px, .8vh, 13px);
+  --rd-rail-pad: clamp(10px, 1vh, 14px);
 }
 .rd[data-text-size=large] { --rd-rail-fs: clamp(14.5px, min(.8333vh + 7.67px, .18vw + 13.1px), 16px); }
 .rd[data-density=compact] { --rd-rail-pad: clamp(6px, .6vh, 10px); }
@@ -329,7 +329,7 @@
 
 .rd .rd-rail-all {
   display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: none;
-  
+  min-height: 44px;
   margin: 0 0 10px; padding: 9px 10px; border-radius: var(--rd-r-row);
   background: transparent; box-shadow: none; color: var(--rd-ink-2); font-size: var(--rd-rail-fs); font-weight: var(--rd-rail-w-name);
   transition: background-color var(--rd-hover-out) var(--rd-release), color 280ms var(--rd-release);
@@ -339,13 +339,16 @@
 
 
 .rd .rd-rail-course {
-  position: relative; display: flex; flex-direction: column; flex: 1 1 var(--rd-rail-row-h, auto);
-  min-height: calc(var(--rd-rail-row-h, 0px) - var(--rd-rail-pad));
+  /* Share spare sidebar height equally; keep the tallest measured text stack when scrolling. */
+  position: relative; display: flex; flex-direction: column; flex: 1 0 var(--rd-rail-row-h, auto);
+  min-height: var(--rd-rail-row-h, 0px);
   margin: 1px 0; padding: var(--rd-rail-pad) 10px;
   border: 0; border-radius: var(--rd-r-row); background: transparent; box-shadow: none;
   transition: background-color var(--rd-hover-out) var(--rd-release);
 }
 .rd[data-density] .rd-rail-course { padding-block: var(--rd-rail-pad); }
+/* Keep text above the subject frames' bottom ornaments, including compact rows. */
+.rd .rd-rail-course:has(> .rd-frame) { padding-top: max(var(--rd-rail-pad), 8px); padding-bottom: max(var(--rd-rail-pad), 20px); }
 .rd .rd-rail-course > .rd-rail-title { flex: 1 0 auto; align-items: stretch; }
 
 .rd .rd-rail-course[data-selected=true] { background: transparent; box-shadow: none; }
@@ -378,6 +381,8 @@
 .rd .rd-rail-course[data-selected=true] .rd-rail-text > .rd-rail-sub { color: var(--rd-ink-2); }
 
 .rd .rd-rail-text > .rd-rail-sub { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; }
+.rd .rd-rail-text > .rd-rail-next { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; }
+.rd[data-density=compact] .rd-rail-text > .rd-rail-next { -webkit-line-clamp: 1; }
 
 
 .rd .rd-course-rail :is(.rd-rail-title .rd-course-name, .rd-rail-all) > .rd-rail-art {
@@ -463,23 +468,10 @@
 
 .rd .rd-rail-text > .rd-rail-then { display: none; }
 @media (min-height: 1000px) {
-  .rd .rd-rail-text > .rd-rail-then { display: block; }
+  .rd .rd-rail-text > .rd-rail-then { display: -webkit-box; }
 }
 
-@media (min-height: 1300px) and (min-width: 1800px) {
-  .rd .rd-rail-text > :is(.rd-rail-sub, .rd-rail-next) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; }
-}
-
-@media (max-height: 940px) {
-  .rd .rd-course-rail { --rd-rail-pad: 5px; }
-}
-@media (max-height: 820px) {
-  .rd .rd-rail-text > .rd-rail-next { display: none; }
-}
-@media (max-height: 680px) {
-  .rd .rd-rail-text > .rd-rail-sub { display: none; }
-  .rd .rd-course-rail { --rd-rail-pad: 6px; }
-}
+/* A short viewport scrolls the sidebar instead of hiding its subtitle or next homework. */
 
 .rd .rd-course-rail .rd-rail-name { overflow: visible; white-space: normal; text-overflow: clip; }
 
@@ -578,7 +570,7 @@
 @keyframes rd-frame-retrace { from { stroke-dashoffset: 170; } to { stroke-dashoffset: 0; } }
 
 
-.rd .rd-course-rail .rd-rail-course:has(> .rd-frame) { min-height: max(var(--rd-rail-row-h, 0px), calc(var(--rd-mini-s, 40px) + 6px)); }
+.rd .rd-course-rail .rd-rail-course:has(> .rd-frame) { min-height: max(var(--rd-rail-row-h, 0px), calc(var(--rd-mini-s, 40px) + max(var(--rd-mini-b, 1px), 0px) + 6px)); }
 .rd .rd-course-rail .rd-rail-course:has(> .rd-frame) :is(.rd-rail-title, .rd-course-name) { position: static; }
 .rd .rd-course-rail .rd-rail-course:has(> .rd-frame) .rd-course-name > .rd-rail-art {
   position: absolute; left: var(--rd-mini-x, 5px); bottom: var(--rd-mini-b, 1px); top: auto;
@@ -586,7 +578,8 @@
 }
 .rd .rd-course-rail .rd-rail-course:has(> .rd-frame) .rd-course-name > .rd-rail-art > .rd-mini { width: 100%; height: 100%; }
 .rd .rd-course-rail .rd-rail-course:has(> .rd-frame) .rd-course-name > .rd-rail-art::after { content: none; }
-.rd .rd-course-rail .rd-rail-course:has(> .rd-frame) .rd-course-name { padding-left: calc(var(--rd-text-x, 51px) - 10px); }
+/* Every text line clears the bottom mini, even when a subject changes its size or offset. */
+.rd .rd-course-rail .rd-rail-course:has(> .rd-frame) .rd-course-name { padding-left: max(calc(var(--rd-text-x, 51px) - 10px), calc(var(--rd-mini-x, 5px) + var(--rd-mini-s, 40px) + 6px - 10px)); }
 
 .rd:is([data-input=keyboard], [data-motion-style=off]) .rd-frame,
 .rd:is([data-input=keyboard], [data-motion-style=off]) .rd-frame * { transition: none !important; }
@@ -2162,7 +2155,7 @@
   .rd .rd-drawer-row[aria-current=page] { background: var(--rd-sidebar-sel); color: var(--rd-ink); }
   .rd .rd-drawer-row > small { font-size: 12.5px; font-weight: 450; color: var(--rd-muted); }
   .rd .rd-course-rail > .rd-rail-heading { padding: 4px 12px 6px; }
-  .rd .rd-course-rail > :is(.rd-rail-all, .rd-rail-course) { flex: none; min-height: 52px; }
+  .rd .rd-course-rail > .rd-rail-all { flex: none; min-height: 44px; }
   
   .rd .rd-course-rail > .rd-rail-course { flex: 0 0 var(--rd-rail-row-h, auto); }
   .rd .rd-course-rail .rd-rail-foot { margin: auto -10px 0; padding: 12px 20px calc(12px + env(safe-area-inset-bottom)); bottom: 0; border-radius: 0 0 24px 0; }
@@ -2255,6 +2248,3 @@
   .rd .rd-reader-sections > small { display: block; margin-top: 8px; }
   .rd[data-workspace=work] .rd-reader .rd-rich-text { font-size: 16.5px; line-height: 1.6; }
 }
-/* Sharing edition: neutral course frames follow their content, including small course lists. */
-.rd .rd-course-rail > .rd-rail-course { flex: 0 0 auto; min-height: 82px; }
-.rd .rd-course-rail .rd-rail-course:has(> .rd-frame) .rd-course-name > .rd-rail-art { top: 10px; bottom: auto; }

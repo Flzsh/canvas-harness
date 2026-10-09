@@ -1,6 +1,6 @@
 {
   "name": "canvas-harness",
-  "version": "2.18.1",
+  "version": "2.19.0",
   "license": "MIT",
   "private": true,
   "description": "An organized Canvas workspace with course information, assignments, bookmarks and study tools.",
