@@ -260,7 +260,7 @@ Figures and anything that moves sit in their own groups above the things they pa
 | slate | `#6F7F8C` | roofs, steel, a dark board |
 | lilac | `#C9B6CC` | one cool note (a rain cloud, a dye) |
 
-- Use 4-6 of these in one picture, plus **one subject accent** at most (a single extra hue used for one thing, warmed
+- Keep to about six of these in one picture, plus **one subject accent** at most (a single extra hue used for one thing, warmed
   toward the palette).
 - **When the subject is itself a colour scale** (a spectrum, a pH chart, a map key, star colours), that scale is one
   thing and may use its true hues, slightly softened: red `#C2503A`, orange `#DD8A4E`, gold `#E2B865`, green
@@ -280,7 +280,8 @@ Figures and anything that moves sit in their own groups above the things they pa
 
   Never put either on something whose colour has a meaning of its own (fire, plants, wiring, a spectrum), and never
   as the continuation of a fixed-colour shape.
-- No pair of dots near a rounded end: it reads as a face.
+- No pair of dots near a rounded end: it reads as a face. (A real symbol that has them, such as a bass clef or a
+  colon, is drawn correctly.)
 
 #### Dark theme
 
@@ -322,6 +323,11 @@ figure, ready to copy, with its joints rigged.
   paper edge behind them.
 - Usually 2-5 figures in a banner. Fewer is fine when objects tell the story.
 - Repeated props are one drawing reused (one stool, one flask, one book) with small differences.
+- **Choose the view with the telling silhouette.** An upright piano from the side is a cupboard; a grand piano from
+  the side is unmistakable. A microscope in profile, a globe on its stand, a telescope on a tripod: draw the view a
+  child would draw.
+- **Lettering inside the scene** (a label, a key name, a number on a board): keep it rare and short, at least 16
+  units tall with a 2.4 stroke, drawn as paths. It will not read at Compact size, so the picture must not depend on it.
 
 ### 6. The lettered title
 
@@ -333,7 +339,7 @@ subject. It stands at the left end of the banner.
 - **One strong idea,** different for every course. Work out three candidates and choose. Examples of the kind of
   idea (use one if it really is the best idea for the course in front of you, but look for a better one first):
   - *Astronomy*: letters as constellations, bright stars joined by thin lines, on a deep-blue chart with a compass rose.
-  - *Music Theory*: the word bent out of the five lines of a staff, note heads sitting where strokes end.
+  - *Music Theory*: letters as stems and beams standing on a grand staff, a whole note for the O.
   - *Geography*: letters as stacked contour lines, the high ground washed, a river running through the baseline.
   - *Economics*: letters built of stacked coins and the crossing supply and demand curves.
   - *Woodworking*: letters cut from boards with visible dovetail joints and a pencil line where the next cut goes.
@@ -345,15 +351,19 @@ subject. It stands at the left end of the banner.
   reads first and the detail unfolds after.
 - **Legible in under a second** at 80 px tall. Decoration never breaks a letter's shape. Long names take two lines,
   or one large word and a smaller companion line. Numbers and prefixes ("II", "AP", "Honors") are part of the idea.
+- **Test every substituted letter small.** A letter replaced by an object (a note for an I, a flask for an A) can
+  turn the word into another word at 80 px. Look at it at that size; if it misreads, drop the substitution.
 - **Not black by default.** Let the material give the letters colour and body: a coloured body with a darker pen
   edge, light letters on a dark ground the object really has, metal with one brushed gleam. Keep at least 3:1
-  contrast between the letters and what is behind them.
+  contrast between the letters and what is behind them. The course colour at full strength is a good letter colour;
+  the soft key wash is too pale for lettering on paper.
 - **Hand-drawn letterforms.** Each letter is its own slightly irregular drawing: no stem quite vertical, no two
   serifs alike. It must never be mistakable for a typeface. No `<text>`.
 - **Tone fits the subject.** Playful for some courses, grave for others. A course about justice, memory or faith
   wants dignity (carved, cast, inked); a course about making things can be lively.
 - If the title carries its own ground (a board, a slab, a chart), that object is whole, stands on the same floor
-  line as the scene, and its colour is the colour that object really is.
+  line as the scene, and its colour is the colour that object really is. The ground may carry its own quiet markings
+  behind the letters (staff lines, a grid, ruled lines); nothing from the scene goes behind them.
 - One or two living details that belong to the idea (liquid running through, a point travelling along a curve, a
   gleam crossing metal, a leaf unfurling). Then rest.
 
@@ -422,6 +432,8 @@ y 214 --------------------------- one floor line -----------------------------
 - At Standard size a figure is about 64 px tall and a 2-unit line is about 1.2 px. Nothing that matters should be
   smaller than 6 units, and the title should read at Compact (80 px tall).
 - One main event runs through the scene (see `animation.md`). 2-5 figures. Up to about 40 moving parts. 12 or 16 s cycle.
+- **Budget the width.** The scene has about 1,180 units. A figure takes about 50, a set piece 150-230. Three to five
+  set pieces with their people fill it; if you come up short, make one piece larger and better told, never add filler.
 
 #### Planning a banner (write this before drawing)
 
@@ -591,7 +603,7 @@ Ids start with a letter or `_`. `href` may only be a local `#id`.
   Values may not contain `@`, a backslash, `/*`, or the characters `{ } < > ;`.
 - `calc()`, `rotate()`, `translate()`, `scale()`, `cubic-bezier()`, `steps()`, `rgb()`, `hsl()` are fine.
 - **A CSS rule beats a presentation attribute.** If a class sets `stroke`, a `stroke="..."` attribute on the same
-  element is ignored. Give differently coloured strokes their own class.
+  element is ignored. Give differently coloured strokes their own class. (`scripts/check.cjs` warns about this.)
 
 ### Allowed SMIL
 
@@ -722,7 +734,19 @@ inside the upper-arm group and keeps its own origin at the elbow.
   upper arm: (forearm direction - upper-arm direction) at the pose, minus the same difference at rest.
 - To aim a hand at a point, solve the two-bone triangle (upper 16, forearm 15): `scripts/hand.mjs` has `ik()` and a
   `figure()` that writes the rig and its keyframes from target points.
-- A figure facing the other way is drawn with its x values negated, never with a mirroring transform.
+- **A figure facing the other way** is drawn with its x values negated in its own numbers, never with a mirroring
+  transform. Its elbows and knees then bend the other way, and every rotation in its keyframes changes sign.
+- **A seated figure:** hip about 30 above the ground (figure units), thighs 72-79 degrees forward of straight down,
+  shins near vertical, on a seat whose top is about 29 figure units above the ground (near y 176 in the banner when
+  the ground is at 214).
+- **A rest pose that leans** (someone bent to an eyepiece, pushing a cart): put the lean as a static `rotate()` in the
+  placing group's `transform`, and animate an inner group whose rest value is 0. If the lean lives only in keyframes,
+  the still copy stands upright with its hands off the tool.
+- **A held tool** (a pointer, a baton, a rod) is a third joint: its key is (tool direction - forearm direction) at
+  the pose, minus the same at rest.
+- When a hand must follow something along a path, sample: compute arm, forearm and thing from **one** eased
+  parameter at 8-12 moments and write those as linear keyframes. Parts eased separately drift apart mid-move.
+  A target closer to the shoulder than the difference of the two bones folds the arm through the body: go round it.
 - `templates/banner-rig.svg` is a working figure with this rig.
 
 #### 2. Travel: move a whole thing
@@ -765,9 +789,13 @@ midpoint key the hand drifts off what it holds.
 
 `pathLength="1"` makes the dash maths the same for every path. At rest the offset is 0, so the static copy shows
 the whole line. Use it for a graph being plotted, handwriting, a route on a map, a thread, a growing vine, and for
-the title lettering being retraced. Round caps leave a dot at the start while hidden; hide it under a node or accept it.
+the title lettering being retraced.
 
-- A path with several sub-paths and `pathLength="1"` is drawn sub-path by sub-path, in order.
+- **One path per pen stroke.** The dash pattern starts again on every sub-path, so a path with several sub-paths
+  draws them all at once, not one after another. To write strokes in order, give each stroke its own `<path>` and
+  its own keyframes (the second stroke starts when the first ends).
+- A round cap leaves a dot at the start of a hidden line. To remove it, also key `opacity:0` while the line is
+  hidden and begin the draw at offset .96 instead of 1.
 - **Never wipe a whole letter of the title:** for half a second the word would be misspelt. Keep a pale copy of the
   letter strokes underneath (the same path at about 40% opacity) and redraw only the bright line on top of it.
 

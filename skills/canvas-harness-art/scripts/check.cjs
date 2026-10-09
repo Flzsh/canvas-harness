@@ -58,6 +58,12 @@ for (const file of files) {
   if (/currentColor/i.test(src)) warn('currentColor has no meaning in an isolated image; write the colour.');
   if (/prefers-color-scheme/.test(src)) warn('prefers-color-scheme follows the system, not the Canvas Harness theme. Remove it.');
   if (/<!--/.test(src)) info('XML comments found: fine, but they count toward the size. Ship without them.');
+  // a class that sets a paint property silently overrides the same presentation attribute on its elements
+  const classProps = new Map();
+  for (const m of noKf.matchAll(/([^{}]+)\{([^{}]*)\}/g)) for (const sel of m[1].split(',')) { const one = sel.trim().match(/^\.([A-Za-z_][\w-]*)$/); if (one) for (const p of m[2].matchAll(/(?:^|;)\s*(stroke|fill|stroke-width|opacity|stroke-opacity|fill-opacity)\s*:/g)) (classProps.get(one[1]) || classProps.set(one[1], new Set()).get(one[1])).add(p[1]); }
+  const clashes = new Set();
+  for (const m of src.matchAll(/<(?:path|g|use)\b([^>]*)>/g)) { const cls = (m[1].match(/\sclass\s*=\s*["']([^"']+)["']/) || [])[1]; if (!cls) continue; for (const c of cls.split(/\s+/)) for (const p of classProps.get(c) || []) if (new RegExp('\\s' + p + '\\s*=').test(m[1])) clashes.add(`.${c} sets ${p}`); }
+  if (clashes.size) warn(`a class overrides the same attribute on its element (${[...clashes].slice(0, 4).join('; ')}${clashes.size > 4 ? '; ...' : ''}): the attribute is ignored. Use a separate class.`);
   const hidden = (src.match(/\sopacity\s*=\s*["']0(?:\.0*)?["']|visibility\s*=\s*["']hidden["']|display\s*=\s*["']none["']/g) || []).length;
   if (hidden) info(`${hidden} element(s) hidden at rest: right for extra poses, wrong for anything that belongs in the still picture.`);
   if (/stroke-dashoffset\s*=\s*["'](?!0["'])/.test(src) || /[{;]\s*stroke-dashoffset\s*:\s*(?!0\s*[;}])[^;}]+[;}]/.test(noKf)) warn('a base stroke-dashoffset hides a line at rest: the still copy will show it missing. Hide lines only inside keyframes.');
@@ -98,7 +104,8 @@ for (const file of files) {
 }
 
 // --- preview page: the harness's own render() output (an <img> with a data URL), at the real sizes
-const R = (asset, o) => A.render(asset, o), esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// (the extension loads these images lazily; in a preview that hides them from a screenshot of a long page)
+const R = (asset, o) => A.render(asset, o).replace(/ loading="lazy"/g, ''), esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // eight frozen moments: inline copies inside an isolated frame, each paused at its time (CSS animations and SMIL)
 const moments = c => {
   if (!c.cycle) return '';

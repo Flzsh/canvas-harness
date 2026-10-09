@@ -116,7 +116,7 @@ Figures and anything that moves sit in their own groups above the things they pa
 | slate | `#6F7F8C` | roofs, steel, a dark board |
 | lilac | `#C9B6CC` | one cool note (a rain cloud, a dye) |
 
-- Use 4-6 of these in one picture, plus **one subject accent** at most (a single extra hue used for one thing, warmed
+- Keep to about six of these in one picture, plus **one subject accent** at most (a single extra hue used for one thing, warmed
   toward the palette).
 - **When the subject is itself a colour scale** (a spectrum, a pH chart, a map key, star colours), that scale is one
   thing and may use its true hues, slightly softened: red `#C2503A`, orange `#DD8A4E`, gold `#E2B865`, green
@@ -136,7 +136,8 @@ Figures and anything that moves sit in their own groups above the things they pa
 
   Never put either on something whose colour has a meaning of its own (fire, plants, wiring, a spectrum), and never
   as the continuation of a fixed-colour shape.
-- No pair of dots near a rounded end: it reads as a face.
+- No pair of dots near a rounded end: it reads as a face. (A real symbol that has them, such as a bass clef or a
+  colon, is drawn correctly.)
 
 ### Dark theme
 
@@ -178,6 +179,11 @@ figure, ready to copy, with its joints rigged.
   paper edge behind them.
 - Usually 2-5 figures in a banner. Fewer is fine when objects tell the story.
 - Repeated props are one drawing reused (one stool, one flask, one book) with small differences.
+- **Choose the view with the telling silhouette.** An upright piano from the side is a cupboard; a grand piano from
+  the side is unmistakable. A microscope in profile, a globe on its stand, a telescope on a tripod: draw the view a
+  child would draw.
+- **Lettering inside the scene** (a label, a key name, a number on a board): keep it rare and short, at least 16
+  units tall with a 2.4 stroke, drawn as paths. It will not read at Compact size, so the picture must not depend on it.
 
 ## 6. The lettered title
 
@@ -189,7 +195,7 @@ subject. It stands at the left end of the banner.
 - **One strong idea,** different for every course. Work out three candidates and choose. Examples of the kind of
   idea (use one if it really is the best idea for the course in front of you, but look for a better one first):
   - *Astronomy*: letters as constellations, bright stars joined by thin lines, on a deep-blue chart with a compass rose.
-  - *Music Theory*: the word bent out of the five lines of a staff, note heads sitting where strokes end.
+  - *Music Theory*: letters as stems and beams standing on a grand staff, a whole note for the O.
   - *Geography*: letters as stacked contour lines, the high ground washed, a river running through the baseline.
   - *Economics*: letters built of stacked coins and the crossing supply and demand curves.
   - *Woodworking*: letters cut from boards with visible dovetail joints and a pencil line where the next cut goes.
@@ -201,15 +207,19 @@ subject. It stands at the left end of the banner.
   reads first and the detail unfolds after.
 - **Legible in under a second** at 80 px tall. Decoration never breaks a letter's shape. Long names take two lines,
   or one large word and a smaller companion line. Numbers and prefixes ("II", "AP", "Honors") are part of the idea.
+- **Test every substituted letter small.** A letter replaced by an object (a note for an I, a flask for an A) can
+  turn the word into another word at 80 px. Look at it at that size; if it misreads, drop the substitution.
 - **Not black by default.** Let the material give the letters colour and body: a coloured body with a darker pen
   edge, light letters on a dark ground the object really has, metal with one brushed gleam. Keep at least 3:1
-  contrast between the letters and what is behind them.
+  contrast between the letters and what is behind them. The course colour at full strength is a good letter colour;
+  the soft key wash is too pale for lettering on paper.
 - **Hand-drawn letterforms.** Each letter is its own slightly irregular drawing: no stem quite vertical, no two
   serifs alike. It must never be mistakable for a typeface. No `<text>`.
 - **Tone fits the subject.** Playful for some courses, grave for others. A course about justice, memory or faith
   wants dignity (carved, cast, inked); a course about making things can be lively.
 - If the title carries its own ground (a board, a slab, a chart), that object is whole, stands on the same floor
-  line as the scene, and its colour is the colour that object really is.
+  line as the scene, and its colour is the colour that object really is. The ground may carry its own quiet markings
+  behind the letters (staff lines, a grid, ruled lines); nothing from the scene goes behind them.
 - One or two living details that belong to the idea (liquid running through, a point travelling along a curve, a
   gleam crossing metal, a leaf unfurling). Then rest.
 

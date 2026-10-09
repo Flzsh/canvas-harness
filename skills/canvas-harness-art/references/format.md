@@ -71,7 +71,7 @@ Ids start with a letter or `_`. `href` may only be a local `#id`.
   Values may not contain `@`, a backslash, `/*`, or the characters `{ } < > ;`.
 - `calc()`, `rotate()`, `translate()`, `scale()`, `cubic-bezier()`, `steps()`, `rgb()`, `hsl()` are fine.
 - **A CSS rule beats a presentation attribute.** If a class sets `stroke`, a `stroke="..."` attribute on the same
-  element is ignored. Give differently coloured strokes their own class.
+  element is ignored. Give differently coloured strokes their own class. (`scripts/check.cjs` warns about this.)
 
 ## Allowed SMIL
 

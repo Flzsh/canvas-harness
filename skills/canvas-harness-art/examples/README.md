@@ -6,10 +6,11 @@ files. They are not templates: a new course gets its own plan, its own title ide
 | Folder | Request it answered |
 |---|---|
 | `astronomy/` | "Astronomy. This term: naked-eye observing and the Moon's phases, building and aligning a small refractor, Kepler's laws and orbits, stellar spectra with a diffraction grating, the Hertzsprung-Russell diagram. Course colour #2F4A8C. Light theme. All three pieces." |
+| `music-theory/` | "Music Theory. This term: the grand staff and key signatures, intervals and triads, the circle of fifths, four-part harmony at the piano, rhythm and metre with a metronome and conducting patterns, ear training with a tuning fork. Course colour #7A3F6B. Light theme. All three pieces." |
 
-Each folder holds `<course>-banner.svg`, `<course>-icon.svg`, `<course>-border.svg`, the `PLAN.md` written before
-drawing (with a note of what changed after rendering), and, where one was used, the `generator/` scripts that wrote
-the files.
+Each folder holds `<course>-banner.svg`, `<course>-icon.svg`, `<course>-border.svg` and the `PLAN.md` written before
+drawing (with a note of what changed after rendering). `astronomy/generator/` also has the scripts that wrote its
+files, as an example of a generator.
 
 To see a set as Canvas Harness shows it:
 
@@ -32,5 +33,16 @@ then open the `preview.html` it writes.
 - **Icon and border are a pair:** in the course row the telescope points at the border's crescent, and a planet
   travels the long orbit along the bottom edge.
 
-It is not perfect, and its own plan says where: the right third is more loosely tied to the rest than the left,
-nobody moves their whole body, and the lettering is regular enough to look almost typeset. Do better.
+## What to notice in `music-theory/`
+
+- **One musical event** is told by everyone: the key moves up a fifth. The hand of the circle of fifths is drawn from
+  C to G, the two sharps are chalked onto both staves stroke by stroke, the fork is struck and lifted to the ear, and
+  on the conductor's downbeat the pianist's hands drop and the singer's voice sounds. The metronome keeps the beat
+  the whole time, so the beats land on its ticks.
+- **The notation is correct:** the order of the circle, the clefs, the key signature on both staves, the chord.
+- **The title sits on a real grand staff,** MUSIC on the treble staff and THEORY on the bass, with a whole note for
+  the O and a tuning fork for the Y that rings when the singer strikes hers.
+- **The view was chosen for its silhouette:** a grand piano from the side, where an upright would have read as a cupboard.
+
+Neither is perfect, and each plan says where: stations stand a little too evenly side by side, nobody moves their
+whole body, and the lettering is regular enough to look almost typeset. Do better.

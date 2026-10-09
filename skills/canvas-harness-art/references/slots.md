@@ -48,6 +48,8 @@ y 214 --------------------------- one floor line -----------------------------
 - At Standard size a figure is about 64 px tall and a 2-unit line is about 1.2 px. Nothing that matters should be
   smaller than 6 units, and the title should read at Compact (80 px tall).
 - One main event runs through the scene (see `animation.md`). 2-5 figures. Up to about 40 moving parts. 12 or 16 s cycle.
+- **Budget the width.** The scene has about 1,180 units. A figure takes about 50, a set piece 150-230. Three to five
+  set pieces with their people fill it; if you come up short, make one piece larger and better told, never add filler.
 
 ### Planning a banner (write this before drawing)
 

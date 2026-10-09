@@ -94,7 +94,19 @@ inside the upper-arm group and keeps its own origin at the elbow.
   upper arm: (forearm direction - upper-arm direction) at the pose, minus the same difference at rest.
 - To aim a hand at a point, solve the two-bone triangle (upper 16, forearm 15): `scripts/hand.mjs` has `ik()` and a
   `figure()` that writes the rig and its keyframes from target points.
-- A figure facing the other way is drawn with its x values negated, never with a mirroring transform.
+- **A figure facing the other way** is drawn with its x values negated in its own numbers, never with a mirroring
+  transform. Its elbows and knees then bend the other way, and every rotation in its keyframes changes sign.
+- **A seated figure:** hip about 30 above the ground (figure units), thighs 72-79 degrees forward of straight down,
+  shins near vertical, on a seat whose top is about 29 figure units above the ground (near y 176 in the banner when
+  the ground is at 214).
+- **A rest pose that leans** (someone bent to an eyepiece, pushing a cart): put the lean as a static `rotate()` in the
+  placing group's `transform`, and animate an inner group whose rest value is 0. If the lean lives only in keyframes,
+  the still copy stands upright with its hands off the tool.
+- **A held tool** (a pointer, a baton, a rod) is a third joint: its key is (tool direction - forearm direction) at
+  the pose, minus the same at rest.
+- When a hand must follow something along a path, sample: compute arm, forearm and thing from **one** eased
+  parameter at 8-12 moments and write those as linear keyframes. Parts eased separately drift apart mid-move.
+  A target closer to the shoulder than the difference of the two bones folds the arm through the body: go round it.
 - `templates/banner-rig.svg` is a working figure with this rig.
 
 ### 2. Travel: move a whole thing
@@ -137,9 +149,13 @@ midpoint key the hand drifts off what it holds.
 
 `pathLength="1"` makes the dash maths the same for every path. At rest the offset is 0, so the static copy shows
 the whole line. Use it for a graph being plotted, handwriting, a route on a map, a thread, a growing vine, and for
-the title lettering being retraced. Round caps leave a dot at the start while hidden; hide it under a node or accept it.
+the title lettering being retraced.
 
-- A path with several sub-paths and `pathLength="1"` is drawn sub-path by sub-path, in order.
+- **One path per pen stroke.** The dash pattern starts again on every sub-path, so a path with several sub-paths
+  draws them all at once, not one after another. To write strokes in order, give each stroke its own `<path>` and
+  its own keyframes (the second stroke starts when the first ends).
+- A round cap leaves a dot at the start of a hidden line. To remove it, also key `opacity:0` while the line is
+  hidden and begin the draw at offset .96 instead of 1.
 - **Never wipe a whole letter of the title:** for half a second the word would be misspelt. Keep a pale copy of the
   letter strokes underneath (the same path at about 40% opacity) and redraw only the bright line on top of it.
 

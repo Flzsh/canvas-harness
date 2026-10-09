@@ -15,7 +15,7 @@ const C = { ink: '#141413', shadow: '#CFC2AC', gold: '#E2B865', key: '#76819E', 
   let g = `<path fill="${C.key}" d="${wash(new Pth(), q(-15, 35, 7.2), .25)}"/><path fill="${C.gold}" d="${wash(new Pth(), q(34, 47.5, 9.4), .2)}"/><path fill="${C.gold}" d="${wash(new Pth(), q(-24, -15, 4.4), .2)}"/>`;
   const e1 = new Pth(); S(e1, [tp(-16, -7.6), tp(35, -7.8)], .5); S(e1, [tp(-16, 7.6), tp(35, 7.8)], .5); S(e1, [tp(-16, -7.4), tp(-16.4, 7.4)], .3);
   const sh = q(35, 48, 9.6); S(e1, [sh[0], sh[1]], .3); S(e1, [sh[1], sh[2]], .3); S(e1, [sh[2], sh[3]], .3); S(e1, [sh[3], sh[0]], .3);
-  g += `<path class="i" stroke-width="5.4" d="${e1}"/>`;
+  g += `<path class="i" d="${e1}"/>`;
   g += `<path class="t" d="${new Pth().M(...tp(-16, -4.2)).W(...tp(-24.5, -4.2), .2).M(...tp(-16, 4.2)).W(...tp(-24.5, 4.2), .2).M(...tp(-24.5, -5)).W(...tp(-24.5, 5), .2).M(...tp(-25, 0)).W(...tp(-29.5, 0), .2)}"/>`;
   s += `<g class="tube">${g}</g><path fill="${C.ink}" d="${blob(new Pth(), M[0], M[1] + .5, 4.6, 4.6, { n: 6 })}"/>`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><title>Astronomy</title><style>${css}</style>${s}</svg>`;
