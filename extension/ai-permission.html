@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Draft insertion access — Canvas Harness</title>
+  <link rel="stylesheet" href="ai-permission.css">
+  <script src="ai-providers.js" defer></script>
+  <script src="ai-permission.js" defer></script>
+</head>
+<body>
+  <main class="permission-card" aria-labelledby="permission-title">
+    <p class="eyebrow">Canvas Harness · Optional access</p>
+    <h1 id="permission-title">Put context in your <span id="provider-name">provider</span> draft</h1>
+    <p class="intro">Allow Canvas Harness to append the material you select to a chat draft on <span id="provider-origin">the provider website</span>.</p>
+    <ul>
+      <li>You choose when to insert context, review the draft, and send it yourself.</li>
+      <li>Your existing draft is preserved. Nothing is sent automatically.</li>
+      <li>Insertion uses only the chat composer. Canvas Harness does not read your passwords, cookies, or chat history.</li>
+    </ul>
+    <p class="access-note">The browser permission allows script access to this provider website. Canvas Harness uses it only when you explicitly click Insert draft. You can remove this access here or in extension settings.</p>
+    <p id="permission-status" class="status" role="status" aria-live="polite">Checking access…</p>
+    <div class="actions">
+      <button id="grant-access" type="button" disabled>Allow draft insertion</button>
+      <button id="close-page" class="secondary" type="button">Close and return to Canvas</button>
+    </div>
+    <button id="revoke-access" class="revoke" type="button" hidden disabled>Remove this provider’s access</button>
+    <p class="return-note">After allowing access or signing in, return to Canvas and click Insert draft again. Closing this page does not transfer any context. Text placed in the provider’s draft is subject to that provider’s data practices.</p>
+  </main>
+</body>
+</html>

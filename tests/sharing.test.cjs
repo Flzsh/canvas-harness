@@ -20,7 +20,9 @@ test('fresh recipients start without grades, notes, bookmarks or cached courses'
 });
 test('sharing build keeps the limited permissions and only read-only Canvas transport',()=>{
  const manifest=JSON.parse(read('manifest.json'));assert.equal(manifest.name,'Canvas Harness');
- assert.deepEqual(manifest.permissions,['storage']);assert.deepEqual(manifest.host_permissions,['https://*.instructure.com/*']);
+ assert.deepEqual(manifest.permissions,['storage','offscreen']);assert.deepEqual(manifest.host_permissions,['https://*.instructure.com/*']);
+ assert.deepEqual(manifest.optional_permissions,['scripting','nativeMessaging']);
+ assert.equal(manifest.externally_connectable,undefined);
  assert.match(read('api.js'),/method:'GET'/);assert.ok(!/method:\s*['"](?:POST|PUT|PATCH|DELETE)/.test(read('api.js')));
 });
 test('course headings display recipient names without embedded private lettering',()=>{

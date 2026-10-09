@@ -1,0 +1,12 @@
+{
+  "name": "canvas-harness-ai-companion",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Optional local ChatGPT OAuth native-messaging companion for Canvas Harness",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "check": "node host.cjs --check",
+    "test": "node --test --test-isolation=none ../tests/ai-companion.test.cjs"
+  }
+}

@@ -14,7 +14,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   if(current&&!hidden.has(current)&&!courses.some(c=>c.id===current))courses.unshift({id:current,name:'Current course',color:'#49745f'});
   const courseMap=new Map(courses.map(c=>[c.id,c]));
   const items=(snapshot.assignments||[]).map(raw=>{const course=courseMap.get(String(raw.course_id??raw.courseId));return course?C.normalizeAssignment(raw,course):null;}).filter(Boolean);
-  return {s,courses,items,courseId:courseMap.has(current)?current:'all',cacheNotice:snapshot.fetchedAt?'Uses your saved dashboard information. Open Canvas Harness to refresh deadlines.':'Open the Canvas Harness dashboard once to make your other courses and assignments available here.'};
+  const aiAssignmentId=String(pathname||'').match(/^\/courses\/\d+\/assignments\/(\d+)\/?$/)?.[1]||null;
+  return {s,courses,allCourses:all.map(c=>courseMap.get(c.id)||c),items,aiAssignmentId,courseId:courseMap.has(current)?current:'all',cacheNotice:snapshot.fetchedAt?'Uses your saved dashboard information. Open Canvas Harness to refresh deadlines.':'Open the Canvas Harness dashboard once to make your other courses and assignments available here.'};
  }
  function dashboardURL({workspace,courseId,page,id,appearance}={}){
   const url=new URL(BASE+'/');url.searchParams.set('reserve','open');
@@ -48,7 +49,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   function clearView(){layout.destroy();focus?.stop();focus=null;toolbox?.destroy();toolbox=null;unsubscribe?.();unsubscribe=null;area?.remove();area=null;verified=null;button.hidden=false;}
   function styleReady(){
    if(stylesPromise)return stylesPromise;
-   stylesPromise=Promise.all(['app.css','dashboard.css','workspace.css','refresh.css'].map(file=>new Promise((resolve,reject)=>{
+   stylesPromise=Promise.all(['app.css','dashboard.css','workspace.css','refresh.css','gpa.css'].map(file=>new Promise((resolve,reject)=>{
     const link=document.createElement('link');link.rel='stylesheet';link.href=styleURL(file);styleNodes.push(link);
     const timer=setTimeout(()=>reject(Error('Toolbox styles could not load. Try opening it again.')),8000);
     link.onload=()=>{clearTimeout(timer);resolve();};link.onerror=()=>{clearTimeout(timer);reject(Error('Toolbox styles could not load. Try opening it again.'));};dockRoot.append(link);
@@ -71,8 +72,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
      if(toolbox&&verified?.store===data.store&&String(verified.user.id)===String(data.user.id)){verified=data;appearance();toolbox.open(next,source);notice('');return;}
      clearView();verified=data;focus=focusSettler(data.store);area=document.createElement('div');area.className='rd rd-native-tools';area.dataset.input=keyboard?'keyboard':'pointer';dockRoot.append(area);appearance();
      area.addEventListener('pointerdown',()=>{area.dataset.input='pointer';},{passive:true});
-     toolbox=root.ReserveToolbox.create({container:area,store:data.store,onDockChange:state=>{layout.update(state);button.hidden=state.open;if(state.open)focus?.check();else focus?.stop();dockRoot.host?.toggleAttribute('data-reserve-tools',state.open);},getContext:()=>context(verified.snapshot,verified.store.get(),pathname()),
+     toolbox=root.ReserveToolbox.create({container:area,store:data.store,aiConfig:{client,user:data.user},onDockChange:state=>{layout.update(state);button.hidden=state.open;if(state.open)focus?.check();else focus?.stop();dockRoot.host?.toggleAttribute('data-reserve-tools',state.open);},getContext:()=>context(verified.snapshot,verified.store.get(),pathname()),
       onNavigate:workspace=>launch({workspace}),onPlanner:options=>launch(options),
+      onRefresh:async()=>{
+       const expected=verified;if(!expected)throw Error('Reopen Tools to verify your Canvas account.');
+       const fresh=await client.loadSnapshot({user:expected.user});
+       if(dead||verified!==expected||String(fresh.user?.id)!==String(expected.user.id))throw Error('Your Canvas session changed. Reopen Tools.');
+       await expected.store.writeCache(fresh);expected.snapshot=fresh;toolbox?.update();
+       if(fresh.partial)throw Error('Some courses could not refresh. Available grades have been updated.');
+      },
       onPreview:id=>{if(/^local-[\w-]+$/.test(id)){launch({page:'assignments',id});return;}const item=context(data.snapshot,data.store.get(),pathname()).items.find(x=>x.id===id);if(item)navigate(item.url);}
      });
      unsubscribe=data.store.subscribe(()=>{appearance();if(toolbox?.isOpen())focus?.check();});toolbox.open(next,source);notice('');
@@ -88,7 +96,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
    event.preventDefault();open('quick',document.activeElement,true);
   };
   function suspend(){version++;pending=null;clearView();session.destroy();session=root.ReserveToolboxSession.create({client,createStore,origin});button.disabled=false;button.textContent=label;notice('');}
-  const onVisibility=()=>{if(document.visibilityState==='hidden')suspend();};
+  // Opening a provider window must keep the AI draft and dock alive. Verify the Canvas
+  // account again on return; destroy the session if it has actually changed.
+  const onVisibility=()=>{if(document.visibilityState==='visible'&&verified){const expected=String(verified.user.id);client.profile().then(found=>{if(String(found.id)!==expected)suspend();}).catch(()=>suspend());}};
   button.addEventListener('click',onClick);document.addEventListener('keydown',onKey);document.addEventListener('visibilitychange',onVisibility);
   return {open,destroy(){if(dead)return;dead=true;suspend();session.destroy();button.removeEventListener('click',onClick);document.removeEventListener('keydown',onKey);document.removeEventListener('visibilitychange',onVisibility);status.remove();for(const link of styleNodes)link.remove();}};
  }

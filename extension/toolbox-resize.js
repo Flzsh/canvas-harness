@@ -75,7 +75,11 @@
     }
     function apply() {
       if (dead) return;
-      const next = resolveSize(prefs, viewport()), b = getBounds(viewport());
+      const view = viewport(), b = getBounds(view);
+      // Keep context scrollable between the AI header and composer on small screens.
+      // Explicit heights still win; switching tools restores the normal automatic height.
+      const adaptive = b.narrow && !prefs.height && dialog.dataset.tool === 'ai' ? {...prefs,height:view.height*.68} : prefs;
+      const next = resolveSize(adaptive, view);
       container.style.setProperty('--rd-dock-width', next.width + 'px');
       container.style.setProperty('--rd-dock-height', next.height + 'px');
       for (const axis of ['width','height']) {

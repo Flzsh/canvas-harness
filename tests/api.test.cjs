@@ -36,3 +36,22 @@ test('rate limit is actionable and never silently treated as no assignments',asy
  const client=createClient({origin:'https://school.instructure.com',fetchImpl:async()=>response({},429)});
  await assert.rejects(client.list('/api/v1/courses'),e=>e.code==='rate');
 });
+
+test('AI assignment reads verify both the selected course and the current account',async()=>{
+ let profiles=0,course='7';const calls=[];const client=createClient({origin:'https://school.instructure.com',fetchImpl:async(url,options)=>{
+  calls.push({url,options});if(url.includes('/profile'))return response({id:++profiles>1?'10':'9'});
+  return response({id:12,course_id:course,published:true,description:'Instructions'});
+ }});
+ await assert.rejects(client.readAssignment('7','12',{user:{id:9}}),e=>e.code==='auth');
+ profiles=0;course='8';await assert.rejects(client.readAssignment('7','12',{user:{id:9}}),e=>e.code==='403');
+ assert.equal(profiles,1);assert.ok(calls.every(x=>x.options.method==='GET'));
+});
+test('AI file reads use the course endpoint and never return locked or hidden files',async()=>{
+ let record={id:5,locked_for_user:true};const calls=[];const client=createClient({origin:'https://school.instructure.com',fetchImpl:async(url)=>{
+  calls.push(url);return response(url.includes('/profile')?{id:9}:record);
+ }});
+ await assert.rejects(client.readFile('7','5',{user:{id:9}}),e=>e.code==='403');
+ record={id:5,hidden_for_user:true};await assert.rejects(client.readFile('7','5',{user:{id:9}}),e=>e.code==='403');
+ record={id:5,display_name:'Study notes.pdf'};assert.deepEqual(await client.readFile('7','5',{user:{id:9}}),record);
+ assert.ok(calls.filter(x=>!x.includes('/profile')).every(x=>x.endsWith('/api/v1/courses/7/files/5')));
+});

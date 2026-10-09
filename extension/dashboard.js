@@ -157,8 +157,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const materials=root.ReserveMaterialsUI?.create({store,user:snapshot.user,client:resourceClient,onChange:()=>render(),onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))});
     const hub=root.ReserveCourseHubUI?.create({store,user:snapshot.user,client:resourceClient,materials,onChange:()=>render(),onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))});
     const motion=root.ReserveMotion?.create(container);
-    const toolbox=root.ReserveToolbox?.create({container,store,materials,getContext:()=>({...buildContext(),courseId:state.courseId}),
-      onDockChange:({open,collapsed})=>{container.dataset.toolbox=open?(collapsed?'collapsed':'open'):'closed';container.getRootNode?.()?.host?.toggleAttribute('data-reserve-tools',open);},
+    const settingsDock=root.ReserveCustomizeUI?.createDock({container,
+      onOpen:()=>{if(drawerOpen())setDrawer(false,{focus:false});toolbox?.close({restoreFocus:false});customizeCourseId=state.courseId;},
+      onChange:open=>{customizeOpen=open;render();}
+    });
+    const toolbox=root.ReserveToolbox?.create({container,store,materials,aiConfig:{client:resourceClient,user:snapshot.user,demo},getContext:()=>{
+      const ctx=buildContext();return {...ctx,courseId:state.courseId,aiAssignmentId:workspace==='work'&&readerOpen?selectedId:null,
+        aiResources:ctx.courses.map(c=>materials?.getCourse(c.id)?.raw).filter(Boolean),
+        aiUpdates:ctx.courses.map(c=>({courseId:c.id,announcements:hub?.getCourse(c.id)?.announcements||[]}))};
+    },
+      onDockChange:({open,collapsed})=>{if(open)settingsDock?.close({restoreFocus:false});container.dataset.toolbox=open?(collapsed?'collapsed':'open'):'closed';container.getRootNode?.()?.host?.toggleAttribute('data-reserve-tools',open);},
       onNavigate:next=>{
         captureCourseView();workspace=next;
         if(['hub','materials'].includes(next)&&state.courseId==='all'){const ctx=buildContext();switchCourse(String(ctx.selected?.courseId||ctx.courses[0]?.id||'all'));}
@@ -166,12 +174,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(next==='materials')materials?.load(state.courseId);if(next==='hub')hub?.loadCourse(state.courseId);if(next==='inbox')hub?.loadInbox();
       },
       onPreview:id=>{captureCourseView();workspace='work';const item=buildContext().items.find(x=>x.id===id);if(item&&state.courseId!=='all'&&state.courseId!==String(item.courseId))switchCourse('all');readerOpen=false;showPreview(id,{detail:0});},
-      onPlanner:options=>openPlanner(options),onCustomize:()=>{customizeOpen=true;customizeCourseId=state.courseId;render();container.querySelector('[data-rd-field="customize-course"]')?.focus({preventScroll:true});}
+      onPlanner:options=>openPlanner(options),onRefresh:()=>runRefresh({reportError:true})
     });
 
 
     // A running focus session turns "your week" into Home, where its card lives,
-    // for the toolbar button and the Tools dock (Quick open's Planner) alike.
+    // for the Tools dock (Quick open's Planner) and legacy reminder links alike.
     function openPlanner(options){onPlanner({...options,...(options?.page==='week'&&personal.focus?.endsAt?{page:'home'}:{}),hideGrades:settings().showGrades!==true});}
 
     function settings(){
@@ -503,15 +511,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         nextToolbar.remove();
         for(const tab of toolbar.querySelectorAll('.t-tab')){const active=tab.dataset.tab===workspace;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;}
         patchUI(appearance.querySelector('.t-acc-panel-inner'),nextAppearance.querySelector('.t-acc-panel-inner'));
-        appearance.dataset.open=String(customizeOpen);
-        const panel=appearance.querySelector('.t-acc-panel');panel.inert=!customizeOpen;
-        if(customizeOpen)panel.removeAttribute('aria-hidden');else panel.setAttribute('aria-hidden','true');
         nextAppearance.remove();
         for(const node of Array.from(container.childNodes)){if(node!==toolbar&&node!==appearance&&node!==shell&&!node.classList?.contains('rd-utility-dialog'))node.remove();}
         if(shell)for(const warning of Array.from(template.content.querySelectorAll('.rd-warning')))container.insertBefore(warning,shell);
         container.append(template.content);
       }else container.innerHTML=markup;
       container.dataset.courseId=state.courseId;container.dataset.workspace=workspace;
+      settingsDock?.sync();
       sheetCover();railRows();
       toolbox?.update();syncFocus();
       motion?.syncTabs(tabMotion,false,snapshot);
@@ -580,8 +586,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(ticking&&!focusTimer)focusTimer=setInterval(syncFocus,1000);else if(!ticking&&focusTimer){clearInterval(focusTimer);focusTimer=0;}
     }
 
-    async function runRefresh(){
-      if(refreshing)return;
+    async function runRefresh({reportError=false}={}){
+      if(refreshing){if(reportError)throw Error('Canvas is already refreshing. Try again when it finishes.');return;}
       refreshing=true;
       transientStatus='Refreshing Canvas…';
       render();
@@ -591,6 +597,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         transientStatus='';
       }catch(error){
         transientStatus=`Refresh failed${error?.message?`: ${error.message}`:''}`;
+        if(reportError)throw error;
       }finally{
         refreshing=false;
         render();
@@ -831,11 +838,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(action==='add-step'){addStep(button.dataset.id);return;}
       if(action==='remove-step'){const id=button.dataset.id,step=button.dataset.step;if(/^(?:\d+|local-[\w-]+)$/.test(id||''))savePersonal(data=>{const task=data.tasks[id];if(task)task.checklist=(task.checklist||[]).filter(x=>x.id!==step);});return;}
       if(action==='planner'){openPlanner({page:'week'});return;}
-      if(action==='settings'){customizeOpen=!customizeOpen;if(customizeOpen)customizeCourseId=state.courseId;render();container.querySelector(customizeOpen?'[data-rd-field="customize-course"]':'.rd-toolbar [data-rd-action="settings"]')?.focus({preventScroll:true});return;}
+      if(action==='settings'){settingsDock?.toggle(button);return;}
+      if(action==='settings-close'){settingsDock?.close();return;}
       // The rail's "2 hidden": Make it yours opens at "Course names, colors & visibility", where a hidden course can be shown again.
       if(action==='hidden-courses'){
         if(drawerOpen())setDrawer(false,{focus:false});
-        customizeOpen=true;render();
+        settingsDock?.open(button);
         const section=Array.from(container.querySelectorAll?.('details[data-rd-section]')||[]).find(el=>el.dataset?.rdSection==='courses');
         if(section){section.open=true;section.querySelector?.('summary')?.focus?.();section.scrollIntoView?.({block:'nearest'});}
         return;
@@ -947,6 +955,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(destroyed||!container.getClientRects?.().length)return;
       motion?.activity?.();if(event.key==='Tab')tabAt=Date.now();
       const enteringKeyboard=container.dataset.input!=='keyboard';container.dataset.input='keyboard';if(enteringKeyboard){motion?.cancel();motion?.syncTabs(false,true);}
+      if(settingsDock?.handleKeydown(event))return;
       // Esc closes the phone drawer, then the phone reader sheet (focus returns to its row).
       if(event.key==='Escape'&&drawerOpen()){event.preventDefault();setDrawer(false);return;}
       if(event.key==='Escape'&&phone()&&readerOpen&&workspace==='work'&&(event.composedPath?.()[0]||event.target)?.dataset?.rdField!=='query'){event.preventDefault();closePreview();return;}
@@ -1004,7 +1013,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         flushDrafts();
         destroyed=true;
         readerLayout?.disconnect();railLayout?.disconnect();root.clearTimeout(railTimer);
-        materials?.destroy();hub?.destroy();motion?.destroy();toolbox?.destroy();
+        settingsDock?.destroy();materials?.destroy();hub?.destroy();motion?.destroy();toolbox?.destroy();
         clearInterval(freshnessTimer);clearInterval(focusTimer);clearTimeout(entranceTimer);
         unsubscribe?.();
         container.removeEventListener('input',onInput);

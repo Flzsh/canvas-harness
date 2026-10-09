@@ -129,3 +129,80 @@
 @media(prefers-reduced-motion:reduce) { .rd .ch-preset { transition: none; } .rd .ch-preset:active { transform: none; } }
 .rd[data-motion-style=off] .ch-preset { transition: none; }
 .rd[data-motion-style=off] .ch-preset:active { transform: none; }
+
+/* Settings shares the Tools edge without making the workspace modal. */
+.rd { --ch-settings-width:clamp(360px,29vw,460px); --ch-settings-height:48dvh; }
+.rd .rd-appearance.ch-settings-dock {
+ position:fixed; inset:72px 16px 16px auto; z-index:1100;
+ width:var(--ch-settings-width); max-width:calc(100vw - 32px); min-height:0;
+ margin:0; border:1px solid var(--rd-line-strong); border-radius:16px;
+ background:var(--rd-surface); color:var(--rd-ink); box-shadow:var(--rd-float,0 16px 48px rgb(20 33 50 / .14));
+ display:block; overflow:hidden; visibility:hidden; pointer-events:none; opacity:0; transform:translateX(calc(100% + 20px));
+ transition:transform 220ms cubic-bezier(.32,.72,0,1),opacity 180ms ease-out,visibility 0s linear 220ms;
+}
+.rd .rd-appearance.ch-settings-dock[data-open=true] {
+ visibility:visible; pointer-events:auto; opacity:1; transform:translateX(0);
+ transition:transform 220ms cubic-bezier(.32,.72,0,1),opacity 180ms ease-out,visibility 0s;
+}
+.rd .ch-settings-dock > .t-acc-panel {
+ display:block; height:100%; min-height:0; overflow:auto; overscroll-behavior:contain;
+ scrollbar-width:thin; scrollbar-gutter:stable; transition:none;
+}
+.rd .ch-settings-dock .t-acc-panel-inner { overflow:visible; min-height:100%; opacity:1; transition:none; }
+.rd .ch-settings-dock .ch-customize { margin:0; padding:0 20px 22px; border:0; border-radius:0; box-shadow:none; }
+.rd .ch-settings-dock .rd-section-heading {
+ position:sticky; top:0; z-index:2; background:var(--rd-surface); padding:18px 0 15px;
+ margin-bottom:20px; border-bottom:1px solid var(--rd-line); gap:12px;
+}
+.rd .ch-settings-dock .rd-section-heading > div { min-width:0; }
+.rd .ch-settings-dock .rd-section-heading h2 { font-size:23px; }
+.rd .ch-settings-dock .rd-section-heading p { font-size:11px; line-height:1.5; }
+.rd .ch-settings-dock [data-rd-action=settings-close] { flex-shrink:0; min-height:40px; }
+.rd .ch-settings-dock .ch-custom-columns { grid-template-columns:minmax(0,1fr); gap:24px; }
+.rd .ch-settings-dock .ch-art-controls { border-left:0; padding-left:0; border-top:1px solid var(--rd-line); padding-top:22px; }
+.rd .ch-settings-dock .ch-art-heading { flex-wrap:wrap; }
+.rd .ch-settings-dock .ch-art-heading .rd-field { max-width:100%; width:100%; }
+.rd .ch-settings-dock .ch-art-slots { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.rd .ch-settings-dock .ch-art-slot[data-kind=banner] { grid-column:1 / -1; }
+.rd .ch-settings-dock .ch-appearance-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.rd .ch-settings-dock .ch-course-setting { gap:5px; grid-template-columns:20px 28px minmax(0,1fr) 28px 28px; }
+.rd .ch-settings-dock .ch-preset { padding:10px 8px; }
+.rd .ch-settings-dock .ch-preset strong { font-size:16px; }
+.rd .ch-settings-dock :is(button,select,input,textarea,summary):focus-visible { outline:2px solid var(--rd-accent); outline-offset:3px; }
+.rd[data-settings=open]:not(.rd-native-tools) { padding-right:calc(var(--ch-settings-width) + 36px); }
+/* During a panel handoff the departing panel becomes hidden immediately. */
+.rd[data-settings=open] .rd-utility-dialog { visibility:hidden; pointer-events:none; }
+.rd:is([data-toolbox=open],[data-toolbox=collapsed]) .ch-settings-dock[data-open=false] { visibility:hidden; transition:none; }
+:host([data-reserve-settings]) { isolation:auto; }
+@media(max-width:1400px) and (min-width:901px) {
+ .rd[data-settings=open] .rd-shell { display:block; }
+ .rd[data-settings=open] .rd-course-rail { display:none; }
+ .rd[data-settings=open] :is(.rd-course-select,.rd-mobile-course) { display:flex; max-width:100%; }
+ .rd[data-settings=open] .rd-toolbar { flex-wrap:wrap; gap:10px; }
+}
+@media(max-width:900px) {
+ .rd .rd-appearance.ch-settings-dock {
+  inset:auto max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
+  width:auto; max-width:none; height:var(--ch-settings-height); min-height:min(260px,calc(100dvh - 96px)); max-height:calc(100dvh - 96px);
+  transform:translateY(calc(100% + 20px));
+ }
+ .rd .rd-appearance.ch-settings-dock[data-open=true] { transform:translateY(0); }
+ .rd[data-settings=open]:not(.rd-native-tools) { padding-right:14px; padding-bottom:calc(var(--ch-settings-height) + 30px + env(safe-area-inset-bottom)); }
+ .rd .ch-settings-dock .rd-section-heading { padding-top:12px; }
+ .rd .ch-settings-dock .ch-customize { padding-inline:16px; }
+}
+@media(max-width:600px) {
+ .rd .ch-settings-dock :is(select,input[type=text],textarea) { font-size:16px; }
+ .rd .ch-settings-dock .ch-field-grid { grid-template-columns:minmax(0,1fr); }
+ .rd .ch-settings-dock .ch-toggles { grid-template-columns:minmax(0,1fr); }
+ .rd .ch-settings-dock .ch-course-setting button { min-height:40px; }
+}
+.rd[data-motion-style=still] .rd-appearance.ch-settings-dock { transform:none; transition:opacity 180ms ease-out,visibility 0s linear 180ms; }
+.rd[data-motion-style=still] .rd-appearance.ch-settings-dock[data-open=true] { transition:opacity 180ms ease-out,visibility 0s; }
+.rd[data-input=keyboard] .rd-appearance.ch-settings-dock,
+.rd[data-motion-style=off] .rd-appearance.ch-settings-dock { transition:none!important; }
+.rd:is([data-input=keyboard],[data-motion-style=off],[data-motion-style=still]):not(.rd-native-tools) { transition:none; }
+@media(prefers-reduced-motion:reduce) {
+ .rd .rd-appearance.ch-settings-dock { transition:none!important; transform:none!important; }
+ .rd:not(.rd-native-tools) { transition:none; }
+}

@@ -2,12 +2,30 @@
   "manifest_version": 3,
   "name": "Canvas Harness",
   "short_name": "Canvas Harness",
-  "version": "2.19.0",
+  "version": "2.20.0",
   "description": "Canvas courses, assignments, teacher updates, saved documents, planning and study tools in a fast personal workspace.",
   "minimum_chrome_version": "120",
   "permissions": [
-    "storage"
+    "storage",
+    "offscreen"
   ],
+  "optional_permissions": [
+    "scripting",
+    "nativeMessaging"
+  ],
+  "optional_host_permissions": [
+    "https://chatgpt.com/*",
+    "https://claude.ai/*",
+    "https://gemini.google.com/*",
+    "https://grok.com/*",
+    "https://chat.deepseek.com/*",
+    "https://www.kimi.com/*",
+    "https://chat.qwen.ai/*",
+    "https://chat.z.ai/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "host_permissions": [
     "https://*.instructure.com/*"
   ],
@@ -37,6 +55,7 @@
         "personal-work.js",
         "custom-art.js",
         "customization-model.js",
+        "gpa-model.js",
         "storage.js",
         "math.js",
         "ui-utils.js",
@@ -59,6 +78,9 @@
         "motion.js",
         "quick-open.js",
         "toolbox-resize.js",
+        "ai-context.js",
+        "ai-source.js",
+        "gpa-ui.js",
         "toolbox.js",
         "toolbox-session.js",
         "native-appearance.js",
@@ -96,7 +118,9 @@
         "fonts/literata-latin.woff2",
         "fonts/literata-latin-italic.woff2",
         "customize.css",
-        "subject-art.css"
+        "subject-art.css",
+        "ai-panel.html",
+        "gpa.css"
       ],
       "matches": [
         "https://*.instructure.com/*"
@@ -104,6 +128,6 @@
     }
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'none'"
+    "extension_pages": "script-src 'self'; object-src 'none'; worker-src 'self'"
   }
 }

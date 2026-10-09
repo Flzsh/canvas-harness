@@ -21,6 +21,13 @@ test('valid backup roundtrip preserves notes and does not transfer a Canvas cach
  const store=createStore({accountId:'1',adapter:memory()});await store.load();await store.update(s=>{s.tasks['4']={notes:'Read twice',estimate:25,pinned:true};});
  const clean=validateBackup(store.exportBackup());assert.equal(clean.tasks['4'].estimate,25);assert.equal(clean.snapshot,undefined);
 });
+test('GPA rules and what-if choices persist only in their own account and survive a backup',async()=>{
+ const adapter=memory(),store=createStore({accountId:'1',adapter});await store.load();
+ await store.update(data=>{data.gpa.weighted=true;data.gpa.courses['7']={credits:0.5,level:'honors',override:'A-'};});
+ const clean=validateBackup(store.exportBackup());assert.equal(clean.gpa.weighted,true);assert.equal(clean.gpa.courses['7'].credits,0.5);assert.equal(clean.gpa.courses['7'].override,'A-');
+ const other=await createStore({accountId:'2',adapter}).load();assert.equal(other.gpa.weighted,false);assert.deepEqual(other.gpa.courses,{});
+ await assert.rejects(store.update(data=>{data.gpa.courses['7'].credits=-1;}),/credits/i);assert.equal(store.get().gpa.courses['7'].credits,0.5);
+});
 test('failed save is reported and does not masquerade as persisted data',async()=>{
  const store=createStore({accountId:'1',adapter:{read:async()=>null,write:async()=>{throw Error('Disk full');}}});await store.load();
  await assert.rejects(store.update(s=>{s.settings.theme='dark';}),/Disk full/);assert.equal(store.get().settings.theme,'system');

@@ -1,0 +1,36 @@
+:root { color-scheme: light dark; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #202c2a; background: #f2f5f1; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: clamp(20px, 6vw, 72px) 20px; }
+.permission-card { max-width: 660px; margin: 0 auto; padding: clamp(24px, 5vw, 44px); background: #fff; border: 1px solid #dbe3dd; border-radius: 20px; box-shadow: 0 12px 48px #20372a0d; }
+.eyebrow { margin: 0 0 16px; color: #536b60; font-size: 12px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
+h1 { margin: 0 0 20px; font-size: clamp(25px, 5vw, 34px); font-weight: 650; line-height: 1.18; letter-spacing: -.025em; text-wrap: balance; }
+p, li { font-size: 15px; line-height: 1.65; }
+.intro { margin-bottom: 22px; }
+ul { padding-left: 22px; margin: 0 0 24px; }
+li + li { margin-top: 10px; }
+.access-note, .return-note { color: #5c6862; font-size: 13px; }
+.status { min-height: 64px; padding: 15px 18px; background: #f0f5f1; border-radius: 12px; font-size: 14px; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+button { min-height: 44px; padding: 11px 17px; border: 1px solid #234f3d; border-radius: 10px; background: #234f3d; color: #fff; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+button:hover:enabled { background: #183c2d; }
+button:focus-visible { outline: 3px solid #6eabff; outline-offset: 3px; }
+button:disabled { opacity: .65; cursor: default; }
+.secondary { background: transparent; color: #234f3d; border-color: #c7d2cb; }
+.secondary:hover:enabled { background: #edf3ee; }
+.revoke { margin-top: 16px; padding-left: 0; border-color: transparent; background: transparent; color: #865044; font-size: 13px; }
+.revoke:hover:enabled { background: transparent; text-decoration: underline; }
+.return-note { margin-bottom: 0; }
+[hidden] { display: none !important; }
+@media (max-width: 420px) { .actions { flex-direction: column; } .actions button { width: 100%; } }
+@media (prefers-color-scheme: dark) {
+  :root { color: #e5ede7; background: #141c18; }
+  .permission-card { background: #1c2821; border-color: #34473b; }
+  .eyebrow, .access-note, .return-note { color: #b0c4b7; }
+  .status { background: #263b2e; }
+  button { background: #a9d8b7; border-color: #a9d8b7; color: #183024; }
+  button:hover:enabled { background: #c2e7cc; }
+  .secondary { background: transparent; border-color: #55755e; color: #d1e6d6; }
+  .secondary:hover:enabled { background: #2b4032; }
+  .revoke { background: transparent; color: #e1b0a2; border-color: transparent; }
+  .revoke:hover:enabled { background: transparent; }
+}

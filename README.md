@@ -16,7 +16,7 @@ Individual course cards have space for homework previews. **All courses** stays 
 
 ## Make it yours
 
-Open **Customize workspace** in the dashboard toolbar. Changes save locally and appear immediately.
+Open **Customize workspace** in the dashboard toolbar. Settings slides in from the right while the main page stays usable. Changes save locally and appear immediately.
 
 - Upload or paste animated SVG banners, icons and borders for individual courses and All courses. Download starter SVG templates or restore the built-in drawings.
 - Choose a sidebar or horizontal course strip; put course information or assignments first, or stack the workspace. Studio, Study and Focus presets provide starting points.
@@ -28,9 +28,19 @@ Artwork is rendered as isolated images. Self-contained CSS and SMIL animation ar
 
 Settings and artwork are included in your account-specific personal backup. Appearance resets keep your notes, plans and bookmarks.
 
+## AI beside your work
+
+**Tools → AI** brings selected assignment instructions and course documents into your preferred AI chat. Open ChatGPT, Claude or Gemini, or choose another provider under More. Review the sources and use **Inject context** to append them to the website's draft without sending it. For an opened assignment, its instructions start selected; Home lets you choose.
+
+Small PDFs are read locally. Missing or shortened text is shown before sharing. Optional **Connected chat** uses the official Sign in with ChatGPT flow through CH's local companion and attaches selected context when you press Send. Setup, supported providers and privacy details are in [Study with AI](AI.md).
+
+## GPA your way
+
+**Tools → GPA** estimates unweighted grades on 4.0 and 4.3 scales side by side. Adjust course credits, grade cutoffs and points, weighting bonuses, caps and included courses. Try what-if grades without changing Canvas. Missing grades are excluded, and revealing GPA in the dock leaves the main grade visibility switch unchanged. These are customizable estimates, not official transcript calculations.
+
 ## Install
 
-Download **Canvas-Harness-2.19.0.zip** from [Releases](https://github.com/Flzsh/canvas-harness/releases/latest), extract it, and load the extracted folder containing `manifest.json` from Chrome or Edge's Extensions page with Developer mode enabled. See [INSTALL.md](INSTALL.md) for the full instructions.
+Download **Canvas-Harness-2.20.0.zip** from [Releases](https://github.com/Flzsh/canvas-harness/releases/latest), extract it, and load the extracted folder containing `manifest.json` from Chrome or Edge's Extensions page with Developer mode enabled. See [INSTALL.md](INSTALL.md) for the full instructions.
 
 If you download the GitHub source ZIP instead, load its **extension** subfolder. Keep the extracted folder in place after installation.
 
@@ -60,7 +70,7 @@ npm run build
 npm run preview
 ```
 
-The build writes an install ZIP and a SHA-256 manifest to `dist/`. The artificial preview is excluded from the install ZIP and serves only the extension and preview directories on localhost.
+The build writes an extension ZIP, a separate optional AI companion ZIP and a SHA-256 manifest to `dist/`. The artificial preview is excluded from the install ZIP and serves only the extension and preview directories on localhost.
 
 ## License
 
