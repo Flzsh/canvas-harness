@@ -1,4 +1,8 @@
 dist/
+companion/data/
+companion/host-config.json
+companion/launch.cmd
+companion/org.flzsh.canvas_harness_ai.json
 node_modules/
 *.log
 .DS_Store

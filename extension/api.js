@@ -16,7 +16,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       /^\/api\/v1\/courses\/\d+\/pages\/?$/,
       /^\/api\/v1\/courses\/\d+\/pages\/[^/]+\/?$/,
       /^\/api\/v1\/courses\/\d+\/front_page\/?$/,
-      /^\/api\/v1\/courses\/\d+\/files\/?$/,
+      /^\/api\/v1\/courses\/\d+\/files(?:\/\d+)?\/?$/,
       /^\/api\/v1\/courses\/\d+\/tabs\/?$/,
       /^\/api\/v1\/announcements\/?$/,
       /^\/api\/v1\/conversations\/?$/,
@@ -166,8 +166,25 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const initialUser=await verifyExpectedUser(accountId,signal);
       const {data}=await request(`/api/v1/courses/${id}/pages/${encodeURIComponent(slug)}`,{signal});
       if(!data||typeof data!=='object')throw new CanvasError('Canvas returned an unexpected page.','data');
+      if(data.locked_for_user||data.published===false)throw new CanvasError('This page is not available to your account.','403');
       await verifyExpectedUser(accountId,signal,initialUser.id);
       return typeof data.body==='string'?data.body:'';
+    }
+    async function readAssignment(courseValue,assignmentValue,{user,signal}={}) {
+      const id=courseId(courseValue),assignmentId=courseId(assignmentValue),accountId=expectedUser(user);
+      await verifyExpectedUser(accountId,signal);
+      const {data}=await request(`/api/v1/courses/${id}/assignments/${assignmentId}`,{signal});
+      if(!data||String(data.id)!==assignmentId||data.course_id!=null&&String(data.course_id)!==id||data.locked_for_user||data.published===false)throw new CanvasError('This assignment is not available.','403');
+      await verifyExpectedUser(accountId,signal);
+      return data;
+    }
+    async function readFile(courseValue,fileValue,{user,signal}={}) {
+      const id=courseId(courseValue),fileId=courseId(fileValue),accountId=expectedUser(user);
+      await verifyExpectedUser(accountId,signal);
+      const {data}=await request(`/api/v1/courses/${id}/files/${fileId}`,{signal});
+      if(!data||String(data.id)!==fileId||data.locked_for_user||data.hidden_for_user||data.locked||data.hidden)throw new CanvasError('This file is not available.','403');
+      await verifyExpectedUser(accountId,signal);
+      return data;
     }
     function availableAnnouncement(value,id) {
       if(!value||typeof value!=='object')return false;
@@ -255,7 +272,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(String(finalUser.id)!==String(user.id)) throw new CanvasError('Your Canvas account changed during refresh. Reopen Canvas Harness.', 'auth');
       return {origin:base.origin,user,courses,assignments,errors,partial:errors.length>0,fetchedAt:new Date().toISOString()};
     }
-    return {origin:base.origin,list,profile,loadSnapshot,loadCourseResources,readCoursePage,loadCourseUpdates,listInbox,readConversation};
+    return {origin:base.origin,list,profile,loadSnapshot,loadCourseResources,readCoursePage,readAssignment,readFile,loadCourseUpdates,listInbox,readConversation};
   }
   const api = { CanvasError, createClient };
   root.ReserveAPI = api;

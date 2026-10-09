@@ -1875,7 +1875,7 @@
 .rd .rd-dock-resize:hover:not(:focus-visible) { background: transparent; }
 .rd .rd-dock-resize:is([data-resize=height], [data-resize=width]):hover::after { background: var(--rd-faint); opacity: 1; }
 
-.rd .rd-utility-dialog[data-docked=true] .rd-utility-nav.t-tabs { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, max-content)); gap: 2px; flex: 0 1 auto; min-width: 0; margin: 0; padding: 3px; overflow: hidden; border: 0; border-radius: 999px; background: var(--rd-tint); }
+.rd .rd-utility-dialog[data-docked=true] .rd-utility-nav.t-tabs { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, max-content)); gap: 2px; flex: 0 1 auto; min-width: 0; margin: 0; padding: 3px; overflow: hidden; border: 0; border-radius: 999px; background: var(--rd-tint); }
 .rd .rd-utility-dialog[data-docked=true] .rd-utility-nav.t-tabs[hidden] { display: none; }
 .rd .rd-utility-nav .rd-dock-tab { display: flex; flex: none; align-items: center; justify-content: center; gap: 7px; min-width: 0; height: 32px; min-height: 32px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: var(--rd-muted); font-family: inherit; font-size: 12.5px; font-weight: 450; white-space: nowrap; cursor: pointer; transition: color 200ms var(--rd-warm); }
 .rd .rd-utility-nav .rd-dock-tab > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -1987,7 +1987,7 @@
 @container toolbox (max-width: 460px) { .rd .rd-utility-nav .rd-dock-tab .rd-icon { display: none; } }
 .rd .rd-utility-dialog select.rd-dock-size { appearance: none; -webkit-appearance: none; padding: 0 8px; field-sizing: content; }
 
-@container toolbox (max-width: 400px) { .rd .rd-utility-nav .rd-dock-tab { padding: 0 8px; } }
+@container toolbox (max-width: 400px) { .rd .rd-utility-nav .rd-dock-tab { padding: 0 6px; font-size:12px; } }
 
 
 @container toolbox (max-width: 520px) {
@@ -2248,3 +2248,10 @@
   .rd .rd-reader-sections > small { display: block; margin-top: 8px; }
   .rd[data-workspace=work] .rd-reader .rd-rich-text { font-size: 16.5px; line-height: 1.6; }
 }
+/* The AI document is an extension origin: Canvas scripts cannot read its chats. */
+.rd .rd-utility-dialog[data-docked=true] { overflow:clip; }
+.rd .rd-utility-dialog:is([data-tool=ai],[data-tool=gpa]) .rd-utility-body { padding:0; overflow:hidden; min-height:0; }
+.rd .rd-utility-dialog:is([data-tool=ai],[data-tool=gpa]) .rd-utility-foot { display:none; }
+.rd .rd-tool-panel:is([data-tool-panel=ai],[data-tool-panel=gpa]) { height:100%; min-height:0; overflow:hidden; }
+.rd .rd-ai-frame { display:block; border:0; width:100%; height:100%; min-height:240px; background:var(--rd-surface,#FAF9F5); color-scheme:light; }
+.rd[data-theme=dark] .rd-ai-frame { color-scheme:dark; }

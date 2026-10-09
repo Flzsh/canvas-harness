@@ -7,3 +7,8 @@ Canvas Harness is licensed under the MIT License. See LICENSE for its terms.
 
 Bundled Literata fonts are licensed separately under the SIL Open Font
 License 1.1. See fonts/OFL.txt for their copyright and license notice.
+
+PDF.js 6.4.299 is bundled from the Mozilla pdfjs-dist distribution.
+Copyright Mozilla Foundation and contributors. Licensed under Apache-2.0.
+See vendor/pdfjs/LICENSE. Source, integrity and file hashes are recorded
+in pdf-context.js. The bundled library and worker are unchanged.

@@ -20,7 +20,7 @@ The assistant writes the SVG by hand. No image model is involved.
 | `templates/` | Three working starting points: a scene with a rigged figure, an icon, a border. |
 | `scripts/check.cjs` | Validates files with Canvas Harness's own validator and writes a preview page. |
 | `scripts/walk.cjs` | Writes the keyframes for a walking figure. |
-| `scripts/vendor/custom-art.js` | A copy of the validator from Canvas Harness 2.19.0 (MIT). Replace it when the extension changes. |
+| `scripts/vendor/custom-art.js` | A copy of the validator from Canvas Harness 2.20.0 (MIT). Replace it when the extension changes. |
 | `PROMPT.md` | The whole skill as one file, for assistants that cannot load a skill folder. |
 
 ## Using it

@@ -10,7 +10,7 @@ Canvas Harness shows uploaded artwork as an **isolated image**: the SVG is valid
    is stripped and what remains is shown. So the drawing with all animation removed must be the complete picture
    (see "The rest pose" in `animation.md`).
 
-Checked against Canvas Harness 2.19.0 (`extension/custom-art.js`, unchanged since 2.18.1). `scripts/check.cjs` runs that same validator.
+Checked against Canvas Harness 2.20.0 (`extension/custom-art.js`, unchanged since 2.18.1). `scripts/check.cjs` runs that same validator.
 
 ## The three slots
 

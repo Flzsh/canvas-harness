@@ -475,7 +475,7 @@ The frame of the course row in the sidebar (or the course strip). The image is *
 255 x 87 px in the sidebar and 225 x 84 px in the course strip, and can be as short as about 50 px or as tall as
 about 140 px, so the image may be squeezed or pulled by up to about a third in either direction.
 
-#### What is inside the row (measured in Canvas Harness 2.19; keep these areas clear)
+#### What is inside the row (measured in Canvas Harness 2.19 and 2.20; keep these areas clear)
 
 ```
  0        66                                                     360
@@ -542,7 +542,7 @@ Canvas Harness shows uploaded artwork as an **isolated image**: the SVG is valid
    is stripped and what remains is shown. So the drawing with all animation removed must be the complete picture
    (see "The rest pose" in `animation.md`).
 
-Checked against Canvas Harness 2.19.0 (`extension/custom-art.js`, unchanged since 2.18.1). `scripts/check.cjs` runs that same validator.
+Checked against Canvas Harness 2.20.0 (`extension/custom-art.js`, unchanged since 2.18.1). `scripts/check.cjs` runs that same validator.
 
 ### The three slots
 

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Canvas Harness · Study with AI</title>
+  <link rel="stylesheet" href="ai-panel.css">
+  <script src="ai-providers.js" defer></script>
+  <script src="ai-panel.js" defer></script>
+</head>
+<body>
+  <main class="ai-panel" aria-labelledby="panel-title">
+    <header class="panel-header">
+      <div class="heading-row">
+        <h1 id="panel-title">Study with AI</h1>
+        <button id="close" class="icon-button" type="button" aria-label="Close AI panel" title="Close AI panel">×</button>
+      </div>
+      <p id="scope-label" class="scope-label">Loading your Canvas view…</p>
+      <p id="demo-label" class="demo-label" hidden>Artificial preview · No sign-in or AI requests</p>
+      <div class="providers" role="group" aria-label="AI provider">
+        <button type="button" data-provider="chatgpt" aria-pressed="true">ChatGPT</button>
+        <button type="button" data-provider="claude" aria-pressed="false">Claude</button>
+        <button type="button" data-provider="gemini" aria-pressed="false">Gemini</button>
+        <label class="more-provider"><span class="sr-only">More AI providers</span><select id="more-providers"><option value="">More</option></select></label>
+      </div>
+      <div class="route-row">
+        <div class="route-switch" role="group" aria-label="Chat mode">
+          <button id="route-web" type="button" aria-pressed="true">Alongside</button>
+          <button id="route-connected" type="button" aria-pressed="false">Connected chat</button>
+        </div>
+        <button id="clear" type="button" class="quiet-button" hidden>Clear chat</button>
+      </div>
+    </header>
+
+    <div id="scrollbox" class="panel-body" tabindex="-1">
+      <section id="website-info" class="route-info" aria-label="Provider website">
+        <div class="info-row"><p>Work in <span id="website-name">ChatGPT</span></p><button id="open-website" type="button" class="quiet-button">Open website ↗</button></div>
+        <p id="sharing-note" class="hint">Selected context goes to ChatGPT when you inject.</p>
+        <p class="hint">Review and send on the website. Your existing draft is kept.</p>
+        <p id="website-status" class="hint" hidden></p>
+      </section>
+
+      <section id="connection-info" class="route-info" aria-labelledby="account-label" hidden>
+        <div class="account-row"><span id="connection-dot" class="connection-dot" aria-hidden="true"></span><p id="account-label">ChatGPT is not connected</p><button id="signout" type="button" class="quiet-button" hidden>Sign out</button></div>
+        <p id="connection-help" class="hint">Use the optional companion and official Sign in with ChatGPT to chat here.</p>
+        <div class="connection-actions"><button id="connect" type="button">Sign in with ChatGPT</button><a href="https://github.com/Flzsh/canvas-harness/blob/main/companion/README.md" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">Companion setup ↗</a></div>
+        <div id="model-row" class="model-row" hidden><label for="model">Model</label><select id="model"><option value="">No models loaded</option></select><button id="refresh-models" type="button" class="icon-button" aria-label="Refresh available models" title="Refresh models">↻</button></div>
+      </section>
+
+      <details id="context-details" class="context-details">
+        <summary><span>Context</span><span id="selection-summary" class="selection-summary">Nothing selected</span></summary>
+        <div class="context-body">
+          <p id="scope-hint" class="hint">Choose the material to share. Home starts with nothing selected.</p>
+          <div class="course-row"><label for="course" class="sr-only">Course materials</label><select id="course"><option value="">Choose a course</option></select><button id="load-course" type="button" class="quiet-button">Load materials</button></div>
+          <label id="all-row" class="check-row all-row" hidden><input id="all-linked" type="checkbox"><span>Include assignment’s linked materials<small>“All” means these instructions and their direct links.</small></span></label>
+          <fieldset id="source-fieldset"><legend class="sr-only">Sources to include</legend><div id="sources" class="source-list"></div></fieldset>
+          <p id="empty-sources" class="hint">Load a course to choose its materials.</p>
+          <div id="pdf-list" class="pdf-list"></div>
+          <div class="context-actions"><button id="preview" type="button">Preview selected text</button><button id="attach" type="button" class="quiet-button">Attach PDF</button><input id="pdf-input" class="sr-only" type="file" accept="application/pdf,.pdf" aria-label="Attach a local PDF, up to 2 MiB"></div>
+          <p class="hint">PDFs up to 2 MiB are read locally. Review any missing or shortened text below.</p>
+          <div id="context-preview" class="context-preview" hidden>
+            <div class="info-row"><h2>Text to share</h2><span id="context-count" class="hint"></span></div>
+            <ul id="included-sources" class="included-sources" aria-label="Included sources"></ul>
+            <pre id="context-text" tabindex="0" aria-label="Selected context text"></pre>
+            <div id="context-issues" class="context-issues" hidden><h3>Review before sharing</h3><ul id="issue-list"></ul><label class="check-row"><input id="accept-issues" type="checkbox"><span>Continue with the available text, including the issues listed above.</span></label></div>
+          </div>
+        </div>
+      </details>
+
+      <section id="conversation" class="conversation" aria-label="Connected conversation" hidden>
+        <div id="empty-chat" class="empty-chat"><span class="conversation-mark" aria-hidden="true">“</span><h2>A little help with the next step.</h2><p class="hint">Choose your context, then ask a question below.</p></div>
+        <div id="history" class="history" role="log" aria-label="Chat history" aria-live="polite" aria-relevant="additions"></div>
+      </section>
+
+      <section id="fallback" class="fallback" aria-labelledby="fallback-title" hidden>
+        <h2 id="fallback-title">Your text is ready to copy</h2>
+        <p class="hint">Paste it into the provider’s draft, then review it there before sending.</p>
+        <textarea id="fallback-text" readonly rows="5" aria-label="Prepared text for manual copy" spellcheck="false"></textarea>
+        <div class="context-actions"><button id="copy-fallback" type="button">Copy prepared text</button><button id="open-fallback" type="button" class="quiet-button">Open website ↗</button></div>
+      </section>
+    </div>
+
+    <footer class="composer-footer">
+      <p id="notice" class="notice" role="status" aria-live="polite" hidden></p>
+      <p id="error" class="error" role="alert" hidden></p>
+      <form id="composer" class="composer">
+        <label id="prompt-label" for="prompt" class="sr-only">Optional prompt to add to the website draft</label>
+        <textarea id="prompt" rows="3" maxlength="20000" placeholder="Add a question, or just inject context…" aria-describedby="composer-help" autocomplete="off" spellcheck="true"></textarea>
+        <div class="composer-toolbar"><button id="composer-attach" type="button" class="quiet-button" aria-label="Attach a local PDF">+ PDF</button><span id="prompt-count" class="prompt-count">0 / 20,000</span><button id="copy" type="button" class="quiet-button">Copy</button><button id="stop" type="button" hidden>Stop</button><button id="send" type="submit" class="primary-button">Inject context</button></div>
+      </form>
+      <p id="composer-help" class="composer-help">Enter to inject · Shift + Enter for a new line</p>
+      <p class="privacy-note">This panel does not save chat history. Reloading clears it.</p>
+    </footer>
+  </main>
+</body>
+</html>

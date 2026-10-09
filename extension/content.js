@@ -71,7 +71,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     host=document.createElement('div');host.id='reserve-companion-host';host.hidden=true;
     root=host.attachShadow({mode:'open'});
     const loadingHost=host;let loaded=0;
-    const sheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css'];
+    const sheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','gpa.css'];
     for(const file of sheets){
       const link=document.createElement('link');link.rel='stylesheet';link.href=chrome.runtime.getURL(file);
       link.onload=()=>{if(host===loadingHost&&++loaded===sheets.length){ready=true;reveal();}};

@@ -8,6 +8,15 @@ const sha=buffer=>crypto.createHash('sha256').update(buffer).digest('hex');
 function zip(name,entries){const locals=[],central=[],hashes=[];let offset=0;for(const [filename,body]of entries.sort(([a],[b])=>a.localeCompare(b))){const fn=Buffer.from(filename.replaceAll('\\','/')),compressed=zlib.deflateRawSync(body),checksum=crc(body),local=Buffer.alloc(30);local.writeUInt32LE(0x04034b50);local.writeUInt16LE(20,4);local.writeUInt16LE(0x800,6);local.writeUInt16LE(8,8);local.writeUInt16LE(23851,12);local.writeUInt32LE(checksum,14);local.writeUInt32LE(compressed.length,18);local.writeUInt32LE(body.length,22);local.writeUInt16LE(fn.length,26);locals.push(local,fn,compressed);const header=Buffer.alloc(46);header.writeUInt32LE(0x02014b50);header.writeUInt16LE(20,4);header.writeUInt16LE(20,6);header.writeUInt16LE(0x800,8);header.writeUInt16LE(8,10);header.writeUInt16LE(23851,14);header.writeUInt32LE(checksum,16);header.writeUInt32LE(compressed.length,20);header.writeUInt32LE(body.length,24);header.writeUInt16LE(fn.length,28);header.writeUInt32LE(offset,42);central.push(header,fn);offset+=local.length+fn.length+compressed.length;hashes.push({path:filename,bytes:body.length,sha256:sha(body)});}const cd=Buffer.concat(central),end=Buffer.alloc(22);end.writeUInt32LE(0x06054b50);end.writeUInt16LE(entries.length,8);end.writeUInt16LE(entries.length,10);end.writeUInt32LE(cd.length,12);end.writeUInt32LE(offset,16);const buffer=Buffer.concat([...locals,cd,end]);fs.writeFileSync(path.join(output,name),buffer);return {file:name,bytes:buffer.length,sha256:sha(buffer),entries:hashes};}
 const extensionEntries=files.map(file=>[file.replaceAll('\\','/'),fs.readFileSync(path.join(extension,file))]);
 extensionEntries.push(['INSTALL.md',fs.readFileSync(path.join(root,'INSTALL.md'))]);
+extensionEntries.push(['AI.md',fs.readFileSync(path.join(root,'AI.md'))]);
 const result={version:manifest.version,builtAt:new Date().toISOString(),packages:[zip(`Canvas-Harness-${manifest.version}.zip`,extensionEntries)]};
+const companionRoot=path.join(root,'companion');
+// Ship source files only. A local installation's data folder must never enter a release.
+const companionFiles=['host.cjs','install.cjs','package.json','README.md','CONTRACT.md',
+ 'lib/errors.cjs','lib/http.cjs','lib/inference.cjs','lib/oauth.cjs','lib/process.cjs','lib/protocol.cjs','lib/service.cjs','lib/storage.cjs',
+ 'windows/open-browser.ps1','windows/register.ps1','windows/secret-storage.ps1'];
+const companionEntries=companionFiles.map(file=>['companion/'+file.replaceAll('\\','/'),fs.readFileSync(path.join(companionRoot,file))]);
+companionEntries.push(['LICENSE',fs.readFileSync(path.join(root,'LICENSE'))],['AI.md',fs.readFileSync(path.join(root,'AI.md'))]);
+result.packages.push(zip('Canvas-Harness-AI-Companion-'+manifest.version+'.zip',companionEntries));
 fs.writeFileSync(path.join(output,'release-manifest.json'),JSON.stringify(result,null,2));
 for(const p of result.packages)console.log(`${p.file}: ${p.bytes} bytes · SHA-256 ${p.sha256}`);

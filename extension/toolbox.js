@@ -4,11 +4,11 @@
  const captureDrafts=new Map();
  // A failed reminder draft remains protected even after its tool window is closed.
  root.addEventListener?.('beforeunload',event=>{if(captureDrafts.size){event.preventDefault();event.returnValue='';}});
- const sections=[['quick','Quick open','search'],['plan','Plan','calendar'],['calculator','Calculator','calculator']];
+ const sections=[['quick','Quick open','search'],['ai','AI','book'],['calculator','Calculator','calculator'],['gpa','GPA','grades']];
  const E=value=>root.ReserveUI.escapeHTML(value),I=name=>root.ReserveIcon(name,'rd-icon');
  const mod=/Mac|iP(hone|ad|od)/.test(root.navigator?.platform||'')?'⌘':'Ctrl';
- function create({container,store,getContext,onNavigate,onPreview,onPlanner,materials,onDockChange=()=>{}}){
-  let toolMotion,dockResize,captureDraft=null,capturing=false,captureUndo=null;
+ function create({container,store,getContext,onNavigate,onPreview,onPlanner,onRefresh,materials,aiConfig={},onDockChange=()=>{}}){
+  let toolMotion,dockResize,aiPanel,gpaPanel,captureDraft=null,capturing=false,captureUndo=null;
   let dialog,tool='quick',trigger,dead=false,collapsed=false,calculatorMode='graphing',query='',index=0,results=[],cacheLoading=false,cacheMessage='',status='';
   let personal=store.get();
   const draftKey=store.owner?.origin+':'+store.owner?.accountId;
@@ -63,11 +63,11 @@
    if(dead)return;poolCache=null;init();if(leaving){root.clearTimeout(leaving);leaving=0;delete dialog.dataset.leaving;}const active=dialog.getRootNode().activeElement,candidate=source||active,wasOpen=dialog.open,wasCollapsed=collapsed;
    if(candidate&&!dialog.contains(candidate))trigger=candidate;
    // Stale callers and saved recents may still name a retired tool.
-   next=sections.some(x=>x[0]===next)?next:'quick';const changed=next!==tool;
+   next=next==='plan'||sections.some(x=>x[0]===next)?next:'quick';const changed=next!==tool;
    if(changed){rememberCapture();tool=next;status='';}
    if(changed||!panels.has(tool))paint();syncCollapsed(false);if(!dialog.open)dialog.show();dockResize?.refresh();notifyDock();syncTabs(changed&&wasOpen&&!wasCollapsed);
    if(focus&&(changed||!wasOpen||wasCollapsed||!dialog.contains(active)))focusFirst();
-   if(tool==='quick')hydrate();
+   if(tool==='quick')hydrate();if(tool==='ai')aiPanel?.update();if(tool==='gpa')gpaPanel?.update();
   }
   function capture(draft,source){
    if(captureDraft?.title.trim()){open('plan',source);showStatus('You have an unfinished reminder. Add it or clear the draft before capturing another source.');return;}
@@ -76,10 +76,10 @@
    if(captureDraft.title.trim())captureDrafts.set(draftKey,captureDraft);open('plan',source);renderPlan();focusFirst();
   }
   function rememberCapture(){if(capturing)return;const form=body()?.querySelector('[data-ui-form="capture"]');if(!form)return;const fd=new FormData(form);captureDraft={...captureDraft,title:String(fd.get('title')||''),course:String(fd.get('course')||'personal'),planned:String(fd.get('planned')||'')==='pick'?plannedOf(fd)||'pick':String(fd.get('planned')||''),due:String(fd.get('due')||''),estimate:String(fd.get('estimate')||'')};if(captureDraft.title.trim())captureDrafts.set(draftKey,captureDraft);else captureDrafts.delete(draftKey);const clear=form.querySelector('[data-ui-action="clear-capture"]');if(clear)clear.disabled=!captureDraft.title;const send=form.querySelector('.rd-composer-send');if(send){if(captureDraft.title.trim())send.removeAttribute('aria-disabled');else send.setAttribute('aria-disabled','true');}}
-  function focusFirst(){const selector=tool==='quick'?'[data-ui-field="quick"]':tool==='calculator'?'[data-calc-mode="'+calculatorMode+'"]':'[name="title"]';body()?.querySelector(selector)?.focus({preventScroll:true});}
+  function focusFirst(){if(tool==='ai'){aiPanel?.focus();return;}if(tool==='gpa'){gpaPanel?.focus();return;}const selector=tool==='quick'?'[data-ui-field="quick"]':tool==='calculator'?'[data-calc-mode="'+calculatorMode+'"]':'[name="title"]';body()?.querySelector(selector)?.focus({preventScroll:true});}
   function paint(){
    if(!dialog)return;const active=dialog.getRootNode().activeElement,focusWithin=dialog.contains(active),previousTool=dialog.dataset.tool,focusField=active?.dataset?.uiField,focusAction=active?.dataset?.uiAction;dialog.dataset.tool=tool;
-   dialog.querySelector('[data-ui-current]').textContent=' · '+sections.find(x=>x[0]===tool)[1];
+   dialog.querySelector('[data-ui-current]').textContent=' · '+(sections.find(x=>x[0]===tool)?.[1]||'New reminder');
    for(const tab of dialog.querySelectorAll('.rd-dock-tab')){const selected=tab.dataset.tool===tool;tab.setAttribute('aria-selected',String(selected));tab.setAttribute('tabindex',selected?'0':'-1');}
    let content=body();const fresh=!content,cacheNotice=getContext().cacheNotice||'';
    if(fresh){content=document.createElement('section');content.className='rd-tool-panel';content.dataset.toolPanel=tool;content.setAttribute('id','rd-tool-panel-'+tool);content.setAttribute('role','tabpanel');content.setAttribute('aria-labelledby','rd-tool-tab-'+tool);panels.set(tool,content);dialog.querySelector('.rd-utility-body').append(content);dialog.querySelector('[data-tab="'+tool+'"]')?.setAttribute('aria-controls',content.id);}
@@ -87,7 +87,13 @@
    // A borderless query row (Esc closes), grouped results, and one strip of key hints.
    if(tool==='quick'&&fresh)content.innerHTML=`<label class="rd-quick-search">${I('search')}<input type="search" data-ui-field="quick" role="combobox" aria-label="Quick open search" aria-autocomplete="list" aria-expanded="true" aria-controls="rd-quick-results" autocomplete="off" placeholder="Search courses, assignments and documents" value="${E(query)}"><kbd aria-hidden="true">Esc</kbd></label><div id="rd-quick-results" class="rd-quick-results" role="listbox" aria-label="Quick open results"></div><p class="rd-utility-hint" data-quick-coverage hidden></p><p class="rd-quick-keys">${[['↵','open'],[mod+' ↵','new tab'],['Alt ↵','preview']].map(([key,label])=>`<span><kbd>${E(key)}</kbd> ${label}</span>`).join('')}</p>`;
    if(tool==='calculator'){if(fresh)renderCalculator();selectCalculatorMode(calculatorMode);}
-   if(tool==='plan'){if(fresh)renderPlan();else renderPlanLists();}
+   if(tool==='ai'&&fresh){
+    content.setAttribute('aria-label','AI study workspace');
+    aiPanel=root.CanvasHarnessAISource?.mount({container:content,store,getContext,...aiConfig,onClose:()=>close({restoreFocus:true})});
+    if(!aiPanel)content.textContent='Reload Canvas Harness to use the AI workspace.';
+   }
+   if(tool==='gpa'&&fresh){gpaPanel=root.CanvasHarnessGPAUI?.create({container:content,store,getContext,onRefresh});if(!gpaPanel)content.textContent='Reload Canvas Harness to use the GPA calculator.';}
+   if(tool==='plan'){content.removeAttribute('aria-labelledby');content.setAttribute('aria-label','New reminder');if(fresh)renderPlan();else renderPlanLists();}
    if(tool==='quick')renderResults();showStatus(status||cacheNotice);
    if(dialog.open&&previousTool!==tool)toolMotion?.reveal(content,{animate:container.dataset.input!=='keyboard',kind:'section',direction:sections.findIndex(x=>x[0]===tool)-sections.findIndex(x=>x[0]===previousTool)});
    if(previousTool===tool&&focusWithin&&!collapsed){const next=focusField?content.querySelector('[data-ui-field="'+focusField+'"]'):focusAction?[...content.querySelectorAll('[data-ui-action]')].find(node=>node.dataset.uiAction===focusAction&&['mode','value','index','tool'].every(key=>node.dataset[key]===active.dataset[key])):null;if(next&&next!==active)next.focus({preventScroll:true});}
@@ -231,7 +237,7 @@
    if(tool==='plan'&&event.key==='Enter'&&!event.shiftKey&&event.target.getAttribute?.('name')==='title'){event.preventDefault();event.target.closest('[data-ui-form="capture"]')?.requestSubmit?.();return;}
   }
   const unsubscribe=store.subscribe(data=>{personal=data;poolCache=null;if(dialog?.open&&tool==='quick')renderResults();});
-  return {open:(next,source)=>open(next,source),capture,collapse,expand,close,isOpen:()=>!dead&&!!dialog?.open,update(){if(!dead)poolCache=null;},destroy(){if(dead)return;rememberCapture();dead=true;if(leaving)root.clearTimeout(leaving);dockResize?.destroy();toolMotion?.destroy();unsubscribe?.();dialog?.remove();panels.clear();notifyDock();}};
+  return {open:(next,source)=>open(next,source),capture,collapse,expand,close,isOpen:()=>!dead&&!!dialog?.open,update(){if(!dead){poolCache=null;aiPanel?.update();gpaPanel?.update();}},destroy(){if(dead)return;rememberCapture();dead=true;if(leaving)root.clearTimeout(leaving);dockResize?.destroy();aiPanel?.destroy();gpaPanel?.destroy();toolMotion?.destroy();unsubscribe?.();dialog?.remove();panels.clear();notifyDock();}};
  }
  root.ReserveToolbox={create};if(typeof module!=='undefined'&&module.exports)module.exports=root.ReserveToolbox;
 })(globalThis);
