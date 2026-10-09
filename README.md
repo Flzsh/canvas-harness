@@ -28,6 +28,16 @@ Artwork is rendered as isolated images. Self-contained CSS and SMIL animation ar
 
 Settings and artwork are included in your account-specific personal backup. Appearance resets keep your notes, plans and bookmarks.
 
+### Draw your own artwork with an AI assistant
+
+[`skills/canvas-harness-art`](skills/canvas-harness-art/) teaches an AI assistant to draw a course's banner (with the course name lettered into it), icon and border in the same hand-drawn, animated style, as SVG files the uploader accepts.
+
+- With an assistant that loads skills, copy the folder into your skills directory. With any other assistant, paste [`PROMPT.md`](skills/canvas-harness-art/PROMPT.md) into the chat.
+- Tell it what your course actually does this term and your course color. It returns three SVG files to upload under **Customize workspace**.
+- `node skills/canvas-harness-art/scripts/check.cjs <folder>` runs the uploader's own checks on the files and writes a preview page that shows them at the sizes Canvas Harness uses.
+
+The skill is not part of the install ZIP.
+
 ## Install
 
 Download **Canvas-Harness-2.19.0.zip** from [Releases](https://github.com/Flzsh/canvas-harness/releases/latest), extract it, and load the extracted folder containing `manifest.json` from Chrome or Edge's Extensions page with Developer mode enabled. See [INSTALL.md](INSTALL.md) for the full instructions.
