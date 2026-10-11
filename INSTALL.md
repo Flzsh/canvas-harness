@@ -1,10 +1,10 @@
-# Install Canvas Harness 2.21.0
+# Install Canvas Harness 2.21.1
 
 Canvas Harness is a browser extension for your signed-in Canvas courses, assignments, bookmarks, artwork and study tools. It is designed for desktop Chrome and Edge.
 
 ## Install in desktop Chrome or Edge
 
-1. Download a **Canvas-Harness-2.21.0.zip** package from [GitHub Releases](https://github.com/Flzsh/canvas-harness/releases) if one is available, or download the [source repository](https://github.com/Flzsh/canvas-harness).
+1. Download a **Canvas-Harness-2.21.1.zip** package from [GitHub Releases](https://github.com/Flzsh/canvas-harness/releases) if one is available, or download the [source repository](https://github.com/Flzsh/canvas-harness).
 2. Extract the download to a folder you will keep. For the packaged extension, use its extracted folder containing `manifest.json`. For a source-repository download, use its `extension` subfolder.
 3. Open `chrome://extensions` or `edge://extensions` in the browser.
 4. Turn on **Developer mode**, choose **Load unpacked**, and select the folder containing `manifest.json`.

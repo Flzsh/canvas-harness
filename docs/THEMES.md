@@ -20,7 +20,7 @@ Use **Show grades** separately when you want grades visible. Leaving it off hide
 
 The 22 automatic subject presets match familiar course names and codes. When a course has no matching subject preset, it uses a general illustration and a single sketched frame. If its displayed name has no matching title drawing, a generic illustrated label preserves that name.
 
-All courses has its own overview artwork. Uploaded course artwork takes priority.
+All courses keeps its time-of-day greeting beside the overview artwork. Generic illustrated labels are used for individual course names. An explicitly uploaded overview title takes priority; uploading only an overview banner keeps the greeting.
 
 Choose **Living drawings → Off** to stop the bundled drawings' ongoing ambient movement. Motion settings also control transitions and reveals; the animation-off and reduced-motion paths use static artwork. Imported drawings retain their own palette. Choose artwork with readable contrast against the paper surface.
 

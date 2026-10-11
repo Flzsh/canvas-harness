@@ -182,14 +182,14 @@ test('generic lettering is stable across renders and motion off keeps the label 
  assert.equal(art.title(still),rest);
 });
 
-function dashboard(env,{course=null,overviewArt={}}={}){
+function dashboard(env,{course=null,overviewArt={},greeting='off',timeZone='UTC',now=Date.parse('2026-10-11T12:00:00Z'),user=null}={}){
  load(['ui-utils.js','icons.js','workspace-arrange.js','customization-model.js','customize-ui.js','dashboard-view.js'],env);
  const courses=course?[course]:[],c={
-  s:{timeZone:'UTC',motion:'off',livingArt:'off',greeting:'off',showGrades:false,showBookmarks:false,overviewArt},
+  s:{timeZone,motion:'off',livingArt:'off',greeting,showGrades:false,showBookmarks:false,overviewArt},
   state:{courseId:course?course.id:'all',mode:'actionable',query:'',day:null},
   courses,allCourses:courses,courseMap:new Map(courses.map(x=>[x.id,x])),items:[],filtered:{items:[],olderCount:0},
   local:{},insights:{ready:[],recentGrades:[]},resourcePins:[],courseLoad:new Map(),glance:{},modeCounts:{},visibleLimit:20,
-  now:Date.parse('2026-10-11T12:00:00Z'),status:'Sample data',workspace:'work'
+  now,user,status:'Sample data',workspace:'work'
  };
  const h={
   E:env.ReserveUI.escapeHTML,icon:env.ReserveIcon,dayKey:env.ReserveCore.dayKey,complete:env.ReserveCore.isComplete,
@@ -201,23 +201,33 @@ function dashboard(env,{course=null,overviewArt={}}={}){
  return {html,heading:html.slice(start,end)};
 }
 
-test('the rendered All courses header uses overviewArt for its generic title and keeps the stacked rail frame',()=>{
- const env=runtime(),{html,heading}=dashboard(env),course={...overview(),artPrefs:{},artMotion:false};
- assert.match(heading,/^<div class="rd-course-heading" data-titled="true"/);assert.match(heading,/<h1>Your work<\/h1>/);
- assert.ok(heading.includes(env.ReserveCourseArt.titleFrame(course,{place:'heading'})));
- assert.equal(displayedLabel(heading),'All courses');assert.match(heading,/data-cycle="0"/);
+test('All courses keeps its original text heading and stacked rail frame when greetings are off',()=>{
+ const env=runtime(),{html,heading}=dashboard(env);
+ assert.match(heading,/^<div class="rd-course-heading">/);assert.match(heading,/<h1>Your work<\/h1>/);
+ assert.doesNotMatch(heading,/data-titled|rd-title-art|rd-generic-title/);
  const rail=html.match(/<button\b[^>]*class="rd-rail-all"[^>]*>[\s\S]*?<\/button>/)?.[0]||'';
  assert.match(rail,/data-kind="home"/);assert.match(rail,/rd-frame-extra/);assert.doesNotMatch(rail,/data-kind="generic"/);
 });
 
-test('the rendered All courses header gives an overview title upload priority and retains a generic title with only an overview banner',()=>{
+test('All courses shows a personal greeting for the student time zone instead of an illustrated All courses label',()=>{
+ const cases=[['2026-10-11T11:00:00Z','Good morning'],['2026-10-11T17:00:00Z','Good afternoon'],
+  ['2026-10-11T23:00:00Z','Good evening'],['2026-10-12T03:00:00Z','Working late']];
+ for(const [at,words] of cases){
+  const {heading}=dashboard(runtime(),{greeting:'on',timeZone:'America/New_York',now:Date.parse(at),user:{short_name:'Learner Example'}});
+  assert.ok(heading.includes('<h1>'+words+', Learner<span class="rd-sr-only">'),at);
+  assert.doesNotMatch(heading,/data-titled|rd-title-art|rd-generic-title/);
+  assert.match(heading,/rd-heading-art/,'the overview keeps its scene');
+ }
+});
+
+test('an explicitly uploaded overview title takes priority while a banner alone keeps the original text heading',()=>{
  const env=runtime(),assets=supplied(env.ReserveCustomArt);
  const uploaded=dashboard(env,{overviewArt:{titleArt:assets.title,bannerArt:assets.banner}}).heading;
  assert.match(uploaded,/data-titled="true"/);assert.match(uploaded,/--rd-name-w:600/);assert.match(uploaded,/ch-custom-title/);assert.match(uploaded,/ch-custom-banner/);
  assert.match(embeddedSVG(uploaded.match(/<span class="rd-title-art"[\s\S]*/)[0]),/>Uploaded title<\/text>/);
  assert.doesNotMatch(uploaded,/rd-generic-title/);assert.match(uploaded,/<h1>Your work<\/h1>/);
  const bannerOnly=dashboard(env,{overviewArt:{bannerArt:assets.banner}}).heading;
- assert.match(bannerOnly,/ch-custom-banner/);assert.match(bannerOnly,/rd-generic-title/);assert.equal(displayedLabel(bannerOnly),'All courses');
+ assert.match(bannerOnly,/ch-custom-banner/);assert.match(bannerOnly,/<h1>Your work<\/h1>/);assert.doesNotMatch(bannerOnly,/data-titled|rd-title-art|rd-generic-title/);
 });
 
 test('rendered course headers use the displayed short name for generic art and retain the accessible heading',()=>{

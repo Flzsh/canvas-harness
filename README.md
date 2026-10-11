@@ -46,7 +46,7 @@ Circles select items. **Archive** marks selected assignments done locally; **Boo
 
 ## Make the artwork yours
 
-Canvas Harness automatically matches course names and familiar codes to **22 subject presets**. They cover mathematics, sciences, English, writing, reading, languages, and history, with AP science and Calculus AB/BC variants. Unfamiliar subjects receive a general illustration and a simple sketched outline. Names without matching title artwork receive a reusable illustrated label, including renamed courses and All courses.
+Canvas Harness automatically matches course names and familiar codes to **22 subject presets**. They cover mathematics, sciences, English, writing, reading, languages, and history, with AP science and Calculus AB/BC variants. Unfamiliar subjects receive a general illustration and a simple sketched outline. Individual courses without matching title artwork receive a reusable illustrated label with their displayed course name. All courses welcomes you with a greeting that changes with the time of day, beside its overview artwork.
 
 Upload animated SVG banners, icons, borders, and custom titles for individual courses or All courses. Your uploads take priority over the bundled artwork.
 
@@ -61,7 +61,7 @@ The included [artwork skill](skills/canvas-harness-art/SKILL.md) helps an AI ass
 
 Try the [astronomy example pack](skills/canvas-harness-art/examples/astronomy/astronomy.chpack) by mapping it to a course in the preview before applying. Quick Upload bundles banners, icons, and borders. If the banner includes its drawn name, choose **Course artwork → Course title → Already drawn in banner** to avoid a second title over it. Separate title SVGs use the individual uploader.
 
-Download the [artwork skill ZIP](https://github.com/Flzsh/canvas-harness/releases/download/v2.21.0/Canvas-Harness-Art-Skill-2.21.0.zip), or use its folder in the repository. It is separate from the extension install ZIP. See [Themes and artwork](docs/THEMES.md) for the complete workflow, motion controls, and upload limits.
+Download the [artwork skill ZIP](https://github.com/Flzsh/canvas-harness/releases/download/v2.21.1/Canvas-Harness-Art-Skill-2.21.1.zip), or use its folder in the repository. It is separate from the extension install ZIP. See [Themes and artwork](docs/THEMES.md) for the complete workflow, motion controls, and upload limits.
 
 ## Move courses and panels directly
 

@@ -424,6 +424,22 @@
   }
 }
 
+/* An overview greeting does not repeat the Course selector's label. Keep it
+   visible when tablet layout or a dock replaces the rail with that selector.
+   Individual course headings have a title attribute; overview greetings do not. */
+.rd[data-workspace=work] .rd-workspace-heading > .rd-course-heading:not([data-titled]) > h1:not([title]) {
+  position: relative;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+  white-space: normal;
+  border: 0;
+}
+
 /* The search should not cost a second narrow text column, and the title piece
    is allowed to use the header width at phone sizes. The existing drawer,
    keyboard focus rules and SVG animation settings remain in charge. */
