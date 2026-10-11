@@ -1,3 +1,5 @@
+<p align="center"><img src="extension/icon.svg" width="112" height="112" alt="Canvas Harness logo"></p>
+
 # Canvas Harness
 
 A Canvas companion that brings course information, upcoming work, assignment instructions, bookmarks, grades and study tools together in one organized workspace.
@@ -50,7 +52,7 @@ Small PDFs are read locally. Missing or shortened text is shown before sharing. 
 
 ## Install
 
-Download **Canvas-Harness-2.20.0.zip** from [Releases](https://github.com/Flzsh/canvas-harness/releases/latest), extract it, and load the extracted folder containing `manifest.json` from Chrome or Edge's Extensions page with Developer mode enabled. See [INSTALL.md](INSTALL.md) for the full instructions.
+Download **Canvas-Harness-2.20.1.zip** from [Releases](https://github.com/Flzsh/canvas-harness/releases/latest), extract it, and load the extracted folder containing `manifest.json` from Chrome or Edge's Extensions page with Developer mode enabled. See [INSTALL.md](INSTALL.md) for the full instructions.
 
 If you download the GitHub source ZIP instead, load its **extension** subfolder. Keep the extracted folder in place after installation.
 

@@ -6,3 +6,5 @@
 .native-appearance{border-top:1px solid #E8E6DC;margin-top:18px;padding-top:14px}.native-appearance summary{font-size:12px;font-weight:600;cursor:pointer}.native-appearance label{display:flex;justify-content:space-between;gap:12px;margin-top:14px}.native-appearance select{width:148px;border:1px solid #D9D6CA;background:#fff;color:#141413;border-radius:8px;padding:7px;font:12px "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif}.native-appearance p{font-size:11px;color:#5E5D59;line-height:1.6}.native-appearance select:focus-visible,.native-appearance summary:focus-visible{outline:2px solid #C96442;outline-offset:2px}
 
 .school-url{display:block;margin:18px 0 12px}.school-url input{display:block;width:100%;box-sizing:border-box;margin-top:6px;border:1px solid #D9D6CA;border-radius:8px;padding:9px;background:#fff;color:#141413;font:12px system-ui}
+
+header>img{flex-shrink:0;object-fit:contain}

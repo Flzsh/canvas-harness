@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Canvas Harness",
   "short_name": "Canvas Harness",
-  "version": "2.20.0",
+  "version": "2.20.1",
   "description": "Canvas courses, assignments, teacher updates, saved documents, planning and study tools in a fast personal workspace.",
   "minimum_chrome_version": "120",
   "permissions": [
@@ -120,7 +120,8 @@
         "customize.css",
         "subject-art.css",
         "ai-panel.html",
-        "gpa.css"
+        "gpa.css",
+        "icon.svg"
       ],
       "matches": [
         "https://*.instructure.com/*"
