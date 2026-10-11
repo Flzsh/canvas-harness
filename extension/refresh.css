@@ -71,21 +71,15 @@
   --rd-spring: var(--rd-settle);
   --rd-spring-soft: var(--rd-settle);
   
-  --rd-lift: 4px;
-  --rd-lift-title: 5px;
   
   --rd-hover-in: 120ms;
   --rd-hover-out: 200ms;
-  --rd-enter-y: 8px;
-  --rd-enter-s: .98;
-  --rd-enter-dur: 200ms;
-  --rd-exit-y: 4px;
-  --rd-exit-s: .99;
-  --rd-exit-dur: 140ms;
+  --rd-enter-dur: 190ms;
+  --rd-exit-dur: 160ms;
   --rd-menu-dur: 150ms;
   --rd-drawer-dur: 320ms;
-  --rd-sheet-in: 360ms;
-  --rd-sheet-out: 240ms;
+  --rd-sheet-in: 190ms;
+  --rd-sheet-out: 190ms;
   --rd-morph: 160ms;
   --rd-spin-dur: 1.2s;
 
@@ -763,11 +757,11 @@
 .rd .rd-search-hint {
   position: absolute; right: 2px; top: calc(100% + 5px); display: flex; align-items: center; gap: 5px;
   font-size: 11px; font-weight: 450; line-height: 1; color: var(--rd-muted); white-space: nowrap;
-  opacity: 0; transform: translateY(-2px); pointer-events: none;
-  transition: opacity 160ms var(--rd-fade), transform 200ms var(--rd-settle);
+  opacity: 0; pointer-events: none;
+  transition: opacity 160ms var(--rd-fade);
 }
 .rd .rd-search .rd-search-hint kbd { position: static; font-family: inherit; font-size: 11px; font-weight: 450; line-height: 17px; padding: 0 5px; color: var(--rd-muted); }
-.rd .rd-work-search:focus-within .rd-search-hint { opacity: 1; transform: none; }
+.rd .rd-work-search:focus-within .rd-search-hint { opacity: 1; }
 @media (hover: none) { .rd .rd-search-hint { display: none; } }
 
 
@@ -1701,11 +1695,11 @@
 
 
 @keyframes rd-fade { from { opacity: 0; } }
-@keyframes rd-lift { from { translate: 0 var(--rd-lift, 4px); } }
 @keyframes rd-pulse { from { opacity: .55; } to { opacity: 1; } }
 
-@keyframes rd-enter { from { opacity: 0; transform: translateY(var(--rd-enter-y)) scale(var(--rd-enter-s)); } }
-@keyframes rd-exit { to { opacity: 0; transform: translateY(var(--rd-exit-y)) scale(var(--rd-exit-s)); } }
+/* Floating panels enter and leave through opacity alone. */
+@keyframes rd-enter { from { opacity: 0; } }
+@keyframes rd-exit { to { opacity: 0; } }
 
 @keyframes rd-spin { to { rotate: 360deg; } }
 
@@ -1766,41 +1760,31 @@
 
 
 .rd :is(.rd-deck-section, .rd-announcement, .rd-message, .rd-home-body, .rd-home-module, .rd-chapter, .rd-teacher-row, .rd-document-link, .rd-thread-message, .rd-warning) {
-  animation: rd-fade 320ms var(--rd-fade) both;
+  animation: rd-fade 190ms var(--rd-fade) both;
 }
+/* The JS finishes a new node's CSS fade when its containing region is already
+   fading. Changing the duration to zero and back can replay unchanged content. */
 
-.rd [data-motion=entering] :is(.rd-deck-section, .rd-announcement, .rd-message, .rd-home-body, .rd-home-module, .rd-chapter, .rd-teacher-row, .rd-document-link, .rd-thread-message, .rd-warning) { animation-duration: 0s; }
 
-
-.rd .rd-toast { animation: rd-enter var(--rd-enter-dur) var(--rd-settle) both; }
-.rd .rd-toast > [role=status] > .rd-icon { animation: rd-fade 240ms var(--rd-fade) 80ms both; }
+.rd .rd-toast { animation: rd-enter var(--rd-enter-dur) var(--rd-fade) both; }
+.rd .rd-toast > [role=status] > .rd-icon { animation: rd-fade 170ms var(--rd-fade) both; }
 
 
 .rd .rd-utility-dialog[open],
-.rd .rd-utility-dialog[data-docked=true][open] { animation: rd-enter var(--rd-enter-dur) var(--rd-settle) both; }
+.rd .rd-utility-dialog[data-docked=true][open] { animation: rd-enter var(--rd-enter-dur) var(--rd-fade) both; }
 
 
-.rd[data-entrance] .rd-toolbar { animation: rd-fade 300ms var(--rd-fade) both; }
-.rd[data-entrance] .rd-course-rail { animation: rd-fade 240ms var(--rd-fade) both; }
-.rd[data-entrance] .rd-course-rail > * { animation: rd-fade 300ms var(--rd-fade) 80ms both, rd-lift 360ms var(--rd-settle) 80ms both; }
-.rd[data-entrance] .rd-course-rail > :nth-child(1) { animation-delay: 20ms; }
-.rd[data-entrance] .rd-course-rail > :nth-child(2) { animation-delay: 36ms; }
-.rd[data-entrance] .rd-course-rail > :nth-child(3) { animation-delay: 50ms; }
-.rd[data-entrance] .rd-course-rail > :nth-child(4) { animation-delay: 62ms; }
-.rd[data-entrance] .rd-course-rail > :nth-child(5) { animation-delay: 72ms; }
-.rd[data-entrance] :is(.rd-workspace-heading, .rd-page-heading, .rd-materials-header) { animation: rd-fade 340ms var(--rd-fade) 30ms both, rd-lift 420ms var(--rd-settle) 30ms both; }
-.rd[data-entrance] .rd-desk-toolbar { animation: rd-fade 300ms var(--rd-fade) 50ms both, rd-lift 360ms var(--rd-settle) 50ms both; }
-.rd[data-entrance] .rd-work { animation: rd-fade 300ms var(--rd-fade) 70ms both; }
-.rd[data-entrance] :is(.rd-hub-grid > :first-child, .rd-material-group, .rd-message-list, .rd-grade-sheet) { animation: rd-fade 300ms var(--rd-fade) 70ms both, rd-lift 360ms var(--rd-settle) 70ms both; }
-.rd[data-entrance] :is(.rd-reader, .rd-hub-grid > :nth-child(2)) { animation: rd-fade 300ms var(--rd-fade) 92ms both, rd-lift 360ms var(--rd-settle) 92ms both; }
-.rd[data-entrance] .rd-deck-section { animation: rd-fade 320ms var(--rd-fade) 110ms both, rd-lift 360ms var(--rd-settle) 110ms both; }
-.rd[data-entrance] :is(.rd-deck-section + .rd-deck-section, .rd-deck-primary > .rd-deck-section) { animation-delay: 126ms; }
-.rd[data-entrance] .rd-assignment-list > * { animation: rd-fade 300ms var(--rd-fade) 150ms both, rd-lift 360ms var(--rd-settle) 150ms both; }
-.rd[data-entrance] .rd-assignment-list > :nth-child(1) { animation-delay: 90ms; }
-.rd[data-entrance] .rd-assignment-list > :nth-child(2) { animation-delay: 106ms; }
-.rd[data-entrance] .rd-assignment-list > :nth-child(3) { animation-delay: 120ms; }
-.rd[data-entrance] .rd-assignment-list > :nth-child(4) { animation-delay: 132ms; }
-.rd[data-entrance] .rd-assignment-list > :nth-child(5) { animation-delay: 142ms; }
+/* Initial UI regions fade together in place, without a stagger or lift. */
+.rd[data-entrance] .rd-toolbar { animation: rd-fade 190ms var(--rd-fade) both; }
+.rd[data-entrance] .rd-course-rail { animation: rd-fade 190ms var(--rd-fade) both; }
+.rd[data-entrance] .rd-course-rail > * { animation: rd-fade 190ms var(--rd-fade) both; }
+.rd[data-entrance] :is(.rd-workspace-heading, .rd-page-heading, .rd-materials-header) { animation: rd-fade 190ms var(--rd-fade) both; }
+.rd[data-entrance] .rd-desk-toolbar { animation: rd-fade 190ms var(--rd-fade) both; }
+.rd[data-entrance] .rd-work { animation: rd-fade 190ms var(--rd-fade) both; }
+.rd[data-entrance] :is(.rd-hub-grid > :first-child, .rd-material-group, .rd-message-list, .rd-grade-sheet) { animation: rd-fade 190ms var(--rd-fade) both; }
+.rd[data-entrance] :is(.rd-reader, .rd-hub-grid > :nth-child(2)) { animation: rd-fade 190ms var(--rd-fade) both; }
+.rd[data-entrance] .rd-deck-section { animation: rd-fade 190ms var(--rd-fade) both; }
+.rd[data-entrance] .rd-assignment-list > * { animation: rd-fade 190ms var(--rd-fade) both; }
 
 
 .rd[data-input=pointer] :is(.rd-button, .rd-icon-button, .rd-preview-button, .rd-pin-button, .rd-day-filter, .rd-swatch, .t-tab, .rd-check-off, .rd-glance-chip):active { transform: none; }
@@ -1818,11 +1802,11 @@
 .rd .rd-utility-dialog :is(button, a, input, textarea, select, summary):focus-visible { outline: 2px solid var(--rd-mark); outline-offset: 2px; transition-property: none; }
 
 
-.rd[data-motion-style=still] { --rd-lift: 2px; --rd-lift-title: 3px; --rd-enter-y: 0px; --rd-enter-s: 1; --rd-exit-y: 0px; --rd-exit-s: 1; }
 .rd[data-motion-style=still][data-input=pointer] :is(.rd-button, .rd-text-button, .rd-glance-chip, .rd-filter, .rd-icon-button, .rd-check-off, .rd-day-filter, .rd-swatch):active { scale: none; box-shadow: inset 0 0 0 999px rgb(20 20 19 / .04); }
 
 
 .rd[data-input=keyboard] :is(.rd-deck-section, .rd-announcement, .rd-message, .rd-home-body, .rd-home-module, .rd-chapter, .rd-teacher-row, .rd-document-link, .rd-thread-message, .rd-warning, .rd-toast, .rd-toast .rd-icon, .rd-utility-dialog, .rd-week) { animation: none !important; }
+.rd[data-input=keyboard][data-entrance] :is(.rd-toolbar, .rd-course-rail, .rd-course-rail > *, .rd-workspace-heading, .rd-page-heading, .rd-materials-header, .rd-desk-toolbar, .rd-work, .rd-reader, .rd-deck-section, .rd-hub-grid > *, .rd-material-group, .rd-message-list, .rd-grade-sheet, .rd-assignment-list > *) { animation: none !important; }
 .rd[data-input=keyboard] :is(.rd-course-rail .rd-rail-title .rd-course-name, .rd-rail-all, .rd-rail-course, .rd-filter, .rd-day-filter, .rd-glance-chip, .t-tab, .rd-reader-tab, .rd-assignment) { transition: none !important; }
 .rd[data-input=keyboard] details::details-content { transition: none; }
 
@@ -1852,19 +1836,19 @@
 .rd .rd-utility-dialog[data-docked=true][data-leaving=true] { animation: rd-exit var(--rd-exit-dur) var(--rd-release) both; pointer-events: none; }
 
 .rd { --rd-dock-duration:340ms; --rd-dock-ease:cubic-bezier(.22,.8,.24,1); }
-.rd:not(.rd-native-tools) { transition:padding-right var(--rd-dock-duration) var(--rd-dock-ease),padding-bottom var(--rd-dock-duration) var(--rd-dock-ease); }
-.rd .rd-utility-dialog[data-docked=true] { --rd-dock-away:translateX(calc(100% + 24px)); interpolate-size:allow-keywords; transition:width var(--rd-dock-duration) var(--rd-dock-ease),height var(--rd-dock-duration) var(--rd-dock-ease),transform var(--rd-dock-duration) var(--rd-dock-ease),opacity var(--rd-dock-duration) var(--rd-dock-ease); }
+.rd:not(.rd-native-tools) { transition:padding-right var(--rd-dock-duration) var(--rd-dock-ease); }
+.rd .rd-utility-dialog[data-docked=true] { --rd-dock-away:translateX(calc(100% + 24px)); interpolate-size:allow-keywords; transition:width var(--rd-dock-duration) var(--rd-dock-ease),height var(--rd-dock-duration) var(--rd-dock-ease),transform var(--rd-dock-duration) var(--rd-dock-ease),opacity 190ms var(--rd-fade); }
 .rd .rd-utility-dialog[data-docked=true][open] { animation:none; opacity:1; transform:translate(0); }
 .rd .rd-utility-dialog[data-docked=true][data-leaving=true] { animation:none; opacity:0; transform:var(--rd-dock-away); pointer-events:none; }
 /* A real transition is interruptible in both directions. The first opening
    starts at the same edge as a closing panel, without moving its iframe. */
 @starting-style { .rd .rd-utility-dialog[data-docked=true][open] { opacity:0; transform:var(--rd-dock-away); } }
 @media(max-width:900px) {
- .rd .rd-utility-dialog[data-docked=true] { --rd-dock-away:translateY(calc(100% + 24px)); }
+ .rd .rd-utility-dialog[data-docked=true] { --rd-dock-away:translate(0); transition:opacity 190ms var(--rd-fade); }
 }
 .rd[data-resizing=true]:not(.rd-native-tools),.rd[data-resizing=true] .rd-utility-dialog[data-docked=true],
 .rd:is([data-motion-style=off],[data-motion-style=still],[data-input=keyboard]):not(.rd-native-tools) { transition:none; }
-.rd[data-motion-style=still] .rd-utility-dialog[data-docked=true] { --rd-dock-away:translate(0); transition:opacity var(--rd-dock-duration) var(--rd-dock-ease); }
+.rd[data-motion-style=still] .rd-utility-dialog[data-docked=true] { --rd-dock-away:translate(0); transition:opacity 190ms var(--rd-fade); }
 .rd[data-input=keyboard] .rd-utility-dialog[data-docked=true] { transition:none; }
 @media(prefers-reduced-motion:reduce) { .rd:not(.rd-native-tools) { transition:none; } }
 
@@ -2240,11 +2224,11 @@
   .rd[data-workspace=work] .rd-information > .rd-reader {
     position: fixed; inset: 96px 0 0; z-index: 1080; flex-direction: column; margin: 0; max-height: none;
     border-radius: var(--rd-r-sheet) var(--rd-r-sheet) 0 0; background: var(--rd-surface); box-shadow: var(--rd-float);
-    overflow-y: auto; transform: translateY(100%);
-    transition: transform var(--rd-sheet-out) var(--rd-release), display var(--rd-sheet-out) allow-discrete;
+    overflow-y: auto; display: none; opacity: 0; pointer-events: none;
+    transition: opacity var(--rd-sheet-out) var(--rd-fade), display var(--rd-sheet-out) allow-discrete;
   }
-  .rd[data-workspace=work][data-reader-open=true] .rd-information > .rd-reader { display: flex; transform: none; transition: transform var(--rd-sheet-in) var(--rd-settle), display 0s allow-discrete; }
-  @starting-style { .rd[data-workspace=work][data-reader-open=true] .rd-information > .rd-reader { transform: translateY(100%); } }
+  .rd[data-workspace=work][data-reader-open=true] .rd-information > .rd-reader { display: flex; opacity: 1; pointer-events: auto; transition: opacity var(--rd-sheet-in) var(--rd-fade), display var(--rd-sheet-in) allow-discrete; }
+  @starting-style { .rd[data-workspace=work][data-reader-open=true] .rd-information > .rd-reader { opacity: 0; } }
   .rd[data-input=keyboard][data-workspace=work] .rd-information > .rd-reader { transition: none; }
   
   .rd[data-motion-style=still] .rd-course-rail,

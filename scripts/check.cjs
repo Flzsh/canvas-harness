@@ -14,9 +14,10 @@ const files=fs.readdirSync(extension,{recursive:true}).filter(f=>fs.statSync(pat
 for(const file of files.filter(f=>f.endsWith('.js')))new vm.Script(fs.readFileSync(path.join(extension,file),'utf8'),{filename:file});
 const references=[manifest.background.service_worker,...manifest.content_scripts.flatMap(c=>[...(c.js||[]),...(c.css||[])]),...Object.values(manifest.icons),manifest.action.default_popup,...Object.values(manifest.action.default_icon),...manifest.web_accessible_resources.flatMap(r=>r.resources)];
 for(const ref of references)assert.ok(files.includes(ref.replaceAll('/',path.sep)),`Missing manifest resource: ${ref}`);
-assert.deepEqual(manifest.content_scripts[0].matches,['https://*.instructure.com/*']);
-assert.equal(manifest.content_scripts[0].all_frames,false);
-assert.equal(manifest.content_scripts[0].js.at(-1),'content.js');
+const bootstrap=manifest.content_scripts.find(c=>c.js.includes('startup.js')),controller=manifest.content_scripts.find(c=>c.js.includes('content.js'));
+assert.ok(manifest.content_scripts.indexOf(bootstrap)<manifest.content_scripts.indexOf(controller));
+for(const entry of [bootstrap,controller]){assert.deepEqual(entry.matches,['https://*.instructure.com/*']);assert.equal(entry.all_frames,false);assert.equal(entry.run_at,'document_start');}
+assert.equal(controller.js.at(-1),'content.js');
 for(const size of [16,32,48,128]){const png=fs.readFileSync(path.join(extension,`icons/icon-${size}.png`));assert.equal(png.readUInt32BE(16),size);assert.equal(png.readUInt32BE(20),size);}
 for(const file of ['popup.html']){const html=fs.readFileSync(path.join(extension,file),'utf8');for(const match of html.matchAll(/(?:src|href)="([^"]+)"/g))assert.ok(fs.existsSync(path.join(extension,match[1])),`Missing HTML resource: ${match[1]}`);assert.ok(!/<script(?![^>]*src=)[^>]*>\s*\S/i.test(html),'Inline executable script in popup');}
 console.log(`Verified ${files.length} extension files: JavaScript syntax, Manifest V3 resources, restricted permissions, and icon sizes.`);

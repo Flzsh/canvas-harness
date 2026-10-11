@@ -9,7 +9,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const ext=path.resolve(__dirname,'../extension');
 const enabled=process.env.FOLIO_RESPONSIVE_BROWSER==='1';
-const css=['app.css','dashboard.css','workspace.css','refresh.css','customize.css','settings-dock.css','gpa.css','responsive-layout.css']
+const css=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','responsive-layout.css']
   .map(name=>fs.readFileSync(path.join(ext,name),'utf8')).join('\n');
 const Art=require('../extension/course-art.js');
 const Custom=require('../extension/custom-art.js');
@@ -99,6 +99,15 @@ test('illustrated titles survive exact phone, desktop, sidebar, and narrow dock 
       if(h.scene)assert.ok(Math.abs(h.scene.right-h.art.right)<=2,`${at}: scene does not fill its frame`);
       for(const c of h.controls)assert.ok(c.y>=h.title.bottom-2,`${at}: title overlaps controls or details ${JSON.stringify(h)}`);
     }
+  }
+  // Switching to a course with no status chips must not move the panel floor.
+  for(const width of [390,600,800,900,1280,1920,3840]){
+    await page.setViewportSize({width,height:900});
+    await page.setContent(fixture());
+    const withChips=(await evidence(page)).headers.filter(h=>h.key.startsWith('work-'));
+    await page.locator('.rd-course-heading > .rd-glance').evaluateAll(nodes=>nodes.forEach(node=>node.remove()));
+    const withoutChips=(await evidence(page)).headers.filter(h=>h.key.startsWith('work-'));
+    withChips.forEach((h,i)=>assert.ok(Math.abs(h.header.h-withoutChips[i].header.h)<=1,`${width} ${h.key}: missing status chips changed the panel floor`));
   }
   // Layout must survive a dock transition in the same document, not just load.
   await page.setViewportSize({width:1280,height:900});

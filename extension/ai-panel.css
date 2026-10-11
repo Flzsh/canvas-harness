@@ -128,7 +128,7 @@ pre { margin: 8px 0 0; padding: 10px; border: 1px solid var(--line); border-radi
 .primary-button:hover:not(:disabled) { background: color-mix(in srgb,var(--accent) 88%,var(--ink)); border-color: var(--accent); }
 .composer-help, .privacy-note { color: var(--muted); font-size: 12px; text-align: center; margin-top: 5px; }
 .privacy-note { font-size: 12px; margin-top: 1px; }
-@keyframes message-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes message-in { from { opacity: 0; } to { opacity: 1; } }
 :root[data-motion="off"] { --duration: 0ms; }
 :root[data-motion="off"] *, :root[data-motion="off"] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 @media (prefers-reduced-motion: reduce) { :root { --duration: 0ms; } *, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

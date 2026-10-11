@@ -42,7 +42,7 @@ All courses brings your upcoming work together while keeping each subject recogn
 
 ![All courses overview with illustrated subjects and upcoming work](preview/all-courses.png)
 
-Circles select items. **Archive** marks selected assignments done locally; **Bookmark** saves an item for later. Local completion does not submit homework or change Canvas grades. Use the original Canvas page for submissions and official status.
+Circles select items. A compact action island beside the dates offers **Use in AI**, **Archive**, and **Clear**, without moving the coursework below. **Archive** marks selected assignments done locally; **Bookmark** saves an item for later. Local completion does not submit homework or change Canvas grades. Use the original Canvas page for submissions and official status.
 
 ## Make the artwork yours
 

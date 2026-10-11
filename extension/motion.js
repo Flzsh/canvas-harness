@@ -9,12 +9,12 @@
   //     placed by variables on .rd-shell) that slides under the text on a soft
   //     spring (0.6% overshoot). A jump longer than 160px or 3 rows becomes a
   //     crossfade in place. Titles hand over through a 90ms ghost, changed
-  //     content settles 6px into place on decelerating slots, counts update in
-  //     place, and the course art draws itself like a pen (the art film below).
+  //     content fades in place in 160-200ms, counts update in place, and the
+  //     course art draws itself like a pen (the art film below).
   //     In the course rail the pen draws the chosen row's frame (the course-row
   //     frames below) instead of a surface gliding.
-  //   Still: nothing slides. Surfaces fade in where they land; rises are 2-3px;
-  //     a course scene fades in whole.
+  //   Still: selection surfaces fade in where they land; content uses the same
+  //     short in-place fade; a course scene fades in whole.
   //   Off, prefers-reduced-motion, keyboard input and background renders: every
   //     change is immediate (no WAAPI, no transitions, surfaces snap, art is
   //     fully drawn).
@@ -63,24 +63,17 @@
   // --rd-glide: zeta .82, k 234.8, c 25.13. Settles at 420ms with 0.6% overshoot
   // (50% at 99ms, 90% at 200ms). Selection surfaces only.
   const GLIDE='linear(0, 0.012, 0.044, 0.09, 0.146, 0.209, 0.275, 0.342, 0.409, 0.473, 0.535, 0.592, 0.646, 0.695, 0.74, 0.78, 0.816, 0.848, 0.876, 0.9, 0.921, 0.938, 0.953, 0.966, 0.977, 0.985, 0.992, 0.997, 1.001, 1.003, 1.005, 1.006, 1.006, 1.006, 1.005, 1.005, 1.004, 1.003, 1.002, 1.001, 1)';
-  // --rd-settle: critically damped (zeta 1, k 236.4, c 30.75), no overshoot. A
-  // critically damped spring has one normalised shape at any stiffness, so the
-  // 420ms title rise reuses it with a longer duration.
+  // --rd-settle: critically damped (zeta 1, k 236.4, c 30.75), no overshoot.
+  // Still used for selection and other direct-manipulation transitions.
   const SETTLE='linear(0, 0.017, 0.059, 0.118, 0.185, 0.255, 0.327, 0.397, 0.462, 0.524, 0.581, 0.632, 0.678, 0.72, 0.756, 0.789, 0.818, 0.843, 0.865, 0.884, 0.902, 0.918, 0.932, 0.945, 0.957, 0.967, 0.976, 0.984, 0.991, 0.996, 1)';
   const FADE='cubic-bezier(.2,.65,.3,1)';    // opacity in
   const LETGO='cubic-bezier(.2,0,.4,1)';     // ghosts out: they drop at once
   const RELEASE='cubic-bezier(.33,0,.67,1)'; // a leaving row, an echo, cooling
   const PEN='cubic-bezier(.45,.05,.25,1)';   // a line drawn by hand
   const BLOOM='cubic-bezier(.3,0,.2,1)';     // a wash of colour soaking into paper
-  // Decelerating slots: gaps 16, 14, 12, 10, 8ms, like a hand gaining confidence.
-  const SLOTS=[0,16,30,42,52,60];
-  const slot=i=>SLOTS[Math.min(Math.max(i,0),SLOTS.length-1)];
-  // Big blocks breathe a little longer: +0..30ms on every opacity fade.
-  const bonus=rect=>Math.min(30,Math.round(Math.sqrt(Math.max(0,(rect?.width||0)*(rect?.height||0)))/22));
+  const UI_FADE_MS={content:190,title:200,region:190,head:190,count:170,row:180,section:190,fade:180};
   const STALE=1500,GLIDE_PX=160,GLIDE_ROWS=3;
   const surfaceMs=travel=>Math.round(340+Math.min(80,.2*travel));
-  // Rise (px) by what enters, per style.
-  const RISE={gentle:{content:6,title:5,region:4,head:3,count:3,row:4,section:4},still:{content:2,title:3,region:3,head:2,count:0,row:2,section:2}};
 
   // Selection surfaces: [key, host, pseudo, selected child, rows (vertical only), echo].
   // The course rail has none since 2.17: each row's frame carries its own wash, and the pen draws the
@@ -94,13 +87,14 @@
   const TITLES=[['heading','.rd-workspace-heading h1'],['page',':is(.rd-page-heading,.rd-course-banner) h1'],['materials','.rd-materials-header h2'],['reader','#rd-reader-title'],['work','.rd-work-heading h2']];
   // .rd-n is the plain numeral in segmented controls, tabs and group heads.
   const COUNTS='.rd-work-heading>div>span,.rd-group-count,.rd-rail-count,.rd-n';
-  // The wave: [selector, base delay, slots, rise kind, rise ms]. Unchanged units stay still.
+  // The wave: [selector, fade kind]. Every changed unit fades where it already
+  // sits, with no cascade; unchanged keyed nodes remain visible and still.
   // A banner's art frame is never a wave unit (the art has its own reveal).
-  const HEAD=[['.rd-course-heading>p',24,1,'head',340],['.rd-glance',40,1,'head',340],['.rd-course-banner>div:not(.rd-banner-art)>:not(h1,h2)',24,2,'head',340]];
-  const TOOLS=[['.rd-desk-toolbar>*',0,2,'fade'],['.rd-course-tools',40,1,'content']];
-  const LIST=[['.rd-ready-note,.rd-assignment-list>*,.rd-work>:is(.rd-load-more,.rd-older)',8,6,'content']];
-  const READER=[['.rd-reader-content>:not(#rd-reader-title)',28,4,'content']];
-  const DECK=[['.rd-course-information>.rd-deck-header,.rd-bookmarks,.rd-deck-section,.rd-deck-empty,.rd-hub-grid>*,.rd-material-search,.rd-material-group,.rd-message-filter,.rd-message-list,.rd-grade-privacy,.rd-grade-sheet',56,4,'content']];
+  const HEAD=[['.rd-course-heading>p','head'],['.rd-glance','head'],['.rd-course-banner>div:not(.rd-banner-art)>:not(h1,h2)','head']];
+  const TOOLS=[['.rd-desk-toolbar>*','fade'],['.rd-course-tools','content']];
+  const LIST=[['.rd-ready-note,.rd-assignment-list>*,.rd-work>:is(.rd-load-more,.rd-older)','content']];
+  const READER=[['.rd-reader-content>:not(#rd-reader-title)','content']];
+  const DECK=[['.rd-course-information>.rd-deck-header,.rd-bookmarks,.rd-deck-section,.rd-deck-empty,.rd-hub-grid>*,.rd-material-search,.rd-material-group,.rd-message-filter,.rd-message-list,.rd-grade-privacy,.rd-grade-sheet','content']];
   const WATCH=[...HEAD,...TOOLS,...LIST,...READER,...DECK].map(([selector])=>selector).join(',');
   const REGIONS='.rd-workspace-heading,.rd-page-heading,.rd-course-banner,.rd-materials-header,.rd-desk-toolbar,.rd-work,.rd-reader,.rd-deck-section,.rd-course-tools,.rd-hub-grid>*,.rd-material-search,.rd-material-group,.rd-message-filter,.rd-message-list,.rd-grade-privacy,.rd-grade-sheet';
   const HEADINGS=/\brd-(workspace-heading|page-heading|course-banner|materials-header)\b/;
@@ -352,7 +346,6 @@
     const style=()=>{const value=container.dataset?.motionStyle||host().dataset?.motionStyle;return value==='still'||value==='off'?value:'gentle';};
     const reduced=()=>!!media?.matches||style()==='off';
     const pointer=()=>(container.dataset?.input||host().dataset?.input)==='pointer';
-    const rise=kind=>RISE[style()==='still'?'still':'gentle'][kind]??0;
     const fresh=snap=>!!snap&&now()-snap.at<=STALE;
     const view=()=>(root.innerHeight||Infinity)+40;
     const inView=rect=>!!rect&&rect.width>0&&rect.height>0&&rect.bottom>0&&rect.top<view();
@@ -552,13 +545,10 @@
           if(from!==geo[lead.key]&&!same(from,geo[lead.key])&&from.box===to.box)snapTo(shell,[[lead,from]]);
           shell.style?.setProperty?.(`--rd-sel-${lead.key}-dur`,`${surfaceMs(distance)}ms`);write(shell,lead.key,to);
         }else{
-          // A crossfade in place: the new surface fades in where it lands (Gentle
-          // lets it settle 4px in the travel direction); the old one fades out
-          // where it was. A sheet never sweeps past more than 3 rows.
+            // A crossfade in place: the new surface appears at its final position;
+            // the old one fades out where it was. No entrance translation.
           snapTo(shell,[[lead,to]]);
-          const still=style()==='still',dy=from?.o&&lead.rows&&!still?Math.sign(to.y-from.y)*-4:0;
           play(to.box,[{opacity:0},{opacity:1}],{pseudoElement:lead.pseudo,duration:220,easing:FADE});
-          if(dy)play(to.box,[{transform:`translateY(${dy}px)`},{transform:'none'}],{pseudoElement:lead.pseudo,duration:340,easing:SETTLE});
           if(lead.echo&&from?.o&&from.box===to.box){
             shell.style?.setProperty?.(`--rd-echo-${lead.key}-y`,`${from.y}px`);shell.style?.setProperty?.(`--rd-echo-${lead.key}-h`,`${from.h}px`);
             play(to.box,[{opacity:1},{opacity:0}],{pseudoElement:lead.echo,duration:200,easing:RELEASE});
@@ -1106,7 +1096,7 @@
         for(const child of box.children){const rect=child.getBoundingClientRect();if(selector==='.rd-course-rail'||inView(rect))snap.rows.set(child,rect.top-top);}
       }
       const rel=anchors();
-      for(const node of container.querySelectorAll(WATCH)){const rect=node.getBoundingClientRect();if(inView(rect))snap.units.set(node,{text:node.textContent,...rel(node,rect)});}
+      for(const node of container.querySelectorAll(WATCH)){const rect=node.getBoundingClientRect();if(inView(rect))snap.units.set(node,{text:node.textContent,html:node.innerHTML,...rel(node,rect)});}
       // The course art in view (heading, banner): its ghost lets go when the course changes.
       snap.art=art.snapshot();
       const toast=container.querySelector('.rd-toast'),toastRect=toast?.getBoundingClientRect();
@@ -1115,35 +1105,23 @@
     }
 
     // ---- The recipes ---------------------------------------------------------
-    // Enter ("settle"): one effect, fill backwards. Opacity fades on --rd-fade
-    // while the individual translate property settles on the spring; never
-    // transform with composite:'add' (it would add the opacity too).
-    function enter(node,{kind='content',delay=0,fade,move=360,rect,list}){
-      const px=kind==='fade'?0:rise(kind);
-      fade=(fade??(style()==='still'&&kind!=='title'?240:300))+bonus(rect||node.getBoundingClientRect?.());
-      if(!px)return play(node,[{opacity:0},{opacity:1}],{duration:fade,delay,easing:FADE,fill:'backwards'},list);
-      const total=Math.max(fade,move),f=+(fade/total).toFixed(4),m=+(move/total).toFixed(4);
-      const frames=[{offset:0,opacity:0,easing:FADE},{offset:0,translate:`0 ${px}px`,easing:SETTLE},...[{offset:f,opacity:1},{offset:m,translate:'0 0'}].sort((a,b)=>a.offset-b.offset)];
-      return play(node,frames,{duration:total,delay,fill:'backwards'},list);
+    // Changed UI is interactive from the start and fades in at its final position.
+    function enter(node,{kind='content',list}={}){
+      return play(node,[{opacity:0},{opacity:1}],{duration:UI_FADE_MS[kind]??UI_FADE_MS.content,easing:FADE,fill:'backwards'},list);
     }
     // Late content fades in once by CSS (rd-fade) when its node is created; inside
     // a unit the wave already sets down, that fade is finished so nothing fades twice.
     function quiet(node){for(const animation of node.getAnimations?.({subtree:true})||[])if(animation.animationName==='rd-fade')animation.finish?.();}
-    const flip=(node,dy,list)=>play(node,[{transform:`translateY(${dy.toFixed(1)}px)`},{transform:'none'}],{duration:380,easing:SETTLE},list);
     // A changed title hands over: the old words let go where they stood (90ms)
-    // while the same node, with its new text, rises into place.
+    // while the same node, with its new text, fades in place.
     // A title that is only there for assistive technology (clipped to 1px while the course name stands beside it
     // as artwork: refresh.css 4.2) takes no entrance; the words it replaces still let go where they stood.
-    function roll(node,old,{kind='title',delay=60,move=420,list}){
+    function roll(node,old,{kind='title',list}){
       const rect=node?.getBoundingClientRect?.();if(!inView(rect))return false;
       if(clipped(rect)){if(old&&old.text.trim())ghost(old.rect,g=>{g.innerHTML=old.html;Object.assign(g.style,old.style);});return true;}
-      if(old&&old.text===node.textContent){
-        const dy=old.rect.top-rect.top,dx=old.rect.left-rect.left;
-        if(Math.abs(dx)<=2&&Math.abs(dy)>2&&Math.abs(dy)<=16)flip(node,dy,list);
-        return false;
-      }
+      if(old&&old.text===node.textContent)return false;
       if(old&&old.text.trim()&&Math.abs(old.rect.top-rect.top)<=28)ghost(old.rect,g=>{g.innerHTML=old.html;Object.assign(g.style,old.style);});
-      enter(node,{kind,delay,fade:300,move,rect,list});
+      enter(node,{kind,list});
       return true;
     }
     function titles(scope,snap,roles,list){
@@ -1153,56 +1131,33 @@
         roll(node,snap?.titles.get(role),{...roles[role],list});
       }
     }
-    // Counts update in place: the new number rises 3px as it appears.
-    function counts(snap,delay,skip,list){
+    // Counts update in place only when their displayed number changes.
+    function counts(snap,skip,list){
       for(const node of container.querySelectorAll(COUNTS)){
         const was=snap?.counts.get(node);if(was===undefined||was===node.textContent)continue;
         if(skip.some(unit=>unit.contains?.(node)))continue;
-        if(inView(node.getBoundingClientRect()))enter(node,{kind:'count',delay,fade:260,move:300,list});
+        if(inView(node.getBoundingClientRect()))enter(node,{kind:'count',list});
       }
     }
-    // Classify every visible unit against the snapshot: the same text in the same
-    // place stays still; the same text nudged a little follows its own path home
-    // (48px in the rail and list, 16px elsewhere); anything else settles in.
+    // Stable content stays still even if layout changes. New nodes or changed
+    // text/markup fade in place; list order/layout updates immediately.
     function wave(scope,snap,groups,list,handled=new Set()){
-      const rel=anchors(),entered=[];
-      for(const [selector,base,cap,kind,move=360] of groups){
-        const found=[];
+      const entered=[];
+      for(const [selector,kind] of groups){
         for(const node of scope.querySelectorAll?.(selector)||[]){
           if(handled.has(node))continue;
           let nested=false;for(let p=node.parentElement;p&&p!==scope;p=p.parentElement)if(handled.has(p)){nested=true;break;}
           if(nested)continue;
-          const rect=node.getBoundingClientRect();if(!inView(rect))continue;
+          if(!inView(node.getBoundingClientRect()))continue;
           handled.add(node);
           const was=snap?.units.get(node);
-          if(was&&was.text===node.textContent){
-            const at=rel(node,rect),dy=was.top-at.top,dx=was.left-at.left;
-            if(Math.abs(dx)<=2&&Math.abs(dy)<=2)continue;
-            if(Math.abs(dx)<=2&&Math.abs(dy)<=(node.closest?.('.rd-course-rail,.rd-assignment-list')?48:16)){flip(node,dy,list);continue;}
-          }
-          found.push({node,rect});
+          if(was&&was.text===node.textContent&&was.html===node.innerHTML)continue;
+          enter(node,{kind,list});quiet(node);entered.push(node);
+          // The list's selection card fades where it rests, beside its row.
+          if(node.classList?.contains('rd-assignment--selected')&&node.parentElement)play(node.parentElement,[{opacity:0},{opacity:1}],{pseudoElement:'::before',duration:190,easing:FADE,fill:'backwards'},list);
         }
-        found.sort((a,b)=>Math.round(a.rect.left/160)-Math.round(b.rect.left/160)||a.rect.top-b.rect.top);
-        found.forEach(({node,rect},i)=>{
-          const delay=base+slot(Math.min(i,cap-1));
-          enter(node,{kind,delay,move,rect,list});quiet(node);entered.push(node);
-          // The list's selection card never arrives before its row.
-          if(node.classList?.contains('rd-assignment--selected')&&node.parentElement)play(node.parentElement,[{opacity:0},{opacity:1}],{pseudoElement:'::before',duration:300+bonus(rect),delay,easing:FADE,fill:'backwards'},list);
-        });
       }
       return entered;
-    }
-    function railRows(snap,list){
-      const rail=container.querySelector('.rd-course-rail');if(!rail||!snap)return;
-      const top=rail.getBoundingClientRect().top;
-      for(const row of rail.children){const was=snap.rows.get(row);if(was===undefined)continue;const dy=was-(row.getBoundingClientRect().top-top);if(Math.abs(dy)>.5&&Math.abs(dy)<=GLIDE_PX)flip(row,dy,list);}
-    }
-    // cap: how far a row may glide home (48px when picking; a returning row and its group head push more).
-    function listRows(snap,list,{cap=48,skip=[]}={}){
-      const box=container.querySelector('.rd-assignment-list');if(!box||!snap)return 0;
-      const top=box.getBoundingClientRect().top;let moved=0;
-      for(const row of box.children){if(skip.includes(row))continue;const was=snap.rows.get(row);if(was===undefined)continue;const dy=was-(row.getBoundingClientRect().top-top);if(Math.abs(dy)>.5&&Math.abs(dy)<=cap){flip(row,dy,list);moved++;}}
-      return moved;
     }
     // The old course art lets go where it stood (90ms; 120ms when no art follows,
     // going to All courses) while the new drawing draws itself (art.claim).
@@ -1221,53 +1176,48 @@
       }
     }
 
-    // Course switch (any workspace): the rail surface is the one mover (place()).
+    // Course switch (any workspace): selection and decorative art remain independent.
     function course(element,snap,list){
-      railRows(snap,list);
-      titles(element,snap,{heading:{delay:60},page:{delay:60},materials:{delay:60},reader:{delay:60},work:{kind:'head',delay:50,move:360}},list);
+      titles(element,snap,{heading:{},page:{},materials:{},reader:{},work:{kind:'head'}},list);
       artGhosts(element,snap);
       const entered=wave(element,snap,[...HEAD,...TOOLS,...LIST,...READER,...DECK],list,new Set(Array.from(element.querySelectorAll?.('.rd-workspace-heading h1,#rd-reader-title')||[])));
-      counts(snap,40,entered,list);
+      counts(snap,entered,list);
     }
-    // Workspace tab: the pill leads; the new page's regions are set down in turn.
+    // Workspace tab: the pill leads; new page regions fade simultaneously in place.
     function workspace(element,snap,list){
       const regions=[];
       for(const node of element.querySelectorAll?.(REGIONS)||[]){if(regions.some(r=>r.node.contains(node)))continue;const rect=node.getBoundingClientRect();if(inView(rect))regions.push({node,rect});}
-      regions.sort((a,b)=>Math.round(a.rect.top/60)-Math.round(b.rect.top/60)||a.rect.left-b.rect.left);
-      regions.forEach(({node,rect},i)=>{const head=HEADINGS.test(node.className||'');enter(node,{kind:head?'region':'content',delay:slot(i),move:head?420:360,rect,list});quiet(node);});
+      regions.forEach(({node})=>{const head=HEADINGS.test(node.className||'');enter(node,{kind:head?'region':'content',list});quiet(node);});
     }
     // A new view of the list; the reader follows only if its assignment changed.
     function filter(element,snap,list){
       if(element.matches?.('.rd-assignment')){
-        // A row that returns (Undo) or stays: it settles in (with its group head, when that returns too),
-        // the rows and heads below glide down from where they were to make room, its counts tick, the toast lets go.
+        // A returning row (Undo) and its group head fade in place together;
+        // rows below use their new layout immediately.
         const head=element.previousElementSibling,returning=head?.classList?.contains('rd-date-group')&&!snap?.rows?.has(head)?head:null;
-        // When rows below make room, the returning row waits a beat (90ms), so it never fades in over them.
-        const room=listRows(snap,list,{cap:240,skip:[element,returning]})?90:0;
-        enter(element,{kind:'row',delay:room,list});if(returning)enter(returning,{kind:'row',delay:room,list});
-        counts(snap,40,[element],list);toastOut(snap);return;
+        enter(element,{kind:'row',list});if(returning)enter(returning,{kind:'row',list});
+        counts(snap,[element],list);toastOut(snap);return;
       }
       const scope=element.closest?.('.rd-workspace')||element,handled=new Set(),reader=scope.querySelector?.('.rd-reader'),moved=!!reader&&reader.dataset?.id!==snap?.readerId;
-      titles(scope,snap,{work:{kind:'head',delay:50,move:360},...(moved?{reader:{delay:60}}:{})},list);
+      titles(scope,snap,{work:{kind:'head'},...(moved?{reader:{}}:{})},list);
       const week=scope.querySelector?.('.rd-week');
       if(week&&!snap?.units.has(week)&&inView(week.getBoundingClientRect())){handled.add(week);play(week,[{opacity:0},{opacity:1}],{duration:220,easing:FADE,fill:'backwards'},list);}
       for(const title of scope.querySelectorAll?.('.rd-work-heading h2,#rd-reader-title')||[])handled.add(title);
       const entered=wave(scope,snap,[...TOOLS,...LIST,...(moved?READER:[]),...DECK],list,handled);
-      counts(snap,40,entered,list);toastOut(snap);
+      counts(snap,entered,list);toastOut(snap);
     }
-    // Selecting an assignment: the pick card leads (place()); the reader's changed blocks settle in.
+    // Selecting an assignment: the pick card leads (place()); changed reader blocks fade in place.
     function reader(element,snap,list){
-      listRows(snap,list);
       const scope=element.closest?.('.rd-workspace')||element,box=element.closest?.('.rd-reader')||element;
-      titles(box,snap,{reader:{delay:60}},list);
+      titles(box,snap,{reader:{}},list);
       const handled=new Set(Array.from(box.querySelectorAll?.('#rd-reader-title')||[]));
-      wave(box,snap,READER.map(([selector,,cap,kind])=>[selector,8,cap,kind]),list,handled);
+      wave(box,snap,READER,list,handled);
       wave(scope,snap,DECK,list,handled);
     }
-    // The toast leaves like a floating panel (140ms, 4px down to .99) when Undo or a newer change removes it.
+    // The toast fades away where it is when Undo or a newer change removes it.
     function toastOut(snap){
       if(!snap?.toast||container.querySelector('.rd-toast'))return;
-      ghost(snap.toast.rect,g=>{g.innerHTML=snap.toast.html;g.classList.add('rd-toast-ghost');},{duration:140,easing:RELEASE,frames:[{opacity:1,transform:'none'},{opacity:0,transform:'translateY(4px) scale(.99)'}]});
+      ghost(snap.toast.rect,g=>{g.innerHTML=snap.toast.html;g.classList.add('rd-toast-ghost');},{duration:160,easing:RELEASE,frames:[{opacity:1},{opacity:0}]});
     }
 
     // data-motion=entering also marks the workspace around a list or reader
@@ -1276,10 +1226,11 @@
     // Keyboard entry, resize, destroy: every running animation stops where it
     // ends (the art is simply drawn, and living drawings live on from rest)
     // and every ghost goes.
-    function cancelAll(){
+    function cancelUi(){
       for(const [element,group] of active){group.cancel();mark([element,...group.scopes],'settled');}
-      active.clear();clearGhosts();frames.cancel();art.cancel();
+      active.clear();clearGhosts();
     }
+    function cancelAll(){cancelUi();frames.cancel();art.cancel();}
     function track(element,list,scopes=[]){
       const animations=list.filter(Boolean);
       const group={scopes,cancel(){for(const animation of animations)animation.cancel?.();}};
@@ -1295,10 +1246,11 @@
     // reduced motion settle at once (and their art is simply drawn).
     function reveal(element,{animate=false,kind='workspace',snapshot:snap=null}={}){
       if(!element||dead)return;
-      const prior=active.get(element);if(prior){prior.cancel();active.delete(element);mark(prior.scopes,'settled');}
+      // A new pointer action cancels earlier UI effects, even when the previous
+      // reveal targeted another element. Art and its living loops are separate.
+      cancelUi();
       const needs=kind==='course'||kind==='filter'||kind==='reader';
       if(!animate||reduced()||!pointer()||typeof element.animate!=='function'||(snap&&!fresh(snap))||(needs&&!snap)){element.dataset.motion='settled';return;}
-      clearGhosts();
       const around=(kind==='filter'||kind==='reader')&&element.closest?.('.rd-workspace'),scopes=around&&around!==element?[around]:[];
       mark([element,...scopes],'entering');
       const list=[];
@@ -1306,7 +1258,7 @@
         if(kind==='course')course(element,snap,list);
         else if(kind==='filter')filter(element,snap,list);
         else if(kind==='reader')reader(element,snap,list);
-        else if(kind==='section')enter(element,{kind:'section',delay:0,move:340,list});
+        else if(kind==='section')enter(element,{kind:'section',list});
         else workspace(element,snap,list);
       }catch(error){for(const animation of list)animation?.cancel?.();list.length=0;clearGhosts();}
       track(element,list,scopes);
@@ -1354,8 +1306,8 @@
       destroy(){dead=true;cancelAll();layer?.remove?.();layer=null;observer?.disconnect();media?.removeEventListener?.('change',reduce);root.removeEventListener?.('resize',cancelAll);root.document?.removeEventListener?.('visibilitychange',onVisibility);}};
   }
   // limits: the budgets the tests pin (every UI duration 420ms or less; the art film is decorative and tracked apart).
-  root.ReserveMotion={create,springLinear,penPlan,loopSpec,loopFrames,rigsOf,cycleOf,easings:{glide:GLIDE,settle:SETTLE,fade:FADE,letgo:LETGO,release:RELEASE,pen:PEN,bloom:BLOOM,loop:LOOP_EASE,sine:SINE},slots:SLOTS,
-    limits:{slots:SLOTS,rise:RISE,stale:STALE,glidePx:GLIDE_PX,glideRows:GLIDE_ROWS,maxUiMs:420},surfaces:SURFACES.map(({key,host,pseudo})=>({key,host,pseudo})),
+  root.ReserveMotion={create,springLinear,penPlan,loopSpec,loopFrames,rigsOf,cycleOf,easings:{glide:GLIDE,settle:SETTLE,fade:FADE,letgo:LETGO,release:RELEASE,pen:PEN,bloom:BLOOM,loop:LOOP_EASE,sine:SINE},
+    limits:{fadeMs:UI_FADE_MS,stale:STALE,glidePx:GLIDE_PX,glideRows:GLIDE_ROWS,maxUiMs:420},surfaces:SURFACES.map(({key,host,pseudo})=>({key,host,pseudo})),
     frames:{id:FRAME_ID,timing:FRAME_T,box:FRAME_BOX},
     art:{id:ART_ID,loopId:ART_LOOP_ID,filmFps:FILM_FPS,briskMs:ART_BRISK_MS,idleMs:ART_IDLE_MS,maxN:LOOP_MAX_N,eases:LOOP_EASES,frames:ART_FRAMES,living:ART_LIVING,speed:ART_SPEED,pen:ART_PEN,slice:ART_SLICE,sliceBudget,seenMargin:ART_SEEN_MARGIN,timing:ART_T,scenes:ART_SCENES,railSpread:ART_RAIL_SPREAD,types:LOOP_TYPES}};
   if(typeof module!=='undefined'&&module.exports)module.exports=root.ReserveMotion;

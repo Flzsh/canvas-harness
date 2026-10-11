@@ -153,6 +153,19 @@ async function dashboardFixture(t,options={}){
  return {...f,view,snapshot,before,element,events,click,change,idle,getContext:()=>toolboxOptions.getContext()};
 }
 
+test('audit: selection actions live beside the dates and never insert a row above the banner',async t=>{
+ const f=await dashboardFixture(t);
+ const before=f.element.innerHTML;
+ f.click('select-item',{id:'1'});
+ const after=f.element.innerHTML;
+ assert.ok(before.includes('class="rd-selection-slot"'),'reserve the same compact action slot before selection');
+ assert.ok(after.indexOf('class="rd-selection-bar"')>after.indexOf('class="rd-week"'),'actions follow the date strip');
+ assert.ok(after.indexOf('class="rd-selection-bar"')<after.indexOf('class="rd-arrange-guide"'),'actions belong to the desk toolbar');
+ assert.ok(after.indexOf('class="rd-selection-bar"')>after.indexOf('class="rd-workspace-heading"'),'no action banner preceding the heading');
+ assert.match(after,/data-rd-action="selection-ai"/);assert.match(after,/data-rd-action="selection-archive"/);assert.match(after,/data-rd-action="selection-clear"/);
+ f.click('selection-clear');assert.ok(f.element.innerHTML.includes('class="rd-selection-slot"'));assert.doesNotMatch(f.element.innerHTML,/class="rd-selection-bar"/);
+});
+
 test('audit: selected assignments archive and undo without losing material selection, notes, bookmarks or Canvas state',async t=>{
  const f=await dashboardFixture(t),before=f.store.get();
  f.click('select-item',{id:'1'});f.click('select-source',{source:'page:10:guide'});

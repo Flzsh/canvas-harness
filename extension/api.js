@@ -42,7 +42,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       signal?.addEventListener('abort', abort, {once:true});
       const timer = setTimeout(abort, timeout);
       try {
-        const response = await fetchImpl(url.href, {method:'GET', credentials:'same-origin', headers:{Accept:'application/json+canvas-string-ids'}, signal:controller.signal, redirect:'error'});
+        const fetchOptions = {method:'GET', credentials:'same-origin', headers:{Accept:'application/json+canvas-string-ids'}, signal:controller.signal, redirect:'error'};
+        if (url.pathname === '/api/v1/users/self/profile') {
+          fetchOptions.cache = 'no-store';
+          fetchOptions.priority = 'high';
+        }
+        const response = await fetchImpl(url.href, fetchOptions);
         if (response?.redirected || response?.type === 'opaqueredirect') throw new CanvasError('Canvas redirected this read request unexpectedly.', 'redirect');
         if (signal?.aborted) throw new CanvasError('Refresh cancelled.', 'cancelled');
         if (response.status === 401) throw new CanvasError('Sign in to Canvas, then refresh Canvas Harness.', 'auth');

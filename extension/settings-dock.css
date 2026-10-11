@@ -135,9 +135,10 @@
   height:var(--rd-settings-height);
   min-height:min(260px,calc(100dvh - 96px));
   max-height:calc(100dvh - 96px);
-  transform:translateY(calc(100% + 20px));
+  transform:none;
+  transition:opacity 190ms ease-out,visibility 0s linear 190ms;
  }
- .rd .rd-appearance.ch-settings-dock[data-open="true"] { transform:translateY(0); }
+ .rd .rd-appearance.ch-settings-dock[data-open="true"] { transform:none;transition:opacity 190ms ease-out,visibility 0s; }
  .rd[data-settings="open"]:not(.rd-native-tools) {
   padding-right:14px;
   padding-bottom:calc(var(--rd-settings-height) + 30px + env(safe-area-inset-bottom));

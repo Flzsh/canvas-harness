@@ -1,6 +1,6 @@
 # Canvas Harness privacy
 
-Applies to Canvas Harness 2.21.0. Last updated October 11, 2026.
+Applies to Canvas Harness 2.21.2. Last updated October 11, 2026.
 
 Canvas Harness is a browser extension maintained by Flzsh. It displays information from the Canvas account already signed in on your school's website. It has no developer-operated account service, analytics collector or tracking endpoint in the extension code for this release.
 
@@ -9,6 +9,7 @@ Canvas Harness is a browser extension maintained by Flzsh. It displays informati
 - Canvas Harness reads courses, assignments, due dates, teacher materials, announcements and grades that your signed-in Canvas account is allowed to view. Canvas API requests are read-only.
 - The extension can cache fetched Canvas information, including course and assignment details and grade data, in your browser. Personal notes, plans, bookmarks, homework check-offs, imported course artwork, layout choices and GPA preferences are also stored locally.
 - The extension uses Chrome/Edge extension local storage and separates saved data by school Canvas origin and account ID. It does not send these records to a Canvas Harness developer server or synchronize them through a Canvas Harness account.
+- Cached coursework becomes visible only after the signed-in Canvas account is verified. Returning to an idle tab temporarily hides private content while the account is checked again; a different account cannot inherit the previous account's visible workspace.
 - Grades are hidden by default in the interface, but hiding them does not necessarily remove them from the local cache. GPA and what-if calculations run locally. Grade and GPA data are excluded from the AI context builder.
 - Checking off homework or making a personal plan changes only your local Canvas Harness data. It does not submit homework, edit a Canvas assignment or change your Canvas grade.
 

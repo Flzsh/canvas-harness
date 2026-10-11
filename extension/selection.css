@@ -1,8 +1,7 @@
 /* Canvas Harness — deliberate selection, independent of completion. */
-.rd .rd-selection-bar {position:sticky;top:0;z-index:8;display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;padding:9px 14px;margin-bottom:14px;border:1px solid var(--rd-line,#d8d4c9);border-radius:10px;background:var(--rd-soft,#f0eee6);font-size:12px;animation:rd-selection-in 180ms ease-out}
+.rd .rd-selection-bar {display:flex;align-items:center;gap:8px;padding:4px 6px 4px 12px;border:1px solid var(--rd-line,#d8d4c9);border-radius:999px;background:var(--rd-surface,#fff);box-shadow:0 2px 8px rgb(60 48 24 / .04);font-size:13px;white-space:nowrap;animation:rd-selection-in 160ms ease-out}
 .rd .rd-selection-bar>span {font-weight:650}
-.rd .rd-selection-bar>div {order:2;display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
-.rd .rd-selection-bar small {order:1;flex:1 1 180px;font-size:11px;color:var(--rd-muted,#706e66)}
+.rd .rd-selection-bar>div {display:flex;gap:4px;align-items:center}
 .rd .rd-check-off[data-selected="true"],.rd .rd-source-select[aria-pressed="true"] {background:var(--rd-mark,#a9522f)!important;border-color:var(--rd-mark,#a9522f)!important;color:white!important}
 .rd .rd-check-off[data-selected="true"] svg {opacity:1!important;transform:none!important}
 .rd .rd-source-select {display:inline-grid;place-items:center;flex:0 0 22px;width:22px;height:22px;min-height:22px;padding:3px;border:1px solid var(--rd-muted,#8a887e);border-radius:50%;background:transparent;color:transparent;vertical-align:middle;cursor:pointer;transition:background-color 140ms,border-color 140ms}
@@ -10,7 +9,28 @@
 .rd .rd-source-select:focus-visible {outline:2px solid var(--rd-mark,#a9522f);outline-offset:3px}
 .rd .rd-material-actions:has(.rd-source-select) {opacity:1;visibility:visible}
 .rd .rd-teacher-row>.rd-source-select {margin-right:8px}
-@keyframes rd-selection-in {from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@keyframes rd-selection-in {from{opacity:0;transform:none}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.rd .rd-selection-bar{animation:none}.rd .rd-source-select{transition:none}}
 .rd[data-motion="off"] .rd-selection-bar {animation:none}
 .rd[data-motion="off"] .rd-source-select {transition:none}
+
+/* Selection occupies a stable slot beside the date strip, never above the banner. */
+.rd[data-workspace=work] .rd-desk-toolbar {display:grid;grid-template-columns:auto auto minmax(340px,1fr);grid-template-areas:"views dates selection";align-items:center;gap:8px 16px;min-height:44px}
+.rd .rd-desk-toolbar>.rd-list-toolbar {grid-area:views}
+.rd .rd-desk-toolbar>.rd-week {grid-area:dates;min-width:0;max-width:100%;overflow-x:auto}
+.rd .rd-selection-slot {grid-area:selection;display:flex;justify-content:flex-end;align-items:center;min-width:0;min-height:44px}
+.rd .rd-selection-bar>.rd-button,.rd .rd-selection-bar>div>.rd-button {min-height:32px;padding:0 10px;border-radius:999px;font-size:13px}
+.rd .rd-selection-bar>div>.rd-text-button {min-height:32px;padding:0 8px;font-size:13px}
+.rd .rd-selection-bar>span {font-variant-numeric:tabular-nums}
+.rd .rd-selection-other {position:sticky;top:8px;z-index:7;height:0;display:flex;justify-content:flex-end}
+.rd .rd-selection-other>.rd-selection-bar {position:absolute;right:0;top:0}
+@container work-area (max-width:1200px) {
+ .rd[data-workspace=work] .rd-desk-toolbar {grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"views views" "dates selection"}
+}
+@container work-area (max-width:760px) {
+ .rd[data-workspace=work] .rd-desk-toolbar {grid-template-columns:minmax(0,1fr);grid-template-areas:"views" "dates" "selection"}
+ .rd .rd-selection-slot {min-height:44px}
+ .rd .rd-selection-bar {gap:6px;max-width:100%;padding-left:10px;font-size:12px}
+ .rd .rd-selection-bar>div {gap:2px}
+ .rd .rd-selection-other>.rd-selection-bar {top:0}
+}

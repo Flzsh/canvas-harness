@@ -2,12 +2,14 @@
 (function(root){
   'use strict';
   // The caller keeps Canvas visible. This session only publishes verified data.
-  function createSession({client,createStore,onSnapshot,onStatus=()=>{},onError=()=>{},maxAge=300000,prefetchedProfile=null}){
-    const controller=new AbortController();
-    let store,user,current,dead=false,pending=null,starting=null;
-    const alive=()=>!dead&&!controller.signal.aborted;
-    function fail(error){
-      if(!alive()||error.code==='cancelled')return;
+  function createSession({client,createStore,onSnapshot,onStatus=()=>{},onError=()=>{},onTiming=()=>{},maxAge=300000,prefetchedProfile=null}){
+    let controller=new AbortController(),generation=0,paused=false;
+    let store,user,current,dead=false,pending=null,starting=null,checking=null;
+    const alive=(epoch=generation)=>!dead&&!paused&&epoch===generation&&!controller.signal.aborted;
+    function isFresh(value){const age=value?Date.now()-Date.parse(value.fetchedAt):Infinity;return !!value&&Number.isFinite(age)&&age>=0&&age<maxAge&&!value.partial;}
+    function phase(name){try{onTiming(name);}catch{}}
+    function fail(error,epoch=generation){
+      if(!alive(epoch)||error.code==='cancelled')return;
       const clear=error.code==='auth';
       if(clear)current=null;
       onStatus(error.message||'Canvas could not refresh.');
@@ -16,20 +18,22 @@
     function refresh(){
       if(pending)return pending;
       if(!alive()||!store||!user)return Promise.resolve(null);
+      const epoch=generation,signal=controller.signal;
       const operation=(async()=>{
         onStatus(current?'Updating in the background…':'Adding your course information…');
         try{
-          const next=await client.loadSnapshot({user,signal:controller.signal});
-          if(!alive())return null;
+          const next=await client.loadSnapshot({user,signal});
+          if(!alive(epoch))return null;
           if(String(next.user?.id)!==String(user.id)){
             const error=Error('Your Canvas account changed. Reload Canvas to continue.');error.code='auth';throw error;
           }
           current=next;
           onSnapshot(next,store,{stale:false});
+          if(!alive(epoch))return null;
           onStatus(next.partial?'Some courses could not refresh. See the course notices.':'');
-          try{await store.writeCache(next);}catch{if(alive())onStatus('Updated · This visit could not be saved for faster loading.');}
+          try{await store.writeCache(next);}catch{if(alive(epoch))onStatus('Updated · This visit could not be saved for faster loading.');}
           return next;
-        }catch(error){fail(error);return null;}
+        }catch(error){fail(error,epoch);return null;}
       })();
       pending=operation;
       operation.finally(()=>{if(pending===operation)pending=null;});
@@ -37,41 +41,72 @@
     }
     function start(){
       if(starting)return starting;
+      if(!alive())return Promise.resolve(null);
+      const epoch=generation,signal=controller.signal;
       starting=(async()=>{
         try{
-          // document_start may have an early identity hint. Begin a fresh Canvas
+          // The startup guard may have an early identity hint. Begin a fresh Canvas
           // verification now, and load only that hinted account's scoped cache
           // in parallel. No cached content is published before verification.
-          const verifying=client.profile({signal:controller.signal});
+          phase('profileStart');
+          const verifying=Promise.resolve(client.profile({signal})).then(profile=>{if(alive(epoch))phase('profileEnd');return profile;});
           const candidate=prefetchedProfile
             ? await Promise.race([verifying,Promise.resolve(prefetchedProfile).then(
               hint=>/^\d+$/.test(String(hint?.id??''))?hint:verifying,
               ()=>verifying
             )])
             : await verifying;
-          if(!alive())return;
+          if(!alive(epoch))return;
           store=createStore({accountId:String(candidate.id),origin:client.origin});
-          const cachedLoad=(async()=>{await store.load();if(!alive())return null;return store.readCache();})();
+          const cachedLoad=(async()=>{
+            // Preferences and courses occupy independent account-scoped keys.
+            // Load together; publish only after both and verification finish.
+            phase('storageStart');
+            const [,cached]=await Promise.all([
+              Promise.resolve(store.load()).then(value=>{phase('preferencesLoaded');return value;}),
+              Promise.resolve(store.readCache()).then(value=>{phase('cacheLoaded');phase(value?'cacheHit':'cacheMiss');return value;})
+            ]);
+            return alive(epoch)?cached:null;
+          })();
           const [verified,cached]=await Promise.all([verifying,cachedLoad]);
-          if(!alive())return;
+          if(!alive(epoch))return;
           if(String(verified.id)!==String(candidate.id)){
             const error=Error('Your Canvas account changed. Reload Canvas to continue.');error.code='auth';throw error;
           }
           user=verified;
-          const age=cached?Date.now()-Date.parse(cached.fetchedAt):Infinity;
           // Future/invalid timestamps and partial results always need a refresh.
-          const fresh=!!cached&&Number.isFinite(age)&&age>=0&&age<maxAge&&!cached.partial;
-          if(cached){current=cached;onSnapshot(cached,store,{stale:!fresh});onStatus(fresh?'':'Saved view · Updating in the background…');}
+          const fresh=isFresh(cached);
+          if(cached){current=cached;onSnapshot(cached,store,{stale:!fresh});if(!alive(epoch))return;onStatus(fresh?'':'Saved view · Updating in the background…');}
           if(!fresh)await refresh();
-        }catch(error){fail(error);}
+        }catch(error){fail(error,epoch);}
       })();
       return starting;
     }
-    async function verify(){
-      if(!alive()||!user)return;
-      try{const next=await client.profile({signal:controller.signal});if(!alive())return;if(String(next.id)!==String(user.id)){const error=Error('Your Canvas account changed. Reload Canvas to continue.');error.code='auth';throw error;}await store?.load();return true;}catch(error){fail(error);return false;}
+    function suspend(){
+      if(dead||paused)return;
+      paused=true;generation++;controller.abort();pending=null;checking=null;
     }
-    return {start,refresh,verify,destroy(){if(dead)return;dead=true;controller.abort();store?.destroy();},getSnapshot:()=>current};
+    function verify(){
+      if(dead||!user)return Promise.resolve(false);
+      if(checking)return checking;
+      if(paused){controller=new AbortController();paused=false;}
+      const epoch=generation,signal=controller.signal;
+      const operation=(async()=>{
+        try{
+          const next=await client.profile({signal});
+          if(!alive(epoch))return false;
+          if(String(next.id)!==String(user.id)){const error=Error('Your Canvas account changed. Reload Canvas to continue.');error.code='auth';throw error;}
+          await store?.load();
+          if(!alive(epoch))return false;
+          // Suspending aborts an in-flight course refresh. After fresh identity
+          // verification, reopen immediately and resume stale data in parallel.
+          if(current&&!isFresh(current))refresh();
+          return true;
+        }catch(error){fail(error,epoch);return false;}
+      })();
+      checking=operation;operation.finally(()=>{if(checking===operation)checking=null;});return operation;
+    }
+    return {start,refresh,verify,suspend,destroy(){if(dead)return;dead=true;generation++;controller.abort();store?.destroy();},getSnapshot:()=>current};
   }
   root.ReserveSession={createSession};
   if(typeof module!=='undefined'&&module.exports)module.exports=root.ReserveSession;

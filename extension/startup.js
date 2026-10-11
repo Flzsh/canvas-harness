@@ -4,16 +4,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   'use strict';
   const dashboardPath=()=>location.pathname==='/'||location.pathname==='/dashboard'||location.pathname==='/dashboard/';
   if(window.top!==window||!globalThis.ReserveSite.supported(location.href)||!dashboardPath()||globalThis.ReserveStartup)return;
-  // Preferences alone decide whether to cover Canvas. Early identity stays in
-  // this page's memory; it never persists or authorizes display of cached data.
-  const deadline=performance.now()+2500,subscribers=new Set();
+  // Preferences alone decide whether to cover Canvas. The controller performs
+  // the one fresh account check before opening any owner's saved workspace.
+  const startedAt=performance.now(),deadline=startedAt+2500,subscribers=new Set();
   const sheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css'];
-  let state='pending',shell,observer,timer,profileAbort,profileHint,preloaded=false;
+  let state='pending',shell,observer,timer,preloaded=false;
   const preloadLinks=[];
   const loginPage=()=>!!document.querySelector('#login_form, #new_login, .ic-Login');
   function cleanup(){
     clearTimeout(timer);observer?.disconnect();
-    profileAbort?.abort();profileAbort=null;profileHint=null;
     for(const link of preloadLinks)link.remove();preloadLinks.length=0;
     document.removeEventListener('pointerdown',interact,true);
     document.removeEventListener('keydown',interact,true);
@@ -42,22 +41,6 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   }
   function prepare(){
     if(state!=='active')return;
-    // The Canvas API client loads at document_end. Begin its read-only profile
-    // endpoint now so the network trip overlaps parsing and extension setup.
-    // A failed or unused prefetch always resolves to null (no unhandled reject).
-    if(!profileHint){
-      profileAbort=new AbortController();const signal=profileAbort.signal;
-      profileHint=(async()=>{
-        try{
-          const response=await fetch(globalThis.ReserveSite.origin()+'/api/v1/users/self/profile',{
-            method:'GET',credentials:'same-origin',headers:{Accept:'application/json+canvas-string-ids'},signal,redirect:'error'
-          });
-          if(signal.aborted||!response?.ok||response.redirected||response.type==='opaqueredirect'||!(response.headers?.get('content-type')||'').includes('json'))return null;
-          const profile=await response.json();
-          return !signal.aborted&&/^\d+$/.test(String(profile?.id??''))?{id:String(profile.id)}:null;
-        }catch{return null;}
-      })();
-    }
     // Preload only extension-local styles. These links do not apply CSS to the
     // Canvas document; the guarded shadow host loads the actual styles later.
     if(!preloaded&&document.head){
@@ -98,9 +81,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(getComputedStyle(shell).getPropertyValue('--reserve-startup-ready').trim()!=='1'){release();return;}
     state='active';document.documentElement.classList.add('reserve-startup-active');prepare();
   }
-  globalThis.ReserveStartup={canReveal,complete,release,
+  globalThis.ReserveStartup={canReveal,complete,release,startedAt,
     get active(){return state==='active';},
-    get prefetchedProfile(){return state==='active'?profileHint:null;},
     styleFiles:sheets,
     onNative(fn){if(state==='native')fn();else if(state!=='complete')subscribers.add(fn);}
   };

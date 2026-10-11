@@ -464,9 +464,25 @@
   .rd .rd-course-banner[data-titled] { --ch-title-w: min(calc(var(--ch-banner-art-h) * var(--rd-name-w, 480) / 240), 72%); }
 }
 
+/* Keep the panel row on the same floor when a course has no status chip.
+   The earlier titled-room rule removes the flex placeholder; its responsive
+   grid needs a real fourth row matching the desktop or phone chip height. */
+.rd { --ch-course-status-h: 26px; }
+@media (max-width: 800px) { .rd { --ch-course-status-h: 32px; } }
+@media (max-width: 600px) { .rd { --ch-course-status-h: 30px; } }
+.rd[data-workspace=work][data-courses] .rd-workspace-heading >
+.rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art):not(:has(> .rd-glance))::after {
+  content: "";
+  grid-area: 4 / 1;
+  height: var(--ch-course-status-h);
+}
+
 /* High contrast users get the real, focus-independent title text. Both the
    heading and banner already retain semantic h1/h2 text beside aria-hidden art. */
 @media (forced-colors: active) {
+  /* Art is hidden in forced colors, so its vacant status row is unnecessary. */
+  .rd[data-workspace=work][data-courses] .rd-workspace-heading >
+  .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art):not(:has(> .rd-glance))::after { display: none; }
   .rd .rd-course-heading > .rd-title-art,
   .rd .rd-course-banner > .rd-title-art,
   .rd .rd-course-heading > .rd-heading-art,
