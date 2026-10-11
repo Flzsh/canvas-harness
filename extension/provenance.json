@@ -3,9 +3,9 @@
   "project": "Canvas Harness",
   "originalCreator": "Flzsh",
   "projectId": "org.flzsh.canvas-harness",
-  "version": "2.20.1",
-  "license": "MIT",
+  "version": "2.21.0",
+  "license": "GPL-3.0-only",
   "attribution": "Canvas Harness originally created by Flzsh.",
-  "notice": "Copyright (c) 2026 Flzsh. Licensed under MIT; see LICENSE. Bundled Literata fonts retain their SIL Open Font License; see fonts/OFL.txt.",
+  "notice": "Copyright (c) 2026 Flzsh. Licensed under GPL-3.0-only; see LICENSE. Third-party fonts and PDF.js retain their own licenses; see NOTICE.txt.",
   "source": "https://github.com/Flzsh/canvas-harness"
 }

@@ -1,0 +1,43 @@
+Canvas Harness
+
+Short description
+Bring Canvas courses, assignments, teacher updates, bookmarks and study tools into a workspace you can arrange yourself.
+
+Description
+Keep your coursework together without losing access to the original Canvas pages.
+
+Canvas Harness brings course information, upcoming assignments and assignment instructions into one workspace. See teacher announcements and course materials alongside your work, bookmark items you return to, and mark finished homework complete locally when it does not require a Canvas submission.
+
+Make the page fit how you study. Hold a panel heading or course card until it lifts, then drag and release. Swap panels, stack instructions below your assignments, reorder courses, or move the course sidebar across the top. Destinations breathe gently during a drag, and illustrated course frames stay with their cards as you move them. Normal clicks do not activate moving. Keyboard controls and reduced-motion preferences are supported.
+
+Quick Upload applies a complete theme from one pasted or uploaded artwork pack. Preview banners, icons and borders, check the course matches, then apply them together. Undo restores the affected artwork while keeping your other preferences.
+
+Animated subject artwork helps you recognize courses. Use the built-in subject themes or upload your own self-contained SVG banners, icons, titles and borders. Adjust course names, visibility, type size, spacing and colors. Settings and study tools open alongside your work.
+
+Study tools include a Desmos graphing calculator and a GPA calculator with adjustable credit weights and grading scales. GPA values are estimates, not official transcript calculations. Grades have their own visibility switch.
+
+The optional AI tool lets you select material on the Canvas page, write a question, and send the question with that context to your chosen AI website. You control whether the website automatically submits the prepared message. Selected small PDFs can be read locally and included as extracted text; this is not a guarantee that the original PDF file will be uploaded. A provider account may be required, and website changes can affect compatibility.
+
+Canvas Harness reads your supported Canvas site using your existing signed-in session. Plans, bookmarks, artwork and preferences stay in this browser. There are no ads or analytics. Optional AI handoff shares the material you select with the chosen provider; review it before sending. Desmos loads from its own website when opened.
+
+Supports HTTPS Canvas sites on *.instructure.com. Custom Canvas domains are not currently supported. Available course information depends on your school's Canvas permissions. Local completion marks do not submit assignments or change Canvas grades.
+
+Canvas Harness is an independent, open-source project by Flzsh. It is not affiliated with or endorsed by Instructure, Desmos, or the AI providers.
+
+Suggested category
+Productivity
+
+Language
+English
+
+Website
+https://github.com/Flzsh/canvas-harness
+
+Support
+https://github.com/Flzsh/canvas-harness/issues
+
+Privacy policy
+https://github.com/Flzsh/canvas-harness/blob/main/PRIVACY.md
+
+Edge search terms
+Canvas; assignments; coursework; study tools; course dashboard; bookmarks

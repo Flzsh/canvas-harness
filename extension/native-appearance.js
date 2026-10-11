@@ -54,7 +54,7 @@
 
   function resolveTheme(prefs,dark){
     const theme=normalize(prefs).theme;
-    return theme==='system'?(dark===true?'dark':'light'):theme;
+    return theme==='original'?'original':'light';
   }
 
   function same(left,right){return keys.every(key=>left[key]===right[key]);}

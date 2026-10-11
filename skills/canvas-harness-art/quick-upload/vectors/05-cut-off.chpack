@@ -1,0 +1,5 @@
+<?ch-pack version="1" name="Astronomy"?>
+<?ch-art course="Astronomy" slot="icon"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M22 90L50 18L78 90Z" fill="#D97757" stroke="#141413" stroke-width="6" stroke-linejoin="round"/></svg>
+<?ch-art course="Astronomy" slot="banner"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 240"><path d="M40 214C400 210 1200 216 16

@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "version": 2,
+  "name": "From the future",
+  "errors": [
+    "newer-version"
+  ],
+  "warnings": [],
+  "skipped": [],
+  "parts": []
+}

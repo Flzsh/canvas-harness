@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "version": null,
+  "name": "",
+  "errors": [
+    "not-a-pack"
+  ],
+  "warnings": [],
+  "skipped": [],
+  "parts": []
+}

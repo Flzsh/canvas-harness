@@ -1,4 +1,4 @@
-/* Canvas Harness: subject-specific frames supplied by Flzsh. MIT License.
+/* Canvas Harness: subject-specific frames supplied by Flzsh. SPDX-License-Identifier: GPL-3.0-only.
    Shared layout and motion rules live in refresh.css. */
 .rd .rd-frame[data-kind=biology] { --f-p-ink:#2C6E57; --f-p-paint:#B4CC5C; --f-p-ink-d:#8ED0B2; --f-p-paint-d:#9DB451; }
 .rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=biology]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }

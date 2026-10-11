@@ -1,6 +1,7 @@
 /*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. Third-party components retain their respective attribution. */
 if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./site.js');
 'use strict';
+document.getElementById('reload-extension').addEventListener('click',()=>chrome.runtime.reload());
 const enabled=document.getElementById('enabled'),status=document.getElementById('status');
 chrome.storage.local.get('reserve:enabled').then(saved=>enabled.checked=saved['reserve:enabled']!==false);
 enabled.addEventListener('change',async()=>{try{await chrome.storage.local.set({'reserve:enabled':enabled.checked});status.textContent='Saved. Reload Canvas to apply.';}catch{status.textContent='Could not save this setting. Try again.';}});

@@ -52,6 +52,10 @@ function dom(nodes=[],url='https://chatgpt.com/'){
   const pieces=selector.trim().match(/(?:\[[^\]]+\]|[^\s[])+/g);if(!node.matches(pieces.pop()))return false;
   let ancestor=node.parentElement;for(let i=pieces.length-1;i>=0;i--){while(ancestor&&!ancestor.matches(pieces[i]))ancestor=ancestor.parentElement;if(!ancestor)return false;ancestor=ancestor.parentElement;}return true;
  }));},createTextNode(text){return {nodeType:3,textContent:text};}};
+ let rangeTarget;
+ document.createRange=()=>({selectNodeContents(node){rangeTarget=node;},collapse(){}});
+ view.getSelection=()=>({removeAllRanges(){},addRange(){}});
+ document.execCommand=(command,ui,text)=>{assert.equal(command,'insertText');assert.equal(ui,false);rangeTarget.appendChild(document.createTextNode(text));return true;};
  for(const node of nodes)node.ownerDocument=document;
  const self={};return {document,location,URL,InputEvent:DraftInputEvent,Event:DraftInputEvent,HTMLTextAreaElement:Textarea,window:view,self,top:self};
 }
@@ -99,6 +103,70 @@ test('contenteditable preserves rich draft nodes and appends only a plain text n
  assert.equal(insert('<b>Literal context</b>','claude').status,'injected');
  assert.equal(editor.children[0],old);assert.equal(editor.children[1].nodeType,3);assert.ok(editor.innerText.startsWith('A formatted draft\n\n'));
  assert.equal(insert('<b>Literal context</b>','claude').status,'injected');assert.equal(editor.children.length,2);
+});
+test('an editor that discards the input never reports successful injection',()=>{
+ const editor=new Textarea({id:'prompt-textarea'},'Original question');editor.onEvent=e=>{if(e.type==='input')editor._value='Original question';};
+ assert.equal(injector(dom([editor]))('Selected material').status,'no-editor');
+ assert.equal(editor.value,'Original question');
+});
+
+test('cold composer replacement is detected before writing and can be retried safely',async()=>{
+ const editor=new Textarea({id:'prompt-textarea'}),fixture=dom([editor]);let waits=0;
+ fixture.document.defaultView.setTimeout=callback=>{waits++;editor.isConnected=false;callback();};
+ const result=await injector(fixture)('Selected material');
+ assert.equal(result.status,'no-editor');assert.equal(result.retryable,true);assert.equal(editor.nativeWrites,0);assert.equal(waits,1);
+});
+
+test('framework hydration restoring the exact original draft permits a bounded retry',()=>{
+ const editor=new Textarea({id:'prompt-textarea'},'Original question');editor.onEvent=e=>{if(e.type==='input')editor._value='Original question';};
+ const result=injector(dom([editor]))('Selected material');assert.equal(result.retryable,true);
+ editor.onEvent=null;assert.equal(injector(dom([editor]))('Selected material').status,'injected');
+ assert.equal(editor.value.split('Selected material').length,2);
+});
+
+test('partially changed text never permits an automatic write retry',()=>{
+ const editor=new Textarea({id:'prompt-textarea'},'Original question');editor.onEvent=e=>{if(e.type==='input')editor._value='Changed while sending';};
+ const result=injector(dom([editor]))('Selected material');assert.equal(result.status,'no-editor');assert.notEqual(result.retryable,true);assert.equal(editor.value,'Changed while sending');
+});
+test('current ChatGPT markdown composer is recognized without a legacy id or test id',()=>{
+ const editor=new Element('div',{contenteditable:'true',role:'textbox','aria-multiline':'true',class:'ProseMirror','data-composer-markdown':'','aria-label':'Ask ChatGPT'});
+ const draft=new Element('p',{},'Keep this question.');editor.appendChild(draft);
+ const body=new Element('div',{'data-composer-body':''}),input=new Element('div',{'data-composer-input':''});body.appendChild(input);input.appendChild(editor);
+ const legacy=new Textarea({id:'prompt-textarea'});legacy.hidden=true;
+ const insert=injector(dom([editor,legacy]));
+ assert.equal(insert('Selected assignment instructions').status,'injected');
+ assert.equal(editor.children[0],draft);assert.ok(editor.innerText.startsWith('Keep this question.'));
+ const first=editor.innerText;assert.equal(insert('Selected assignment instructions').status,'injected');assert.equal(editor.innerText,first);
+ assert.equal(legacy.nativeWrites,0);
+});
+test('browser paragraph line breaks do not duplicate rich ChatGPT context on retry',()=>{
+ const editor=new Element('div',{contenteditable:'true',role:'textbox','data-composer-markdown':''},'Question');new Element('div',{'data-composer-body':''}).appendChild(editor);
+ const raw=()=>editor._text+editor.children.map(n=>n.textContent).join('');
+ Object.defineProperty(editor,'textContent',{get(){return raw().replace(/\n/g,'');}});
+ Object.defineProperty(editor,'innerText',{get(){return raw().replace(/\n/g,'\n\n');}});
+ const insert=injector(dom([editor]));
+ assert.equal(insert('First line\nSecond line').status,'injected');const first=editor.innerText;
+ assert.equal(insert('First line\nSecond line').status,'injected');assert.equal(editor.innerText,first);
+ assert.equal(editor.events.filter(e=>e.type==='input').length,1);
+});
+test('modern ChatGPT matching is scoped to its composer and independent of translated labels',()=>{
+ const attrs={contenteditable:'true',role:'textbox','data-composer-markdown':'','aria-label':'Pregunta a ChatGPT'};
+ const unrelated=new Element('div',attrs,'Untouched document');
+ assert.equal(injector(dom([unrelated]))('Context').status,'no-editor');
+ assert.equal(unrelated.innerText,'Untouched document');
+ const editor=new Element('div',attrs,'Question');new Element('div',{'data-composer-body':''}).appendChild(editor);
+ assert.equal(injector(dom([editor,unrelated]))('Context').status,'injected');
+ assert.equal(unrelated.innerText,'Untouched document');
+});
+test('current ChatGPT composer retains search, dialog, and authentication exclusions',()=>{
+ for(const wrapper of [{role:'search'},{role:'dialog'}]){
+  const editor=new Element('div',{contenteditable:'true',role:'textbox','data-composer-markdown':''},'Keep');
+  const body=new Element('div',{'data-composer-body':''});body.appendChild(editor);new Element('div',wrapper).appendChild(body);
+  assert.equal(injector(dom([editor]))('Context').status,'no-editor');assert.equal(editor.innerText,'Keep');
+ }
+ const editor=new Element('div',{contenteditable:'true',role:'textbox','data-composer-markdown':''},'Keep');new Element('div',{'data-composer-body':''}).appendChild(editor);
+ const email=new Element('input',{type:'email'});Object.defineProperty(email,'value',{get(){throw Error('Do not read credentials');}});
+ assert.equal(injector(dom([editor,email]))('Context').status,'no-editor');assert.equal(editor.innerText,'Keep');
 });
 test('ambiguous composers, hidden or disabled editors, and arbitrary search fields refuse insertion',()=>{
  const a=new Textarea({id:'prompt-textarea'}),b=new Element('div',{id:'prompt-textarea',contenteditable:'true'});
@@ -166,24 +234,128 @@ test('the text size boundary is accepted but composer maxlength cannot truncate 
  editor.maxLength=-1;assert.equal(injector(dom([editor]))('x'.repeat(140000)).status,'injected');assert.ok(editor.value.startsWith('My draft'));
 });
 
-function webHarness({granted=true,failPopup=false}={}){
+function webHarness({granted=true,failPopup=false,clock}={}){
  const stored={},tabs=new Map(),calls=[],sender={id:'extension-id',tab:{id:12},frameId:0};let nextId=100;
  const chrome={runtime:{id:'extension-id',getURL:p=>'chrome-extension://extension-id/'+p},storage:{session:{async get(key){return {[key]:structuredClone(stored[key])};},async set(values){Object.assign(stored,structuredClone(values));},async remove(key){delete stored[key];}}},permissions:{async contains(details){calls.push(['contains',details]);return granted;},async request(){throw new Error('Permission request requires the separate page');}},tabs:{async create(details){calls.push(['tab-create',details]);const tab={id:nextId++,windowId:5,url:details.url};tabs.set(tab.id,tab);return {...tab};},async get(id){calls.push(['get',id]);if(!tabs.has(id))throw new Error('Tab closed');return {...tabs.get(id)};},async update(id,details){calls.push(['update',id,details]);if(!tabs.has(id))throw new Error('Tab closed');return {...tabs.get(id)};},async query(){throw new Error('Must not reuse random tabs');}},windows:{async create(details){calls.push(['window-create',details]);if(failPopup)throw new Error('Popup unavailable');const tab={id:nextId++,windowId:nextId++,url:details.url};tabs.set(tab.id,tab);return {id:tab.windowId,tabs:[{...tab}]};},async update(id,details){calls.push(['window-update',id,details]);return {id};}},scripting:{async executeScript(details){calls.push(['execute',details]);return [{frameId:0,result:{status:'injected',message:'Review your draft.'}}];}}};
- const context=vm.createContext({chrome,URL});context.importScripts=(...files)=>{for(const file of files)vm.runInContext(source(file),context);};
+ const sourceTabs=new Map([[12,{id:12,windowId:5,index:2,incognito:false}],[13,{id:13,windowId:5,index:3,incognito:false}]]);
+ const windows=new Map([[5,{id:5,type:'normal',incognito:false}],[9,{id:9,type:'popup',incognito:false}]]);
+ const get=chrome.tabs.get;
+ chrome.tabs.get=async id=>sourceTabs.has(id)?{...sourceTabs.get(id)}:get(id);
+ chrome.tabs.create=async details=>{
+  calls.push(['tab-create',details]);
+  const windowId=details.windowId??9; // A provider app was last focused.
+  const tab={id:nextId++,windowId,url:details.url,incognito:Boolean(windows.get(windowId)?.incognito)};
+  tabs.set(tab.id,tab);return {...tab};
+ };
+ chrome.tabs.update=async(id,details)=>{calls.push(['update',id,details]);if(!tabs.has(id))throw Error('Tab closed');Object.assign(tabs.get(id),details);return {...tabs.get(id)};};
+ chrome.windows.get=async id=>{calls.push(['window-get',id]);if(!windows.has(id))throw Error('Window closed');return {...windows.get(id)};};
+ chrome.windows.create=async details=>{
+  calls.push(['window-create',details]);if(failPopup)throw Error('Window unavailable');
+  const win={id:nextId++,type:details.type,incognito:Boolean(details.incognito)};
+  windows.set(win.id,win);const tab={id:nextId++,windowId:win.id,url:details.url,incognito:win.incognito};tabs.set(tab.id,tab);
+  return {...win,tabs:[{...tab}]};
+ };
+ const context=vm.createContext({chrome,URL,...(clock?{setTimeout:clock}:{})});context.importScripts=(...files)=>{for(const file of files)vm.runInContext(source(file),context);};
  vm.runInContext(source('ai-web.js'),context);
  const handle=(action,provider='chatgpt',text,customSender=sender)=>context.CanvasHarnessWeb.handle({type:'ch-ai-web',action,provider,text},customSender);
- return {handle,chrome,calls,stored,tabs,sender,grant(value){granted=value;}};
+ return {handle,chrome,calls,stored,tabs,sender,windows,sourceTabs,grant(value){granted=value;}};
 }
-test('launcher creates only controlled provider windows and reuses by source Canvas tab plus provider',async()=>{
+
+test('website launch stays in the live Canvas window even when an app was last focused',async()=>{
+ const h=webHarness();h.sourceTabs.get(12).windowId=6;h.windows.set(6,{id:6,type:'normal',incognito:false});
+ assert.equal((await h.handle('inject','chatgpt','Synthetic question only')).status,'injected');
+ const created=h.calls.find(c=>c[0]==='tab-create')[1];assert.equal(created.windowId,6);assert.equal(created.openerTabId,12);
+ assert.equal(created.url,'about:blank');
+ const navigation=h.calls.find(c=>c[0]==='update'&&c[2].url);assert.equal(navigation[2].url,'https://chatgpt.com/');
+ assert.equal(h.calls.find(c=>c[0]==='execute')[1].target.tabId,navigation[1]);
+ assert.equal(h.calls.some(c=>c[0]==='window-update'&&c[1]===9),false);
+});
+
+test('Canvas inside an app gets a normal browser window with matching private mode',async()=>{
+ const h=webHarness();h.sourceTabs.get(12).windowId=9;h.sourceTabs.get(12).incognito=true;h.windows.get(9).incognito=true;
+ assert.equal((await h.handle('inject','chatgpt','Synthetic context')).status,'injected');
+ const created=h.calls.find(c=>c[0]==='window-create')[1];assert.equal(created.type,'normal');assert.equal(created.incognito,true);
+ assert.equal(created.url,'about:blank');assert.equal(h.calls.some(c=>c[0]==='tab-create'),false);
+});
+
+test('an existing provider tab moved into an app is never focused or injected',async()=>{
+ const h=webHarness();await h.handle('open');const first=[...h.tabs.values()][0];first.windowId=9;h.calls.length=0;
+ const result=await h.handle('inject','chatgpt','Private draft');assert.equal(result.status,'error');assert.match(result.message,/browser tab|window/i);
+ assert.equal(h.calls.some(c=>c[0]==='execute'||c[0]==='update'||c[0]==='window-update'),false);
+ assert.equal((await h.handle('open')).status,'opened');assert.equal(h.tabs.size,2);assert.equal(first.windowId,9);
+});
+
+test('a source that disappeared never falls back to the last focused app',async()=>{
+ const h=webHarness();h.sourceTabs.delete(12);
+ assert.equal((await h.handle('open')).status,'error');assert.equal(h.calls.some(c=>['tab-create','window-create','execute'].includes(c[0])),false);
+});
+
+test('a newly created tab intercepted into an app is rejected before navigating or storing a target',async()=>{
+ const h=webHarness(),create=h.chrome.tabs.create;
+ h.chrome.tabs.create=async details=>{const tab=await create(details);h.tabs.get(tab.id).windowId=9;return {...tab,windowId:9};};
+ assert.equal((await h.handle('inject','chatgpt','Private material')).status,'error');
+ assert.equal(h.calls.some(c=>c[0]==='execute'||c[0]==='update'),false);assert.equal(Object.keys(h.stored).length,0);
+});
+
+test('permission pages use the source browser window and never contain the draft',async()=>{
+ const h=webHarness({granted:false});await h.handle('inject','chatgpt','Private draft');
+ const permission=h.calls.find(c=>c[0]==='tab-create')[1];assert.equal(permission.windowId,5);
+ assert.equal(JSON.stringify(h.stored).includes('Private draft'),false);
+});
+
+test('moving a provider into an app while it is focused cancels insertion',async()=>{
+ const h=webHarness();await h.handle('open');const update=h.chrome.tabs.update;
+ h.chrome.tabs.update=async(id,details)=>{const result=await update(id,details);h.tabs.get(id).windowId=9;return result;};
+ assert.equal((await h.handle('inject','chatgpt','Private draft')).status,'error');
+ assert.equal(h.calls.some(c=>c[0]==='execute'),false);
+});
+
+test('failure to create a browser window never falls back to a provider app',async()=>{
+ const h=webHarness({failPopup:true});h.sourceTabs.get(12).windowId=9;
+ assert.equal((await h.handle('inject','chatgpt','Private draft')).status,'error');
+ assert.equal(h.tabs.size,0);assert.equal(h.calls.some(c=>c[0]==='execute'||c[0]==='tab-create'),false);
+});
+test('one explicit Inject opens a normal provider tab and inserts without a separate Open action',async()=>{
+ const h=webHarness();assert.equal((await h.handle('inject','chatgpt','My question\nSelected reference')).status,'injected');
+ assert.equal(h.calls.filter(c=>c[0]==='tab-create').length,1);
+ assert.equal(h.calls.filter(c=>c[0]==='window-create').length,0);
+ assert.equal(h.calls.filter(c=>c[0]==='execute').length,1);
+ assert.ok(!JSON.stringify(h.stored).includes('Selected reference'));
+ assert.equal(h.calls.find(c=>c[0]==='tab-create')[1].url,'about:blank');
+ assert.equal(h.calls.find(c=>c[0]==='update'&&c[2].url)[2].url,'https://chatgpt.com/');
+});
+test('Inject waits for the fresh website and its composer without repeatedly stealing focus',async()=>{
+ let ticks=0,executions=0;
+ const h=webHarness({clock(callback,ms){assert.equal(ms,500);ticks++;for(const tab of h.tabs.values())tab.status='complete';queueMicrotask(callback);}});
+ const create=h.chrome.tabs.create;
+ h.chrome.tabs.create=async details=>{const tab=await create(details);h.tabs.get(tab.id).status='loading';return tab;};
+ h.chrome.scripting.executeScript=async()=>[{frameId:0,result:++executions===1?{status:'no-editor',message:'Loading composer',retryable:true}:{status:'injected',message:'Ready to review'}}];
+ assert.equal((await h.handle('inject','chatgpt','Question with selected material')).status,'injected');
+ assert.equal(ticks,2);assert.equal(executions,2);
+ assert.equal(h.calls.filter(c=>c[0]==='update'&&!c[2].url).length,1);
+ assert.equal(h.calls.filter(c=>c[0]==='tab-create').length,1);
+ assert.ok(!JSON.stringify(h.stored).includes('selected material'));
+});
+test('missing composer retries are bounded and leave no stored context or scheduled insertion',async()=>{
+ let ticks=0,executions=0;
+ const h=webHarness({clock(callback){ticks++;queueMicrotask(callback);}});
+ h.chrome.scripting.executeScript=async()=>{executions++;return [{frameId:0,result:{status:'no-editor',message:'Still loading',retryable:true}}];};
+ assert.equal((await h.handle('inject','chatgpt','Temporary context')).status,'no-editor');
+ assert.equal(executions,40);assert.equal(ticks,39);
+ assert.equal(h.calls.filter(c=>c[0]==='update'&&!c[2].url).length,1);
+ assert.ok(!JSON.stringify(h.stored).includes('Temporary context'));
+ await Promise.resolve();assert.equal(executions,40);
+});
+test('launcher creates only controlled normal provider tabs and reuses by source Canvas tab plus provider',async()=>{
  const h=webHarness();assert.equal((await h.handle('open')).status,'opened');assert.equal((await h.handle('open')).status,'opened');
- assert.equal(h.calls.filter(c=>c[0]==='window-create').length,1);
+ assert.equal(h.calls.filter(c=>c[0]==='tab-create').length,1);
  await h.handle('open','claude');await h.handle('open','chatgpt',undefined,{...h.sender,tab:{id:13}});
- assert.equal(h.calls.filter(c=>c[0]==='window-create').length,3);
- assert.equal(h.calls.find(c=>c[0]==='window-create')[1].type,'popup');
+ assert.equal(h.calls.filter(c=>c[0]==='tab-create').length,3);
+ assert.equal(h.calls.some(c=>c[0]==='window-create'),false);
  assert.equal(h.calls.filter(c=>c[0]==='execute').length,0);
  assert.equal(Object.keys(h.stored).length,3);
 });
-test('concurrent opens share one controlled window and unavailable popups fall back to a normal tab',async()=>{
+test('concurrent opens share one controlled normal tab',async()=>{
  const h=webHarness();await Promise.all([h.handle('open'),h.handle('open'),h.handle('open')]);assert.equal(h.tabs.size,1);
  const fallback=webHarness({failPopup:true});assert.equal((await fallback.handle('open')).status,'opened');assert.equal(fallback.calls.filter(c=>c[0]==='tab-create').length,1);
 });
@@ -206,10 +378,10 @@ test('only explicit inject executes against the stored tab, with main-frame and 
 test('permission denial opens only a provider-only permission page and never retains or later inserts context',async()=>{
  const h=webHarness({granted:false});await h.handle('open');
  assert.equal((await h.handle('inject','chatgpt','TOP SECRET MATERIAL')).status,'needs-permission');
- const permission=h.calls.find(c=>c[0]==='tab-create')[1];const url=new URL(permission.url);
+ const permission=h.calls.find(c=>c[0]==='tab-create'&&c[1].url.includes('ai-permission.html'))[1];const url=new URL(permission.url);
  assert.equal(url.pathname,'/ai-permission.html');assert.equal(url.search,'?provider=chatgpt');assert.equal(url.hash,'');
  assert.ok(!JSON.stringify(h.stored).includes('TOP SECRET'));assert.equal(h.calls.filter(c=>c[0]==='execute').length,0);
- await h.handle('inject','chatgpt','different context');assert.equal(h.calls.filter(c=>c[0]==='tab-create').length,1);
+ await h.handle('inject','chatgpt','different context');assert.equal(h.calls.filter(c=>c[0]==='tab-create'&&c[1].url.includes('ai-permission.html')).length,1);
  h.grant(true);await h.handle('status');await h.handle('open');assert.equal(h.calls.filter(c=>c[0]==='execute').length,0);
  assert.equal((await h.handle('inject','chatgpt','new explicit context')).status,'injected');
 });
@@ -269,4 +441,27 @@ test('permission denial and revocation leave context transfer entirely manual',a
  const allowed=permissionHarness({granted:true});await allowed.settle();await allowed.click('revoke-access');assert.deepEqual(Array.from(allowed.removals[0].origins),['https://chatgpt.com/*']);
  assert.equal(allowed.removals[0].permissions,undefined,'other providers may still need scripting');
  const invalid=permissionHarness({query:'?provider=__proto__'});await invalid.settle();assert.equal(invalid.nodes['grant-access'].disabled,true);assert.equal(invalid.requests.length,0);
+});
+
+test('opt-in automatic send clicks once after verified insertion and guards repeated clicks',async()=>{
+ const editor=new Textarea({id:'prompt-textarea'}),button=new Element('button',{'aria-label':'Send',type:'submit'});let clicks=0;
+ button.click=()=>{clicks++;editor._value='';};const insert=injector(dom([editor,button]));
+ const provider={id:'chatgpt',origin:'https://chatgpt.com',expectedURL:'https://chatgpt.com/',autoSend:true};
+ assert.equal((await insert('Question one',provider)).status,'sent');assert.equal(clicks,1);
+ assert.equal((await insert('Question one',provider)).status,'send-uncertain');assert.equal(clicks,1);assert.equal(editor.value,'');
+ assert.equal((await insert('Question two',provider)).status,'sent');assert.equal(clicks,2);
+});
+test('automatic send protects existing drafts, disabled buttons and ambiguous send controls',async()=>{
+ const provider={id:'chatgpt',origin:'https://chatgpt.com',expectedURL:'https://chatgpt.com/',autoSend:true};
+ for(const mode of ['existing','disabled','ambiguous','off']){
+  const editor=new Textarea({id:'prompt-textarea'},mode==='existing'?'Unrelated unsent draft':''),button=new Element('button',{'aria-label':'Send',type:'submit'});let clicks=0;button.click=()=>{clicks++;};button.disabled=mode==='disabled';
+  const nodes=[editor,button];if(mode==='ambiguous')nodes.push(new Element('button',{'aria-label':'Send',type:'submit'}));
+  const result=await injector(dom(nodes))('Question',{...provider,autoSend:mode!=='off'});
+  assert.equal(result.status,'injected',mode);assert.equal(clicks,0,mode);assert.ok(editor.value.includes('Question'));
+ }
+});
+test('a click with unconfirmed delivery is never automatically retried',async()=>{
+ const editor=new Textarea({id:'prompt-textarea'}),button=new Element('button',{'aria-label':'Send',type:'submit'});let clicks=0;button.click=()=>clicks++;
+ const insert=injector(dom([editor,button])),provider={id:'chatgpt',origin:'https://chatgpt.com',expectedURL:'https://chatgpt.com/',autoSend:true};
+ assert.equal((await insert('Question',provider)).status,'send-uncertain');assert.equal((await insert('Question',provider)).status,'send-uncertain');assert.equal(clicks,1);
 });

@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "version": 1,
+  "name": "Astronomy",
+  "errors": [],
+  "warnings": [
+    "no-end"
+  ],
+  "skipped": [],
+  "parts": [
+    {
+      "index": 1,
+      "slot": "icon",
+      "target": {
+        "type": "course",
+        "names": [
+          "Astronomy"
+        ]
+      },
+      "name": "Astronomy icon",
+      "svgBytes": 172,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "index": 2,
+      "slot": "banner",
+      "target": {
+        "type": "course",
+        "names": [
+          "Astronomy"
+        ]
+      },
+      "name": "Astronomy banner",
+      "svgBytes": 0,
+      "errors": [
+        "no-svg"
+      ],
+      "warnings": []
+    }
+  ]
+}

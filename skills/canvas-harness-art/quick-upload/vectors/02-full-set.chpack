@@ -1,0 +1,14 @@
+Canvas Harness quick upload pack. Paste all of this text into Quick upload in Canvas Harness, or drop this file there.
+
+<?ch-pack version="1" name="Marine Biology"?>
+
+<?ch-art course="Marine Biology" slot="banner" fit="cover" position="center" name="Tide pool banner"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 240"><path d="M40 214C400 210 1200 216 1640 213" fill="none" stroke="#141413" stroke-width="3" stroke-linecap="round"/></svg>
+
+<?ch-art course="Marine Biology" slot="icon"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M22 90L50 18L78 90Z" fill="#D97757" stroke="#141413" stroke-width="6" stroke-linejoin="round"/></svg>
+
+<?ch-art course="Marine Biology" slot="frame"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 110"><path d="M10 8C120 5 240 9 350 7C353 40 352 70 351 102C240 105 120 101 9 103C8 70 9 40 10 8Z" fill="none" stroke="#2F4A6B" stroke-width="1.8" vector-effect="non-scaling-stroke"/></svg>
+
+<?ch-end parts="3"?>

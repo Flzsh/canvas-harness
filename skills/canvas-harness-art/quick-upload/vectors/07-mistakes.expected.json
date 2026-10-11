@@ -1,0 +1,126 @@
+{
+  "ok": true,
+  "version": 1,
+  "name": "Mistakes",
+  "errors": [],
+  "warnings": [
+    "count-mismatch"
+  ],
+  "skipped": [],
+  "parts": [
+    {
+      "index": 1,
+      "slot": null,
+      "target": {
+        "type": "course",
+        "names": [
+          "Astronomy"
+        ]
+      },
+      "name": "Astronomy art",
+      "svgBytes": 172,
+      "errors": [
+        "no-slot"
+      ],
+      "warnings": []
+    },
+    {
+      "index": 2,
+      "slot": "icon",
+      "target": null,
+      "name": "artwork icon",
+      "svgBytes": 172,
+      "errors": [
+        "two-targets"
+      ],
+      "warnings": []
+    },
+    {
+      "index": 3,
+      "slot": "icon",
+      "target": null,
+      "name": "artwork icon",
+      "svgBytes": 172,
+      "errors": [
+        "no-target"
+      ],
+      "warnings": []
+    },
+    {
+      "index": 4,
+      "slot": "banner",
+      "target": null,
+      "name": "artwork banner",
+      "svgBytes": 183,
+      "errors": [
+        "bad-place"
+      ],
+      "warnings": []
+    },
+    {
+      "index": 5,
+      "slot": "banner",
+      "target": {
+        "type": "course",
+        "names": [
+          "Astronomy"
+        ]
+      },
+      "name": "Astronomy banner",
+      "svgBytes": 183,
+      "errors": [
+        "replaced"
+      ],
+      "warnings": [
+        "option-ignored"
+      ],
+      "replacedBy": 7
+    },
+    {
+      "index": 6,
+      "slot": "icon",
+      "target": {
+        "type": "course",
+        "names": [
+          "Astronomy"
+        ]
+      },
+      "name": "Astronomy icon",
+      "svgBytes": 172,
+      "errors": [],
+      "warnings": [
+        "option-ignored"
+      ]
+    },
+    {
+      "index": 7,
+      "slot": "banner",
+      "target": {
+        "type": "course",
+        "names": [
+          "astronomy"
+        ]
+      },
+      "name": "astronomy banner",
+      "svgBytes": 183,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "index": 8,
+      "slot": "frame",
+      "target": {
+        "type": "course",
+        "names": [
+          "Astronomy"
+        ]
+      },
+      "name": "Astronomy frame",
+      "svgBytes": 0,
+      "errors": [
+        "no-svg"
+      ],
+      "warnings": []
+    }
+  ]
+}

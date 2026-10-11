@@ -2,9 +2,9 @@
 importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js');
 (function(){
  'use strict';
- const channels=new Map(),panels=new Set(),requests=new Map();
- let offscreenPending,nativePort=null;
- const nativePending=new Map();
+ const channels=new Map(),panels=new Set(),requests=new Map(),handoffs=new Map();
+ let offscreenPending;
+
  const post=(port,message)=>{try{port.postMessage(message);}catch{}};
  const fail=(port,id,error)=>post(port,{id,ok:false,error:String(error?.message||error||'The request could not finish.')});
  const validId=id=>typeof id==='string'&&/^[\w-]{1,100}$/.test(id);
@@ -39,63 +39,37 @@ importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js');
   const reply=await chrome.runtime.sendMessage({target:'ch-pdf',base64});if(!reply?.ok)throw Error(reply?.error||'PDF text could not be extracted.');return reply.result;
  }
  function sourceRequest(panel,message,entry){
-  if(!['catalog','load-course','collect','close'].includes(message.action))throw Error('Unsupported Canvas context request.');
+  if(!['catalog','load-course','collect','close','preference'].includes(message.action))throw Error('Unsupported Canvas context request.');
+  if(message.action==='preference'&&typeof message.autoSend!=='boolean')throw Error('Invalid AI preference.');
   if(message.action==='collect'&&(!Array.isArray(message.ids)||message.ids.length>30||message.ids.some(x=>typeof x!=='string'||x.length>1000)))throw Error('Choose at most 30 sources.');
   const id=crypto.randomUUID(),timer=setTimeout(()=>{const pending=requests.get(id);if(pending){requests.delete(id);fail(panel,message.id,'Context gathering took too long. Try fewer sources.');}},120000);
   requests.set(id,{panel,originalId:message.id,source:entry.port,timer});
-  post(entry.port,{kind:'source-request',id,action:message.action,courseId:message.courseId,ids:message.ids,all:message.all===true});
- }
- function native(panel,message){
-  const op=message.op;if(!['status','authenticate','models','chat','cancel','signout'].includes(op))throw Error('Unsupported connected-chat request.');
-  if(nativePending.has(message.id))throw Error('This request is already active.');
-  if(op==='chat'){
-   if(typeof message.model!=='string'||message.model.length>160||!Array.isArray(message.messages)||!message.messages.length||message.messages.length>30)throw Error('Choose a model and write a message.');
-   if(message.messages.some(m=>!['user','assistant'].includes(m?.role)||typeof m.content!=='string')||message.messages.reduce((n,m)=>n+new TextEncoder().encode(m.content).length,0)>180000)throw Error('This conversation is too large. Start a new chat or include fewer sources.');
-  }
-  if(!nativePort){
-   try{nativePort=chrome.runtime.connectNative('org.flzsh.canvas_harness_ai');}
-   catch{throw Error('Install the optional local companion, then allow the connection in AI settings.');}
-   nativePort.onMessage.addListener(event=>{
-    if(!validId(event?.id))return;
-    const pending=nativePending.get(event.id);if(!pending)return;
-    if(event.type==='delta'){if(typeof event.text==='string')post(pending.panel,{id:pending.id,kind:'delta',text:event.text.slice(0,100000)});return;}
-    if(event.type==='error'){nativePending.delete(event.id);fail(pending.panel,pending.id,event.message||event.error||'The AI service could not finish.');return;}
-    if((pending.op==='authenticate'&&event.type==='auth'&&event.state==='authorized')||(pending.op==='chat'&&event.type==='done')||(pending.op==='models'&&event.type==='models')||(['status','signout','cancel'].includes(pending.op)&&['status','auth','done'].includes(event.type))){
-     nativePending.delete(event.id);
-     const result={...event,...(typeof event.authorized==='boolean'?{connected:event.authorized}:{}),...(event.models?{models:event.models.map(m=>({id:m.id,slug:m.id,name:m.name,display_name:m.name,visibility:'list'}))}:{})};
-     post(pending.panel,{id:pending.id,ok:true,result});
-    }
-   });
-   nativePort.onDisconnect.addListener(()=>{
-    const message=chrome.runtime.lastError?.message||'The local companion disconnected.';
-    for(const pending of nativePending.values())fail(pending.panel,pending.id,/not found|not registered|specified native|forbidden/i.test(message)?'The optional local companion is not installed or registered for this extension. Follow the setup guide, then try again.':message);
-    nativePending.clear();nativePort=null;
-   });
-  }
-  if(op==='cancel'&&(!validId(message.requestId)||nativePending.get(message.requestId)?.panel!==panel))throw Error('No active request to stop.');
-  nativePending.set(message.id,{id:message.id,op,panel});
-  const request={id:message.id,op};
-  if(op==='chat'){request.model=message.model;request.messages=message.messages;}
-  if(op==='authenticate'&&message.reauthorize===true)request.reauthorize=true;
-  if(op==='cancel')request.targetId=message.requestId;
-  nativePort.postMessage(request);
+  post(entry.port,{kind:'source-request',id,action:message.action,courseId:message.courseId,ids:message.ids,all:message.all===true,includeAssignmentPdfs:message.includeAssignmentPdfs===true,autoSend:message.autoSend===true});
  }
  async function onPanel(panel,message){
   if(!validId(message?.id))return;
+  if(message.action==='cancel'){
+   if(!validId(message.requestId))return;
+   if(handoffs.get(panel)===message.requestId)handoffs.delete(panel);
+   for(const [id,pending] of requests)if(pending.panel===panel&&pending.originalId===message.requestId){clearTimeout(pending.timer);requests.delete(id);}
+   post(panel,{id:message.id,ok:true,result:{cancelled:true}});return;
+  }
+  // Register before any await: a timeout can arrive while tab/account checks
+  // are still pending, and it must not be overwritten when they resolve.
+  if(message.action==='web'&&message.op==='inject')handoffs.set(panel,message.id);
   try{
    const entry=await liveSource(panel);
-   if(['catalog','load-course','collect','close'].includes(message.action)){sourceRequest(panel,message,entry);return;}
+   if(['catalog','load-course','collect','close','preference'].includes(message.action)){if(message.action==='close')handoffs.delete(panel);sourceRequest(panel,message,entry);return;}
    if(message.action==='web'){
     if(!['status','open','inject'].includes(message.op))throw Error('Unsupported website action.');
-    if(message.op==='inject'&&(typeof message.text!=='string'||!message.text.trim()||message.text.length>140000))throw Error('Choose some context to inject, up to 140,000 characters.');
-    if(message.op==='inject')await verifyShare(panel,message,entry);
-    const result=await CanvasHarnessWeb.handle({type:'ch-ai-web',action:message.op,provider:message.provider,text:message.text},{...entry.port.sender,tab:entry.port.sender.tab});
+    if(message.op==='inject'&&(typeof message.text!=='string'||!message.text.trim()||message.text.length>140000))throw Error('Choose some context to send, up to 140,000 characters.');
+    if(message.op==='inject'){await verifyShare(panel,message,entry);if(handoffs.get(panel)!==message.id)throw Error('The AI panel closed or the request was replaced. Click Send again when ready.');}
+    let result;try{result=await CanvasHarnessWeb.handle({type:'ch-ai-web',action:message.op,provider:message.provider,text:message.text,autoSend:message.autoSend===true},{...entry.port.sender,tab:entry.port.sender.tab},{canShare:()=>handoffs.get(panel)===message.id&&panels.has(panel)&&sourceFor(panel)===entry&&message.scopeKey===entry.catalog?.scopeKey});}finally{if(handoffs.get(panel)===message.id)handoffs.delete(panel);}
     post(panel,{id:message.id,ok:true,result});return;
    }
-   if(message.action==='native'){if(message.op==='chat')await verifyShare(panel,message,entry);native(panel,message);return;}
    if(message.action==='pdf'){post(panel,{id:message.id,ok:true,result:await pdf(message.base64)});return;}
    throw Error('Unsupported AI action.');
-  }catch(error){fail(panel,message.id,error);}
+  }catch(error){if(handoffs.get(panel)===message.id)handoffs.delete(panel);fail(panel,message.id,error);}
  }
  chrome.runtime.onConnect.addListener(port=>{
   if(port.name==='ch-ai-source'&&canvasSender(port.sender)){
@@ -124,9 +98,7 @@ importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js');
    panels.add(port);port.onMessage.addListener(message=>onPanel(port,message));
    const data=sourceFor(port)?.catalog;if(data)post(port,{kind:'catalog',data});
    port.onDisconnect.addListener(()=>{
-    panels.delete(port);
-    for(const [id,p] of nativePending)if(p.panel===port){try{if(['chat','authenticate','models'].includes(p.op))nativePort?.postMessage({id:crypto.randomUUID(),op:'cancel',targetId:id});}catch{}nativePending.delete(id);}
-    if(!panels.size){try{nativePort?.disconnect();}catch{}}
+    panels.delete(port);handoffs.delete(port);
     for(const [id,p] of requests)if(p.panel===port){clearTimeout(p.timer);requests.delete(id);}
    });
   }else port.disconnect();

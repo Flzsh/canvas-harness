@@ -1,4 +1,4 @@
-/* Canvas Harness — official provider website allowlist. MIT. */
+/* Canvas Harness — official provider website allowlist. GPL-3.0-only. */
 (function (root, factory) {
   'use strict';
   const api = factory();

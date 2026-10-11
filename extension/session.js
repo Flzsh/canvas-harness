@@ -2,7 +2,7 @@
 (function(root){
   'use strict';
   // The caller keeps Canvas visible. This session only publishes verified data.
-  function createSession({client,createStore,onSnapshot,onStatus=()=>{},onError=()=>{},maxAge=300000}){
+  function createSession({client,createStore,onSnapshot,onStatus=()=>{},onError=()=>{},maxAge=300000,prefetchedProfile=null}){
     const controller=new AbortController();
     let store,user,current,dead=false,pending=null,starting=null;
     const alive=()=>!dead&&!controller.signal.aborted;
@@ -39,13 +39,25 @@
       if(starting)return starting;
       starting=(async()=>{
         try{
-          user=await client.profile({signal:controller.signal});
+          // document_start may have an early identity hint. Begin a fresh Canvas
+          // verification now, and load only that hinted account's scoped cache
+          // in parallel. No cached content is published before verification.
+          const verifying=client.profile({signal:controller.signal});
+          const candidate=prefetchedProfile
+            ? await Promise.race([verifying,Promise.resolve(prefetchedProfile).then(
+              hint=>/^\d+$/.test(String(hint?.id??''))?hint:verifying,
+              ()=>verifying
+            )])
+            : await verifying;
           if(!alive())return;
-          store=createStore({accountId:String(user.id),origin:client.origin});
-          await store.load();
+          store=createStore({accountId:String(candidate.id),origin:client.origin});
+          const cachedLoad=(async()=>{await store.load();if(!alive())return null;return store.readCache();})();
+          const [verified,cached]=await Promise.all([verifying,cachedLoad]);
           if(!alive())return;
-          const cached=await store.readCache();
-          if(!alive())return;
+          if(String(verified.id)!==String(candidate.id)){
+            const error=Error('Your Canvas account changed. Reload Canvas to continue.');error.code='auth';throw error;
+          }
+          user=verified;
           const age=cached?Date.now()-Date.parse(cached.fetchedAt):Infinity;
           // Future/invalid timestamps and partial results always need a refresh.
           const fresh=!!cached&&Number.isFinite(age)&&age>=0&&age<maxAge&&!cached.partial;

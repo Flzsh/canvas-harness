@@ -8,7 +8,9 @@ A course gets three files. They are a set: one subject, one palette, one hand.
 | `<course>-icon.svg` | Icon | One small drawing for the course list. |
 | `<course>-border.svg` | Border | The hand-drawn frame of the course's row in the sidebar. |
 
-Upload them in **Customize workspace -> Course artwork** (choose the course, then Upload or Paste SVG for each slot).
+They reach the extension together, as one quick upload pack (`quick-upload.md`); in a pack the three slots are
+called `banner`, `icon` and `frame` (the border). They can also be uploaded one at a time in **Customize workspace ->
+Course artwork** (choose the course, then Upload or Paste SVG for each slot).
 "All courses" has the same three slots for the overview.
 
 ---

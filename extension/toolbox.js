@@ -23,7 +23,7 @@
   const courseNames=course=>root.ReserveQuickOpen.courseNames(course);
   async function save(change){try{await store.update(change);status='';return true;}catch(error){status=error.message||'The change could not be saved.';showStatus(status,true);return false;}}
   function showStatus(text,error=false){const node=dialog?.querySelector('[data-ui-status]');if(node){node.textContent=text;node.setAttribute('role',error?'alert':'status');}}
-  function notifyDock(){onDockChange({open:!dead&&!!dialog?.open,collapsed:!dead&&!!dialog?.open&&collapsed,...dockResize?.getSize()});}
+  function notifyDock(){onDockChange({open:!dead&&!!dialog?.open&&!leaving,collapsed:!dead&&!!dialog?.open&&collapsed,...dockResize?.getSize()});}
   function syncTabs(animate){toolMotion?.syncTabs(animate&&container.dataset.input!=='keyboard');}
   function syncCollapsed(value){
    collapsed=value;dialog.dataset.collapsed=String(value);
@@ -33,8 +33,8 @@
   }
   function collapse(){if(dead||!dialog?.open||collapsed)return;rememberCapture();syncCollapsed(true);dockResize?.refresh();notifyDock();dialog.querySelector('[data-ui-action="expand"]').focus({preventScroll:true});}
   function expand(){if(dead||!dialog?.open||!collapsed)return;syncCollapsed(false);dockResize?.refresh();notifyDock();toolMotion?.syncTabs(false,true);focusFirst();}
-  // A pointer close lets the sheet leave (4px down to .99 over 140ms, refresh.css) before the
-  // dialog closes; keyboard, Still-less devices that ask for reduced motion and Off close at once.
+  // Release the workspace as the sheet starts leaving, using the same 340 ms
+  // curve in refresh.css. Reopening cancels this close, without recreating tools.
   let leaving=0;
   const calm=()=>container.dataset.input!=='pointer'||container.dataset.motionStyle==='off'||!!root.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
   function close({restoreFocus=false}={}){
@@ -42,7 +42,7 @@
    const finish=()=>{leaving=0;delete dialog.dataset.leaving;if(!dialog.open)return;dialog.close();syncCollapsed(false);notifyDock();};
    if(leaving){root.clearTimeout(leaving);finish();}
    else if(calm()||typeof dialog.animate!=='function')finish();
-   else{dialog.dataset.leaving='true';leaving=root.setTimeout(finish,140);}
+   else{dialog.dataset.leaving='true';leaving=root.setTimeout(finish,340);notifyDock();}
    if(restoreFocus&&trigger?.isConnected)trigger.focus({preventScroll:true});
   }
   function init(){

@@ -30,6 +30,6 @@
  const store=ReserveStorage.createStore({accountId:user.id,origin:location.origin});await store.load();
  const shadow=document.getElementById('reserve-preview').attachShadow({mode:'open'});
  for(const [file,style] of [['literata-latin.woff2','normal'],['literata-latin-italic.woff2','italic']])document.fonts.add(new FontFace('Literata',"url('../extension/fonts/"+file+"')",{weight:'200 900',style,display:'swap'}));
- for(const file of ['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','gpa.css']){const link=document.createElement('link');link.rel='stylesheet';link.href='../extension/'+file;shadow.append(link);}
+ for(const file of ['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','selection.css','responsive-layout.css','gpa.css']){const link=document.createElement('link');link.rel='stylesheet';link.href='../extension/'+file;shadow.append(link);}
  const area=document.createElement('div');shadow.append(area);ReserveDashboard.mount(area,{snapshot,store,demo:true,refresh:async()=>snapshot,materialClient:client});
 })();

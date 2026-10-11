@@ -1,4 +1,4 @@
-/*! Canvas Harness · isolated AI panel. Original creator: Flzsh. MIT. */
+/*! Canvas Harness · isolated AI panel. Original creator: Flzsh. GPL-3.0-only. */
 (function (root, factory) {
   'use strict';
   const api = factory();
@@ -12,16 +12,18 @@
   'use strict';
   const CONTEXT_LIMIT = 100000, PROMPT_LIMIT = 20000, PDF_LIMIT = 2 * 1024 * 1024;
   const PROVIDERS = [['chatgpt', 'ChatGPT'], ['claude', 'Claude'], ['gemini', 'Gemini'], ['grok', 'Grok'], ['deepseek', 'DeepSeek'], ['kimi', 'Kimi'], ['qwen', 'Qwen'], ['zai', 'Z.ai (GLM)']];
+  const PROVIDER_ORIGINS = Object.freeze({chatgpt:['https://chatgpt.com/*'],claude:['https://claude.ai/*'],gemini:['https://gemini.google.com/*'],grok:['https://grok.com/*'],deepseek:['https://chat.deepseek.com/*'],kimi:['https://www.kimi.com/*'],qwen:['https://chat.qwen.ai/*'],zai:['https://chat.z.ai/*']});
   const string = value => typeof value === 'string' ? value : '';
   const array = value => Array.isArray(value) ? value : [];
   const errorText = error => string(error?.message) || string(error) || 'The request could not be completed.';
   const compose = (prompt, context) => [prompt.trim(), context].filter(Boolean).join('\n\n---\n\n');
+  const shouldSendKey = event => event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== 229 && !event.repeat;
 
   // Only the extension runtime port carries production prompts. The alternate
   // transport is restricted to the same-origin, direct parent on local previews.
   function createTransport(env, callbacks = {}) {
     const pending = new Map();
-    let port = null, closed = false, available = false, failure = '';
+    let port = null, portListeners = null, closed = false, available = false, failure = '', reconnectTimer = null, reconnectDelay = 250;
     const production = Boolean(env.chrome?.runtime?.id);
     let preview = false;
     try { const url = new URL(env.location.origin); preview = !production && url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname); } catch {}
@@ -30,9 +32,17 @@
       env.clearTimeout(item.timer); pending.delete(id);
       if (error) item.reject(error); else item.resolve(value);
     }
+    function cancel(id) {
+      if (!pending.has(id) || closed || !available) return;
+      const request = {id: env.crypto.randomUUID(), action: 'cancel', requestId: id};
+      try {
+        if (production) port?.postMessage(request);
+        else env.parent.postMessage({type: 'ch-ai-request', request}, env.location.origin);
+      } catch {} // The request also becomes unusable when its runtime port closes.
+    }
     function arm(id, item) {
       env.clearTimeout(item.timer);
-      item.timer = env.setTimeout(() => settle(id, new Error('The request timed out. Review your draft before trying again.')), item.timeout);
+      item.timer = env.setTimeout(() => { cancel(id); settle(id, new Error('The request timed out. Review your draft before trying again.')); }, item.timeout);
       item.timer?.unref?.();
     }
     function receive(message) {
@@ -44,18 +54,37 @@
       else if (message.ok === false) settle(message.id, new Error(string(message.error) || 'The background request failed.'));
     }
     function disconnected() {
-      if (closed) return; available = false; closed = true;
-      const reason = string(env.chrome?.runtime?.lastError?.message) || 'The panel disconnected. Copy your draft before reloading Canvas Harness.';
+      if (closed) return; available = false; port = null;
+      const reason = 'Reconnecting to Canvas. Your question is preserved; interrupted messages will not be sent again.';
       for (const id of [...pending.keys()]) settle(id, new Error(reason));
       callbacks.disconnect?.(reason);
+      scheduleReconnect();
+    }
+    function scheduleReconnect() {
+      if (closed || reconnectTimer !== null) return;
+      reconnectTimer = env.setTimeout(() => { reconnectTimer = null; connect(); }, reconnectDelay);
+      reconnectTimer?.unref?.(); reconnectDelay = Math.min(5000, reconnectDelay * 2);
+    }
+    function connect() {
+      if (closed || port) return;
+      try {
+        const next = env.chrome.runtime.connect({name: 'ch-ai-panel'});
+        port = next; available = true; failure = '';
+        const onMessage = message => { if (port === next && !closed) { reconnectDelay = 250; receive(message); } };
+        const onDisconnect = () => { void env.chrome.runtime.lastError; if (port === next) disconnected(); };
+        portListeners = {onMessage, onDisconnect};
+        next.onMessage.addListener(onMessage); next.onDisconnect.addListener(onDisconnect);
+        callbacks.connect?.();
+      } catch (error) {
+        available = false; failure = errorText(error); callbacks.disconnect?.('Connection unavailable. Your draft is preserved. Reconnecting…'); scheduleReconnect();
+      }
     }
     const onWindowMessage = event => {
       if (event.source === env.parent && event.origin === env.location.origin && event.data?.type === 'ch-ai-reply') receive(event.data.reply);
     };
     try {
       if (production) {
-        port = env.chrome.runtime.connect({name: 'ch-ai-panel'});
-        port.onMessage.addListener(receive); port.onDisconnect.addListener(disconnected); available = true;
+        connect();
       } else if (preview) { env.addEventListener('message', onWindowMessage); available = true; }
       else failure = 'Open this panel from the Canvas Harness extension. Its connection is unavailable here.';
     } catch (error) { failure = errorText(error); }
@@ -67,7 +96,7 @@
           if (!available || closed) { reject(new Error(failure || 'The panel disconnected. Copy your draft before reloading Canvas Harness.')); return; }
           if (preview && ['native', 'web'].includes(action)) { reject(new Error('Artificial preview cannot sign in, contact AI, or inject into a provider website.')); return; }
           if (pending.has(id)) { reject(new Error('Duplicate request identifier.')); return; }
-          const timeout = options.timeout || (action === 'native' && data.op === 'authenticate' ? 330000 : action === 'native' && data.op === 'chat' ? 180000 : action === 'collect' || action === 'pdf' || action === 'load-course' ? 60000 : 15000);
+          const timeout = options.timeout || (action === 'web' && data.op === 'inject' ? 60000 : action === 'collect' || action === 'pdf' || action === 'load-course' ? 60000 : 15000);
           const item = {resolve, reject, onDelta: options.onDelta, timeout}; pending.set(id, item); arm(id, item);
           const request = {...data, id, action};
           try {
@@ -77,11 +106,12 @@
         });
         promise.id = id; return promise;
       },
-      abort(id, reason = new Error('Request stopped.')) { settle(id, reason); },
+      abort(id, reason = new Error('Request stopped.')) { cancel(id); settle(id, reason); },
       dispose() {
         for (const id of [...pending.keys()]) settle(id, new Error('The panel closed.'));
         closed = true; available = false;
-        if (production && port) { port.onMessage.removeListener?.(receive); port.onDisconnect.removeListener?.(disconnected); try { port.disconnect(); } catch {} }
+        if (reconnectTimer !== null) env.clearTimeout(reconnectTimer);
+        if (production && port) { port.onMessage.removeListener?.(portListeners?.onMessage); port.onDisconnect.removeListener?.(portListeners?.onDisconnect); try { port.disconnect(); } catch {} }
         if (preview) env.removeEventListener('message', onWindowMessage);
       }
     };
@@ -91,37 +121,22 @@
     let result = value;
     for (let n = 0; n < 3; n++) {
       if (!result || typeof result !== 'object') break;
-      if (result.ok === false || result.type === 'error' || result.kind === 'error' || result.error) throw new Error(errorText(result.error) === 'The request could not be completed.' ? string(result.message) || 'The companion request failed.' : errorText(result.error));
+      if (result.ok === false || result.type === 'error' || result.kind === 'error' || result.error) throw new Error(errorText(result.error) === 'The request could not be completed.' ? string(result.message) || 'The request failed.' : errorText(result.error));
       if (result.result && typeof result.result === 'object') result = result.result;
       else if (result.data && typeof result.data === 'object' && !('connected' in result) && !('models' in result) && !('text' in result)) result = result.data;
       else break;
     }
     return result || {};
   }
-  function normalizeNative(value) {
-    const result = unwrap(value);
-    return {...result, connected: result.connected === true && result.planUsageEnabled !== false,
-      label: string(result.account?.label) || string(result.account?.email) || string(result.label) || string(result.email) || 'ChatGPT account'};
-  }
-  function normalizeModels(value) {
-    const result = unwrap(value), seen = new Set();
-    return array(Array.isArray(result) ? result : result.models).flatMap(model => {
-      if (!model || ('visibility' in model && !['list', 'visible', true].includes(model.visibility))) return [];
-      const slug = string(model.slug) || string(model.id);
-      if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(slug) || seen.has(slug)) return [];
-      seen.add(slug); return [{slug, name: string(model.display_name) || string(model.name) || slug}];
-    });
-  }
-
   function createController({transport, permissions, clipboard, onChange = () => {}, env = globalThis}) {
     const state = {
-      catalog: null, selected: new Set(), knownSources: new Map(), all: false, courseFilter: '',
+      catalog: null, selected: new Set(), knownSources: new Map(), all: false, includeAssignmentPdfs: true, courseFilter: '',
       pdfs: [], draft: '', history: [], messages: [], context: null, reviewAccepted: null,
-      provider: 'chatgpt', route: 'web', connected: false, accountLabel: '', models: [], model: '',
+      provider: 'chatgpt', autoSend: false,
       demo: transport.preview, online: transport.available, busy: '', notice: '', error: '', webStatus: '',
-      fallback: '', manualCopy: false, revision: 0, scopeVersion: 0, activeChat: null
+      fallback: '', manualCopy: false, revision: 0, scopeVersion: 0
     };
-    let operation = 0, websiteCheck = 0, dead = false;
+    let operation = 0, websiteCheck = 0, dead = false, preferenceLoaded = false;
     const changed = () => { if (!dead) onChange(state); };
     const fail = message => { throw new Error(message); };
     const providerName = () => PROVIDERS.find(p => p[0] === state.provider)?.[1] || 'provider';
@@ -137,37 +152,41 @@
       catch (error) { if (!dead && ticket === operation) state.error = errorText(error); return false; }
       finally { if (!dead && ticket === operation) { state.busy = ''; changed(); } }
     }
-    function stopRemote(chat) {
-      if (!chat) return Promise.resolve();
-      transport.abort?.(chat.id, new Error('Response stopped.'));
-      return transport.request('native', {op: 'cancel', requestId: chat.id}, {timeout: 10000}).then(unwrap);
-    }
     function setCatalog(catalog) {
       if (!catalog || typeof catalog.scopeKey !== 'string' || !catalog.scopeKey) { state.error = 'Canvas returned an invalid source catalog. Reload Canvas Harness.'; changed(); return; }
-      const previous = state.catalog, switched = previous?.scopeKey !== catalog.scopeKey;
+      const previous = state.catalog, switched = previous?.scopeKey !== catalog.scopeKey || previous?.active?.id !== catalog.active?.id || previous?.courseId !== catalog.courseId || Boolean(previous?.demo) !== Boolean(catalog.demo);
+      const priorSelection = JSON.stringify([...state.selected].sort());
+      if (!preferenceLoaded && typeof catalog.autoSend === 'boolean') { state.autoSend = catalog.autoSend; preferenceLoaded = true; }
+      if (!state.online && transport.available) { state.online = true; state.error = ''; state.notice = 'Reconnected. Your question is ready; click Send when you want to continue.'; }
       if (switched) {
-        const chat = state.activeChat; operation++; state.scopeVersion++; state.busy = ''; state.activeChat = null;
-        state.selected = new Set(catalog.active?.id ? [catalog.active.id] : []);
+        operation++; state.scopeVersion++; state.busy = '';
+        state.selected = new Set(array(catalog.selectedIds ?? (catalog.active?.id ? [catalog.active.id] : [])));
         state.knownSources = new Map(); state.all = false; state.history = []; state.messages = []; state.pdfs = [];
         state.courseFilter = string(catalog.active?.courseId) || (catalog.courseId !== 'all' ? string(catalog.courseId) : '');
-        if (previous) state.notice = 'Canvas view changed. Conversation and PDFs were cleared; your unsent draft is still here.';
-        if (chat) void stopRemote(chat).catch(error => { if (!dead) { state.error = 'Cancellation was not confirmed: ' + errorText(error); changed(); } });
+        if (previous) state.notice = 'Canvas view changed. Selected material changed; your question is still here.';
       }
+      if (Array.isArray(catalog.selectedIds)) state.selected = new Set(catalog.selectedIds);
       state.catalog = {...catalog, sources: array(catalog.sources).filter(source => source && typeof source.id === 'string'), courses: array(catalog.courses)};
       for (const source of state.catalog.sources) state.knownSources.set(source.id, source);
       state.demo = transport.preview || catalog.demo === true;
-      if (state.demo) { state.connected = false; state.models = []; state.model = ''; }
-      invalidate(); changed();
+      // Loading fresh assignment metadata republishes the catalog. It must not
+      // cancel the very collection that loaded it; actual scope/selection changes do.
+      if (switched || priorSelection !== JSON.stringify([...state.selected].sort()) || !state.busy) invalidate();
+      changed();
     }
     function selectedIds() { return state.all && state.catalog?.active?.id ? [state.catalog.active.id] : [...state.selected]; }
     function promptValid() { if (state.draft.length > PROMPT_LIMIT) fail('Keep your prompt within 20,000 characters. Your draft has been preserved.'); }
     async function collect() {
       if (!state.catalog) fail('Wait for the Canvas source list, then try again.');
       const revision = state.revision, scopeKey = state.catalog.scopeKey, ids = selectedIds();
-      const raw = await transport.request('collect', {ids, all: state.all && Boolean(state.catalog.active)});
+      const raw = await transport.request('collect', {ids, all: state.all && Boolean(state.catalog.active), includeAssignmentPdfs: state.includeAssignmentPdfs});
       if (dead || revision !== state.revision || scopeKey !== state.catalog?.scopeKey || raw?.scopeKey !== scopeKey) fail('The Canvas view or selected context changed. Review the current scope and try again.');
       const included = array(raw.included).map(source => ({...source}));
-      if (!state.all && (included.some(source => !ids.includes(source.id)) || (!ids.length && string(raw.text).trim()))) fail('Unexpected or unselected context was returned. Nothing was shared. Refresh the selected sources and try again.');
+      const allowedAttachment = source => {
+        const parent = state.knownSources.get(source.attachmentOf);
+        return state.includeAssignmentPdfs && ids.includes(source.attachmentOf) && parent?.kind === 'assignment' && parent.courseId === source.courseId && source.kind === 'file' && source.mime === 'application/pdf';
+      };
+      if (!state.all && (included.some(source => !ids.includes(source.id) && !allowedAttachment(source)) || (!ids.length && string(raw.text).trim()))) fail('Unexpected or unselected context was returned. Nothing was shared. Refresh the selected sources and try again.');
       const issues = array(raw.omitted).map(item => ({title: string(item?.title) || 'Source', reason: string(item?.reason) || 'Source unavailable'}));
       const addIssue = (title, reason) => { if (!issues.some(item => item.title === title && item.reason === reason)) issues.push({title, reason}); };
       for (const source of included) {
@@ -203,103 +222,22 @@
       }
       return false;
     }
-    async function modelsImpl() {
-      const models = normalizeModels(await transport.request('native', {op: 'models'}));
-      state.models = models;
-      if (!models.some(model => model.slug === state.model)) state.model = models[0]?.slug || '';
-      if (!models.length) fail('Your account returned no available models. Refresh models or use Alongside.');
-    }
-    function applyConnection(value) {
-      const result = normalizeNative(value); state.connected = result.connected; state.accountLabel = result.connected ? result.label : '';
-      if (!state.connected) { state.models = []; state.model = ''; }
-      return result;
-    }
-    async function refreshConnection() {
-      if (state.demo || !state.online) return false;
-      return run('Checking connection', async alive => {
-        if (!permissions?.contains || !(await permissions.contains({permissions: ['nativeMessaging']}))) return false;
-        const result = await transport.request('native', {op: 'status'}); if (!alive()) return false;
-        applyConnection(result); if (state.connected) await modelsImpl(); return state.connected;
-      });
-    }
-    function connect() {
-      return run('Connecting', async alive => {
-        realOnly();
-        if (!permissions?.request) fail('Native messaging permission is unavailable. Open this panel in the installed extension.');
-        // This is the first asynchronous operation, invoked directly by click.
-        const granted = await permissions.request({permissions: ['nativeMessaging']});
-        if (!alive()) return false;
-        if (granted !== true) fail('Native messaging permission was not granted. You can continue with Alongside.');
-        let result = await transport.request('native', {op: 'status'}); if (!alive()) return false;
-        if (!normalizeNative(result).connected) {
-          unwrap(await transport.request('native', {op: 'authenticate', reauthorize: result.planUsageEnabled === false})); if (!alive()) return false;
-          result = await transport.request('native', {op: 'status'}); if (!alive()) return false;
-        }
-        if (!applyConnection(result).connected) fail('ChatGPT has not confirmed an authorized connection. Complete companion setup and sign in again.');
-        await modelsImpl(); state.notice = 'ChatGPT connected. Choose a model and send when ready.'; return true;
-      });
-    }
-    async function send() {
-      return run('Preparing context', async (alive, ticket) => {
-        realOnly(); promptValid();
-        if (state.provider !== 'chatgpt' || state.route !== 'connected') fail('Choose ChatGPT and Connected chat to send here.');
-        if (!state.connected) fail('Sign in with ChatGPT before sending, or use Alongside.');
-        if (!state.model || !state.models.some(model => model.slug === state.model)) fail('Choose an available account model before sending.');
-        const prompt = state.draft; if (!prompt.trim()) fail('Write a question before sending.');
-        const context = await collect(); if (!alive() || needsReview(context)) return false;
-        if (state.draft !== prompt) fail('Your draft changed while context was loading. Review it and send again.');
-        const content = compose(prompt, context.text), id = env.crypto.randomUUID();
-        const user = {id: id + '-user', role: 'user', content: prompt, status: 'sent'};
-        const assistant = {id: id + '-assistant', role: 'assistant', content: '', status: 'streaming'};
-        const chat = {id, user, assistant, ticket}; state.activeChat = chat; state.history.push(user, assistant); state.busy = 'Replying'; changed();
-        try {
-          const raw = await transport.request('native', {op: 'chat', scopeKey:context.scopeKey, messages: [...state.messages, {role: 'user', content}], model: state.model}, {
-            id, onDelta(text) {
-              if (!alive() || state.activeChat !== chat) return;
-              if (assistant.content.length + text.length > 1000000) { transport.abort?.(id, new Error('Response exceeded the panel text limit.')); return; }
-              assistant.content += text; changed();
-            }
-          });
-          if (!alive() || state.activeChat !== chat) return false;
-          const result = unwrap(raw);
-          if (result.cancelled || ['cancelled', 'failed', 'incomplete'].includes(result.status) || (typeof result.reason === 'string' && result.reason !== 'completed')) fail('The response did not complete. Your draft is still here.');
-          const answer = typeof result.text === 'string' ? result.text : assistant.content;
-          if (!answer.trim()) fail('The companion returned no answer text. Your draft is still here.');
-          if (answer.length > 1000000) fail('Response exceeded the panel text limit.');
-          assistant.content = answer; assistant.status = 'complete';
-          // Re-attach only the current selection on the next request. Repeated
-          // document bundles waste space and would resend sources the user removed.
-          state.messages.push({role: 'user', content: prompt}, {role: 'assistant', content: answer});
-          if (state.draft === prompt) state.draft = '';
-          state.notice = 'Response complete.'; return true;
-        } catch (error) {
-          if (alive() && state.activeChat === chat) {
-            user.status = 'failed'; assistant.status = 'error'; assistant.error = errorText(error);
-            void stopRemote(chat).catch(() => {});
-          }
-          throw error;
-        } finally { if (state.activeChat === chat) state.activeChat = null; }
-      });
-    }
-    async function cancel() {
-      const chat = state.activeChat; if (!chat) return false;
-      operation++; const ticket = operation; state.activeChat = null; state.busy = 'Stopping'; chat.assistant.status = 'stopped'; chat.user.status = 'stopped'; changed();
-      try { await stopRemote(chat); if (ticket === operation) state.notice = 'Response stopped. Your draft is still here.'; return true; }
-      catch (error) { if (ticket === operation) state.error = 'Stopped displaying the response; remote cancellation was not confirmed: ' + errorText(error); return false; }
-      finally { if (ticket === operation) { state.busy = ''; changed(); } }
-    }
     async function inject() {
       return run('Preparing context', async alive => {
         realOnly(); promptValid();
+        // Request at the initiating click, before collection can consume the gesture.
+        const origins = PROVIDER_ORIGINS[state.provider];
+        if (!permissions?.request || await permissions.request({permissions: ['scripting'], origins}) !== true) fail('Website access was not granted. Your question stays here; you can copy it instead.');
+        if (!alive()) return false;
         const prompt = state.draft, provider = state.provider, context = await collect();
         if (!alive() || needsReview(context)) return false;
-        const text = compose(prompt, context.text); if (!text.trim()) fail('Choose some context or write a prompt to inject.');
-        state.fallback = text; state.busy = 'Injecting'; changed();
-        const result = unwrap(await transport.request('web', {op: 'inject', provider, text, scopeKey:context.scopeKey}));
+        const text = compose(prompt, context.text); if (!text.trim()) fail('Choose some context or write a prompt to send.');
+        state.fallback = text; state.busy = 'Opening AI and inserting your draft…'; changed();
+        const result = unwrap(await transport.request('web', {op: 'inject', provider, text, autoSend:state.autoSend, scopeKey:context.scopeKey}));
         if (!alive()) return false;
         state.webStatus = string(result.message);
-        if (result.status !== 'injected') fail(string(result.message) || 'The website draft was not available. Copy the prepared text and open the website below.');
-        state.fallback = ''; state.notice = 'Inserted into ' + providerName() + '. Review its draft and send there when ready.'; return true;
+        if (!['injected','sent','send-uncertain'].includes(result.status)) fail(string(result.message) || 'The website draft was not available. Copy the prepared text and open the website below.');
+        state.fallback = ''; state.notice = string(result.message) || 'Inserted into ' + providerName() + '. Review its draft there.'; return true;
       });
     }
     async function openWebsite() {
@@ -356,42 +294,34 @@
       });
     }
     const controller = {
-      state, setCatalog, connect, refreshConnection, send, cancel, inject, openWebsite, copy, attach,
-      initialize: async () => { await run('Loading sources', async alive => { const catalog = await transport.request('catalog'); if (alive()) setCatalog(catalog); }); await refreshConnection(); },
+      state, setCatalog, inject, openWebsite, copy, attach,
+      initialize: async () => { await run('Loading sources', async alive => { const catalog = await transport.request('catalog'); if (alive()) setCatalog(catalog); }); },
       preview: () => run('Reading selected context', async () => { await collect(); state.notice = 'Preview ready. Nothing has been sent to a provider.'; return true; }),
       setSelection(id, checked) { if (state.busy || state.all) return; if (!state.knownSources.has(id) && !state.selected.has(id)) return; if (checked) state.selected.add(id); else state.selected.delete(id); invalidate(); changed(); },
       setAll(checked) { if (state.busy) return; state.all = checked === true && Boolean(state.catalog?.active); invalidate(); changed(); },
+      setAssignmentPdfs(checked) { if (state.busy) return; state.includeAssignmentPdfs = checked === true; invalidate(); changed(); },
       setDraft(text) { state.draft = string(text); state.fallback = ''; state.manualCopy = false; changed(); },
-      setProvider(provider) { if (state.busy || !PROVIDERS.some(p => p[0] === provider)) return; state.provider = provider; if (provider !== 'chatgpt') state.route = 'web'; state.fallback = ''; state.webStatus = ''; state.notice = ''; state.error = ''; changed(); void checkWebsite(); },
-      setMode(mode) { if (state.busy || !['web', 'connected'].includes(mode) || (mode === 'connected' && state.provider !== 'chatgpt')) return; state.route = mode; state.notice = ''; state.error = ''; changed(); },
-      setModel(slug) { if (!state.busy && state.models.some(model => model.slug === slug)) { state.model = slug; changed(); } },
+      setAutoSend(value) { if (!state.busy) {
+        state.autoSend = value === true; preferenceLoaded = true; changed();
+        if (state.online) void transport.request('preference',{autoSend:state.autoSend}).catch(()=>{state.notice='This choice applies to the open panel, but could not be saved.';changed();});
+      } },
+      setProvider(provider) { if (state.busy || !PROVIDERS.some(p => p[0] === provider)) return; state.provider = provider; state.fallback = ''; state.webStatus = ''; state.notice = ''; state.error = ''; changed(); void checkWebsite(); },
       setCourse(courseId) { if (!state.busy && (!courseId || state.catalog?.courses.some(course => String(course.id) === courseId))) { state.courseFilter = courseId; changed(); } },
       acceptIssues(value) { if (!state.busy) { state.reviewAccepted = value && state.context ? state.context.fingerprint : null; changed(); } },
       removePDF(id) { if (state.busy) return; state.pdfs = state.pdfs.filter(pdf => pdf.id !== id); invalidate(); changed(); },
       loadCourse: () => run('Loading course materials', async alive => { if (!state.courseFilter) fail('Choose a course first.'); const catalog = await transport.request('load-course', {courseId: state.courseFilter}); if (alive()) setCatalog(catalog); }),
-      loadModels: () => run('Loading models', async () => { realOnly(); if (!state.connected) fail('Sign in before loading models.'); await modelsImpl(); }),
-      signout: () => run('Signing out', async alive => { realOnly(); unwrap(await transport.request('native', {op: 'signout'})); if (!alive()) return; state.connected = false; state.models = []; state.model = ''; state.accountLabel = ''; state.history = []; state.messages = []; state.notice = 'Signed out of the companion. Your unsent draft is still here.'; }),
       clear() { if (state.busy) return; state.history = []; state.messages = []; state.notice = 'Conversation cleared from this panel.'; changed(); },
-      async close() {
-        const chat = state.activeChat; operation++; state.busy = ''; state.activeChat = null;
-        // Closing must invalidate an in-flight collect before it can share text.
-        if (chat) {
-          chat.assistant.status = 'stopped'; chat.user.status = 'stopped';
-          void stopRemote(chat).catch(error => { if (!dead) { state.error = 'Cancellation was not confirmed: ' + errorText(error); changed(); } });
-        }
-        changed();
-        try { await transport.request('close'); return true; }
-        catch (error) { state.error = errorText(error); changed(); return false; }
-      },
-      disconnected(reason) { operation++; state.online = false; state.connected = false; state.models = []; state.model = ''; state.busy = ''; if (state.activeChat) { state.activeChat.assistant.status = 'error'; state.activeChat.assistant.error = reason; state.activeChat = null; } state.error = reason; changed(); },
-      dispose() { const chat = state.activeChat; dead = true; operation++; state.activeChat = null; if (chat) void stopRemote(chat).catch(() => {}); }
+      async close() { operation++; state.busy=''; changed(); try { await transport.request('close'); return true; } catch(error) {state.error=errorText(error);changed();return false;} },
+      disconnected(reason) {operation++;state.online=false;state.busy='';state.error=reason;changed();},
+      dispose() {dead=true;operation++;}
+
     };
     return controller;
   }
 
   function chromePermissions(env) {
     const invoke = (method, value) => new Promise((resolve, reject) => {
-      if (!env.chrome?.permissions?.[method]) { if (method === 'contains') resolve(false); else reject(new Error('Native messaging permission is unavailable.')); return; }
+      if (!env.chrome?.permissions?.[method]) { if (method === 'contains') resolve(false); else reject(new Error('Website permission is unavailable in this preview.')); return; }
       try {
         const task = env.chrome.permissions[method](value, allowed => { const error = env.chrome.runtime?.lastError; if (error) reject(new Error(error.message)); else resolve(allowed); });
         if (task?.then) task.then(resolve, reject);
@@ -401,142 +331,63 @@
   }
 
   function mount(env) {
-    const document = env.document, byId = id => document.getElementById(id);
-    if (!byId('composer')) return null;
-    const providerLabels = new Map(PROVIDERS);
-    for (const provider of array(env.CanvasHarnessProviders?.list)) if (providerLabels.has(provider.id) && typeof provider.label === 'string') providerLabels.set(provider.id, provider.label);
-    const make = (tag, text, className) => { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; };
-    function options(select, rows, selected) {
-      const key = JSON.stringify(rows); if (select.dataset.options !== key) { select.replaceChildren(...rows.map(([value, label]) => { const option = make('option', label); option.value = value; return option; })); select.dataset.options = key; } select.value = selected;
+    const document=env.document, byId=id=>document.getElementById(id);
+    if(!byId('composer'))return null;
+    const make=(tag,text,cls)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(cls)node.className=cls;return node;};
+    for(const [id,label] of PROVIDERS.slice(3)){const option=make('option',label);option.value=id;byId('more-providers').append(option);}
+    let controller;
+    const transport=createTransport(env,{catalog:data=>controller?.setCatalog(data),disconnect:reason=>controller?.disconnected(reason),connect:()=>{ if(controller)void controller.initialize(); }});
+    function render(state){
+      const busy=Boolean(state.busy),catalog=state.catalog,name=PROVIDERS.find(x=>x[0]===state.provider)[1];
+      document.documentElement.dataset.theme=catalog?.theme==='dark'?'dark':'light';
+      document.documentElement.dataset.motion=['off','reduced','none','still'].includes(catalog?.motion)?'off':'standard';
+      byId('demo-label').hidden=!state.demo;
+      for(const button of document.querySelectorAll('[data-provider]')){button.setAttribute('aria-pressed',String(button.dataset.provider===state.provider));button.disabled=busy;}
+      byId('more-providers').value=PROVIDERS.slice(3).some(x=>x[0]===state.provider)?state.provider:'';byId('more-providers').disabled=busy;
+      byId('sharing-note').textContent=state.autoSend?'Send opens '+name+', adds your question and selected material, then submits it.':'Send opens '+name+' with your question and selected material. Review and submit the draft there, or enable automatic sending below.';
+      byId('auto-send').checked=state.autoSend;byId('auto-send').disabled=busy;
+      const chosen=[...state.selected].map(id=>state.knownSources.get(id)).filter(Boolean);
+      byId('selection-summary').textContent=chosen.length?chosen.length+' selected on Canvas':catalog?.active?'Opened assignment':'No Canvas items selected';
+      byId('selected-items').replaceChildren(...chosen.map(source=>{const li=make('li');li.append(make('strong',source.title),make('small',source.courseName||source.kind));return li;}));
+      byId('scope-hint').textContent=chosen.length?'Change your selection using the circles on Canvas.':'Use the circles on Canvas to choose assignments or material. You can also ask a question without context.';
+      byId('all-row').hidden=!catalog?.active||chosen.length!==1||chosen[0]?.id!==catalog.active.id;
+      byId('all-linked').checked=state.all;byId('all-linked').disabled=busy;
+      byId('assignment-pdfs-row').hidden=!chosen.some(source=>source.kind==='assignment');
+      byId('assignment-pdfs').checked=state.includeAssignmentPdfs;byId('assignment-pdfs').disabled=busy;
+      byId('pdf-list').replaceChildren(...state.pdfs.map(pdf=>{const li=make('div',undefined,'pdf-item');li.append(make('span',pdf.title));const remove=make('button','Remove','quiet-button');remove.type='button';remove.disabled=busy;remove.addEventListener('click',()=>controller.removePDF(pdf.id));li.append(remove);return li;}));
+      const context=state.context;if(!context)byId('context-count').textContent='';byId('context-preview').hidden=!context;
+      if(context){byId('context-text').textContent=context.text;byId('context-count').textContent=context.characters.toLocaleString()+' characters';byId('issue-list').replaceChildren(...context.issues.map(x=>make('li',x.title+': '+x.reason)));byId('context-issues').hidden=!context.issues.length;if(context.issues.length)byId('context-details').open=true;}
+      byId('accept-issues').checked=Boolean(context&&state.reviewAccepted===context.fingerprint);byId('accept-issues').disabled=busy;
+      byId('fallback').hidden=!state.fallback;byId('fallback-text').value=state.fallback;
+      byId('notice').textContent=state.busy||state.notice;byId('notice').hidden=!(state.busy||state.notice);
+      byId('error').textContent=state.error;byId('error').hidden=!state.error;
+      if(byId('prompt').value!==state.draft)byId('prompt').value=state.draft;
+      byId('prompt').disabled=busy;byId('prompt-count').textContent=state.draft.length.toLocaleString()+' / 20,000';
+      byId('send').textContent=busy?'Preparing…':!state.online?'Reconnecting…':'Send ↗';
+      byId('send').disabled=busy||!state.online||state.demo||!catalog||(!state.draft.trim()&&!state.selected.size&&!state.pdfs.length);
+      for(const id of ['preview','composer-attach','copy','copy-fallback'])byId(id).disabled=busy;
+      for(const id of ['open-website','open-fallback'])byId(id).disabled=busy||state.demo||!state.online;
+      if(state.manualCopy&&!busy){byId('fallback-text').focus();byId('fallback-text').select();}
     }
-    options(byId('more-providers'), [['', 'More'], ...PROVIDERS.slice(3).map(([id]) => [id, providerLabels.get(id)])], '');
-    for (const button of document.querySelectorAll('[data-provider]')) button.textContent = providerLabels.get(button.dataset.provider);
-    const setText = (id, value) => { const node = byId(id); if (node.textContent !== value) node.textContent = value; };
-    const hidden = (id, value) => { byId(id).hidden = Boolean(value); };
-    let controller, lastContext = null, sourceKey = '', historyNodes = new Map();
-    const transport = createTransport(env, {catalog: data => controller?.setCatalog(data), disconnect: reason => controller?.disconnected(reason)});
-    function render(state) {
-      const busy = Boolean(state.busy), connectedMode = state.route === 'connected', name = providerLabels.get(state.provider), catalog = state.catalog;
-      const scrollbox = byId('scrollbox'), nearBottom = scrollbox.scrollHeight - scrollbox.scrollTop - scrollbox.clientHeight < 85;
-      document.documentElement.dataset.theme = catalog?.theme === 'dark' ? 'dark' : 'light';
-      document.documentElement.dataset.motion = ['off', 'reduced', 'none', 'still'].includes(catalog?.motion) ? 'off' : 'standard';
-      setText('scope-label', catalog?.active ? [catalog.active.courseName, catalog.active.title].filter(Boolean).join(' · ') : 'Home · Choose what you share');
-      byId('scope-label').title = byId('scope-label').textContent;
-      hidden('demo-label', !state.demo); hidden('website-info', connectedMode); hidden('connection-info', !connectedMode); hidden('conversation', !connectedMode);
-      for (const button of document.querySelectorAll('[data-provider]')) { button.setAttribute('aria-pressed', String(button.dataset.provider === state.provider)); button.disabled = busy; }
-      byId('more-providers').value = PROVIDERS.slice(3).some(p => p[0] === state.provider) ? state.provider : '';
-      byId('more-providers').parentElement.dataset.active = String(Boolean(byId('more-providers').value));
-      byId('more-providers').disabled = busy;
-      byId('route-web').setAttribute('aria-pressed', String(!connectedMode)); byId('route-connected').setAttribute('aria-pressed', String(connectedMode));
-      byId('route-web').disabled = busy; byId('route-connected').disabled = busy || state.provider !== 'chatgpt';
-      byId('route-connected').title = state.provider === 'chatgpt' ? 'Chat here using your optional native companion' : 'Connected chat is available for ChatGPT';
-      setText('website-name', name); setText('sharing-note', 'Selected context goes to ' + name + ' when you inject.');
-      setText('website-status', state.webStatus); hidden('website-status', !state.webStatus);
-      setText('account-label', state.connected ? state.accountLabel + ' · Connected' : 'ChatGPT is not connected');
-      byId('connection-dot').dataset.connected = String(state.connected);
-      setText('connection-help', state.demo ? 'Artificial preview cannot sign in or request AI responses.' : state.connected ? 'Selected context and this conversation go to ChatGPT when you send.' : 'Use the optional companion and official Sign in with ChatGPT to chat here.');
-      hidden('connect', state.connected); hidden('signout', !state.connected); hidden('model-row', !state.connected);
-      options(byId('model'), state.models.length ? state.models.map(model => [model.slug, model.name]) : [['', 'No models available']], state.model);
-      byId('model').disabled = busy || !state.models.length;
-      byId('connect').disabled = busy || state.demo || !state.online;
-      byId('signout').disabled = busy; byId('refresh-models').disabled = busy;
-      hidden('clear', !connectedMode || !state.history.length); byId('clear').disabled = busy;
-      const count = (state.all ? 1 : state.selected.size) + state.pdfs.length;
-      setText('selection-summary', state.all ? 'Assignment + linked materials' : count ? count + (count === 1 ? ' source selected' : ' sources selected') : 'Nothing selected');
-      setText('scope-hint', catalog?.active ? 'Only this opened assignment starts selected. Add or remove sources before sharing.' : 'Choose the material to share. Home starts with nothing selected.');
-      options(byId('course'), [['', 'Choose a course'], ...array(catalog?.courses).map(course => [String(course.id), string(course.name)])], state.courseFilter);
-      byId('course').disabled = busy; byId('load-course').disabled = busy || !state.courseFilter || !state.online;
-      hidden('all-row', !catalog?.active); byId('all-linked').checked = state.all; byId('all-linked').disabled = busy;
-      const currentSources = new Map(array(catalog?.sources).map(source => [source.id, source]));
-      const rows = [...currentSources.values()].filter(source => !state.courseFilter || String(source.courseId) === state.courseFilter || state.selected.has(source.id));
-      for (const id of state.selected) if (!currentSources.has(id)) rows.push(state.knownSources.get(id) || {id, title: 'Selected source unavailable'});
-      const nextSourceKey = JSON.stringify([rows, [...state.selected], state.all, busy, state.pdfs.map(pdf => [pdf.id, pdf.title, pdf.pages, pdf.totalPages, pdf.warnings, pdf.truncated])]);
-      if (nextSourceKey !== sourceKey) {
-        sourceKey = nextSourceKey; const focused = document.activeElement?.dataset?.sourceId;
-        byId('sources').replaceChildren(...rows.map(source => {
-          const missing = !currentSources.has(source.id), label = make('label', undefined, 'check-row' + (missing ? ' source-missing' : ''));
-          const input = make('input'); input.type = 'checkbox'; input.dataset.sourceId = source.id; input.checked = state.all ? source.id === catalog?.active?.id : state.selected.has(source.id); input.disabled = busy || state.all;
-          const span = make('span', string(source.title) || 'Untitled source');
-          span.append(make('small', missing ? 'No longer available; uncheck or review the omission.' : [string(source.kind) || 'Source', source.loaded ? 'Text ready' : 'Read on preview', source.courseName].filter(Boolean).join(' · ')));
-          label.append(input, span); input.addEventListener('change', () => controller.setSelection(source.id, input.checked)); return label;
-        }));
-        if (focused) [...byId('sources').querySelectorAll('input')].find(input => input.dataset.sourceId === focused)?.focus({preventScroll: true});
-        byId('pdf-list').replaceChildren(...state.pdfs.map(pdf => {
-          const row = make('div', undefined, 'pdf-item'), label = make('div', pdf.title);
-          label.append(make('small', `${pdf.pages} page${pdf.pages === 1 ? '' : 's'} read` + (pdf.totalPages > pdf.pages ? ` of ${pdf.totalPages}` : '') + (pdf.truncated || pdf.warnings.length ? ' · Review warnings' : ' · Read locally')));
-          const remove = make('button', '×', 'icon-button'); remove.type = 'button'; remove.disabled = busy; remove.setAttribute('aria-label', 'Remove ' + pdf.title); remove.addEventListener('click', () => controller.removePDF(pdf.id)); row.append(label, remove); return row;
-        }));
-      }
-      hidden('empty-sources', rows.length > 0);
-      byId('preview').disabled = busy || !catalog || !state.online;
-      for (const id of ['attach', 'composer-attach', 'pdf-input']) byId(id).disabled = busy || !catalog || !state.online;
-      hidden('context-preview', !state.context);
-      if (lastContext !== state.context) {
-        lastContext = state.context;
-        if (state.context) {
-          const context = state.context;
-          setText('context-count', context.characters.toLocaleString() + ' characters');
-          setText('context-text', context.text || 'No context selected. Only your prompt will be shared.');
-          byId('included-sources').replaceChildren(...context.included.map(source => make('li', (string(source.title) || 'Source') + (source.truncated ? ' · Truncated' : ''))));
-          byId('issue-list').replaceChildren(...context.issues.map(issue => make('li', issue.title + ': ' + issue.reason)));
-          hidden('context-issues', !context.issues.length);
-          if (context.issues.length) byId('context-details').open = true;
-        }
-      }
-      byId('accept-issues').checked = Boolean(state.context && state.reviewAccepted === state.context.fingerprint); byId('accept-issues').disabled = busy;
-      hidden('empty-chat', state.history.length > 0);
-      const existing = new Set(state.history.map(message => message.id));
-      for (const [id, entry] of historyNodes) if (!existing.has(id)) { entry.node.remove(); historyNodes.delete(id); }
-      for (const message of state.history) {
-        let entry = historyNodes.get(message.id);
-        if (!entry) {
-          const node = make('article', undefined, 'message'), label = make('p', message.role === 'user' ? 'You' : 'ChatGPT', 'message-label');
-          const text = make('div', undefined, 'message-text'), status = make('p', undefined, 'message-status'); node.dataset.role = message.role; node.append(label, text, status); byId('history').append(node); entry = {node, text, status}; historyNodes.set(message.id, entry);
-        }
-        entry.node.dataset.status = message.status;
-        if (entry.text.textContent !== message.content) entry.text.textContent = message.content;
-        entry.status.textContent = message.status === 'streaming' ? 'Responding…' : message.status === 'stopped' ? 'Stopped · Not added to the next request' : message.status === 'error' ? message.error || 'Response did not complete.' : message.status === 'failed' ? 'Draft preserved for retry' : '';
-        entry.status.hidden = !entry.status.textContent;
-      }
-      hidden('fallback', !state.fallback); if (byId('fallback-text').value !== state.fallback) byId('fallback-text').value = state.fallback;
-      setText('notice', state.busy || state.notice); hidden('notice', !(state.busy || state.notice)); setText('error', state.error); hidden('error', !state.error);
-      if (byId('prompt').value !== state.draft) byId('prompt').value = state.draft;
-      byId('prompt').disabled = busy;
-      setText('prompt-count', state.draft.length.toLocaleString() + ' / 20,000');
-      byId('prompt').placeholder = connectedMode ? 'Ask about your selected material…' : 'Add a question, or just inject context…';
-      setText('prompt-label', connectedMode ? 'Message to ChatGPT' : 'Optional prompt to add to the website draft');
-      setText('send', connectedMode ? 'Send' : state.all ? 'Inject all' : 'Inject context');
-      byId('send').disabled = busy || !state.online || state.demo || !catalog || (connectedMode ? !state.connected || !state.model || !state.draft.trim() : !state.draft.trim() && !count);
-      hidden('stop', !state.activeChat && state.busy !== 'Stopping'); byId('stop').disabled = state.busy === 'Stopping'; hidden('send', Boolean(state.activeChat) || state.busy === 'Stopping');
-      for (const id of ['open-website', 'open-fallback']) byId(id).disabled = busy || state.demo || !state.online;
-      byId('copy').disabled = busy || (!state.draft && !count && !state.fallback); byId('copy-fallback').disabled = busy;
-      setText('composer-help', connectedMode ? 'Enter to send · Shift + Enter for a new line' : 'Enter to inject · Shift + Enter for a new line');
-      if (nearBottom && state.activeChat) scrollbox.scrollTop = scrollbox.scrollHeight;
-      if (state.manualCopy && !busy) { byId('fallback-text').focus(); byId('fallback-text').select(); }
-    }
-    controller = createController({transport, permissions: chromePermissions(env), clipboard: env.navigator?.clipboard, onChange: render, env});
-    const click = (id, action) => byId(id).addEventListener('click', action);
-    for (const button of document.querySelectorAll('[data-provider]')) button.addEventListener('click', () => controller.setProvider(button.dataset.provider));
-    byId('more-providers').addEventListener('change', event => { if (event.target.value) controller.setProvider(event.target.value); });
-    click('route-web', () => controller.setMode('web')); click('route-connected', () => controller.setMode('connected'));
-    click('connect', () => controller.connect()); click('signout', () => controller.signout()); click('refresh-models', () => controller.loadModels());
-    byId('model').addEventListener('change', event => controller.setModel(event.target.value));
-    byId('course').addEventListener('change', event => controller.setCourse(event.target.value)); click('load-course', () => controller.loadCourse());
-    byId('all-linked').addEventListener('change', event => controller.setAll(event.target.checked));
-    byId('accept-issues').addEventListener('change', event => controller.acceptIssues(event.target.checked));
-    click('preview', () => controller.preview());
-    const selectPDF = () => { byId('context-details').open = true; byId('pdf-input').click(); };
-    click('attach', selectPDF); click('composer-attach', selectPDF);
-    byId('pdf-input').addEventListener('change', event => { const file = event.target.files?.[0]; event.target.value = ''; void controller.attach(file); });
-    click('open-website', () => controller.openWebsite()); click('open-fallback', () => controller.openWebsite());
-    click('copy', () => controller.copy()); click('copy-fallback', () => controller.copy()); click('stop', () => controller.cancel()); click('clear', () => controller.clear());
-    click('close', () => controller.close());
-    byId('prompt').addEventListener('input', event => controller.setDraft(event.target.value));
-    const submit = () => controller.state.route === 'connected' ? controller.send() : controller.inject();
-    byId('composer').addEventListener('submit', event => { event.preventDefault(); if (!byId('send').disabled) void submit(); });
-    byId('prompt').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); if (!event.repeat && !byId('send').disabled) void submit(); } });
-    env.addEventListener('pagehide', () => { controller.dispose(); transport.dispose(); }, {once: true});
-    render(controller.state); void controller.initialize(); return controller;
+    controller=createController({transport,permissions:chromePermissions(env),clipboard:env.navigator?.clipboard,onChange:render,env});
+    const click=(id,action)=>byId(id).addEventListener('click',action);
+    for(const button of document.querySelectorAll('[data-provider]'))button.addEventListener('click',()=>controller.setProvider(button.dataset.provider));
+    byId('more-providers').addEventListener('change',e=>{if(e.target.value)controller.setProvider(e.target.value);});
+    byId('all-linked').addEventListener('change',e=>controller.setAll(e.target.checked));
+    byId('assignment-pdfs').addEventListener('change',e=>controller.setAssignmentPdfs(e.target.checked));
+    byId('auto-send').addEventListener('change',e=>controller.setAutoSend(e.target.checked));
+    byId('accept-issues').addEventListener('change',e=>controller.acceptIssues(e.target.checked));
+    click('preview',()=>{byId('context-details').open=true;void controller.preview();});
+    click('composer-attach',()=>byId('pdf-input').click());
+    byId('pdf-input').addEventListener('change',e=>{const file=e.target.files?.[0];e.target.value='';void controller.attach(file);});
+    for(const id of ['copy','copy-fallback'])click(id,()=>controller.copy());
+    for(const id of ['open-website','open-fallback'])click(id,()=>controller.openWebsite());
+    click('close',()=>controller.close());
+    byId('prompt').addEventListener('input',e=>controller.setDraft(e.target.value));
+    byId('composer').addEventListener('submit',e=>{e.preventDefault();if(!byId('send').disabled)void controller.inject();});
+    byId('prompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();if(shouldSendKey(e)&&!byId('send').disabled)void controller.inject();}});
+    env.addEventListener('pagehide',()=>{controller.dispose();transport.dispose();},{once:true});
+    render(controller.state);void controller.initialize();return controller;
   }
-  return {createTransport, normalizeNative, normalizeModels, createController, mount, CONTEXT_LIMIT, PROMPT_LIMIT, PDF_LIMIT};
+  return {createTransport,createController,mount,shouldSendKey,CONTEXT_LIMIT,PROMPT_LIMIT,PDF_LIMIT};
 });

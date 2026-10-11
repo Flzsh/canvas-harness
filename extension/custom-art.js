@@ -534,12 +534,25 @@
   if(!value||typeof value!=='object'||Array.isArray(value)||typeof value.svg!=='string')error('Invalid SVG asset. Expected {name, svg} with SVG source text.');
   return importSVG(value.svg,value.name);
  }
+ // Native title-piece sizes are expressed as units at 240 units high. Keep
+ // uploaded art within the existing title band, even for unusual viewBoxes.
+ function titleWidth(value){
+  const node=validateTree(parseXML(cleanAsset(value).svg));
+  const viewBox=node.attrs.viewBox?.trim().split(/[\s,]+/).map(Number);
+  let ratio=viewBox?.length===4?viewBox[2]/viewBox[3]:2;
+  if(!viewBox){
+   const width=/^(\d+(?:\.\d+)?)(?:px)?$/.exec(node.attrs.width||'');
+   const height=/^(\d+(?:\.\d+)?)(?:px)?$/.exec(node.attrs.height||'');
+   if(width&&height&&Number(height[1])>0)ratio=Number(width[1])/Number(height[1]);
+  }
+  return Math.round(Math.min(720,Math.max(160,240*ratio)));
+ }
  function dataURL(svg){return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);}
  function render(value,options={}){
   if(value===null||value===undefined)return '';
   if(!options||typeof options!=='object'||Array.isArray(options))error('Invalid SVG render options.');
   const {kind='banner',className='',motion=true,fit='cover',position='center'}=options;
-  if(!['banner','border','icon'].includes(kind))error('Invalid SVG artwork kind. Choose banner, border, or icon.');
+  if(!['banner','border','icon','title'].includes(kind))error('Invalid SVG artwork kind. Choose banner, border, icon, or title.');
   if(!['cover','contain','fill'].includes(fit))error('Invalid SVG fit. Choose cover, contain, or fill.');
   if(!['left','center','right'].includes(position))error('Invalid SVG position. Choose left, center, or right.');
   if(typeof motion!=='boolean')error('Invalid SVG motion: expected a boolean.');
@@ -557,12 +570,13 @@
   renderMemo.set(cacheKey,output);return output;
  }
  function template(kind){
+  if(kind==='title')return `<svg xmlns="${SVG_NS}" viewBox="0 0 560 240"><style>.name{animation:appear 5s ease-in-out infinite}@keyframes appear{50%{opacity:.7}}</style><path d="M12 196Q145 186 278 198T550 196" fill="none" stroke="#a07658" stroke-width="2"/><text x="18" y="146" font-family="Georgia,serif" font-size="66" fill="#365c67" class="name">Course title</text><path d="M26 174L78 164M477 172L531 164" fill="none" stroke="#c18a64" stroke-width="5" stroke-linecap="round"/></svg>`;
   if(kind==='banner')return `<svg xmlns="${SVG_NS}" viewBox="0 0 960 240" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="sky" x2="1" y2="1"><stop offset="0" stop-color="#132b49"/><stop offset="1" stop-color="#2d7380"/></linearGradient><linearGradient id="glow" x2="0" y2="1"><stop offset="0" stop-color="#fce7a7"/><stop offset="1" stop-color="#ecb66c"/></linearGradient></defs><style>.horizon{animation:rise 7s ease-in-out infinite}.spark{animation:twinkle 3s ease-in-out infinite}@keyframes rise{50%{transform:translateY(-6px)}}@keyframes twinkle{50%{opacity:.25}}</style><rect width="960" height="240" fill="url(#sky)"/><circle cx="700" cy="94" r="54" fill="url(#glow)" class="horizon"/><path d="M0 179Q190 94 365 180T730 177T960 148V240H0Z" fill="#4d8690" opacity=".8"/><path d="M0 206Q235 142 462 206T960 185V240H0Z" fill="#21475a"/><circle class="spark" cx="114" cy="55" r="3" fill="#fce7a7"/><circle class="spark" cx="238" cy="87" r="2" fill="#fce7a7"/><circle class="spark" cx="843" cy="36" r="3" fill="#fce7a7"/></svg>`;
   if(kind==='border')return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 110"><style>.thread{animation:breathe 5s ease-in-out infinite}@keyframes breathe{50%{opacity:.4}}</style><path d="M18 7Q170 3 342 8Q354 9 353 24L354 89Q352 103 340 103Q181 108 18 102Q5 101 7 88L6 23Q5 9 18 7Z" fill="none" stroke="#665c4e" stroke-width="1.7"/><path class="thread" d="M20 11Q165 8 338 12Q348 13 348 24L349 87Q348 98 337 98Q180 103 20 97Q12 97 12 87L11 25Q11 14 20 11Z" fill="none" stroke="#c18a64" stroke-width="1.1"/><path d="M24 6l15 1m281 96l13-1" stroke="#689181" stroke-width="3" fill="none" stroke-linecap="round"/></svg>';
   if(kind==='icon')return `<svg xmlns="${SVG_NS}" viewBox="0 0 100 100"><defs><linearGradient id="orb" x2="1" y2="1"><stop offset="0" stop-color="#f4cb85"/><stop offset="1" stop-color="#cc764c"/></linearGradient></defs><style>.orbit{animation:turn 9s linear infinite;transform-origin:50% 50%}.star{animation:blink 2s ease-in-out infinite}@keyframes turn{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:.35}}</style><circle cx="50" cy="50" r="43" fill="#1f4a59"/><circle cx="50" cy="50" r="25" fill="url(#orb)"/><g class="orbit"><circle cx="50" cy="12" r="6" fill="#fbe4b7"/><circle cx="50" cy="88" r="4" fill="#9bd4cc"/></g><path class="star" d="M50 32L54 46L68 50L54 54L50 68L46 54L32 50L46 46Z" fill="#fff2cc"/></svg>`;
   error('Unknown SVG template kind. Choose banner, border, or icon.');
  }
- const api=Object.freeze({cleanAsset,importSVG,render,template,limits});
+ const api=Object.freeze({cleanAsset,importSVG,render,template,titleWidth,limits});
  root.ReserveCustomArt=api;
  if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

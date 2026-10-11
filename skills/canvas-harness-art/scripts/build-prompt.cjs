@@ -16,8 +16,14 @@ Paste everything below into your AI assistant, then add your request at the end,
 > Make my Canvas Harness art for **Marine Biology**. This term we do tide-pool surveys, plankton tows, fish
 > dissection and a kelp forest food web. My course colour is #2E6F73. Light theme. All three pieces.
 
-The assistant should answer with three SVG files (banner, icon, border) and a short note. Save each as a \`.svg\`
-file and upload it in Canvas Harness: Customize workspace -> Course artwork.
+The assistant should answer with a short note and one code block: a **quick upload pack** holding the banner, the
+icon and the border. In public **CH2.21.0**, open **Customize workspace -> Quick upload**, paste the whole block
+and choose **Review pack** (or choose/drop a \`.chpack\` or \`.txt\` file). Check the previews and course matches,
+choose any unmatched course, leave unwanted pieces out, then apply the selected artwork. **Undo last pack** is
+available during the current workspace session if the affected artwork and banner options have not changed.
+For an older installed version without Quick upload, each \`<svg>...</svg>\` in the block is one piece: paste it
+into that slot's "Paste SVG" box under Customize workspace -> Course artwork. Format version 1 has three slots:
+banner, icon and frame; the lettered title is drawn inside the banner SVG.
 
 Where the text below mentions files (\`references/...\`, \`templates/...\`, \`scripts/...\`), their content is included
 further down in this same document; the script cannot be run from a pasted prompt, so check by hand against
@@ -25,7 +31,7 @@ section A of the checklist.
 
 ---
 
-${skill}${part('Reference: the house style', 'references/style.md')}${part('Reference: the three pieces', 'references/slots.md')}${part('Reference: the file format', 'references/format.md')}${part('Reference: animation', 'references/animation.md')}${part('Reference: review checklist', 'references/checklist.md')}
+${skill}${part('Reference: the house style', 'references/style.md')}${part('Reference: the three pieces', 'references/slots.md')}${part('Reference: the file format', 'references/format.md')}${part('Reference: animation', 'references/animation.md')}${part('Reference: review checklist', 'references/checklist.md')}${part('Reference: handing over (the quick upload pack)', 'references/quick-upload.md')}
 
 ---
 

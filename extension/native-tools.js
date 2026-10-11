@@ -26,14 +26,23 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   if(appearance)url.searchParams.set('appearance','true');return url.href;
  }
  // A removable stylesheet reserves room without rewriting Canvas inline styles.
- function pageDock(doc=document){
-  let sheet,padding;
-  return {update({open,collapsed,width,height}){
-   if(!open||collapsed){sheet?.remove();sheet=null;return;}
-   if(!sheet){padding=root.getComputedStyle?.(doc.body)?.paddingRight||'0px';sheet=doc.createElement('style');sheet.dataset.reserveToolboxLayout='true';doc.head.append(sheet);}
+ function pageDock(doc=document,{setTimer=root.setTimeout,clearTimer=root.clearTimeout}={}){
+  let sheet,padding,leaving=0;
+  const remove=()=>{sheet?.remove();sheet=null;leaving=0;};
+  return {update({open,collapsed,width,height,motion='gentle',input,resizing}){
+   if(leaving){clearTimer(leaving);leaving=0;}
+   const animate=motion==='gentle'&&input!=='keyboard'&&resizing!=='true'&&!root.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+   const transition=animate?'body{transition:padding-right 340ms cubic-bezier(.22,.8,.24,1),padding-bottom 340ms cubic-bezier(.22,.8,.24,1)}':'';
+   if(!open||collapsed){
+    if(!sheet)return;
+    if(!animate){remove();return;}
+    sheet.textContent=transition;
+    leaving=setTimer(remove,380);return;
+   }
+   if(!sheet){padding=root.getComputedStyle?.(doc.body)?.paddingRight||'0px';sheet=doc.createElement('style');sheet.dataset.reserveToolboxLayout='true';sheet.textContent=transition;doc.head.append(sheet);void doc.body.offsetWidth;}
    const w=Number.isFinite(width)&&width>=240?width+'px':'clamp(360px,29vw,460px)',h=Number.isFinite(height)&&height>=160?height+'px':'46dvh';
-   sheet.textContent=`@media(min-width:901px){body{box-sizing:border-box!important;padding-right:calc(${padding} + ${w} + 36px)!important}}@media(max-width:900px){body{padding-bottom:calc(${h} + 30px)!important}}`;
-  },destroy(){sheet?.remove();sheet=null;}};
+   sheet.textContent=transition+`@media(min-width:901px){body{box-sizing:border-box!important;padding-right:calc(${padding} + ${w} + 36px)!important}}@media(max-width:900px){body{padding-bottom:calc(${h} + 30px)!important}}`;
+  },destroy(){if(leaving)clearTimer(leaving);remove();}};
  }
  // While the Tools dock is open, a focus session that has ended (or ends) is recorded once through ReserveCore.settleFocus,
  // as on the dashboard. One timeout waits for a running session's end; with no session there is no timer.
@@ -56,7 +65,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
    }))).catch(error=>{stylesPromise=null;for(const link of styleNodes)link.remove();styleNodes=[];throw error;});return stylesPromise;
   }
   function appearance(){
-   if(!area||!verified)return;const s=verified.store.get().settings||{},dark=s.theme==='dark';
+   if(!area||!verified)return;const s=verified.store.get().settings||{},dark=false;
    area.dataset.theme=dark?'dark':'light';area.dataset.font=s.font||'system';area.dataset.textSize=s.textSize||'standard';
    const accents={clay:['#A9522F','#E08A6A'],forest:['#367964','#9bd1b4'],indigo:['#5f5ccc','#bec8ff'],ocean:['#2f7185','#a3d4e5'],rose:['#9e4c6c','#efb0c0'],amber:['#956821','#e8c68b']};
    area.style.setProperty('--rd-accent',(accents[s.accent]||accents.clay)[dark?1:0]);
@@ -72,7 +81,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
      if(toolbox&&verified?.store===data.store&&String(verified.user.id)===String(data.user.id)){verified=data;appearance();toolbox.open(next,source);notice('');return;}
      clearView();verified=data;focus=focusSettler(data.store);area=document.createElement('div');area.className='rd rd-native-tools';area.dataset.input=keyboard?'keyboard':'pointer';dockRoot.append(area);appearance();
      area.addEventListener('pointerdown',()=>{area.dataset.input='pointer';},{passive:true});
-     toolbox=root.ReserveToolbox.create({container:area,store:data.store,aiConfig:{client,user:data.user},onDockChange:state=>{layout.update(state);button.hidden=state.open;if(state.open)focus?.check();else focus?.stop();dockRoot.host?.toggleAttribute('data-reserve-tools',state.open);},getContext:()=>context(verified.snapshot,verified.store.get(),pathname()),
+     toolbox=root.ReserveToolbox.create({container:area,store:data.store,aiConfig:{client,user:data.user},onDockChange:state=>{layout.update({...state,motion:area.dataset.motionStyle,input:area.dataset.input,resizing:area.dataset.resizing});button.hidden=state.open;if(state.open)focus?.check();else focus?.stop();dockRoot.host?.toggleAttribute('data-reserve-tools',state.open);},getContext:()=>context(verified.snapshot,verified.store.get(),pathname()),
       onNavigate:workspace=>launch({workspace}),onPlanner:options=>launch(options),
       onRefresh:async()=>{
        const expected=verified;if(!expected)throw Error('Reopen Tools to verify your Canvas account.');

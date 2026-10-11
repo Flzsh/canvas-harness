@@ -278,7 +278,7 @@
  .rd[data-workspace=work] .rd-tools .rd-icon-button{width:32px;min-width:32px}
 }
 /* A persistent utility dock shares space with the page; it never dims it. */
-.rd .rd-utility-dialog[data-docked=true]{position:fixed;inset:auto 16px 16px auto;width:var(--rd-dock-width);height:var(--rd-dock-height,calc(100dvh - 104px));max-height:calc(100dvh - 32px);max-width:calc(100vw - 32px);margin:0;border-radius:14px;z-index:1100;box-shadow:0 12px 40px #10182814,0 2px 8px #1018280a}
+.rd .rd-utility-dialog[data-docked=true]{position:fixed;inset:auto 16px 16px auto;width:var(--rd-dock-width);height:var(--rd-dock-height,calc(100dvh - 32px));max-height:calc(100dvh - 32px);max-width:calc(100vw - 32px);margin:0;border-radius:14px;z-index:1100;box-shadow:0 12px 40px #10182814,0 2px 8px #1018280a}
 .rd-utility-dialog[data-docked=true] .rd-utility-shell{display:flex;flex-direction:column;height:100%;max-height:100%;min-height:0}
 .rd-utility-dialog[data-docked=true] .rd-utility-heading{padding:16px 18px;flex-shrink:0;gap:12px}
 .rd .rd-utility-dialog[data-docked=true] .rd-utility-heading h2{font-size:19px;margin-top:2px;letter-spacing:-.4px}

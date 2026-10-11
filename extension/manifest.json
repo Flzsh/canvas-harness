@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Canvas Harness",
   "short_name": "Canvas Harness",
-  "version": "2.20.1",
+  "version": "2.21.0",
   "description": "Canvas courses, assignments, teacher updates, saved documents, planning and study tools in a fast personal workspace.",
   "minimum_chrome_version": "120",
   "permissions": [
@@ -10,8 +10,7 @@
     "offscreen"
   ],
   "optional_permissions": [
-    "scripting",
-    "nativeMessaging"
+    "scripting"
   ],
   "optional_host_permissions": [
     "https://chatgpt.com/*",
@@ -54,14 +53,20 @@
         "api.js",
         "personal-work.js",
         "custom-art.js",
+        "workspace-arrange.js",
+        "workspace-gestures.js",
         "customization-model.js",
         "gpa-model.js",
         "storage.js",
+        "quick-pack.js",
+        "quick-upload.js",
+        "quick-upload-ui.js",
         "math.js",
         "ui-utils.js",
         "icons.js",
         "subject-art-data.js",
         "subject-art.js",
+        "generic-art.js",
         "course-art.js",
         "views.js",
         "app.js",
@@ -86,6 +91,7 @@
         "native-appearance.js",
         "native-page.js",
         "native-tools.js",
+        "settings-dock.js",
         "dashboard.js",
         "content.js"
       ],
@@ -121,7 +127,10 @@
         "subject-art.css",
         "ai-panel.html",
         "gpa.css",
-        "icon.svg"
+        "icon.svg",
+        "settings-dock.css",
+        "selection.css",
+        "responsive-layout.css"
       ],
       "matches": [
         "https://*.instructure.com/*"

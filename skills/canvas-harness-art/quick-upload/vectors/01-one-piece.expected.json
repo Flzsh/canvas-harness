@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "version": 1,
+  "name": "Marine Biology icon",
+  "errors": [],
+  "warnings": [],
+  "skipped": [],
+  "parts": [
+    {
+      "index": 1,
+      "slot": "icon",
+      "target": {
+        "type": "course",
+        "names": [
+          "Marine Biology"
+        ]
+      },
+      "name": "Marine Biology icon",
+      "svgBytes": 172,
+      "errors": [],
+      "warnings": []
+    }
+  ]
+}

@@ -45,7 +45,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(!snapshot){session?.destroy();session=null;}
     if(remember){try{sessionStorage.setItem('reserve:native','true');}catch{}}
   }
-  function setStatus(message){if(statusLabel)statusLabel.textContent=dashboard?'Canvas Harness 2.17.2':message||'Canvas Harness 2.17.2';dashboard?.setStatus(message);}
+  function setStatus(message){if(statusLabel)statusLabel.textContent=dashboard?'Canvas Harness 2.21.0':message||'Canvas Harness 2.21.0';dashboard?.setStatus(message);}
   function drawDashboard(){
     if(!area||!snapshot)return;
     if(dashboard)dashboardState=dashboard.getState();
@@ -71,7 +71,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     host=document.createElement('div');host.id='reserve-companion-host';host.hidden=true;
     root=host.attachShadow({mode:'open'});
     const loadingHost=host;let loaded=0;
-    const sheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','gpa.css'];
+    const sheets=startup?.styleFiles||['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css'];
     for(const file of sheets){
       const link=document.createElement('link');link.rel='stylesheet';link.href=chrome.runtime.getURL(file);
       link.onload=()=>{if(host===loadingHost&&++loaded===sheets.length){ready=true;reveal();}};
@@ -99,7 +99,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   function start(){
     makeHost();
     if(session)return session.start();
-    session=ReserveSession.createSession({client:ReserveAPI.createClient(),createStore:ReserveStorage.createStore,onSnapshot:receive,onStatus:setStatus,onError:(error,{clear})=>{
+    session=ReserveSession.createSession({client:ReserveAPI.createClient(),createStore:ReserveStorage.createStore,
+      prefetchedProfile:!manualOpen&&startup?.active?startup.prefetchedProfile:null,
+      onSnapshot:receive,onStatus:setStatus,onError:(error,{clear})=>{
       if(clear){dashboard?.destroy();dashboard=null;snapshot=null;store=null;showCanvas();dashboardState=undefined;dashboardScroll=0;restoreScroll=false;}
       else if(!dashboard&&!planner)showCanvas(false);
       dockRoot.querySelector('button').title=error.message+' Click to retry.';

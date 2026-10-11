@@ -9,14 +9,7 @@ function zip(name,entries){const locals=[],central=[],hashes=[];let offset=0;for
 const extensionEntries=files.map(file=>[file.replaceAll('\\','/'),fs.readFileSync(path.join(extension,file))]);
 extensionEntries.push(['INSTALL.md',fs.readFileSync(path.join(root,'INSTALL.md'))]);
 extensionEntries.push(['AI.md',fs.readFileSync(path.join(root,'AI.md'))]);
+for(const name of ['LICENSE','PRIVACY.md'])if(!extensionEntries.some(([entry])=>entry===name))extensionEntries.push([name,fs.readFileSync(path.join(root,name))]);
 const result={version:manifest.version,builtAt:new Date().toISOString(),packages:[zip(`Canvas-Harness-${manifest.version}.zip`,extensionEntries)]};
-const companionRoot=path.join(root,'companion');
-// Ship source files only. A local installation's data folder must never enter a release.
-const companionFiles=['host.cjs','install.cjs','package.json','README.md','CONTRACT.md',
- 'lib/errors.cjs','lib/http.cjs','lib/inference.cjs','lib/oauth.cjs','lib/process.cjs','lib/protocol.cjs','lib/service.cjs','lib/storage.cjs',
- 'windows/open-browser.ps1','windows/register.ps1','windows/secret-storage.ps1'];
-const companionEntries=companionFiles.map(file=>['companion/'+file.replaceAll('\\','/'),fs.readFileSync(path.join(companionRoot,file))]);
-companionEntries.push(['LICENSE',fs.readFileSync(path.join(root,'LICENSE'))],['AI.md',fs.readFileSync(path.join(root,'AI.md'))]);
-result.packages.push(zip('Canvas-Harness-AI-Companion-'+manifest.version+'.zip',companionEntries));
 fs.writeFileSync(path.join(output,'release-manifest.json'),JSON.stringify(result,null,2));
 for(const p of result.packages)console.log(`${p.file}: ${p.bytes} bytes · SHA-256 ${p.sha256}`);

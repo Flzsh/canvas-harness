@@ -1,4 +1,4 @@
-/* Canvas Harness — automatic subject presets. Original creator: Flzsh. MIT License. */
+/* Canvas Harness — automatic subject presets. Original creator: Flzsh. SPDX-License-Identifier: GPL-3.0-only. */
 (function(root){
  'use strict';
  const data=root.CanvasHarnessSubjectArt||(typeof module==='object'&&module.exports?require('./subject-art-data.js'):{});

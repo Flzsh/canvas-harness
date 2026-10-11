@@ -3,13 +3,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 (function (root) {
   'use strict';
   const clone = value => structuredClone(value);
-  const customization=root.ReserveCustomization||(typeof module==='object'&&module.exports?require('./customization-model.js'):null);
   const gpa=root.CanvasHarnessGPA||(typeof module==='object'&&module.exports?require('./gpa-model.js'):null);
+  const customization=root.ReserveCustomization||(typeof module==='object'&&module.exports?require('./customization-model.js'):null);
+  const layoutDefaults=customization?.defaults||{};
   // appearanceVersion 2 (Canvas Harness 2.15) made Clay the default accent; see cleanData.
   // readingFont: teacher text in the book serif or the interface sans; greeting: the time-of-day heading.
   // hiddenCourses: hidden by hand. shownCourses (2.17): shown by hand, which keeps a course that is hidden
   // by default (NameCoach, College Counseling: ReserveCore.hiddenCourseIds) on screen. An id is in one list at most.
-  const defaults = () => ({version:1,settings:{theme:'system',accent:'clay',appearanceVersion:2,motion:'gentle',livingArt:'on',readingFont:'book',greeting:'on',density:'comfortable',font:'system',textSize:'standard',dashboardLayout:'split',showCourseStrip:true,showGrades:false,showRecentGrades:false,timeZone:globalThis.ReserveSite.timeZone(),courseOrder:[],hiddenCourses:[],shownCourses:[],coursePrefs:{}},tasks:{},resourcePins:[],customTasks:[],gpa:gpa.defaults(),toolbox:{scratchpad:'',recent:[],dockSize:{width:0,height:0}},focus:{minutes:25,remaining:1500,endsAt:null,itemId:null,sessions:0}});
+  const defaults = () => ({version:1,settings:{...layoutDefaults,theme:'system',accent:'clay',appearanceVersion:2,motion:'gentle',livingArt:'on',readingFont:'book',greeting:'on',density:'comfortable',font:'system',textSize:'standard',dashboardLayout:'split',showCourseStrip:true,showGrades:false,showRecentGrades:false,timeZone:globalThis.ReserveSite.timeZone(),courseOrder:[],hiddenCourses:[],shownCourses:[],coursePrefs:{},overviewArt:{}},tasks:{},resourcePins:[],customTasks:[],gpa:gpa.defaults(),toolbox:{scratchpad:'',recent:[],dockSize:{width:0,height:0}},focus:{minutes:25,remaining:1500,endsAt:null,itemId:null,sessions:0}});
   const text = (value,max=20000) => typeof value === 'string' ? value.slice(0,max) : '';
   const isRecord = v => v !== null && typeof v === 'object' && !Array.isArray(v);
   const personalWork = root.ReservePersonalWork || (typeof module === 'object' && module.exports && typeof require === 'function' ? require('./personal-work.js') : null);
@@ -45,11 +46,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const out = defaults(), settings=value.settings || {};
     out.gpa=gpa.cleanPreferences(value.gpa);
     if (!isRecord(settings) || (value.tasks && !isRecord(value.tasks)) || (value.customTasks && !Array.isArray(value.customTasks))) throw Error('Backup data has an invalid structure.');
+    // Validate every restored SVG before returning data or committing a save.
+    if(!customization)throw Error('Canvas Harness customization modules are missing. Reload the extension.');
     Object.assign(out.settings,customization.cleanSettings(settings));
     for(const [key,allowed] of Object.entries({theme:['light','dark','system'],accent:['clay','forest','indigo','rose','ocean','amber'],motion:['gentle','still','off'],livingArt:['on','off'],readingFont:['book','interface'],greeting:['on','off'],density:['comfortable','compact'],font:['system','humanist','serif'],textSize:['standard','large'],dashboardLayout:['split','list']})) {
       if (settings[key] !== undefined && !allowed.includes(settings[key])) throw Error(`Invalid ${key} setting in backup.`);
       if (settings[key]) out.settings[key]=settings[key];
     }
+    // Older Canvas Harness only had split/list. Keep its chosen layout on first load.
+    if(settings.deskOrder===undefined&&out.settings.dashboardLayout==='list')out.settings.deskOrder='stacked';
+    out.settings.dashboardLayout=out.settings.deskOrder==='stacked'?'list':'split';
     // One-time move to the Clay default. Every profile saved before 2.15 holds
     // accent 'forest' (the old default was always written back), so a stored
     // version below 2 with Forest means "never chosen": it becomes Clay once.
@@ -123,14 +129,23 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   function createStore({accountId,origin=(globalThis.ReserveSite.origin()),adapter=browserAdapter()} = {}) {
     if(!accountId)throw Error('A verified account is required before loading personal data.');
     const owner={accountId:String(accountId),origin},key=`reserve:v1:${origin}:${accountId}`,listeners=new Set();let current=defaults();
-    async function load(){const saved=await adapter.read(key);current=cleanData(saved||defaults());return clone(current);}
+    async function load(){const saved=await adapter.read(key);if(saved)current=cleanData(saved);return clone(current);}
     function get(){return clone(current);}
+    // A view failing after a successful write must not turn persistence into a
+    // rejected transaction. Give each listener its own snapshot and isolation.
+    function notify(){for(const listener of listeners){try{const result=listener(get());if(result&&typeof result.then==='function')Promise.resolve(result).catch(()=>{});}catch{}}}
     function update(mutator) {
-      return lock(key,async()=>{const saved=await adapter.read(key),next=saved?cleanData(saved):defaults();mutator(next);const clean=cleanData(next);await adapter.write(key,clean);current=clean;for(const listener of listeners)listener(get());return get();});
+      return lock(key,async()=>{const saved=await adapter.read(key),next=saved?cleanData(saved):defaults();
+        const oldLayout=next.settings.dashboardLayout,oldOrder=next.settings.deskOrder;
+        mutator(next);
+        // Older Canvas Harness settings controls still write dashboardLayout alone.
+        // Accept those updates without overwriting an explicit newer deskOrder.
+        if(next.settings?.dashboardLayout!==oldLayout&&next.settings?.deskOrder===oldOrder&&['split','list'].includes(next.settings.dashboardLayout))next.settings.deskOrder=next.settings.dashboardLayout==='list'?'stacked':'context-first';
+        const clean=cleanData(next);await adapter.write(key,clean);current=clean;notify();return get();});
     }
     async function replace(data){const clean=cleanData(data);return update(next=>{for(const name of Object.keys(next))delete next[name];Object.assign(next,clean);});}
     function validCache(snapshot) {return snapshot&&snapshot.origin===origin&&String(snapshot.user?.id)===String(accountId)&&Array.isArray(snapshot.courses)&&Array.isArray(snapshot.assignments);}
-    const unsubscribe=adapter.subscribe?.(key,()=>{lock(key,async()=>{const previous=JSON.stringify(current);await load();if(JSON.stringify(current)!==previous)for(const listener of listeners)listener(get());}).catch(()=>{});});
+    const unsubscribe=adapter.subscribe?.(key,()=>{lock(key,async()=>{const previous=JSON.stringify(current);await load();if(JSON.stringify(current)!==previous)notify();}).catch(()=>{});});
     async function saveRecovery(){return lock(key,async()=>{await load();await adapter.write(`${key}:cache`,null);await adapter.write(`${key}:recovery`,{format:'reserve-backup',version:1,owner,data:get()});});}
     async function readRecovery(){const v=await adapter.read(`${key}:recovery`);return v?validateBackup(v,owner):null;}
     const materialKey=`${key}:materials`;

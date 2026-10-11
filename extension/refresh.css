@@ -1851,7 +1851,26 @@
 .rd[data-theme=dark] .rd-utility-dialog[data-docked=true] { background: var(--rd-surface-3); }
 .rd .rd-utility-dialog[data-docked=true][data-leaving=true] { animation: rd-exit var(--rd-exit-dur) var(--rd-release) both; pointer-events: none; }
 
-.rd:not(.rd-native-tools) { transition: none; }
+.rd { --rd-dock-duration:340ms; --rd-dock-ease:cubic-bezier(.22,.8,.24,1); }
+.rd:not(.rd-native-tools) { transition:padding-right var(--rd-dock-duration) var(--rd-dock-ease),padding-bottom var(--rd-dock-duration) var(--rd-dock-ease); }
+.rd .rd-utility-dialog[data-docked=true] { --rd-dock-away:translateX(calc(100% + 24px)); interpolate-size:allow-keywords; transition:width var(--rd-dock-duration) var(--rd-dock-ease),height var(--rd-dock-duration) var(--rd-dock-ease),transform var(--rd-dock-duration) var(--rd-dock-ease),opacity var(--rd-dock-duration) var(--rd-dock-ease); }
+.rd .rd-utility-dialog[data-docked=true][open] { animation:none; opacity:1; transform:translate(0); }
+.rd .rd-utility-dialog[data-docked=true][data-leaving=true] { animation:none; opacity:0; transform:var(--rd-dock-away); pointer-events:none; }
+/* A real transition is interruptible in both directions. The first opening
+   starts at the same edge as a closing panel, without moving its iframe. */
+@starting-style { .rd .rd-utility-dialog[data-docked=true][open] { opacity:0; transform:var(--rd-dock-away); } }
+@media(max-width:900px) {
+ .rd .rd-utility-dialog[data-docked=true] { --rd-dock-away:translateY(calc(100% + 24px)); }
+}
+.rd[data-resizing=true]:not(.rd-native-tools),.rd[data-resizing=true] .rd-utility-dialog[data-docked=true],
+.rd:is([data-motion-style=off],[data-motion-style=still],[data-input=keyboard]):not(.rd-native-tools) { transition:none; }
+.rd[data-motion-style=still] .rd-utility-dialog[data-docked=true] { --rd-dock-away:translate(0); transition:opacity var(--rd-dock-duration) var(--rd-dock-ease); }
+.rd[data-input=keyboard] .rd-utility-dialog[data-docked=true] { transition:none; }
+@media(prefers-reduced-motion:reduce) { .rd:not(.rd-native-tools) { transition:none; } }
+
+/* The segmented control is the header. "Tools" stays for assistive technology
+   (aria-labelledby) and shows only while the dock is collapsed. */
+
 
 
 .rd .rd-utility-dialog[data-docked=true] .rd-utility-heading { display: flex; align-items: center; min-height: 0; padding: 10px 10px 6px 12px; gap: 8px; border-bottom: 0; }

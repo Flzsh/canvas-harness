@@ -1,0 +1,109 @@
+{
+  "ok": true,
+  "version": 1,
+  "name": "Autumn term",
+  "errors": [],
+  "warnings": [],
+  "skipped": [],
+  "parts": [
+    {
+      "index": 1,
+      "slot": "frame",
+      "target": {
+        "type": "every-course"
+      },
+      "name": "every-course frame",
+      "svgBytes": 246,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "index": 2,
+      "slot": "banner",
+      "target": {
+        "type": "course",
+        "names": [
+          "AP Biology",
+          "AP Bio",
+          "Biology"
+        ]
+      },
+      "name": "AP Biology banner",
+      "svgBytes": 183,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "index": 3,
+      "slot": "icon",
+      "target": {
+        "type": "course",
+        "names": [
+          "AP Biology",
+          "AP Bio",
+          "Biology"
+        ]
+      },
+      "name": "AP Biology icon",
+      "svgBytes": 172,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "index": 4,
+      "slot": "banner",
+      "target": {
+        "type": "course",
+        "names": [
+          "Music Theory"
+        ],
+        "id": "48213"
+      },
+      "name": "Music Theory banner",
+      "svgBytes": 183,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "index": 5,
+      "slot": "frame",
+      "target": {
+        "type": "course",
+        "names": [
+          "Music Theory"
+        ],
+        "id": "48213"
+      },
+      "name": "Music Theory frame",
+      "svgBytes": 246,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "index": 6,
+      "slot": "icon",
+      "target": {
+        "type": "course",
+        "names": [
+          "R&D: \"Makers\" Lab"
+        ]
+      },
+      "name": "R&D: \"Makers\" Lab icon",
+      "svgBytes": 172,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "index": 7,
+      "slot": "banner",
+      "target": {
+        "type": "overview"
+      },
+      "name": "overview banner",
+      "position": "left",
+      "svgBytes": 183,
+      "errors": [],
+      "warnings": []
+    }
+  ]
+}

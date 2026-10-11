@@ -3,7 +3,13 @@ Original creator: Flzsh
 Project identifier: org.flzsh.canvas-harness
 
 Copyright (c) 2026 Flzsh
-Canvas Harness is licensed under the MIT License. See LICENSE for its terms.
+Canvas Harness is licensed under the GNU General Public License v3.0 only
+(SPDX: GPL-3.0-only). See LICENSE for its terms.
+You may use, modify and redistribute this software under those terms.
+This software is provided without warranty.
+
+Earlier MIT-licensed releases and explicitly retained MIT component notices
+keep their original terms. The following third-party licenses are unchanged.
 
 Bundled Literata fonts are licensed separately under the SIL Open Font
 License 1.1. See fonts/OFL.txt for their copyright and license notice.

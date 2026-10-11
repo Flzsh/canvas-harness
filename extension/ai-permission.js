@@ -1,4 +1,4 @@
-/* Canvas Harness — optional permissions requested only from this page's click. MIT. */
+/* Canvas Harness — optional permissions requested only from this page's click. GPL-3.0-only. */
 (function (root) {
   'use strict';
   const byId = id => document.getElementById(id);
@@ -30,7 +30,7 @@
       // before any await, storage lookup, or message round trip loses the gesture.
       const pending = chrome.permissions.request(request);
       const allowed = await pending;
-      display(allowed, allowed ? 'Access allowed. Return to Canvas and click Insert draft again to transfer your selected context.' : 'Access was not granted. You can allow it here later, or copy and paste your context manually.');
+      display(allowed, allowed ? 'Access allowed. Return to Canvas and click Send again to transfer your selected context.' : 'Access was not granted. You can allow it here later, or copy and paste your context manually.');
     } catch (_) {
       display(false, 'The browser could not grant access. Reload the extension with its optional permissions configured, then try this button again.');
     }
@@ -47,6 +47,6 @@
     } catch (_) { display(true, 'Access could not be removed here. Check the extension’s website permissions in browser settings.'); }
   });
   chrome.permissions.contains(request).then(allowed => {
-    if (!busy) display(allowed, allowed ? 'Access is already allowed. Return to Canvas and click Insert draft when ready.' : 'Optional access is off. Click Allow draft insertion to ask the browser for this provider only.');
+    if (!busy) display(allowed, allowed ? 'Access is already allowed. Return to Canvas and click Send when ready.' : 'Optional access is off. Click Allow draft insertion to ask the browser for this provider only.');
   }, () => { if (!busy) display(false, 'Access could not be checked. Click Allow draft insertion to ask the browser.'); });
 })(globalThis);

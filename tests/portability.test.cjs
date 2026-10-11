@@ -21,8 +21,13 @@ test('the same account number at different schools never shares personal data or
 test('general edition preserves unfamiliar course names instead of interpreting teacher suffixes',()=>{
  for(const name of ['Art-Design','Computer Science: Data Structures','Research — Section 2'])assert.equal(core.courseLabel(name).title,name);
 });
-test('shipping code has no fixed original-school URL or school-specific label',()=>{
- const dir=require('node:path').join(__dirname,'../extension');for(const f of fs.readdirSync(dir).filter(f=>/\.(js|html|json)$/.test(f)))assert.ok(!/wra\.instructure\.com|Western Reserve Academy|WRA Canvas/.test(fs.readFileSync(dir+'/'+f,'utf8')),f);
+test('shipping code has no hardcoded real school origin',()=>{
+ const dir=require('node:path').join(__dirname,'../extension');
+ for(const f of fs.readdirSync(dir).filter(f=>/\.(js|html|json)$/.test(f))){
+  const code=fs.readFileSync(dir+'/'+f,'utf8');
+  for(const [,host] of code.matchAll(/https:\/\/([a-z0-9.-]+)\.instructure\.com/gi))
+   assert.ok(/^(?:your-school|school|example|demo|test|canvas)$/.test(host),'Hardcoded school origin in '+f);
+ }
 });
 test('gradebook links render the current school as usable href attributes',()=>{
  const vm=require('node:vm'),path=require('node:path'),ctx=vm.createContext({URL,Intl,location:{origin:'https://school-b.instructure.com'}});

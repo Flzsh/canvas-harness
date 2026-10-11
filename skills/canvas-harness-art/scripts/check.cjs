@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Checks course artwork for Canvas Harness and writes a preview page.
 //   node scripts/check.cjs <file-or-folder> [more files...] [--out preview.html] [--harness path/to/custom-art.js]
+// A quick upload pack (.chpack) can be given too: every piece in it is checked and previewed like a file.
 // 1. Runs each SVG through Canvas Harness's own validator.
 // 2. Lints for the house style and for the format's traps (things the validator accepts but that will look wrong).
 // 3. Writes preview.html: every piece rendered exactly as the extension renders it (an isolated <img>) at the real
@@ -9,7 +10,7 @@
 // Exit code 1 if any file is refused. No dependencies.
 const fs = require('fs'), path = require('path');
 const args = process.argv.slice(2), opt = k => { const i = args.indexOf('--' + k); return i >= 0 ? args.splice(i, 2)[1] : null; };
-const outArg = opt('out'), harness = opt('harness');
+const outArg = opt('out'), harness = opt('harness'); let refusedPack = 0;
 // The validator: --harness, else the extension's own file when this skill sits inside the Canvas Harness repository
 // (skills/canvas-harness-art/), else the copy in scripts/vendor.
 const vendored = path.join(__dirname, 'vendor', 'custom-art.js'), inRepo = path.join(__dirname, '..', '..', '..', 'extension', 'custom-art.js');
@@ -18,6 +19,17 @@ const A = require(validator);
 if (validator === inRepo && fs.existsSync(vendored) && fs.readFileSync(inRepo, 'utf8') !== fs.readFileSync(vendored, 'utf8')) console.log('note: scripts/vendor/custom-art.js differs from extension/custom-art.js; using the extension\'s. Refresh the vendored copy.');
 if (!args.length) { console.error('Usage: node scripts/check.cjs <file-or-folder> [...] [--out preview.html] [--harness custom-art.js]'); process.exit(2); }
 const files = args.flatMap(a => fs.statSync(a).isDirectory() ? fs.readdirSync(a).filter(f => /\.svg$/i.test(f)).map(f => path.join(a, f)) : [a]);
+// a pack stands for the pieces inside it
+const Pack = require('./quick-pack.js'), slug = s => Pack.normalizeName(s).replace(/ /g, '-') || 'art';
+const inputs = files.flatMap(file => {
+  const src = fs.readFileSync(file, 'utf8');
+  if (!/<\?ch-pack[\s?]/.test(src)) return [{ file, name: path.basename(file), src }];
+  const r = Pack.parse(src);
+  for (const e of r.errors) { refusedPack++; console.log(`REFUSED  ${path.basename(file)}\n  x ${e.message}`); }
+  for (const w of r.warnings) console.log(`note: ${path.basename(file)}: ${w.message}`);
+  return r.parts.filter(p => { const bad = p.errors.filter(e => e.code !== 'replaced'); if (bad.length) { refusedPack++; console.log(`REFUSED  ${path.basename(file)} piece ${p.index}\n  x ${bad.map(e => e.message).join('\n  x ')}`); } return !p.errors.length; })
+    .map(p => ({ file, name: `${slug(p.target.type === 'course' ? (p.target.names[0] || 'course-' + p.target.id) : p.target.type)}-${p.slot === 'frame' ? 'border' : p.slot}.svg`, src: p.svg }));
+});
 const kindOf = (name, vb) => /icon|mini/i.test(name) ? 'icon' : /border|frame/i.test(name) ? 'border' : /banner|pano|title/i.test(name) ? 'banner' : vb && Math.abs(vb[2] / vb[3] - 1) < .2 ? 'icon' : vb && vb[2] / vb[3] > 5 ? 'banner' : 'border';
 const TARGET = { banner: 70000, icon: 6000, border: 14000 }, PARTS = { banner: 40, icon: 4, border: 8 };
 
@@ -38,9 +50,9 @@ function pathBox(d) {
 }
 const overlap = (b, r) => Math.max(0, Math.min(b[2], r[2]) - Math.max(b[0], r[0])) * Math.max(0, Math.min(b[3], r[3]) - Math.max(b[1], r[1]));
 
-let refused = 0; const cards = [];
-for (const file of files) {
-  const name = path.basename(file), src = fs.readFileSync(file, 'utf8'), notes = [], warn = m => notes.push('  ! ' + m), info = m => notes.push('  - ' + m);
+let refused = refusedPack; const cards = [];
+for (const { name, src } of inputs) {
+  const notes = [], warn = m => notes.push('  ! ' + m), info = m => notes.push('  - ' + m);
   const vbm = src.match(/viewBox\s*=\s*["']([^"']+)["']/), vb = vbm ? vbm[1].trim().split(/[\s,]+/).map(Number) : null, kind = kindOf(name, vb);
   let asset = null;
   try { asset = A.importSVG(src, name); } catch (e) { refused++; console.log(`REFUSED  ${name}\n  x ${e.message}`); }

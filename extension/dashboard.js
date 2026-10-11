@@ -21,6 +21,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const Model=root.ReserveDashboardModel||(typeof module==='object'&&module.exports?require('./dashboard-model.js'):null);
   const View=root.ReserveDashboardView||(typeof module==='object'&&module.exports?require('./dashboard-view.js'):null);
   const Work=root.ReserveWorkModel||(typeof module==='object'&&module.exports?require('./work-model.js'):null);
+  const Arrange=root.ReserveWorkspaceArrange||(typeof module==='object'&&module.exports?require('./workspace-arrange.js'):null);
 
   const stringValue=value=>value==null?'':String(value);
   const dateMs=value=>{if(value==null||value==='')return null;const ms=typeof value==='number'?value:Date.parse(value);return Number.isFinite(ms)?ms:null;};
@@ -141,6 +142,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let normalizedCache=null,gradeVisibilityOverride=(initialState?.gradeVisibilityOverride??savedState?.gradeVisibilityOverride)===false?false:null,gradeSaveVersion=0;
     let selectedId=restoredView.selectedId;
     let readerTab=restoredView.readerTab,customizeOpen=false,customizeCourseId='all',customizeStatus='',customizeBusy=false,customizeDrafts={},readerOpen=restoredView.readerOpen,gradeQuery='',gradeLimit=40;
+    let quickPackDraft='',quickPackFileName='',quickPackError='',quickPackLoading=false,quickPackRead=0;
     let pendingReaderScroll={courseId:state.courseId,id:selectedId,top:restoredView.readerScroll};
     const readerLayout=typeof root.ResizeObserver==='function'?new root.ResizeObserver(()=>{if(restoreReaderScroll())remember();}):null;
     const explicitWorkspace=initialState?.workspace||savedState?.workspace;
@@ -148,21 +150,31 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let deckCourseRequested='';
     let overviewMode='actionable',overviewQuery='',checkOffNotice=null;
     const checkingOff=new Set();
+    const selectionIds=new Set();let archiveUndo=null,archiving=false;
+    const selectionOptions={isSelected:id=>selectionIds.has(id)};
     const contentCache=new Map();
     const drafts=new Map();
     const stepDrafts=new Map();
     let draftTimer;
     const formatters=new Map();
     const resourceClient=materialClient||(!demo?root.ReserveAPI?.createClient():null);
-    const materials=root.ReserveMaterialsUI?.create({store,user:snapshot.user,client:resourceClient,onChange:()=>render(),onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))});
-    const hub=root.ReserveCourseHubUI?.create({store,user:snapshot.user,client:resourceClient,materials,onChange:()=>render(),onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))});
+    const materials=root.ReserveMaterialsUI?.create({store,user:snapshot.user,client:resourceClient,...selectionOptions,onChange:()=>render(),onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))});
+    const hub=root.ReserveCourseHubUI?.create({store,user:snapshot.user,client:resourceClient,...selectionOptions,materials,onChange:()=>render(),onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))});
+    const quickUpload=root.CanvasHarnessQuickUpload?.create({store,getCourses:()=>normalizeData(settings()).allCourses,onChange:()=>{if(!destroyed)render();}});
     const motion=root.ReserveMotion?.create(container);
-    const settingsDock=root.ReserveCustomizeUI?.createDock({container,
+    const settingsDock=root.ReserveSettingsDock?.createDock({container,
       onOpen:()=>{if(drawerOpen())setDrawer(false,{focus:false});toolbox?.close({restoreFocus:false});customizeCourseId=state.courseId;},
       onChange:open=>{customizeOpen=open;render();}
     });
+    const arrange=Arrange?.createController({container,getSettings:settings,getCourseIds:()=>normalizeData(settings()).allCourses.map(course=>String(course.id)),
+      onChange:command=>savePersonal(data=>{Arrange.change(data.settings,command);}),
+      onModeChange:open=>{
+        if(open){settingsDock?.close({restoreFocus:false});toolbox?.close({restoreFocus:false});workspace='work';}
+        render();
+      }
+    });
     const toolbox=root.ReserveToolbox?.create({container,store,materials,aiConfig:{client:resourceClient,user:snapshot.user,demo},getContext:()=>{
-      const ctx=buildContext();return {...ctx,courseId:state.courseId,aiAssignmentId:workspace==='work'&&readerOpen?selectedId:null,
+      const ctx=buildContext();return {...ctx,courseId:state.courseId,aiAssignmentId:workspace==='work'&&readerOpen?selectedId:null,aiSelectedIds:[...selectionIds],
         aiResources:ctx.courses.map(c=>materials?.getCourse(c.id)?.raw).filter(Boolean),
         aiUpdates:ctx.courses.map(c=>({courseId:c.id,announcements:hub?.getCourse(c.id)?.announcements||[]}))};
     },
@@ -174,22 +186,22 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(next==='materials')materials?.load(state.courseId);if(next==='hub')hub?.loadCourse(state.courseId);if(next==='inbox')hub?.loadInbox();
       },
       onPreview:id=>{captureCourseView();workspace='work';const item=buildContext().items.find(x=>x.id===id);if(item&&state.courseId!=='all'&&state.courseId!==String(item.courseId))switchCourse('all');readerOpen=false;showPreview(id,{detail:0});},
-      onPlanner:options=>openPlanner(options),onRefresh:()=>runRefresh({reportError:true})
+      onPlanner:options=>openPlanner(options),onRefresh:()=>runRefresh({reportError:true}),onCustomize:()=>settingsDock?.open()
     });
 
 
     // A running focus session turns "your week" into Home, where its card lives,
-    // for the Tools dock (Quick open's Planner) and legacy reminder links alike.
+    // for the toolbar button and the Tools dock (Quick open's Planner) alike.
     function openPlanner(options){onPlanner({...options,...(options?.page==='week'&&personal.focus?.endsAt?{page:'home'}:{}),hideGrades:settings().showGrades!==true});}
 
     function settings(){
       return gradeVisibilityOverride===null?(personal.settings||{}):{...personal.settings,showGrades:gradeVisibilityOverride};
     }
 
-    // Dark is opt-in only. A saved "system" preference (the old default)
-    // stays light even when the device itself uses a dark theme.
+    // Saved dark/system preferences render in the original light palette.
+    // Course drawings retain their authored colors.
     function effectiveTheme(s){
-      return s.theme==='dark'?'dark':'light';
+      return 'light';
     }
 
     function validColor(value,fallback){
@@ -248,7 +260,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         // A leading subject ("English: …") leads the line under the title ("Subject · Teacher").
         const label=C.courseLabel?.(course.name)||{title:course.name,teacher:'',sub:'',tag:'',subject:''},custom=pref.name||'';
         const extra=value=>custom&&value&&String(custom).toLowerCase().includes(value.toLowerCase())?'':value;
-        return {...course,name:custom||course.name,originalName:course.name,shortName:custom||label.title||course.name,subject:extra(label.subject||''),teacher:extra(label.teacher),sub:extra(label.sub),tag:label.tag,courseSearch:[course.name,course.code].filter(Boolean).join(' '),color,ownColor,artPrefs:pref,artMotion:s.motion==='gentle'&&s.livingArt!=='off',image:safeCourseImage(pref.image)||safeCourseImage(course.image)};
+        return {...course,name:custom||course.name,originalName:course.name,shortName:custom||label.title||course.name,subject:extra(label.subject||''),teacher:extra(label.teacher),sub:extra(label.sub),tag:label.tag,courseSearch:[course.name,course.code].filter(Boolean).join(' '),color,ownColor,image:safeCourseImage(pref.image)||safeCourseImage(course.image),artPrefs:pref,artMotion:s.motion==='gentle'&&s.livingArt!=='off'};
       });
       const courseMap=new Map(allCourses.map(course=>[course.id,course]));
       const courses=allCourses.filter(course=>!hidden.has(course.id));
@@ -294,25 +306,28 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const deckCourse=courses.find(course=>course.id===(state.courseId==='all'?String(selected?.courseId||''):state.courseId))||courses[0]||null;
       // Each view filter shows the count its list would show once chosen (the same rules, the same search).
       const modeCounts=workspace==='work'?Object.fromEntries(['actionable','today','week','planned'].map(mode=>[mode,mode===state.mode&&!state.day?filtered.items.length:Model.filterAssignments(items,{...state,mode,day:'',now,timeZone:s.timeZone,local}).items.length])):{};
-      if(!railTimer)railTimer=root.setTimeout?.(()=>measureRail(),0)||0;
-      return {s,courses,allCourses,courseMap,items,filtered,now,accent,local,resourcePins:personal.resourcePins||[],insights,courseLoad,glance,modeCounts,unread:hub?.unreadCount?.()||0,selected,deckCourse,overviewItems,overviewMode,overviewQuery,checkOffNotice,theme:effectiveTheme(s),focusClock:C.focusClock?.(personal.focus,now)||''};
+      return {s,courses,allCourses,courseMap,items,filtered,now,accent,local,resourcePins:personal.resourcePins||[],insights,courseLoad,glance,modeCounts,unread:hub?.unreadCount?.()||0,selected,deckCourse,overviewItems,overviewMode,overviewQuery,checkOffNotice,selectionIds,archiveUndo,archiving,theme:effectiveTheme(s),focusClock:C.focusClock?.(personal.focus,now)||''};
     }
 
     // Every course row in the rail is as tall as the tallest one's content (refresh.css section 3:
     // flex-basis --rd-rail-row-h, growing by equal shares of any spare height), so a course whose name
     // wraps ("Subject: Example Course") sets the rhythm instead of standing out.
     // A row's content is what its course button holds, top-aligned: measured from the button's top to its
-    // lowest child, so the row's own (grown) height never feeds back. Written on .rd only when it changes;
-    // returns true when it did. Runs right after each render's patch (before motion places the rail's
-    // selection) and with every rail measurement (resize, late fonts).
+    // lowest child, so the row's own (grown) height never feeds back. offsetTop/offsetHeight are layout
+    // coordinates: bounding client rects include the scale/translation of active rail-drag and FLIP motion,
+    // which would temporarily corrupt the shared row height. Only write when the natural height changes.
     let railRowH='';
     function railRows(){
-      const rail=container.querySelector?.('.rd-course-rail'),rows=rail?.querySelectorAll?.(':scope > .rd-rail-course');if(destroyed||!rows?.length||!root.getComputedStyle)return false;
+      const rail=container.querySelector?.('.rd-shell .rd-course-rail'),rows=rail?.querySelectorAll?.(':scope > .rd-rail-course');if(destroyed||!rows?.length||!root.getComputedStyle)return false;
       const px=(style,...names)=>names.reduce((sum,name)=>sum+(parseFloat(style[name])||0),0);let tallest=0;
+      // Both the button and its children may be static-positioned under the row; their offsetParent can
+      // be the row instead of the button. Accumulate offsets to the layout root and subtract them.
+      const layoutTop=node=>{let top=0;for(let part=node;part;part=part.offsetParent){if(!Number.isFinite(part.offsetTop))return null;top+=part.offsetTop;}return top;};
       for(const row of rows){
         const button=row.querySelector('.rd-course-name');if(!button?.getClientRects?.().length)continue;
-        const rs=root.getComputedStyle(row),bs=root.getComputedStyle(button),top=button.getBoundingClientRect().top;let bottom=top;
-        for(const child of button.children){const cs=root.getComputedStyle(child);if(cs.position==='absolute'||!child.getClientRects().length)continue;bottom=Math.max(bottom,child.getBoundingClientRect().bottom+(parseFloat(cs.marginBottom)||0));}
+        const rs=root.getComputedStyle(row),bs=root.getComputedStyle(button),top=layoutTop(button);if(top===null)continue;let bottom=top;
+        for(const child of button.children){const cs=root.getComputedStyle(child);if(cs.position==='absolute'||!child.getClientRects().length)continue;
+          const y=layoutTop(child);if(y!==null&&Number.isFinite(child.offsetHeight))bottom=Math.max(bottom,y+child.offsetHeight+(parseFloat(cs.marginBottom)||0));}
         const content=bottom-top+px(bs,'paddingBottom','borderBottomWidth');
         tallest=Math.max(tallest,rs.boxSizing==='border-box'?content+px(rs,'paddingTop','paddingBottom','borderTopWidth','borderBottomWidth'):content);
       }
@@ -324,13 +339,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // never patches its own style) so the course rows can fill the first screen.
     // A hidden host has no boxes and a loading rail is not yet a flex column:
     // neither is measured (a 0 or partial offset would stick); retry briefly.
-    function measureRail(tries=0){
-      railTimer=0;const rail=container.querySelector('.rd-course-rail');if(destroyed||!rail)return;
+    function measureRail(tries=0,syncSelection=true){
+      if(railTimer)root.clearTimeout(railTimer);railTimer=0;
+      const rail=container.querySelector('.rd-shell .rd-course-rail');if(destroyed||!rail||typeof root.getComputedStyle!=='function'||typeof rail.getClientRects!=='function')return;
       // A rail the layout hides (Course sidebar off, a narrow window, a closed phone drawer) has nothing to fill.
       const display=root.getComputedStyle(rail).display;if(display==='none')return;
       if(!rail.getClientRects().length||display!=='flex'){if(tries<20)railTimer=root.setTimeout(()=>measureRail(tries+1),100);return;}
       // A rewrap (a resize, late fonts) can change the tallest row: the selection surface follows the new rows.
-      if(railRows())motion?.syncTabs(false);
+      if(railRows()&&syncSelection)motion?.syncTabs(false);
       const top=Math.max(0,Math.round(rail.parentElement.getBoundingClientRect().top+(root.scrollY||0)))+'px';
       // Only a real change restyles .rd, so the observer settles instead of looping.
       if(top!==railTop)container.style.setProperty('--rd-rail-top',railTop=top);
@@ -470,7 +486,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       container.dataset.font=['humanist','serif'].includes(ctx.s.font)?ctx.s.font:'system';
       container.dataset.textSize=ctx.s.textSize||'standard';
       container.dataset.layout=ctx.s.deskOrder==='stacked'?'list':'split';
-      for(const key of Object.keys(root.ReserveCustomization.defaults))container.dataset[key]=String(ctx.s[key]??root.ReserveCustomization.defaults[key]);
+      container.dataset.workspaceMode=Arrange?.snapshot(ctx.s).mode||'side-by-side';
+      container.dataset.arranging=String(!!arrange?.active());
+      for(const [key,value] of Object.entries(root.ReserveCustomization?.defaults||{}))container.dataset[key]=String(ctx.s[key]??value);
       // Gentle (default), Still or Off; motion.js also treats a reduced-motion device as Off.
       container.dataset.motionStyle=MOTION_STYLES.includes(ctx.s.motion)?ctx.s.motion:'gentle';
       // Living drawings (default On): the course drawings keep moving once drawn (Gentle only).
@@ -481,7 +499,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       container.dataset.courses=String(ctx.s.showCourseStrip!==false);
       container.style.setProperty('--rd-accent',ctx.accent);
       const assignmentContent=readingContent(ctx.selected);
-      const markup=View.render({...ctx,state,workspace,gradeQuery,gradeLimit,deckHeader:workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse)||'':'',deckContent:workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',hubContent:workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId)):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',materialLibrary:workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId)):'',relatedMaterials:materials?.renderRelated(ctx.selected,assignmentContent.links)||'',readerTab,customizeOpen,customizeCourseId,customizeStatus,customizeBusy,customizeDrafts,user:currentSnapshot.user,demo,nativeSwitch:typeof onNative==='function',refreshing,visibleLimit,noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',readerContent:assignmentContent,warning:renderWarning(),status:statusLabel(currentSnapshot,externalStatus,transientStatus)}, {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete});
+       const markup=View.render({...ctx,state,workspace,gradeQuery,gradeLimit,arrangeOpen:!!arrange?.active(),hasLayoutUndo:!!ctx.s.workspaceUndo,deckHeader:workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:true})||'':'',deckContent:workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',hubContent:workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId)):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',materialLibrary:workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId)):'',relatedMaterials:materials?.renderRelated(ctx.selected,assignmentContent.links)||'',readerTab,customizeOpen,customizeCourseId,customizeStatus,customizeBusy,customizeDrafts,quickUpload:quickUpload?.state,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading,user:currentSnapshot.user,demo,nativeSwitch:typeof onNative==='function',refreshing,visibleLimit,noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',readerContent:assignmentContent,warning:renderWarning(),status:statusLabel(currentSnapshot,externalStatus,transientStatus)}, {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete});
       const toolbar=container.querySelector('.rd-toolbar'),appearance=container.querySelector('.rd-appearance');
       if(toolbar&&appearance){
         // Keep the actual transitioning nodes connected through data renders.
@@ -511,6 +529,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         nextToolbar.remove();
         for(const tab of toolbar.querySelectorAll('.t-tab')){const active=tab.dataset.tab===workspace;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;}
         patchUI(appearance.querySelector('.t-acc-panel-inner'),nextAppearance.querySelector('.t-acc-panel-inner'));
+        appearance.dataset.open=String(customizeOpen);
+        const panel=appearance.querySelector('.t-acc-panel');panel.inert=!customizeOpen;
+        if(customizeOpen)panel.removeAttribute('aria-hidden');else panel.setAttribute('aria-hidden','true');
         nextAppearance.remove();
         for(const node of Array.from(container.childNodes)){if(node!==toolbar&&node!==appearance&&node!==shell&&!node.classList?.contains('rd-utility-dialog'))node.remove();}
         if(shell)for(const warning of Array.from(template.content.querySelectorAll('.rd-warning')))container.insertBefore(warning,shell);
@@ -518,7 +539,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }else container.innerHTML=markup;
       container.dataset.courseId=state.courseId;container.dataset.workspace=workspace;
       settingsDock?.sync();
-      sheetCover();railRows();
+      arrange?.sync();
+      // Arrange has now installed the final layout. Measure its layout before motion paints a drag spring
+      // and before the next timer/frame, so course rows cannot linger at a compressed intermediate size.
+      sheetCover();measureRail(0,false);
+      // Keep one post-render pass for sheets/fonts that only settle after patching; unchanged geometry
+      // writes nothing. The immediate pass above already fixes the final size before that timer runs.
+      if(!railTimer)railTimer=root.setTimeout?.(()=>measureRail(),0)||0;
       toolbox?.update();syncFocus();
       motion?.syncTabs(tabMotion,false,snapshot);
       if(motionTarget)motion?.reveal(container.querySelector(motionTarget),{animate:tabMotion&&container.dataset.input==='pointer',kind:motionKind,direction,snapshot});
@@ -546,6 +573,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const kept=focus.node,same=kept?.isConnected!==false&&!!kept?.getClientRects?.().length&&(focus.field?kept.dataset?.rdField===focus.field:kept.dataset?.rdAction===focus.action)&&[['id','id'],['setting','setting'],['mode','mode'],['day','day'],['accent','accent'],['tab','tab'],['value','choice'],['entry','entry'],['step','step'],['message','message'],['resource','resource'],['course','course']].every(([key,was])=>(kept.dataset?.[key]??null)===(focus[was]??null));
         const active=same?kept:focus.step||focus.resource||focus.message?Array.from(container.querySelectorAll?.(selector)||[]).find(el=>focus.message?el.dataset.message===focus.message:focus.step?el.dataset.step===focus.step:el.dataset.resource===focus.resource&&el.dataset.course===focus.course):(matches=>matches.find(el=>el.getClientRects?.().length)||container.querySelector(selector))(Array.from(container.querySelectorAll?.(selector)||[]));
         if(active){if(focus.field==='new-step')active.value=focus.value;active.focus({preventScroll:true});if(typeof active.setSelectionRange==='function'&&focus.start!=null)active.setSelectionRange(focus.start,focus.end);}
+        else if(focus.action==='arrange-menu')container.querySelector('.rd-toolbar [data-rd-action="arrange"]')?.focus({preventScroll:true});
       }
       const materialPage=container.querySelector('.rd-material-page');if(materialPage)materialPage.scrollTop=materials?.pageScroll(materialPage.dataset.materialCourse,materialPage.dataset.materialResource)||0;
       const requested=materials?.takeFocusRequest();let materialFocus;
@@ -606,7 +634,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     function onInput(event){
       const field=event.target?.dataset?.rdField;
-      if(field==='art-source'){const {course,kind}=event.target.dataset;if(validArtTarget(course)&&['banner','icon','border'].includes(kind))customizeDrafts[course+':'+kind]=event.target.value.slice(0,262144);return;}
+      if(field==='quick-pack-source'){quickPackDraft=event.target.value.slice(0,3145728);quickPackFileName='';quickPackError='';return;}
+      if(field==='art-source'){const {course,kind}=event.target.dataset;if(validArtTarget(course)&&['banner','icon','border','title'].includes(kind))customizeDrafts[course+':'+kind]=event.target.value.slice(0,262144);return;}
       if(field?.startsWith('hub-')){hub?.input(field,field==='hub-unread'?event.target.checked:event.target.value,event.target.dataset);return;}
       if(field?.startsWith('material-')){materials?.input(field,event.target.value);return;}
       if(field==='new-step'&&/^(?:\d+|local-[\w-]+)$/.test(event.target.dataset.id||'')){stepDrafts.set(event.target.dataset.id,event.target.value.slice(0,300));return;}
@@ -627,21 +656,42 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(/^local-[\w-]+$/.test(id||'')&&['progress','check-step','personal-name','personal-due','planned-date','estimate','notes'].includes(field)){selectedId=id;readerOpen=true;}
       if(field?.startsWith('hub-')){hub?.input(field,field==='hub-unread'?event.target.checked:event.target.value,event.target.dataset);return;}
       if(field?.startsWith('material-')){materials?.input(field,event.target.value);return;}
-      if(field==='customize-course'){customizeCourseId=event.target.value;customizeStatus='';if(switchCourse(customizeCourseId)){if(workspace==='inbox')hub?.setCourse?.(state.courseId);materials?.activate(state.courseId);}render();if(workspace==='materials')materials?.load(state.courseId);if(workspace==='hub')hub?.loadCourse(state.courseId);return;}
-      if(field==='art-upload'){uploadArtwork(event.target);return;}
+      if(field==='customize-course'){
+        if(!validArtTarget(event.target.value))return;
+        customizeCourseId=event.target.value;customizeStatus='';render();return;
+      }
+      if(field==='quick-pack-file'){void uploadQuickPack(event.target.files?.[0]);return;}
+      if(field==='quick-pack-course'){try{quickUpload?.choose(event.target.dataset.group,event.target.value||null);}catch(error){quickPackError=error.message;render();}return;}
+      if(field==='quick-pack-group'){quickUpload?.includeGroup(event.target.dataset.group,event.target.checked);return;}
+      if(field==='quick-pack-part'){quickUpload?.includePart(Number(event.target.dataset.index),event.target.checked);return;}
+      if(field==='art-upload'){void uploadArtwork(event.target);return;}
       if(field==='art-setting'){
         const key=event.target.dataset.setting,value=event.target.value;
-        if(['bannerFit','bannerPosition'].includes(key)&&validArtTarget(id))savePersonal(data=>{appearanceFor(data,id)[key]=value;});return;
+        if(['bannerFit','bannerPosition','titlePlacement'].includes(key)&&validArtTarget(id))savePersonal(data=>{appearanceFor(data,id)[key]=value;});return;
       }
       if(field==='setting'){
         const key=event.target.dataset.setting;
-        if(!['theme','accent','motion','livingArt','readingFont','greeting','font','density','textSize','dashboardLayout','showCourseStrip','showGrades','showRecentGrades',...Object.keys(root.ReserveCustomization.defaults)].includes(key))return;
+        if(!['theme','accent','motion','livingArt','readingFont','greeting','font','density','textSize','dashboardLayout','showCourseStrip','showGrades','showRecentGrades',...Object.keys(root.ReserveCustomization?.defaults||{})].includes(key))return;
         const value=event.target.type==='checkbox'?event.target.checked:event.target.value;
         if(key==='showGrades'){
           const version=++gradeSaveVersion;gradeVisibilityOverride=value===true;motion?.cancel();render();
           savePersonal(data=>{data.settings.showGrades=value===true;}).then(saved=>{if(version===gradeSaveVersion){if(saved)gradeVisibilityOverride=null;render();}});return;
         }
-        savePersonal(data=>{data.settings[key]=value;});return;
+        savePersonal(data=>{
+          if(!Arrange){data.settings[key]=value;if(key==='deskOrder')data.settings.dashboardLayout=value==='stacked'?'list':'split';if(key==='dashboardLayout')data.settings.deskOrder=value==='list'?'stacked':'context-first';return;}
+          const before=Arrange.snapshot(data.settings);
+          if(key==='courseNavigation'){Arrange.change(data.settings,{type:'navigation',value});return;}
+          if(key==='showCourseInformation'){Arrange.change(data.settings,{type:value?'restore-context':'hide-context'});return;}
+          data.settings[key]=value;
+          if(key==='deskOrder'||key==='dashboardLayout'){
+            if(key==='dashboardLayout')data.settings.deskOrder=value==='list'?'stacked':'context-first';
+            data.settings.dashboardLayout=data.settings.deskOrder==='stacked'?'list':'split';
+            data.settings.workspaceLayout=null;
+            data.settings.workspaceOrder=Arrange.legacyOrder(data.settings);
+            data.settings.workspaceMode=data.settings.deskOrder==='stacked'?'stacked':'side-by-side';
+            if(JSON.stringify(Arrange.snapshot(data.settings))!==JSON.stringify(before))data.settings.workspaceUndo=before;
+          }
+        });return;
       }
       if(/^(?:\d+|local-[\w-]+)$/.test(id||'')){
         if(['course-name','planned-date','estimate','notes','personal-name','personal-due'].includes(field)){const draft=stageDraft(event.target);if(draft)persistDraft(draft);return;}
@@ -668,7 +718,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // Phones: Tab or Shift+Tab out of the open drawer closes it (it is non-modal), so focus never sits
       // under its scrim. Only a real destination counts: a lost window focus (no relatedTarget) keeps it open.
       const next=event.relatedTarget;
-      if(next&&drawerOpen()&&event.target?.closest?.('.rd-course-rail')&&!container.querySelector('.rd-course-rail')?.contains?.(next)&&!next.closest?.('.rd-drawer-button'))setDrawer(false,{focus:false});
+      if(next&&drawerOpen()&&event.target?.closest?.('.rd-course-rail')&&!container.querySelector('.rd-shell .rd-course-rail')?.contains?.(next)&&!next.closest?.('.rd-drawer-button'))setDrawer(false,{focus:false});
       // The reader sheet makes the Canvas Harness parts it covers inert, but Tab past its last control leaves Canvas Harness for the
       // page around it (Canvas's own links, which the sheet may cover) or for the browser: that closes the sheet, and
       // focus stays where Tab put it. Without a destination only a Tab counts (a lost window focus keeps it open).
@@ -733,6 +783,22 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(!event.detail)container.querySelector('#rd-reader-title')?.focus({preventScroll:true});
     }
 
+    function toggleSelection(id){
+      if(archiving)return;
+      if(selectionIds.has(id))selectionIds.delete(id);
+      else if(selectionIds.size<30)selectionIds.add(id);
+      else {transientStatus='Select up to 30 items at a time.';}
+      render();toolbox?.update();
+    }
+    async function archiveSelection(undo=false){
+      if(archiving)return;const ctx=buildContext();
+      const chosen=undo?archiveUndo:ctx.items.filter(x=>selectionIds.has('assignment:'+x.courseId+':'+x.id)).map(x=>({id:x.id,key:'assignment:'+x.courseId+':'+x.id,previous:undefined}));
+      if(!chosen?.length)return;archiving=true;render();
+      const saved=await savePersonal(data=>{for(const x of chosen){const task={...data.tasks[x.id]};if(!undo)x.previous=task.checkedOff;if(undo&&x.previous===undefined)delete task.checkedOff;else task.checkedOff=undo?x.previous:true;data.tasks[x.id]=task;}});
+      archiving=false;if(!saved||destroyed){render();return;}
+      if(undo)archiveUndo=null;else {archiveUndo=chosen;for(const x of chosen)selectionIds.delete(x.key);}
+      render();toolbox?.update();
+    }
     async function checkOff(id,done,event,snapshot=null){
       const item=buildContext().items.find(item=>item.id===id);
       if(!item||checkingOff.has(id))return;
@@ -763,7 +829,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const phone=()=>!!root.matchMedia?.('(max-width: 600px)')?.matches;
     const drawerOpen=()=>container.dataset.drawer==='open'&&phone();
     function setDrawer(open,{focus=true}={}){
-      const trigger=container.querySelector('.rd-drawer-button'),within=container.querySelector('.rd-course-rail')?.contains?.(container.getRootNode?.()?.activeElement);
+      const trigger=container.querySelector('.rd-drawer-button'),within=container.querySelector('.rd-shell .rd-course-rail')?.contains?.(container.getRootNode?.()?.activeElement);
       if(open)container.dataset.drawer='open';else delete container.dataset.drawer;
       trigger?.setAttribute('aria-expanded',String(open));
       // Like the Tools dock, the open drawer lifts the host's paint isolation so it covers Canvas's own chrome.
@@ -775,6 +841,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function closePreview(){readerOpen=false;render();const previous=container.querySelector(`[data-rd-action="preview"][data-id="${selectedId}"]`);previous?.scrollIntoView({block:'nearest',behavior:'instant'});previous?.focus({preventScroll:true});}
 
     function onClick(event){
+      if(arrange?.click(event))return;
       const button=event.target.closest?.('[data-rd-action]');
       // FIRST for pointer motion: a read-only snapshot of what is painted, taken
       // before any state changes and handed to render. Keyboard clicks (detail 0) take none.
@@ -794,12 +861,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // Busy controls use aria-disabled so they keep keyboard focus while loading.
       if(!button||button.disabled||button.getAttribute?.('aria-disabled')==='true')return;
       const action=button.dataset.rdAction,snapshot=MOTION_ACTIONS.has(action)?take():null;
-      if(handleCustomizeAction(action,button))return;
+      if(arrange?.action(button))return;
       if(action==='drawer'){setDrawer(!button.dataset.close&&container.dataset.drawer!=='open');return;}
       // Grades' inline "Show grades" runs the same path as the toolbar switch.
       if(action==='grades-visibility'){const value=settings().showGrades!==true,version=++gradeSaveVersion;gradeVisibilityOverride=value;motion?.cancel();render();savePersonal(data=>{data.settings.showGrades=value;}).then(saved=>{if(version===gradeSaveVersion){if(saved)gradeVisibilityOverride=null;render();}});return;}
+      if(handleCustomizeAction(action,button))return;
       if(action.startsWith('hub-')){hub?.handle(action,button.dataset);return;}
       if(action.startsWith('material-')){materials?.handle(action,button.dataset);return;}
+      if(action==='select-item'){const item=buildContext().items.find(x=>x.id===String(button.dataset.id));if(item)toggleSelection('assignment:'+item.courseId+':'+item.id);return;}
+      if(action==='select-source'){const id=button.dataset.source;if(typeof id==='string'&&/^(?:assignment|page|file|home|syllabus|announcement):/.test(id))toggleSelection(id);return;}
+      if(action==='selection-clear'){selectionIds.clear();render();toolbox?.update();return;}
+      if(action==='selection-ai'){toolbox?.open('ai',button);return;}
+      if(action==='selection-archive'||action==='selection-undo'){void archiveSelection(action==='selection-undo');return;}
       if(action==='check-off'||action==='undo-check-off'){checkOff(String(button.dataset.id),action==='check-off',event,snapshot);return;}
       if(action==='overview-view'){overviewMode=button.dataset.mode==='completed'?'completed':'actionable';render({tabMotion:event.detail>0,motionTarget:'.rd-overview-work',motionKind:'filter',snapshot});return;}
       if(action==='overview-all'){captureCourseView();switchCourse('all');workspace='work';state.mode=overviewMode;state.query=overviewQuery;state.day='';readerOpen=false;render({tabMotion:event.detail>0,motionTarget:'.rd-workspace',snapshot});return;}
@@ -871,7 +944,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(action==='plan'){openPlanner({page:'assignments',id:String(button.dataset.id)});return;}
       if(action==='refresh'){runRefresh();return;}
       if(action==='theme'){
-        const theme=effectiveTheme(settings())==='dark'?'light':'dark';
+        const theme='light';
         savePersonal(data=>{data.settings.theme=theme;});return;
       }
       if(action==='bookmark-remove-resource'){
@@ -901,11 +974,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(action==='more'){visibleLimit+=60;render();}
     }
 
-    function validArtTarget(id){return id==='all'||/^\d+$/.test(id||'')&&normalizeData(settings()).allCourses.some(c=>c.id===id);}
+    // Personal appearance lives in the existing account-scoped store and shares
+    // the private dock. Legacy course names, colors, images and art stay intact.
+    function validArtTarget(id){return id==='all'||/^\d+$/.test(id||'')&&normalizeData(settings()).allCourses.some(course=>course.id===id);}
     function appearanceFor(data,id){return id==='all'?(data.settings.overviewArt||(data.settings.overviewArt={})):((data.settings.coursePrefs||(data.settings.coursePrefs={}))[id]||(data.settings.coursePrefs[id]={}));}
     async function uploadArtwork(input){
       const file=input.files?.[0],id=input.dataset.id,kind=input.dataset.kind;
-      if(!file||customizeBusy||!validArtTarget(id)||!['banner','border','icon'].includes(kind))return;
+      if(!file||customizeBusy||!validArtTarget(id)||!['banner','icon','border','title'].includes(kind))return;
       customizeBusy=true;customizeStatus='Checking artwork…';render();
       try{
         if(file.size>root.ReserveCustomArt.limits.fileBytes)throw Error('Choose an SVG smaller than 256 KiB.');
@@ -916,32 +991,87 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }catch(error){customizeStatus=error?.message||'This SVG could not be loaded.';}
       finally{customizeBusy=false;if(!destroyed)render();}
     }
+    function packBusy(){return quickPackLoading||['reviewing','applying','undoing'].includes(quickUpload?.state.phase);}
+    async function reviewQuickPack(text){
+      if(!quickUpload||packBusy())return;
+      ++quickPackRead;quickPackError='';
+      await quickUpload.review(text);
+      if(!destroyed)container.querySelector('.ch-pack-review')?.scrollIntoView({block:'nearest',behavior:'smooth'});
+    }
+    async function uploadQuickPack(file){
+      if(!file||!quickUpload||packBusy())return;
+      const token=++quickPackRead;quickPackLoading=true;quickPackError='';quickPackFileName=file.name;render();
+      try{
+        if(file.size>3145728)throw Error('Choose a pack no larger than 3 MiB.');
+        const text=await file.text();if(destroyed||token!==quickPackRead)return;
+        quickPackDraft=text;quickPackLoading=false;await reviewQuickPack(text);
+      }catch(error){if(!destroyed&&token===quickPackRead)quickPackError=error?.message||'The pack could not be read.';}
+      finally{if(!destroyed){quickPackLoading=false;render();}}
+    }
+    function packDropTarget(event){return event.target?.closest?.('[data-quick-pack-drop]');}
+    function onPackDragover(event){
+      const node=packDropTarget(event);if(!node||!Array.from(event.dataTransfer?.types||[]).includes('Files'))return;
+      event.preventDefault();event.dataTransfer.dropEffect=packBusy()?'none':'copy';node.dataset.over=String(!packBusy());
+    }
+    function onPackDragleave(event){const node=packDropTarget(event);if(node&&!node.contains(event.relatedTarget))delete node.dataset.over;}
+    function onPackDrop(event){
+      const node=packDropTarget(event);if(!node)return;event.preventDefault();delete node.dataset.over;
+      const files=Array.from(event.dataTransfer?.files||[]);if(files.length!==1){quickPackError='Choose one artwork pack at a time.';render();return;}
+      void uploadQuickPack(files[0]);
+    }
     function handleCustomizeAction(action,button){
       const id=button.dataset.id,kind=button.dataset.kind;
-      if(action==='art-paste'&&validArtTarget(id)&&['banner','icon','border'].includes(kind)){
+      if(action==='quick-pack-review'){void reviewQuickPack(quickPackDraft);return true;}
+      if(action==='quick-pack-apply'){if(!packBusy()){quickPackError='';void quickUpload?.apply();}return true;}
+      if(action==='quick-pack-undo'){if(!packBusy()){quickPackError='';void quickUpload?.undo();}return true;}
+      if(action==='quick-pack-reset'){if(!packBusy()){++quickPackRead;quickPackDraft='';quickPackFileName='';quickPackError='';quickUpload?.reset();}return true;}
+      if(action==='art-paste'&&validArtTarget(id)&&['banner','icon','border','title'].includes(kind)){
         if(customizeBusy)return true;
-        try{const asset=root.ReserveCustomArt.importSVG(customizeDrafts[id+':'+kind]||'','Pasted '+kind+'.svg');customizeBusy=true;customizeStatus='Saving artwork…';render();savePersonal(data=>{appearanceFor(data,id)[kind+'Art']=asset;}).then(saved=>{customizeBusy=false;customizeStatus=saved?'Artwork saved. The page has updated.':transientStatus;if(saved)delete customizeDrafts[id+':'+kind];if(!destroyed)render();});}
-        catch(error){customizeStatus=error.message;render();}return true;
+        try{
+          const asset=root.ReserveCustomArt.importSVG(customizeDrafts[id+':'+kind]||'','Pasted '+kind+'.svg');
+          customizeBusy=true;customizeStatus='Saving artwork…';render();
+          savePersonal(data=>{appearanceFor(data,id)[kind+'Art']=asset;}).then(saved=>{
+            customizeBusy=false;customizeStatus=saved?'Artwork saved. The page has updated.':transientStatus;
+            if(saved)delete customizeDrafts[id+':'+kind];if(!destroyed)render();
+          });
+        }catch(error){customizeStatus=error.message;render();}return true;
       }
       if(action==='art-template'){
-        if(!['banner','icon','border'].includes(kind))return true;
+        if(!['banner','icon','border','title'].includes(kind))return true;
         const url=URL.createObjectURL(new Blob([root.ReserveCustomArt.template(kind)],{type:'image/svg+xml'}));
         const a=document.createElement('a');a.href=url;a.download='canvas-harness-'+kind+'.svg';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return true;
       }
-      if(action==='art-remove'&&(validArtTarget(id)||/^\d+$/.test(id||'')&&Object.hasOwn(personal.settings.coursePrefs||{},id))&&['banner','border','icon'].includes(kind)){
-        customizeStatus='Custom artwork removed.';savePersonal(data=>{delete appearanceFor(data,id)[kind+'Art'];});return true;
+      if(action==='art-remove'&&(validArtTarget(id)||/^\d+$/.test(id||'')&&Object.hasOwn(personal.settings.coursePrefs||{},id))&&['banner','icon','border','title'].includes(kind)){
+        customizeStatus='Custom artwork removed.';void savePersonal(data=>{delete appearanceFor(data,id)[kind+'Art'];});return true;
       }
       if(action==='course-reset'&&validArtTarget(id)){
-        customizeStatus='Appearance reset. Work and bookmarks are unchanged.';
-        savePersonal(data=>{if(id==='all')data.settings.overviewArt={};else delete data.settings.coursePrefs[id];});return true;
+        customizeStatus='Course artwork reset. Your name, color and other preferences are kept.';
+        void savePersonal(data=>{
+          const pref=appearanceFor(data,id);
+          for(const key of [...(root.ReserveCustomization?.artKeys||[]),'bannerFit','bannerPosition','titlePlacement'])delete pref[key];
+        });return true;
       }
       if(action==='layout-preset'||action==='layout-reset'){
-        const preset=action==='layout-reset'?root.ReserveCustomization.defaults:root.ReserveCustomization.presets[button.dataset.value];
-        if(preset)savePersonal(data=>{Object.assign(data.settings,preset);data.settings.dashboardLayout=preset.deskOrder==='stacked'?'list':'split';});return true;
+        const model=root.ReserveCustomization;
+        const preset=action==='layout-reset'?model.defaults:model.presets[button.dataset.value];
+        // Presets control layout only. Recent grades, spacing, AI and course art
+        // remain the user's explicit choices until they edit those settings.
+        const keys=['courseNavigation','deskOrder','surfaceStyle','courseCardStyle','bannerSize','showCourseIcons','showDeadlinePreview','showBookmarks','showCourseInformation','showCourseStrip'];
+        if(preset)void savePersonal(data=>{
+          const before=Arrange?.snapshot(data.settings);
+          for(const key of keys)if(Object.hasOwn(preset,key))data.settings[key]=preset[key];
+          data.settings.dashboardLayout=data.settings.deskOrder==='stacked'?'list':'split';
+          if(Arrange){
+            data.settings.workspaceLayout=null;
+            data.settings.workspaceOrder=Arrange.legacyOrder(data.settings);
+            data.settings.workspaceMode=data.settings.deskOrder==='stacked'?'stacked':'side-by-side';
+            if(JSON.stringify(Arrange.snapshot(data.settings))!==JSON.stringify(before))data.settings.workspaceUndo=before;
+          }
+        });return true;
       }
       if(action==='course-up'||action==='course-down'){
-        const order=normalizeData(settings()).allCourses.map(c=>c.id),from=order.indexOf(id),to=from+(action==='course-up'?-1:1);
-        if(from>=0&&to>=0&&to<order.length){[order[from],order[to]]=[order[to],order[from]];savePersonal(data=>{data.settings.courseOrder=order;});}return true;
+        const order=normalizeData(settings()).allCourses.map(course=>course.id),from=order.indexOf(id),to=from+(action==='course-up'?-1:1);
+        if(from>=0&&to>=0&&to<order.length){[order[from],order[to]]=[order[to],order[from]];void savePersonal(data=>{data.settings.courseOrder=order;});}return true;
       }
       return false;
     }
@@ -955,6 +1085,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(destroyed||!container.getClientRects?.().length)return;
       motion?.activity?.();if(event.key==='Tab')tabAt=Date.now();
       const enteringKeyboard=container.dataset.input!=='keyboard';container.dataset.input='keyboard';if(enteringKeyboard){motion?.cancel();motion?.syncTabs(false,true);}
+      if(arrange?.keydown(event))return;
       if(settingsDock?.handleKeydown(event))return;
       // Esc closes the phone drawer, then the phone reader sheet (focus returns to its row).
       if(event.key==='Escape'&&drawerOpen()){event.preventDefault();setDrawer(false);return;}
@@ -979,6 +1110,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
 
     const unsubscribe=typeof store.subscribe==='function'?store.subscribe(data=>{personal=data||store.get()||{};normalizedCache=null;render();}):()=>{};
+    container.addEventListener('dragover',onPackDragover);container.addEventListener('dragleave',onPackDragleave);container.addEventListener('drop',onPackDrop);
     container.addEventListener('input',onInput);
     container.addEventListener('change',onChange);
     container.addEventListener('focusout',onFocusout);container.addEventListener('focusin',onHeaderFocusin);
@@ -987,12 +1119,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     container.addEventListener('toggle',onDisclosure,true);
     // Pointer and key input also keep the living drawings going: after two minutes with none,
     // motion.js lets them rest where they stand until the next input (the idle rest).
-    const onPointerdown=()=>{container.dataset.input='pointer';motion?.activity?.();};
+    const onPointerdown=event=>{container.dataset.input='pointer';motion?.activity?.();arrange?.pointerdown(event);};
     container.addEventListener('pointerdown',onPointerdown);
+    const onArrangePointerUp=event=>arrange?.pointerup(event),onArrangePointerCancel=event=>arrange?.pointercancel(event),onArrangeContext=event=>arrange?.contextmenu(event);
+    container.addEventListener('pointerup',onArrangePointerUp);
+    container.addEventListener('pointercancel',onArrangePointerCancel);
+    container.addEventListener('contextmenu',onArrangeContext);
     // Any real pointer movement ends the hover hold set by a check-off. (The course
     // drawings need no hover: they live on their own, motion.js.)
-    const onPointermove=()=>{if(container.dataset.hoverHold)delete container.dataset.hoverHold;motion?.activity?.();};
-    container.addEventListener('pointermove',onPointermove,{passive:true});
+    const onPointermove=event=>{if(container.dataset.hoverHold)delete container.dataset.hoverHold;motion?.activity?.();arrange?.pointermove(event);};
+    container.addEventListener('pointermove',onPointermove);
     document.addEventListener('keydown',onKeydown);
     // Capture the last scroll on normal navigation/reload without saving on
     // every scroll event or delaying departure from the page.
@@ -1013,15 +1149,17 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         flushDrafts();
         destroyed=true;
         readerLayout?.disconnect();railLayout?.disconnect();root.clearTimeout(railTimer);
-        settingsDock?.destroy();materials?.destroy();hub?.destroy();motion?.destroy();toolbox?.destroy();
+        ++quickPackRead;quickUpload?.destroy();arrange?.destroy();settingsDock?.destroy();materials?.destroy();hub?.destroy();motion?.destroy();toolbox?.destroy();
         clearInterval(freshnessTimer);clearInterval(focusTimer);clearTimeout(entranceTimer);
         unsubscribe?.();
+        container.removeEventListener('dragover',onPackDragover);container.removeEventListener('dragleave',onPackDragleave);container.removeEventListener('drop',onPackDrop);
         container.removeEventListener('input',onInput);
         container.removeEventListener('change',onChange);
         container.removeEventListener('focusout',onFocusout);container.removeEventListener('focusin',onHeaderFocusin);
         container.removeEventListener('click',onClick);
         container.removeEventListener('toggle',onDisclosure,true);
-        container.removeEventListener('pointerdown',onPointerdown);container.removeEventListener('pointermove',onPointermove,{passive:true});
+        container.removeEventListener('pointerdown',onPointerdown);container.removeEventListener('pointermove',onPointermove);
+        container.removeEventListener('pointerup',onArrangePointerUp);container.removeEventListener('pointercancel',onArrangePointerCancel);container.removeEventListener('contextmenu',onArrangeContext);
         document.removeEventListener('keydown',onKeydown);
         root.removeEventListener?.('pagehide',remember);
         container.remove();

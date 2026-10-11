@@ -44,6 +44,6 @@ test('editor exposes archived artwork removal and templates alongside existing u
  const course={id:'101',name:'Current course',color:'#123456'},html=ui.render({s:store.get().settings,allCourses:[course],courses:[course],customizeCourseId:'101',customizeOpen:true});
  assert.match(html,/Artwork from other courses \(1\)/);assert.match(html,/Archived &lt;course&gt;/);
  assert.match(html,/data-rd-action="art-remove" data-id="999" data-kind="icon"/);
- assert.equal((html.match(/data-rd-action="art-template"/g)||[]).length,3);
+ assert.equal((html.match(/data-rd-action="art-template"/g)||[]).length,4);
  assert.match(html,/Remove custom icon/);
 });

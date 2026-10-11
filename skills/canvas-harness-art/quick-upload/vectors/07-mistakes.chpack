@@ -1,0 +1,18 @@
+<?ch-pack version="1" name="Mistakes"?>
+<?ch-art course="Astronomy"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M22 90L50 18L78 90Z" fill="#D97757" stroke="#141413" stroke-width="6" stroke-linejoin="round"/></svg>
+<?ch-art course="Astronomy" place="overview" slot="icon"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M22 90L50 18L78 90Z" fill="#D97757" stroke="#141413" stroke-width="6" stroke-linejoin="round"/></svg>
+<?ch-art slot="icon"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M22 90L50 18L78 90Z" fill="#D97757" stroke="#141413" stroke-width="6" stroke-linejoin="round"/></svg>
+<?ch-art place="homepage" slot="banner"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 240"><path d="M40 214C400 210 1200 216 1640 213" fill="none" stroke="#141413" stroke-width="3" stroke-linecap="round"/></svg>
+<?ch-art course="Astronomy" slot="banner" fit="stretch"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 240"><path d="M40 214C400 210 1200 216 1640 213" fill="none" stroke="#141413" stroke-width="3" stroke-linecap="round"/></svg>
+<?ch-art course="Astronomy" slot="icon" position="left"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M22 90L50 18L78 90Z" fill="#D97757" stroke="#141413" stroke-width="6" stroke-linejoin="round"/></svg>
+<?ch-art course="astronomy" slot="banner"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 240"><path d="M40 214C400 210 1200 216 1640 213" fill="none" stroke="#141413" stroke-width="3" stroke-linecap="round"/></svg>
+<?ch-art course="Astronomy" slot="frame"?>
+There is no drawing here.
+<?ch-end parts="9"?>

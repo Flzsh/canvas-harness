@@ -1,14 +1,15 @@
 /* Canvas Harness — workspace preferences. Original creator: Flzsh. */
 (function(root){
  'use strict';
+ const arrange=root.ReserveWorkspaceArrange||(typeof module==='object'&&module.exports?require('./workspace-arrange.js'):null);
  const enums={courseNavigation:['sidebar','topbar'],deskOrder:['context-first','work-first','stacked'],surfaceStyle:['paper','clean','contrast'],courseCardStyle:['sketch','rounded','minimal'],bannerSize:['compact','standard','large']};
- const defaults={courseNavigation:'sidebar',deskOrder:'context-first',surfaceStyle:'paper',courseCardStyle:'sketch',bannerSize:'standard',showCourseIcons:true,showDeadlinePreview:true,showBookmarks:true,showCourseInformation:true,showCourseStrip:true,showRecentGrades:false,density:'comfortable'};
- const artKeys=['bannerArt','borderArt','iconArt'];
- const presets={studio:{...defaults},study:{...defaults,deskOrder:'work-first',surfaceStyle:'clean',courseCardStyle:'rounded',bannerSize:'compact'},focus:{...defaults,courseNavigation:'topbar',deskOrder:'stacked',bannerSize:'compact',showCourseInformation:false,showDeadlinePreview:false}};
+ const defaults={courseNavigation:'sidebar',deskOrder:'context-first',surfaceStyle:'paper',courseCardStyle:'sketch',bannerSize:'standard',showCourseIcons:true,showDeadlinePreview:true,showBookmarks:true,showCourseInformation:true,showCourseStrip:true,showRecentGrades:false,density:'comfortable',workspaceOrder:['context','work','reader'],workspaceMode:'side-by-side',workspaceLayout:null,workspaceUndo:null};
+ const artKeys=['bannerArt','borderArt','iconArt','titleArt'];
+ const presets={studio:{...defaults},study:{...defaults,deskOrder:'work-first',workspaceOrder:['work','reader','context'],surfaceStyle:'clean',courseCardStyle:'rounded',bannerSize:'compact'},focus:{...defaults,courseNavigation:'topbar',deskOrder:'stacked',workspaceMode:'stacked',bannerSize:'compact',showCourseInformation:false,showDeadlinePreview:false}};
  function cleanAppearance(value={}){
   if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid course appearance.');
   const out={bannerFit:'contain',bannerPosition:'right'};
-  for(const [key,allowed] of Object.entries({bannerFit:['cover','contain'],bannerPosition:['left','center','right']})){
+  for(const [key,allowed] of Object.entries({bannerFit:['cover','contain'],bannerPosition:['left','center','right'],titlePlacement:['separate','banner']})){
    if(value[key]!==undefined&&!allowed.includes(value[key]))throw Error(`Invalid ${key} setting in backup.`);
    if(value[key])out[key]=value[key];
   }
@@ -29,6 +30,8 @@
    if(settings[key]!==undefined&&typeof settings[key]!=='boolean')throw Error(`Invalid ${key} setting in backup.`);
    if(settings[key]!==undefined)out[key]=settings[key];
   }
+  if(!arrange)throw Error('Workspace arrangement is unavailable. Reload Canvas Harness and try again.');
+  Object.assign(out,arrange.cleanSaved(settings));
   out.overviewArt=cleanAppearance(settings.overviewArt);
   return out;
  }

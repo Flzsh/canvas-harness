@@ -12,6 +12,22 @@ test('queued independent edits survive a slow storage write',async()=>{
  await Promise.all([store.update(s=>{s.tasks['1']={notes:'first'};}),store.update(s=>{s.tasks['2']={notes:'second'};})]);
  const saved=await createStore({accountId:'1',adapter}).load();assert.equal(saved.tasks['1'].notes,'first');assert.equal(saved.tasks['2'].notes,'second');
 });
+test('throwing subscriber cannot reject a persisted update or block other listeners',async()=>{
+ const adapter=memory(),store=createStore({accountId:'1',adapter});await store.load();
+ const received=[];store.subscribe(()=>{throw Error('Render failed');});store.subscribe(snapshot=>received.push(snapshot.settings.theme));
+ const result=await store.update(s=>{s.settings.theme='dark';});
+ assert.equal(result.settings.theme,'dark');assert.deepEqual(received,['dark']);assert.equal(store.get().settings.theme,'dark');
+ assert.equal((await createStore({accountId:'1',adapter}).load()).settings.theme,'dark');store.destroy();
+});
+test('throwing subscriber on external reload does not block later listeners',async()=>{
+ const adapter=memory(),callbacks=new Set(),write=adapter.write;
+ adapter.write=async(key,value)=>{await write(key,value);for(const callback of callbacks)callback();};
+ adapter.subscribe=(_key,callback)=>{callbacks.add(callback);return()=>callbacks.delete(callback);};
+ const local=createStore({accountId:'1',adapter}),remote=createStore({accountId:'1',adapter});await local.load();await remote.load();
+ const received=[];local.subscribe(()=>{throw Error('Reload render failed');});local.subscribe(snapshot=>received.push(snapshot.settings.theme));
+ await remote.update(s=>{s.settings.theme='dark';});await remote.update(()=>{}); // Serial write waits for the first reload notification.
+ assert.deepEqual(received,['dark']);assert.equal(local.get().settings.theme,'dark');local.destroy();remote.destroy();
+});
 test('backup rejects foreign schemas, hostile keys, and invalid data structures',()=>{
  assert.throws(()=>validateBackup({format:'other',version:1,data:{}}),/backup|format/i);
  assert.throws(()=>validateBackup(JSON.parse('{"format":"reserve-backup","version":1,"data":{"settings":{},"tasks":{"__proto__":{"bad":true}}}}')),/key|unsafe/i);
@@ -30,7 +46,8 @@ test('GPA rules and what-if choices persist only in their own account and surviv
 });
 test('failed save is reported and does not masquerade as persisted data',async()=>{
  const store=createStore({accountId:'1',adapter:{read:async()=>null,write:async()=>{throw Error('Disk full');}}});await store.load();
- await assert.rejects(store.update(s=>{s.settings.theme='dark';}),/Disk full/);assert.equal(store.get().settings.theme,'system');
+ let notifications=0;store.subscribe(()=>notifications++);
+ await assert.rejects(store.update(s=>{s.settings.theme='dark';}),/Disk full/);assert.equal(store.get().settings.theme,'system');assert.equal(notifications,0);
 });
 test('restore recovery preserves the previous personal workspace without its Canvas cache',async()=>{
  const store=createStore({accountId:'1',adapter:memory()});await store.load();await store.update(s=>{s.tasks['7']={notes:'Before restore'};});

@@ -1,50 +1,42 @@
 # Study with AI
 
-Open **Tools → AI**. The dock stays beside Canvas, so you can read instructions and use the tools together.
+Open **Tools → AI** on a signed-in Canvas page. The AI tool stays beside your coursework. Canvas Harness 2.21.0 uses AI providers' normal websites; you sign in directly on the provider site.
 
-## Use your provider's website
+## Ask a question
 
 Choose ChatGPT, Claude or Gemini, or find Grok, DeepSeek, Kimi, Qwen and Z.ai (GLM) under **More**.
 
-1. Choose **Alongside → Open website** and sign in on the provider's own page. The website opens in a separate window or tab because these services do not generally permit embedding.
-2. Write your question there, or in CH's optional prompt field.
-3. Review **Context**, then choose **Inject context**. On first use, CH opens a permission page where you can allow draft insertion for that provider only. Return to Canvas and click Inject again.
-4. Review the combined draft on the provider website and send it yourself.
+1. Open **Open website / sign in** if you need to sign in to the provider. This opens a normal browser tab. Opening it alone sends no Canvas text.
+2. In Canvas Harness, select the coursework you want to share using the small selection circles beside assignments or materials. An assignment you opened is selected by default. You can also ask a question with no Canvas material selected.
+3. Type your question. Press **Review text to share** to see the material that will be added, including any missing or shortened parts.
+4. Click **Send** (or press **Enter** in the question box). On first use, your browser may ask for optional scripting and website access limited to that provider. If a separate permission page appears, allow access, return to Canvas, and click Send again.
+5. The selected text and your question are inserted into the provider's chat draft. Review it and submit it there. If you turn on **Send automatically after inserting**, Canvas Harness also tries to submit the newly inserted message.
 
-Insertion preserves the existing draft and never presses Send. It works only in a recognized, unambiguous composer in a window CH opened for this Canvas tab. If a provider changes its editor, login is incomplete, or browser policy blocks insertion, use **Copy** and paste manually. Permission approval never queues or automatically retries an insertion.
+**Enter** submits your question from the Canvas Harness composer; **Shift + Enter** adds a new line. Automatic website submission is off by default. It can fail if the provider changes its chat editor or the message would combine with existing draft text. Check the provider page before trying again; uncertain sends are not retried automatically.
 
-**Injecting shares the selected text with the provider website immediately**, before you press its Send button. The provider's account terms and data controls apply. Opening the website alone does not send Canvas context.
+**Clicking Send transfers the prepared text into the provider website's draft.** The provider site may receive that text before you submit the chat. Its own privacy terms and account settings apply. Use **Copy** to paste manually if insertion fails or you prefer not to grant website permission.
 
-## Chat inside the dock
+## What can be shared
 
-**Connected chat** currently supports the official [Sign in with ChatGPT for open-source/local apps](https://developers.openai.com/siwc/token-sharing-open-source) flow. It requires the optional [local companion](https://github.com/Flzsh/canvas-harness/blob/main/companion/README.md). A Windows installer is included; setup is an explicit local action using the actual installed extension ID.
+- Opening an assignment selects its instructions. From Home or other views, select individual assignments, teacher home pages, announcements, course pages or files. **Load materials** loads the available list for a chosen course.
+- **Include this assignment's linked pages & small files** gathers same-course links from the opened assignment, up to two levels deep and 30 sources. **Include attached assignment PDFs** is on by default for selected assignments; you can turn it off.
+- **Review text to share** shows the gathered text and warnings. If anything is missing or cut short, you must review and explicitly accept the available text before sending.
+- Text from small PDFs is extracted locally. You can add a PDF from your device with **+ PDF**. Each PDF is limited to 2 MiB, 20 pages and 60,000 characters of extracted text. The combined context is limited to 100,000 characters, and your question to 20,000 characters. These are text extracts, not binary PDF uploads to the AI website.
+- Scanned PDFs may contain no extractable text. Password-protected, broken, blocked or oversized documents may fail. If Canvas won't provide a file directly, download it from Canvas and attach a small PDF yourself.
+- Plain-text files can also be read. External Google/Microsoft documents and arbitrary web links are not fetched. Scripts, forms and embedded content in documents are not executed.
 
-The companion registers this installation as Canvas Harness, handles consent and token refresh locally, and uses eligible ChatGPT plan usage through OpenAI's public API. Account eligibility, available models and usage limits are determined by OpenAI. A successful sign-in is not a guarantee that inference is available. CH lists the models actually returned for the signed-in account and shows access errors.
+Canvas Harness selects instructional content, not grades, GPA calculations, submissions, your private plans or notes, account tokens, or course rosters. Teacher materials may still contain names or private details, so read the preview. Source URLs have query strings and fragments removed.
 
-After setup, choose **Connected chat → Sign in with ChatGPT**, complete the official consent flow, select a model and write your question. **Send** automatically attaches the selected context. **Stop** cancels an active response; incomplete answers remain marked incomplete. Requests are never automatically retried. **Clear chat** removes the in-memory conversation.
-
-Claude, Gemini and the other providers use Alongside. CH does not borrow client IDs, reuse another app's credentials, collect passwords or extract subscription tokens from provider websites.
-
-## Choose the context
-
-- An assignment explicitly opened in CH, or a native Canvas assignment page, starts with that assignment's instructions selected.
-- Home and other views start with nothing selected. Choose individual assignments, teacher home pages, announcements, course pages or files. **Load materials** reads the chosen course's available material list.
-- **Include assignment's linked materials** gathers that assignment and its same-course page/file links, to a depth of two and at most 30 sources. It does not collect every course.
-- **Preview selected text** shows the text, its sources and anything missing or shortened. Context is gathered again immediately before sharing. A changed page or Canvas account invalidates the collection.
-- Small text PDFs and plain-text files can be read locally. PDFs are limited to 2 MiB, 20 pages and 60,000 characters each. Total Canvas context is limited to 100,000 characters; conversation transport also has a byte limit.
-- Scanned PDFs have no text to extract; there is no OCR. Password-protected, malformed, oversized or blocked documents are reported. If Canvas redirects a file to an external download service, download it in Canvas and use **Attach PDF**.
-- External Google/Microsoft documents and arbitrary web links are not crawled. No document scripts, PDF forms or attachments execute during extraction.
-
-CH selects instructional fields, not grades, submissions, private planner notes, account tokens or a course roster. Course document text may itself contain personal information, so review it before sharing. Source URLs have query strings and fragments removed.
-
-Prompts and responses live in an extension-origin frame, separate from the Canvas page. They remain in memory and are not included in CH backups. Reloading clears the conversation and attached PDFs. Switching Canvas scope clears the previous conversation and PDFs while retaining the unsent prompt. The local companion keeps tokens out of the page; on Windows it uses protected storage, with an explicit memory-only fallback if protected storage is unavailable.
+The question draft and extracted attached-PDF text are held in the open AI panel, not saved as a conversation or included in the Canvas Harness personal backup. Switching Canvas accounts or views resets the selected sources and attached PDFs while preserving your unsent question. Website chat history is controlled by the provider.
 
 ## Permissions
 
-The normal Canvas dashboard remains read-only on the current school's instructure.com origin. The extension adds local offscreen processing for PDFs. AI website insertion asks for optional scripting access and the chosen provider's exact origin; each permission page also offers removal. Connected chat separately asks for optional native messaging access.
+The extension reads Canvas through your signed-in `*.instructure.com` school site. Local PDF reading uses the browser's offscreen permission. Website insertion needs the optional `scripting` permission and the exact website origin you choose (for example, `https://chatgpt.com/*`). It does not require access to every website. You can revoke a provider's access from its permission page, if open, or your browser's extension site settings.
 
-No cookies permission, debugger access, arbitrary-site host access or externally connectable extension endpoint is used. The companion cannot run model tools, shell commands or Canvas changes. It submits text-only inference requests with store disabled; this flag does not replace the provider's retention policy.
+The extension does not request cookies, debugger, native-messaging, or all-sites permissions. There is no AI API key or separate AI account connection to set up. Clicking **Copy** needs no provider-site permission.
 
-## Verification limits
+## If sending does not work
 
-Automated tests cover local selection, account and origin boundaries, bounded PDF extraction, draft insertion, OAuth validation and stream handling. The artificial preview makes no AI requests. An account's consent flow, inference eligibility and each signed-in provider's current editor still require a live check by that account's user.
+Finish signing in on the provider website, return to Canvas Harness, and try **Send** again. If the provider moved its chat field or your browser blocks insertion, use **Copy** and paste into the website. Permissions do not queue or repeat a failed send. Provider editors and school Canvas settings may change, so behavior needs a live check with your own account. The artificial preview never sends AI requests.
+
+For local storage, third-party sites and data handling, see the [Privacy notice](PRIVACY.md).

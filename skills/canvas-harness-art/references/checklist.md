@@ -4,6 +4,8 @@ Go through this before handing anything over. Fix what fails; do not explain it 
 
 ## A. Will it upload?
 
+(If you are sending a pack, also run the short list at the end of `quick-upload.md`.)
+
 - [ ] One `<svg>` root with `xmlns` and a `viewBox` (banner 1680x240, icon 100x100, border 360x110).
 - [ ] Only allowed elements; no `data-*`, `aria-*`, `role`, namespaced attributes, scripts, images, links, markers.
 - [ ] No `var()`, no outside `url()`, no `@import`/`@font-face`, no `offset-path`, no animated `d`.

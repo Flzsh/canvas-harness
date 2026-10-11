@@ -7,7 +7,7 @@
   const origin=store.owner?.origin||client?.origin||root.location?.origin,accountId=String(user?.id||store.owner?.accountId||'');
   const resources=new Map(),updates=new Map(),freshAssignments=new Map();
   let dead=false;
-  const scopeKey=()=>{const ctx=getContext();return [origin,accountId,ctx.courseId||'all',ctx.aiAssignmentId||''].join('|');};
+  const scopeKey=()=>{const ctx=getContext();return [origin,accountId,ctx.courseId||'all',ctx.aiAssignmentId||'',JSON.stringify(ctx.aiSelectedIds||[])].join('|');};
   function assertScope(key){if(dead||key!==scopeKey())throw Error('The Canvas view changed. Review the sources for the new page.');}
   async function verify(signal){
    if(demo)return;
@@ -26,10 +26,10 @@
   }
   function summary(){
    const {ctx,sources,active}=current();
-   return {scopeKey:scopeKey(),courseId:ctx.courseId||'all',active:active?{id:active.id,title:active.title,courseName:active.courseName,courseId:active.courseId}:null,
+   return {selectedIds:Array.isArray(ctx.aiSelectedIds)&&ctx.aiSelectedIds.length?[...ctx.aiSelectedIds]:active?[active.id]:[],scopeKey:scopeKey(),courseId:ctx.courseId||'all',active:active?{id:active.id,title:active.title,courseName:active.courseName,courseId:active.courseId}:null,
     courses:(ctx.courses||[]).map(c=>({id:String(c.id),name:c.shortName||c.name})),
     sources:sources.map(({id,title,kind,courseName,courseId,url,text,size})=>({id,title,kind,courseName,courseId,url,loaded:typeof text==='string',size})),
-    demo,theme:ctx.s?.theme==='dark'||ctx.s?.theme==='system'&&root.matchMedia?.('(prefers-color-scheme: dark)').matches?'dark':'light',motion:ctx.s?.motion||'gentle'};
+    demo,autoSend:store.get?.().toolbox?.aiAutoSend===true,theme:'light',motion:ctx.s?.motion||'gentle'};
   }
   async function readAssignment(courseId,id,signal){
    const data=await client.readAssignment(courseId,id,{user:{id:accountId},signal});
@@ -57,15 +57,21 @@
    if(client.loadCourseUpdates){const news=await client.loadCourseUpdates(id,{user:{id:accountId},signal});assertScope(key);updates.set(id,news);}
    await verify(signal);assertScope(key);return summary();
   }
-  async function download(file,{signal}={}){
+  async function download(file,{signal,fileId}={}){
    if(Number(file.size)>MAX_BYTES)throw Error('Larger than 2 MiB. Choose a smaller document.');
-   let url;try{url=new URL(file.url,origin);}catch{throw Error('No readable download link was provided.');}
-   if(url.origin!==origin||url.username||url.password||!/^\/(?:courses\/\d+\/)?files\/\d+(?:\/download)?\/?$/.test(url.pathname))throw Error('This file uses an external download. Download it in Canvas and attach the small PDF here.');
+   // Metadata commonly points straight to a signed storage host. Start at
+   // Canvas using the selected link's ID so its normal authorization applies;
+   // never trust or copy that arbitrary, short-lived metadata download URL.
+   if(!/^\d+$/.test(String(fileId||''))||file.id!=null&&String(file.id)!==String(fileId))throw Error('The metadata does not match the selected file. Refresh Canvas and try again.');
+   const url=new URL('/files/'+fileId+'/download',origin);
    const controller=new AbortController(),abort=()=>controller.abort(),timer=setTimeout(abort,15000);
    signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)abort();
    try{
-    const response=await fetchImpl(url.href,{method:'GET',credentials:'same-origin',redirect:'error',signal:controller.signal});
-    if(!response.ok||response.redirected||response.type==='opaqueredirect')throw Error('Canvas did not allow a direct file read.');
+    // Only a verified Canvas file endpoint starts the download. Canvas may
+    // redirect to its signed file host; no Canvas cookies or referrer go there.
+    // The browser still enforces CORS. Never put the signed URL into context.
+    const response=await fetchImpl(url.href,{method:'GET',credentials:'same-origin',redirect:'follow',referrerPolicy:'no-referrer',signal:controller.signal});
+    if(!response.ok||response.type==='opaqueredirect'||response.url&&new URL(response.url).protocol!=='https:')throw Error('Canvas did not allow a secure file read.');
     if(Number(response.headers.get('content-length'))>MAX_BYTES)throw Error('Larger than 2 MiB. Choose a smaller document.');
     const reader=response.body?.getReader();if(!reader)throw Error('This browser cannot read the file safely.');
     const chunks=[];let length=0;
@@ -84,7 +90,7 @@
     throw error;
    }finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);}
   }
-  async function material(source,signal){
+  async function material(source,signal,{pdfOnly=false,includeAssignmentPdfs=true}={}){
    if(source.kind==='assignment'&&client?.readAssignment&&!demo)return readAssignment(source.courseId,source.assignmentId,signal);
    if(source.kind==='page'&&client?.readCoursePage){
     const html=await client.readCoursePage(source.courseId,source.slug,{user:{id:accountId},signal});
@@ -93,12 +99,16 @@
    if(source.kind==='file'){
     if(!client?.readFile)throw Error(demo?'PDF download is not available in this artificial preview.':'File reading is unavailable.');
     const file=await client.readFile(source.courseId,source.fileId,{user:{id:accountId},signal});
-    const result=await download(file,{signal});
-    return {...source,title:file.display_name||file.filename||source.title,text:result.text,truncated:result.truncated,warnings:result.warnings||[]};
+    const title=file.display_name||file.filename||source.title,isPDF=/^application\/pdf(?:;|$)/i.test(file['content-type']||file.content_type||'')||/\.pdf$/i.test(title);
+    if(pdfOnly&&!isPDF||source.attachmentOf&&isPDF&&!includeAssignmentPdfs)return null;
+    try{
+     const result=await download(file,{signal,fileId:source.fileId});
+     return {...source,title,mime:isPDF?'application/pdf':file['content-type'],text:result.text,truncated:result.truncated,warnings:result.warnings||[]};
+    }catch(error){error.sourceTitle=title;throw error;}
    }
    return source;
   }
-  async function collect({ids=[],all=false,signal}={}){
+  async function collect({ids=[],all=false,includeAssignmentPdfs=true,signal}={}){
    const key=scopeKey();await verify(signal);assertScope(key);
    const {sources,active}=current(),byId=new Map(sources.map(s=>[s.id,s]));
    if(!Array.isArray(ids)||ids.length>30||ids.some(id=>typeof id!=='string'||!byId.has(id)))throw Error('The source selection changed. Review it before sharing.');
@@ -106,15 +116,17 @@
    const queue=(all?[active]:ids.map(id=>byId.get(id))).map(source=>({source,depth:0})),seen=new Set(),resolved=[];
    while(queue.length&&resolved.length<C().MAX_SOURCES){
     if(signal?.aborted)throw Error('Context gathering cancelled.');assertScope(key);
-    const {source,depth}=queue.shift();if(seen.has(source.id))continue;seen.add(source.id);
-    let read;try{read=await material(source,signal);}catch(error){
+    const {source,depth,pdfOnly}=queue.shift();if(seen.has(source.id))continue;seen.add(source.id);
+    let read;try{read=await material(source,signal,{pdfOnly,includeAssignmentPdfs});}catch(error){
      if(signal?.aborted||error.code==='auth'||error.code==='cancelled')throw error;
-     read={...source,text:'',error:String(error.message||'This source could not be read.')};
+     read={...source,title:error.sourceTitle||source.title,text:'',error:String(error.message||'This source could not be read.')};
     }
+    if(!read)continue;
     assertScope(key);resolved.push(read);
-    if(all&&depth<2)for(const link of read.links||[]){
+    if(all&&depth<2||includeAssignmentPdfs&&depth===0&&read.kind==='assignment')for(const link of read.links||[]){
+     if(!all&&link.kind!=='file')continue;
      const id=link.kind==='page'?'page:'+link.courseId+':'+link.slug:'file:'+link.courseId+':'+link.fileId;
-     if(!seen.has(id))queue.push({source:byId.get(id)||{...link,id,title:link.kind==='page'?link.slug.replace(/-/g,' '):'Linked document '+link.fileId,courseName:source.courseName,text:null},depth:depth+1});
+     if(!seen.has(id))queue.push({source:{...(byId.get(id)||{...link,id,title:link.kind==='page'?link.slug.replace(/-/g,' '):'Linked document '+link.fileId,courseName:source.courseName,text:null}),attachmentOf:source.id},depth:depth+1,pdfOnly:!all});
     }
    }
    await verify(signal);assertScope(key);
@@ -126,7 +138,7 @@
  }
  function base64(bytes){let value='';for(let i=0;i<bytes.length;i+=16384)value+=String.fromCharCode(...bytes.subarray(i,i+16384));return root.btoa(value);}
  function mount({container,getContext,store,client,user,demo=false,onClose=()=>{}}){
-  let frame,port,dead=false,lastSignature='';
+  let frame,port,dead=false,lastSignature='',lastHeartbeat=0;
   const runtime=root.chrome?.runtime,preview=demo&&!runtime?.id&&/^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(root.location?.origin||'');
   async function parsePDF(bytes){
    if(!runtime?.id)throw Error('Install the extension to read PDFs locally.');
@@ -141,6 +153,10 @@
     let result;if(action==='catalog')result=await source.catalog();
     else if(action==='load-course')result=await source.loadCourse(message.courseId);
     else if(action==='collect')result=await source.collect(message);
+    else if(action==='preference'){
+     if(typeof message.autoSend!=='boolean')throw Error('Choose whether to send automatically.');
+     await store.update(data=>{data.toolbox.aiAutoSend=message.autoSend;});result={saved:true};
+    }
     else if(preview)throw Error('This artificial preview cannot connect accounts or open AI chats. Install Canvas Harness to use this feature.');
     else return;
     send({id,ok:true,result});
@@ -150,16 +166,24 @@
   frame=document.createElement('iframe');frame.className='rd-ai-frame';frame.title='AI study workspace';frame.referrerPolicy='no-referrer';
   frame.src=runtime?.id?runtime.getURL('ai-panel.html'):new URL('../extension/ai-panel.html?preview=1',root.location.href).href;
   if(preview)root.addEventListener('message',onPreview);
-  else if(runtime?.id){
-   port=runtime.connect({name:'ch-ai-source'});
-   port.onMessage.addListener(message=>{if(message.kind==='source-request')request(message);});
-   port.onDisconnect.addListener(()=>{port=null;});
+  function connect(){
+   if(dead||port||!runtime?.id)return;
+   try{
+    const next=runtime.connect({name:'ch-ai-source'});port=next;lastSignature='';lastHeartbeat=Date.now();
+    next.onMessage.addListener(message=>{if(port===next&&message.kind==='source-request')request(message);});
+    next.onDisconnect.addListener(()=>{if(port===next){port=null;lastSignature='';}});
+   }catch{port=null;}
   }
+  if(!preview)connect();
   container.append(frame);
   function update(){
    if(dead)return;try{
+    if(!preview)connect();
     const data=source.summary(),signature=JSON.stringify(data);
     if(signature!==lastSignature){lastSignature=signature;send({kind:'catalog',data});}
+    // Keep this open tool connected without republishing a catalog that would
+    // invalidate in-progress context. Reconnect and resend metadata after sleep.
+    if(port&&Date.now()-lastHeartbeat>=20000){port.postMessage({kind:'ping'});lastHeartbeat=Date.now();}
    }catch{}
   }
   frame.addEventListener('load',()=>{lastSignature='';update();});

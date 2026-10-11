@@ -1,4 +1,4 @@
-/*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. MIT. */
+/*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. GPL-3.0-only. */
 (function (root, factory) {
   'use strict';
   const api = factory();

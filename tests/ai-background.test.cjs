@@ -25,26 +25,21 @@ test('context reply is routed to its originating panel and unknown replies are i
  h.source.onMessage.emit({id:request.id,ok:true,result:{text:'Selected instructions'}});
  assert.equal(h.panel.sent.at(-1).id,'pick-1');assert.equal(h.panel.sent.at(-1).result.text,'Selected instructions');h.panel.disconnect();
 });
+
+test('assignment PDF option crosses the runtime boundary only as a boolean',async()=>{
+ const h=harness();
+ for(const value of [true,false,'true']){
+  h.panel.onMessage.emit({id:'pdf-'+String(value),action:'collect',ids:['assignment:10:1'],includeAssignmentPdfs:value});await tick();
+  const request=h.source.sent.at(-1);assert.equal(request.includeAssignmentPdfs,value===true);
+  h.source.onMessage.emit({id:request.id,ok:true,result:{text:''}});
+ }
+ h.panel.disconnect();
+});
 test('website insertion verifies current Canvas account before crossing origins',async()=>{
  const h=harness();h.fake.fetch=async()=>({ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:'8'})});
  h.panel.onMessage.emit({id:'inject-1',action:'web',op:'inject',provider:'chatgpt',text:'Context',scopeKey:h.origin+'|7|10|1'});await tick();await tick();
  assert.equal(h.web.length,0);assert.match(h.panel.sent.at(-1).error,/account changed/);
  h.panel.disconnect();
-});
-test('native authorization progress is not mistaken for a completed connection',async()=>{
- const h=harness();h.panel.onMessage.emit({id:'auth-1',action:'native',op:'authenticate'});await tick();
- h.native.onMessage.emit({id:'auth-1',type:'auth',state:'opening_browser'});
- assert.ok(!h.panel.sent.some(m=>m.id==='auth-1'));
- h.native.onMessage.emit({id:'auth-1',type:'auth',state:'authorized',authorized:true,verified:false});
- assert.equal(h.panel.sent.at(-1).result.connected,true);assert.equal(h.panel.sent.at(-1).result.verified,false);h.panel.disconnect();
-});
-test('one native host is shared, with targeted stream routing and no arbitrary request fields',async()=>{
- const h=harness();h.panel.onMessage.emit({id:'status-1',action:'native',op:'status',token:'must-not-forward'});await tick();
- assert.deepEqual(JSON.parse(JSON.stringify(h.native.sent.at(-1))),{id:'status-1',op:'status'});
- const second=port('ch-ai-panel',{...h.panel.sender,frameId:2});h.runtime.onConnect.emit(second);
- second.onMessage.emit({id:'status-2',action:'native',op:'status'});await tick();assert.equal(h.runtime.connects,1);
- h.native.onMessage.emit({id:'status-1',type:'status',authorized:false});assert.ok(!second.sent.some(m=>m.id==='status-1'));
- h.panel.disconnect();second.disconnect();
 });
 test('a stale Canvas source disconnects AI panels and aborts their host work',()=>{
  const h=harness();h.source.disconnect();assert.equal(h.panel.disconnected,true);
@@ -56,12 +51,24 @@ test('switching course during the final account check stops sharing stale contex
  finish({ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:'7'})});await tick();await tick();
  assert.equal(h.web.length,0);assert.match(h.panel.sent.at(-1).error,/view changed/);h.panel.disconnect();
 });
-test('renewed consent is forwarded explicitly and duplicate IDs cannot steal a pending reply',async()=>{
- const h=harness();h.panel.onMessage.emit({id:'auth-1',action:'native',op:'authenticate',reauthorize:true,scope:'extra'});await tick();
- assert.deepEqual(JSON.parse(JSON.stringify(h.native.sent.at(-1))),{id:'auth-1',op:'authenticate',reauthorize:true});
- const second=port('ch-ai-panel',{...h.panel.sender,frameId:2});h.runtime.onConnect.emit(second);
- second.onMessage.emit({id:'auth-1',action:'native',op:'status'});await tick();
- assert.match(second.sent.at(-1).error,/already active/);
- h.native.onMessage.emit({id:'auth-1',type:'auth',state:'authorized',authorized:true});
- assert.equal(h.panel.sent.at(-1).result.connected,true);assert.ok(!second.sent.some(m=>m.result?.connected));h.panel.disconnect();second.disconnect();
+
+test('removed native account actions are rejected without connecting a host',async()=>{
+ const h=harness();h.panel.onMessage.emit({id:'old-native',action:'native',op:'authenticate'});await tick();
+ assert.match(h.panel.sent.at(-1).error,/Unsupported AI action/);assert.equal(h.runtime.connects||0,0);h.panel.disconnect();
+});
+test('closing AI during the final account check prevents opening and sharing afterward',async()=>{
+ const h=harness();let finish;h.fake.fetch=()=>new Promise(resolve=>{finish=resolve;});
+ h.panel.onMessage.emit({id:'waiting-inject',action:'web',op:'inject',provider:'chatgpt',text:'Selected material',scopeKey:h.origin+'|7|10|1'});await tick();
+ h.panel.onMessage.emit({id:'closing',action:'close'});await tick();
+ finish({ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:'7'})});await tick();await tick();
+ assert.equal(h.web.length,0);assert.ok(h.panel.sent.some(x=>x.id==='waiting-inject'&&/closed/.test(x.error)));h.panel.disconnect();
+});
+test('closing AI while a provider loads revokes its handoff before insertion',async()=>{
+ const h=harness();let guard,finish;h.fake.CanvasHarnessWeb.handle=(m,s,options)=>{guard=options.canShare;return new Promise(resolve=>{finish=resolve;});};
+ h.panel.onMessage.emit({id:'web-wait',action:'web',op:'inject',provider:'chatgpt',text:'Selected material',scopeKey:h.origin+'|7|10|1'});await tick();await tick();assert.equal(guard(),true);
+ h.panel.onMessage.emit({id:'closing',action:'close'});await tick();assert.equal(guard(),false);finish({status:'error',message:'Cancelled'});await tick();h.panel.disconnect();
+});
+
+test('optional send is forwarded only as an explicit boolean on the verified handoff',async()=>{
+ const h=harness();h.panel.onMessage.emit({id:'send-option',action:'web',op:'inject',provider:'chatgpt',text:'Synthetic context',scopeKey:h.origin+'|7|10|1',autoSend:true});await tick();await tick();assert.equal(h.web[0].m.autoSend,true);h.panel.disconnect();
 });

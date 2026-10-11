@@ -20,6 +20,13 @@ node scripts/check.cjs examples/astronomy
 
 then open the `preview.html` it writes.
 
+`astronomy/astronomy.chpack` is the same set as a quick upload pack, the form in which art is handed to a user
+(see `references/quick-upload.md`). It was made with:
+
+```sh
+node scripts/pack.cjs --course "Astronomy" examples/astronomy
+```
+
 ## What to notice in `astronomy/`
 
 - **One chain of cause and effect** crosses the banner: the telescope is nudged onto the chart's bright star, a

@@ -1,0 +1,54 @@
+{
+  "ok": true,
+  "version": 1,
+  "name": "Marine Biology",
+  "errors": [],
+  "warnings": [],
+  "skipped": [],
+  "parts": [
+    {
+      "index": 1,
+      "slot": "banner",
+      "target": {
+        "type": "course",
+        "names": [
+          "Marine Biology"
+        ]
+      },
+      "name": "Tide pool banner",
+      "fit": "cover",
+      "position": "center",
+      "svgBytes": 183,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "index": 2,
+      "slot": "icon",
+      "target": {
+        "type": "course",
+        "names": [
+          "Marine Biology"
+        ]
+      },
+      "name": "Marine Biology icon",
+      "svgBytes": 172,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "index": 3,
+      "slot": "frame",
+      "target": {
+        "type": "course",
+        "names": [
+          "Marine Biology"
+        ]
+      },
+      "name": "Marine Biology frame",
+      "svgBytes": 246,
+      "errors": [],
+      "warnings": []
+    }
+  ]
+}

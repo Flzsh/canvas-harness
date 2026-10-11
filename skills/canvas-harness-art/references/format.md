@@ -22,6 +22,10 @@ Checked against Canvas Harness 2.20.0 (`extension/custom-art.js`, unchanged sinc
 
 "All courses" (the overview) has its own banner, icon and border slots; treat it as one more course.
 
+Several pieces travel to the extension as one quick upload pack: plain text with a `<?ch-art ...?>` line before each
+SVG (see `quick-upload.md`). Everything in this file applies to each SVG inside a pack exactly as it does to a file
+uploaded on its own; a pack does not relax any rule.
+
 ## Hard limits
 
 - 256 KiB per file (raw and after normalising); 2 MiB for all of a user's artwork together. Aim far lower:

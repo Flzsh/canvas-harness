@@ -1,33 +1,40 @@
-# Canvas Harness
+# Install Canvas Harness 2.21.0
 
-Canvas Harness brings course information, assignments, bookmarks and study tools into one workspace, with animated artwork and consistent course layouts.
+Canvas Harness is a browser extension for your signed-in Canvas courses, assignments, bookmarks, artwork and study tools. It is designed for desktop Chrome and Edge.
 
 ## Install in desktop Chrome or Edge
 
-1. Extract this ZIP into a folder you will keep.
-2. Open `chrome://extensions` or `edge://extensions`.
-3. Turn on Developer mode, choose Load unpacked, and select the extracted folder containing `manifest.json`.
-4. Disable other Canvas dashboard extensions while using Canvas Harness.
-5. Sign in to your school’s Canvas with your own account and refresh the dashboard.
+1. Download a **Canvas-Harness-2.21.0.zip** package from [GitHub Releases](https://github.com/Flzsh/canvas-harness/releases) if one is available, or download the [source repository](https://github.com/Flzsh/canvas-harness).
+2. Extract the download to a folder you will keep. For the packaged extension, use its extracted folder containing `manifest.json`. For a source-repository download, use its `extension` subfolder.
+3. Open `chrome://extensions` or `edge://extensions` in the browser.
+4. Turn on **Developer mode**, choose **Load unpacked**, and select the folder containing `manifest.json`.
+5. Sign in to your school's Canvas website and refresh the page. Disable other extensions that replace the Canvas dashboard if they conflict.
 
-If your managed browser blocks unpacked extensions, ask your school's IT staff about permitted installation options.
+Keep the installed folder where it is. Moving or deleting it can break an unpacked installation. If your managed browser blocks unpacked extensions, ask your school's IT team which installation methods are allowed.
 
-## Data and privacy
+## First use
 
-- The ZIP contains application code, shared artwork, fonts, icons, and this guide. It does not contain the creator's Canvas account, grades, course enrolment list, messages, notes, saved settings, screenshots, or exported backups.
-- Canvas Harness reads the courses and assignments available to the account signed into your school’s Canvas in your browser. It does not need a shared password or API key.
-- Personal notes, bookmarks and checked-off work are saved locally, separated by Canvas account and site. Grades are hidden by default; you can enable your own grades.
-- Canvas requests are read-only. Marking an item done in Canvas Harness does not submit schoolwork or change Canvas grades.
-- Calculator loads Desmos when you open it. It is an external service; Canvas Harness does not pass Canvas account or course data to it.
-- Tools → GPA estimates both 4.0 and 4.3 scales from available course grades. Reveal it separately, adjust credits and grading rules, and try clearly labeled what-if grades. It does not change Canvas grades or your official transcript.
-- Tools → AI shares only the sources you select when you choose Inject or Send. Inserting a website draft shares that text with the selected provider before sending the chat. See [Study with AI](AI.md) for setup and limits. Website insertion and the optional local ChatGPT companion request their own permissions.
-- Supports HTTPS Canvas school sites on `*.instructure.com`. Custom domains and self-hosted Canvas are not covered by this release. School permissions and Canvas configurations can differ.
-- The popup detects the active Canvas tab. Otherwise, enter your school’s Canvas address. No shared password, account export, or API key is needed.
+Open **Appearance settings** to choose the layout, rename or hide courses locally, and upload your own SVG artwork. **Quick Upload** accepts a complete artwork pack by paste, file selection or drop. Review the previews and course matches before Apply; Undo last pack restores the previous affected artwork.
+
+On Home, hold a course or panel heading until it lifts, then drag and release. You can reorder courses and place sections beside or below one another. Every move requires a separate hold; releasing returns to normal use. Keyboard controls are explained in the [README](https://github.com/Flzsh/canvas-harness#move-courses-and-panels-directly).
+
+Use **Tools → GPA** for local 4.0/4.3 estimates and what-if grades, **Tools → Calculator** for external Desmos calculators, and **Tools → AI** to review selected coursework and paste it into a provider website. AI provider access is optional. See [Study with AI](AI.md) before sending any coursework.
+
+The popup can detect the current Canvas tab or accept your school's Canvas URL. Supported sites are HTTPS Canvas subdomains of `*.instructure.com`; custom Canvas domains and self-hosted sites are outside this release. School Canvas settings may affect which information is available.
+
+## Permissions and privacy
+
+- The extension needs browser storage, local PDF processing, and access to signed-in Canvas pages on `*.instructure.com`. It uses your current Canvas session; it does not ask for a separate Canvas password or API key.
+- Course information and fetched Canvas data can be cached in local browser storage. Personal settings, notes, bookmarks, checked-off work, imported art and GPA preferences are stored locally per Canvas site and account. Grades are hidden by default in the interface but may still exist in the local cache.
+- Checking off work in Canvas Harness does not submit an assignment or change Canvas grades.
+- Opening Desmos loads an external site. Canvas Harness does not send Canvas context to it.
+- **Tools → AI** opens an AI website. Clicking **Send** inserts your question and the chosen course text into that provider's draft; optional automatic submission can also send the message. On first use, the browser may ask for optional scripting and that provider's site permission. You can always use **Copy** and paste manually. Grades and local GPA data are excluded from AI context.
+- The package contains shared extension files, not the developer's private classes, assignments, grades, notes, account data or imported artwork. Never share your personal backup or private SVGs with a public release.
+
+Read the full [Privacy notice](PRIVACY.md) before using third-party AI tools.
 
 ## Updates and backups
 
-Open Customize workspace in the dashboard toolbar to change layout, course names/order, artwork, borders, colors and motion. Upload an SVG or expand Paste SVG to paste its source; templates are available beside each artwork slot. Use the All courses choice to customize the overview independently from individual courses.
+Before updating, use the workspace settings to export your own personal backup and keep it private. Replace extension files in the same installed folder, click **Reload** on the browser's Extensions page, then refresh Canvas. Avoid uninstalling when updating, because uninstalling can remove locally saved data.
 
-Keep this folder in place. For updates, export your own notes backup first, replace files in the same extension folder, click Reload on the extension, and refresh Canvas. Do not uninstall to update. Do not send your personal backup when sharing the extension.
-
-Compare one assignment deadline with original Canvas after installation. Use Canvas dashboard to return to the original page whenever needed.
+After installing or updating, compare an assignment deadline with Canvas's original page. Canvas remains the authoritative source for due dates, submissions and grades.

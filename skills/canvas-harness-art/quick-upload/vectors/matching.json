@@ -1,0 +1,29 @@
+{
+  "about": "Course matching cases for matchCourse(target, courses). expect is the id of the matched course, or \"ambiguous\" (with the candidate ids), or \"none\". Ambiguous and none mean: ask the user.",
+  "courses": [
+    { "id": "101", "name": "Bio (per. 3)", "originalName": "AP Biology - Section 3", "code": "APBIO-3" },
+    { "id": "102", "name": "Biology Lab", "originalName": "Biology Lab", "code": "BIO-LAB" },
+    { "id": "103", "name": "Music Theory", "originalName": "Music Theory", "code": "MUS210" },
+    { "id": "104", "name": "Español 3", "originalName": "Spanish III", "code": "SPAN3" },
+    { "id": "105", "name": "U.S. History", "originalName": "US History 11", "code": "HIST11" },
+    { "id": "106", "name": "World History", "originalName": "World History", "code": "HIST10" }
+  ],
+  "cases": [
+    { "why": "exact name, case and punctuation ignored", "target": { "type": "course", "names": ["music  theory!"] }, "expect": "103" },
+    { "why": "exact match on the personal display name", "target": { "type": "course", "names": ["Bio per 3"] }, "expect": "101" },
+    { "why": "exact match on the course code", "target": { "type": "course", "names": ["span3"] }, "expect": "104" },
+    { "why": "accents are kept, so this is exact", "target": { "type": "course", "names": ["español 3"] }, "expect": "104" },
+    { "why": "whole words contained in one course only", "target": { "type": "course", "names": ["AP Biology"] }, "expect": "101" },
+    { "why": "whole words contained in two courses", "target": { "type": "course", "names": ["Biology"] }, "expect": "ambiguous", "candidates": ["101", "102"] },
+    { "why": "an exact match beats a contained one", "target": { "type": "course", "names": ["Biology Lab"] }, "expect": "102" },
+    { "why": "any of the listed names may match", "target": { "type": "course", "names": ["Harmony", "Music Theory"] }, "expect": "103" },
+    { "why": "a short name matches whole words in names and codes, here in two courses", "target": { "type": "course", "names": ["Bio"] }, "expect": "ambiguous", "candidates": ["101", "102"] },
+    { "why": "fragments of words never match", "target": { "type": "course", "names": ["Hist"] }, "expect": "none" },
+    { "why": "word order does not matter", "target": { "type": "course", "names": ["History US"] }, "expect": "105" },
+    { "why": "two courses contain the word", "target": { "type": "course", "names": ["History"] }, "expect": "ambiguous", "candidates": ["105", "106"] },
+    { "why": "the id wins over the name", "target": { "type": "course", "names": ["Music Theory"], "id": "106" }, "expect": "106" },
+    { "why": "an id the user does not have falls back to the name", "target": { "type": "course", "names": ["Music Theory"], "id": "99999" }, "expect": "103" },
+    { "why": "nothing like it", "target": { "type": "course", "names": ["Marine Biology"] }, "expect": "none" },
+    { "why": "places are not matched to courses", "target": { "type": "overview" }, "expect": "none" }
+  ]
+}

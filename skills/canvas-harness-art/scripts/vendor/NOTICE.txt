@@ -1,0 +1,3 @@
+The current custom-art.js validator is copied from Canvas Harness 2.21.0 and is GPL-3.0-only.
+Copyright Flzsh. See ../../LICENSE for the current license, included with the standalone skill.
+The adjacent MIT license records the earlier 2.20.0 version; earlier copies retain those permissions.

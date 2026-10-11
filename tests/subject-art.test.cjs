@@ -23,11 +23,13 @@ test('specific subjects win over generic words and short codes match only at bou
  assert.equal(art.kind({id:'folio-bookmarks',name:'Chemistry'}),'bookmarks');
 });
 
-test('art lettering never replaces a renamed or more specific course title',()=>{
+test('art lettering preserves renamed and specific course names with a drawn fallback',()=>{
  assert.ok(art.titleFrame(course('Chemistry')).includes('data-crop="title"'));
- assert.equal(art.titleFrame(course('Organic Chemistry Seminar')),'');
- assert.equal(art.titleFrame({id:'7',name:'My lab',originalName:'Chemistry'}),'');
- assert.equal(art.titleFrame({...course('Chemistry'),artPrefs:{bannerArt:{}}}),'');
+ for(const c of [course('Organic Chemistry Seminar'),{id:'7',name:'My lab',originalName:'Chemistry'}]){
+  assert.equal(art.titled(c).generic,true);assert.equal(art.titled(c).name,c.name);
+  assert.match(art.titleFrame(c),/rd-generic-title/);
+ }
+ assert.match(art.titleFrame({...course('Chemistry'),artPrefs:{bannerArt:{}}}),/data-crop="title"/);
 });
 
 test('custom uploads still take priority over automatically matched artwork',()=>{

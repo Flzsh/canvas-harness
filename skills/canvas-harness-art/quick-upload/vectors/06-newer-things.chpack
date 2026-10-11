@@ -1,0 +1,10 @@
+<?ch-pack version="1" name="Things from a later version" made-with="some-tool 9"?>
+<?ch-settings scope="workspace"?>
+{"bannerSize":"large"}
+<?ch-art course="Astronomy" slot="icon" mood="calm"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M22 90L50 18L78 90Z" fill="#D97757" stroke="#141413" stroke-width="6" stroke-linejoin="round"/></svg>
+<?ch-art course="Astronomy" slot="title"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 240"><path d="M40 214C400 210 1200 216 1640 213" fill="none" stroke="#141413" stroke-width="3" stroke-linecap="round"/></svg>
+<?ch-note?>
+Thanks for using this pack.
+<?ch-end parts="4"?>

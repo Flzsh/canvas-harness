@@ -1,0 +1,491 @@
+/* Canvas Harness responsive layer. Load AFTER workspace.css and refresh.css.
+   Subject drawings, title SVGs, animated rigs and sketched rail frames stay
+   owned by course-art.js and refresh.css. This layer only sizes their frames. */
+
+/* Give course work the width: 1920/1440/1280 step down without narrowing the
+   actual names or the small illustrations inside the rail. At <=900 the
+   existing drawer / course selector takes over. */
+@media (min-width: 901px) {
+  .rd {
+    --rd-rail-w: clamp(220px, calc(9vw + 80px), 270px);
+    --rd-rail-chip: clamp(24px, 1.55vw, 28px);
+  }
+
+  .rd .rd-shell,
+  .rd[data-workspace=work] .rd-shell {
+    grid-template-columns: var(--rd-rail-w) minmax(0, 1fr);
+    gap: clamp(15px, 1.4vw, 26px);
+  }
+}
+
+/* The band scales with the *available content* width (cqi), including when
+   an open tool dock narrows the page. 420px is the ultra-wide height ceiling;
+   a wider viewport can still fill the panorama frame without growing taller.
+   Respect a student's compact/large banner-size choice from customize.css. */
+.rd[data-workspace=work] .rd-workspace-heading,
+.rd .rd-course-banner {
+  --rd-band-floor: calc(var(--rd-band-h) * 214 / 240);
+}
+.rd[data-workspace=work]:not([data-banner-size=compact], [data-banner-size=large]) .rd-workspace-heading,
+.rd:not([data-banner-size=compact], [data-banner-size=large]) .rd-course-banner {
+  --rd-band-h: clamp(118px, 12cqi, 420px);
+}
+
+/* A real title frame, rather than a viewport or sidebar preference, decides
+   which title is visible. The semantic heading stays in the accessibility
+   tree. The fallback dimensions also cover uploaded lettering without .rd-art. */
+.rd .rd-course-heading[data-titled] > .rd-title-art,
+.rd .rd-course-banner[data-titled] > .rd-title-art {
+  display: block;
+  position: relative;
+  z-index: 1;
+  width: min(100%, calc(140px * var(--rd-name-w, 480) / 240));
+  height: 140px;
+  max-width: 100%;
+  flex: 0 1 auto;
+  order: -1;
+  line-height: 0;
+  pointer-events: none;
+}
+.rd .rd-title-art > :is(svg, .ch-custom-title) { width: 100%; height: 100%; }
+.rd .rd-course-heading[data-titled] > .rd-heading-art:not(:has(> .rd-art)),
+.rd .rd-course-banner[data-titled] > .rd-banner-art:not(:has(> .rd-art)) { order: -2; }
+
+.rd[data-workspace=work] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-title-art:not(:empty)) > h1,
+.rd .rd-course-banner[data-titled]:has(> .rd-title-art:not(:empty)) > .rd-banner-art + div > :is(h1, h2) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* A titled room scales with the name-and-panorama pair's natural width. The
+   minimum keeps the name and the hero legible on narrow work areas; the band
+   height is its only ceiling, including when a student chooses Large. */
+@container work-area (min-width: 640px) and style(--rd-search-at: bar) {
+  .rd[data-workspace=work][data-courses] .rd-workspace-heading:has(> .rd-course-heading[data-titled] > .rd-title-art:not(:empty)) {
+    padding-right: 0;
+    min-height: 0;
+  }
+  .rd[data-workspace=work][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) {
+    --rd-band: min(var(--rd-band-h), max(min(200px, calc(24000cqi / (var(--rd-name-w, 480) + 451))), calc(24000cqi / (var(--rd-name-w, 480) + var(--rd-room-w, 1680) - 29))));
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    flex: 1 1 100%;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: var(--rd-band) auto auto auto;
+    gap: 4px 0;
+  }
+  .rd[data-workspace=work][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) > .rd-title-art {
+    grid-area: 1 / 1;
+    align-self: start;
+    width: calc(var(--rd-band) * var(--rd-name-w, 480) / 240);
+    height: var(--rd-band);
+    margin: 0;
+    z-index: 1;
+  }
+  .rd[data-workspace=work][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) > .rd-heading-art {
+    display: flex;
+    top: 0;
+    left: calc(var(--rd-band) * (var(--rd-name-w, 480) - 29) / 240);
+    right: 0;
+    width: auto;
+    height: var(--rd-band);
+    --rd-art-h: var(--rd-band);
+    z-index: 0;
+    justify-content: flex-end;
+  }
+  .rd[data-workspace=work][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) > .rd-course-select { grid-area: 2 / 1; }
+  .rd[data-workspace=work][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) > p {
+    grid-area: 3 / 1;
+    max-width: 100%;
+    white-space: normal;
+  }
+  .rd[data-workspace=work][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) > .rd-glance { grid-area: 4 / 1; }
+  .rd[data-workspace=work][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art)::before { content: none; }
+  .rd[data-workspace=work][data-courses] .rd-course-heading[data-titled] > .rd-heading-art::before { content: none; }
+  .rd[data-workspace=work][data-courses] .rd-course-heading[data-titled] > .rd-heading-art:has(> .rd-art[data-wide]) {
+    mask-image: linear-gradient(to right, transparent, #000 calc(var(--rd-band) * .55));
+  }
+}
+
+@media (min-width: 801px) {
+  .rd .rd-course-banner[data-titled] {
+    --rd-band: min(var(--rd-band-h), max(min(200px, calc(24000cqi / (var(--rd-name-w, 480) + 451))), calc(24000cqi / (var(--rd-name-w, 480) + var(--rd-room-w, 1680) - 29))));
+  }
+  .rd .rd-course-banner[data-titled]:has(> .rd-banner-art > .rd-art) {
+    grid-template-rows: var(--rd-band) auto auto;
+  }
+  .rd .rd-course-banner[data-titled]:has(> .rd-banner-art > .rd-art) > .rd-title-art {
+    width: calc(var(--rd-band) * var(--rd-name-w, 480) / 240);
+    height: var(--rd-band);
+    margin-top: 0;
+    z-index: 1;
+  }
+  .rd .rd-course-banner[data-titled]:has(> .rd-title-art) > .rd-banner-art:has(> .rd-art) {
+    height: var(--rd-band);
+    --rd-art-h: var(--rd-band);
+    margin: 0 0 0 calc(var(--rd-band) * (var(--rd-name-w, 480) - 29) / 240);
+    justify-content: flex-end;
+  }
+}
+
+/* A titled panorama must take all the space after the drawn name, even after
+   the band's height reaches its ceiling. The SVG's xMaxYMid slice keeps its
+   proportions: narrow frames crop the left of the room, extremely wide ones
+   crop vertically. Its right-hand hero always reaches the banner edge.
+   Custom uploaded banners have their own fit/position rules and are excluded. */
+.rd[data-workspace=work][data-courses] .rd-course-heading[data-titled] > .rd-heading-art > .rd-art[data-wide],
+.rd .rd-course-banner[data-titled] > .rd-banner-art > .rd-art[data-wide] {
+  width: 100%;
+}
+
+/* When search lives in the heading (<=1239px, or with the Tools dock open),
+   the preexisting wide-band query does not run. Give every subject a compact
+   art row here too. Unillustrated/renamed titles retain their readable HTML. */
+@container work-area style(--rd-search-at: heading) or (max-width: 639px) {
+  .rd[data-workspace=work] .rd-workspace-heading:has(> .rd-course-heading > .rd-heading-art > .rd-art) {
+    padding-right: 0;
+    align-items: flex-start;
+  }
+
+  .rd[data-workspace=work] .rd-course-heading:has(> .rd-heading-art > .rd-art) {
+    --ch-heading-art-h: clamp(100px, 14cqi, 154px);
+    position: relative;
+    isolation: isolate;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(var(--ch-heading-art-h), max-content) auto auto auto;
+    row-gap: 4px;
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .rd[data-workspace=work] .rd-course-heading:has(> .rd-heading-art > .rd-art) > .rd-heading-art {
+    display: flex;
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: auto;
+    z-index: 0;
+    align-items: flex-end;
+    justify-content: flex-end;
+    width: min(43%, calc(var(--ch-heading-art-h) * 2));
+    height: var(--ch-heading-art-h);
+    --rd-art-h: var(--ch-heading-art-h);
+  }
+
+  .rd[data-workspace=work] .rd-course-heading:has(> .rd-heading-art > .rd-art) > :is(h1, .rd-course-select) {
+    grid-area: 1 / 1;
+    align-self: end;
+    max-width: 56%;
+    margin-bottom: 8px;
+    overflow-wrap: anywhere;
+  }
+
+  /* At 601-900px and when the dock hides the rail, workspace.css displays
+     the Course selector. It needs a separate row from the illustrated title. */
+  .rd[data-workspace=work] .rd-course-heading:has(> .rd-heading-art > .rd-art) > .rd-course-select {
+    grid-area: 2 / 1;
+    align-self: start;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0;
+  }
+  .rd[data-workspace=work] .rd-course-heading[data-titled] .rd-course-select select {
+    min-height: 30px;
+    font: 500 13px/1.4 var(--rd-ui-font);
+    letter-spacing: normal;
+  }
+
+  /* workspace.css clips the HTML heading on narrow screens. For a course with
+     no matching custom title piece, show the real text instead. */
+  .rd[data-workspace=work][data-courses=true] .rd-course-heading:not([data-titled]) > h1 {
+    position: relative;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    clip-path: none;
+  }
+
+  .rd[data-workspace=work] .rd-course-heading:has(> .rd-heading-art > .rd-art) > p {
+    grid-area: 3 / 1;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .rd[data-workspace=work] .rd-course-heading:has(> .rd-heading-art > .rd-art) > .rd-glance,
+  .rd[data-workspace=work] .rd-course-heading:has(> .rd-heading-art > .rd-art):not(:has(> .rd-glance))::after {
+    grid-area: 4 / 1;
+  }
+
+  /* The subject's name is a whole SVG, not a cropped typographic substitute.
+     Reserve at least 22% for a visible slice of its illustrated room. */
+  .rd[data-workspace=work] .rd-course-heading[data-titled]:has(> .rd-title-art) {
+    --ch-title-w: min(calc(var(--ch-heading-art-h) * var(--rd-name-w, 480) / 240), 78%);
+  }
+
+  .rd[data-workspace=work] .rd-course-heading[data-titled] > .rd-title-art {
+    position: relative;
+    z-index: 1;
+    display: block;
+    grid-area: 1 / 1;
+    align-self: start;
+    width: var(--ch-title-w, min(100%, calc(140px * var(--rd-name-w, 480) / 240)));
+    height: var(--ch-heading-art-h, 140px);
+    margin: 0;
+    line-height: 0;
+    pointer-events: none;
+  }
+
+  .rd[data-workspace=work] .rd-course-heading[data-titled] > .rd-heading-art:has(> .rd-art[data-wide]) {
+    left: calc(var(--ch-title-w) - 16px);
+    right: 0;
+    width: auto;
+    height: var(--ch-heading-art-h);
+    --rd-art-h: var(--ch-heading-art-h);
+    mask-image: linear-gradient(to right, transparent, #000 min(36px, 7cqi));
+  }
+
+  .rd[data-workspace=work] .rd-course-heading[data-titled] > .rd-heading-art::before { content: none; }
+
+  .rd[data-workspace=work][data-courses] .rd-course-heading[data-titled]:has(> .rd-title-art) > h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+/* Keep teacher information beside the work list as long as both fit. Below
+   720px, deadlines and the open assignment lead the single reading column;
+   a long teacher home page must not push the entire work list off screen. */
+@container work-area (max-width: 720px) {
+  .rd[data-workspace=work] .rd-main.rd-desk {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto !important;
+    gap: 18px;
+  }
+  .rd[data-workspace=work] .rd-main.rd-desk > :is(.rd-course-information, .rd-work-column, .rd-information) {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+    position: static;
+  }
+  .rd[data-workspace=work] .rd-main.rd-desk > .rd-work-column { grid-row: 1 !important; }
+  .rd[data-workspace=work] .rd-main.rd-desk > .rd-information { grid-row: 2 !important; }
+  .rd[data-workspace=work] .rd-main.rd-desk > .rd-course-information { grid-row: 3 !important; }
+}
+
+/* Hub and Materials are still illustrated on tablet and phone. Previously the
+   <=800px rule removed the drawing and fell back to bare h1/h2 text. Here the
+   compact top row shows both the art title and its actual course scene, while
+   details, links and controls keep their ordinary document order underneath. */
+@media (max-width: 800px) {
+  .rd .rd-course-banner {
+    --ch-banner-art-h: clamp(92px, 21cqi, 144px);
+    --ch-title-w: min(calc(var(--ch-banner-art-h) * var(--rd-name-w, 480) / 240), 76%);
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(var(--ch-banner-art-h), max-content) auto auto auto;
+    row-gap: 7px;
+    min-width: 0;
+    margin-bottom: 16px;
+  }
+
+  .rd .rd-course-banner > .rd-banner-art {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: auto;
+    z-index: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    width: min(43%, calc(var(--ch-banner-art-h) * 2));
+    height: var(--ch-banner-art-h);
+    margin: 0;
+    --rd-art-h: var(--ch-banner-art-h);
+    pointer-events: none;
+  }
+
+  .rd .rd-course-banner:has(> .rd-banner-art > .rd-art[data-wide])::before { content: none; }
+  .rd .rd-course-banner > .rd-banner-art + div { display: contents; }
+  .rd .rd-course-banner > .rd-banner-art + div > :is(h1, h2) {
+    position: relative;
+    z-index: 1;
+    grid-area: 1 / 1;
+    align-self: end;
+    max-width: 56%;
+    margin: 0 0 8px;
+    overflow-wrap: anywhere;
+    font-size: clamp(20px, 4.4vw, 29px);
+  }
+  .rd .rd-course-banner > .rd-banner-art + div > p {
+    grid-area: 2 / 1;
+    max-width: 100%;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .rd .rd-course-banner > .rd-banner-art + div > :not(h1, h2, p) {
+    grid-area: 3 / 1;
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .rd .rd-course-banner > :is(.rd-heading-actions, .rd-button, .rd-text-button) {
+    grid-area: 4 / 1;
+    justify-self: start;
+    align-self: start;
+    margin-top: 0;
+  }
+  .rd .rd-materials-header.rd-course-banner > .rd-heading-actions { grid-area: 3 / 1; }
+
+  /* The phone page-heading's column direction makes a full-width uploaded
+     scene's flex basis a height. Keep customize.css's row wrapping and fit. */
+  .rd .rd-course-banner[data-titled]:has(> .rd-banner-art > :not(.rd-art)) {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .rd .rd-course-banner[data-titled] > .rd-title-art {
+    position: relative;
+    z-index: 1;
+    display: block;
+    grid-area: 1 / 1;
+    align-self: start;
+    width: var(--ch-title-w);
+    height: var(--ch-banner-art-h);
+    margin: 0;
+    line-height: 0;
+    pointer-events: none;
+  }
+  .rd .rd-course-banner[data-titled] > .rd-banner-art:has(> .rd-art[data-wide]) {
+    left: calc(var(--ch-title-w) - 16px);
+    right: 0;
+    width: auto;
+    height: var(--ch-banner-art-h);
+    margin: 0;
+    --rd-art-h: var(--ch-banner-art-h);
+    mask-image: linear-gradient(to right, transparent, #000 min(32px, 8cqi));
+  }
+  .rd .rd-course-banner[data-titled] > .rd-banner-art::before { content: none; }
+  .rd .rd-course-banner[data-titled] > .rd-banner-art + div > :is(h1, h2) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+  .rd .rd-course-banner[data-titled] > .rd-banner-art + div > p > .rd-course-tag {
+    display: inline-grid;
+  }
+}
+
+/* For non-illustrated names at tablet size, the required course picker already
+   spells out the name. Keep the real h1 in the accessibility tree but avoid
+   displaying the same label twice. Phone mode uses its drawer and real h1. */
+@media (min-width: 601px) and (max-width: 900px) {
+  .rd[data-workspace=work] .rd-course-heading:not([data-titled]):has(> .rd-course-select) > h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+/* The search should not cost a second narrow text column, and the title piece
+   is allowed to use the header width at phone sizes. The existing drawer,
+   keyboard focus rules and SVG animation settings remain in charge. */
+@container work-area (max-width: 680px) {
+  .rd[data-workspace=work] .rd-workspace-heading > .rd-work-search {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .rd[data-workspace=work] .rd-course-heading:has(> .rd-heading-art > .rd-art) {
+    --ch-heading-art-h: clamp(88px, 26cqi, 108px);
+  }
+  .rd .rd-course-banner { --ch-banner-art-h: clamp(88px, 25cqi, 108px); }
+}
+
+@container work-area (max-width: 340px) {
+  .rd[data-workspace=work] .rd-course-heading[data-titled] { --ch-title-w: min(calc(var(--ch-heading-art-h) * var(--rd-name-w, 480) / 240), 72%); }
+  .rd .rd-course-banner[data-titled] { --ch-title-w: min(calc(var(--ch-banner-art-h) * var(--rd-name-w, 480) / 240), 72%); }
+}
+
+/* High contrast users get the real, focus-independent title text. Both the
+   heading and banner already retain semantic h1/h2 text beside aria-hidden art. */
+@media (forced-colors: active) {
+  .rd .rd-course-heading > .rd-title-art,
+  .rd .rd-course-banner > .rd-title-art,
+  .rd .rd-course-heading > .rd-heading-art,
+  .rd .rd-course-banner > .rd-banner-art { display: none !important; }
+
+  .rd[data-workspace=work] .rd-workspace-heading,
+  .rd[data-workspace=work] .rd-course-heading[data-titled],
+  .rd .rd-course-banner[data-titled] {
+    min-height: 0 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto !important;
+  }
+  .rd[data-workspace=work] .rd-course-heading[data-titled] > h1,
+  .rd .rd-course-banner[data-titled] > .rd-banner-art + div > :is(h1, h2) {
+    position: static !important;
+    display: block !important;
+    grid-area: 1 / 1 !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    clip: auto !important;
+    clip-path: none !important;
+    white-space: normal !important;
+    color: CanvasText !important;
+  }
+}
+
+/* Uploaded scenes may already contain the course name. Keep the semantic
+   heading, give the whole drawing the banner, and avoid a second title layer. */
+.rd .rd-title-embedded { display: none !important; }
+.rd .rd-course-heading:has(> .rd-title-embedded) > .rd-heading-art,
+.rd .rd-course-banner:has(> .rd-title-embedded) > .rd-banner-art {
+  left: 0; right: 0; width: 100%; max-width: none; mask-image: none;
+}
+.rd .rd-course-heading:has(> .rd-title-embedded) > .rd-heading-art::before,
+.rd .rd-course-banner:has(> .rd-title-embedded) > .rd-banner-art::before { content: none; }

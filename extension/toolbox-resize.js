@@ -18,7 +18,7 @@
       minWidth:narrow ? maxWidth : Math.min(320, maxWidth), maxWidth,
       minHeight:Math.min(narrow ? 240 : 320, maxHeight), maxHeight,
       defaultWidth:narrow ? maxWidth : Math.round(clamp(width * .29, 360, 460)),
-      defaultHeight:Math.round(narrow ? height * .46 : height - 104)
+      defaultHeight:Math.round(narrow ? height * .46 : height - 32)
     };
   }
 
@@ -78,7 +78,7 @@
       const view = viewport(), b = getBounds(view);
       // Keep context scrollable between the AI header and composer on small screens.
       // Explicit heights still win; switching tools restores the normal automatic height.
-      const adaptive = b.narrow && !prefs.height && dialog.dataset.tool === 'ai' ? {...prefs,height:view.height*.68} : prefs;
+      const adaptive = b.narrow && !prefs.height && dialog.dataset.tool === 'ai' ? {...prefs,height:b.maxHeight} : prefs;
       const next = resolveSize(adaptive, view);
       container.style.setProperty('--rd-dock-width', next.width + 'px');
       container.style.setProperty('--rd-dock-height', next.height + 'px');

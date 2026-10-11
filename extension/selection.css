@@ -1,0 +1,16 @@
+/* Canvas Harness — deliberate selection, independent of completion. */
+.rd .rd-selection-bar {position:sticky;top:0;z-index:8;display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;padding:9px 14px;margin-bottom:14px;border:1px solid var(--rd-line,#d8d4c9);border-radius:10px;background:var(--rd-soft,#f0eee6);font-size:12px;animation:rd-selection-in 180ms ease-out}
+.rd .rd-selection-bar>span {font-weight:650}
+.rd .rd-selection-bar>div {order:2;display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+.rd .rd-selection-bar small {order:1;flex:1 1 180px;font-size:11px;color:var(--rd-muted,#706e66)}
+.rd .rd-check-off[data-selected="true"],.rd .rd-source-select[aria-pressed="true"] {background:var(--rd-mark,#a9522f)!important;border-color:var(--rd-mark,#a9522f)!important;color:white!important}
+.rd .rd-check-off[data-selected="true"] svg {opacity:1!important;transform:none!important}
+.rd .rd-source-select {display:inline-grid;place-items:center;flex:0 0 22px;width:22px;height:22px;min-height:22px;padding:3px;border:1px solid var(--rd-muted,#8a887e);border-radius:50%;background:transparent;color:transparent;vertical-align:middle;cursor:pointer;transition:background-color 140ms,border-color 140ms}
+.rd .rd-source-select svg {width:14px;height:14px}
+.rd .rd-source-select:focus-visible {outline:2px solid var(--rd-mark,#a9522f);outline-offset:3px}
+.rd .rd-material-actions:has(.rd-source-select) {opacity:1;visibility:visible}
+.rd .rd-teacher-row>.rd-source-select {margin-right:8px}
+@keyframes rd-selection-in {from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.rd .rd-selection-bar{animation:none}.rd .rd-source-select{transition:none}}
+.rd[data-motion="off"] .rd-selection-bar {animation:none}
+.rd[data-motion="off"] .rd-source-select {transition:none}
