@@ -177,7 +177,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const board=root.ReserveWidgets?.create({container,store,save:change=>savePersonal(change),rerender:()=>render(),getContext:()=>buildContext(),
       helpers:()=>({E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete}),
       preview:id=>{workspace='work';showPreview(String(id),{detail:0,target:container,preventDefault(){}});},
-      openSettings:()=>settingsDock?.open(),startTick:()=>syncFocus(),go:tab=>goWorkspace(tab)});
+      openSettings:()=>settingsDock?.open(),startTick:()=>syncFocus(),go:tab=>goWorkspace(tab),closeSettings:()=>settingsDock?.close({restoreFocus:false})});
     // The Planner is a workspace of its own; older entry points that asked for the week land there.
     function goWorkspace(tab){if(destroyed||workspace===tab)return;captureCourseView();workspace=tab;render({motionTarget:'.rd-workspace'});container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});}
     const toolbox=root.ReserveToolbox?.create({container,store,materials,aiConfig:{client:resourceClient,user:snapshot.user,demo},getContext:()=>{
@@ -495,7 +495,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       container.dataset.layout=ctx.s.deskOrder==='stacked'?'list':'split';
       container.dataset.workspaceMode=Arrange?.snapshot(ctx.s).mode||'side-by-side';
       container.dataset.arranging=String(!!arrange?.active());
-      for(const [key,value] of Object.entries(root.ReserveCustomization?.defaults||{}))container.dataset[key]=String(ctx.s[key]??value);
+      for(const [key,value] of Object.entries(root.ReserveCustomization?.defaults||{})){const shown=ctx.s[key]??value;if(shown===null||typeof shown!=='object')container.dataset[key]=String(shown);}
+      container.dataset.boardEditing=String(!!board?.editing());
       // Gentle (default), Still or Off; motion.js also treats a reduced-motion device as Off.
       container.dataset.motionStyle=MOTION_STYLES.includes(ctx.s.motion)?ctx.s.motion:'gentle';
       // Living drawings (default On): the course drawings keep moving once drawn (Gentle only).
@@ -506,7 +507,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       container.dataset.courses=String(ctx.s.showCourseStrip!==false);
       container.style.setProperty('--rd-accent',ctx.accent);
       const assignmentContent=readingContent(ctx.selected);
-       const markup=View.render({...ctx,state,workspace,gradeQuery,gradeLimit,arrangeOpen:!!arrange?.active(),boardEditing:!!board?.editing(),planUI:board?.planUI()||{},personal:{focus:personal.focus,pet:personal.pet,toolbox:personal.toolbox},hasLayoutUndo:!!ctx.s.workspaceUndo,deckHeader:workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:true})||'':'',deckContent:workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',hubContent:workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId)):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',materialLibrary:workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId)):'',relatedMaterials:materials?.renderRelated(ctx.selected,assignmentContent.links)||'',readerTab,customizeOpen,customizeCourseId,customizeStatus,customizeBusy,customizeDrafts,quickUpload:quickUpload?.state,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading,user:currentSnapshot.user,demo,nativeSwitch:typeof onNative==='function',refreshing,visibleLimit,noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',readerContent:assignmentContent,warning:renderWarning(),status:statusLabel(currentSnapshot,externalStatus,transientStatus)}, {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete});
+       const markup=View.render({...ctx,state,workspace,gradeQuery,gradeLimit,arrangeOpen:!!arrange?.active(),boardEditing:!!board?.editing(),planUI:board?.planUI()||{},customizeTab:board?.settingsTab()||'layout',personal:{focus:personal.focus,pet:personal.pet,toolbox:personal.toolbox},hasLayoutUndo:!!ctx.s.workspaceUndo,deckHeader:workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:true})||'':'',deckContent:workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',hubContent:workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId)):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',materialLibrary:workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId)):'',relatedMaterials:materials?.renderRelated(ctx.selected,assignmentContent.links)||'',readerTab,customizeOpen,customizeCourseId,customizeStatus,customizeBusy,customizeDrafts,quickUpload:quickUpload?.state,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading,user:currentSnapshot.user,demo,nativeSwitch:typeof onNative==='function',refreshing,visibleLimit,noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',readerContent:assignmentContent,warning:renderWarning(),status:statusLabel(currentSnapshot,externalStatus,transientStatus)}, {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete});
       const toolbar=container.querySelector('.rd-toolbar'),appearance=container.querySelector('.rd-appearance');
       if(toolbar&&appearance){
         // Keep the actual transitioning nodes connected through data renders.
@@ -661,6 +662,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     function onChange(event){
       const field=event.target?.dataset?.rdField;
+      if(board?.change(event))return;
       const id=event.target?.dataset?.id;
       if(/^local-[\w-]+$/.test(id||'')&&['progress','check-step','personal-name','personal-due','planned-date','estimate','notes'].includes(field)){selectedId=id;readerOpen=true;}
       if(field?.startsWith('hub-')){hub?.input(field,field==='hub-unread'?event.target.checked:event.target.value,event.target.dataset);return;}
@@ -695,9 +697,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           if(key==='deskOrder'||key==='dashboardLayout'){
             if(key==='dashboardLayout')data.settings.deskOrder=value==='list'?'stacked':'context-first';
             data.settings.dashboardLayout=data.settings.deskOrder==='stacked'?'list':'split';
-            data.settings.workspaceLayout=null;
-            data.settings.workspaceOrder=Arrange.legacyOrder(data.settings);
-            data.settings.workspaceMode=data.settings.deskOrder==='stacked'?'stacked':'side-by-side';
+            Arrange.resetCore(data.settings,before.layout);
             if(JSON.stringify(Arrange.snapshot(data.settings))!==JSON.stringify(before))data.settings.workspaceUndo=before;
           }
         });return;
@@ -1073,9 +1073,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           for(const key of keys)if(Object.hasOwn(preset,key))data.settings[key]=preset[key];
           data.settings.dashboardLayout=data.settings.deskOrder==='stacked'?'list':'split';
           if(Arrange){
-            data.settings.workspaceLayout=null;
-            data.settings.workspaceOrder=Arrange.legacyOrder(data.settings);
-            data.settings.workspaceMode=data.settings.deskOrder==='stacked'?'stacked':'side-by-side';
+            Arrange.resetCore(data.settings,before.layout);
             if(JSON.stringify(Arrange.snapshot(data.settings))!==JSON.stringify(before))data.settings.workspaceUndo=before;
           }
         });return true;

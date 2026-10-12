@@ -9,7 +9,7 @@
  const LABELS={context:'Course information',work:'Up next',reader:'Assignment details',rail:'Courses',today:'Today',week:'This week',timer:'Focus timer',clock:'Clock',notes:'Notes',bookmarks:'Bookmarks',grades:'Grades',messages:'Messages',pet:'Paddock'};
  // How much of a row a module asks for beside its neighbours, and the narrowest it can usefully be.
  const WEIGHT={context:1,work:1.12,reader:1.12,today:.82,week:.95,timer:.58,clock:.58,notes:.8,bookmarks:.8,grades:.8,messages:.9,pet:.66};
- const MIN_WIDTH={context:285,work:285,reader:285,today:220,week:250,timer:170,clock:170,notes:210,bookmarks:210,grades:210,messages:230,pet:190};
+ const MIN_WIDTH={context:260,work:300,reader:300,today:220,week:250,timer:170,clock:170,notes:210,bookmarks:210,grades:210,messages:230,pet:190};
  const removable=key=>EXTRA.includes(key)||key==='context';
  function controls(key){
   if(!LABELS[key])return '';
@@ -56,7 +56,14 @@
   const rects={};
   function place(node,x,y,w,h,pixels){
    if(typeof node==='string'){rects[node]={x,y,w,h};return;}
-   // A row that cannot give each module its narrowest useful width stacks instead.
+   // A row that cannot give each module its narrowest useful width wraps: as many as fit stay side by side and the
+   // rest go to the next row, so a narrow page gets two columns before it gets one.
+   if(node.axis==='x'&&pixels<minOf(node)){
+    const rows=[];let row=[],sum=0;
+    for(const child of node.children){const need=minOf(child);if(row.length&&sum+need>pixels){rows.push(row);row=[];sum=0;}row.push(child);sum+=need;}
+    rows.push(row);
+    if(rows.length>1){place({axis:'y',children:rows.map(r=>r.length===1?r[0]:{axis:'x',children:r})},x,y,w,h,pixels);return;}
+   }
    const axis=node.axis==='x'&&pixels<minOf(node)?'y':node.axis,n=node.children.length;
    const weights=node.children.map(weightOf),total=weights.reduce((a,b)=>a+b,0);let used=0;
    node.children.forEach((child,i)=>{const share=axis==='x'?weights[i]/total:1/n;
@@ -91,7 +98,7 @@
   const distances={left:Math.abs(dx),right:Math.abs(1-dx),top:Math.abs(dy),bottom:Math.abs(1-dy)};
   return Object.keys(distances).sort((a,b)=>distances[a]-distances[b])[0];
  }
- function legacyOrder(settings={}){return settings.deskOrder==='work-first'?['work','reader','context']:[...PANELS];}
+ function legacyOrder(settings={}){return ['work-first','stacked'].includes(settings.deskOrder)?['work','reader','context']:[...PANELS];}
  function cleanOrder(value,{strict=false,fallback=PANELS}={}){
   if(value===undefined)return [...fallback];
   if(!Array.isArray(value)||strict&&(value.length!==PANELS.length||new Set(value).size!==PANELS.length)||value.some(key=>!PANELS.includes(key)))throw Error('Invalid workspaceOrder setting in backup.');
@@ -118,6 +125,12 @@
   const mode=settings.workspaceMode===undefined?(settings.deskOrder==='stacked'||settings.deskOrder===undefined&&settings.dashboardLayout==='list'?'stacked':'side-by-side'):settings.workspaceMode;
   if(!['stacked','side-by-side'].includes(mode))throw Error('Invalid workspaceMode setting in backup.');
   return {workspaceOrder:order,workspaceMode:mode,workspaceLayout:settings.workspaceLayout==null?null:cleanLayout(settings.workspaceLayout),workspaceUndo:settings.workspaceUndo==null?null:cleanSnapshot(settings.workspaceUndo)};
+ }
+ // A preset or the panel-order choice lays the three panels out afresh; modules a student added keep their row.
+ function resetCore(settings,previous){
+  settings.workspaceLayout=null;settings.workspaceOrder=legacyOrder(settings);settings.workspaceMode=settings.deskOrder==='stacked'?'stacked':'side-by-side';
+  const kept=previous?extras(previous):[];
+  if(kept.length)settings.workspaceLayout=withExtras(snapshot(settings).layout,previous);
  }
  function relocate(order,key,target,position='before'){
   if(!PANELS.includes(key)||!PANELS.includes(target)||key===target||!['before','after'].includes(position))return [...order];
@@ -181,6 +194,6 @@
   const gestures=root.ReserveWorkspaceGestures||(typeof module==='object'&&module.exports?require('./workspace-gestures.js'):null);
   return gestures.create(options,api);
  }
- const api={PANELS,EXTRA,ALL,LABELS,WEIGHT,MIN_WIDTH,removable,extras,add,DEFAULT,leaves,split,prune,dock,swap,grid,edgeAt,cleanLayout,controls,legacyOrder,cleanOrder,cleanSaved,snapshot,relocate,change,createController};
+ const api={PANELS,EXTRA,ALL,LABELS,WEIGHT,MIN_WIDTH,removable,extras,add,resetCore,DEFAULT,leaves,split,prune,dock,swap,grid,edgeAt,cleanLayout,controls,legacyOrder,cleanOrder,cleanSaved,snapshot,relocate,change,createController};
  root.ReserveWorkspaceArrange=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

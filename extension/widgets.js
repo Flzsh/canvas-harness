@@ -128,8 +128,8 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
 <div class="rd-gallery-frames" role="radiogroup" aria-label="Module outline"><span>Outline</span>${FRAMES.map(([value,name,hint])=>`<button type="button" class="rd-frame-choice" role="radio" data-rd-action="board-frame" data-value="${value}" aria-checked="${frame===value}" title="${E(hint)}"><i data-frame="${value}"></i>${E(name)}</button>`).join('')}</div></section>`;
  }
 
- function create({container,store,save,rerender,getContext,helpers,preview=()=>{},openSettings=()=>{},startTick=()=>{},go=()=>{}}){
-  let dead=false,editing=false,clockTimer=0,timerTick=0,notesTimer=0,pets=null,lastDone=null;
+ function create({container,store,save,rerender,getContext,helpers,preview=()=>{},openSettings=()=>{},startTick=()=>{},go=()=>{},closeSettings=()=>{}}){
+  let dead=false,editing=false,settingsTab='layout',clockTimer=0,timerTick=0,notesTimer=0,pets=null,lastDone=null;
   const win=container.ownerDocument?.defaultView||root;
   const newId=()=>'local-'+(root.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const ctx=()=>getContext();
@@ -141,7 +141,7 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
   function ensurePets(){
    const P=Pets();if(!P||!root.ReservePetArt||pets||dead)return;
    pets=P.create({container,getPet:()=>store.get().pet,savePet:pet=>save(data=>{data.pet=pet;}),info:petInfo,
-    actions:{open:item=>preview(item.id),focus:()=>startFocus(),settings:()=>openSettings('pet')}});
+    actions:{open:item=>preview(item.id),focus:()=>startFocus(),settings:()=>{settingsTab='pet';openSettings('pet');rerender();}}});
   }
   function startFocus(){return save(data=>{const f=focusState(data.focus,Date.now());data.focus={...data.focus,minutes:f.minutes,remaining:f.left,endsAt:Date.now()+f.left*1000};}).then(()=>startTick());}
   // The dial and the clock move between renders without one.
@@ -180,7 +180,10 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
    if(planner?.click(event))return true;
    const button=event.target.closest?.('[data-rd-action]');if(!button||dead)return false;
    const action=button.dataset.rdAction,key=button.dataset.widget,A=Arrange();
+   if(action==='hidden-courses'){settingsTab='courses';return false;}
    if(action==='plan-open'){planner?.goto(button.dataset.day);go('plan');return true;}
+   if(action==='customize-tab'){settingsTab=button.dataset.value||'layout';rerender();container.querySelector('.cz-tab[aria-selected="true"]')?.focus({preventScroll:true});return true;}
+   if(action==='board-edit'&&button.dataset.from==='settings'){editing=true;closeSettings();go('work');rerender();container.querySelector('.rd-gallery')?.scrollIntoView({block:'nearest'});return true;}
    if(action==='board-edit'){editing=!editing;rerender();if(!editing)container.querySelector('[data-rd-action="board-edit"]')?.focus({preventScroll:true});return true;}
    if(action==='board-frame'){save(data=>{data.settings.panelFrame=button.dataset.value;});return true;}
    if(action==='widget-add'&&(A.EXTRA.includes(key)||key==='context')){save(data=>{A.change(data.settings,key==='context'?{type:'restore-context'}:{type:'add',key});});return true;}
@@ -196,7 +199,7 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
    if(action==='plan-carry'){const c=ctx(),h=helpers(),{board,today}=plan(c,h);save(data=>{for(const e of board.overdue)Plan().plan(e.id,today)(data);});return true;}
    if(action==='pet-feed'){const pet=Pets().clean(store.get().pet);if(pet.treats)container.querySelector('.pet-layer .pet')?.click();return true;}
    if(action==='pet-roam'){save(data=>{const pet=Pets().clean(data.pet);data.pet={...pet,enabled:true,roam:pet.roam==='home'?'page':'home'};});return true;}
-   if(action==='pet-settings'){openSettings('pet');return true;}
+   if(action==='pet-settings'){settingsTab='pet';openSettings('pet');rerender();return true;}
    return false;
   }
   function keydown(event){
@@ -215,6 +218,18 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
    }
    return field==='plan-quick';
   }
+  // Switches and choices in "Make it yours" that this file owns: the pony, and the two on/off settings stored as words.
+  function change(event){
+   const target=event.target,field=target?.dataset?.rdField;
+   if(field==='pet'){
+    const key=target.dataset.key,value=target.type==='checkbox'?target.checked:target.value;
+    if(!Object.hasOwn(Pets().DEFAULTS,key)||['treats','fed','xp','streak','best','streakDay','told'].includes(key))return true;
+    if((key==='coat'||key==='harness')&&!Pets().unlocked(key,value,Pets().clean(store.get().pet).xp))return true;
+    save(data=>{data.pet={...Pets().clean(data.pet),[key]:value};});return true;
+   }
+   if(field==='setting'&&target.dataset.onoff==='true'){const key=target.dataset.setting;if(['greeting','livingArt'].includes(key))save(data=>{data.settings[key]=target.checked?'on':'off';});return true;}
+   return false;
+  }
   function flushNotes(){
    clearTimeout(notesTimer);if(drafts.notes===undefined)return Promise.resolve();
    const value=drafts.notes;
@@ -228,7 +243,7 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
    pets?.celebrate(kind,{today,left:d?d.open:undefined});
   }
   function destroy(){dead=true;clearInterval(clockTimer);clearInterval(timerTick);flushNotes();pets?.destroy();planner?.destroy();}
-  return {click,keydown,input,sync,finished,destroy,planUI:()=>planner?.ui||{},editing:()=>editing,close(){if(editing){editing=false;rerender();}}};
+  return {click,keydown,input,change,sync,finished,destroy,settingsTab:()=>settingsTab,planUI:()=>planner?.ui||{},editing:()=>editing,close(){if(editing){editing=false;rerender();}}};
  }
  const api={INFO,FRAMES,glyph,render,gallery,create,focusState,howLong,nextDue,plan};
  root.ReserveWidgets=api;if(typeof module==='object'&&module.exports)module.exports=api;

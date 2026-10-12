@@ -232,3 +232,99 @@
 .rd .rd-plan-add input:focus {background:var(--rd-surface);}
 @media (max-width:760px){.rd .rd-plan-week {grid-template-columns:repeat(7,minmax(72vw,1fr))}.rd .rd-plan-head h1 {font-size:28px}}
 @media (prefers-reduced-motion:reduce){.rd .rd-plan-menu {animation:none}}
+
+/* ---- Make it yours: tabs, picture choices, switches ---- */
+.rd .cz {font:400 14px/1.5 var(--rd-ui-font);color:var(--rd-ink);}
+.rd .cz-tabs {display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px;margin:4px -2px 18px;padding:4px;border-radius:13px;background:var(--rd-tint);}
+.rd .cz-tab {min-height:36px;padding:0 6px;border:0;border-radius:10px;background:none;color:var(--rd-muted);font:500 13.5px/1 var(--rd-ui-font);cursor:pointer;transition:background-color 140ms,color 140ms;}
+.rd .cz-tab:hover {color:var(--rd-ink);}
+.rd .cz-tab[aria-selected=true] {background:var(--rd-surface);color:var(--rd-ink);font-weight:600;box-shadow:0 1px 3px #30281920;}
+.rd .cz-tab:focus-visible {outline:2px solid var(--rd-accent);outline-offset:1px;}
+.rd .cz-pane {display:grid;gap:22px;animation:rd-enter 160ms ease-out;}
+.rd .cz-group {min-width:0;}
+.rd .cz-group > h3 {margin:0 0 3px;font:600 15px/1.35 var(--rd-ui-font);color:var(--rd-ink);}
+.rd .cz-hint {margin:0 0 10px;color:var(--rd-muted);font-size:13px;line-height:1.45;}
+.rd .cz-group > h3 + :not(.cz-hint) {margin-top:9px;}
+.rd .cz-note {color:var(--rd-muted);font-size:12.5px;margin:0;}
+.rd .cz-row {display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+/* picture choices */
+.rd .cz-choices {display:grid;grid-template-columns:repeat(var(--cz-cols,3),minmax(0,1fr));gap:8px;}
+.rd .cz-choice,.rd .cz-preset {position:relative;display:grid;justify-items:start;align-content:start;gap:1px;min-width:0;padding:9px 10px 10px;border:1.5px solid var(--rd-line);border-radius:13px;background:var(--rd-surface);color:var(--rd-ink);font:inherit;text-align:left;cursor:pointer;transition:border-color 140ms,background-color 140ms,box-shadow 140ms;}
+.rd .cz-choice input {position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;}
+.rd .cz-choice-art {display:grid;place-items:center;width:100%;min-height:52px;margin-bottom:5px;border-radius:9px;background:var(--rd-surface-2);color:var(--rd-muted);}
+.rd .cz-choice-art:empty {display:none;}
+.rd .cz-choice-art svg {max-width:100%;height:auto;}
+.rd .cz-choice-art .cz-fill {fill:color-mix(in srgb,var(--rd-accent) 30%,var(--rd-surface));stroke:var(--rd-accent);}
+.rd .cz-choice-art .cz-soft {fill:var(--rd-surface-3,#F0EEE6);}
+.rd .cz-choice-art .cz-accent {stroke:var(--rd-accent);stroke-width:2.6;}
+.rd .cz-choice strong,.rd .cz-preset strong {font-weight:600;font-size:13.5px;line-height:1.3;}
+.rd .cz-choice small,.rd .cz-preset small {color:var(--rd-muted);font-size:12px;line-height:1.35;}
+.rd .cz-choice:hover,.rd .cz-preset:hover {border-color:var(--rd-line-strong);background:var(--rd-surface-2);}
+.rd .cz-choice:has(input:checked) {border-color:var(--rd-accent);box-shadow:0 0 0 1px var(--rd-accent);background:color-mix(in srgb,var(--rd-accent) 6%,var(--rd-surface));}
+.rd .cz-choice:has(input:checked) .cz-choice-art {color:var(--rd-ink-2);background:var(--rd-surface);}
+.rd .cz-choice:has(input:checked)::after {content:"";position:absolute;top:7px;right:7px;width:16px;height:16px;border-radius:50%;background:var(--rd-accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.2 8.4l2.6 2.6 5-5.6' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat;}
+.rd .cz-choice:has(input:focus-visible),.rd .cz-preset:focus-visible {outline:2px solid var(--rd-accent);outline-offset:2px;}
+.rd .cz-choice[data-locked=true] {opacity:.55;cursor:default;}
+.rd .cz-choice[data-locked=true] input {cursor:default;}
+.rd .cz-presets {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.rd .cz-preset:active {border-color:var(--rd-accent);}
+.rd .cz-pair {display:grid;gap:8px;margin-top:8px;}
+.rd .cz-letters {font-size:25px;line-height:1.4;color:var(--rd-ink);}
+.rd .cz-letters.cz-small {font-size:19px;}
+.rd .cz-dot {display:grid;place-items:center;width:34px;height:34px;border-radius:50%;box-shadow:inset 0 0 0 1.5px #1414132e;}
+.rd .cz-dot i {width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1px #14141333;}
+/* switches */
+.rd .cz-toggles {display:grid;border:1.5px solid var(--rd-line);border-radius:13px;background:var(--rd-surface);overflow:hidden;}
+.rd .cz-toggle {position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;padding:10px 12px;cursor:pointer;}
+.rd .cz-toggle + .cz-toggle {border-top:1px solid var(--rd-line);}
+.rd .cz-toggle:hover {background:var(--rd-surface-2);}
+.rd .cz-toggle > span {display:grid;min-width:0;}
+.rd .cz-toggle strong {font-weight:550;font-size:14px;}
+.rd .cz-toggle small {color:var(--rd-muted);font-size:12.5px;line-height:1.4;}
+.rd .cz-toggle input {position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;}
+.rd .cz-toggle i {position:relative;width:42px;height:26px;border-radius:99px;background:var(--rd-control,#8A8880);transition:background-color 160ms;}
+.rd .cz-toggle i::after {content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0003;transition:transform 180ms cubic-bezier(.2,.8,.2,1);}
+.rd .cz-toggle input:checked + i {background:var(--rd-accent);}
+.rd .cz-toggle input:checked + i::after {transform:translateX(16px);}
+.rd .cz-toggle:has(input:focus-visible) {outline:2px solid var(--rd-accent);outline-offset:-2px;}
+.rd .cz-toggles + .rd-text-button {margin-top:8px;}
+/* accents, outlines, courses, pony */
+.rd .cz-accents {display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;}
+.rd .cz-accents .ch-accent-choice {display:grid;justify-items:center;gap:4px;width:auto;height:auto;padding:8px 2px 6px;border:1.5px solid transparent;border-radius:12px;background:none;color:var(--rd-muted);font:500 11.5px/1.2 var(--rd-ui-font);cursor:pointer;}
+.rd .cz-accents .ch-accent-choice i {display:block;width:30px;height:30px;border-radius:50%;box-shadow:inset 0 0 0 2px #ffffff59;}
+.rd .cz-accents .ch-accent-choice:hover {background:var(--rd-surface-2);}
+.rd .cz-accents .ch-accent-choice[aria-pressed=true] {border-color:var(--rd-accent);color:var(--rd-ink);font-weight:600;background:var(--rd-surface);}
+.rd .cz-frames {display:flex;flex-wrap:wrap;gap:8px;}
+.rd .cz-courses .ch-course-setting {border-radius:10px;}
+.rd .cz-pet-hero {display:grid;grid-template-columns:auto minmax(0,1fr);align-items:end;gap:16px;padding:14px 16px 12px;border-radius:15px;background:linear-gradient(color-mix(in srgb,#C9D6DF 30%,var(--rd-surface)) 0 64%,color-mix(in srgb,#B7C0A0 55%,var(--rd-surface)) 64%);}
+.rd .cz-pet-hero .rd-field input {width:100%;height:38px;padding:0 11px;border:1px solid var(--rd-control-line,#D1CFC5);border-radius:10px;background:var(--rd-surface);font:inherit;color:var(--rd-ink);}
+.rd .cz-pet-hero .cz-note {margin-top:6px;color:var(--rd-ink-2);}
+.rd .cz-art .ch-art-heading h3 {font:600 15px/1.35 var(--rd-ui-font);}
+.rd .cz .ch-custom-footer {margin-top:22px;}
+@media (prefers-reduced-motion:reduce){.rd .cz-pane,.rd .cz-toggle i,.rd .cz-toggle i::after {animation:none;transition:none}}
+
+/* ---- repairs to the layout choices (courses across the top, plain course cards, one column) ---- */
+/* Across the top: the All courses tile is a proper card, deadline previews obey their switch, the strip says when it
+   scrolls, and a course can still be chosen when the list is switched off. */
+.rd[data-course-navigation=topbar] .rd-course-rail > .rd-rail-all {flex:0 0 132px!important;max-width:132px!important;flex-direction:row!important;justify-content:flex-start!important;gap:9px!important;padding:10px 12px!important;text-align:left!important;}
+.rd[data-course-navigation=topbar] .rd-rail-all > span:not(.rd-frame):not(.rd-rail-art):not(.rd-rail-count) {text-align:left!important;font-size:13px!important;line-height:1.3!important;}
+.rd[data-course-navigation=topbar][data-show-deadline-preview=false] .rd-rail-text > .rd-rail-next {display:none!important;}
+.rd[data-course-navigation=topbar][data-show-deadline-preview=false] .rd-course-rail {--rd-top-card-height:86px;}
+.rd[data-course-navigation=topbar][data-courses=true] .rd-course-rail {scrollbar-width:thin;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 46px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 46px),transparent);}
+.rd[data-course-navigation=topbar][data-courses=false] .rd-course-select {display:revert!important;}
+/* Plain course cards still show which course is chosen and which one the pointer is on, without the drawn frame. */
+.rd:is([data-course-card-style=rounded],[data-course-card-style=minimal]) .rd-shell .rd-course-rail > :is(.rd-rail-course,.rd-rail-all) {padding-bottom:10px!important;border-radius:12px;transition:background-color 140ms,box-shadow 140ms;}
+.rd[data-course-card-style=rounded] .rd-shell .rd-course-rail > :is(.rd-rail-course,.rd-rail-all) {background:var(--rd-surface)!important;box-shadow:inset 0 0 0 1px var(--rd-line);}
+.rd:is([data-course-card-style=rounded],[data-course-card-style=minimal]) .rd-shell .rd-course-rail > :is(.rd-rail-course,.rd-rail-all):hover {background:var(--rd-sidebar-hover,var(--rd-surface-2))!important;}
+.rd[data-course-card-style=rounded] .rd-shell .rd-course-rail > :is(.rd-rail-course,.rd-rail-all):is([aria-current],[aria-pressed=true],[data-selected=true],:has([aria-current],[aria-pressed=true])) {background:var(--rd-sidebar-sel,var(--rd-surface-3))!important;box-shadow:inset 0 0 0 2px var(--rd-accent);}
+.rd[data-course-card-style=minimal] .rd-shell .rd-course-rail > :is(.rd-rail-course,.rd-rail-all):is([aria-current],[aria-pressed=true],[data-selected=true],:has([aria-current],[aria-pressed=true])) {background:var(--rd-sidebar-sel,var(--rd-surface-3))!important;box-shadow:inset 3px 0 0 var(--rd-accent);}
+/* Clean page: the tints, hover and outline colours follow, not only the background. */
+.rd[data-surface-style=clean][data-theme=light] {--rd-tint:#ECEFF3;--rd-row-hover:#F1F4F7;--rd-line-strong:#CDD4DC;--rd-control-line:#C3CBD4;--rd-surface:#FFFFFF;}
+.rd[data-surface-style=contrast][data-theme=light] {--rd-ink-2:#1D1D1D;--rd-tint:#EDEDED;--rd-row-hover:#F1F1F1;--rd-surface:#FFFFFF;}
+/* One column: a comfortable reading width instead of rows a screen wide. */
+.rd[data-workspace=work][data-workspace-mode=stacked] .rd-main.rd-desk {max-width:920px;}
+/* The empty bands above the panels only take room when they hold something. */
+.rd .rd-arrange-guide {min-height:0!important;margin-bottom:6px!important;}
+.rd .rd-selection-slot:not(:has(*:not(:empty))) {min-height:0!important;}
+/* The assignment stays in view beside a long list. */
+@media (min-width:1100px){.rd[data-workspace=work]:not([data-arranging=true]) .rd-main.rd-desk > .rd-information {position:sticky!important;top:14px;max-height:calc(100vh - 28px);overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;}}
