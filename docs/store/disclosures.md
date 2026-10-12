@@ -11,6 +11,7 @@ Organize a signed-in student's Canvas coursework in a customizable study workspa
 | Permission | Reason |
 | --- | --- |
 | `storage` | Save account-separated Canvas caches, settings, local plans, completion marks, bookmarks, GPA preferences and user-imported artwork on the device. |
+| `unlimitedStorage` | Lift the browser's default 10 MB extension storage limit so account caches, artwork and notes for several Canvas accounts fit on the device. Data stays local. |
 | `offscreen` | Use a local offscreen document to extract text from PDFs selected for AI context. The packaged PDF parser performs this work locally. |
 | `https://*.instructure.com/*` | Render the workspace on supported Canvas sites and read coursework through the signed-in site's APIs. Different schools use different Canvas subdomains. The extension does not require the publisher's school. |
 | Optional `scripting` | Insert a user-requested question and context into the selected AI website's supported composer. |

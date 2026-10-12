@@ -3,7 +3,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 (function (root) {
   'use strict';
   class CanvasError extends Error { constructor(message, code = 'network') { super(message); this.name = 'CanvasError'; this.code = code; } }
-  function createClient({origin = (globalThis.ReserveSite.origin()), fetchImpl = root.fetch.bind(root), timeout = 15000} = {}) {
+  // Canvas may throttle with a 403 rate-limit response or a 429.
+  // Wait and retry those twice before reporting them; other errors fail at once.
+  const throttleRetries = [1000, 4000];
+  function waitForRetry(ms, signal) {
+    return new Promise(resolve => {
+      const finish = () => { clearTimeout(timer); signal?.removeEventListener('abort', finish); resolve(); };
+      const timer = setTimeout(finish, ms);
+      signal?.addEventListener('abort', finish, {once:true});
+      if (signal?.aborted) finish();
+    });
+  }
+  function createClient({origin = (globalThis.ReserveSite.origin()), fetchImpl = root.fetch.bind(root), timeout = 15000, retryDelays = throttleRetries, wait = waitForRetry} = {}) {
     if (!globalThis.ReserveSite.supported(origin)) throw new CanvasError('Use your school’s HTTPS Canvas site on instructure.com.', 'origin');
     const base = new URL(origin);
     const allowed = [
@@ -34,7 +45,27 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(/^\/api\/v1\/conversations\/\d+\/?$/.test(url.pathname)&&(url.searchParams.getAll('auto_mark_as_read').length!==1||url.searchParams.get('auto_mark_as_read')!=='false'))throw new CanvasError('Message previews must preserve read status.', 'endpoint');
       return url;
     }
-    async function request(path, {signal} = {}) {
+    async function throttled(response) {
+      if (response.status === 429) return true;
+      if (response.status !== 403) return false;
+      const remaining = response.headers.get('x-rate-limit-remaining');
+      if (remaining != null && remaining !== '' && Number(remaining) <= 0) return true;
+      try { return /rate limit exceeded/i.test(String(await response.text?.()).slice(0, 2000)); } catch { return false; }
+    }
+    function retryAfter(response) {
+      const seconds = Number(response.headers.get('retry-after'));
+      return Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds * 1000, 10000) : null;
+    }
+    async function request(path, options = {}) {
+      for (let retry = 0; ; retry++) {
+        try { return await attempt(path, options); } catch (error) {
+          if (error?.code !== 'rate' || retry >= retryDelays.length) throw error;
+          await wait(error.retryAfter ?? retryDelays[retry], options.signal);
+          if (options.signal?.aborted) throw new CanvasError('Refresh cancelled.', 'cancelled');
+        }
+      }
+    }
+    async function attempt(path, {signal} = {}) {
       if (signal?.aborted) throw new CanvasError('Refresh cancelled.', 'cancelled');
       const url = urlFor(path), controller = new AbortController();
       const abort = () => controller.abort();
@@ -51,7 +82,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if (response?.redirected || response?.type === 'opaqueredirect') throw new CanvasError('Canvas redirected this read request unexpectedly.', 'redirect');
         if (signal?.aborted) throw new CanvasError('Refresh cancelled.', 'cancelled');
         if (response.status === 401) throw new CanvasError('Sign in to Canvas, then refresh Canvas Harness.', 'auth');
-        if (response.status === 429) throw new CanvasError('Canvas is receiving too many requests. Wait a minute, then refresh.', 'rate');
+        if (await throttled(response)) throw Object.assign(new CanvasError('Canvas is receiving too many requests. Wait a minute, then refresh.', 'rate'), {retryAfter: retryAfter(response)});
         if (!response.ok) throw new CanvasError(response.status === 403 ? 'Canvas did not allow this course to be read.' : `Canvas could not load this information (${response.status}).`, String(response.status));
         if (!(response.headers.get('content-type') || '').includes('json')) throw new CanvasError('Your Canvas session needs attention. Open Canvas and sign in again.', 'auth');
         let data;

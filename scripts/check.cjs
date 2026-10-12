@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),asse
 const root=path.resolve(__dirname,'..'),extension=path.join(root,'extension');
 const manifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json'),'utf8'));
 assert.equal(manifest.manifest_version,3);
-assert.deepEqual(manifest.permissions,['storage','offscreen']);
+assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen']);
 assert.deepEqual(manifest.optional_permissions,['scripting']);
 const providers=require('../extension/ai-providers.js');
 assert.deepEqual(manifest.optional_host_permissions,providers.list.flatMap(p=>p.origins));
