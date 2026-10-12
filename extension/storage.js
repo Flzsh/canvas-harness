@@ -10,7 +10,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // readingFont: teacher text in the book serif or the interface sans; greeting: the time-of-day heading.
   // hiddenCourses: hidden by hand. shownCourses (2.17): shown by hand, which keeps a course that is hidden
   // by default (NameCoach, College Counseling: ReserveCore.hiddenCourseIds) on screen. An id is in one list at most.
-  const defaults = () => ({version:1,settings:{...layoutDefaults,theme:'system',accent:'clay',appearanceVersion:2,motion:'gentle',livingArt:'on',readingFont:'book',greeting:'on',density:'comfortable',font:'system',textSize:'standard',dashboardLayout:'split',showCourseStrip:true,showGrades:false,showRecentGrades:false,timeZone:globalThis.ReserveSite.timeZone(),courseOrder:[],hiddenCourses:[],shownCourses:[],coursePrefs:{},overviewArt:{}},tasks:{},resourcePins:[],customTasks:[],gpa:gpa.defaults(),toolbox:{scratchpad:'',recent:[],dockSize:{width:0,height:0}},focus:{minutes:25,remaining:1500,endsAt:null,itemId:null,sessions:0}});
+  const defaults = () => ({version:1,settings:{...layoutDefaults,theme:'system',accent:'clay',appearanceVersion:2,motion:'gentle',livingArt:'on',readingFont:'book',greeting:'on',density:'comfortable',font:'system',textSize:'standard',dashboardLayout:'split',showCourseStrip:true,showGrades:false,showRecentGrades:false,timeZone:globalThis.ReserveSite.timeZone(),courseOrder:[],hiddenCourses:[],shownCourses:[],coursePrefs:{},overviewArt:{}},tasks:{},resourcePins:[],customTasks:[],gpa:gpa.defaults(),toolbox:{scratchpad:'',recent:[],dockSize:{width:0,height:0}},focus:{minutes:25,remaining:1500,endsAt:null,itemId:null,sessions:0},pet:{}});
   const text = (value,max=20000) => typeof value === 'string' ? value.slice(0,max) : '';
   const isRecord = v => v !== null && typeof v === 'object' && !Array.isArray(v);
   const personalWork = root.ReservePersonalWork || (typeof module === 'object' && module.exports && typeof require === 'function' ? require('./personal-work.js') : null);
@@ -112,6 +112,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       out.toolbox={...clone(value.toolbox),scratchpad:text(value.toolbox.scratchpad,30000),recent:[...new Set((value.toolbox.recent||[]).filter(id=>typeof id==='string'&&id.length<=500))].slice(0,24),dockSize:{...clone(size||{}),width:size?.width??0,height:size?.height??0}};
     }
     if(isRecord(value.focus)) out.focus={minutes:[15,25,45,60].includes(value.focus.minutes)?value.focus.minutes:25,remaining:Number.isFinite(value.focus.remaining)?Math.max(0,Math.min(3600,value.focus.remaining)):1500,endsAt:Number.isFinite(value.focus.endsAt)?value.focus.endsAt:null,itemId:text(value.focus.itemId,100)||null,sessions:Number.isInteger(value.focus.sessions)?Math.max(0,value.focus.sessions):0};
+    if(value.pet!==undefined&&value.pet!==null){
+      if(!isRecord(value.pet))throw Error('Invalid companion data in backup.');
+      for(const [key,item] of Object.entries(value.pet).slice(0,32)){
+        if(!/^[a-zA-Z]{1,24}$/.test(key))continue;
+        if(typeof item==='boolean')out.pet[key]=item;
+        else if(typeof item==='string')out.pet[key]=item.slice(0,140);
+        else if(Number.isFinite(item))out.pet[key]=Math.max(0,Math.min(1000000,Math.trunc(item)));
+      }
+    }
     if(bytes(out)>4000000)throw Error('Personal data is too large. Export a backup, then remove unused images or old notes to stay below 4 MB.');
     return out;
   }

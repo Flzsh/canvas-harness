@@ -173,6 +173,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         render();
       }
     });
+    // Added Home modules (today, week, timer, clock, notes...) and the companion: widgets.js draws and runs them.
+    const board=root.ReserveWidgets?.create({container,store,save:change=>savePersonal(change),rerender:()=>render(),getContext:()=>buildContext(),
+      helpers:()=>({E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete}),
+      preview:id=>{workspace='work';showPreview(String(id),{detail:0,target:container,preventDefault(){}});},
+      openSettings:()=>settingsDock?.open(),startTick:()=>syncFocus()});
     const toolbox=root.ReserveToolbox?.create({container,store,materials,aiConfig:{client:resourceClient,user:snapshot.user,demo},getContext:()=>{
       const ctx=buildContext();return {...ctx,courseId:state.courseId,aiAssignmentId:workspace==='work'&&readerOpen?selectedId:null,aiSelectedIds:[...selectionIds],
         aiResources:ctx.courses.map(c=>materials?.getCourse(c.id)?.raw).filter(Boolean),
@@ -499,7 +504,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       container.dataset.courses=String(ctx.s.showCourseStrip!==false);
       container.style.setProperty('--rd-accent',ctx.accent);
       const assignmentContent=readingContent(ctx.selected);
-       const markup=View.render({...ctx,state,workspace,gradeQuery,gradeLimit,arrangeOpen:!!arrange?.active(),hasLayoutUndo:!!ctx.s.workspaceUndo,deckHeader:workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:true})||'':'',deckContent:workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',hubContent:workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId)):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',materialLibrary:workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId)):'',relatedMaterials:materials?.renderRelated(ctx.selected,assignmentContent.links)||'',readerTab,customizeOpen,customizeCourseId,customizeStatus,customizeBusy,customizeDrafts,quickUpload:quickUpload?.state,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading,user:currentSnapshot.user,demo,nativeSwitch:typeof onNative==='function',refreshing,visibleLimit,noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',readerContent:assignmentContent,warning:renderWarning(),status:statusLabel(currentSnapshot,externalStatus,transientStatus)}, {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete});
+       const markup=View.render({...ctx,state,workspace,gradeQuery,gradeLimit,arrangeOpen:!!arrange?.active(),boardEditing:!!board?.editing(),personal:{focus:personal.focus,pet:personal.pet,toolbox:personal.toolbox},hasLayoutUndo:!!ctx.s.workspaceUndo,deckHeader:workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:true})||'':'',deckContent:workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',hubContent:workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId)):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',materialLibrary:workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId)):'',relatedMaterials:materials?.renderRelated(ctx.selected,assignmentContent.links)||'',readerTab,customizeOpen,customizeCourseId,customizeStatus,customizeBusy,customizeDrafts,quickUpload:quickUpload?.state,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading,user:currentSnapshot.user,demo,nativeSwitch:typeof onNative==='function',refreshing,visibleLimit,noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',readerContent:assignmentContent,warning:renderWarning(),status:statusLabel(currentSnapshot,externalStatus,transientStatus)}, {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete});
       const toolbar=container.querySelector('.rd-toolbar'),appearance=container.querySelector('.rd-appearance');
       if(toolbar&&appearance){
         // Keep the actual transitioning nodes connected through data renders.
@@ -533,13 +538,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const panel=appearance.querySelector('.t-acc-panel');panel.inert=!customizeOpen;
         if(customizeOpen)panel.removeAttribute('aria-hidden');else panel.setAttribute('aria-hidden','true');
         nextAppearance.remove();
-        for(const node of Array.from(container.childNodes)){if(node!==toolbar&&node!==appearance&&node!==shell&&!node.classList?.contains('rd-utility-dialog'))node.remove();}
+        for(const node of Array.from(container.childNodes)){if(node!==toolbar&&node!==appearance&&node!==shell&&!node.classList?.contains('rd-utility-dialog')&&!node.classList?.contains('pet-layer'))node.remove();}
         if(shell)for(const warning of Array.from(template.content.querySelectorAll('.rd-warning')))container.insertBefore(warning,shell);
         container.append(template.content);
       }else container.innerHTML=markup;
       container.dataset.courseId=state.courseId;container.dataset.workspace=workspace;
       settingsDock?.sync();
       arrange?.sync();
+      board?.sync();
       // Arrange has now installed the final layout. Measure its layout before motion paints a drag spring
       // and before the next timer/frame, so course rows cannot linger at a compressed intermediate size.
       sheetCover();measureRail(0,false);
@@ -608,7 +614,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(running&&now>=f.endsAt&&!focusSettling&&C.settleFocus){
         focusSettling=true;let settled=false;const ended=f.endsAt;
         // A session that ended long before this page opened is recorded quietly.
-        store.update(data=>{settled=C.settleFocus(data,Date.now());}).then(()=>{if(settled&&!destroyed&&Date.now()-ended<60000){focusDoneUntil=Date.now()+8000;if(!transientStatus){transientStatus=note;render();}else syncFocus();}}).catch(()=>{}).finally(()=>{focusSettling=false;});
+        store.update(data=>{settled=C.settleFocus(data,Date.now());}).then(()=>{if(settled&&!destroyed&&Date.now()-ended<60000){board?.finished('focus');focusDoneUntil=Date.now()+8000;if(!transientStatus){transientStatus=note;render();}else syncFocus();}}).catch(()=>{}).finally(()=>{focusSettling=false;});
       }
       const ticking=running||!!focusDoneUntil;
       if(ticking&&!focusTimer)focusTimer=setInterval(syncFocus,1000);else if(!ticking&&focusTimer){clearInterval(focusTimer);focusTimer=0;}
@@ -634,6 +640,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     function onInput(event){
       const field=event.target?.dataset?.rdField;
+      if(board?.input(event))return;
       if(field==='quick-pack-source'){quickPackDraft=event.target.value.slice(0,3145728);quickPackFileName='';quickPackError='';return;}
       if(field==='art-source'){const {course,kind}=event.target.dataset;if(validArtTarget(course)&&['banner','icon','border','title'].includes(kind))customizeDrafts[course+':'+kind]=event.target.value.slice(0,262144);return;}
       if(field?.startsWith('hub-')){hub?.input(field,field==='hub-unread'?event.target.checked:event.target.value,event.target.dataset);return;}
@@ -815,6 +822,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       checkingOff.delete(id);
       if(!saved||destroyed){exit?.cancel();return;}
       checkOffNotice=done?{id,name:item.name}:null;
+      if(done)board?.finished('done',id);
       // A departed row already closed its gap; a row that stays or returns
       // gets a short entrance of its own instead of replaying the whole list.
       render(exit?{}:{tabMotion:event.detail>0,motionTarget:`.rd-assignment[data-preview-id="${id}"]`,motionKind:'filter',snapshot});
@@ -842,6 +850,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     function onClick(event){
       if(arrange?.click(event))return;
+      if(board?.click(event))return;
       const button=event.target.closest?.('[data-rd-action]');
       // FIRST for pointer motion: a read-only snapshot of what is painted, taken
       // before any state changes and handed to render. Keyboard clicks (detail 0) take none.
@@ -1086,6 +1095,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       motion?.activity?.();if(event.key==='Tab')tabAt=Date.now();
       const enteringKeyboard=container.dataset.input!=='keyboard';container.dataset.input='keyboard';if(enteringKeyboard){motion?.cancel();motion?.syncTabs(false,true);}
       if(arrange?.keydown(event))return;
+      if(board?.keydown(event))return;
       if(settingsDock?.handleKeydown(event))return;
       // Esc closes the phone drawer, then the phone reader sheet (focus returns to its row).
       if(event.key==='Escape'&&drawerOpen()){event.preventDefault();setDrawer(false);return;}
@@ -1149,7 +1159,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         flushDrafts();
         destroyed=true;
         readerLayout?.disconnect();railLayout?.disconnect();root.clearTimeout(railTimer);
-        ++quickPackRead;quickUpload?.destroy();arrange?.destroy();settingsDock?.destroy();materials?.destroy();hub?.destroy();motion?.destroy();toolbox?.destroy();
+        ++quickPackRead;quickUpload?.destroy();arrange?.destroy();board?.destroy();settingsDock?.destroy();materials?.destroy();hub?.destroy();motion?.destroy();toolbox?.destroy();
         clearInterval(freshnessTimer);clearInterval(focusTimer);clearTimeout(entranceTimer);
         unsubscribe?.();
         container.removeEventListener('dragover',onPackDragover);container.removeEventListener('dragleave',onPackDragleave);container.removeEventListener('drop',onPackDrop);
