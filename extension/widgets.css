@@ -402,3 +402,7 @@
 /* A module a little shorter than its row: its outline is drawn down to the row's bottom edge, the module itself
    keeps its height (workspace-gestures.js measures that height and must not change it). */
 .rd[data-workspace=work]:not([data-panel-frame=none]) .rd-main.rd-desk > [data-arrange-key]::after {bottom:calc(-1 * var(--rd-panel-grow,0px));}
+/* The grade stands at the foot of the course card, just above the frame's corner drawing, not beside the middle line. */
+.rd .rd-course-rail .rd-rail-course > .rd-grade {top:auto;bottom:calc(var(--rd-rail-pad,10px) + 5px);}
+/* Only the card's last line can meet the grade now, so the lines above it use the full width. */
+.rd .rd-course-rail .rd-rail-course:has(> .rd-grade) .rd-rail-text > small:not(:last-child) {padding-right:0;}
