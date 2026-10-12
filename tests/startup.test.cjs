@@ -171,7 +171,7 @@ test('manifest starts the small guard before the early controller with optional 
   const startup=manifest.content_scripts.find(x=>x.js.includes('startup.js'));
   assert.ok(startup,'a document_start bootstrap must be registered');
   assert.equal(startup.run_at,'document_start');assert.deepEqual(startup.js,['site.js','startup.js']);assert.deepEqual(startup.css,['startup.css']);assert.equal(startup.all_frames,false);
-  assert.equal(manifest.content_scripts.find(x=>x.js.includes('content.js')).run_at,'document_start');assert.ok(manifest.content_scripts.indexOf(startup)<manifest.content_scripts.findIndex(x=>x.js.includes('content.js')));assert.deepEqual(manifest.permissions,['storage','offscreen']);
+  assert.equal(manifest.content_scripts.find(x=>x.js.includes('content.js')).run_at,'document_start');assert.ok(manifest.content_scripts.indexOf(startup)<manifest.content_scripts.findIndex(x=>x.js.includes('content.js')));assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen']);
 });
 
 test('warm dashboard is revealed while Canvas is still parsing, without waiting for DOMContentLoaded',async()=>{

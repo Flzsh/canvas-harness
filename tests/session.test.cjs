@@ -95,3 +95,15 @@ test('a slow prepaint request cannot delay a faster current profile or replace i
  await session.start();assert.equal(account,'8');assert.equal(shown,1);
  early.resolve({id:'7'});await new Promise(setImmediate);assert.equal(shown,1);session.destroy();
 });
+
+test('a recent partial snapshot is not refetched on every visit or tab return',async()=>{
+ let fetches=0;const partial={...snapshot(10000),partial:true};
+ const session=createSession({client:{profile:async()=>user,loadSnapshot:async()=>{fetches++;return snapshot();}},createStore:()=>({load:async()=>{},readCache:async()=>partial,writeCache:async()=>{},destroy(){}}),onSnapshot:()=>{}});
+ await session.start();session.suspend();assert.equal(await session.verify(),true);await new Promise(setImmediate);
+ assert.equal(fetches,0,'a course that keeps failing must not reload every course within the partial window');session.destroy();
+});
+test('an older partial snapshot still refreshes so failed courses are retried',async()=>{
+ let fetches=0;const partial={...snapshot(120000),partial:true};
+ const session=createSession({client:{profile:async()=>user,loadSnapshot:async()=>{fetches++;return snapshot();}},createStore:()=>({load:async()=>{},readCache:async()=>partial,writeCache:async()=>{},destroy(){}}),onSnapshot:()=>{}});
+ await session.start();assert.equal(fetches,1);session.destroy();
+});

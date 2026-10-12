@@ -27,7 +27,7 @@ PDF processing happens locally in the extension. A small PDF from Canvas or your
 
 ## Browser permissions
 
-Canvas Harness uses `storage` for local data, `offscreen` for local PDF text extraction, and access to HTTPS `*.instructure.com` Canvas pages. It does not request Canvas passwords or account API keys.
+Canvas Harness uses `storage` and `unlimitedStorage` for local data (so caches, artwork and notes are not cut off by the browser's default 10 MB extension limit), `offscreen` for local PDF text extraction, and access to HTTPS `*.instructure.com` Canvas pages. It does not request Canvas passwords or account API keys.
 
 Draft insertion into an AI website asks for optional `scripting` permission and access to **that provider's exact origin**. The allowed origins are `chatgpt.com`, `claude.ai`, `gemini.google.com`, `grok.com`, `chat.deepseek.com`, `www.kimi.com`, `chat.qwen.ai` and `chat.z.ai`. These permissions are optional; using **Copy** and pasting yourself is an alternative. Permission is not a standing instruction to share future coursework. You can remove provider website access in the extension's permission page or your browser's extension site settings.
 

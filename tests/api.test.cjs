@@ -33,8 +33,26 @@ test('HTML login response is recognized even with status 200',async()=>{
  await assert.rejects(client.list('/api/v1/courses'),e=>e.code==='auth');
 });
 test('rate limit is actionable and never silently treated as no assignments',async()=>{
- const client=createClient({origin:'https://school.instructure.com',fetchImpl:async()=>response({},429)});
+ let calls=0;const waits=[];const client=createClient({origin:'https://school.instructure.com',wait:async ms=>{waits.push(ms);},fetchImpl:async()=>{calls++;return response({},429);}});
  await assert.rejects(client.list('/api/v1/courses'),e=>e.code==='rate');
+ assert.equal(calls,3);assert.deepEqual(waits,[1000,4000]);
+});
+const throttle=(headers={})=>({ok:false,status:403,headers:{get:n=>headers[n.toLowerCase()]??null},text:async()=>'403 Forbidden (Rate Limit Exceeded)\n',json:async()=>{throw new SyntaxError('text');}});
+test('Canvas 403 rate limiting waits and retries instead of reporting a blocked course',async()=>{
+ let calls=0;const waits=[];const client=createClient({origin:'https://school.instructure.com',wait:async ms=>{waits.push(ms);},fetchImpl:async()=>++calls<3?throttle():response([{id:1}])});
+ assert.deepEqual(await client.list('/api/v1/courses'),[{id:1}]);assert.equal(calls,3);assert.deepEqual(waits,[1000,4000]);
+});
+test('Retry-After is honored and capped, and a persistent Canvas throttle is reported as rate limiting',async()=>{
+ const waits=[];const client=createClient({origin:'https://school.instructure.com',wait:async ms=>{waits.push(ms);},fetchImpl:async()=>throttle({'retry-after':'60','x-rate-limit-remaining':'0.0'})});
+ await assert.rejects(client.list('/api/v1/courses'),e=>e.code==='rate'&&/too many requests/i.test(e.message));assert.deepEqual(waits,[10000,10000]);
+});
+test('an ordinary 403 is still a blocked course and is not retried',async()=>{
+ let calls=0;const client=createClient({origin:'https://school.instructure.com',wait:async()=>{throw Error('should not wait');},fetchImpl:async()=>{calls++;return {...response({},403),text:async()=>'{"status":"unauthorized"}'};}});
+ await assert.rejects(client.list('/api/v1/courses/7/assignments'),e=>e.code==='403');assert.equal(calls,1);
+});
+test('cancelling during a rate-limit wait stops without another request',async()=>{
+ let calls=0;const controller=new AbortController();const client=createClient({origin:'https://school.instructure.com',wait:async()=>controller.abort(),fetchImpl:async()=>{calls++;return response({},429);}});
+ await assert.rejects(client.list('/api/v1/courses',{signal:controller.signal}),e=>e.code==='cancelled');assert.equal(calls,1);
 });
 
 test('AI assignment reads verify both the selected course and the current account',async()=>{

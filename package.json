@@ -9,7 +9,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test --test-isolation=none tests/*.test.cjs",
+    "test": "node scripts/test.cjs",
     "check": "node scripts/check.cjs",
     "build": "node scripts/build.cjs",
     "preview": "node scripts/serve.cjs"
