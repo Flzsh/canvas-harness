@@ -163,3 +163,72 @@
 .rd .rd-frame-choice[aria-checked=true] {border-color:var(--rd-accent);box-shadow:0 0 0 1px var(--rd-accent);color:var(--rd-ink);}
 @media (max-width:600px){.rd .rd-gallery {padding:14px}.rd .rd-gallery > header {flex-direction:column}.rd .rd-quick-add {flex-wrap:wrap}}
 @media (prefers-reduced-motion:reduce){.rd .rd-progress i,.rd .rd-timer-arc,.rd .rd-gswitch i,.rd .rd-gallery {transition:none;animation:none}}
+
+/* ---- the Planner: a week of cards ---- */
+.rd .rd-plan {color:var(--rd-ink);font:400 14px/1.5 var(--rd-ui-font);}
+.rd .rd-plan-head {display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:6px 0 16px;}
+.rd .rd-plan-head h1 {margin:0;font:500 34px/1.15 var(--rd-display,Georgia,serif);letter-spacing:-.01em;}
+.rd .rd-plan-head p {margin:4px 0 0;color:var(--rd-muted);}
+.rd .rd-plan-nav {display:flex;align-items:center;gap:4px;}
+.rd .rd-plan-nav .rd-icon-button {width:38px;height:38px;font-size:22px;line-height:1;}
+.rd .rd-plan-quick {margin:0 0 6px;max-width:760px;}
+.rd .rd-plan-quick input {height:44px;font-size:15px;border-radius:12px;}
+.rd .rd-plan-quick .rd-quick-add-button {min-height:44px;padding-inline:20px;}
+.rd .rd-plan-tip {margin:0 0 18px;color:var(--rd-muted);font-size:12.5px;}
+.rd .rd-plan-trays {display:grid;gap:10px;margin-bottom:18px;}
+.rd .rd-plan-trays:empty {display:none;}
+.rd .rd-plan-tray {padding:12px 14px 14px;border:1.5px dashed var(--rd-line-strong);border-radius:15px;transition:background-color 140ms,border-color 140ms;}
+.rd .rd-plan-tray > header {display:flex;align-items:baseline;gap:4px 12px;flex-wrap:wrap;margin-bottom:10px;}
+.rd .rd-plan-tray h2 {margin:0;font:600 14px/1.4 var(--rd-ui-font);}
+.rd .rd-plan-tray h2 span {margin-left:4px;padding:0 7px;border-radius:99px;background:var(--rd-tint);color:var(--rd-muted);font-size:12px;font-weight:600;}
+.rd .rd-plan-tray header p {margin:0;color:var(--rd-muted);font-size:12.5px;}
+.rd .rd-plan-tray header .rd-text-button {margin-left:auto;font-size:12.5px;}
+.rd .rd-plan-tray .rd-plan-cards {display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:8px;}
+.rd .rd-plan-week {display:grid;grid-template-columns:repeat(7,minmax(148px,1fr));gap:8px;align-items:start;overflow-x:auto;padding:2px 2px 14px;margin:0 -2px;scroll-snap-type:x proximity;}
+.rd .rd-plan-day {display:grid;grid-template-rows:auto 1fr auto;min-width:0;min-height:300px;padding:10px 8px 8px;border-radius:15px;background:var(--rd-surface-2);scroll-snap-align:start;transition:background-color 140ms,box-shadow 140ms;}
+.rd .rd-plan-day[data-today=true] {background:color-mix(in srgb,var(--rd-accent) 8%,var(--rd-surface));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--rd-accent) 45%,transparent);}
+.rd .rd-plan-day[data-past=true] > header {opacity:.6;}
+.rd .rd-plan-day > header {display:grid;grid-template-columns:auto auto 1fr;align-items:baseline;gap:0 6px;padding:0 4px 8px;}
+.rd .rd-plan-day > header span {color:var(--rd-muted);font-size:12.5px;}
+.rd .rd-plan-day > header strong {font:600 19px/1.2 var(--rd-display,Georgia,serif);}
+.rd .rd-plan-day > header em {justify-self:end;padding:1px 8px;border-radius:99px;background:var(--rd-accent);color:#fff;font-size:11px;font-style:normal;font-weight:600;}
+.rd .rd-plan-day > header small {grid-column:1/-1;min-height:17px;color:var(--rd-muted);font-size:11.5px;}
+.rd :is(.rd-plan-day,.rd-plan-tray)[data-over=true] {background:color-mix(in srgb,var(--rd-accent) 14%,var(--rd-surface));border-color:var(--rd-accent);box-shadow:inset 0 0 0 2px var(--rd-accent);}
+.rd .rd-plan-day .rd-plan-cards {display:grid;align-content:start;gap:6px;min-height:40px;}
+.rd .rd-plan-empty {margin:0;height:34px;border-radius:10px;border:1.5px dashed transparent;}
+.rd[data-plan-dragging=true] .rd-plan-empty {border-color:var(--rd-line-strong);}
+.rd .rd-plan-card {position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;padding:2px 0;border-radius:11px;background:var(--rd-surface);border:1px solid var(--rd-line);border-left:3px solid var(--rd-course,var(--rd-accent));box-shadow:0 1px 2px #30281908;cursor:grab;touch-action:pan-y;user-select:none;}
+.rd .rd-plan-card:hover {border-color:var(--rd-line-strong);border-left-color:var(--rd-course,var(--rd-accent));box-shadow:0 2px 8px #30281914;}
+.rd .rd-plan-card .rd-todo-check {width:34px;height:36px;}
+.rd .rd-plan-open {display:grid;min-width:0;padding:7px 2px 7px 0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit;border-radius:8px;}
+.rd .rd-plan-open strong {font-weight:550;font-size:13.5px;line-height:1.35;overflow-wrap:anywhere;}
+.rd .rd-plan-open small {color:var(--rd-muted);font-size:11.5px;line-height:1.4;}
+.rd .rd-plan-open:focus-visible {outline:2px solid var(--rd-accent);outline-offset:1px;}
+.rd .rd-plan-card[data-menu=true] {box-shadow:0 0 0 1.5px var(--rd-accent),0 6px 18px #3028191f;z-index:2;}
+.rd .rd-plan-card[data-done=true] {background:none;box-shadow:none;border-style:dashed;border-left-style:solid;}
+.rd .rd-plan-card[data-done=true] .rd-todo-check svg {background:var(--rd-accent);box-shadow:none;stroke:#fff;}
+.rd .rd-plan-card[data-done=true] .rd-plan-open strong {color:var(--rd-muted);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--rd-muted) 55%,transparent);}
+.rd .rd-plan-card[data-late=true] .rd-plan-open small {color:var(--rd-danger,#B5333A);}
+.rd .rd-plan-card[data-dragging=true] {opacity:.32;}
+.rd .rd-plan-more {position:absolute;top:3px;right:3px;display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:8px;background:var(--rd-surface);color:var(--rd-faint);cursor:pointer;opacity:0;transition:opacity 120ms;}
+.rd .rd-plan-card:is(:hover,:focus-within,[data-menu=true]) .rd-plan-more {opacity:1;}
+.rd .rd-plan-more:is(:hover,:focus-visible) {background:var(--rd-tint);color:var(--rd-ink);outline:none;}
+@media (hover:none){.rd .rd-plan-more {opacity:1}}
+.rd .rd-plan-ghost {position:fixed;left:0;top:0;z-index:1700;pointer-events:none;box-shadow:0 14px 34px #30281938;cursor:grabbing;will-change:transform;}
+/* The card's menu opens inside the card, so nothing can clip it and it reads the same on a phone. */
+.rd .rd-plan-menu {grid-column:1/-1;margin:4px 0 0;padding:10px 10px 11px;border-top:1.5px dashed var(--rd-line-strong);cursor:default;animation:rd-enter 120ms ease-out;}
+.rd .rd-plan-menu p {margin:0 0 5px;color:var(--rd-muted);font-size:12px;font-weight:600;}
+.rd .rd-plan-menu p:not(:first-child) {margin-top:11px;}
+.rd .rd-plan-menu-days {display:grid;gap:1px;}
+.rd .rd-plan-menu-item {display:block;width:100%;min-height:32px;padding:5px 9px;border:0;border-radius:8px;background:none;color:inherit;font:inherit;font-size:13.5px;text-align:left;cursor:pointer;}
+.rd .rd-plan-menu-item:is(:hover,:focus-visible) {background:var(--rd-tint);outline:none;}
+.rd .rd-plan-menu-item[aria-checked=true] {background:color-mix(in srgb,var(--rd-accent) 13%,transparent);font-weight:600;}
+.rd .rd-plan-menu-lengths {display:flex;flex-wrap:wrap;gap:5px;}
+.rd .rd-plan-menu-lengths .rd-chip[aria-checked=true] {border-color:transparent;background:var(--rd-accent);color:#fff;}
+.rd .rd-plan-menu-danger {margin-top:9px;color:var(--rd-danger,#B5333A);}
+.rd .rd-plan-add {margin-top:6px;}
+.rd .rd-plan-add input {height:32px;padding:0 9px;border-color:transparent;background:none;font-size:13px;}
+.rd .rd-plan-add input:hover {background:var(--rd-surface);}
+.rd .rd-plan-add input:focus {background:var(--rd-surface);}
+@media (max-width:760px){.rd .rd-plan-week {grid-template-columns:repeat(7,minmax(72vw,1fr))}.rd .rd-plan-head h1 {font-size:28px}}
+@media (prefers-reduced-motion:reduce){.rd .rd-plan-menu {animation:none}}

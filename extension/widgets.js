@@ -66,7 +66,7 @@
   const time=(value,options)=>h.formatDate(value,c.s.timeZone,options);
   const mine=c.personal||{};
   const todo=(e,{showDue=true}={})=>{
-   const canvasDone=e.done&&!(c.local[e.id]?.checkedOff),bits=[e.course&&!e.personal?E(e.course):e.personal?'Mine':'',showDue&&e.dueAt?E(time(e.dueAt,{hour:'numeric',minute:'2-digit'})):'',e.estimate?E(Plan().minutes(e.estimate)):'',e.steps?`${e.stepsDone}/${e.steps} steps`:''].filter(Boolean);
+   const canvasDone=e.done&&!(c.local[e.id]?.checkedOff),bits=[e.personal&&e.courseId==='personal'?'Mine':E(e.course||''),showDue&&e.dueAt?E(time(e.dueAt,{hour:'numeric',minute:'2-digit'})):'',e.estimate?E(Plan().minutes(e.estimate)):'',e.steps?`${e.stepsDone}/${e.steps} steps`:''].filter(Boolean);
    return `<li class="rd-todo" data-rd-key="todo-${E(e.id)}" data-done="${e.done}" style="--rd-course:${E(e.color||'#7c718d')}">${canvasDone?`<span class="rd-todo-check" data-done="true" title="Completed in Canvas" aria-label="Completed in Canvas"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M4.6 10.6l3.4 3.6 7.6-8.8"/></svg></span>`:action(e.done?'undo-check-off':'check-off','<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M4.6 10.6l3.4 3.6 7.6-8.8"/></svg>',`data-id="${E(e.id)}" aria-pressed="${e.done}" aria-label="${e.done?'Put back':'Mark done'}: ${E(e.title)}" title="${e.done?'Put back in the list':'Mark done'}"`,'rd-todo-check')}${action('preview',`<strong>${E(e.title)}</strong>${bits.length?`<small>${bits.join(' · ')}</small>`:''}`,`data-id="${E(e.id)}" aria-label="Open ${E(e.title)}"`,'rd-todo-open')}</li>`;
   };
   let body='',extra='';
@@ -128,11 +128,12 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
 <div class="rd-gallery-frames" role="radiogroup" aria-label="Module outline"><span>Outline</span>${FRAMES.map(([value,name,hint])=>`<button type="button" class="rd-frame-choice" role="radio" data-rd-action="board-frame" data-value="${value}" aria-checked="${frame===value}" title="${E(hint)}"><i data-frame="${value}"></i>${E(name)}</button>`).join('')}</div></section>`;
  }
 
- function create({container,store,save,rerender,getContext,helpers,preview=()=>{},openSettings=()=>{},startTick=()=>{}}){
+ function create({container,store,save,rerender,getContext,helpers,preview=()=>{},openSettings=()=>{},startTick=()=>{},go=()=>{}}){
   let dead=false,editing=false,clockTimer=0,timerTick=0,notesTimer=0,pets=null,lastDone=null;
   const win=container.ownerDocument?.defaultView||root;
   const newId=()=>'local-'+(root.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const ctx=()=>getContext();
+  const planner=root.ReservePlannerUI?.create({container,store,save,rerender,getContext,helpers,view:id=>preview(id)})||null;
   function petInfo(){
    const c=ctx(),h=helpers(),next=nextDue(c,h),{board,today}=plan(c,h),d=board.days.find(x=>x.key===today);
    return {next:next?{id:next.id,title:next.title,course:next.course,when:`in ${howLong(next.ms)}`,urgent:next.ms<3*3600000}:null,todayOpen:d?.open||0,todayDone:d?.done||0};
@@ -176,8 +177,10 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
    else input.value=text;
   }
   function click(event){
+   if(planner?.click(event))return true;
    const button=event.target.closest?.('[data-rd-action]');if(!button||dead)return false;
    const action=button.dataset.rdAction,key=button.dataset.widget,A=Arrange();
+   if(action==='plan-open'){planner?.goto(button.dataset.day);go('plan');return true;}
    if(action==='board-edit'){editing=!editing;rerender();if(!editing)container.querySelector('[data-rd-action="board-edit"]')?.focus({preventScroll:true});return true;}
    if(action==='board-frame'){save(data=>{data.settings.panelFrame=button.dataset.value;});return true;}
    if(action==='widget-add'&&(A.EXTRA.includes(key)||key==='context')){save(data=>{A.change(data.settings,key==='context'?{type:'restore-context'}:{type:'add',key});});return true;}
@@ -197,7 +200,10 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
    return false;
   }
   function keydown(event){
-   if(event.key==='Enter'&&event.target?.dataset?.rdField==='plan-quick'){event.preventDefault();quickAdd(event.target);return true;}
+   if(planner?.keydown(event))return true;
+   // Keys are heard on the document, where a shadow root hides the real target.
+   const target=event.composedPath?.()[0]||event.target;
+   if(event.key==='Enter'&&target?.dataset?.rdField==='plan-quick'){event.preventDefault();quickAdd(target);return true;}
    return false;
   }
   function input(event){
@@ -221,8 +227,8 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
    ensurePets();const c=ctx(),h=helpers(),{board,today}=plan(c,h),d=board.days.find(x=>x.key===today);
    pets?.celebrate(kind,{today,left:d?d.open:undefined});
   }
-  function destroy(){dead=true;clearInterval(clockTimer);clearInterval(timerTick);flushNotes();pets?.destroy();}
-  return {click,keydown,input,sync,finished,destroy,editing:()=>editing,close(){if(editing){editing=false;rerender();}}};
+  function destroy(){dead=true;clearInterval(clockTimer);clearInterval(timerTick);flushNotes();pets?.destroy();planner?.destroy();}
+  return {click,keydown,input,sync,finished,destroy,planUI:()=>planner?.ui||{},editing:()=>editing,close(){if(editing){editing=false;rerender();}}};
  }
  const api={INFO,FRAMES,glyph,render,gallery,create,focusState,howLong,nextDue,plan};
  root.ReserveWidgets=api;if(typeof module==='object'&&module.exports)module.exports=api;
