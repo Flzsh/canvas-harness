@@ -2,8 +2,14 @@
 (function(root){
  'use strict';
  const HOLD_MS=420,HOLD_DELAY_MS=250,RING_DELAY_MS=130,SLOP=8;
- // The circle drawn round the pointer while a hold runs: one pen stroke that overshoots where it began.
- const RING_PATH='M31 6.5C44.5 5.6 54.6 16.4 54 30.4C53.4 44.2 43 54.6 29.6 54C16.4 53.4 5.6 43.4 6.2 29.6C6.8 16.6 16.8 6.4 30.4 6.4C32.6 6.4 35 6.9 37.4 7.9';
+ // The circle drawn round the pointer while a hold runs, as a hand would draw it: a pencil goes round once in ink
+ // and overshoots where it began, a second looser pass follows in the accent colour, and three small marks fly
+ // off when the thing lifts.
+ const RING_PATH='M33 8.2C47.6 6.6 58.8 18.4 58 33.2C57.2 47.8 46 58.4 31.4 57.6C17.4 56.8 6.4 46.2 7.2 31.6C8 18.2 18.6 8 32.6 8.4C35.4 8.5 38.2 9.2 41 10.6';
+ const RING_PATH_2='M29.4 5.4C45.4 3.8 60.6 16.6 60.6 32.6C60.6 49 48.4 61 32.2 60.6C16.8 60.2 4 48 4.6 32C5.2 18 14.6 7.4 27.6 5.8';
+ const RING_SVG='<svg viewBox="0 0 64 64" width="64" height="64"><path class="rd-hold-paper" pathLength="1" d="'+RING_PATH+'"/><path class="rd-hold-second" pathLength="1" d="'+RING_PATH_2+'"/><path class="rd-hold-first" pathLength="1" d="'+RING_PATH+'"/>'+
+  '<g class="rd-hold-marks"><path d="M52.6 7.6l4.6-5.4M59.4 14.2l6-2.4M46 3.2l1.4-5.6"/></g>'+
+  '<g class="rd-hold-pencil" style="offset-path:path(\''+RING_PATH+'\')"><path class="rd-pencil-wood" d="M0 0L4.4 -1.5L1.5 -4.4z"/><path class="rd-pencil-body" d="M4.4 -1.5L14 -11.1L11.1 -14L1.5 -4.4z"/><path class="rd-pencil-end" d="M14 -11.1L16 -13.1L13.1 -16L11.1 -14z"/><path class="rd-pencil-lead" d="M0 0L1.7 -.6L.6 -1.7z"/></g></svg>';
  const spring=Array.from({length:25},(_,i)=>{const t=i/24,p=i===24?1:1-(1+9*t)*Math.exp(-9*t);return {offset:t,p};});
  function create({container,getSettings,getCourseIds=()=>[],onChange,onModeChange},M){
   const doc=container.ownerDocument||root.document,win=doc.defaultView||root;
@@ -54,11 +60,11 @@
    if(reduced())return;
    ring=make('rd-hold-ring');ring.setAttribute('aria-hidden','true');
    ring.style.left=x+'px';ring.style.top=y+'px';ring.style.setProperty('--rd-hold-draw',(HOLD_MS-RING_DELAY_MS)+'ms');
-   ring.innerHTML='<svg viewBox="0 0 60 60" width="60" height="60"><path class="rd-hold-ring-paper" pathLength="1" d="'+RING_PATH+'"/><path pathLength="1" d="'+RING_PATH+'"/></svg>';
+   ring.innerHTML=RING_SVG;
   }
   function endRing(done=false){
    if(!ring)return;const node=ring;ring=null;
-   if(done&&!reduced()){node.dataset.done='true';setTimeout(()=>node.remove(),280);}else node.remove();
+   if(done&&!reduced()){node.dataset.done='true';setTimeout(()=>node.remove(),380);}else node.remove();
   }
   function clearPending(lifted=false){if(!pending)return;clearTimeout(pending.timer);clearTimeout(pending.feedbackTimer);clearTimeout(pending.ringTimer);endRing(lifted);pending.node.removeAttribute('data-hold');pending.head?.removeAttribute('data-hold');pending=null;}
   function source(target){

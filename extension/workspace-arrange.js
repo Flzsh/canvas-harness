@@ -1,11 +1,19 @@
 /* Canvas Harness's personal workspace arrangement; no Canvas data or artwork is changed here. */
 (function(root){
  'use strict';
+ // The three panels every workspace has, and the modules a student may add beside them. The layout is one tree:
+ // any module can sit beside or below any other. Up next and Assignment details always stay; the rest can go.
  const PANELS=['context','work','reader'];
- const LABELS={context:'Course information',work:'Up next',reader:'Assignment details',rail:'Courses'};
+ const EXTRA=['today','week','timer','clock','notes','bookmarks','grades','messages','pet'];
+ const ALL=[...PANELS,...EXTRA];
+ const LABELS={context:'Course information',work:'Up next',reader:'Assignment details',rail:'Courses',today:'Today',week:'This week',timer:'Focus timer',clock:'Clock',notes:'Notes',bookmarks:'Bookmarks',grades:'Grades',messages:'Messages',pet:'Paddock'};
+ // How much of a row a module asks for beside its neighbours, and the narrowest it can usefully be.
+ const WEIGHT={context:1,work:1.12,reader:1.12,today:.82,week:.95,timer:.58,clock:.58,notes:.8,bookmarks:.8,grades:.8,messages:.9,pet:.66};
+ const MIN_WIDTH={context:285,work:285,reader:285,today:220,week:250,timer:170,clock:170,notes:210,bookmarks:210,grades:210,messages:230,pet:190};
+ const removable=key=>EXTRA.includes(key)||key==='context';
  function controls(key){
   if(!LABELS[key])return '';
-  return `<span class="rd-arrange-tools"><button type="button" class="rd-arrange-grip" data-arrange-grip aria-label="Move ${LABELS[key]}" aria-describedby="rd-move-help" title="Hold to move · Space for keyboard"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="9" cy="5" r="1.4"/><circle cx="15" cy="5.5" r="1.4"/><circle cx="8.5" cy="12" r="1.4"/><circle cx="15.5" cy="12" r="1.4"/><circle cx="9" cy="19" r="1.4"/><circle cx="15" cy="18.5" r="1.4"/></svg></button></span>`;
+  return `<span class="rd-arrange-tools"><button type="button" class="rd-arrange-grip" data-arrange-grip aria-label="Move ${LABELS[key]}" aria-describedby="rd-move-help" title="Hold to move · Space for keyboard"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="9" cy="5" r="1.4"/><circle cx="15" cy="5.5" r="1.4"/><circle cx="8.5" cy="12" r="1.4"/><circle cx="15.5" cy="12" r="1.4"/><circle cx="9" cy="19" r="1.4"/><circle cx="15" cy="18.5" r="1.4"/></svg></button>${EXTRA.includes(key)?`<button type="button" class="rd-arrange-remove" data-rd-action="widget-remove" data-widget="${key}" aria-label="Remove ${LABELS[key]} from Home" title="Remove from Home"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 7.4l10 9.4M17 7l-10 10.2"/></svg></button>`:''}</span>`;
  }
  const DEFAULT={order:[...PANELS],mode:'side-by-side',layout:{axis:'x',children:[...PANELS]},courseNavigation:'sidebar',showCourseInformation:true,showCourseStrip:true};
  const isObject=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
@@ -20,33 +28,39 @@
  function cleanLayout(tree){
   let count=0;
   function visit(node,depth=0){
-   if(++count>8||depth>3)throw Error('Invalid workspaceLayout setting in backup.');
-   if(typeof node==='string'&&PANELS.includes(node))return node;
-   if(!isObject(node)||!['x','y'].includes(node.axis)||!Array.isArray(node.children)||node.children.length<2||node.children.length>3)throw Error('Invalid workspaceLayout setting in backup.');
+   if(++count>40||depth>5)throw Error('Invalid workspaceLayout setting in backup.');
+   if(typeof node==='string'&&ALL.includes(node))return node;
+   if(!isObject(node)||!['x','y'].includes(node.axis)||!Array.isArray(node.children)||node.children.length<2||node.children.length>ALL.length)throw Error('Invalid workspaceLayout setting in backup.');
    return split(node.axis,node.children.map(child=>visit(child,depth+1)));
   }
   const result=visit(tree),keys=leaves(result);
-  if(keys.length!==3||new Set(keys).size!==3)throw Error('Invalid workspaceLayout setting in backup.');
+  if(new Set(keys).size!==keys.length||PANELS.some(key=>!keys.includes(key)))throw Error('Invalid workspaceLayout setting in backup.');
   return result;
  }
  const prune=(tree,key)=>typeof tree==='string'?(tree===key?null:tree):split(tree.axis,tree.children.map(child=>prune(child,key)));
  function swap(tree,key,target){
-  if(!PANELS.includes(key)||!PANELS.includes(target)||key===target)return tree;
+  if(!ALL.includes(key)||!ALL.includes(target)||key===target)return tree;
   const visit=node=>typeof node==='string'?(node===key?target:node===target?key:node):{axis:node.axis,children:node.children.map(visit)};
   return visit(tree);
  }
  function dock(tree,key,target,edge){
-  if(!PANELS.includes(key)||!PANELS.includes(target)||key===target||!['left','right','top','bottom'].includes(edge))return tree;
+  if(!ALL.includes(key)||!ALL.includes(target)||key===target||!['left','right','top','bottom'].includes(edge))return tree;
   const axis=['left','right'].includes(edge)?'x':'y',before=['left','top'].includes(edge);
   const insert=node=>node===target?split(axis,before?[key,target]:[target,key]):typeof node==='string'?node:split(node.axis,node.children.map(insert));
   return insert(prune(tree,key));
  }
+ // What a subtree asks for: side by side adds up, stacked takes its widest.
+ const weightOf=node=>typeof node==='string'?(WEIGHT[node]||1):node.axis==='x'?node.children.reduce((n,child)=>n+weightOf(child),0):Math.max(...node.children.map(weightOf));
+ const minOf=node=>typeof node==='string'?(MIN_WIDTH[node]||240):node.axis==='x'?node.children.reduce((n,child)=>n+minOf(child),0):Math.max(...node.children.map(minOf));
  function grid(tree,width=1500){
   const rects={};
   function place(node,x,y,w,h,pixels){
    if(typeof node==='string'){rects[node]={x,y,w,h};return;}
-   const axis=node.axis==='x'&&pixels/node.children.length<285?'y':node.axis,n=node.children.length;
-   node.children.forEach((child,i)=>place(child,x+(axis==='x'?w*i/n:0),y+(axis==='y'?h*i/n:0),axis==='x'?w/n:w,axis==='y'?h/n:h,axis==='x'?pixels/n:pixels));
+   // A row that cannot give each module its narrowest useful width stacks instead.
+   const axis=node.axis==='x'&&pixels<minOf(node)?'y':node.axis,n=node.children.length;
+   const weights=node.children.map(weightOf),total=weights.reduce((a,b)=>a+b,0);let used=0;
+   node.children.forEach((child,i)=>{const share=axis==='x'?weights[i]/total:1/n;
+    place(child,x+(axis==='x'?w*used:0),y+(axis==='y'?h*i/n:0),axis==='x'?w*share:w,axis==='y'?h/n:h,axis==='x'?pixels*share:pixels);used+=share;});
   }
   if(tree)place(tree,0,0,1,1,width);
   const round=n=>Math.round(n*10000)/10000;
@@ -54,6 +68,22 @@
   const ys=[...new Set(Object.values(rects).flatMap(r=>[round(r.y),round(r.y+r.h)]))].sort((a,b)=>a-b);
   const cells=Object.fromEntries(Object.entries(rects).map(([key,r])=>[key,{column:`${xs.indexOf(round(r.x))+1} / ${xs.indexOf(round(r.x+r.w))+1}`,row:`${ys.indexOf(round(r.y))+1} / ${ys.indexOf(round(r.y+r.h))+1}`} ]));
   return {columns:xs.slice(1).map((x,i)=>`minmax(0,${round(x-xs[i])}fr)`).join(' '),rows:ys.slice(1).map(()=>'auto').join(' '),cells};
+ }
+ // Added modules live in the tree only; the saved order names the three original panels, as it always has.
+ const core=keys=>keys.filter(key=>PANELS.includes(key));
+ const extras=tree=>leaves(tree).filter(key=>EXTRA.includes(key));
+ // Rebuilding the three panels (a preset, the older Before/After commands) keeps added modules in a row above them.
+ function withExtras(tree,previous){
+  const kept=extras(previous);
+  return kept.length?split('y',[split('x',kept),tree]):tree;
+ }
+ // Where a new module goes when it is not dropped somewhere: into the row of added modules across the top if there
+ // is room, otherwise a new row above everything.
+ function add(tree,key){
+  if(!EXTRA.includes(key)||leaves(tree).includes(key))return tree;
+  const top=tree?.axis==='y'?tree.children[0]:null,row=top&&leaves(top).every(k=>EXTRA.includes(k))?top:null;
+  if(row&&leaves(row).length<4&&(typeof row==='string'||row.axis==='x'))return {axis:'y',children:[split('x',[row,key]),...tree.children.slice(1)]};
+  return split('y',[key,tree]);
  }
  function edgeAt(rect,x,y){
   const dx=(x-rect.left)/rect.width,dy=(y-rect.top)/Math.max(60,rect.height);
@@ -79,8 +109,9 @@
  }
  function cleanSnapshot(value){
   if(!isObject(value)||!['stacked','side-by-side'].includes(value.mode)||!['sidebar','topbar'].includes(value.courseNavigation)||typeof value.showCourseInformation!=='boolean'||typeof value.showCourseStrip!=='boolean')throw Error('Invalid workspaceUndo setting in backup.');
-  const order=cleanOrder(value.order,{strict:true});
-  return {order,mode:value.mode,layout:value.layout?cleanLayout(value.layout):split(value.mode==='stacked'?'y':'x',order),courseNavigation:value.courseNavigation,showCourseInformation:value.showCourseInformation,showCourseStrip:value.showCourseStrip,...(Array.isArray(value.courseOrder)?{courseOrder:value.courseOrder.filter(x=>typeof x==='string').slice(0,500)}:{})};
+  if(!Array.isArray(value.order)||new Set(value.order).size!==value.order.length||value.order.some(key=>!ALL.includes(key)))throw Error('Invalid workspaceOrder setting in backup.');
+  const order=cleanOrder(core(value.order),{strict:true});
+  return {order:value.layout?leaves(cleanLayout(value.layout)):order,mode:value.mode,layout:value.layout?cleanLayout(value.layout):split(value.mode==='stacked'?'y':'x',order),courseNavigation:value.courseNavigation,showCourseInformation:value.showCourseInformation,showCourseStrip:value.showCourseStrip,...(Array.isArray(value.courseOrder)?{courseOrder:value.courseOrder.filter(x=>typeof x==='string').slice(0,500)}:{})};
  }
  function cleanSaved(settings={}){
   const order=cleanOrder(settings.workspaceOrder,{strict:settings.workspaceOrder!==undefined,fallback:legacyOrder(settings)});
@@ -90,7 +121,7 @@
  }
  function relocate(order,key,target,position='before'){
   if(!PANELS.includes(key)||!PANELS.includes(target)||key===target||!['before','after'].includes(position))return [...order];
-  const next=cleanOrder(order),from=next.indexOf(key);next.splice(from,1);
+  const next=cleanOrder(core(order)),from=next.indexOf(key);next.splice(from,1);
   next.splice(next.indexOf(target)+(position==='after'?1:0),0,key);
   return next;
  }
@@ -100,7 +131,10 @@
    case 'swap':next.layout=swap(current.layout,command.key,command.target);next.order=leaves(next.layout);break;
    case 'dock':next.layout=dock(current.layout,command.key,command.target,command.edge);next.order=leaves(next.layout);next.mode=next.layout.axis==='y'&&next.layout.children.every(n=>typeof n==='string')?'stacked':'side-by-side';break;
    case 'move':next.order=relocate(current.order,command.key,command.target,command.position);break;
+   case 'add':next.layout=add(current.layout,command.key);if(command.target&&command.edge)next.layout=dock(next.layout,command.key,command.target,command.edge);next.order=leaves(next.layout);break;
+   case 'remove':if(EXTRA.includes(command.key)&&leaves(current.layout).includes(command.key)){next.layout=prune(current.layout,command.key);next.order=leaves(next.layout);}break;
    case 'shift':{
+    next.order=core(next.order);
     const index=next.order.indexOf(command.key),to=index+command.delta;
     if(index<0||![-1,1].includes(command.delta)||to<0||to>=next.order.length)break;
     const [item]=next.order.splice(index,1);next.order.splice(to,0,item);break;
@@ -111,16 +145,16 @@
    case 'restore-context':next.showCourseInformation=true;break;
    case 'reset':return {...DEFAULT,order:[...DEFAULT.order]};
   }
-  if(['move','shift','mode'].includes(command?.type))next.layout=split(next.mode==='stacked'?'y':'x',next.order);
+  if(['move','shift','mode'].includes(command?.type)){next.layout=withExtras(split(next.mode==='stacked'?'y':'x',core(next.order)),current.layout);next.order=leaves(next.layout);}
   return next;
  }
  function writeSnapshot(settings,state){
-  settings.workspaceOrder=[...state.order];settings.workspaceMode=state.mode;
+  settings.workspaceOrder=core(state.order);settings.workspaceMode=state.mode;
   settings.workspaceLayout=state.layout;
   if(state.courseOrder)settings.courseOrder=[...state.courseOrder];
   settings.courseNavigation=state.courseNavigation;settings.showCourseInformation=state.showCourseInformation;settings.showCourseStrip=state.showCourseStrip;
   // Keep older customization controls and backups coherent with a new arrangement.
-  settings.deskOrder=state.mode==='stacked'?'stacked':same(state.order,['work','reader','context'])?'work-first':'context-first';
+  settings.deskOrder=state.mode==='stacked'?'stacked':same(core(state.order),['work','reader','context'])?'work-first':'context-first';
   settings.dashboardLayout=state.mode==='stacked'?'list':'split';
  }
  function change(settings,command){
@@ -147,6 +181,6 @@
   const gestures=root.ReserveWorkspaceGestures||(typeof module==='object'&&module.exports?require('./workspace-gestures.js'):null);
   return gestures.create(options,api);
  }
- const api={PANELS,LABELS,DEFAULT,leaves,split,prune,dock,swap,grid,edgeAt,cleanLayout,controls,legacyOrder,cleanOrder,cleanSaved,snapshot,relocate,change,createController};
+ const api={PANELS,EXTRA,ALL,LABELS,WEIGHT,MIN_WIDTH,removable,extras,add,DEFAULT,leaves,split,prune,dock,swap,grid,edgeAt,cleanLayout,controls,legacyOrder,cleanOrder,cleanSaved,snapshot,relocate,change,createController};
  root.ReserveWorkspaceArrange=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);
