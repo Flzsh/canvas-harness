@@ -24,7 +24,7 @@ function fixture(options={}){
     scrollIntoView(){}
   }
   const html=new Element('html'),head=new Element('head'),body=new Element('body');html.append(head,body);
-  const content=new Element();content.id='content';const native=new Element();native.id='dashboard';const sidebar=new Element();sidebar.id='right-side';content.append(native);body.append(content,sidebar);
+  const content=new Element();content.id='content';const native=new Element();native.id='dashboard';const sidebar=new Element();sidebar.id='right-side';content.append(native);const application=new Element();application.id='application';application.append(content,sidebar);if(!options.notCanvas)body.append(application);else body.append(content,sidebar);
   const byId=(el,id)=>el.id===id?el:el.children.map(x=>byId(x,id)).find(Boolean);
   let login=!!options.login;const observers=new Set();
   if(options.emptyDocument){head.remove();body.remove();}
@@ -284,3 +284,21 @@ test('content remains native when sessionStorage reads throw',async()=>{const f=
 test('missing bootstrap fails open; only an explicit Reserve click starts the dashboard',async()=>{const f=fixture({skipStartup:true});f.content();await flush();assert.equal(f.profileCalls,0);assert.equal(f.native.hidden,false);f.dockClick();assert.equal(f.profileCalls,1);f.profile.resolve({id:'7'});f.snapshot();await flush();f.loadStyles();assert.equal(f.host.hidden,false);});
 test('late loads from a failed host cannot make its replacement appear without styles',async()=>{const f=fixture();f.content();await flush();assert.ok(f.host);const oldLinks=f.host.shadowRoot.children.filter(x=>x.tagName==='link');f.failStyle();f.dockClick();f.profile.resolve({id:'7'});f.snapshot();await flush();for(const link of oldLinks)link.onload();assert.equal(f.host.hidden,true);f.loadStyles();assert.equal(f.host.hidden,false);});
 test('retry after data arrived but styles timed out builds a new styled host and freshly verifies the saved view',async()=>{const f=fixture();f.content();await flush();f.profile.resolve({id:'7'});f.snapshot();await flush();assert.equal(f.mounts,1);const oldHost=f.host,check=f.queueProfile();f.tick(2500);f.dockClick();assert.ok(f.host);assert.notEqual(f.host,oldHost);f.loadStyles();assert.equal(f.host.hidden,true);check.resolve({id:'7'});await flush();assert.equal(f.host.hidden,false);assert.equal(f.native.hidden,true);});
+
+test('Instructure websites on the shared domain are not treated as Canvas schools',()=>{
+ const site=require('../extension/site.js');
+ for(const host of ['www','community','status','developerdocs','docs','support','info'])assert.equal(site.supported(`https://${host}.instructure.com/`),false,host);
+ for(const host of ['school','canvas','my-school.beta'])assert.equal(site.supported(`https://${host}.instructure.com/`),true,host);
+ assert.equal(site.canvasPage({getElementById:id=>id==='application'?{}:null,querySelector:()=>null}),true);
+ assert.equal(site.canvasPage({getElementById:()=>null,querySelector:selector=>selector.includes('#login_form')?{}:null}),true);
+ assert.equal(site.canvasPage({getElementById:()=>null,querySelector:()=>null}),false);
+});
+test('a dashboard-path page without a Canvas layout releases the cover and never starts the workspace',async()=>{
+ const f=fixture({notCanvas:true});f.content();await flush();
+ assert.equal(f.shell,undefined,'the start-up cover is released as soon as the page shows it is not Canvas');assert.equal(f.active,false);
+ f.parsed();await flush();assert.equal(f.profileCalls,0);assert.equal(f.host,undefined);
+});
+test('a course page without a Canvas layout gets no Tools button',async()=>{
+ const f=fixture({notCanvas:true,pathname:'/courses/7'});f.content();await flush();f.parsed();await flush();
+ assert.equal(f.document.getElementById('reserve-companion-dock'),undefined);assert.equal(f.profileCalls,0);
+});

@@ -15,7 +15,7 @@ function fixture(pathname='/',search=''){
   scrollIntoView(){}
  }
  const body=new El('body'),head=new El('head'),html=new El('html');html.classList={add(){},remove(){}};
- const content=new El();content.id='content';const native=new El();native.id='dashboard';const sidebar=new El();sidebar.id='right-side';content.append(native);body.append(content,sidebar);
+ const content=new El();content.id='content';const native=new El();native.id='dashboard';const sidebar=new El();sidebar.id='right-side';content.append(native);const application=new El();application.id='application';application.append(content,sidebar);body.append(application);
  const document={body,head,documentElement:html,visibilityState:'visible',getElementById:id=>nodes.get(id),createElement:tag=>new El(tag),addEventListener:(key,fn)=>events[key]=fn};
  let callbacks,started=0,dashboardOptions,plannerOptions,scrollRestored,nativeToolsCreated=0,mounts=0;const statuses=[];
  const window={scrollY:460,scrollTo:(options)=>scrollRestored=options.top,addEventListener:(key,fn)=>winEvents[key]=fn};window.top=window;

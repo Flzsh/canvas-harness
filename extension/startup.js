@@ -11,6 +11,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   let state='pending',shell,observer,timer,preloaded=false;
   const preloadLinks=[];
   const loginPage=()=>!!document.querySelector('#login_form, #new_login, .ic-Login');
+  // Once the page body has its main content (or finished parsing) without a Canvas layout, it is not Canvas.
+  const notCanvas=()=>(!!document.getElementById('content')||document.readyState!=='loading')&&!globalThis.ReserveSite.canvasPage(document);
   function cleanup(){
     clearTimeout(timer);observer?.disconnect();
     for(const link of preloadLinks)link.remove();preloadLinks.length=0;
@@ -98,8 +100,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     try{native=sessionStorage.getItem('reserve:native')==='true';}catch{release();return saved;}
     if(saved['reserve:enabled']===false||params.get('reserve')==='native'||(native&&params.get('reserve')!=='open')){release();return saved;}
     observer=new MutationObserver(()=>{
-      try{if(loginPage()||!dashboardPath())release();else if(state==='pending')activate();else prepare();}catch{release();}
+      try{if(loginPage()||!dashboardPath()||notCanvas())release();else if(state==='pending')activate();else prepare();}catch{release();}
     });
+    document.addEventListener('DOMContentLoaded',()=>{if(notCanvas())release();},{once:true});
     observer.observe(document.documentElement||document,{childList:true,subtree:true});
     activate();return saved;
   }).catch(()=>{release();return {'reserve:enabled':false};});
