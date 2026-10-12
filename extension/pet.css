@@ -91,3 +91,27 @@
 /* stillness on request */
 @media (prefers-reduced-motion:reduce){.pet *{animation:none!important}}
 .pet[data-still=true] *{animation:none!important}
+
+/* ---- on the page: the layer the pony walks in, and what it says ---- */
+.pet-layer{position:fixed;inset:0;z-index:1500;pointer-events:none;overflow:visible;contain:layout style}
+.pet-layer .pet{position:absolute;left:0;top:0;padding:0;border:0;background:none;cursor:grab;pointer-events:auto;touch-action:none;will-change:transform;-webkit-tap-highlight-color:transparent}
+.pet-layer .pet[data-grabbed=true]{cursor:grabbing}
+.pet-layer .pet:focus-visible{outline:2px solid var(--rd-accent,#C96442);outline-offset:4px;border-radius:12px}
+.pet-bubble{position:absolute;left:0;top:0;width:max-content;max-width:min(268px,calc(100vw - 20px));padding:12px 14px;pointer-events:auto;color:var(--rd-ink,#141413);background:var(--rd-surface,#FFFDF8);border:1.6px solid var(--rd-ink,#141413);border-radius:15px 13px 16px 12px/13px 16px 12px 15px;box-shadow:3px 4px 0 color-mix(in srgb,var(--rd-ink,#141413) 12%,transparent);font:500 13px/1.45 var(--rd-ui-font,system-ui);animation:pet-pop .16s ease-out}
+.pet-bubble::after{content:"";position:absolute;left:var(--pet-tail-x,50%);bottom:-7px;width:11px;height:11px;margin-left:-6px;background:inherit;border:solid var(--rd-ink,#141413);border-width:0 1.6px 1.6px 0;transform:rotate(45deg) skew(6deg,6deg)}
+.pet-bubble[data-below=true]::after{bottom:auto;top:-7px;border-width:1.6px 0 0 1.6px}
+@keyframes pet-pop{from{opacity:0;scale:.94}to{opacity:1;scale:1}}
+.pet-bubble p{margin:0}
+.pet-say strong{font-weight:650}
+.pet-when{display:block;margin-top:2px;color:var(--rd-muted,#5E5D59);font-size:12px}
+.pet-head{display:grid;grid-template-columns:1fr auto;gap:1px 10px;align-items:baseline;margin-bottom:8px}
+.pet-head strong{font:600 15px/1.2 var(--rd-display-font,Georgia,serif)}
+.pet-head span{color:var(--rd-muted,#5E5D59);font-size:12px}
+.pet-meter{grid-column:1/-1;height:5px;margin-top:5px;border-radius:9px;background:color-mix(in srgb,var(--rd-ink,#141413) 10%,transparent);overflow:hidden}
+.pet-meter i{display:block;height:100%;border-radius:9px;background:var(--rd-accent,#C96442)}
+.pet-items{display:grid;gap:2px;margin:9px -6px -4px}
+.pet-item{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:34px;padding:6px 9px;border:0;border-radius:9px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.pet-item:hover:not(:disabled),.pet-item:focus-visible{background:color-mix(in srgb,var(--rd-accent,#C96442) 13%,transparent);outline:none}
+.pet-item:disabled{color:var(--rd-muted,#8a8880);cursor:default}
+.pet-count{min-width:22px;padding:1px 7px;border-radius:99px;background:color-mix(in srgb,var(--rd-ink,#141413) 9%,transparent);font-size:12px;text-align:center}
+@media (prefers-reduced-motion:reduce){.pet-bubble{animation:none}}
