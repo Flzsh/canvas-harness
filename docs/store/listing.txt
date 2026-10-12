@@ -1,44 +1,48 @@
 Canvas Harness
 
 Short description
-Bring Canvas courses, assignments, teacher updates, bookmarks and study tools into a workspace you can arrange yourself.
+A Canvas workspace you build yourself: assignments beside their instructions, a weekly planner, study tools and a study companion.
 
 Description
-Canvas Harness turns your Canvas dashboard into a workspace you arrange yourself. Your courses, assignments, teacher updates and study tools sit on one page, and the original Canvas pages stay one click away.
+Canvas shows you everything. Canvas Harness shows you what to do next.
 
-WHAT YOU GET
+It turns your Canvas dashboard into one calm page that you arrange yourself: what is due, how to do it, when you plan to do it, and the tools you study with. The original Canvas pages are always one click away.
 
-• A Home you build. Add Today, This week, a Focus timer, Clock, Notes, Bookmarks, Grades and Messages beside your coursework. Resize them and drag them where you want.
+★ BUILD YOUR OWN HOME
+Add the modules you want: Today, This week, Focus timer, Clock, Notes, Bookmarks, Grades and Messages. Make them narrow or wide and drag them into place. Hold a heading, watch the hand-drawn circle close, and move it.
 
-• Assignments. The assignment list beside its instructions, with due dates, teacher updates and bookmarks close by. Mark homework done locally, including work you hand in outside Canvas.
+★ ASSIGNMENTS WITHOUT THE TAB MAZE
+Every assignment sits beside its instructions, with teacher updates and your bookmarks close by. Tick things off as you finish them, including work you hand in outside Canvas.
 
-• Planner. A week of cards. Type "essay outline fri 45m #english" and it lands on Friday, 45 minutes, in English. Drag work to the day you will do it and tick it off. Canvas due dates never change.
+★ A PLANNER THAT UNDERSTANDS YOU
+Type "essay outline fri 45m #english" and the task lands on Friday, 45 minutes, in English. Drag cards between days. Finished work gets out of the way. Canvas due dates are never changed.
 
-• Study companion. A small pony that tells you what is next, studies beside your timer and cheers finished work. It never scolds, and you can switch it off.
+★ A STUDY COMPANION
+A small hand-drawn pony walks along your page, tells you what is next, studies beside your focus timer and cheers when you finish. It never scolds, and one switch turns it off.
 
-• Your own look. Hand-drawn course artwork, outlines, colors, text size and layout presets. Upload your own SVG banners, icons, borders and titles with Quick Upload.
+★ MAKE IT YOURS
+Hand-drawn artwork for every course, outline styles, colors, text sizes and layout presets, all chosen by picture. Or upload your own SVG art with Quick Upload.
 
-• Study tools. A Desmos calculator, GPA estimates, and an optional AI hand-off where you choose exactly what is shared.
+★ STUDY TOOLS BESIDE YOUR WORK
+A Desmos calculator, GPA estimates, and an optional AI hand-off where you pick exactly what is shared before anything is sent.
 
-HOW IT WORKS
+LIGHT ON SLOWER LAPTOPS
+Tuned to come back quickly when you return to the tab and to do very little while it sits idle.
 
-Open your school's Canvas dashboard and the workspace appears. The "Canvas dashboard" button returns to the original page at any time. To move something, hold its heading until the circle closes, then drag. Undo puts it back. Keyboard controls and reduced-motion preferences are supported.
-
-PRIVACY
-
-• Reads Canvas through the session you are already signed in to. It never changes submissions or grades.
+PRIVATE BY DESIGN
+• Uses the Canvas session you are already signed in to. It never changes submissions or grades.
 • Plans, notes, bookmarks, artwork and settings stay in your browser. No ads, no analytics, no developer server.
 • By default nothing saved is shown until Canvas confirms who is signed in.
-• The optional AI tool sends only the material you select to the AI website you choose, after you review it. Desmos loads from its own website when opened.
+• The optional AI tool sends only what you select, to the AI website you choose, after you review it. Desmos loads from its own website when opened.
 
 GOOD TO KNOW
-
 • Works on school Canvas sites under *.instructure.com. Custom Canvas domains are not supported yet.
 • What you can see depends on your school's Canvas permissions.
 • GPA values are estimates, not official transcript calculations.
 • The AI tool may need an account with the provider, and changes to their websites can affect it.
+• Free and open source (GPL-3.0): github.com/Flzsh/canvas-harness
 
-Canvas Harness is an independent, open-source project by Flzsh. It is not affiliated with or endorsed by Instructure, Desmos, or the AI providers.
+Canvas Harness is an independent project by Flzsh. It is not affiliated with or endorsed by Instructure, Desmos, or the AI providers.
 
 Suggested category
 Productivity

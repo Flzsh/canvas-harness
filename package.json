@@ -1,9 +1,9 @@
 {
   "name": "canvas-harness",
-  "version": "2.22.3",
+  "version": "2.22.4",
   "license": "GPL-3.0-only",
   "private": true,
-  "description": "An organized Canvas workspace with course information, assignments, bookmarks and study tools.",
+  "description": "A Canvas workspace you build yourself: assignments beside their instructions, a weekly planner, study tools and a study companion.",
   "author": "Flzsh",
   "engines": {
     "node": ">=22"
