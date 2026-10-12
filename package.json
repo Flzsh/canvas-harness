@@ -1,6 +1,6 @@
 {
   "name": "canvas-harness",
-  "version": "2.22.2",
+  "version": "2.22.3",
   "license": "GPL-3.0-only",
   "private": true,
   "description": "An organized Canvas workspace with course information, assignments, bookmarks and study tools.",
