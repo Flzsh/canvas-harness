@@ -328,3 +328,13 @@
 .rd .rd-selection-slot:not(:has(*:not(:empty))) {min-height:0!important;}
 /* The assignment stays in view beside a long list. */
 @media (min-width:1100px){.rd[data-workspace=work]:not([data-arranging=true]) .rd-main.rd-desk > .rd-information {position:sticky!important;top:14px;max-height:calc(100vh - 28px);overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;}}
+
+/* Narrow pages: one reading column. Work first, then its details, then added modules, then course news. */
+@container work-area (max-width: 720px) {
+  .rd[data-workspace=work] .rd-main.rd-desk {display:flex!important;flex-direction:column;gap:16px;}
+  .rd[data-workspace=work] .rd-main.rd-desk > [data-arrange-key] {grid-row:auto!important;grid-column:auto!important;}
+  .rd[data-workspace=work] .rd-main.rd-desk > .rd-work-column[data-arrange-key] {order:1!important;}
+  .rd[data-workspace=work] .rd-main.rd-desk > .rd-information[data-arrange-key] {order:2!important;}
+  .rd[data-workspace=work] .rd-main.rd-desk > .rd-widget[data-arrange-key] {order:3!important;}
+  .rd[data-workspace=work] .rd-main.rd-desk > .rd-course-information[data-arrange-key] {order:4!important;}
+}
