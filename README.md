@@ -3,34 +3,85 @@
 </h1>
 
 <p align="center">
-  Inspired by AI harnesses, Canvas Harness gives you a workspace you can make your own. Find your work faster, study the way you prefer, and make Canvas comfortable to use.
+  <b>A Canvas workspace you build yourself.</b><br>
+  Inspired by AI harnesses: find your work faster, plan your week, and make Canvas comfortable to use.
 </p>
 
 <p align="center">
-  <a href="https://github.com/Flzsh/canvas-harness/releases/latest">Latest GitHub release</a> ·
-  <a href="INSTALL.md">Install</a> ·
-  <a href="docs/GETTING-STARTED.md">Get started</a>
+  <a href="https://github.com/Flzsh/canvas-harness/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Flzsh/canvas-harness?label=release&color=C96442"></a>
+  <img alt="Works in Chrome and Edge" src="https://img.shields.io/badge/Chrome%20%C2%B7%20Edge-Manifest%20V3-3D3D3A">
+  <a href="LICENSE"><img alt="License: GPL-3.0-only" src="https://img.shields.io/badge/license-GPL--3.0--only-5E7F45"></a>
 </p>
 
-![Living course artwork in a Canvas Harness workspace](docs/media/workspace-motion.gif)
+<p align="center">
+  <a href="https://github.com/Flzsh/canvas-harness/releases/latest"><b>Download</b></a> ·
+  <a href="INSTALL.md">Install</a> ·
+  <a href="docs/GETTING-STARTED.md">Get started</a> ·
+  <a href="PRIVACY.md">Privacy</a>
+</p>
 
-*The demos use fictional courses and assignments.*
+<p align="center">
+  <img src="docs/media/home-modules.gif" width="880" alt="Switching on Home modules, making the Focus timer wider, and dragging Messages into a full-width row">
+</p>
 
-## Your courses and work together
+<p align="center"><sub>The demos use fictional courses and assignments.</sub></p>
 
-See teacher updates, upcoming work, and assignment instructions together. Bookmark useful materials and mark homework done locally, including work you submit outside Canvas.
+## What's inside
 
-Open Desmos, GPA estimates, or AI in a side dock while you read. For AI, select your materials, review the context, and send your question to your chosen AI website.
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <h3>Home you arrange</h3>
+      Add modules beside your coursework: Today, This week, a Focus timer, Clock, Notes, Bookmarks, Grades and Messages. Size them and drag them where you want.
+    </td>
+    <td width="33%" valign="top">
+      <h3>Planner</h3>
+      A week of cards. Type a task in plain words, drag work to the day you will do it, and tick it off. Canvas due dates never change.
+    </td>
+    <td width="33%" valign="top">
+      <h3>Assignments</h3>
+      The assignment list beside its instructions, with teacher updates, bookmarks and local check-offs close by.
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <h3>Study companion</h3>
+      A small pony that walks along your modules, tells you what is next, studies beside a running timer and cheers finished work. It never scolds, and it can be switched off.
+    </td>
+    <td valign="top">
+      <h3>Your own look</h3>
+      Hand-drawn course artwork, outlines, colors, text size and layout presets, or upload your own SVG banners, icons, borders and titles.
+    </td>
+    <td valign="top">
+      <h3>Tools beside your work</h3>
+      Desmos, GPA estimates and an AI hand-off in a side dock while you read. You choose what is shared before anything is sent.
+    </td>
+  </tr>
+</table>
 
-## Move courses and panels directly
+## Build your Home
 
-Hold a course card or panel heading until it lifts, then drag and release. Reorder courses, swap panels, or stack them for more reading space. Undo move puts things back.
+**Edit Home** switches modules on and off. Each module has a three-dot menu for its width, for giving it a whole row or column, and for removing it.
 
-![Hold and drag to rearrange a workspace panel](docs/media/layout-motion.gif)
+To move something, hold its heading until the hand-drawn circle closes, then drag. Drop it beside or below another module, or above them all for a full-width row. **Undo move** puts things back.
 
-## Make it feel like your workspace
+## Plan the week
 
-Courses get animated subject artwork automatically. Adjust the layout, text size, and colors, or upload your own SVG banners, icons, borders, and titles.
+<p align="center">
+  <img src="docs/media/planner.gif" width="880" alt="Typing a task into the Planner, which lands on Friday with a 45 minute estimate, then dragging a card to another day">
+</p>
+
+Type "essay outline fri 45m #english" and the task lands on Friday, 45 minutes, in English. Drag a card to another day or use its menu. Finished and archived work stays out of the way unless you ask for it.
+
+## Read and do the work
+
+See teacher updates, upcoming work and assignment instructions together. Bookmark useful materials and mark homework done locally, including work you submit outside Canvas.
+
+Open Desmos, GPA estimates or AI in a side dock while you read. For AI, select your materials, review the context, and send your question to your chosen AI website.
+
+## Make it yours
+
+Courses get animated subject artwork automatically. **Make it yours** has five tabs of picture choices: Layout, Look, Artwork, Courses and Pony.
 
 Describe your course to an AI using the [artwork skill](skills/canvas-harness-art/SKILL.md). Import the resulting `.chpack` through Appearance settings → Quick Upload to preview and apply the set.
 
@@ -44,8 +95,13 @@ Works on HTTPS school sites under `*.instructure.com`. [Installation help](INSTA
 
 ## Privacy
 
-Canvas Harness reads coursework without changing submissions or grades. Data stays in your browser, separated by account. Clicking Send places your chosen context on the AI provider's website; automatic context excludes grades and GPA. [Privacy details](PRIVACY.md).
+Canvas Harness reads coursework without changing submissions or grades. Data stays in your browser, separated by account. By default nothing saved is shown until Canvas confirms who is signed in. Clicking Send places your chosen context on the AI provider's website; automatic context excludes grades and GPA. [Privacy details](PRIVACY.md).
 
-[User guide](docs/GETTING-STARTED.md) · [Themes](docs/THEMES.md) · [AI guide](AI.md) · [Report a bug](https://github.com/Flzsh/canvas-harness/issues)
+<p align="center">
+  <a href="docs/GETTING-STARTED.md">User guide</a> ·
+  <a href="docs/THEMES.md">Themes</a> ·
+  <a href="AI.md">AI guide</a> ·
+  <a href="https://github.com/Flzsh/canvas-harness/issues">Report a bug</a>
+</p>
 
-Created by Flzsh · [GPL-3.0-only](LICENSE) · [Third-party notices](extension/NOTICE.txt)
+<p align="center"><sub>Created by Flzsh · <a href="LICENSE">GPL-3.0-only</a> · <a href="extension/NOTICE.txt">Third-party notices</a></sub></p>
