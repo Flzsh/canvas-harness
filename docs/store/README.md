@@ -12,7 +12,7 @@ Use a public publisher name such as **Flzsh**. Check which contact details each 
 ## Upload
 
 - Run `npm test`, `npm run check`, and `npm run build` from the repository.
-- Upload `dist/Canvas-Harness-2.22.0.zip`. Its `manifest.json` is at the ZIP root. Do not upload the source repository, a personal backup, or the separate Folio test build.
+- Upload `dist/Canvas-Harness-2.22.1.zip`. Its `manifest.json` is at the ZIP root. Do not upload the source repository, a personal backup, or the separate Folio test build.
 - Use [listing.txt](listing.txt) for the description and links. Enter the manifest's actual description where the store derives the short description from the package.
 - Use `icon-128.png` for Chrome and `logo-300.png` for Edge. Both come from the original large Canvas Harness logo.
 - Use `promo-440x280.png` for the small promotional image.

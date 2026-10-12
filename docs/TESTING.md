@@ -1,6 +1,8 @@
-# Release checks — Canvas Harness 2.22.0
+# Release checks — Canvas Harness 2.22.1
 
-The public suite passes **613 tests**, with no failures. Three optional isolated browser tests are skipped in the standard run. JavaScript syntax, manifest resources, icon dimensions, and package checks pass.
+The public suite passes **616 tests**, with no failures. Three optional isolated browser tests are skipped in the standard run. JavaScript syntax, manifest resources, icon dimensions, and package checks pass.
+
+2.22.1 is an efficiency release: no feature changes. It was profiled in the preview page with the CPU slowed six times to stand in for a low-end Chromebook. Showing the workspace again after the account recheck on returning to a tab fell from about 1.8 s to about 0.5 s or less (the workspace is hidden with `content-visibility` while it waits, and still shows nothing until the check passes); style work on an idle page fell by about half. These figures come from the preview, not from a physical Chromebook. It also runs only on real Canvas pages and checks that every version number agrees.
 
 The 2.22.0 checks add the Home modules and their arrangement (measured rows, module width, docking a module as a whole row or column), the planner model, the study companion's rewards, and the optional **Open at once** start: off, nothing saved is shown before the account check; on, an early view closes when the check names another account or cannot be made. These parts were exercised in the preview page with sample data.
 
