@@ -406,3 +406,5 @@
 .rd .rd-course-rail .rd-rail-course > .rd-grade {top:auto;bottom:calc(var(--rd-rail-pad,10px) + 5px);}
 /* Only the card's last line can meet the grade now, so the lines above it use the full width. */
 .rd .rd-course-rail .rd-rail-course:has(> .rd-grade) .rd-rail-text > small:not(:last-child) {padding-right:0;}
+/* Only the assignment's own words are the link to Canvas; the empty space to their right selects the row like the rest of it. */
+.rd[data-workspace=work] .rd-assignment-top > .rd-assignment-title {flex:0 1 auto;width:fit-content;max-width:100%;margin-right:auto;}
