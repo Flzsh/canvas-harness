@@ -73,9 +73,6 @@
         "customization-model.js",
         "gpa-model.js",
         "storage.js",
-        "quick-pack.js",
-        "quick-upload.js",
-        "quick-upload-ui.js",
         "math.js",
         "ui-utils.js",
         "icons.js",
@@ -83,18 +80,8 @@
         "subject-art.js",
         "generic-art.js",
         "course-art.js",
-        "views.js",
-        "app.js",
         "session.js",
-        "dashboard-model.js",
-        "work-model.js",
         "material-model.js",
-        "materials-ui.js",
-        "course-hub-model.js",
-        "course-hub-ui.js",
-        "grades-view.js",
-        "customize-ui.js",
-        "dashboard-view.js",
         "motion.js",
         "quick-open.js",
         "toolbox-resize.js",
@@ -105,14 +92,50 @@
         "toolbox-session.js",
         "native-appearance.js",
         "native-page.js",
-        "native-tools.js",
+        "native-tools.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://*.instructure.com/",
+        "https://*.instructure.com/?*",
+        "https://*.instructure.com/dashboard",
+        "https://*.instructure.com/dashboard?*",
+        "https://*.instructure.com/dashboard/",
+        "https://*.instructure.com/dashboard/?*"
+      ],
+      "js": [
+        "quick-pack.js",
+        "quick-upload.js",
+        "quick-upload-ui.js",
+        "views.js",
+        "app.js",
+        "dashboard-model.js",
+        "work-model.js",
+        "materials-ui.js",
+        "course-hub-model.js",
+        "course-hub-ui.js",
+        "grades-view.js",
+        "customize-ui.js",
+        "dashboard-view.js",
         "planner-model.js",
         "pet-art.js",
         "pets.js",
         "planner-ui.js",
         "widgets.js",
         "settings-dock.js",
-        "dashboard.js",
+        "dashboard.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://*.instructure.com/*"
+      ],
+      "js": [
         "content.js"
       ],
       "run_at": "document_start",
