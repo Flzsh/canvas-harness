@@ -1,14 +1,16 @@
-# Release checks — Canvas Harness 2.21.2
+# Release checks — Canvas Harness 2.21.3
 
-The public suite passes **585 tests**, with no failures. The standard command skips three optional isolated browser tests; all three also pass when explicitly enabled. JavaScript syntax, manifest resources, icon dimensions, and package checks pass.
+The public suite passes **593 tests**, with no failures. Three optional isolated browser tests are skipped in the standard run. JavaScript syntax, manifest resources, icon dimensions, and package checks pass.
+
+The 2.21.3 runtime checks cover Canvas rate-limit retries, cancellation and listener cleanup, a shorter cache window for partial results, and the local storage permission. The complete suite also passes beside a synchronized sibling checkout.
 
 These checks include account and school separation; selected-only AI context; queued saves and archive Undo; repeated Send, permission denial, cancellation and late completion; bounded PDF processing; Quick Upload validation, mapping, atomic Apply and guarded Undo; bookmarks; GPA rules; layout persistence; hold delay, cancellation, sideways swaps, stacking, and preservation of a moving course's frame.
 
 This release also checks early document-start mounting, verified cache display, interrupted requests, account changes, idle-tab return and back/forward restoration. The native dashboard guard remains active while a returning tab rechecks its account; private content stays hidden during that check. Motion fixtures check opacity-only entrance, unchanged content remaining still, and reduced-motion and keyboard paths.
 
-## Browser walkthrough
+## Existing browser walkthrough
 
-The public preview uses artificial courses, assignments and grades. An Edge walkthrough checked:
+The public preview uses artificial courses, assignments and grades. The earlier Edge walkthrough checked:
 
 - Illustrated titles and banners at 320, 390, 800, 1280, 1920, 2560 and 3840 CSS pixels, without horizontal overflow.
 - The restored All courses greeting at 390, 800, 1280 and 1920 CSS pixels. Time-zone tests cover morning, afternoon, evening and late-night greetings; individual course names and uploaded overview titles remain intact.
@@ -20,7 +22,7 @@ The public preview uses artificial courses, assignments and grades. An Edge walk
 - Keyboard lift, a sideways panel swap, saved placement and Undo.
 - The artwork skill's complete example pack: paste, review, three-piece course mapping, Apply, a banner with its own title, and Undo.
 
-The README GIFs record actual artwork and interface states. The layout clip uses keyboard moving; it is not a recording of pointer dragging.
+The README GIFs record actual artwork and interface states. The updated layout clip records pointer holding and dragging.
 
 ## What this does not establish
 

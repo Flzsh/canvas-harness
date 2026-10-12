@@ -1,5 +1,6 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
+const {getEventListeners}=require('node:events');
 const {createClient}=require('../extension/api.js');
 const response=(body,status=200,link='')=>({ok:status>=200&&status<300,status,headers:{get:n=>n==='link'?link:'application/json'},json:async()=>body});
 test('pagination loads later assignments and never sends a write request',async()=>{
@@ -53,6 +54,25 @@ test('an ordinary 403 is still a blocked course and is not retried',async()=>{
 test('cancelling during a rate-limit wait stops without another request',async()=>{
  let calls=0;const controller=new AbortController();const client=createClient({origin:'https://school.instructure.com',wait:async()=>controller.abort(),fetchImpl:async()=>{calls++;return response({},429);}});
  await assert.rejects(client.list('/api/v1/courses',{signal:controller.signal}),e=>e.code==='cancelled');assert.equal(calls,1);
+});
+
+test('completed rate-limit waits release listeners from a shared refresh signal',async()=>{
+ const controller=new AbortController();let calls=0;
+ const client=createClient({origin:'https://school.instructure.com',retryDelays:[0],fetchImpl:async()=>++calls%2?response({},429):response([])});
+ for(let visit=0;visit<12;visit++){
+  assert.deepEqual(await client.list('/api/v1/courses',{signal:controller.signal}),[]);
+  assert.equal(getEventListeners(controller.signal,'abort').length,0,'a recovered request must not retain its retry listener');
+ }
+ assert.equal(calls,24);
+});
+
+test('the default rate-limit wait cancels promptly and releases its listener',async()=>{
+ const controller=new AbortController();let calls=0;
+ const client=createClient({origin:'https://school.instructure.com',retryDelays:[10000],fetchImpl:async()=>{
+  calls++;setImmediate(()=>controller.abort());return response({},429);
+ }});
+ await assert.rejects(client.list('/api/v1/courses',{signal:controller.signal}),e=>e.code==='cancelled');
+ assert.equal(calls,1);assert.equal(getEventListeners(controller.signal,'abort').length,0);
 });
 
 test('AI assignment reads verify both the selected course and the current account',async()=>{

@@ -3,10 +3,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 (function (root) {
   'use strict';
   class CanvasError extends Error { constructor(message, code = 'network') { super(message); this.name = 'CanvasError'; this.code = code; } }
-  // Canvas throttles with 403 "Rate Limit Exceeded" (and some proxies with 429).
+  // Canvas may throttle with a 403 rate-limit response or a 429.
   // Wait and retry those twice before reporting them; other errors fail at once.
   const throttleRetries = [1000, 4000];
-  function createClient({origin = (globalThis.ReserveSite.origin()), fetchImpl = root.fetch.bind(root), timeout = 15000, retryDelays = throttleRetries, wait = (ms, signal) => new Promise(resolve => { const timer = setTimeout(resolve, ms); signal?.addEventListener('abort', () => { clearTimeout(timer); resolve(); }, {once:true}); })} = {}) {
+  function waitForRetry(ms, signal) {
+    return new Promise(resolve => {
+      const finish = () => { clearTimeout(timer); signal?.removeEventListener('abort', finish); resolve(); };
+      const timer = setTimeout(finish, ms);
+      signal?.addEventListener('abort', finish, {once:true});
+      if (signal?.aborted) finish();
+    });
+  }
+  function createClient({origin = (globalThis.ReserveSite.origin()), fetchImpl = root.fetch.bind(root), timeout = 15000, retryDelays = throttleRetries, wait = waitForRetry} = {}) {
     if (!globalThis.ReserveSite.supported(origin)) throw new CanvasError('Use your school’s HTTPS Canvas site on instructure.com.', 'origin');
     const base = new URL(origin);
     const allowed = [
