@@ -230,7 +230,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     launchAttempt=()=>{
       if(bootStopped)return;
       if(!document.head||!document.body||(isDashboard&&!document.getElementById('content'))||(!isDashboard&&document.readyState==='loading'))return;
-      stopWaiting();try{initialize();}catch{showCanvas(false);}
+      stopWaiting();
+      // A page on the domain without a Canvas layout (an Instructure website) is left untouched.
+      if(!globalThis.ReserveSite.canvasPage(document)){startup?.release();return;}
+      try{initialize();}catch{showCanvas(false);}
     };
     document.addEventListener('DOMContentLoaded',launchAttempt,{once:true});
     if(typeof MutationObserver==='function'){

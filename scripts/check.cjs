@@ -20,5 +20,11 @@ for(const entry of [bootstrap,controller]){assert.deepEqual(entry.matches,['http
 assert.equal(controller.js.at(-1),'content.js');
 for(const size of [16,32,48,128]){const png=fs.readFileSync(path.join(extension,`icons/icon-${size}.png`));assert.equal(png.readUInt32BE(16),size);assert.equal(png.readUInt32BE(20),size);}
 for(const file of ['popup.html']){const html=fs.readFileSync(path.join(extension,file),'utf8');for(const match of html.matchAll(/(?:src|href)="([^"]+)"/g))assert.ok(fs.existsSync(path.join(extension,match[1])),`Missing HTML resource: ${match[1]}`);assert.ok(!/<script(?![^>]*src=)[^>]*>\s*\S/i.test(html),'Inline executable script in popup');}
-console.log(`Verified ${files.length} extension files: JavaScript syntax, Manifest V3 resources, restricted permissions, and icon sizes.`);
+// Every place that names the release version must agree, so a release never ships mixed numbers.
+const version=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version;
+assert.equal(manifest.version,version,'manifest.json version must match package.json');
+assert.equal(JSON.parse(fs.readFileSync(path.join(extension,'provenance.json'),'utf8')).version,version,'provenance.json version must match package.json');
+assert.equal(fs.readFileSync(path.join(extension,'content.js'),'utf8').match(/const build='([^']+)'/)?.[1],version,'content.js build must match package.json');
+assert.ok(fs.readFileSync(path.join(extension,'popup.html'),'utf8').includes(version),'popup.html must show the package.json version');
+console.log(`Verified ${files.length} extension files: JavaScript syntax, Manifest V3 resources, restricted permissions, icon sizes, and matching version numbers.`);
 module.exports={root,extension,files,manifest};

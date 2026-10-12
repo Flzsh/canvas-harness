@@ -1,8 +1,10 @@
 # Canvas Harness optional local AI companion
 
+> **Status: experimental and not connected.** The current Canvas Harness extension does not use this companion. Its manifest requests no `nativeMessaging` permission and its AI panel has no **Sign in with ChatGPT** button, so installing the companion changes nothing in the extension today. The code, tests and integration contract are kept for a possible future release. The extension's AI tools work without it by inserting text into the provider's own website.
+
 This is a local native-messaging host for the Canvas Harness extension. It implements OpenAI's documented **Sign in with ChatGPT for open-source/local apps** using its own dynamic-agent OAuth registration and the public Responses API. It does not use Codex, tools, MCP, borrowed client IDs, browser cookies, or another application's tokens. No account is connected until the user explicitly signs in and grants plan usage.
 
-Node.js **22 or newer** is required. There are no npm dependencies and nothing to download at runtime. The code is covered by the repository's MIT license. The extension panel and service worker are separate components; see [CONTRACT.md](CONTRACT.md) for their exact integration contract.
+Node.js **22 or newer** is required. There are no npm dependencies and nothing to download at runtime. This folder keeps the MIT license named in `companion/package.json`; the rest of the repository is GPL-3.0-only. The extension panel and service worker are separate components; see [CONTRACT.md](CONTRACT.md) for their exact integration contract.
 
 ## Install on Windows (explicit user action)
 
@@ -17,7 +19,7 @@ Node.js **22 or newer** is required. There are no npm dependencies and nothing t
    The command only prints an installation preview unless `--install` is present. Use `--destination 'D:\Tools\CanvasHarnessAI'` to select another dedicated local folder. Do not use a shared folder, a filesystem root, a network path, or an existing folder containing other work.
 
 4. After reviewing the preview, run the same command with `--install`. For two different IDs, repeat `--extension-id` once per ID. The installer copies the companion to `%LOCALAPPDATA%\CanvasHarnessAI` by default, restricts its folder to the current Windows user and SYSTEM, and registers this host under **HKCU** for Chrome and Edge. It neither signs in nor makes inference requests. It does not require an administrator account. It deliberately refuses a running profile lock.
-5. Reload/reconnect Canvas Harness. Open its integrated AI panel and choose **Sign in with ChatGPT**. The normal system browser opens OpenAI's consent flow. Register this installation as **Canvas Harness**, grant ChatGPT plan usage, and return to the panel. This creates the user's own app registration; no client secret or developer-owned client ID is needed.
+5. *(Requires an extension build that connects to the companion; the current release does not.)* Reload/reconnect Canvas Harness. Open its integrated AI panel and choose **Sign in with ChatGPT**. The normal system browser opens OpenAI's consent flow. Register this installation as **Canvas Harness**, grant ChatGPT plan usage, and return to the panel. This creates the user's own app registration; no client secret or developer-owned client ID is needed.
 6. Select a model and explicitly send a small message. Only a completed response verifies inference access. A saved authorization or populated model list is not proof that the account can use a particular model.
 
 The Node launcher passes fixed, bundled PowerShell helper code through `-Command`, with all input data on stdin. It does not change execution policy, request `ExecutionPolicy Bypass`, or interpolate input into commands. The `.ps1` files are reviewable helper source. If organizational policy blocks PowerShell or the required .NET operations, respect that policy: secure storage falls back explicitly to memory-only, and a blocked browser helper prevents sign-in. Registration can also be blocked by managed-browser policy.
