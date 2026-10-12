@@ -398,3 +398,7 @@
 .rd .rd-plan-day {grid-template-columns:minmax(0,1fr);}
 .rd .rd-plan-day > .rd-plan-cards {min-width:0;}
 .rd .rd-plan-card {min-width:0;overflow-wrap:anywhere;}
+
+/* A module a little shorter than its row: its outline is drawn down to the row's bottom edge, the module itself
+   keeps its height (workspace-gestures.js measures that height and must not change it). */
+.rd[data-workspace=work]:not([data-panel-frame=none]) .rd-main.rd-desk > [data-arrange-key]::after {bottom:calc(-1 * var(--rd-panel-grow,0px));}
