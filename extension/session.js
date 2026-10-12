@@ -4,7 +4,7 @@
   // The caller keeps Canvas visible. This session only publishes verified data.
   // A partial snapshot (some courses failed) stays fresh for a shorter time, so a
   // course that keeps failing does not reload every course on each tab return.
-  function createSession({client,createStore,onSnapshot,onStatus=()=>{},onError=()=>{},onTiming=()=>{},maxAge=300000,partialMaxAge=60000,prefetchedProfile=null}){
+  function createSession({client,createStore,onSnapshot,onStatus=()=>{},onError=()=>{},onTiming=()=>{},maxAge=300000,partialMaxAge=60000,prefetchedProfile=null,quickOpen=null}){
     let controller=new AbortController(),generation=0,paused=false;
     let store,user,current,dead=false,pending=null,starting=null,checking=null;
     const alive=(epoch=generation)=>!dead&&!paused&&epoch===generation&&!controller.signal.aborted;
@@ -45,6 +45,7 @@
       if(starting)return starting;
       if(!alive())return Promise.resolve(null);
       const epoch=generation,signal=controller.signal;
+      let shownEarly=false;
       starting=(async()=>{
         try{
           // The startup guard may have an early identity hint. Begin a fresh Canvas
@@ -70,6 +71,13 @@
             ]);
             return alive(epoch)?cached:null;
           })();
+          // An owner who turned on "Open at once" sees their saved view while Canvas answers. It closes again if
+          // the answer names another account or does not come.
+          if(prefetchedProfile&&quickOpen){
+            const saved=await cachedLoad;
+            if(!alive(epoch))return;
+            if(saved&&quickOpen(store.get()?.settings)){shownEarly=true;current=saved;onSnapshot(saved,store,{stale:true,unverified:true});if(!alive(epoch))return;}
+          }
           const [verified,cached]=await Promise.all([verifying,cachedLoad]);
           if(!alive(epoch))return;
           if(String(verified.id)!==String(candidate.id)){
@@ -80,7 +88,10 @@
           const fresh=isFresh(cached);
           if(cached){current=cached;onSnapshot(cached,store,{stale:!fresh});if(!alive(epoch))return;onStatus(fresh?'':'Saved view · Updating in the background…');}
           if(!fresh)await refresh();
-        }catch(error){fail(error,epoch);}
+        }catch(error){
+          if(shownEarly&&!user&&alive(epoch)&&error.code!=='cancelled'){current=null;onStatus(error.message||'Canvas could not confirm your account.');onError(error,{clear:true});}
+          else fail(error,epoch);
+        }
       })();
       return starting;
     }

@@ -10,7 +10,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // readingFont: teacher text in the book serif or the interface sans; greeting: the time-of-day heading.
   // hiddenCourses: hidden by hand. shownCourses (2.17): shown by hand, which keeps a course that is hidden
   // by default (NameCoach, College Counseling: ReserveCore.hiddenCourseIds) on screen. An id is in one list at most.
-  const defaults = () => ({version:1,settings:{...layoutDefaults,theme:'system',accent:'clay',appearanceVersion:2,motion:'gentle',livingArt:'on',readingFont:'book',greeting:'on',density:'comfortable',font:'system',textSize:'standard',dashboardLayout:'split',showCourseStrip:true,showGrades:false,showRecentGrades:false,timeZone:globalThis.ReserveSite.timeZone(),courseOrder:[],hiddenCourses:[],shownCourses:[],coursePrefs:{},overviewArt:{}},tasks:{},resourcePins:[],customTasks:[],gpa:gpa.defaults(),toolbox:{scratchpad:'',recent:[],dockSize:{width:0,height:0}},focus:{minutes:25,remaining:1500,endsAt:null,itemId:null,sessions:0},pet:{}});
+  const defaults = () => ({version:1,settings:{...layoutDefaults,theme:'system',accent:'clay',appearanceVersion:2,motion:'gentle',livingArt:'on',readingFont:'book',greeting:'on',quickOpen:'off',density:'comfortable',font:'system',textSize:'standard',dashboardLayout:'split',showCourseStrip:true,showGrades:false,showRecentGrades:false,timeZone:globalThis.ReserveSite.timeZone(),courseOrder:[],hiddenCourses:[],shownCourses:[],coursePrefs:{},overviewArt:{}},tasks:{},resourcePins:[],customTasks:[],gpa:gpa.defaults(),toolbox:{scratchpad:'',recent:[],dockSize:{width:0,height:0}},focus:{minutes:25,remaining:1500,endsAt:null,itemId:null,sessions:0},pet:{}});
   const text = (value,max=20000) => typeof value === 'string' ? value.slice(0,max) : '';
   const isRecord = v => v !== null && typeof v === 'object' && !Array.isArray(v);
   const personalWork = root.ReservePersonalWork || (typeof module === 'object' && module.exports && typeof require === 'function' ? require('./personal-work.js') : null);
@@ -49,7 +49,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // Validate every restored SVG before returning data or committing a save.
     if(!customization)throw Error('Canvas Harness customization modules are missing. Reload the extension.');
     Object.assign(out.settings,customization.cleanSettings(settings));
-    for(const [key,allowed] of Object.entries({theme:['light','dark','system'],accent:['clay','forest','indigo','rose','ocean','amber'],motion:['gentle','still','off'],livingArt:['on','off'],readingFont:['book','interface'],greeting:['on','off'],density:['comfortable','compact'],font:['system','humanist','serif'],textSize:['standard','large'],dashboardLayout:['split','list']})) {
+    for(const [key,allowed] of Object.entries({theme:['light','dark','system'],accent:['clay','forest','indigo','rose','ocean','amber'],motion:['gentle','still','off'],livingArt:['on','off'],readingFont:['book','interface'],greeting:['on','off'],quickOpen:['on','off'],density:['comfortable','compact'],font:['system','humanist','serif'],textSize:['standard','large'],dashboardLayout:['split','list']})) {
       if (settings[key] !== undefined && !allowed.includes(settings[key])) throw Error(`Invalid ${key} setting in backup.`);
       if (settings[key]) out.settings[key]=settings[key];
     }

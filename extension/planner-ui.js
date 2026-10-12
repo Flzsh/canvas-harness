@@ -28,10 +28,13 @@ ${e.personal?action('plan-delete','Delete this task',`role="menuitem" data-id="$
    const canvasDone=e.done&&!(c.local[e.id]?.checkedOff),late=!e.done&&e.dueDay&&e.dueDay<today,bits=[e.personal&&e.courseId==='personal'?'Mine':E(e.course),E(dueLabel(e,dayKey)),e.estimate?E(P.minutes(e.estimate)):'',e.steps?`${e.stepsDone}/${e.steps} steps`:''].filter(Boolean),open=ui.menu===e.id;
    return `<article class="rd-plan-card" data-rd-key="pc-${E(e.id)}" data-plan-id="${E(e.id)}" data-done="${e.done}" data-late="${!!late}" data-menu="${open}" style="--rd-course:${E(e.color||'#7c718d')}">${canvasDone?`<span class="rd-todo-check" data-done="true" title="Completed in Canvas" aria-label="Completed in Canvas">${TICK}</span>`:action(e.done?'undo-check-off':'check-off',TICK,`data-id="${E(e.id)}" aria-pressed="${e.done}" aria-label="${e.done?'Put back':'Mark done'}: ${E(e.title)}"`,'rd-todo-check')}${action('plan-view',`<strong>${E(e.title)}</strong><small>${bits.join(' · ')}</small>`,`data-id="${E(e.id)}" aria-label="Open ${E(e.title)}"`,'rd-plan-open')}${action('plan-menu',DOTS,`data-id="${E(e.id)}" aria-haspopup="menu" aria-expanded="${open}" aria-label="Plan ${E(e.title)}: choose a day or a length" title="Choose a day or a length"`,'rd-plan-more')}${open?menu(e):''}</article>`;
   };
+  // Finished work (ticked off, archived, or completed in Canvas) is kept out of the week unless asked for. What was
+  // ticked in the last two minutes stays, so a slip can be undone.
+  const fresh=e=>(ui.recent?.get(e.id)||0)>Date.now()-120000,shown=e=>!e.done||ui.showDone||fresh(e),hiddenDone=board.days.reduce((n,d)=>n+d.all.filter(e=>e.done&&!fresh(e)).length,0);
   const column=d=>{
    const dt=utc(d.key),isToday=d.key===today,summary=[d.open?`${d.open} to do`:d.done?'all done':'',d.minutes?P.minutes(d.minutes):''].filter(Boolean).join(' · ');
    return `<section class="rd-plan-day" data-rd-key="pd-${d.key}" data-plan-drop="${d.key}" data-today="${isToday}" data-past="${d.key<today}" aria-label="${E(h.formatDate(dt,'UTC',{weekday:'long',month:'long',day:'numeric'}))}${summary?': '+E(summary):''}"><header><span>${E(h.formatDate(dt,'UTC',{weekday:'short'}))}</span><strong>${new Date(dt).getUTCDate()}</strong>${isToday?'<em>Today</em>':''}<small>${E(summary)}</small></header>
-<div class="rd-plan-cards">${d.all.map(e=>card(e,d.key)).join('')||'<p class="rd-plan-empty" aria-hidden="true"></p>'}</div>
+<div class="rd-plan-cards">${d.all.filter(shown).map(e=>card(e,d.key)).join('')||'<p class="rd-plan-empty" aria-hidden="true"></p>'}</div>
 <form class="rd-quick-add rd-plan-add" data-rd-form="plan-quick" data-day="${d.key}"><input type="text" data-rd-field="plan-quick" data-day="${d.key}" maxlength="200" autocomplete="off" aria-label="Add a task for ${E(h.formatDate(dt,'UTC',{weekday:'long'}))}" placeholder="+ Add"></form></section>`;
   };
   const tray=(title,hint,items,extra='')=>items.length?`<section class="rd-plan-tray" data-plan-drop="" aria-label="${E(title)}"><header><h2>${E(title)} <span>${items.length}</span></h2><p>${E(hint)}</p>${extra}</header><div class="rd-plan-cards">${items.slice(0,ui.more?200:8).map(e=>card(e,'')).join('')}</div>${items.length>8&&!ui.more?action('plan-more',`Show ${items.length-8} more`,'','rd-text-button'):''}</section>`:'';
@@ -39,7 +42,7 @@ ${e.personal?action('plan-delete','Delete this task',`role="menuitem" data-id="$
   const week=board.days.reduce((n,d)=>({open:n.open+d.open,done:n.done+d.done,minutes:n.minutes+d.minutes}),{open:0,done:0,minutes:0});
   return `<div class="rd-plan" data-rd-key="plan">
 <header class="rd-plan-head rd-page-heading"><div><h1>Planner</h1><p>${E(range)}${week.open+week.done?` · ${week.done} of ${week.open+week.done} done${week.minutes?` · ${E(P.minutes(week.minutes))} planned`:''}`:''}</p></div>
-<div class="rd-plan-nav" role="group" aria-label="Week">${action('plan-week','‹','data-delta="-1" aria-label="Previous week"','rd-icon-button')}${action('plan-week-now',offset===0?'This week':offset===1?'Next week':offset===-1?'Last week':'Back to this week',`${offset===0?'aria-current="true"':''}`,'rd-button')}${action('plan-week','›','data-delta="1" aria-label="Next week"','rd-icon-button')}</div></header>
+<div class="rd-plan-nav" role="group" aria-label="Week">${action('plan-week','‹','data-delta="-1" aria-label="Previous week"','rd-icon-button')}${action('plan-week-now',offset===0?'This week':offset===1?'Next week':offset===-1?'Last week':'Back to this week',`${offset===0?'aria-current="true"':''}`,'rd-button')}${action('plan-week','›','data-delta="1" aria-label="Next week"','rd-icon-button')}${hiddenDone||ui.showDone?action('plan-done',ui.showDone?'Hide finished':`Show finished <span class="rd-n">${hiddenDone}</span>`,`aria-pressed="${!!ui.showDone}"`,'rd-text-button rd-plan-done'):''}</div></header>
 <form class="rd-quick-add rd-plan-quick" data-rd-form="plan-quick" data-day=""><input type="text" data-rd-field="plan-quick" data-day="" maxlength="200" autocomplete="off" aria-label="Add a task" placeholder="Add a task…  “essay outline fri 45m #english” puts it on Friday, 45 minutes, in English">${action('plan-quick-add','Add','data-day=""','rd-button rd-button-primary rd-quick-add-button')}</form>
 <p class="rd-plan-tip" id="rd-plan-help">Drag a card to the day you will do it, or use its ⋯ button. Canvas due dates do not change.</p>
 <div class="rd-plan-trays">${tray('Still open from before','Past its day and not done. Give it a new one.',board.overdue,action('plan-carry','Move all to today','','rd-text-button'))}${tray('Due soon, no day yet','Due within two weeks, outside this week.',board.waiting)}${tray('Whenever','Your own tasks without a day.',board.someday)}</div>
@@ -47,7 +50,7 @@ ${e.personal?action('plan-delete','Delete this task',`role="menuitem" data-id="$
  }
 
  function create({container,store,save,rerender,getContext,helpers,view=()=>{},quickAdd=()=>{}}){
-  const ui={offset:0,menu:null,more:false};let dead=false,drag=null;
+  const ui={offset:0,menu:null,more:false,showDone:false,recent:new Map()};let dead=false,drag=null;
   const doc=container.ownerDocument||root.document,scope=()=>container.getRootNode?.()||doc;
   const closeMenu=()=>{if(ui.menu){const id=ui.menu;ui.menu=null;rerender();container.querySelector(`[data-rd-action="plan-menu"][data-id="${root.CSS?.escape?root.CSS.escape(id):id}"]`)?.focus({preventScroll:true});return true;}return false;};
   function click(event){
@@ -58,6 +61,8 @@ ${e.personal?action('plan-delete','Delete this task',`role="menuitem" data-id="$
    if(action==='plan-week'){ui.offset=Math.max(-26,Math.min(52,ui.offset+Number(button.dataset.delta||0)));ui.menu=null;rerender();return true;}
    if(action==='plan-week-now'){ui.offset=0;ui.menu=null;rerender();return true;}
    if(action==='plan-more'){ui.more=true;rerender();return true;}
+   if(action==='plan-done'){ui.showDone=!ui.showDone;rerender();return true;}
+   if(action==='check-off'||action==='undo-check-off'){const card=button.closest('[data-plan-id]');if(card)ui.recent.set(card.dataset.planId,Date.now());return false;}
    if(action==='plan-menu'){ui.menu=ui.menu===id?null:id;rerender();if(ui.menu)container.querySelector('.rd-plan-menu [aria-checked="true"],.rd-plan-menu button')?.focus({preventScroll:true});return true;}
    if(action==='plan-move'){ui.menu=null;save(P.plan(id,button.dataset.day||''));return true;}
    if(action==='plan-estimate'){save(P.estimate(id,Number(button.dataset.minutes)||0));return true;}

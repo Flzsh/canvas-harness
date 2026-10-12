@@ -11,9 +11,10 @@
  const WEIGHT={context:1,work:1.12,reader:1.12,today:.82,week:.95,timer:.58,clock:.58,notes:.8,bookmarks:.8,grades:.8,messages:.9,pet:.66};
  const MIN_WIDTH={context:260,work:300,reader:300,today:220,week:250,timer:170,clock:170,notes:210,bookmarks:210,grades:210,messages:230,pet:190};
  const removable=key=>EXTRA.includes(key)||key==='context';
+ const ROOT='*',SIZES={s:.68,m:1,l:1.5};
  function controls(key){
   if(!LABELS[key])return '';
-  return `<span class="rd-arrange-tools"><button type="button" class="rd-arrange-grip" data-arrange-grip aria-label="Move ${LABELS[key]}" aria-describedby="rd-move-help" title="Hold to move · Space for keyboard"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="9" cy="5" r="1.4"/><circle cx="15" cy="5.5" r="1.4"/><circle cx="8.5" cy="12" r="1.4"/><circle cx="15.5" cy="12" r="1.4"/><circle cx="9" cy="19" r="1.4"/><circle cx="15" cy="18.5" r="1.4"/></svg></button>${EXTRA.includes(key)?`<button type="button" class="rd-arrange-remove" data-rd-action="widget-remove" data-widget="${key}" aria-label="Remove ${LABELS[key]} from Home" title="Remove from Home"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 7.4l10 9.4M17 7l-10 10.2"/></svg></button>`:''}</span>`;
+  return `<span class="rd-arrange-tools"><button type="button" class="rd-arrange-grip" data-arrange-grip aria-label="Move ${LABELS[key]}" aria-describedby="rd-move-help" title="Hold to move · Space for keyboard"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="9" cy="5" r="1.4"/><circle cx="15" cy="5.5" r="1.4"/><circle cx="8.5" cy="12" r="1.4"/><circle cx="15.5" cy="12" r="1.4"/><circle cx="9" cy="19" r="1.4"/><circle cx="15" cy="18.5" r="1.4"/></svg></button>${PANELS.includes(key)||EXTRA.includes(key)?`<button type="button" class="rd-arrange-more" data-rd-action="module-menu" data-widget="${key}" aria-haspopup="menu" aria-label="${LABELS[key]}: size and place" title="Size and place"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="12" r="1.7"/><circle cx="12" cy="12.3" r="1.7"/><circle cx="18.5" cy="12" r="1.7"/></svg></button>`:''}${EXTRA.includes(key)?`<button type="button" class="rd-arrange-remove" data-rd-action="widget-remove" data-widget="${key}" aria-label="Remove ${LABELS[key]} from Home" title="Remove from Home"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 7.4l10 9.4M17 7l-10 10.2"/></svg></button>`:''}</span>`;
  }
  const DEFAULT={order:[...PANELS],mode:'side-by-side',layout:{axis:'x',children:[...PANELS]},courseNavigation:'sidebar',showCourseInformation:true,showCourseStrip:true};
  const isObject=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
@@ -44,37 +45,60 @@
   return visit(tree);
  }
  function dock(tree,key,target,edge){
-  if(!ALL.includes(key)||!ALL.includes(target)||key===target||!['left','right','top','bottom'].includes(edge))return tree;
+  if(!ALL.includes(key)||!(ALL.includes(target)||target===ROOT)||key===target||!['left','right','top','bottom'].includes(edge))return tree;
   const axis=['left','right'].includes(edge)?'x':'y',before=['left','top'].includes(edge);
+  if(target===ROOT){const rest=prune(tree,key);return rest?split(axis,before?[key,rest]:[rest,key]):tree;}
   const insert=node=>node===target?split(axis,before?[key,target]:[target,key]):typeof node==='string'?node:split(node.axis,node.children.map(insert));
   return insert(prune(tree,key));
  }
- // What a subtree asks for: side by side adds up, stacked takes its widest.
- const weightOf=node=>typeof node==='string'?(WEIGHT[node]||1):node.axis==='x'?node.children.reduce((n,child)=>n+weightOf(child),0):Math.max(...node.children.map(weightOf));
+ // What a subtree asks for: side by side adds up, stacked takes its widest. A module's chosen size scales its share.
+ const weightOf=(node,sizes={})=>typeof node==='string'?(WEIGHT[node]||1)*(SIZES[sizes[node]]||1):node.axis==='x'?node.children.reduce((n,child)=>n+weightOf(child,sizes),0):Math.max(...node.children.map(child=>weightOf(child,sizes)));
  const minOf=node=>typeof node==='string'?(MIN_WIDTH[node]||240):node.axis==='x'?node.children.reduce((n,child)=>n+minOf(child),0):Math.max(...node.children.map(minOf));
- function grid(tree,width=1500){
-  const rects={};
-  function place(node,x,y,w,h,pixels){
-   if(typeof node==='string'){rects[node]={x,y,w,h};return;}
-   // A row that cannot give each module its narrowest useful width wraps: as many as fit stay side by side and the
-   // rest go to the next row, so a narrow page gets two columns before it gets one.
-   if(node.axis==='x'&&pixels<minOf(node)){
-    const rows=[];let row=[],sum=0;
-    for(const child of node.children){const need=minOf(child);if(row.length&&sum+need>pixels){rows.push(row);row=[];sum=0;}row.push(child);sum+=need;}
-    rows.push(row);
-    if(rows.length>1){place({axis:'y',children:rows.map(r=>r.length===1?r[0]:{axis:'x',children:r})},x,y,w,h,pixels);return;}
-   }
-   const axis=node.axis==='x'&&pixels<minOf(node)?'y':node.axis,n=node.children.length;
-   const weights=node.children.map(weightOf),total=weights.reduce((a,b)=>a+b,0);let used=0;
-   node.children.forEach((child,i)=>{const share=axis==='x'?weights[i]/total:1/n;
-    place(child,x+(axis==='x'?w*used:0),y+(axis==='y'?h*i/n:0),axis==='x'?w*share:w,axis==='y'?h/n:h,axis==='x'?pixels*share:pixels);used+=share;});
+ // The tree as it is laid out at a width: a row that cannot give each module its narrowest useful width wraps, as
+ // many as fit staying side by side and the rest going to the next row.
+ function resolve(node,pixels,sizes={}){
+  if(typeof node==='string'||!node)return node;
+  if(node.axis==='y')return {axis:'y',children:node.children.map(child=>resolve(child,pixels,sizes))};
+  if(pixels<minOf(node)){
+   const rows=[];let row=[],sum=0;
+   for(const child of node.children){const need=minOf(child);if(row.length&&sum+need>pixels){rows.push(row);row=[];sum=0;}row.push(child);sum+=need;}
+   rows.push(row);
+   if(rows.length>1)return {axis:'y',children:rows.map(r=>resolve(r.length===1?r[0]:{axis:'x',children:r},pixels,sizes))};
+   if(node.children.length===1)return resolve(node.children[0],pixels,sizes);
   }
-  if(tree)place(tree,0,0,1,1,width);
+  const weights=node.children.map(child=>weightOf(child,sizes)),total=weights.reduce((a,b)=>a+b,0);
+  return {axis:'x',children:node.children.map((child,i)=>resolve(child,pixels*weights[i]/total,sizes))};
+ }
+ function grid(tree,width=1500,sizes={}){
+  const rects={},resolved=tree?resolve(tree,width,sizes):null;
+  function place(node,x,y,w,h){
+   if(typeof node==='string'){rects[node]={x,y,w,h};return;}
+   const n=node.children.length,weights=node.children.map(child=>weightOf(child,sizes)),total=weights.reduce((a,b)=>a+b,0);let used=0;
+   node.children.forEach((child,i)=>{const share=node.axis==='x'?weights[i]/total:1/n;
+    place(child,x+(node.axis==='x'?w*used:0),y+(node.axis==='y'?h*i/n:0),node.axis==='x'?w*share:w,node.axis==='y'?h/n:h);used+=share;});
+  }
+  if(resolved)place(resolved,0,0,1,1);
   const round=n=>Math.round(n*10000)/10000;
   const xs=[...new Set(Object.values(rects).flatMap(r=>[round(r.x),round(r.x+r.w)]))].sort((a,b)=>a-b);
   const ys=[...new Set(Object.values(rects).flatMap(r=>[round(r.y),round(r.y+r.h)]))].sort((a,b)=>a-b);
   const cells=Object.fromEntries(Object.entries(rects).map(([key,r])=>[key,{column:`${xs.indexOf(round(r.x))+1} / ${xs.indexOf(round(r.x+r.w))+1}`,row:`${ys.indexOf(round(r.y))+1} / ${ys.indexOf(round(r.y+r.h))+1}`} ]));
-  return {columns:xs.slice(1).map((x,i)=>`minmax(0,${round(x-xs[i])}fr)`).join(' '),rows:ys.slice(1).map(()=>'auto').join(' '),cells};
+  return {columns:xs.slice(1).map((x,i)=>`minmax(0,${round(x-xs[i])}fr)`).join(' '),rows:ys.slice(1).map(()=>'auto').join(' '),cells,resolved};
+ }
+ // Rows from real heights. Each module starts where the things above it in its own stack end, so a short module
+ // beside a tall one never leaves a hole under itself. Heights are in pixels; rows are counted in `unit` pixels.
+ function rows(resolved,heights,{gap=18,unit=6,slack=240}={}){
+  const out={},fill={};
+  const natural=node=>typeof node==='string'?Math.max(0,heights[node]||0):node.axis==='y'?node.children.reduce((n,child,i)=>n+natural(child)+(i?gap:0),0):Math.max(0,...node.children.map(natural));
+  // `room` is the height of the row a node sits in. The last module of a stack that ends a little short of its
+  // neighbours takes up the difference, so a row of modules ends on one line; a much shorter one keeps its height.
+  function place(node,top,room){
+   if(typeof node==='string'){const h=natural(node),grow=room-h;out[node]={top,height:grow>0&&grow<=slack&&h>0?room:h};if(grow>0&&grow<=slack&&h>0)fill[node]=Math.round(room);return;}
+   if(node.axis==='y'){let y=top;node.children.forEach((child,i)=>{const last=i===node.children.length-1,h=natural(child);place(child,y,last?Math.max(h,room-(y-top)):h);y+=h+gap;});return;}
+   const h=Math.max(natural(node),room);for(const child of node.children)place(child,top,h);
+  }
+  const total=resolved?natural(resolved):0;if(resolved)place(resolved,0,total);
+  const cells=Object.fromEntries(Object.entries(out).map(([key,r])=>[key,`${Math.round(r.top/unit)+1} / span ${Math.max(1,Math.ceil(r.height/unit))}`]));
+  return {cells,fill,total,unit};
  }
  // Added modules live in the tree only; the saved order names the three original panels, as it always has.
  const core=keys=>keys.filter(key=>PANELS.includes(key));
@@ -120,11 +144,17 @@
   const order=cleanOrder(core(value.order),{strict:true});
   return {order:value.layout?leaves(cleanLayout(value.layout)):order,mode:value.mode,layout:value.layout?cleanLayout(value.layout):split(value.mode==='stacked'?'y':'x',order),courseNavigation:value.courseNavigation,showCourseInformation:value.showCourseInformation,showCourseStrip:value.showCourseStrip,...(Array.isArray(value.courseOrder)?{courseOrder:value.courseOrder.filter(x=>typeof x==='string').slice(0,500)}:{})};
  }
+ function cleanSizes(value){
+  if(value===undefined||value===null)return {};
+  if(!isObject(value))throw Error('Invalid moduleSize setting in backup.');
+  const out={};for(const [key,size] of Object.entries(value)){if(!ALL.includes(key)||!Object.hasOwn(SIZES,size))throw Error('Invalid moduleSize setting in backup.');if(size!=='m')out[key]=size;}
+  return out;
+ }
  function cleanSaved(settings={}){
   const order=cleanOrder(settings.workspaceOrder,{strict:settings.workspaceOrder!==undefined,fallback:legacyOrder(settings)});
   const mode=settings.workspaceMode===undefined?(settings.deskOrder==='stacked'||settings.deskOrder===undefined&&settings.dashboardLayout==='list'?'stacked':'side-by-side'):settings.workspaceMode;
   if(!['stacked','side-by-side'].includes(mode))throw Error('Invalid workspaceMode setting in backup.');
-  return {workspaceOrder:order,workspaceMode:mode,workspaceLayout:settings.workspaceLayout==null?null:cleanLayout(settings.workspaceLayout),workspaceUndo:settings.workspaceUndo==null?null:cleanSnapshot(settings.workspaceUndo)};
+  return {moduleSize:cleanSizes(settings.moduleSize),workspaceOrder:order,workspaceMode:mode,workspaceLayout:settings.workspaceLayout==null?null:cleanLayout(settings.workspaceLayout),workspaceUndo:settings.workspaceUndo==null?null:cleanSnapshot(settings.workspaceUndo)};
  }
  // A preset or the panel-order choice lays the three panels out afresh; modules a student added keep their row.
  function resetCore(settings,previous){
@@ -194,6 +224,6 @@
   const gestures=root.ReserveWorkspaceGestures||(typeof module==='object'&&module.exports?require('./workspace-gestures.js'):null);
   return gestures.create(options,api);
  }
- const api={PANELS,EXTRA,ALL,LABELS,WEIGHT,MIN_WIDTH,removable,extras,add,resetCore,DEFAULT,leaves,split,prune,dock,swap,grid,edgeAt,cleanLayout,controls,legacyOrder,cleanOrder,cleanSaved,snapshot,relocate,change,createController};
+ const api={PANELS,EXTRA,ALL,ROOT,SIZES,LABELS,WEIGHT,MIN_WIDTH,removable,extras,add,resetCore,resolve,rows,cleanSizes,DEFAULT,leaves,split,prune,dock,swap,grid,edgeAt,cleanLayout,controls,legacyOrder,cleanOrder,cleanSaved,snapshot,relocate,change,createController};
  root.ReserveWorkspaceArrange=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

@@ -15,6 +15,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   let host,root,area,toolbar,resumeCover,statusLabel,dashboard,planner,session,snapshot,store,ready=false,wanted=true;
   let authorized=false,suspended=false,resumeGeneration=0,resumePending;
   let launchObserver,launchAttempt,bootStopped=false;
+  // "Open at once" (off unless the owner turns it on) remembers which account to open: an id, nothing else.
+  const HINT_KEY='reserve:lastAccount:'+location.origin;let ownerHint=null;
+  const quickOpen=settings=>settings?.quickOpen==='on';
+  if(isDashboard)try{Promise.resolve(chrome.storage.local.get(HINT_KEY)).then(found=>{const id=String(found?.[HINT_KEY]??'');if(/^\d+$/.test(id))ownerHint={id};}).catch(()=>{});}catch{}
   function mark(phase){
     if(timing[phase]===undefined)timing[phase]=stamp();
     // Network milestones distinguish time spent waiting for Canvas from local
@@ -139,6 +143,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     snapshot=next;store=verifiedStore;
     authorized=true;
+    if(!meta?.unverified)try{
+      const id=String(next.user?.id??''),on=quickOpen(verifiedStore.get().settings);
+      if(on&&/^\d+$/.test(id)&&ownerHint?.id!==id){ownerHint={id};Promise.resolve(chrome.storage.local.set({[HINT_KEY]:id})).catch(()=>{});}
+      else if(!on&&ownerHint){ownerHint=null;Promise.resolve(chrome.storage.local.remove(HINT_KEY)).catch(()=>{});}
+    }catch{}
     makeHost();if(!host)return;mark('verifiedData');
     if(planner)planner.updateSnapshot(next);
     else if(dashboard)dashboard.updateSnapshot(next);
@@ -149,9 +158,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   function start(){
     makeHost();
     if(session)return session.start();
-    session=ReserveSession.createSession({client:ReserveAPI.createClient(),createStore:ReserveStorage.createStore,
+    session=ReserveSession.createSession({client:ReserveAPI.createClient(),createStore:ReserveStorage.createStore,...(ownerHint?{prefetchedProfile:ownerHint,quickOpen}:{}),
       onSnapshot:receive,onStatus:setStatus,onTiming:mark,onError:(error,{clear})=>{
-      if(clear){dashboard?.destroy();dashboard=null;snapshot=null;store=null;showCanvas();dashboardState=undefined;dashboardScroll=0;restoreScroll=false;}
+      if(clear){if(ownerHint){ownerHint=null;try{Promise.resolve(chrome.storage.local.remove(HINT_KEY)).catch(()=>{});}catch{}}dashboard?.destroy();dashboard=null;snapshot=null;store=null;showCanvas();dashboardState=undefined;dashboardScroll=0;restoreScroll=false;}
       else if(!dashboard&&!planner)showCanvas(false);
       dockRoot.querySelector('button').title=error.message+' Click to retry.';
     }});
@@ -183,6 +192,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(!isDashboard||!wanted||!host||bootStopped||document.visibilityState==='hidden')return;
     if(!!document.querySelector('#login_form, #new_login, .ic-Login')||!(location.pathname==='/'||/^\/dashboard\/?$/.test(location.pathname))){showCanvas(false);return;}
     suspended=false;manualOpen=true;const epoch=resumeGeneration;
+    // With "Open at once" the workspace shows as the tab returns; the check below still runs and closes it on failure.
+    try{if(snapshot&&session&&quickOpen(store?.get().settings)){authorized=true;reveal();}}catch{}
     const operation=(async()=>{
       if(!snapshot||!session){session?.destroy();session=null;return start();}
       const verified=await session.verify();

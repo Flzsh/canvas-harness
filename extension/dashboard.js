@@ -146,7 +146,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let pendingReaderScroll={courseId:state.courseId,id:selectedId,top:restoredView.readerScroll};
     const readerLayout=typeof root.ResizeObserver==='function'?new root.ResizeObserver(()=>{if(restoreReaderScroll())remember();}):null;
     const explicitWorkspace=initialState?.workspace||savedState?.workspace;
-    let workspace=['work','plan','materials','hub','inbox','grades'].includes(explicitWorkspace)?explicitWorkspace:'work';
+    let workspace=['work','plan','materials','hub','inbox','grades'].includes(explicitWorkspace)?explicitWorkspace:'work',workPage=explicitWorkspace==='assignments'?'assignments':'home';
     let deckCourseRequested='';
     let overviewMode='actionable',overviewQuery='',checkOffNotice=null;
     const checkingOff=new Set();
@@ -179,7 +179,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       preview:id=>{workspace='work';showPreview(String(id),{detail:0,target:container,preventDefault(){}});},
       openSettings:()=>settingsDock?.open(),startTick:()=>syncFocus(),go:tab=>goWorkspace(tab),closeSettings:()=>settingsDock?.close({restoreFocus:false})});
     // The Planner is a workspace of its own; older entry points that asked for the week land there.
-    function goWorkspace(tab){if(destroyed||workspace===tab)return;captureCourseView();workspace=tab;render({motionTarget:'.rd-workspace'});container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});}
+    function goWorkspace(tab){if(destroyed||workspace===tab&&(tab!=='work'||workPage==='home'))return;captureCourseView();workspace=tab;if(tab==='work')workPage='home';render({motionTarget:'.rd-workspace'});container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});}
     const toolbox=root.ReserveToolbox?.create({container,store,materials,aiConfig:{client:resourceClient,user:snapshot.user,demo},getContext:()=>{
       const ctx=buildContext();return {...ctx,courseId:state.courseId,aiAssignmentId:workspace==='work'&&readerOpen?selectedId:null,aiSelectedIds:[...selectionIds],
         aiResources:ctx.courses.map(c=>materials?.getCourse(c.id)?.raw).filter(Boolean),
@@ -463,7 +463,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       state=Model.cleanState(next);visibleLimit=next.limit;selectedId=next.selectedId;readerTab=next.readerTab;readerOpen=next.readerOpen;
       pendingReaderScroll={courseId:id,id:selectedId,top:next.readerScroll};return true;
     }
-    function navigationState(){captureCourseView();return {...courseMemory.recall(state.courseId),workspace,overviewVersion:1,courseViews:courseMemory.serialize(),gradeVisibilityOverride:gradeVisibilityOverride===false?false:undefined};}
+    function navigationState(){captureCourseView();return {...courseMemory.recall(state.courseId),workspace:workspace==='work'&&workPage==='assignments'?'assignments':workspace,overviewVersion:1,courseViews:courseMemory.serialize(),gradeVisibilityOverride:gradeVisibilityOverride===false?false:undefined};}
     function remember(){
       state=Model.cleanState({...state,limit:visibleLimit});
       try{if(stateKey)root.sessionStorage?.setItem(stateKey,JSON.stringify(navigationState()));}catch{}
@@ -507,7 +507,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       container.dataset.courses=String(ctx.s.showCourseStrip!==false);
       container.style.setProperty('--rd-accent',ctx.accent);
       const assignmentContent=readingContent(ctx.selected);
-       const markup=View.render({...ctx,state,workspace,gradeQuery,gradeLimit,arrangeOpen:!!arrange?.active(),boardEditing:!!board?.editing(),planUI:board?.planUI()||{},customizeTab:board?.settingsTab()||'layout',personal:{focus:personal.focus,pet:personal.pet,toolbox:personal.toolbox},hasLayoutUndo:!!ctx.s.workspaceUndo,deckHeader:workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:true})||'':'',deckContent:workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',hubContent:workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId)):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',materialLibrary:workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId)):'',relatedMaterials:materials?.renderRelated(ctx.selected,assignmentContent.links)||'',readerTab,customizeOpen,customizeCourseId,customizeStatus,customizeBusy,customizeDrafts,quickUpload:quickUpload?.state,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading,user:currentSnapshot.user,demo,nativeSwitch:typeof onNative==='function',refreshing,visibleLimit,noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',readerContent:assignmentContent,warning:renderWarning(),status:statusLabel(currentSnapshot,externalStatus,transientStatus)}, {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete});
+       const markup=View.render({...ctx,state,workspace,workPage:workspace==='work'?workPage:'',gradeQuery,gradeLimit,arrangeOpen:!!arrange?.active(),boardEditing:!!board?.editing(),planUI:board?.planUI()||{},customizeTab:board?.settingsTab()||'layout',personal:{focus:personal.focus,pet:personal.pet,toolbox:personal.toolbox},hasLayoutUndo:!!ctx.s.workspaceUndo,deckHeader:workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:true})||'':'',deckContent:workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',hubContent:workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId)):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',materialLibrary:workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId)):'',relatedMaterials:materials?.renderRelated(ctx.selected,assignmentContent.links)||'',readerTab,customizeOpen,customizeCourseId,customizeStatus,customizeBusy,customizeDrafts,quickUpload:quickUpload?.state,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading,user:currentSnapshot.user,demo,nativeSwitch:typeof onNative==='function',refreshing,visibleLimit,noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',readerContent:assignmentContent,warning:renderWarning(),status:statusLabel(currentSnapshot,externalStatus,transientStatus)}, {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete});
       const toolbar=container.querySelector('.rd-toolbar'),appearance=container.querySelector('.rd-appearance');
       if(toolbar&&appearance){
         // Keep the actual transitioning nodes connected through data renders.
@@ -535,7 +535,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
          // The phone reader sheet (refresh.css section 16) covers Canvas's chrome, as the dock does.
          container.getRootNode?.()?.host?.toggleAttribute?.('data-reserve-sheet',readerOpen&&workspace==='work');}
         nextToolbar.remove();
-        for(const tab of toolbar.querySelectorAll('.t-tab')){const active=tab.dataset.tab===workspace;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;}
+        for(const tab of toolbar.querySelectorAll('.t-tab')){const active=tab.dataset.tab===(workspace==='work'&&workPage==='assignments'?'assignments':workspace);tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;}
         patchUI(appearance.querySelector('.t-acc-panel-inner'),nextAppearance.querySelector('.t-acc-panel-inner'));
         appearance.dataset.open=String(customizeOpen);
         const panel=appearance.querySelector('.t-acc-panel');panel.inert=!customizeOpen;
@@ -545,7 +545,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(shell)for(const warning of Array.from(template.content.querySelectorAll('.rd-warning')))container.insertBefore(warning,shell);
         container.append(template.content);
       }else container.innerHTML=markup;
-      container.dataset.courseId=state.courseId;container.dataset.workspace=workspace;
+      container.dataset.courseId=state.courseId;container.dataset.workspace=workspace;container.dataset.workPage=workspace==='work'?workPage:'';
       settingsDock?.sync();
       arrange?.sync();
       board?.sync();
@@ -903,9 +903,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(action==='workspace'||action==='open-materials'||action==='open-hub'){
         const tabMotion=event.detail>0;
         const nextWorkspace=action==='open-materials'?'materials':action==='open-hub'?'hub':['plan','materials','hub','inbox','grades'].includes(button.dataset.tab)?button.dataset.tab:'work';
-        if(action==='workspace'&&workspace===nextWorkspace)return;
-        const order=['home','work','plan','hub','materials','inbox','grades'],direction=order.indexOf(nextWorkspace)>=order.indexOf(workspace)?1:-1;
-        captureCourseView();workspace=nextWorkspace;
+        const nextPage=action==='workspace'&&nextWorkspace==='work'?(button.dataset.tab==='assignments'?'assignments':'home'):workPage;
+        if(action==='workspace'&&workspace===nextWorkspace&&workPage===nextPage)return;
+        const order=['home','work','assignments','plan','hub','materials','inbox','grades'],place=(w,p)=>order.indexOf(w==='work'&&p==='assignments'?'assignments':w),direction=place(nextWorkspace,nextPage)>=place(workspace,workPage)?1:-1;
+        captureCourseView();workspace=nextWorkspace;workPage=nextPage;if(workPage==='assignments')board?.close();
         if(workspace==='inbox')hub?.setCourse?.('all');
         if(workspace==='materials'||workspace==='hub'){
           const ctx=buildContext();switchCourse(button.dataset.id||(state.courseId==='all'?String(ctx.selected?.courseId||ctx.courses[0]?.id||'all'):state.courseId));

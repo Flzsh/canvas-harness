@@ -61,6 +61,27 @@
   return next?{...next,ms:Date.parse(next.dueAt)-c.now}:null;
  }
 
+ // The paddock: a small drawn field at a fixed scale. Hills, fence and grass are tiles, so the picture is the same
+ // drawing at any width and nothing is stretched. The ground the pony stands on is 9px above the bottom edge.
+ function paddock(name,E){
+  const w=name.length*6.6+20,sign=name&&name.length<=11?`<g class="rd-pad-sign" transform="translate(${92+(11-name.length)*1.5} 79)"><path class="rd-pad-wood" d="M1.6 2.2C22 .8 52 1.2 ${w-1} 1.8L${w-.2} 16.4C52 17.6 20 17.2 1 16.6z"/><text x="${w/2}" y="13.2" text-anchor="middle">${E(name)}</text></g>`:'';
+  return `<div class="rd-paddock" data-pet-ledge="inside" aria-hidden="true"><svg class="rd-paddock-art" width="100%" height="132" focusable="false"><defs>
+<pattern id="rd-pad-hill" width="420" height="64" patternUnits="userSpaceOnUse" y="46"><path class="rd-pad-far" d="M0 33C50 26 110 9 180 17C260 26 300 55 350 47C380 42 400 36 420 33V64H0z"/><path class="rd-pad-line" d="M0 30C50 23 110 6 180 14C260 23 300 52 350 44C380 39 400 33 420 30"/><path class="rd-pad-line rd-pad-faint" d="M196 22c10 3 18 8 24 14M96 22c-9 3-16 8-21 14"/></pattern>
+<pattern id="rd-pad-field" width="300" height="44" patternUnits="userSpaceOnUse" y="92"><path class="rd-pad-near" d="M0 8C40 3 90 4 150 8C210 12 260 11 300 8V44H0z"/><path class="rd-pad-line rd-pad-faint" d="M0 6C40 1 90 2 150 6C210 10 260 9 300 6"/></pattern>
+<pattern id="rd-pad-fence" width="62" height="46" patternUnits="userSpaceOnUse" y="72"><path class="rd-pad-rail-ink" d="M0 15C20 14 44 16 62 15M0 29C22 30 40 28 62 29"/><path class="rd-pad-rail" d="M0 15C20 14 44 16 62 15M0 29C22 30 40 28 62 29"/><path class="rd-pad-wood" d="M27.2 5.6C28.8 4.2 31.6 4.2 33 5.4L33.6 43.6L27.6 43.8z"/><path class="rd-pad-line rd-pad-faint" d="M30.4 12v9M30.8 27v10"/></pattern>
+<pattern id="rd-pad-grass" width="118" height="22" patternUnits="userSpaceOnUse" y="110"><path class="rd-pad-line" d="M0 13.4C24 12.4 70 14.4 118 13.4"/><path class="rd-pad-blade" d="M12 13.5l-2.6-6.4M12.6 13.5l.8-8.6M13.4 13.5l3.4-5.6M49 13.8l-2-5.2M49.8 13.8l1.6-7M83 13.6l-3-6M83.8 13.6l.4-8.2M84.6 13.6l3.2-5M106 13.4l-1.4-4.6M106.8 13.4l2-5.4"/><path class="rd-pad-line rd-pad-faint" d="M24 18h9M62 19.4h13M94 18.2h7"/><circle class="rd-pad-bloom" cx="31" cy="9.6" r="1.7"/><path class="rd-pad-blade" d="M31 11.4v2.4"/><circle class="rd-pad-bloom rd-pad-bloom-2" cx="68" cy="8.8" r="1.5"/><path class="rd-pad-blade" d="M68 10.4v3.2"/></pattern></defs>
+<rect class="rd-pad-sky" width="100%" height="132"/>
+<svg x="100%" overflow="visible"><g transform="translate(-58 30)"><path class="rd-pad-sun-wash" d="M-11 1.6C-10.6-8.2 8.8-10.4 12.4-1.2C15.6 8.2 3.2 15 -5.6 11.2C-9.6 9.4 -11.2 5.6 -11 1.6z" transform="translate(2.4 2.2)"/><path class="rd-pad-line" d="M-11 1.6C-10.6-8.2 8.8-10.4 12.4-1.2C15.6 8.2 3.2 15 -5.6 11.2C-9.6 9.4 -11.2 5.6 -11 1.6"/><path class="rd-pad-line rd-pad-faint" d="M-17-4.4l-4.6-2M-10-14.6l-2.4-4.6M2-17.4l.6-5.2M13.4-12.6l3.6-4M19.4-1.4l5.2-.6M17 10.2l4.4 3"/></g></svg>
+<svg x="38%" overflow="visible"><g transform="translate(0 24)"><path class="rd-pad-cloud" d="M2 13.4C-3.4 12.6-3 5.6 3.2 5.8C4.6-.6 14.4-1.6 17.4 3.8C22.4 1.6 28.2 5 27 9.4C31.6 9.8 31.6 14.2 27.4 14.2z"/><path class="rd-pad-line rd-pad-faint" d="M2 12.4C-3.4 11.6-3 4.6 3.2 4.8C4.6-1.6 14.4-2.6 17.4 2.8C22.4.6 28.2 4 27 8.4"/></g></svg>
+<rect fill="url(#rd-pad-hill)" y="46" width="100%" height="64"/>
+<rect fill="url(#rd-pad-field)" y="92" width="100%" height="40"/>
+<g transform="translate(38 0)"><path class="rd-pad-wood" d="M-3.2 106C-2 92 -2.6 80 -1.6 66L3.4 66C3 80 4 94 5.4 106z"/><path class="rd-pad-line rd-pad-faint" d="M1 74c1.6 3 5 5 8.6 5.4M.4 84c-2 2-5 3.2-8 3.2"/><path class="rd-pad-leaf" d="M-21 52C-28 38 -18 22 -3 24C3 12 24 14 26 28C38 31 39 51 26 56C20 68 -2 70 -8 61C-15 63 -20 58 -21 52z" transform="translate(2.6 2.4)"/><path class="rd-pad-line" d="M-21 52C-28 38 -18 22 -3 24C3 12 24 14 26 28C38 31 39 51 26 56C20 68 -2 70 -8 61C-15 63 -20 58 -21 52"/><path class="rd-pad-line rd-pad-faint" d="M-9 38c3-4 8-5 12-3M9 47c4-2 9-1.6 12 1.6M-11 51c2.4 1.6 5 2 7.6 1.2"/></g>
+<rect fill="url(#rd-pad-fence)" y="72" width="100%" height="46"/>
+${sign}
+<svg x="100%" overflow="visible"><g transform="translate(-96 100)"><path class="rd-pad-wood" d="M1 3.4L39 2.6L36.6 17.4L4 17.8z"/><path class="rd-pad-water" d="M3.4 5.2C12 4 28 3.8 36.6 4.8L36 8.2C26 9.2 12 9.2 4 8.6z"/><path class="rd-pad-line rd-pad-faint" d="M6 12.4h28M9 6.6c4-.8 8-.8 12 0"/><path class="rd-pad-line" d="M7.4 17.6l-1.6 4.6M33 17.4l1.4 4.8"/></g></svg>
+<rect fill="url(#rd-pad-grass)" y="110" width="100%" height="22"/>
+</svg></div>`;
+ }
  function render(key,c,h){
   const {E}=h,A=Arrange(),label=A.LABELS[key],action=(name,text,extra='',cls='rd-button')=>`<button type="button" class="${cls}" data-rd-action="${name}" ${extra}>${text}</button>`;
   const time=(value,options)=>h.formatDate(value,c.s.timeZone,options);
@@ -111,7 +132,7 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
    body=`<div class="rd-messages"><p class="rd-messages-count"><strong>${n}</strong><span>unread message${n===1?'':'s'}</span></p>${action('workspace',n?'Read them':'Open Messages','data-tab="inbox"','rd-button')}</div>`;
   }else if(key==='pet'){
    const P=Pets(),pet=P?P.clean(mine.pet):null;
-   body=pet?`<div class="rd-paddock" data-pet-ledge="inside" aria-hidden="true"><svg class="rd-paddock-art" viewBox="0 0 300 96" preserveAspectRatio="none"><path class="rd-paddock-sky" d="M0 0H300V96H0z"/><path class="rd-paddock-hill" d="M0 70C40 52 84 50 130 62C176 74 232 56 300 64V96H0z"/><path class="rd-paddock-rail" d="M6 60C80 57 200 59 294 56M6 72C90 69 210 71 294 68"/><path class="rd-paddock-post" d="M22 48v38M88 47v39M158 48v38M226 46v40M284 46v40"/><path class="rd-paddock-ground" d="M2 88C70 86 220 89 298 86"/></svg></div>
+   body=pet?`${paddock(pet.name,E)}
 <div class="rd-pet-card"><p><strong>${E(pet.name)}</strong><span>Level ${P.level(pet.xp)}${pet.streak>1?` · ${pet.streak} days in a row`:''}</span></p><span class="rd-progress" aria-hidden="true"><i style="width:${Math.round(P.levelProgress(pet.xp)*100)}%"></i></span>
 <div class="rd-pet-actions">${action('pet-feed',`Give a treat <b>${pet.treats}</b>`,pet.treats&&pet.enabled&&pet.roam!=='off'?'':'disabled','rd-button')}${action('pet-roam',pet.roam==='home'?'Let it roam':'Keep it here','','rd-text-button')}${action('pet-settings','Change','','rd-text-button')}</div></div>`:'';
   }
@@ -134,6 +155,28 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
   const newId=()=>'local-'+(root.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const ctx=()=>getContext();
   const planner=root.ReservePlannerUI?.create({container,store,save,rerender,getContext,helpers,view:id=>preview(id)})||null;
+  // Size and place: the menu behind a module's three dots. It is built on demand and floats over the page.
+  let menu=null,menuKey='';
+  function closeMenu(refocus=false){
+   if(!menu)return;const key=menuKey;menu.remove();menu=null;menuKey='';
+   for(const b of container.querySelectorAll('.rd-arrange-more[aria-expanded="true"]'))b.setAttribute('aria-expanded','false');
+   if(refocus)container.querySelector(`.rd-arrange-more[data-widget="${key}"]`)?.focus({preventScroll:true});
+  }
+  function openMenu(button,key){
+   const A=Arrange(),size=ctx().s.moduleSize?.[key]||'m',E=helpers().E;closeMenu();
+   const box=(x,y,w,h)=>`<svg viewBox="0 0 34 24" aria-hidden="true"><rect x="1.5" y="1.5" width="31" height="21" rx="3.5"/><rect class="on" x="${x}" y="${y}" width="${w}" height="${h}" rx="2"/></svg>`;
+   const pick=(action,value,label,art,on)=>`<button type="button" class="rd-mm-pick" role="menuitemradio" aria-checked="${!!on}" data-rd-action="${action}" data-widget="${key}" data-value="${value}">${art}<span>${label}</span></button>`;
+   menu=container.ownerDocument.createElement('div');menu.className='rd-module-menu';menu.dataset.rdKeep='true';menu.setAttribute('role','menu');menu.setAttribute('aria-label',`${A.LABELS[key]}: size and place`);
+   menu.innerHTML=`<h3>${E(A.LABELS[key])}</h3><p>Width</p><div class="rd-mm-row">${pick('module-size','s','Narrow',box(12,5,10,14),size==='s')}${pick('module-size','m','Normal',box(9,5,16,14),size==='m')}${pick('module-size','l','Wide',box(5,5,24,14),size==='l')}</div>
+<p>Give it a whole row or column</p><div class="rd-mm-row" data-cols="4">${pick('module-dock','top','Top',box(4.5,4.5,25,5))}${pick('module-dock','bottom','Bottom',box(4.5,14.5,25,5))}${pick('module-dock','left','Left',box(4.5,4.5,7,15))}${pick('module-dock','right','Right',box(22.5,4.5,7,15))}</div>
+${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" data-rd-action="widget-remove" data-widget="${key}">Remove from Home</button>`:''}`;
+   container.append(menu);menuKey=key;button.setAttribute('aria-expanded','true');
+   const r=button.getBoundingClientRect(),w=menu.offsetWidth||252,h=menu.offsetHeight||240,below=r.bottom+6+h<=win.innerHeight-8;
+   menu.style.left=Math.max(10,Math.min(win.innerWidth-w-10,r.right-w))+'px';menu.style.top=Math.max(10,below?r.bottom+6:r.top-h-6)+'px';
+   (menu.querySelector('[aria-checked="true"]')||menu.querySelector('button'))?.focus({preventScroll:true});
+  }
+  const outside=event=>{if(menu&&!event.composedPath().some(node=>node===menu||node?.classList?.contains?.('rd-arrange-more')))closeMenu();};
+  container.ownerDocument.addEventListener('pointerdown',outside,true);win.addEventListener('resize',closeMenu);
   function petInfo(){
    const c=ctx(),h=helpers(),next=nextDue(c,h),{board,today}=plan(c,h),d=board.days.find(x=>x.key===today);
    return {next:next?{id:next.id,title:next.title,course:next.course,when:`in ${howLong(next.ms)}`,urgent:next.ms<3*3600000}:null,todayOpen:d?.open||0,todayDone:d?.done||0};
@@ -186,6 +229,13 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
    if(action==='board-edit'&&button.dataset.from==='settings'){editing=true;closeSettings();go('work');rerender();container.querySelector('.rd-gallery')?.scrollIntoView({block:'nearest'});return true;}
    if(action==='board-edit'){editing=!editing;rerender();if(!editing)container.querySelector('[data-rd-action="board-edit"]')?.focus({preventScroll:true});return true;}
    if(action==='board-frame'){save(data=>{data.settings.panelFrame=button.dataset.value;});return true;}
+   if(action==='module-menu'){if(menu&&menuKey===key)closeMenu(true);else if(A.LABELS[key])openMenu(button,key);return true;}
+   if(action==='module-size'&&A.ALL.includes(key)&&Object.hasOwn(A.SIZES,button.dataset.value)){
+    const size=button.dataset.value;closeMenu(true);
+    save(data=>{const sizes={...(data.settings.moduleSize||{})};if(size==='m')delete sizes[key];else sizes[key]=size;data.settings.moduleSize=sizes;});return true;
+   }
+   if(action==='module-dock'&&A.ALL.includes(key)){const edge=button.dataset.value;closeMenu(true);save(data=>{A.change(data.settings,{type:'dock',key,target:A.ROOT,edge});});return true;}
+   if(action==='widget-remove')closeMenu();
    if(action==='widget-add'&&(A.EXTRA.includes(key)||key==='context')){save(data=>{A.change(data.settings,key==='context'?{type:'restore-context'}:{type:'add',key});});return true;}
    if(action==='widget-remove'&&A.removable(key)){save(data=>{A.change(data.settings,key==='context'?{type:'hide-context'}:{type:'remove',key});});return true;}
    if(action==='timer-toggle'){
@@ -197,13 +247,14 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
    if(action==='timer-minutes'){const n=Number(button.dataset.minutes);if([15,25,45,60].includes(n))save(data=>{data.focus={...data.focus,minutes:n,remaining:n*60,endsAt:null};});return true;}
    if(action==='plan-quick-add'){quickAdd(button.closest('form')?.querySelector('[data-rd-field="plan-quick"]'));return true;}
    if(action==='plan-carry'){const c=ctx(),h=helpers(),{board,today}=plan(c,h);save(data=>{for(const e of board.overdue)Plan().plan(e.id,today)(data);});return true;}
-   if(action==='pet-feed'){const pet=Pets().clean(store.get().pet);if(pet.treats)container.querySelector('.pet-layer .pet')?.click();return true;}
+   if(action==='pet-feed'){pets?.treat();return true;}
    if(action==='pet-roam'){save(data=>{const pet=Pets().clean(data.pet);data.pet={...pet,enabled:true,roam:pet.roam==='home'?'page':'home'};});return true;}
    if(action==='pet-settings'){settingsTab='pet';openSettings('pet');rerender();return true;}
    return false;
   }
   function keydown(event){
    if(planner?.keydown(event))return true;
+   if(event.key==='Escape'&&menu){event.preventDefault();closeMenu(true);return true;}
    // Keys are heard on the document, where a shadow root hides the real target.
    const target=event.composedPath?.()[0]||event.target;
    if(event.key==='Enter'&&target?.dataset?.rdField==='plan-quick'){event.preventDefault();quickAdd(target);return true;}
@@ -227,7 +278,7 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
     if((key==='coat'||key==='harness')&&!Pets().unlocked(key,value,Pets().clean(store.get().pet).xp))return true;
     save(data=>{data.pet={...Pets().clean(data.pet),[key]:value};});return true;
    }
-   if(field==='setting'&&target.dataset.onoff==='true'){const key=target.dataset.setting;if(['greeting','livingArt'].includes(key))save(data=>{data.settings[key]=target.checked?'on':'off';});return true;}
+   if(field==='setting'&&target.dataset.onoff==='true'){const key=target.dataset.setting;if(['greeting','livingArt','quickOpen'].includes(key))save(data=>{data.settings[key]=target.checked?'on':'off';});return true;}
    return false;
   }
   function flushNotes(){
@@ -242,7 +293,7 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
    ensurePets();const c=ctx(),h=helpers(),{board,today}=plan(c,h),d=board.days.find(x=>x.key===today);
    pets?.celebrate(kind,{today,left:d?d.open:undefined});
   }
-  function destroy(){dead=true;clearInterval(clockTimer);clearInterval(timerTick);flushNotes();pets?.destroy();planner?.destroy();}
+  function destroy(){dead=true;closeMenu();container.ownerDocument.removeEventListener('pointerdown',outside,true);win.removeEventListener('resize',closeMenu);clearInterval(clockTimer);clearInterval(timerTick);flushNotes();pets?.destroy();planner?.destroy();}
   return {click,keydown,input,change,sync,finished,destroy,settingsTab:()=>settingsTab,planUI:()=>planner?.ui||{},editing:()=>editing,close(){if(editing){editing=false;rerender();}}};
  }
  const api={INFO,FRAMES,glyph,render,gallery,create,focusState,howLong,nextDue,plan};
