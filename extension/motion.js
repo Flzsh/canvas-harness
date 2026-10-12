@@ -517,7 +517,10 @@
     function snapTo(shell,items){
       if(!items.length)return;
       shell.dataset.selSnap=items.map(([surface])=>surface.key).join(' ');
-      for(const [surface,g] of items){write(shell,surface.key,g);if(g.box)try{void root.getComputedStyle?.(g.box,surface.pseudo)?.translate;}catch{}}
+      // Every snap is written before the first flush: the flag above already names them all, so the page is
+      // restyled once and not once per surface.
+      for(const [surface,g] of items)write(shell,surface.key,g);
+      for(const [surface,g] of items)if(g.box)try{void root.getComputedStyle?.(g.box,surface.pseudo)?.translate;}catch{}
       delete shell.dataset.selSnap;
     }
     function place(animate=false,snap=null){

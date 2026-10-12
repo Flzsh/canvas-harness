@@ -13,7 +13,8 @@
 .pet[data-gear=none] :is(.pet-collar,.pet-blanket){display:none}
 .pet[data-gear=collar] .pet-blanket{display:none}
 
-/* the rig */
+/* the rig. On the page pets.js writes these transforms straight onto the parts; the variables pose a pony drawn
+   without the controller (the settings picture). */
 .pet-up{transform:translateY(calc((var(--pet-down) + var(--pet-bob)) * 1px))}
 .pet-neck{transform:rotate(calc(var(--pet-neck) * 1deg))}
 .pet-head{transform:rotate(calc(var(--pet-head) * 1deg))}

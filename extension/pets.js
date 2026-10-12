@@ -109,12 +109,29 @@
    moveTo(l.x0+spot.u,l.y);
   }
   function moveTo(x,y){if(!node)return;const s=size(),h=s*64/72;node.style.transform=`translate(${(x-s/2).toFixed(1)}px,${(y-h*60/64).toFixed(1)}px)`;node._x=x;node._y=y;if(bubble)placeBubble();}
+  // The pose is written onto the few parts that move, and only when a value changed. (Setting the numbers as
+  // variables on the pony instead would restyle every shape of the drawing on every frame.)
+  let rig=null;
+  function parts(){
+   if(rig&&rig.of===node)return rig;
+   const q=sel=>node.querySelector(sel),all=sel=>[...node.querySelectorAll(sel)];
+   return rig={of:node,up:q('.pet-up'),neck:q('.pet-neck'),head:q('.pet-head'),a:all('.pet-leg.lf,.pet-leg.lh2'),b:all('.pet-leg.lh,.pet-leg.lf2'),legs:all('.pet-legs'),tuck:all('.pet-tuck,.pet-tuck2'),shadow:q('.pet-shadow'),last:new Map()};
+  }
+  function put(el,prop,value){if(!el)return;const seen=rig.last.get(el)||rig.last.set(el,{}).get(el);if(seen[prop]!==value){seen[prop]=value;el.style[prop]=value;}}
   function paint(){
-   if(!node)return;const st=node.style;
-   st.setProperty('--pet-leg',(Math.sin(phase)*ch.leg).toFixed(2));st.setProperty('--pet-bob',(-Math.abs(Math.sin(phase))*ch.leg*.055).toFixed(2));
-   st.setProperty('--pet-down',ch.down.toFixed(2));st.setProperty('--pet-neck',(ch.neck+(pose==='eat'?Math.sin(phase*2.4)*2.5:Math.sin(phase)*ch.leg*.12)).toFixed(2));st.setProperty('--pet-head',ch.head.toFixed(2));
-   st.opacity=ch.alpha<.995?ch.alpha.toFixed(2):'';
-   const lying=String(ch.down>5.5);if(node.dataset.lying!==lying)node.dataset.lying=lying;
+   if(!node)return;const p=parts(),leg=Math.sin(phase)*ch.leg,down=ch.down,bob=-Math.abs(Math.sin(phase))*ch.leg*.055;
+   const neck=ch.neck+(pose==='eat'?Math.sin(phase*2.4)*2.5:leg*.12),fold=(1-down/14.6).toFixed(3);
+   // in the air, held, or cheering, the stylesheet poses the legs and shadow itself
+   const free=pose==='fall'||pose==='held'||pose==='cheer';
+   put(p.up,'transform',`translateY(${(down+bob).toFixed(2)}px)`);
+   put(p.neck,'transform',`rotate(${neck.toFixed(2)}deg)`);put(p.head,'transform',`rotate(${ch.head.toFixed(2)}deg)`);
+   for(const el of p.a)put(el,'transform',free?'':`rotate(${leg.toFixed(2)}deg) scaleY(${fold})`);
+   for(const el of p.b)put(el,'transform',free?'':`rotate(${(-leg).toFixed(2)}deg) scaleY(${fold})`);
+   const standing=clamp((10-down)/2.5,0,1).toFixed(2),lyingDown=clamp((down-7)/3.5,0,1).toFixed(2);
+   for(const el of p.legs)put(el,'opacity',standing);for(const el of p.tuck)put(el,'opacity',lyingDown);
+   put(p.shadow,'transform',free?'':`scaleX(${(1+down/60).toFixed(3)})`);
+   put(node,'opacity',ch.alpha<.995?ch.alpha.toFixed(2):'');
+   const lying=String(down>5.5);if(node.dataset.lying!==lying)node.dataset.lying=lying;
   }
   // ---- deciding
   function stop(){win.cancelAnimationFrame?.(raf);clearTimeout(timer);raf=0;timer=0;}

@@ -45,19 +45,21 @@
    const fixed=container.dataset.workPage==='assignments';if(fixed)layout={axis:'x',children:['work','reader']};
    if(getSettings().showCourseInformation===false&&!drag)layout=M.prune(layout,'context');
    const spec=M.grid(layout,desk.clientWidth||desk.getBoundingClientRect().width,fixed?{reader:'l'}:getSettings().moduleSize||{}),list=panels();
-   desk.style.setProperty('--rd-layout-columns',spec.columns);
-   for(const node of list){const cell=spec.cells[node.dataset.arrangeKey];if(cell)node.style.setProperty('--rd-panel-column',cell.column);}
+   // Written only when it changed, so an unchanged layout costs no restyle.
+   const put=(node,name,value)=>{if(node.style.getPropertyValue?.(name)!==value)node.style.setProperty(name,value);};
+   put(desk,'--rd-layout-columns',spec.columns);
+   for(const node of list){const cell=spec.cells[node.dataset.arrangeKey];if(cell)put(node,'--rd-panel-column',cell.column);}
    // Columns first, then rows from what each module now measures, so stacks beside one another stay independent.
    const heights={};let measured=false;
-   for(const node of list)if(node.style.minHeight)node.style.minHeight='';
    for(const node of list){const h=Number(node.offsetHeight)||0;heights[node.dataset.arrangeKey]=h;if(h>0)measured=true;}
    if(measured&&M.rows){
     const placed=M.rows(spec.resolved,heights,{gap:ROW_GAP,unit:ROW_UNIT});
-    desk.style.setProperty('--rd-layout-rows','none');desk.dataset.rows='measured';
-    for(const node of list){const key=node.dataset.arrangeKey,row=placed.cells[key];if(row)node.style.setProperty('--rd-panel-row',row);if(placed.fill[key]&&node!==drag?.node)node.style.minHeight=placed.fill[key]+'px';}
+    put(desk,'--rd-layout-rows','none');if(desk.dataset.rows!=='measured')desk.dataset.rows='measured';
+    // A module drawn down to its row's bottom edge keeps its own height; only its outline grows (widgets.css).
+    for(const node of list){const key=node.dataset.arrangeKey,row=placed.cells[key];if(row)put(node,'--rd-panel-row',row);put(node,'--rd-panel-grow',placed.fill[key]&&node!==drag?.node?Math.max(0,placed.fill[key]-heights[key])+'px':'0px');}
    }else{
-    desk.style.setProperty('--rd-layout-rows',spec.rows);delete desk.dataset.rows;
-    for(const node of list){const cell=spec.cells[node.dataset.arrangeKey];if(cell)node.style.setProperty('--rd-panel-row',cell.row);}
+    put(desk,'--rd-layout-rows',spec.rows);delete desk.dataset.rows;
+    for(const node of list){const cell=spec.cells[node.dataset.arrangeKey];if(cell)put(node,'--rd-panel-row',cell.row);}
    }
    watch(list);
   }
