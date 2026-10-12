@@ -1,7 +1,9 @@
 /* Direct manipulation of personal layout only. Original creator: Flzsh. */
 (function(root){
  'use strict';
- const HOLD_MS=420,HOLD_DELAY_MS=250,SLOP=8;
+ const HOLD_MS=420,HOLD_DELAY_MS=250,RING_DELAY_MS=130,SLOP=8;
+ // The circle drawn round the pointer while a hold runs: one pen stroke that overshoots where it began.
+ const RING_PATH='M31 6.5C44.5 5.6 54.6 16.4 54 30.4C53.4 44.2 43 54.6 29.6 54C16.4 53.4 5.6 43.4 6.2 29.6C6.8 16.6 16.8 6.4 30.4 6.4C32.6 6.4 35 6.9 37.4 7.9';
  const spring=Array.from({length:25},(_,i)=>{const t=i/24,p=i===24?1:1-(1+9*t)*Math.exp(-9*t);return {offset:t,p};});
  function create({container,getSettings,getCourseIds=()=>[],onChange,onModeChange},M){
   const doc=container.ownerDocument||root.document,win=doc.defaultView||root;
@@ -45,7 +47,20 @@
    else applyLayout();
    if(smooth)flip(before);
   }
-  function clearPending(){if(!pending)return;clearTimeout(pending.timer);clearTimeout(pending.feedbackTimer);pending.node.removeAttribute('data-hold');pending.head?.removeAttribute('data-hold');pending=null;}
+  // Hold feedback is a hand-drawn circle that closes at the moment of the lift, not a tint over the panel.
+  let ring=null;
+  function drawRing(x,y){
+   endRing();
+   if(reduced())return;
+   ring=make('rd-hold-ring');ring.setAttribute('aria-hidden','true');
+   ring.style.left=x+'px';ring.style.top=y+'px';ring.style.setProperty('--rd-hold-draw',(HOLD_MS-RING_DELAY_MS)+'ms');
+   ring.innerHTML='<svg viewBox="0 0 60 60" width="60" height="60"><path class="rd-hold-ring-paper" pathLength="1" d="'+RING_PATH+'"/><path pathLength="1" d="'+RING_PATH+'"/></svg>';
+  }
+  function endRing(done=false){
+   if(!ring)return;const node=ring;ring=null;
+   if(done&&!reduced()){node.dataset.done='true';setTimeout(()=>node.remove(),280);}else node.remove();
+  }
+  function clearPending(lifted=false){if(!pending)return;clearTimeout(pending.timer);clearTimeout(pending.feedbackTimer);clearTimeout(pending.ringTimer);endRing(lifted);pending.node.removeAttribute('data-hold');pending.head?.removeAttribute('data-hold');pending=null;}
   function source(target){
    if(!target?.closest||target.closest('a,input,textarea,select,label,summary,[contenteditable="true"]'))return null;
    const card=target.closest('[data-arrange-course]');
@@ -69,7 +84,7 @@
   function lift(info,event,keyboard=false){
    const rect=info.node.getBoundingClientRect();
    for(const node of animations.keys())stopAnimation(node);
-   clearPending();
+   clearPending(!keyboard);
    drag={...info,pointerId:event.pointerId,keyboard,x:event.clientX??rect.left+rect.width/2,y:event.clientY??rect.top+24,startX:event.clientX??rect.left,startY:event.clientY??rect.top,rect,moved:false,drop:null,candidate:null,stable:measure(info.kind==='course'?cards():panels()),originalNodes:cards(),foot:container.querySelector('.rd-rail-foot'),originalNavigation:getSettings().courseNavigation||'sidebar'};
    drag.offsetX=drag.x-rect.left;drag.offsetY=drag.y-rect.top;
    // A course card is moved in the DOM while previewing. Capture on the stable
@@ -196,6 +211,7 @@
    cancel({quiet:true});pending={...info,x:event.clientX,y:event.clientY,pointerId:event.pointerId,event};
    // A normal click has no progress animation. Every move requires its own hold;
    // releasing never switches the rest of the workspace into an unlocked mode.
+   pending.ringTimer=setTimeout(()=>{if(pending)drawRing(pending.x,pending.y);},RING_DELAY_MS);
    pending.feedbackTimer=setTimeout(()=>{if(pending)info.node.dataset.hold='true';},HOLD_DELAY_MS);
    pending.timer=setTimeout(()=>{if(pending){lift(info,event);suppressUntil=Date.now()+800;}},HOLD_MS);return true;
   }
