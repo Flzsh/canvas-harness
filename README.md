@@ -1,8 +1,6 @@
-<p align="center">
-  <img src="extension/icon.svg" width="96" height="96" alt="Canvas Harness logo">
-</p>
-
-<h1 align="center">Canvas Harness</h1>
+<h1 align="center">
+  <img src="docs/media/banner.gif" width="880" alt="Canvas Harness: a hammer knocks a lobe out of the gear, the school subjects fly out and line up, and the name is painted in">
+</h1>
 
 <p align="center">
   Inspired by AI harnesses, Canvas Harness gives you a workspace you can make your own. Find your work faster, study the way you prefer, and make Canvas comfortable to use.

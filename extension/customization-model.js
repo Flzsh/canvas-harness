@@ -2,10 +2,10 @@
 (function(root){
  'use strict';
  const arrange=root.ReserveWorkspaceArrange||(typeof module==='object'&&module.exports?require('./workspace-arrange.js'):null);
- const enums={courseNavigation:['sidebar','topbar'],deskOrder:['context-first','work-first','stacked'],surfaceStyle:['paper','clean','contrast'],courseCardStyle:['sketch','rounded','minimal'],bannerSize:['compact','standard','large']};
- const defaults={courseNavigation:'sidebar',deskOrder:'context-first',surfaceStyle:'paper',courseCardStyle:'sketch',bannerSize:'standard',showCourseIcons:true,showDeadlinePreview:true,showBookmarks:true,showCourseInformation:true,showCourseStrip:true,showRecentGrades:false,density:'comfortable',workspaceOrder:['context','work','reader'],workspaceMode:'side-by-side',workspaceLayout:null,workspaceUndo:null};
+ const enums={courseNavigation:['sidebar','topbar'],deskOrder:['context-first','work-first','stacked'],surfaceStyle:['paper','clean','contrast'],courseCardStyle:['sketch','rounded','minimal'],bannerSize:['compact','standard','large'],panelFrame:['pen','stitch','card','line','none']};
+ const defaults={courseNavigation:'sidebar',deskOrder:'context-first',surfaceStyle:'paper',courseCardStyle:'sketch',bannerSize:'standard',showCourseIcons:true,showDeadlinePreview:true,showBookmarks:true,showCourseInformation:true,showCourseStrip:true,showRecentGrades:false,density:'comfortable',panelFrame:'pen',moduleSize:{},workspaceOrder:['context','work','reader'],workspaceMode:'side-by-side',workspaceLayout:null,workspaceUndo:null};
  const artKeys=['bannerArt','borderArt','iconArt','titleArt'];
- const presets={studio:{...defaults},study:{...defaults,deskOrder:'work-first',workspaceOrder:['work','reader','context'],surfaceStyle:'clean',courseCardStyle:'rounded',bannerSize:'compact'},focus:{...defaults,courseNavigation:'topbar',deskOrder:'stacked',workspaceMode:'stacked',bannerSize:'compact',showCourseInformation:false,showDeadlinePreview:false}};
+ const presets={studio:{...defaults},study:{...defaults,deskOrder:'work-first',workspaceOrder:['work','reader','context'],surfaceStyle:'clean',courseCardStyle:'rounded',bannerSize:'compact'},focus:{...defaults,courseNavigation:'topbar',deskOrder:'work-first',workspaceOrder:['work','reader','context'],bannerSize:'compact',showCourseInformation:false,showDeadlinePreview:false}};
  function cleanAppearance(value={}){
   if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid course appearance.');
   const out={bannerFit:'contain',bannerPosition:'right'};

@@ -1,0 +1,121 @@
+/* Canvas Harness companion: how the pony is posed and moved. The drawing is pet-art.js; where it goes is pets.js.
+   pets.js eases five numbers every frame (leg swing, how far it has sunk to lie down, neck, head, step bounce) and
+   this sheet turns them into the pose, so standing, walking and lying down flow into each other. */
+.pet{--pet-coat:#F1DEC0;--pet-shade:#DDC49C;--pet-mane:#C96442;--pet-muzzle:#F6C9B4;--pet-harness:#E2463B;--pet-ink:#141413;--pet-leg:0;--pet-down:0;--pet-neck:9;--pet-head:0;--pet-bob:0;display:block;width:var(--pet-size,60px);aspect-ratio:72/64;line-height:0}
+/* a pony drawn without the controller (the settings picture) takes its pose from these */
+.pet:is([data-pose=lie],[data-pose=read],[data-pose=sleep]){--pet-down:11.5}
+.pet[data-pose=sleep]{--pet-neck:44;--pet-head:18}.pet[data-pose=read]{--pet-neck:29;--pet-head:14}.pet[data-pose=eat]{--pet-neck:60;--pet-head:22}
+.pet-svg{display:block;width:100%;height:100%;overflow:visible;transition:transform .22s ease-in-out}
+.pet[data-face=left] .pet-svg{transform:scaleX(-1)}
+.pet-svg *{transform-box:view-box}
+/* parts that only some poses show */
+.pet-book,.pet-oats,.pet-zz,.pet-sparks,.pet-flag,.pet-lid{display:none}
+.pet[data-gear=none] :is(.pet-collar,.pet-blanket){display:none}
+.pet[data-gear=collar] .pet-blanket{display:none}
+
+/* the rig */
+.pet-up{transform:translateY(calc((var(--pet-down) + var(--pet-bob)) * 1px))}
+.pet-neck{transform:rotate(calc(var(--pet-neck) * 1deg))}
+.pet-head{transform:rotate(calc(var(--pet-head) * 1deg))}
+/* legs: diagonal pairs swing together; as the body sinks they fold under it and the tucked legs show instead */
+.pet-leg{transform:rotate(calc(var(--pet-leg) * 1deg)) scaleY(calc(1 - var(--pet-down) / 14.6))}
+.pet-leg:is(.lh,.lf2){transform:rotate(calc(var(--pet-leg) * -1deg)) scaleY(calc(1 - var(--pet-down) / 14.6))}
+.pet-legs{opacity:calc((10 - var(--pet-down)) / 2.5)}
+.pet-tuck,.pet-tuck2{opacity:calc((var(--pet-down) - 7) / 3.5)}
+.pet-shadow{transform-origin:34px 60px;transform:scaleX(calc(1 + var(--pet-down) / 60))}
+
+/* standing still: the tail swings, it blinks, the head nods a little (these ride on top of the rig) */
+.pet-tail{animation:pet-tail 3.4s ease-in-out infinite}
+.pet-head{animation:pet-nod 5.2s ease-in-out infinite}
+.pet-eye{animation:pet-blink 4.6s steps(1) infinite}
+.pet-lid{display:block;opacity:0;animation:pet-lid 4.6s steps(1) infinite}
+@keyframes pet-tail{0%,100%{transform:rotate(5deg)}50%{transform:rotate(-7deg)}}
+@keyframes pet-nod{0%,100%{rotate:0deg}50%{rotate:-3deg}}
+@keyframes pet-blink{0%,93%{opacity:1}94%,100%{opacity:0}}
+@keyframes pet-lid{0%,93%{opacity:0}94%,100%{opacity:1}}
+.pet[data-pose=trot] .pet-tail{animation:pet-fly .5s ease-in-out infinite alternate}
+@keyframes pet-fly{from{transform:rotate(-20deg)}to{transform:rotate(-30deg)}}
+
+/* lying down, asleep, reading */
+.pet[data-lying=true] .pet-tail{animation-duration:5.6s}
+.pet[data-pose=sleep] .pet-neck{animation:pet-breathe 3.8s ease-in-out infinite}
+.pet[data-pose=sleep] .pet-head{animation:none}
+.pet[data-pose=sleep]:not([data-lying=false]) .pet-eye{animation:none;opacity:0}
+.pet[data-pose=sleep]:not([data-lying=false]) .pet-lid{animation:none;opacity:1}
+.pet[data-pose=sleep] .pet-tail{animation:none;transform:rotate(8deg)}
+.pet[data-pose=sleep]:not([data-lying=false]) .pet-zz{display:block}
+.pet[data-pose=sleep] .z1{animation:pet-zz 2.8s ease-in-out infinite}
+.pet[data-pose=sleep] .z2{animation:pet-zz 2.8s ease-in-out 1.1s infinite}
+@keyframes pet-breathe{0%,100%{rotate:0deg}50%{rotate:-2.5deg}}
+@keyframes pet-zz{0%{opacity:0;transform:translate(-2px,3px)}30%,70%{opacity:1}100%{opacity:0;transform:translate(3px,-6px)}}
+.pet[data-pose=read]:not([data-lying=false]) .pet-book{display:block;animation:pet-show .3s ease-out}
+.pet[data-pose=read] .pet-neck{animation:pet-read 6.4s ease-in-out infinite}
+.pet[data-pose=read] .pet-head{animation:none}
+@keyframes pet-read{0%,42%{rotate:-2deg}50%,92%{rotate:2deg}100%{rotate:-2deg}}
+@keyframes pet-show{from{opacity:0}to{opacity:1}}
+
+/* eating a treat */
+.pet[data-pose=eat] .pet-oats{display:block;animation:pet-show .3s ease-out}
+.pet[data-pose=eat] .pet-head{animation:none}
+
+/* pleased: a hop, tail up, a few sparks */
+.pet[data-pose=cheer] .pet-all{animation:pet-hop .66s cubic-bezier(.3,0,.4,1) 2}
+.pet[data-pose=cheer] .pet-shadow{animation:pet-shade .66s cubic-bezier(.3,0,.4,1) 2}
+.pet[data-pose=cheer] .pet-tail{animation:pet-fly .33s ease-in-out infinite alternate}
+.pet[data-pose=cheer] :is(.lf,.lf2){animation:pet-kick .66s ease-in-out 2}
+.pet[data-pose=cheer] :is(.lh,.lh2){animation:pet-kick-back .66s ease-in-out 2}
+.pet[data-pose=cheer] .pet-sparks{display:block}
+.pet[data-pose=cheer] .pet-sparks path{transform-origin:center;transform-box:fill-box;animation:pet-spark .93s ease-in-out infinite}
+.pet[data-pose=cheer] .pet-sparks .s2{animation-delay:.3s}.pet[data-pose=cheer] .pet-sparks .s3{animation-delay:.6s}
+@keyframes pet-hop{0%,100%{transform:translateY(0)}12%{transform:translateY(1.4px)}50%{transform:translateY(-8px)}}
+@keyframes pet-shade{0%,100%{transform:scaleX(1);opacity:.13}50%{transform:scaleX(.72);opacity:.07}}
+@keyframes pet-kick{0%,100%{transform:rotate(0)}50%{transform:rotate(-30deg)}}
+@keyframes pet-kick-back{0%,100%{transform:rotate(0)}50%{transform:rotate(26deg)}}
+@keyframes pet-spark{0%,100%{transform:scale(.3);opacity:0}50%{transform:scale(1);opacity:1}}
+
+/* carrying a note: something is due */
+.pet[data-pose=flag] .pet-flag{display:block;transform-origin:63px 20px;animation:pet-wave 1.9s ease-in-out infinite}
+@keyframes pet-wave{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(7deg)}}
+
+/* picked up, in the air */
+.pet-all{transition:transform .2s ease-out;transform-origin:36px 20px}
+.pet[data-pose=held] .pet-all{transform:rotate(-7deg)}
+.pet:is([data-pose=held],[data-pose=fall]) .pet-shadow{opacity:0}
+.pet-shadow{transition:opacity .18s}
+.pet[data-pose=held] :is(.lf,.lf2){animation:pet-dangle 1.1s ease-in-out infinite alternate}
+.pet[data-pose=held] :is(.lh,.lh2){animation:pet-dangle 1.1s ease-in-out infinite alternate-reverse}
+.pet[data-pose=held] .pet-tail{animation:none;transform:rotate(14deg)}
+@keyframes pet-dangle{from{transform:rotate(-9deg)}to{transform:rotate(11deg)}}
+.pet-leg{transition:transform .16s ease-out}
+.pet:is([data-pose=walk],[data-pose=trot]) .pet-leg{transition:none}
+.pet[data-pose=fall] :is(.lf,.lf2){transform:rotate(-24deg)}
+.pet[data-pose=fall] :is(.lh,.lh2){transform:rotate(22deg)}
+.pet[data-pose=fall] .pet-tail{animation:none;transform:rotate(-30deg)}
+
+/* stillness on request */
+@media (prefers-reduced-motion:reduce){.pet *{animation:none!important;transition:none!important}}
+.pet[data-still=true] *{animation:none!important;transition:none!important}
+
+/* ---- on the page: the layer the pony walks in, and what it says ---- */
+.pet-layer{position:fixed;inset:0;z-index:1500;pointer-events:none;overflow:visible;contain:layout style}
+.pet-layer .pet{position:absolute;left:0;top:0;padding:0;border:0;background:none;cursor:grab;pointer-events:auto;touch-action:none;will-change:transform;-webkit-tap-highlight-color:transparent}
+.pet-layer .pet[data-grabbed=true]{cursor:grabbing}
+.pet-layer .pet:focus-visible{outline:2px solid var(--rd-accent,#C96442);outline-offset:4px;border-radius:12px}
+.pet-bubble{position:absolute;left:0;top:0;width:max-content;max-width:min(268px,calc(100vw - 20px));padding:12px 14px;pointer-events:auto;color:var(--rd-ink,#141413);background:var(--rd-surface,#FFFDF8);border:1.6px solid var(--rd-ink,#141413);border-radius:15px 13px 16px 12px/13px 16px 12px 15px;box-shadow:3px 4px 0 color-mix(in srgb,var(--rd-ink,#141413) 12%,transparent);font:500 13px/1.45 var(--rd-ui-font,system-ui);animation:pet-pop .16s ease-out}
+.pet-bubble::after{content:"";position:absolute;left:var(--pet-tail-x,50%);bottom:-7px;width:11px;height:11px;margin-left:-6px;background:inherit;border:solid var(--rd-ink,#141413);border-width:0 1.6px 1.6px 0;transform:rotate(45deg) skew(6deg,6deg)}
+.pet-bubble[data-below=true]::after{bottom:auto;top:-7px;border-width:1.6px 0 0 1.6px}
+@keyframes pet-pop{from{opacity:0;scale:.94}to{opacity:1;scale:1}}
+.pet-bubble p{margin:0}
+.pet-say strong{font-weight:650}
+.pet-when{display:block;margin-top:2px;color:var(--rd-muted,#5E5D59);font-size:12px}
+.pet-head{display:grid;grid-template-columns:1fr auto;gap:1px 10px;align-items:baseline;margin-bottom:8px}
+.pet-head strong{font:600 15px/1.2 var(--rd-display-font,Georgia,serif)}
+.pet-head span{color:var(--rd-muted,#5E5D59);font-size:12px}
+.pet-meter{grid-column:1/-1;height:5px;margin-top:5px;border-radius:9px;background:color-mix(in srgb,var(--rd-ink,#141413) 10%,transparent);overflow:hidden}
+.pet-meter i{display:block;height:100%;border-radius:9px;background:var(--rd-accent,#C96442)}
+.pet-items{display:grid;gap:2px;margin:9px -6px -4px}
+.pet-item{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:34px;padding:6px 9px;border:0;border-radius:9px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.pet-item:hover:not(:disabled),.pet-item:focus-visible{background:color-mix(in srgb,var(--rd-accent,#C96442) 13%,transparent);outline:none}
+.pet-item:disabled{color:var(--rd-muted,#8a8880);cursor:default}
+.pet-count{min-width:22px;padding:1px 7px;border-radius:99px;background:color-mix(in srgb,var(--rd-ink,#141413) 9%,transparent);font-size:12px;text-align:center}
+@media (prefers-reduced-motion:reduce){.pet-bubble{animation:none}}

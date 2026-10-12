@@ -1,0 +1,9 @@
+<!doctype html><meta charset="utf-8"><title>Pet lab</title><link rel="stylesheet" href="../extension/pet.css">
+<style>body{margin:0;padding:18px;background:#FAF9F5;font:12px system-ui;color:#5E5D59}.g{display:grid;grid-template-columns:repeat(6,1fr);gap:16px 10px}.c{display:grid;justify-items:center;gap:4px;padding:26px 0 8px;border-bottom:2px solid #141413}.c span{order:2}.pet{--pet-size:150px}.row2 .pet{--pet-size:60px}.row2 .c{padding-top:10px}</style>
+<div class="g" id="g"></div><div class="g row2" id="h" style="margin-top:26px"></div>
+<script src="../extension/pet-art.js"></script><script>
+const A=ReservePetArt,coats=Object.keys(A.COATS);
+const mk=(pose,coat='oat',face='right',gear='full',harness='red')=>{const c=A.COATS[coat];return `<div class="c"><div class="pet" data-pose="${pose}" data-face="${face}" data-gear="${gear}" style="--pet-coat:${c.coat};--pet-shade:${c.shade};--pet-mane:${c.mane};--pet-muzzle:${c.muzzle};--pet-harness:${A.HARNESS[harness]}">${A.svg()}</div><span>${pose} · ${coat}</span></div>`};
+g.innerHTML=A.POSES.map(p=>mk(p)).join('')+mk('stand','oat','left');
+h.innerHTML=coats.map((c,i)=>mk(['stand','walk','lie','flag','cheer','read'][i],c,i%2?'left':'right',['full','collar','full','none','full','collar'][i],Object.keys(A.HARNESS)[i])).join('');
+</script>

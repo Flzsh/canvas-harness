@@ -50,7 +50,8 @@ test('the personal editor renders as an accessible, nonmodal settings dock',()=>
 
 test('every original personal customization field, course editor, and grade control remains present',()=>{
  const html=dashboard(true);
- for(const key of ['dashboardLayout','density','textSize','font','motion','livingArt','readingFont','greeting','showCourseStrip','showRecentGrades']){
+ // "Workspace columns" (dashboardLayout) was a second control for the panel order; its one-column choice now lives in deskOrder.
+ for(const key of ['deskOrder','density','textSize','font','motion','livingArt','readingFont','greeting','showCourseStrip','showRecentGrades']){
   assert.ok(html.includes(`data-setting="${key}"`),`keep personal ${key} control`);
  }
  for(const field of ['course-visible','course-color','course-name']){

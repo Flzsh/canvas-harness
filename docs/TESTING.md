@@ -1,6 +1,8 @@
-# Release checks — Canvas Harness 2.21.3
+# Release checks — Canvas Harness 2.22.0
 
-The public suite passes **593 tests**, with no failures. Three optional isolated browser tests are skipped in the standard run. JavaScript syntax, manifest resources, icon dimensions, and package checks pass.
+The public suite passes **613 tests**, with no failures. Three optional isolated browser tests are skipped in the standard run. JavaScript syntax, manifest resources, icon dimensions, and package checks pass.
+
+The 2.22.0 checks add the Home modules and their arrangement (measured rows, module width, docking a module as a whole row or column), the planner model, the study companion's rewards, and the optional **Open at once** start: off, nothing saved is shown before the account check; on, an early view closes when the check names another account or cannot be made. These parts were exercised in the preview page with sample data.
 
 The 2.21.3 runtime checks cover Canvas rate-limit retries, cancellation and listener cleanup, a shorter cache window for partial results, and the local storage permission. The complete suite also passes beside a synchronized sibling checkout.
 

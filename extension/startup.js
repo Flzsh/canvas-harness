@@ -7,7 +7,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // Preferences alone decide whether to cover Canvas. The controller performs
   // the one fresh account check before opening any owner's saved workspace.
   const startedAt=performance.now(),deadline=startedAt+2500,subscribers=new Set();
-  const sheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css'];
+  const sheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css'];
   let state='pending',shell,observer,timer,preloaded=false;
   const preloadLinks=[];
   const loginPage=()=>!!document.querySelector('#login_form, #new_login, .ic-Login');

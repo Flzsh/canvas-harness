@@ -173,13 +173,32 @@
 }
 .rd [data-arrange-head] {position:relative;isolation:isolate;cursor:default;border-radius:9px;}
 .rd [data-hold=true] {position:relative;isolation:isolate;}
-.rd [data-hold=true]::after {
- content:"";position:absolute;inset:-10px;z-index:5;pointer-events:none;border:0;border-radius:16px;
- background:color-mix(in srgb,var(--rd-accent) 13%,transparent);transform-origin:left center;
- animation:rd-hold-fill 170ms linear both;
-}
-.rd [data-arrange-course][data-hold=true]::after {inset:-4px;}
-@keyframes rd-hold-fill {from{clip-path:inset(0 100% 0 0 round 12px);opacity:.4}to{clip-path:inset(0 0 0 0 round 12px);opacity:1}}
+/* The hold: a pencil draws a circle round the pointer, once in ink and once more loosely in the accent colour. */
+.rd .rd-hold-ring {position:fixed;z-index:1605;width:64px;height:64px;margin:-32px 0 0 -32px;pointer-events:none;--d:var(--rd-hold-draw,290ms);}
+.rd .rd-hold-ring svg {display:block;overflow:visible;}
+.rd .rd-hold-ring path {fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.rd .rd-hold-ring :is(.rd-hold-first,.rd-hold-second,.rd-hold-paper) {stroke-dasharray:1;stroke-dashoffset:1;}
+.rd .rd-hold-ring .rd-hold-paper {stroke:var(--rd-bg);stroke-width:8;animation:rd-hold-draw var(--d) cubic-bezier(.4,.05,.35,1) forwards;}
+.rd .rd-hold-ring .rd-hold-first {stroke:var(--rd-ink);stroke-width:2.5;animation:rd-hold-draw var(--d) cubic-bezier(.4,.05,.35,1) forwards;}
+.rd .rd-hold-ring .rd-hold-second {stroke:var(--rd-accent);stroke-width:2.1;opacity:.9;animation:rd-hold-draw calc(var(--d)*.6) cubic-bezier(.3,.1,.3,1) calc(var(--d)*.4) forwards;}
+.rd .rd-hold-ring .rd-hold-pencil {offset-rotate:0deg;offset-distance:0%;animation:rd-hold-pencil var(--d) cubic-bezier(.4,.05,.35,1) forwards;}
+.rd .rd-hold-ring .rd-hold-pencil path {stroke:var(--rd-ink);stroke-width:.9;}
+.rd .rd-hold-ring .rd-pencil-wood {fill:#EBD3A8;}.rd .rd-hold-ring .rd-pencil-body {fill:#F2C24A;}.rd .rd-hold-ring .rd-pencil-end {fill:#E8908A;}.rd .rd-hold-ring .rd-pencil-lead {fill:var(--rd-ink);}
+.rd .rd-hold-ring .rd-hold-marks {opacity:0;}
+.rd .rd-hold-ring .rd-hold-marks path {stroke:var(--rd-ink);stroke-width:2.2;}
+.rd .rd-hold-ring[data-done=true] {animation:rd-hold-done 360ms ease-out forwards;}
+.rd .rd-hold-ring[data-done=true] :is(.rd-hold-first,.rd-hold-second,.rd-hold-paper) {stroke-dashoffset:0;animation:none;}
+.rd .rd-hold-ring[data-done=true] .rd-hold-pencil {display:none;}
+.rd .rd-hold-ring[data-done=true] .rd-hold-marks {opacity:1;animation:rd-hold-marks 360ms ease-out forwards;transform-origin:32px 32px;}
+@keyframes rd-hold-draw {to{stroke-dashoffset:0}}
+@keyframes rd-hold-pencil {to{offset-distance:100%}}
+@keyframes rd-hold-done {0%{transform:scale(1)}35%{transform:scale(1.12);opacity:1}100%{transform:scale(1.2);opacity:0}}
+@keyframes rd-hold-marks {from{transform:scale(.8)}to{transform:scale(1.25)}}
+/* Loading: the same hand, a sketched ring that turns in steps like a flip-book rather than a smooth machine spin. */
+.rd .rd-sync-ring {border:0!important;border-radius:0!important;width:16px!important;height:16px!important;background:var(--rd-mark,currentColor);animation:rd-spin .96s steps(8) infinite!important;
+ -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='%23000' stroke-linecap='round'%3E%3Cpath stroke-width='3.6' d='M16.6 4.2C23.6 3.6 28.6 9.4 28 16.4C27.4 23 22.4 28 15.6 27.6C9.4 27.2 4.2 22.4 4.4 15.8'/%3E%3Cpath stroke-width='2' d='M5.2 11.4C6.6 8 9 5.8 12.4 4.8'/%3E%3Cpath stroke-width='1.6' d='M14.4 1.6C21.8 .6 30.6 7 30.8 16'/%3E%3C/g%3E%3C/svg%3E") center/contain no-repeat;
+ mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='%23000' stroke-linecap='round'%3E%3Cpath stroke-width='3.6' d='M16.6 4.2C23.6 3.6 28.6 9.4 28 16.4C27.4 23 22.4 28 15.6 27.6C9.4 27.2 4.2 22.4 4.4 15.8'/%3E%3Cpath stroke-width='2' d='M5.2 11.4C6.6 8 9 5.8 12.4 4.8'/%3E%3Cpath stroke-width='1.6' d='M14.4 1.6C21.8 .6 30.6 7 30.8 16'/%3E%3C/g%3E%3C/svg%3E") center/contain no-repeat;}
+.rd[data-input=keyboard] .rd-sync-ring {animation:none!important;}
 /* Breathe the surrounding surface, never the text or the measured layout.
    Subject cards keep their own illustrated border instead of a second ring. */
 .rd .rd-main > [data-arrange-key] {isolation:isolate;}

@@ -1,7 +1,15 @@
 /* Direct manipulation of personal layout only. Original creator: Flzsh. */
 (function(root){
  'use strict';
- const HOLD_MS=420,HOLD_DELAY_MS=250,SLOP=8;
+ const HOLD_MS=420,HOLD_DELAY_MS=250,RING_DELAY_MS=130,SLOP=8,ROW_GAP=18,ROW_UNIT=2;
+ // The circle drawn round the pointer while a hold runs, as a hand would draw it: a pencil goes round once in ink
+ // and overshoots where it began, a second looser pass follows in the accent colour, and three small marks fly
+ // off when the thing lifts.
+ const RING_PATH='M33 8.2C47.6 6.6 58.8 18.4 58 33.2C57.2 47.8 46 58.4 31.4 57.6C17.4 56.8 6.4 46.2 7.2 31.6C8 18.2 18.6 8 32.6 8.4C35.4 8.5 38.2 9.2 41 10.6';
+ const RING_PATH_2='M29.4 5.4C45.4 3.8 60.6 16.6 60.6 32.6C60.6 49 48.4 61 32.2 60.6C16.8 60.2 4 48 4.6 32C5.2 18 14.6 7.4 27.6 5.8';
+ const RING_SVG='<svg viewBox="0 0 64 64" width="64" height="64"><path class="rd-hold-paper" pathLength="1" d="'+RING_PATH+'"/><path class="rd-hold-second" pathLength="1" d="'+RING_PATH_2+'"/><path class="rd-hold-first" pathLength="1" d="'+RING_PATH+'"/>'+
+  '<g class="rd-hold-marks"><path d="M52.6 7.6l4.6-5.4M59.4 14.2l6-2.4M46 3.2l1.4-5.6"/></g>'+
+  '<g class="rd-hold-pencil" style="offset-path:path(\''+RING_PATH+'\')"><path class="rd-pencil-wood" d="M0 0L4.4 -1.5L1.5 -4.4z"/><path class="rd-pencil-body" d="M4.4 -1.5L14 -11.1L11.1 -14L1.5 -4.4z"/><path class="rd-pencil-end" d="M14 -11.1L16 -13.1L13.1 -16L11.1 -14z"/><path class="rd-pencil-lead" d="M0 0L1.7 -.6L.6 -1.7z"/></g></svg>';
  const spring=Array.from({length:25},(_,i)=>{const t=i/24,p=i===24?1:1-(1+9*t)*Math.exp(-9*t);return {offset:t,p};});
  function create({container,getSettings,getCourseIds=()=>[],onChange,onModeChange},M){
   const doc=container.ownerDocument||root.document,win=doc.defaultView||root;
@@ -33,10 +41,34 @@
   }
   function applyLayout(layout=M.snapshot(getSettings()).layout){
    const desk=main();if(!desk)return;
+   // The Assignments tab is the list beside the reader, whatever Home looks like.
+   const fixed=container.dataset.workPage==='assignments';if(fixed)layout={axis:'x',children:['work','reader']};
    if(getSettings().showCourseInformation===false&&!drag)layout=M.prune(layout,'context');
-   const spec=M.grid(layout,desk.clientWidth||desk.getBoundingClientRect().width);
-   desk.style.setProperty('--rd-layout-columns',spec.columns);desk.style.setProperty('--rd-layout-rows',spec.rows);
-   for(const node of panels()){const cell=spec.cells[node.dataset.arrangeKey];if(cell){node.style.setProperty('--rd-panel-column',cell.column);node.style.setProperty('--rd-panel-row',cell.row);}}
+   const spec=M.grid(layout,desk.clientWidth||desk.getBoundingClientRect().width,fixed?{reader:'l'}:getSettings().moduleSize||{}),list=panels();
+   desk.style.setProperty('--rd-layout-columns',spec.columns);
+   for(const node of list){const cell=spec.cells[node.dataset.arrangeKey];if(cell)node.style.setProperty('--rd-panel-column',cell.column);}
+   // Columns first, then rows from what each module now measures, so stacks beside one another stay independent.
+   const heights={};let measured=false;
+   for(const node of list)if(node.style.minHeight)node.style.minHeight='';
+   for(const node of list){const h=Number(node.offsetHeight)||0;heights[node.dataset.arrangeKey]=h;if(h>0)measured=true;}
+   if(measured&&M.rows){
+    const placed=M.rows(spec.resolved,heights,{gap:ROW_GAP,unit:ROW_UNIT});
+    desk.style.setProperty('--rd-layout-rows','none');desk.dataset.rows='measured';
+    for(const node of list){const key=node.dataset.arrangeKey,row=placed.cells[key];if(row)node.style.setProperty('--rd-panel-row',row);if(placed.fill[key]&&node!==drag?.node)node.style.minHeight=placed.fill[key]+'px';}
+   }else{
+    desk.style.setProperty('--rd-layout-rows',spec.rows);delete desk.dataset.rows;
+    for(const node of list){const cell=spec.cells[node.dataset.arrangeKey];if(cell)node.style.setProperty('--rd-panel-row',cell.row);}
+   }
+   watch(list);
+  }
+  // A module that grows or shrinks (a list loads, a note is typed) moves the ones below it.
+  let watched=new Set(),relayout=0;
+  const sizeWatch=win.ResizeObserver?new win.ResizeObserver(()=>{if(dead||drag||relayout)return;relayout=raf(()=>{relayout=0;if(!dead&&!drag)applyLayout();});}):null;
+  function watch(list){
+   if(!sizeWatch)return;const next=new Set(list);
+   for(const node of watched)if(!next.has(node))sizeWatch.unobserve(node);
+   for(const node of next)if(!watched.has(node))sizeWatch.observe(node);
+   watched=next;
   }
   function restore(smooth=true){
    if(!drag)return;
@@ -45,7 +77,20 @@
    else applyLayout();
    if(smooth)flip(before);
   }
-  function clearPending(){if(!pending)return;clearTimeout(pending.timer);clearTimeout(pending.feedbackTimer);pending.node.removeAttribute('data-hold');pending.head?.removeAttribute('data-hold');pending=null;}
+  // Hold feedback is a hand-drawn circle that closes at the moment of the lift, not a tint over the panel.
+  let ring=null;
+  function drawRing(x,y){
+   endRing();
+   if(reduced())return;
+   ring=make('rd-hold-ring');ring.setAttribute('aria-hidden','true');
+   ring.style.left=x+'px';ring.style.top=y+'px';ring.style.setProperty('--rd-hold-draw',(HOLD_MS-RING_DELAY_MS)+'ms');
+   ring.innerHTML=RING_SVG;
+  }
+  function endRing(done=false){
+   if(!ring)return;const node=ring;ring=null;
+   if(done&&!reduced()){node.dataset.done='true';setTimeout(()=>node.remove(),380);}else node.remove();
+  }
+  function clearPending(lifted=false){if(!pending)return;clearTimeout(pending.timer);clearTimeout(pending.feedbackTimer);clearTimeout(pending.ringTimer);endRing(lifted);pending.node.removeAttribute('data-hold');pending.head?.removeAttribute('data-hold');pending=null;}
   function source(target){
    if(!target?.closest||target.closest('a,input,textarea,select,label,summary,[contenteditable="true"]'))return null;
    const card=target.closest('[data-arrange-course]');
@@ -53,7 +98,7 @@
    const head=target.closest('[data-arrange-head]');
    if(!head||target.closest('button:not([data-arrange-grip])'))return null;
    const key=head.dataset.arrangeHead,node=head.closest('[data-arrange-key]');
-   if(!node||key!=='rail'&&container.dataset.workspace!=='work')return null;
+   if(!node||key!=='rail'&&(container.dataset.workspace!=='work'||container.dataset.workPage==='assignments'))return null;
    return {node,head,key,kind:key==='rail'?'rail':'panel',label:M.LABELS[key]};
   }
   function showHud(text){if(!hud){hud=make('rd-move-hud');hud.setAttribute('aria-hidden','true');}hud.textContent=text;}
@@ -69,7 +114,7 @@
   function lift(info,event,keyboard=false){
    const rect=info.node.getBoundingClientRect();
    for(const node of animations.keys())stopAnimation(node);
-   clearPending();
+   clearPending(!keyboard);
    drag={...info,pointerId:event.pointerId,keyboard,x:event.clientX??rect.left+rect.width/2,y:event.clientY??rect.top+24,startX:event.clientX??rect.left,startY:event.clientY??rect.top,rect,moved:false,drop:null,candidate:null,stable:measure(info.kind==='course'?cards():panels()),originalNodes:cards(),foot:container.querySelector('.rd-rail-foot'),originalNavigation:getSettings().courseNavigation||'sidebar'};
    drag.offsetX=drag.x-rect.left;drag.offsetY=drag.y-rect.top;
    // A course card is moved in the DOM while previewing. Capture on the stable
@@ -122,6 +167,18 @@
     return null;
    }
    const entries=[...drag.stable].filter(([node])=>node!==drag.node);
+   {const desk=main()?.getBoundingClientRect?.();
+    if(desk&&desk.width>0&&entries.length>1){
+     const top=Math.max(desk.top,70),bottom=Math.min(desk.bottom,win.innerHeight-8);
+     if(x>=desk.left-30&&x<=desk.right+30){
+      if(y<=desk.top+12)return {type:'dock',key:drag.key,target:M.ROOT,edge:'top'};   // anywhere above the modules means a row across the top
+      if(desk.bottom<=win.innerHeight-8&&y>=desk.bottom-10)return {type:'dock',key:drag.key,target:M.ROOT,edge:'bottom'};
+     }
+     if(y>=top&&y<=bottom){
+      if(x>=desk.left-60&&x<=desk.left+10)return {type:'dock',key:drag.key,target:M.ROOT,edge:'left'};
+      if(x>=desk.right-10&&x<=desk.right+60)return {type:'dock',key:drag.key,target:M.ROOT,edge:'right'};
+     }
+    }}
    for(const [node,original] of entries){
     const r={...original,left:original.left,top:original.top,right:original.right,bottom:original.bottom,width:original.width,height:original.height};
     // Stable targets avoid a moving-target loop while neighbours make room.
@@ -148,7 +205,7 @@
    if(drag.key==='context'&&hud){const r=hud.getBoundingClientRect();if(x>=r.left&&x<=r.right&&y>=r.top-35&&y<=r.bottom+20)return {type:'hide-context'};}
    return null;
   }
-  function textFor(c){return c.type==='swap'?`Swap ${M.LABELS[c.key]} with ${M.LABELS[c.target]}`:c.type==='dock'?`${M.LABELS[c.key]} ${({left:'to the left of',right:'to the right of',top:'above',bottom:'below'})[c.edge]} ${M.LABELS[c.target]}`:c.type==='course-move'?`${drag.label} ${c.position} ${cards().find(n=>keyOf(n)===c.target)?.querySelector('.rd-rail-name')?.textContent||'course'}`:c.type==='hide-context'?'Put course information away':`Courses ${c.value==='topbar'?'across the top':'on the left'}`;}
+  function textFor(c){return c.type==='swap'?`Swap ${M.LABELS[c.key]} with ${M.LABELS[c.target]}`:c.type==='dock'&&c.target===M.ROOT?`${M.LABELS[c.key]} ${({left:'as a column on the left',right:'as a column on the right',top:'as a full row at the top',bottom:'as a full row at the bottom'})[c.edge]}`:c.type==='dock'?`${M.LABELS[c.key]} ${({left:'to the left of',right:'to the right of',top:'above',bottom:'below'})[c.edge]} ${M.LABELS[c.target]}`:c.type==='course-move'?`${drag.label} ${c.position} ${cards().find(n=>keyOf(n)===c.target)?.querySelector('.rd-rail-name')?.textContent||'course'}`:c.type==='hide-context'?'Put course information away':`Courses ${c.value==='topbar'?'across the top':'on the left'}`;}
   function preview(c){
    if(!drag||JSON.stringify(c)===JSON.stringify(drag.drop))return;
    const before=measure(drag.kind==='course'?cards():panels());
@@ -196,6 +253,7 @@
    cancel({quiet:true});pending={...info,x:event.clientX,y:event.clientY,pointerId:event.pointerId,event};
    // A normal click has no progress animation. Every move requires its own hold;
    // releasing never switches the rest of the workspace into an unlocked mode.
+   pending.ringTimer=setTimeout(()=>{if(pending)drawRing(pending.x,pending.y);},RING_DELAY_MS);
    pending.feedbackTimer=setTimeout(()=>{if(pending)info.node.dataset.hold='true';},HOLD_DELAY_MS);
    pending.timer=setTimeout(()=>{if(pending){lift(info,event);suppressUntil=Date.now()+800;}},HOLD_MS);return true;
   }
@@ -282,7 +340,7 @@
   function lostCapture(event){if(drag&&!drag.keyboard&&drag.pointerId===event.pointerId)cancel();}
   const blur=()=>cancel();
   doc.addEventListener?.('pointerup',outsideUp);doc.addEventListener?.('lostpointercapture',lostCapture);win.addEventListener?.('blur',blur);
-  function destroy(){dead=true;revision++;cancel({quiet:true});clearPending();clearVisuals();for(const animation of animations.values())animation.cancel();animations.clear();observer?.disconnect();doc.removeEventListener?.('pointerup',outsideUp);doc.removeEventListener?.('lostpointercapture',lostCapture);win.removeEventListener?.('blur',blur);live?.remove();}
+  function destroy(){dead=true;revision++;cancel({quiet:true});clearPending();clearVisuals();for(const animation of animations.values())animation.cancel();animations.clear();observer?.disconnect();sizeWatch?.disconnect();if(relayout)caf(relayout);doc.removeEventListener?.('pointerup',outsideUp);doc.removeEventListener?.('lostpointercapture',lostCapture);win.removeEventListener?.('blur',blur);live?.remove();}
   return {active:()=>!!drag,dragging:()=>!!drag,pointerdown,pointermove,pointerup,pointercancel,click,contextmenu,action,keydown,sync,destroy};
  }
  const api={HOLD_MS,HOLD_DELAY_MS,SLOP,create};root.ReserveWorkspaceGestures=api;if(typeof module==='object'&&module.exports)module.exports=api;
