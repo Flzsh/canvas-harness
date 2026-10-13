@@ -57,14 +57,14 @@ Open **Appearance settings** for layout presets and smaller adjustments. Studio 
 Canvas Harness includes 22 automatic subject presets and a general fallback. To create something for your own course:
 
 1. Open the [artwork prompt](../skills/canvas-harness-art/PROMPT.md), copy the complete prompt into an AI assistant, and describe the course's topics, displayed name, and preferred color. An assistant that supports skills can use the [artwork skill folder](../skills/canvas-harness-art/README.md#using-it) instead.
-2. Ask for one **.chpack** file containing the coordinated banner, icon, and border. You can also try the [astronomy example pack](../skills/canvas-harness-art/examples/astronomy/astronomy.chpack).
+2. Ask for one **.chpack** file containing the coordinated banner, icon, and frame. You can also try the [astronomy example pack](../skills/canvas-harness-art/examples/astronomy/astronomy.chpack).
 3. Open **Appearance settings → Quick Upload** and choose or drop the pack. To paste it, open **Or paste a pack**, paste the complete output, and choose **Review pack**.
 4. Check each preview and its **Apply to** course. Resolve an unmatched course using the selector, or uncheck that group. Uncheck any piece you want to leave out.
 5. Choose **Apply N pieces**. Wait for **Artwork applied** before treating the changes as saved.
 
 Reviewing a pack does not apply it. **Undo last pack** restores the most recently applied artwork while this workspace session remains open, provided the affected artwork and banner options have not since changed. It leaves unrelated preferences intact. If Undo reports a conflict, review your current art and restore an earlier personal backup if needed.
 
-Quick Upload supports banners, icons, and borders. Use **Course artwork** below it for individual SVG uploads, including a separate custom title, or to restore a built-in drawing. More detail is in [Themes and artwork](THEMES.md#make-an-artwork-pack-with-an-ai-assistant).
+Quick Upload supports banners, icons, and frames. Use **Course artwork** below it for individual SVG uploads, including a separate custom title, or to restore a built-in drawing. More detail is in [Themes and artwork](THEMES.md#make-an-artwork-pack-with-an-ai-assistant).
 
 ## Use Tools beside an assignment
 

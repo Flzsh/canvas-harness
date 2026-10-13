@@ -408,3 +408,58 @@
 .rd .rd-course-rail .rd-rail-course:has(> .rd-grade) .rd-rail-text > small:not(:last-child) {padding-right:0;}
 /* Only the assignment's own words are the link to Canvas; the empty space to their right selects the row like the rest of it. */
 .rd[data-workspace=work] .rd-assignment-top > .rd-assignment-title {flex:0 1 auto;width:fit-content;max-width:100%;margin-right:auto;}
+
+/* Quick Upload: where a pack comes from */
+.rd .ch-pack-help {margin:12px 0 14px;padding:10px 12px;border-radius:11px;background:var(--rd-tint,rgba(0,0,0,.04));color:var(--rd-ink-2);font-size:13px;line-height:1.5;}
+.rd .ch-pack-help strong {color:var(--rd-ink);font-weight:600;}
+.rd .ch-pack-help a {color:var(--rd-accent);text-decoration:underline;text-underline-offset:2px;}
+.rd .ch-pack-help a:is(:hover,:focus-visible) {text-decoration-thickness:2px;}
+
+.rd .ch-pack-heading>svg {width:48px;height:48px;margin-top:-2px;}
+
+/* A wide heading drawing is never cut off: its box is no wider than its own shape (7 to 1) allows at the band's
+   height, so a short band shows the whole drawing smaller instead of slicing its top and bottom away. */
+.rd .rd-heading-art > .rd-art[data-wide], .rd .rd-banner-art > .rd-art[data-wide] {max-width:calc(var(--rd-art-h,var(--rd-band-h,200px)) * 7);}
+
+/* Courses across the top: on a tall window the page was sharing its spare height with the course strip, which
+   opened a gap under it. The strip keeps its own height; the page takes what is left. */
+.rd[data-course-navigation=topbar] .rd-shell {align-content:start;}
+/* The All courses card has room for its words inside its frame. */
+.rd[data-course-navigation=topbar] .rd-course-rail > .rd-rail-all {width:168px!important;min-width:168px!important;padding-right:26px!important;}
+
+/* ---- Page color: a faint tint of one color behind everything. Paper (the default) changes nothing. ---- */
+.rd[data-page-tint=accent] {--rd-vibe:var(--rd-accent);}
+.rd[data-page-tint=sky] {--rd-vibe:#3F8FCC;}
+.rd[data-page-tint=sage] {--rd-vibe:#5E8F5A;}
+.rd[data-page-tint=lilac] {--rd-vibe:#8B6FC9;}
+.rd[data-page-tint=blush] {--rd-vibe:#D0607F;}
+.rd[data-page-tint=sand] {--rd-vibe:#B98A3E;}
+.rd[data-page-tint=snow] {--rd-vibe:#8A8F98;}
+.rd[data-theme=light][data-page-tint]:not([data-page-tint=paper]):not([data-surface-style=contrast]) {
+ --rd-bg:color-mix(in srgb,var(--rd-vibe) 5%,#FDFDFC);
+ --rd-sidebar:color-mix(in srgb,var(--rd-vibe) 9%,#F8F8F7);
+ --rd-sidebar-hover:color-mix(in srgb,var(--rd-vibe) 13%,#F3F3F2);
+ --rd-sidebar-sel:color-mix(in srgb,var(--rd-vibe) 18%,#EEEEED);
+ --rd-surface-2:color-mix(in srgb,var(--rd-vibe) 7%,#F9F9F8);
+ --rd-surface-3:color-mix(in srgb,var(--rd-vibe) 11%,#F2F2F1);
+ --rd-tint:color-mix(in srgb,var(--rd-vibe) 11%,#F2F2F1);
+ --rd-row-hover:color-mix(in srgb,var(--rd-vibe) 7%,#F8F8F7);
+ --rd-line:color-mix(in srgb,var(--rd-vibe) 15%,#E7E7E4);
+}
+.rd[data-theme=dark][data-page-tint]:not([data-page-tint=paper]) {
+ --rd-bg:color-mix(in srgb,var(--rd-vibe) 8%,#1C1C1D);
+ --rd-sidebar:color-mix(in srgb,var(--rd-vibe) 10%,#181819);
+ --rd-surface-2:color-mix(in srgb,var(--rd-vibe) 11%,#282829);
+ --rd-tint:color-mix(in srgb,var(--rd-vibe) 13%,#282829);
+ --rd-line:color-mix(in srgb,var(--rd-vibe) 16%,#38383A);
+}
+
+/* ---- Module outlines follow the accent color. The pen line is the same drawn shape, used as a mask over the
+   accent (mixed with ink so it stays a line, not a highlight). ---- */
+.rd[data-workspace=work][data-panel-frame=pen] :is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key]::after {
+ border-image:none;border:18px solid transparent;border-radius:0;
+ background:color-mix(in srgb,var(--rd-accent) 70%,var(--rd-ink));
+ -webkit-mask-box-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E") 30 30 30 30 stretch;
+}
+.rd[data-workspace=work][data-panel-frame=stitch] :is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key]::after {border-color:color-mix(in srgb,var(--rd-accent) 62%,#B07A54);box-shadow:inset 0 0 0 4px color-mix(in srgb,var(--rd-accent) 8%,transparent);}
+.rd[data-workspace=work][data-panel-frame=line] :is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key]::after {border-color:color-mix(in srgb,var(--rd-accent) 50%,var(--rd-line-strong));}

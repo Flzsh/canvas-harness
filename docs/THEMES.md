@@ -44,15 +44,15 @@ The [astronomy example](../skills/canvas-harness-art/examples/astronomy/astronom
 4. Uncheck individual pieces you want to leave unchanged.
 5. Choose **Apply N pieces** and wait for **Artwork applied**.
 
-Quick Upload changes the selected banners, icons, and borders together, plus any explicit banner fit and position options in the pack. Reviewing alone does not save it. Other preferences stay as they were.
+Quick Upload changes the selected banners, icons, and frames together, plus any explicit banner fit and position options in the pack. Reviewing alone does not save it. Other preferences stay as they were.
 
 **Undo last pack** restores the affected artwork during the current workspace session if those artwork fields and banner options have not changed since applying. It does not undo unrelated preferences. Export a personal backup before a large change if you want recovery that survives closing the page.
 
 ## Upload individual SVGs and custom titles
 
-Under **Course artwork**, choose a course or **All courses**, then upload or paste an SVG into its banner, icon, border, or title slot. Starter templates and the built-in artwork can help you begin again.
+Under **Course artwork**, choose a course or **All courses**, then upload or paste an SVG into its banner, icon, frame, or title slot. Starter templates and the built-in artwork can help you begin again.
 
-Quick Upload pack version 1 supports banners, icons, and borders. When the banner includes its drawn name, choose **Course title → Already drawn in banner** under Course artwork. This gives the uploaded scene the full banner without a second title layer. Choose **Separate title drawing** to restore the original title, or upload your own title SVG.
+Quick Upload pack version 1 supports banners, icons, and frames. When the banner includes its drawn name, choose **Course title → Already drawn in banner** under Course artwork. This gives the uploaded scene the full banner without a second title layer. Choose **Separate title drawing** to restore the original title, or upload your own title SVG.
 
 Self-contained SVG CSS and SMIL animation are supported. Artwork is checked and rendered as isolated images. Scripts, external images or fonts, embedded HTML, and unsupported editor-specific features are rejected.
 

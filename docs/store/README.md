@@ -12,11 +12,11 @@ Use a public publisher name such as **Flzsh**. Check which contact details each 
 ## Upload
 
 - Run `npm test`, `npm run check`, and `npm run build` from the repository.
-- Upload `dist/Canvas-Harness-2.22.4.zip`. Its `manifest.json` is at the ZIP root. Do not upload the source repository, a personal backup, or the separate Folio test build.
+- Upload `dist/Canvas-Harness-2.22.5.zip`. Its `manifest.json` is at the ZIP root. Do not upload the source repository, a personal backup, or the separate Folio test build.
 - Use [listing.txt](listing.txt) for the description and links. Enter the manifest's actual description where the store derives the short description from the package.
 - Use `icon-128.png` for Chrome and `logo-300.png` for Edge. Both come from the original large Canvas Harness logo.
 - Use `promo-440x280.png` for the small promotional image and `marquee-1400x560.png` for the marquee image.
-- Eight 1280 × 800 screenshots are supplied, drawn in the project's hand-drawn style with nothing covering the screens: the title, then what a student gets (Efficient, Versatile, Comfortable), then Planner, Study companion, Home and Make it yours. Chrome accepts five: use numbers 1 to 5. Use all eight where a store allows more.
+- Ten 1280 × 800 pictures are supplied, drawn in the project's hand-drawn style with nothing covering the screens. Chrome accepts five: use numbers 1 to 5 (the title, Efficient, Versatile, Move anything, Comfortable). Numbers 6 to 10 (Your own artwork, Planner, Study companion, Home, Make it yours) are spares, or for stores that allow more.
 - Review [disclosures.md](disclosures.md) against the current dashboard questions and package. Do not select “no user data” merely because there is no developer server.
 - Add [reviewer-notes.md](reviewer-notes.md). Supply only a separately authorized test account if a reviewer requires one; never share your school credentials.
 - Save the listing as a draft, inspect every asset and disclosure, then submit for review when the account and required testing are ready. A successful upload does not mean store approval.
