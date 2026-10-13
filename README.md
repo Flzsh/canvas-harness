@@ -50,7 +50,7 @@
     </td>
     <td valign="top">
       <h3>Your own look</h3>
-      Hand-drawn course artwork, outlines, colors, text size and layout presets, or upload your own SVG banners, icons, borders and titles.
+      Hand-drawn course artwork, outlines, colors, text size and layout presets, or upload your own SVG banners, icons, frames and titles.
     </td>
     <td valign="top">
       <h3>Tools beside your work</h3>
