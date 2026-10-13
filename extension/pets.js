@@ -86,13 +86,27 @@
    const vw=win.innerWidth;
    if(!el)return {el:null,y:win.innerHeight-5,x0:14,x1:vw-14,floor:true,shown:true};
    if(!el.isConnected)return null;
-   const r=el.getBoundingClientRect();if(r.width<120||r.height<30)return null;
-   const inside=el.dataset.petLedge==='inside',y=inside?r.bottom-9:r.top+1;
+   const r=el.getBoundingClientRect(),side=sides.get(el);if(r.width<120||!side&&r.height<30)return null;
+   const inside=el.dataset.petLedge==='inside',y=inside?r.bottom-9:side==='bottom'?r.bottom:r.top+1;
    return {el,inside,paddock:inside,y,x0:r.left+(inside?26:18),x1:r.right-(inside?26:18),shown:y>96&&y<win.innerHeight-6&&r.right>60&&r.left<vw-60};
   }
+  // Where it may stand: its paddock, the outline round a module (when one is drawn), the ruled lines inside
+  // modules that separate rows and sections, and the bottom of the window. No line, no standing.
+  const sides=new WeakMap(),drawn=color=>!!color&&color!=='transparent'&&!/,\s*0\)$/.test(color);
+  const framed=()=>container.dataset.panelFrame!=='none';
   function ledges(){
-   const out=[];
-   for(const el of container.querySelectorAll('[data-pet-ledge],.rd-main > [data-arrange-key]')){const l=ledgeFor(el);if(l&&l.shown&&l.x1-l.x0>60)out.push(l);}
+   const out=[],add=el=>{const l=ledgeFor(el);if(l&&l.shown&&l.x1-l.x0>60)out.push(l);};
+   for(const el of container.querySelectorAll('[data-pet-ledge]'))add(el);
+   if(framed())for(const el of container.querySelectorAll('.rd-main > [data-arrange-key]'))add(el);
+   let found=0;
+   for(const el of container.querySelectorAll('.rd-main > [data-arrange-key] :is(section,header,li,details,summary,article,hr,div)')){
+    if(found>=40)break;
+    const r=el.getBoundingClientRect();if(r.width<150||r.top>win.innerHeight-6||r.bottom<96)continue;
+    const cs=win.getComputedStyle(el);
+    const top=parseFloat(cs.borderTopWidth)>0&&cs.borderTopStyle!=='none'&&drawn(cs.borderTopColor),bottom=parseFloat(cs.borderBottomWidth)>0&&cs.borderBottomStyle!=='none'&&drawn(cs.borderBottomColor);
+    if(!top&&!bottom)continue;
+    sides.set(el,top?'top':'bottom');add(el);found++;
+   }
    out.push(ledgeFor(null));return out;
   }
   const current=()=>ledgeFor(spot.ledge)||ledgeFor(null);
@@ -146,7 +160,8 @@
    if(reduced()){settle(nudge(data),30000);return;}
    if(focusing){settle('read',20000);return;}
    // its place has scrolled away or gone: come back to somewhere in view, quietly
-   if(!here.shown||!here.el&&pet.roam==='home'){
+   const gone=here.el&&!framed()&&!sides.has(here.el)&&here.el.matches?.('.rd-main > [data-arrange-key]');
+   if(!here.shown||gone||!here.el&&pet.roam==='home'){
     const all=ledges(),to=pet.roam==='home'?all.find(l=>l.paddock):all.filter(l=>!l.paddock&&!l.floor)[0]||all[all.length-1];
     if(to&&(to.el!==here.el)){if(here.shown)jumpTo(to);else appear(to);return;}
    }
@@ -223,11 +238,11 @@
   // ---- picking it up
   function down(event){
    if(event.button!==undefined&&event.button!==0)return;
-   const start={x:event.clientX,y:event.clientY,id:event.pointerId,moved:false};
+   const start={x:event.clientX,y:event.clientY,id:event.pointerId,moved:false};try{node.setPointerCapture?.(start.id);}catch{}   // held from the first press, so a quick pull cannot slip off
    const move=e=>{
     if(e.pointerId!==start.id)return;
     if(!start.moved&&Math.hypot(e.clientX-start.x,e.clientY-start.y)<7)return;
-    if(!start.moved){start.moved=true;grab=start;stop();goal=null;speed=0;ch.leg=0;ch.down=0;paint();closeBubble();setPose('held');node.setPointerCapture?.(start.id);node.dataset.grabbed='true';}
+    if(!start.moved){start.moved=true;grab=start;stop();goal=null;speed=0;ch.leg=0;ch.down=0;paint();closeBubble();setPose('held');try{node.setPointerCapture?.(start.id);}catch{}node.dataset.grabbed='true';}
     moveTo(e.clientX,e.clientY+size()*.42);
    };
    const up=e=>{
