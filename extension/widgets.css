@@ -463,3 +463,8 @@
 }
 .rd[data-workspace=work][data-panel-frame=stitch] :is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key]::after {border-color:color-mix(in srgb,var(--rd-accent) 62%,#B07A54);box-shadow:inset 0 0 0 4px color-mix(in srgb,var(--rd-accent) 8%,transparent);}
 .rd[data-workspace=work][data-panel-frame=line] :is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key]::after {border-color:color-mix(in srgb,var(--rd-accent) 50%,var(--rd-line-strong));}
+/* On short windows a shown grade stands on the card's last line, its underline in the padding below. */
+@media (max-height: 820px), (max-width: 900px) {
+ .rd .rd-course-rail .rd-rail-course > .rd-grade {bottom:max(0px, calc(var(--rd-rail-pad) - 8px));}
+ .rd .rd-course-rail .rd-rail-course:has(> .rd-frame) > .rd-grade {bottom:max(2px, calc(var(--rd-rail-pad) - 4px));}
+}

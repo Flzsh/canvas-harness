@@ -316,7 +316,9 @@
   padding: 8px 6px 0;
   height: calc(100dvh - min(var(--rd-rail-top, 150px), 45dvh) - var(--rd-status-h, 56px));
   min-height: min(300px, calc(100dvh - 36px));
-  min-height: calc-size(min-content, clamp(min(300px, 100dvh - 36px), size, 100dvh - 36px));
+  /* Grows with its rows, but never past the bottom of the window from where it starts, so the last course
+     and the rail's foot are never below the fold before the page is scrolled; beyond that it scrolls. */
+  min-height: calc-size(min-content, clamp(min(300px, 100dvh - 36px), size, 100dvh - min(var(--rd-rail-top, 150px), 45dvh) - 18px));
 }
 
 .rd .rd-rail-heading { flex: none; padding: 4px 10px 10px; font-size: 12px; font-weight: 450; letter-spacing: normal; text-transform: none; color: var(--rd-faint); }
@@ -425,9 +427,8 @@
   .rd .rd-rail-course:has(> .rd-grade) .rd-rail-text > .rd-rail-name { padding-right: calc(var(--rd-rail-grade-w) - 11px); }
 }
 
-@media (max-height: 820px), (max-width: 900px) {
-  .rd .rd-course-rail .rd-rail-course:has(> .rd-grade) { padding-bottom: calc(var(--rd-rail-pad) + 16px); }
-}
+/* A shown grade takes no height of its own: on short windows it stands on the card's last line, which keeps
+   its width clear, so showing grades never makes the course cards taller (widgets.css places it). */
 
 
 .rd .rd-rail-foot {

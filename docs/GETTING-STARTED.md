@@ -104,7 +104,7 @@ Export a backup before a substantial artwork change or extension update. When up
 
 | What you see | What to check |
 | --- | --- |
-| Canvas Harness does not appear | Confirm the extension is enabled, the browser permits unpacked extensions, and the site is an HTTPS Canvas subdomain of <code>instructure.com</code>. Refresh after installing. Custom Canvas domains are outside the current support scope. |
+| Canvas Harness does not appear | Confirm the extension is enabled, the browser permits unpacked extensions, and the site is an HTTPS Canvas subdomain of <code>instructure.com</code>. Refresh after installing. If your school uses its own Canvas address, add it in the extension's popup and allow that site when the browser asks. |
 | Courses are missing or look stale | Sign in to the intended Canvas account, use **Refresh Canvas data**, read errors, and check the original Canvas page. Hidden courses can be restored in Appearance settings. |
 | A teacher page, file, or message is unavailable | Follow the original Canvas link. School permissions, locked content, embedded pages, and recent-message limits can affect what appears here. |
 | Clicking a circle did not complete an assignment | It selected the item. Choose **Archive** for local completion, or **Use in AI** for context selection. |

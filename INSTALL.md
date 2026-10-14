@@ -4,7 +4,7 @@ Canvas Harness is a browser extension for your signed-in Canvas courses, assignm
 
 ## Install from the Chrome Web Store
 
-The easiest way: open [Canvas Harness on the Chrome Web Store](https://chromewebstore.google.com/detail/bppjpjpbichfcbgajlppkgbbncbfohgd), click **Add to Chrome**, then sign in to Canvas and refresh the page. In Edge, open the same link and choose **Allow extensions from other stores** when asked. Store installs update automatically, so the steps under Updates and backups below are only for unpacked installs.
+The easiest way: open [Canvas Harness on the Chrome Web Store](https://chromewebstore.google.com/detail/bppjpjpbichfcbgajlppkgbbncbfohgd), click **Add to Chrome**. A welcome page opens and asks for your school's Canvas address; enter it and click **Open my Canvas**, then sign in. In Edge, open the same link and choose **Allow extensions from other stores** when asked. Store installs update automatically, so the steps under Updates and backups below are only for unpacked installs.
 
 ## Install from GitHub in desktop Chrome or Edge
 
@@ -24,11 +24,11 @@ On Home, hold a course or panel heading until it lifts, then drag and release. Y
 
 Use **Tools → GPA** for local 4.0/4.3 estimates and what-if grades, **Tools → Calculator** for external Desmos calculators, and **Tools → AI** to review selected coursework and paste it into a provider website. AI provider access is optional. See [Study with AI](AI.md) before sending any coursework.
 
-The popup can detect the current Canvas tab or accept your school's Canvas URL. Supported sites are HTTPS Canvas subdomains of `*.instructure.com`; custom Canvas domains and self-hosted sites are outside this release. School Canvas settings may affect which information is available.
+The popup can detect the current Canvas tab or accept your school's Canvas URL. Supported sites are HTTPS Canvas subdomains of `*.instructure.com`. If your school runs Canvas on its own address (for example `canvas.your-school.edu`), enter that address in the extension's popup and click **Open Canvas dashboard**. Your browser asks to allow that one site; nothing else is added. You can remove it from the popup or from the browser's extension site settings. School Canvas settings may affect which information is available.
 
 ## Permissions and privacy
 
-- The extension needs browser storage, local PDF processing, and access to signed-in Canvas pages on `*.instructure.com`. It uses your current Canvas session; it does not ask for a separate Canvas password or API key.
+- The extension needs browser storage, local PDF processing, and access to signed-in Canvas pages on `*.instructure.com`, plus any school Canvas address you add yourself (asked for one site at a time). It uses your current Canvas session; it does not ask for a separate Canvas password or API key.
 - Course information and fetched Canvas data can be cached in local browser storage. Personal settings, notes, bookmarks, checked-off work, imported art and GPA preferences are stored locally per Canvas site and account. Grades are hidden by default in the interface but may still exist in the local cache.
 - Checking off work in Canvas Harness does not submit an assignment or change Canvas grades.
 - Opening Desmos loads an external site. Canvas Harness does not send Canvas context to it.

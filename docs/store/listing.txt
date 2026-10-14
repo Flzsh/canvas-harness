@@ -36,7 +36,7 @@ PRIVATE BY DESIGN
 • The optional AI tool sends only what you select, to the AI website you choose, after you review it. Desmos loads from its own website when opened.
 
 GOOD TO KNOW
-• Works on school Canvas sites under *.instructure.com. Custom Canvas domains are not supported yet.
+• Works on school Canvas sites under *.instructure.com. If your school uses its own Canvas address, add it in the extension's popup; your browser asks to allow that one site.
 • What you can see depends on your school's Canvas permissions.
 • GPA values are estimates, not official transcript calculations.
 • The AI tool may need an account with the provider, and changes to their websites can affect it.

@@ -1,6 +1,6 @@
 # Reviewer testing notes
 
-Canvas Harness is an independent Canvas study workspace. It supports HTTPS school sites on `*.instructure.com`; custom Canvas domains are not currently supported.
+Canvas Harness is an independent Canvas study workspace. It supports HTTPS school sites on `*.instructure.com`. A school that runs Canvas on its own address can be added in the popup: entering `https://canvas.your-school.edu` asks the browser for access to that one origin (optional host permission), after which the same Canvas scripts are registered for it with `chrome.scripting.registerContentScripts`. Removing the site revokes the permission and unregisters the scripts.
 
 ## Live coursework
 

@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><head>
+<meta name="author" content="Flzsh"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Welcome to Canvas Harness</title><link rel="stylesheet" href="welcome.css"></head>
+<body><main class="sheet">
+<header><img src="icon.svg" width="56" height="56" alt=""><div><h1>Welcome to Canvas Harness</h1><p>Canvas, within reach.</p></div></header>
+<p class="lead">One question before you start: where is your school’s Canvas?</p>
+<form id="setup" novalidate>
+<label for="school-url">Your school’s Canvas address</label>
+<input id="school-url" type="url" placeholder="https://your-school.instructure.com" autocomplete="url" spellcheck="false" aria-describedby="school-hint" required>
+<p id="school-hint" class="hint">Copy it from your browser’s address bar when you are on Canvas. Most schools use an address ending in <b>instructure.com</b>. If yours has its own, such as <b>canvas.your-school.edu</b>, your browser will ask to allow Canvas Harness on that one site.</p>
+<button id="open" type="submit">Open my Canvas ↗</button>
+<p id="status" role="status"></p>
+</form>
+<ul class="notes">
+<li>Canvas Harness runs only on your Canvas. It never changes submissions or grades.</li>
+<li>Plans, notes and settings stay in this browser. There is no account to make.</li>
+<li>Change the address any time from the Canvas Harness button in your browser’s toolbar.</li>
+</ul>
+</main>
+<script src="site.js"></script><script src="school-address.js"></script><script src="welcome.js"></script></body></html>
