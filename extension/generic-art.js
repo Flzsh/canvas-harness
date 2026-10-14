@@ -110,16 +110,18 @@
  const advance=ch=>GLYPHS[ch]?GLYPHS[ch][0]:/[\u2E80-\u9FFF\uAC00-\uD7AF\u3040-\u30FF]/u.test(ch)||ch.codePointAt(0)>=0x1F000?25:15;
  const measure=text=>letters(text).reduce((sum,ch)=>sum+advance(ch),0);
  function wordLines(label,count){
-  const words=label.split(' ');
+  // Lines break at spaces and after a hyphen ("CL Engineering-" / "Lindqvist"), never inside a word here.
+  const words=[];
+  for(const [i,word] of label.split(' ').entries())word.split(/(?<=-)(?=[^-])/).forEach((part,j)=>words.push({text:part,gap:j?0:i?8:0}));
   if(words.length<count||words.length>192)return null;
   const prefix=[0],dp=Array.from({length:count+1},()=>[]);
-  for(const word of words)prefix.push(prefix.at(-1)+measure(word)+8);
+  for(const word of words)prefix.push(prefix.at(-1)+word.gap+measure(word.text));
   dp[0][0]={max:0,sum:0,previous:0};
   for(let row=1;row<=count;row++){
    for(let end=row;end<=words.length;end++){
     for(let start=row-1;start<end;start++){
      const before=dp[row-1][start];if(!before)continue;
-     const width=prefix[end]-prefix[start]-8;
+     const width=prefix[end]-prefix[start]-words[start].gap;
      const candidate={max:Math.max(before.max,width),sum:before.sum+width*width,previous:start};
      const old=dp[row][end];
      if(!old||candidate.max<old.max||candidate.max===old.max&&candidate.sum<old.sum)dp[row][end]=candidate;
@@ -129,7 +131,7 @@
   const out=[];let end=words.length;
   for(let row=count;row>0;row--){
    const start=dp[row][end].previous;
-   out.unshift({label:words.slice(start,end).join(' '),join:start?' ':''});end=start;
+   out.unshift({label:words.slice(start,end).map((word,i)=>(i&&word.gap?' ':'')+word.text).join(''),join:start&&words[start].gap?' ':''});end=start;
   }
   return out;
  }
