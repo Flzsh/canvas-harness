@@ -67,6 +67,10 @@
 
 ## 规划一周
 
+<p align="center">
+  <img src="docs/media/planner.gif" width="880" alt="在计划中输入任务，安排到星期五并估算 45 分钟，再将任务卡拖到其他日期">
+</p>
+
 输入“essay outline fri 45m #english”，任务就会安排到星期五，时长 45 分钟，并归入英语课程。你可以把任务卡拖到其他日期，也可以使用卡片菜单。已完成和已归档的任务会自动收起，需要时再查看。
 
 ## 阅读并完成作业
@@ -79,7 +83,7 @@
 
 系统会自动为课程添加动态主题插画。“自定义外观”提供五个选项卡：布局、外观、插画、课程和小马。
 
-你可以使用[插画技能](skills/canvas-harness-art)，让 AI 根据课程描述生成素材包。生成后，通过“外观设置 → 快速上传”导入 `.chpack` 文件，预览并应用素材。
+你可以使用[插画技能](skills/canvas-harness-art/SKILL.md)，让 AI 根据课程描述生成素材包。生成后，通过“外观设置 → 快速上传”导入 `.chpack` 文件，预览并应用素材。
 
 ## 在 Chrome 或 Edge 中安装
 
@@ -97,4 +101,4 @@ Canvas Harness 会读取课程内容，但不会更改作业提交或成绩。�
 
 [用户指南](docs/GETTING-STARTED.md) · [主题](docs/THEMES.md) · [AI 指南](AI.md) · [问题反馈](https://github.com/Flzsh/canvas-harness/issues)
 
-由 Flzsh 创建 · [GPL-3.0-only](LICENSE) · [第三方声明](extension/THIRD-PARTY-NOTICES.md)
+由 Flzsh 创建 · [GPL-3.0-only](LICENSE) · [第三方声明](extension/NOTICE.txt)
