@@ -8,13 +8,15 @@
 </p>
 
 <p align="center">
+  <a href="https://chromewebstore.google.com/detail/bppjpjpbichfcbgajlppkgbbncbfohgd"><img alt="Chrome Web Store" src="https://img.shields.io/chrome-web-store/v/bppjpjpbichfcbgajlppkgbbncbfohgd?label=Chrome%20Web%20Store&color=C96442"></a>
   <a href="https://github.com/Flzsh/canvas-harness/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Flzsh/canvas-harness?label=release&color=C96442"></a>
   <img alt="Works in Chrome and Edge" src="https://img.shields.io/badge/Chrome%20%C2%B7%20Edge-Manifest%20V3-3D3D3A">
   <a href="LICENSE"><img alt="License: GPL-3.0-only" src="https://img.shields.io/badge/license-GPL--3.0--only-5E7F45"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Flzsh/canvas-harness/releases/latest"><b>Download</b></a> ·
+  <a href="https://chromewebstore.google.com/detail/bppjpjpbichfcbgajlppkgbbncbfohgd"><b>Add to Chrome</b></a> ·
+  <a href="https://github.com/Flzsh/canvas-harness/releases/latest">Download</a> ·
   <a href="INSTALL.md">Install</a> ·
   <a href="docs/GETTING-STARTED.md">Get started</a> ·
   <a href="PRIVACY.md">Privacy</a>
@@ -86,6 +88,10 @@ Courses get animated subject artwork automatically. **Make it yours** has five t
 Describe your course to an AI using the [artwork skill](skills/canvas-harness-art/SKILL.md). Import the resulting `.chpack` through Appearance settings → Quick Upload to preview and apply the set.
 
 ## Install in Chrome or Edge
+
+**From the Chrome Web Store (easiest):** open [Canvas Harness on the Chrome Web Store](https://chromewebstore.google.com/detail/bppjpjpbichfcbgajlppkgbbncbfohgd), click **Add to Chrome**, then refresh Canvas. Edge can install it from the same page after you allow extensions from other stores. Store installs update by themselves.
+
+**From GitHub instead:**
 
 1. Download and extract the extension ZIP from the [latest release](https://github.com/Flzsh/canvas-harness/releases/latest).
 2. Open `chrome://extensions` or `edge://extensions`, enable Developer mode, and choose Load unpacked.
