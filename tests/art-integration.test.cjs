@@ -98,10 +98,11 @@ test('All courses and courses without a theme of their own get their complete di
  ])genericTitle(art,course,label);
 });
 
-test('a course with a built-in subject theme never gets the generic board: its piece when the name matches, else plain lettering',()=>{
- const art=runtime().ReserveCourseArt;
- for(const course of [sample('Organic Chemistry Seminar'),{...sample('My Lab'),originalName:'Chemistry'},{...chemistry(),originalName:'Chemistry Seminar'}]){
-  assert.notEqual(art.kind(course),'home');assert.equal(art.titled(course),null);assert.equal(art.title(course),'');assert.equal(art.titleFrame(course),'');
+test('a course with a subject theme always wears its subject’s drawn title, never the generic board or plain lettering',()=>{
+ const art=runtime().ReserveCourseArt,original=chemistry();
+ for(const course of [sample('Organic Chemistry Seminar'),sample('CL Chemistry-Rivera'),{...sample('My Lab'),originalName:'Chemistry'},{...original,originalName:'Chemistry Seminar'}]){
+  const piece=art.titled(course);assert.equal(piece.kind,'chemistry');assert.equal(piece.name,art.titled(original).name);assert.notEqual(piece.generic,true);
+  assert.match(art.title(course),/^<svg class="rd-art" data-art="chemistry" data-crop="title"/);assert.doesNotMatch(art.titleFrame(course),/rd-generic-title/);
  }
 });
 
@@ -112,12 +113,12 @@ test('null and missing or empty IDs still produce no title information, markup, 
  }
 });
 
-test('an exact original subject keeps its built-in title, and when renamed its plain lettering, scene, icon, and border',()=>{
+test('a subject course keeps its built-in title, scene, icon, and border when renamed',()=>{
  const art=runtime().ReserveCourseArt,course=chemistry(),piece=art.titled(course),svg=art.title(course);
  assert.equal(piece.kind,'chemistry');assert.equal(piece.name,'Chemistry');assert.notEqual(piece.generic,true);assert.notEqual(piece.custom,true);
  assert.match(svg,/^<svg class="rd-art" data-art="chemistry" data-crop="title"/);assert.doesNotMatch(svg,/rd-generic-title/);
  const renamed={...course,name:'My Lab',shortName:'My Lab'};
- assert.equal(art.titled(renamed),null,'a themed course is not given the generic board');assert.equal(art.titleFrame(renamed),'');
+ assert.equal(art.title(renamed),svg,'a renamed course keeps its subject’s drawn title');
  for(const crop of ['heading','wide'])assert.equal(art.scene(renamed,{crop}),art.scene(course,{crop}),'renaming keeps the original subject scene');
  assert.equal(art.mini(renamed),art.mini(course),'renaming keeps the original subject icon');
  assert.equal(art.frame(art.kind(renamed),renamed.id,renamed),art.frame(piece.kind,course.id,course),'renaming keeps the subject border');
@@ -244,7 +245,7 @@ test('rendered course headers use the displayed short name for generic art and r
  }
 });
 
-test('a themed course header keeps its accessible lettered heading and no generic board',()=>{
+test('a themed course header shows its subject’s drawn title and keeps the accessible heading',()=>{
  const env=runtime(),course={...sample('My Lab'),originalName:'Chemistry'},{heading}=dashboard(env,{course});
- assert.doesNotMatch(heading,/data-titled="true"|rd-generic-title/);assert.ok(heading.includes('>'+env.ReserveUI.escapeHTML(course.shortName)+'</h1>'));
+ assert.match(heading,/data-titled="true"/);assert.match(heading,/data-art="chemistry" data-crop="title"/);assert.doesNotMatch(heading,/rd-generic-title/);assert.ok(heading.includes('>'+env.ReserveUI.escapeHTML(course.shortName)+'</h1>'));
 });
