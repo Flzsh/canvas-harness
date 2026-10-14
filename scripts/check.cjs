@@ -18,6 +18,17 @@ const bootstrap=manifest.content_scripts.find(c=>c.js.includes('startup.js')),co
 assert.ok(manifest.content_scripts.indexOf(bootstrap)<manifest.content_scripts.indexOf(controller));
 for(const entry of [bootstrap,controller]){assert.deepEqual(entry.matches,['https://*.instructure.com/*']);assert.equal(entry.all_frames,false);assert.equal(entry.run_at,'document_start');}
 assert.equal(controller.js.at(-1),'content.js');
+// Dashboard-only scripts load on the dashboard alone. They run before content.js, and no script that loads on
+// every page may name a global they define, or a course or quiz page would fail without them.
+const dashboardPaths=['/','/?*','/dashboard','/dashboard?*','/dashboard/','/dashboard/?*'].map(p=>'https://*.instructure.com'+p);
+const dashboardEntry=manifest.content_scripts.find(c=>c.matches.join()!=='https://*.instructure.com/*');
+assert.ok(dashboardEntry,'dashboard-only scripts need their own content_scripts entry');
+assert.deepEqual(dashboardEntry.matches,dashboardPaths);assert.equal(dashboardEntry.run_at,'document_start');assert.equal(dashboardEntry.all_frames,false);
+assert.ok(manifest.content_scripts.indexOf(dashboardEntry)<manifest.content_scripts.indexOf(controller),'dashboard scripts must load before content.js');
+const everyPage=manifest.content_scripts.filter(c=>c!==dashboardEntry&&c!==bootstrap).flatMap(c=>c.js).filter(f=>f!=='content.js');
+const defines=file=>[...fs.readFileSync(path.join(extension,file),'utf8').matchAll(/\b(?:root|globalThis)\.((?:Reserve|CanvasHarness)\w+)\s*=(?!=)/g)].map(m=>m[1]);
+const dashboardGlobals=dashboardEntry.js.flatMap(defines);
+for(const file of everyPage){const source=fs.readFileSync(path.join(extension,file),'utf8');for(const name of dashboardGlobals)assert.ok(!new RegExp('\\b'+name+'\\b').test(source),`${file} loads on every page but uses ${name} from a dashboard-only script`);}
 for(const size of [16,32,48,128]){const png=fs.readFileSync(path.join(extension,`icons/icon-${size}.png`));assert.equal(png.readUInt32BE(16),size);assert.equal(png.readUInt32BE(20),size);}
 for(const file of ['popup.html']){const html=fs.readFileSync(path.join(extension,file),'utf8');for(const match of html.matchAll(/(?:src|href)="([^"]+)"/g))assert.ok(fs.existsSync(path.join(extension,match[1])),`Missing HTML resource: ${match[1]}`);assert.ok(!/<script(?![^>]*src=)[^>]*>\s*\S/i.test(html),'Inline executable script in popup');}
 // Every place that names the release version must agree, so a release never ships mixed numbers.

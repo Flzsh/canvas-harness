@@ -129,7 +129,7 @@ test('the sanitizer renders mathematics in text, from equation images and from M
 });
 
 test('math.js ships as a content script before ui-utils.js, in the preview pages too; the page styles it without a new stylesheet',()=>{
- const root=path.join(__dirname,'..'),manifest=JSON.parse(fs.readFileSync(path.join(root,'extension/manifest.json'),'utf8')),js=manifest.content_scripts.find(entry=>entry.js.includes('content.js')).js;
+ const root=path.join(__dirname,'..'),manifest=JSON.parse(fs.readFileSync(path.join(root,'extension/manifest.json'),'utf8')),js=manifest.content_scripts.find(entry=>entry.js.includes('math.js')).js;
  assert.equal(js.indexOf('math.js'),js.indexOf('ui-utils.js')-1);assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen']);assert.deepEqual(manifest.host_permissions,['https://*.instructure.com/*']);
  for(const page of ['preview/index.html'])assert.match(fs.readFileSync(path.join(root,page),'utf8'),/<script src="\.\.\/extension\/math\.js"><\/script><script src="\.\.\/extension\/ui-utils\.js"><\/script>/,page);
  const source=fs.readFileSync(path.join(root,'extension/math.js'),'utf8');
