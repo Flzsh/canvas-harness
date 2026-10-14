@@ -1,6 +1,6 @@
 # Canvas Harness privacy
 
-Applies to Canvas Harness 2.22.6. Last updated October 12, 2026.
+Applies to Canvas Harness 2.23.0. Last updated October 14, 2026.
 
 Canvas Harness is a browser extension maintained by Flzsh. It displays information from the Canvas account already signed in on your school's website. It has no developer-operated account service, analytics collector or tracking endpoint in the extension code for this release.
 
@@ -29,9 +29,11 @@ PDF processing happens locally in the extension. A small PDF from Canvas or your
 
 Canvas Harness uses `storage` and `unlimitedStorage` for local data (so caches, artwork and notes are not cut off by the browser's default 10 MB extension limit), `offscreen` for local PDF text extraction, and access to HTTPS `*.instructure.com` Canvas pages. It does not request Canvas passwords or account API keys.
 
+Some schools run Canvas on their own address, such as `canvas.your-school.edu`. If you enter one in the popup, the browser asks you to allow Canvas Harness on **that exact site**, together with the optional `scripting` permission it uses to run there. Only then does it run on that site, and only on pages that are Canvas. The manifest lists `https://*/*` as an optional host permission so that any school's address can be asked for; Canvas Harness requests one origin at a time and never asks for access to all websites. Removing the site in the popup or in the browser's extension site settings stops it running there.
+
 Draft insertion into an AI website asks for optional `scripting` permission and access to **that provider's exact origin**. The allowed origins are `chatgpt.com`, `claude.ai`, `gemini.google.com`, `grok.com`, `chat.deepseek.com`, `www.kimi.com`, `chat.qwen.ai` and `chat.z.ai`. These permissions are optional; using **Copy** and pasting yourself is an alternative. Permission is not a standing instruction to share future coursework. You can remove provider website access in the extension's permission page or your browser's extension site settings.
 
-Canvas Harness does not request all-site host access, cookie-reading, debugger or native-messaging permissions. Its normal AI handoff does not use a separate login, OAuth connection or companion service.
+Canvas Harness does not request access to all websites, cookie-reading, debugger or native-messaging permissions. Its normal AI handoff does not use a separate login, OAuth connection or companion service.
 
 ## Other websites and files
 

@@ -339,7 +339,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         tallest=Math.max(tallest,rs.boxSizing==='border-box'?content+px(rs,'paddingTop','paddingBottom','borderTopWidth','borderBottomWidth'):content);
       }
       if(!tallest)return false;
-      const value=Math.ceil(tallest)+'px';if(value===railRowH)return false;
+      // Rows share one height only while they all fit on the first screen. When they cannot, each row keeps
+      // its own height ('auto'), so one long course name does not make every course tall and push the rest
+      // out of view. Only content heights, the window and the rail's other rows are read: never the rows'
+      // own (grown) height, so the choice cannot feed back into itself.
+      const railStyle=root.getComputedStyle(rail);let others=0,gaps=0;
+      for(const child of rail.children){if(child.matches?.('.rd-rail-course')){gaps+=px(root.getComputedStyle(child),'marginTop','marginBottom');continue;}if(child.getClientRects?.().length&&root.getComputedStyle(child).position!=='absolute')others+=child.offsetHeight||0;}
+      const view=root.innerHeight||0,room=view-Math.min(parseFloat(railTop)||150,view*.45)-18-px(railStyle,'paddingTop','paddingBottom','borderTopWidth','borderBottomWidth')-others-12-gaps;
+      const value=!view||Math.ceil(tallest)*rows.length<=room?Math.ceil(tallest)+'px':'auto';if(value===railRowH)return false;
       container.style.setProperty('--rd-rail-row-h',railRowH=value);return true;
     }
     // After a render settles, record the rail column's page offset on .rd (render

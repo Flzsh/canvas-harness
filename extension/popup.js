@@ -5,14 +5,24 @@ document.getElementById('reload-extension').addEventListener('click',()=>chrome.
 const enabled=document.getElementById('enabled'),status=document.getElementById('status');
 chrome.storage.local.get('reserve:enabled').then(saved=>enabled.checked=saved['reserve:enabled']!==false);
 enabled.addEventListener('change',async()=>{try{await chrome.storage.local.set({'reserve:enabled':enabled.checked});status.textContent='Saved. Reload Canvas to apply.';}catch{status.textContent='Could not save this setting. Try again.';}});
-const school=document.getElementById('school-url');
-chrome.tabs.query({active:true,currentWindow:true}).then(tabs=>{const url=tabs[0]?.url;if(ReserveSite.supported(url))school.value=new URL(url).origin;}).catch(()=>{});
+const school=document.getElementById('school-url'),siteList=document.getElementById('sites');
+// School Canvas addresses outside instructure.com that the student added and the browser still allows (school-address.js).
+async function loadSites(){
+ const sites=await ReserveSchool.list();siteList.replaceChildren();
+ for(const origin of sites){
+  const item=document.createElement('li'),name=document.createElement('span'),remove=document.createElement('button');
+  name.textContent=new URL(origin).host;remove.type='button';remove.className='secondary';remove.textContent='Remove';remove.setAttribute('aria-label','Remove '+name.textContent);
+  remove.addEventListener('click',async()=>{try{await ReserveSchool.remove(origin);status.textContent='Removed. Canvas Harness no longer runs on '+name.textContent+'.';loadSites();}catch{status.textContent='Could not remove that site. Try again.';}});
+  item.append(name,remove);siteList.append(item);
+ }
+ siteList.hidden=!sites.length;return sites;
+}
+// The field starts with the Canvas tab you are on, or else the address you chose last time.
+loadSites().catch(()=>{}).then(()=>chrome.tabs.query({active:true,currentWindow:true})).then(async tabs=>{const url=tabs?.[0]?.url;school.value=ReserveSite.supported(url)?new URL(url).origin:school.value||await ReserveSchool.saved();}).catch(()=>{});
 async function openCanvas(native){
  try{
-  const value=school.value.trim();
-  if(!ReserveSite.supported(value)){status.textContent='Enter your school’s HTTPS Canvas address on instructure.com.';school.focus();return;}
-  if(!native)await chrome.storage.local.set({'reserve:enabled':true});
-  await chrome.tabs.create({url:new URL('/?reserve='+ (native?'native':'open'),value).href});
+  const result=await ReserveSchool.open(school.value,{native,onAsk:host=>{status.textContent='Your browser will ask to let Canvas Harness use '+host+'. It asks for that site only.';}});
+  if(result.message)status.textContent=result.message;if(!result.ok)school.focus();
  }catch{status.textContent='Could not open Canvas. Check the school address and try again.';}
 }
 document.getElementById('open').addEventListener('click',()=>openCanvas(false));

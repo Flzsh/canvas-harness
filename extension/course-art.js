@@ -20,6 +20,10 @@ function titled(course){
  if(piece&&course.originalName===undefined||piece&&course.originalName===course.name){
   if(subjects.normalize(shown)===subjects.normalize(piece.name))return {kind:k,name:piece.name,width:Number(piece.box.split(' ')[2]),cycle:piece.cycle};
  }
+ // The handwritten board is for courses without a theme of their own (they wear the generic All courses look).
+ // A course with a built-in subject theme keeps its plain lettered title instead (an uploaded banner keeps
+ // its separate lettering, as before).
+ if(k!=='home'&&presets[k]&&!course.artPrefs?.bannerArt&&course.id!=='folio-home')return null;
  return generic?{kind:k,name:shown,...generic.info(shown),generic:true}:null;
 }
 function title(course,{place='heading'}={}){const t=titled(course);if(t?.embedded)return '';if(t?.generic)return generic.title(t.name,{id:course.id,place,motion:course.artMotion!==false});if(t?.custom)return root.ReserveCustomArt.render(course.artPrefs.titleArt,{kind:'title',className:'rd-art ch-custom-title',motion:course.artMotion!==false,fit:'contain',position:'left'});return t?'<svg class="rd-art" data-art="'+t.kind+'" data-crop="title" data-place="'+safe(place)+'" data-rd-key="art-'+safe(course.id)+'-title" data-cycle="'+t.cycle+'" viewBox="0 0 '+t.width+' 240" preserveAspectRatio="xMinYMax meet"'+hidden+'>'+ART_CREDIT+presets[t.kind].title.inner+'</svg>':'';}

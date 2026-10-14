@@ -23,11 +23,10 @@ test('specific subjects win over generic words and short codes match only at bou
  assert.equal(art.kind({id:'folio-bookmarks',name:'Chemistry'}),'bookmarks');
 });
 
-test('art lettering preserves renamed and specific course names with a drawn fallback',()=>{
+test('a themed course whose name is renamed or more specific keeps plain lettering, not the generic board',()=>{
  assert.ok(art.titleFrame(course('Chemistry')).includes('data-crop="title"'));
  for(const c of [course('Organic Chemistry Seminar'),{id:'7',name:'My lab',originalName:'Chemistry'}]){
-  assert.equal(art.titled(c).generic,true);assert.equal(art.titled(c).name,c.name);
-  assert.match(art.titleFrame(c),/rd-generic-title/);
+  assert.equal(art.titled(c),null);assert.equal(art.titleFrame(c),'');
  }
  assert.match(art.titleFrame({...course('Chemistry'),artPrefs:{bannerArt:{}}}),/data-crop="title"/);
 });

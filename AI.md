@@ -31,7 +31,7 @@ The question draft and extracted attached-PDF text are held in the open AI panel
 
 ## Permissions
 
-The extension reads Canvas through your signed-in `*.instructure.com` school site. Local PDF reading uses the browser's offscreen permission. Website insertion needs the optional `scripting` permission and the exact website origin you choose (for example, `https://chatgpt.com/*`). It does not require access to every website. You can revoke a provider's access from its permission page, if open, or your browser's extension site settings.
+The extension reads Canvas through your signed-in school site: one on `*.instructure.com`, or your school's own Canvas address if you added it in the popup. Local PDF reading uses the browser's offscreen permission. Website insertion needs the optional `scripting` permission and the exact website origin you choose (for example, `https://chatgpt.com/*`). It does not require access to every website. You can revoke a provider's access from its permission page, if open, or your browser's extension site settings.
 
 The extension does not request cookies, debugger, native-messaging, or all-sites permissions. There is no AI API key or separate AI account connection to set up. Clicking **Copy** needs no provider-site permission.
 

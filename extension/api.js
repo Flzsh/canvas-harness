@@ -15,7 +15,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     });
   }
   function createClient({origin = (globalThis.ReserveSite.origin()), fetchImpl = root.fetch.bind(root), timeout = 15000, retryDelays = throttleRetries, wait = waitForRetry} = {}) {
-    if (!globalThis.ReserveSite.supported(origin)) throw new CanvasError('Use your school’s HTTPS Canvas site on instructure.com.', 'origin');
+    if (!globalThis.ReserveSite.supported(origin)) throw new CanvasError('Use your school’s HTTPS Canvas site.', 'origin');
     const base = new URL(origin);
     const allowed = [
       /^\/api\/v1\/users\/self\/profile\/?$/,

@@ -82,23 +82,27 @@ test('each preview loading course art loads generic art first and can render the
   assert.ok(names.indexOf('generic-art.js')<names.indexOf('course-art.js'),file);
   const env=load(names.filter(name=>artFiles.has(name)));
   genericTitle(env.ReserveCourseArt,overview(),'All courses');
-  genericTitle(env.ReserveCourseArt,{...sample('My Lab'),originalName:'Chemistry'},'My Lab');
+  genericTitle(env.ReserveCourseArt,sample('Independent Research Seminar'),'Independent Research Seminar');
   });
  }
 });
 
-test('All courses, unmatched, differently specific, and renamed courses get their complete displayed names as generic artwork',()=>{
+test('All courses and courses without a theme of their own get their complete displayed names as generic artwork',()=>{
  const art=runtime().ReserveCourseArt;
  for(const [course,label] of [
   [overview(),'All courses'],
   [{...overview(),name:'Legacy overview name'},'All courses'],
   [sample('Independent Research Seminar'),'Independent Research Seminar'],
-  [sample('Organic Chemistry Seminar'),'Organic Chemistry Seminar'],
-  [{...sample('My Lab'),originalName:'Chemistry'},'My Lab'],
-  [{...chemistry(),originalName:'Chemistry Seminar'},'Chemistry'],
   [{...sample('Studio Section A'),shortName:'My Studio'},'My Studio'],
   [{id:'sample-unnamed'},'Course']
  ])genericTitle(art,course,label);
+});
+
+test('a course with a built-in subject theme never gets the generic board: its piece when the name matches, else plain lettering',()=>{
+ const art=runtime().ReserveCourseArt;
+ for(const course of [sample('Organic Chemistry Seminar'),{...sample('My Lab'),originalName:'Chemistry'},{...chemistry(),originalName:'Chemistry Seminar'}]){
+  assert.notEqual(art.kind(course),'home');assert.equal(art.titled(course),null);assert.equal(art.title(course),'');assert.equal(art.titleFrame(course),'');
+ }
 });
 
 test('null and missing or empty IDs still produce no title information, markup, frame, or style',()=>{
@@ -108,12 +112,12 @@ test('null and missing or empty IDs still produce no title information, markup, 
  }
 });
 
-test('an exact original subject keeps its built-in title and its scene, icon, and border when renamed',()=>{
+test('an exact original subject keeps its built-in title, and when renamed its plain lettering, scene, icon, and border',()=>{
  const art=runtime().ReserveCourseArt,course=chemistry(),piece=art.titled(course),svg=art.title(course);
  assert.equal(piece.kind,'chemistry');assert.equal(piece.name,'Chemistry');assert.notEqual(piece.generic,true);assert.notEqual(piece.custom,true);
  assert.match(svg,/^<svg class="rd-art" data-art="chemistry" data-crop="title"/);assert.doesNotMatch(svg,/rd-generic-title/);
  const renamed={...course,name:'My Lab',shortName:'My Lab'};
- genericTitle(art,renamed,'My Lab');
+ assert.equal(art.titled(renamed),null,'a themed course is not given the generic board');assert.equal(art.titleFrame(renamed),'');
  for(const crop of ['heading','wide'])assert.equal(art.scene(renamed,{crop}),art.scene(course,{crop}),'renaming keeps the original subject scene');
  assert.equal(art.mini(renamed),art.mini(course),'renaming keeps the original subject icon');
  assert.equal(art.frame(art.kind(renamed),renamed.id,renamed),art.frame(piece.kind,course.id,course),'renaming keeps the subject border');
@@ -165,7 +169,7 @@ test('an unmatched course gets one light outline while All courses retains its s
 
 test('hostile names and Unicode reach generic lettering intact without injecting elements or attributes',()=>{
  const art=runtime().ReserveCourseArt;
- for(const label of ['Research <script>alert("sample")</script> & "quoted" course','Français et société','跨学科研究与工程设计 🧪','History 👩🏽‍🔬 and Science','العلم والمجتمع']){
+ for(const label of ['Research <script>alert("sample")</script> & "quoted" course','Séminaire de recherche et société','跨学科研究与工程设计 🧪','Seminar 👩🏽‍🔬 and Studio','العلم والمجتمع']){
   const course={id:'"><script onload="sample">',name:label,shortName:label,originalName:'Independent Research Seminar'};
   const svg=genericTitle(art,course,label,'"><img onerror="sample">'),a=attributes(svg.match(/^<svg\b[^>]*>/)[0]);
   assert.match(a['data-rd-key'],/^art-[A-Za-z0-9_-]+-generic-title$/);assert.match(a['data-place'],/^[A-Za-z0-9_-]+$/);inert(svg);
@@ -232,10 +236,15 @@ test('an explicitly uploaded overview title takes priority while a banner alone 
 
 test('rendered course headers use the displayed short name for generic art and retain the accessible heading',()=>{
  const env=runtime();
- for(const course of [sample('Independent Research Seminar'),{...sample('My Lab'),originalName:'Chemistry'},{...sample('Studio Section A'),shortName:'My Studio'}]){
+ for(const course of [sample('Independent Research Seminar'),{...sample('Studio Section A'),shortName:'My Studio'}]){
   const {heading}=dashboard(env,{course});
   assert.match(heading,/data-titled="true"/);assert.equal(displayedLabel(heading),course.shortName);
   assert.ok(heading.includes('>'+env.ReserveUI.escapeHTML(course.shortName)+'</h1>'));
   assert.ok(heading.includes(env.ReserveCourseArt.titleFrame(course,{place:'heading'})));
  }
+});
+
+test('a themed course header keeps its accessible lettered heading and no generic board',()=>{
+ const env=runtime(),course={...sample('My Lab'),originalName:'Chemistry'},{heading}=dashboard(env,{course});
+ assert.doesNotMatch(heading,/data-titled="true"|rd-generic-title/);assert.ok(heading.includes('>'+env.ReserveUI.escapeHTML(course.shortName)+'</h1>'));
 });

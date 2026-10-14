@@ -89,7 +89,7 @@ Describe your course to an AI using the [artwork skill](skills/canvas-harness-ar
 
 ## Install in Chrome or Edge
 
-**From the Chrome Web Store (easiest):** open [Canvas Harness on the Chrome Web Store](https://chromewebstore.google.com/detail/bppjpjpbichfcbgajlppkgbbncbfohgd), click **Add to Chrome**, then refresh Canvas. Edge can install it from the same page after you allow extensions from other stores. Store installs update by themselves.
+**From the Chrome Web Store (easiest):** open [Canvas Harness on the Chrome Web Store](https://chromewebstore.google.com/detail/bppjpjpbichfcbgajlppkgbbncbfohgd) and click **Add to Chrome**. A welcome page asks for your school's Canvas address, then opens it. Edge can install it from the same page after you allow extensions from other stores. Store installs update by themselves.
 
 **From GitHub instead:**
 
@@ -97,7 +97,7 @@ Describe your course to an AI using the [artwork skill](skills/canvas-harness-ar
 2. Open `chrome://extensions` or `edge://extensions`, enable Developer mode, and choose Load unpacked.
 3. Select the folder containing `manifest.json`, then refresh Canvas.
 
-Works on HTTPS school sites under `*.instructure.com`. [Installation help](INSTALL.md).
+Works on HTTPS school sites under `*.instructure.com`, and on a school's own Canvas address once you add it in the popup (your browser asks to allow that one site). [Installation help](INSTALL.md).
 
 ## Privacy
 
