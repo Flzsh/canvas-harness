@@ -7,7 +7,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const isDashboard=location.pathname==='/'||/^\/dashboard\/?$/.test(location.pathname);
   const params=new URLSearchParams(location.search);
   const startup=globalThis.ReserveStartup;
-  const build='2.24.2';
+  const build='2.25.0';
   // Local timings contain only milliseconds, never account or course data.
   // They make real startup measurable without delaying or storing the page.
   const stamp=()=>Math.round(globalThis.performance?.now?.()||0);
@@ -45,7 +45,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const dock=document.createElement('div');dock.id='reserve-companion-dock';
   dock.style.cssText='position:fixed;bottom:16px;right:16px;z-index:1000';
   const dockRoot=dock.attachShadow({mode:'open'});
-  dockRoot.innerHTML='<style>.reserve-dock-button{font:600 13px system-ui;color:#fff;background:#A9522F;border:1px solid #ffffff66;border-radius:999px;padding:10px 16px;box-shadow:0 0 0 1px rgb(60 48 24 / .08),0 8px 24px rgb(60 48 24 / .16);cursor:pointer;transition:background-color 140ms cubic-bezier(.25,.1,.25,1)}.reserve-dock-button:hover{background:#8C4226}.reserve-dock-button:focus-visible{outline:3px solid #C96442;outline-offset:3px}@media(prefers-reduced-motion:reduce){.reserve-dock-button{transition:none}}</style><button class="reserve-dock-button" title="Show the Canvas Harness dashboard">Canvas Harness</button>';
+  dockRoot.innerHTML='<style>.reserve-dock-button{position:relative;display:inline-flex;align-items:center;gap:7px;font:600 13.5px Literata,Georgia,serif;color:#141413;background:#FAF9F5;border:0;border-radius:14px;padding:8px 16px 8px 11px;box-shadow:2px 3px 0 #E3D9C6,0 8px 22px rgb(60 48 24 / .14);cursor:pointer;transition:transform 120ms cubic-bezier(.25,.1,.25,1),box-shadow 120ms cubic-bezier(.25,.1,.25,1),background-color 140ms}.reserve-dock-button::after{content:"";position:absolute;inset:-5px;border:14px solid transparent;pointer-events:none;background:color-mix(in srgb,#A9522F 70%,#141413);-webkit-mask-box-image:url(\"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2790%27 height=%2790%27 viewBox=%270 0 90 90%27%3E%3Cpath fill=%27none%27 stroke=%27%23000%27 stroke-width=%273%27 stroke-linecap=%27round%27 d=%27M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8%27/%3E%3C/svg%3E\") 30 30 30 30 stretch}.reserve-dock-button+.reserve-dock-button{margin-left:10px}.reserve-dock-button:hover{transform:translateY(-1px);background:#FFFDF8;box-shadow:2px 4px 0 #E3D9C6,0 10px 26px rgb(60 48 24 / .18)}.reserve-dock-button:active{transform:translateY(2px);background:#F1ECE0;box-shadow:0 1px 0 #E3D9C6,0 4px 12px rgb(60 48 24 / .14)}.reserve-dock-button:focus-visible{outline:3px solid #C96442;outline-offset:4px}.reserve-dock-button .dock-ic{width:22px;height:22px;flex:none;overflow:visible}.reserve-dock-button .k{fill:none;stroke:#2B2A27;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.reserve-dock-button[aria-busy=true]{cursor:progress;background:#F1ECE0;transform:translateY(1px)}.reserve-dock-button[aria-busy=true] .dock-ic{animation:dock-nod 900ms ease-in-out infinite}.reserve-dock-button[aria-busy=true] .dock-t::after{content:"";display:block;height:2px;margin-top:1px;border-radius:2px;background:#A9522F;transform-origin:left;animation:dock-line 1.1s ease-in-out infinite}@keyframes dock-nod{50%{transform:rotate(-8deg)}}@keyframes dock-line{0%{transform:scaleX(0)}60%{transform:scaleX(1)}100%{transform:scaleX(1);opacity:0}}@media(prefers-reduced-motion:reduce){.reserve-dock-button,.reserve-dock-button *{transition:none;animation:none!important}}</style><button class="reserve-dock-button" title="Show the Canvas Harness dashboard"><svg class="dock-ic" viewBox="0 0 40 40" aria-hidden="true" focusable="false"><path d="M7.4 30.6h27.2v5H7.4z" fill="#E6C478"/><path d="M9.6 9.6h6.6v21.4H9.6z" fill="#B7CBA5"/><path d="M19 12.8l6.2-1.8 6.6 19-6.2 1.8z" fill="#DE9A7C"/><path class="k" d="M6.4 30.2c9.4-.3 18.8-.3 28.2 0 .3 1.6.3 3.4 0 5-9.4.3-18.8.3-28.2 0-.3-1.6-.3-3.4 0-5z"/><path class="k" d="M8.8 8.8c2.2-.2 4.4-.2 6.6 0 .3 7.1.3 14.2 0 21.3-2.2.2-4.4.2-6.6 0-.3-7.1-.3-14.2 0-21.3z"/><path class="k" d="M18.2 12.4l6.4-2 6.8 19.8-6.4 2z"/></svg><span class="dock-t">Canvas Harness</span></button>';
+  // The dock button answers at once: it presses in and says it is opening, until the workspace or an error arrives.
+  const dockButton=dockRoot.querySelector('button'),dockLabel=dockButton.querySelector('.dock-t')||dockButton,dockText=dockLabel.textContent;let dockTimer=0;
+  function dockBusy(on){globalThis.clearTimeout?.(dockTimer);if(on){dockButton.setAttribute?.('aria-busy','true');dockLabel.textContent='Opening\u2026';dockTimer=globalThis.setTimeout?.(()=>dockBusy(false),12000);}else{dockButton.removeAttribute?.('aria-busy');dockLabel.textContent=dockText;}}
   // Literata (OFL, bundled: roman and italic) sets Canvas Harness's titles and reading
   // text. @font-face does not apply inside a shadow root, so both faces are
   // registered on the page's font set once; each downloads only when first used.
@@ -82,7 +85,6 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(host)host.hidden=true;coverWorkspace(false);restoreNative();dock.hidden=false;
     startup?.release();
     session?.destroy();session=null;
-    if(remember){try{sessionStorage.setItem('reserve:native','true');}catch{}}
   }
   function setStatus(message){if(statusLabel)statusLabel.textContent=dashboard?'Canvas Harness '+build:message||'Canvas Harness '+build;dashboard?.setStatus(message);}
   function drawDashboard(){
@@ -162,14 +164,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       onSnapshot:receive,onStatus:setStatus,onTiming:mark,onError:(error,{clear})=>{
       if(clear){if(ownerHint){ownerHint=null;try{Promise.resolve(chrome.storage.local.remove(HINT_KEY)).catch(()=>{});}catch{}}dashboard?.destroy();dashboard=null;snapshot=null;store=null;showCanvas();dashboardState=undefined;dashboardScroll=0;restoreScroll=false;}
       else if(!dashboard&&!planner)showCanvas(false);
-      dockRoot.querySelector('button').title=error.message+' Click to retry.';
+      dockBusy(false);dockRoot.querySelector('button').title=error.message+' Click to retry.';
     }});
     return session.start();
   }
   dockRoot.querySelector('button').addEventListener('click',()=>{
+    dockBusy(true);
     if(!isDashboard){location.assign(globalThis.ReserveSite.origin()+'/?reserve=open');return;}
     startup?.release();manualOpen=true;wanted=true;
-    try{sessionStorage.removeItem('reserve:native');}catch{}
     if(host&&!ready){host.remove();host=null;}
     makeHost();
     authorized=false;resumeGeneration++;
@@ -221,7 +223,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const css=document.createElement('style');css.textContent='.rd-native-tools{position:fixed;inset:0 auto auto 0;width:0;min-height:0;padding:0;background:none}.reserve-tool-status{display:block;position:absolute;bottom:48px;right:0;width:260px;max-width:calc(100vw - 40px);padding:10px 13px;border:1px solid #dfe3e8;border-radius:9px;box-shadow:0 3px 15px #17212c10;background:#fff;color:#425062;font:12px/1.5 system-ui}.reserve-tool-status[hidden]{display:none}.reserve-dock-button+.reserve-dock-button{margin-left:6px}';dockRoot.append(css);
       nativeTools=globalThis.ReserveNativeTools?.create({button,dockRoot});return;
     }
-    try{wanted=wanted&&params.get('reserve')!=='native'&&(params.get('reserve')==='open'||sessionStorage.getItem('reserve:native')!=='true')&&!!startup?.canReveal();}catch{wanted=false;startup?.release();}
+    try{wanted=wanted&&params.get('reserve')!=='native'&&!!startup?.canReveal();}catch{wanted=false;startup?.release();}
     // Styles preload while the session verifies identity; no account data bypasses it.
     if(wanted)start();
   }

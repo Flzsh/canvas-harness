@@ -165,7 +165,7 @@
     const all=ledges(),to=pet.roam==='home'?all.find(l=>l.paddock):all.filter(l=>!l.paddock&&!l.floor)[0]||all[all.length-1];
     if(to&&(to.el!==here.el)){if(here.shown)jumpTo(to);else appear(to);return;}
    }
-   if(idle>150000){settle('sleep',30000);return;}
+   if(idle>25000){settle('sleep',30000);return;}   // the same idle rest as the drawings (motion.js)
    const roll=Math.random();
    if(roll<.4)walk();
    else if(roll<.45&&pet.roam==='page'){const near=ledges().filter(l=>l.el!==here.el&&!l.paddock&&Math.abs(l.y-here.y)<360&&l.x0<node._x+420&&l.x1>node._x-420);if(near.length)jumpTo(near[Math.floor(Math.random()*near.length)]);else walk();}

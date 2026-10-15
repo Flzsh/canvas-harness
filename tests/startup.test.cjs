@@ -70,7 +70,7 @@ function fixture(options={}){
     click(el){dispatch(el.events.click,{preventDefault(){}});},
     nativeChoice(){const find=el=>el.tagName==='a'?el:el.children.map(find).find(Boolean);this.click(find(this.shell));},
     dockClick(){this.click(document.getElementById('reserve-companion-dock').shadowRoot.querySelector('button'));},
-    interact(key='pointerdown'){dispatch(events[key],{key:'Enter',target:native,composedPath:()=>[native,content,body,html]});},
+    interact(key='pointerdown',target=native){dispatch(events[key],{type:key,key:'Enter',target,composedPath:()=>[target,content,body,html]});},
     login(){login=true;for(const observer of [...observers])observer.fn();},
     pagehide(){dispatch(winEvents.pagehide,{persisted:true});},
     pageshow(){dispatch(winEvents.pageshow,{persisted:true});},
@@ -219,7 +219,7 @@ test('login detected before page containers appear cannot open the cached worksp
 });
 
 test('startup timeout before page containers appear cannot cause a late automatic swap',async()=>{
- const f=fixture({emptyDocument:true});f.content();await flush();f.tick(2500);f.parserAddsContainers();f.parsed();await flush();
+ const f=fixture({emptyDocument:true});f.content();await flush();f.tick(8000);f.parserAddsContainers();f.parsed();await flush();
  assert.equal(f.profileCalls,0);assert.equal(f.host,undefined);assert.equal(f.native.hidden,false);
 });
 test('opted-in dashboard gets a generic prepaint shell without reading cached data or making a competing request',async()=>{
@@ -228,7 +228,7 @@ test('opted-in dashboard gets a generic prepaint shell without reading cached da
   assert.ok(f.preloads.every(link=>link.as==='style'&&link.href.startsWith('chrome-extension://fixture/')));
 });
 for(const pathname of ['/','/dashboard','/dashboard/'])test('exact dashboard route activates: '+pathname,async()=>{const f=fixture({pathname});await flush();assert.equal(f.active,true);});
-for(const opts of [{enabled:false},{search:'?reserve=native'},{native:true},{sessionError:true},{pathname:'/login/canvas'},{pathname:'/courses/7'},{pathname:'/dashboard/archive'},{pathname:'/dashboard//'}, {pathname:'/Dashboard'},{frame:true},{origin:'https://not-canvas.example'},{login:true}]){
+for(const opts of [{enabled:false},{search:'?reserve=native'},{pathname:'/login/canvas'},{pathname:'/courses/7'},{pathname:'/dashboard/archive'},{pathname:'/dashboard//'}, {pathname:'/Dashboard'},{frame:true},{origin:'https://not-canvas.example'},{login:true}]){
   test('native remains untouched for '+JSON.stringify(opts),async()=>{const f=fixture(opts);await flush();assert.equal(f.active,false);assert.equal(f.shell,undefined);assert.equal(f.native.hidden,false);assert.equal(f.profileCalls,0);assert.equal(f.preflightCalls,0);assert.equal(f.preloads.length,0);});
 }
 
@@ -250,7 +250,7 @@ test('a different server account selects only its own cache and never displays t
 test('a missing controller performs no identity or cache work behind the prepaint shell',async()=>{
  const f=fixture();await flush();
  assert.equal(f.active,true);assert.equal(f.cacheReads,0);assert.equal(f.profileCalls,0);
- f.tick(2500);assert.equal(f.active,false);
+ f.tick(8000);assert.equal(f.active,false);
 });
 
 test('the controller remains the sole authoritative account check',async()=>{
@@ -259,31 +259,31 @@ test('the controller remains the sole authoritative account check',async()=>{
  assert.equal(f.mounts,1);assert.equal(f.native.hidden,true);
 });
 test('explicit reserve=open overrides a readable session native preference',async()=>{const f=fixture({native:true,search:'?reserve=open'});await flush();assert.equal(f.active,true);});
-test('storage still pending never hides Canvas; a late preference cannot activate after the deadline',async()=>{const saved=deferred(),f=fixture({storage:saved.promise});await flush();assert.equal(f.active,false);f.tick(2500);saved.resolve({'reserve:enabled':true});await flush();assert.equal(f.active,false);assert.equal(f.preflightCalls,0);assert.equal(f.context.ReserveStartup?.canReveal(),false);});
+test('storage still pending never hides Canvas; a late preference cannot activate after the deadline',async()=>{const saved=deferred(),f=fixture({storage:saved.promise});await flush();assert.equal(f.active,false);f.tick(8000);saved.resolve({'reserve:enabled':true});await flush();assert.equal(f.active,false);assert.equal(f.preflightCalls,0);assert.equal(f.context.ReserveStartup?.canReveal(),false);});
 test('storage rejection fails open and is handled',async()=>{const saved=deferred(),f=fixture({storage:saved.promise});saved.reject(Error('storage unavailable'));await flush();assert.equal(f.active,false);assert.equal(f.context.ReserveStartup?.canReveal(),false);});
 test('missing bootstrap CSS cannot hide Canvas',async()=>{const f=fixture({css:false});await flush();assert.equal(f.active,false);assert.equal(f.shell,undefined);assert.equal(f.context.ReserveStartup?.canReveal(),false);});
-test('missing main script releases the shell at 2.5 seconds and cannot reopen automatically',async()=>{const f=fixture();await flush();assert.equal(f.active,true);f.tick(2499);assert.equal(f.active,true);f.tick(1);assert.equal(f.active,false);assert.equal(f.preflightCalls,0);assert.equal(f.shell,undefined);assert.equal(f.context.ReserveStartup?.canReveal(),false);});
-test('expired wall clock forbids reveal even when a throttled timer has not fired',async()=>{const f=fixture();await flush();f.elapse(2501);assert.equal(f.context.ReserveStartup?.complete(),false);assert.equal(f.active,false);});
-test('native escape dismisses immediately and stores this tab preference',async()=>{const f=fixture();await flush();assert.ok(f.shell);f.nativeChoice();assert.equal(f.active,false);assert.equal(f.preflightCalls,0);assert.equal(f.preloads.length,0);assert.equal(f.sessionData.get('reserve:native'),'true');assert.equal(f.context.ReserveStartup?.complete(),false);});
+test('missing main script releases the shell at 8 seconds and cannot reopen automatically',async()=>{const f=fixture();await flush();assert.equal(f.active,true);f.tick(7999);assert.equal(f.active,true);f.tick(1);assert.equal(f.active,false);assert.equal(f.preflightCalls,0);assert.equal(f.shell,undefined);assert.equal(f.context.ReserveStartup?.canReveal(),false);});
+test('expired wall clock forbids reveal even when a throttled timer has not fired',async()=>{const f=fixture();await flush();f.elapse(8001);assert.equal(f.context.ReserveStartup?.complete(),false);assert.equal(f.active,false);});
+test('native escape dismisses immediately, for this visit only',async()=>{const f=fixture();await flush();assert.ok(f.shell);f.nativeChoice();assert.equal(f.active,false);assert.equal(f.preflightCalls,0);assert.equal(f.preloads.length,0);assert.equal(f.sessionData.get('reserve:native'),undefined,'the next visit opens the workspace again');assert.equal(f.context.ReserveStartup?.complete(),false);});
 test('new login markup and persisted pagehide each release pending startup',async()=>{for(const action of ['login','pagehide']){const f=fixture();await flush();assert.equal(f.active,true);f[action]();assert.equal(f.active,false);assert.equal(f.context.ReserveStartup?.complete(),false);}});
-for(const key of ['pointerdown','keydown'])test(key+' on Canvas while preference is pending prevents a later swap',async()=>{const saved=deferred(),f=fixture({storage:saved.promise});f.interact(key);saved.resolve({'reserve:enabled':true});await flush();assert.equal(f.active,false);assert.equal(f.context.ReserveStartup?.complete(),false);});
+for(const [key,target] of [['pointerdown'],['keydown',{tagName:'INPUT'}]])test(key+' on Canvas while preference is pending prevents a later swap',async()=>{const saved=deferred(),f=fixture({storage:saved.promise});f.interact(key,target);saved.resolve({'reserve:enabled':true});await flush();assert.equal(f.active,false);assert.equal(f.context.ReserveStartup?.complete(),false);});
 test('styles preload during identity verification; only verified data plus all styles complete startup',async()=>{
   const f=fixture();f.content();await flush();assert.ok(f.host,'styles should start before profile resolves');assert.equal(f.host.hidden,true);assert.equal(f.cacheReads,0);
   f.loadStyles();assert.equal(f.host.hidden,true);assert.equal(f.active,true);f.profile.resolve({id:'7'});await flush();assert.equal(f.storeAccount,'7');assert.equal(f.cacheReads,1);assert.equal(f.mounts,0);
   f.snapshot();await flush();assert.equal(f.mounts,1);assert.equal(f.host.hidden,false);assert.equal(f.active,false);assert.equal(f.native.hidden,true);f.tick(3000);assert.equal(f.host.hidden,false);
 });
 test('verified data still waits for the last stylesheet behind the startup shell',async()=>{const f=fixture();f.content();await flush();f.profile.resolve({id:'7'});f.snapshot();await flush();assert.equal(f.mounts,1);assert.equal(f.active,true);assert.equal(f.host.hidden,true);const links=f.host.shadowRoot.children.filter(x=>x.tagName==='link');assert.equal(links.length,12);links.slice(0,-1).forEach(link=>link.onload());assert.equal(f.active,true);links.at(-1).onload();assert.equal(f.active,false);assert.equal(f.host.hidden,false);});
-test('timeout restores native and aborts startup; late account/network/styles cannot surprise-swap',async()=>{const f=fixture();f.content();await flush();f.tick(2500);assert.equal(f.active,false);assert.equal(f.aborted,true);f.profile.resolve({id:'7'});f.snapshot();f.loadStyles();await flush();assert.equal(f.cacheReads,0);assert.equal(f.mounts,0);assert.equal(f.native.hidden,false);assert.equal(f.host.hidden,true);});
+test('timeout restores native and aborts startup; late account/network/styles cannot surprise-swap',async()=>{const f=fixture();f.content();await flush();f.tick(8000);assert.equal(f.active,false);assert.equal(f.aborted,true);f.profile.resolve({id:'7'});f.snapshot();f.loadStyles();await flush();assert.equal(f.cacheReads,0);assert.equal(f.mounts,0);assert.equal(f.native.hidden,false);assert.equal(f.host.hidden,true);});
 test('native escape during account verification prevents late data from rendering',async()=>{const f=fixture();f.content();await flush();assert.ok(f.shell);f.nativeChoice();f.profile.resolve({id:'7'});f.snapshot();f.loadStyles();await flush();assert.equal(f.mounts,0);assert.equal(f.native.hidden,false);assert.equal(f.host.hidden,true);});
 test('authentication rejection releases the shell without reading any account cache',async()=>{const f=fixture();f.content();await flush();const error=Error('Signed out');error.code='auth';f.profile.reject(error);await flush();assert.equal(f.active,false);assert.equal(f.cacheReads,0);assert.equal(f.native.hidden,false);});
 test('initial API failure releases the shell immediately, not at its deadline',async()=>{const f=fixture();f.content();await flush();f.profile.resolve({id:'7'});await flush();f.network.reject(Error('offline'));await flush();assert.equal(f.active,false);assert.equal(f.native.hidden,false);});
 test('stylesheet error releases the shell and prevents late activation',async()=>{const f=fixture();f.content();await flush();assert.ok(f.host);f.failStyle();assert.equal(f.active,false);f.profile.resolve({id:'7'});f.snapshot();f.loadStyles();await flush();assert.equal(f.native.hidden,false);assert.equal(f.host.hidden,true);});
 test('dashboard render exception releases the shell immediately',async()=>{const f=fixture({mountError:true});f.content();await flush();f.profile.resolve({id:'7'});f.snapshot();await flush();assert.equal(f.active,false);assert.equal(f.native.hidden,false);});
-test('explicit Reserve button can retry after timeout while automatic late reveal is blocked',async()=>{const f=fixture();f.content();await flush();f.tick(2500);f.dockClick();f.profile.resolve({id:'7'});f.snapshot();await flush();f.loadStyles();assert.equal(f.host.hidden,false);assert.equal(f.mounts,1);});
-test('content remains native when sessionStorage reads throw',async()=>{const f=fixture({sessionError:true});f.content();await flush();assert.equal(f.profileCalls,0);assert.equal(f.native.hidden,false);assert.equal(f.active,false);});
+test('explicit Reserve button can retry after timeout while automatic late reveal is blocked',async()=>{const f=fixture();f.content();await flush();f.tick(8000);f.dockClick();f.profile.resolve({id:'7'});f.snapshot();await flush();f.loadStyles();assert.equal(f.host.hidden,false);assert.equal(f.mounts,1);});
+test('sessionStorage errors no longer keep Canvas native: the workspace starts its account check as usual',async()=>{const f=fixture({sessionError:true});f.content();await flush();assert.equal(f.profileCalls,1);assert.equal(f.active,true);});
 test('missing bootstrap fails open; only an explicit Reserve click starts the dashboard',async()=>{const f=fixture({skipStartup:true});f.content();await flush();assert.equal(f.profileCalls,0);assert.equal(f.native.hidden,false);f.dockClick();assert.equal(f.profileCalls,1);f.profile.resolve({id:'7'});f.snapshot();await flush();f.loadStyles();assert.equal(f.host.hidden,false);});
 test('late loads from a failed host cannot make its replacement appear without styles',async()=>{const f=fixture();f.content();await flush();assert.ok(f.host);const oldLinks=f.host.shadowRoot.children.filter(x=>x.tagName==='link');f.failStyle();f.dockClick();f.profile.resolve({id:'7'});f.snapshot();await flush();for(const link of oldLinks)link.onload();assert.equal(f.host.hidden,true);f.loadStyles();assert.equal(f.host.hidden,false);});
-test('retry after data arrived but styles timed out builds a new styled host and freshly verifies the saved view',async()=>{const f=fixture();f.content();await flush();f.profile.resolve({id:'7'});f.snapshot();await flush();assert.equal(f.mounts,1);const oldHost=f.host,check=f.queueProfile();f.tick(2500);f.dockClick();assert.ok(f.host);assert.notEqual(f.host,oldHost);f.loadStyles();assert.equal(f.host.hidden,true);check.resolve({id:'7'});await flush();assert.equal(f.host.hidden,false);assert.equal(f.native.hidden,true);});
+test('retry after data arrived but styles timed out builds a new styled host and freshly verifies the saved view',async()=>{const f=fixture();f.content();await flush();f.profile.resolve({id:'7'});f.snapshot();await flush();assert.equal(f.mounts,1);const oldHost=f.host,check=f.queueProfile();f.tick(8000);f.dockClick();assert.ok(f.host);assert.notEqual(f.host,oldHost);f.loadStyles();assert.equal(f.host.hidden,true);check.resolve({id:'7'});await flush();assert.equal(f.host.hidden,false);assert.equal(f.native.hidden,true);});
 
 test('Instructure websites on the shared domain are not treated as Canvas schools',()=>{
  const site=require('../extension/site.js');
@@ -301,4 +301,15 @@ test('a dashboard-path page without a Canvas layout releases the cover and never
 test('a course page without a Canvas layout gets no Tools button',async()=>{
  const f=fixture({notCanvas:true,pathname:'/courses/7'});f.content();await flush();f.parsed();await flush();
  assert.equal(f.document.getElementById('reserve-companion-dock'),undefined);assert.equal(f.profileCalls,0);
+});
+// The user (2026-10-15): the dashboard should open Canvas Harness by default; choosing Canvas's own dashboard is for that
+// visit only. An older tab-long choice is forgotten, and sessionStorage is no longer needed to decide.
+for(const opts of [{native:true},{sessionError:true}])test(`the dashboard opens the cover by default for ${JSON.stringify(opts)}`,async()=>{
+ const f=fixture(opts);await flush();assert.equal(f.active,true);assert.ok(f.shell);assert.equal(f.sessionData.get('reserve:native'),undefined);
+});
+test('clicking Canvas’s menu bar or pressing a key while the cover waits keeps it; using Canvas’s page or a field hands over',async()=>{
+ const ctx=f=>f.context.ReserveStartup;
+ {const f=fixture();await flush();f.interact('keydown');assert.equal(f.active,true,'Enter or Tab on the page is not using Canvas');}
+ {const f=fixture();await flush();f.interact('keydown',{tagName:'TEXTAREA'});assert.equal(f.active,false,'typing into a field is');}
+ {const f=fixture();await flush();f.interact('pointerdown');assert.equal(f.active,false,'a click on Canvas’s page hands it over');assert.equal(ctx(f)?.complete(),false);}
 });

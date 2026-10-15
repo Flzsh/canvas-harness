@@ -332,11 +332,11 @@
   // 24 for ART_BRISK_MS after the last pointer or key input on the page (dashboard.js tells us: activity()),
   // and on twos, like the minis, after that, until the idle rest stops everything.
   const FILM_FPS={scene:24,mini:12};
-  const ART_BRISK_MS=20000;
-  // THE IDLE REST: a page nobody has touched for two minutes (no pointer or key input on it) holds every
+  const ART_BRISK_MS=6000;
+  // THE IDLE REST: a page nobody has touched for 25 seconds (no pointer or key input on it) holds every
   // living drawing where it stands, so a dashboard left open on a screen costs nothing at all; the next
   // input (or the tab shown again) lets them go on from that very frame. The clock checks it as it ticks.
-  const ART_IDLE_MS=120000;
+  const ART_IDLE_MS=25000;
 
   function create(container,{media=root.matchMedia?.('(prefers-reduced-motion: reduce)'),ResizeObserverImpl=root.ResizeObserver,IntersectionObserverImpl=root.IntersectionObserver,setIntervalImpl=root.setInterval?.bind(root),clearIntervalImpl=root.clearInterval?.bind(root)}={}){
     let geometry=null,dead=false,layer=null,first=true,geo={},watched=[],bar=null;
@@ -754,7 +754,7 @@
       function frameLoops(t){
         const step=1000/FILM_FPS.mini,gap=t-loopsAt;if(gap<step-4)return;loopsAt=t;
         try{
-          if(t-loopsSeen>=500){
+          if(t-loopsSeen>=2000){
             loopsSeen=t;const live=new Set();
             for(const a of container.querySelector?.('.rd-course-rail')?.getAnimations?.({subtree:true})||[]){
               if(!String(a.animationName||'').startsWith('rd-fl-')||a.playState==='idle')continue;live.add(a);
@@ -771,7 +771,7 @@
       }
       // The view is destroyed: the loops are CSS's again.
       function freeLoops(){for(const a of loops.keys()){try{if(a.playState!=='idle')a.play();}catch{}}loops.clear();}
-      // Two minutes without input: every drawing holds where it stands (the idle rest) and the clock stops.
+      // 25 seconds without input: every drawing holds where it stands (the idle rest) and the clock stops.
       function tick(at){
         if(dead){park();return;}const t=Number.isFinite(at)?at:now(),turns=new Map();
         // A drawing slower than the clock (a mini while a scene lives) takes every second tick: its turn comes
