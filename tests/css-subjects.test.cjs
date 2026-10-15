@@ -18,3 +18,9 @@ test('a list that would grow past 16 selectors is left alone',()=>{
   const args=Array.from({length:17},(_,i)=>'.a'+i).join(', ');
   assert.equal(rewrite(`.rd :is(${args}){color:red}`).changed,0);
 });
+test('a block another script generated is left exactly as written',()=>{
+  const block='/* <frames:generated> */\n.rd :is(.c, .d){color:blue}\n/* </frames:generated> */';
+  const out=rewrite('.rd :is(.a, .b){color:red}\n'+block+'\n.rd :is(.e, .f){top:0}');
+  assert.equal(out.changed,2);assert.ok(out.css.includes(block));
+  assert.ok(out.css.startsWith('.rd .a, .rd .b{color:red}'));assert.ok(out.css.endsWith('.rd .e, .rd .f{top:0}'));
+});
