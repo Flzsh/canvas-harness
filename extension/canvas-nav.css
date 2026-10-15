@@ -19,9 +19,9 @@ html.chn-nav #header::before, html.chn-nav #header::after { content: ""; positio
 /* The right side sits a little outside Canvas's 84px column: the current page's card stands out to the right (its sheets),
    so the line moves with it and the card reads as centred between the wall and the line. */
 html.chn-nav #header { overflow: visible !important; }
-html.chn-nav #header::before { inset: var(--chn-top, 12px) 0 12px 0; background: var(--chn-sidebar-c); border-radius: 0 16px 16px 0; }
+html.chn-nav #header::before { inset: var(--chn-top, 12px) 0 var(--chn-bottom, 12px) 0; background: var(--chn-sidebar-c); border-radius: 0 16px 16px 0; }
 html.chn-nav #header::after {
- inset: calc(var(--chn-top, 12px) - 4px) -4px 8px -16px; border: 18px solid transparent;
+ inset: calc(var(--chn-top, 12px) - 4px) -4px calc(var(--chn-bottom, 12px) - 4px) -16px; border: 18px solid transparent;
  background: color-mix(in srgb, var(--chn-accent-c) 70%, var(--chn-ink-c));
  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' d='M-4 6.4C8 5.8 22 6.6 34 6C46 5.6 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 42 83.9 30 84.6C18 85 6 84.2 -4 84.8'/%3E%3C/svg%3E") 30 30 30 30 stretch;
 }
@@ -65,6 +65,10 @@ html.chn-nav #header .menu-item-icon-container:not(.chn-drawn) svg:not(.chn-ic) 
 html.chn-nav #header .menu-item-icon-container:not(.chn-drawn) svg:not(.chn-ic) :is([fill='#fff' i], [fill='#ffffff' i], [fill='white' i]) { fill: var(--chn-ink2-c) !important; }
 html.chn-nav #header .menu-item-icon-container:not(.chn-drawn) svg:not(.chn-ic) :is([stroke='#fff' i], [stroke='#ffffff' i], [stroke='white' i]) { stroke: var(--chn-ink2-c) !important; }
 html.chn-nav #header .menu-item-icon-container:not(.chn-drawn) img:not(.ic-avatar img) { filter: brightness(0) opacity(.78); }
+/* a school tool whose icon sits straight in the link (Studio): our drawing stands in for it; others are inked */
+html.chn-nav #header .ic-app-header__menu-list-link.chn-drawn-link > .menu-item__icon { display: none !important; }
+html.chn-nav #header .ic-app-header__menu-list-link:not(.chn-drawn-link) > svg.menu-item__icon { fill: var(--chn-ink2-c) !important; color: var(--chn-ink2-c) !important; }
+html.chn-nav #header .ic-app-header__menu-list-link:not(.chn-drawn-link) > img.menu-item__icon { filter: brightness(0) opacity(.78); }
 html.chn-nav #header .menu-item-icon-container.chn-drawn > :not(.chn-ic):not(.menu-item__badge):not(.screenreader-only) { display: none !important; }
 html.chn-nav #header .ic-avatar { border-color: var(--chn-ink2-c) !important; }
 html.chn-nav #header .chn-ic { display: block; width: 33px; height: 33px; margin: 0 auto; overflow: visible; }
@@ -107,14 +111,16 @@ html.chn-nav:not([data-chn-motion=off]) #header .ic-app-header__menu-list-link:h
 }
 html.chn-nav #header .chn-ic .x-needle { transform-origin: 20px 27px; transform-box: view-box; }
 html.chn-nav #header .chn-ic .x-lean { transform-origin: 0% 100%; }
-html.chn-nav #header .chn-ic .x-page { transform-origin: 50% 0%; }
+html.chn-nav #header .chn-ic .x-rings { transform-origin: 50% 100%; }
+html.chn-nav #header .chn-ic .x-circle { stroke-dasharray: 1; stroke-dashoffset: 0; }
 html.chn-nav #header .chn-ic .x-flag { transform-box: view-box; transform-origin: 33px 21.6px; }
 html.chn-nav #header .chn-ic .x-hand { transform-box: view-box; transform-origin: 20px 22.2px; }
 html.chn-nav #header .chn-ic .x-play { transform-origin: 50% 50%; }
 html.chn-nav #header .chn-ic .x-wave { transform-origin: 85% 90%; }
 html.chn-nav:not([data-chn-motion=off]) #header .ic-app-header__menu-list-link:hover .x-needle { animation: chn-needle 1s ease-in-out; }
 html.chn-nav:not([data-chn-motion=off]) #header .ic-app-header__menu-list-link:hover .x-lean { animation: chn-lean 900ms ease-in-out; }
-html.chn-nav:not([data-chn-motion=off]) #header .ic-app-header__menu-list-link:hover .x-page { animation: chn-page 800ms ease-in-out; }
+html.chn-nav:not([data-chn-motion=off]) #header .ic-app-header__menu-list-link:hover .x-rings { animation: chn-rings 520ms ease-out; }
+html.chn-nav:not([data-chn-motion=off]) #header .ic-app-header__menu-list-link:hover .x-circle { animation: chn-circle 900ms cubic-bezier(.45, 0, .2, 1); }
 html.chn-nav:not([data-chn-motion=off]) #header .ic-app-header__menu-list-link:hover .x-flag { animation: chn-flag 900ms ease-in-out; }
 html.chn-nav:not([data-chn-motion=off]) #header .ic-app-header__menu-list-link:hover .x-hand { animation: chn-hand 1s ease-in-out; }
 html.chn-nav:not([data-chn-motion=off]) #header .ic-app-header__menu-list-link:hover .x-play { animation: chn-playb 700ms ease-in-out; }
@@ -123,7 +129,8 @@ html.chn-nav:not([data-chn-motion=off]) #header .ic-app-header__menu-list-link:h
 html.chn-nav:not([data-chn-motion=off]) #header .ic-app-header__menu-list-link:hover .x-glow { animation: chn-glow 900ms ease; }
 @keyframes chn-needle { 30% { transform: rotate(-46deg); } 65% { transform: rotate(16deg); } }
 @keyframes chn-lean { 45% { transform: rotate(-9deg); } }
-@keyframes chn-page { 45% { transform: translateY(-3px) skewX(-6deg); } }
+@keyframes chn-rings { 40% { transform: translateY(-2px); } 70% { transform: translateY(.5px); } }
+@keyframes chn-circle { 0%, 15% { stroke-dashoffset: 1; } 100% { stroke-dashoffset: 0; } }
 @keyframes chn-flag { 0% { transform: rotate(80deg); } 55% { transform: rotate(-8deg); } 100% { transform: none; } }
 @keyframes chn-hand { to { transform: rotate(360deg); } }
 @keyframes chn-playb { 40% { transform: scale(1.3); } }

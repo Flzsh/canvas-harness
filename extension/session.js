@@ -7,6 +7,8 @@
   function createSession({client,createStore,onSnapshot,onStatus=()=>{},onError=()=>{},onTiming=()=>{},maxAge=300000,partialMaxAge=60000,prefetchedProfile=null,quickOpen=null}){
     let controller=new AbortController(),generation=0,paused=false;
     let store,user,current,dead=false,pending=null,starting=null,checking=null;
+    // When the account was last confirmed with Canvas (start, or a return to the tab).
+    let verifiedAt=0;
     const alive=(epoch=generation)=>!dead&&!paused&&epoch===generation&&!controller.signal.aborted;
     function isFresh(value){const age=value?Date.now()-Date.parse(value.fetchedAt):Infinity;return !!value&&Number.isFinite(age)&&age>=0&&age<(value.partial?Math.min(partialMaxAge,maxAge):maxAge);}
     function phase(name){try{onTiming(name);}catch{}}
@@ -24,7 +26,7 @@
       const operation=(async()=>{
         onStatus(current?'Updating in the background…':'Adding your course information…');
         try{
-          const next=await client.loadSnapshot({user,signal});
+          const next=await client.loadSnapshot({user,signal,verifiedAt});
           if(!alive(epoch))return null;
           if(String(next.user?.id)!==String(user.id)){
             const error=Error('Your Canvas account changed. Reload Canvas to continue.');error.code='auth';throw error;
@@ -83,7 +85,7 @@
           if(String(verified.id)!==String(candidate.id)){
             const error=Error('Your Canvas account changed. Reload Canvas to continue.');error.code='auth';throw error;
           }
-          user=verified;
+          user=verified;verifiedAt=Date.now();
           // Future/invalid timestamps need a refresh; partial results only after partialMaxAge.
           const fresh=isFresh(cached);
           if(cached){current=cached;onSnapshot(cached,store,{stale:!fresh});if(!alive(epoch))return;onStatus(fresh?'':'Saved view · Updating in the background…');}
@@ -108,6 +110,7 @@
         try{
           const next=await client.profile({signal});
           if(!alive(epoch))return false;
+          if(String(next.id)===String(user.id))verifiedAt=Date.now();
           if(String(next.id)!==String(user.id)){const error=Error('Your Canvas account changed. Reload Canvas to continue.');error.code='auth';throw error;}
           await store?.load();
           if(!alive(epoch))return false;

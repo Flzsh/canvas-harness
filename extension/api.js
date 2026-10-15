@@ -281,8 +281,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       await verifyExpectedUser(accountId,signal,initialUser.id);
       return {origin:base.origin,accountId,conversation:data};
     }
-    async function loadSnapshot({signal,onProgress = () => {},user:knownUser} = {}) {
-      const user = await profile({signal});
+    // `verifiedAt`: when the caller last had Canvas confirm this account (session.js). Within 5 seconds of that, the
+    // load trusts it instead of asking again, at its start and at its end; a longer load checks again before it returns.
+    async function loadSnapshot({signal,onProgress = () => {},user:knownUser,verifiedAt = 0} = {}) {
+      const trusted = () => !!knownUser && /^\d+$/.test(String(knownUser.id ?? '')) && Date.now() - verifiedAt < 5000;
+      const user = trusted() ? knownUser : await profile({signal});
       if (knownUser && String(knownUser.id) !== String(user.id)) throw new CanvasError('Your Canvas account changed. Reopen Canvas Harness to load the new account.', 'auth');
       // include[]=term adds each course's term name, so "Default Term" (school resources such as NameCoach) is known by name
       // as well as by enrollment_term_id (ReserveCore.nonAcademicCourseIds). Still one GET.
@@ -304,7 +307,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         }
       }
       await Promise.all(Array.from({length:Math.min(3,courses.length)},worker));
-      const finalUser = await profile({signal});
+      const finalUser = trusted() ? knownUser : await profile({signal});
       if(String(finalUser.id)!==String(user.id)) throw new CanvasError('Your Canvas account changed during refresh. Reopen Canvas Harness.', 'auth');
       return {origin:base.origin,user,courses,assignments,errors,partial:errors.length>0,fetchedAt:new Date().toISOString()};
     }

@@ -1,6 +1,6 @@
 /* Inert on every page until startup.js verifies dashboard display preferences. */
 #reserve-startup-shell{--reserve-startup-ready:1;display:none}
-html.reserve-startup-active #reserve-startup-shell{display:block;position:fixed;inset:0;z-index:2147483646;box-sizing:border-box;overflow:auto;padding:24px clamp(16px,2vw,36px);background:#FAF9F5;color:#3D3D3A;font:14px/1.5 "Segoe UI",system-ui,sans-serif;color-scheme:light;animation:reserve-startup-release 0s 2.5s forwards}
+html.reserve-startup-active #reserve-startup-shell{display:block;position:fixed;inset:0;z-index:2147483646;box-sizing:border-box;overflow:auto;padding:24px clamp(16px,2vw,36px);background:#FAF9F5;color:#3D3D3A;font:14px/1.5 "Segoe UI",system-ui,sans-serif;color-scheme:light;animation:reserve-startup-release 0s 8s forwards}
 #reserve-startup-shell *{box-sizing:border-box}
 #reserve-startup-shell header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding-bottom:20px;border-bottom:1px solid #E8E6DC}
 #reserve-startup-shell strong{font-size:20px;font-weight:650;letter-spacing:-.5px}
@@ -17,7 +17,7 @@ html.reserve-startup-active #reserve-startup-shell{display:block;position:fixed;
 /* CSS also releases the overlay if the main controller never runs. No hidden DOM
    attributes, inert roots, or scroll locks are left behind. Keep these deadlines
    even with reduced motion: they are discrete safety switches, not animation. */
-html.reserve-startup-active #content,html.reserve-startup-active #right-side,html.reserve-startup-active #right-side-wrapper{animation:reserve-startup-native 2.5s step-end forwards}
+html.reserve-startup-active #content,html.reserve-startup-active #right-side,html.reserve-startup-active #right-side-wrapper{animation:reserve-startup-native 8s step-end forwards}
 @keyframes reserve-startup-native{from{visibility:hidden}to{visibility:visible}}
 @keyframes reserve-startup-release{to{visibility:hidden;pointer-events:none}}
 @media(max-width:1000px){#reserve-startup-shell .reserve-startup-layout{grid-template-columns:180px 1fr 1fr}#reserve-startup-shell .reserve-startup-reader{display:none}}

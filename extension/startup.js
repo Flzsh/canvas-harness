@@ -6,7 +6,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   if(window.top!==window||!globalThis.ReserveSite.supported(location.href)||!dashboardPath()||globalThis.ReserveStartup)return;
   // Preferences alone decide whether to cover Canvas. The controller performs
   // the one fresh account check before opening any owner's saved workspace.
-  const startedAt=performance.now(),deadline=startedAt+2500,subscribers=new Set();
+  // The cover waits up to 8s for Canvas (a slow school network often needs more than 2-3s); only then does Canvas show.
+  const startedAt=performance.now(),deadline=startedAt+8000,subscribers=new Set();
   const sheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css'];
   let state='pending',shell,observer,timer,preloaded=false;
   const preloadLinks=[];
@@ -37,8 +38,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(!canReveal())return false;
     state='complete';cleanup();subscribers.clear();return true;
   }
+  // Using Canvas itself while the cover waits hands the page to Canvas: a click on Canvas's page, or typing into a
+  // field. A click on Canvas's menu bar, Tab, arrows and shortcuts do not.
   function interact(event){
-    if(shell&&(event.composedPath().includes(shell)||shell.contains(event.target)))return;
+    const path=event.composedPath?.()||[];
+    if(shell&&(path.includes(shell)||shell.contains(event.target)))return;
+    if(path.some(node=>node?.id==='header'))return;
+    if(event.type==='keydown'){const t=event.target;if(!(t?.isContentEditable||/^(input|textarea|select)$/i.test(t?.tagName||'')))return;}
     release();
   }
   function prepare(){
@@ -66,8 +72,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     brand.textContent='Canvas Harness';escape.textContent='Canvas dashboard';escape.href=location.pathname+'?reserve=native';
     escape.addEventListener('click',event=>{
       event.preventDefault();
-      try{sessionStorage.setItem('reserve:native','true');}catch{}
-      release();
+      release();   // for this visit only: the next visit to the dashboard opens Canvas Harness again
     });
     header.append(brand,escape);
     const message=document.createElement('p');message.textContent='Syncing Canvas…';message.setAttribute('role','status');
@@ -88,7 +93,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     styleFiles:sheets,
     onNative(fn){if(state==='native')fn();else if(state!=='complete')subscribers.add(fn);}
   };
-  timer=setTimeout(release,2500);
+  timer=setTimeout(release,8000);
   document.addEventListener('pointerdown',interact,true);
   document.addEventListener('keydown',interact,true);
   window.addEventListener('pagehide',release);
@@ -96,9 +101,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   globalThis.ReserveStartup.preferences=Promise.resolve().then(()=>chrome.storage.local.get('reserve:enabled')).then(saved=>{
     if(state==='native')return saved;
     const params=new URLSearchParams(location.search);
-    let native;
-    try{native=sessionStorage.getItem('reserve:native')==='true';}catch{release();return saved;}
-    if(saved['reserve:enabled']===false||params.get('reserve')==='native'||(native&&params.get('reserve')!=='open')){release();return saved;}
+    // Choosing Canvas's dashboard is for that visit only (?reserve=native); an older tab-long choice is forgotten.
+    try{sessionStorage.removeItem('reserve:native');}catch{}
+    if(saved['reserve:enabled']===false||params.get('reserve')==='native'){release();return saved;}
     observer=new MutationObserver(()=>{
       try{if(loginPage()||!dashboardPath()||notCanvas())release();else if(state==='pending')activate();else prepare();}catch{release();}
     });
