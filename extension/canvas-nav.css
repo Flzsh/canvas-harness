@@ -13,13 +13,14 @@ html.chn-nav #header {
  background: var(--chn-page, #FFFFFF) !important; background-image: none !important; box-shadow: none !important; border: 0 !important;
  color: var(--chn-ink2-c);
 }
-/* the paper panel, and the modules' pen line round it (the same drawn shape, as a mask over the accent) */
+/* the paper panel against the window's left edge, and the modules' pen line on its other three sides, like "]"
+   (the same drawn line, as a mask over the accent) */
 html.chn-nav #header::before, html.chn-nav #header::after { content: ""; position: absolute; pointer-events: none; z-index: 0; }
-html.chn-nav #header::before { inset: var(--chn-top, 12px) 6px 12px 7px; background: var(--chn-sidebar-c); border-radius: 16px; }
+html.chn-nav #header::before { inset: var(--chn-top, 12px) 5px 12px 0; background: var(--chn-sidebar-c); border-radius: 0 16px 16px 0; }
 html.chn-nav #header::after {
- inset: calc(var(--chn-top, 12px) - 4px) 2px 8px 3px; border: 18px solid transparent;
+ inset: calc(var(--chn-top, 12px) - 4px) 1px 8px -16px; border: 18px solid transparent;
  background: color-mix(in srgb, var(--chn-accent-c) 70%, var(--chn-ink-c));
- -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E") 30 30 30 30 stretch;
+ -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' d='M-4 6.4C8 5.8 22 6.6 34 6C46 5.6 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 42 83.9 30 84.6C18 85 6 84.2 -4 84.8'/%3E%3C/svg%3E") 30 30 30 30 stretch;
 }
 html.chn-nav #header > * { position: relative; z-index: 1; }
 html.chn-nav #header .ic-app-header__main-navigation { padding-top: calc(var(--chn-top, 12px) + 4px); padding-bottom: 22px; box-sizing: border-box; scrollbar-width: none; }
@@ -32,8 +33,13 @@ html.chn-nav #header[data-chn-logo=wait] .ic-app-header__logomark { opacity: 0; 
 html.chn-nav #header[data-chn-logo=ink] .ic-app-header__logomark { filter: brightness(0); opacity: .86; }
 html.chn-nav #header[data-chn-logo=framed] .ic-app-header__logomark,
 html.chn-nav #header[data-chn-logo=plate] .ic-app-header__logomark {
- height: 46px !important; margin: 6px 13px 0; border: 1.5px solid var(--chn-ink2-c); border-radius: 9px 7px 10px 6px; background-origin: content-box; padding: 5px; box-sizing: border-box;
+ position: relative; height: 44px !important; margin: 20px 15px 0 11px; border: 0; border-radius: 2px; background-origin: content-box; padding: 5px 6px; box-sizing: border-box; overflow: visible;
 }
+html.chn-nav #header .chn-logo-art { display: none; }
+html.chn-nav #header:is([data-chn-logo=framed], [data-chn-logo=plate]) .chn-logo-art { display: block; position: absolute; inset: -4px; pointer-events: none; }
+html.chn-nav #header .chn-logo-edge { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; fill: none; stroke: var(--chn-ink-c); stroke-width: 1.6px; stroke-linecap: round; stroke-linejoin: round; }
+html.chn-nav #header .chn-logo-edge .re { stroke-width: .9px; opacity: .7; }
+html.chn-nav #header .chn-logo-hang { position: absolute; left: 50%; top: -11px; width: 26px; height: 10px; margin-left: -13px; overflow: visible; }
 html.chn-nav #header[data-chn-logo=plate] .ic-app-header__logomark { background-color: var(--chn-school-logo, var(--chn-school, #394B58)) !important; }
 html.chn-nav #header .ic-app-header__logomark-container::after {
  content: ""; position: absolute; left: 50%; bottom: 2px; width: 50px; height: 8px; margin-left: -25px; opacity: .75;
@@ -43,14 +49,19 @@ html.chn-nav #header .ic-app-header__logomark-container::after {
 /* items */
 html.chn-nav #header .ic-app-header__menu-list-item { background: none !important; }
 html.chn-nav #header .ic-app-header__menu-list-link {
- position: relative; isolation: isolate; margin: 2px 8px; padding-block: 5px 5px; border-radius: 10px;
+ position: relative; isolation: isolate; margin: 2px 15px 2px 5px; padding-block: 5px 5px; border-radius: 10px;
  background: transparent !important; color: var(--chn-ink2-c) !important; box-shadow: none !important;
 }
 html.chn-nav #header .ic-app-header__menu-list-item--active > .ic-app-header__menu-list-link { margin-block: 6px 5px; padding-block: 6px; }
-html.chn-nav #header .menu-item__text { color: inherit !important; font: 450 12px var(--chn-font, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif); }
-html.chn-nav #header .ic-app-header__menu-list-item--active .menu-item__text { font: 600 11px "Literata", Georgia, serif; letter-spacing: -.02em; color: var(--chn-ink-c) !important; }
+html.chn-nav #header .menu-item__text { white-space: nowrap; overflow-wrap: normal; word-break: keep-all; color: inherit !important; font: 450 12px var(--chn-font, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif); }
+html.chn-nav #header .ic-app-header__menu-list-item--active .menu-item__text { font: 600 10.5px "Literata", Georgia, serif; letter-spacing: -.02em; white-space: nowrap; overflow-wrap: normal; word-break: keep-all; color: var(--chn-ink-c) !important; }
 html.chn-nav #header .menu-item-icon-container { position: relative; }
 html.chn-nav #header .menu-item-icon-container svg.ic-icon-svg { fill: var(--chn-ink2-c) !important; color: var(--chn-ink2-c) !important; }
+/* icons Canvas keeps (a school's own tools) were drawn white for Canvas's dark bar: ink them so they show on paper */
+html.chn-nav #header .menu-item-icon-container:not(.chn-drawn) svg:not(.chn-ic) { fill: var(--chn-ink2-c) !important; color: var(--chn-ink2-c) !important; }
+html.chn-nav #header .menu-item-icon-container:not(.chn-drawn) svg:not(.chn-ic) :is([fill='#fff' i], [fill='#ffffff' i], [fill='white' i]) { fill: var(--chn-ink2-c) !important; }
+html.chn-nav #header .menu-item-icon-container:not(.chn-drawn) svg:not(.chn-ic) :is([stroke='#fff' i], [stroke='#ffffff' i], [stroke='white' i]) { stroke: var(--chn-ink2-c) !important; }
+html.chn-nav #header .menu-item-icon-container:not(.chn-drawn) img:not(.ic-avatar img) { filter: brightness(0) opacity(.78); }
 html.chn-nav #header .menu-item-icon-container.chn-drawn > :not(.chn-ic):not(.menu-item__badge):not(.screenreader-only) { display: none !important; }
 html.chn-nav #header .ic-avatar { border-color: var(--chn-ink2-c) !important; }
 html.chn-nav #header .chn-ic { display: block; width: 33px; height: 33px; margin: 0 auto; overflow: visible; }
@@ -58,14 +69,17 @@ html.chn-nav #header .chn-ic .k { fill: none; stroke: #2B2A27; stroke-width: 1.3
 html.chn-nav #header .chn-ic .h { fill: none; stroke: #2B2A27; stroke-width: .8; stroke-linecap: round; opacity: .7; }
 html.chn-nav #header .chn-ic .d { fill: #2B2A27; }
 html.chn-nav #header .chn-ic :is(g, path) { transform-box: fill-box; }
+/* a badge with nothing to count stays hidden (Canvas keeps an empty one on Account) */
+html.chn-nav #header .menu-item__badge:is(:empty, [data-chn-empty]) { display: none !important; }
 html.chn-nav #header .menu-item__badge {
  background: #C96442 !important; color: #FFFDF6 !important; border: 0 !important; border-radius: 9px 8px 10px 7px !important;
  font: 700 10.5px/18px system-ui, sans-serif !important; min-width: 19px; height: 18px; padding: 0 4px; box-sizing: border-box;
  transform: rotate(-5deg); box-shadow: 1px 1.5px 0 #2B2A2733;
 }
 html.chn-nav #header .ic-app-header__menu-list-link:focus-visible { outline: 2px solid var(--chn-accent-c); outline-offset: 2px; }
-html.chn-nav #header .ic-app-header__secondary-navigation { background: none !important; }
-html.chn-nav #header .ic-app-header__secondary-navigation svg { fill: var(--chn-ink2-c) !important; }
+html.chn-nav #header .ic-app-header__secondary-navigation { background: none !important; padding-bottom: 20px; }
+html.chn-nav #header .ic-app-header__secondary-navigation svg { fill: var(--chn-ink2-c) !important; opacity: .85; }
+html.chn-nav #header .ic-app-header__secondary-navigation svg :is([stroke='#fff' i], [stroke='#ffffff' i], [stroke='white' i]) { stroke: var(--chn-ink2-c) !important; }
 html.chn-nav #header .ic-app-header__secondary-navigation button, html.chn-nav #header .ic-app-header__secondary-navigation a { color: var(--chn-ink2-c) !important; background: none !important; }
 
 /* the cards: the All courses card under the current page, a light pen card on hover */
