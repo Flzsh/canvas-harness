@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Canvas Harness",
   "short_name": "Canvas Harness",
-  "version": "2.24.1",
+  "version": "2.24.2",
   "description": "A Canvas workspace you build yourself: assignments beside their instructions, a weekly planner, study tools and a study companion.",
   "minimum_chrome_version": "120",
   "permissions": [

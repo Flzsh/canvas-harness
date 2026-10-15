@@ -48,7 +48,7 @@ test('the copied frame rules match the workspace’s, and the files are wired in
 
 test('the bar sits against the window’s edge with its pen line on three sides, and keeps Canvas’s quirks tidy',()=>{
  const css=read('canvas-nav.css'),js=read('canvas-nav.js');
- assert.match(css,/#header::before \{ inset: var\(--chn-top, 12px\) 5px 12px 0; background: var\(--chn-sidebar-c\); border-radius: 0 16px 16px 0; \}/,'flush against the left edge');
+ assert.match(css,/#header::before \{ inset: var\(--chn-top, 12px\) 0 12px 0; background: var\(--chn-sidebar-c\); border-radius: 0 16px 16px 0; \}/,'flush against the left edge');
  assert.match(css,/M-4 6\.4C8 5\.8/,'the line starts off the left edge, so it reads as "]"');
  assert.match(css,/\.menu-item__badge:is\(:empty, \[data-chn-empty\]\) \{ display: none !important; \}/,'an empty badge stays hidden');
  assert.match(js,/badge\.dataset\.chnEmpty=''/);
