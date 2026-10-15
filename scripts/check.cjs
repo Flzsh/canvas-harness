@@ -30,5 +30,7 @@ assert.equal(manifest.version,version,'manifest.json version must match package.
 assert.equal(JSON.parse(fs.readFileSync(path.join(extension,'provenance.json'),'utf8')).version,version,'provenance.json version must match package.json');
 assert.equal(fs.readFileSync(path.join(extension,'content.js'),'utf8').match(/const build='([^']+)'/)?.[1],version,'content.js build must match package.json');
 assert.ok(fs.readFileSync(path.join(extension,'popup.html'),'utf8').includes(version),'popup.html must show the package.json version');
+// The drawn Canvas menu bar carries a copy of the frame rules: it must match refresh.css.
+{const nav=require('./canvas-nav-css.cjs');assert.equal(nav.build(),fs.readFileSync(path.join(extension,'canvas-nav.css'),'utf8'),'extension/canvas-nav.css is out of date: run node scripts/canvas-nav-css.cjs');}
 console.log(`Verified ${files.length} extension files: JavaScript syntax, Manifest V3 resources, restricted permissions, icon sizes, and matching version numbers.`);
 module.exports={root,extension,files,manifest};

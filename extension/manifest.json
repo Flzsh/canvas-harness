@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Canvas Harness",
   "short_name": "Canvas Harness",
-  "version": "2.23.1",
+  "version": "2.24.0",
   "description": "A Canvas workspace you build yourself: assignments beside their instructions, a weekly planner, study tools and a study companion.",
   "minimum_chrome_version": "120",
   "permissions": [
@@ -114,6 +114,7 @@
         "widgets.js",
         "settings-dock.js",
         "dashboard.js",
+        "canvas-nav.js",
         "content.js"
       ],
       "run_at": "document_start",
@@ -139,7 +140,8 @@
         "selection.css",
         "responsive-layout.css",
         "widgets.css",
-        "pet.css"
+        "pet.css",
+        "canvas-nav.css"
       ],
       "matches": [
         "https://*.instructure.com/*"
@@ -163,7 +165,8 @@
         "selection.css",
         "responsive-layout.css",
         "widgets.css",
-        "pet.css"
+        "pet.css",
+        "canvas-nav.css"
       ],
       "matches": [
         "https://*/*"

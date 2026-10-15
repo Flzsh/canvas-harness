@@ -4,6 +4,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 document.getElementById('reload-extension').addEventListener('click',()=>chrome.runtime.reload());
 const enabled=document.getElementById('enabled'),status=document.getElementById('status');
 chrome.storage.local.get('reserve:enabled').then(saved=>enabled.checked=saved['reserve:enabled']!==false);
+// Canvas's own menu bar, drawn to match the workspace (canvas-nav.js) or left as Canvas draws it.
+const menuBar=document.getElementById('canvas-nav');
+chrome.storage.local.get('reserve:canvasNav').then(saved=>{menuBar.value=saved['reserve:canvasNav']==='original'?'original':'drawn';}).catch(()=>{});
+menuBar.addEventListener('change',async()=>{try{await chrome.storage.local.set({'reserve:canvasNav':menuBar.value});status.textContent='Saved. Reload Canvas to apply.';}catch{status.textContent='Could not save this setting. Try again.';}});
 enabled.addEventListener('change',async()=>{try{await chrome.storage.local.set({'reserve:enabled':enabled.checked});status.textContent='Saved. Reload Canvas to apply.';}catch{status.textContent='Could not save this setting. Try again.';}});
 const school=document.getElementById('school-url'),siteList=document.getElementById('sites');
 // School Canvas addresses outside instructure.com that the student added and the browser still allows (school-address.js).

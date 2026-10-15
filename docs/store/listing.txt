@@ -21,7 +21,7 @@ Type "essay outline fri 45m #english" and the task lands on Friday, 45 minutes, 
 A small hand-drawn pony walks along your page, tells you what is next, studies beside your focus timer and cheers when you finish. It never scolds, and one switch turns it off.
 
 ★ MAKE IT YOURS
-Hand-drawn artwork for every course, outline styles, colors, text sizes and layout presets, all chosen by picture. Pick an accent color for buttons and a page color for the mood. No artist needed for your own art: a free skill on GitHub teaches your AI to draw a banner, icon and frame for your course, and Quick Upload drops them in.
+Hand-drawn artwork for every course, outline styles, colors, text sizes and layout presets, all chosen by picture. Pick an accent color for buttons and a page color for the mood. No artist needed for your own art: a free skill on GitHub teaches your AI to draw a banner, icon and frame for your course, and Quick Upload drops them in. Even Canvas's own menu bar on the left is drawn to match, with your school's logo.
 
 ★ STUDY TOOLS BESIDE YOUR WORK
 A Desmos calculator, GPA estimates, and an optional AI hand-off where you pick exactly what is shared before anything is sent.
