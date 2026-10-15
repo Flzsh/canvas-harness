@@ -83,7 +83,18 @@ function expand(sel) {
   if (specs.some(x => !x) || specs.some(x => !same(x, specs[0]))) return [s];
   return args.map(a => prefix + a + tail);
 }
+// A block another script writes (/* <name:generated> */ ... /* </name:generated> */) stays exactly as that script wrote
+// it, so its own check still matches.
 function rewrite(css) {
+  const parts = css.split(/(\/\* <([\w-]+):generated> \*\/[\s\S]*?\/\* <\/\2:generated> \*\/)/);
+  let changed = 0, out = '';
+  for (let i = 0; i < parts.length; i += 3) {
+    const r = rewriteRules(parts[i]); changed += r.changed; out += r.css;
+    if (i + 1 < parts.length) out += parts[i + 1];
+  }
+  return { css: out, changed };
+}
+function rewriteRules(css) {
   let changed = 0, out = '', i = 0;
   // Walk rules; only rewrite selector preludes of style rules (not @-rule preludes or declarations).
   const stack = [];
