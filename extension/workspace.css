@@ -28,9 +28,9 @@
 
 /* 2.3.1 — stable surfaces, quiet motion, immediate control feedback. */
 .rd{--rd-ease:cubic-bezier(.22,1,.36,1);--tabs-dur:220ms}
-.rd :is(button,a,input,select,textarea,summary){-webkit-tap-highlight-color:transparent}
-.rd :is(.rd-button,.rd-icon-button,.rd-preview-button,.rd-pin-button,.rd-filter,.rd-day-filter,.rd-swatch){transition:background-color 140ms ease,border-color 140ms ease,color 140ms ease,box-shadow 160ms ease,transform 150ms var(--rd-ease)}
-.rd[data-input=pointer] :is(.rd-button,.rd-icon-button,.rd-preview-button,.rd-pin-button,.rd-day-filter,.rd-swatch):active{transform:scale(.96);transition-duration:70ms}
+.rd button, .rd a, .rd input, .rd select, .rd textarea, .rd summary{-webkit-tap-highlight-color:transparent}
+.rd .rd-button, .rd .rd-icon-button, .rd .rd-preview-button, .rd .rd-pin-button, .rd .rd-filter, .rd .rd-day-filter, .rd .rd-swatch{transition:background-color 140ms ease,border-color 140ms ease,color 140ms ease,box-shadow 160ms ease,transform 150ms var(--rd-ease)}
+.rd[data-input=pointer] .rd-button:active, .rd[data-input=pointer] .rd-icon-button:active, .rd[data-input=pointer] .rd-preview-button:active, .rd[data-input=pointer] .rd-pin-button:active, .rd[data-input=pointer] .rd-day-filter:active, .rd[data-input=pointer] .rd-swatch:active{transform:scale(.96);transition-duration:70ms}
 .rd .t-tab>span{display:inline-block;transition:transform 140ms var(--rd-ease)}
 .rd[data-input=pointer] .t-tab:active>span{transform:translateY(1px)}
 .rd-assignment{cursor:pointer;transition:background-color 170ms ease}
@@ -59,7 +59,7 @@
 }
 @media(max-width:800px){.rd-pin-button{min-width:40px;min-height:40px}.rd-workspace-heading{text-align:left}.rd .rd-workspace-heading h1{font-size:27px;letter-spacing:-.65px}}
 .rd[data-input=keyboard] *, .rd[data-input=keyboard] *::before,.rd[data-input=keyboard] *::after{transition:none!important}
-@media(prefers-reduced-motion:reduce){.rd *,.rd *::before,.rd *::after{transition:none!important;animation:none!important}.rd[data-input=pointer] :is(button,a):active{transform:none!important}}
+@media(prefers-reduced-motion:reduce){.rd *,.rd *::before,.rd *::after{transition:none!important;animation:none!important}.rd[data-input=pointer] button:active, .rd[data-input=pointer] a:active{transform:none!important}}
 
 /* (and its column gap) */
 @media(max-width:800px){.rd .rd-workspace-heading{align-items:stretch}.rd .rd-workspace-heading>div{text-align:left;width:100%}.rd .rd-workspace-heading h1{text-align:left}}
@@ -79,8 +79,8 @@
 .rd-utility-foot>span:last-child{white-space:nowrap;margin-left:auto}.rd-utility-foot [role=alert]{color:var(--rd-danger,#b54736)}
 .rd .rd-utility-dialog kbd{font-family:inherit;font-size:11px;line-height:1.5;border:1px solid var(--rd-line);background:var(--rd-bg);border-radius:4px;padding:2px 5px;color:var(--rd-muted);box-shadow:none}
 .rd-utility-dialog .rd-icon-button{width:36px;height:36px;flex-shrink:0}.rd-utility-dialog .rd-button{min-height:36px;padding:8px 12px;gap:7px;font-size:12px;white-space:normal}
-.rd .rd-utility-dialog :is(input,select,textarea){color:var(--rd-ink);background:var(--rd-surface);border:1px solid var(--rd-line);border-radius:7px;font:inherit;font-size:14px;line-height:1.5;width:100%;min-width:0;padding:9px 11px;box-sizing:border-box;accent-color:var(--rd-accent)}
-.rd .rd-utility-dialog :is(button,a,input,textarea,select,summary):focus-visible{outline:2px solid var(--rd-accent);outline-offset:3px}
+.rd .rd-utility-dialog input, .rd .rd-utility-dialog select, .rd .rd-utility-dialog textarea{color:var(--rd-ink);background:var(--rd-surface);border:1px solid var(--rd-line);border-radius:7px;font:inherit;font-size:14px;line-height:1.5;width:100%;min-width:0;padding:9px 11px;box-sizing:border-box;accent-color:var(--rd-accent)}
+.rd .rd-utility-dialog button:focus-visible, .rd .rd-utility-dialog a:focus-visible, .rd .rd-utility-dialog input:focus-visible, .rd .rd-utility-dialog textarea:focus-visible, .rd .rd-utility-dialog select:focus-visible, .rd .rd-utility-dialog summary:focus-visible{outline:2px solid var(--rd-accent);outline-offset:3px}
 .rd .rd-utility-dialog .rd-field{display:flex;flex-direction:column;gap:8px;margin:0 0 18px;font-size:12px;font-weight:500;min-width:0}.rd-utility-dialog .rd-field>span{color:var(--rd-muted)}
 /* 2.15: the Plan intro became the composer's note (refresh.css section 13). */
 .rd .rd-utility-hint{font-size:12px;line-height:1.7;color:var(--rd-muted);margin:14px 0 0}
@@ -100,7 +100,7 @@
 .rd-tool-plan-row{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--rd-line)}.rd-tool-plan-row .rd-button{flex-shrink:0}
 .rd-capture-form{padding-bottom:24px;margin-bottom:24px;border-bottom:1px solid var(--rd-line)}.rd-capture-form details{margin:0 0 18px;font-size:12px;color:var(--rd-muted)}.rd-capture-form summary{width:fit-content;cursor:pointer}.rd-capture-form details[open] summary{margin-bottom:12px}
 .rd-tool-empty{padding:40px 20px}.rd .rd-tool-empty h3{font-size:15px;margin:0 0 8px}.rd-tool-empty p{font-size:12px;line-height:1.7;color:var(--rd-muted)}
-.rd[data-text-size=large] .rd-utility-dialog :is(input,textarea,select){font-size:16px}.rd[data-text-size=large] .rd-quick-main strong{font-size:15px}
+.rd[data-text-size=large] .rd-utility-dialog input, .rd[data-text-size=large] .rd-utility-dialog textarea, .rd[data-text-size=large] .rd-utility-dialog select{font-size:16px}.rd[data-text-size=large] .rd-quick-main strong{font-size:15px}
 @media(hover:hover) and (pointer:fine){}
 @media(max-width:720px){
  .rd .rd-utility-dialog{width:calc(100% - 20px);max-height:calc(100dvh - 20px);border-radius:12px}.rd-utility-shell{display:flex;flex-direction:column;height:calc(100dvh - 24px);max-height:760px}
@@ -134,7 +134,7 @@
 .rd[data-workspace=work] .rd-workspace-heading{margin-bottom:20px;gap:20px;align-items:center;flex-direction:row;flex-wrap:wrap}
 .rd[data-workspace=work] .rd-workspace-heading h1{font-size:clamp(22px,1.6vw,29px);line-height:1.24;letter-spacing:-.65px;max-width:38ch}
 .rd[data-workspace=work] .rd-work-search{flex:0 1 310px;min-width:200px}
-.rd[data-workspace=work] :is(.rd-main,.rd-desk-toolbar){display:grid;grid-template-columns:minmax(250px,.62fr) minmax(0,1.7fr);column-gap:22px;align-items:start}
+.rd[data-workspace=work] .rd-main, .rd[data-workspace=work] .rd-desk-toolbar{display:grid;grid-template-columns:minmax(250px,.62fr) minmax(0,1.7fr);column-gap:22px;align-items:start}
 .rd[data-workspace=work] .rd-desk-toolbar{align-items:center;margin-bottom:14px;row-gap:14px}
 .rd[data-workspace=work] .rd-list-toolbar{margin:0;min-height:36px;gap:8px;align-items:center;flex-wrap:wrap}
 .rd[data-workspace=work] .rd-filter-group{gap:2px;flex-wrap:wrap}
@@ -142,7 +142,7 @@
 .rd[data-workspace=work] .rd-filter-group select{max-width:115px;font-size:11px;padding-inline:7px;min-height:34px}
 .rd-work-column,.rd-information{min-width:0}
 .rd-information{display:grid;gap:18px;align-content:start}
-.rd[data-workspace=work] :is(.rd-work,.rd-reader){border:1px solid var(--rd-line);border-radius:12px;box-shadow:0 1px 2px #10182803;overflow:hidden}
+.rd[data-workspace=work] .rd-work, .rd[data-workspace=work] .rd-reader{border:1px solid var(--rd-line);border-radius:12px;box-shadow:0 1px 2px #10182803;overflow:hidden}
 .rd[data-workspace=work] .rd-work-heading{padding:16px 18px;min-height:62px}
 .rd[data-workspace=work] .rd-work-heading>div{flex-wrap:wrap;gap:8px}
 .rd[data-workspace=work] .rd-work-heading-actions{margin-top:0}
@@ -173,7 +173,7 @@
 .rd[data-workspace=work] .rd-instructions{margin-top:14px}
 .rd[data-workspace=work] .rd-rich-text{font-size:14px;line-height:1.75;max-width:none;overflow-wrap:anywhere}
 .rd[data-workspace=work] .rd-reader-back{display:none}
-.rd[data-workspace=work] .rd-information :is(.rd-deck-section,.rd-deck-empty){background:var(--rd-surface);border:1px solid var(--rd-line);border-radius:12px;padding:20px;min-width:0;overflow:hidden;box-shadow:0 1px 2px #10182803}
+.rd[data-workspace=work] .rd-information .rd-deck-section, .rd[data-workspace=work] .rd-information .rd-deck-empty{background:var(--rd-surface);border:1px solid var(--rd-line);border-radius:12px;padding:20px;min-width:0;overflow:hidden;box-shadow:0 1px 2px #10182803}
 .rd[data-workspace=work] .rd-ready-note{font-size:11px;padding:12px;margin-bottom:12px}
 .rd[data-workspace=work][data-layout=list] .rd-main{grid-template-columns:1fr;row-gap:20px}
 .rd[data-workspace=work][data-layout=list] .rd-assignment-main{min-width:0}
@@ -193,13 +193,13 @@
 .rd .rd-deck-section .rd-source-actions .rd-text-button{font-size:11px;min-height:24px;padding:0}
 .rd .rd-deck-section .rd-source-actions a{color:var(--rd-muted);text-decoration:none}
 .rd .rd-deck-section .rd-source-actions a:hover{color:var(--rd-accent);text-decoration:underline;text-underline-offset:3px}
-.rd .rd-deck-section :is(.rd-announcement,.rd-message){padding:0 0 20px;margin:0 0 20px;background:none;border:0;border-bottom:1px solid var(--rd-line);border-radius:0}
-.rd .rd-deck-section :is(.rd-announcement,.rd-message):last-child{padding-bottom:0;margin-bottom:0;border-bottom:0}
+.rd .rd-deck-section .rd-announcement, .rd .rd-deck-section .rd-message{padding:0 0 20px;margin:0 0 20px;background:none;border:0;border-bottom:1px solid var(--rd-line);border-radius:0}
+.rd .rd-deck-section .rd-announcement:last-child, .rd .rd-deck-section .rd-message:last-child{padding-bottom:0;margin-bottom:0;border-bottom:0}
 .rd .rd-deck-section .rd-announcement-meta{font-size:10px;color:var(--rd-muted);line-height:1.6;margin:0 0 7px;text-transform:none;letter-spacing:0}
 .rd .rd-deck-section h4{font-size:14px;line-height:1.5;letter-spacing:-.1px;font-weight:600;margin:0 0 10px}
 .rd .rd-deck-section .rd-rich-text{font-size:13px;line-height:1.75}
-.rd .rd-deck-section .rd-rich-text :is(h1,h2){font-size:16px;line-height:1.5;letter-spacing:-.2px;margin:20px 0 10px}
-.rd .rd-deck-section .rd-rich-text :is(h1,h2):first-child{margin-top:0}
+.rd .rd-deck-section .rd-rich-text h1, .rd .rd-deck-section .rd-rich-text h2{font-size:16px;line-height:1.5;letter-spacing:-.2px;margin:20px 0 10px}
+.rd .rd-deck-section .rd-rich-text h1:first-child, .rd .rd-deck-section .rd-rich-text h2:first-child{margin-top:0}
 .rd .rd-deck-section .rd-rich-text p{margin:0 0 12px}
 .rd .rd-deck-section .rd-rich-text table{font-size:12px;max-width:100%}
 .rd .rd-deck-section .rd-message-body{font-size:13px;line-height:1.75;padding:0;border:0;white-space:normal}
@@ -222,7 +222,7 @@
 .rd .rd-deck-section .rd-hub-empty p{font-size:12px;line-height:1.7;margin:0 0 12px}
 .rd .rd-deck-section .rd-hub-empty a{font-size:12px}
 .rd .rd-deck-section [data-unread=true]{color:var(--rd-accent)}
-.rd[data-text-size=large] .rd-deck-section :is(.rd-rich-text,.rd-message-body){font-size:15px}
+.rd[data-text-size=large] .rd-deck-section .rd-rich-text, .rd[data-text-size=large] .rd-deck-section .rd-message-body{font-size:15px}
 .rd[data-text-size=large] .rd-deck-section h4{font-size:16px}
 
 .rd-deck-primary,.rd-deck-secondary{display:grid;gap:18px;align-content:start;min-width:0}
@@ -238,7 +238,7 @@
  .rd[data-workspace=work][data-layout=split] .rd-information:has(>.rd-reader) .rd-deck-primary{grid-row:2}
 }
 @container work-area (max-width:800px){
- .rd[data-workspace=work] :is(.rd-main,.rd-desk-toolbar){grid-template-columns:minmax(220px,.8fr) minmax(0,1.2fr);column-gap:16px}
+ .rd[data-workspace=work] .rd-main, .rd[data-workspace=work] .rd-desk-toolbar{grid-template-columns:minmax(220px,.8fr) minmax(0,1.2fr);column-gap:16px}
  .rd[data-workspace=work] .rd-work-search{flex:0 1 250px;max-width:42%}
  .rd .rd-deck-header{flex-wrap:wrap;gap:8px}
  .rd[data-workspace=work] .rd-reader-content{padding:18px}
@@ -286,7 +286,7 @@
 .rd-utility-dialog[data-docked=true] .rd-utility-body{padding:18px;min-height:0;flex:1;scrollbar-gutter:auto}
 .rd-utility-dialog[data-docked=true] .rd-utility-foot{padding:10px 16px;flex-shrink:0;gap:12px}
 .rd .rd-utility-dialog[data-docked=true][data-collapsed=true]{inset:auto 16px 16px auto;height:auto;width:260px}
-.rd-utility-dialog[data-collapsed=true] :is(.rd-utility-nav,.rd-utility-body,.rd-utility-foot){display:none}
+.rd-utility-dialog[data-collapsed=true] .rd-utility-nav, .rd-utility-dialog[data-collapsed=true] .rd-utility-body, .rd-utility-dialog[data-collapsed=true] .rd-utility-foot{display:none}
 .rd-utility-dialog[data-collapsed=true] .rd-utility-heading{border-bottom:0;padding:12px 14px}
 @media(max-width:900px){
  .rd .rd-utility-dialog[data-docked=true]{inset:auto 12px 12px;width:calc(100vw - 24px);height:var(--rd-dock-height,46dvh);max-height:75dvh;min-height:240px}
@@ -359,7 +359,7 @@
 .rd .rd-page-heading p{font-size:13px;line-height:1.6}
 .rd .rd-scored-row,.rd .rd-message>summary{transition:background-color 140ms ease,border-color 140ms ease}
 .rd .rd-message>summary:hover{background:var(--rd-soft)}
-.rd :is(.rd-material-columns,.rd-hub-grid,.rd-grade-results){gap:20px}
+.rd .rd-material-columns, .rd .rd-hub-grid, .rd .rd-grade-results{gap:20px}
 .rd .rd-hub-empty,.rd .rd-tool-empty{border-radius:var(--rd-radius);line-height:1.7}
 .rd .rd-button{font-weight:550;box-shadow:0 1px 1px #10182803}
 .rd .rd-icon-button{box-shadow:none}
@@ -406,7 +406,7 @@
 .rd .rd-dock-resize:focus-visible{outline:2px solid var(--rd-accent);outline-offset:-2px}
 .rd[data-resizing=true],.rd .rd-utility-dialog[data-resizing=true]{transition:none!important;user-select:none}
 .rd-utility-dialog[data-resizing=true] iframe{pointer-events:none}
-.rd-utility-dialog[data-collapsed=true] :is(.rd-dock-size,.rd-dock-resize){display:none}
+.rd-utility-dialog[data-collapsed=true] .rd-dock-size, .rd-utility-dialog[data-collapsed=true] .rd-dock-resize{display:none}
 @media(max-width:900px){
  .rd .rd-dock-resize[data-resize=width],.rd .rd-dock-resize[data-resize=both]{display:none}
  .rd .rd-dock-resize[data-resize=height]{height:10px}
@@ -443,7 +443,7 @@
 @media(max-width:900px){.rd .rd-mobile-course{display:flex;max-width:100%;margin-bottom:18px}}
 
 .rd .rd-utility-dialog select.rd-dock-size{width:82px;font-size:11px;line-height:1.2;padding:5px 7px;height:32px;min-height:32px}
-.rd .rd-utility-dialog[data-docked=true][data-collapsed=true] :is(.rd-utility-nav,.rd-utility-body,.rd-utility-foot){display:none}
+.rd .rd-utility-dialog[data-docked=true][data-collapsed=true] .rd-utility-nav, .rd .rd-utility-dialog[data-docked=true][data-collapsed=true] .rd-utility-body, .rd .rd-utility-dialog[data-docked=true][data-collapsed=true] .rd-utility-foot{display:none}
 .rd-utility-heading>div:first-child{min-width:0;flex:1}
 .rd .rd-utility-heading h2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rd .rd-utility-dialog[data-docked=true]{container-type:inline-size;container-name:toolbox}

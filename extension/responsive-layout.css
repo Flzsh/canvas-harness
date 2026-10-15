@@ -51,8 +51,7 @@
 .rd .rd-course-heading[data-titled] > .rd-heading-art:not(:has(> .rd-art)),
 .rd .rd-course-banner[data-titled] > .rd-banner-art:not(:has(> .rd-art)) { order: -2; }
 
-.rd[data-workspace=work] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-title-art:not(:empty)) > h1,
-.rd .rd-course-banner[data-titled]:has(> .rd-title-art:not(:empty)) > .rd-banner-art + div > :is(h1, h2) {
+.rd[data-workspace=work] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-title-art:not(:empty)) > h1, .rd .rd-course-banner[data-titled]:has(> .rd-title-art:not(:empty)) > .rd-banner-art + div > h1, .rd .rd-course-banner[data-titled]:has(> .rd-title-art:not(:empty)) > .rd-banner-art + div > h2 {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -285,7 +284,7 @@
     grid-template-rows: auto !important;
     gap: 18px;
   }
-  .rd[data-workspace=work] .rd-main.rd-desk > :is(.rd-course-information, .rd-work-column, .rd-information) {
+  .rd[data-workspace=work] .rd-main.rd-desk > .rd-course-information, .rd[data-workspace=work] .rd-main.rd-desk > .rd-work-column, .rd[data-workspace=work] .rd-main.rd-desk > .rd-information {
     grid-column: 1 !important;
     grid-row: auto !important;
     position: static;
@@ -331,7 +330,7 @@
 
   .rd .rd-course-banner:has(> .rd-banner-art > .rd-art[data-wide])::before { content: none; }
   .rd .rd-course-banner > .rd-banner-art + div { display: contents; }
-  .rd .rd-course-banner > .rd-banner-art + div > :is(h1, h2) {
+  .rd .rd-course-banner > .rd-banner-art + div > h1, .rd .rd-course-banner > .rd-banner-art + div > h2 {
     position: relative;
     z-index: 1;
     grid-area: 1 / 1;
@@ -353,7 +352,7 @@
     max-width: 100%;
     overflow-wrap: anywhere;
   }
-  .rd .rd-course-banner > :is(.rd-heading-actions, .rd-button, .rd-text-button) {
+  .rd .rd-course-banner > .rd-heading-actions, .rd .rd-course-banner > .rd-button, .rd .rd-course-banner > .rd-text-button {
     grid-area: 4 / 1;
     justify-self: start;
     align-self: start;
@@ -390,7 +389,7 @@
     mask-image: linear-gradient(to right, transparent, #000 min(32px, 8cqi));
   }
   .rd .rd-course-banner[data-titled] > .rd-banner-art::before { content: none; }
-  .rd .rd-course-banner[data-titled] > .rd-banner-art + div > :is(h1, h2) {
+  .rd .rd-course-banner[data-titled] > .rd-banner-art + div > h1, .rd .rd-course-banner[data-titled] > .rd-banner-art + div > h2 {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -495,8 +494,7 @@
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: auto !important;
   }
-  .rd[data-workspace=work] .rd-course-heading[data-titled] > h1,
-  .rd .rd-course-banner[data-titled] > .rd-banner-art + div > :is(h1, h2) {
+  .rd[data-workspace=work] .rd-course-heading[data-titled] > h1, .rd .rd-course-banner[data-titled] > .rd-banner-art + div > h1, .rd .rd-course-banner[data-titled] > .rd-banner-art + div > h2 {
     position: static !important;
     display: block !important;
     grid-area: 1 / 1 !important;

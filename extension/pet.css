@@ -10,7 +10,7 @@
 .pet-svg *{transform-box:view-box}
 /* parts that only some poses show */
 .pet-book,.pet-oats,.pet-zz,.pet-sparks,.pet-flag,.pet-lid{display:none}
-.pet[data-gear=none] :is(.pet-collar,.pet-blanket){display:none}
+.pet[data-gear=none] .pet-collar, .pet[data-gear=none] .pet-blanket{display:none}
 .pet[data-gear=collar] .pet-blanket{display:none}
 
 /* the rig. On the page pets.js writes these transforms straight onto the parts; the variables pose a pony drawn
@@ -63,8 +63,8 @@
 .pet[data-pose=cheer] .pet-all{animation:pet-hop .66s cubic-bezier(.3,0,.4,1) 2}
 .pet[data-pose=cheer] .pet-shadow{animation:pet-shade .66s cubic-bezier(.3,0,.4,1) 2}
 .pet[data-pose=cheer] .pet-tail{animation:pet-fly .33s ease-in-out infinite alternate}
-.pet[data-pose=cheer] :is(.lf,.lf2){animation:pet-kick .66s ease-in-out 2}
-.pet[data-pose=cheer] :is(.lh,.lh2){animation:pet-kick-back .66s ease-in-out 2}
+.pet[data-pose=cheer] .lf, .pet[data-pose=cheer] .lf2{animation:pet-kick .66s ease-in-out 2}
+.pet[data-pose=cheer] .lh, .pet[data-pose=cheer] .lh2{animation:pet-kick-back .66s ease-in-out 2}
 .pet[data-pose=cheer] .pet-sparks{display:block}
 .pet[data-pose=cheer] .pet-sparks path{transform-origin:center;transform-box:fill-box;animation:pet-spark .93s ease-in-out infinite}
 .pet[data-pose=cheer] .pet-sparks .s2{animation-delay:.3s}.pet[data-pose=cheer] .pet-sparks .s3{animation-delay:.6s}
@@ -83,14 +83,14 @@
 .pet[data-pose=held] .pet-all{transform:rotate(-7deg)}
 .pet:is([data-pose=held],[data-pose=fall]) .pet-shadow{opacity:0}
 .pet-shadow{transition:opacity .18s}
-.pet[data-pose=held] :is(.lf,.lf2){animation:pet-dangle 1.1s ease-in-out infinite alternate}
-.pet[data-pose=held] :is(.lh,.lh2){animation:pet-dangle 1.1s ease-in-out infinite alternate-reverse}
+.pet[data-pose=held] .lf, .pet[data-pose=held] .lf2{animation:pet-dangle 1.1s ease-in-out infinite alternate}
+.pet[data-pose=held] .lh, .pet[data-pose=held] .lh2{animation:pet-dangle 1.1s ease-in-out infinite alternate-reverse}
 .pet[data-pose=held] .pet-tail{animation:none;transform:rotate(14deg)}
 @keyframes pet-dangle{from{transform:rotate(-9deg)}to{transform:rotate(11deg)}}
 .pet-leg{transition:transform .16s ease-out}
 .pet:is([data-pose=walk],[data-pose=trot]) .pet-leg{transition:none}
-.pet[data-pose=fall] :is(.lf,.lf2){transform:rotate(-24deg)}
-.pet[data-pose=fall] :is(.lh,.lh2){transform:rotate(22deg)}
+.pet[data-pose=fall] .lf, .pet[data-pose=fall] .lf2{transform:rotate(-24deg)}
+.pet[data-pose=fall] .lh, .pet[data-pose=fall] .lh2{transform:rotate(22deg)}
 .pet[data-pose=fall] .pet-tail{animation:none;transform:rotate(-30deg)}
 
 /* stillness on request */

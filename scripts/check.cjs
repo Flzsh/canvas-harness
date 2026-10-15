@@ -31,6 +31,7 @@ assert.equal(JSON.parse(fs.readFileSync(path.join(extension,'provenance.json'),'
 assert.equal(fs.readFileSync(path.join(extension,'content.js'),'utf8').match(/const build='([^']+)'/)?.[1],version,'content.js build must match package.json');
 assert.ok(fs.readFileSync(path.join(extension,'popup.html'),'utf8').includes(version),'popup.html must show the package.json version');
 // The drawn Canvas menu bar carries a copy of the frame rules: it must match refresh.css.
+{const subjects=require('./css-subjects.cjs');for(const file of subjects.FILES){const p=path.join(extension,file);if(fs.existsSync(p))assert.equal(subjects.rewrite(fs.readFileSync(p,'utf8')).changed,0,`extension/${file} has :is() subjects that can be spelled out: run node scripts/css-subjects.cjs`);}}
 {const nav=require('./canvas-nav-css.cjs');assert.equal(nav.build(),fs.readFileSync(path.join(extension,'canvas-nav.css'),'utf8'),'extension/canvas-nav.css is out of date: run node scripts/canvas-nav-css.cjs');}
 console.log(`Verified ${files.length} extension files: JavaScript syntax, Manifest V3 resources, restricted permissions, icon sizes, and matching version numbers.`);
 module.exports={root,extension,files,manifest};

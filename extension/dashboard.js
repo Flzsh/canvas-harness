@@ -855,6 +855,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       else if(focus&&(within||!container.contains?.(container.getRootNode?.()?.activeElement)))trigger?.focus({preventScroll:true});
     }
     // Back to the list: on a phone this closes the reader sheet; focus returns to the row it came from.
+    // Scrolled past: on desktop the workspace column scrolls by itself (the page does not: refresh.css), so a heading
+    // is out of sight once it is above the column's top; on phones, above the window's.
+    function above(rect){const column=container.querySelector('.rd-shell > .rd-workspace'),scrolls=!!column&&column.scrollHeight>column.clientHeight+1;return rect.top<(scrolls?column.getBoundingClientRect().top:0)-1;}
     function closePreview(){readerOpen=false;render();const previous=container.querySelector(`[data-rd-action="preview"][data-id="${selectedId}"]`);previous?.scrollIntoView({block:'nearest',behavior:'instant'});previous?.focus({preventScroll:true});}
 
     function onClick(event){
@@ -905,7 +908,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(next==='hub')hub?.loadCourse(id);if(next==='materials')materials?.load(id);if(next==='inbox')hub?.loadInbox();
         container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});
         const heading=container.querySelector('.rd-page-heading, .rd-workspace-heading'),rect=heading?.getBoundingClientRect?.();
-        if(rect&&(rect.top<0||rect.top>root.innerHeight-100))heading.scrollIntoView({block:'start',behavior:'instant'});return;
+        if(rect&&(above(rect)||rect.top>root.innerHeight-100))heading.scrollIntoView({block:'start',behavior:'instant'});return;
       }
       if(action==='workspace'||action==='open-materials'||action==='open-hub'){
         const tabMotion=event.detail>0;
@@ -919,6 +922,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           const ctx=buildContext();switchCourse(button.dataset.id||(state.courseId==='all'?String(ctx.selected?.courseId||ctx.courses[0]?.id||'all'):state.courseId));
           materials?.activate(state.courseId);render({tabMotion,motionTarget:'.rd-workspace',direction,snapshot});if(workspace==='materials')materials?.load(state.courseId);else hub?.loadCourse(state.courseId);
         }else{render({tabMotion,motionTarget:'.rd-workspace',direction,snapshot});if(workspace==='inbox')hub?.loadInbox();}
+        // A new tab starts at its top (the workspace column scrolls by itself on desktop).
+        {const column=container.querySelector('.rd-shell > .rd-workspace');if(column?.scrollTop)column.scrollTop=0;}
         if(action!=='workspace'||!button.classList?.contains('rd-workspace-tab')){container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});container.querySelector('.rd-page-heading')?.scrollIntoView({block:'nearest',behavior:'instant'});}
 
         return;
@@ -948,7 +953,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         // The snapshot only reads, so an early return needs no undo.
         if(!switchCourse(button.dataset.id))return;if(state.courseId==='all'&&!['home','grades','inbox'].includes(workspace))workspace='work';if(workspace==='inbox')hub?.setCourse?.(state.courseId);materials?.activate(state.courseId);render({tabMotion:event.detail>0,motionTarget:'.rd-workspace',motionKind:'course',snapshot});
         // A switch from deep in a long list starts the new course at its heading.
-        const heading=container.querySelector('.rd-workspace-heading, .rd-page-heading, .rd-materials-header');if(heading&&heading.getBoundingClientRect().top<0)heading.scrollIntoView({block:'start',behavior:'instant'});
+        const heading=container.querySelector('.rd-workspace-heading, .rd-page-heading, .rd-materials-header');if(heading&&above(heading.getBoundingClientRect()))heading.scrollIntoView({block:'start',behavior:'instant'});
         if(workspace==='materials')materials?.load(state.courseId);if(workspace==='hub')hub?.loadCourse(state.courseId);return;}
       if(action==='reader-tab'){const next=button.dataset.tab==='plan'?'plan':'details';if(readerTab===next)return;readerTab=next;render({tabMotion:event.detail>0,motionTarget:'.rd-reader-body',motionKind:'section',direction:next==='plan'?1:-1,snapshot});return;}
       if(action==='preview'){

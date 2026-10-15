@@ -762,8 +762,10 @@
             }
             for(const a of [...loops.keys()])if(!live.has(a))loops.delete(a);
           }
-          for(const [a,r] of [...loops]){
-            if(a.playState==='idle'){loops.delete(a);continue;}
+          // Every state is read before any frame is written: reading a CSS animation's state after setting another's
+          // time makes Chrome restyle the page then and there, once per loop (measured: ~300 restyles a second, not 12).
+          const live=[...loops].filter(([a])=>{if(a.playState!=='idle')return true;loops.delete(a);return false;});
+          for(const [a,r] of live){
             if(gap>400)r.origin+=gap-step;// the clock had stopped: they go on from where they stood
             frame(a,r,t);
           }

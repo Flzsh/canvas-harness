@@ -11,7 +11,7 @@
 .rd[data-workspace=work][data-panel-frame=card] :is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key]::after {background:var(--rd-surface);border:1px solid var(--rd-line);box-shadow:0 1px 2px #3028190a,0 6px 22px #30281912;}
 .rd[data-workspace=work][data-panel-frame=line] :is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key]::after {border:1px solid var(--rd-line-strong);}
 /* The reader keeps its content; its own card gives way to the chosen outline. */
-.rd[data-workspace=work]:not([data-panel-frame=none]) .rd-main.rd-desk > .rd-information > :is(.rd-reader,.rd-assignment-empty) {border:0;box-shadow:none;background:none;padding:0;}
+.rd[data-workspace=work]:not([data-panel-frame=none]) .rd-main.rd-desk > .rd-information > .rd-reader, .rd[data-workspace=work]:not([data-panel-frame=none]) .rd-main.rd-desk > .rd-information > .rd-assignment-empty {border:0;box-shadow:none;background:none;padding:0;}
 .rd[data-workspace=work] .rd-main.rd-desk {row-gap:18px;}
 /* Rows are measured (workspace-gestures.js): each module starts where the one above it in its own stack ends. */
 .rd[data-workspace=work] .rd-main.rd-desk[data-rows=measured] {grid-auto-rows:2px;row-gap:0!important;}
@@ -351,9 +351,9 @@
 .rd[data-course-navigation=topbar][data-courses=true] .rd-course-rail {scrollbar-width:thin;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 46px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 46px),transparent);}
 .rd[data-course-navigation=topbar][data-courses=false] .rd-course-select {display:revert!important;}
 /* Plain course cards still show which course is chosen and which one the pointer is on, without the drawn frame. */
-.rd:is([data-course-card-style=rounded],[data-course-card-style=minimal]) .rd-shell .rd-course-rail > :is(.rd-rail-course,.rd-rail-all) {padding-bottom:10px!important;border-radius:12px;transition:background-color 140ms,box-shadow 140ms;}
-.rd[data-course-card-style=rounded] .rd-shell .rd-course-rail > :is(.rd-rail-course,.rd-rail-all) {background:var(--rd-surface)!important;box-shadow:inset 0 0 0 1px var(--rd-line);}
-.rd:is([data-course-card-style=rounded],[data-course-card-style=minimal]) .rd-shell .rd-course-rail > :is(.rd-rail-course,.rd-rail-all):hover {background:var(--rd-sidebar-hover,var(--rd-surface-2))!important;}
+.rd:is([data-course-card-style=rounded],[data-course-card-style=minimal]) .rd-shell .rd-course-rail > .rd-rail-course, .rd:is([data-course-card-style=rounded],[data-course-card-style=minimal]) .rd-shell .rd-course-rail > .rd-rail-all {padding-bottom:10px!important;border-radius:12px;transition:background-color 140ms,box-shadow 140ms;}
+.rd[data-course-card-style=rounded] .rd-shell .rd-course-rail > .rd-rail-course, .rd[data-course-card-style=rounded] .rd-shell .rd-course-rail > .rd-rail-all {background:var(--rd-surface)!important;box-shadow:inset 0 0 0 1px var(--rd-line);}
+.rd:is([data-course-card-style=rounded],[data-course-card-style=minimal]) .rd-shell .rd-course-rail > .rd-rail-course:hover, .rd:is([data-course-card-style=rounded],[data-course-card-style=minimal]) .rd-shell .rd-course-rail > .rd-rail-all:hover {background:var(--rd-sidebar-hover,var(--rd-surface-2))!important;}
 .rd[data-course-card-style=rounded] .rd-shell .rd-course-rail > :is(.rd-rail-course,.rd-rail-all):is([aria-current],[aria-pressed=true],[data-selected=true],:has([aria-current],[aria-pressed=true])) {background:var(--rd-sidebar-sel,var(--rd-surface-3))!important;box-shadow:inset 0 0 0 2px var(--rd-accent);}
 .rd[data-course-card-style=minimal] .rd-shell .rd-course-rail > :is(.rd-rail-course,.rd-rail-all):is([aria-current],[aria-pressed=true],[data-selected=true],:has([aria-current],[aria-pressed=true])) {background:var(--rd-sidebar-sel,var(--rd-surface-3))!important;box-shadow:inset 3px 0 0 var(--rd-accent);}
 /* Clean page: the tints, hover and outline colours follow, not only the background. */
@@ -392,7 +392,7 @@
 .rd .rd-plan-done .rd-n {margin-left:4px;}
 
 /* ---- the Assignments tab: the list beside the reader, nothing to arrange ---- */
-.rd[data-work-page=assignments] :is(.rd-arrange-tools,.rd-arrange-guide,.rd-gallery) {display:none!important;}
+.rd[data-work-page=assignments] .rd-arrange-tools, .rd[data-work-page=assignments] .rd-arrange-guide, .rd[data-work-page=assignments] .rd-gallery {display:none!important;}
 .rd[data-work-page=assignments] [data-arrange-head] {cursor:default;}
 /* a day's cards never spill over the next day */
 .rd .rd-plan-day {grid-template-columns:minmax(0,1fr);}
