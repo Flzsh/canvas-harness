@@ -84,7 +84,8 @@ html.chn-nav #header .menu-item__badge {
  transform: rotate(-5deg); box-shadow: 1px 1.5px 0 #2B2A2733;
 }
 html.chn-nav #header .ic-app-header__menu-list-link:focus-visible { outline: 2px solid var(--chn-accent-c); outline-offset: 2px; }
-html.chn-nav #header .ic-app-header__secondary-navigation { background: none !important; padding-bottom: 20px; }
+/* the collapse arrow stays inside the bar: above its bottom line, which follows the course sidebar's foot (--chn-bottom) */
+html.chn-nav #header .ic-app-header__secondary-navigation { background: none !important; padding-bottom: calc(var(--chn-bottom, 12px) + 10px); }
 html.chn-nav #header .ic-app-header__secondary-navigation svg { fill: var(--chn-ink2-c) !important; opacity: .85; }
 html.chn-nav #header .ic-app-header__secondary-navigation svg :is([stroke='#fff' i], [stroke='#ffffff' i], [stroke='white' i]) { stroke: var(--chn-ink2-c) !important; }
 html.chn-nav #header .ic-app-header__secondary-navigation button, html.chn-nav #header .ic-app-header__secondary-navigation a { color: var(--chn-ink2-c) !important; background: none !important; }
