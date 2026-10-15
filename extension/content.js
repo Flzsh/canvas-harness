@@ -7,7 +7,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const isDashboard=location.pathname==='/'||/^\/dashboard\/?$/.test(location.pathname);
   const params=new URLSearchParams(location.search);
   const startup=globalThis.ReserveStartup;
-  const build='2.23.1';
+  const build='2.24.0';
   // Local timings contain only milliseconds, never account or course data.
   // They make real startup measurable without delaying or storing the page.
   const stamp=()=>Math.round(globalThis.performance?.now?.()||0);

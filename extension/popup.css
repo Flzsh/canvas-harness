@@ -8,4 +8,5 @@
 .school-url{display:block;margin:18px 0 12px}.school-url input{display:block;width:100%;box-sizing:border-box;margin-top:6px;border:1px solid #D9D6CA;border-radius:8px;padding:9px;background:#fff;color:#141413;font:12px system-ui}
 
 header>img{flex-shrink:0;object-fit:contain}
+.menu-bar{justify-content:space-between}.menu-bar select{width:148px;border:1px solid #D9D6CA;background:#fff;color:#141413;border-radius:8px;padding:7px;font:12px "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif}
 .hint{font-size:11px;color:#5E5D59;line-height:1.5;margin:-4px 0 14px}.sites{list-style:none;margin:-6px 0 14px;padding:0}.sites li{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;padding:6px 0;border-top:1px solid #E8E6DC}.sites li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sites button{display:inline;width:auto;padding:4px 10px;margin:0;font-size:11px}

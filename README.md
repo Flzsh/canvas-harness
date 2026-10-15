@@ -52,7 +52,7 @@
     </td>
     <td valign="top">
       <h3>Your own look</h3>
-      Hand-drawn course artwork, outlines, colors, text size and layout presets, or upload your own SVG banners, icons, frames and titles.
+      Hand-drawn course artwork, outlines, colors, text size and layout presets, or upload your own SVG banners, icons, frames and titles. Canvas's own menu bar is drawn to match.
     </td>
     <td valign="top">
       <h3>Tools beside your work</h3>
