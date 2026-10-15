@@ -42,7 +42,7 @@ test('the copied frame rules match the workspace’s, and the files are wired in
  const all=manifest.content_scripts.find(entry=>entry.js.includes('content.js'));
  assert.ok(all.js.includes('canvas-nav.js'));assert.ok(all.js.indexOf('course-art.js')<all.js.indexOf('canvas-nav.js'),'it draws with the course frames');
  for(const entry of manifest.web_accessible_resources)assert.ok(entry.resources.includes('canvas-nav.css'));
- const popup=read('popup.html');assert.match(popup,/<select id="canvas-nav"><option value="drawn">Hand-drawn<\/option><option value="original">Canvas original<\/option><\/select>/);
+ const popup=read('popup.html');assert.match(popup,/<select id="canvas-nav"><option value="drawn">Hand-drawn, out from the left edge<\/option><option value="shown">Hand-drawn, always shown<\/option><option value="original">Canvas original<\/option><\/select>/);
  assert.match(read('popup.js'),/'reserve:canvasNav':menuBar\.value/);
 });
 
@@ -58,4 +58,15 @@ test('the bar sits against the window’s edge with its pen line on three sides,
  assert.equal(Nav.kindOf(link('context_external_tool_3_menu_item','Canvas Studio')),'studio');assert.equal(Nav.kindOf(link('x','Studios of Art')),'');
  assert.match(js,/class="chn-logo-art"/,'a kept logo hangs in a drawn frame');
  assert.match(css,/\.ic-app-header__secondary-navigation \{ background: none !important; padding-bottom: calc\(var\(--chn-bottom, 12px\) \+ 10px\); \}/,'the collapse arrow stays above the bar’s bottom line');
+});
+
+// The user (2026-10-15): the bar is used now and then, so it hides off the left edge, comes out as a shorter card in the
+// middle of the edge when the pointer reaches the edge, and Canvas's page takes the whole width meanwhile.
+test('by default the bar is a drawer: hidden off the edge, out as a card in the middle while the pointer or focus is on it',()=>{
+ const css=read('canvas-nav.css'),js=read('canvas-nav.js');
+ assert.match(js,/if\(values\[KEY\]!=='shown'\)html\.dataset\.chnDrawer='closed';/,'"Hand-drawn, always shown" keeps the column');
+ assert.match(css,/html\.chn-nav\[data-chn-drawer\] #wrapper \{ margin-left: 0 !important; \}/,'the page takes the whole width');
+ assert.match(css,/html\.chn-nav\[data-chn-drawer\] #header \{[^}]*top: 50% !important;[^}]*height: auto !important;[^}]*transform: translate\(calc\(-100% - 24px\), -50%\);/,'hidden, centred, as tall as its items');
+ assert.match(css,/html\.chn-nav\[data-chn-drawer=open\] #header \{ transform: translate\(0, -50%\);/);
+ for(const hook of ["edge.addEventListener('pointerenter',open)","header.addEventListener('pointerleave',()=>close())","header.addEventListener('focusin',open)",'trayOpen()'])assert.ok(js.includes(hook),hook);
 });

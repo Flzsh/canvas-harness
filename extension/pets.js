@@ -48,7 +48,7 @@
   let pet=clean(getPet()),layer=null,node=null,bubble=null,dead=false,raf=0,timer=0,last=0,pose='stand',face='right';
   let spot={ledge:null,u:160},grab=null,menuOpen=false,focusing=false,quietUntil=0,lastInput=now(),sayTimer=0,unseen=0;
   // what it is doing: null (resting), a walk, or a jump; and the eased numbers
-  let goal=null,rest='stand',speed=0,phase=0,follow=0;const ch={leg:0,down:0,neck:9,head:0,alpha:1};
+  let goal=null,rest='stand',speed=0,phase=0,follow=0,reel=0;const ch={leg:0,down:0,neck:9,head:0,alpha:1};
   const reduced=()=>['off','still'].includes(container.dataset.motionStyle)||win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const size=()=>SIZES[pet.size]||SIZES.medium;
   const visible=()=>pet.enabled&&pet.roam!=='off';
@@ -59,20 +59,57 @@
    container.append(layer);node=layer.firstElementChild;node.innerHTML=art.svg({title:pet.name});
    node.addEventListener('pointerdown',down);node.addEventListener('click',click);node.addEventListener('keydown',key);
    win.addEventListener('scroll',place,{passive:true,capture:true});win.addEventListener('resize',place,{passive:true});
+   container.addEventListener('scroll',place,{passive:true,capture:true});   // the workspace column scrolls inside the workspace
    doc.addEventListener('pointermove',seen,{passive:true});doc.addEventListener('keydown',seen,{passive:true});
    doc.addEventListener('visibilitychange',wake);
    // Modules move when the layout changes; keep the pony on the one it is standing on.
    follow=setInterval(()=>{if(!raf&&!grab&&!doc.hidden)place();},500);
-   dress();home();place();paint();plan(1400);
+   dress();home();place();paint();plan(1400);roll();
   }
   function unmount(){
    if(!layer)return;closeBubble();stop();
-   win.removeEventListener('scroll',place,{capture:true});win.removeEventListener('resize',place);
+   win.removeEventListener('scroll',place,{capture:true});container.removeEventListener('scroll',place,{capture:true});win.removeEventListener('resize',place);
    doc.removeEventListener('pointermove',seen);doc.removeEventListener('keydown',seen);doc.removeEventListener('visibilitychange',wake);
-   clearInterval(follow);follow=0;layer.remove();layer=node=null;
+   clearInterval(follow);follow=0;clearTimeout(reel);reel=0;reels.clear();layer.remove();layer=node=null;
   }
   function seen(){lastInput=now();if(rest==='sleep'&&!goal&&!menuOpen)settle('lie',4000);}
-  function wake(){if(!doc.hidden&&layer){place();if(goal)run();else plan(900);}}
+  function wake(){if(!doc.hidden&&layer){place();if(goal)run();else plan(900);roll();}}
+  // THE PONY ON THE FILM CLOCK. Its little loops (the tail, the nod, the blink, breathing, the Zs) are CSS animations.
+  // Left to run, each one makes Chrome draw the whole page at the screen's own rate (60 to 240 times a second: on a
+  // battery that was most of an idle page's cost) to move a few pixels. Like the drawings (motion.js), they are paused
+  // and set to the film's time instead: 24 frames a second while someone uses the page, 12 after, none while the tab is
+  // hidden. A loop between two keyframes that say the same thing (a blink's long open stretch) is not written at all.
+  // Only endless loops: a short one (a hop, the book appearing) plays as written. Reduced motion has none.
+  const reels=new Map();
+  function restsOf(a){
+   try{
+    const timing=a.effect?.getTiming?.(),frames=a.effect?.getKeyframes?.();
+    if(!timing||!frames||frames.length<2||!(timing.duration>0)||(timing.direction&&timing.direction!=='normal')||timing.iterationStart)return null;
+    const skip=k=>k==='offset'||k==='computedOffset'||k==='easing'||k==='composite',list=[];
+    const same=(x,y)=>{for(const k of new Set([...Object.keys(x),...Object.keys(y)]))if(!skip(k)&&x[k]!==y[k])return false;return true;};
+    for(let i=0;i+1<frames.length;i++){const x=frames[i].computedOffset,y=frames[i+1].computedOffset;if(y>x&&same(frames[i],frames[i+1]))list.push([x,y]);}
+    return list.length?{list,delay:timing.delay||0,duration:timing.duration}:null;
+   }catch{return null;}
+  }
+  function roll(){
+   clearTimeout(reel);reel=0;if(!node||dead||doc.hidden)return;
+   const t=now();let list=[];
+   try{list=node.getAnimations?.({subtree:true})||[];}catch{}
+   // every state is read before any time is written, so Chrome restyles once a frame, not once a loop
+   const live=new Set();
+   for(const a of list){
+    if(!a.animationName||a.playState==='idle'||a.playState==='finished'||a.effect?.getTiming?.().iterations!==Infinity)continue;
+    live.add(a);if(!reels.has(a)){try{a.pause();}catch{continue;}reels.set(a,{origin:t-(+a.currentTime||0),rests:restsOf(a),rest:-1});}
+   }
+   for(const a of [...reels.keys()])if(!live.has(a))reels.delete(a);
+   for(const [a,r] of reels){
+    const time=Math.max(0,t-r.origin);let at=-1;
+    if(r.rests){const local=time-r.rests.delay;if(local>=0){const p=(local/r.rests.duration)%1;at=r.rests.list.findIndex(h=>p>=h[0]&&p<h[1]);}}
+    if(at<0||at!==r.rest){try{a.currentTime=time;}catch{}}
+    r.rest=at;
+   }
+   reel=setTimeout(roll,1000/(now()-lastInput<6000?24:12));reel?.unref?.();
+  }
   function dress(){
    if(!node)return;const c=art.COATS[pet.coat]||art.COATS.oat;
    node.style.setProperty('--pet-coat',c.coat);node.style.setProperty('--pet-shade',c.shade);node.style.setProperty('--pet-mane',c.mane);node.style.setProperty('--pet-muzzle',c.muzzle);
@@ -191,7 +228,10 @@
   }
   const ease=(key,to,rate,dt)=>{const d=to-ch[key];if(Math.abs(d)<.02){ch[key]=to;return false;}ch[key]+=d*Math.min(1,rate*dt);return true;};
   function frame(ts){
-   raf=0;if(!node||dead)return;const dt=last?Math.min(.05,(ts-last)/1000):.016;last=ts;let busy=false;
+   raf=0;if(!node||dead)return;
+   // Walking is drawn at most 60 times a second: a 120 or 240 Hz screen would otherwise redraw the page that often.
+   if(last&&ts-last<15){raf=win.requestAnimationFrame(frame);return;}
+   const dt=last?Math.min(.05,(ts-last)/1000):.016;last=ts;let busy=false;
    const want=POSE[goal?'stand':rest]||POSE.stand;
    if(goal?.type==='walk'){
     if(ch.down>.6){busy=true;}            // get up first

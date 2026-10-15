@@ -110,7 +110,7 @@
 .rd .ch-settings-dock :is(.ch-hint,.ch-preset small,.ch-art-caption span,.ch-upload,.ch-paste,.ch-art-slot .rd-text-button) { font-size:12px; }
 .rd .ch-settings-dock .ch-paste textarea { font-size:13px; }
 .rd .ch-settings-dock .ch-course-setting { grid-template-columns:20px 30px minmax(0,1fr) 32px 32px; gap:7px; }
-.rd .ch-settings-dock :is(button,select,input,textarea,summary):focus-visible {
+.rd .ch-settings-dock button:focus-visible, .rd .ch-settings-dock select:focus-visible, .rd .ch-settings-dock input:focus-visible, .rd .ch-settings-dock textarea:focus-visible, .rd .ch-settings-dock summary:focus-visible {
  outline:2px solid var(--rd-accent);
  outline-offset:3px;
 }
@@ -123,7 +123,7 @@
 @media (max-width:1400px) and (min-width:901px) {
  .rd[data-settings="open"] .rd-shell { display:block; }
  .rd[data-settings="open"] .rd-course-rail { display:none; }
- .rd[data-settings="open"] :is(.rd-course-select,.rd-mobile-course) { display:flex; max-width:100%; }
+ .rd[data-settings="open"] .rd-course-select, .rd[data-settings="open"] .rd-mobile-course { display:flex; max-width:100%; }
  .rd[data-settings="open"] .rd-toolbar { flex-wrap:wrap; gap:10px; }
 }
 

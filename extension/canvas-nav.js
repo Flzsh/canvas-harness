@@ -107,7 +107,7 @@
    saved=values;if(values[KEY]==='original'||values['reserve:enabled']===false)return;
    const link=root.document.createElement('link');link.rel='stylesheet';link.href=root.chrome.runtime.getURL('canvas-nav.css');
    (root.document.head||html).append(link);
-   html.classList.add('chn-nav');applyPalette(values[PALETTE]);
+   html.classList.add('chn-nav');if(values[KEY]!=='shown')html.dataset.chnDrawer='closed';applyPalette(values[PALETTE]);
    watch();
   }).catch(()=>{});
 
@@ -134,7 +134,24 @@
    let queued=false;
    observer?.disconnect();observer=new MutationObserver(()=>{if(queued)return;queued=true;root.requestAnimationFrame(()=>{queued=false;decorate(header);});});
    observer.observe(header,{childList:true,subtree:true});
-   setLogo();followWorkspace();
+   setLogo();followWorkspace();drawer();
+  }
+  // THE DRAWER (the default; "Hand-drawn, always shown" keeps the column): the bar is used now and then, so it waits
+  // off the left edge and Canvas's page takes the whole width. Reaching the window's left edge with the pointer, or
+  // tabbing into it, brings it out, a little card in the middle of the edge as tall as its items; it goes when the
+  // pointer and focus have left it, but never while one of Canvas's trays (Courses, Account, Help) is open.
+  function drawer(){
+   if(!html.dataset.chnDrawer||header.dataset.chnDrawer)return;header.dataset.chnDrawer='true';
+   const doc=root.document,edge=doc.createElement('div');edge.className='chn-edge';edge.setAttribute('aria-hidden','true');(doc.body||html).append(edge);
+   const trays=['nav-tray-portal','global_nav_tray_container'].map(id=>doc.getElementById(id)).filter(Boolean);
+   const trayOpen=()=>trays.some(t=>t.childElementCount>0);
+   let timer=0;
+   const open=()=>{root.clearTimeout(timer);html.dataset.chnDrawer='open';};
+   const close=(ms=420)=>{root.clearTimeout(timer);timer=root.setTimeout(()=>{if(header.matches(':hover')||header.contains(doc.activeElement)||trayOpen())return;html.dataset.chnDrawer='closed';},ms);};
+   edge.addEventListener('pointerenter',open);
+   header.addEventListener('pointerenter',open);header.addEventListener('pointerleave',()=>close());
+   header.addEventListener('focusin',open);header.addEventListener('focusout',()=>close(120));
+   for(const t of trays)new MutationObserver(()=>{if(!trayOpen())close();}).observe(t,{childList:true});
   }
   // A logo that keeps its own look (framed, or on the school's plate) hangs in a drawn frame from a nail.
   function logoArt(){const mark=header.querySelector('.ic-app-header__logomark');if(mark&&!mark.querySelector(':scope > .chn-logo-art'))mark.insertAdjacentHTML('beforeend','<span class="chn-logo-art" aria-hidden="true"><svg class="chn-logo-hang" viewBox="0 0 40 14"><path d="M9 13.4L20 3l11 10.4" fill="none" stroke="#2B2A27" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="2.6" r="1.7" fill="#2B2A27"/></svg><svg class="chn-logo-edge" viewBox="0 0 100 60" preserveAspectRatio="none"><path vector-effect="non-scaling-stroke" d="M4.2 4.4C30 3.2 70 4.6 96.2 3.6C97 20 96.4 40 97 56.6C70 57.6 30 56.2 3.6 57.2C2.8 40 3.8 20 3.2 5.6"/><path class="re" vector-effect="non-scaling-stroke" d="M8 7.4C36 6.6 64 7.8 92 7"/><path class="re" vector-effect="non-scaling-stroke" d="M90 54C93 53.6 94.4 52 94.6 49"/></svg></span>');}

@@ -1,7 +1,7 @@
 /* Canvas Harness: subject-specific frames supplied by Flzsh. SPDX-License-Identifier: GPL-3.0-only.
    Shared layout and motion rules live in refresh.css. */
 .rd .rd-frame[data-kind=biology] { --f-p-ink:#2C6E57; --f-p-paint:#B4CC5C; --f-p-ink-d:#8ED0B2; --f-p-paint-d:#9DB451; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=biology]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=biology]), .rd .rd-rail-all:has(> .rd-frame[data-kind=biology]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=biology] > .rd-frame-stretch { -webkit-mask: linear-gradient(#000 0 0) left calc(50% + 0px) top 8px / 62px 6px no-repeat, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) left calc(50% + 0px) top 8px / 62px 6px no-repeat, linear-gradient(#000 0 0); mask-composite: exclude; }
 .rd .rd-frame[data-kind=biology] > .rd-frame-orn[data-o="0"] { left:calc(3px + (100% - 6px) * 0.5 + -36px);top:-5px; width:72px; height:15px; }
 .rd .rd-frame[data-kind=biology] > .rd-frame-orn[data-o="1"] { right:23px;top:-7px; width:20px; height:15px; }
@@ -40,7 +40,7 @@
 }
 /* ap-biology: A molecular-biology bench in plum ink and gel-dye blue, for AP Biology: the indoor cousin of the Biology frame. The sprout of the mini stands on the bottom line in the lower left corner; its stem is a DNA helix, and the helix goes on up the left column to a pea flower in tall rows. The top edge is a lac operon, the pen line being the DNA: promoter, operator with the repressor sitting on it, and the three genes Z, Y and A; a polymerase slides along the genes and its transcript grows behind it while the repressor lifts off. The bottom edge draws a PCR temperature trace, three cycles of denature, anneal and extend; the upper left corner holds the cell-cycle ring with a cell on it, and the lower right corner ATP synthase, whose shaft turns. A cladogram with five tips runs along the right edge. A marker walks the PCR trace, the polymerase runs the operon, the cell stops at its two checkpoints and the tips light up one after another. */
 .rd .rd-frame[data-kind=ap-biology] { --f-p-ink:#7B2D5B; --f-p-paint:#8DB8DE; --f-p-ink-d:#E3A0C8; --f-p-paint-d:#7FA6CC; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=ap-biology]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=ap-biology]), .rd .rd-rail-all:has(> .rd-frame[data-kind=ap-biology]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=ap-biology] > .rd-frame-stretch { -webkit-mask: linear-gradient(#000 0 0) left calc(55% + 4.1px) top 7.6px / 104px 6.8px no-repeat, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) left calc(55% + 4.1px) top 7.6px / 104px 6.8px no-repeat, linear-gradient(#000 0 0); mask-composite: exclude; }
 .rd .rd-frame[data-kind=ap-biology] > .rd-frame-orn[data-o="0"] { left:2px;top:2px; width:22px; height:22px; }
 .rd .rd-frame[data-kind=ap-biology] > .rd-frame-orn[data-o="1"] { left:3.5px;top:3.5px; width:20px; height:20px; }
@@ -103,7 +103,7 @@
 }
 /* chemistry: A lab bench in litmus indigo, painted the clay-red of the mini's solution. The flask of the mini stands on the bottom line in the lower left corner; a burette hangs from the top edge over its balloon, with safety goggles on a ledge below it. The upper left corner is a periodic-table tile (oxygen, 8) that the pen line walks into; the top edge is a ball-and-stick chain of four carbons with an oxygen in the middle. Along the bottom stand a pair of litmus strips, ice, a drop and steam (three states of water) and, in the lower right corner, a Bunsen burner; a litmus scale with a marker runs up the right edge. A drop falls from the burette into the flask's balloon, a water molecule rolls from the flask the whole way to the Bunsen flame and goes up in steam, and the marker slides down the scale. */
 .rd .rd-frame[data-kind=chemistry] { --f-p-ink:#4B4FA3; --f-p-paint:#E08A63; --f-p-ink-d:#A9ACF0; --f-p-paint-d:#CC7B57; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=chemistry]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=chemistry]), .rd .rd-rail-all:has(> .rd-frame[data-kind=chemistry]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=chemistry] > .rd-frame-stretch { -webkit-mask: linear-gradient(#000 0 0) left 0px top 0px / 29px 28px no-repeat, linear-gradient(#000 0 0) left calc(56% + 4.68px) top 7.6px / 100px 6.8px no-repeat, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) left 0px top 0px / 29px 28px no-repeat, linear-gradient(#000 0 0) left calc(56% + 4.68px) top 7.6px / 100px 6.8px no-repeat, linear-gradient(#000 0 0); mask-composite: exclude; }
 .rd .rd-frame[data-kind=chemistry] > .rd-frame-orn[data-o="0"] { left:0px;top:0px; width:23px; height:22px; }
 .rd .rd-frame[data-kind=chemistry] > .rd-frame-orn[data-o="1"] { left:calc(3px + (100% - 6px) * 0.56 + -52px);top:-5px; width:104px; height:15px; }
@@ -148,7 +148,7 @@
 }
 /* ap-chemistry: Instruments in umber ink and gold, for AP Chemistry: the dark, heavier cousin of the Chemistry frame. The seesaw of the mini stands on the bottom line in the lower left corner (its gold flask is the gold of the beam). The top edge is a spectrophotometer: a lamp box in the corner, a cuvette of gold solution in the beam, a detector with a dial, and the beam itself painted gold along the pen line, dimmer after the cuvette. Above the mini, a concentration-time curve flattens at equilibrium and, higher, a Beer's-law plot has five dots on a line. A titration curve with its steep jump runs up the right edge; a galvanic cell with a salt bridge stands on the bottom line, wired along the bottom edge to a voltmeter in the lower right corner. A photon crosses the beam and the detector's needle answers; electrons run along the bottom wire and the voltmeter's needle swings; a point rides the equilibrium curve to its plateau and another is added to the titration curve. */
 .rd .rd-frame[data-kind=ap-chemistry] { --f-p-ink:#6B3F28; --f-p-paint:#E3B04A; --f-p-ink-d:#DDB08E; --f-p-paint-d:#CFA040; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=ap-chemistry]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=ap-chemistry]), .rd .rd-rail-all:has(> .rd-frame[data-kind=ap-chemistry]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=ap-chemistry] > .rd-frame-stretch { -webkit-mask: linear-gradient(#000 0 0) left 0px top 0px / 29px 28px no-repeat, linear-gradient(#000 0 0) left calc(80% + -1.8px) top 7.8px / 16px 6.4px no-repeat, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) left 0px top 0px / 29px 28px no-repeat, linear-gradient(#000 0 0) left calc(80% + -1.8px) top 7.8px / 16px 6.4px no-repeat, linear-gradient(#000 0 0); mask-composite: exclude; }
 .rd .rd-frame[data-kind=ap-chemistry] > .rd-frame-orn[data-o="0"] { left:0px;top:0px; width:24px; height:22px; }
 .rd .rd-frame[data-kind=ap-chemistry] > .rd-frame-orn[data-o="1"] { left:calc(3px + (100% - 6px) * 0.42 + -6px);top:-3.4px; width:12px; height:12.8px; }
@@ -201,7 +201,7 @@
 }
 /* physics: A mechanics bench in steel-blue ink and gold, for general physics. The ramp, cart and spring of the mini stand on the bottom line in the lower left corner; the bottom edge is a metre rail with a scale of ticks, with a battery and a red push button on it, and in the lower right corner an end block and a spring buffer. A pendulum with a gold bob hangs in the left column, a free-body diagram (weight, normal force, friction) holds the upper left corner, and a convex lens on the top edge brings three gold rays to a focus; a lit bulb stands beyond it. A cart leaves the foot of the ramp, rolls the rail and hits a second cart, which rolls on to the buffer, squeezes the spring and comes back; the pendulum swings the whole time; a pulse runs up the right edge and returns inverted from the top. */
 .rd .rd-frame[data-kind=physics] { --f-p-ink:#3C6E94; --f-p-paint:#E4B33F; --f-p-ink-d:#8DC0E6; --f-p-paint-d:#D0A23A; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=physics]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=physics]), .rd .rd-rail-all:has(> .rd-frame[data-kind=physics]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=physics] > .rd-frame-stretch { -webkit-mask: linear-gradient(#000 0 0) left calc(38% + 1.2px) top 6.4px / 12px 9.2px no-repeat, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) left calc(38% + 1.2px) top 6.4px / 12px 9.2px no-repeat, linear-gradient(#000 0 0); mask-composite: exclude; }
 .rd .rd-frame[data-kind=physics] > .rd-frame-orn[data-o="0"] { left:3px;top:3px; width:20px; height:20px; }
 .rd .rd-frame[data-kind=physics] > .rd-frame-orn[data-o="1"] { left:calc(3px + (100% - 6px) * 0.38 + -38px);top:-4px; width:76px; height:14px; }
@@ -240,7 +240,7 @@
 }
 /* ap-physics: A mechanics-and-fields bench in dark slate ink and copper, for AP Physics: the heavier cousin of the Physics frame. The lever of the mini stands on the bottom line in the lower left corner, with its weight and its block. Above it a spoked flywheel turns with an angular-velocity arrow round it; in tall rows an Atwood machine hangs from the top edge, one mass rising as the other falls. The upper left corner is a torque diagram (a pivot, the arm r, the force F, the turning arrow). The top edge draws an RC charge-and-discharge curve; the bottom edge is the axis of a ray diagram (object, lens, inverted image, two principal rays in copper); the lower right corner holds a capacitor with its field; a spring balance with a pointer hangs by the right edge. The flywheel never stops, a point rides the RC curve through two charges and discharges while the capacitor's field strengthens, the Atwood masses trade places and the balance's pointer swings up and down. */
 .rd .rd-frame[data-kind=ap-physics] { --f-p-ink:#34436A; --f-p-paint:#E27D3C; --f-p-ink-d:#A5B6E8; --f-p-paint-d:#CB7236; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=ap-physics]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=ap-physics]), .rd .rd-rail-all:has(> .rd-frame[data-kind=ap-physics]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=ap-physics] > .rd-frame-stretch { -webkit-mask: linear-gradient(#000 0 0) left calc(80% + -0.3px) bottom 7.4px / 21px 7.2px no-repeat, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) left calc(80% + -0.3px) bottom 7.4px / 21px 7.2px no-repeat, linear-gradient(#000 0 0); mask-composite: exclude; }
 .rd .rd-frame[data-kind=ap-physics] > .rd-frame-orn[data-o="0"] { left:3px;top:3px; width:22px; height:22px; }
 .rd .rd-frame[data-kind=ap-physics] > .rd-frame-orn[data-o="1"] { left:calc(3px + (100% - 6px) * 0.52 + -54px);top:-5px; width:108px; height:14px; }
@@ -289,7 +289,7 @@
 }
 
 .rd .rd-frame[data-kind=algebra1] { --f-p-ink:#3A70A5; --f-p-paint:#DD8F66; --f-p-ink-d:#8FB8E3; --f-p-paint-d:#C98259; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=algebra1]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=algebra1]), .rd .rd-rail-all:has(> .rd-frame[data-kind=algebra1]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=algebra1] > .rd-frame-stretch { -webkit-mask: linear-gradient(#000 0 0) left 147px bottom 7.6px / 16px 6.8px no-repeat, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) left 147px bottom 7.6px / 16px 6.8px no-repeat, linear-gradient(#000 0 0); mask-composite: exclude; }
 .rd .rd-frame[data-kind=algebra1] > .rd-frame-orn[data-o="0"] { left:2px;top:2px; width:17px; height:17px; }
 .rd .rd-frame[data-kind=algebra1] > .rd-frame-orn[data-o="1"] { left:calc(3px + (100% - 6px) * 0.74 + -30px);top:-6px; width:60px; height:10.5px; }
@@ -326,7 +326,7 @@
 }
 /* geometry: A drafting board in draftsman's jade and brass, for Geometry. The triangle of the mini stands on the bottom line, which is the straightedge, and its dotted altitude goes on up the left side as the axis of a circle with an inscribed triangle (the construction of the equilateral triangle). The top left corner is a right angle marked with a bisecting band; a brass ruler lies on the top edge; a segment A B with the lens of its perpendicular bisector runs along the bottom; a protractor sits on the right edge and a compass stands in the lower right corner with the half circle it has drawn. A brass set square slides the length of the bottom line and a point goes round the circle. */
 .rd .rd-frame[data-kind=geometry] { --f-p-ink:#2A6B5A; --f-p-paint:#E0B040; --f-p-ink-d:#7CC9B1; --f-p-paint-d:#C9A03B; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=geometry]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=geometry]), .rd .rd-rail-all:has(> .rd-frame[data-kind=geometry]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=geometry] > .rd-frame-orn[data-o="0"] { left:2px;top:2px; width:18px; height:18px; }
 .rd .rd-frame[data-kind=geometry] > .rd-frame-orn[data-o="1"] { left:calc(3px + (100% - 6px) * 0.27 + -8px);top:-3px; width:16px; height:12px; }
 .rd .rd-frame[data-kind=geometry] > .rd-frame-orn[data-o="2"] { left:calc(3px + (100% - 6px) * 0.66 + -54px);top:-3.5px; width:108px; height:10.1px; }
@@ -361,7 +361,7 @@
 }
 /* algebra2: Plum ink and seafoam, for Algebra 2. The mini's circle rests on the bottom line and its wave leaves it to the right. The frame is the function families: the top left corner is a radical sign whose bar is the top edge; a cubic crosses the top line at its three roots (seafoam dots); the bottom line carries a logarithmic ruler, whose ticks crowd together; an exponential curve hugs the bottom line and then climbs the right side, with the area under it washed seafoam; beside the mini a logarithm rises from the left edge, which is its asymptote. A point rides the exponential, slowly and then fast, another rides the cubic through its roots and a third hops the logarithmic ruler. */
 .rd .rd-frame[data-kind=algebra2] { --f-p-ink:#7A3D74; --f-p-paint:#7FC3AF; --f-p-ink-d:#D8A5D1; --f-p-paint-d:#6FB09C; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=algebra2]) { --rd-mini-x:5px; --rd-mini-b:-6px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=algebra2]), .rd .rd-rail-all:has(> .rd-frame[data-kind=algebra2]) { --rd-mini-x:5px; --rd-mini-b:-6px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=algebra2] > .rd-frame-orn[data-o="0"] { left:2px;top:2px; width:34px; height:17px; }
 .rd .rd-frame[data-kind=algebra2] > .rd-frame-orn[data-o="1"] { left:calc(3px + (100% - 6px) * 0.43 + -36px);top:-5px; width:72px; height:16px; }
 .rd .rd-frame[data-kind=algebra2] > .rd-frame-orn[data-o="2"] { left:calc(3px + (100% - 6px) * 0.84 + -14px);top:-6px; width:28px; height:10.5px; }
@@ -400,7 +400,7 @@
 }
 /* precalculus: Rust ink and sky, for Precalculus. The circle of the mini rests on the bottom line and the wave leaves it, and the bottom line goes on as that wave: three periods of sine centred on the line, the first lobe washed sky. Above the mini stands a parabola with its focus and directrix, and higher an ellipse with its two foci and the taut string to a point on it. The top edge is a shelf of specimens: circle, ellipse, parabola and the two branches of a hyperbola, and a matrix; the top left corner is a polar grid with a wedge washed; the right side holds a hyperbola with its asymptotes and, in the corner, a 30-60-90 triangle with its angle marked. A point rides the wave from end to end, another spirals out of the polar corner, another goes round the ellipse. */
 .rd .rd-frame[data-kind=precalculus] { --f-p-ink:#A24F28; --f-p-paint:#78A9D2; --f-p-ink-d:#E8A682; --f-p-paint-d:#6A98C0; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=precalculus]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=precalculus]), .rd .rd-rail-all:has(> .rd-frame[data-kind=precalculus]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=precalculus] > .rd-frame-orn[data-o="0"] { left:2px;top:2px; width:18px; height:18px; }
 .rd .rd-frame[data-kind=precalculus] > .rd-frame-orn[data-o="1"] { left:calc(3px + (100% - 6px) * 0.5 + -34px);top:-7px; width:68px; height:12px; }
 .rd .rd-frame[data-kind=precalculus] > .rd-frame-orn[data-o="2"] { left:calc(3px + (100% - 6px) * 0.86 + -9px);top:-6.5px; width:18px; height:11.5px; }
@@ -438,7 +438,7 @@
 }
 /* calculus-ab: Cobalt-indigo ink and clay, for AP Calculus AB. The hill of the mini stands on the floor line and the floor goes on as a Riemann board: four bars under a curve, the last one clay like the mini's area; the board refines (8 bars, 16, then the area itself fills in) while a bead rides the curve and the gauge in the corner fills to the exact area. Above the mini a slope field climbs the left side with its clay solution curve; the top left corner is a circle tangent to both edges; an integral sign stands over a clay hill on the top edge, and a ball rolls faster and faster along a row of dots whose spacing grows; a limit curve runs toward its open hole on the right. */
 .rd .rd-frame[data-kind=calculus-ab] { --f-p-ink:#3E58A0; --f-p-paint:#DB8D63; --f-p-ink-d:#9DB1EE; --f-p-paint-d:#C98259; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=calculus-ab]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=calculus-ab]), .rd .rd-rail-all:has(> .rd-frame[data-kind=calculus-ab]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=calculus-ab] > .rd-frame-orn[data-o="0"] { left:2px;top:2px; width:15px; height:15px; }
 .rd .rd-frame[data-kind=calculus-ab] > .rd-frame-orn[data-o="1"] { left:calc(3px + (100% - 6px) * 0.4 + -27px);top:-7px; width:54px; height:13.5px; }
 .rd .rd-frame[data-kind=calculus-ab] > .rd-frame-orn[data-o="2"] { left:calc(3px + (100% - 6px) * 0.76 + -27px);top:-3px; width:63px; height:9px; }
@@ -489,7 +489,7 @@
 }
 /* calculus-bc: Deep indigo ink and rose, for AP Calculus BC, drawn on the plan of Calculus AB (corner figure, glyph strip, curve along the bottom, figure above the mini, small figure on the right) but darker and richer. The sine curve of the mini goes on along the bottom line with its Taylor polynomials, each closer than the last, the first lobe washed rose; above the mini stands a polar rose with its three petals; the top edge reads sigma, the bars 1 over n shrinking toward infinity; the corner holds a small rose, and on the right a wheel stands at the start of its cycloid and a parametric figure of eight carries its arrow. A point rides the sine curve, a wheel rolls out its cycloid and a point hops the bars of the series; the selected row traces the rose. */
 .rd .rd-frame[data-kind=calculus-bc] { --f-p-ink:#2B2F74; --f-p-paint:#E48FA3; --f-p-ink-d:#A3AAF0; --f-p-paint-d:#CF8294; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=calculus-bc]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=calculus-bc]), .rd .rd-rail-all:has(> .rd-frame[data-kind=calculus-bc]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=calculus-bc] > .rd-frame-orn[data-o="0"] { left:2px;top:2px; width:18px; height:18px; }
 .rd .rd-frame[data-kind=calculus-bc] > .rd-frame-orn[data-o="1"] { left:calc(3px + (100% - 6px) * 0.3 + -8px);top:-7px; width:16px; height:13px; }
 .rd .rd-frame[data-kind=calculus-bc] > .rd-frame-orn[data-o="2"] { left:calc(3px + (100% - 6px) * 0.52 + -26px);top:-7px; width:54px; height:12px; }
@@ -528,7 +528,7 @@
 }
 
 .rd .rd-frame[data-kind=english] { --f-p-ink:#5B4690; --f-p-paint:#E09A74; --f-p-ink-d:#BFAEF0; --f-p-paint-d:#CF8864; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=english]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=english]), .rd .rd-rail-all:has(> .rd-frame[data-kind=english]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=english] > .rd-frame-stretch { -webkit-mask: linear-gradient(#000 0 0) left 0px top 0px / 27px 27px no-repeat, linear-gradient(#000 0 0) left calc(44% + -0.48px) top 4.5px / 30px 13px no-repeat, linear-gradient(#000 0 0) right 0px bottom 0px / 27px 26px no-repeat, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) left 0px top 0px / 27px 27px no-repeat, linear-gradient(#000 0 0) left calc(44% + -0.48px) top 4.5px / 30px 13px no-repeat, linear-gradient(#000 0 0) right 0px bottom 0px / 27px 26px no-repeat, linear-gradient(#000 0 0); mask-composite: exclude; }
 .rd .rd-frame[data-kind=english] > .rd-frame-orn[data-o="0"] { left:1px;top:1px; width:20px; height:33px; }
 .rd .rd-frame[data-kind=english] > .rd-frame-orn[data-o="1"] { left:45px;bottom:1px; width:37px; height:8px; }
@@ -567,7 +567,7 @@
 }
 /* writing: The writing process, in blue-black fountain-pen ink and the red of the reviser's pen. The quill of the mini has just written the cursive flourish that runs along the bottom line from its inkwell, to a heap of crumpled drafts and the red pen lying on the line, and a ream of paper; a thought cloud with a small mind-map rises from the feather; a deck of index cards with a rubber band sits in the upper left corner; paper strips are pasted across the top edge; the reviser's marks (a pilcrow, a caret, a deleting loop and a margin bracket) stand in the right margin; the lower right corner holds the published page with its red seal. A page is carried round: it leaves the cards, runs the top edge, drops down the right edge and is stamped; a discarded draft rolls away along the bottom. */
 .rd .rd-frame[data-kind=writing] { --f-p-ink:#28365F; --f-p-paint:#D2493F; --f-p-ink-d:#9FB4EE; --f-p-paint-d:#DB6358; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=writing]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=writing]), .rd .rd-rail-all:has(> .rd-frame[data-kind=writing]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=writing] > .rd-frame-stretch { -webkit-mask: linear-gradient(#000 0 0) left 0px top 0px / 27px 27px no-repeat, linear-gradient(#000 0 0) right 0px bottom 0px / 27px 26px no-repeat, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) left 0px top 0px / 27px 27px no-repeat, linear-gradient(#000 0 0) right 0px bottom 0px / 27px 26px no-repeat, linear-gradient(#000 0 0); mask-composite: exclude; }
 .rd .rd-frame[data-kind=writing] > .rd-frame-orn[data-o="0"] { left:1px;top:1px; width:21px; height:21px; }
 .rd .rd-frame[data-kind=writing] > .rd-frame-orn[data-o="1"] { left:45px;bottom:0px; width:57px; height:12px; }
@@ -609,7 +609,7 @@
 }
 /* reading: Close reading, in library-leather brown ink and highlighter yellow. The open book of the mini lies on the bottom line, which is its shelf: spines stand beside it to a bookend and a few books lie flat; a leather corner with stitching and a bookmark ribbon (swallow-tailed, painted yellow) is in the upper left; a printed line runs along the top edge with a highlighter parked at its start; page flags stand out of the right edge; reading glasses lie in the lower right corner and a magnifier rests on the top edge. In taller rows an annotated page (highlighted line, underline, margin note) is pinned above the book. The highlighter sweeps the printed line, a yellow stripe following its tip, then returns; the magnifier slides along the line; a bookworm in spectacles inches the length of the shelf; selected rows add two more page flags. */
 .rd .rd-frame[data-kind=reading] { --f-p-ink:#7B4F2B; --f-p-paint:#F0CF45; --f-p-ink-d:#DDB184; --f-p-paint-d:#D9B93C; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=reading]) { --rd-mini-x:5px; --rd-mini-b:2px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=reading]), .rd .rd-rail-all:has(> .rd-frame[data-kind=reading]) { --rd-mini-x:5px; --rd-mini-b:2px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=reading] > .rd-frame-stretch { -webkit-mask: linear-gradient(#000 0 0) left 0px top 0px / 27px 27px no-repeat, linear-gradient(#000 0 0) right 0px bottom 0px / 27px 26px no-repeat, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) left 0px top 0px / 27px 27px no-repeat, linear-gradient(#000 0 0) right 0px bottom 0px / 27px 26px no-repeat, linear-gradient(#000 0 0); mask-composite: exclude; }
 .rd .rd-frame[data-kind=reading] > .rd-frame-orn[data-o="0"] { left:1px;top:1px; width:28px; height:31px; }
 .rd .rd-frame[data-kind=reading] > .rd-frame-orn[data-o="1"] { left:48px;bottom:2px; width:53px; height:8px; }
@@ -649,7 +649,7 @@
 }
 /* latin: Roman civilisation in Pompeian red ink and laurel-green paint. The legion standard of the mini stands on the bottom line, which is a paved road (polygonal paving stones under it, as on the Via Appia); above the line to the right runs a low aqueduct arcade of round arches; a running meander (the Greek key of Roman mosaic floors) is laid on a green band along the top edge; a laurel sprig with berries is bent round the upper left corner, and a wax tablet with scratched lines and its stylus lies in the lower right corner. A pilum leans in the left margin, a legionary scutum and a gladius hang above the standard in taller rows, and a laurel sprig stands in the right margin. A denarius rolls along the road, a green tessera runs along the meander, and a keystone drops into the arcade. */
 .rd .rd-frame[data-kind=latin] { --f-p-ink:#A53A2D; --f-p-paint:#98AC62; --f-p-ink-d:#F0937F; --f-p-paint-d:#8FA45E; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=latin]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=latin]), .rd .rd-rail-all:has(> .rd-frame[data-kind=latin]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=latin] > .rd-frame-stretch { -webkit-mask: linear-gradient(#000 0 0) left 0px top 0px / 27px 27px no-repeat, linear-gradient(#000 0 0) right 0px bottom 0px / 27px 26px no-repeat, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) left 0px top 0px / 27px 27px no-repeat, linear-gradient(#000 0 0) right 0px bottom 0px / 27px 26px no-repeat, linear-gradient(#000 0 0); mask-composite: exclude; }
 .rd .rd-frame[data-kind=latin] > .rd-frame-orn[data-o="0"] { left:0px;top:-1px; width:29px; height:30px; }
 .rd .rd-frame[data-kind=latin] > .rd-frame-orn[data-o="1"] { left:calc(3px + (100% - 6px) * 0.6 + -49px);top:2px; width:98px; height:7.5px; }
@@ -688,7 +688,7 @@
 }
 /* spanish: The Spanish-speaking world, in azulejo cobalt and saffron. The n of the mini stands on a skirting of glazed tiles (each with its diamond, every second one painted) that runs along the bottom line; a single tile with an eight-pointed star is set in the upper left corner; a string of papel picado flags (fringed, with cut-out diamonds) hangs from the top edge; a horseshoe arch with slim columns, in the manner of the Alhambra, stands in the lower right corner; a flash card (sol) is pegged up beside the tile; a cup of coffee stands next to the n, a pot of geraniums on the line, an orange twig in the right margin; in taller rows a guitar leans above the n and a speech bubble holds the inverted exclamation mark of an exclamation. The tilde of the mini leaves the n as a ribbon and runs along the top edge; an orange rolls along the tiles; steam rises from the cup. */
 .rd .rd-frame[data-kind=spanish] { --f-p-ink:#2A55A0; --f-p-paint:#E8A23C; --f-p-ink-d:#8EB2F0; --f-p-paint-d:#D49434; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=spanish]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=spanish]), .rd .rd-rail-all:has(> .rd-frame[data-kind=spanish]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=spanish] > .rd-frame-stretch { -webkit-mask: linear-gradient(#000 0 0) left 0px top 0px / 27px 27px no-repeat, linear-gradient(#000 0 0) right 0px bottom 0px / 27px 26px no-repeat, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) left 0px top 0px / 27px 27px no-repeat, linear-gradient(#000 0 0) right 0px bottom 0px / 27px 26px no-repeat, linear-gradient(#000 0 0); mask-composite: exclude; }
 .rd .rd-frame[data-kind=spanish] > .rd-frame-orn[data-o="0"] { left:1px;top:1px; width:20px; height:20px; }
 .rd .rd-frame[data-kind=spanish] > .rd-frame-orn[data-o="1"] { left:48px;bottom:2px; width:59px; height:8px; }
@@ -731,7 +731,7 @@
 }
 /* french: France, in the dark green of the Paris Metro entrances and croissant gold. The Eiffel tower of the mini stands on the pavement (the bottom line); a beret is set on the upper left corner and a painter's palette lies beside it; a striped awning with a scalloped hem hangs over the top edge; a baguette with its scoring lies on the pavement, a wrought-iron railing with curls runs along the line, a croissant lies in the lower right corner and a street lantern hangs from the right edge; a cup of coffee stands next to the tower; in taller rows a Juliet balcony with a box of geraniums is above it. The flag of the tower is a balloon's string: a balloon is let go from it and rises up the left edge; a pigeon walks the pavement past the baguette; steam rises from the cup. */
 .rd .rd-frame[data-kind=french] { --f-p-ink:#2F6A4A; --f-p-paint:#E3B45A; --f-p-ink-d:#8FD0A8; --f-p-paint-d:#CFA24E; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=french]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=french]), .rd .rd-rail-all:has(> .rd-frame[data-kind=french]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=french] > .rd-frame-stretch { -webkit-mask: linear-gradient(#000 0 0) left 0px top 0px / 27px 27px no-repeat, linear-gradient(#000 0 0) right 0px bottom 0px / 27px 26px no-repeat, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) left 0px top 0px / 27px 27px no-repeat, linear-gradient(#000 0 0) right 0px bottom 0px / 27px 26px no-repeat, linear-gradient(#000 0 0); mask-composite: exclude; }
 .rd .rd-frame[data-kind=french] > .rd-frame-orn[data-o="0"] { left:-1px;top:-3px; width:22px; height:22px; }
 .rd .rd-frame[data-kind=french] > .rd-frame-orn[data-o="1"] { left:calc(3px + (100% - 6px) * 0.68 + -53px);top:2px; width:106px; height:7.5px; }
@@ -775,7 +775,7 @@
 }
 
 .rd .rd-frame[data-kind=eastern-history] { --f-p-ink:#A52E26; --f-p-paint:#DDAA3E; --f-p-ink-d:#EE9A8A; --f-p-paint-d:#C9A03A; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=eastern-history]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=eastern-history]), .rd .rd-rail-all:has(> .rd-frame[data-kind=eastern-history]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=eastern-history] > .rd-frame-stretch { -webkit-mask: linear-gradient(#000 0 0) left 1px top 1px / 46px 21px no-repeat, linear-gradient(#000 0 0) left 31.4px bottom 12.4px / 8.4px 31.6px no-repeat, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) left 1px top 1px / 46px 21px no-repeat, linear-gradient(#000 0 0) left 31.4px bottom 12.4px / 8.4px 31.6px no-repeat, linear-gradient(#000 0 0); mask-composite: exclude; }
 .rd .rd-frame[data-kind=eastern-history] > .rd-frame-orn[data-o="0"] { left:-4px;top:-6px; width:45px; height:22px; }
 .rd .rd-frame[data-kind=eastern-history] > .rd-frame-orn[data-o="1"] { left:-5.7px;top:1.3px; width:12px; height:12px; }
@@ -834,7 +834,7 @@
 }
 /* world-history: A trade route on a sea chart, in ocean-blue ink and the sage of drawn land. The globe of the mini stands in the lower left corner and its route leaves the top of it as a dotted line, climbs the left side past a headland with a lighthouse and a hung astrolabe, and runs the top edge from port to port: a lighthouse, a fort and a palm. A compass rose, its east and south points the frame's own lines, takes the top left corner; a small globe takes the lower right corner, the bottom line and the right line crossing at its centre as the equator and the prime meridian. A spice sack and a bolt of silk and an anchor lie on the ground line over rows of swell. A marker leaves the globe and climbs the route; a dhow sails out from the top left, calls at each port, which runs up its pennant, and leaves; the needle of the rose swings. */
 .rd .rd-frame[data-kind=world-history] { --f-p-ink:#1F6FA3; --f-p-paint:#A4B87F; --f-p-ink-d:#86C6EE; --f-p-paint-d:#87A06A; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=world-history]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=world-history]), .rd .rd-rail-all:has(> .rd-frame[data-kind=world-history]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=world-history] > .rd-frame-stretch { -webkit-mask: linear-gradient(#000 0 0) left 3px top 3px / 20px 20px no-repeat, linear-gradient(#000 0 0) left 29.6px bottom 12.4px / 6.8px 36.1px no-repeat, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) left 3px top 3px / 20px 20px no-repeat, linear-gradient(#000 0 0) left 29.6px bottom 12.4px / 6.8px 36.1px no-repeat, linear-gradient(#000 0 0); mask-composite: exclude; }
 .rd .rd-frame[data-kind=world-history] > .rd-frame-orn[data-o="0"] { left:-5px;top:-5px; width:21px; height:21px; }
 .rd .rd-frame[data-kind=world-history] > .rd-frame-orn[data-o="1"] { left:-2px;top:-2px; width:10px; height:10px; }
@@ -889,7 +889,7 @@
 }
 /* us-history: A page of a hand-written document, in saddle-leather ink and flag red. The bell in its timber frame stands in the lower left corner; the cord that carries its pennant goes on up the left side, with pennants streaming from it, and along the top edge, where pennants and stars hang from it. The pen line is a parchment edge, wavering, with a dog-eared lower right corner. On the ground line lie an inkwell with its quill, a tricorn hat, a rolled scroll tied with a red ribbon and sealed, and a wagon wheel sunk to its hub; a small striped flag with its field of stars hangs from the right line. A pennant is hoisted up the cord, the stars along the top light one after another, and the quill leaves the inkwell and writes a line along the bottom edge, then comes back. */
 .rd .rd-frame[data-kind=us-history] { --f-p-ink:#6B4A2B; --f-p-paint:#C4493F; --f-p-ink-d:#DAB28A; --f-p-paint-d:#C85A50; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=us-history]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=us-history]), .rd .rd-rail-all:has(> .rd-frame[data-kind=us-history]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=us-history] > .rd-frame-stretch { -webkit-mask: linear-gradient(#000 0 0) right 0px bottom 0px / 19px 19px no-repeat, linear-gradient(#000 0 0) left 18.6px bottom 12.4px / 4px 34.6px no-repeat, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) right 0px bottom 0px / 19px 19px no-repeat, linear-gradient(#000 0 0) left 18.6px bottom 12.4px / 4px 34.6px no-repeat, linear-gradient(#000 0 0); mask-composite: exclude; }
 .rd .rd-frame[data-kind=us-history] > .rd-frame-orn[data-o="0"] { right:1px;bottom:1px; width:11px; height:11px; }
 .rd .rd-frame[data-kind=us-history] > .rd-frame-orn[data-o="1"] { left:10px;top:calc(3px + (100% - 6px) * 0.56 + -5px); width:15px; height:11px; }
@@ -970,7 +970,7 @@
 }
 /* western-history: A castle and a cathedral, in the violet of Gothic glass and gold leaf. The castle tower of the mini stands in the lower left corner and its curtain wall, with merlons and arrow slits, runs along the ground line to a second tower. The top left corner is a quarter of a rose window: the top line and the left line are its two straight spokes, and three painted petals fill the fan between. In tall rows a lancet window with a rose at its head stands on a corbel over the tower, set against the left line. A Roman arcade, round arches under a channel of gold, carries the whole top edge; a domed church and a screw press stand on the right edge; on the ground beyond the wall lie a fallen Doric capital and a drum, and a stick of loose type. A comet crosses above the top edge; bars of coloured light from the window cross the floor under the bottom line, slowly; when selected the press is pulled and a second comet follows. */
 .rd .rd-frame[data-kind=western-history] { --f-p-ink:#5A428F; --f-p-paint:#E0B54E; --f-p-ink-d:#BCABF0; --f-p-paint-d:#CBA645; }
-.rd :is(.rd-rail-course, .rd-rail-all):has(> .rd-frame[data-kind=western-history]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
+.rd .rd-rail-course:has(> .rd-frame[data-kind=western-history]), .rd .rd-rail-all:has(> .rd-frame[data-kind=western-history]) { --rd-mini-x:5px; --rd-mini-b:1px; --rd-mini-s:40px; --rd-text-x:51px; }
 .rd .rd-frame[data-kind=western-history] > .rd-frame-orn[data-o="0"] { left:2px;top:2px; width:17px; height:17px; }
 .rd .rd-frame[data-kind=western-history] > .rd-frame-orn[data-o="1"] { left:calc(3px + (100% - 6px) * 0.5 + -97px);top:2px; width:202px; height:8px; }
 .rd .rd-frame[data-kind=western-history] > .rd-frame-orn[data-o="2"] { left:32px;bottom:2px; width:129px; height:9px; }
