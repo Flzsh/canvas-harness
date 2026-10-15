@@ -57,4 +57,5 @@ test('the bar sits against the window’s edge with its pen line on three sides,
  const link=(id,label)=>({id,querySelector:()=>({textContent:label})});
  assert.equal(Nav.kindOf(link('context_external_tool_3_menu_item','Canvas Studio')),'studio');assert.equal(Nav.kindOf(link('x','Studios of Art')),'');
  assert.match(js,/class="chn-logo-art"/,'a kept logo hangs in a drawn frame');
+ assert.match(css,/\.ic-app-header__secondary-navigation \{ background: none !important; padding-bottom: calc\(var\(--chn-bottom, 12px\) \+ 10px\); \}/,'the collapse arrow stays above the bar’s bottom line');
 });
