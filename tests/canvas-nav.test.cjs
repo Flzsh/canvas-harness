@@ -45,3 +45,16 @@ test('the copied frame rules match the workspace’s, and the files are wired in
  const popup=read('popup.html');assert.match(popup,/<select id="canvas-nav"><option value="drawn">Hand-drawn<\/option><option value="original">Canvas original<\/option><\/select>/);
  assert.match(read('popup.js'),/'reserve:canvasNav':menuBar\.value/);
 });
+
+test('the bar sits against the window’s edge with its pen line on three sides, and keeps Canvas’s quirks tidy',()=>{
+ const css=read('canvas-nav.css'),js=read('canvas-nav.js');
+ assert.match(css,/#header::before \{ inset: var\(--chn-top, 12px\) 5px 12px 0; background: var\(--chn-sidebar-c\); border-radius: 0 16px 16px 0; \}/,'flush against the left edge');
+ assert.match(css,/M-4 6\.4C8 5\.8/,'the line starts off the left edge, so it reads as "]"');
+ assert.match(css,/\.menu-item__badge:is\(:empty, \[data-chn-empty\]\) \{ display: none !important; \}/,'an empty badge stays hidden');
+ assert.match(js,/badge\.dataset\.chnEmpty=''/);
+ assert.match(css,/white-space: nowrap; overflow-wrap: normal; word-break: keep-all;/,'labels never break inside a word');
+ assert.ok(!js.includes(''),'no control characters in the matchers');
+ const link=(id,label)=>({id,querySelector:()=>({textContent:label})});
+ assert.equal(Nav.kindOf(link('context_external_tool_3_menu_item','Canvas Studio')),'studio');assert.equal(Nav.kindOf(link('x','Studios of Art')),'');
+ assert.match(js,/class="chn-logo-art"/,'a kept logo hangs in a drawn frame');
+});

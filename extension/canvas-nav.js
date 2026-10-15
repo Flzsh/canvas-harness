@@ -20,7 +20,7 @@
  function kindOf(link){
   if(LINKS[link?.id])return LINKS[link.id];
   const label=String(link?.querySelector?.('.menu-item__text')?.textContent||'').trim().toLowerCase();
-  return label==='studio'||label==='canvas studio'?'studio':'';
+  return /\bstudio\b/.test(label)?'studio':'';
  }
  // The account drawing replaces only Canvas's default avatar, never a photo the student chose.
  function defaultAvatar(link){
@@ -71,6 +71,7 @@
   const frame=frames();
   for(const link of header.querySelectorAll('.ic-app-header__menu-list-link')){
    if(frame&&!link.querySelector(':scope > .chn-frames'))link.insertAdjacentHTML('afterbegin',frame);
+   for(const badge of link.querySelectorAll('.menu-item__badge'))if(!/\d/.test(badge.textContent||''))badge.dataset.chnEmpty='';else delete badge.dataset.chnEmpty;
    const kind=kindOf(link),box=link.querySelector('.menu-item-icon-container');
    if(!box||!DRAWINGS[kind]||box.querySelector(':scope > .chn-ic')||kind==='account'&&!defaultAvatar(link))continue;
    box.insertAdjacentHTML('afterbegin','<svg class="chn-ic" viewBox="0 0 40 40" aria-hidden="true" focusable="false">'+DRAWINGS[kind]+'</svg>');
@@ -134,7 +135,10 @@
    observer.observe(header,{childList:true,subtree:true});
    setLogo();followWorkspace();
   }
+  // A logo that keeps its own look (framed, or on the school's plate) hangs in a drawn frame from a nail.
+  function logoArt(){const mark=header.querySelector('.ic-app-header__logomark');if(mark&&!mark.querySelector(':scope > .chn-logo-art'))mark.insertAdjacentHTML('beforeend','<span class="chn-logo-art" aria-hidden="true"><svg class="chn-logo-hang" viewBox="0 0 40 14"><path d="M9 13.4L20 3l11 10.4" fill="none" stroke="#2B2A27" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="2.6" r="1.7" fill="#2B2A27"/></svg><svg class="chn-logo-edge" viewBox="0 0 100 60" preserveAspectRatio="none"><path vector-effect="non-scaling-stroke" d="M4.2 4.4C30 3.2 70 4.6 96.2 3.6C97 20 96.4 40 97 56.6C70 57.6 30 56.2 3.6 57.2C2.8 40 3.8 20 3.2 5.6"/><path class="re" vector-effect="non-scaling-stroke" d="M8 7.4C36 6.6 64 7.8 92 7"/><path class="re" vector-effect="non-scaling-stroke" d="M90 54C93 53.6 94.4 52 94.6 49"/></svg></span>');}
   function setLogo(){
+   logoArt();
    const url=logoURL(header);if(!url){header.dataset.chnLogo='none';return;}
    const known=saved[LOGO];
    if(known?.url===url&&['ink','dark','framed','plate'].includes(known.kind)){header.dataset.chnLogo=known.kind;return;}
