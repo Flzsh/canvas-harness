@@ -34,7 +34,7 @@ test('it only ever touches Canvas’s menu bar, and only while it is switched on
  const css=read('canvas-nav.css').replace(/\/\*[\s\S]*?\*\//g,'');
  const selectors=[...css.matchAll(/(^|\})\s*([^@{}][^{}]*)\{/g)].map(m=>m[2].trim()).filter(s=>s&&!/^(@|from|to|\d+%)/.test(s));
  for(const group of selectors)for(const one of group.split(/,(?![^(]*\))/))assert.match(one.trim(),/^html\.chn-nav(\[|:not\(|\s)/,one);
- assert.match(read('canvas-nav.js'),/values\[KEY\]==='original'\|\|values\['reserve:enabled'\]===false\)return;/);
+ const js=read('canvas-nav.js');assert.match(js,/if\(values\['reserve:enabled'\]===false\)return;\s*if\(values\[KEY\]!=='original'\)enable\(values\[KEY\]\);/);
 });
 
 test('the copied frame rules match the workspace’s, and the files are wired in',()=>{
@@ -67,13 +67,13 @@ test('the bar sits against the window’s edge with its pen line on three sides,
 test('the layouts: drawer by default (it moves the page aside), full height, or across the top',()=>{
  const css=read('canvas-nav.css'),js=read('canvas-nav.js');
  assert.match(js,/const LAYOUTS=\{drawn:'drawer',shown:'column',top:'top'\};/);
- assert.match(js,/html\.dataset\.chnLayout=LAYOUTS\[values\[KEY\]\]\|\|'drawer';/,'the drawer is the default');
+ assert.match(js,/html\.dataset\.chnLayout=LAYOUTS\[choice\]\|\|'drawer';/,'the drawer is the default');
  // drawer: hidden, centred, as tall as its items; the page moves aside by the bar's width, as one picture, then re-lays out once
  assert.match(css,/html\.chn-nav\[data-chn-layout=drawer\] #wrapper \{ margin-left: var\(--chn-push, 0px\) !important; \}/);
  assert.match(css,/html\.chn-nav\[data-chn-layout=drawer\] #header \{[^}]*top: 50% !important;[^}]*height: auto !important;[^}]*transform: translate\(calc\(-100% - 24px\), -50%\);/);
  assert.match(js,/page\.style\.transform=`translateX\(\$\{by-from\}px\)`;/,'it moves by transform while it moves');
  assert.match(js,/html\.style\.setProperty\('--chn-push',pushed\+'px'\)/,'and takes its new width once, at the end');
- for(const hook of ["edge.addEventListener('pointerenter',open)","header.addEventListener('pointerleave',()=>close())","header.addEventListener('focusin',open)",'trayOpen()'])assert.ok(js.includes(hook),hook);
+ for(const hook of ["edge.addEventListener('pointerenter',open,{signal})","header.addEventListener('pointerleave',()=>close(),{signal})","header.addEventListener('focusin',open,{signal})",'trayOpen()'])assert.ok(js.includes(hook),hook);
  // across the top: in the toolbar while it fits (names, then drawings alone, then without the logo), else a strip
  assert.match(js,/for\(const kind of \['full','icons','bare'\]\)/);
  assert.match(js,/html\.dataset\.chnPlace='toolbar';/);assert.match(js,/html\.dataset\.chnPlace='strip';/);
@@ -82,3 +82,15 @@ test('the layouts: drawer by default (it moves the page aside), full height, or 
  assert.match(css,/#header\[data-chn-fit=bare\] \.ic-app-header__logomark-container \{ display: none !important; \}/);
 });
 
+// The user (2026-10-15) could not find the choice in the toolbar popup: it is in Make it yours too, and any change
+// applies to every open Canvas page at once, with no motion while it switches.
+test('Make it yours offers the four menu bar choices, stored where the popup keeps it, and open pages switch at once',()=>{
+ const ui=read('customize-ui.js'),dash=read('dashboard.js'),js=read('canvas-nav.js'),css=read('canvas-nav.css');
+ assert.match(ui,/choices\('canvasNav','Canvas menu bar',\[\['drawn','From the left edge'[\s\S]*?\['shown','Full height'[\s\S]*?\['top','Across the top'[\s\S]*?\['original','Canvas\u2019s own'[\s\S]*?\{value:c\.canvasNav\|\|'drawn',cols:2,field:'canvas-nav'\}\)/);
+ assert.match(dash,/if\(field==='canvas-nav'\)\{const value=event\.target\.value;if\(!NAV_CHOICES\.includes\(value\)\)return;canvasNav=value;root\.chrome\?\.storage\?\.local\?\.set\?\.\(\{'reserve:canvasNav':value\}\)/);
+ assert.match(dash,/root\.chrome\?\.storage\?\.onChanged\?\.addListener\?\.\(navChanged\)/);assert.match(dash,/removeListener\?\.\(navChanged\)/);
+ assert.match(js,/root\.chrome\.storage\.onChanged\?\.addListener\(\(changes,area\)=>\{if\(area==='local'&&changes\[KEY\]\)apply\(changes\[KEY\]\.newValue\);\}\);/);
+ assert.match(js,/for\(const step of undo\.splice\(0\)\)try\{step\(\);\}catch\{\}/,'each layout is undone before the next');
+ assert.match(js,/if\(header\)undecorate\(header\);html\.classList\.remove\('chn-nav'\)/,'Canvas original takes every drawing off');
+ assert.match(css,/html\.chn-nav\[data-chn-switching\] #header, html\.chn-nav\[data-chn-switching\] #header \*, html\.chn-nav\[data-chn-switching\] #wrapper \{ transition: none !important; animation: none !important; \}/);
+});
