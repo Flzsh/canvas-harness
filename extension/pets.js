@@ -150,6 +150,38 @@
    out.push(ledgeFor(null));return out;
   }
   const current=()=>ledgeFor(spot.ledge)||ledgeFor(null);
+  // A SPOT IS FREE when nothing the student reads or uses is under the pony's body there: no words, no button, link or
+  // field, no drawing. (It stood on top of an assignment's title, in the user's screenshot, 2026-10-15.) Asked only when
+  // it chooses where to go, a handful of points under its outline, never on a frame.
+  const USED='a,button,input,select,textarea,summary,label,[role=button],[role=link],[role=tab],svg,img,canvas,video';
+  function busy(x,y){
+   const at=(container.getRootNode?.()||doc).elementsFromPoint?.(x,y)||doc.elementsFromPoint?.(x,y)||[];
+   let looked=0;
+   for(const el of at){
+    // the pony stands on the drawn outlines round modules and cards: those are its ground, not something it covers
+    if(layer?.contains(el)||el.closest?.('.rd-frame, .chn-frames'))continue;if(++looked>4)break;
+    if(el.matches?.(USED)||el.closest?.('svg'))return true;
+    for(const n of el.childNodes||[]){
+     if(n.nodeType!==3||!n.textContent.trim())continue;
+     const range=doc.createRange?.();if(!range)return true;range.selectNodeContents(n);
+     for(const b of range.getClientRects())if(x>=b.left-3&&x<=b.right+3&&y>=b.top-3&&y<=b.bottom+3)return true;
+    }
+   }
+   return false;
+  }
+  function free(l,u){
+   if(!l)return false;const s=size(),h=s*64/72,x=l.x0+u;
+   if(x-s*.4<4||x+s*.4>win.innerWidth-4)return false;
+   for(const dx of [-.34,0,.34])for(const dy of [.22,.55,.85])if(busy(x+dx*s,l.y-dy*h))return false;
+   return true;
+  }
+  // A free place on this ledge, as near to `near` as it can be (or anywhere on it); null if there is none.
+  function freeOn(l,near){
+   if(!l)return null;const span=l.x1-l.x0;if(span<70)return null;
+   const tries=[];for(let i=0;i<9;i++)tries.push(clamp(14+Math.random()*(span-28),14,span-14));
+   if(Number.isFinite(near))tries.sort((a,b)=>Math.abs(a-near)-Math.abs(b-near));
+   return tries.find(u=>free(l,u))??null;
+  }
   function home(){
    const all=ledges(),paddock=all.find(l=>l.paddock),target=pet.roam==='home'?(paddock||all[all.length-1]):(all.find(l=>!l.floor&&!l.paddock)||all[all.length-1]);
    spot={ledge:target.el,u:clamp((target.x1-target.x0)*(.25+Math.random()*.5),20,Math.max(20,target.x1-target.x0-20))};
@@ -206,27 +238,37 @@
     if(to&&(to.el!==here.el)){if(here.shown)jumpTo(to);else appear(to);return;}
    }
    if(idle>25000){settle('sleep',30000);return;}   // the same idle rest as the drawings (motion.js)
+   // standing on something the student reads or uses (a list refreshed under it): step off it first
+   if(!free(here,spot.u)){moveOff(here);return;}
+   // while someone is scrolling or typing, it keeps still: a walk then only draws the eye
+   if(idle<2500){settle(rest==='lie'?'lie':nudge(data),4000+Math.random()*4000);return;}
+   // Calmer than it was (walks were 40% of choices): mostly resting, a short walk now and then.
    const roll=Math.random();
-   if(roll<.4)walk();
-   else if(roll<.45&&pet.roam==='page'){const near=ledges().filter(l=>l.el!==here.el&&!l.paddock&&Math.abs(l.y-here.y)<360&&l.x0<node._x+420&&l.x1>node._x-420);if(near.length)jumpTo(near[Math.floor(Math.random()*near.length)]);else walk();}
-   else if(roll<.72)settle('lie',9000+Math.random()*14000);
-   else settle(nudge(data),5000+Math.random()*7000);
+   if(roll<.2)walk();
+   else if(roll<.25&&pet.roam==='page'){const near=ledges().filter(l=>l.el!==here.el&&!l.paddock&&Math.abs(l.y-here.y)<360&&l.x0<node._x+420&&l.x1>node._x-420);const to=near[Math.floor(Math.random()*near.length)];if(to)jumpTo(to);else walk();}
+   else if(roll<.7)settle('lie',14000+Math.random()*18000);
+   else settle(nudge(data),8000+Math.random()*10000);
   }
   // A due item is carried as a small flag, not announced, unless reminders are fully on.
   function nudge(data){return pet.nudges!=='off'&&data.next?.urgent&&now()>quietUntil?'flag':'stand';}
+  // Off whatever it is standing on: the nearest free place on this ledge, else a free place on another one in view.
+  function moveOff(here){
+   const u=freeOn(here,spot.u);if(u!=null){goal={type:'walk',to:u,max:26};rest='stand';run();return;}
+   const other=ledges().find(l=>l.el!==here.el&&!l.floor&&freeOn(l)!=null)||ledgeFor(null);jumpTo(other);
+  }
   function walk(){
    const l=current(),span=l.x1-l.x0;if(span<70){settle('stand',4000);return;}
-   const to=clamp(14+Math.random()*(span-28),14,span-14);
+   const to=freeOn(l);if(to==null){settle('stand',6000);return;}
    if(Math.abs(to-spot.u)<36){settle('stand',3500);return;}
    goal={type:'walk',to,max:Math.abs(to-spot.u)>420?58:26};rest='stand';run();
   }
   function jumpTo(target){
    if(!target){settle('stand',3000);return;}
-   const u=clamp((target.x1-target.x0)*(.2+Math.random()*.6),14,Math.max(14,target.x1-target.x0-14));
+   const u=freeOn(target)??clamp((target.x1-target.x0)*(.2+Math.random()*.6),14,Math.max(14,target.x1-target.x0-14));
    goal={type:'jump',target,u,t:-.16,from:null};rest='stand';run();
   }
   function appear(target){
-   spot={ledge:target.el,u:clamp((target.x1-target.x0)*(.2+Math.random()*.6),14,Math.max(14,target.x1-target.x0-14))};
+   spot={ledge:target.el,u:freeOn(target)??clamp((target.x1-target.x0)*(.2+Math.random()*.6),14,Math.max(14,target.x1-target.x0-14))};
    ch.alpha=0;ch.down=0;speed=0;goal=null;rest='stand';setPose('stand');place();run();plan(3500);
   }
   const ease=(key,to,rate,dt)=>{const d=to-ch[key];if(Math.abs(d)<.02){ch[key]=to;return false;}ch[key]+=d*Math.min(1,rate*dt);return true;};
