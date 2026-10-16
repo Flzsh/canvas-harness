@@ -3,6 +3,8 @@
 // links, badges, trays and keyboard behaviour stay Canvas's. Off with the popup's "Menu bar: Canvas original".
 (function(root){
  'use strict';
+ // The stored choice -> the bar's layout. 'drawn' (the default) is the drawer.
+ const LAYOUTS={drawn:'drawer',shown:'column',top:'top'};
  const KEY='reserve:canvasNav',PALETTE='reserve:navPalette',LOGO='reserve:navLogo';
  // The drawings: ink lines over flat washes set a little off them, in the course art's palette. x-* parts move on hover.
  const DRAWINGS={
@@ -107,7 +109,7 @@
    saved=values;if(values[KEY]==='original'||values['reserve:enabled']===false)return;
    const link=root.document.createElement('link');link.rel='stylesheet';link.href=root.chrome.runtime.getURL('canvas-nav.css');
    (root.document.head||html).append(link);
-   html.classList.add('chn-nav');if(values[KEY]!=='shown')html.dataset.chnDrawer='closed';applyPalette(values[PALETTE]);
+   html.classList.add('chn-nav');html.dataset.chnLayout=LAYOUTS[values[KEY]]||'drawer';if(html.dataset.chnLayout==='drawer')html.dataset.chnDrawer='closed';applyPalette(values[PALETTE]);
    watch();
   }).catch(()=>{});
 
@@ -134,24 +136,75 @@
    let queued=false;
    observer?.disconnect();observer=new MutationObserver(()=>{if(queued)return;queued=true;root.requestAnimationFrame(()=>{queued=false;decorate(header);});});
    observer.observe(header,{childList:true,subtree:true});
-   setLogo();followWorkspace();drawer();
+   setLogo();followWorkspace();drawer();topBar();
   }
-  // THE DRAWER (the default; "Hand-drawn, always shown" keeps the column): the bar is used now and then, so it waits
-  // off the left edge and Canvas's page takes the whole width. Reaching the window's left edge with the pointer, or
-  // tabbing into it, brings it out, a little card in the middle of the edge as tall as its items; it goes when the
-  // pointer and focus have left it, but never while one of Canvas's trays (Courses, Account, Help) is open.
+  // THE DRAWER (the default; the user, 2026-10-15): the bar is used now and then, so it waits off the left edge and
+  // Canvas's page takes the whole width. Reaching the window's left edge with the pointer, or tabbing into it, brings it
+  // out, a card in the middle of the edge as tall as its items, and moves the page aside by its width so it covers
+  // nothing. It goes when the pointer and focus have left it, but never while one of Canvas's trays is open.
   function drawer(){
-   if(!html.dataset.chnDrawer||header.dataset.chnDrawer)return;header.dataset.chnDrawer='true';
+   if(html.dataset.chnLayout!=='drawer'||header.dataset.chnDrawer)return;header.dataset.chnDrawer='true';
    const doc=root.document,edge=doc.createElement('div');edge.className='chn-edge';edge.setAttribute('aria-hidden','true');(doc.body||html).append(edge);
    const trays=['nav-tray-portal','global_nav_tray_container'].map(id=>doc.getElementById(id)).filter(Boolean);
    const trayOpen=()=>trays.some(t=>t.childElementCount>0);
-   let timer=0;
-   const open=()=>{root.clearTimeout(timer);html.dataset.chnDrawer='open';};
-   const close=(ms=420)=>{root.clearTimeout(timer);timer=root.setTimeout(()=>{if(header.matches(':hover')||header.contains(doc.activeElement)||trayOpen())return;html.dataset.chnDrawer='closed';},ms);};
+   let timer=0,pushed=0,moving=0;
+   // The page moves as one picture (a transform: nothing is laid out again while it moves), then takes its new width
+   // once, at the end. Laying the dashboard out again on every frame of the move would cost far more, on a battery too.
+   const still=()=>html.dataset.chnMotion==='off'||!!root.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+   function push(on){
+    const page=doc.getElementById('wrapper');if(!page)return;
+    const by=on?Math.round(header.getBoundingClientRect().width)+6:0,from=pushed;if(by===from)return;pushed=by;
+    root.clearTimeout(moving);page.style.transition='none';
+    if(still()){page.style.transform='';html.style.setProperty('--chn-push',by+'px');delete html.dataset.chnMoving;return;}
+    html.dataset.chnMoving='true';
+    if(on){page.style.transform='translateX(0px)';void page.offsetWidth;page.style.transition='transform 280ms cubic-bezier(.2, .8, .3, 1)';page.style.transform=`translateX(${by-from}px)`;}
+    else{html.style.setProperty('--chn-push','0px');page.style.transform=`translateX(${from}px)`;void page.offsetWidth;page.style.transition='transform 220ms cubic-bezier(.4, 0, .9, .6)';page.style.transform='translateX(0px)';}
+    moving=root.setTimeout(()=>{page.style.transition='none';page.style.transform='';html.style.setProperty('--chn-push',pushed+'px');delete html.dataset.chnMoving;},on?290:230);
+   }
+   const open=()=>{root.clearTimeout(timer);if(html.dataset.chnDrawer!=='open'){html.dataset.chnDrawer='open';push(true);}};
+   const close=(ms=420)=>{root.clearTimeout(timer);timer=root.setTimeout(()=>{if(header.matches(':hover')||header.contains(doc.activeElement)||trayOpen())return;html.dataset.chnDrawer='closed';push(false);},ms);};
    edge.addEventListener('pointerenter',open);
    header.addEventListener('pointerenter',open);header.addEventListener('pointerleave',()=>close());
    header.addEventListener('focusin',open);header.addEventListener('focusout',()=>close(120));
    for(const t of trays)new MutationObserver(()=>{if(!trayOpen())close();}).observe(t,{childList:true});
+  }
+  // ACROSS THE TOP (the user, 2026-10-15): on the dashboard the bar sits, centred, in the free stretch of the workspace's
+  // toolbar between the search field and Tools; with names while they fit, as drawings alone (names on hover) when they
+  // do not, and without the school's logo when even that is too wide. Where there is no such stretch (another Canvas page, Canvas's own dashboard, a narrow window) it is a strip
+  // across the top of the page, which moves the page down. Its own outline and motion: nothing of the column's slide.
+  function topBar(){
+   if(html.dataset.chnLayout!=='top'||header.dataset.chnTop)return;header.dataset.chnTop='true';
+   const dashboard=/^\/?$/.test(root.location?.pathname||'');
+   for(const link of header.querySelectorAll('.ic-app-header__menu-list-link'))if(!link.title){const name=link.querySelector('.menu-item__text')?.textContent.trim();if(name)link.title=name;}
+   const waitUntil=Date.now()+(dashboard?9000:0),set=(name,value)=>html.style.setProperty(name,value);
+   let queued=0,watched=null;
+   const visible=node=>!!node&&node.getClientRects().length>0&&node.getBoundingClientRect().width>0;
+   function fit(width){
+    for(const kind of ['full','icons','bare']){header.dataset.chnFit=kind;if(header.offsetWidth<=width)return true;}
+    return false;
+   }
+   function place(){
+    queued=0;
+    const rd=html.classList.contains('reserve-inline-active')?workspace():null,bar=rd?.querySelector('.rd-toolbar');
+    if(visible(bar)){
+     if(watched!==bar){watched=bar;try{new root.ResizeObserver(later).observe(bar);}catch{}}
+     const before=[bar.querySelector('.rd-search'),bar.querySelector('.rd-workspace-tabs')].find(visible),tools=bar.querySelector('.rd-tools');
+     if(before&&visible(tools)){
+      const a=before.getBoundingClientRect(),b=tools.getBoundingClientRect(),left=a.right+16,room=b.left-16-left;
+      html.dataset.chnPlace='toolbar';
+      if(room>120&&fit(room)){
+       set('--chn-bar-x',Math.round(left+(room-header.offsetWidth)/2+root.scrollX)+'px');
+       set('--chn-bar-y',Math.round(a.top+a.height/2+root.scrollY)+'px');return;
+      }
+     }
+    }
+    if(dashboard&&!rd&&Date.now()<waitUntil){html.dataset.chnPlace='wait';root.setTimeout(later,600);return;}
+    html.dataset.chnPlace='strip';fit(root.innerWidth-40);
+   }
+   function later(){if(!queued)queued=root.requestAnimationFrame(place);}
+   place();
+   new MutationObserver(later).observe(html,{attributes:true,attributeFilter:['class']});
+   root.addEventListener('resize',later,{passive:true});root.addEventListener('load',later,{once:true});
   }
   // A logo that keeps its own look (framed, or on the school's plate) hangs in a drawn frame from a nail.
   function logoArt(){const mark=header.querySelector('.ic-app-header__logomark');if(mark&&!mark.querySelector(':scope > .chn-logo-art'))mark.insertAdjacentHTML('beforeend','<span class="chn-logo-art" aria-hidden="true"><svg class="chn-logo-hang" viewBox="0 0 40 14"><path d="M9 13.4L20 3l11 10.4" fill="none" stroke="#2B2A27" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="2.6" r="1.7" fill="#2B2A27"/></svg><svg class="chn-logo-edge" viewBox="0 0 100 60" preserveAspectRatio="none"><path vector-effect="non-scaling-stroke" d="M4.2 4.4C30 3.2 70 4.6 96.2 3.6C97 20 96.4 40 97 56.6C70 57.6 30 56.2 3.6 57.2C2.8 40 3.8 20 3.2 5.6"/><path class="re" vector-effect="non-scaling-stroke" d="M8 7.4C36 6.6 64 7.8 92 7"/><path class="re" vector-effect="non-scaling-stroke" d="M90 54C93 53.6 94.4 52 94.6 49"/></svg></span>');}
