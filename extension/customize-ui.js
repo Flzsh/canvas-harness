@@ -11,6 +11,11 @@
  const ART={
   sidebar:svg(R(3,4,15,40,'fill')+R(22,4,47,40)),
   topbar:svg(R(3,4,66,9,'fill')+R(3,17,66,27)),
+  // Canvas's menu bar: a tab at the edge, a column, a row in the toolbar, Canvas's own dark column
+  navEdge:svg(R(12,4,57,40)+R(3,15,5,18,'fill')),
+  navColumn:svg(R(3,4,10,40,'soft')+R(17,4,52,40)+'<circle cx="8" cy="12" r="1.8"/><circle cx="8" cy="20" r="1.8"/><circle cx="8" cy="28" r="1.8"/>'),
+  navTop:svg(R(3,4,66,40)+R(22,8,30,7,'fill')),
+  navOriginal:svg(R(3,4,10,40,'fill')+R(17,4,52,40)),
   'context-first':svg(R(3,5,19,38,'soft')+R(26,5,20,38,'fill')+R(50,5,19,38)+L(7,12,10)+L(7,17,7)),
   'work-first':svg(R(3,5,20,38,'fill')+R(27,5,19,38)+R(50,5,19,38,'soft')+L(54,12,10)+L(54,17,7)),
   stacked:svg(R(8,4,56,11,'fill')+R(8,19,56,11)+R(8,34,56,10,'soft')),
@@ -55,6 +60,7 @@
     `<div class="cz-presets" role="group" aria-label="Layout presets">${[['studio','Studio','Course news, then your work, then the assignment.'],['study','Study','Your work first; course news last.'],['focus','Focus','Just the work and the assignment, courses along the top.']].map(([key,title,hint])=>button('layout-preset',`<span class="cz-choice-art">${ART[key]}</span><strong>${title}</strong><small>${hint}</small>`,`data-value="${key}"`,'ch-preset cz-preset')).join('')}</div>`)
    +group('Modules on Home','Add a timer, today’s list, a clock, notes or your pony beside the three panels, and switch any of them off.',
     `<div class="cz-row">${button('board-edit','Edit Home…','data-from="settings"','rd-button rd-button-primary')}<span class="cz-note">To move a module, hold its heading until the circle closes, then drag.</span></div>`)
+   +group('Canvas’s menu bar','The column of Canvas links (Account, Courses, Calendar, Inbox…) on every Canvas page. It changes at once; the toolbar popup has the same choice.',choices('canvasNav','Canvas menu bar',[['drawn','From the left edge','Hidden until you point at the edge; moves the page aside.',ART.navEdge],['shown','Full height','Always there, down the left side.',ART.navColumn],['top','Across the top','In the toolbar’s free space, or a strip.',ART.navTop],['original','Canvas’s own','Canvas’s dark bar, as Canvas draws it.',ART.navOriginal]],{value:c.canvasNav||'drawn',cols:2,field:'canvas-nav'}))
    +group('Where your courses are','',choices('courseNavigation','Course navigation',[['sidebar','Down the side','A list that stays beside the page.',ART.sidebar],['topbar','Across the top','A strip of cards; more room for the page.',ART.topbar]],{cols:2}))
    +group('Order of the three panels','',choices('deskOrder','Panel order',[['context-first','Course first','Course news, work, details.',ART['context-first']],['work-first','Work first','Work, details, course news.',ART['work-first']],['stacked','One column','Everything in one stack.',ART.stacked]]))
    +group('Banner','The drawing across the top of each course.',choices('bannerSize','Banner size',[['compact','Small','',ART.compact],['standard','Medium','',ART.standard],['large','Tall','',ART.large]]))

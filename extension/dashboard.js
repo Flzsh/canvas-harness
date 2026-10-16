@@ -141,7 +141,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let personal=store.get()||{};
     let normalizedCache=null,gradeVisibilityOverride=(initialState?.gradeVisibilityOverride??savedState?.gradeVisibilityOverride)===false?false:null,gradeSaveVersion=0;
     let selectedId=restoredView.selectedId;
-    let readerTab=restoredView.readerTab,customizeOpen=false,customizeCourseId='all',customizeStatus='',customizeBusy=false,customizeDrafts={},readerOpen=restoredView.readerOpen,gradeQuery='',gradeLimit=40;
+    let readerTab=restoredView.readerTab,customizeOpen=false,canvasNav='drawn',customizeCourseId='all',customizeStatus='',customizeBusy=false,customizeDrafts={},readerOpen=restoredView.readerOpen,gradeQuery='',gradeLimit=40;
     let quickPackDraft='',quickPackFileName='',quickPackError='',quickPackLoading=false,quickPackRead=0;
     let pendingReaderScroll={courseId:state.courseId,id:selectedId,top:restoredView.readerScroll};
     const readerLayout=typeof root.ResizeObserver==='function'?new root.ResizeObserver(()=>{if(restoreReaderScroll())remember();}):null;
@@ -282,6 +282,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       return normalizedCache={courses,allCourses,courseMap,items};
     }
 
+    // Canvas's menu bar choice (canvas-nav.js): shown in Make it yours, changed there or in the popup.
+    const NAV_CHOICES=['drawn','shown','top','original'];
+    function navChanged(changes,area){const next=area==='local'?changes?.['reserve:canvasNav']?.newValue:undefined;if(next===undefined)return;const value=NAV_CHOICES.includes(next)?next:'drawn';if(value!==canvasNav){canvasNav=value;if(customizeOpen&&!destroyed)render();}}
+    try{root.chrome?.storage?.local?.get?.('reserve:canvasNav')?.then?.(saved=>navChanged({'reserve:canvasNav':{newValue:saved?.['reserve:canvasNav']??'drawn'}},'local'))?.catch?.(()=>{});root.chrome?.storage?.onChanged?.addListener?.(navChanged);}catch{}
     function buildContext(){
       const s=settings();
       const {courses,allCourses,courseMap,items}=normalizeData(s);
@@ -517,7 +521,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       container.dataset.courses=String(ctx.s.showCourseStrip!==false);
       container.style.setProperty('--rd-accent',ctx.accent);
       const assignmentContent=readingContent(ctx.selected);
-       const markup=View.render({...ctx,state,workspace,workPage:workspace==='work'?workPage:'',gradeQuery,gradeLimit,arrangeOpen:!!arrange?.active(),boardEditing:!!board?.editing(),planUI:board?.planUI()||{},customizeTab:board?.settingsTab()||'layout',personal:{focus:personal.focus,pet:personal.pet,toolbox:personal.toolbox},hasLayoutUndo:!!ctx.s.workspaceUndo,deckHeader:workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:true})||'':'',deckContent:workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',hubContent:workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId)):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',materialLibrary:workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId)):'',relatedMaterials:materials?.renderRelated(ctx.selected,assignmentContent.links)||'',readerTab,customizeOpen,customizeCourseId,customizeStatus,customizeBusy,customizeDrafts,quickUpload:quickUpload?.state,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading,user:currentSnapshot.user,demo,nativeSwitch:typeof onNative==='function',refreshing,visibleLimit,noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',readerContent:assignmentContent,warning:renderWarning(),status:statusLabel(currentSnapshot,externalStatus,transientStatus)}, {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete});
+       const markup=View.render({...ctx,state,workspace,workPage:workspace==='work'?workPage:'',gradeQuery,gradeLimit,arrangeOpen:!!arrange?.active(),boardEditing:!!board?.editing(),planUI:board?.planUI()||{},customizeTab:board?.settingsTab()||'layout',canvasNav,personal:{focus:personal.focus,pet:personal.pet,toolbox:personal.toolbox},hasLayoutUndo:!!ctx.s.workspaceUndo,deckHeader:workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:true})||'':'',deckContent:workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',hubContent:workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId)):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',materialLibrary:workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId)):'',relatedMaterials:materials?.renderRelated(ctx.selected,assignmentContent.links)||'',readerTab,customizeOpen,customizeCourseId,customizeStatus,customizeBusy,customizeDrafts,quickUpload:quickUpload?.state,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading,user:currentSnapshot.user,demo,nativeSwitch:typeof onNative==='function',refreshing,visibleLimit,noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',readerContent:assignmentContent,warning:renderWarning(),status:statusLabel(currentSnapshot,externalStatus,transientStatus)}, {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete});
       const toolbar=container.querySelector('.rd-toolbar'),appearance=container.querySelector('.rd-appearance');
       if(toolbar&&appearance){
         // Keep the actual transitioning nodes connected through data renders.
@@ -690,6 +694,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const key=event.target.dataset.setting,value=event.target.value;
         if(['bannerFit','bannerPosition','titlePlacement'].includes(key)&&validArtTarget(id))savePersonal(data=>{appearanceFor(data,id)[key]=value;});return;
       }
+      // Canvas's menu bar is stored where canvas-nav.js and the popup read it; every open Canvas page follows at once.
+      if(field==='canvas-nav'){const value=event.target.value;if(!NAV_CHOICES.includes(value))return;canvasNav=value;root.chrome?.storage?.local?.set?.({'reserve:canvasNav':value})?.catch?.(()=>{});return;}
       if(field==='setting'){
         const key=event.target.dataset.setting;
         if(!['theme','accent','motion','livingArt','readingFont','greeting','font','density','textSize','dashboardLayout','showCourseStrip','showGrades','showRecentGrades',...Object.keys(root.ReserveCustomization?.defaults||{})].includes(key))return;
@@ -1173,7 +1179,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(destroyed)return;
         remember();
         flushDrafts();
-        destroyed=true;
+        destroyed=true;root.chrome?.storage?.onChanged?.removeListener?.(navChanged);
         readerLayout?.disconnect();railLayout?.disconnect();root.clearTimeout(railTimer);
         ++quickPackRead;quickUpload?.destroy();arrange?.destroy();board?.destroy();settingsDock?.destroy();materials?.destroy();hub?.destroy();motion?.destroy();toolbox?.destroy();
         clearInterval(freshnessTimer);clearInterval(focusTimer);clearTimeout(entranceTimer);

@@ -82,6 +82,12 @@
   }
  }
 
+ // Back to Canvas's own bar on this page: everything decorate() and the logo added comes off.
+ function undecorate(header){
+  for(const node of header.querySelectorAll('.chn-ic, .chn-frames, .chn-logo-art'))node.remove();
+  for(const node of header.querySelectorAll('.chn-drawn'))node.classList.remove('chn-drawn');
+  for(const node of header.querySelectorAll('.chn-drawn-link'))node.classList.remove('chn-drawn-link');
+ }
  // The workspace's colours (accent, page colour, ink, motion) as the dashboard last showed them, so every Canvas page
  // matches; the dashboard refreshes them whenever they change.
  const VARS={accent:'--rd-accent',sidebar:'--rd-sidebar',sidebarSel:'--rd-sidebar-sel',ink:'--rd-ink',ink2:'--rd-ink-2',page:'--rd-bg',font:'--rd-ui-font'};
@@ -106,12 +112,31 @@
   root.ReserveCanvasNav={kindOf,logoKind};
   const store=root.chrome?.storage?.local;if(!store)return;
   store.get([KEY,PALETTE,LOGO,'reserve:enabled']).then(values=>{
-   saved=values;if(values[KEY]==='original'||values['reserve:enabled']===false)return;
-   const link=root.document.createElement('link');link.rel='stylesheet';link.href=root.chrome.runtime.getURL('canvas-nav.css');
-   (root.document.head||html).append(link);
-   html.classList.add('chn-nav');html.dataset.chnLayout=LAYOUTS[values[KEY]]||'drawer';if(html.dataset.chnLayout==='drawer')html.dataset.chnDrawer='closed';applyPalette(values[PALETTE]);
-   watch();
+   saved=values;if(values['reserve:enabled']===false)return;
+   if(values[KEY]!=='original')enable(values[KEY]);
+   // Chosen again in Make it yours or the popup: the bar changes on this page at once.
+   root.chrome.storage.onChanged?.addListener((changes,area)=>{if(area==='local'&&changes[KEY])apply(changes[KEY].newValue);});
   }).catch(()=>{});
+  let linked=false,undo=[];
+  function enable(choice){
+   if(!linked){linked=true;const link=root.document.createElement('link');link.rel='stylesheet';link.href=root.chrome.runtime.getURL('canvas-nav.css');(root.document.head||html).append(link);}
+   html.classList.add('chn-nav');layout(choice);applyPalette(saved[PALETTE]);
+   if(header){decorate(header);setLogo();drawer();topBar();}else watch();
+  }
+  function layout(choice){html.dataset.chnLayout=LAYOUTS[choice]||'drawer';if(html.dataset.chnLayout==='drawer')html.dataset.chnDrawer='closed';}
+  // Each layout leaves an undo; a change runs them all, then sets up the new one with no motion at all for two frames
+  // (data-chn-switching), so a column never turns into a row on screen.
+  function apply(choice){
+   if(choice==='original'){
+    if(!html.classList.contains('chn-nav'))return;
+    for(const step of undo.splice(0))try{step();}catch{}
+    if(header)undecorate(header);html.classList.remove('chn-nav');delete html.dataset.chnLayout;return;
+   }
+   html.dataset.chnSwitching='true';
+   if(!html.classList.contains('chn-nav'))enable(choice);
+   else{for(const step of undo.splice(0))try{step();}catch{}layout(choice);if(header){drawer();topBar();}}
+   root.requestAnimationFrame(()=>root.requestAnimationFrame(()=>{delete html.dataset.chnSwitching;}));
+  }
 
   function found(){
    const next=root.document.getElementById('header');
@@ -134,7 +159,7 @@
    for(const [name,from] of [['--chn-school','--ic-brand-global-nav-bgd'],['--chn-school-logo','--ic-brand-global-nav-logo-bgd']]){const v=rootStyle.getPropertyValue(from).trim();if(safe(v)&&v)header.style.setProperty(name,v);}
    // Canvas re-renders parts of the bar (badges, the active item): decorate again, at most once a frame.
    let queued=false;
-   observer?.disconnect();observer=new MutationObserver(()=>{if(queued)return;queued=true;root.requestAnimationFrame(()=>{queued=false;decorate(header);});});
+   observer?.disconnect();observer=new MutationObserver(()=>{if(queued)return;queued=true;root.requestAnimationFrame(()=>{queued=false;if(html.classList.contains('chn-nav'))decorate(header);});});
    observer.observe(header,{childList:true,subtree:true});
    setLogo();followWorkspace();drawer();topBar();
   }
@@ -144,7 +169,7 @@
   // nothing. It goes when the pointer and focus have left it, but never while one of Canvas's trays is open.
   function drawer(){
    if(html.dataset.chnLayout!=='drawer'||header.dataset.chnDrawer)return;header.dataset.chnDrawer='true';
-   const doc=root.document,edge=doc.createElement('div');edge.className='chn-edge';edge.setAttribute('aria-hidden','true');(doc.body||html).append(edge);
+   const doc=root.document,edge=doc.createElement('div'),off=new AbortController(),signal=off.signal,watching=[];edge.className='chn-edge';edge.setAttribute('aria-hidden','true');(doc.body||html).append(edge);
    const trays=['nav-tray-portal','global_nav_tray_container'].map(id=>doc.getElementById(id)).filter(Boolean);
    const trayOpen=()=>trays.some(t=>t.childElementCount>0);
    let timer=0,pushed=0,moving=0;
@@ -163,10 +188,15 @@
    }
    const open=()=>{root.clearTimeout(timer);if(html.dataset.chnDrawer!=='open'){html.dataset.chnDrawer='open';push(true);}};
    const close=(ms=420)=>{root.clearTimeout(timer);timer=root.setTimeout(()=>{if(header.matches(':hover')||header.contains(doc.activeElement)||trayOpen())return;html.dataset.chnDrawer='closed';push(false);},ms);};
-   edge.addEventListener('pointerenter',open);
-   header.addEventListener('pointerenter',open);header.addEventListener('pointerleave',()=>close());
-   header.addEventListener('focusin',open);header.addEventListener('focusout',()=>close(120));
-   for(const t of trays)new MutationObserver(()=>{if(!trayOpen())close();}).observe(t,{childList:true});
+   edge.addEventListener('pointerenter',open,{signal});
+   header.addEventListener('pointerenter',open,{signal});header.addEventListener('pointerleave',()=>close(),{signal});
+   header.addEventListener('focusin',open,{signal});header.addEventListener('focusout',()=>close(120),{signal});
+   for(const t of trays){const o=new MutationObserver(()=>{if(!trayOpen())close();});o.observe(t,{childList:true});watching.push(o);}
+   undo.push(()=>{
+    off.abort();for(const o of watching)o.disconnect();root.clearTimeout(timer);root.clearTimeout(moving);edge.remove();
+    const page=doc.getElementById('wrapper');if(page){page.style.transition='';page.style.transform='';}
+    html.style.removeProperty('--chn-push');delete html.dataset.chnDrawer;delete html.dataset.chnMoving;delete header.dataset.chnDrawer;
+   });
   }
   // ACROSS THE TOP (the user, 2026-10-15): on the dashboard the bar sits, centred, in the free stretch of the workspace's
   // toolbar between the search field and Tools; with names while they fit, as drawings alone (names on hover) when they
@@ -177,17 +207,17 @@
    const dashboard=/^\/?$/.test(root.location?.pathname||'');
    for(const link of header.querySelectorAll('.ic-app-header__menu-list-link'))if(!link.title){const name=link.querySelector('.menu-item__text')?.textContent.trim();if(name)link.title=name;}
    const waitUntil=Date.now()+(dashboard?9000:0),set=(name,value)=>html.style.setProperty(name,value);
-   let queued=0,watched=null;
+   let queued=0,watched=null,sizes=null;
    const visible=node=>!!node&&node.getClientRects().length>0&&node.getBoundingClientRect().width>0;
    function fit(width){
     for(const kind of ['full','icons','bare']){header.dataset.chnFit=kind;if(header.offsetWidth<=width)return true;}
     return false;
    }
    function place(){
-    queued=0;
+    if(queued===-1)return;queued=0;
     const rd=html.classList.contains('reserve-inline-active')?workspace():null,bar=rd?.querySelector('.rd-toolbar');
     if(visible(bar)){
-     if(watched!==bar){watched=bar;try{new root.ResizeObserver(later).observe(bar);}catch{}}
+     if(watched!==bar){watched=bar;try{sizes?.disconnect();sizes=new root.ResizeObserver(later);sizes.observe(bar);}catch{}}
      const before=[bar.querySelector('.rd-search'),bar.querySelector('.rd-workspace-tabs')].find(visible),tools=bar.querySelector('.rd-tools');
      if(before&&visible(tools)){
       const a=before.getBoundingClientRect(),b=tools.getBoundingClientRect(),left=a.right+16,room=b.left-16-left;
@@ -201,10 +231,14 @@
     if(dashboard&&!rd&&Date.now()<waitUntil){html.dataset.chnPlace='wait';root.setTimeout(later,600);return;}
     html.dataset.chnPlace='strip';fit(root.innerWidth-40);
    }
-   function later(){if(!queued)queued=root.requestAnimationFrame(place);}
+   function later(){if(!queued)queued=root.requestAnimationFrame(place);}   // -1 once undone: nothing more is placed
    place();
-   new MutationObserver(later).observe(html,{attributes:true,attributeFilter:['class']});
+   const classes=new MutationObserver(later);classes.observe(html,{attributes:true,attributeFilter:['class']});
    root.addEventListener('resize',later,{passive:true});root.addEventListener('load',later,{once:true});
+   undo.push(()=>{
+    classes.disconnect();sizes?.disconnect();root.removeEventListener('resize',later);if(queued)root.cancelAnimationFrame?.(queued);queued=-1;
+    delete html.dataset.chnPlace;delete header.dataset.chnFit;delete header.dataset.chnTop;html.style.removeProperty('--chn-bar-x');html.style.removeProperty('--chn-bar-y');
+   });
   }
   // A logo that keeps its own look (framed, or on the school's plate) hangs in a drawn frame from a nail.
   function logoArt(){const mark=header.querySelector('.ic-app-header__logomark');if(mark&&!mark.querySelector(':scope > .chn-logo-art'))mark.insertAdjacentHTML('beforeend','<span class="chn-logo-art" aria-hidden="true"><svg class="chn-logo-hang" viewBox="0 0 40 14"><path d="M9 13.4L20 3l11 10.4" fill="none" stroke="#2B2A27" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="2.6" r="1.7" fill="#2B2A27"/></svg><svg class="chn-logo-edge" viewBox="0 0 100 60" preserveAspectRatio="none"><path vector-effect="non-scaling-stroke" d="M4.2 4.4C30 3.2 70 4.6 96.2 3.6C97 20 96.4 40 97 56.6C70 57.6 30 56.2 3.6 57.2C2.8 40 3.8 20 3.2 5.6"/><path class="re" vector-effect="non-scaling-stroke" d="M8 7.4C36 6.6 64 7.8 92 7"/><path class="re" vector-effect="non-scaling-stroke" d="M90 54C93 53.6 94.4 52 94.6 49"/></svg></span>');}

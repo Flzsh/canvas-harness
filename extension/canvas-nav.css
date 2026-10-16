@@ -170,6 +170,9 @@ html.chn-nav .chn-edge:hover::before { width: 6px; opacity: .8; }
 html.chn-nav[data-chn-drawer=open] .chn-edge::before { opacity: 0; }
 @media (prefers-reduced-motion: reduce) { html.chn-nav[data-chn-layout=drawer] #header, html.chn-nav[data-chn-drawer=open] #header { transition: none; } }
 
+/* a layout chosen while the page is open appears at once, without the old one's motion (canvas-nav.js apply()) */
+html.chn-nav[data-chn-switching] #header, html.chn-nav[data-chn-switching] #header *, html.chn-nav[data-chn-switching] #wrapper { transition: none !important; animation: none !important; }
+
 /* ---- across the top (canvas-nav.js topBar()): a row of drawings and names, in the workspace's toolbar on the dashboard
    (data-chn-place=toolbar) or as a strip across the top of the page (strip). The column's slide and "]" line do not
    apply: it has its own closed outline and appears with a short fade where it is placed. ---- */
