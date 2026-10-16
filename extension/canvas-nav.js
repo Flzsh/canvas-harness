@@ -103,6 +103,8 @@
   const cs=root.getComputedStyle(rd),palette={};
   for(const [key,name] of Object.entries(VARS)){const value=cs.getPropertyValue(name).trim();if(value)palette[key]=value;}
   palette.motion=rd.dataset.motionStyle||rd.dataset.motion||'gentle';
+  // Canvas's own pages stay light, so a dark workspace lends the bar only its accent and motion.
+  if(rd.dataset.theme==='dark')for(const key of ['sidebar','sidebarSel','ink','ink2','page'])delete palette[key];
   return palette;
  }
 

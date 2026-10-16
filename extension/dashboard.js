@@ -207,8 +207,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     // Saved dark/system preferences render in the original light palette.
     // Course drawings retain their authored colors.
+    // Dark only when chosen in Make it yours (never from the system: the user, 2026-10). 'system' from older saves is light.
     function effectiveTheme(s){
-      return 'light';
+      return s.theme==='dark'?'dark':'light';
+    }
+    // ARTWORK AT NIGHT (dark theme): 0-49 the drawings are chalk on the dark page (brightest at 0), 50-100 they stay on
+    // paper, dimmed (least at 100). Sets data-night and the numbers refresh.css reads; light mode carries none of it.
+    function applyNight(value){
+      const v=Math.max(0,Math.min(100,Math.round(Number(value)||0))),style=container.style;
+      if(container.dataset.theme!=='dark'){delete container.dataset.night;for(const name of ['--rd-chalk','--rd-night-wash','--rd-night-b'])style.removeProperty?.(name);return;}
+      const mix=(a,b,k)=>'#'+[0,2,4].map(i=>Math.round(parseInt(a.slice(1+i,3+i),16)*(1-k)+parseInt(b.slice(1+i,3+i),16)*k).toString(16).padStart(2,'0')).join('');
+      if(v<50){const k=v/50;container.dataset.night='chalk';style.setProperty?.('--rd-chalk',mix('#D2C8B2','#8C8474',k));style.setProperty?.('--rd-night-wash',String(+(0.78-0.2*k).toFixed(3)));}
+      else{const k=(v-50)/50;const b=0.46+0.24*k;container.dataset.night='paper';style.setProperty?.('--rd-chalk','#A89F8C');style.setProperty?.('--rd-night-b',String(+b.toFixed(3)));}
     }
 
     function validColor(value,fallback){
@@ -502,7 +512,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(focus&&!focus.materialTitle&&!focus.section)focus.node=active;
       }
       const ctx=buildContext();
-      container.dataset.theme=ctx.theme;
+      container.dataset.theme=ctx.theme;applyNight(ctx.s.nightArt);
       container.dataset.density=ctx.s.density==='compact'?'compact':'comfortable';
       container.dataset.font=['humanist','serif'].includes(ctx.s.font)?ctx.s.font:'system';
       container.dataset.textSize=ctx.s.textSize||'standard';
@@ -655,7 +665,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }
     }
 
-    function onInput(event){
+    function onInput(event){if(event.target?.dataset?.setting==='nightArt'){applyNight(event.target.value);const out=event.target.closest?.('.cz-night')?.querySelector('output');if(out)out.textContent=event.target.value+'%';return;}
       const field=event.target?.dataset?.rdField;
       if(board?.input(event))return;
       if(field==='quick-pack-source'){quickPackDraft=event.target.value.slice(0,3145728);quickPackFileName='';quickPackError='';return;}
@@ -699,7 +709,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(field==='setting'){
         const key=event.target.dataset.setting;
         if(!['theme','accent','motion','livingArt','readingFont','greeting','font','density','textSize','dashboardLayout','showCourseStrip','showGrades','showRecentGrades',...Object.keys(root.ReserveCustomization?.defaults||{})].includes(key))return;
-        const value=event.target.type==='checkbox'?event.target.checked:event.target.value;
+        const value=event.target.type==='checkbox'?event.target.checked:key==='nightArt'?Math.max(0,Math.min(100,Math.round(Number(event.target.value)||0))):event.target.value;
         if(key==='showGrades'){
           const version=++gradeSaveVersion;gradeVisibilityOverride=value===true;motion?.cancel();render();
           savePersonal(data=>{data.settings.showGrades=value===true;}).then(saved=>{if(version===gradeSaveVersion){if(saved)gradeVisibilityOverride=null;render();}});return;

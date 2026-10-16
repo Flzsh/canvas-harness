@@ -357,3 +357,7 @@
 .rd:is([data-motion-style=off],[data-motion-style=still]) .rd-main > [data-arrange-key]::before,
 .rd:is([data-motion-style=off],[data-motion-style=still]) .rd-shell .rd-course-rail > [data-arrange-course]::before,
 .rd:is([data-motion-style=off],[data-motion-style=still]) .rd-shell .rd-course-rail > [data-arrange-course] > .rd-frame {animation:none!important;transition:none!important;scale:none!important;}
+/* Artwork at night: the slider row */
+.rd .cz-night { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 10px; font-size: 12.5px; color: var(--rd-muted); }
+.rd .cz-night input[type=range] { width: 100%; accent-color: var(--rd-accent); }
+.rd .cz-night output { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; color: var(--rd-ink-2); }
