@@ -31,3 +31,10 @@ test('the rail\u2019s foot only counts hidden courses; the Canvas sync line is t
 test('nothing in the workspace column is squeezed to fit its height (a course banner collapsed in 2.26.0)',()=>{
  assert.match(read('refresh.css'),/\.rd:not\(\[data-course-navigation=topbar\]\) \.rd-shell > \.rd-workspace > \* \{ flex-shrink: 0; \}/);
 });
+test('Canvas\u2019s own page does not scroll while the workspace column does (one scroll bar, not two)',()=>{
+ assert.match(read('dashboard.js'),/classList\?\.toggle\?\.\('reserve-fit',fits\)/);
+ assert.match(read('startup.css'),/html\.reserve-inline-active\.reserve-fit,html\.reserve-inline-active\.reserve-fit body\{overflow-y:hidden!important\}/);
+});
+test('courses across the top: the strip stands above the heading, so the heading cannot paint over the cards',()=>{
+ assert.match(read('customize.css'),/\.rd\[data-course-navigation=topbar\]\[data-courses=true\] \.rd-course-rail \{ z-index: 1; \}/);
+});
