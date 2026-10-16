@@ -354,7 +354,7 @@
   function show(html,{menu=false,ms=0}={}){
    closeBubble();if(!layer)return;
    bubble=doc.createElement('div');bubble.className='pet-bubble';bubble.innerHTML=html;
-   if(menu){bubble.setAttribute('role','menu');bubble.setAttribute('aria-label',pet.name);menuOpen=true;node.setAttribute('aria-expanded','true');if(goal?.type==='walk'){goal.to=spot.u+Math.sign(speed)*Math.min(18,Math.abs(speed)*.3);}}
+   if(menu){bubble.setAttribute('role','menu');bubble.setAttribute('aria-label',pet.name);menuOpen=true;node.setAttribute('aria-expanded','true');if(goal?.type==='walk'){goal=null;speed=0;setPose('stand');}}   // it stops where it is, so the menu opens in place
    else{bubble.setAttribute('role','status');bubble.setAttribute('aria-live','polite');}
    layer.append(bubble);placeBubble();
    bubble.addEventListener('click',onBubble);

@@ -174,19 +174,15 @@
    const doc=root.document,edge=doc.createElement('div'),off=new AbortController(),signal=off.signal,watching=[];edge.className='chn-edge';edge.setAttribute('aria-hidden','true');(doc.body||html).append(edge);
    const trays=['nav-tray-portal','global_nav_tray_container'].map(id=>doc.getElementById(id)).filter(Boolean);
    const trayOpen=()=>trays.some(t=>t.childElementCount>0);
-   let timer=0,pushed=0,moving=0;
-   // The page moves as one picture (a transform: nothing is laid out again while it moves), then takes its new width
-   // once, at the end. Laying the dashboard out again on every frame of the move would cost far more, on a battery too.
-   const still=()=>html.dataset.chnMotion==='off'||!!root.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+   let timer=0,pushed=0;
+   // The page makes room beside the bar: it eases narrower as the bar comes out and wider as it goes, together with the
+   // bar, so nothing of it is out of reach while the bar is out (the user, 2026-10-16) and nothing jumps (a width taken
+   // all at once had the whole dashboard shrink and grow back in one step). The ease is canvas-nav.css's transition on
+   // the page's margin; with reduced motion, or Motion off, it changes at once.
    function push(on){
     const page=doc.getElementById('wrapper');if(!page)return;
-    const by=on?Math.round(header.getBoundingClientRect().width)+6:0,from=pushed;if(by===from)return;pushed=by;
-    root.clearTimeout(moving);page.style.transition='none';
-    if(still()){page.style.transform='';html.style.setProperty('--chn-push',by+'px');delete html.dataset.chnMoving;return;}
-    html.dataset.chnMoving='true';
-    if(on){page.style.transform='translateX(0px)';void page.offsetWidth;page.style.transition='transform 280ms cubic-bezier(.2, .8, .3, 1)';page.style.transform=`translateX(${by-from}px)`;}
-    else{html.style.setProperty('--chn-push','0px');page.style.transform=`translateX(${from}px)`;void page.offsetWidth;page.style.transition='transform 220ms cubic-bezier(.4, 0, .9, .6)';page.style.transform='translateX(0px)';}
-    moving=root.setTimeout(()=>{page.style.transition='none';page.style.transform='';html.style.setProperty('--chn-push',pushed+'px');delete html.dataset.chnMoving;},on?290:230);
+    const by=on?Math.round(header.getBoundingClientRect().width)+6:0;if(by===pushed)return;pushed=by;
+    html.style.setProperty('--chn-push',by+'px');
    }
    const open=()=>{root.clearTimeout(timer);if(html.dataset.chnDrawer!=='open'){html.dataset.chnDrawer='open';push(true);}};
    const close=(ms=420)=>{root.clearTimeout(timer);timer=root.setTimeout(()=>{if(header.matches(':hover')||header.contains(doc.activeElement)||trayOpen())return;html.dataset.chnDrawer='closed';push(false);},ms);};
@@ -195,8 +191,7 @@
    header.addEventListener('focusin',open,{signal});header.addEventListener('focusout',()=>close(120),{signal});
    for(const t of trays){const o=new MutationObserver(()=>{if(!trayOpen())close();});o.observe(t,{childList:true});watching.push(o);}
    undo.push(()=>{
-    off.abort();for(const o of watching)o.disconnect();root.clearTimeout(timer);root.clearTimeout(moving);edge.remove();
-    const page=doc.getElementById('wrapper');if(page){page.style.transition='';page.style.transform='';}
+    off.abort();for(const o of watching)o.disconnect();root.clearTimeout(timer);edge.remove();
     html.style.removeProperty('--chn-push');delete html.dataset.chnDrawer;delete html.dataset.chnMoving;delete header.dataset.chnDrawer;
    });
   }

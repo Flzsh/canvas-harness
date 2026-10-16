@@ -50,3 +50,7 @@ test('the pony stands only on free spots, steps off when something appears under
  assert.match(js,/if\(roll<\.2\)walk\(\);/,'walks on a fifth of its choices (was two fifths)');
  assert.match(js,/const to=freeOn\(l\);if\(to==null\)\{settle\('stand',6000\);return;\}/);
 });
+test('the pony\u2019s menu fades in where it is: the pony stops at once and the bubble does not grow',()=>{
+ assert.match(read('pet.css'),/animation:pet-fade \.2s ease-out\}/);assert.match(read('pet.css'),/@keyframes pet-fade\{from\{opacity:0\}\}/);
+ assert.match(read('pets.js'),/if\(goal\?\.type==='walk'\)\{goal=null;speed=0;setPose\('stand'\);\}/);
+});

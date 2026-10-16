@@ -144,8 +144,10 @@ html.chn-nav[data-chn-motion=off] #header * { animation: none !important; }
 
 /* ---- the drawer (canvas-nav.js drawer()): off the left edge until the pointer reaches it, then a card in the middle of
    the edge, only as tall as its items. Canvas's page takes the whole width meanwhile. ---- */
-html.chn-nav[data-chn-layout=drawer] #wrapper { margin-left: var(--chn-push, 0px) !important; }
-/* while the page moves aside (canvas-nav.js push()), nothing scrolls sideways */
+html.chn-nav[data-chn-layout=drawer] #wrapper { margin-left: var(--chn-push, 0px) !important; transition: margin-left 260ms cubic-bezier(.25, .8, .3, 1); }
+html.chn-nav[data-chn-layout=drawer][data-chn-motion=off] #wrapper { transition: none; }
+@media (prefers-reduced-motion: reduce) { html.chn-nav[data-chn-layout=drawer] #wrapper { transition: none; } }
+/* while the page is aside or moving (canvas-nav.js push()), nothing scrolls sideways */
 html.chn-nav[data-chn-moving] body { overflow-x: clip !important; }
 html.chn-nav[data-chn-layout=drawer] #header {
  --chn-top: 0px; --chn-bottom: 0px;
