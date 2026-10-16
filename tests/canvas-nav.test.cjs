@@ -42,7 +42,7 @@ test('the copied frame rules match the workspace’s, and the files are wired in
  const all=manifest.content_scripts.find(entry=>entry.js.includes('content.js'));
  assert.ok(all.js.includes('canvas-nav.js'));assert.ok(all.js.indexOf('course-art.js')<all.js.indexOf('canvas-nav.js'),'it draws with the course frames');
  for(const entry of manifest.web_accessible_resources)assert.ok(entry.resources.includes('canvas-nav.css'));
- const popup=read('popup.html');assert.match(popup,/<select id="canvas-nav"><option value="drawn">Hand-drawn, out from the left edge<\/option><option value="shown">Hand-drawn, always shown<\/option><option value="original">Canvas original<\/option><\/select>/);
+ const popup=read('popup.html');assert.match(popup,/<select id="canvas-nav"><option value="drawn">Hand-drawn, out from the left edge<\/option><option value="shown">Hand-drawn, full height<\/option><option value="top">Hand-drawn, across the top<\/option><option value="original">Canvas original<\/option><\/select>/);
  assert.match(read('popup.js'),/'reserve:canvasNav':menuBar\.value/);
 });
 
@@ -62,11 +62,23 @@ test('the bar sits against the window’s edge with its pen line on three sides,
 
 // The user (2026-10-15): the bar is used now and then, so it hides off the left edge, comes out as a shorter card in the
 // middle of the edge when the pointer reaches the edge, and Canvas's page takes the whole width meanwhile.
-test('by default the bar is a drawer: hidden off the edge, out as a card in the middle while the pointer or focus is on it',()=>{
+// The user (2026-10-15): three ways to have it. Full height; out from the left edge, moving the page aside so it covers
+// nothing; or across the top, in the free stretch of the dashboard's toolbar (a strip across the page elsewhere).
+test('the layouts: drawer by default (it moves the page aside), full height, or across the top',()=>{
  const css=read('canvas-nav.css'),js=read('canvas-nav.js');
- assert.match(js,/if\(values\[KEY\]!=='shown'\)html\.dataset\.chnDrawer='closed';/,'"Hand-drawn, always shown" keeps the column');
- assert.match(css,/html\.chn-nav\[data-chn-drawer\] #wrapper \{ margin-left: 0 !important; \}/,'the page takes the whole width');
- assert.match(css,/html\.chn-nav\[data-chn-drawer\] #header \{[^}]*top: 50% !important;[^}]*height: auto !important;[^}]*transform: translate\(calc\(-100% - 24px\), -50%\);/,'hidden, centred, as tall as its items');
- assert.match(css,/html\.chn-nav\[data-chn-drawer=open\] #header \{ transform: translate\(0, -50%\);/);
+ assert.match(js,/const LAYOUTS=\{drawn:'drawer',shown:'column',top:'top'\};/);
+ assert.match(js,/html\.dataset\.chnLayout=LAYOUTS\[values\[KEY\]\]\|\|'drawer';/,'the drawer is the default');
+ // drawer: hidden, centred, as tall as its items; the page moves aside by the bar's width, as one picture, then re-lays out once
+ assert.match(css,/html\.chn-nav\[data-chn-layout=drawer\] #wrapper \{ margin-left: var\(--chn-push, 0px\) !important; \}/);
+ assert.match(css,/html\.chn-nav\[data-chn-layout=drawer\] #header \{[^}]*top: 50% !important;[^}]*height: auto !important;[^}]*transform: translate\(calc\(-100% - 24px\), -50%\);/);
+ assert.match(js,/page\.style\.transform=`translateX\(\$\{by-from\}px\)`;/,'it moves by transform while it moves');
+ assert.match(js,/html\.style\.setProperty\('--chn-push',pushed\+'px'\)/,'and takes its new width once, at the end');
  for(const hook of ["edge.addEventListener('pointerenter',open)","header.addEventListener('pointerleave',()=>close())","header.addEventListener('focusin',open)",'trayOpen()'])assert.ok(js.includes(hook),hook);
+ // across the top: in the toolbar while it fits (names, then drawings alone, then without the logo), else a strip
+ assert.match(js,/for\(const kind of \['full','icons','bare'\]\)/);
+ assert.match(js,/html\.dataset\.chnPlace='toolbar';/);assert.match(js,/html\.dataset\.chnPlace='strip';/);
+ assert.match(css,/html\.chn-nav\[data-chn-layout=top\]\[data-chn-place=strip\] #wrapper \{ margin-top: 58px !important; \}/);
+ assert.match(css,/html\.chn-nav\[data-chn-layout=top\] #header \{[^}]*flex-direction: row !important;[^}]*transform: none !important;/,'its own row, none of the column\u2019s slide');
+ assert.match(css,/#header\[data-chn-fit=bare\] \.ic-app-header__logomark-container \{ display: none !important; \}/);
 });
+
