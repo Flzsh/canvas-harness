@@ -192,7 +192,9 @@ html.chn-nav[data-chn-layout=top] #header::after {
  inset: -5px; border-width: 16px;
  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M17 6.2C30 5.4 46 6.8 60 5.8C66 5.4 71 6.2 74.6 6C81.4 5.8 84.6 9.6 84.4 16.4C84.8 30 84 46 84.6 60C84.9 66 84.4 71 84.6 74C84.6 80.8 80.6 84.6 74 84.4C60 84.9 44 83.9 30 84.6C24 84.9 19 84.4 16 84.6C9.4 84.6 5.6 80.6 5.8 74C5.3 60 6.3 44 5.5 30C5.3 24 5.9 19 5.6 16.4C5.8 9.8 10 6.4 17 6.2Z'/%3E%3C/svg%3E") 30 30 30 30 stretch;
 }
-html.chn-nav[data-chn-layout=top] #header .ic-app-header__main-navigation { display: flex !important; flex-direction: row !important; align-items: center; height: 100%; width: auto !important; padding: 0 !important; overflow: visible !important; }
+/* Canvas gives the logo's container the whole width and lets the navigation grow: in a row that pushed the menu past the
+   bar's end (seen on a real Canvas), so both take only their own width here */
+html.chn-nav[data-chn-layout=top] #header .ic-app-header__main-navigation { display: flex !important; flex-direction: row !important; align-items: center; height: 100%; width: auto !important; flex: none !important; padding: 0 !important; overflow: visible !important; }
 html.chn-nav[data-chn-layout=top] #header .ic-app-header__menu-list { display: flex !important; flex-direction: row !important; align-items: center; gap: 2px; height: 100%; margin: 0; padding: 0; }
 html.chn-nav[data-chn-layout=top] #header .ic-app-header__menu-list-item { flex: none; width: auto !important; height: auto; }
 html.chn-nav[data-chn-layout=top] #header .ic-app-header__menu-list-link,
@@ -210,7 +212,7 @@ html.chn-nav[data-chn-layout=top] #header:is([data-chn-fit=icons], [data-chn-fit
 html.chn-nav[data-chn-layout=top] #header:is([data-chn-fit=icons], [data-chn-fit=bare]) .ic-app-header__menu-list-link { padding: 0 6px !important; }
 html.chn-nav[data-chn-layout=top] #header .menu-item__badge { top: -6px !important; right: -8px !important; left: auto !important; }
 /* the school's logo, small, at the row's start; no nail to hang from and no underline here */
-html.chn-nav[data-chn-layout=top] #header .ic-app-header__logomark-container { flex: none; padding: 0 4px 0 2px; height: 100%; display: flex; align-items: center; }
+html.chn-nav[data-chn-layout=top] #header .ic-app-header__logomark-container { flex: none !important; width: auto !important; min-width: 0; padding: 0 4px 0 2px; height: 100%; display: flex; align-items: center; }
 html.chn-nav[data-chn-layout=top] #header .ic-app-header__logomark-container::after,
 html.chn-nav[data-chn-layout=top] #header .chn-logo-hang { display: none !important; }
 html.chn-nav[data-chn-layout=top] #header .ic-app-header__logomark { height: 30px !important; width: 64px !important; margin: 0 !important; background-size: contain !important; }
