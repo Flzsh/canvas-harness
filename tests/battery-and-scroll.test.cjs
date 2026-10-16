@@ -28,3 +28,6 @@ test('the rail\u2019s foot only counts hidden courses; the Canvas sync line is t
  assert.match(foot,/return hiddenCount\?/,'no foot when nothing is hidden');
  assert.match(js,/title="\$\{E\(sync\.text\)\}"\$\{sync\.failed&&!c\.refreshing\?' data-tone="danger"':''\}/);
 });
+test('nothing in the workspace column is squeezed to fit its height (a course banner collapsed in 2.26.0)',()=>{
+ assert.match(read('refresh.css'),/\.rd:not\(\[data-course-navigation=topbar\]\) \.rd-shell > \.rd-workspace > \* \{ flex-shrink: 0; \}/);
+});
