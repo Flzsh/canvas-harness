@@ -329,6 +329,9 @@
     height: calc(100dvh - min(var(--rd-rail-top, 150px), 45dvh) - var(--rd-status-h, 56px)); min-height: min(300px, calc(100dvh - 36px));
     overflow-x: clip; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-gutter: stable;
   }
+  /* the column has a fixed height now, so its parts must keep their own: squeezed, a course's banner collapsed to
+     nothing and its drawing spilled over the modules (2.26.0) */
+  .rd:not([data-course-navigation=topbar]) .rd-shell > .rd-workspace > * { flex-shrink: 0; }
   .rd .rd-course-rail { overscroll-behavior: contain; }
 }
 .rd .rd-workspace .rd-reader-content, .rd .rd-workspace .rd-reader, .rd .rd-workspace .rd-overview-agenda, .rd .rd-workspace .rd-material-page { overscroll-behavior: contain; }
