@@ -355,6 +355,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // neither is measured (a 0 or partial offset would stick); retry briefly.
     function measureRail(tries=0,syncSelection=true){
       if(railTimer)root.clearTimeout(railTimer);railTimer=0;
+      // While the workspace column scrolls by itself (desktop, courses down the side: refresh.css), Canvas's own page
+      // must not scroll as well (two scroll bars, the page moving first): startup.css stops it while this is set.
+      {const column=container.querySelector?.('.rd-shell > .rd-workspace'),fits=!!column&&/(auto|scroll)/.test(root.getComputedStyle?.(column)?.overflowY||'');root.document?.documentElement?.classList?.toggle?.('reserve-fit',fits);}
       const rail=container.querySelector('.rd-shell .rd-course-rail');if(destroyed||!rail||typeof root.getComputedStyle!=='function'||typeof rail.getClientRects!=='function')return;
       // A rail the layout hides (Course sidebar off, a narrow window, a closed phone drawer) has nothing to fill.
       const display=root.getComputedStyle(rail).display;if(display==='none')return;

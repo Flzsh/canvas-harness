@@ -22,3 +22,5 @@ html.reserve-startup-active #content,html.reserve-startup-active #right-side,htm
 @keyframes reserve-startup-release{to{visibility:hidden;pointer-events:none}}
 @media(max-width:1000px){#reserve-startup-shell .reserve-startup-layout{grid-template-columns:180px 1fr 1fr}#reserve-startup-shell .reserve-startup-reader{display:none}}
 @media(max-width:600px){#reserve-startup-shell .reserve-startup-layout{grid-template-columns:1fr}#reserve-startup-shell .reserve-startup-layout .reserve-startup-rail{min-height:100px}#reserve-startup-shell .reserve-startup-work{display:none}}
+/* The workspace column scrolls by itself (dashboard.js sets reserve-fit): Canvas's page does not scroll as well. */
+@media (min-width:801px){html.reserve-inline-active.reserve-fit,html.reserve-inline-active.reserve-fit body{overflow-y:hidden!important}}
