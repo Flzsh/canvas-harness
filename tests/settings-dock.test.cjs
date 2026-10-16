@@ -63,7 +63,9 @@ test('every original personal customization field, course editor, and grade cont
   }else assert.ok(html.includes(text),`keep ${text}`);
  }
  assert.match(html,/data-rd-action="accent"/);
- assert.doesNotMatch(html,/data-setting="(?:theme|accent)"/,'one visible palette, no dark-mode chooser');
+ assert.doesNotMatch(html,/data-setting="accent"/,'one visible palette');
+ // Dark mode (the user asked for it, 2026-10-15) is a choice in Look, light unless chosen; the night slider shows only in dark.
+ {const ui=require('node:fs').readFileSync(require('node:path').join(__dirname,'..','extension','customize-ui.js'),'utf8');assert.match(ui,/choices\('theme','Theme',\[\['light','Light'[\s\S]*?\{value:s\.theme==='dark'\?'dark':'light',cols:2\}\)/);assert.match(ui,/\(s\.theme==='dark'\?group\('Artwork at night'/);}
  assert.equal((html.match(/class="rd-swatch ch-accent-choice"/g)||[]).length,6);
  assert.match(html,/data-rd-field="setting" data-setting="showGrades"/);
  const viewSource=source('dashboard-view.js');

@@ -1700,14 +1700,28 @@
 .rd .rd-art-ghost > .rd-art[data-crop] { width: 100%; height: 100%; max-width: none; aspect-ratio: auto; }
 
 
-.rd[data-theme=dark] :is(.rd-art:not([data-crop=title]), .rd-mini) .art-ink, .rd[data-theme=dark] :is(.rd-art:not([data-crop=title]), .rd-mini) .art-dots, .rd[data-theme=dark] :is(.rd-art:not([data-crop=title]), .rd-mini) .art-grain, .rd[data-theme=dark] :is(.rd-art:not([data-crop=title]), .rd-mini) [stroke="#141413"] { stroke: #E8E6DC; }
-.rd[data-theme=dark] :is(.rd-art:not([data-crop=title]), .rd-mini) .art-solid, .rd[data-theme=dark] :is(.rd-art:not([data-crop=title]), .rd-mini) [fill="#141413"] { fill: #E8E6DC; }
-.rd[data-theme=dark] :is(.rd-art:not([data-crop=title]), .rd-mini) :is(.art-head, .art-head [fill="#FAF9F5"]) { fill: #34332F; }
-.rd[data-theme=dark] :is(.rd-art:not([data-crop=title]), .rd-mini) .art-ground { opacity: .35; }
-.rd[data-theme=dark] :is(.rd-art:not([data-crop=title]), .rd-mini) .art-wash { opacity: .8; }
-
-.rd[data-theme=dark] .rd-art[data-crop=title] [stroke="#141413"] { stroke: #7A7972; }
-.rd[data-theme=dark] .rd-art[data-crop=title] [fill="#141413"] { fill: #7A7972; }
+/* ARTWORK AT NIGHT (dark theme only; Make it yours -> Look; dashboard.js applyNight()). The drawings were made for
+   ivory paper, so dark mode never simply turns their black into white. Chalk (0-49): the ink becomes warm chalk
+   (--rd-chalk, brightest at 0), the light fills inside the drawings turn dark, the washes soften, the ground line goes.
+   Paper (50-100): banners, headings and course cards keep the light page's own colours and are dimmed as a whole
+   (--rd-night-b, least at 100); drawings elsewhere are chalk. */
+.rd[data-theme=dark][data-night=chalk] :is(.rd-art:not([data-crop=title]), .rd-mini) .art-ink, .rd[data-theme=dark][data-night=paper] :is(.rd-art:not([data-crop=title]), .rd-mini):not(:is(.rd-workspace-heading, .rd-rail-course, .rd-rail-all) *) .art-ink, .rd[data-theme=dark][data-night=chalk] :is(.rd-art:not([data-crop=title]), .rd-mini) .art-dots, .rd[data-theme=dark][data-night=paper] :is(.rd-art:not([data-crop=title]), .rd-mini):not(:is(.rd-workspace-heading, .rd-rail-course, .rd-rail-all) *) .art-dots, .rd[data-theme=dark][data-night=chalk] :is(.rd-art:not([data-crop=title]), .rd-mini) .art-grain, .rd[data-theme=dark][data-night=paper] :is(.rd-art:not([data-crop=title]), .rd-mini):not(:is(.rd-workspace-heading, .rd-rail-course, .rd-rail-all) *) .art-grain, .rd[data-theme=dark][data-night=chalk] :is(.rd-art:not([data-crop=title]), .rd-mini) [stroke="#141413"], .rd[data-theme=dark][data-night=paper] :is(.rd-art:not([data-crop=title]), .rd-mini):not(:is(.rd-workspace-heading, .rd-rail-course, .rd-rail-all) *) [stroke="#141413"] { stroke: var(--rd-chalk, #D2C8B2) !important; }
+.rd[data-theme=dark][data-night=chalk] :is(.rd-art:not([data-crop=title]), .rd-mini) .art-solid, .rd[data-theme=dark][data-night=paper] :is(.rd-art:not([data-crop=title]), .rd-mini):not(:is(.rd-workspace-heading, .rd-rail-course, .rd-rail-all) *) .art-solid, .rd[data-theme=dark][data-night=chalk] :is(.rd-art:not([data-crop=title]), .rd-mini) [fill="#141413"], .rd[data-theme=dark][data-night=paper] :is(.rd-art:not([data-crop=title]), .rd-mini):not(:is(.rd-workspace-heading, .rd-rail-course, .rd-rail-all) *) [fill="#141413"] { fill: var(--rd-chalk, #D2C8B2) !important; }
+.rd[data-theme=dark][data-night=chalk] :is(.rd-art:not([data-crop=title]), .rd-mini) [fill="#FAF9F5" i], .rd[data-theme=dark][data-night=paper] :is(.rd-art:not([data-crop=title]), .rd-mini):not(:is(.rd-workspace-heading, .rd-rail-course, .rd-rail-all) *) [fill="#FAF9F5" i], .rd[data-theme=dark][data-night=chalk] :is(.rd-art:not([data-crop=title]), .rd-mini) [fill="#FFFDF6" i], .rd[data-theme=dark][data-night=paper] :is(.rd-art:not([data-crop=title]), .rd-mini):not(:is(.rd-workspace-heading, .rd-rail-course, .rd-rail-all) *) [fill="#FFFDF6" i], .rd[data-theme=dark][data-night=chalk] :is(.rd-art:not([data-crop=title]), .rd-mini) [fill="#FFFFFF" i], .rd[data-theme=dark][data-night=paper] :is(.rd-art:not([data-crop=title]), .rd-mini):not(:is(.rd-workspace-heading, .rd-rail-course, .rd-rail-all) *) [fill="#FFFFFF" i], .rd[data-theme=dark][data-night=chalk] :is(.rd-art:not([data-crop=title]), .rd-mini) .art-head, .rd[data-theme=dark][data-night=paper] :is(.rd-art:not([data-crop=title]), .rd-mini):not(:is(.rd-workspace-heading, .rd-rail-course, .rd-rail-all) *) .art-head { fill: #2C2B28 !important; }
+.rd[data-theme=dark][data-night=chalk] :is(.rd-art:not([data-crop=title]), .rd-mini) .art-ground, .rd[data-theme=dark][data-night=paper] :is(.rd-art:not([data-crop=title]), .rd-mini):not(:is(.rd-workspace-heading, .rd-rail-course, .rd-rail-all) *) .art-ground { opacity: 0 !important; }
+.rd[data-theme=dark][data-night=chalk] :is(.rd-art:not([data-crop=title]), .rd-mini) .art-wash, .rd[data-theme=dark][data-night=paper] :is(.rd-art:not([data-crop=title]), .rd-mini):not(:is(.rd-workspace-heading, .rd-rail-course, .rd-rail-all) *) .art-wash { opacity: var(--rd-night-wash, .7) !important; }
+.rd[data-theme=dark][data-night=paper] .rd-workspace-heading, .rd[data-theme=dark][data-night=paper] .rd-rail-course, .rd[data-theme=dark][data-night=paper] .rd-rail-all {
+ --rd-ink: #141413; --rd-ink-2: #3D3D3A; --rd-muted: #5E5D59; --rd-faint: #73726C; --rd-sidebar: #F2EDE1; --rd-sidebar-sel: #E7E0CF; --rd-bg: #F2EDE1; --rd-art-paper: #F2EDE1; --rd-line: #DDD6C6;
+ color: #141413; filter: brightness(var(--rd-night-b, .58));
+}
+.rd[data-theme=dark][data-night=paper] .rd-workspace-heading { background: #F2EDE1; border-radius: 16px; box-shadow: 0 0 0 10px #F2EDE1; }
+.rd[data-theme=dark][data-night=paper] .rd-rail-course, .rd[data-theme=dark][data-night=paper] .rd-rail-all { background: #F2EDE1; border-radius: 12px; }
+/* a subject's title lettering is often black on its own cream or stone sheet: chalk would vanish into the sheet, so its
+   black ink alone turns a grey that reads on the dark page and on those sheets (on paper it stays black) */
+.rd[data-theme=dark][data-night=chalk] .rd-art[data-crop=title] [stroke="#141413"], .rd[data-theme=dark][data-night=paper] .rd-art[data-crop=title]:not(:is(.rd-workspace-heading, .rd-rail-course, .rd-rail-all) *) [stroke="#141413"] { stroke: #7A7972; }
+.rd[data-theme=dark][data-night=chalk] .rd-art[data-crop=title] [fill="#141413"], .rd[data-theme=dark][data-night=paper] .rd-art[data-crop=title]:not(:is(.rd-workspace-heading, .rd-rail-course, .rd-rail-all) *) [fill="#141413"] { fill: #7A7972; }
+/* the pony keeps to the page: chalk outlines in the dark */
+.rd[data-theme=dark] .pet { --pet-ink: var(--rd-chalk, #D2C8B2); }
 
 
 
