@@ -10,7 +10,7 @@ test('the film clock reads every loop state before it writes any frame (one rest
 });
 test('the pony\u2019s endless loops run on a film clock and its walk at most 60 frames a second',()=>{
  const js=read('pets.js');
- assert.match(js,/reel=setTimeout\(roll,1000\/\(now\(\)-lastInput<6000\?24:12\)\)/,'24 a second while used, 12 after');
+ assert.match(js,/const quiet=now\(\)-lastInput;if\(quiet>=120000\)return;\s*reel=setTimeout\(roll,1000\/\(quiet<6000\?24:quiet<25000\?12:6\)\)/,'24 a second while used, 12 after, 6 in the idle rest, held after two minutes');assert.match(js,/if\(!reel&&layer&&!doc\.hidden\)roll\(\);/,'the next input lets it go on');assert.match(read('pet.css'),/\.pet-layer\{position:fixed;inset:0;z-index:1500;pointer-events:none;overflow:visible;contain:strict\}/,'its paint is walled off from the page');
  assert.match(js,/iterations!==Infinity\)continue;/,'only endless loops are taken over');
  assert.match(js,/if\(last&&ts-last<15\)\{raf=win\.requestAnimationFrame\(frame\);return;\}/,'a 120-240 Hz screen does not redraw the page every refresh');
  assert.match(js,/clearTimeout\(reel\);reel=0;reels\.clear\(\);layer\.remove\(\)/,'the clock stops with the pony');

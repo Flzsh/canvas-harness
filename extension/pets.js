@@ -72,7 +72,7 @@
    doc.removeEventListener('pointermove',seen);doc.removeEventListener('keydown',seen);doc.removeEventListener('visibilitychange',wake);
    clearInterval(follow);follow=0;clearTimeout(reel);reel=0;reels.clear();layer.remove();layer=node=null;
   }
-  function seen(){lastInput=now();if(rest==='sleep'&&!goal&&!menuOpen)settle('lie',4000);}
+  function seen(){lastInput=now();if(!reel&&layer&&!doc.hidden)roll();if(rest==='sleep'&&!goal&&!menuOpen)settle('lie',4000);}
   function wake(){if(!doc.hidden&&layer){place();if(goal)run();else plan(900);roll();}}
   // THE PONY ON THE FILM CLOCK. Its little loops (the tail, the nod, the blink, breathing, the Zs) are CSS animations.
   // Left to run, each one makes Chrome draw the whole page at the screen's own rate (60 to 240 times a second: on a
@@ -108,7 +108,10 @@
     if(at<0||at!==r.rest){try{a.currentTime=time;}catch{}}
     r.rest=at;
    }
-   reel=setTimeout(roll,1000/(now()-lastInput<6000?24:12));reel?.unref?.();
+   // 24 a second while the page is used, 12 after, 6 in the idle rest (a sleeping pony's breathing is slow), and after
+   // two minutes without input it holds where it is until the next input (seen()), so an open page costs nothing.
+   const quiet=now()-lastInput;if(quiet>=120000)return;
+   reel=setTimeout(roll,1000/(quiet<6000?24:quiet<25000?12:6));reel?.unref?.();
   }
   function dress(){
    if(!node)return;const c=art.COATS[pet.coat]||art.COATS.oat;
