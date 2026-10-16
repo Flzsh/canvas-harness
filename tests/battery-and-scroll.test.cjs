@@ -38,3 +38,15 @@ test('Canvas\u2019s own page does not scroll while the workspace column does (on
 test('courses across the top: the strip stands above the heading, so the heading cannot paint over the cards',()=>{
  assert.match(read('customize.css'),/\.rd\[data-course-navigation=topbar\]\[data-courses=true\] \.rd-course-rail \{ z-index: 1; \}/);
 });
+
+// The user (2026-10-15 screenshot): the pony stood on an assignment's title. It now only stands where nothing the student
+// reads or uses is under it, steps off when the page changes under it, and walks far less.
+test('the pony stands only on free spots, steps off when something appears under it, and is calmer',()=>{
+ const js=read('pets.js');
+ assert.match(js,/const USED='a,button,input,select,textarea,summary,label,\[role=button\],\[role=link\],\[role=tab\],svg,img,canvas,video';/);
+ assert.match(js,/if\(layer\?\.contains\(el\)\|\|el\.closest\?\.\('\.rd-frame, \.chn-frames'\)\)continue;/,'outlines are its ground, not something it covers');
+ assert.match(js,/if\(!free\(here,spot\.u\)\)\{moveOff\(here\);return;\}/);
+ assert.match(js,/if\(idle<2500\)\{settle\(/,'still while the student scrolls or types');
+ assert.match(js,/if\(roll<\.2\)walk\(\);/,'walks on a fifth of its choices (was two fifths)');
+ assert.match(js,/const to=freeOn\(l\);if\(to==null\)\{settle\('stand',6000\);return;\}/);
+});
