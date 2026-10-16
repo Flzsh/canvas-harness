@@ -30,7 +30,3 @@ Checked October 11, 2026:
 - [Edge publishing](https://learn.microsoft.com/en-us/microsoft-edge/extensions/publish/publish-extension): square logo (300 × 300 recommended), listing text, privacy information, testing notes and review submission. The optional small tile is 440 × 280; accepted screenshots include 1280 × 800.
 
 Store dashboards can change. Their current form requirements take precedence over this kit.
-
-## Publishing with the API (no dashboard clicks)
-
-`node scripts/store-publish.cjs upload` uploads `dist/Canvas-Harness-<version>.zip` (run `npm run build` first) and submits it for review; `status` shows what is published and what is waiting. It signs in as a Google Cloud service account that the publisher added in the Developer Dashboard, with settings kept outside the repository in `%USERPROFILE%\.canvas-harness-store\config.json` (`keyFile`, `publisherId`, `extensionId`). The key file is a password: never commit it. Listing text and pictures still change in the dashboard.
