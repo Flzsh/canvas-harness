@@ -94,3 +94,12 @@ test('Make it yours offers the four menu bar choices, stored where the popup kee
  assert.match(js,/if\(header\)undecorate\(header\);html\.classList\.remove\('chn-nav'\)/,'Canvas original takes every drawing off');
  assert.match(css,/html\.chn-nav\[data-chn-switching\] #header, html\.chn-nav\[data-chn-switching\] #header \*, html\.chn-nav\[data-chn-switching\] #wrapper \{ transition: none !important; animation: none !important; \}/);
 });
+
+// Seen on a real Canvas (2026-10-16): Canvas makes the logo's container full width and lets the navigation grow, which in a
+// row pushed the whole menu past the bar's end. Both take their own width across the top, and the fit counts any spill.
+test('across the top, the logo and the navigation take only their own width, and the fit counts anything that spills',()=>{
+ const css=read('canvas-nav.css'),js=read('canvas-nav.js');
+ assert.match(css,/html\.chn-nav\[data-chn-layout=top\] #header \.ic-app-header__main-navigation \{[^}]*width: auto !important; flex: none !important;/);
+ assert.match(css,/html\.chn-nav\[data-chn-layout=top\] #header \.ic-app-header__logomark-container \{ flex: none !important; width: auto !important;/);
+ assert.match(js,/if\(Math\.max\(header\.offsetWidth,header\.scrollWidth\)<=width\)return true;/);
+});

@@ -212,7 +212,8 @@
    let queued=0,watched=null,sizes=null;
    const visible=node=>!!node&&node.getClientRects().length>0&&node.getBoundingClientRect().width>0;
    function fit(width){
-    for(const kind of ['full','icons','bare']){header.dataset.chnFit=kind;if(header.offsetWidth<=width)return true;}
+    // measured with anything that still spills out of the bar, so a school's own Canvas styles cannot fool it
+    for(const kind of ['full','icons','bare']){header.dataset.chnFit=kind;if(Math.max(header.offsetWidth,header.scrollWidth)<=width)return true;}
     return false;
    }
    function place(){
