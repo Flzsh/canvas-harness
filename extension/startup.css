@@ -24,3 +24,9 @@ html.reserve-startup-active #content,html.reserve-startup-active #right-side,htm
 @media(max-width:600px){#reserve-startup-shell .reserve-startup-layout{grid-template-columns:1fr}#reserve-startup-shell .reserve-startup-layout .reserve-startup-rail{min-height:100px}#reserve-startup-shell .reserve-startup-work{display:none}}
 /* The workspace column scrolls by itself (dashboard.js sets reserve-fit): Canvas's page does not scroll as well. */
 @media (min-width:801px){html.reserve-inline-active.reserve-fit,html.reserve-inline-active.reserve-fit body{overflow-y:hidden!important}}
+/* Canvas's menu bar in the drawer from the first paint (canvas-nav.js remembers the layout in the page's localStorage
+   and sets html[data-chn-early=drawer] at document_start). These are canvas-nav.css's own drawer values, so the page
+   no longer opens with Canvas's 84px bar and then jumps left when that stylesheet arrives. */
+html[data-chn-early=drawer] #wrapper{margin-left:var(--chn-push,0px)!important}
+html[data-chn-early=drawer]:not([data-chn-drawer=open]) #header{transform:translate(calc(-100% - 24px),-50%)}
+html[data-chn-early=drawer]:not(.chn-nav) #header{transition:none!important}

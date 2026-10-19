@@ -34,7 +34,7 @@ test('it only ever touches Canvas’s menu bar, and only while it is switched on
  const css=read('canvas-nav.css').replace(/\/\*[\s\S]*?\*\//g,'');
  const selectors=[...css.matchAll(/(^|\})\s*([^@{}][^{}]*)\{/g)].map(m=>m[2].trim()).filter(s=>s&&!/^(@|from|to|\d+%)/.test(s));
  for(const group of selectors)for(const one of group.split(/,(?![^(]*\))/))assert.match(one.trim(),/^html\.chn-nav(\[|:not\(|\s)/,one);
- const js=read('canvas-nav.js');assert.match(js,/if\(values\['reserve:enabled'\]===false\)return;\s*if\(values\[KEY\]!=='original'\)enable\(values\[KEY\]\);/);
+ const js=read('canvas-nav.js');assert.match(js,/if\(values\['reserve:enabled'\]===false\)\{rememberLayout\(html,page,''\);return;\}\s*if\(values\[KEY\]!=='original'\)enable\(values\[KEY\]\);else rememberLayout\(html,page,''\);/);
 });
 
 test('the copied frame rules match the workspace’s, and the files are wired in',()=>{
@@ -102,4 +102,28 @@ test('across the top, the logo and the navigation take only their own width, and
  assert.match(css,/html\.chn-nav\[data-chn-layout=top\] #header \.ic-app-header__main-navigation \{[^}]*width: auto !important; flex: none !important;/);
  assert.match(css,/html\.chn-nav\[data-chn-layout=top\] #header \.ic-app-header__logomark-container \{ flex: none !important; width: auto !important;/);
  assert.match(js,/if\(Math\.max\(header\.offsetWidth,header\.scrollWidth\)<=width\)return true;/);
+});
+
+// With the drawer (the default) every Canvas page opened with Canvas's 84px bar, then jumped left once canvas-nav.css
+// arrived (~0.1 s, measured frame by frame on a real Canvas). The layout is remembered for the next page.
+test('first paint: the drawer is remembered for the next page and startup.css starts there, with no self-feeding writes',()=>{
+ const store=new Map(),storage={getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)};
+ let writes=0;const counted=()=>({dataset:new Proxy({},{set(t,k,v){writes++;t[k]=v;return true;},deleteProperty(t,k){writes++;delete t[k];return true;}})});
+ const html=counted();
+ Nav.rememberLayout(html,storage,'drawer');Nav.rememberLayout(html,storage,'drawer');
+ assert.equal(writes,1,'the same value is never written twice');assert.equal(store.get('reserve:navEarly'),'drawer');
+ const next={dataset:{}};Nav.earlyLayout(next,storage);assert.equal(next.dataset.chnEarly,'drawer','the next page starts in the drawer');
+ Nav.rememberLayout(html,storage,'top');assert.equal(html.dataset.chnEarly,undefined);assert.equal(store.has('reserve:navEarly'),false);
+ const after={dataset:{}};Nav.earlyLayout(after,storage);assert.equal(after.dataset.chnEarly,undefined,'other layouts start as Canvas draws them');
+ // An observer that answers every write by writing again (as a MutationObserver on <html> would) settles at once.
+ let calls=0;const loop={dataset:new Proxy({},{set(t,k,v){t[k]=v;if(++calls<100)Nav.rememberLayout(loop,storage,'drawer');return true;}})};
+ Nav.rememberLayout(loop,storage,'drawer');assert.equal(calls,1);
+ const js=read('canvas-nav.js'),early=fs.readFileSync(path.join(ext,'startup.css'),'utf8'),css=read('canvas-nav.css');
+ assert.ok(js.indexOf('earlyLayout(html,page);')>0&&js.indexOf('earlyLayout(html,page);')<js.indexOf('store.get([KEY,PALETTE'),'read before the stored choice');
+ assert.match(js,/rememberLayout\(html,page,html\.dataset\.chnLayout\);/);
+ assert.match(early,/html\[data-chn-early=drawer\] #wrapper\{margin-left:var\(--chn-push,0px\)!important\}/);
+ assert.match(early,/html\[data-chn-early=drawer\]:not\(\[data-chn-drawer=open\]\) #header\{transform:translate\(calc\(-100% - 24px\),-50%\)\}/);
+ // the same values as the drawer itself
+ assert.match(css,/\[data-chn-layout=drawer\] #wrapper \{ margin-left: var\(--chn-push, 0px\) !important; \}/);
+ assert.match(css,/transform: translate\(calc\(-100% - 24px\), -50%\);/);
 });
