@@ -117,7 +117,7 @@
    saved=values;if(values['reserve:enabled']===false)return;
    if(values[KEY]!=='original')enable(values[KEY]);
    // Chosen again in Make it yours or the popup: the bar changes on this page at once.
-   root.chrome.storage.onChanged?.addListener((changes,area)=>{if(area==='local'&&changes[KEY])apply(changes[KEY].newValue);});
+   root.chrome?.storage?.onChanged?.addListener((changes,area)=>{if(area==='local'&&changes[KEY])apply(changes[KEY].newValue);});
   }).catch(()=>{});
   let linked=false,undo=[];
   function enable(choice){

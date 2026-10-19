@@ -50,3 +50,8 @@ test('the pony stands only on free spots, steps off when something appears under
  assert.match(js,/if\(roll<\.2\)walk\(\);/,'walks on a fifth of its choices (was two fifths)');
  assert.match(js,/const to=freeOn\(l\);if\(to==null\)\{settle\('stand',6000\);return;\}/);
 });
+
+test('the column is not scrolled by the browser while the workspace lays itself out (scroll anchoring off)',()=>{
+ const css=read('refresh.css');
+ assert.match(css,/\.rd \.rd-workspace, \.rd \.rd-workspace \* \{ overflow-anchor: none; \}/);
+});
