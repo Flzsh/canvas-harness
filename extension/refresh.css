@@ -336,6 +336,12 @@
   .rd .rd-course-rail { overscroll-behavior: contain; }
 }
 .rd .rd-workspace .rd-reader-content, .rd .rd-workspace .rd-reader, .rd .rd-workspace .rd-overview-agenda, .rd .rd-workspace .rd-material-page { overscroll-behavior: contain; }
+/* THE COLUMN STAYS WHERE THE STUDENT PUT IT. Right after a course opens the workspace lays its parts out again (the
+   desk toolbar, the arrange guide, the desk are removed and added back), and the browser's scroll anchoring took that
+   for content moving above what was in view: it scrolled the column to "follow" it, often to the very bottom.
+   Measured on a real Canvas: a course scrolled to 700px moved to 1092px, then 2062px (the bottom) within 4 seconds;
+   with anchoring off it stayed at 700px on five courses, also on the first load after a refresh. */
+.rd .rd-workspace, .rd .rd-workspace * { overflow-anchor: none; }
 
 .rd .rd-rail-heading { flex: none; padding: 4px 10px 10px; font-size: 12px; font-weight: 450; letter-spacing: normal; text-transform: none; color: var(--rd-faint); }
 

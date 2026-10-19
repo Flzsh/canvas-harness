@@ -90,7 +90,8 @@ test('Make it yours offers the four menu bar choices, stored where the popup kee
  assert.match(ui,/choices\('canvasNav','Canvas menu bar',\[\['drawn','From the left edge'[\s\S]*?\['shown','Full height'[\s\S]*?\['top','Across the top'[\s\S]*?\['original','Canvas\u2019s own'[\s\S]*?\{value:c\.canvasNav\|\|'drawn',cols:2,field:'canvas-nav'\}\)/);
  assert.match(dash,/if\(field==='canvas-nav'\)\{const value=event\.target\.value;if\(!NAV_CHOICES\.includes\(value\)\)return;canvasNav=value;root\.chrome\?\.storage\?\.local\?\.set\?\.\(\{'reserve:canvasNav':value\}\)/);
  assert.match(dash,/root\.chrome\?\.storage\?\.onChanged\?\.addListener\?\.\(navChanged\)/);assert.match(dash,/removeListener\?\.\(navChanged\)/);
- assert.match(js,/root\.chrome\.storage\.onChanged\?\.addListener\(\(changes,area\)=>\{if\(area==='local'&&changes\[KEY\]\)apply\(changes\[KEY\]\.newValue\);\}\);/);
+ // A Canvas tab left open across an extension update loses chrome.storage; the listener must not throw there.
+ assert.match(js,/root\.chrome\?\.storage\?\.onChanged\?\.addListener\(\(changes,area\)=>\{if\(area==='local'&&changes\[KEY\]\)apply\(changes\[KEY\]\.newValue\);\}\);/);
  assert.match(js,/for\(const step of undo\.splice\(0\)\)try\{step\(\);\}catch\{\}/,'each layout is undone before the next');
  assert.match(js,/if\(header\)undecorate\(header\);html\.classList\.remove\('chn-nav'\)/,'Canvas original takes every drawing off');
  assert.match(css,/html\.chn-nav\[data-chn-switching\] #header, html\.chn-nav\[data-chn-switching\] #header \*, html\.chn-nav\[data-chn-switching\] #wrapper \{ transition: none !important; animation: none !important; \}/);

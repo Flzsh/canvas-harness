@@ -118,7 +118,7 @@
    saved=values;if(values['reserve:enabled']===false)return;
    if(values[KEY]!=='original')enable(values[KEY]);
    // Chosen again in Make it yours or the popup: the bar changes on this page at once.
-   root.chrome.storage.onChanged?.addListener((changes,area)=>{if(area==='local'&&changes[KEY])apply(changes[KEY].newValue);});
+   root.chrome?.storage?.onChanged?.addListener((changes,area)=>{if(area==='local'&&changes[KEY])apply(changes[KEY].newValue);});
   }).catch(()=>{});
   // canvas-nav.css comes with the page (manifest, document_start): a stylesheet linked from here arrived after the drawn
   // frames, which then showed unstyled for a moment on every page change. It is scoped to html.chn-nav, so it is inert until then.

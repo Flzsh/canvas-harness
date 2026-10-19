@@ -54,3 +54,8 @@ test('the pony\u2019s menu fades in where it is: the pony stops at once and the 
  assert.match(read('pet.css'),/animation:pet-fade \.2s ease-out\}/);assert.match(read('pet.css'),/@keyframes pet-fade\{from\{opacity:0\}\}/);
  assert.match(read('pets.js'),/if\(goal\?\.type==='walk'\)\{goal=null;speed=0;setPose\('stand'\);\}/);
 });
+
+test('the column is not scrolled by the browser while the workspace lays itself out (scroll anchoring off)',()=>{
+ const css=read('refresh.css');
+ assert.match(css,/\.rd \.rd-workspace, \.rd \.rd-workspace \* \{ overflow-anchor: none; \}/);
+});
