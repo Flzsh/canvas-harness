@@ -3,10 +3,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 (function(){
   'use strict';
   const dashboardPath=()=>location.pathname==='/'||location.pathname==='/dashboard'||location.pathname==='/dashboard/';
-  if(window.top!==window||!globalThis.ReserveSite.supported(location.href)||!dashboardPath()||globalThis.ReserveStartup)return;
+  if(window.top!==window||!globalThis.ReserveSite.supported(location.href)||globalThis.ReserveSite.vanillaPage(location)||!dashboardPath()||globalThis.ReserveStartup)return;
   // Preferences alone decide whether to cover Canvas. The controller performs
   // the one fresh account check before opening any owner's saved workspace.
   // The cover waits up to 8s for Canvas (a slow school network often needs more than 2-3s); only then does Canvas show.
+  // Dark mode without a light flash: storage is asynchronous, so the last known theme is kept as a tiny hint in this
+  // origin's localStorage and read at once; the saved setting then confirms or corrects it (and refreshes the hint).
+  const HINT='reserve:startup-theme',darkClass=on=>document.documentElement?.classList.toggle('reserve-startup-dark',on);
+  try{if(localStorage.getItem(HINT)==='dark')darkClass(true);}catch{}
+  try{globalThis.chrome?.storage?.local?.get('reserve:appearance').then(saved=>{const dark=saved?.['reserve:appearance']?.theme==='dark';darkClass(dark);try{if(dark)localStorage.setItem(HINT,'dark');else localStorage.removeItem(HINT);}catch{}}).catch(()=>{});}catch{}
   const startedAt=performance.now(),deadline=startedAt+8000,subscribers=new Set();
   const sheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css'];
   let state='pending',shell,observer,timer,preloaded=false;
@@ -20,7 +25,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     document.removeEventListener('pointerdown',interact,true);
     document.removeEventListener('keydown',interact,true);
     window.removeEventListener('pagehide',release);
-    document.documentElement?.classList.remove('reserve-startup-active');
+    document.documentElement?.classList.remove('reserve-startup-active','reserve-startup-dark');
     shell?.remove();shell=null;
   }
   function release(){
@@ -76,14 +81,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     });
     header.append(brand,escape);
     const message=document.createElement('p');message.textContent='Syncing Canvas…';message.setAttribute('role','status');
-    const layout=document.createElement('div');layout.className='reserve-startup-layout';layout.setAttribute('aria-hidden','true');
-    for(const [kind,label] of [['rail','Courses'],['information','Course information'],['work','Up next'],['reader','Assignment instructions']]){
-      const panel=document.createElement('div');panel.className='reserve-startup-'+kind;
-      const heading=document.createElement('b');heading.textContent=label;panel.append(heading);
-      for(let i=0;i<4;i++){const line=document.createElement('i');panel.append(line);}
-      layout.append(panel);
-    }
-    shell.append(header,message,layout);document.documentElement.append(shell);
+    const art=document.createElement('div');art.className='reserve-startup-art';art.setAttribute('aria-hidden','true');
+    art.innerHTML=globalThis.ReserveStartupArt||'';
+    shell.append(header,art,message);document.documentElement.append(shell);
     // If the bundled prepaint CSS failed, never apply the native-content gate.
     if(getComputedStyle(shell).getPropertyValue('--reserve-startup-ready').trim()!=='1'){release();return;}
     state='active';document.documentElement.classList.add('reserve-startup-active');prepare();

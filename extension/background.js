@@ -1,5 +1,7 @@
 /* Canvas Harness — extension-only AI routing. No externally_connectable entry point. */
-importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js');
+importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js','page-preferences.js');
+// Appearance changes from every page are applied here, one at a time (page-preferences.js).
+globalThis.ReservePagePreferences?.serve();
 (function(){
  'use strict';
  const channels=new Map(),panels=new Set(),requests=new Map(),handoffs=new Map();
@@ -77,6 +79,7 @@ importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js');
  // access to that one site; the same scripts that run on instructure.com are then registered there.
  // Taking access away in the browser's extension settings removes them again.
  const SITES='reserve:sites',PENDING='reserve:pendingSite',PREFIX='ch-site-';
+ function schoolSender(sender){return sender?.id===chrome.runtime.id&&(sender.frameId===undefined||sender.frameId===0)&&['welcome.html','popup.html'].some(page=>sender.url===chrome.runtime.getURL(page));}
  async function grantedSites(){
   const saved=(await chrome.storage.local.get(SITES))[SITES],out=[];
   for(const value of Array.isArray(saved)?saved:[]){
@@ -88,7 +91,7 @@ importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js');
  async function loadSites(){const sites=await grantedSites();ReserveSite.trustSites(sites);return sites;}
  async function registerSites(){
   const sites=await loadSites();
-  if(!chrome.scripting?.registerContentScripts)return sites;
+  if(!chrome.scripting?.registerContentScripts){if(sites.length)throw Error('School site registration is unavailable. Reload Canvas Harness and try again.');return sites;}
   const old=(await chrome.scripting.getRegisteredContentScripts()).map(s=>s.id).filter(id=>id.startsWith(PREFIX));
   if(old.length)await chrome.scripting.unregisterContentScripts({ids:old});
   if(sites.length){
@@ -99,10 +102,13 @@ importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js');
   return sites;
  }
  let ready=loadSites().catch(()=>[]);
- const resync=()=>(ready=registerSites().catch(()=>[]));
- chrome.runtime.onInstalled?.addListener(resync);
- chrome.runtime.onStartup?.addListener(resync);
- chrome.permissions?.onRemoved?.addListener(resync);
+ // Keep the queue usable after a failure, but return this run's rejection to callers awaiting registration.
+ const resync=()=>{const run=ready.then(registerSites);ready=run.catch(()=>[]);return run;};
+ const sync=()=>resync().catch(()=>{});
+ chrome.storage?.onChanged?.addListener((changes,area)=>{if(area==='local'&&changes[SITES])sync();});
+ chrome.runtime.onInstalled?.addListener(sync);
+ chrome.runtime.onStartup?.addListener(sync);
+ chrome.permissions?.onRemoved?.addListener(sync);
  // A first install opens the welcome page, where the student sets their school's Canvas address before visiting it.
  chrome.runtime.onInstalled?.addListener(details=>{if(details?.reason==='install')chrome.tabs.create({url:chrome.runtime.getURL('welcome.html')}).catch?.(()=>{});});
  chrome.permissions?.onAdded?.addListener(async added=>{
@@ -159,6 +165,12 @@ importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js');
   }else port.disconnect();
  }
  chrome.runtime.onMessage.addListener((message,sender,reply)=>{
+  if(message?.type==='ch-school-ready'){
+   const origin=ReserveSite.customSite(message.origin);
+   if(!schoolSender(sender)||!origin||origin!==message.origin){reply({ok:false,error:'Invalid school registration request.'});return;}
+   resync().then(sites=>reply(sites.includes(origin)?{ok:true,origin}:{ok:false,error:'Allow access to your school’s Canvas site and try again.'}),error=>reply({ok:false,error:String(error?.message||error||'School registration failed. Try again.')}));
+   return true;
+  }
   if(message?.type!=='ch-ai-pdf')return;
   ready.then(()=>{
    if(!canvasSender(sender)||!channels.has(sender.tab.id)){reply({ok:false,error:'An active Canvas context is required.'});return;}

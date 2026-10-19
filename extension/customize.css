@@ -70,7 +70,7 @@
 .rd :is(.ch-custom-border,.ch-custom-icon,.ch-custom-banner) img { display: block; width: 100%; height: 100%; }
 .rd .rd-rail-art > .ch-custom-icon { width: 40px; height: 40px; }
 .rd .rd-course-heading:has(> .rd-heading-art > .ch-custom-banner) { display: flex !important; position: relative !important; flex: 1 1 100% !important; }
-.rd[data-workspace=work] .rd-course-heading > .rd-heading-art:has(> .ch-custom-banner) { display: block; position: relative; inset: auto; z-index: 0; width: 100%; height: var(--ch-banner-h,140px); min-height: 0; max-height: var(--ch-banner-h,140px); flex: 1 0 100%; order: -1; overflow: hidden; border-radius: 10px; margin-bottom: 12px; }
+.rd[data-workspace] .rd-course-heading > .rd-heading-art:has(> .ch-custom-banner) { display: block; position: relative; inset: auto; z-index: 0; width: 100%; height: var(--ch-banner-h,140px); min-height: 0; max-height: var(--ch-banner-h,140px); flex: 1 0 100%; order: -1; overflow: hidden; border-radius: 10px; margin-bottom: 12px; }
 .rd .rd-workspace-heading:has(.ch-custom-banner) { padding-right: 0 !important; }
 .rd .rd-course-heading:has(.ch-custom-banner)::after { display: none; }
 .rd .rd-course-banner:has(.ch-custom-banner) { display: flex; flex-wrap: wrap; gap: 12px; }
@@ -80,9 +80,9 @@
 /* A student can upload both a banner and the lettering. Keep their independent
    art pieces visible together, with the accessible HTML heading underneath. */
 @container work-area (min-width:640px) and style(--rd-search-at: bar) {
- .rd[data-workspace=work][data-courses=true] .rd-course-heading[data-titled]:has(> .rd-heading-art > .ch-custom-banner) { flex-wrap: wrap; }
- .rd[data-workspace=work][data-courses=true] .rd-course-heading[data-titled]:has(> .rd-heading-art > .ch-custom-banner) > .rd-heading-art { order: -2; }
- .rd[data-workspace=work][data-courses=true] .rd-course-heading[data-titled]:has(> .rd-heading-art > .ch-custom-banner) > .rd-title-art {
+ .rd[data-workspace][data-courses=true] .rd-course-heading[data-titled]:has(> .rd-heading-art > .ch-custom-banner) { flex-wrap: wrap; }
+ .rd[data-workspace][data-courses=true] .rd-course-heading[data-titled]:has(> .rd-heading-art > .ch-custom-banner) > .rd-heading-art { order: -2; }
+ .rd[data-workspace][data-courses=true] .rd-course-heading[data-titled]:has(> .rd-heading-art > .ch-custom-banner) > .rd-title-art {
   display: block; position: relative; flex: 0 1 calc(140px * var(--rd-name-w,480) / 240); width: min(100%,calc(140px * var(--rd-name-w,480) / 240));
   height: 140px; max-width: 100%; order: -1; z-index: 0; margin: 0 0 4px; align-self: flex-start;
  }

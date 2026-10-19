@@ -1,19 +1,186 @@
 /*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. Third-party components retain their respective attribution. */
-@font-face{font-family:"Literata";src:url("fonts/literata-latin.woff2") format("woff2");font-weight:200 900;font-style:normal;font-display:swap}
-*{box-sizing:border-box}
-html{background:#F3F1EA}
-body{margin:0;min-height:100vh;display:grid;place-items:start center;padding:clamp(24px,8vh,96px) 16px 48px;background:#F3F1EA;color:#141413;font:15px/1.55 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif}
-.sheet{width:min(560px,100%);background:#FAF9F5;border:1.5px solid #3D3D3A;border-radius:18px 14px 20px 12px;box-shadow:6px 7px 0 #E3D9C6;padding:clamp(22px,5vw,40px)}
-header{display:flex;align-items:center;gap:14px}header>img{flex-shrink:0;object-fit:contain}
-h1{font:540 clamp(24px,4vw,30px)/1.1 "Literata","Iowan Old Style","Sitka Heading",Georgia,serif;letter-spacing:-.02em;margin:0}
-header p{margin:6px 0 0;font-size:12px;color:#5E5D59}
-.lead{margin:26px 0 18px;font-size:16px}
-label{display:block;font-weight:600;font-size:13px}
-input{display:block;width:100%;margin-top:8px;border:1px solid #D9D6CA;border-radius:10px;padding:11px 12px;background:#fff;color:#141413;font:14px system-ui}
-.hint{font-size:12.5px;color:#5E5D59;margin:10px 0 18px}.hint b{font-weight:600;color:#3D3D3A}
-button{display:block;width:100%;padding:13px;border:0;border-radius:999px;background:#A9522F;color:#fff;font:600 14px "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;cursor:pointer;transition:background-color 140ms cubic-bezier(.25,.1,.25,1)}
-button:hover{background:#8C4226}
-#status{min-height:1.5em;font-size:12.5px;color:#5E5D59;margin:12px 0 0}
-.notes{margin:22px 0 0;padding:16px 0 0 18px;border-top:1px solid #E8E6DC;font-size:12.5px;color:#5E5D59}.notes li+li{margin-top:6px}
-:is(button,input):focus-visible{outline:2px solid #C96442;outline-offset:2px}
-@media(prefers-reduced-motion:reduce){button{transition:none}}
+@font-face{font-family:Literata;src:url(fonts/literata-latin.woff2) format('woff2');font-style:normal;font-weight:200 900;font-display:swap}
+/* Animate the inherited palette itself, so ink and paper stay in the same frame. */
+@property --paper{syntax:'<color>';inherits:true;initial-value:#FAF9F5}
+@property --background{syntax:'<color>';inherits:true;initial-value:#F3F0E8}
+@property --ink{syntax:'<color>';inherits:true;initial-value:#141413}
+@property --clay{syntax:'<color>';inherits:true;initial-value:#A9522F}
+@property --muted{syntax:'<color>';inherits:true;initial-value:#625F59}
+@property --rule{syntax:'<color>';inherits:true;initial-value:#DED9CE}
+@property --line{syntax:'<color>';inherits:true;initial-value:#34312C}
+@property --card{syntax:'<color>';inherits:true;initial-value:#FFFDF8}
+:root{color-scheme:light;--paper:#FAF9F5;--background:#F3F0E8;--ink:#141413;--clay:#A9522F;--muted:#625F59;--rule:#DED9CE;--line:#34312C;--card:#FFFDF8;--intro-btn-ink:var(--paper)}
+:root[data-theme=dark]{color-scheme:dark;--paper:#222320;--background:#191A18;--ink:#D2C8B2;--clay:#E2A785;--muted:#B1AD9F;--rule:#54564C;--line:#D2C8B2;--card:#2C2E29;--intro-btn-ink:var(--paper)}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{min-width:320px;margin:0;background:var(--background);color:var(--ink)}
+body{font:15px/1.5 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif}
+button,input{font:inherit}button{cursor:pointer}button:disabled{cursor:default;opacity:.46}
+:is(button,input):focus-visible{outline:3px solid var(--clay);outline-offset:5px}
+:is(h1,h2)[tabindex='-1']:focus{outline:none}
+.tour{height:100vh;height:100svh;display:grid;grid-template-rows:auto minmax(0,1fr) auto;background:var(--paper);overflow:hidden}
+.tour-top{pointer-events:none;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px clamp(20px,4vw,64px) 0;position:relative;z-index:4;transition:opacity 200ms}
+.tour[data-room-shot=pc] .tour-top{opacity:0}
+.tour-brand{display:flex;align-items:center}
+.brand-logo{display:block;flex:none;width:28px;height:28px;overflow:visible;transform-origin:50% 50%;position:relative;z-index:12}
+.tour-progress{display:flex;align-items:center}
+.intro-layer{position:fixed;inset:0;z-index:1;background:var(--paper);overflow:hidden;transition:opacity 400ms;pointer-events:none}
+.intro-layer svg{width:100%;height:100%;display:block}
+.intro-layer.is-away{opacity:0}
+.intro-layer.is-restored{transition:none}
+.finish-fx{position:fixed;inset:0;pointer-events:none;z-index:50;overflow:hidden}
+.tour[data-current-step=intro] :is(.tour-brand,.tour-progress){opacity:0;pointer-events:none}
+.tour[data-current-step=intro] .tour-top,.tour[data-current-step=intro] .tour-steps,.tour[data-current-step=intro] .tour-footer{background:transparent}
+.tour[data-current-step=intro]{height:100vh;height:100svh;grid-template-rows:auto minmax(0,1fr) auto}
+.tour-steps{position:fixed;inset:0;min-height:0;z-index:2;pointer-events:none}
+.tour-step{position:absolute;inset:0;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px clamp(20px,4vw,70px);text-align:center;visibility:hidden;pointer-events:none}
+.tour-step.is-current{visibility:visible;pointer-events:auto}
+.tour-step.is-leaving{visibility:visible;pointer-events:none}
+h1,h2{font-family:Literata,'Iowan Old Style','Sitka Heading',Georgia,serif;font-weight:560;letter-spacing:-.03em;position:relative}
+h1{font-size:clamp(30px,4vw,44px);line-height:1.2;margin:0 0 21px}
+h2{font-size:clamp(27px,3vw,32px);line-height:1.2;margin:0 0 16px}
+.heading-underline{position:absolute;left:5%;top:100%;width:90%;height:12px;overflow:visible;stroke:var(--clay);fill:none;stroke-width:1.8;stroke-linecap:round}
+.subtitle{font-size:clamp(14px,1.6vw,17px);line-height:1.6;color:var(--muted);margin:0 0 25px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.intro-start{position:fixed;padding:0;background:transparent;border:0;color:transparent;border-radius:16px}
+.intro-start:disabled{pointer-events:none}
+.intro-start:focus-visible{outline:2px solid var(--clay);outline-offset:5px;border-radius:16px}
+.intro-start.is-fallback{left:50%;top:65%;width:160px;height:48px;transform:translateX(-50%);background:var(--clay);color:var(--intro-btn-ink)}
+.art-ink{fill:none;stroke:var(--ink);stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.scene{width:100%;height:100%;margin:0 auto;flex:none}
+.scene svg{display:block;width:100%;height:100%}
+.sketch-frame{position:relative}
+.sketch-frame::after{content:'';position:absolute;inset:0;border:1px solid var(--rule);border-radius:8px 11px 9px 7px/10px 8px 12px 9px;pointer-events:none}
+.pen-outline{position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px);fill:none;stroke:var(--clay);stroke-width:1.5;overflow:visible;pointer-events:none}
+.pen-outline path{vector-effect:non-scaling-stroke;stroke-dasharray:1;stroke-dashoffset:1}
+button:hover .pen-outline path,button:focus-visible .pen-outline path{stroke-dashoffset:0}
+.choice-tick{width:21px;height:21px;fill:none;stroke:var(--clay);stroke-width:2;stroke-linecap:round;flex:none;position:absolute;right:9px;top:8px;opacity:0}
+.is-selected>.choice-tick{opacity:1}
+.menu-demo{position:relative;width:100%;height:100%;min-height:0;border-radius:10px;background:var(--card);overflow:hidden}
+.demo-page{position:absolute;left:92px;right:26px;top:22px;bottom:20px;overflow:hidden}
+.page-scene{width:100%;height:100%}.page-scene svg{height:100%}
+.demo-edge{position:absolute;z-index:2;top:43%;left:0;width:3px;height:44px;background:var(--clay);border-radius:0 3px 3px 0}
+.demo-nav{position:absolute;z-index:2;left:5px;top:36px;height:calc(100% - 72px);width:64px;padding:7px 8px;border-radius:5px;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:space-around;gap:3px}
+.demo-nav-surface{position:absolute;inset:0;background:var(--paper);border-radius:5px;z-index:-1}
+.demo-nav-mark{font:700 14px/20px Literata,Georgia,serif;color:var(--clay)}
+.demo-icon{display:block;flex:none;width:29px;height:29px}
+.chn-ic{width:100%;height:100%;overflow:visible}
+.chn-ic .k{fill:none;stroke:var(--ink);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.chn-ic .h{fill:none;stroke:var(--ink);stroke-width:.8;stroke-linecap:round;stroke-linejoin:round;opacity:.7}
+.chn-ic .d{fill:var(--ink)}
+.chn-ic :is(.x-wave,.x-lean,.x-rings){transform-box:fill-box}
+.x-wave{transform-origin:85% 90%}.x-lean{transform-origin:0 100%}.x-rings{transform-origin:50% 100%}
+.x-needle{transform-origin:20px 27px;transform-box:view-box}.x-flag{transform-origin:33px 21.6px;transform-box:view-box}
+.x-circle{stroke-dasharray:1}
+.demo-pointer{position:absolute;width:27px;height:33px;z-index:3;left:0;top:0;pointer-events:none;opacity:0}
+.menu-demo[data-layout=shown] .demo-nav,.menu-demo[data-layout=original] .demo-nav{top:9px;height:calc(100% - 18px)}
+.menu-demo[data-layout=top] .demo-nav{left:11px;top:8px;width:calc(100% - 22px);height:48px;flex-direction:row;justify-content:flex-start;gap:24px;padding:7px 15px}
+.menu-demo[data-layout=top] .demo-page{left:26px;top:70px}
+.menu-demo:not([data-layout=drawn]) .demo-edge{display:none}
+.menu-demo[data-layout=original] .demo-nav{--ink:#D2C8B2;--clay:#E2A785}
+.menu-demo[data-layout=original] .demo-nav-surface{background:#262526}
+.nav-options{display:flex;flex-wrap:nowrap;justify-content:center;gap:12px;margin-top:12px;min-width:0}
+.nav-options .wr-choice{position:relative;flex:0 1 180px;min-width:0;max-width:200px;color:var(--ink)}
+.nav-options .wr-layout{flex:none;width:100%;max-height:100px;object-fit:contain}
+.menu-description{font-size:13px;color:var(--muted);min-height:20px;margin:8px 0 0}
+.meadow{position:fixed;inset:0;overflow:hidden;pointer-events:none}
+/* pet-art.js has a 72 x 64 box and ground at y=60: 60/72 = 5/6 of its width. */
+.pet-actor{position:fixed;will-change:transform}
+.pet-actor .pet{width:100%}.pet-actor .pet-svg{transition:none}
+/* The rig is painted on its parts, exactly as pets.js paint(). CSS owns blink/tail/cheer. */
+.pet-actor .pet-leg{transition:none}.pet-actor .pet-head{display:initial;margin:0;animation:none}
+.pet-actor .pet-tail{animation:tour-tail 12s linear infinite}
+@keyframes tour-tail{0%,30%,48%,100%{transform:rotate(5deg)}35%{transform:rotate(-13deg)}41%{transform:rotate(9deg)}}
+.pet-actor .pet[data-pose=cheer] .pet-tail{animation:pet-fly .33s ease-in-out infinite alternate}
+.pet-actor .pet-sparks{display:none!important}
+.tour-bubble{position:fixed;transform:translateY(-100%);min-width:165px;max-width:calc(100vw - 16px);padding:13px 19px 20px;font:14px/1.5 Literata,Georgia,serif;opacity:0;overflow-wrap:anywhere}
+.bubble-outline{position:absolute;inset:0;width:100%;height:100%;fill:var(--card);stroke:var(--ink);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.tour-bubble.is-flipped .bubble-outline{transform:scaleX(-1)}.tour-bubble span{position:relative}.meadow.is-arrived .tour-bubble{opacity:1}
+.pet-toggle{display:inline-flex;align-items:center;gap:17px;font-size:14px;font-weight:650;cursor:pointer;position:relative}
+.pet-toggle input{position:absolute;width:1px;height:1px;opacity:0}
+.wr-toggle-wrap{display:block;flex:none;width:56px;height:28px}
+.wr-toggle-wrap .wr-toggle{width:100%;height:100%}
+.pet-toggle input:focus-visible+.wr-toggle-wrap{outline:3px solid var(--clay);outline-offset:4px;border-radius:18px}
+.tour-footer{display:grid;grid-template-columns:1fr minmax(0,2fr) 1fr;align-items:center;gap:20px;padding:20px clamp(20px,4vw,64px) 28px;position:relative;z-index:3}
+.tour-status{text-align:center;min-height:1.5em;margin:0;color:var(--muted);font-size:12px;line-height:1.45}
+.tour-status[data-tone=error]{color:#B75438}
+/* Controls borrow their places from the owner's camera; no art is redrawn here. */
+#room-stage{z-index:0}
+.tour-step[data-step=appearance],.tour-step[data-step=companion]{padding:0}
+.wr-pc-content{position:fixed;inset:auto;overflow:auto;pointer-events:auto;color:var(--ink);background:var(--paper)}
+.wr-pc-content .tour-step{padding:clamp(12px,2vh,24px) clamp(16px,3vw,48px)}
+.wr-pc-content h2{font-size:clamp(21px,3vw,32px);margin-bottom:12px}
+.wr-pc-content .subtitle{margin-bottom:14px}
+#school-start-page{width:min(640px,100%);max-height:52%;aspect-ratio:760/320;flex:0 1 auto;margin:0 0 18px;min-height:0}
+#school-start-page svg{position:static;inset:auto;display:block;width:auto;max-width:640px;height:100%;max-height:100%;object-fit:contain}
+#school-title{flex:none;margin:0 0 6px}
+.wr-pc-content [data-step=school] .subtitle{flex:none;margin:0}
+.wr-pc-content [data-step=navigation]{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto auto;justify-content:stretch;padding-bottom:clamp(66px,10vh,90px)}
+.wr-pc-content .menu-demo{width:86%;justify-self:center;align-self:stretch}
+.school-form{pointer-events:none}
+#school-url{position:fixed;pointer-events:auto;padding:0 12px 0 34px;background:transparent;border:0;border-radius:16px;color:#302B24;font:15.5px/1.2 Consolas,monospace}
+#school-url::placeholder{color:#777066;opacity:1}
+#school-url:focus-visible{outline:2px solid var(--clay);outline-offset:3px}
+.room-hit{position:fixed;pointer-events:auto;background:transparent;border:0;padding:0;color:transparent;border-radius:8px}
+.room-hit:disabled{opacity:1}
+.room-hit:focus-visible{outline:3px solid var(--clay);outline-offset:4px}
+#address-loading{position:fixed;background:#A9522F;transform-origin:left center;pointer-events:none}
+#school-spotlight{position:fixed;z-index:6;pointer-events:none;border-radius:14px;box-shadow:0 0 0 100vmax rgba(20,20,19,.55);filter:blur(12px);transition:opacity 300ms}
+#school-note{position:fixed;z-index:7;pointer-events:none;background:var(--card);color:var(--ink);border:1.5px solid var(--ink);border-radius:2px 4px 3px 2px;padding:14px 18px;transform:rotate(-1deg);font:14px/1.5 Literata,Georgia,serif;box-shadow:2px 4px 8px #14141324;transition:opacity 300ms}
+#school-note::before{content:'';position:absolute;width:62px;height:16px;left:calc(50% - 31px);top:-9px;background:#D6BE8DBB;border:1px solid #8C6A2A33;transform:rotate(3deg)}
+#school-note svg{position:absolute;left:12px;bottom:calc(100% + 2px);width:40px;height:38px;fill:none;stroke:var(--ink);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+#school-spotlight.is-clearing,#school-note.is-clearing{opacity:0}
+.looks{position:fixed;inset:0;pointer-events:none}
+#appearance-title{position:fixed;left:50%;top:4.5%;transform:translateX(-50%);color:#302B24;white-space:nowrap}
+:root[data-theme=dark] #appearance-title{color:#302B24;text-shadow:0 0 4px #F4EAD8,0 0 12px #F4EAD8,0 0 22px #F4EAD8}
+#companion-title{position:fixed;margin:0;transform:translate(-50%,-50%);white-space:nowrap}
+.pet-toggle{position:fixed;justify-content:center;gap:10px;font-size:12px;color:#302B24;padding:4px}
+.pet-toggle .wr-toggle-wrap{width:43px;height:24px}
+.tour-footer{position:fixed;left:0;right:0;bottom:0;pointer-events:none}
+.tour-footer>button{pointer-events:auto}
+.tour-footer>.wr-strap-button{position:relative}
+.tour-footer.is-pc{right:auto;bottom:auto;padding:0;gap:16px}
+.tour-footer.is-pc>.wr-strap-button{height:calc(44px*var(--ui,1))}
+#back{grid-column:1;justify-self:start}
+.tour-status{grid-column:2;background:#FAF4E6;color:#625F59;border-radius:16px;padding:5px 10px}
+.tour-status:empty{background:transparent}
+#next{grid-column:3;justify-self:end}
+@media(max-width:759px){
+ .tour-footer>.wr-strap-button{width:114px;height:38px}
+}
+@media(max-width:740px){
+ .tour-top{padding:14px 16px 0;gap:8px}.brand-logo{width:24px;height:24px}
+ .wr-pc-content .tour-step{padding:12px}.wr-pc-content h2{font-size:22px}
+ .nav-options{gap:6px;margin-top:10px}.nav-options .wr-choice{font-size:11px}.nav-options .wr-layout{max-height:70px}
+ .demo-nav{width:48px}.demo-page{left:70px;right:12px}.menu-demo[data-layout=top] .demo-nav{gap:18px}.demo-icon{width:26px;height:26px}
+ .tour-footer{grid-template-columns:auto minmax(0,1fr) auto;padding:12px 16px 18px;gap:10px}.tour-status{font-size:11px}
+ .pet-toggle{gap:5px;font-size:10px}.pet-toggle .wr-toggle-wrap{width:32px;height:18px}
+ .tour-bubble{min-width:118px;padding:8px 11px 14px;font-size:11px}
+}
+/* Final drawings are the base state. JS samples paused animations only on visible film frames. */
+.tour[data-paused=true] *, .tour[data-paused=true] *::before,.tour[data-paused=true] *::after{animation-play-state:paused!important}
+.tour[data-still=true] *, .tour[data-finished=true] *{animation:none!important;transition:none!important}
+@media(prefers-reduced-motion:reduce){
+ *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+ .demo-pointer{display:none}
+}
+.tour-steps *,.tour-steps *::before,.tour-steps *::after{animation-play-state:paused!important}
+.meadow.is-off .pet-actor{transform:translateX(65vw)}
+
+/* ARTWORK AT NIGHT in the tour's drawings (welcome-scenes.js night(), same steps as the dashboard's applyNight): chalk turns
+   the pen chalk, softens the colour washes and darkens white fills; paper keeps the drawing light on a paper patch, dimmed.
+   The continuous room and meadow own their palettes in welcome-room.js. */
+svg[data-night=chalk] path[fill]:not([fill="none"]):not([fill^="var"]):not(:is(.star,.moon,.fairy,.flame,.glow,.bulb) *){opacity:var(--sc-wash,.7)}
+svg[data-night=chalk] :is([fill="#FFFFFF" i],[fill="#FBF6EA" i],[fill="#FFFDF8" i],[fill="#FAF9F5" i],[fill="#F6F3EC" i],[fill="#FFFDF6" i]):not(.cloud *){fill:#2B2A27;opacity:1}
+svg[data-night=chalk] :is([fill="#F4EAD8" i],[fill="#EFE9DC" i],[fill="#ECE7DC" i],[fill="#E9E4DA" i],[fill="#F3EDE0" i]){fill:#363430;opacity:1}
+svg[data-night=paper]{background:#F2EDE1;border-radius:14px;filter:brightness(var(--sc-b,.58))}
+
+/* large windows: the tour's own text and controls scale with --ui (set in placeOverlays) like the drawings */
+.wr-pc-content>.tour-step{zoom:var(--ui,1)}
+.tour-top>*{zoom:var(--ui,1)}
+.wr-strap-button{width:calc(132px*var(--ui,1));height:calc(44px*var(--ui,1))}
+#appearance-title,#companion-title{font-size:calc(32px*var(--ui,1))}
+#school-note{font-size:calc(14px*var(--ui,1));padding:calc(14px*var(--ui,1)) calc(18px*var(--ui,1))}
+#school-url{font-size:calc(15.5px*var(--ui,1))}
+.pet-toggle{font-size:calc(12px*var(--ui,1))}.pet-toggle .wr-toggle-wrap{width:calc(43px*var(--ui,1));height:calc(24px*var(--ui,1))}
+.tour-bubble{font-size:calc(14px*var(--ui,1))}

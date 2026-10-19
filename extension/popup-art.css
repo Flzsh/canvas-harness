@@ -1,0 +1,7 @@
+/* The popup's row icons (generated): a one-shot action on hover / focus-visible of the row (.pi-i). */
+.pi-i svg{overflow:visible}.pi-i svg *{transform-box:fill-box}.pi-i .hatch{opacity:.5}
+.pi-i:is(:hover,:focus-visible) .pi-sun{animation:pi-sun .8s ease-in-out}@keyframes pi-sun{50%{transform:translate(-1.5px,1px) rotate(-12deg)}}
+.pi-i:is(:hover,:focus-visible) .pi-moon{animation:pi-moon .8s ease-in-out}@keyframes pi-moon{50%{transform:translate(1px,-1.5px) rotate(10deg)}}
+.pi-i:is(:hover,:focus-visible) .pi-bar{animation:pi-bar .6s cubic-bezier(.3,1.4,.5,1)}@keyframes pi-bar{0%{transform:translateX(-5px);opacity:.3}}
+.pi-i:is(:hover,:focus-visible) .pi-head{transform-origin:40% 100%;animation:pi-nod .7s ease-in-out}@keyframes pi-nod{30%{transform:rotate(-7deg)}65%{transform:rotate(4deg)}}
+@media (prefers-reduced-motion:reduce){.pi-i svg *{animation:none!important}}

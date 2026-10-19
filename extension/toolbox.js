@@ -3,11 +3,12 @@
  'use strict';
  const captureDrafts=new Map();
  // A failed reminder draft remains protected even after its tool window is closed.
- root.addEventListener?.('beforeunload',event=>{if(captureDrafts.size){event.preventDefault();event.returnValue='';}});
+ if(!root.ReserveSite?.vanillaPage(root.location))root.addEventListener?.('beforeunload',event=>{if(captureDrafts.size){event.preventDefault();event.returnValue='';}});
  const sections=[['quick','Quick open','search'],['ai','AI','book'],['calculator','Calculator','calculator'],['gpa','GPA','grades']];
  const E=value=>root.ReserveUI.escapeHTML(value),I=name=>root.ReserveIcon(name,'rd-icon');
  const mod=/Mac|iP(hone|ad|od)/.test(root.navigator?.platform||'')?'⌘':'Ctrl';
  function create({container,store,getContext,onNavigate,onPreview,onPlanner,onRefresh,materials,aiConfig={},onDockChange=()=>{}}){
+  if(root.ReserveSite?.vanillaPage(root.location))return null;
   let toolMotion,dockResize,aiPanel,gpaPanel,captureDraft=null,capturing=false,captureUndo=null;
   let dialog,tool='quick',trigger,dead=false,collapsed=false,calculatorMode='graphing',query='',index=0,results=[],cacheLoading=false,cacheMessage='',status='';
   let personal=store.get();

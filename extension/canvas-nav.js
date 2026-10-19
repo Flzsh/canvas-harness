@@ -119,9 +119,10 @@
    // Chosen again in Make it yours or the popup: the bar changes on this page at once.
    root.chrome.storage.onChanged?.addListener((changes,area)=>{if(area==='local'&&changes[KEY])apply(changes[KEY].newValue);});
   }).catch(()=>{});
-  let linked=false,undo=[];
+  // canvas-nav.css comes with the page (manifest, document_start): a stylesheet linked from here arrived after the drawn
+  // frames, which then showed unstyled for a moment on every page change. It is scoped to html.chn-nav, so it is inert until then.
+  let undo=[];
   function enable(choice){
-   if(!linked){linked=true;const link=root.document.createElement('link');link.rel='stylesheet';link.href=root.chrome.runtime.getURL('canvas-nav.css');(root.document.head||html).append(link);}
    html.classList.add('chn-nav');layout(choice);applyPalette(saved[PALETTE]);
    if(header){decorate(header);setLogo();drawer();topBar();}else watch();
   }

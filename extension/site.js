@@ -29,6 +29,16 @@
  function canvasPage(doc=root.document){
   try{return !!(doc?.getElementById?.('application')||doc?.querySelector?.('.ic-app, #login_form, #new_login, .ic-Login'));}catch{return false;}
  }
+ // Assignment instructions, submission/feedback details and submit/upload views
+ // belong entirely to Canvas. Match the pathname, irrespective of query/hash,
+ // and include descendants (submissions/new, submissions/:user, etc.). The
+ // assignment index and syllabus are still ordinary enhanced native pages.
+ function vanillaPage(value=root.location){
+  try{
+   const pathname=typeof value?.pathname==='string'?value.pathname:new URL(value,root.location?.href||'https://school.instructure.com/').pathname;
+   return /^\/courses\/\d+\/assignments\/\d+(?:\/|$)/.test(decodeURIComponent(pathname));
+  }catch{return false;}
+ }
  function origin(){
   const value=root.location?.origin;
   if(supported(value))return new URL(value).origin;
@@ -37,6 +47,6 @@
   return 'https://school.instructure.com';
  }
  function timeZone(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}catch{return 'UTC';}}
- const api=Object.freeze({supported,customSite,trustSites,canvasPage,origin,timeZone});root.ReserveSite=api;
+ const api=Object.freeze({supported,customSite,trustSites,canvasPage,vanillaPage,origin,timeZone});root.ReserveSite=api;
  if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

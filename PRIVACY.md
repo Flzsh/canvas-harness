@@ -1,6 +1,6 @@
 # Canvas Harness privacy
 
-Applies to Canvas Harness 2.28.3. Last updated October 15, 2026.
+Applies to Canvas Harness 2.29.0. Last updated October 17, 2026.
 
 Canvas Harness is a browser extension maintained by Flzsh. It displays information from the Canvas account already signed in on your school's website. It has no developer-operated account service, analytics collector or tracking endpoint in the extension code for this release.
 
@@ -8,6 +8,7 @@ Canvas Harness is a browser extension maintained by Flzsh. It displays informati
 
 - Canvas Harness reads courses, assignments, due dates, teacher materials, announcements and grades that your signed-in Canvas account is allowed to view. Canvas API requests are read-only.
 - The extension can cache fetched Canvas information, including course and assignment details and grade data, in your browser. Personal notes, plans, bookmarks, homework check-offs, imported course artwork, layout choices, GPA preferences and the study companion's name, look and progress counters are also stored locally.
+- Your look settings (light or dark theme, motion, artwork at night, whether the pony is shown) are kept once for this browser, not per account. So the opening screen can be dark from its first moment, the word "dark" (and nothing else) is remembered in the Canvas site's own browser storage while dark is chosen; choosing light removes it.
 - The extension uses Chrome/Edge extension local storage and separates saved data by school Canvas origin and account ID. It does not send these records to a Canvas Harness developer server or synchronize them through a Canvas Harness account.
 - Cached coursework becomes visible only after the signed-in Canvas account is verified. Returning to an idle tab temporarily hides private content while the account is checked again; a different account cannot inherit the previous account's visible workspace. The one exception is a switch you control: **Open at once** (off unless you turn it on) shows your saved workspace immediately on load and on returning to the tab while the same account check runs, and closes the workspace if the check fails. While it is on, the extension also remembers the account ID that last opened the workspace on that Canvas site. Leave it off on a shared computer.
 - Grades are hidden by default in the interface, but hiding them does not necessarily remove them from the local cache. GPA and what-if calculations run locally. Grade and GPA data are excluded from the AI context builder.

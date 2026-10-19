@@ -1087,7 +1087,7 @@
     function snapshot(target){
       if(dead||reduced()||!pointer())return null;
       const shell=shellOf();if(!shell)return null;
-      const snap={at:now(),target:keyOf(target),geo:{...geo},titles:new Map(),counts:new Map(),rows:new Map(),units:new Map(),art:{},toast:null,course:container.dataset?.courseId,readerId:container.querySelector('.rd-reader')?.dataset?.id};
+      const snap={at:now(),target:keyOf(target),geo:{...geo},titles:new Map(),counts:new Map(),rows:new Map(),units:new Map(),art:{},toast:null,course:container.dataset?.courseId,heading:container.querySelector('.rd-workspace-heading'),readerId:container.querySelector('.rd-reader')?.dataset?.id};
       // A rail row under the pointer: how its frame (and the chosen row's) looks now, for the pen's draw-in.
       try{snap.frame=frames.before(target);}catch{snap.frame=null;}
       for(const [role,selector] of TITLES){
@@ -1191,7 +1191,7 @@
     // Workspace tab: the pill leads; new page regions fade simultaneously in place.
     function workspace(element,snap,list){
       const regions=[];
-      for(const node of element.querySelectorAll?.(REGIONS)||[]){if(regions.some(r=>r.node.contains(node)))continue;const rect=node.getBoundingClientRect();if(inView(rect))regions.push({node,rect});}
+      for(const node of element.querySelectorAll?.(REGIONS)||[]){if(node===snap?.heading||snap?.heading?.contains(node)||regions.some(r=>r.node.contains(node)))continue;const rect=node.getBoundingClientRect();if(inView(rect))regions.push({node,rect});}
       regions.forEach(({node})=>{const head=HEADINGS.test(node.className||'');enter(node,{kind:head?'region':'content',list});quiet(node);});
     }
     // A new view of the list; the reader follows only if its assignment changed.
@@ -1235,7 +1235,7 @@
       for(const [element,group] of active){group.cancel();mark([element,...group.scopes],'settled');}
       active.clear();clearGhosts();
     }
-    function cancelAll(){cancelUi();frames.cancel();art.cancel();}
+    function cancelAll({preserveArt=false}={}){cancelUi();frames.cancel();if(!preserveArt)art.cancel();}
     function track(element,list,scopes=[]){
       const animations=list.filter(Boolean);
       const group={scopes,cancel(){for(const animation of animations)animation.cancel?.();}};

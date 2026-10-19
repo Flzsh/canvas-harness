@@ -44,8 +44,15 @@ test('Canvas dashboard button restores the native dashboard without deleting it'
  const toolbar=root.children.find(el=>el.className==='reserve-toolbar');toolbar.querySelector('[data-native]').events.click();
  assert.equal(f.native.hidden,false);assert.equal(f.sidebar.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
 });
-test('course and submission pages do not start course downloads or replace native content',async()=>{
- const f=fixture('/courses/7/assignments/12');await new Promise(setImmediate);assert.equal(f.started,0);assert.equal(f.nativeToolsCreated,1);assert.equal(f.native.hidden,false);assert.equal(f.nodes.has('reserve-companion-host'),false);
+test('assignment and submission pages have no dock, tools, downloads or replacement content',async()=>{
+ for(const pathname of ['/courses/7/assignments/12','/courses/7/assignments/12/submissions/42','/courses/7/assignments/12/submissions/new']){
+  const f=fixture(pathname,'?module_item_id=25');await new Promise(setImmediate);assert.equal(f.started,0);assert.equal(f.nativeToolsCreated,0);assert.equal(f.native.hidden,false);assert.equal(f.sidebar.hidden,false);assert.equal(f.nodes.has('reserve-companion-host'),false);assert.equal(f.nodes.has('reserve-companion-dock'),false);assert.equal(f.head.children.length,0);assert.deepEqual(f.events,{});
+ }
+});
+test('other native course pages keep their dock and tools',async()=>{
+ for(const pathname of ['/courses/7','/courses/7/modules','/courses/7/pages/intro','/courses/7/files/12','/courses/7/assignments']){
+  const f=fixture(pathname);await new Promise(setImmediate);assert.equal(f.started,0);assert.equal(f.nativeToolsCreated,1);assert.equal(f.nodes.has('reserve-companion-dock'),true);assert.equal(f.native.hidden,false);
+ }
 });
 test('a native toolbox shortcut opens the requested workspace without an intermediate navigation step',async()=>{
  const f=fixture('/','?reserve=open&workspace=materials&course=7');await new Promise(setImmediate);f.deliver();assert.equal(f.dashboardOptions.initialState.workspace,'materials');assert.equal(f.dashboardOptions.initialState.courseId,'7');assert.equal(f.nativeToolsCreated,0);

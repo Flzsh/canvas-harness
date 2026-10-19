@@ -20,6 +20,7 @@ function fixture(options={}){
     contains(el){return this===el||this.children.some(x=>x.contains(el));}
     querySelector(key){return this._queries[key]||this.children.map(x=>x.querySelector(key)).find(Boolean)||null;}
     set innerHTML(value){this._html=value;for(const key of ['button','span','[data-dashboard]','[data-native]']){const el=new Element(key);this._queries[key]=el;el.parentElement=this;}}
+    get innerHTML(){return this._html||'';}
     remove(){if(this.parentElement)this.parentElement.children=this.parentElement.children.filter(x=>x!==this);this.parentElement=null;}
     scrollIntoView(){}
   }
@@ -51,7 +52,7 @@ function fixture(options={}){
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(extension,'site.js'),'utf8'),context);
   function run(name,optional=false){const file=path.join(extension,name);if(optional&&!fs.existsSync(file))return;vm.runInContext(fs.readFileSync(file,'utf8'),context,{filename:name});}
-  if(!options.skipStartup)run('startup.js',true);
+  if(!options.skipStartup){if(!options.missingArt)run('startup-art.js');run('startup.js',true);}
   function dispatch(list,event={}){for(const fn of [...(list||[])])fn(event);}
   return {context,html,native,sidebar,profile,network,preflight,reads,sessionData,document,mountedUsers,
     get active(){return html.classList.contains('reserve-startup-active');},get shell(){return document.getElementById('reserve-startup-shell');},get host(){return document.getElementById('reserve-companion-host');},
@@ -170,7 +171,7 @@ test('manifest starts the small guard before the early controller with optional 
   const manifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json')));
   const startup=manifest.content_scripts.find(x=>x.js.includes('startup.js'));
   assert.ok(startup,'a document_start bootstrap must be registered');
-  assert.equal(startup.run_at,'document_start');assert.deepEqual(startup.js,['site.js','startup.js']);assert.deepEqual(startup.css,['startup.css']);assert.equal(startup.all_frames,false);
+  assert.equal(startup.run_at,'document_start');assert.deepEqual(startup.js,['site.js','startup-art.js','startup.js']);assert.deepEqual(startup.css,['startup.css','startup-art.css','canvas-nav.css']);assert.equal(startup.all_frames,false);
   assert.equal(manifest.content_scripts.find(x=>x.js.includes('content.js')).run_at,'document_start');assert.ok(manifest.content_scripts.indexOf(startup)<manifest.content_scripts.findIndex(x=>x.js.includes('content.js')));assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen']);
 });
 
@@ -191,9 +192,16 @@ test('early controller waits for page containers, then starts once before parsin
 });
 
 test('native course tools wait for completed markup when the controller is registered early',async()=>{
- const f=fixture({pathname:'/courses/7/assignments/12'});f.content();await flush();
+ const f=fixture({pathname:'/courses/7/modules'});f.content();await flush();
  assert.equal(f.document.getElementById('reserve-companion-dock'),undefined);assert.equal(f.profileCalls,0);
  f.parsed();await flush();assert.ok(f.document.getElementById('reserve-companion-dock'));assert.equal(f.profileCalls,0);assert.equal(f.host,undefined);
+});
+
+test('parsing an assignment or submission never starts the native launcher',async()=>{
+ for(const pathname of ['/courses/7/assignments/12','/courses/7/assignments/12/submissions/42','/courses/7/assignments/12/submissions/new']){
+  const f=fixture({pathname,search:'?module_item_id=25'});f.content();await flush();f.parsed();await flush();
+  assert.equal(f.document.getElementById('reserve-companion-dock'),undefined);assert.equal(f.profileCalls,0);assert.equal(f.host,undefined);assert.equal(f.active,false);
+ }
 });
 
 test('duplicate controller delivery cannot create another pending launcher or session',async()=>{
@@ -223,9 +231,39 @@ test('startup timeout before page containers appear cannot cause a late automati
  assert.equal(f.profileCalls,0);assert.equal(f.host,undefined);assert.equal(f.native.hidden,false);
 });
 test('opted-in dashboard gets a generic prepaint shell without reading cached data or making a competing request',async()=>{
-  const f=fixture();await flush();assert.equal(f.active,true);assert.ok(f.shell);assert.deepEqual(f.reads,['reserve:enabled']);assert.equal(f.preflightCalls,0);assert.equal(f.profileCalls,0);assert.equal(f.cacheReads,0);assert.equal(f.native.hidden,false);
+  const f=fixture();await flush();assert.equal(f.active,true);assert.ok(f.shell);assert.deepEqual(f.reads.filter(key=>key!=='reserve:appearance'),['reserve:enabled'],'only the device theme is read besides the switch');assert.equal(f.preflightCalls,0);assert.equal(f.profileCalls,0);assert.equal(f.cacheReads,0);assert.equal(f.native.hidden,false);
   assert.equal(f.preloads.length,12,'local styles begin fetching before the main controller');
   assert.ok(f.preloads.every(link=>link.as==='style'&&link.href.startsWith('chrome-extension://fixture/')));
+});
+test('opening shell shows the bundled picture between its header and status without placeholder bars',async()=>{
+ const f=fixture();await flush();
+ const [header,art,message]=f.shell.children;
+ assert.deepEqual(f.shell.children.map(el=>el.tagName),['header','div','p']);
+ assert.equal(header.children[0].textContent,'Canvas Harness');assert.equal(header.children[1].textContent,'Canvas dashboard');assert.equal(header.children[1].href,'/?reserve=native');
+ assert.equal(art.className,'reserve-startup-art');assert.equal(art.getAttribute('aria-hidden'),'true');
+ assert.equal(art.innerHTML,f.context.ReserveStartupArt);assert.match(art.innerHTML,/^<svg\b/);assert.doesNotMatch(art.innerHTML,/<i(?:\s|>)/);
+ const descendants=el=>el.children.flatMap(child=>[child,...descendants(child)]);
+ assert.ok(descendants(f.shell).every(el=>el.tagName!=='i'&&el.className!=='reserve-startup-layout'));
+ assert.equal(message.textContent,'Syncing Canvas…');assert.equal(message.getAttribute('role'),'status');
+});
+test('a missing artwork global leaves an empty picture area and still completes startup',async()=>{
+ const f=fixture({missingArt:true});f.content();await flush();
+ assert.equal(f.context.ReserveStartupArt,undefined);assert.equal(f.active,true);assert.equal(f.shell.children[1].innerHTML,'');
+ f.profile.resolve({id:'7'});f.snapshot();await flush();f.loadStyles();
+ assert.equal(f.host.hidden,false);assert.equal(f.active,false);assert.equal(f.shell,undefined);
+});
+for(const action of ['timeout','nativeChoice','login','pagehide'])test('missing artwork preserves the startup release path: '+action,async()=>{
+ const f=fixture({missingArt:true});await flush();assert.equal(f.active,true);
+ if(action==='timeout'){f.tick(7999);assert.equal(f.active,true);f.tick(1);}else f[action]();
+ assert.equal(f.active,false);assert.equal(f.shell,undefined);assert.equal(f.preloads.length,0);assert.equal(f.native.hidden,false);assert.equal(f.context.ReserveStartup.canReveal(),false);
+});
+test('startup CSS retains the paper background and independent eight-second native release switches',()=>{
+ const css=fs.readFileSync(path.join(extension,'startup.css'),'utf8');
+ assert.match(css,/background:#FAF9F5/);assert.match(css,/animation:reserve-startup-release 0s 8s forwards/);
+ assert.match(css,/html\.reserve-startup-active #content,html\.reserve-startup-active #right-side,html\.reserve-startup-active #right-side-wrapper\{animation:reserve-startup-native 8s step-end forwards\}/);
+ assert.match(css,/@keyframes reserve-startup-native\{from\{visibility:hidden\}to\{visibility:visible\}\}/);
+ assert.match(css,/@keyframes reserve-startup-release\{to\{visibility:hidden;pointer-events:none\}\}/);
+ assert.doesNotMatch(css,/reserve-startup-(?:layout|rail|reader|work|information)|#reserve-startup-shell i\b/);
 });
 for(const pathname of ['/','/dashboard','/dashboard/'])test('exact dashboard route activates: '+pathname,async()=>{const f=fixture({pathname});await flush();assert.equal(f.active,true);});
 for(const opts of [{enabled:false},{search:'?reserve=native'},{pathname:'/login/canvas'},{pathname:'/courses/7'},{pathname:'/dashboard/archive'},{pathname:'/dashboard//'}, {pathname:'/Dashboard'},{frame:true},{origin:'https://not-canvas.example'},{login:true}]){

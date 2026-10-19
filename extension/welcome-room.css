@@ -1,0 +1,54 @@
+/* The welcome tour's room (welcome-room.js): three full-page layers, the room on the bottom, the PC and the meadow above. */
+.wr-stage{position:fixed;inset:0;overflow:hidden;background:#F1E6D2}
+.wr-room,.wr-pc,.wr-meadow{position:absolute;inset:0;transform-origin:0 0}
+.wr-room>.wr-day,.wr-room>.wr-night,.wr-mday,.wr-mnight{position:absolute;inset:0}
+/* the night drawing is heavy (masks, filters): its own layer, so the spreading mask repaints only the mask, not the drawing */
+.wr-room>.wr-night{will-change:transform}
+.wr-art{position:absolute;inset:0;width:100%;height:100%;display:block}
+.wr-pc{background:#FFFDF8}
+.wr-pc .pc-frame{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.wr-pc-content{position:absolute;left:1.750%;top:14.000%;width:96.500%;height:82.889%;overflow:hidden}
+/* the halo round a window: it breathes while the pointer is on that window */
+.wr-halo{position:absolute;border-radius:50%;pointer-events:none;opacity:0;transition:opacity .35s}
+.wr-halo-l{background:radial-gradient(closest-side,rgba(255,224,140,.62),rgba(255,224,140,.28) 62%,transparent)}
+.wr-halo-r{background:radial-gradient(closest-side,rgba(10,11,16,.72),rgba(10,11,16,.34) 62%,transparent)}
+.wr-halo.is-on{opacity:1;animation:wr-breath 2.4s ease-in-out infinite alternate}
+@keyframes wr-breath{from{transform:scale(.94);opacity:.55}to{transform:scale(1.06);opacity:1}}
+@media (prefers-reduced-motion:reduce){.wr-halo.is-on{animation:none}}
+/* the controls: leather straps (Back/Next), the stitched progress band, the night slider's track and knob */
+/* the chosen window's plate, turned over to Continue: a little brighter, lifts under the pointer */
+.wr-plate.is-continue{filter:brightness(1.08) saturate(1.1)}
+.wr-plate{transition:translate .2s}.wr-stage.wr-plate-hover .wr-plate.is-continue{translate:0 -3px}
+/* the four menu-bar choices: their pictures, the chosen one ringed and ticked */
+.wr-choice{border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font:600 12.5px Literata,Georgia,serif;color:#141413}
+.wr-choice .wr-layout{display:block;width:100%;height:auto;overflow:visible;transition:transform .2s cubic-bezier(.2,.7,.3,1)}
+.wr-choice:hover .wr-layout,.wr-choice:focus-visible .wr-layout{transform:translateY(-3px) rotate(-.6deg)}
+.wr-choice .wr-sel{opacity:0;transition:opacity .25s}.wr-choice.is-selected .wr-sel,.wr-choice[aria-pressed=true] .wr-sel{opacity:1}
+.wr-choice:focus-visible{outline:2px solid #E2A785;outline-offset:6px;border-radius:10px}
+/* the pony's switch */
+.wr-toggle{display:block;width:56px;height:28px;overflow:visible}
+.wr-toggle .wr-knob{transition:transform .25s cubic-bezier(.3,1.4,.5,1)}.is-on .wr-toggle .wr-knob{transform:translateX(26px)}
+.wr-toggle .wr-slot-on{opacity:0;transition:opacity .25s}.is-on .wr-toggle .wr-slot-on{opacity:.9}
+@media (prefers-reduced-motion:reduce){.wr-toggle .wr-knob,.wr-choice .wr-layout{transition:none}}
+/* the drawn Go strap is shown only where it is the action (the page sets wr-no-go on the stage elsewhere) */
+.wr-stage.wr-no-go .gob{visibility:hidden}
+.wr-strap{display:block;width:100%;height:100%;overflow:visible;transition:transform .2s cubic-bezier(.2,.7,.3,1)}
+.wr-strap-button{border:0;background:none;padding:0;width:132px;height:44px;cursor:pointer;color:transparent;font-size:0}
+.wr-strap-button:hover .wr-strap,.wr-strap-button:focus-visible .wr-strap{transform:translateY(-2px) rotate(-1deg)}
+.wr-strap-button:focus-visible{outline:2px solid #E2A785;outline-offset:4px;border-radius:12px}
+.wr-strap-button:disabled{opacity:.45;cursor:default}.wr-strap-button:disabled .wr-strap{transform:none}
+.wr-progress{display:block;height:24px;width:auto;overflow:visible}
+.wr-progress .wr-rv-lit{opacity:0;transition:opacity .4s}.wr-progress .is-done .wr-rv-lit,.wr-progress .is-current .wr-rv-lit{opacity:1}
+.wr-progress .is-current{animation:wr-rivet 1.6s ease-in-out infinite alternate}
+@keyframes wr-rivet{from{filter:none}to{filter:brightness(1.25)}}
+@media (prefers-reduced-motion:reduce){.wr-progress .is-current{animation:none}}
+input.wr-slider{-webkit-appearance:none;appearance:none;background:transparent;height:30px;cursor:pointer}
+input.wr-slider::-webkit-slider-runnable-track{height:22px;background:url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%2022%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20fill%3D%22%238C5A36%22%20stroke%3D%22%23141413%22%20stroke-width%3D%222%22%20d%3D%22M5.6%206.3c96.2-.7%20192.4-1.3%20288.6-1.5c.4%203.7%20.8%207.3%201%2011c-96.5%201-192.9%20.6-289.4%201.1Z%22%2F%3E%3Cpath%20fill%3D%22%235A3622%22%20d%3D%22M12%2010H288V12H12Z%22%2F%3E%3Cpath%20fill%3D%22%23D9A84A%22%20stroke%3D%22%23141413%22%20stroke-width%3D%221.6%22%20d%3D%22M2%204H10V18H2Z%22%2F%3E%3Cpath%20fill%3D%22%23D9A84A%22%20stroke%3D%22%23141413%22%20stroke-width%3D%221.6%22%20d%3D%22M290%204H298V18H290Z%22%2F%3E%3C%2Fsvg%3E") center/100% 100% no-repeat;border:0}
+input.wr-slider::-moz-range-track{height:22px;background:url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20300%2022%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20fill%3D%22%238C5A36%22%20stroke%3D%22%23141413%22%20stroke-width%3D%222%22%20d%3D%22M5.6%206.3c96.2-.7%20192.4-1.3%20288.6-1.5c.4%203.7%20.8%207.3%201%2011c-96.5%201-192.9%20.6-289.4%201.1Z%22%2F%3E%3Cpath%20fill%3D%22%235A3622%22%20d%3D%22M12%2010H288V12H12Z%22%2F%3E%3Cpath%20fill%3D%22%23D9A84A%22%20stroke%3D%22%23141413%22%20stroke-width%3D%221.6%22%20d%3D%22M2%204H10V18H2Z%22%2F%3E%3Cpath%20fill%3D%22%23D9A84A%22%20stroke%3D%22%23141413%22%20stroke-width%3D%221.6%22%20d%3D%22M290%204H298V18H290Z%22%2F%3E%3C%2Fsvg%3E") center/100% 100% no-repeat;border:0}
+input.wr-slider::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;margin-top:-5px;border:0;background:url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2030%2030%22%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%2216%22%20r%3D%2211%22%20fill%3D%22%23141413%22%20opacity%3D%22.2%22%2F%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%2214%22%20r%3D%2211%22%20fill%3D%22%23D9A84A%22%20stroke%3D%22%23141413%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%2214%22%20r%3D%226%22%20fill%3D%22none%22%20stroke%3D%22%238C6A2A%22%20stroke-width%3D%221.6%22%2F%3E%3Ccircle%20cx%3D%2211.5%22%20cy%3D%2210.5%22%20r%3D%222%22%20fill%3D%22%23fff%22%20opacity%3D%22.8%22%2F%3E%3C%2Fsvg%3E") center/contain no-repeat}
+input.wr-slider::-moz-range-thumb{width:30px;height:30px;border:0;background:url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2030%2030%22%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%2216%22%20r%3D%2211%22%20fill%3D%22%23141413%22%20opacity%3D%22.2%22%2F%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%2214%22%20r%3D%2211%22%20fill%3D%22%23D9A84A%22%20stroke%3D%22%23141413%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%2214%22%20r%3D%226%22%20fill%3D%22none%22%20stroke%3D%22%238C6A2A%22%20stroke-width%3D%221.6%22%2F%3E%3Ccircle%20cx%3D%2211.5%22%20cy%3D%2210.5%22%20r%3D%222%22%20fill%3D%22%23fff%22%20opacity%3D%22.8%22%2F%3E%3C%2Fsvg%3E") center/contain no-repeat}
+input.wr-slider:focus-visible{outline:2px solid #E2A785;outline-offset:3px;border-radius:8px}
+/* the drawn Go strap and the Open-my-Canvas board answer the pointer (the page sets these classes on the stage) */
+.wr-stage .gob,.wr-stage .finishb{transform-box:fill-box;transform-origin:50% 50%;transition:transform .2s cubic-bezier(.2,.7,.3,1)}
+.wr-stage.wr-go-hover .gob,.wr-stage.wr-finish-hover .finishb{transform:translateY(-3px) rotate(-1deg)}
+.wr-stage .fshine{transition:opacity .2s}.wr-stage.wr-finish-hover .fshine{opacity:1}

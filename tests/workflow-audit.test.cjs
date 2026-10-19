@@ -28,7 +28,7 @@ function context(files=[],extra={}){
  return env;
 }
 function panelAPI(){const env=context([],{module:{exports:{}}});vm.runInContext(read('ai-panel.js'),env,{filename:path.join(extension,'ai-panel.js')});return env.module.exports;}
-const STORE_FILES=['site.js','core.js','personal-work.js','custom-art.js','workspace-arrange.js','customization-model.js','gpa-model.js','storage.js','quick-pack.js','quick-upload.js'];
+const STORE_FILES=['site.js','core.js','personal-work.js','custom-art.js','workspace-arrange.js','customization-model.js','gpa-model.js','page-preferences.js','storage.js','quick-pack.js','quick-upload.js'];
 function memory(){
  const values=new Map(),subscribers=new Map(),writes=[];
  const control={failNext:false,writeGate:null,readGate:null,writeEntered:0,readEntered:0};
@@ -138,12 +138,13 @@ async function dashboardFixture(t,options={}){
  const element={className:'',dataset:{},style:{setProperty(){}},setAttribute(){},addEventListener:(name,fn)=>{events[name]=fn;},removeEventListener(){},
   querySelector:selector=>fields.get(selector)||null,querySelectorAll:()=>[],remove(){},innerHTML:''};
  const document={createElement:()=>element,addEventListener:(name,fn)=>{docEvents[name]=fn;},removeEventListener(){}};
+ element.ownerDocument=document;
  const env=context(STORE_FILES,{document,matchMedia:()=>({matches:false}),sessionStorage:{getItem:key=>saved.get(key),setItem:(key,value)=>saved.set(key,value)},
   setTimeout:()=>0,clearTimeout(){},setInterval:()=>0,clearInterval(){},
   ReserveToolbox:{create(value){toolboxOptions=value;return {update(){},close(){},destroy(){},open(){}};}}});
  // Gesture/rendering geometry is outside this storage/selection audit.
  env.ReserveWorkspaceGestures={create:()=>({active:()=>false,sync(){},destroy(){},click(){return false;},action(){return false;},pointerdown(){},pointerup(){},pointercancel(){},contextmenu(){},pointermove(){},keydown(){return false;}})};
- for(const file of ['ui-utils.js','grades-view.js','customize-ui.js','dashboard-model.js','work-model.js','dashboard-view.js','dashboard.js','ai-context.js','ai-source.js'])vm.runInContext(read(file),env,{filename:path.join(extension,file)});
+ for(const file of ['ui-utils.js','grades-view.js','customize-ui.js','dashboard-model.js','work-model.js','dashboard-view.js','dashboard.js','ai-context.js','ai-source.js',...(options.widgets?['planner-model.js','pets.js','widgets.js']:[])])vm.runInContext(read(file),env,{filename:path.join(extension,file)});
  const f=await stores(t,{env});await personalSeed(f);
  const snapshot={origin:ORIGIN,user:{id:'7'},courses:courses(),assignments:[{id:'1',course_id:'10',name:'Synthetic lab',description:'',due_at:new Date(Date.now()+86400000).toISOString(),submission_types:['online_upload'],submission:{workflow_state:'unsubmitted',score:12}},{id:'2',course_id:'20',name:'Synthetic essay',description:'',due_at:new Date(Date.now()+86400000).toISOString(),submission_types:['online_upload'],submission:{workflow_state:'unsubmitted'}}]};
  const before=copy(snapshot),view=env.ReserveDashboard.mount({append(){}},{snapshot,store:f.store,initialState:{workspace:'work',...options.initialState}});t.after(()=>view.destroy());
@@ -152,6 +153,22 @@ async function dashboardFixture(t,options={}){
  const idle=async()=>{await f.store.update(()=>{});await tick();await tick();};
  return {...f,view,snapshot,before,element,events,click,change,idle,getContext:()=>toolboxOptions.getContext()};
 }
+
+test('audit: mounted dashboard follows device appearance and Make it yours writes only that record',async t=>{
+ const f=await dashboardFixture(t,{widgets:true}),before=copy(f.disk.values.get('reserve:v1:'+ORIGIN+':7'));
+ await f.env.ReservePagePreferences.write(f.disk.adapter,{theme:'dark',motion:'off',nightArt:65,pet:false});
+ await until(()=>f.element.dataset.theme==='dark','external appearance render');
+ assert.equal(f.store.get().settings.motion,'off');assert.equal(f.store.get().settings.nightArt,65);assert.equal(f.store.get().pet.enabled,false);
+ f.disk.writes.length=0;
+ for(const [setting,value]of [['theme','light'],['motion','still'],['nightArt','30']]){
+  f.events.change({target:{dataset:{rdField:'setting',setting},type:setting==='nightArt'?'range':'radio',value}});await f.idle();
+ }
+ f.events.change({target:{dataset:{rdField:'pet',key:'enabled'},type:'checkbox',checked:true}});await f.idle();
+ assert.equal(f.element.dataset.theme,'light');
+ assert.deepEqual(copy(f.disk.values.get('reserve:appearance')),{theme:'light',motion:'still',nightArt:30,pet:true});
+ assert.deepEqual(copy(f.disk.values.get('reserve:v1:'+ORIGIN+':7')),before);
+ assert.ok(f.disk.writes.length>=4);assert.ok(f.disk.writes.every(write=>write.key==='reserve:appearance'));
+});
 
 test('audit: selection actions live beside the dates and never insert a row above the banner',async t=>{
  const f=await dashboardFixture(t);

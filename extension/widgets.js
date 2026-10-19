@@ -150,6 +150,7 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
  }
 
  function create({container,store,save,rerender,getContext,helpers,preview=()=>{},openSettings=()=>{},startTick=()=>{},go=()=>{},closeSettings=()=>{}}){
+  if(root.ReserveSite?.vanillaPage(root.location))return null;
   let dead=false,editing=false,settingsTab='layout',clockTimer=0,timerTick=0,notesTimer=0,pets=null,lastDone=null;
   const win=container.ownerDocument?.defaultView||root;
   const newId=()=>'local-'+(root.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -276,7 +277,7 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
     const key=target.dataset.key,value=target.type==='checkbox'?target.checked:target.value;
     if(!Object.hasOwn(Pets().DEFAULTS,key)||['treats','fed','xp','streak','best','streakDay','told'].includes(key))return true;
     if((key==='coat'||key==='harness')&&!Pets().unlocked(key,value,Pets().clean(store.get().pet).xp))return true;
-    save(data=>{data.pet={...Pets().clean(data.pet),[key]:value};});return true;
+    save(data=>{if(key==='enabled')data.pet.enabled=value;else data.pet={...Pets().clean(data.pet),[key]:value};});return true;
    }
    if(field==='setting'&&target.dataset.onoff==='true'){const key=target.dataset.setting;if(['greeting','livingArt','quickOpen'].includes(key))save(data=>{data.settings[key]=target.checked?'on':'off';});return true;}
    return false;

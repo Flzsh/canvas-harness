@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Canvas Harness",
   "short_name": "Canvas Harness",
-  "version": "2.28.3",
+  "version": "2.29.0",
   "description": "A Canvas workspace you build yourself: assignments beside their instructions, a weekly planner, study tools and a study companion.",
   "minimum_chrome_version": "120",
   "permissions": [
@@ -51,10 +51,12 @@
       ],
       "js": [
         "site.js",
+        "startup-art.js",
         "startup.js"
       ],
       "css": [
-        "startup.css"
+        "startup.css",
+        "startup-art.css", "canvas-nav.css"
       ],
       "run_at": "document_start",
       "all_frames": false
@@ -73,6 +75,7 @@
         "workspace-gestures.js",
         "customization-model.js",
         "gpa-model.js",
+        "page-preferences.js",
         "storage.js",
         "quick-pack.js",
         "quick-upload.js",

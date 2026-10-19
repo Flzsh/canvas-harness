@@ -42,8 +42,9 @@ test('the copied frame rules match the workspace’s, and the files are wired in
  const all=manifest.content_scripts.find(entry=>entry.js.includes('content.js'));
  assert.ok(all.js.includes('canvas-nav.js'));assert.ok(all.js.indexOf('course-art.js')<all.js.indexOf('canvas-nav.js'),'it draws with the course frames');
  for(const entry of manifest.web_accessible_resources)assert.ok(entry.resources.includes('canvas-nav.css'));
- const popup=read('popup.html');assert.match(popup,/<select id="canvas-nav"><option value="drawn">Hand-drawn, out from the left edge<\/option><option value="shown">Hand-drawn, full height<\/option><option value="top">Hand-drawn, across the top<\/option><option value="original">Canvas original<\/option><\/select>/);
- assert.match(read('popup.js'),/'reserve:canvasNav':menuBar\.value/);
+ const popup=read('popup.html');
+ for(const value of ['drawn','shown','top','original'])assert.match(popup,new RegExp('data-nav="'+value+'"'));
+ assert.match(read('popup.js'),/'reserve:canvasNav':button\.dataset\.nav/);
 });
 
 test('the bar sits against the window’s edge with its pen line on three sides, and keeps Canvas’s quirks tidy',()=>{

@@ -22,11 +22,11 @@
    an open tool dock narrows the page. 420px is the ultra-wide height ceiling;
    a wider viewport can still fill the panorama frame without growing taller.
    Respect a student's compact/large banner-size choice from customize.css. */
-.rd[data-workspace=work] .rd-workspace-heading,
+.rd[data-workspace] .rd-workspace-heading,
 .rd .rd-course-banner {
   --rd-band-floor: calc(var(--rd-band-h) * 214 / 240);
 }
-.rd[data-workspace=work]:not([data-banner-size=compact], [data-banner-size=large]) .rd-workspace-heading,
+.rd[data-workspace]:not([data-banner-size=compact], [data-banner-size=large]) .rd-workspace-heading,
 .rd:not([data-banner-size=compact], [data-banner-size=large]) .rd-course-banner {
   --rd-band-h: clamp(118px, 12cqi, 420px);
 }
@@ -51,7 +51,7 @@
 .rd .rd-course-heading[data-titled] > .rd-heading-art:not(:has(> .rd-art)),
 .rd .rd-course-banner[data-titled] > .rd-banner-art:not(:has(> .rd-art)) { order: -2; }
 
-.rd[data-workspace=work] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-title-art:not(:empty)) > h1, .rd .rd-course-banner[data-titled]:has(> .rd-title-art:not(:empty)) > .rd-banner-art + div > h1, .rd .rd-course-banner[data-titled]:has(> .rd-title-art:not(:empty)) > .rd-banner-art + div > h2 {
+.rd[data-workspace] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-title-art:not(:empty)) > h1, .rd .rd-course-banner[data-titled]:has(> .rd-title-art:not(:empty)) > .rd-banner-art + div > h1, .rd .rd-course-banner[data-titled]:has(> .rd-title-art:not(:empty)) > .rd-banner-art + div > h2 {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -68,11 +68,11 @@
    minimum keeps the name and the hero legible on narrow work areas; the band
    height is its only ceiling, including when a student chooses Large. */
 @container work-area (min-width: 640px) and style(--rd-search-at: bar) {
-  .rd[data-workspace=work][data-courses] .rd-workspace-heading:has(> .rd-course-heading[data-titled] > .rd-title-art:not(:empty)) {
+  .rd[data-workspace][data-courses] .rd-workspace-heading:has(> .rd-course-heading[data-titled] > .rd-title-art:not(:empty)) {
     padding-right: 0;
     min-height: 0;
   }
-  .rd[data-workspace=work][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) {
+  .rd[data-workspace][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) {
     --rd-band: min(var(--rd-band-h), max(min(200px, calc(24000cqi / (var(--rd-name-w, 480) + 451))), calc(24000cqi / (var(--rd-name-w, 480) + var(--rd-room-w, 1680) - 29))));
     position: relative;
     isolation: isolate;
@@ -83,7 +83,7 @@
     grid-template-rows: var(--rd-band) auto auto auto;
     gap: 4px 0;
   }
-  .rd[data-workspace=work][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) > .rd-title-art {
+  .rd[data-workspace][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) > .rd-title-art {
     grid-area: 1 / 1;
     align-self: start;
     width: calc(var(--rd-band) * var(--rd-name-w, 480) / 240);
@@ -91,7 +91,7 @@
     margin: 0;
     z-index: 1;
   }
-  .rd[data-workspace=work][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) > .rd-heading-art {
+  .rd[data-workspace][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) > .rd-heading-art {
     display: flex;
     top: 0;
     left: calc(var(--rd-band) * (var(--rd-name-w, 480) - 29) / 240);
@@ -102,16 +102,16 @@
     z-index: 0;
     justify-content: flex-end;
   }
-  .rd[data-workspace=work][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) > .rd-course-select { grid-area: 2 / 1; }
-  .rd[data-workspace=work][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) > p {
+  .rd[data-workspace][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) > .rd-course-select { grid-area: 2 / 1; }
+  .rd[data-workspace][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) > p {
     grid-area: 3 / 1;
     max-width: 100%;
     white-space: normal;
   }
-  .rd[data-workspace=work][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) > .rd-glance { grid-area: 4 / 1; }
-  .rd[data-workspace=work][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art)::before { content: none; }
-  .rd[data-workspace=work][data-courses] .rd-course-heading[data-titled] > .rd-heading-art::before { content: none; }
-  .rd[data-workspace=work][data-courses] .rd-course-heading[data-titled] > .rd-heading-art:has(> .rd-art[data-wide]) {
+  .rd[data-workspace][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art) > .rd-glance { grid-area: 4 / 1; }
+  .rd[data-workspace][data-courses] .rd-workspace-heading > .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art)::before { content: none; }
+  .rd[data-workspace][data-courses] .rd-course-heading[data-titled] > .rd-heading-art::before { content: none; }
+  .rd[data-workspace][data-courses] .rd-course-heading[data-titled] > .rd-heading-art:has(> .rd-art[data-wide]) {
     mask-image: linear-gradient(to right, transparent, #000 calc(var(--rd-band) * .55));
   }
 }
@@ -142,7 +142,7 @@
    proportions: narrow frames crop the left of the room, extremely wide ones
    crop vertically. Its right-hand hero always reaches the banner edge.
    Custom uploaded banners have their own fit/position rules and are excluded. */
-.rd[data-workspace=work][data-courses] .rd-course-heading[data-titled] > .rd-heading-art > .rd-art[data-wide],
+.rd[data-workspace][data-courses] .rd-course-heading[data-titled] > .rd-heading-art > .rd-art[data-wide],
 .rd .rd-course-banner[data-titled] > .rd-banner-art > .rd-art[data-wide] {
   width: 100%;
 }
@@ -151,12 +151,12 @@
    the preexisting wide-band query does not run. Give every subject a compact
    art row here too. Unillustrated/renamed titles retain their readable HTML. */
 @container work-area style(--rd-search-at: heading) or (max-width: 639px) {
-  .rd[data-workspace=work] .rd-workspace-heading:has(> .rd-course-heading > .rd-heading-art > .rd-art) {
+  .rd[data-workspace] .rd-workspace-heading:has(> .rd-course-heading > .rd-heading-art > .rd-art) {
     padding-right: 0;
     align-items: flex-start;
   }
 
-  .rd[data-workspace=work] .rd-course-heading:has(> .rd-heading-art > .rd-art) {
+  .rd[data-workspace] .rd-course-heading:has(> .rd-heading-art > .rd-art) {
     --ch-heading-art-h: clamp(100px, 14cqi, 154px);
     position: relative;
     isolation: isolate;
@@ -170,7 +170,7 @@
     min-width: 0;
   }
 
-  .rd[data-workspace=work] .rd-course-heading:has(> .rd-heading-art > .rd-art) > .rd-heading-art {
+  .rd[data-workspace] .rd-course-heading:has(> .rd-heading-art > .rd-art) > .rd-heading-art {
     display: flex;
     position: absolute;
     top: 0;
@@ -184,7 +184,7 @@
     --rd-art-h: var(--ch-heading-art-h);
   }
 
-  .rd[data-workspace=work] .rd-course-heading:has(> .rd-heading-art > .rd-art) > :is(h1, .rd-course-select) {
+  .rd[data-workspace] .rd-course-heading:has(> .rd-heading-art > .rd-art) > :is(h1, .rd-course-select) {
     grid-area: 1 / 1;
     align-self: end;
     max-width: 56%;
@@ -194,14 +194,14 @@
 
   /* At 601-900px and when the dock hides the rail, workspace.css displays
      the Course selector. It needs a separate row from the illustrated title. */
-  .rd[data-workspace=work] .rd-course-heading:has(> .rd-heading-art > .rd-art) > .rd-course-select {
+  .rd[data-workspace] .rd-course-heading:has(> .rd-heading-art > .rd-art) > .rd-course-select {
     grid-area: 2 / 1;
     align-self: start;
     width: fit-content;
     max-width: 100%;
     margin: 0;
   }
-  .rd[data-workspace=work] .rd-course-heading[data-titled] .rd-course-select select {
+  .rd[data-workspace] .rd-course-heading[data-titled] .rd-course-select select {
     min-height: 30px;
     font: 500 13px/1.4 var(--rd-ui-font);
     letter-spacing: normal;
@@ -209,7 +209,7 @@
 
   /* workspace.css clips the HTML heading on narrow screens. For a course with
      no matching custom title piece, show the real text instead. */
-  .rd[data-workspace=work][data-courses=true] .rd-course-heading:not([data-titled]) > h1 {
+  .rd[data-workspace][data-courses=true] .rd-course-heading:not([data-titled]) > h1 {
     position: relative;
     width: auto;
     height: auto;
@@ -218,25 +218,25 @@
     clip-path: none;
   }
 
-  .rd[data-workspace=work] .rd-course-heading:has(> .rd-heading-art > .rd-art) > p {
+  .rd[data-workspace] .rd-course-heading:has(> .rd-heading-art > .rd-art) > p {
     grid-area: 3 / 1;
     max-width: 100%;
     white-space: normal;
     overflow-wrap: anywhere;
   }
 
-  .rd[data-workspace=work] .rd-course-heading:has(> .rd-heading-art > .rd-art) > .rd-glance,
-  .rd[data-workspace=work] .rd-course-heading:has(> .rd-heading-art > .rd-art):not(:has(> .rd-glance))::after {
+  .rd[data-workspace] .rd-course-heading:has(> .rd-heading-art > .rd-art) > .rd-glance,
+  .rd[data-workspace] .rd-course-heading:has(> .rd-heading-art > .rd-art):not(:has(> .rd-glance))::after {
     grid-area: 4 / 1;
   }
 
   /* The subject's name is a whole SVG, not a cropped typographic substitute.
      Reserve at least 22% for a visible slice of its illustrated room. */
-  .rd[data-workspace=work] .rd-course-heading[data-titled]:has(> .rd-title-art) {
+  .rd[data-workspace] .rd-course-heading[data-titled]:has(> .rd-title-art) {
     --ch-title-w: min(calc(var(--ch-heading-art-h) * var(--rd-name-w, 480) / 240), 78%);
   }
 
-  .rd[data-workspace=work] .rd-course-heading[data-titled] > .rd-title-art {
+  .rd[data-workspace] .rd-course-heading[data-titled] > .rd-title-art {
     position: relative;
     z-index: 1;
     display: block;
@@ -249,7 +249,7 @@
     pointer-events: none;
   }
 
-  .rd[data-workspace=work] .rd-course-heading[data-titled] > .rd-heading-art:has(> .rd-art[data-wide]) {
+  .rd[data-workspace] .rd-course-heading[data-titled] > .rd-heading-art:has(> .rd-art[data-wide]) {
     left: calc(var(--ch-title-w) - 16px);
     right: 0;
     width: auto;
@@ -258,9 +258,9 @@
     mask-image: linear-gradient(to right, transparent, #000 min(36px, 7cqi));
   }
 
-  .rd[data-workspace=work] .rd-course-heading[data-titled] > .rd-heading-art::before { content: none; }
+  .rd[data-workspace] .rd-course-heading[data-titled] > .rd-heading-art::before { content: none; }
 
-  .rd[data-workspace=work][data-courses] .rd-course-heading[data-titled]:has(> .rd-title-art) > h1 {
+  .rd[data-workspace][data-courses] .rd-course-heading[data-titled]:has(> .rd-title-art) > h1 {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -410,7 +410,7 @@
    spells out the name. Keep the real h1 in the accessibility tree but avoid
    displaying the same label twice. Phone mode uses its drawer and real h1. */
 @media (min-width: 601px) and (max-width: 900px) {
-  .rd[data-workspace=work] .rd-course-heading:not([data-titled]):has(> .rd-course-select) > h1 {
+  .rd[data-workspace] .rd-course-heading:not([data-titled]):has(> .rd-course-select) > h1 {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -426,7 +426,7 @@
 /* An overview greeting does not repeat the Course selector's label. Keep it
    visible when tablet layout or a dock replaces the rail with that selector.
    Individual course headings have a title attribute; overview greetings do not. */
-.rd[data-workspace=work] .rd-workspace-heading > .rd-course-heading:not([data-titled]) > h1:not([title]) {
+.rd[data-workspace] .rd-workspace-heading > .rd-course-heading:not([data-titled]) > h1:not([title]) {
   position: relative;
   width: auto;
   height: auto;
@@ -443,7 +443,7 @@
    is allowed to use the header width at phone sizes. The existing drawer,
    keyboard focus rules and SVG animation settings remain in charge. */
 @container work-area (max-width: 680px) {
-  .rd[data-workspace=work] .rd-workspace-heading > .rd-work-search {
+  .rd[data-workspace] .rd-workspace-heading > .rd-work-search {
     flex: 1 1 100%;
     width: 100%;
     max-width: 100%;
@@ -452,14 +452,14 @@
 }
 
 @media (max-width: 480px) {
-  .rd[data-workspace=work] .rd-course-heading:has(> .rd-heading-art > .rd-art) {
+  .rd[data-workspace] .rd-course-heading:has(> .rd-heading-art > .rd-art) {
     --ch-heading-art-h: clamp(88px, 26cqi, 108px);
   }
   .rd .rd-course-banner { --ch-banner-art-h: clamp(88px, 25cqi, 108px); }
 }
 
 @container work-area (max-width: 340px) {
-  .rd[data-workspace=work] .rd-course-heading[data-titled] { --ch-title-w: min(calc(var(--ch-heading-art-h) * var(--rd-name-w, 480) / 240), 72%); }
+  .rd[data-workspace] .rd-course-heading[data-titled] { --ch-title-w: min(calc(var(--ch-heading-art-h) * var(--rd-name-w, 480) / 240), 72%); }
   .rd .rd-course-banner[data-titled] { --ch-title-w: min(calc(var(--ch-banner-art-h) * var(--rd-name-w, 480) / 240), 72%); }
 }
 
@@ -469,7 +469,7 @@
 .rd { --ch-course-status-h: 26px; }
 @media (max-width: 800px) { .rd { --ch-course-status-h: 32px; } }
 @media (max-width: 600px) { .rd { --ch-course-status-h: 30px; } }
-.rd[data-workspace=work][data-courses] .rd-workspace-heading >
+.rd[data-workspace][data-courses] .rd-workspace-heading >
 .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art):not(:has(> .rd-glance))::after {
   content: "";
   grid-area: 4 / 1;
@@ -480,21 +480,21 @@
    heading and banner already retain semantic h1/h2 text beside aria-hidden art. */
 @media (forced-colors: active) {
   /* Art is hidden in forced colors, so its vacant status row is unnecessary. */
-  .rd[data-workspace=work][data-courses] .rd-workspace-heading >
+  .rd[data-workspace][data-courses] .rd-workspace-heading >
   .rd-course-heading[data-titled]:has(> .rd-heading-art > .rd-art):not(:has(> .rd-glance))::after { display: none; }
   .rd .rd-course-heading > .rd-title-art,
   .rd .rd-course-banner > .rd-title-art,
   .rd .rd-course-heading > .rd-heading-art,
   .rd .rd-course-banner > .rd-banner-art { display: none !important; }
 
-  .rd[data-workspace=work] .rd-workspace-heading,
-  .rd[data-workspace=work] .rd-course-heading[data-titled],
+  .rd[data-workspace] .rd-workspace-heading,
+  .rd[data-workspace] .rd-course-heading[data-titled],
   .rd .rd-course-banner[data-titled] {
     min-height: 0 !important;
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: auto !important;
   }
-  .rd[data-workspace=work] .rd-course-heading[data-titled] > h1, .rd .rd-course-banner[data-titled] > .rd-banner-art + div > h1, .rd .rd-course-banner[data-titled] > .rd-banner-art + div > h2 {
+  .rd[data-workspace] .rd-course-heading[data-titled] > h1, .rd .rd-course-banner[data-titled] > .rd-banner-art + div > h1, .rd .rd-course-banner[data-titled] > .rd-banner-art + div > h2 {
     position: static !important;
     display: block !important;
     grid-area: 1 / 1 !important;

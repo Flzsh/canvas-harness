@@ -44,6 +44,7 @@
  // lies down and rises before it walks, and the neck swings to wherever the pose wants it.
  const POSE={stand:{down:0,neck:9,head:0},flag:{down:0,neck:6,head:-2},lie:{down:11.5,neck:10,head:0},sleep:{down:11.5,neck:44,head:18},read:{down:11.5,neck:29,head:14},eat:{down:0,neck:60,head:22}};
  function create({container,getPet,savePet,info=()=>({}),actions={},now=()=>Date.now()}){
+  if(root.ReserveSite?.vanillaPage(root.location))return null;
   const doc=container.ownerDocument||root.document,win=doc.defaultView||root,art=root.ReservePetArt,E=value=>root.ReserveUI?.escapeHTML?root.ReserveUI.escapeHTML(value):String(value).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
   let pet=clean(getPet()),layer=null,node=null,bubble=null,dead=false,raf=0,timer=0,last=0,pose='stand',face='right';
   let spot={ledge:null,u:160},grab=null,menuOpen=false,focusing=false,quietUntil=0,lastInput=now(),sayTimer=0,unseen=0;
