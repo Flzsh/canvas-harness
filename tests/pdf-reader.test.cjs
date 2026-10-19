@@ -12,7 +12,9 @@ test('only on a Canvas PDF file page; Canvas’s viewer stays, hidden, behind a 
   assert.equal(fileId({pathname:p})??'x',id,p);
  assert.match(js,/\/api\/v1\/files\/\$\{id\}`,\{headers:\{Accept:'application\/json'\},credentials:'same-origin'\}/,'asks Canvas what the file is');
  assert.match(js,/!\/\^application\\\/pdf\$\/i\.test\(meta\['content-type'\]\|\|''\)\|\|meta\.locked_for_user\)return;/,'PDFs only, never a locked file');
- assert.match(js,/box\.style\.display=harness\?'none':''/,'Canvas’s viewer is hidden, never removed');
+ assert.match(js,/box\.classList\.toggle\('reserve-pdf-hidden',harness\)/,'Canvas’s viewer is hidden, never removed');
+ // Canvas's script re-shows its viewer with an inline display after loading, so the hiding must win over inline styles
+ assert.match(js,/#doc_preview\.reserve-pdf-hidden\{display:none!important\}/);assert.doesNotMatch(js,/\.remove\(\)/);
  assert.match(js,/localStorage\.getItem\(PREF\)==='canvas'\?'canvas':'harness'/);
  assert.match(js,/if\(e\.source!==frame\.contentWindow\|\|e\.data\?\.type!=='reserve-pdf'\)return;/,'only its own frame can ask to fall back');
  assert.match(js,/catch\{return;\}\s*\/\/ a tab left over from an extension update/);

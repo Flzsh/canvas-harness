@@ -17,7 +17,9 @@
  .reserve-pdf-switch button[aria-pressed=true]{background:#fff;color:var(--chn-ink,#141413);font-weight:650;box-shadow:0 0 0 1px color-mix(in srgb,var(--chn-accent,#A9522F) 35%,transparent),0 1px 2px #0000001a}
  .reserve-pdf-switch button:focus-visible{outline:2px solid var(--chn-accent,#A9522F);outline-offset:1px}
  .reserve-pdf-frame{display:block;width:100%;border:0;border-radius:12px;background:#F2F0E9;box-shadow:0 0 0 1px #E2DED3,0 6px 24px #1414130f}
- html[data-reserve-native-theme=dark] .reserve-pdf-frame{background:#1b1f26;box-shadow:0 0 0 1px #2c323c}`;
+ html[data-reserve-native-theme=dark] .reserve-pdf-frame{background:#1b1f26;box-shadow:0 0 0 1px #2c323c}
+ #doc_preview.reserve-pdf-hidden{display:none!important}
+ .reserve-pdf-frame[hidden]{display:none!important}`;
  function frameUrl(id,meta){
   const html=document.documentElement,p=new URLSearchParams({id,origin:location.origin,name:meta.display_name||'Document.pdf',size:String(meta.size||0),
    theme:html.getAttribute('data-reserve-native-theme')==='dark'?'dark':'light',accent:(html.style.getPropertyValue('--chn-accent')||'').trim()});
@@ -36,7 +38,9 @@
   const frame=document.createElement('iframe');frame.className='reserve-pdf-frame';frame.title='PDF reader';frame.allow='fullscreen';frame.src=url;
   box.before(sw,frame);
   const size=()=>{const top=frame.getBoundingClientRect().top+window.scrollY;frame.style.height=Math.max(560,Math.round(window.innerHeight-Math.min(top,140)-24))+'px';};
-  const show=v=>{const harness=v==='harness';frame.hidden=!harness;box.style.display=harness?'none':'';for(const b of sw.querySelectorAll('button'))b.setAttribute('aria-pressed',String(b.dataset.v===v));if(harness)size();};
+  // Canvas's own page script shows its viewer again once it has loaded (an inline display), so the hiding is a class
+  // with !important that its script can't undo; the viewer itself is never removed.
+  const show=v=>{const harness=v==='harness';frame.hidden=!harness;box.classList.toggle('reserve-pdf-hidden',harness);for(const b of sw.querySelectorAll('button'))b.setAttribute('aria-pressed',String(b.dataset.v===v));if(harness)size();};
   sw.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;setPref(b.dataset.v);show(b.dataset.v);});
   // The reader asks to fall back when it can't open the file (or the student picks Canvas's viewer inside it).
   window.addEventListener('message',e=>{if(e.source!==frame.contentWindow||e.data?.type!=='reserve-pdf')return;if(e.data.action==='fallback')show('canvas');});

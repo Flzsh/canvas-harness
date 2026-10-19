@@ -56,7 +56,12 @@ async function open(){
  try{
   S.lib=await import('./vendor/pdfjs/pdf.mjs');
   S.lib.GlobalWorkerOptions.workerSrc=new URL('./vendor/pdfjs/pdf.worker.mjs',import.meta.url).href;
-  const task=S.lib.getDocument({data,isEvalSupported:false,enableXfa:false,stopAtErrors:false});
+  // The decoders and data PDF.js needs to draw every PDF the way Canvas's viewer does: scanned pages (JBIG2, JPEG 2000),
+  // the 14 standard fonts PDFs leave out, Asian character maps and the CMYK colour profile. The image decoders run as
+  // their plain-JavaScript builds, since the extension's security policy doesn't allow WebAssembly.
+  const base=new URL('./vendor/pdfjs-data/',import.meta.url).href;
+  const task=S.lib.getDocument({data,isEvalSupported:false,enableXfa:false,stopAtErrors:false,useWorkerFetch:true,useWasm:false,
+   wasmUrl:base+'wasm/',standardFontDataUrl:base+'standard_fonts/',cMapUrl:base+'cmaps/',cMapPacked:true,iccUrl:base+'iccs/'});
   task.onPassword=()=>{task.destroy();fail('This PDF is password-protected. Use Canvas\'s viewer or download it.');back();};
   S.doc=await task.promise;
  }catch(e){fail("The reader couldn't open this PDF, so Canvas's viewer is shown instead.");back();return;}
@@ -196,7 +201,7 @@ async function thumb(b){
  const p=S.pages[Number(b.dataset.n)-1];try{
   p.page??=await S.doc.getPage(p.n);const v1=p.page.getViewport({scale:1}),v=p.page.getViewport({scale:(126/v1.width)*dpr()});
   const c=document.createElement('canvas');c.width=Math.floor(v.width);c.height=Math.floor(v.height);
-  await p.page.render({...target(c),viewport:v}).promise;b.querySelector('.ph')?.replaceWith(c);}catch{}
+  await p.page.render({...target(c),viewport:v,annotationMode:S.lib.AnnotationMode?.ENABLE??1}).promise;b.querySelector('.ph')?.replaceWith(c);}catch{}
 }
 
 // search: every page's text once, matches listed in order, the current one highlighted
