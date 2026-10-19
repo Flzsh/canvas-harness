@@ -338,6 +338,7 @@
   for(const button of all('[data-theme-continue]')){
    const active=themePicked&&current()==='appearance'&&button.dataset.themeContinue===theme;
    button.hidden=!active;button.inert=!active;
+   if(!active&&document.activeElement===button)button.blur?.();   // focus leaves before the button is hidden
    button.setAttribute('aria-hidden',String(!active));
    button.setAttribute('tabindex',active?'0':'-1');
    button.disabled=!active||busy||travelling||finished;
@@ -452,7 +453,9 @@
    const panel=panels[k],active=k===index&&!travelling;
    panel.classList.toggle('is-current',active);
    panel.classList.toggle('is-past',k<index);
-   panel.inert=!active;panel.setAttribute('aria-hidden',String(!active));
+   // a step being hidden never keeps focus; inert hides it from assistive technology too (aria-hidden over focus is refused)
+   const held=document.activeElement;if(!active&&held&&held!==document.body&&(held===panel||panel.contains?.(held)))held.blur?.();
+   panel.inert=!active;panel.removeAttribute?.('aria-hidden');
   });
  }
  async function showStep(target,afterSave=false){
