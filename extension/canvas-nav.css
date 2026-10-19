@@ -284,3 +284,66 @@ html.chn-nav #header .rd-frame[data-kind=home] > .rd-frame-wash { border-top-lef
 html.chn-nav:not([data-chn-motion=off]) #header .rd-frame[data-kind=home] > .rd-frame-orn[data-o="2"] { animation: rd-fl-home-2 15s linear calc(var(--i, 0) * -2.3s - 0s) infinite; }
 html.chn-nav:not([data-chn-motion=off]) #header .rd-frame[data-kind=home] > .rd-frame-orn[data-o="4"] { animation: rd-fl-home-4 15s linear calc(var(--i, 0) * -2.3s - 0s) infinite; }
 /* ---- end of copied frame rules ---- */
+
+/* ---- a course's own menu (#section-tabs in #left-side: Home, Assignments, Grades, …), drawn like the workspace's
+   course sidebar: the sidebar's paper inside the same pen line, the current page as the selected course card (serif
+   name, its own drawn outline), a soft card on hover, the sidebar's count badge. Only colours, type, spacing and
+   outlines change: no item is hidden, moved, renamed or reordered, and Canvas's links and keyboard behaviour stay.
+   Every item keeps the same box, so nothing below moves when another page becomes current. Coloured by the same
+   workspace palette as the bar (--chn-*); Canvas's own pages stay light. ---- */
+html.chn-nav #left-side {
+ --cn-accent: var(--chn-accent, #A9522F); --cn-ink: var(--chn-ink, #141413); --cn-ink2: var(--chn-ink2, #3D3D3A);
+ --cn-paper: var(--chn-sidebar, #F5F4ED); --cn-sel: var(--chn-sidebar-sel, #EAE7DE);
+ --cn-pen: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' d='M24 6C40 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 42 83.9 24 84.6C12 84.8 5.4 78 5.8 66C5.2 54 6.4 36 5.6 24C5.4 12 12 5.6 24 6Z'/%3E%3C/svg%3E");
+ --cn-pen-thin: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' d='M22 6.4C38 5.6 54 6.8 68 6C78 6.2 84 12.4 84.2 23C84.6 36 83.6 54 84.4 67C84.4 78 78.4 84.2 67 84.2C54 84.8 40 83.8 23 84.4C12.6 84.4 6 78.6 6.2 67C5.6 54 6.6 36 5.8 23C6 12.6 12 6 22 6.4Z'/%3E%3C/svg%3E");
+}
+
+/* the column: the sidebar's paper inside the pen line */
+html.chn-nav #left-side #sticky-container { position: relative; isolation: isolate; padding: 14px 10px 16px; margin: 10px 2px 14px 6px; }
+html.chn-nav #left-side #sticky-container::before { content: ""; position: absolute; inset: 0; z-index: -2; background: var(--cn-paper); border-radius: 16px 20px 14px 18px; }
+html.chn-nav #left-side #sticky-container::after {
+ content: ""; position: absolute; inset: -4px; z-index: -1; pointer-events: none; border: 18px solid transparent;
+ background: color-mix(in srgb, var(--cn-accent) 70%, var(--cn-ink));
+ -webkit-mask-box-image: var(--cn-pen) 30 30 30 30 stretch; mask-border: var(--cn-pen) 30 30 30 30 stretch;
+}
+
+/* the term line ("2026-Semester 1") reads like the sidebar's "Courses" heading */
+html.chn-nav #left-side #section-tabs-header-subtitle { display: block; margin: 0 6px 8px; font: 450 12px/1.4 var(--chn-font, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif); font-style: normal; letter-spacing: normal; color: color-mix(in srgb, var(--cn-ink2) 75%, transparent); }
+
+/* the pages */
+html.chn-nav #section-tabs { margin: 0; }
+html.chn-nav #section-tabs li.section { margin: 0; }
+html.chn-nav #section-tabs li.section a {
+ position: relative; isolation: isolate; display: flex; align-items: center; gap: 8px;
+ margin: 2px 0; padding: 7px 10px; border: 0 !important; border-radius: 10px; background: transparent;
+ font: 450 15px/20px var(--chn-font, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif); letter-spacing: normal;
+ color: var(--cn-ink2); text-decoration: none; transition: background-color 120ms ease, color 120ms ease;
+ -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) and (pointer: fine) {
+ html.chn-nav #section-tabs li.section a:not(.active):hover { background: color-mix(in srgb, var(--cn-sel) 75%, transparent); color: var(--cn-ink); text-decoration: none; }
+}
+html.chn-nav #section-tabs li.section a:focus-visible { outline: 2px solid var(--cn-accent); outline-offset: 2px; }
+/* a mouse click doesn't flash Canvas's focus ring on the way to the next page (keyboard focus keeps the outline above) */
+html.chn-nav #section-tabs li.section a:focus:not(:focus-visible) { outline: none; box-shadow: none; }
+
+/* the current page: the selected course card (serif name on the selected paper, its own drawn outline) */
+/* Same box as every other item (margin, padding, line height): when a click selects another page, nothing below moves. */
+html.chn-nav #section-tabs li.section a.active {
+ background: var(--cn-sel); color: var(--cn-ink);
+ font: 600 15px/20px "Literata", Georgia, "Times New Roman", serif; letter-spacing: -.01em;
+}
+html.chn-nav #section-tabs li.section a.active::after {
+ content: ""; position: absolute; inset: -3px; z-index: -1; pointer-events: none; border: 14px solid transparent;
+ background: color-mix(in srgb, var(--cn-accent) 60%, var(--cn-ink));
+ -webkit-mask-box-image: var(--cn-pen-thin) 28 28 28 28 stretch; mask-border: var(--cn-pen-thin) 28 28 28 28 stretch;
+}
+
+/* counts (Grades "3"): the sidebar's small badge */
+html.chn-nav #section-tabs .nav-badge {
+ margin-left: auto; min-width: 20px; padding: 0 6px; border-radius: 9px 7px 9px 7px; box-sizing: border-box;
+ font: 650 11px/18px var(--chn-font, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif); text-align: center;
+ color: #fff; background: var(--cn-accent); box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) { html.chn-nav #section-tabs li.section a { transition: none; } }
