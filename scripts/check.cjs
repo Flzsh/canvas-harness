@@ -13,7 +13,7 @@ assert.deepEqual(manifest.optional_host_permissions,[...providers.list.flatMap(p
  assert.deepEqual(dynamic.matches,['https://*/*']);assert.equal(dynamic.use_dynamic_url,true);assert.deepEqual(dynamic.resources,fixed.resources);}
 assert.equal(manifest.background.service_worker,'background.js');
 assert.equal(manifest.externally_connectable,undefined);
-assert.deepEqual(manifest.host_permissions,['https://*.instructure.com/*']);
+assert.deepEqual(manifest.host_permissions,['https://*.instructure.com/*','https://*.canvas-user-content.com/*']);
 const files=fs.readdirSync(extension,{recursive:true}).filter(f=>fs.statSync(path.join(extension,f)).isFile());
 for(const file of files.filter(f=>f.endsWith('.js')))new vm.Script(fs.readFileSync(path.join(extension,file),'utf8'),{filename:file});
 const references=[manifest.background.service_worker,...manifest.content_scripts.flatMap(c=>[...(c.js||[]),...(c.css||[])]),...Object.values(manifest.icons),manifest.action.default_popup,'custom-site.js','welcome.html','school-address.js',...Object.values(manifest.action.default_icon),...manifest.web_accessible_resources.flatMap(r=>r.resources)];

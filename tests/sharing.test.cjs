@@ -24,7 +24,7 @@ test('fresh recipients start without grades, notes, bookmarks or cached courses'
 });
 test('sharing build keeps the limited permissions and only read-only Canvas transport',()=>{
  const manifest=JSON.parse(read('manifest.json'));assert.equal(manifest.name,'Canvas Harness');
- assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen']);assert.deepEqual(manifest.host_permissions,['https://*.instructure.com/*']);
+ assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen']);assert.deepEqual(manifest.host_permissions,['https://*.instructure.com/*','https://*.canvas-user-content.com/*']);
  assert.deepEqual(manifest.optional_permissions,['scripting']);
  assert.equal(manifest.externally_connectable,undefined);
  assert.match(read('api.js'),/method:'GET'/);assert.ok(!/method:\s*['"](?:POST|PUT|PATCH|DELETE)/.test(read('api.js')));

@@ -28,7 +28,8 @@
     "service_worker": "background.js"
   },
   "host_permissions": [
-    "https://*.instructure.com/*"
+    "https://*.instructure.com/*",
+    "https://*.canvas-user-content.com/*"
   ],
   "icons": {
     "16": "icons/icon-16.png",
@@ -115,6 +116,7 @@
         "settings-dock.js",
         "dashboard.js",
         "canvas-nav.js",
+        "pdf-view.js",
         "content.js"
       ],
       "run_at": "document_start",
@@ -134,6 +136,7 @@
         "customize.css",
         "subject-art.css",
         "ai-panel.html",
+        "pdf-reader.html",
         "gpa.css",
         "icon.svg",
         "settings-dock.css",
@@ -159,6 +162,7 @@
         "customize.css",
         "subject-art.css",
         "ai-panel.html",
+        "pdf-reader.html",
         "gpa.css",
         "icon.svg",
         "settings-dock.css",

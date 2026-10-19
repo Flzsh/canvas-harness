@@ -1,0 +1,81 @@
+/*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. Third-party components retain their respective attribution. */
+/* The Harness PDF reader (pdf-reader.html). Harness's paper, ink and accent; the pages themselves stay white. */
+@font-face { font-family: "Literata"; src: url("fonts/literata-latin.woff2") format("woff2"); font-weight: 200 900; font-display: swap; }
+:root {
+ --accent: #A9522F; --paper: #FAF9F5; --desk: #F2F0E9; --ink: #141413; --ink2: #3D3D3A; --muted: #6E6B62; --line: #E2DED3;
+ --chip: #FFFFFF; --hover: #ECE9E0; --hit: rgb(255 214 102 / .55); --hit-now: rgb(255 158 64 / .7);
+ --ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+ color-scheme: light;
+}
+:root[data-theme=dark] {
+ --paper: #1d2128; --desk: #15181d; --ink: #EDEFF3; --ink2: #C7CBD3; --muted: #9AA0AB; --line: #2E343E; --chip: #252a33; --hover: #2b313b;
+ color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; background: var(--desk); color: var(--ink); font: 14px/1.4 var(--ui); overflow: hidden; }
+
+/* toolbar: paper with a pen line under it */
+.bar { position: relative; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 10px; background: var(--paper); flex-wrap: wrap; }
+.bar::after { content: ""; position: absolute; left: 6px; right: 6px; bottom: -3px; height: 6px; pointer-events: none;
+ background: no-repeat center / 100% 100% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 6' preserveAspectRatio='none'%3E%3Cpath d='M1 3.2C60 2.2 120 3.8 200 2.9S330 2.4 399 3.4' fill='none' stroke='%233D3D3A' stroke-opacity='.55' stroke-width='1.3' stroke-linecap='round'/%3E%3C/svg%3E"); }
+.group { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.group:first-child { flex: 1 1 200px; }
+.tools { flex: 1 1 200px; justify-content: flex-end; }
+.name { font: 600 14px/1.2 "Literata", Georgia, serif; letter-spacing: -.01em; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-left: 4px; }
+.icon { display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--ink2); cursor: pointer; text-decoration: none; flex: none; }
+.icon.small { width: 26px; height: 26px; }
+.icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.icon:hover { background: var(--hover); color: var(--ink); }
+.icon[aria-pressed=true] { background: color-mix(in srgb, var(--accent) 16%, var(--chip)); color: var(--accent); }
+.icon:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.icon:disabled { opacity: .4; cursor: default; background: transparent; }
+.sep { width: 1px; height: 20px; margin: 0 4px; background: var(--line); }
+.pageno { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+.pageno input { width: 44px; height: 28px; text-align: center; font: 600 13px var(--ui); color: var(--ink); background: var(--chip); border: 1px solid var(--line); border-radius: 7px; }
+select { height: 28px; padding: 0 6px; font: 13px var(--ui); color: var(--ink); background: var(--chip); border: 1px solid var(--line); border-radius: 7px; cursor: pointer; }
+.search { display: flex; align-items: center; gap: 2px; margin-right: 4px; padding: 0 2px 0 8px; height: 30px; background: var(--chip); border: 1px solid var(--line); border-radius: 8px; }
+.search input { width: 150px; border: 0; background: transparent; font: 13px var(--ui); color: var(--ink); outline: none; }
+.search input::-webkit-search-cancel-button { display: none; }
+#hits { font-size: 12px; color: var(--muted); min-width: 0; white-space: nowrap; }
+
+/* body: page list and the optional page strip */
+.main { flex: 1; display: flex; min-height: 0; }
+.thumbs { width: 150px; flex: none; overflow-y: auto; padding: 14px 12px 24px; background: var(--paper); border-right: 1px solid var(--line); scrollbar-width: thin; }
+.thumbs[hidden] { display: none; }
+.thumb { display: block; width: 100%; margin: 0 0 14px; padding: 0; border: 0; background: none; cursor: pointer; text-align: center; color: var(--muted); font: 12px var(--ui); }
+.thumb canvas, .thumb .ph { display: block; width: 100%; margin: 0 auto 4px; background: #fff; border-radius: 3px; box-shadow: 0 0 0 1px var(--line); }
+.thumb[aria-current=true] canvas, .thumb[aria-current=true] .ph { box-shadow: 0 0 0 2px var(--accent); }
+.thumb[aria-current=true] { color: var(--accent); font-weight: 650; }
+.viewer { flex: 1; overflow: auto; outline: none; scrollbar-width: thin; overscroll-behavior: contain; }
+.pages { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 22px 16px 40px; width: max-content; min-width: 100%; }
+.page { position: relative; flex: none; background: #fff; border-radius: 2px; box-shadow: 0 0 0 1px rgb(20 20 19 / .07), 0 2px 10px rgb(20 20 19 / .08);
+ --user-unit: 1; --total-scale-factor: calc(var(--scale-factor) * var(--user-unit)); }
+:root[data-theme=dark] .page { box-shadow: 0 0 0 1px #000, 0 2px 12px #0008; }
+.page canvas { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 2px; }
+.page .num { position: absolute; left: 100%; top: 0; margin-left: 8px; font: 11px var(--ui); color: var(--muted); }
+.status { margin: 40px auto; max-width: 440px; text-align: center; color: var(--muted); }
+.status button { margin-top: 10px; font: 600 13px var(--ui); padding: 8px 14px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+.status:empty { display: none; }
+
+/* links inside the PDF */
+.links { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.links a { position: absolute; pointer-events: auto; border-radius: 2px; }
+.links a:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+/* text layer: invisible text over the page so it can be selected, copied and searched (PDF.js text layer rules) */
+.textLayer { position: absolute; text-align: initial; inset: 0; overflow: clip; opacity: 1; line-height: 1; text-size-adjust: none; forced-color-adjust: none; transform-origin: 0 0; caret-color: CanvasText; z-index: 1;
+ --min-font-size: 1; --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size)); --min-font-size-inv: calc(1 / var(--min-font-size)); }
+.textLayer :is(span, br) { color: transparent; position: absolute; white-space: pre; cursor: text; transform-origin: 0% 0%; }
+.textLayer :is(span, br) { --font-height: 0; font-size: calc(var(--text-scale-factor) * var(--font-height)); --scale-x: 1; --rotate: 0deg; transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv)); }
+.textLayer > :not(.markedContent), .textLayer .markedContent span:not(.markedContent) { z-index: 1; }
+.textLayer span.markedContent { top: 0; height: 0; }
+.textLayer ::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+.textLayer br::selection { background: transparent; }
+.textLayer .endOfContent { display: block; position: absolute; inset: 100% 0 0; z-index: 0; cursor: default; user-select: none; }
+.textLayer.selecting .endOfContent { top: 0; }
+.textLayer mark { color: transparent; background: var(--hit); border-radius: 2px; padding: 0; }
+.textLayer mark.now { background: var(--hit-now); }
+
+@media (max-width: 760px) { .name, .tools .icon[data-do=newtab] { display: none; } .search input { width: 100px; } .group:first-child { flex: 0 0 auto; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }

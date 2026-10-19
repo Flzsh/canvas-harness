@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF reader</title>
+<link rel="stylesheet" href="pdf-reader.css">
+<script src="site.js"></script>
+</head>
+<body>
+<header class="bar" role="toolbar" aria-label="PDF tools">
+ <div class="group">
+  <button type="button" class="icon" data-do="thumbs" aria-label="Show pages" aria-pressed="false" title="Pages"></button>
+  <span class="name" id="name"></span>
+ </div>
+ <div class="group nav">
+  <button type="button" class="icon" data-do="prev" aria-label="Previous page" title="Previous page (←)"></button>
+  <label class="pageno"><input id="page" type="text" inputmode="numeric" value="1" aria-label="Page number"><span id="total">of …</span></label>
+  <button type="button" class="icon" data-do="next" aria-label="Next page" title="Next page (→)"></button>
+  <span class="sep" aria-hidden="true"></span>
+  <button type="button" class="icon" data-do="zoom-out" aria-label="Zoom out" title="Zoom out (−)"></button>
+  <select id="zoom" aria-label="Zoom">
+   <option value="width">Fit width</option><option value="page">Fit page</option>
+   <option value="0.75">75%</option><option value="1">100%</option><option value="1.25">125%</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option>
+   <option value="custom" hidden></option>
+  </select>
+  <button type="button" class="icon" data-do="zoom-in" aria-label="Zoom in" title="Zoom in (+)"></button>
+ </div>
+ <div class="group tools">
+  <div class="search">
+   <input id="q" type="search" placeholder="Search" aria-label="Search in document" autocomplete="off">
+   <span id="hits" aria-live="polite"></span>
+   <button type="button" class="icon small" data-do="hit-prev" aria-label="Previous match" title="Previous match (⇧ Enter)"></button>
+   <button type="button" class="icon small" data-do="hit-next" aria-label="Next match" title="Next match (Enter)"></button>
+  </div>
+  <button type="button" class="icon" data-do="rotate" aria-label="Rotate" title="Rotate"></button>
+  <a class="icon" id="download" aria-label="Download" title="Download" target="_top"></a>
+  <button type="button" class="icon" data-do="newtab" aria-label="Open in a new tab" title="Open in a new tab"></button>
+  <button type="button" class="icon" data-do="full" aria-label="Full screen" title="Full screen (F)"></button>
+ </div>
+</header>
+<div class="main">
+ <nav class="thumbs" id="thumbs" aria-label="Pages" hidden></nav>
+ <div class="viewer" id="viewer" tabindex="-1"><div class="pages" id="pages"></div><p class="status" id="status" role="status">Opening…</p></div>
+</div>
+<script type="module" src="pdf-reader.mjs"></script>
+</body>
+</html>
