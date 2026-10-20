@@ -92,7 +92,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(item.plannedDate && !validDay(item.plannedDate))throw Error('Invalid planned date in backup.');
       if(typeof item.notes==='string' && item.notes.length>20000)throw Error('A task note exceeds the 20,000 character limit.');
       if(Array.isArray(item.checklist)&&item.checklist.length>100)throw Error('A checklist contains too many steps (maximum 100).');
-      out.tasks[id]={pinned:item.pinned===true,checkedOff:item.checkedOff===true,progress:['not-started','in-progress','done'].includes(item.progress)?item.progress:'not-started',notes:text(item.notes),estimate:Number.isFinite(item.estimate)?Math.max(0,Math.min(1440,item.estimate)):0,plannedDate:/^\d{4}-\d{2}-\d{2}$/.test(item.plannedDate)?item.plannedDate:'',checklist:Array.isArray(item.checklist)?item.checklist.filter(isRecord).slice(0,100).map(x=>({id:text(x.id,100),text:text(x.text,300),done:x.done===true})):[]};
+      out.tasks[id]={pinned:item.pinned===true,checkedOff:item.checkedOff===true,progress:['not-started','in-progress','done'].includes(item.progress)?item.progress:'not-started',notes:text(item.notes),estimate:Number.isFinite(item.estimate)?Math.max(0,Math.min(1440,item.estimate)):0,plannedDate:/^\d{4}-\d{2}-\d{2}$/.test(item.plannedDate)?item.plannedDate:'',checklist:Array.isArray(item.checklist)?item.checklist.filter(isRecord).slice(0,100).map(x=>({id:text(x.id,100),text:text(x.text,300),done:x.done===true})):[],...(['class','paper','none','teacher'].includes(item.doneReason)?{doneReason:item.doneReason}:{})};
     }
     if((value.customTasks||[]).length>1000)throw Error('Backup contains too many personal tasks (maximum 1,000).');
     const ids=new Set();

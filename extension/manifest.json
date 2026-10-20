@@ -115,6 +115,7 @@
         "planner-model.js",
         "pet-art.js",
         "pets.js",
+        "hand-in.js",
         "planner-ui.js",
         "widgets.js",
         "settings-dock.js",
