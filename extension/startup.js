@@ -8,7 +8,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // the one fresh account check before opening any owner's saved workspace.
   // The cover waits up to 8s for Canvas (a slow school network often needs more than 2-3s); only then does Canvas show.
   const startedAt=performance.now(),deadline=startedAt+8000,subscribers=new Set();
-  const sheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','focus-room.css'];
+  const sheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','focus-room.css','review-deck.css'];
   let state='pending',shell,observer,timer,preloaded=false;
   const preloadLinks=[];
   const loginPage=()=>!!document.querySelector('#login_form, #new_login, .ic-Login');

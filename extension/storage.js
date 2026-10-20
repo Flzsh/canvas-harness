@@ -8,6 +8,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const layoutDefaults=customization?.defaults||{};
   // The focus room's session, log and choices (focus-room-model.js); without it the Home timer keeps its old fields.
   const focusModel=root.ReserveFocusRoomModel||(typeof module==='object'&&module.exports?require('./focus-room-model.js'):null);
+  // The review deck's cards, settings and days (review-model.js).
+  const reviewModel=root.ReserveReviewModel||(typeof module==='object'&&module.exports?require('./review-model.js'):null);
   // The distraction guard (focus-guard-model.js) works outside Canvas, so a running session is copied to its own key.
   const focusGuard=root.ReserveFocusGuardModel||(typeof module==='object'&&module.exports?require('./focus-guard-model.js'):null);
   // appearanceVersion 2 (Canvas Harness 2.15) made Clay the default accent; see cleanData.
@@ -118,6 +120,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(isRecord(value.focus)) out.focus=focusModel?focusModel.cleanFocus(value.focus):{minutes:[15,25,45,60].includes(value.focus.minutes)?value.focus.minutes:25,remaining:Number.isFinite(value.focus.remaining)?Math.max(0,Math.min(3600,value.focus.remaining)):1500,endsAt:Number.isFinite(value.focus.endsAt)?value.focus.endsAt:null,itemId:text(value.focus.itemId,100)||null,sessions:Number.isInteger(value.focus.sessions)?Math.max(0,value.focus.sessions):0};
     if(focusModel&&value.focusLog!==undefined)out.focusLog=focusModel.cleanLog(value.focusLog);
     if(focusModel&&value.focusRoom!==undefined)out.focusRoom=focusModel.cleanRoom(value.focusRoom);
+    if(reviewModel&&value.reviewDeck!==undefined)out.reviewDeck=reviewModel.cleanDeck(value.reviewDeck);
     if(value.pet!==undefined&&value.pet!==null){
       if(!isRecord(value.pet))throw Error('Invalid companion data in backup.');
       for(const [key,item] of Object.entries(value.pet).slice(0,32)){

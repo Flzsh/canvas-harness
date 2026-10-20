@@ -188,12 +188,14 @@ ${sites?`<ul class="fr-guard-sites" aria-label="Sites the guard covers">${sites}
     :'<p class="fr-plan">Counts up until you finish. Good for reading or open-ended work.</p>';
    const open=c.items.filter(x=>!h.complete(x)&&!(c.local[x.id]?.checkedOff)).sort((a,b)=>(Date.parse(a.dueAt||'')||9e15)-(Date.parse(b.dueAt||'')||9e15)).slice(0,40);
    if(item&&!open.includes(item))open.unshift(item);
-   const options=open.map(x=>{const co=courseOf(c,x);return `<option value="${E(x.id)}" ${item===x?'selected':''}>${E(x.name)}${co?` · ${E(co.shortName||co.name)}`:''}</option>`;}).join('');
+   // The review deck (review-deck.js) can be the session's task too.
+   const deck=root.ReserveReviewDeck?.current,reviewing=s.itemId==='review:deck'&&!!deck,dueCards=deck?deck.dueCount():0;
+   const options=(deck?`<option value="review:deck" ${reviewing?'selected':''}>Review cards${dueCards?` (${dueCards} due)`:''}</option>`:'')+open.map(x=>{const co=courseOf(c,x);return `<option value="${E(x.id)}" ${item===x?'selected':''}>${E(x.name)}${co?` · ${E(co.shortName||co.name)}`:''}</option>`;}).join('');
    const local=item?c.local[item.id]||{}:{},steps=local.checklist||[],done=item&&(h.complete(item)||local.checkedOff===true);
    const link=item&&!String(item.id).startsWith('local-')?h.assignmentLink(item):'';
    const task=`<aside class="fr-task fr-glass" data-rd-key="task" aria-label="What you are working on">
 <label class="fr-task-pick"><span>Working on</span><select data-fr-field="item"><option value="">Nothing in particular</option>${options}</select></label>
-${item?`${course?`<p class="fr-task-course" style="--fr-course:${E(course.color||'#C96442')}"><i></i>${E(course.shortName||course.name)}</p>`:''}<h2>${E(item.name)}</h2>
+${reviewing?`<p class="fr-task-course"><i></i>Review deck</p><h2>Review cards</h2><p class="fr-task-due">${dueCards?`${dueCards} ${dueCards===1?'card':'cards'} due today`:'Nothing due right now'}</p><div class="fr-task-actions">${dueCards?'<button type="button" class="fr-button" data-rd-action="review-start">Start review</button>':''}<button type="button" class="fr-button" data-rd-action="review-manage" data-tab="add">Add cards</button></div>`:item?`${course?`<p class="fr-task-course" style="--fr-course:${E(course.color||'#C96442')}"><i></i>${E(course.shortName||course.name)}</p>`:''}<h2>${E(item.name)}</h2>
 ${item.dueAt?`<p class="fr-task-due">Due ${E(h.formatDate(item.dueAt,c.s.timeZone,{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))}</p>`:''}
 ${steps.length?`<ul class="fr-steps">${steps.slice(0,12).map(st=>`<li><label><input type="checkbox" data-fr-field="step" data-id="${E(item.id)}" data-step="${E(st.id)}" ${st.done?'checked':''}><span>${E(st.text)}</span></label></li>`).join('')}</ul>`:''}
 ${local.notes?`<p class="fr-notes">${E(String(local.notes).slice(0,240))}${String(local.notes).length>240?'…':''}</p>`:''}

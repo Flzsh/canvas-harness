@@ -73,6 +73,7 @@
         "workspace-gestures.js",
         "customization-model.js",
         "gpa-model.js",
+        "review-model.js",
         "focus-room-model.js",
         "focus-guard-model.js",
         "storage.js",
@@ -115,6 +116,7 @@
         "focus-scene-renderer.js",
         "focus-dial.js",
         "focus-room.js",
+        "review-deck.js",
         "planner-ui.js",
         "widgets.js",
         "settings-dock.js",
@@ -147,6 +149,7 @@
         "widgets.css",
         "pet.css",
         "focus-room.css",
+        "review-deck.css",
         "focus-scene.html",
         "canvas-nav.css"
       ],
@@ -174,6 +177,7 @@
         "widgets.css",
         "pet.css",
         "focus-room.css",
+        "review-deck.css",
         "focus-scene.html",
         "canvas-nav.css"
       ],
