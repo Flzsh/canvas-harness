@@ -5,7 +5,7 @@
 (function(root){
  'use strict';
  const MODES=['timer','pomodoro','open'],PHASES=['focus','short','long'];
- const SCENES=['rain','night','ocean','lamp','course','photo','video','plain'];
+ const SCENES=['rain','night','ocean','lamp','starry','lilies','ink','course','photo','video','plain'];
  const SOUNDS=['white','pink','brown','rain','own'];
  // Lengths a student can choose, in minutes. The Home module's 15/25/45/60 chips sit inside the timer range.
  const LIMITS={minutes:[5,120],work:[5,120],short:[1,30],long:[5,60],every:[2,8],dim:[0,85],blur:[0,24]};

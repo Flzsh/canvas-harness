@@ -2,15 +2,14 @@
    the pony's menu or Shift+F. It runs the same session as the Home timer (focus-room-model.js has the rules), over
    a moving scene, a course's artwork, or the student's own photo or video (focus-scene.html, an extension page that
    also plays the room's sounds). The optional distraction guard (focus-guard-model.js) is set up in the Scene and
-   sound panel; its switch is a small extension page (focus-guard.html) because only an extension page can ask Chrome
-   for access to other websites. Leaving the room keeps the timer running on Home. Nothing here writes to Canvas. */
+   sound panel: a switch, the student's sites and a line saying how it stands (from background.js); Chrome's access to
+   other websites is asked for on its own small page (focus-guard.html), from the student's click there. Leaving the room keeps the timer running on Home. Nothing here writes to Canvas. */
 (function(root){
  'use strict';
  const M=()=>root.ReserveFocusRoomModel,G=()=>root.ReserveFocusGuardModel;
- // The hand-drawn circle of the Home timer, so the two dials match.
- const RING='M61 9C90 7 112 31 111 61C110 90 87 112 59 111C31 110 8 88 9 59C10 32 32 9 60 9C65 9 70 10 75 12';
- const SCENE_NAMES={rain:'Rain on the window',night:'Night sky',ocean:'Ocean at dusk',lamp:'Lamp light',course:'Course art',photo:'Your photo',video:'Your video',plain:'Plain paper'};
- const DARK_SCENES=['rain','night','ocean','lamp','photo','video'];
+ const RING=root.ReserveFocusDial?.PATH||'M60 9a51 51 0 1 1 0 102a51 51 0 1 1 0-102Z';
+ const SCENE_NAMES={rain:'Rain on the window',night:'Night sky',ocean:'Ocean at dusk',lamp:'Lamp light',starry:'Painted stars',lilies:'Water lilies',ink:'Ink mountains',course:'Course art',photo:'Your photo',video:'Your video',plain:'Plain paper'};
+ const DARK_SCENES=['rain','night','ocean','lamp','starry','photo','video'];
  const SOUND_NAMES={white:'White noise',pink:'Pink noise',brown:'Brown noise',rain:'Rain',own:'Your sound'};
  const MEDIA_NAMES={photo:'photo',video:'video',audio:'sound'};
  const ICON={
@@ -22,12 +21,52 @@
  };
  const svg=k=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
  const sizeText=n=>n>=1048576?`${(n/1048576).toFixed(n>=10485760?0:1)} MB`:`${Math.max(1,Math.round(n/1024))} KB`;
- const pageURL=file=>{try{const u=root.chrome?.runtime?.getURL?.(file);if(u)return u;}catch{}return new URL('../extension/'+file,root.location.href).href;};
+ function accentInk(color){
+  const hex=/^#([\da-f]{6})$/i.exec(color||'');if(!hex)return '#fff';
+  const rgb=hex[1].match(/../g).map(h=>{const n=parseInt(h,16)/255;return n<=.04045?n/12.92:((n+.055)/1.055)**2.4;});
+  return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2]>.179?'#182228':'#fff';
+ }
+ // Capture the address while this content-script context is live. Harness's updater can reload the extension
+ // before an active Canvas tab refreshes; calling runtime.getURL later would then throw and point at Canvas.
+ const extensionBase=(()=>{try{
+  // Canvas is explicitly listed in the manifest's fixed resources. Prefer that address for extension frames;
+  // the broader custom-site rule also lists these files and Chrome may otherwise choose its temporary host.
+  if(root.chrome?.runtime?.id&&/^https:\/\/[\w.-]+\.instructure\.com$/.test(root.location.origin))return `chrome-extension://${root.chrome.runtime.id}/`;
+  const u=root.chrome?.runtime?.getURL?.('');if(u)return u;
+ }catch{}return null;})();
+ const pageURL=file=>new URL(file,extensionBase||new URL('../extension/',root.location.href)).href;
  const sceneURL=()=>pageURL('focus-scene.html');
+ // Extension resources may use a temporary host; ready messages supply the verified frame's real origin.
+ const frameOrigin=url=>{const u=new URL(url);return u.origin==='null'?`${u.protocol}//${u.host}`:u.origin;};
+ function trustedFrameOrigin(origin,url){return origin===frameOrigin(url)||!!root.chrome?.runtime?.id&&origin===`chrome-extension://${root.chrome.runtime.id}`;}
+ function loadFrame(frame,url){
+  // A blank srcdoc takes precedence over src, including when the host adds it as a frame is attached.
+  const unblank=()=>{if(frame.getAttribute('src')===url&&frame.hasAttribute('srcdoc'))frame.removeAttribute('srcdoc');};
+  frame.addEventListener('load',unblank);frame.src=url;unblank();
+ }
+
+ // Reconcile controls in place so updates never replace a pressed button or a dragged slider.
+ function patchRoom(current,next){
+  const key=n=>n.nodeType===1?(n.getAttribute('data-rd-key')||n.id||(n.hasAttribute('data-fr-field')?'field:'+n.dataset.frField+':'+(n.dataset.step||''):n.hasAttribute('data-fr-action')?'action:'+n.dataset.frAction+':'+(n.dataset.value||'')+':'+(n.dataset.kind||''):'')):'';
+  if(current.nodeType!==1){if(current.nodeValue!==next.nodeValue)current.nodeValue=next.nodeValue;return;}
+  for(const a of [...current.attributes])if(!next.hasAttribute(a.name))current.removeAttribute(a.name);
+  for(const a of [...next.attributes])if(current.getAttribute(a.name)!==a.value)current.setAttribute(a.name,a.value);
+  if(current.tagName==='INPUT'){if(current.value!==next.value)current.value=next.value;current.checked=next.checked;return;}
+  const value=next.value,keyed=new Map([...current.childNodes].filter(key).map(n=>[key(n),n]));let cursor=current.firstChild;
+  for(const desired of [...next.childNodes]){
+   const existing=key(desired)?keyed.get(key(desired)):cursor;
+   if(existing&&existing.nodeType===desired.nodeType&&existing.nodeName===desired.nodeName&&key(existing)===key(desired)){
+    if(existing!==cursor)current.insertBefore(existing,cursor);
+    patchRoom(existing,desired);cursor=existing.nextSibling;
+   }else current.insertBefore(desired,cursor);
+  }
+  while(cursor){const rest=cursor.nextSibling;cursor.remove();cursor=rest;}
+  if(current.tagName==='SELECT'&&current.value!==value)current.value=value;
+ }
 
  function create({container,store,save,getContext,helpers,startTick=()=>{},onFinished=()=>{}}){
   const doc=container.ownerDocument,win=doc.defaultView||root;
-  let node=null,ui=null,frame=null,ready=false,panel='',status='',statusTimer=0,tick=0,returnTo=null,goalTimer=0,goalDraft=null,overflow=null,sent={},cheerUntil=0,dead=false,ac=null,guardDraft=null,guardGranted=null;
+  let node=null,ui=null,frame=null,scenery=null,dial=null,dialArc=null,ready=false,sceneOrigin='',panel='',status='',statusTimer=0,tick=0,returnTo=null,goalTimer=0,goalDraft=null,overflow=null,sent={},cheerUntil=0,dead=false,ac=null,guardDraft=null,pendingAllow=false;
   const data=()=>store.get()||{};
   const room=()=>M().cleanRoom(data().focusRoom);
   const reduced=()=>!!win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -39,18 +78,26 @@
   function saveFocus(fn){return save(d=>{d.focus=fn(M().full(d.focus),d);});}
 
   /* ---- the backdrop frame ---- */
-  function post(message){if(!frame||!ready)return;try{frame.contentWindow.postMessage({type:'reserve-focus-room',...message},new URL(frame.src).origin);}catch{}}
+  // Loaded only when it has something to do: the student's own photo or video, sound, or a file being added. The
+  // built-in scenes are painted in the room itself.
+  let pendingStore=null;
+  function ensureFrame(){
+   if(frame||!node)return;
+   frame=doc.createElement('iframe');frame.className='fr-scene';frame.title='Focus room backdrop';
+   frame.setAttribute('aria-hidden','true');frame.tabIndex=-1;frame.setAttribute('allow','autoplay');
+   node.insertBefore(frame,node.querySelector('.fr-dim'));ready=false;sceneOrigin='';sent={};loadFrame(frame,sceneURL());
+  }
+  function post(message){if(!frame||!ready||!sceneOrigin)return;try{frame.contentWindow.postMessage({type:'reserve-focus-room',...message},sceneOrigin);}catch{}}
   function sendLook(force){
-   const r=room(),c=getContext(),look={scene:r.scene,theme:c.theme==='dark'?'dark':'light',still:reduced()},sound={...r.sound,on:r.sound.on&&!!node};
+   const r=room(),c=getContext(),look={scene:r.scene==='photo'||r.scene==='video'?r.scene:'plain',theme:c.theme==='dark'?'dark':'light',still:reduced()},sound={...r.sound,on:r.sound.on&&!!node};
    const a=JSON.stringify(look),b=JSON.stringify(sound);
    if(force||sent.look!==a){sent.look=a;post({op:'scene',...look});}
    if(force||sent.sound!==b){sent.sound=b;post({op:'sound',sound});}
   }
   function onMessage(event){
-   if(guardMessage(event))return;
-   if(!frame||event.source!==frame.contentWindow||event.data?.type!=='reserve-focus-scene')return;
+   if(!frame||event.source!==frame.contentWindow||!trustedFrameOrigin(event.origin,frame.src)||event.data?.type!=='reserve-focus-scene')return;
    const m=event.data,kind=m.kind;
-   if(m.op==='ready'){ready=true;sendLook(true);return;}
+   if(m.op==='ready'){ready=true;sceneOrigin=event.origin;node.dataset.sceneReady='true';sendLook(true);if(pendingStore){post({op:'store',...pendingStore});pendingStore=null;}return;}
    if(m.op==='stored'&&M().MEDIA[kind]){
     const patch={media:{[kind]:m.meta}};
     if(kind==='audio'){const s=room().sound;patch.sound={on:true,own:s.own||.8};}else patch.scene=kind;
@@ -66,37 +113,52 @@
    const kind=input.dataset.frFile,file=input.files?.[0];input.value='';
    if(!file||!M().MEDIA[kind])return;
    const problem=M().checkMedia(kind,file);if(problem){say(problem);return;}
-   if(!ready){say('The room is still opening. Try again in a moment.');return;}
-   say(`Saving your ${MEDIA_NAMES[kind]}…`,0);post({op:'store',kind,file});
+   say(`Saving your ${MEDIA_NAMES[kind]}…`,0);
+   if(!ready){pendingStore={kind,file};ensureFrame();return;}
+   post({op:'store',kind,file});
   }
 
   /* ---- the distraction guard ---- */
-  const guardFrame=()=>ui?.querySelector('iframe[data-fr-guard]')||null;
   const tone=()=>node?.dataset.tone==='dark'?'dark':'light';
-  const guardURL=()=>`${pageURL('focus-guard.html')}?tone=${tone()}&on=${room().guard.on?1:0}`;
-  function postGuard(){const f=guardFrame();if(!f?.src)return;try{f.contentWindow.postMessage({type:'reserve-focus-room',op:'guard',on:room().guard.on,tone:tone()},new URL(f.src).origin);}catch{}}
-  // The switch tells the room what the student chose and whether Chrome allowed it.
-  function guardMessage(event){
-   const f=guardFrame();if(!f||event.source!==f.contentWindow||event.data?.type!=='reserve-focus-guard')return false;
-   try{if(event.origin!==new URL(f.src).origin)return true;}catch{return true;}
-   const m=event.data,known=guardGranted;if(typeof m.granted==='boolean')guardGranted=m.granted;
-   if(m.op==='ready'){postGuard();if(known!==guardGranted)render();}
-   else if(m.op==='set'){const on=m.on===true;saveRoom({guard:{on}}).then(()=>say(!on?'The distraction guard is off.':room().guard.sites.length?'The distraction guard is on. Sites on your list wait while you focus.':'The distraction guard is on. Add a site for it to cover.'));}
-   else if(m.op==='denied'){saveRoom({guard:{on:false}}).then(()=>say('Chrome did not allow it, so the distraction guard stays off.'));}
-   return true;
+  // How the guard stands, from background.js: whether Chrome allows it, and whether it covers the sites right now. The
+  // running session goes along so the stored copy is restored if it was ever missed.
+  let guardState=null,guardAsked=0,guardWait=0;
+  function askGuard(){
+   const rt=root.chrome?.runtime;if(!rt?.id||!G())return;
+   guardAsked=Date.now();
+   try{rt.sendMessage({type:'ch-focus-guard',op:'status',record:G().record(data())},reply=>{void rt.lastError;if(dead||!reply?.ok)return;const was=JSON.stringify(guardState);guardState=reply;if(pendingAllow){pendingAllow=false;if(!reply.allowed&&room().guard.on)allowGuard();}if(JSON.stringify(guardState)!==was)render();});}catch{}
+  }
+  function allowGuard(){
+   try{root.chrome.runtime.sendMessage({type:'ch-focus-guard',op:'allow'},()=>{void root.chrome.runtime.lastError;});}catch{say('Reload the page, then try again.');return;}
+   say('Chrome will ask in the small window that opened. Click Allow there, then come back here.',9000);
+   clearInterval(guardWait);let n=0;guardWait=setInterval(()=>{if(dead||!node||++n>60||guardState?.allowed){clearInterval(guardWait);guardWait=0;return;}askGuard();},2000);
+  }
+  function guardLine(r){
+   if(!r.guard.on)return r.guard.sites.length?'Off: the sites below open as usual. Tick the switch to cover them while you focus.':'';
+   if(!root.chrome?.runtime?.id)return 'In this preview the guard can’t reach other sites.';
+   if(!guardState)return 'Checking…';
+   if(!guardState.allowed)return 'needs-allow';
+   if(!r.guard.sites.length)return 'Add a site for it to cover.';
+   const s=M().state(data().focus,Date.now());
+   if(!s.running||s.brk)return s.brk?'Resting during the break: your sites are open.':'Ready. Your sites wait as soon as a focus session runs.';
+   if(!(guardState.until>Date.now()))return 'Starting…';
+   const until=s.mode==='open'?'until you finish':`until ${helpers().formatDate(guardState.until,getContext().s.timeZone,{hour:'numeric',minute:'2-digit'})}`;
+   return `On now: ${r.guard.sites.length===1?r.guard.sites[0]:r.guard.sites.length+' sites'} wait ${until}.`;
   }
   function addSite(input){
    const r=room(),{host,problem}=G().check(input.value,r.guard.sites,[win.location.origin]);
    if(problem){say(problem);return;}
    guardDraft=null;input.value='';
-   saveRoom({guard:{sites:[...r.guard.sites,host]}}).then(()=>say(`${host} waits while you focus.`));
+   // Adding a site means the student wants it covered, so the guard switches on (and Chrome's access is asked for).
+   const was=r.guard.on;if(!was)pendingAllow=true;
+   saveRoom({guard:{on:true,sites:[...r.guard.sites,host]}}).then(()=>{say(was?`${host} waits while you focus.`:`The distraction guard is on. ${host} waits while you focus.`);askGuard();});
   }
   function guardSection(r){
    if(!G())return '';
    const sites=r.guard.sites.map(h=>`<li><span>${E(h)}</span><button type="button" class="fr-link-button" data-fr-action="guard-remove" data-value="${E(h)}" aria-label="Remove ${E(h)}">Remove</button></li>`).join('');
    return `<h3 id="fr-guard">Distraction guard</h3>
-<iframe class="fr-guard-switch" data-fr-guard title="Distraction guard switch"></iframe>
-${r.guard.on&&guardGranted===false?'<p class="fr-fine fr-guard-lost">Chrome no longer lets the guard work on other sites. Switch it on again to allow it.</p>':''}
+<label class="fr-check"><input type="checkbox" data-fr-field="guard-on" ${r.guard.on?'checked':''}><span>Cover the sites below while you focus</span></label>
+${(()=>{const line=guardLine(r);return line==='needs-allow'?`<p class="fr-guard-status" data-state="allow" role="status">Chrome hasn’t given the guard access to other sites yet. <button type="button" class="fr-link-button" data-fr-action="guard-allow">Allow in Chrome</button></p>`:line?`<p class="fr-guard-status" data-state="${guardState?.allowed&&/^On now/.test(line)?'on':'info'}" role="status">${E(line)}</p>`:'';})()}
 <div class="fr-guard-add"><label class="fr-sr" for="fr-guard-site">Add a site</label><input type="text" id="fr-guard-site" data-fr-field="guard-site" maxlength="300" autocomplete="off" spellcheck="false" placeholder="youtube.com" value="${E(guardDraft??'')}" ${r.guard.sites.length>=G().MAX_SITES?'disabled':''}><button type="button" class="fr-button" data-fr-action="guard-add">Add</button></div>
 ${sites?`<ul class="fr-guard-sites" aria-label="Sites the guard covers">${sites}</ul>`:''}
 <p class="fr-fine">During a focus session (not on breaks or while paused), these sites show a short reminder instead of the page, with a way to continue for 5 minutes. Canvas and your school’s sites are never covered. Switching the guard on asks Chrome for access to other websites; Canvas Harness uses it only on the sites in this list, only during a session.</p>`;
@@ -129,26 +191,27 @@ ${sites?`<ul class="fr-guard-sites" aria-label="Sites the guard covers">${sites}
    const options=open.map(x=>{const co=courseOf(c,x);return `<option value="${E(x.id)}" ${item===x?'selected':''}>${E(x.name)}${co?` · ${E(co.shortName||co.name)}`:''}</option>`;}).join('');
    const local=item?c.local[item.id]||{}:{},steps=local.checklist||[],done=item&&(h.complete(item)||local.checkedOff===true);
    const link=item&&!String(item.id).startsWith('local-')?h.assignmentLink(item):'';
-   const task=`<aside class="fr-task fr-glass" aria-label="What you are working on">
+   const task=`<aside class="fr-task fr-glass" data-rd-key="task" aria-label="What you are working on">
 <label class="fr-task-pick"><span>Working on</span><select data-fr-field="item"><option value="">Nothing in particular</option>${options}</select></label>
 ${item?`${course?`<p class="fr-task-course" style="--fr-course:${E(course.color||'#C96442')}"><i></i>${E(course.shortName||course.name)}</p>`:''}<h2>${E(item.name)}</h2>
 ${item.dueAt?`<p class="fr-task-due">Due ${E(h.formatDate(item.dueAt,c.s.timeZone,{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))}</p>`:''}
 ${steps.length?`<ul class="fr-steps">${steps.slice(0,12).map(st=>`<li><label><input type="checkbox" data-fr-field="step" data-id="${E(item.id)}" data-step="${E(st.id)}" ${st.done?'checked':''}><span>${E(st.text)}</span></label></li>`).join('')}</ul>`:''}
 ${local.notes?`<p class="fr-notes">${E(String(local.notes).slice(0,240))}${String(local.notes).length>240?'…':''}</p>`:''}
 <div class="fr-task-actions">${link?`<a class="fr-button" href="${E(link)}" target="_blank" rel="noopener noreferrer">Open in Canvas</a>`:''}${done?'<span class="fr-done">Done</span>':`<button type="button" class="fr-button" data-rd-action="check-off" data-id="${E(item.id)}">Mark done</button>`}</div>`:'<p class="fr-task-empty">Pick an assignment to keep its steps and notes beside the timer.</p>'}</aside>`;
-   return `<header class="fr-top"><div class="fr-modes" role="radiogroup" aria-label="Kind of session">${modes}</div>
+   return `<header class="fr-top" data-rd-key="top"><div class="fr-modes" role="radiogroup" aria-label="Kind of session">${modes}</div>
 <div class="fr-tools">${tool('panel','scene','Scene and sound',`data-value="scene" aria-pressed="${panel==='scene'}"`)}${tool('panel','stats','Your focus',`data-value="stats" aria-pressed="${panel==='stats'}"`)}${doc.fullscreenEnabled!==false?tool('fullscreen',full?'shrink':'full',full?'Leave full screen':'Full screen'):''}${tool('close','close','Leave the room (Esc). The timer keeps running.')}</div></header>
-<main class="fr-center" data-brk="${s.brk}"><p class="fr-phase">${E(phaseLine(s,r))}</p>
+<main class="fr-center" data-rd-key="timer" data-brk="${s.brk}" data-running="${s.running}"><p class="fr-phase">${E(phaseLine(s,r))}</p>
 <div class="fr-dial" data-running="${s.running}"><svg viewBox="0 0 120 120" aria-hidden="true"><path class="fr-track" d="${RING}"/><path class="fr-arc" pathLength="1" d="${RING}" style="stroke-dashoffset:${(1-s.progress).toFixed(4)}"/></svg><output class="fr-time" data-fr-time aria-live="off">${M().clock(s.shown)}</output></div>
+${s.brk&&s.running?'<p class="fr-breath" aria-hidden="true"><span>Breathe in</span><span>Breathe out</span><span>Breathe slowly</span></p>':''}
 <label class="fr-goal"><span class="fr-sr">What will you finish?</span><input type="text" data-fr-field="goal" maxlength="140" autocomplete="off" placeholder="What will you finish?" value="${E(goalDraft??s.goal)}"></label>
 <div class="fr-actions">${actions}</div>${lengths}<p class="fr-status" role="status" data-fr-status>${E(status)}</p></main>
-${task}${pony(s)}${panel?`<section class="fr-panel fr-glass" aria-label="${panel==='stats'?'Your focus':'Scene and sound'}">${panel==='stats'?statsPanel(c,h):scenePanel(r)}</section>`:''}`;
+${task}${pony(s)}${panel?`<section class="fr-panel fr-glass" data-rd-key="panel-${panel}" aria-label="${panel==='stats'?'Your focus':'Scene and sound'}">${panel==='stats'?statsPanel(c,h):scenePanel(r)}</section>`:''}`;
   }
   function pony(s){
    const P=root.ReservePets,A=root.ReservePetArt;if(!P||!A)return '';
    const pet=P.clean(data().pet);if(!pet.enabled||pet.roam==='off')return '';
    const c=A.COATS[pet.coat]||A.COATS.oat,pose=Date.now()<cheerUntil?'cheer':s.running&&!s.brk?'read':s.brk?'lie':'stand';
-   return `<div class="fr-pony" aria-hidden="true"><div class="pet" data-pose="${pose}" data-face="left" data-gear="${E(pet.gear)}" data-still="${reduced()}" style="--pet-size:96px;--pet-coat:${c.coat};--pet-shade:${c.shade};--pet-mane:${c.mane};--pet-muzzle:${c.muzzle};--pet-harness:${A.HARNESS[pet.harness]||A.HARNESS.red}">${A.svg({title:pet.name})}</div></div>`;
+   return `<div class="fr-pony" data-rd-key="pony" aria-hidden="true"><div class="pet" data-pose="${pose}" data-face="left" data-gear="${E(pet.gear)}" data-still="${reduced()}" style="--pet-size:96px;--pet-coat:${c.coat};--pet-shade:${c.shade};--pet-mane:${c.mane};--pet-muzzle:${c.muzzle};--pet-harness:${A.HARNESS[pet.harness]||A.HARNESS.red}">${A.svg({title:pet.name})}</div></div>`;
   }
   function range(field,label,value,min,max,extra=''){return `<label class="fr-range"><span>${E(label)}</span><input type="range" data-fr-field="${field}" min="${min}" max="${max}" value="${value}" ${extra}><output>${value}</output></label>`;}
   function scenePanel(r){
@@ -179,8 +242,12 @@ ${guardSection(r)}
   }
   function look(){
    if(!node)return;const r=room(),c=getContext(),dark=DARK_SCENES.includes(r.scene)||r.scene==='plain'&&c.theme==='dark';
-   node.dataset.tone=dark?'dark':'light';node.dataset.scene=r.scene;
+   node.dataset.tone=dark?'dark':'light';node.dataset.scene=r.scene;node.dataset.panel=panel;
+   scenery?.show({scene:r.scene,theme:c.theme,still:reduced()});
+   {const s=M().state(data().focus,Date.now());scenery?.session?.({progress:s.progress,brk:s.brk,running:s.running});}
+   if(r.scene==='photo'||r.scene==='video'||r.sound.on)ensureFrame();
    node.style.setProperty('--fr-dim',String(r.dim/100));node.style.setProperty('--fr-blur',r.blur+'px');
+   node.style.setProperty('--fr-button-ink',accentInk(c.accent||'#C96442'));
    const art=node.querySelector('.fr-art');
    if(r.scene==='course'){
     const f=M().full(data().focus),item=chosenItem(c,f),course=courseOf(c,item)||c.courses?.[0],key=course?String(course.id):'';
@@ -194,22 +261,21 @@ ${guardSection(r)}
    const active=node.getRootNode()?.activeElement,key=active&&ui.contains(active)?(active.dataset.frField?`[data-fr-field="${active.dataset.frField}"]${active.dataset.step?`[data-step="${active.dataset.step}"]`:''}`:active.dataset.frAction?`[data-fr-action="${active.dataset.frAction}"]${active.dataset.value!==undefined?`[data-value="${active.dataset.value}"]`:''}`:''):'';
    const caret=active?.selectionStart,html=view();
    if(ui.__html!==html){
-    // The guard's switch is a frame: moved aside and back (where the browser can) so a redraw does not reload it.
-    const kept=guardFrame(),scroll=ui.__panel===panel?ui.querySelector('.fr-panel')?.scrollTop||0:0;let parked=false;
-    if(kept&&typeof node.moveBefore==='function')try{node.moveBefore(kept,null);parked=true;}catch{}
-    ui.innerHTML=html;ui.__html=html;
-    const slot=guardFrame();let moved=false;
-    if(slot&&parked)try{slot.parentNode.moveBefore(kept,slot);slot.remove();moved=true;}catch{}
-    if(!moved){if(parked)kept.remove();if(slot)slot.src=guardURL();}
-    const side=ui.querySelector('.fr-panel');if(side&&scroll)side.scrollTop=scroll;ui.__panel=panel;   // the panel stays where the student was
-    if(key){const el=ui.querySelector(key);if(el){el.focus({preventScroll:true});if(Number.isInteger(caret)&&el.setSelectionRange&&el.type==='text')try{el.setSelectionRange(caret,caret);}catch{}}}}
-   look();postGuard();ticking();
+    const next=doc.createElement('div');next.className='fr-ui';next.innerHTML=html;
+    patchRoom(ui,next);ui.__html=html;
+    if(key){const el=ui.querySelector(key);if(el&&el!==active){el.focus({preventScroll:true});if(Number.isInteger(caret)&&el.setSelectionRange&&el.type==='text')try{el.setSelectionRange(caret,caret);}catch{}}}}
+   const arc=node.querySelector('.fr-arc');
+   if(arc!==dialArc){dial?.destroy();dialArc=arc;dial=arc&&root.ReserveFocusDial?.create(arc,{getFocus:()=>data().focus});}
+   dial?.sync();look();ticking();
+   if(panel==='scene'&&room().guard.on&&Date.now()-guardAsked>5000)askGuard();
   }
   // Between renders only the clock and its ring move.
   function step(){
    if(!node||dead)return;const s=M().state(data().focus,Date.now());
-   const t=node.querySelector('[data-fr-time]'),arc=node.querySelector('.fr-arc'),text=M().clock(s.shown);
-   if(t&&t.textContent!==text)t.textContent=text;if(arc)arc.style.strokeDashoffset=(1-s.progress).toFixed(4);
+   const t=node.querySelector('[data-fr-time]'),text=M().clock(s.shown);
+   if(t&&t.textContent!==text)t.textContent=text;dial?.sync();
+   scenery?.session?.({progress:s.progress,brk:s.brk,running:s.running});
+   if(s.elapsed>=60&&!s.brk&&!node.querySelector('[data-fr-action="finish"]')){render();return;}
    if(cheerUntil&&Date.now()>=cheerUntil){cheerUntil=0;render();return;}
    if(!s.running)ticking();
   }
@@ -224,13 +290,16 @@ ${guardSection(r)}
    if(node){render();return;}
    returnTo=container.getRootNode?.()?.activeElement||null;
    node=doc.createElement('div');node.className='fr-room';node.dataset.rdKeep='true';node.setAttribute('role','dialog');node.setAttribute('aria-modal','true');node.setAttribute('aria-label','Focus room');node.tabIndex=-1;
-   node.innerHTML=`<div class="fr-art" aria-hidden="true" hidden></div><iframe class="fr-scene" title="Focus room backdrop" aria-hidden="true" tabindex="-1" allow="autoplay"></iframe><div class="fr-dim" aria-hidden="true"></div><div class="fr-ui"></div>
+   node.innerHTML=`<div class="fr-art" aria-hidden="true" hidden></div><div class="fr-dim" aria-hidden="true"></div><div class="fr-ui"></div>
 <input type="file" hidden data-fr-file="photo" accept="${M().MEDIA.photo.types.join(',')}"><input type="file" hidden data-fr-file="video" accept="${M().MEDIA.video.types.join(',')}"><input type="file" hidden data-fr-file="audio" accept="${M().MEDIA.audio.types.join(',')},.m4a,.mp3,.flac">`;
-   ui=node.querySelector('.fr-ui');frame=node.querySelector('iframe');ready=false;sent={};frame.src=sceneURL();
+   ui=node.querySelector('.fr-ui');frame=null;ready=false;sceneOrigin='';sent={};
+   const canvas=doc.createElement('canvas');canvas.className='fr-backdrop';canvas.setAttribute('aria-hidden','true');node.prepend(canvas);
+   scenery=root.ReserveFocusSceneRenderer?.create(canvas)||null;
+   win.addEventListener('message',onMessage);
    for(const input of node.querySelectorAll('[data-fr-file]'))input.addEventListener('change',()=>picked(input));
    container.append(node);
    overflow=doc.documentElement.style.overflow;doc.documentElement.style.overflow='hidden';
-   win.addEventListener('message',onMessage);doc.addEventListener('fullscreenchange',render);
+   doc.addEventListener('fullscreenchange',render);
    render();
    (node.querySelector('.fr-primary')||node).focus({preventScroll:true});
   }
@@ -240,7 +309,9 @@ ${guardSection(r)}
    if(doc.fullscreenElement===node)doc.exitFullscreen?.().catch(()=>{});
    win.removeEventListener('message',onMessage);doc.removeEventListener('fullscreenchange',render);
    clearInterval(tick);tick=0;clearTimeout(goalTimer);flushGoal();
-   node.remove();node=null;ui=null;frame=null;ready=false;panel='';status='';guardDraft=null;
+   scenery?.destroy();scenery=null;
+   dial?.destroy();dial=null;dialArc=null;
+   node.remove();node=null;ui=null;frame=null;ready=false;pendingStore=null;panel='';status='';guardDraft=null;
    doc.documentElement.style.overflow=overflow||'';overflow=null;
    if(returnTo?.isConnected)returnTo.focus?.({preventScroll:true});returnTo=null;
   }
@@ -276,17 +347,19 @@ ${guardSection(r)}
   function click(event){
    if(!node||!node.contains(event.target))return false;
    const button=event.target.closest?.('[data-fr-action]');if(!button)return !event.target.closest?.('[data-rd-action],a');
+   if(button.disabled)return true;
    const action=button.dataset.frAction,value=button.dataset.value;
    if(action==='close'){close();return true;}
    if(action==='toggle'){toggle();return true;}
    if(action==='finish'){finish();return true;}
    if(action==='reset'){saveFocus(f=>M().reset(f));return true;}
-   if(action==='mode'&&M().MODES.includes(value)){saveFocus((f,d)=>M().setMode(f,value,d.focusRoom));return true;}
+   if(action==='mode'&&M().MODES.includes(value)){if(M().full(data().focus).mode!==value)saveFocus((f,d)=>M().setMode(f,value,d.focusRoom));return true;}
    if(action==='minutes'){const n=Number(value);saveFocus(f=>M().setMinutes(f,n));return true;}
    if(action==='panel'){panel=panel===value?'':value||'';render();if(button.dataset.section)node.querySelector('#fr-pomodoro')?.scrollIntoView({block:'start'});return true;}
    if(action==='fullscreen'){if(doc.fullscreenElement)doc.exitFullscreen?.().catch(()=>{});else node.requestFullscreen?.().catch(()=>say('Full screen is not available here.'));return true;}
    if(action==='scene'&&M().SCENES.includes(value)){saveRoom({scene:value});return true;}
    if(action==='pick'&&M().MEDIA[button.dataset.kind]){node.querySelector(`[data-fr-file="${button.dataset.kind}"]`)?.click();return true;}
+   if(action==='guard-allow'){allowGuard();return true;}
    if(action==='guard-add'&&G()){const field=node.querySelector('[data-fr-field="guard-site"]');if(field)addSite(field);return true;}
    if(action==='guard-remove'&&G()){const r=room();saveRoom({guard:{sites:r.guard.sites.filter(h=>h!==value)}}).then(()=>say(`${value} is off the list.`));return true;}
    if(action==='remove-media'&&M().MEDIA[button.dataset.kind]){const kind=button.dataset.kind;post({op:'remove',kind});const r=room();saveRoom({media:{[kind]:null},...(r.scene===kind?{scene:'rain'}:{}),...(kind==='audio'?{sound:{own:0}}:{})});say(`Your ${MEDIA_NAMES[kind]} was removed from this device.`);return true;}
@@ -308,13 +381,14 @@ ${guardSection(r)}
   function change(event){
    if(!node||!node.contains(event.target))return false;
    const t=event.target,field=t.dataset.frField,num=Number(t.value);
-   if(field==='item'){goalDraft=null;saveFocus(f=>({...f,itemId:t.value||null,goal:''}));return true;}
+   if(field==='guard-on'&&G()){const on=t.checked;pendingAllow=on;saveRoom({guard:{on}}).then(()=>{say(on?'The distraction guard is on.':'The distraction guard is off.');askGuard();});return true;}
+   if(field==='item'){clearTimeout(goalTimer);goalDraft=null;saveFocus(f=>({...f,itemId:t.value||null,goal:''}));return true;}
    if(field==='step'){const id=t.dataset.id,stepId=t.dataset.step,checked=t.checked;save(d=>{const entry=d.tasks?.[id]?.checklist?.find(x=>x.id===stepId);if(entry)entry.done=checked;});return true;}
    if(field==='minutes'){if(Number.isFinite(num)&&num>0)saveFocus(f=>M().setMinutes(f,num));return true;}
    if(field==='dim'||field==='blur'){saveRoom({[field]:num});return true;}
    if(field==='sound-on'){saveRoom({sound:{on:t.checked}});return true;}
    if(field?.startsWith('sound-')){saveRoom({sound:{[field.slice(6)]:num/100}});return true;}
-   if(field?.startsWith('room-')){const k=field.slice(5);if(Number.isFinite(num))saveRoom({[k]:num}).then(()=>{if(k==='work')saveFocus((f,d)=>{const s=M().state(f,Date.now());return f.mode==='pomodoro'&&f.phase==='focus'&&!s.running&&s.left===s.total?M().setMode(f,'pomodoro',d.focusRoom):f;});});return true;}
+   if(field?.startsWith('room-')){const k=field.slice(5);if(Number.isFinite(num)&&t.value!=='')saveRoom({[k]:num}).then(()=>saveFocus((f,d)=>{const s=M().state(f,Date.now()),phaseKey={focus:'work',short:'short',long:'long'}[s.phase];return f.mode==='pomodoro'&&k===phaseKey&&!s.running&&s.left===s.total?{...f,minutes:d.focusRoom[k],remaining:d.focusRoom[k]*60}:f;}));return true;}
    if(field==='auto'||field==='chime'){saveRoom({[field]:t.checked});return true;}
    return true;
   }
@@ -326,16 +400,16 @@ ${guardSection(r)}
    if(event.key===' '&&!typing&&!target?.closest?.('button,a')){event.preventDefault();toggle();return true;}
    if(event.key==='Tab'){
     // Keep the keyboard inside the room.
-    const items=[...node.querySelectorAll('button:not([disabled]),a[href],input:not([type=hidden]):not([hidden]):not([disabled]),select,iframe[data-fr-guard]')].filter(el=>el.getClientRects().length);
+    const items=[...node.querySelectorAll('button:not([disabled]),a[href],input:not([type=hidden]):not([hidden]):not([disabled]),select')].filter(el=>el.getClientRects().length);
     if(items.length){const first=items[0],last=items[items.length-1],at=node.getRootNode().activeElement;
      if(event.shiftKey&&(at===first||!node.contains(at))){event.preventDefault();last.focus();}else if(!event.shiftKey&&(at===last||!node.contains(at))){event.preventDefault();first.focus();}}
    }
    return true;   // the workspace's own shortcuts stay quiet while the room is open
   }
   function sync(){if(node)render();}
-  function destroy(){dead=true;close();clearTimeout(statusTimer);try{ac?.close?.();}catch{}}
+  function destroy(){dead=true;close();clearTimeout(statusTimer);clearInterval(guardWait);try{ac?.close?.();}catch{}}
   return {open,close,isOpen:()=>!!node,click,input,change,keydown,sync,ended,destroy};
  }
- const api={create,SCENE_NAMES};
+ const api={create,SCENE_NAMES,patchRoom,frameOrigin,trustedFrameOrigin,loadFrame,pageURL,accentInk};
  root.ReserveFocusRoom=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

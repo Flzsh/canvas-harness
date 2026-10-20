@@ -4,9 +4,97 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const M=require('../extension/focus-room-model.js');
+const Room=require('../extension/focus-room.js');
+const Scenes=require('../extension/focus-scene-renderer.js');
 const {createStore}=require('../extension/storage.js');
 const ext=path.join(__dirname,'..','extension'),read=f=>fs.readFileSync(path.join(ext,f),'utf8');
 const T0=Date.parse('2026-10-19T15:00:00Z'),MIN=60000;
+
+test('primary controls use readable ink for both light and dark theme accents',()=>{
+ assert.equal(Room.accentInk('#A9522F'),'#fff');
+ assert.equal(Room.accentInk('#a3d4e5'),'#182228');
+ assert.equal(Room.accentInk('#ffffff'),'#182228');
+ assert.equal(Room.accentInk('#000000'),'#fff');
+});
+
+test('frame messages use a valid extension origin and reject other pages',()=>{
+ const url='chrome-extension://temporary-resource-host/focus-scene.html';
+ assert.equal(new URL(url).origin,'null','WHATWG URL does not recognize the extension scheme');
+ assert.equal(Room.frameOrigin(url),'chrome-extension://temporary-resource-host');
+ assert.equal(Room.trustedFrameOrigin('chrome-extension://temporary-resource-host',url),true);
+ assert.equal(Room.trustedFrameOrigin('https://unrelated.example',url),false);
+ assert.equal(Room.trustedFrameOrigin('null',url),false);
+ assert.equal(Room.frameOrigin('http://localhost:8787/extension/focus-scene.html'),'http://localhost:8787');
+});
+
+test('an empty srcdoc never overrides the room frame, including one added during attachment',()=>{
+ const attrs=new Map([['srcdoc','']]),events={},url='chrome-extension://harness/focus-scene.html';
+ const frame={addEventListener:(k,fn)=>events[k]=fn,getAttribute:k=>attrs.get(k)??null,hasAttribute:k=>attrs.has(k),removeAttribute:k=>attrs.delete(k),set src(v){attrs.set('src',v);}};
+ Room.loadFrame(frame,url);assert.equal(attrs.get('src'),url);assert.equal(attrs.has('srcdoc'),false);
+ attrs.set('srcdoc','');events.load();assert.equal(attrs.has('srcdoc'),false);
+ attrs.set('src','https://other.example');attrs.set('srcdoc','');events.load();assert.equal(attrs.has('srcdoc'),true,'only the room’s own expected frame is repaired');
+});
+
+test('room resources keep their extension address after an extension update invalidates runtime',()=>{
+ const vm=require('node:vm'),runtime={id:'harness',getURL:()=>{throw Error('not needed for Canvas');}},env={URL,chrome:{runtime},location:{origin:'https://wra.instructure.com',href:'https://wra.instructure.com/'}};
+ vm.runInNewContext(read('focus-room.js'),env);
+ Object.defineProperty(runtime,'id',{get(){throw Error('Extension context invalidated');}});
+ assert.equal(env.ReserveFocusRoom.pageURL('focus-scene.html'),'chrome-extension://harness/focus-scene.html');
+ assert.equal(env.ReserveFocusRoom.pageURL('focus-guard.html'),'chrome-extension://harness/focus-guard.html');
+});
+
+test('every built-in scene paints immediately, animates when allowed, and releases its clock on close',()=>{
+ const callbacks=new Map(),events=new Map(),calls=[];let id=0;
+ const gradient={addColorStop(){}};
+ const g=new Proxy({createLinearGradient:()=>gradient,createRadialGradient:()=>gradient},{get:(t,k)=>k in t?t[k]:(...args)=>calls.push([k,...args])});
+ const win={innerWidth:1200,innerHeight:800,devicePixelRatio:2,requestAnimationFrame:fn=>{callbacks.set(++id,fn);return id;},cancelAnimationFrame:id=>callbacks.delete(id),addEventListener:(k,fn)=>events.set('win-'+k,fn),removeEventListener:k=>events.delete('win-'+k)};
+ const doc={defaultView:win,hidden:false,createElement:()=>({getContext:()=>g}),addEventListener:(k,fn)=>events.set(k,fn),removeEventListener:k=>events.delete(k)};
+ const canvas={ownerDocument:doc,getContext:()=>g},renderer=Scenes.create(canvas);
+ for(const scene of ['rain','night','ocean','lamp','starry','lilies','ink','plain']){
+  calls.length=0;renderer.show({scene,theme:'dark',still:false});
+  assert.ok(calls.some(([k])=>k==='fillRect'),`${scene} paints without waiting for a frame message`);
+  assert.equal(callbacks.size,scene==='plain'?0:1);
+ }
+ renderer.show({scene:'night',theme:'dark',still:true});assert.equal(callbacks.size,0,'reduced motion paints a still scene');
+ renderer.show({scene:'rain',theme:'dark',still:false});assert.equal(callbacks.size,1);
+ doc.hidden=true;events.get('visibilitychange')();assert.equal(callbacks.size,0,'hidden tabs stop drawing');
+ doc.hidden=false;events.get('visibilitychange')();assert.equal(callbacks.size,1);
+ renderer.destroy();assert.equal(callbacks.size,0);assert.equal(events.size,0);
+});
+
+// Minimal DOM boundary for checking identity across updates. Controls carry properties independently of attributes.
+function roomElement(tag='div',attrs={},children=[]){
+ const el={nodeType:1,nodeName:tag.toUpperCase(),tagName:tag.toUpperCase(),attrs:{...attrs},childNodes:[],value:'',checked:false,
+  get attributes(){return Object.entries(this.attrs).map(([name,value])=>({name,value}));},
+  get dataset(){return Object.fromEntries(Object.entries(this.attrs).filter(([k])=>k.startsWith('data-')).map(([k,v])=>[k.slice(5).replace(/-([a-z])/g,(_,c)=>c.toUpperCase()),v]));},
+  get id(){return this.attrs.id||'';},get firstChild(){return this.childNodes[0]||null;},
+  get nextSibling(){return this.parent?.childNodes[this.parent.childNodes.indexOf(this)+1]||null;},
+  getAttribute(k){return this.attrs[k]??null;},hasAttribute(k){return k in this.attrs;},setAttribute(k,v){this.attrs[k]=v;},removeAttribute(k){delete this.attrs[k];},
+  insertBefore(child,before){child.remove();const i=before?this.childNodes.indexOf(before):this.childNodes.length;this.childNodes.splice(i,0,child);child.parent=this;},
+  remove(){if(this.parent)this.parent.childNodes.splice(this.parent.childNodes.indexOf(this),1);this.parent=null;}};
+ for(const child of children)el.insertBefore(child,null);return el;
+}
+
+test('updating the clock preserves a pressed button, focused input and slider',()=>{
+ const button=roomElement('button',{'data-fr-action':'toggle'}),goal=roomElement('input',{'data-fr-field':'goal'}),slider=roomElement('input',{'data-fr-field':'dim',type:'range'});
+ goal.value='Read chapter 2';slider.value='35';
+ const ui=roomElement('div',{class:'fr-ui'},[button,goal,slider]);
+ const nextGoal=roomElement('input',{'data-fr-field':'goal'});nextGoal.value=goal.value;
+ const nextSlider=roomElement('input',{'data-fr-field':'dim',type:'range'});nextSlider.value='50';
+ const next=roomElement('div',{class:'fr-ui'},[roomElement('button',{'data-fr-action':'toggle'}),nextGoal,nextSlider]);
+ Room.patchRoom(ui,next);
+ assert.equal(ui.childNodes[0],button);assert.equal(ui.childNodes[1],goal);assert.equal(goal.value,'Read chapter 2');
+ assert.equal(ui.childNodes[2],slider);assert.equal(slider.value,'50');
+});
+
+test('adding and removing a settings panel preserves the timer and task controls',()=>{
+ const timer=roomElement('main',{'data-rd-key':'timer'}),task=roomElement('aside',{'data-rd-key':'task'});
+ const ui=roomElement('div',{},[timer,task]);
+ Room.patchRoom(ui,roomElement('div',{},[roomElement('main',{'data-rd-key':'timer'}),roomElement('aside',{'data-rd-key':'task'}),roomElement('section',{'data-rd-key':'panel-scene'})]));
+ assert.equal(ui.childNodes[0],timer);assert.equal(ui.childNodes[1],task);assert.equal(ui.childNodes.length,3);
+ Room.patchRoom(ui,roomElement('div',{},[roomElement('main',{'data-rd-key':'timer'}),roomElement('aside',{'data-rd-key':'task'})]));
+ assert.deepEqual(ui.childNodes,[timer,task]);
+});
 
 test('a plain timer keeps exactly the five fields the Home timer always stored',()=>{
  assert.deepEqual(M.cleanFocus({minutes:45,remaining:1200,endsAt:null,itemId:'17',sessions:3}),{minutes:45,remaining:1200,endsAt:null,itemId:'17',sessions:3});
@@ -123,18 +211,20 @@ test('wired in: content scripts in order, the stylesheet, and the backdrop page'
  const manifest=JSON.parse(read('manifest.json')),main=manifest.content_scripts.find(c=>c.js.includes('dashboard.js')).js;
  assert.ok(main.indexOf('focus-room-model.js')<main.indexOf('storage.js'),'the model loads before storage cleans data');
  assert.ok(main.indexOf('pets.js')<main.indexOf('focus-room.js')&&main.indexOf('focus-room.js')<main.indexOf('widgets.js'));
+ assert.ok(main.indexOf('focus-scene-renderer.js')<main.indexOf('focus-room.js'));
+ assert.ok(main.includes('focus-dial.js')&&main.indexOf('focus-dial.js')<main.indexOf('focus-room.js'),'shared ring controller loads before both timer views');
  for(const w of manifest.web_accessible_resources){assert.ok(w.resources.includes('focus-room.css'));assert.ok(w.resources.includes('focus-scene.html'));}
  for(const f of ['startup.js','content.js'])assert.match(read(f),/'pet\.css','focus-room\.css'/,f);
  assert.equal(manifest.content_security_policy.extension_pages.includes('wasm-unsafe-eval'),false);
  assert.ok(!manifest.permissions.includes('notifications')&&!manifest.permissions.includes('alarms'),'no new permissions');
  const preview=fs.readFileSync(path.join(__dirname,'..','preview','index.html'),'utf8');
- assert.match(preview,/gpa-model\.js"><\/script><script src="\.\.\/extension\/focus-room-model\.js"/);assert.match(preview,/pets\.js"><\/script><script src="\.\.\/extension\/focus-room\.js"/);
+ assert.match(preview,/gpa-model\.js"><\/script><script src="\.\.\/extension\/focus-room-model\.js"/);assert.match(preview,/pets\.js"><\/script><script src="\.\.\/extension\/focus-scene-renderer\.js"><\/script><script src="\.\.\/extension\/focus-dial\.js"><\/script><script src="\.\.\/extension\/focus-room\.js"/);
 });
 
 test('the backdrop page only listens to its own Canvas page, keeps files to itself, and runs no inline script',()=>{
  const html=read('focus-scene.html'),js=read('focus-scene.js');
  assert.doesNotMatch(html,/<script>(?!<\/script>)|\son[a-z]+="/,'no inline script or handlers (extension CSP)');
- assert.match(html,/<script src="site\.js"><\/script>\s*<script src="focus-room-model\.js"><\/script>\s*<script src="focus-scene\.js"><\/script>/);
+ assert.match(html,/<script src="site\.js"><\/script>\s*<script src="focus-room-model\.js"><\/script>\s*<script src="focus-scene-renderer\.js"><\/script>\s*<script src="focus-scene\.js"><\/script>/);
  assert.match(js,/if\(event\.source!==window\.parent\|\|!allowed\(event\.origin\)\)return;/);
  assert.match(js,/origin===parentOrigin&&\(globalThis\.ReserveSite\?\.supported\?\.\(origin\)/);
  assert.match(js,/const problem=Model\.checkMedia\(m\.kind,m\.file\)/,'files are checked again before they are kept');
@@ -150,6 +240,20 @@ test('the room uses the shared session: the Home timer, the pony and the dashboa
  assert.match(dash,/const settle=root\.ReserveFocusRoomModel\?\.settle\|\|C\.settleFocus;/);
  assert.match(view,/action\('focus-room',icon\('clock'\)\+'<span>Focus<\/span>'/,'an assignment’s Focus button');
  assert.match(room,/node\.dataset\.rdKeep='true'/,'the room survives workspace renders');
- assert.match(room,/frame\.src=sceneURL\(\)/);assert.match(room,/allow="autoplay"/);
+ assert.match(room,/loadFrame\(frame,sceneURL\(\)\)/);assert.match(room,/setAttribute\('allow','autoplay'\)/);
  assert.match(room,/return true;   \/\/ the workspace's own shortcuts stay quiet while the room is open/);
+});
+
+test('breaks breathe: a slow in-and-out cue under the dial, and one still line with reduced motion',()=>{
+ const room=fs.readFileSync(path.join(__dirname,'..','extension','focus-room.js'),'utf8'),css=fs.readFileSync(path.join(__dirname,'..','extension','focus-room.css'),'utf8');
+ assert.match(room,/s\.brk&&s\.running\?'<p class="fr-breath" aria-hidden="true"><span>Breathe in<\/span><span>Breathe out<\/span><span>Breathe slowly<\/span><\/p>'/);
+ assert.match(css,/\.fr-breath span:nth-child\(1\)\{animation:fr-breath-in 10s/);assert.match(css,/@keyframes fr-breathe\{0%\{transform:scale\(\.8\)\}40%/);
+ assert.match(css,/@media \(prefers-reduced-motion:reduce\)\{\.fr-breath span:nth-child\(-n\+2\)\{display:none\}/);
+ assert.match(room,/scenery\?\.session\?\.\(\{progress:s\.progress,brk:s\.brk,running:s\.running\}\)/,'the scene hears the session each second');
+});
+test('the media frame loads only for the student’s own photo, video or sound',()=>{
+ const room=fs.readFileSync(path.join(__dirname,'..','extension','focus-room.js'),'utf8');
+ assert.match(room,/if\(r\.scene==='photo'\|\|r\.scene==='video'\|\|r\.sound\.on\)ensureFrame\(\);/);
+ assert.match(room,/if\(!ready\)\{pendingStore=\{kind,file\};ensureFrame\(\);return;\}/,'a file chosen first waits for the frame');
+ assert.doesNotMatch(room,/loadFrame\(frame,sceneURL\(\)\);\n   for\(const input/,'not created when the room opens');
 });

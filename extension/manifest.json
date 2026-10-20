@@ -112,6 +112,8 @@
         "planner-model.js",
         "pet-art.js",
         "pets.js",
+        "focus-scene-renderer.js",
+        "focus-dial.js",
         "focus-room.js",
         "planner-ui.js",
         "widgets.js",
@@ -146,7 +148,6 @@
         "pet.css",
         "focus-room.css",
         "focus-scene.html",
-        "focus-guard.html",
         "canvas-nav.css"
       ],
       "matches": [
@@ -174,7 +175,6 @@
         "pet.css",
         "focus-room.css",
         "focus-scene.html",
-        "focus-guard.html",
         "canvas-nav.css"
       ],
       "matches": [

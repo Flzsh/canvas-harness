@@ -33,7 +33,7 @@
  };
  const glyph=key=>`<svg class="rd-widget-glyph" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ART[key]||ART.notes}</svg>`;
  // A circle drawn by hand, used by the timer (the same stroke as the hold circle).
- const RING='M61 9C90 7 112 31 111 61C110 90 87 112 59 111C31 110 8 88 9 59C10 32 32 9 60 9C65 9 70 10 75 12';
+ const RING=root.ReserveFocusDial?.PATH||'M60 9a51 51 0 1 1 0 102a51 51 0 1 1 0-102Z';
  const drafts={};   // text being typed in a module, kept across renders until it is saved
 
  const mmss=seconds=>`${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;
@@ -155,6 +155,12 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
  function create({container,store,save,rerender,getContext,helpers,preview=()=>{},openSettings=()=>{},startTick=()=>{},go=()=>{},closeSettings=()=>{}}){
   let dead=false,editing=false,settingsTab='layout',clockTimer=0,timerTick=0,notesTimer=0,pets=null,lastDone=null;
   const win=container.ownerDocument?.defaultView||root;
+  const dials=new Map();
+  function syncDials(){
+   const arcs=new Set(container.querySelectorAll('.rd-timer-arc'));
+   for(const [arc,dial] of dials)if(!arcs.has(arc)){dial.destroy();dials.delete(arc);}
+   for(const arc of arcs){if(!dials.has(arc)&&root.ReserveFocusDial)dials.set(arc,root.ReserveFocusDial.create(arc,{getFocus:()=>store.get().focus}));dials.get(arc)?.sync();}
+  }
   const newId=()=>'local-'+(root.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const ctx=()=>getContext();
   const planner=root.ReservePlannerUI?.create({container,store,save,rerender,getContext,helpers,view:id=>preview(id)})||null;
@@ -196,11 +202,11 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
   function tick(){
    if(dead)return;const now=Date.now(),data=store.get(),f=focusState(data.focus,now);
    for(const node of container.querySelectorAll('[data-rd-timer]')){
-    const text=node.querySelector('[data-rd-timer-text]'),arc=node.querySelector('.rd-timer-arc');
+    const text=node.querySelector('[data-rd-timer-text]');
     const shown=Room()?Room().clock(f.shown):mmss(f.left);
-    if(text&&text.textContent!==shown)text.textContent=shown;if(arc)arc.style.strokeDashoffset=(1-f.progress).toFixed(4);
+    if(text&&text.textContent!==shown)text.textContent=shown;
    }
-   pets?.setFocus(f.running&&!f.brk);
+   syncDials();pets?.setFocus(f.running&&!f.brk);
    if(!f.running&&timerTick){clearInterval(timerTick);timerTick=0;}
   }
   function clock(){
@@ -213,7 +219,7 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    const data=store.get(),running=!!data.focus?.endsAt||!!data.focus?.startedAt,brk=!!data.focus?.phase&&data.focus.phase!=='focus';
    if(running&&!timerTick)timerTick=setInterval(tick,1000);
    if(container.querySelector('[data-rd-clock]')){if(!clockTimer)clockTimer=setInterval(clock,15000);}else if(clockTimer){clearInterval(clockTimer);clockTimer=0;}
-   ensurePets();pets?.sync();pets?.setFocus(running&&!brk);room?.sync();
+   syncDials();ensurePets();pets?.sync();pets?.setFocus(running&&!brk);room?.sync();
   }
   async function quickAdd(input){
    const text=input?.value||'',c=ctx(),h=helpers(),today=h.dayKey(c.now,c.s.timeZone),parsed=Plan().parseQuick(text,today);
@@ -308,7 +314,7 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    ensurePets();const c=ctx(),h=helpers(),{board,today}=plan(c,h),d=board.days.find(x=>x.key===today);
    pets?.celebrate(kind,{today,left:d?d.open:undefined});
   }
-  function destroy(){dead=true;closeMenu();container.ownerDocument.removeEventListener('pointerdown',outside,true);win.removeEventListener('resize',closeMenu);clearInterval(clockTimer);clearInterval(timerTick);flushNotes();pets?.destroy();planner?.destroy();room?.destroy();}
+  function destroy(){dead=true;for(const dial of dials.values())dial.destroy();dials.clear();closeMenu();container.ownerDocument.removeEventListener('pointerdown',outside,true);win.removeEventListener('resize',closeMenu);clearInterval(clockTimer);clearInterval(timerTick);flushNotes();pets?.destroy();planner?.destroy();room?.destroy();}
   return {click,keydown,input,change,sync,finished,destroy,focusRoom:()=>room,settingsTab:()=>settingsTab,planUI:()=>planner?.ui||{},editing:()=>editing,close(){if(editing){editing=false;rerender();}}};
  }
  const api={INFO,FRAMES,glyph,render,gallery,create,focusState,howLong,nextDue,plan};

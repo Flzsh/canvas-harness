@@ -101,7 +101,7 @@
 .rd .rd-timer-dial svg {position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
 .rd .rd-timer-dial path {fill:none;stroke-linecap:round;}
 .rd .rd-timer-track {stroke:var(--rd-line-strong);stroke-width:2.4;stroke-dasharray:1.5 6;}
-.rd .rd-timer-arc {stroke:var(--rd-accent);stroke-width:5;stroke-dasharray:1;transition:stroke-dashoffset 1s linear;}
+.rd .rd-timer-arc {stroke:var(--rd-accent);stroke-width:4;stroke-dasharray:1 1;}
 .rd .rd-timer output {font:500 clamp(22px,20cqi,34px)/1 var(--rd-display,Georgia,serif);font-variant-numeric:tabular-nums;letter-spacing:.01em;}
 .rd .rd-timer-actions {display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;}
 .rd .rd-timer-lengths {display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:5px;color:var(--rd-muted);font-size:12px;}
