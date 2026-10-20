@@ -2,42 +2,23 @@
 if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./site.js');
 (function(){
   'use strict';
-  if(window.top!==window||!globalThis.ReserveSite.supported(location.href)||globalThis.ReserveContentStarted||document.getElementById('reserve-companion-dock'))return;
+  if(window.top!==window||!globalThis.ReserveSite.supported(location.href)||globalThis.ReserveSite.vanillaPage(location)||globalThis.ReserveContentStarted||document.getElementById('reserve-companion-dock'))return;
   globalThis.ReserveContentStarted=true;
   const isDashboard=location.pathname==='/'||/^\/dashboard\/?$/.test(location.pathname);
   const params=new URLSearchParams(location.search);
   const startup=globalThis.ReserveStartup;
-  const build='2.28.2';
-  // Local timings contain only milliseconds, never account or course data.
-  // They make real startup measurable without delaying or storing the page.
+  const build='3.1.0';
   const stamp=()=>Math.round(globalThis.performance?.now?.()||0);
-  const timing={bootstrap:Math.round(startup?.startedAt||0),controller:stamp()};
   let host,root,area,toolbar,resumeCover,statusLabel,dashboard,planner,session,snapshot,store,ready=false,wanted=true;
-  let authorized=false,suspended=false,resumeGeneration=0,resumePending;
+  let authorized=false,suspended=false,resumeGeneration=0,resumePending,verifiedAt=-Infinity,verifiedWall=-Infinity;
   let launchObserver,launchAttempt,bootStopped=false;
   // "Open at once" (off unless the owner turns it on) remembers which account to open: an id, nothing else.
   const HINT_KEY='reserve:lastAccount:'+location.origin;let ownerHint=null;
   const quickOpen=settings=>settings?.quickOpen==='on';
   if(isDashboard)try{Promise.resolve(chrome.storage.local.get(HINT_KEY)).then(found=>{const id=String(found?.[HINT_KEY]??'');if(/^\d+$/.test(id))ownerHint={id};}).catch(()=>{});}catch{}
-  function mark(phase){
-    if(timing[phase]===undefined)timing[phase]=stamp();
-    // Network milestones distinguish time spent waiting for Canvas from local
-    // rendering. Only numeric, page-local timing values are exposed.
-    try{
-      const navigation=globalThis.performance?.getEntriesByType?.('navigation')?.[0];
-      for(const key of ['requestStart','responseStart','responseEnd'])if(navigation?.[key]>0)timing['navigation'+key[0].toUpperCase()+key.slice(1)]=Math.round(navigation[key]);
-      if(phase==='profileEnd'){
-        const profile=globalThis.performance?.getEntriesByName?.(location.origin+'/api/v1/users/self/profile','resource')?.find(entry=>entry.startTime>=timing.profileStart);
-        for(const key of ['startTime','requestStart','responseStart','responseEnd'])if(profile?.[key]>0)timing['profile'+key[0].toUpperCase()+key.slice(1)]=Math.round(profile[key]);
-      }
-    }catch{} // Missing resource timings must never affect account verification.
-    host?.setAttribute('data-reserve-startup-timing',JSON.stringify(timing));
-  }
   function stopWaiting(){launchObserver?.disconnect();launchObserver=null;if(launchAttempt)document.removeEventListener?.('DOMContentLoaded',launchAttempt);launchAttempt=null;}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>mark('parsed'),{once:true});
-  else mark('parsed');
   let manualOpen=false;
-  let dashboardState,dashboardScroll=0,restoreScroll=false,nativeTools,pageAppearance,launchPending=true;
+  let dashboardState,dashboardScroll=0,restoreScroll=false,nativeTools,pageAppearance,launchPending=true,launchAppearance=params.get('appearance')==='true';
   if(params.get('reserve')==='open'){const workspace=params.get('workspace'),courseId=params.get('course');if(['work','hub','materials','inbox','grades'].includes(workspace)||/^\d+$/.test(courseId||''))dashboardState={workspace,courseId};}
   const hidden=new Map();
   const pageStyle=document.createElement('style');
@@ -45,7 +26,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const dock=document.createElement('div');dock.id='reserve-companion-dock';
   dock.style.cssText='position:fixed;bottom:16px;right:16px;z-index:1000';
   const dockRoot=dock.attachShadow({mode:'open'});
-  dockRoot.innerHTML='<style>.reserve-dock-button{position:relative;display:inline-flex;align-items:center;gap:7px;font:600 13.5px Literata,Georgia,serif;color:#141413;background:#FAF9F5;border:0;border-radius:14px;padding:8px 16px 8px 11px;box-shadow:2px 3px 0 #E3D9C6,0 8px 22px rgb(60 48 24 / .14);cursor:pointer;transition:transform 120ms cubic-bezier(.25,.1,.25,1),box-shadow 120ms cubic-bezier(.25,.1,.25,1),background-color 140ms}.reserve-dock-button::after{content:"";position:absolute;inset:-5px;border:14px solid transparent;pointer-events:none;background:color-mix(in srgb,#A9522F 70%,#141413);-webkit-mask-box-image:url(\"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2790%27 height=%2790%27 viewBox=%270 0 90 90%27%3E%3Cpath fill=%27none%27 stroke=%27%23000%27 stroke-width=%273%27 stroke-linecap=%27round%27 d=%27M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8%27/%3E%3C/svg%3E\") 30 30 30 30 stretch}.reserve-dock-button+.reserve-dock-button{margin-left:10px}.reserve-dock-button:hover{transform:translateY(-1px);background:#FFFDF8;box-shadow:2px 4px 0 #E3D9C6,0 10px 26px rgb(60 48 24 / .18)}.reserve-dock-button:active{transform:translateY(2px);background:#F1ECE0;box-shadow:0 1px 0 #E3D9C6,0 4px 12px rgb(60 48 24 / .14)}.reserve-dock-button:focus-visible{outline:3px solid #C96442;outline-offset:4px}.reserve-dock-button .dock-ic{width:22px;height:22px;flex:none;overflow:visible}.reserve-dock-button .k{fill:none;stroke:#2B2A27;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.reserve-dock-button[aria-busy=true]{cursor:progress;background:#F1ECE0;transform:translateY(1px)}.reserve-dock-button[aria-busy=true] .dock-ic{animation:dock-nod 900ms ease-in-out infinite}.reserve-dock-button[aria-busy=true] .dock-t::after{content:"";display:block;height:2px;margin-top:1px;border-radius:2px;background:#A9522F;transform-origin:left;animation:dock-line 1.1s ease-in-out infinite}@keyframes dock-nod{50%{transform:rotate(-8deg)}}@keyframes dock-line{0%{transform:scaleX(0)}60%{transform:scaleX(1)}100%{transform:scaleX(1);opacity:0}}@media(prefers-reduced-motion:reduce){.reserve-dock-button,.reserve-dock-button *{transition:none;animation:none!important}}</style><button class="reserve-dock-button" title="Show the Canvas Harness dashboard"><svg class="dock-ic" viewBox="0 0 40 40" aria-hidden="true" focusable="false"><path d="M7.4 30.6h27.2v5H7.4z" fill="#E6C478"/><path d="M9.6 9.6h6.6v21.4H9.6z" fill="#B7CBA5"/><path d="M19 12.8l6.2-1.8 6.6 19-6.2 1.8z" fill="#DE9A7C"/><path class="k" d="M6.4 30.2c9.4-.3 18.8-.3 28.2 0 .3 1.6.3 3.4 0 5-9.4.3-18.8.3-28.2 0-.3-1.6-.3-3.4 0-5z"/><path class="k" d="M8.8 8.8c2.2-.2 4.4-.2 6.6 0 .3 7.1.3 14.2 0 21.3-2.2.2-4.4.2-6.6 0-.3-7.1-.3-14.2 0-21.3z"/><path class="k" d="M18.2 12.4l6.4-2 6.8 19.8-6.4 2z"/></svg><span class="dock-t">Canvas Harness</span></button>';
+  dockRoot.innerHTML='<style>.reserve-dock-button{position:relative;display:inline-flex;align-items:center;vertical-align:middle;gap:7px;font:600 13.5px Literata,Georgia,serif;color:#141413;background:#FAF9F5;border:0;border-radius:14px;padding:8px 16px 8px 11px;box-shadow:2px 3px 0 #E3D9C6,0 8px 22px rgb(60 48 24 / .14);cursor:pointer;transition:transform 120ms cubic-bezier(.25,.1,.25,1),box-shadow 120ms cubic-bezier(.25,.1,.25,1),background-color 140ms}.reserve-dock-button::after{content:"";position:absolute;inset:-5px;border:14px solid transparent;pointer-events:none;background:color-mix(in srgb,#A9522F 70%,#141413);-webkit-mask-box-image:url(\"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2790%27 height=%2790%27 viewBox=%270 0 90 90%27%3E%3Cpath fill=%27none%27 stroke=%27%23000%27 stroke-width=%273%27 stroke-linecap=%27round%27 d=%27M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8%27/%3E%3C/svg%3E\") 30 30 30 30 stretch}.reserve-dock-button+.reserve-dock-button{margin-left:10px}.reserve-dock-button:hover{transform:translateY(-1px);background:#FFFDF8;box-shadow:2px 4px 0 #E3D9C6,0 10px 26px rgb(60 48 24 / .18)}.reserve-dock-button:active{transform:translateY(2px);background:#F1ECE0;box-shadow:0 1px 0 #E3D9C6,0 4px 12px rgb(60 48 24 / .14)}.reserve-dock-button:focus-visible{outline:3px solid #C96442;outline-offset:4px}.reserve-dock-button .dock-ic{width:22px;height:22px;flex:none;overflow:visible}.reserve-dock-button .k{fill:none;stroke:#2B2A27;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.reserve-dock-button[aria-busy=true]{cursor:progress;background:#F1ECE0;transform:translateY(1px)}.reserve-dock-button[aria-busy=true] .dock-ic{animation:dock-nod 900ms ease-in-out infinite}.reserve-dock-button[aria-busy=true] .dock-t::after{content:"";display:block;height:2px;margin-top:1px;border-radius:2px;background:#A9522F;transform-origin:left;animation:dock-line 1.1s ease-in-out infinite}@keyframes dock-nod{50%{transform:rotate(-8deg)}}@keyframes dock-line{0%{transform:scaleX(0)}60%{transform:scaleX(1)}100%{transform:scaleX(1);opacity:0}}@media(prefers-reduced-motion:reduce){.reserve-dock-button,.reserve-dock-button *{transition:none;animation:none!important}}</style><button class="reserve-dock-button" title="Show the Canvas Harness dashboard"><svg class="dock-ic" viewBox="0 0 40 40" aria-hidden="true" focusable="false"><path d="M7.4 30.6h27.2v5H7.4z" fill="#E6C478"/><path d="M9.6 9.6h6.6v21.4H9.6z" fill="#B7CBA5"/><path d="M19 12.8l6.2-1.8 6.6 19-6.2 1.8z" fill="#DE9A7C"/><path class="k" d="M6.4 30.2c9.4-.3 18.8-.3 28.2 0 .3 1.6.3 3.4 0 5-9.4.3-18.8.3-28.2 0-.3-1.6-.3-3.4 0-5z"/><path class="k" d="M8.8 8.8c2.2-.2 4.4-.2 6.6 0 .3 7.1.3 14.2 0 21.3-2.2.2-4.4.2-6.6 0-.3-7.1-.3-14.2 0-21.3z"/><path class="k" d="M18.2 12.4l6.4-2 6.8 19.8-6.4 2z"/></svg><span class="dock-t">Canvas Harness</span></button>';
   // The dock button answers at once: it presses in and says it is opening, until the workspace or an error arrives.
   const dockButton=dockRoot.querySelector('button'),dockLabel=dockButton.querySelector('.dock-t')||dockButton,dockText=dockLabel.textContent;let dockTimer=0;
   function dockBusy(on){globalThis.clearTimeout?.(dockTimer);if(on){dockButton.setAttribute?.('aria-busy','true');dockLabel.textContent='Opening\u2026';dockTimer=globalThis.setTimeout?.(()=>dockBusy(false),12000);}else{dockButton.removeAttribute?.('aria-busy');dockLabel.textContent=dockText;}}
@@ -68,8 +49,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     host?.setAttribute('data-reserve-verifying',String(checking));
   }
   function reveal(){
-    if(!ready||!wanted||!authorized||suspended||bootStopped||!host||!snapshot||(!dashboard&&!planner)||document.visibilityState==='hidden')return;
-    if(!manualOpen&&startup&&!startup.complete())return;
+    if(!ready||!wanted||!authorized||suspended||bootStopped||!host||!snapshot||(!dashboard&&!planner)||(!planner&&dashboard?.isReady?.()===false)||document.visibilityState==='hidden')return;
+    if(startup){if(manualOpen)startup.dismiss?.();else if(!startup.complete())return;}
     const content=host.parentElement;
     for(const el of [...content.children,document.getElementById('right-side')]){
       if(!el||el===host||el.contains(host)||hidden.has(el))continue;
@@ -77,7 +58,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     document.documentElement.classList.add('reserve-inline-active');
     coverWorkspace(false);
-    host.hidden=false;dock.hidden=true;mark('visible');
+    host.hidden=false;dock.hidden=true;
   }
   function showCanvas(remember=true){
     authorized=false;resumeGeneration++;
@@ -87,6 +68,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     session?.destroy();session=null;
   }
   function setStatus(message){if(statusLabel)statusLabel.textContent=dashboard?'Canvas Harness '+build:message||'Canvas Harness '+build;dashboard?.setStatus(message);}
+  function openAppearance(){if(!launchAppearance)return;const button=area?.querySelector('[data-rd-action="settings"]');if(button){launchAppearance=false;button.click();}}
   function drawDashboard(){
     if(!area||!snapshot)return;
     if(dashboard)dashboardState=dashboard.getState();
@@ -94,8 +76,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // The dashboard's own command bar carries the Canvas dashboard switch (onNative) and its footer
     // the status (setStatus below), so this row folds away while the dashboard shows.
     toolbar.querySelector('[data-dashboard]').hidden=true;toolbar.hidden=true;
-    dashboard=ReserveDashboard.mount(area,{snapshot,store,initialState:dashboardState,onPlanner:openPlanner,onNative:()=>showCanvas(),refresh:()=>session.refresh(),onAuthError:()=>{showCanvas();session?.verify();}});
-    mark('mounted');
+    dashboard=ReserveDashboard.mount(area,{snapshot,store,initialState:dashboardState,onPlanner:openPlanner,onNative:()=>showCanvas(),refresh:()=>session.refresh(),onAuthError:()=>{showCanvas();session?.verify();},onReady:()=>{openAppearance();reveal();},onRenderError:error=>{dashboard?.destroy();dashboard=null;showCanvas(false);setStatus(error.message);dockBusy(false);dockRoot.querySelector('button').title=error.message+' Click to retry.';}});
+
     reveal();
     if(restoreScroll){restoreScroll=false;requestAnimationFrame(()=>window.scrollTo({top:dashboardScroll,behavior:'instant'}));}
   }
@@ -112,13 +94,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const content=document.getElementById('content');if(!content)return;
     host=document.createElement('div');host.id='reserve-companion-host';host.hidden=true;
     host.setAttribute('data-reserve-build',build);
-    mark('containers');
+
     root=host.attachShadow({mode:'open'});
     const loadingHost=host;let loaded=0;
     const sheets=startup?.styleFiles||['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','focus-room.css'];
     for(const file of sheets){
       const link=document.createElement('link');link.rel='stylesheet';link.href=chrome.runtime.getURL(file);
-      link.onload=()=>{if(host===loadingHost&&++loaded===sheets.length){ready=true;mark('styles');reveal();}};
+      link.onload=()=>{if(host===loadingHost&&++loaded===sheets.length){ready=true;reveal();}};
       link.onerror=()=>{if(host===loadingHost)showCanvas(false);};root.append(link);
     }
     const css=document.createElement('style');css.textContent=':host([hidden]){display:none!important}.reserve-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font:12px/1.5 system-ui;color:#5E5D59;padding:4px 0 12px}.reserve-toolbar div{display:flex;gap:8px}.reserve-toolbar button{font:600 12px system-ui;border:1px solid #D9D6CA;background:#fff;color:#3D3D3A;border-radius:999px;padding:8px 12px;cursor:pointer}.reserve-toolbar button:focus-visible{outline:2px solid #C96442;outline-offset:2px}.reserve-toolbar button[hidden],.reserve-toolbar[hidden]{display:none}'+
@@ -144,16 +126,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       dashboard?.destroy();dashboard=null;planner?.destroy();planner=null;
     }
     snapshot=next;store=verifiedStore;
-    authorized=true;
+    authorized=true;if(!meta?.unverified){verifiedAt=stamp();verifiedWall=Date.now();}
     if(!meta?.unverified)try{
       const id=String(next.user?.id??''),on=quickOpen(verifiedStore.get().settings);
       if(on&&/^\d+$/.test(id)&&ownerHint?.id!==id){ownerHint={id};Promise.resolve(chrome.storage.local.set({[HINT_KEY]:id})).catch(()=>{});}
       else if(!on&&ownerHint){ownerHint=null;Promise.resolve(chrome.storage.local.remove(HINT_KEY)).catch(()=>{});}
     }catch{}
-    makeHost();if(!host)return;mark('verifiedData');
+    makeHost();if(!host)return;
     if(planner)planner.updateSnapshot(next);
     else if(dashboard)dashboard.updateSnapshot(next);
-    else{drawDashboard();if(launchPending){launchPending=false;const page=params.get('plan'),id=params.get('item');if(['week','assignments'].includes(page))openPlanner({page,id:/^(\d+|local-[\w-]+)$/.test(id||'')?id:null,hideGrades:store.get().settings.showGrades!==true});else if(params.get('appearance')==='true')area.querySelector('[data-rd-action="settings"]')?.click();}}
+    else{drawDashboard();if(launchPending){launchPending=false;const page=params.get('plan'),id=params.get('item');if(['week','assignments'].includes(page))openPlanner({page,id:/^(\d+|local-[\w-]+)$/.test(id||'')?id:null,hideGrades:store.get().settings.showGrades!==true});else if(dashboard?.isReady?.()!==false)openAppearance();}}
     if(meta.stale)setStatus('Saved view · Updating in the background…');
     reveal();
   }
@@ -161,7 +143,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     makeHost();
     if(session)return session.start();
     session=ReserveSession.createSession({client:ReserveAPI.createClient(),createStore:ReserveStorage.createStore,...(ownerHint?{prefetchedProfile:ownerHint,quickOpen}:{}),
-      onSnapshot:receive,onStatus:setStatus,onTiming:mark,onError:(error,{clear})=>{
+      onSnapshot:receive,onStatus:setStatus,onError:(error,{clear})=>{
       if(clear){if(ownerHint){ownerHint=null;try{Promise.resolve(chrome.storage.local.remove(HINT_KEY)).catch(()=>{});}catch{}}dashboard?.destroy();dashboard=null;snapshot=null;store=null;showCanvas();dashboardState=undefined;dashboardScroll=0;restoreScroll=false;}
       else if(!dashboard&&!planner)showCanvas(false);
       dockBusy(false);dockRoot.querySelector('button').title=error.message+' Click to retry.';
@@ -193,6 +175,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(resumePending)return resumePending;
     if(!isDashboard||!wanted||!host||bootStopped||document.visibilityState==='hidden')return;
     if(!!document.querySelector('#login_form, #new_login, .ic-Login')||!(location.pathname==='/'||/^\/dashboard\/?$/.test(location.pathname))){showCanvas(false);return;}
+    // A page that loaded while its tab was hidden and was never shown: a check finished moments ago opens it now,
+    // and a first load still running carries on (it reveals itself). Only an older or interrupted check rechecks.
+    // Both clocks must agree the check is recent: performance.now() stands still while the computer sleeps.
+    if(!suspended){if(authorized&&snapshot&&(dashboard||planner)&&stamp()-verifiedAt<30000&&Math.abs(Date.now()-verifiedWall)<30000){reveal();return;}if(session&&verifiedAt===-Infinity){if(snapshot)reveal();return;}}
     suspended=false;manualOpen=true;const epoch=resumeGeneration;
     // With "Open at once" the workspace shows as the tab returns; the check below still runs and closes it on failure.
     try{if(snapshot&&session&&quickOpen(store?.get().settings)){authorized=true;reveal();}}catch{}
@@ -209,12 +195,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     resumePending=operation;operation.finally(()=>{if(resumePending===operation)resumePending=null;});return operation;
   }
   document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='hidden')pauseWorkspace();else resumeWorkspace();
+    // Leaving a tab while its first load still runs behind the opening cover keeps that load: the cover waits, unseen.
+    if(document.visibilityState==='hidden'){if(startup?.active&&!manualOpen&&!suspended&&host?.hidden!==false)return;pauseWorkspace();}else resumeWorkspace();
   });
   window.addEventListener('pagehide',event=>{bootStopped=true;stopWaiting();pauseWorkspace();if(!event.persisted){planner?.destroy();dashboard?.destroy();session?.destroy();nativeTools?.destroy();pageAppearance?.destroy();}});
   window.addEventListener('pageshow',event=>{if(event.persisted){bootStopped=false;resumeWorkspace();}});
   startup?.onNative(()=>{if(!suspended)showCanvas(false);});
   function initialize(){
+    if(globalThis.ReserveSite.vanillaPage(location))return;
     registerFont();
     pageAppearance=globalThis.ReserveNativePage?.create();if(pageAppearance){globalThis.ReservePageAppearance=pageAppearance;pageAppearance.start().catch(()=>{});}
     document.body.append(dock);
@@ -228,7 +216,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(wanted)start();
   }
   (startup?.preferences||chrome.storage.local.get('reserve:enabled')).then(saved=>{
-    mark('enabledPreference');
+
     if(saved['reserve:enabled']===false||bootStopped)return;
     // Canvas's remaining scripts and markup do not need to block a verified
     // dashboard. Native course tools still initialize after parsing completes.

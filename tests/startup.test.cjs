@@ -20,6 +20,7 @@ function fixture(options={}){
     contains(el){return this===el||this.children.some(x=>x.contains(el));}
     querySelector(key){return this._queries[key]||this.children.map(x=>x.querySelector(key)).find(Boolean)||null;}
     set innerHTML(value){this._html=value;for(const key of ['button','span','[data-dashboard]','[data-native]']){const el=new Element(key);this._queries[key]=el;el.parentElement=this;}}
+    get innerHTML(){return this._html||'';}
     remove(){if(this.parentElement)this.parentElement.children=this.parentElement.children.filter(x=>x!==this);this.parentElement=null;}
     scrollIntoView(){}
   }
@@ -34,16 +35,17 @@ function fixture(options={}){
   const storage=options.storage||Promise.resolve({'reserve:enabled':options.enabled!==false});
   const profile=options.profile||deferred(),network=options.network||deferred(),preflight=options.preflight||deferred(),profiles=[profile];let profileCalls=0,preflightCalls=0,preflightAborted=false,cacheReads=0,mounts=0,storeAccount,aborted=false,preflightRequest;
   const mountedUsers=[];
-  const store={load:async()=>{},readCache:async()=>{cacheReads++;return String(options.cache?.user?.id)===String(storeAccount)?options.cache:null;},writeCache:async()=>{},get:()=>({settings:{showGrades:false}}),destroy(){}};
+  const store={load:async()=>{},readCache:async()=>{cacheReads++;return String(options.cache?.user?.id)===String(storeAccount)?options.cache:null;},writeCache:async()=>{},get:()=>({settings:{showGrades:false,...options.settings}}),destroy(){}};
   const loc={origin:options.origin||'https://school.instructure.com',pathname:options.pathname||'/',search:options.search||''};
   loc.href=loc.origin+loc.pathname+loc.search;
-  const context={window,document,location:loc,URL,URLSearchParams,AbortController,Date:class extends Date{static now(){return now;}},performance:{now:()=>now},
+  const hintValues=new Map();
+  const context={window,document,location:loc,URL,URLSearchParams,AbortController,localStorage:{getItem:key=>hintValues.get(key)??null,setItem:(key,value)=>hintValues.set(key,value),removeItem:key=>hintValues.delete(key)},Date:class extends Date{static now(){return now;}},performance:{now:()=>now},
     setTimeout:(fn,delay)=>{const id=++nextTimer;timers.set(id,{at:now+delay,fn});return id;},clearTimeout:id=>timers.delete(id),requestAnimationFrame:fn=>fn(),
     MutationObserver:class{constructor(fn){this.fn=fn;}observe(){observers.add(this);}disconnect(){observers.delete(this);}},
     getComputedStyle:()=>({getPropertyValue:()=>options.css===false?'':'1'}),
     fetch:(url,init)=>{preflightCalls++;preflightRequest={url,init};init.signal.addEventListener('abort',()=>preflightAborted=true);return preflight.promise;},
     sessionStorage:{getItem:key=>{if(options.sessionError)throw Error('storage denied');return sessionData.get(key)||null;},setItem:(key,value)=>{if(options.sessionError)throw Error('storage denied');sessionData.set(key,value);},removeItem:key=>{if(options.sessionError)throw Error('storage denied');sessionData.delete(key);}},
-    chrome:{storage:{local:{get:key=>{reads.push(key);return storage;}}},runtime:{getURL:name=>'chrome-extension://fixture/'+name}},
+    chrome:{storage:{local:{set:async()=>{},remove:async()=>{},get:key=>{reads.push(key);if(options.hint&&typeof key==='string'&&key.startsWith('reserve:lastAccount:'))return Promise.resolve({[key]:options.hint});return storage;}}},runtime:{getURL:name=>'chrome-extension://fixture/'+name}},
     ReserveAPI:{createClient:()=>({profile:({signal})=>{const check=profiles[profileCalls++]||profile;signal.addEventListener('abort',()=>aborted=true);return check.promise;},loadSnapshot:()=>network.promise})},
     ReserveStorage:{createStore:({accountId})=>{storeAccount=accountId;return store;}},
     ReserveDashboard:{mount:(_area,{snapshot})=>{if(options.mountError)throw Error('render failed');mounts++;mountedUsers.push(String(snapshot.user.id));return {destroy(){},getState:()=>({}),updateSnapshot(){},setStatus(){}};}}
@@ -51,7 +53,7 @@ function fixture(options={}){
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(extension,'site.js'),'utf8'),context);
   function run(name,optional=false){const file=path.join(extension,name);if(optional&&!fs.existsSync(file))return;vm.runInContext(fs.readFileSync(file,'utf8'),context,{filename:name});}
-  if(!options.skipStartup)run('startup.js',true);
+  if(!options.skipStartup){if(!options.missingArt)run('startup-art.js');run('startup.js',true);}
   function dispatch(list,event={}){for(const fn of [...(list||[])])fn(event);}
   return {context,html,native,sidebar,profile,network,preflight,reads,sessionData,document,mountedUsers,
     get active(){return html.classList.contains('reserve-startup-active');},get shell(){return document.getElementById('reserve-startup-shell');},get host(){return document.getElementById('reserve-companion-host');},
@@ -88,6 +90,7 @@ test('the prepaint guard does not send a competing identity request',async()=>{
  assert.equal(f.profileCalls,1);assert.equal(f.cacheReads,0);
  f.profile.resolve({id:'7'});f.snapshot();await flush();f.loadStyles();assert.equal(f.host.hidden,false);
 });
+
 
 test('returning to an idle workspace keeps native Canvas concealed behind a nonprivate Canvas Harness cover',async()=>{
  const f=fixture({cache:{user:{id:'7'},courses:[],assignments:[],fetchedAt:new Date(0).toISOString()}});
@@ -143,6 +146,68 @@ test('a returning visible tab always rechecks its account, even within thirty se
  switched.resolve({id:'8'});await flush();assert.equal(f.host.hidden,true);assert.equal(f.native.hidden,false);
 });
 
+// A tab opened in the background (or left while it loads) has nobody looking at it: it must not run out the
+// opening cover's eight seconds, and clicking the tab must open the workspace at once instead of Canvas's dashboard.
+test('a dashboard loading in a background tab waits there and opens at once when its tab is shown',async()=>{
+ const f=fixture();f.document.visibilityState='hidden';f.content();await flush();f.loadStyles();
+ f.profile.resolve({id:'7'});f.snapshot();await flush();
+ assert.equal(f.mounts,1);assert.equal(f.host.hidden,true,'nothing is revealed in a hidden tab');assert.equal(f.active,true);
+ f.tick(20000);assert.equal(f.active,true,'unseen time does not run out the cover');assert.equal(f.native.hidden,false,'Canvas itself is not hidden by the controller yet');
+ f.show();await flush();
+ assert.equal(f.host.hidden,false);assert.equal(f.active,false,'the cover lifts with the reveal');assert.equal(f.native.hidden,true);
+ assert.equal(f.profileCalls,1,'a check that finished moments ago is not repeated');
+});
+test('a background tab shown long after its check verifies the account again before revealing',async()=>{
+ const f=fixture();f.document.visibilityState='hidden';f.content();await flush();f.loadStyles();
+ f.profile.resolve({id:'7'});f.snapshot();await flush();f.tick(31000);
+ const check=f.queueProfile();f.show();await flush();
+ assert.equal(f.profileCalls,2);assert.equal(f.host.hidden,true,'old coursework stays hidden while the account is checked');assert.equal(f.active,true);
+ check.resolve({id:'7'});await flush();
+ assert.equal(f.host.hidden,false);assert.equal(f.active,false,'the cover lifts with the reveal, not at its deadline');assert.equal(f.native.hidden,true);
+ f.tick(9000);assert.equal(f.host.hidden,false,'the old deadline cannot hand the page back to Canvas afterwards');
+});
+test('a background tab whose account changed meanwhile shows Canvas, not the old workspace',async()=>{
+ const f=fixture();f.document.visibilityState='hidden';f.content();await flush();f.loadStyles();
+ f.profile.resolve({id:'7'});f.snapshot();await flush();f.tick(31000);
+ const check=f.queueProfile();f.show();await flush();check.resolve({id:'8'});await flush();
+ assert.equal(f.host.hidden,true);assert.equal(f.native.hidden,false);assert.equal(f.active,false);
+});
+test('a first load still running when its tab is shown carries on without a second check',async()=>{
+ const f=fixture();f.document.visibilityState='hidden';f.content();await flush();f.loadStyles();
+ f.show();await flush();assert.equal(f.profileCalls,1,'the running check is kept');assert.equal(f.active,true);
+ f.profile.resolve({id:'7'});f.snapshot();await flush();
+ assert.equal(f.host.hidden,false);assert.equal(f.active,false);assert.equal(f.profileCalls,1);assert.equal(f.mounts,1);
+});
+test('the opening cover gets its eight seconds while the page can be seen',async()=>{
+ const f=fixture();await flush();assert.equal(f.active,true);
+ f.document.visibilityState='hidden';f.tick(9000);assert.equal(f.active,true,'no release while nobody can see the page');
+ assert.equal(f.context.ReserveStartup.canReveal(),true,'a hidden page past the old deadline may still reveal later');
+ f.show();f.tick(7999);assert.equal(f.active,true);f.tick(1);assert.equal(f.active,false,'eight seconds after it is shown, Canvas returns');
+});
+test('with Open at once, a background tab clicked before Canvas answers shows the saved view and keeps its first check',async()=>{
+ const f=fixture({hint:'7',settings:{quickOpen:'on'},cache:{user:{id:'7'},courses:[],assignments:[],fetchedAt:new Date(0).toISOString()}});
+ f.document.visibilityState='hidden';f.content();await flush();f.loadStyles();await flush();
+ assert.equal(f.host.hidden,true,'nothing shows in the hidden tab');
+ f.show();await flush();
+ assert.equal(f.host.hidden,false,'the saved view opens when the tab is clicked');assert.equal(f.native.hidden,true);assert.equal(f.profileCalls,1);
+ f.profile.resolve({id:'7'});f.snapshot();await flush();
+ assert.equal(f.host.hidden,false,'the first check confirms it');assert.equal(f.native.hidden,true);assert.equal(f.profileCalls,1);assert.equal(f.active,false);
+});
+test('leaving a tab while its first load runs keeps that load behind the cover',async()=>{
+ const f=fixture();f.content();await flush();f.loadStyles();assert.equal(f.active,true);
+ f.hide();assert.equal(f.active,true,'the cover waits, unseen');
+ f.tick(20000);f.show();await flush();assert.equal(f.active,true);assert.equal(f.profileCalls,1,'no second load');
+ f.profile.resolve({id:'7'});f.snapshot();await flush();
+ assert.equal(f.host.hidden,false);assert.equal(f.active,false);assert.equal(f.native.hidden,true);assert.equal(f.profileCalls,1);
+});
+test('a never-shown tab rechecks its account when the wall clock says the check is old (the computer slept)',async()=>{
+ const f=fixture();f.document.visibilityState='hidden';f.content();await flush();f.loadStyles();
+ f.profile.resolve({id:'7'});f.snapshot();await flush();
+ const wake=Date.now()+6*3600000;f.context.Date.now=()=>wake;f.tick(1000);
+ const check=f.queueProfile();f.show();await flush();
+ assert.equal(f.profileCalls,2,'performance.now() stood still during sleep; Date.now() did not');assert.equal(f.host.hidden,true);
+ check.resolve({id:'7'});await flush();assert.equal(f.host.hidden,false);
+});
 test('BFCache restoration checks the current account before showing retained coursework',async()=>{
  const f=fixture({cache:{user:{id:'7'},courses:[],assignments:[],fetchedAt:new Date(0).toISOString()}});
  f.content();await flush();f.profile.resolve({id:'7'});await flush();f.loadStyles();
@@ -170,8 +235,8 @@ test('manifest starts the small guard before the early controller with optional 
   const manifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json')));
   const startup=manifest.content_scripts.find(x=>x.js.includes('startup.js'));
   assert.ok(startup,'a document_start bootstrap must be registered');
-  assert.equal(startup.run_at,'document_start');assert.deepEqual(startup.js,['site.js','startup.js']);assert.deepEqual(startup.css,['startup.css']);assert.equal(startup.all_frames,false);
-  assert.equal(manifest.content_scripts.find(x=>x.js.includes('content.js')).run_at,'document_start');assert.ok(manifest.content_scripts.indexOf(startup)<manifest.content_scripts.findIndex(x=>x.js.includes('content.js')));assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen']);
+  assert.equal(manifest.content_scripts[0],startup);assert.equal(startup.run_at,'document_start');assert.deepEqual(startup.js,['site.js','startup-art.js','startup.js']);assert.deepEqual(startup.css,['startup.css','startup-art.css','canvas-nav.css','course-nav.css']);assert.equal(startup.all_frames,false);
+ assert.equal(manifest.content_scripts.find(x=>x.js.includes('content.js')).run_at,'document_start');assert.ok(manifest.content_scripts.indexOf(startup)<manifest.content_scripts.findIndex(x=>x.js.includes('content.js')));assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen']);
 });
 
 test('warm dashboard is revealed while Canvas is still parsing, without waiting for DOMContentLoaded',async()=>{
@@ -191,9 +256,16 @@ test('early controller waits for page containers, then starts once before parsin
 });
 
 test('native course tools wait for completed markup when the controller is registered early',async()=>{
- const f=fixture({pathname:'/courses/7/assignments/12'});f.content();await flush();
+ const f=fixture({pathname:'/courses/7/modules'});f.content();await flush();
  assert.equal(f.document.getElementById('reserve-companion-dock'),undefined);assert.equal(f.profileCalls,0);
  f.parsed();await flush();assert.ok(f.document.getElementById('reserve-companion-dock'));assert.equal(f.profileCalls,0);assert.equal(f.host,undefined);
+});
+
+test('parsing an assignment or submission never starts the native launcher',async()=>{
+ for(const pathname of ['/courses/7/assignments/12','/courses/7/assignments/12/submissions/42','/courses/7/assignments/12/submissions/new']){
+  const f=fixture({pathname,search:'?module_item_id=25'});f.content();await flush();f.parsed();await flush();
+  assert.equal(f.document.getElementById('reserve-companion-dock'),undefined);assert.equal(f.profileCalls,0);assert.equal(f.host,undefined);assert.equal(f.active,false);
+ }
 });
 
 test('duplicate controller delivery cannot create another pending launcher or session',async()=>{
@@ -223,9 +295,47 @@ test('startup timeout before page containers appear cannot cause a late automati
  assert.equal(f.profileCalls,0);assert.equal(f.host,undefined);assert.equal(f.native.hidden,false);
 });
 test('opted-in dashboard gets a generic prepaint shell without reading cached data or making a competing request',async()=>{
-  const f=fixture();await flush();assert.equal(f.active,true);assert.ok(f.shell);assert.deepEqual(f.reads,['reserve:enabled']);assert.equal(f.preflightCalls,0);assert.equal(f.profileCalls,0);assert.equal(f.cacheReads,0);assert.equal(f.native.hidden,false);
+  const f=fixture();await flush();assert.equal(f.active,true);assert.ok(f.shell);assert.deepEqual(JSON.parse(JSON.stringify(f.reads.filter(key=>key!=='reserve:appearance'))),['reserve:enabled'],'only the enable preference and device theme are read');assert.equal(f.preflightCalls,0);assert.equal(f.profileCalls,0);assert.equal(f.cacheReads,0);assert.equal(f.native.hidden,false);
   assert.equal(f.preloads.length,13,'local styles begin fetching before the main controller');
   assert.ok(f.preloads.every(link=>link.as==='style'&&link.href.startsWith('chrome-extension://fixture/')));
+});
+
+
+
+test('a first-visit shell contains its forge on its first append, before any plain-cover paint',async()=>{
+ const f=fixture(),pictures=[],append=f.html.append.bind(f.html);
+ f.html.append=(...items)=>{for(const item of items)if(item.id==='reserve-startup-shell')pictures.push(item.children[1].innerHTML);append(...items);};
+ await flush();assert.equal(pictures.length,1);assert.match(pictures[0],/^<svg class="rsa"/);
+});
+test('opening shell shows the bundled picture between its header and status without placeholder bars',async()=>{
+ const f=fixture();await flush();
+ const [header,art,message]=f.shell.children;
+ assert.deepEqual(f.shell.children.map(el=>el.tagName),['header','div','p']);
+ assert.equal(header.children[0].textContent,'Canvas Harness');assert.equal(header.children[1].textContent,'Canvas dashboard');assert.equal(header.children[1].href,'/?reserve=native');
+ assert.equal(art.className,'reserve-startup-art');assert.equal(art.getAttribute('aria-hidden'),'true');
+ assert.equal(art.innerHTML,f.context.ReserveStartupArt);assert.match(art.innerHTML,/^<svg\b/);assert.doesNotMatch(art.innerHTML,/<i(?:\s|>)/);
+ const descendants=el=>el.children.flatMap(child=>[child,...descendants(child)]);
+ assert.ok(descendants(f.shell).every(el=>el.tagName!=='i'&&el.className!=='reserve-startup-layout'));
+ assert.equal(message.textContent,'Syncing Canvas…');assert.equal(message.getAttribute('role'),'status');
+});
+test('a missing artwork global leaves an empty picture area and still completes startup',async()=>{
+ const f=fixture({missingArt:true});f.content();await flush();
+ assert.equal(f.context.ReserveStartupArt,undefined);assert.equal(f.active,true);assert.equal(f.shell.children[1].innerHTML,'');
+ f.profile.resolve({id:'7'});f.snapshot();await flush();f.loadStyles();
+ assert.equal(f.host.hidden,false);assert.equal(f.active,false);assert.equal(f.shell,undefined);
+});
+for(const action of ['timeout','nativeChoice','login','pagehide'])test('missing artwork preserves the startup release path: '+action,async()=>{
+ const f=fixture({missingArt:true});await flush();assert.equal(f.active,true);
+ if(action==='timeout'){f.tick(7999);assert.equal(f.active,true);f.tick(1);}else f[action]();
+ assert.equal(f.active,false);assert.equal(f.shell,undefined);assert.equal(f.preloads.length,0);assert.equal(f.native.hidden,false);assert.equal(f.context.ReserveStartup.canReveal(),false);
+});
+test('startup CSS retains the paper background and independent eight-second native release switches',()=>{
+ const css=fs.readFileSync(path.join(extension,'startup.css'),'utf8');
+ assert.match(css,/background:#FAF9F5/);assert.match(css,/animation:reserve-startup-release 0s 8s forwards/);
+ assert.match(css,/html\.reserve-startup-active #content,html\.reserve-startup-active #right-side,html\.reserve-startup-active #right-side-wrapper\{animation:reserve-startup-native 8s step-end forwards\}/);
+ assert.match(css,/@keyframes reserve-startup-native\{from\{visibility:hidden\}to\{visibility:visible\}\}/);
+ assert.match(css,/@keyframes reserve-startup-release\{to\{visibility:hidden;pointer-events:none\}\}/);
+ assert.doesNotMatch(css,/reserve-startup-(?:layout|rail|reader|work|information)|#reserve-startup-shell i\b/);
 });
 for(const pathname of ['/','/dashboard','/dashboard/'])test('exact dashboard route activates: '+pathname,async()=>{const f=fixture({pathname});await flush();assert.equal(f.active,true);});
 for(const opts of [{enabled:false},{search:'?reserve=native'},{pathname:'/login/canvas'},{pathname:'/courses/7'},{pathname:'/dashboard/archive'},{pathname:'/dashboard//'}, {pathname:'/Dashboard'},{frame:true},{origin:'https://not-canvas.example'},{login:true}]){
@@ -313,3 +423,4 @@ test('clicking Canvas’s menu bar or pressing a key while the cover waits keeps
  {const f=fixture();await flush();f.interact('keydown',{tagName:'TEXTAREA'});assert.equal(f.active,false,'typing into a field is');}
  {const f=fixture();await flush();f.interact('pointerdown');assert.equal(f.active,false,'a click on Canvas’s page hands it over');assert.equal(ctx(f)?.complete(),false);}
 });
+

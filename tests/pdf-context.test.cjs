@@ -365,6 +365,14 @@ test('concurrent extractions keep independent worker lifetimes', async () => {
 test('the three vendor artifacts match the recorded official package hashes', () => {
   const {vendor} = require(modulePath);
   const vendorPath = path.resolve(__dirname, '../extension/vendor/pdfjs');
-  assert.deepEqual(fs.readdirSync(vendorPath).sort(), ['LICENSE', 'pdf.mjs', 'pdf.worker.mjs']);
+  assert.deepEqual(fs.readdirSync(vendorPath).sort(), ['LICENSE', 'README.md', 'pdf.mjs', 'pdf.worker.mjs']);
+  assert.equal(vendor.sha256['pdf.mjs'], 'bc51f4874a66e3853189cb5d50aba4b3096afa83ed433b885d293a3d94583cdc');
+  assert.equal(vendor.sha256['pdf.worker.mjs'], 'bb422f60804477de4a0b09091d8347a916a387755ed1cbad24ccaec1d09c78bf');
+  assert.equal(fs.statSync(path.join(vendorPath, 'pdf.mjs')).size, 1069549);
+  assert.equal(fs.statSync(path.join(vendorPath, 'pdf.worker.mjs')).size, 2418244);
+  const source = fs.readFileSync(modulePath, 'utf8');
+  assert.match(source, /legacy\/build\/pdf\.mjs -> vendor\/pdfjs\/pdf\.mjs/);
+  assert.match(source, /legacy\/build\/pdf\.worker\.mjs -> vendor\/pdfjs\/pdf\.worker\.mjs/);
+  assert.doesNotMatch(source, /legacy\/build\/pdf(?:\.worker)?\.min\.mjs/);
   for (const [name, hash] of Object.entries(vendor.sha256)) assert.equal(createHash('sha256').update(fs.readFileSync(path.join(vendorPath, name))).digest('hex'), hash);
 });

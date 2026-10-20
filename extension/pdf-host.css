@@ -1,0 +1,108 @@
+/* Canvas Harness PDF split host. Injected only after a primary PDF click. */
+#reserve-pdf-host.reserve-pdf-host {
+  position:fixed;inset:0 0 0 auto;box-sizing:border-box;height:100vh;height:100dvh;
+  overflow:visible;isolation:isolate;z-index:2147483000;background:#f7f3e9;
+  color:#24211d;border-left:0;box-shadow:-10px 0 28px rgb(24 17 10 / .14);
+  font:14px/1.45 system-ui,sans-serif;
+}
+.reserve-pdf-host .reserve-pdf-frame {
+  display:block;border:0;margin:0 0 0 8px;padding:0;width:calc(100% - 8px);height:100%;
+  min-height:0;background:#f7f3e9;
+}
+.reserve-pdf-host .reserve-pdf-divider {
+  position:absolute;left:-3px;top:0;bottom:0;width:14px;pointer-events:none;
+  border:0;z-index:2;overflow:hidden;
+}
+.reserve-pdf-host .reserve-pdf-divider svg {display:block;width:100%;height:100%;}
+.reserve-pdf-host .reserve-pdf-grip {
+  position:absolute;top:calc(50% - 34px);left:-12px;width:32px;height:68px;
+  display:grid;place-items:center;z-index:3;touch-action:none;cursor:ew-resize;
+  border:0;border-radius:12px;background:transparent;color:inherit;user-select:none;
+}
+.reserve-pdf-host .reserve-pdf-grip svg {width:18px;height:52px;filter:drop-shadow(1px 2px 2px rgb(0 0 0 / .2));}
+.reserve-pdf-host .reserve-pdf-grip:focus-visible {outline:3px solid #9d5635;outline-offset:1px;background:#fff9e9;}
+.reserve-pdf-host .reserve-pdf-status {
+  position:absolute;bottom:12px;left:28px;right:18px;text-align:center;
+  padding:8px;border-radius:8px;background:#fdfbf5;border:1px solid #d0c4af;
+  color:#443f38;pointer-events:none;
+}
+.reserve-pdf-host .reserve-pdf-status[hidden] {display:none;}
+.reserve-pdf-fallback {
+  position:fixed;z-index:2147483050;bottom:20px;right:20px;max-width:min(480px,calc(100vw - 40px));
+  padding:14px 18px;background:#fff9ea;color:#28231d;border:2px solid #9b6543;
+  border-radius:12px;box-shadow:0 8px 25px rgb(0 0 0 / .18);
+  font:14px/1.5 system-ui,sans-serif;
+}
+/* Ask AI is a sidebar of the reader: full height on its right, the reader narrowing beside it */
+.reserve-pdf-host {--reserve-ai-w:clamp(300px,40%,420px);}
+.reserve-pdf-host.has-ai .reserve-pdf-frame {width:calc(100% - 8px - var(--reserve-ai-w));}
+.reserve-pdf-host .reserve-pdf-ai-shell {
+  position:absolute;right:0;top:0;bottom:0;z-index:4;width:var(--reserve-ai-w);
+  display:flex;flex-direction:column;overflow:hidden;background:#fff;
+  border:0;border-left:2px solid #3e3832;border-radius:0;box-shadow:-6px 0 18px rgb(0 0 0 / .10);
+}
+.reserve-pdf-host .reserve-pdf-ai-heading {
+  display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;
+  border-bottom:1px solid #d4c9b8;background:#f6f0e4;font-size:12px;
+}
+.reserve-pdf-host .reserve-pdf-ai-heading strong {overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.reserve-pdf-host .reserve-pdf-ai-heading button {
+  font:inherit;cursor:pointer;padding:4px 10px;border:1px solid #817263;border-radius:6px;
+  background:white;color:#29231d;
+}
+.reserve-pdf-host .reserve-pdf-ai-heading button:focus-visible {outline:3px solid #985f34;}
+.reserve-pdf-host .reserve-pdf-ai-body {flex:1;min-height:0;}
+.reserve-pdf-host .reserve-pdf-ai-body iframe {display:block;width:100%;height:100%;border:0;}
+.reserve-pdf-host[data-theme="dark"],.reserve-pdf-host[data-theme="dark"] .reserve-pdf-frame{background:#242622;color:#e5dccb}
+.reserve-pdf-host[data-theme="dark"] :is(.reserve-pdf-ai-shell,.reserve-pdf-ai-heading,.reserve-pdf-status){background:#30312b;color:#e5dccb;border-color:#666357}
+@media (prefers-reduced-motion:reduce) {
+  html:has(>body>#reserve-pdf-host),html:has(>body>#reserve-pdf-host) #wrapper {transition:none!important;}
+}
+
+/* full screen: the reader panel fills the screen; the split grip is not needed there */
+#reserve-pdf-host.reserve-pdf-host.is-full{inset:0!important;width:100vw!important;max-width:none!important;box-shadow:none}
+#reserve-pdf-host.reserve-pdf-host.is-full .reserve-pdf-frame{margin-left:0;width:100%}
+#reserve-pdf-host.reserve-pdf-host.is-full.has-ai .reserve-pdf-frame{width:calc(100% - var(--reserve-ai-w))}
+#reserve-pdf-host.reserve-pdf-host.is-full :is(.reserve-pdf-grip,.reserve-pdf-divider){display:none}
+/* the assignment, at hand in full screen: a paper tab, and a card with Canvas's own details */
+.reserve-pdf-host .reserve-pdf-assignment-tab{position:absolute;left:14px;bottom:16px;z-index:5;display:flex;align-items:center;gap:6px;padding:7px 13px 7px 9px;border:1.6px solid #141413;border-radius:9px;background:#fffdf8;color:#141413;font:600 13px/1.2 system-ui,sans-serif;cursor:pointer;box-shadow:2px 3px 0 rgb(20 20 19 / .16)}
+.reserve-pdf-host .reserve-pdf-assignment-tab[hidden]{display:none}
+.reserve-pdf-host .reserve-pdf-assignment-tab svg{width:20px;height:20px;overflow:visible}
+.reserve-pdf-host .reserve-pdf-assignment-tab:focus-visible{outline:3px solid #9d5635;outline-offset:2px}
+.reserve-pdf-host .reserve-pdf-assignment-card{position:absolute;left:14px;bottom:64px;z-index:6;width:min(460px,calc(100% - 28px));max-height:min(70vh,640px);display:flex;flex-direction:column;background:#fffdf8;color:#24211d;border:1.6px solid #141413;border-radius:12px;box-shadow:3px 4px 0 rgb(20 20 19 / .12),0 14px 34px rgb(0 0 0 / .18);overflow:hidden}
+.reserve-pdf-host .reserve-pdf-assignment-card[hidden]{display:none}
+.reserve-pdf-host .reserve-pdf-assignment-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 16'%3E%3Cg fill='none' stroke='%235C3A24' stroke-width='1.6' stroke-linecap='round' opacity='.6'%3E%3Cpath d='M6 14.5l3.4-11'/%3E%3Cpath d='M11.6 14.8l3.2-10.6'/%3E%3Cpath d='M17.2 14.4l3.3-10.9'/%3E%3C/g%3E%3C/svg%3E") no-repeat right 16px bottom 9px/24px 15px,#9a6440;color:#fbf1dc;font:700 15px/1.3 Literata,Georgia,serif}
+.reserve-pdf-host .reserve-pdf-assignment-head button{border:0;background:none;color:#fbf1dc;font:22px/1 system-ui;cursor:pointer;padding:0 4px}
+.reserve-pdf-host .reserve-pdf-assignment-body{overflow:auto;padding:12px 16px 16px;font:14px/1.5 Lato,system-ui,sans-serif}
+.reserve-pdf-host .reserve-pdf-assignment-body h1{font-size:18px;margin:0 0 8px}
+.reserve-pdf-host[data-theme="dark"] :is(.reserve-pdf-assignment-tab,.reserve-pdf-assignment-card){background:#2c2e29;color:#e5dccb;border-color:#666357}
+
+/* house style: the tab and the card get the hand-drawn ink edge; their shadows are drawn offsets */
+.reserve-pdf-host .reserve-pdf-assignment-tab,.reserve-pdf-host .reserve-pdf-assignment-card{border:0}
+.reserve-pdf-host .reserve-pdf-assignment-tab::after{content:"";position:absolute;inset:-4px;border:14px solid transparent;pointer-events:none;background:#141413;-webkit-mask-box-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2790%27 height=%2790%27 viewBox=%270 0 90 90%27%3E%3Cpath fill=%27none%27 stroke=%27%23000%27 stroke-width=%273%27 stroke-linecap=%27round%27 d=%27M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8%27/%3E%3C/svg%3E") 30 30 30 30 stretch;mask-border:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2790%27 height=%2790%27 viewBox=%270 0 90 90%27%3E%3Cpath fill=%27none%27 stroke=%27%23000%27 stroke-width=%273%27 stroke-linecap=%27round%27 d=%27M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8%27/%3E%3C/svg%3E") 30 30 30 30 stretch}
+.reserve-pdf-host .reserve-pdf-assignment-card::after{content:"";position:absolute;inset:0;border:14px solid transparent;pointer-events:none;background:#141413;-webkit-mask-box-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2790%27 height=%2790%27 viewBox=%270 0 90 90%27%3E%3Cpath fill=%27none%27 stroke=%27%23000%27 stroke-width=%273%27 stroke-linecap=%27round%27 d=%27M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8%27/%3E%3C/svg%3E") 30 30 30 30 stretch;mask-border:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2790%27 height=%2790%27 viewBox=%270 0 90 90%27%3E%3Cpath fill=%27none%27 stroke=%27%23000%27 stroke-width=%273%27 stroke-linecap=%27round%27 d=%27M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8%27/%3E%3C/svg%3E") 30 30 30 30 stretch}
+.reserve-pdf-host .reserve-pdf-assignment-card{box-shadow:3px 4px 0 rgb(20 20 19 / .12)}
+.reserve-pdf-host[data-theme="dark"] .reserve-pdf-assignment-tab::after,.reserve-pdf-host[data-theme="dark"] .reserve-pdf-assignment-card::after{background:#d2c8b2}
+.reserve-pdf-host .reserve-pdf-assignment-head{position:relative}
+
+.reserve-pdf-host .reserve-pdf-assignment-head button{position:relative;z-index:1}
+
+/* the Assignment card as a paper slip: title once with a hand-drawn underline, a paperclip, a drawn close cross */
+.reserve-pdf-host .reserve-pdf-assignment-card{overflow:visible;border-radius:10px;background:#fffdf8}
+.reserve-pdf-host .reserve-pdf-assignment-card::after{inset:-3px}
+.reserve-pdf-host .reserve-pdf-assignment-clip{position:absolute;left:22px;top:-14px;width:16px;height:30px;z-index:7}
+.reserve-pdf-host .reserve-pdf-assignment-clip svg{display:block;width:100%;height:100%;overflow:visible}
+.reserve-pdf-host .reserve-pdf-assignment-head{background:none!important;color:#141413!important;padding:16px 14px 6px 18px;font:700 17px/1.3 Literata,Georgia,serif;align-items:flex-start}
+.reserve-pdf-host .reserve-pdf-assignment-head::after{content:"";position:absolute;inset:auto auto 0 18px;width:min(220px,60%);height:6px;border:0;border-radius:0;opacity:.75;background:#141413;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 6' preserveAspectRatio='none'%3E%3Cpath d='M2 3.6C50 2.2 100 4.4 150 3 180 2.2 200 3.6 218 2.6' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat}
+.reserve-pdf-host .reserve-pdf-assignment-head button{color:#5e5d59!important;width:26px;height:26px;padding:3px!important;border-radius:6px}
+.reserve-pdf-host .reserve-pdf-assignment-head button:hover{color:#141413!important;background:#f3ede0}
+.reserve-pdf-host .reserve-pdf-assignment-head button svg{display:block;width:100%;height:100%}
+.reserve-pdf-host .reserve-pdf-assignment-body{overflow:auto;padding:10px 18px 16px;font:14px/1.55 Lato,system-ui,sans-serif;color:#2b2823}
+.reserve-pdf-host .reserve-pdf-assignment-body ul{padding-left:18px}
+.reserve-pdf-host .reserve-pdf-assignment-body a{color:#a9522f}
+.reserve-pdf-host[data-theme="dark"] .reserve-pdf-assignment-head{color:#e5dccb!important}
+.reserve-pdf-host[data-theme="dark"] .reserve-pdf-assignment-head::after{background:#d2c8b2}
+.reserve-pdf-host[data-theme="dark"] .reserve-pdf-assignment-body{color:#e5dccb}
+.reserve-pdf-host[data-theme="dark"] .reserve-pdf-assignment-body a{color:#e4a184}
+/* the panel's own clip names the file and pages; the host's strip stays for screen readers only */
+.reserve-pdf-host .reserve-pdf-ai-heading{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;border:0!important}

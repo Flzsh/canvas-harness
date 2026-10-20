@@ -2,25 +2,20 @@
 #reserve-startup-shell{--reserve-startup-ready:1;display:none}
 html.reserve-startup-active #reserve-startup-shell{display:block;position:fixed;inset:0;z-index:2147483646;box-sizing:border-box;overflow:auto;padding:24px clamp(16px,2vw,36px);background:#FAF9F5;color:#3D3D3A;font:14px/1.5 "Segoe UI",system-ui,sans-serif;color-scheme:light;animation:reserve-startup-release 0s 8s forwards}
 #reserve-startup-shell *{box-sizing:border-box}
-#reserve-startup-shell header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding-bottom:20px;border-bottom:1px solid #E8E6DC}
+#reserve-startup-shell header{display:flex;align-items:center;justify-content:space-between;gap:20px;max-width:1100px;margin:0 auto;padding-bottom:20px;border-bottom:1px solid #E8E6DC}
 #reserve-startup-shell strong{font-size:20px;font-weight:650;letter-spacing:-.5px}
 #reserve-startup-shell a{display:inline-block;background:#fff;color:#5E5D59;border:1px solid #D9D6CA;border-radius:8px;padding:9px 14px;font:600 12px/1.5 "Segoe UI",system-ui,sans-serif;text-decoration:none}
 #reserve-startup-shell a:focus-visible{outline:3px solid #C96442;outline-offset:3px}
-#reserve-startup-shell p{margin:18px 0 26px;color:#78766F;font-size:13px}
-#reserve-startup-shell .reserve-startup-layout{display:grid;grid-template-columns:clamp(190px,15vw,280px) minmax(0,1fr) minmax(0,.85fr) minmax(0,1.3fr);gap:20px;align-items:start}
-#reserve-startup-shell .reserve-startup-layout>div{padding:20px;background:transparent;border:1px solid #E8E6DC;border-radius:12px;min-height:340px}
-#reserve-startup-shell .reserve-startup-layout b{display:block;margin-bottom:24px;font:600 17px/1.4 Georgia,serif}
-#reserve-startup-shell .reserve-startup-layout .reserve-startup-rail{background:#F3F1EA;min-height:calc(100dvh - 190px)}
-#reserve-startup-shell .reserve-startup-layout .reserve-startup-reader{background:#fff;min-height:400px}
-#reserve-startup-shell i{display:block;height:10px;max-width:85%;margin:12px 0 34px;border-radius:4px;background:#E8E6DC}
-#reserve-startup-shell i:nth-child(even){max-width:60%}
+#reserve-startup-shell p{margin:18px 0 26px;color:#78766F;font-size:13px;text-align:center}
+#reserve-startup-shell .reserve-startup-art{display:flex;justify-content:center}
+#reserve-startup-shell .reserve-startup-art svg{max-width:100%}
+/* the status sits just under the gear (the picture's lower part is open air where subjects fall) */
+#reserve-startup-shell .reserve-startup-art+p{margin-top:calc(-.17 * clamp(320px,34vw,500px));position:relative}
 /* CSS also releases the overlay if the main controller never runs. No hidden DOM
    attributes, inert roots, or scroll locks are left behind. Keep these deadlines
    even with reduced motion: they are discrete safety switches, not animation. */
 html.reserve-startup-active #content,html.reserve-startup-active #right-side,html.reserve-startup-active #right-side-wrapper{animation:reserve-startup-native 8s step-end forwards}
 @keyframes reserve-startup-native{from{visibility:hidden}to{visibility:visible}}
 @keyframes reserve-startup-release{to{visibility:hidden;pointer-events:none}}
-@media(max-width:1000px){#reserve-startup-shell .reserve-startup-layout{grid-template-columns:180px 1fr 1fr}#reserve-startup-shell .reserve-startup-reader{display:none}}
-@media(max-width:600px){#reserve-startup-shell .reserve-startup-layout{grid-template-columns:1fr}#reserve-startup-shell .reserve-startup-layout .reserve-startup-rail{min-height:100px}#reserve-startup-shell .reserve-startup-work{display:none}}
 /* The workspace column scrolls by itself (dashboard.js sets reserve-fit): Canvas's page does not scroll as well. */
 @media (min-width:801px){html.reserve-inline-active.reserve-fit,html.reserve-inline-active.reserve-fit body{overflow-y:hidden!important}}

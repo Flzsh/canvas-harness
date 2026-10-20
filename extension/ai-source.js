@@ -136,15 +136,38 @@
   }
   return {summary,catalog,loadCourse,collect,verify,destroy(){dead=true;resources.clear();updates.clear();freshAssignments.clear();}};
  }
+ // An already-open PDF reader can hand one explicit text selection to the same
+ // AI panel and provider setup as the Canvas toolbox. No PDF URL, background
+ // scraping, new AI endpoint or automatic network sharing is needed.
+ function createPdfHandoff({origin,accountId,fileId,name,text,page,endPage=page,appearance}={}){
+  let school;try{school=new URL(origin);}catch{throw Error('Invalid PDF selection origin.');}
+  if(school.protocol!=='https:'||school.origin!==origin||!/^\d+$/.test(String(fileId))||!/^\d+$/.test(String(accountId)))throw Error('The PDF selection must belong to a verified Canvas account and file.');
+  if(!Number.isSafeInteger(page)||page<0||!Number.isSafeInteger(endPage)||endPage<page||typeof text!=='string'||!text.trim()||text.length>100000)throw Error('Choose up to 100,000 characters from pages of one PDF.');
+  const title=String(name||'Canvas PDF').slice(0,240),pages=endPage===page?'page '+(page+1):'pages '+(page+1)+'–'+(endPage+1),id='pdf-page:'+fileId+':'+page+(endPage===page?'':'-'+endPage);
+  // Background's existing verifyAccount() expects origin|accountId at the
+  // front of every source scope; the actual account is verified twice there.
+  const scopeKey=[origin,String(accountId),'pdf-page',String(fileId),String(page)+(endPage===page?'':'-'+endPage),String(text.length)].join('|');
+  const source={id,title:title+' · '+pages,kind:'file',courseId:'all',loaded:true};
+  const selected='[PDF text: '+title+', '+pages+']\n'+text.trim();
+  let dead=false;
+  function ensure(){if(dead)throw Error('This PDF selection is closed and its context is unavailable.');}
+  function summary(){ensure();return {scopeKey,selectedIds:[id],courseId:'all',active:null,courses:[],sources:[source],demo:false,
+   autoSend:false,theme:appearance?.theme==='dark'?'dark':'light',motion:'gentle'};}
+  return {summary,catalog:async()=>summary(),loadCourse:async()=>{throw Error('Choose the PDF selection already shown.');},
+   async collect({ids=[],all=false}={}){
+    ensure();if(all||!Array.isArray(ids)||ids.length!==1||ids[0]!==id)throw Error('The selected PDF text changed. Review the selection again.');
+    return {scopeKey,text:selected,included:[{id,title:source.title,kind:'file',courseId:'all'}],omitted:[]};
+   },destroy(){dead=true;}};
+ }
  function base64(bytes){let value='';for(let i=0;i<bytes.length;i+=16384)value+=String.fromCharCode(...bytes.subarray(i,i+16384));return root.btoa(value);}
- function mount({container,getContext,store,client,user,demo=false,onClose=()=>{}}){
+ function mount({container,getContext,store,client,user,demo=false,pdfHandoff=null,onClose=()=>{}}){
   let frame,port,dead=false,lastSignature='',lastHeartbeat=0;
   const runtime=root.chrome?.runtime,preview=demo&&!runtime?.id&&/^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(root.location?.origin||'');
   async function parsePDF(bytes){
    if(!runtime?.id)throw Error('Install the extension to read PDFs locally.');
    const response=await runtime.sendMessage({type:'ch-ai-pdf',base64:base64(bytes)});if(!response?.ok)throw Error(response?.error||'PDF text could not be read.');return response.result;
   }
-  const source=create({getContext,store,client,user,demo,parsePDF});
+  const source=pdfHandoff?createPdfHandoff(pdfHandoff):create({getContext,store,client,user,demo,parsePDF});
   const send=message=>{if(dead)return;if(preview)frame?.contentWindow?.postMessage({type:'ch-ai-reply',reply:message},root.location.origin);else try{port?.postMessage(message);}catch{}};
   async function request(message){
    const {id,action}=message||{};if(typeof id!=='string'||id.length>100)return;
@@ -177,7 +200,7 @@
   if(!preview)connect();
   container.append(frame);
   function update(){
-   if(dead)return;try{
+   if(dead||pdfHandoff&&root.document.hidden)return;try{
     if(!preview)connect();
     const data=source.summary(),signature=JSON.stringify(data);
     if(signature!==lastSignature){lastSignature=signature;send({kind:'catalog',data});}
@@ -189,9 +212,12 @@
   frame.addEventListener('load',()=>{lastSignature='';update();});
   update();
   // Metadata only. Requests fetch text explicitly; no chat or credentials cross into this document.
-  const timer=root.setInterval(update,1200);
-  return {update,focus(){frame.focus();},destroy(){dead=true;root.clearInterval(timer);root.removeEventListener('message',onPreview);source.destroy();port?.disconnect();frame.remove();}};
+  let timer=0;
+  const visibility=()=>{root.clearInterval(timer);timer=0;if(!dead&&(!pdfHandoff||!root.document.hidden)){update();timer=root.setInterval(update,1200);}};
+  if(pdfHandoff)root.document.addEventListener('visibilitychange',visibility);
+  visibility();
+  return {update,focus(){frame.focus();},destroy(){dead=true;root.clearInterval(timer);if(pdfHandoff)root.document.removeEventListener('visibilitychange',visibility);root.removeEventListener('message',onPreview);source.destroy();port?.disconnect();frame.remove();}};
  }
- root.CanvasHarnessAISource={create,mount,base64,MAX_BYTES};
+ root.CanvasHarnessAISource={create,createPdfHandoff,mount,base64,MAX_BYTES};
  if(typeof module==='object'&&module.exports)module.exports=root.CanvasHarnessAISource;
 })(globalThis);

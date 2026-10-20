@@ -218,7 +218,7 @@ test('wired in: content scripts in order, the stylesheet, and the backdrop page'
  assert.equal(manifest.content_security_policy.extension_pages.includes('wasm-unsafe-eval'),false);
  assert.ok(!manifest.permissions.includes('notifications')&&!manifest.permissions.includes('alarms'),'no new permissions');
  const preview=fs.readFileSync(path.join(__dirname,'..','preview','index.html'),'utf8');
- assert.match(preview,/gpa-model\.js"><\/script><script src="\.\.\/extension\/focus-room-model\.js"/);assert.match(preview,/pets\.js"><\/script><script src="\.\.\/extension\/focus-scene-renderer\.js"><\/script><script src="\.\.\/extension\/focus-dial\.js"><\/script><script src="\.\.\/extension\/focus-room\.js"/);
+ assert.match(preview,/<script src="\.\.\/extension\/focus-room-model\.js"><\/script><script src="\.\.\/extension\/focus-guard-model\.js"><\/script><script src="\.\.\/extension\/storage\.js"/);assert.match(preview,/pets\.js"><\/script><script src="\.\.\/extension\/focus-scene-renderer\.js"><\/script><script src="\.\.\/extension\/focus-dial\.js"><\/script><script src="\.\.\/extension\/focus-room\.js"/);
 });
 
 test('the backdrop page only listens to its own Canvas page, keeps files to itself, and runs no inline script',()=>{

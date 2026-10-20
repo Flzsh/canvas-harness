@@ -333,6 +333,9 @@
   // and on twos, like the minis, after that, until the idle rest stops everything.
   const FILM_FPS={scene:24,mini:12};
   const ART_BRISK_MS=6000;
+  // A PRESS HOLDS THE DRAWINGS: from a press, a key or a wheel turn until this long after the last one, every drawing holds
+  // its frame, so the page's answer to the input has the main thread to itself; then they go on from the frame they held.
+  const ART_BUSY_MS=700;
   // THE IDLE REST: a page nobody has touched for 25 seconds (no pointer or key input on it) holds every
   // living drawing where it stands, so a dashboard left open on a screen costs nothing at all; the next
   // input (or the tab shown again) lets them go on from that very frame. The clock checks it as it ticks.
@@ -351,11 +354,58 @@
     const inView=rect=>!!rect&&rect.width>0&&rect.height>0&&rect.bottom>0&&rect.top<view();
     const clipped=rect=>rect.width<2&&rect.height<2;// visually hidden (the sr-only 1px box)
     const shellOf=()=>container.querySelector?.('.rd-shell')||null;
+    // A DRAWING'S MOVING PARTS ANIMATE CUSTOM PROPERTIES. Animating an SVG part's transform or opacity makes Chrome give the
+    // part a compositor layer of its own; with a hundred and more of them, every change anywhere on the page re-sorts all
+    // those layers (measured: 154 layers, a click's layering work about 3x). The same keyframes on the registered properties
+    // --rd-tf and --rd-op, which the part's own transform and opacity read, draw the same frames inside the drawing's paint
+    // (154 layers -> 9). The part's resting pose is the property's base value, so before and after its animation it stands
+    // exactly as drawn; the inline styles go when the last animation on the part ends.
+    const VARS=(()=>{try{const reg=root.CSS?.registerProperty;if(!reg)return false;
+      for(const [name,syntax,initialValue] of [['--rd-tf','<transform-list>','translate(0px)'],['--rd-op','<number>','1']])try{reg({name,syntax,inherits:false,initialValue});}catch(error){if(error?.name!=='InvalidModificationError')throw error;}
+      return true;}catch{return false;}})();
+    const varUse=new WeakMap();
+    // the pose a part is drawn in, read from its transform attribute (the SVG DOM, no style read: reading computed style here
+    // would restyle the page once per part a click starts)
+    const restingTransform=node=>{try{const list=node.transform?.baseVal;let m=null;for(let i=0;i<(list?.numberOfItems||0);i++){const t=list.getItem(i).matrix;m=m?m.multiply(t):t;}return m?`matrix(${m.a},${m.b},${m.c},${m.d},${m.e},${m.f})`:'translate(0px)';}catch{return 'translate(0px)';}};
+    // 'none' has no place in a transform list: use each function's identity, preserving angle and length units.
+    const identityOf=list=>String(list).replace(/([a-zA-Z0-9]+)\(([^)]*)\)/g,(m,name,args)=>name+'('+(/^matrix$/i.test(name)?'1,0,0,1,0,0':/^matrix3d$/i.test(name)?'1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1':args.trim().split(/[,\s]+/).map(arg=>/^scale/i.test(name)?'1':'0'+(arg.trim().match(/[a-z%]+$/i)?.[0]||'')).join(','))+')');
+    function varFrames(frames){
+      const list=Array.isArray(frames)?frames:null,keys=list?new Set(list.flatMap(f=>Object.keys(f))):new Set(Object.keys(frames||{}));
+      const tf=keys.has('transform'),op=keys.has('opacity');if(!tf&&!op)return null;
+      const values=list?list.map(f=>f.transform).filter(v=>v!=null):[].concat(frames.transform??[]);
+      const model=values.find(v=>v&&v!=='none'),none=model?identityOf(model):'translate(0px)';
+      const t=v=>v==null?v:(v==='none'?none:String(v)),o=v=>v==null?v:String(v);
+      const move=f=>{const g={...f};if('transform' in g){g['--rd-tf']=Array.isArray(g.transform)?g.transform.map(t):t(g.transform);delete g.transform;}if('opacity' in g){g['--rd-op']=Array.isArray(g.opacity)?g.opacity.map(o):o(g.opacity);delete g.opacity;}return g;};
+      return {frames:list?list.map(move):move(frames),tf,op};
+    }
+    function useVars(node,tf,op){
+      let use=varUse.get(node);
+      if(!use){use={n:0,transform:node.style.getPropertyValue('transform'),opacity:node.style.getPropertyValue('opacity')};varUse.set(node,use);
+        node.style.setProperty('--rd-tf',use.transform&&use.transform!=='none'?use.transform:restingTransform(node));node.style.setProperty('--rd-op',use.opacity||node.getAttribute?.('opacity')||'1');}
+      use.n++;if(tf)node.style.setProperty('transform','var(--rd-tf)');if(op)node.style.setProperty('opacity','var(--rd-op)');
+      let done=false;return ()=>{if(done)return;done=true;if(--use.n>0)return;varUse.delete(node);
+        for(const k of ['transform','opacity'])if(use[k])node.style.setProperty(k,use[k]);else node.style.removeProperty(k);
+        node.style.removeProperty('--rd-tf');node.style.removeProperty('--rd-op');};
+    }
+    // an animation whose part shows its frames through the custom properties; it lets go of them when it ends for good
+    function varAnimate(node,frames,options){
+      const v=VARS&&root.SVGElement&&node instanceof root.SVGElement?varFrames(frames):null;
+      if(!v)return node.animate(frames,options);
+      const free=useVars(node,v.tf,v.op);let animation;
+      try{animation=node.animate(v.frames,options);}catch(error){free();throw error;}
+      const fill=options&&typeof options==='object'?options.fill:undefined;
+      animation.addEventListener?.('cancel',free);animation.addEventListener?.('remove',free);
+      if(fill!=='forwards'&&fill!=='both')animation.addEventListener?.('finish',free);
+      return animation;
+    }
     function play(node,frames,options,list){
       if(typeof node?.animate!=='function')return null;
-      let animation;try{animation=node.animate(frames,options);}catch{return null;}
+      let animation;try{animation=varAnimate(node,frames,options);}catch{return null;}
       list?.push(animation);return animation;
     }
+    // A synchronous pass gathers layout-dependent frames first; only its flush starts animations, in order.
+    // Cancellation and live animation-state reads stay at their call sites; play() itself is always immediate.
+    function animationPass(){const queue=[];return {play(node,frames,options){queue.push([node,frames,options]);},flush(list=[]){for(const [node,frames,options] of queue)play(node,frames,options,list);queue.length=0;return list;}};}
     function watch(nodes){
       if(!observer)return;
       const next=nodes.filter(Boolean);
@@ -365,7 +415,7 @@
 
     // ---- The course-row frames: the arrival of the row the pointer chose, the exit of the row it left ----
     const frames=(()=>{
-      let running=[];
+      let running=[];const lengths=new WeakMap();
       const T=FRAME_T,A=T.arrive,css=node=>(node&&root.getComputedStyle?.(node))||null;
       const rowOf=node=>node?.closest?.('.rd-rail-course,.rd-rail-all')||null;
       const frameOf=row=>row?.querySelector?.(':scope>.rd-frame')||null;
@@ -382,11 +432,13 @@
       const run=(el,keyframes,options)=>play(el,keyframes,{fill:'backwards',id:FRAME_ID,...options},running);
       // On-screen length of the stretched pen line. Its stroke does not scale, so its dashes are measured in
       // screen px, while getTotalLength() answers in viewBox units: sample the path and scale by the svg's box.
-      function inkLength(svg,path){
-        const r=svg.getBoundingClientRect(),sx=r.width/FRAME_BOX[0],sy=r.height/FRAME_BOX[1],total=path.getTotalLength();
-        let length=0,a=path.getPointAtLength(0);
-        for(let i=1;i<=FRAME_SAMPLES;i++){const b=path.getPointAtLength(total*i/FRAME_SAMPLES);length+=Math.hypot((b.x-a.x)*sx,(b.y-a.y)*sy);a=b;}
-        return length;
+      // Keep four recent paths' samples in their own units; every SVG size scales the exact same points.
+      function inkLength(svg,path,r=svg.getBoundingClientRect()){
+        const key=path.getAttribute?.('d')??'',cached=lengths.get(path);let points=cached?.get(key);
+        if(!points){const total=path.getTotalLength(),first=path.getPointAtLength(0);points=[{x:first.x,y:first.y}];for(let i=1;i<=FRAME_SAMPLES;i++){const p=path.getPointAtLength(total*i/FRAME_SAMPLES);points.push({x:p.x,y:p.y});}}
+        const sx=r.width/FRAME_BOX[0],sy=r.height/FRAME_BOX[1];let length=0,a=points[0];
+        for(let i=1;i<=FRAME_SAMPLES;i++){const b=points[i];length+=Math.hypot((b.x-a.x)*sx,(b.y-a.y)*sy);a=b;}
+        if(Number.isFinite(length)){const cache=cached||new Map();if(!cached)lengths.set(path,cache);cache.delete(key);cache.set(key,points);if(cache.size>4)cache.delete(cache.keys().next().value);}return length;
       }
       // FIRST (in snapshot(), before the render): what the two frames look like now. It only reads.
       function before(target){
@@ -405,7 +457,7 @@
       // heavy line. A draw it had not finished (two quick clicks) is dropped: its drawings show at once (a short
       // fade from 35%) and what the pen had inked fades out. A piece that only the chosen row's loops showed fades
       // where it was; one that those loops had moved settles (an ornament whose own loop goes on is left alone).
-      function relax(row,memo){
+      function relax(row,memo,run){
         const frame=frameOf(row);if(!frame)return;
         const main=frame.querySelector('.rd-frame-main'),ink=frame.querySelector('.rd-frame-ink'),cs=css(ink),half=cs?.visibility==='visible'?{strokeDasharray:cs.strokeDasharray,strokeDashoffset:cs.strokeDashoffset}:null;
         const drawing=running.some(a=>frame.contains?.(a.effect?.target??a.target));
@@ -426,12 +478,13 @@
       // Motion Still: the arrival is a quick fade of the whole frame (no pen, no building).
       function fade(row){const frame=frameOf(row);if(frame)run(frame,[{opacity:T.still.from},{opacity:1}],{duration:T.still.fade,easing:'ease-out',fill:'none'});}
       // The pen draws the frame of the row that has just been chosen, and the drawing is built in its wake.
-      function draw(row,memo){
+      function draw(row,memo,run){
         const frame=frameOf(row);if(!frame)return;
         const cs=css(frame),guide=cs?.getPropertyValue?.('--f-guide')?.trim(),full=cs?.getPropertyValue?.('--f-ink')?.trim();
         const main=frame.querySelector('.rd-frame-main'),ink=frame.querySelector('.rd-frame-ink'),wash=frame.querySelector('.rd-frame-wash');
         if(!guide||!full||!main||!ink)return;
-        let length=0;try{length=inkLength(main,ink);}catch{}if(!(length>0)||!Number.isFinite(length))return;
+        const rects=new Map(),lengthOf=(svg,path)=>{if(!rects.has(svg))rects.set(svg,svg.getBoundingClientRect());return inkLength(svg,path,rects.get(svg));};
+        let length=0;try{length=lengthOf(main,ink);}catch{}if(!(length>0)||!Number.isFinite(length))return;
         clear(frame);
         const L=Math.ceil(length)+2,dash=`${L} ${L}`,D=T.draw.duration,END=D+T.draw.settleInk,from=memo.from||guide;
         // 1. The resting line drops back to a pencil guide while the ink runs over it, and is full ink once the pen has passed.
@@ -457,7 +510,7 @@
           for(const p of svg.querySelectorAll('path')){
             const pc=css(p);if(!pc||pc.display==='none')continue;
             if(dashed(pc)){const all=t0+A.ornament;run(p,[{opacity:pc.opacity,offset:0,easing:'steps(1, end)'},{opacity:0,offset:Math.min(A.hide,t0)/all},{opacity:0,offset:t0/all},{opacity:pc.opacity,offset:1}],{duration:all});}
-            else{let len=0;try{len=inkLength(svg,p);}catch{}pen(p,len,Math.max(t0,1.5),A.ornament+80);}
+            else{let len=0;try{len=lengthOf(svg,p);}catch{}pen(p,len,Math.max(t0,1.5),A.ornament+80);}
           }
         }
         // 4. The ornaments: the first is where the pen touches down; the flourish (.a-fin) comes last. An actor of
@@ -481,10 +534,11 @@
         if(dead||!memo||memo.done)return;memo.done=true;
         const {old,next}=memo;if(next?.isConnected===false||!chosen(next))return;
         running=running.filter(a=>a.playState!=='finished'&&a.playState!=='idle');
+        const pass=animationPass(),run=(el,keyframes,options)=>pass.play(el,keyframes,{fill:'backwards',id:FRAME_ID,...options});
         try{
           if(memo.still){if(style()==='still')fade(next);return;}
-          if(old&&old!==next&&old.isConnected!==false)relax(old,memo);draw(next,memo);
-        }catch{}
+          if(old&&old!==next&&old.isConnected!==false)relax(old,memo,run);draw(next,memo,run);
+        }catch{}finally{pass.flush(running);}
       }
       function cancel(){for(const a of running)a?.cancel?.();running=[];}
       return {before,after,cancel,inkLength};
@@ -500,10 +554,10 @@
     }
     function measure(shell,surface){
       const box=shell.querySelector(surface.host),on=box?.querySelector(surface.pick);
-      const at=on&&offset(on,box);
-      if(!at||!on.offsetWidth)return {o:0,box};
+      const at=on&&offset(on,box),w=at?on.offsetWidth:0;
+      if(!at||!w)return {o:0,box};
       const rows=surface.rows?Array.from(box.querySelectorAll(surface.rows)):null;
-      return {x:at.x,y:at.y,w:on.offsetWidth,h:on.offsetHeight,o:1,i:rows?rows.indexOf(on):0,box};
+      return {x:at.x,y:at.y,w,h:on.offsetHeight,o:1,i:rows?rows.indexOf(on):0,box};
     }
     const same=(a,b)=>!!a&&!!b&&a.o===b.o&&a.box===b.box&&(!a.o||['x','y','w','h'].every(k=>Math.abs((a[k]||0)-(b[k]||0))<.5));
     const travel=(a,b,surface)=>surface.rows?Math.abs(a.y-b.y)+Math.abs(a.h-b.h)/2:Math.abs(a.x-b.x)+Math.abs(a.w-b.w)/2;
@@ -512,8 +566,8 @@
       if(g.o){set('x',`${g.x}px`);set('y',`${g.y}px`);set('w',`${g.w}px`);set('h',`${g.h}px`);}
       set('o',String(g.o?1:0));
     }
-    // Snaps are written one surface at a time under data-sel-snap (transition:
-    // none), each flushed, so a lead still gliding from an earlier click keeps its path.
+    // Snaps share data-sel-snap (transition: none), then each pseudo is observed before the flag goes away.
+    // A lead still gliding from an earlier click keeps its path; those transition flushes must stay.
     function snapTo(shell,items){
       if(!items.length)return;
       shell.dataset.selSnap=items.map(([surface])=>surface.key).join(' ');
@@ -523,9 +577,9 @@
       for(const [surface,g] of items)if(g.box)try{void root.getComputedStyle?.(g.box,surface.pseudo)?.translate;}catch{}
       delete shell.dataset.selSnap;
     }
-    function place(animate=false,snap=null){
-      const shell=shellOf();if(!shell||dead)return;
-      const next={};for(const surface of SURFACES)next[surface.key]=measure(shell,surface);
+    function measureSurfaces(){const shell=shellOf();if(!shell||dead)return null;const next={};for(const surface of SURFACES)next[surface.key]=measure(shell,surface);return {shell,next};}
+    function place(animate=false,snap=null,layout=measureSurfaces()){
+      if(!layout||dead)return;const {shell,next}=layout;
       watch([bar,shell,...SURFACES.map(s=>next[s.key].box)]);
       const moving=animate&&!first&&!reduced()&&pointer()&&(!snap||fresh(snap));
       // A save re-renders in the background before the change's own render (Undo, check-off): the surfaces
@@ -568,11 +622,13 @@
       if(dead)return;
       const tabs=container.querySelector?.('.t-tabs'),pill=tabs?.querySelector('.t-tabs-pill'),tab=tabs?.querySelector('.t-tab[aria-selected="true"]');
       if(tabs!==bar){bar=tabs;geometry=null;watch([bar,...watched.slice(1)]);}
+      // The pill's writes (and its deliberate snap flush) cannot invalidate geometry read later in place().
+      const layout=measureSurfaces();
       if(pill&&tab){
-        const next={id:tab.dataset.tab,x:tab.offsetLeft,width:tab.offsetWidth};
-        if(bar.clientWidth){
-          if(next.x<bar.scrollLeft)bar.scrollLeft=next.x;
-          else if(next.x+next.width>bar.scrollLeft+bar.clientWidth)bar.scrollLeft=next.x+next.width-bar.clientWidth+4;
+        const next={id:tab.dataset.tab,x:tab.offsetLeft,width:tab.offsetWidth},width=bar.clientWidth,left=width?bar.scrollLeft:0;
+        if(width){
+          if(next.x<left)bar.scrollLeft=next.x;
+          else if(next.x+next.width>left+width)bar.scrollLeft=next.x+next.width-width+4;
         }
         if(force||!geometry||next.id!==geometry.id||next.x!==geometry.x||next.width!==geometry.width){
           const transition=pill.style.transition||'',still=style()==='still';
@@ -585,7 +641,7 @@
           geometry=next;
         }
       }
-      place(animate,snap);
+      place(animate,snap,layout);
       art.sync();
     }
 
@@ -751,6 +807,18 @@
       // forgotten and never written again. While the clock is stopped (the idle rest, a hidden tab) they hold where
       // they stand and go on from there; with no clock at all they run as plain CSS. Nothing is written on a node.
       const loops=new Map();let loopsAt=0,loopsSeen=0;
+      // A CSS loop on an SVG part is replaced by its twin: the same keyframes and timing on the custom properties (see play()),
+      // taken over by the clock like the rest. Its CSS original is cancelled; CSS starts it again only if it changes the loop.
+      function cssTwin(a){
+        try{const effect=a.effect,target=effect?.target;if(!VARS||!root.SVGElement||!(target instanceof root.SVGElement))return null;
+          const frames=effect.getKeyframes().map(({computedOffset,...f})=>f),timing=effect.getTiming();if(!varFrames(frames))return null;
+          const at=+a.currentTime||0;a.cancel();const twin=varAnimate(target,frames,{duration:timing.duration,delay:timing.delay,iterations:timing.iterations,direction:timing.direction,easing:timing.easing,fill:timing.fill,iterationStart:timing.iterationStart});
+          twin.pause();twin.currentTime=at;return twin;}catch{return null;}
+      }
+      function reconcileTwins(){
+        const allowed=!reduced()&&style()==='gentle'&&living();
+        for(const [a,r] of [...loops])if(r.css&&(!allowed||r.target?.isConnected===false||!String(root.getComputedStyle?.(r.target)?.animationName||'').split(',').map(n=>n.trim()).includes(r.css))){try{a.cancel();}catch{}loops.delete(a);}
+      }
       function frameLoops(t){
         const step=1000/FILM_FPS.mini,gap=t-loopsAt;if(gap<step-4)return;loopsAt=t;
         try{
@@ -758,9 +826,10 @@
             loopsSeen=t;const live=new Set();
             for(const a of container.querySelector?.('.rd-course-rail')?.getAnimations?.({subtree:true})||[]){
               if(!String(a.animationName||'').startsWith('rd-fl-')||a.playState==='idle')continue;live.add(a);
-              if(!loops.has(a)){a.pause();loops.set(a,{origin:t-(+a.currentTime||0),rests:restsOf(a),rest:-1});}
+              if(!loops.has(a)){const twin=cssTwin(a);if(twin){loops.set(twin,{origin:t-(+twin.currentTime||0),rests:restsOf(twin),rest:-1,css:a.animationName,target:a.effect?.target});continue;}a.pause();loops.set(a,{origin:t-(+a.currentTime||0),rests:restsOf(a),rest:-1});}
             }
-            for(const a of [...loops.keys()])if(!live.has(a))loops.delete(a);
+            // a twin lives while CSS still names its loop on the part (Living drawings off, Motion off or another row chosen ends it)
+            reconcileTwins();for(const [a,r] of [...loops])if(!r.css&&!live.has(a))loops.delete(a);
           }
           // Every state is read before any frame is written: reading a CSS animation's state after setting another's
           // time makes Chrome restyle the page then and there, once per loop (measured: ~300 restyles a second, not 12).
@@ -772,7 +841,7 @@
         }catch{}
       }
       // The view is destroyed: the loops are CSS's again.
-      function freeLoops(){for(const a of loops.keys()){try{if(a.playState!=='idle')a.play();}catch{}}loops.clear();}
+      function freeLoops(){for(const [a,r] of loops){try{if(r.css)a.cancel();else if(a.playState!=='idle')a.play();}catch{}}loops.clear();}
       // 25 seconds without input: every drawing holds where it stands (the idle rest) and the clock stops.
       function tick(at){
         if(dead){park();return;}const t=Number.isFinite(at)?at:now(),turns=new Map();
@@ -781,7 +850,7 @@
         const turn=f=>{let ok=turns.get(f);if(ok===undefined){ok=!clock||f.fps>=clock||t-f.shown>=1000/f.fps-500/clock;if(ok)f.shown=t;turns.set(f,ok);}return ok;};
         for(const [x,r] of [...runs])if(r.at==null&&!r.unseen&&turn(r.f))frame(x,r,t);
         // This frame is the one they hold, so the next input goes on from exactly here.
-        frameLoops(t);
+        if(!busyHeld)frameLoops(t);
         if(t-lastInput>=ART_IDLE_MS){idle=true;rest(true);for(const f of films.values())hold(f,t);}
         wake();
       }
@@ -792,6 +861,12 @@
         lastInput=now();if(clock&&clock<FILM_FPS.scene)wake();
         if(!idle)return;idle=false;rest(hidden());for(const f of films.values())release(f);
       }
+      let busyUntil=0,busyTimer=0,busyHeld=false;
+      function busy(){
+        if(dead)return;busyUntil=now()+ART_BUSY_MS;
+        if(!busyHeld){busyHeld=true;for(const f of films.values())hold(f);}
+        if(!busyTimer&&setIntervalImpl)busyTimer=setIntervalImpl(()=>{if(now()<busyUntil)return;clearIntervalImpl?.(busyTimer);busyTimer=0;busyHeld=false;if(!dead)for(const f of films.values())release(f);},120);
+      }
       // A new part joins the clock paused, at its first frame (a part of a held drawing joins held).
       function run(f,x,{origin=now(),then=null,part=null,span}={}){
         if(!x)return null;x.pause?.();const r={f,origin,at:f.held?now():null,then,part,span,unseen:false,rests:restsOf(x),rest:-1};runs.set(x,r);
@@ -800,7 +875,7 @@
       }
       function hold(f,at){if(f.held)return;f.held=true;const t=at??now();for(const r of runs.values())if(r.f===f&&r.at==null)r.at=t;wake();}
       function release(f){
-        if(dead||idle||f.offscreen||hidden()||!f.held)return;
+        if(dead||idle||busyHeld||f.offscreen||hidden()||!f.held)return;
         f.held=false;const t=now();for(const r of runs.values())if(r.f===f&&r.at!=null){r.origin+=t-r.at;r.at=null;}
         wake();
       }
@@ -864,7 +939,7 @@
         const t=now(),live=[...films].filter(([,f])=>f.scene&&!f.title&&f.until>t).sort((x,y)=>x[1].began-y[1].began);
         while(live.length>=ART_SCENES){const [svg,f]=live.shift();endReveal(f);endLoops(f);if(lives(svg))loop(svg);}
       }
-      const a=(list,node,frames,options)=>play(node,frames,{...options,id:ART_ID,fill:'backwards'},list);
+      const a=(pass,node,frames,options)=>pass.play(node,frames,{...options,id:ART_ID,fill:'backwards'});
       const fade=(list,node,delay,duration,easing=FADE)=>a(list,node,[{opacity:0},{opacity:base(node)}],{duration,delay,easing});
       // The pen for a list of strokes, with dashes in the keyframes only.
       function pen(list,strokes,start,budget){
@@ -910,7 +985,7 @@
         return inkEnd;
       }
       function scene(svg,t0){
-        const list=[],L=layers(svg),v=box(svg),rect=svg.getBoundingClientRect?.(),NAMES=['ground','key','wash','head','ink','dots','solid'];let inkEnd=t0;
+        const pass=animationPass(),L=layers(svg),v=box(svg),rect=svg.getBoundingClientRect?.(),NAMES=['ground','key','wash','head','ink','dots','solid'];let inkEnd=t0;
         if(wide(svg)){
           // A panorama: 480-unit slices counted from the right edge (the hero is slice 0), each starting 300ms
           // before the pen of the one to its right lifts. A slice that cannot be seen (cut away by the frame, or
@@ -923,23 +998,23 @@
           for(let i=0;i<count;i++){
             if(right-i*W<=from)break;
             const budget=sliceBudget(i,Math.min(W,v.w-i*W));
-            inkEnd=Math.max(inkEnd,panel(list,v,slices[i],at,budget));at+=budget-ART_SLICE.overlap;
+            inkEnd=Math.max(inkEnd,panel(pass,v,slices[i],at,budget));at+=budget-ART_SLICE.overlap;
           }
-        }else inkEnd=panel(list,v,L,t0,penFor(svg,rect));
-        L.grain.forEach(item=>fade(list,item.node,inkEnd,ART_T.scene.grain));
-        return {list,end:Math.max(endOf(list),inkEnd),inkEnd,loops:L.loops,rigs:L.rigs};
+        }else inkEnd=panel(pass,v,L,t0,penFor(svg,rect));
+        L.grain.forEach(item=>fade(pass,item.node,inkEnd,ART_T.scene.grain));
+        const list=pass.flush();return {list,end:Math.max(endOf(list),inkEnd),inkEnd,loops:L.loops,rigs:L.rigs};
       }
       // A mini draws in (the rail at mount, an empty state): colour first, then
       // the pen, all within 640ms.
       function mini(svg,t0){
-        const list=[],L=layers(svg),T=ART_T.mini;
-        [...L.ground,...L.key,...L.wash].forEach((item,i)=>fade(list,item.node,t0+Math.min(T.color.step*i,T.color.max),T.color.dur));
+        const pass=animationPass(),L=layers(svg),T=ART_T.mini;
+        [...L.ground,...L.key,...L.wash].forEach((item,i)=>fade(pass,item.node,t0+Math.min(T.color.step*i,T.color.max),T.color.dur));
         const strokes=L.ink.map(item=>({node:item.node,length:length(item.node)})).filter(s=>s.length>=1),start=t0+T.pen;
-        const plan=pen(list,strokes,start,ART_PEN.mini);
-        heads(list,L.head,strokes,plan,t0+T.head.fallback,T.head.dur,t0+T.head.latest);
-        [...L.dots,...L.grain].forEach(item=>fade(list,item.node,t0+T.dots.at,T.dots.dur));
-        L.solid.forEach(item=>fade(list,item.node,t0+T.solid.at,T.solid.dur));
-        return {list,end:Math.max(endOf(list),t0+T.end),loops:L.loops,rigs:L.rigs};
+        const plan=pen(pass,strokes,start,ART_PEN.mini);
+        heads(pass,L.head,strokes,plan,t0+T.head.fallback,T.head.dur,t0+T.head.latest);
+        [...L.dots,...L.grain].forEach(item=>fade(pass,item.node,t0+T.dots.at,T.dots.dur));
+        L.solid.forEach(item=>fade(pass,item.node,t0+T.solid.at,T.solid.dur));
+        const list=pass.flush();return {list,end:Math.max(endOf(list),t0+T.end),loops:L.loops,rigs:L.rigs};
       }
       // anywhere: the rail's rows at the entrance draw in down the list wherever they stand: the first
       // paint's layout may still be settling (fonts, the rail's fade), so an in-view test there would
@@ -949,7 +1024,7 @@
         const scenic=isScene(svg);
         if(scenic){const key=sceneKey(svg);if(key)appeared.add(key);if(!isTitle(svg))roomForScene();}
         const f=filmOf(svg);endReveal(f);endLoops(f);f.began=now();
-        if(style()==='still'){if(scenic){fade(f.reveal,svg,t0,ART_T.scene.still);f.until=f.began+t0+ART_T.scene.still;}return;}
+        if(style()==='still'){if(scenic){const pass=animationPass();fade(pass,svg,t0,ART_T.scene.still);pass.flush(f.reveal);f.until=f.began+t0+ART_T.scene.still;}return;}
         // A title piece and the scene beside it start together: the name is written while the hero slice is drawn.
         const r=scenic?scene(svg,t0):mini(svg,t0);
         f.reveal=r.list;f.until=f.began+r.end;
@@ -981,7 +1056,7 @@
       // Off, reduced motion, Living drawings Off) stops, and the drawing rests.
       function ensure(){
         if(dead)return;
-        const t=now();
+        reconcileTwins();const t=now();
         for(const [svg,f] of [...films]){if(svg.isConnected===false){stop(svg);continue;}if(f.loops.length&&!lives(svg))endLoops(f);}
         for(const svg of container.querySelectorAll?.(ART_LIVING)||[]){
           if(!seen.has(svg)||waiting.includes(svg)||!lives(svg))continue;
@@ -1041,7 +1116,7 @@
         for(const [svg,f] of films)gate(svg,f);// a resize may have brought more of a panorama into view, or cut more away
         ensure();
       }
-      return {sync,claim,cancel,visibility,activity,snapshot(){
+      return {sync,claim,cancel,visibility,activity,busy,snapshot(){
         const out={};
         for(const [role,selector] of ART_ROLES){
           const svg=container.querySelector?.(selector),rect=svg?.getBoundingClientRect?.();if(!svg||!inView(rect))continue;
@@ -1087,7 +1162,7 @@
     function snapshot(target){
       if(dead||reduced()||!pointer())return null;
       const shell=shellOf();if(!shell)return null;
-      const snap={at:now(),target:keyOf(target),geo:{...geo},titles:new Map(),counts:new Map(),rows:new Map(),units:new Map(),art:{},toast:null,course:container.dataset?.courseId,readerId:container.querySelector('.rd-reader')?.dataset?.id};
+      const snap={at:now(),target:keyOf(target),geo:{...geo},titles:new Map(),counts:new Map(),rows:new Map(),units:new Map(),art:{},toast:null,course:container.dataset?.courseId,heading:container.querySelector('.rd-workspace-heading'),readerId:container.querySelector('.rd-reader')?.dataset?.id};
       // A rail row under the pointer: how its frame (and the chosen row's) looks now, for the pen's draw-in.
       try{snap.frame=frames.before(target);}catch{snap.frame=null;}
       for(const [role,selector] of TITLES){
@@ -1191,7 +1266,7 @@
     // Workspace tab: the pill leads; new page regions fade simultaneously in place.
     function workspace(element,snap,list){
       const regions=[];
-      for(const node of element.querySelectorAll?.(REGIONS)||[]){if(regions.some(r=>r.node.contains(node)))continue;const rect=node.getBoundingClientRect();if(inView(rect))regions.push({node,rect});}
+      for(const node of element.querySelectorAll?.(REGIONS)||[]){if(node===snap?.heading||snap?.heading?.contains(node)||regions.some(r=>r.node.contains(node)))continue;const rect=node.getBoundingClientRect();if(inView(rect))regions.push({node,rect});}
       regions.forEach(({node})=>{const head=HEADINGS.test(node.className||'');enter(node,{kind:head?'region':'content',list});quiet(node);});
     }
     // A new view of the list; the reader follows only if its assignment changed.
@@ -1235,7 +1310,7 @@
       for(const [element,group] of active){group.cancel();mark([element,...group.scopes],'settled');}
       active.clear();clearGhosts();
     }
-    function cancelAll(){cancelUi();frames.cancel();art.cancel();}
+    function cancelAll({preserveArt=false}={}){cancelUi();frames.cancel();if(!preserveArt)art.cancel();}
     function track(element,list,scopes=[]){
       const animations=list.filter(Boolean);
       const group={scopes,cancel(){for(const animation of animations)animation.cancel?.();}};
@@ -1307,7 +1382,7 @@
     media?.addEventListener?.('change',reduce);
     root.addEventListener?.('resize',cancelAll);
     root.document?.addEventListener?.('visibilitychange',onVisibility);
-    return {syncTabs,snapshot,reveal,leave,place,ink,clearGhosts,cancel:cancelAll,activity:()=>{if(!dead)art.activity();},
+    return {syncTabs,snapshot,reveal,leave,place,ink,clearGhosts,cancel:cancelAll,activity:()=>{if(!dead)art.activity();},busy:()=>{if(!dead)art.busy?.();},
       destroy(){dead=true;cancelAll();layer?.remove?.();layer=null;observer?.disconnect();media?.removeEventListener?.('change',reduce);root.removeEventListener?.('resize',cancelAll);root.document?.removeEventListener?.('visibilitychange',onVisibility);}};
   }
   // limits: the budgets the tests pin (every UI duration 420ms or less; the art film is decorative and tracked apart).

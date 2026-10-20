@@ -39,11 +39,12 @@ test('it only ever touches Canvas’s menu bar, and only while it is switched on
 
 test('the copied frame rules match the workspace’s, and the files are wired in',()=>{
  const sync=require('../scripts/canvas-nav-css.cjs');assert.equal(sync.build(),read('canvas-nav.css'));
- const all=manifest.content_scripts.find(entry=>entry.js.includes('content.js'));
+ const all=manifest.content_scripts.find(entry=>entry.js?.includes('canvas-nav.js'));assert.ok(all,'the static manifest loads the menu');
  assert.ok(all.js.includes('canvas-nav.js'));assert.ok(all.js.indexOf('course-art.js')<all.js.indexOf('canvas-nav.js'),'it draws with the course frames');
  for(const entry of manifest.web_accessible_resources)assert.ok(entry.resources.includes('canvas-nav.css'));
- const popup=read('popup.html');assert.match(popup,/<select id="canvas-nav"><option value="drawn">Hand-drawn, out from the left edge<\/option><option value="shown">Hand-drawn, full height<\/option><option value="top">Hand-drawn, across the top<\/option><option value="original">Canvas original<\/option><\/select>/);
- assert.match(read('popup.js'),/'reserve:canvasNav':menuBar\.value/);
+ const popup=read('popup.html');
+ for(const value of ['drawn','shown','top','original'])assert.match(popup,new RegExp('data-nav="'+value+'"'));
+ assert.match(read('popup.js'),/'reserve:canvasNav':button\.dataset\.nav/);
 });
 
 test('the bar sits against the window’s edge with its pen line on three sides, and keeps Canvas’s quirks tidy',()=>{
@@ -69,10 +70,10 @@ test('the layouts: drawer by default (it moves the page aside), full height, or 
  assert.match(js,/const LAYOUTS=\{drawn:'drawer',shown:'column',top:'top'\};/);
  assert.match(js,/html\.dataset\.chnLayout=LAYOUTS\[choice\]\|\|'drawer';/,'the drawer is the default');
  // drawer: hidden, centred, as tall as its items; the page moves aside by the bar's width, as one picture, then re-lays out once
- assert.match(css,/html\.chn-nav\[data-chn-layout=drawer\] #wrapper \{ margin-left: var\(--chn-push, 0px\) !important; \}/);
+ assert.match(css,/html\.chn-nav\[data-chn-layout=drawer\] #wrapper \{ margin-left: var\(--chn-push, 0px\) !important; transition: margin-left 260ms cubic-bezier\(\.25, \.8, \.3, 1\); \}/,'the page makes room beside the bar, easing (the user, 2026-10-16: nothing out of reach, nothing jumping)');
  assert.match(css,/html\.chn-nav\[data-chn-layout=drawer\] #header \{[^}]*top: 50% !important;[^}]*height: auto !important;[^}]*transform: translate\(calc\(-100% - 24px\), -50%\);/);
- assert.match(js,/page\.style\.transform=`translateX\(\$\{by-from\}px\)`;/,'it moves by transform while it moves');
- assert.match(js,/html\.style\.setProperty\('--chn-push',pushed\+'px'\)/,'and takes its new width once, at the end');
+ assert.match(js,/html\.style\.setProperty\('--chn-push',by\+'px'\);/);
+ assert.doesNotMatch(js,/page\.style\.transform/,'the page is never shifted past the window\u2019s edge');
  for(const hook of ["edge.addEventListener('pointerenter',open,{signal})","header.addEventListener('pointerleave',()=>close(),{signal})","header.addEventListener('focusin',open,{signal})",'trayOpen()'])assert.ok(js.includes(hook),hook);
  // across the top: in the toolbar while it fits (names, then drawings alone, then without the logo), else a strip
  assert.match(js,/for\(const kind of \['full','icons','bare'\]\)/);

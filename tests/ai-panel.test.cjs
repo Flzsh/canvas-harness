@@ -198,3 +198,46 @@ test('saved automatic-send preference is restored without storing any draft text
  c.setAutoSend(false);const pref=calls.find(x=>x.action==='preference');assert.equal(pref.autoSend,false);assert.equal(pref.text,undefined);
  c.setCatalog({...scope(),autoSend:true});assert.equal(c.state.autoSend,false,'late metadata cannot undo a newer choice');
 });
+
+const pdfSelection={origin:'https://school.instructure.com',accountId:'7',fileId:'42',name:'Chemistry.pdf',text:'Compare the rates of diffusion.',page:1,endPage:3};
+function pdfPanelFixture(settings={},metadata={}){
+ const {createPdfHandoff}=require('../extension/ai-source.js'),handoff=createPdfHandoff({...pdfSelection,...settings}),catalog={...handoff.summary(),...metadata};
+ const f=fixture({collect:data=>handoff.collect(data),catalog:async()=>({...await handoff.catalog(),...metadata})});
+ f.controller.setCatalog(catalog);return {...f,handoff,catalog};
+}
+test('receiving a plain PDF handoff leaves the question empty and never contacts a provider',async()=>{
+ const {controller:c,calls,catalog}=pdfPanelFixture();assert.equal(c.state.draft,'');assert.equal(c.state.context,null);
+ assert.deepEqual([...c.state.selected],catalog.selectedIds);assert.equal(c.state.autoSend,false);await tick();assert.deepEqual(calls,[]);
+});
+test('PDF handoff preserves student edits across metadata refresh, reconnect and catalog reload',async()=>{
+ const {controller:c,calls,catalog}=pdfPanelFixture(),edited='Explain the diffusion example.';c.setDraft(edited);
+ const refreshed={...catalog,theme:'dark',sources:catalog.sources.map(source=>({...source,title:'Updated PDF title',loaded:true}))};
+ c.setCatalog(refreshed);c.setCatalog({...refreshed});c.setCatalog(catalog);assert.equal(c.state.draft,edited);
+ c.disconnected('Reconnecting');assert.equal(c.state.online,false);c.setCatalog({...refreshed});
+ assert.equal(c.state.online,true);assert.equal(c.state.draft,edited);await c.initialize();assert.equal(c.state.draft,edited);
+ assert.deepEqual(calls.map(call=>call.action),['catalog']);
+});
+test('clearing a PDF question remains a student edit across refresh and reconnect',async()=>{
+ const {controller:c,calls,catalog}=pdfPanelFixture();c.setDraft('My question');c.setDraft('');c.setCatalog({...catalog});
+ c.disconnected('Reconnecting');await c.initialize();c.setCatalog(catalog);
+ assert.equal(c.state.draft,'');assert.deepEqual(calls.map(call=>call.action),['catalog']);
+});
+for(const autoSend of [false,true])test('PDF handoff waits for explicit injection and honors saved automatic sending '+autoSend,async()=>{
+ const {controller:c,calls,catalog,handoff}=pdfPanelFixture({},{autoSend}),question='Explain these pages.';c.setDraft(question);
+ assert.equal(c.state.autoSend,autoSend);c.setCatalog({...catalog});c.disconnected('Reconnecting');await c.initialize();await tick();
+ assert.equal(c.state.draft,question);assert.deepEqual(calls.map(call=>call.action),['catalog']);assert.equal(await c.inject(),true);
+ assert.deepEqual(calls.map(call=>call.action),['catalog','collect','web']);
+ const collected=calls.find(call=>call.action==='collect');assert.deepEqual(collected.ids,catalog.selectedIds);assert.equal(collected.all,false);
+ const injected=calls.find(call=>call.op==='inject'),context=await handoff.collect({ids:catalog.selectedIds});
+ assert.equal(injected.autoSend,autoSend);assert.equal(injected.provider,'chatgpt');assert.equal(injected.scopeKey,catalog.scopeKey);
+ assert.ok(injected.text.startsWith(question+'\n'));assert.ok(injected.text.includes(context.text));assert.equal(c.state.draft,question);
+});
+test('PDF explicit injection defaults automatic sending off and follows only later preference changes',async()=>{
+ const {controller:c,calls,catalog}=pdfPanelFixture();c.setDraft('Explain these pages.');assert.equal(c.state.autoSend,false);await tick();assert.deepEqual(calls,[]);
+ assert.equal(await c.inject(),true);assert.equal(calls.filter(call=>call.op==='inject').at(-1).autoSend,false);
+ c.setAutoSend(true);c.setCatalog({...catalog,autoSend:false});await tick();assert.equal(calls.filter(call=>call.op==='inject').length,1);
+ assert.equal(c.state.autoSend,true);assert.equal(await c.inject(),true);assert.equal(calls.filter(call=>call.op==='inject').at(-1).autoSend,true);
+ c.setAutoSend(false);c.setCatalog({...catalog,autoSend:true});await tick();assert.equal(calls.filter(call=>call.op==='inject').length,2);
+ assert.equal(await c.inject(),true);assert.equal(calls.filter(call=>call.op==='inject').at(-1).autoSend,false);
+ assert.deepEqual(calls.filter(call=>call.action==='preference').map(call=>call.autoSend),[true,false]);
+});

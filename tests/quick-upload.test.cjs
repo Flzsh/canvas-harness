@@ -19,7 +19,7 @@ async function fixture(list=courses()){
  const values=new Map(),control={writes:0,fail:false,holdRead:null,holdWrite:null};
  const adapter={read:async key=>{if(control.holdRead){const gate=control.holdRead;control.holdRead=null;await gate.promise;}return structuredClone(values.get(key));},write:async(key,value)=>{if(control.holdWrite){const gate=control.holdWrite;control.holdWrite=null;await gate.promise;}if(control.fail)throw Error('Disk full');control.writes++;values.set(key,structuredClone(value));}};
  const store=Storage.createStore({accountId:'1',origin:ORIGIN,adapter});await store.load();
- const other=Storage.createStore({accountId:'1',origin:ORIGIN,adapter});await other.load();
+ const other=Storage.createStore({accountId:'1',origin:ORIGIN,adapter});await other.load();control.writes=0; // Count upload writes after the one-time appearance migration.
  const env={store,other,control,list,onChanges:[]};
  env.upload=Upload.create({store,getCourses:()=>env.list,onChange:s=>env.onChanges.push(s)});
  return env;
@@ -130,7 +130,7 @@ test('parser duplicate replacement and invalid parts remain visible alongside un
  assert.ok(f.upload.state.warnings.some(w=>w.code==='no-end'));assert.ok(f.upload.state.warnings.some(w=>w.code==='skipped'));
  assert.equal(f.upload.state.parts[3].warnings[0].code,'option-ignored');
  const result=await f.upload.apply();assert.equal(result.applied.length,2);assert.equal(result.notApplied.find(p=>p.index===4).reason,'unknown-kind');
- assert.equal(f.store.get().settings.theme,'system');
+ assert.equal(f.store.get().settings.theme,'light');
 });
 
 test('3 MiB UTF-8 limit and pack errors block storage, including multibyte text',async()=>{
@@ -162,7 +162,7 @@ test('one atomic write rebases art on current settings and preserves other accou
  assert.deepEqual(saved.settings.coursePrefs['101'].titleArt,before.settings.coursePrefs['101'].titleArt);
  assert.equal(saved.settings.coursePrefs['101'].bannerFit,'cover');assert.equal(saved.settings.coursePrefs['101'].bannerPosition,'left');
  for(const key of ['tasks','gpa','toolbox','focus','customTasks','resourcePins'])assert.deepEqual(saved[key],before[key]);
- const otherAccount=Storage.createStore({accountId:'2',origin:ORIGIN,adapter:{read:async()=>null,write:async()=>{throw Error('unexpected');}}});
+ const otherAccount=Storage.createStore({accountId:'2',origin:ORIGIN,adapter:{read:async key=>key==='reserve:appearance'?{theme:'light',motion:'gentle',nightArt:0,pet:true}:null,write:async()=>{throw Error('unexpected');}}});
  assert.equal((await otherAccount.load()).settings.coursePrefs['101'],undefined);
 });
 

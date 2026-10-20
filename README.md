@@ -81,6 +81,10 @@ See teacher updates, upcoming work and assignment instructions together. Bookmar
 
 Open Desmos, GPA estimates or AI in a side dock while you read. For AI, select your materials, review the context, and send your question to your chosen AI website.
 
+On Instructure Canvas assignment and submission pages, click a PDF to read it beside the original page. Resize the split, search the document and keep highlights, notes and drawings in your browser. **Ask AI** opens chosen text in the AI pane for review; **Send** shares it with the provider you choose. [PDF reader details](docs/pdf-reader.md).
+
+Canvas's course menu and **Modules** page use matching hand-drawn icons and outlines. Modules keeps Canvas's order, words, links, requirements and locked states, including course home pages that display modules.
+
 ## Make it yours
 
 Courses get animated subject artwork automatically. **Make it yours** has five tabs of picture choices: Layout, Look, Artwork, Courses and Pony.
@@ -101,7 +105,7 @@ Works on HTTPS school sites under `*.instructure.com`, and on a school's own Can
 
 ## Privacy
 
-Canvas Harness reads coursework without changing submissions or grades. Data stays in your browser, separated by account. By default nothing saved is shown until Canvas confirms who is signed in. Clicking Send places your chosen context on the AI provider's website; automatic context excludes grades and GPA. [Privacy details](PRIVACY.md).
+Canvas Harness reads coursework without changing submissions or grades. Coursework stays in your browser, separated by account; PDF marks stay in your browser too. By default nothing saved is shown until Canvas confirms who is signed in. Clicking Send places your chosen context on the AI provider's website; automatic context excludes grades and GPA. [Privacy details](PRIVACY.md).
 
 <p align="center">
   <a href="docs/GETTING-STARTED.md">User guide</a> ·

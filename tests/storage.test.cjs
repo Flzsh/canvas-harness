@@ -1,11 +1,11 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');
 const {createStore,validateBackup}=require('../extension/storage.js');
 function memory(){const data={};return {read:async k=>structuredClone(data[k]),write:async(k,v)=>{data[k]=structuredClone(v);}};}
-test('preferences and assignment notes remain isolated across Canvas accounts',async()=>{
+test('appearance is shared across accounts while assignment notes remain isolated',async()=>{
  const adapter=memory(),a=createStore({accountId:'1',adapter}),b=createStore({accountId:'2',adapter});await a.load();await b.load();
  await a.update(s=>{s.settings.theme='dark';s.tasks['7']={notes:'Only account one'};});
  const ar=await createStore({accountId:'1',adapter}).load(),br=await createStore({accountId:'2',adapter}).load();
- assert.equal(ar.settings.theme,'dark');assert.equal(ar.tasks['7'].notes,'Only account one');assert.equal(br.tasks['7'],undefined);assert.equal(br.settings.theme,'system');
+ assert.equal(ar.settings.theme,'dark');assert.equal(ar.tasks['7'].notes,'Only account one');assert.equal(br.tasks['7'],undefined);assert.equal(br.settings.theme,'dark');
 });
 test('queued independent edits survive a slow storage write',async()=>{
  const adapter=memory(),store=createStore({accountId:'1',adapter});await store.load();
@@ -45,15 +45,15 @@ test('GPA rules and what-if choices persist only in their own account and surviv
  await assert.rejects(store.update(data=>{data.gpa.courses['7'].credits=-1;}),/credits/i);assert.equal(store.get().gpa.courses['7'].credits,0.5);
 });
 test('failed save is reported and does not masquerade as persisted data',async()=>{
- const store=createStore({accountId:'1',adapter:{read:async()=>null,write:async()=>{throw Error('Disk full');}}});await store.load();
+ const adapter=memory(),store=createStore({accountId:'1',adapter});await store.load();adapter.write=async()=>{throw Error('Disk full');};
  let notifications=0;store.subscribe(()=>notifications++);
- await assert.rejects(store.update(s=>{s.settings.theme='dark';}),/Disk full/);assert.equal(store.get().settings.theme,'system');assert.equal(notifications,0);
+ await assert.rejects(store.update(s=>{s.settings.theme='dark';}),/Disk full/);assert.equal(store.get().settings.theme,'light');assert.equal(notifications,0);
 });
 test('restore recovery preserves the previous personal workspace without its Canvas cache',async()=>{
  const store=createStore({accountId:'1',adapter:memory()});await store.load();await store.update(s=>{s.tasks['7']={notes:'Before restore'};});
  await store.writeCache({origin:'https://school.instructure.com',user:{id:'1'},courses:[],assignments:[]});await store.saveRecovery();
  await store.replace({settings:{theme:'dark'},tasks:{'8':{notes:'Imported'}}});
- assert.equal(await store.readCache(),null);const recovery=await store.readRecovery();assert.equal(recovery.tasks['7'].notes,'Before restore');await store.replace(recovery);assert.equal(store.get().tasks['8'],undefined);assert.equal(store.get().settings.theme,'system');
+ assert.equal(await store.readCache(),null);const recovery=await store.readRecovery();assert.equal(recovery.tasks['7'].notes,'Before restore');await store.replace(recovery);assert.equal(store.get().tasks['8'],undefined);assert.equal(store.get().settings.theme,'light');
 });
 test('dashboard customizations survive reload and backup without resetting prior notes',async()=>{
  const adapter=memory(),store=createStore({accountId:'1',adapter});await store.load();
@@ -114,7 +114,7 @@ test('invalid personal task sources reject backup and updates atomically while m
 
 test('Reserve 2.15 defaults: Clay accent, Gentle motion, book-serif reading text and the greeting on',async()=>{
  const store=createStore({accountId:'1',adapter:memory()});const s=(await store.load()).settings;
- assert.deepEqual([s.accent,s.appearanceVersion,s.motion,s.readingFont,s.greeting,s.theme],['clay',2,'gentle','book','on','system'],'light until Dark is chosen (system resolves to light)');
+ assert.deepEqual([s.accent,s.appearanceVersion,s.motion,s.readingFont,s.greeting,s.theme],['clay',2,'gentle','book','on','light'],'light until Dark is chosen (system resolves to light)');
  const blank=validateBackup({format:'reserve-backup',version:1,data:{settings:{}}}).settings;
  assert.deepEqual([blank.accent,blank.motion,blank.readingFont,blank.greeting],['clay','gentle','book','on']);assert.equal(s.livingArt,'on','Living drawings default on');assert.equal(blank.livingArt,'on');const off=validateBackup({format:'reserve-backup',version:1,data:{settings:{livingArt:'off'}}}).settings;assert.equal(off.livingArt,'off','a chosen Off is kept');assert.throws(()=>validateBackup({format:'reserve-backup',version:1,data:{settings:{livingArt:'dancing'}}}),/Invalid livingArt setting/);
 });
