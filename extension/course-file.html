@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- Opens one of a course's uploaded files (course-file.js): PDFs, images and text show here; Word, PowerPoint
+     and other documents download with their own name so the computer opens them in their app. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>File</title>
+<style>
+ html,body{margin:0;height:100%;background:#FAF9F5;color:#1F1E1B;font:14px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
+ @media (prefers-color-scheme:dark){html,body{background:#16191f;color:#F7F5EF}}
+ iframe,img{display:block;width:100%;height:100%;border:0;object-fit:contain}
+ main{display:grid;place-items:center;height:100%;padding:24px;text-align:center}
+ a{color:#C96442}
+ [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<iframe id="view" title="File" hidden></iframe>
+<img id="pic" alt="" hidden>
+<main id="note"><p id="msg">Opening…</p></main>
+<script src="course-file.js"></script>
+</body>
+</html>

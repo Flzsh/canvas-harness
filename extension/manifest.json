@@ -97,6 +97,7 @@
         "material-model.js",
         "materials-ui.js",
         "course-hub-model.js",
+        "course-files.js",
         "course-hub-ui.js",
         "grades-view.js",
         "customize-ui.js",
