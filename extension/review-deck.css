@@ -1,0 +1,100 @@
+/* Canvas Harness review deck (review-deck.js): the Home module's contents, the Today line, the course hub link, and the
+   review and card-manager overlay. Uses the workspace's own colours and fonts, light and dark. */
+
+/* Home module */
+.rd .rv-mod {display:grid;gap:10px}
+.rd .rv-mod-due {margin:0;font-size:14px;color:var(--rd-muted)}
+.rd .rv-mod-due strong {font:500 30px/1 var(--rd-display,Georgia,serif);color:var(--rd-ink);margin-right:2px}
+.rd .rv-mod-boost {margin:0;font-size:12.5px;color:var(--rd-accent);font-weight:600}
+.rd .rv-mod-actions {display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.rd .rv-mod-courses {list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.rd .rv-mod-courses li {display:grid;grid-template-columns:8px minmax(0,1fr) auto auto;gap:8px;align-items:center;font-size:13px}
+.rd .rv-mod-courses i {width:8px;height:8px;border-radius:50%;background:var(--rd-course)}
+.rd .rv-mod-courses span {overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rd .rv-mod-courses b {font-weight:650;color:var(--rd-accent);font-size:12px}
+.rd .rv-mod-courses small {color:var(--rd-muted);font-size:12px;min-width:2.5ch;text-align:right}
+.rd .rv-mod-ahead {display:grid;grid-template-columns:repeat(7,1fr);gap:4px;height:46px;align-items:end}
+.rd .rv-mod-ahead span {display:grid;grid-template-rows:1fr auto;height:100%;justify-items:center;gap:2px}
+.rd .rv-mod-ahead i {align-self:end;width:100%;max-width:18px;min-height:2px;border-radius:3px 3px 1px 1px;background:color-mix(in srgb,var(--rd-accent) 55%,var(--rd-line))}
+.rd .rv-mod-ahead small {font-size:10px;color:var(--rd-muted)}
+
+/* Today line and course hub link */
+.rd .rv-today-line {display:flex;justify-content:space-between;gap:8px;width:100%;margin:0 0 8px;padding:8px 10px;border:1px dashed color-mix(in srgb,var(--rd-accent) 45%,var(--rd-line));border-radius:10px;background:color-mix(in srgb,var(--rd-accent) 6%,transparent);color:var(--rd-ink);font:inherit;font-size:13px;cursor:pointer;text-align:left}
+.rd .rv-today-line span {color:var(--rd-muted)}
+.rd .rv-hub-link {padding:0;border:0;background:none;font:inherit;color:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+/* the overlay */
+.rv-overlay {position:fixed;inset:0;z-index:2147482600;display:grid;place-items:center;padding:20px;background:rgb(20 20 19/.42);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);outline:none;
+ --rv-paper:var(--rd-surface,#FAF9F5);--rv-ink:var(--rd-ink,#1F1E1B);--rv-muted:var(--rd-muted,#6E6B62);--rv-line:var(--rd-line,#E2DED3);--rv-accent:var(--rd-accent,#C96442);
+ font:14px/1.5 var(--rd-ui-font,"Segoe UI",system-ui,sans-serif);color:var(--rv-ink)}
+.rv-overlay * {box-sizing:border-box}
+.rv-panel {width:min(640px,100%);max-height:calc(100dvh - 40px);overflow:auto;padding:18px 22px 20px;border-radius:18px;background:var(--rv-paper);border:1px solid var(--rv-line);box-shadow:0 24px 60px rgb(0 0 0/.22);scrollbar-width:thin}
+.rv-head {display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}
+.rv-head h2 {margin:2px 0 0;font:500 21px/1.25 var(--rd-display,"Literata",Georgia,serif)}
+.rv-eyebrow {margin:0;font:600 11px/1 var(--rd-ui-font,system-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--rv-muted)}
+.rv-sub {margin:2px 0 0;color:var(--rv-muted);font-size:13px}
+.rv-icon {display:inline-grid;place-items:center;width:34px;height:34px;flex:none;border:1px solid var(--rv-line);border-radius:10px;background:transparent;color:var(--rv-ink);cursor:pointer}
+.rv-course {display:inline-flex;align-items:center;gap:8px}
+.rv-course i,.rv-list small i {display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--rv-course)}
+.rv-progress {height:4px;border-radius:2px;background:var(--rv-line);overflow:hidden;margin:4px 0 14px}
+.rv-progress i {display:block;height:100%;background:var(--rv-accent);transition:width .3s ease}
+.rv-card {min-height:190px;display:grid;align-content:center;gap:12px;padding:26px 24px;border-radius:14px;border:1px solid var(--rv-line);background:color-mix(in srgb,var(--rv-paper) 70%,#fff);text-align:center;font:400 20px/1.45 var(--rd-display,"Literata",Georgia,serif)}
+.rv-card hr {width:60%;margin:2px auto;border:0;border-top:1px dashed var(--rv-line)}
+.rv-a {color:var(--rv-ink);font-size:18px}
+.rv-direction {margin:0;font:600 11px/1 var(--rd-ui-font,system-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--rv-muted)}
+.rv-blank {display:inline-block;min-width:4ch;padding:0 6px;border-bottom:2px solid var(--rv-accent);color:var(--rv-muted)}
+.rv-fill {padding:0 4px;border-radius:4px;background:color-mix(in srgb,var(--rv-accent) 18%,transparent);color:inherit}
+.rv-actions {display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px}
+.rv-button {display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:8px 16px;border-radius:10px;border:1px solid var(--rv-line);background:transparent;color:var(--rv-ink);font:600 13.5px/1 var(--rd-ui-font,system-ui);cursor:pointer}
+.rv-button small,.rv-grade small {font-weight:500;color:inherit;opacity:.65;font-size:11.5px}
+.rv-primary {background:var(--rv-accent);border-color:transparent;color:#fff}
+.rv-button:disabled {opacity:.5;cursor:default}
+.rv-grade {display:grid;gap:3px;min-width:118px;padding:10px 14px;border-radius:12px;border:1px solid var(--rv-line);background:transparent;color:var(--rv-ink);font:600 14px/1.1 var(--rd-ui-font,system-ui);cursor:pointer}
+.rv-grade[data-value=again] {border-color:color-mix(in srgb,#b4412f 45%,var(--rv-line))}
+.rv-grade[data-value=good] {border-color:color-mix(in srgb,var(--rv-accent) 55%,var(--rv-line));background:color-mix(in srgb,var(--rv-accent) 8%,transparent)}
+.rv-grade[data-value=easy] {border-color:color-mix(in srgb,#5E7F45 50%,var(--rv-line))}
+.rv-grade:hover,.rv-button:hover:not(:disabled):not(.rv-primary) {background:color-mix(in srgb,var(--rv-accent) 10%,transparent)}
+.rv-foot {margin:12px 0 0;text-align:center;font-size:12px;color:var(--rv-muted)}
+.rv-link {padding:0;border:0;background:none;color:inherit;font:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.rv-danger {color:#b4412f}
+.rv-src {margin:0;font-size:12.5px;color:var(--rv-muted)}
+.rv-src a {color:inherit}
+.rv-end {display:grid;gap:4px;justify-items:center;text-align:center;padding:10px 0}
+.rv-end p {margin:0}
+.rv-end-big {font:500 34px/1.1 var(--rd-display,"Literata",Georgia,serif)}
+.rv-status {margin:10px 0 0;min-height:1.2em;text-align:center;font-size:13px;color:var(--rv-ink)}
+.rv-status:empty {display:none}
+.rv-overlay :focus-visible {outline:2px solid var(--rv-accent);outline-offset:2px}
+
+/* manager */
+.rv-tabs {display:flex;gap:2px;flex-wrap:wrap;margin:6px 0 14px;padding:3px;border-radius:11px;background:color-mix(in srgb,var(--rv-line) 45%,transparent)}
+.rv-tab {flex:1 1 auto;padding:7px 10px;border:0;border-radius:8px;background:transparent;color:var(--rv-muted);font:600 12.5px/1 var(--rd-ui-font,system-ui);cursor:pointer}
+.rv-tab[aria-selected=true] {background:var(--rv-paper);color:var(--rv-ink);box-shadow:0 1px 2px rgb(0 0 0/.08)}
+.rv-tab span {font-weight:500;opacity:.7}
+.rv-field {display:grid;gap:4px;margin:0 0 10px;font-size:12.5px;font-weight:600;color:var(--rv-muted)}
+.rv-field small {font-weight:500}
+.rv-field textarea,.rv-field select,.rv-field input,.rv-filter select,.rv-filter input {width:100%;padding:8px 10px;border-radius:9px;border:1px solid var(--rv-line);background:var(--rv-paper);color:var(--rv-ink);font:400 14px/1.45 var(--rd-ui-font,system-ui);resize:vertical}
+.rv-inline {grid-template-columns:1fr 110px;align-items:center}
+.rv-check {display:flex;gap:8px;align-items:flex-start;margin:0 0 10px;font-size:13px;cursor:pointer}
+.rv-check input {margin:3px 0 0;accent-color:var(--rv-accent)}
+.rv-hint {margin:0 0 4px;font-size:12px;color:var(--rv-muted)}
+.rv-preview {margin:8px 0 0;padding:10px 12px;border-radius:10px;border:1px dashed var(--rv-line);font-size:13px}
+.rv-preview p {margin:0 0 6px}
+.rv-preview ul {list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.rv-preview li {display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rv-preview li span:last-child {color:var(--rv-muted)}
+.rv-filter {display:grid;grid-template-columns:minmax(0,160px) minmax(0,1fr) auto;gap:8px;margin-bottom:10px}
+.rv-list {list-style:none;margin:0 0 10px;padding:0;display:grid}
+.rv-list li {display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px dashed var(--rv-line)}
+.rv-list li:first-child {border-top:0}
+.rv-list li[data-paused=true] {opacity:.55}
+.rv-list p {margin:0;font-size:14px}
+.rv-list small {display:inline-flex;align-items:center;gap:6px;margin-top:3px;font-size:11.5px;color:var(--rv-muted)}
+.rv-row-actions {display:flex;gap:10px;flex:none;align-items:flex-start;font-size:12px}
+
+@media (max-width:560px){.rv-overlay{padding:8px}.rv-panel{padding:14px}.rv-grade{min-width:0;flex:1}.rv-filter{grid-template-columns:1fr}.rv-card{font-size:18px;padding:20px 14px}}
+@media (prefers-reduced-motion:reduce){.rv-progress i{transition:none}}
+
+/* Ways in that are always visible: the toolbar's Cards button and each course's Flashcards button, with the count due */
+.rd .rv-count {display:inline-grid;place-items:center;min-width:18px;height:18px;margin-left:6px;padding:0 5px;border-radius:9px;background:var(--rd-accent);color:#fff;font:650 11px/1 var(--rd-ui-font,system-ui)}
+.rd .rv-course-button {display:inline-flex;align-items:center;gap:2px;white-space:nowrap}

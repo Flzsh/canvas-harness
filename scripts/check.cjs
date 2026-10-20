@@ -23,7 +23,7 @@ assert.equal(manifest.externally_connectable,undefined);
 assert.deepEqual(manifest.host_permissions,['https://*.instructure.com/*']);
 const files=fs.readdirSync(extension,{recursive:true}).filter(f=>fs.statSync(path.join(extension,f)).isFile());
 for(const file of files.filter(f=>f.endsWith('.js')))new vm.Script(fs.readFileSync(path.join(extension,file),'utf8'),{filename:file});
-const references=[manifest.background.service_worker,...manifest.content_scripts.flatMap(c=>[...(c.js||[]),...(c.css||[])]),...Object.values(manifest.icons),manifest.action.default_popup,'custom-site.js','welcome.html','school-address.js',...Object.values(manifest.action.default_icon),...manifest.web_accessible_resources.flatMap(r=>r.resources)];
+const references=[manifest.background.service_worker,...manifest.content_scripts.flatMap(c=>[...(c.js||[]),...(c.css||[])]),...Object.values(manifest.icons),manifest.action.default_popup,'custom-site.js','welcome.html','school-address.js','focus-guard-model.js','focus-guard-page.js','focus-guard.html','focus-guard-allow.js','focus-scene-renderer.js','focus-dial.js',...Object.values(manifest.action.default_icon),...manifest.web_accessible_resources.flatMap(r=>r.resources)];
 for(const ref of references)assert.ok(files.includes(ref.replaceAll('/',path.sep)),`Missing manifest resource: ${ref}`);
 const bootstrap=manifest.content_scripts.find(c=>c.js.includes('startup.js')),controller=manifest.content_scripts.find(c=>c.js.includes('content.js'));
 assert.deepEqual(bootstrap.js,['site.js','startup-art.js','startup.js']);

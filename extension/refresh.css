@@ -2286,3 +2286,33 @@
 .rd .rd-tool-panel:is([data-tool-panel=ai],[data-tool-panel=gpa]) { height:100%; min-height:0; overflow:hidden; }
 .rd .rd-ai-frame { display:block; border:0; width:100%; height:100%; min-height:240px; background:var(--rd-surface,#FAF9F5); color-scheme:light; }
 .rd[data-theme=dark] .rd-ai-frame { color-scheme:dark; }
+
+/* The top bar with Focus room (focus-room.js) and later Cards (review-deck.js): up to about 200px more than the steps above were set
+   for, so the bar gives way in this order as it narrows, keeping the new buttons' words longest: the Tools shortcut,
+   "dashboard" in Canvas dashboard, the Show grades words, tighter tabs, then Cards and Focus room as icons, and last
+   the Canvas dashboard button as an icon. Widths are the bar's own (container "commands"), with and without the
+   search box in it. */
+@container commands (max-width: 1585px) and style(--rd-search-at: bar) { .rd .rd-toolbox-trigger kbd { display: none; } }
+@container commands (max-width: 1560px) and style(--rd-search-at: bar) { .rd .rd-native-switch .rd-native-word { display: none; } }
+@container commands (max-width: 1495px) and style(--rd-search-at: bar) { .rd .rd-grade-switch > span:not(.rd-switch-track) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
+@container commands (max-width: 1410px) and style(--rd-search-at: bar) { .rd .rd-toolbar .rd-workspace-tabs .t-tab { padding: 0 11px; } }
+@container commands (max-width: 1355px) and style(--rd-search-at: bar) {
+  .rd .rd-tools .rd-button.rd-focus-trigger { min-width: 0; padding-inline: 8px; }
+  .rd .rd-tools .rd-button.rd-focus-trigger > span:not(.rd-focus-clock) { display: none; }
+}
+@container commands (max-width: 1240px) and style(--rd-search-at: bar) {
+  .rd .rd-tools .rd-button.rd-native-switch { width: 32px; min-width: 32px; padding: 0; justify-content: center; border-radius: 999px; }
+  .rd .rd-tools .rd-native-switch > span { display: none; }
+}
+@container commands (max-width: 1370px) { .rd .rd-toolbox-trigger kbd { display: none; } }
+@container commands (max-width: 1345px) { .rd .rd-native-switch .rd-native-word { display: none; } }
+@container commands (max-width: 1280px) { .rd .rd-grade-switch > span:not(.rd-switch-track) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
+@container commands (max-width: 1195px) { .rd .rd-toolbar .rd-workspace-tabs .t-tab { padding: 0 11px; } }
+@container commands (max-width: 1140px) {
+  .rd .rd-tools .rd-button.rd-focus-trigger { min-width: 0; padding-inline: 8px; }
+  .rd .rd-tools .rd-button.rd-focus-trigger > span:not(.rd-focus-clock) { display: none; }
+}
+@container commands (max-width: 1025px) {
+  .rd .rd-tools .rd-button.rd-native-switch { width: 32px; min-width: 32px; padding: 0; justify-content: center; border-radius: 999px; }
+  .rd .rd-tools .rd-native-switch > span { display: none; }
+}

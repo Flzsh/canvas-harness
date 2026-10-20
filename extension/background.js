@@ -1,5 +1,5 @@
 /* Canvas Harness — extension-only AI routing. No externally_connectable entry point. */
-importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js','page-preferences.js');
+importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js','page-preferences.js','focus-guard-model.js');
 // Appearance changes from every page are applied here, one at a time (page-preferences.js).
 globalThis.ReservePagePreferences?.serve();
 (function(){
@@ -121,6 +121,78 @@ globalThis.ReservePagePreferences?.serve();
   await resync();
   await chrome.tabs.create({url:pending+'/?reserve=open'});
  });
+
+ // The focus room's distraction guard (focus-guard-model.js). The room copies a running session to its own key; while
+ // it runs, the reminder (focus-guard-page.js) is added to the sites on the student's list and nowhere else, and only
+ // once the student has allowed access to other websites by switching the guard on. Canvas and the school's own
+ // sites are left out. Pages already open on those sites get it when a session starts.
+ const Guard=globalThis.ReserveFocusGuardModel,GUARD_ID='ch-focus-guard',GUARD_FILES=['site.js','focus-guard-model.js','focus-guard-page.js'];
+ const ALL_SITES={permissions:['scripting'],origins:['https://*/*']};
+ const guardAllowed=()=>chrome.permissions?.contains?chrome.permissions.contains(ALL_SITES).catch(()=>false):Promise.resolve(false);
+ const guardRecord=async()=>Guard.cleanRecord((await chrome.storage.local.get(Guard.KEY))[Guard.KEY]);
+ // Adds the reminder to one open tab when it is on a listed site during a session (it checks again itself).
+ async function guardTab(tab,rec){
+  if(!tab?.id||!tab.url||!(rec.until>Date.now())||!chrome.scripting?.executeScript)return false;
+  const schools=await grantedSites();if(!Guard.status(rec,tab.url,{protect:schools}).site)return false;
+  return chrome.scripting.executeScript({target:{tabId:tab.id},files:GUARD_FILES}).then(()=>true,()=>false);
+ }
+ let guardQueue=Promise.resolve();
+ const syncGuard=(fresh=false)=>(guardQueue=guardQueue.then(()=>applyGuard(fresh)).catch(()=>{}));
+ async function applyGuard(fresh){
+  if(!Guard||!chrome.scripting?.registerContentScripts||!chrome.storage?.local)return;
+  const rec=await guardRecord();
+  const old=await chrome.scripting.getRegisteredContentScripts({ids:[GUARD_ID]}).catch(()=>[]);
+  if(old.some(s=>s.id===GUARD_ID))await chrome.scripting.unregisterContentScripts({ids:[GUARD_ID]}).catch(()=>{});
+  if(!(rec.until>Date.now())||!rec.sites.length||!await guardAllowed())return;
+  const schools=await grantedSites(),matches=Guard.matches(rec.sites);
+  await chrome.scripting.registerContentScripts([{id:GUARD_ID,matches,excludeMatches:['https://*.instructure.com/*',...schools.map(origin=>origin+'/*')],
+   js:GUARD_FILES,runAt:'document_start',allFrames:false,persistAcrossSessions:false}]);
+  if(!fresh||!chrome.tabs?.query)return;
+  for(const tab of await chrome.tabs.query({url:matches}).catch(()=>[]))guardTab(tab,rec);
+ }
+ // A page that finished loading on a listed site gets the reminder even if the registered script missed it (a session
+ // that started a moment after the page began loading, or a background that was just woken).
+ chrome.tabs?.onUpdated?.addListener((tabId,info,tab)=>{
+  if(info.status!=='complete'||!Guard||!/^https:/.test(tab?.url||''))return;
+  guardRecord().then(async rec=>{if(rec.until>Date.now()&&rec.sites.length&&await guardAllowed())guardTab(tab,rec);}).catch(()=>{});
+ });
+ // The focus room asks how the guard stands, opens the page where Chrome's access is allowed, and hands over the
+ // running session when the stored copy is missing (it never switches the guard off this way).
+ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
+  if(message?.type!=='ch-focus-guard'||!Guard)return;
+  if(!canvasSender(sender)){reply({ok:false});return;}
+  (async()=>{
+   if(message.op==='allow'){
+    const url=chrome.runtime.getURL('focus-guard.html');
+    const open=await chrome.tabs.query({url}).catch(()=>[]);
+    if(open[0]){await chrome.tabs.update(open[0].id,{active:true}).catch(()=>{});await chrome.windows?.update?.(open[0].windowId,{focused:true}).catch(()=>{});}
+    else await chrome.windows.create({url,type:'popup',width:440,height:380,focused:true}).catch(()=>chrome.tabs.create({url}));
+    return {ok:true};
+   }
+   let rec=await guardRecord();
+   const given=Guard.cleanRecord(message.record);
+   if(message.op==='status'&&given.until>Date.now()&&given.sites.length&&(given.until!==rec.until||given.sites.join()!==rec.sites.join()||given.goal!==rec.goal)){
+    await chrome.storage.local.set({[Guard.KEY]:given});rec=given;
+   }
+   const allowed=await guardAllowed();
+   const scripts=chrome.scripting?.getRegisteredContentScripts?await chrome.scripting.getRegisteredContentScripts({ids:[GUARD_ID]}).catch(()=>[]):[];
+   const registered=scripts.some(x=>x.id===GUARD_ID);
+   if(allowed&&rec.until>Date.now()&&rec.sites.length&&!registered)await syncGuard(true);
+   return {ok:true,allowed,registered:registered||allowed&&rec.until>Date.now()&&rec.sites.length>0,until:rec.until,sites:rec.sites,open:rec.open};
+  })().then(reply,()=>reply({ok:false}));
+  return true;
+ });
+ chrome.storage?.onChanged?.addListener((changes,area)=>{
+  const change=area==='local'&&Guard&&changes[Guard.KEY];if(!change)return;
+  const was=Guard.cleanRecord(change.oldValue),now=Guard.cleanRecord(change.newValue);
+  syncGuard(now.until>Date.now()&&(was.until!==now.until||was.sites.join()!==now.sites.join()));
+ });
+ chrome.runtime.onInstalled?.addListener(()=>syncGuard());
+ // The background sleeps between events; each time it wakes it makes sure the guard matches the stored session.
+ syncGuard();
+ chrome.runtime.onStartup?.addListener(()=>syncGuard());
+ chrome.permissions?.onAdded?.addListener(()=>syncGuard(true));
+ chrome.permissions?.onRemoved?.addListener(()=>syncGuard());
 
  chrome.runtime.onConnect.addListener(port=>{
   if(port.name==='ch-ai-panel'&&!panelSender(port.sender)){port.disconnect();return;}

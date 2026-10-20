@@ -16,7 +16,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // The eight seconds count only while the page can be seen. A tab opened in the background waits, unseen,
   // for its student; when it is shown it gets its eight seconds again (the CSS release switches restart too).
   const expired=()=>performance.now()>=deadline&&document.visibilityState!=='hidden';
-  const sheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css'];
+  const sheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','focus-room.css','review-deck.css'];
   let state='pending',shell,observer,timer,preloaded=false;
   const preloadLinks=[];
   const loginPage=()=>!!document.querySelector('#login_form, #new_login, .ic-Login');

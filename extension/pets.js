@@ -28,10 +28,10 @@
  }
  // Finishing a piece of work: a treat, some experience, and the day counts toward the run of days.
  function reward(pet,kind,today){
-  const next={...pet},gain={done:10,focus:6,plan:2}[kind]||0;
+  const next={...pet},gain={done:10,focus:6,review:4,plan:2}[kind]||0;
   next.xp=clamp(next.xp+gain,0,1e6);
-  if(kind==='done'||kind==='focus')next.treats=clamp(next.treats+1,0,99);
-  if((kind==='done'||kind==='focus')&&today&&next.streakDay!==today){
+  if(kind==='done'||kind==='focus'||kind==='review')next.treats=clamp(next.treats+1,0,99);
+  if((kind==='done'||kind==='focus'||kind==='review')&&today&&next.streakDay!==today){
    const y=new Date(today+'T12:00:00Z');y.setUTCDate(y.getUTCDate()-1);
    next.streak=next.streakDay===y.toISOString().slice(0,10)?next.streak+1:1;next.streakDay=today;next.best=Math.max(next.best,next.streak);
   }
@@ -447,7 +447,7 @@
    const result=reward(clean(getPet()),kind,today);save(result.pet);
    if(!visible()||!layer)return result;
    closeBubble();cheer(1300);
-   const line=result.leveled?`Level ${level(pet.xp)}! Something new is unlocked.`:kind==='focus'?'Good session. A treat for both of us.':left===0?'That was the last one for today.':left>0?`Done. ${left} left today.`:'Done. Nicely.';
+   const line=result.leveled?`Level ${level(pet.xp)}! Something new is unlocked.`:kind==='focus'?'Good session. A treat for both of us.':kind==='review'?'Cards done for today. That sticks.':left===0?'That was the last one for today.':left>0?`Done. ${left} left today.`:'Done. Nicely.';
    say(line,4200);
    return result;
   }
