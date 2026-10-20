@@ -165,6 +165,23 @@ globalThis.ReservePagePreferences?.serve();
    });
   }else port.disconnect();
  }
+ // A course's own links and files (course-files.js): "+ Add" opens the manager as a small window for this tab's Canvas
+ // account; a file opens course-file.html in a new tab beside it. Only Canvas Harness on a Canvas page can ask.
+ async function courseFiles(message,sender){
+  if(!canvasSender(sender))return {ok:false};
+  if(message.op==='manage'&&/^\d{1,20}$/.test(String(message.course||''))&&/^[\w-]{1,60}$/.test(String(message.account||''))){
+   const page=chrome.runtime.getURL('course-files.html'),url=page+'?'+new URLSearchParams({course:String(message.course),name:String(message.name||'').slice(0,80),origin:new URL(sender.url).origin,account:String(message.account)});
+   const same=(await chrome.tabs.query({url:page+'*'}).catch(()=>[])).find(t=>t.url===url);
+   if(same){await chrome.tabs.update(same.id,{active:true}).catch(()=>{});await chrome.windows.update(same.windowId,{focused:true}).catch(()=>{});}
+   else await chrome.windows.create({url,type:'popup',width:520,height:640,focused:true}).catch(()=>chrome.tabs.create({url}));
+   return {ok:true};
+  }
+  if(message.op==='open'&&/^cf-[\w-]{4,60}$/.test(String(message.id||''))){
+   await chrome.tabs.create({url:chrome.runtime.getURL('course-file.html')+'?id='+encodeURIComponent(message.id),index:(sender.tab.index??0)+1,openerTabId:sender.tab.id});
+   return {ok:true};
+  }
+  return {ok:false};
+ }
  chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   if(message?.type==='ch-school-ready'){
    const origin=ReserveSite.customSite(message.origin);
@@ -172,6 +189,7 @@ globalThis.ReservePagePreferences?.serve();
    resync().then(sites=>reply(sites.includes(origin)?{ok:true,origin}:{ok:false,error:'Allow access to your school’s Canvas site and try again.'}),error=>reply({ok:false,error:String(error?.message||error||'School registration failed. Try again.')}));
    return true;
   }
+  if(message?.type==='ch-course-files'){courseFiles(message,sender).then(reply,()=>reply({ok:false}));return true;}
   if(message?.type!=='ch-ai-pdf')return;
   ready.then(()=>{
    if(!canvasSender(sender)||!channels.has(sender.tab.id)){reply({ok:false,error:'An active Canvas context is required.'});return;}

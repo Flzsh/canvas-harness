@@ -193,7 +193,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const formatters=new Map();
     const resourceClient=materialClient||(!demo?root.ReserveAPI?.createClient():null);
     const materials=root.ReserveMaterialsUI?.create({store,user:snapshot.user,client:resourceClient,...selectionOptions,onChange:sourceChange,onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))});
-    const hub=root.ReserveCourseHubUI?.create({store,user:snapshot.user,client:resourceClient,...selectionOptions,materials,onChange:sourceChange,onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))});
+    // The student's own links and files per course (course-files.js), shown in Course information and the Course hub.
+    const ownFiles=root.ReserveCourseFiles?.watch({owner:store.owner,onChange:sourceChange});
+    const hub=root.ReserveCourseHubUI?.create({store,user:snapshot.user,client:resourceClient,...selectionOptions,materials,files:ownFiles,onChange:sourceChange,onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))});
     const quickUpload=root.CanvasHarnessQuickUpload?.create({store,getCourses:()=>normalizeData(settings()).allCourses,onChange:sourceChange});
     const motion=root.ReserveMotion?.create(container);
     const settingsDock=root.ReserveSettingsDock?.createDock({container,
@@ -1245,7 +1247,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         destroyed=true;consumeSources();pendingRender=null;root.chrome?.storage?.onChanged?.removeListener?.(navChanged);
         readerLayout?.disconnect();railLayout?.disconnect();railAncestors?.disconnect();root.clearTimeout(railTimer);if(railSelectionFrame)cancelPaint(railSelectionFrame);
         root.removeEventListener?.('resize',queueRail);document.fonts?.removeEventListener?.('loadingdone',queueRail);
-        ++quickPackRead;quickUpload?.destroy();arrange?.destroy();board?.destroy();settingsDock?.destroy();materials?.destroy();hub?.destroy();motion?.destroy();toolbox?.destroy();
+        ++quickPackRead;quickUpload?.destroy();arrange?.destroy();board?.destroy();settingsDock?.destroy();materials?.destroy();hub?.destroy();ownFiles?.destroy();motion?.destroy();toolbox?.destroy();
         clearInterval(freshnessTimer);clearInterval(focusTimer);clearTimeout(entranceTimer);
         unsubscribe?.();
         container.removeEventListener('dragover',onPackDragover);container.removeEventListener('dragleave',onPackDragleave);container.removeEventListener('drop',onPackDrop);

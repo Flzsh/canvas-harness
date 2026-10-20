@@ -34,7 +34,7 @@ assert.equal(controller.js.at(-1),'content.js');
 assert.deepEqual(controller.js.slice(-7),['course-nav-art.js','course-nav.js','modules-page.js','pdf-art.js','pdf-model.js','pdf-host.js','content.js']);
 assert.ok(!controller.css?.includes('pdf-host.css'),'PDF styling loads only after a PDF click');
 for(const size of [16,32,48,128]){const png=fs.readFileSync(path.join(extension,`icons/icon-${size}.png`));assert.equal(png.readUInt32BE(16),size);assert.equal(png.readUInt32BE(20),size);}
-for(const file of ['popup.html','welcome.html','pdf-reader.html']){
+for(const file of ['popup.html','welcome.html','pdf-reader.html','course-files.html','course-file.html']){
  const html=fs.readFileSync(path.join(extension,file),'utf8');
  for(const match of html.matchAll(/(?:src|href)="([^"]+)"/g))if(!/^(?:https?:|#|data:)/.test(match[1]))assert.ok(fs.existsSync(path.join(extension,match[1])),`Missing HTML resource in ${file}: ${match[1]}`);
  assert.ok(!/<script(?![^>]*src=)[^>]*>\s*\S/i.test(html),'Inline executable script in '+file);

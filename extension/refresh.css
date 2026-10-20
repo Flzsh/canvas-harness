@@ -2286,3 +2286,11 @@
 .rd .rd-tool-panel:is([data-tool-panel=ai],[data-tool-panel=gpa]) { height:100%; min-height:0; overflow:hidden; }
 .rd .rd-ai-frame { display:block; border:0; width:100%; height:100%; min-height:240px; background:var(--rd-surface,#FAF9F5); color-scheme:light; }
 .rd[data-theme=dark] .rd-ai-frame { color-scheme:dark; }
+
+/* A course's own links and files (course-files.js): one quiet row each, under the teacher's documents. */
+.rd-own-files{list-style:none;margin:0;padding:0;display:grid}
+.rd-own-file{display:flex;align-items:baseline;justify-content:space-between;gap:12px;width:100%;padding:9px 0;border:0;border-top:1px solid var(--rd-line);background:none;color:inherit;font:inherit;text-align:left;text-decoration:none;cursor:pointer}
+.rd-own-files li:first-child .rd-own-file{border-top:0}
+.rd-own-file span{font-size:14px;font-weight:550;min-width:0;overflow-wrap:anywhere}.rd-own-file small{flex-shrink:0;font-size:12px;color:var(--rd-muted)}
+.rd-own-file:hover span{text-decoration:underline;text-underline-offset:3px}
+.rd-course-updates .rd-deck-own{margin-top:24px}

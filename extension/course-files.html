@@ -1,0 +1,57 @@
+<!doctype html>
+<!-- A course's own links and files (course-files.js, course-files-page.js). Opened as a small window by "+ Add" in the
+     course's Course information. Links are kept in chrome.storage; uploaded files in this extension's IndexedDB, on this
+     computer only. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Links and files</title>
+<style>
+ :root{color-scheme:light;--paper:#FAF9F5;--ink:#1F1E1B;--muted:#6E6B62;--line:#E2DED3;--accent:#C96442;--chip:#fff}
+ @media (prefers-color-scheme:dark){:root{color-scheme:dark;--paper:#16191f;--ink:#F7F5EF;--muted:#A9A69C;--line:#2E343E;--chip:#1f242c}}
+ *{box-sizing:border-box}
+ html,body{margin:0;background:var(--paper);color:var(--ink)}
+ body{padding:18px 20px 22px;font:14px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
+ .eyebrow{margin:0;font:600 11px/1 "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+ h1{margin:4px 0 14px;font:500 21px/1.25 "Literata",Georgia,serif}
+ h2{margin:16px 0 8px;font:600 12px/1 "Segoe UI",system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+ form{display:grid;gap:8px}
+ .row{display:flex;gap:8px}
+ input[type=text],input[type=url]{flex:1;min-width:0;padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--chip);color:var(--ink);font:inherit}
+ button,.file{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 13px/1 "Segoe UI",system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+ button.primary{background:var(--accent);border-color:transparent;color:#fff}
+ button:disabled{opacity:.5;cursor:default}
+ .file input{display:none}
+ .drop{display:grid;place-items:center;gap:6px;padding:16px;border:1.5px dashed var(--line);border-radius:12px;text-align:center;color:var(--muted)}
+ .drop.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+ ul{list-style:none;margin:0;padding:0;display:grid}
+ li{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px dashed var(--line)}
+ li:first-child{border-top:0}
+ li .what{flex:1;min-width:0}
+ li .what input{width:100%}
+ li small{display:block;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .link{padding:0;border:0;background:none;color:inherit;font:inherit;font-size:12.5px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+ .danger{color:#b4412f}
+ #status{min-height:1.4em;margin:12px 0 0;font-size:13px}
+ .hint{margin:4px 0 0;font-size:12px;color:var(--muted)}
+ :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<p class="eyebrow">Canvas Harness · your links and files</p>
+<h1 id="title">Links and files</h1>
+<h2>Add a link</h2>
+<form id="link-form">
+ <div class="row"><input type="url" id="link-url" placeholder="https://docs.google.com/document/d/…" required autocomplete="off"></div>
+ <div class="row"><input type="text" id="link-title" placeholder="Name (optional), e.g. Unit 2 notes" maxlength="120" autocomplete="off"><button type="submit" class="primary">Add link</button></div>
+</form>
+<h2>Upload a file</h2>
+<div class="drop" id="drop"><span>Drop a PDF, Word, PowerPoint, Excel or image file here, or</span><label class="file"><input type="file" id="file" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.rtf,.odt,.pages,.key,.numbers,.png,.jpg,.jpeg,.gif,.webp,.heic,.csv,.md">Choose files</label><span class="hint">Up to 50 MB each. Kept in Canvas Harness on this computer only.</span></div>
+<h2>In this course</h2>
+<ul id="list"></ul>
+<p id="status" role="status"></p>
+<script src="course-files.js"></script>
+<script src="course-files-page.js"></script>
+</body>
+</html>
