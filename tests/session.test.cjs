@@ -64,7 +64,7 @@ test('account-scoped preferences and cached courses load concurrently, but both 
  const {createStore}=require('../extension/storage.js');
  const preferences=deferred(),cached=deferred(),verification=deferred(),reads=[],shown=[];
  const session=createSession({prefetchedProfile:Promise.resolve(user),client:{profile:()=>verification.promise,loadSnapshot:()=>{throw Error('Fresh cache should not download');}},
-  createStore:({accountId})=>createStore({accountId,adapter:{read:key=>{reads.push(key);return key.endsWith(':cache')?cached.promise:preferences.promise;},write:async()=>{}}}),
+  createStore:({accountId})=>createStore({accountId,adapter:{read:key=>{reads.push(key);return key==='reserve:appearance'?Promise.resolve({theme:'light',motion:'gentle',nightArt:0,pet:true}):key.endsWith(':cache')?cached.promise:preferences.promise;},write:async()=>{}}}),
   onSnapshot:(value,store)=>shown.push({value,settings:store.get().settings}),onError:error=>{throw error;}});
  const start=session.start();
  try{

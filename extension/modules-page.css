@@ -1,0 +1,73 @@
+/* Canvas's Modules page in the drawn style (3.1). Canvas keeps its structure, order, words and behaviour; this only
+   changes the look: each module a paper card whose name sits on a paper label, ink icons (course-nav-art), pink due
+   slips, green stamps for finished items, a drawn padlock for locked ones. Light only, like Canvas's own page.
+   Every rule is gated by html.reserve-modules (modules-page.js) and scoped to #context_modules or its header bar. */
+html.reserve-modules #context_modules{--md-ink:#2B2A27;--md-paper:#FFFDF8;--md-line:#E2DED3;--md-hover:#F6F2E8;--md-head:#F2EBDF;--md-wash:#E6C478;--md-muted:#5E5D59;--md-clay:#A9522F;--md-slip:#F7D6CF}
+
+/* the module: a paper card with an ink edge and a drawn offset shadow */
+html.reserve-modules #context_modules .context_module{margin:0 0 22px;border:1.6px solid var(--md-ink);border-radius:12px;background:var(--md-paper);box-shadow:3px 4px 0 rgb(43 42 39 / .10);overflow:hidden}
+
+/* its header: Canvas's light bar warmed to paper, the name on a label (a wash set off its ink edge, like the menu bar's
+   drawings); Canvas's collapse button, name, requirement and status stay */
+html.reserve-modules #context_modules .context_module>.ig-header{position:relative;display:flex;align-items:center;gap:10px;min-height:54px;margin:0;padding:10px 18px 10px 14px;border:0;border-bottom:1.6px solid var(--md-ink);border-radius:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 16'%3E%3Cg fill='none' stroke='%232B2A27' stroke-width='1.6' stroke-linecap='round' opacity='.45'%3E%3Cpath d='M6 14.5l3.4-11'/%3E%3Cpath d='M11.6 14.8l3.2-10.6'/%3E%3Cpath d='M17.2 14.4l3.3-10.9'/%3E%3C/g%3E%3C/svg%3E") no-repeat right 16px bottom 9px/24px 15px,var(--md-head);color:var(--md-ink)}
+html.reserve-modules #context_modules .context_module>.ig-header .name{display:inline-block;flex:0 1 auto;min-width:0;max-width:calc(100% - 20px);box-sizing:border-box;padding:3px 12px 4px;margin-inline-start:4px;border:1.4px solid var(--md-ink);border-radius:5px 7px 4px 6px;background:#FFFDF6;box-shadow:2.5px 3px 0 var(--md-wash);font:700 16px/1.3 Literata,Georgia,serif;letter-spacing:-.01em;color:var(--md-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;transform:rotate(-.6deg)}
+html.reserve-modules #context_modules .context_module>.ig-header :is(.collapse_module_link,.expand_module_link){color:var(--md-ink);position:relative;z-index:1}
+/* Canvas's title box is shorter than the label and clips it; the label cuts a long name short itself, so the box may show
+   all of it (its width still bounded by the bar) */
+html.reserve-modules #context_modules .context_module>.ig-header :is(.collapse_module_link,.expand_module_link){min-width:0;height:auto;overflow:visible}
+/* Canvas's collapse arrow, drawn in ink; it turns to point right when the module is folded */
+html.reserve-modules #context_modules .context_module>.ig-header :is(.collapse_module_link,.expand_module_link) i:is(.icon-mini-arrow-down,.icon-mini-arrow-right,.icon-mini-arrow-end){display:inline-block;width:18px;height:18px;vertical-align:middle;background:center/contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath fill='none' stroke='%232B2A27' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4.2 6.6c1.6 1.5 3.2 3.1 4.9 4.6 1.5-1.6 3-3.1 4.7-4.7'/%3E%3C/svg%3E");transition:transform .18s ease}
+html.reserve-modules #context_modules .context_module>.ig-header :is(.collapse_module_link,.expand_module_link) i:is(.icon-mini-arrow-down,.icon-mini-arrow-right,.icon-mini-arrow-end)::before{content:none}
+html.reserve-modules #context_modules .context_module>.ig-header :is(.collapse_module_link,.expand_module_link) i:is(.icon-mini-arrow-right,.icon-mini-arrow-end){transform:rotate(-90deg)}
+html.reserve-modules #context_modules .context_module>.ig-header .ig-header-admin{display:flex;flex:none;align-items:center;gap:10px;position:relative;z-index:1;white-space:nowrap}
+/* "Complete All Items": a small paper tag */
+html.reserve-modules #context_modules .context_module>.ig-header .requirements_message :is(.pill,ul){margin:0;padding:0;border:0;background:none;list-style:none}
+html.reserve-modules #context_modules .context_module>.ig-header .requirements_message li{display:inline-block;margin:0;padding:2px 9px;border:1.2px solid var(--md-ink);border-radius:4px;background:var(--md-paper);color:var(--md-ink);font:600 11.5px/1.5 "Segoe UI",system-ui,sans-serif;transform:rotate(-1.5deg);box-shadow:1px 2px 0 rgb(20 20 19 / .18)}
+html.reserve-modules #context_modules .context_module>.ig-header .prerequisites{position:relative;z-index:1;color:var(--md-muted);font-size:12px}
+/* a locked module: the bar greys and its label loses the wash */
+html.reserve-modules #context_modules .context_module.locked>.ig-header{background:#ECEAE4}
+html.reserve-modules #context_modules .context_module.locked>.ig-header .name{box-shadow:2.5px 3px 0 #D6D2C8;color:var(--md-muted)}
+
+/* the rows: paper, a dashed rule between them, a warm wash on hover; Canvas's own row layout and indents stay */
+html.reserve-modules #context_modules .context_module .ig-list{background:transparent}
+html.reserve-modules #context_modules .context_module_item>.ig-row{background:transparent;border:0;border-bottom:1px dashed var(--md-line);border-radius:0;box-shadow:none}
+html.reserve-modules #context_modules .context_module_item:last-child>.ig-row{border-bottom:0}
+html.reserve-modules #context_modules .context_module_item:not(.context_module_sub_header)>.ig-row:hover{background:var(--md-hover)}
+html.reserve-modules #context_modules .context_module_item .ig-title{color:var(--md-ink);font-weight:600;text-decoration:none}
+html.reserve-modules #context_modules .context_module_item a.ig-title:is(:hover,:focus-visible){color:var(--md-clay);text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px}
+html.reserve-modules #context_modules .context_module_item a.ig-title:focus-visible{outline:2px solid var(--md-clay);outline-offset:3px;border-radius:3px}
+html.reserve-modules #context_modules .context_module_item .locked_title{color:var(--md-muted)}
+
+/* a text heading inside a module: small capitals over an ink rule */
+html.reserve-modules #context_modules .context_module_sub_header>.ig-row{border-bottom:0;padding-top:14px}
+html.reserve-modules #context_modules .context_module_sub_header .title{display:inline-block;padding-bottom:3px;border-bottom:1.6px solid var(--md-ink);color:var(--md-ink);font:700 12px/1.4 "Segoe UI",system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase}
+
+/* the item's type: the drawn icon replaces Canvas's icon glyph (still in the page, hidden from sight only) */
+html.reserve-modules #context_modules .ig-type-icon{position:relative;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px}
+html.reserve-modules #context_modules .ig-type-icon:has(.md-icon)>:is(i,img){visibility:hidden}
+html.reserve-modules #context_modules .ig-type-icon .md-icon{position:absolute;inset:2px;pointer-events:none}
+html.reserve-modules #context_modules .ig-type-icon .md-icon>svg{display:block;width:22px;height:22px;overflow:visible}
+
+/* details: the due date on a pink slip, points and requirements quiet beside it */
+html.reserve-modules #context_modules .ig-details{color:var(--md-muted)}
+html.reserve-modules #context_modules .ig-details .due_date_display{display:inline-block;padding:0 7px;border:1.2px solid var(--md-ink);border-radius:3px;background:var(--md-slip);color:var(--md-ink);font-weight:600;transform:rotate(-1deg)}
+html.reserve-modules #context_modules .ig-details .points_possible_display{color:var(--md-muted)}
+
+/* finished, locked: drawn marks in place of Canvas's glyphs (the glyph's title and the page's words stay) */
+/* Canvas keeps every status icon in the markup and shows only the one that applies, so the drawn mark goes on
+   ::before and the icon's own display stays Canvas's */
+html.reserve-modules #context_modules :is(.module-item-status-icon,.completion_status) i:is(.icon-check,.icon-lock)::before{content:""!important;display:inline-block;width:24px;height:24px;vertical-align:middle;background:center/contain no-repeat}
+html.reserve-modules #context_modules :is(.module-item-status-icon,.completion_status) i.icon-check::before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23BFE0C6' d='M12.6 3.4c4.6.1 8.4 3.6 8.1 8.6-.2 4.8-3.9 8.4-8.7 8.3-4.9-.1-8.5-3.9-8.2-8.8.3-4.6 4.1-8.2 8.8-8.1z'/%3E%3Cpath fill='none' stroke='%232E6B45' stroke-width='1.6' stroke-linecap='round' d='M11.8 2.6c4.9-.2 8.8 3.4 8.8 8.6 0 5-3.7 8.8-8.7 8.9-5 .1-8.9-3.8-8.9-8.7.1-4.6 3.9-8.3 8.4-8.8'/%3E%3Cpath fill='none' stroke='%232E6B45' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' d='M7.4 11.9l3 3.1 6.4-7.1'/%3E%3C/svg%3E")}
+html.reserve-modules #context_modules :is(.module-item-status-icon,.completion_status) i.icon-lock::before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23141413' stroke-width='1.8' stroke-linecap='round' d='M8.2 10.6V7.8c0-2.4 1.7-4.2 3.9-4.2 2.2.1 3.8 1.9 3.8 4.3v2.6'/%3E%3Cpath fill='%23E8C96A' d='M6.1 11.4c4-.3 8-.2 12.1 0 .2 2.9.2 5.9 0 8.8-4 .3-8 .2-12.1 0-.2-2.9-.2-5.9 0-8.8z'/%3E%3Cpath fill='none' stroke='%23141413' stroke-width='1.6' stroke-linejoin='round' d='M5.6 10.8c4.3-.2 8.6-.3 12.8 0 .2 3.1.3 6.3 0 9.4-4.3.3-8.6.2-12.8 0-.3-3.1-.2-6.3 0-9.4z'/%3E%3Cpath fill='%23141413' d='M12 14.1c.9 0 1.4.6 1.4 1.3 0 .5-.3.9-.7 1.1l.3 1.9h-2l.3-1.9c-.4-.2-.7-.6-.7-1.1 0-.7.5-1.3 1.4-1.3z'/%3E%3C/svg%3E")}
+/* in the header the finished stamp sits on a paper disc */
+html.reserve-modules #context_modules .ig-header .completion_status i.icon-check::before{border-radius:50%;background-color:var(--md-paper);box-shadow:0 0 0 2px var(--md-paper)}
+
+/* the page's own buttons above the modules: paper with an ink edge */
+html.reserve-modules :is(.header-bar,.header-bar-right) :is(.btn,button.btn,a.btn){border:1.4px solid var(--md-ink,#141413);border-radius:9px;background:#FFFDF8;color:#141413;box-shadow:2px 2px 0 rgb(20 20 19 / .14)}
+html.reserve-modules :is(.header-bar,.header-bar-right) :is(.btn,button.btn,a.btn):hover{background:#F6F2E8}
+
+/* motion: the icons act once on hover (course-nav-art.css), never with reduced motion or Motion off */
+html.reserve-modules[data-md-motion=off] #context_modules .md-icon svg *{animation:none!important}
+@media (prefers-reduced-motion:reduce){html.reserve-modules #context_modules .md-icon svg *{animation:none!important}}
+
+html.reserve-modules #context_modules .ig-details .due_date_display.md-empty{display:none}

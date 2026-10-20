@@ -27,9 +27,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
  }
  // A removable stylesheet reserves room without rewriting Canvas inline styles.
  function pageDock(doc=document,{setTimer=root.setTimeout,clearTimer=root.clearTimeout}={}){
+  if(root.ReserveSite?.vanillaPage(root.location))return null;
   let sheet,padding,leaving=0;
   const remove=()=>{sheet?.remove();sheet=null;leaving=0;};
   return {update({open,collapsed,width,height,motion='gentle',input,resizing}){
+   if(root.ReserveSite?.vanillaPage(root.location)){remove();return;}
    if(leaving){clearTimer(leaving);leaving=0;}
    const animate=motion==='gentle'&&input!=='keyboard'&&resizing!=='true'&&!root.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
    const transition=animate?'body{transition:padding-right 340ms cubic-bezier(.22,.8,.24,1),padding-bottom 340ms cubic-bezier(.22,.8,.24,1)}':'';
@@ -51,7 +53,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   function check(){clearTimer(timer);timer=0;const f=store.get()?.focus,C=root.ReserveCore;if(!f?.endsAt||!C?.settleFocus)return;const left=f.endsAt-now();if(left>0){timer=setTimer(check,Math.min(left+50,864e5));return;}Promise.resolve(store.update(data=>{C.settleFocus(data,now());})).catch(()=>{});}
   return {check,stop(){clearTimer(timer);timer=0;}};
  }
- function create({button,dockRoot,client=root.ReserveAPI.createClient(),createStore=root.ReserveStorage.createStore,origin=BASE,pathname=()=>root.location.pathname,styleURL=file=>root.chrome.runtime.getURL(file),navigate=url=>root.open(url,'_blank','noopener,noreferrer')}){
+ function create({button,dockRoot,client,createStore,origin=BASE,pathname=()=>root.location.pathname,styleURL=file=>root.chrome.runtime.getURL(file),navigate=url=>root.open(url,'_blank','noopener,noreferrer')}={}){
+  if(root.ReserveSite?.vanillaPage(root.location))return null;
+  client??=root.ReserveAPI.createClient();createStore??=root.ReserveStorage.createStore;
   let session=root.ReserveToolboxSession.create({client,createStore,origin}),toolbox,area,verified,unsubscribe,focus,pending=null,dead=false,version=0,stylesPromise,styleNodes=[];
   const layout=pageDock(),label=button.textContent,status=document.createElement('span');status.className='reserve-tool-status';status.setAttribute('role','status');status.hidden=true;dockRoot.append(status);
   function notice(text){status.textContent=text;status.hidden=!text;}
@@ -72,12 +76,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   }
   function launch(options){navigate(dashboardURL({...options,courseId:context(verified.snapshot,verified.store.get(),pathname()).courseId}));}
   async function open(next,source=button,keyboard=false){
-   if(dead)return;if(toolbox?.isOpen()){toolbox.open(next,source);return;}if(pending)return pending;
+   if(dead||root.ReserveSite?.vanillaPage(root.location))return;if(toolbox?.isOpen()){toolbox.open(next,source);return;}if(pending)return pending;
    const token=++version;button.disabled=true;button.textContent='Opening…';notice('Checking your Canvas account…');
    pending=(async()=>{
     try{
      const [data]=await Promise.all([session.open(),styleReady()]);
-     if(dead||token!==version)return;
+     if(dead||token!==version||root.ReserveSite?.vanillaPage(root.location))return;
      if(toolbox&&verified?.store===data.store&&String(verified.user.id)===String(data.user.id)){verified=data;appearance();toolbox.open(next,source);notice('');return;}
      clearView();verified=data;focus=focusSettler(data.store);area=document.createElement('div');area.className='rd rd-native-tools';area.dataset.input=keyboard?'keyboard':'pointer';dockRoot.append(area);appearance();
      area.addEventListener('pointerdown',()=>{area.dataset.input='pointer';},{passive:true});
@@ -99,6 +103,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   }
   const onClick=()=>open(undefined,button);
   const onKey=event=>{
+   if(root.ReserveSite?.vanillaPage(root.location))return;
    if(event.defaultPrevented||!(event.ctrlKey||event.metaKey)||event.altKey||event.key.toLowerCase()!=='k'||toolbox?.isOpen())return;
    // Canvas rich-text editors use Ctrl+K for inserting links.
    if(event.composedPath().some(node=>node.matches?.('input,textarea,select,[contenteditable]:not([contenteditable="false"]),dialog[open]')))return;

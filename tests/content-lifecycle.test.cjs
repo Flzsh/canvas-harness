@@ -1,5 +1,5 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
-function fixture(pathname='/',search=''){
+function fixture(pathname='/',search='',{deferDashboard=false}={}){
  const nodes=new Map(),events={},winEvents={};
  class El{
   constructor(tag='div'){this.tagName=tag;this.children=[];this.hidden=false;this.style={};this.events={};this.dataset={};this._query={};}
@@ -17,7 +17,7 @@ function fixture(pathname='/',search=''){
  const body=new El('body'),head=new El('head'),html=new El('html');html.classList={add(){},remove(){}};
  const content=new El();content.id='content';const native=new El();native.id='dashboard';const sidebar=new El();sidebar.id='right-side';content.append(native);const application=new El();application.id='application';application.append(content,sidebar);body.append(application);
  const document={body,head,documentElement:html,visibilityState:'visible',getElementById:id=>nodes.get(id),createElement:tag=>new El(tag),addEventListener:(key,fn)=>events[key]=fn};
- let callbacks,started=0,dashboardOptions,plannerOptions,scrollRestored,nativeToolsCreated=0,mounts=0;const statuses=[];
+ let callbacks,started=0,dashboardOptions,plannerOptions,scrollRestored,nativeToolsCreated=0,mounts=0,painted=!deferDashboard;const statuses=[];
  const window={scrollY:460,scrollTo:(options)=>scrollRestored=options.top,addEventListener:(key,fn)=>winEvents[key]=fn};window.top=window;
  const session={start(){started++;},refresh:async()=>null,verify:async()=>true,destroy(){}};
  const mockView=()=>({destroy(){},setStatus:message=>statuses.push(message),updateSnapshot(){},getState:()=>({query:'gas',mode:'tomorrow',courseId:'7',day:'',limit:60})});
@@ -27,12 +27,12 @@ function fixture(pathname='/',search=''){
   ReserveStartup:{canReveal:()=>true,complete:()=>true,release(){},onNative(){}},
   chrome:{storage:{local:{get:async()=>({})}},runtime:{getURL:name=>'chrome-extension://fixture/'+name}},
   ReserveSession:{createSession:options=>{callbacks=options;return session;}},
-  ReserveStorage:{createStore(){}},ReserveAPI:{createClient:()=>({})},ReserveDashboard:{mount:(_target,options)=>{dashboardOptions=options;mounts++;return mockView();}},ReserveApp:{mount:(_target,options)=>{plannerOptions=options;return mockView();}}};
+  ReserveStorage:{createStore(){}},ReserveAPI:{createClient:()=>({})},ReserveDashboard:{mount:(_target,options)=>{dashboardOptions=options;mounts++;const view=mockView();if(deferDashboard)view.isReady=()=>painted;return view;}},ReserveApp:{mount:(_target,options)=>{plannerOptions=options;return mockView();}}};
  context.ReserveNativeTools={create:()=>{nativeToolsCreated++;return {destroy(){}};}};
  context.location.href=context.location.origin+pathname+search;
  vm.runInNewContext(fs.readFileSync(require.resolve('../extension/site.js'),'utf8'),context);
  vm.runInNewContext(fs.readFileSync(require.resolve('../extension/content.js'),'utf8'),context);
- return {nodes,body,head,native,sidebar,events,statuses,get mounts(){return mounts;},get nativeToolsCreated(){return nativeToolsCreated;},get dashboardOptions(){return dashboardOptions;},get plannerOptions(){return plannerOptions;},get scrollRestored(){return scrollRestored;},get started(){return started;},get callbacks(){return callbacks;},deliver(){callbacks.onSnapshot({courses:[],assignments:[]},{get:()=>({settings:{showGrades:false}})},{stale:false});},loadStyles(){for(const el of nodes.get('reserve-companion-host').shadowRoot.children)el.onload?.();}};
+ return {nodes,body,head,native,sidebar,events,statuses,get mounts(){return mounts;},get nativeToolsCreated(){return nativeToolsCreated;},get dashboardOptions(){return dashboardOptions;},get plannerOptions(){return plannerOptions;},get scrollRestored(){return scrollRestored;},get started(){return started;},get callbacks(){return callbacks;},paintDashboard(){painted=true;dashboardOptions.onReady();},deliver(){callbacks.onSnapshot({courses:[],assignments:[]},{get:()=>({settings:{showGrades:false}})},{stale:false});},loadStyles(){for(const el of nodes.get('reserve-companion-host').shadowRoot.children)el.onload?.();}};
 }
 test('controller preloads hidden styles and waits for verified data before replacing Canvas',async()=>{
  const f=fixture();await new Promise(setImmediate);assert.equal(f.started,1);assert.equal(f.native.hidden,false);assert.equal(f.sidebar.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
@@ -44,8 +44,15 @@ test('Canvas dashboard button restores the native dashboard without deleting it'
  const toolbar=root.children.find(el=>el.className==='reserve-toolbar');toolbar.querySelector('[data-native]').events.click();
  assert.equal(f.native.hidden,false);assert.equal(f.sidebar.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
 });
-test('course and submission pages do not start course downloads or replace native content',async()=>{
- const f=fixture('/courses/7/assignments/12');await new Promise(setImmediate);assert.equal(f.started,0);assert.equal(f.nativeToolsCreated,1);assert.equal(f.native.hidden,false);assert.equal(f.nodes.has('reserve-companion-host'),false);
+test('assignment and submission pages have no dock, tools, downloads or replacement content',async()=>{
+ for(const pathname of ['/courses/7/assignments/12','/courses/7/assignments/12/submissions/42','/courses/7/assignments/12/submissions/new']){
+  const f=fixture(pathname,'?module_item_id=25');await new Promise(setImmediate);assert.equal(f.started,0);assert.equal(f.nativeToolsCreated,0);assert.equal(f.native.hidden,false);assert.equal(f.sidebar.hidden,false);assert.equal(f.nodes.has('reserve-companion-host'),false);assert.equal(f.nodes.has('reserve-companion-dock'),false);assert.equal(f.head.children.length,0);assert.deepEqual(f.events,{});
+ }
+});
+test('other native course pages keep their dock and tools',async()=>{
+ for(const pathname of ['/courses/7','/courses/7/modules','/courses/7/pages/intro','/courses/7/files/12','/courses/7/assignments']){
+  const f=fixture(pathname);await new Promise(setImmediate);assert.equal(f.started,0);assert.equal(f.nativeToolsCreated,1);assert.equal(f.nodes.has('reserve-companion-dock'),true);assert.equal(f.native.hidden,false);
+ }
 });
 test('a native toolbox shortcut opens the requested workspace without an intermediate navigation step',async()=>{
  const f=fixture('/','?reserve=open&workspace=materials&course=7');await new Promise(setImmediate);f.deliver();assert.equal(f.dashboardOptions.initialState.workspace,'materials');assert.equal(f.dashboardOptions.initialState.courseId,'7');assert.equal(f.nativeToolsCreated,0);
@@ -87,4 +94,12 @@ test('while the dashboard shows, its own command row carries the Canvas dashboar
  const mounts=f.mounts;back.events.click();assert.equal(f.mounts,mounts+1);assert.equal(toolbar.hidden,true);assert.equal(back.hidden,true);
  // The dashboard's switch shows Canvas's own dashboard exactly as the host button does.
  f.dashboardOptions.onNative();assert.equal(f.native.hidden,false);assert.equal(f.sidebar.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
+});
+
+test('a coalesced dashboard keeps Canvas visible until its complete first frame reports ready',async()=>{
+ const f=fixture('/','',{deferDashboard:true});await new Promise(setImmediate);f.deliver();f.loadStyles();assert.equal(f.native.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);f.paintDashboard();assert.equal(f.native.hidden,true);assert.equal(f.nodes.get('reserve-companion-host').hidden,false);
+});
+
+test('an initial coalesced render failure leaves Canvas usable and a later readiness callback cannot reveal it',async()=>{
+ const f=fixture('/','',{deferDashboard:true});await new Promise(setImmediate);f.deliver();f.loadStyles();f.dashboardOptions.onRenderError(Error('initial render failed'));assert.equal(f.native.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);f.paintDashboard();assert.equal(f.native.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
 });

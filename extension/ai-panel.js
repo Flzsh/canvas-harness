@@ -347,9 +347,12 @@
       byId('sharing-note').textContent=state.autoSend?'Send opens '+name+', adds your question and selected material, then submits it.':'Send opens '+name+' with your question and selected material. Review and submit the draft there, or enable automatic sending below.';
       byId('auto-send').checked=state.autoSend;byId('auto-send').disabled=busy;
       const chosen=[...state.selected].map(id=>state.knownSources.get(id)).filter(Boolean);
-      byId('selection-summary').textContent=chosen.length?chosen.length+' selected on Canvas':catalog?.active?'Opened assignment':'No Canvas items selected';
-      byId('selected-items').replaceChildren(...chosen.map(source=>{const li=make('li');li.append(make('strong',source.title),make('small',source.courseName||source.kind));return li;}));
-      byId('scope-hint').textContent=chosen.length?'Change your selection using the circles on Canvas.':'Use the circles on Canvas to choose assignments or material. You can also ask a question without context.';
+      // from the PDF reader the material is the chosen pages' words, not items picked with circles on Canvas
+      const fromPdf=chosen.length>0&&chosen.every(source=>String(source.id).startsWith('pdf-page:'));
+      byId('prompt').placeholder=fromPdf?'Ask about these pages…':'What would you like help with?';
+      byId('selection-summary').textContent=fromPdf?'From your PDF':chosen.length?chosen.length+' selected on Canvas':catalog?.active?'Opened assignment':'No Canvas items selected';
+      byId('selected-items').replaceChildren(...chosen.map(source=>{const li=make('li');li.append(make('strong',source.title),make('small',fromPdf?'every word on these pages':source.courseName||source.kind));return li;}));
+      byId('scope-hint').textContent=fromPdf?'These words go to the AI site with your question.':chosen.length?'Change your selection using the circles on Canvas.':'Use the circles on Canvas to choose assignments or material. You can also ask a question without context.';
       byId('all-row').hidden=!catalog?.active||chosen.length!==1||chosen[0]?.id!==catalog.active.id;
       byId('all-linked').checked=state.all;byId('all-linked').disabled=busy;
       byId('assignment-pdfs-row').hidden=!chosen.some(source=>source.kind==='assignment');

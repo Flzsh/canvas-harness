@@ -1,6 +1,6 @@
 # Canvas Harness privacy
 
-Applies to Canvas Harness 2.28.2. Last updated October 15, 2026.
+Applies to Canvas Harness 3.1.0. Last updated October 19, 2026.
 
 Canvas Harness is a browser extension maintained by Flzsh. It displays information from the Canvas account already signed in on your school's website. It has no developer-operated account service, analytics collector or tracking endpoint in the extension code for this release.
 
@@ -8,12 +8,21 @@ Canvas Harness is a browser extension maintained by Flzsh. It displays informati
 
 - Canvas Harness reads courses, assignments, due dates, teacher materials, announcements and grades that your signed-in Canvas account is allowed to view. Canvas API requests are read-only.
 - The extension can cache fetched Canvas information, including course and assignment details and grade data, in your browser. Personal notes, plans, bookmarks, homework check-offs, imported course artwork, layout choices, GPA preferences and the study companion's name, look and progress counters are also stored locally.
+- Your look settings (light or dark theme, motion, artwork at night, whether the pony is shown) are kept once for this browser, not per account. So the opening screen can be dark from its first moment, the word "dark" (and nothing else) is remembered in the Canvas site's own browser storage while dark is chosen; choosing light removes it.
 - The extension uses Chrome/Edge extension local storage and separates saved data by school Canvas origin and account ID. It does not send these records to a Canvas Harness developer server or synchronize them through a Canvas Harness account.
 - Cached coursework becomes visible only after the signed-in Canvas account is verified. Returning to an idle tab temporarily hides private content while the account is checked again; a different account cannot inherit the previous account's visible workspace. The one exception is a switch you control: **Open at once** (off unless you turn it on) shows your saved workspace immediately on load and on returning to the tab while the same account check runs, and closes the workspace if the check fails. While it is on, the extension also remembers the account ID that last opened the workspace on that Canvas site. Leave it off on a shared computer.
 - Grades are hidden by default in the interface, but hiding them does not necessarily remove them from the local cache. GPA and what-if calculations run locally. Grade and GPA data are excluded from the AI context builder.
 - Checking off homework or making a personal plan changes only your local Canvas Harness data. It does not submit homework, edit a Canvas assignment or change your Canvas grade.
 
 Personal backups are files that you choose to export. They can contain private notes, preferences, artwork and other personal information. Keep them private. The public extension package and example previews should contain only shared code, generic artwork and artificial example data, never your exported backup or personal course records.
+
+## PDF reader
+
+Clicking an identified PDF link or preview on an Instructure Canvas assignment or submission page opens the split reader. It requests that chosen file through the signed-in Canvas session and reads its bytes, document name and page text locally for display, selection and search. The reader accepts files up to 32 MiB. Custom Canvas domains retain Canvas's original viewer, and a blocked or unsupported download falls back to that viewer. The reader does not upload the original PDF to an AI provider.
+
+Highlights, underlines, notes and pen strokes are saved in extension local storage on this device, separated by Canvas origin, verified account ID and file. Marks load only after sign-in verification and are hidden while the account is rechecked after returning to a hidden tab. Older site-and-file marks move once to the first verified account that opens that file, and the old record is deleted. These annotations do not change the original Canvas file. A copy you explicitly save with marks can contain them. The reader also remembers its split width and uses the browser's saved appearance choice.
+
+Reading or annotating a PDF does not share its text with an AI provider. Pressing **Ask AI** prepares only your chosen text or page text, with the document name and page reference, in the local AI pane after verifying your Canvas sign-in. Your annotations are not included. That chosen text leaves for the selected AI provider only when you then press **Send**. Review it first: the PDF's own words or filename may contain personal information.
 
 ## AI websites: your choice to share
 
@@ -23,7 +32,7 @@ You choose sources using the selection circles in Canvas. An opened assignment s
 
 When you click **Send**, Canvas Harness prepares the chosen text and your question and inserts them into the selected AI website's chat box. **That text has reached the provider's website even if you have not submitted the chat.** By default, you review and submit it there. If you enable **Send automatically after inserting**, Canvas Harness also attempts to press that website's Send button. The provider's own account settings, privacy policy and data retention rules apply. **Copy** puts the prepared text on your clipboard only when you ask for it.
 
-PDF processing happens locally in the extension. A small PDF from Canvas or your device is converted into limited extracted text for your review. The AI handoff uses that text; it does not upload the original binary PDF file. PDFs are limited to 2 MiB and extraction to 20 pages and 60,000 characters per file, with a 100,000-character combined context limit. There is no OCR for scanned images. Attached-PDF text and your unsent question remain in the open panel's memory, not in the personal backup. Provider chat history is stored according to that provider's own rules.
+Separate from the split reader, PDF attachments selected in the AI pane are processed locally. A small PDF from Canvas or your device is converted into limited extracted text for your review. The AI handoff uses that text; it does not upload the original binary PDF file. PDFs are limited to 2 MiB and extraction to 20 pages and 60,000 characters per file, with a 100,000-character combined context limit. There is no OCR for scanned images. Attached-PDF text and your unsent question remain in the open panel's memory, not in the personal backup. Provider chat history is stored according to that provider's own rules.
 
 ## Browser permissions
 

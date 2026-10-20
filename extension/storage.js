@@ -6,6 +6,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const gpa=root.CanvasHarnessGPA||(typeof module==='object'&&module.exports?require('./gpa-model.js'):null);
   const customization=root.ReserveCustomization||(typeof module==='object'&&module.exports?require('./customization-model.js'):null);
   const layoutDefaults=customization?.defaults||{};
+  const appearance=root.ReservePagePreferences||(typeof module==='object'&&module.exports?require('./page-preferences.js'):null);
   // The focus room's session, log and choices (focus-room-model.js); without it the Home timer keeps its old fields.
   const focusModel=root.ReserveFocusRoomModel||(typeof module==='object'&&module.exports?require('./focus-room-model.js'):null);
   // The review deck's cards, settings and days (review-model.js).
@@ -141,33 +142,39 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     return cleanData(input.data);
   }
   function browserAdapter() {
-    if(root.chrome?.storage?.local)return {read:async key=>(await chrome.storage.local.get(key))[key],write:async(key,value)=>chrome.storage.local.set({[key]:value}),subscribe:(key,fn)=>{const handler=(changes,area)=>{if(area==='local'&&changes[key])fn();};chrome.storage.onChanged.addListener(handler);return()=>chrome.storage.onChanged.removeListener(handler);}};
+    if(root.chrome?.storage?.local)return {remote:appearance?.messenger?.(),read:async key=>(await chrome.storage.local.get(key))[key],write:async(key,value)=>chrome.storage.local.set({[key]:value}),subscribe:(key,fn)=>{const handler=(changes,area)=>{if(area==='local'&&changes[key])fn();};chrome.storage.onChanged.addListener(handler);return()=>chrome.storage.onChanged.removeListener(handler);}};
     return {read:async key=>{const v=localStorage.getItem(key);return v?JSON.parse(v):null;},write:async(key,value)=>localStorage.setItem(key,JSON.stringify(value)),subscribe:(key,fn)=>{const handler=event=>{if(event.key===key)fn();};root.addEventListener('storage',handler);return()=>root.removeEventListener('storage',handler);}};
   }
   function createStore({accountId,origin=(globalThis.ReserveSite.origin()),adapter=browserAdapter()} = {}) {
     if(!accountId)throw Error('A verified account is required before loading personal data.');
     const owner={accountId:String(accountId),origin},key=`reserve:v1:${origin}:${accountId}`,listeners=new Set();let current=defaults();
-    async function load(){const saved=await adapter.read(key);if(saved)current=cleanData(saved);return clone(current);}
+    async function readData(){const saved=await adapter.read(key),next=saved?cleanData(saved):defaults();return appearance.apply(next,await appearance.read(adapter,next));}
+    async function load(){current=await readData();return clone(current);}
     function get(){return clone(current);}
     // A view failing after a successful write must not turn persistence into a
     // rejected transaction. Give each listener its own snapshot and isolation.
     function notify(){for(const listener of listeners){try{const result=listener(get());if(result&&typeof result.then==='function')Promise.resolve(result).catch(()=>{});}catch{}}}
     function update(mutator) {
-      return lock(key,async()=>{const saved=await adapter.read(key),next=saved?cleanData(saved):defaults();
+      return lock(key,async()=>{const next=await readData(),before=appearance.fromData(next),personalBefore=JSON.stringify(appearance.personal(next));
         const oldLayout=next.settings.dashboardLayout,oldOrder=next.settings.deskOrder,oldGuard=focusGuard?JSON.stringify(focusGuard.record(next)):'';
         mutator(next);
         // Older Canvas Harness settings controls still write dashboardLayout alone.
         // Accept those updates without overwriting an explicit newer deskOrder.
         if(next.settings?.dashboardLayout!==oldLayout&&next.settings?.deskOrder===oldOrder&&['split','list'].includes(next.settings.dashboardLayout))next.settings.deskOrder=next.settings.dashboardLayout==='list'?'stacked':'context-first';
-        const clean=cleanData(next);await adapter.write(key,clean);current=clean;
+        const clean=cleanData(next),after=appearance.fromData(clean),changes={};
+        for(const name of Object.keys(after))if(after[name]!==before[name])changes[name]=after[name];
+        const personal=appearance.personal(clean);
+        if(JSON.stringify(personal)!==personalBefore)await adapter.write(key,personal);
+        if(Object.keys(changes).length)await appearance.write(adapter,changes);
         // Written only when this save started, paused or ended a guarded session (or changed its sites), so another
         // account's tab saving something else never switches the guard off.
         if(focusGuard){const guard=focusGuard.record(clean);if(JSON.stringify(guard)!==oldGuard)try{await adapter.write(focusGuard.KEY,guard);}catch{}}
-        notify();return get();});
+        current=appearance.apply(clean,await appearance.read(adapter));notify();return get();});
     }
     async function replace(data){const clean=cleanData(data);return update(next=>{for(const name of Object.keys(next))delete next[name];Object.assign(next,clean);});}
     function validCache(snapshot) {return snapshot&&snapshot.origin===origin&&String(snapshot.user?.id)===String(accountId)&&Array.isArray(snapshot.courses)&&Array.isArray(snapshot.assignments);}
-    const unsubscribe=adapter.subscribe?.(key,()=>{lock(key,async()=>{const previous=JSON.stringify(current);await load();if(JSON.stringify(current)!==previous)notify();}).catch(()=>{});});
+    const reload=()=>{lock(key,async()=>{const previous=JSON.stringify(current);await load();if(JSON.stringify(current)!==previous)notify();}).catch(()=>{});};
+    const unsubscribe=adapter.subscribe?.(key,reload),unsubscribeAppearance=adapter.subscribe?.(appearance.KEY,reload);
     async function saveRecovery(){return lock(key,async()=>{await load();await adapter.write(`${key}:cache`,null);await adapter.write(`${key}:recovery`,{format:'reserve-backup',version:1,owner,data:get()});});}
     async function readRecovery(){const v=await adapter.read(`${key}:recovery`);return v?validateBackup(v,owner):null;}
     const materialKey=`${key}:materials`;
@@ -182,7 +189,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         await adapter.write(materialKey,entries);
       });
     }
-    return {load,get,update,replace,owner,saveRecovery,readRecovery,readResourceCache,writeResourceCache,subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn);},destroy:()=>{unsubscribe?.();listeners.clear();},exportBackup:()=>({format:'reserve-backup',version:1,owner,exportedAt:new Date().toISOString(),data:cleanData(get())}),readCache:async()=>{const v=await adapter.read(`${key}:cache`);return validCache(v)?v:null;},writeCache:async snapshot=>{if(!validCache(snapshot))throw Error('Cache owner, origin, or account is invalid.');if(bytes(snapshot)>4000000)throw Error('Canvas snapshot is too large to cache. Live data is still available.');return adapter.write(`${key}:cache`,snapshot);}};
+    return {load,get,update,replace,owner,saveRecovery,readRecovery,readResourceCache,writeResourceCache,subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn);},destroy:()=>{unsubscribe?.();unsubscribeAppearance?.();listeners.clear();},exportBackup:()=>({format:'reserve-backup',version:1,owner,exportedAt:new Date().toISOString(),data:cleanData(get())}),readCache:async()=>{const v=await adapter.read(`${key}:cache`);return validCache(v)?v:null;},writeCache:async snapshot=>{if(!validCache(snapshot))throw Error('Cache owner, origin, or account is invalid.');if(bytes(snapshot)>4000000)throw Error('Canvas snapshot is too large to cache. Live data is still available.');return adapter.write(`${key}:cache`,snapshot);}};
   }
   const api = { createStore, validateBackup };
   root.ReserveStorage = api;

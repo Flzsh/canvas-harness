@@ -29,6 +29,8 @@
  // Capture the address while this content-script context is live. Harness's updater can reload the extension
  // before an active Canvas tab refreshes; calling runtime.getURL later would then throw and point at Canvas.
  const extensionBase=(()=>{try{
+  // Assignment, feedback and upload pages stay plain Canvas (ReserveSite.vanillaPage): the room never opens there.
+  if(root.ReserveSite?.vanillaPage?.())return null;
   // Canvas is explicitly listed in the manifest's fixed resources. Prefer that address for extension frames;
   // the broader custom-site rule also lists these files and Chrome may otherwise choose its temporary host.
   if(root.chrome?.runtime?.id&&/^https:\/\/[\w.-]+\.instructure\.com$/.test(root.location.origin))return `chrome-extension://${root.chrome.runtime.id}/`;

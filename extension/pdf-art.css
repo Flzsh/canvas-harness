@@ -1,0 +1,36 @@
+/* The PDF reader's icons (generated): one-shot actions on hover / focus-visible / .is-active of a .pa-i host. */
+.pa-i svg{overflow:visible}.pa-i .hatch{opacity:.55}.pa-i svg *{transform-box:fill-box}
+.pa-i:is(:hover,:focus-visible,.is-active) .pa-lens{animation:pa-lens .5s cubic-bezier(.3,1.5,.5,1)}
+@keyframes pa-lens{40%{transform:scale(1.14)}}
+.pa-i:is(:hover,:focus-visible) .pa-glass{animation:pa-scan .9s ease-in-out}
+@keyframes pa-scan{30%{transform:translate(-5px,-4px)}65%{transform:translate(4px,3px)}}
+.pa-i:is(:hover,:focus-visible) .pa-th{animation:pa-th .45s cubic-bezier(.3,1.4,.5,1) both}.pa-i:is(:hover,:focus-visible) .pa-th1{animation-delay:.07s}.pa-i:is(:hover,:focus-visible) .pa-th2{animation-delay:.14s}
+@keyframes pa-th{from{transform:translateX(-4px);opacity:.2}}
+.pa-i:is(:hover,:focus-visible) .pa-ol{animation:pa-ol .4s ease-out both}.pa-i:is(:hover,:focus-visible) .pa-ol1{animation-delay:0.06s}.pa-i:is(:hover,:focus-visible) .pa-ol2{animation-delay:0.12s}.pa-i:is(:hover,:focus-visible) .pa-ol3{animation-delay:0.18s}.pa-i:is(:hover,:focus-visible) .pa-ol4{animation-delay:0.24s}
+@keyframes pa-ol{from{transform:translateX(-3px);opacity:.15}}
+.pa-i:is(:hover,:focus-visible) .pa-arrow-l{animation:pa-nl .4s ease-in-out}.pa-i:is(:hover,:focus-visible) .pa-arrow-r{animation:pa-nr .4s ease-in-out}
+@keyframes pa-nl{50%{transform:translateX(-3px)}}@keyframes pa-nr{50%{transform:translateX(3px)}}
+.pa-i:is(:hover,:focus-visible) .pa-br0{animation:pa-b0 .5s ease-in-out}.pa-i:is(:hover,:focus-visible) .pa-br1{animation:pa-b1 .5s ease-in-out}.pa-i:is(:hover,:focus-visible) .pa-br2{animation:pa-b2 .5s ease-in-out}.pa-i:is(:hover,:focus-visible) .pa-br3{animation:pa-b3 .5s ease-in-out}
+@keyframes pa-b0{50%{transform:translate(-2px,-2px)}}@keyframes pa-b1{50%{transform:translate(2px,-2px)}}@keyframes pa-b2{50%{transform:translate(-2px,2px)}}@keyframes pa-b3{50%{transform:translate(2px,2px)}}
+.pa-i .pa-stroke{transform-origin:0 50%}.pa-i:is(:hover,:focus-visible,.is-active) .pa-stroke{animation:pa-lay .6s ease-out both}
+.pa-i:is(:hover,:focus-visible,.is-active) .pa-marker{animation:pa-swipe .6s ease-in-out}
+@keyframes pa-lay{from{transform:scaleX(0)}}@keyframes pa-swipe{0%{transform:translate(-12px,2px) rotate(-6deg)}100%{transform:none}}
+.pa-i:is(:hover,:focus-visible,.is-active) .pa-uline{animation:pa-draw .5s ease-out both}
+@keyframes pa-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+.pa-i .pa-fold{transform-origin:0 0}.pa-i:is(:hover,:focus-visible,.is-active) .pa-fold{animation:pa-fold .6s ease-in-out}.pa-i:is(:hover,:focus-visible,.is-active) .pa-sticky{animation:pa-sway .6s ease-in-out}
+@keyframes pa-fold{50%{transform:rotate(-18deg) scale(1.08)}}@keyframes pa-sway{50%{transform:rotate(-3deg)}}
+.pa-i:is(:hover,:focus-visible,.is-active) .pa-scrib{animation:pa-draw .7s ease-out forwards}.pa-i:is(:hover,:focus-visible,.is-active) .pa-pencil{animation:pa-wig .7s ease-in-out}
+@keyframes pa-wig{20%{transform:translate(-2px,2px)}40%{transform:translate(1px,0)}60%{transform:translate(-1px,2px)}80%{transform:translate(1px,1px)}}
+.pa-i .pa-crumbs{opacity:0}.pa-i:is(:hover,:focus-visible,.is-active) .pa-rub{animation:pa-rub .6s ease-in-out}.pa-i:is(:hover,:focus-visible,.is-active) .pa-crumbs{animation:pa-crumb .7s ease-out both}
+@keyframes pa-rub{25%{transform:translateX(-2.5px)}50%{transform:translateX(2px)}75%{transform:translateX(-1.5px)}}@keyframes pa-crumb{30%,70%{opacity:1}to{opacity:0;transform:translateY(1.5px)}}
+.pa-i .pa-star{transform-origin:50% 50%}.pa-i:is(:hover,:focus-visible,.is-active) .pa-star0{animation:pa-tw .7s cubic-bezier(.3,1.5,.5,1)}.pa-i:is(:hover,:focus-visible,.is-active) .pa-star1{animation:pa-tw .6s .12s cubic-bezier(.3,1.5,.5,1) both}.pa-i:is(:hover,:focus-visible,.is-active) .pa-star2{animation:pa-tw .6s .22s cubic-bezier(.3,1.5,.5,1) both}
+@keyframes pa-tw{40%{transform:scale(1.25) rotate(18deg)}}
+.pa-i:is(:hover,:focus-visible) .pa-arrow-d{animation:pa-drop .6s cubic-bezier(.5,0,.5,1.4)}
+@keyframes pa-drop{0%{transform:translateY(-5px);opacity:.3}60%{transform:translateY(2px);opacity:1}}
+.pa-i .pa-x{transform-origin:50% 50%}.pa-i:is(:hover,:focus-visible) .pa-x{animation:pa-x .4s ease-in-out}@keyframes pa-x{50%{transform:rotate(90deg) scale(.9)}}
+.pa-i .pa-undo{transform-origin:50% 50%}.pa-i:is(:hover,:focus-visible) .pa-undo{animation:pa-undo .5s ease-in-out}@keyframes pa-undo{50%{transform:rotate(-28deg)}}
+.pa-i:is(:hover,:focus-visible,.is-active) .pa-fs0{animation:pa-fs0 .5s ease-in-out}.pa-i:is(:hover,:focus-visible,.is-active) .pa-fs1{animation:pa-fs1 .5s ease-in-out}.pa-i:is(:hover,:focus-visible,.is-active) .pa-fs2{animation:pa-fs2 .5s ease-in-out}.pa-i:is(:hover,:focus-visible,.is-active) .pa-fs3{animation:pa-fs3 .5s ease-in-out}
+@keyframes pa-fs0{50%{transform:translate(-1.5px,-1.5px)}}@keyframes pa-fs1{50%{transform:translate(1.5px,-1.5px)}}@keyframes pa-fs2{50%{transform:translate(-1.5px,1.5px)}}@keyframes pa-fs3{50%{transform:translate(1.5px,1.5px)}}
+.pa-i .pa-rp{transform-origin:0 50%}.pa-i:is(:hover,:focus-visible,.is-active) .pa-rp{animation:pa-rp .6s ease-in-out}@keyframes pa-rp{50%{transform:scaleX(.8) skewY(-3deg)}}
+.pa-i:is(:hover,:focus-visible) .pa-sv{animation:pa-sv .6s cubic-bezier(.3,1.4,.5,1)}@keyframes pa-sv{40%{transform:translateY(3px)}}
+@media (prefers-reduced-motion:reduce){.pa-i svg *{animation:none!important}.pa-i .pa-scrib{stroke-dashoffset:0}}

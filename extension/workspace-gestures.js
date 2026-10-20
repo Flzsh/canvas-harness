@@ -15,7 +15,7 @@
   const doc=container.ownerDocument||root.document,win=doc.defaultView||root;
   const raf=cb=>(win.requestAnimationFrame||((f)=>setTimeout(f,16)))(cb),caf=id=>(win.cancelAnimationFrame||clearTimeout)(id);
   let pending=null,drag=null,live=null,hud=null,ghost=null,slot=null,dead=false,saving=false,frame=0,revision=0,suppressUntil=0,observed=null,observedWidth=0;
-  const animations=new Map();
+  const animations=new Map(),panelSizes=new WeakMap();let layoutMemo=null;
   const reduced=()=>['off','still'].includes(container.dataset.motionStyle)||win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const all=sel=>Array.from(container.querySelectorAll(sel));
   const main=()=>container.querySelector('.rd-main.rd-desk');
@@ -44,14 +44,18 @@
    // The Assignments tab is the list beside the reader, whatever Home looks like.
    const fixed=container.dataset.workPage==='assignments';if(fixed)layout={axis:'x',children:['work','reader']};
    if(getSettings().showCourseInformation===false&&!drag)layout=M.prune(layout,'context');
-   const spec=M.grid(layout,desk.clientWidth||desk.getBoundingClientRect().width,fixed?{reader:'l'}:getSettings().moduleSize||{}),list=panels();
+   if(desk!==observed){observed=desk;observedWidth=0;layoutMemo=null;}
+   const width=observedWidth||desk.clientWidth||desk.getBoundingClientRect().width,list=panels(),heights={};let measured=false;
+   // Observer sizes are border-box heights, like offsetHeight. Unknown sizes are read before any style write.
+   for(const node of list){const h=panelSizes.get(node)??(Number(node.offsetHeight)||0);heights[node.dataset.arrangeKey]=h;if(h>0)measured=true;}
+   const sizes=fixed?{reader:'l'}:getSettings().moduleSize||{},signature=JSON.stringify([layout,width,sizes,heights,drag?.key||'']);
+   if(layoutMemo?.desk===desk&&layoutMemo.signature===signature&&list.length===layoutMemo.list.length&&list.every((node,i)=>node===layoutMemo.list[i]))return;
+   const spec=M.grid(layout,width,sizes);layoutMemo={desk,signature,list};
    // Written only when it changed, so an unchanged layout costs no restyle.
    const put=(node,name,value)=>{if(node.style.getPropertyValue?.(name)!==value)node.style.setProperty(name,value);};
    put(desk,'--rd-layout-columns',spec.columns);
    for(const node of list){const cell=spec.cells[node.dataset.arrangeKey];if(cell)put(node,'--rd-panel-column',cell.column);}
-   // Columns first, then rows from what each module now measures, so stacks beside one another stay independent.
-   const heights={};let measured=false;
-   for(const node of list){const h=Number(node.offsetHeight)||0;heights[node.dataset.arrangeKey]=h;if(h>0)measured=true;}
+   // Column rewraps deliver fresh heights through ResizeObserver before paint, without a read-after-write flush.
    if(measured&&M.rows){
     const placed=M.rows(spec.resolved,heights,{gap:ROW_GAP,unit:ROW_UNIT});
     put(desk,'--rd-layout-rows','none');if(desk.dataset.rows!=='measured')desk.dataset.rows='measured';
@@ -64,12 +68,19 @@
    watch(list);
   }
   // A module that grows or shrinks (a list loads, a note is typed) moves the ones below it.
-  let watched=new Set(),relayout=0;
-  const sizeWatch=win.ResizeObserver?new win.ResizeObserver(()=>{if(dead||drag||relayout)return;relayout=raf(()=>{relayout=0;if(!dead&&!drag)applyLayout();});}):null;
+  let watched=new Set();
+  const sizeWatch=win.ResizeObserver?new win.ResizeObserver(entries=>{
+   if(dead)return;let changed=false,widthChanged=false;
+   for(const entry of entries){const node=entry.target,box=entry.borderBoxSize?.[0]||entry.borderBoxSize,cs=!box?win.getComputedStyle?.(node):null,px=(...names)=>names.reduce((n,k)=>n+(parseFloat(cs?.[k])||0),0);
+    if(node===observed){const border=box?win.getComputedStyle?.(node):null,width=box?box.inlineSize-(parseFloat(border?.borderLeftWidth)||0)-(parseFloat(border?.borderRightWidth)||0):(entry.contentRect?.width||0)+px('paddingLeft','paddingRight');if(width!==observedWidth){observedWidth=width;changed=widthChanged=true;}}
+    else if(watched.has(node)){const height=Math.round(box?.blockSize??((entry.contentRect?.height||0)+px('paddingTop','paddingBottom','borderTopWidth','borderBottomWidth')));if(panelSizes.get(node)!==height){panelSizes.set(node,height);changed=true;}}
+   }
+   if(changed){if(drag&&!widthChanged)return;if(drag)cancel();applyLayout();}
+  }):null;
   function watch(list){
-   if(!sizeWatch)return;const next=new Set(list);
+   if(!sizeWatch)return;const next=new Set([observed,...list].filter(Boolean));
    for(const node of watched)if(!next.has(node))sizeWatch.unobserve(node);
-   for(const node of next)if(!watched.has(node))sizeWatch.observe(node);
+   for(const node of next)if(!watched.has(node))sizeWatch.observe(node,{box:'border-box'});
    watched=next;
   }
   function restore(smooth=true){
@@ -334,15 +345,13 @@
   function sync(){
    if(drag&&!drag.node.isConnected)cancel({quiet:true});
    if(!drag)applyLayout();
-   const desk=main();if(observer&&desk!==observed){if(observed)observer.unobserve(observed);if(desk)observer.observe(desk);observed=desk;}
    for(const grip of all('[data-arrange-grip]'))grip.removeAttribute('aria-pressed');
   }
-  const observer=win.ResizeObserver?new win.ResizeObserver(entries=>{const width=entries[0]?.contentRect.width||0;if(Math.abs(width-observedWidth)<1)return;observedWidth=width;if(drag)cancel();applyLayout();}):null;
   function outsideUp(event){if(pending?.pointerId===event.pointerId)clearPending();}
   function lostCapture(event){if(drag&&!drag.keyboard&&drag.pointerId===event.pointerId)cancel();}
   const blur=()=>cancel();
   doc.addEventListener?.('pointerup',outsideUp);doc.addEventListener?.('lostpointercapture',lostCapture);win.addEventListener?.('blur',blur);
-  function destroy(){dead=true;revision++;cancel({quiet:true});clearPending();clearVisuals();for(const animation of animations.values())animation.cancel();animations.clear();observer?.disconnect();sizeWatch?.disconnect();if(relayout)caf(relayout);doc.removeEventListener?.('pointerup',outsideUp);doc.removeEventListener?.('lostpointercapture',lostCapture);win.removeEventListener?.('blur',blur);live?.remove();}
+  function destroy(){dead=true;revision++;cancel({quiet:true});clearPending();clearVisuals();for(const animation of animations.values())animation.cancel();animations.clear();sizeWatch?.disconnect();doc.removeEventListener?.('pointerup',outsideUp);doc.removeEventListener?.('lostpointercapture',lostCapture);win.removeEventListener?.('blur',blur);live?.remove();}
   return {active:()=>!!drag,dragging:()=>!!drag,pointerdown,pointermove,pointerup,pointercancel,click,contextmenu,action,keydown,sync,destroy};
  }
  const api={HOLD_MS,HOLD_DELAY_MS,SLOP,create};root.ReserveWorkspaceGestures=api;if(typeof module==='object'&&module.exports)module.exports=api;

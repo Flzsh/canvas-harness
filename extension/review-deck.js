@@ -20,7 +20,22 @@
   const courses=()=>(getContext().courses||[]).map(c=>({id:String(c.id),name:c.shortName||c.name,color:c.color||'#8a8577'}));
   const courseName=id=>id==='personal'?'Personal':courses().find(c=>c.id===String(id))?.name||'A past course';
   const courseColor=id=>courses().find(c=>c.id===String(id))?.color||'#8a8577';
-  const saveDeck=fn=>save(data=>{const d=M().cleanDeck(data.reviewDeck);fn(d);data.reviewDeck=d;});
+  const saveDeck=fn=>save(data=>{const d=M().cleanDeck(data.reviewDeck);fn(d);data.reviewDeck=d;}).then(ok=>{paintCounts();return ok;});
+  // The counts on the toolbar's Cards, each course's Flashcards and the focus room's cards button follow the deck at
+  // once: the workspace redraws only what a click changes, so the deck keeps its own badges current.
+  function paintCounts(){
+   if(dead)return;
+   const badge=(button,cls,n)=>{let b=button.querySelector('.'+cls);if(n){if(!b){b=doc.createElement('b');b.className=cls;button.append(b);}if(b.textContent!==String(n))b.textContent=String(n);}else b?.remove();};
+   const due=dueCount();
+   for(const b of container.querySelectorAll('.rv-toolbar-button')){badge(b,'rv-count',due);b.setAttribute('aria-label',`Review deck${due?`, ${due} cards due`:''}`);}
+   for(const b of container.querySelectorAll('.fr-cards'))badge(b,'fr-badge',due);
+   if(container.querySelector('.rv-course-button')){
+    const d=deck(),q=M().queue(d,today(),{tests:tests()}),byCourse={};
+    for(const x of q){const c=d.cards.find(card=>card.id===x.id)?.c;if(c)byCourse[c]=(byCourse[c]||0)+1;}
+    for(const b of container.querySelectorAll('.rv-course-button')){const id=b.dataset.id,has=d.cards.some(c=>c.c===id),label=has?'Flashcards':'Make flashcards';
+     if(b.firstChild?.nodeType===3&&b.firstChild.nodeValue!==label)b.firstChild.nodeValue=label;badge(b,'rv-count',byCourse[id]||0);}
+   }
+  }
   const fmt=v=>{const t=String(v??'');const html=root.ReserveMath?.hasMath?.(t)&&root.ReserveMath.renderText?root.ReserveMath.renderText(t):E(t);return html.replace(/\n/g,'<br>');};
   function say(text,ms=4000){status=text;clearTimeout(statusTimer);if(ms)statusTimer=setTimeout(()=>{status='';const el=node?.querySelector('[data-rv-status]');if(el)el.textContent='';},ms);const el=node?.querySelector('[data-rv-status]');if(el)el.textContent=text;}
 
@@ -260,7 +275,7 @@ ${list.length?`<ul class="rv-list">${list.slice(0,filter.limit).map(c=>`<li data
    }
    return true;   // the workspace's own shortcuts stay quiet while the deck is open
   }
-  function sync(){if(node&&view==='manage'&&tab==='cards')render();}
+  function sync(){paintCounts();if(node&&view==='manage'&&tab==='cards')render();}
   function destroy(){dead=true;close();clearTimeout(statusTimer);if(api.current===instance)api.current=null;}
   const instance={open,close,isOpen:()=>!!node,click,input,change,keydown,sync,destroy,moduleBody,todayLine,hubLink,courseButton,dueCount};
   api.current=instance;

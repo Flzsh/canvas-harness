@@ -44,6 +44,7 @@
   }
 
   function create({dialog, container, store, onSize = () => {}}) {
+    if(root.ReserveSite?.vanillaPage(root.location))return null;
     const document = dialog.ownerDocument, window = document.defaultView || root;
     const listeners = [], dragListeners = [], handles = {};
     const viewport = () => ({width:window.innerWidth, height:window.innerHeight});

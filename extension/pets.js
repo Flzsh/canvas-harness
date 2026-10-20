@@ -44,11 +44,14 @@
  // lies down and rises before it walks, and the neck swings to wherever the pose wants it.
  const POSE={stand:{down:0,neck:9,head:0},flag:{down:0,neck:6,head:-2},lie:{down:11.5,neck:10,head:0},sleep:{down:11.5,neck:44,head:18},read:{down:11.5,neck:29,head:14},eat:{down:0,neck:60,head:22}};
  function create({container,getPet,savePet,info=()=>({}),actions={},now=()=>Date.now()}){
+  if(root.ReserveSite?.vanillaPage(root.location))return null;
   const doc=container.ownerDocument||root.document,win=doc.defaultView||root,art=root.ReservePetArt,E=value=>root.ReserveUI?.escapeHTML?root.ReserveUI.escapeHTML(value):String(value).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
-  let pet=clean(getPet()),layer=null,node=null,bubble=null,dead=false,raf=0,timer=0,last=0,pose='stand',face='right';
-  let spot={ledge:null,u:160},grab=null,menuOpen=false,focusing=false,quietUntil=0,lastInput=now(),sayTimer=0,unseen=0;
+  let pet=clean(getPet()),layer=null,node=null,bubble=null,dead=false,film=0,timer=0,last=0,next=0,debt=0,stepping=false,pose='stand',face='right';
+  let spot={ledge:null,u:160},grab=null,releaseGrab=null,menuOpen=false,focusing=false,quietUntil=0,lastInput=now(),sayTimer=0,unseen=0;
   // what it is doing: null (resting), a walk, or a jump; and the eased numbers
   let goal=null,rest='stand',speed=0,phase=0,follow=0,reel=0;const ch={leg:0,down:0,neck:9,head:0,alpha:1};
+  const FILM=1000/24,STEP=1/60,watched=new Set();let geometry=null,dirty=true,layoutFrame=0,layoutTimer=0,layoutVersion=0,resizeWatch=null,layoutWatch=null,life=0,decisionPending=false,layoutAnimations=new WeakSet(),bubbleBox={w:250,h:120};
+  const filmNow=()=>win.performance?.now?.()??now();
   const reduced=()=>['off','still'].includes(container.dataset.motionStyle)||win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const size=()=>SIZES[pet.size]||SIZES.medium;
   const visible=()=>pet.enabled&&pet.roam!=='off';
@@ -58,29 +61,41 @@
    layer.innerHTML=`<button type="button" class="pet" data-pose="stand" data-face="right" aria-haspopup="menu" aria-expanded="false"></button>`;
    container.append(layer);node=layer.firstElementChild;node.innerHTML=art.svg({title:pet.name});
    node.addEventListener('pointerdown',down);node.addEventListener('click',click);node.addEventListener('keydown',key);
-   win.addEventListener('scroll',place,{passive:true,capture:true});win.addEventListener('resize',place,{passive:true});
-   container.addEventListener('scroll',place,{passive:true,capture:true});   // the workspace column scrolls inside the workspace
+    for(const type of ['animationstart','animationcancel'])node.addEventListener(type,resetReels);
+   win.addEventListener('scroll',invalidate,{passive:true,capture:true});win.addEventListener('resize',invalidate,{passive:true});
+   container.addEventListener('scroll',invalidate,{passive:true,capture:true});   // the workspace column scrolls inside the workspace
+   for(const type of ['load','transitionrun','transitionend','transitioncancel','animationend','animationcancel'])container.addEventListener(type,invalidate,{passive:true,capture:true});
+   doc.fonts?.addEventListener?.('loadingdone',invalidate);
+   const mounted=++life;
+   if(win.ResizeObserver)resizeWatch=new win.ResizeObserver(()=>{if(mounted===life)invalidate();});
+    if(win.MutationObserver){layoutWatch=new win.MutationObserver(records=>{if(mounted!==life)return;for(const r of records)if(node?.contains(r.target)){if(r.type==='childList'){rig=null;resetReels();}else if(r.type==='attributes'&&['class','data-pose','data-face','data-lying','data-still','data-gear'].includes(r.attributeName))resetReels();}if(records.some(r=>!layer?.contains(r.target)&&!(r.type==='childList'&&[...r.addedNodes,...r.removedNodes].length&&[...r.addedNodes,...r.removedNodes].every(n=>n===layer||layer?.contains(n)))))invalidate();});layoutWatch.observe(container,{subtree:true,childList:true,attributes:true,characterData:true});for(let p=container.parentElement||container.getRootNode?.().host;p;p=p.parentElement)layoutWatch.observe(p,{attributes:true});}
    doc.addEventListener('pointermove',seen,{passive:true});doc.addEventListener('keydown',seen,{passive:true});
    doc.addEventListener('visibilitychange',wake);
    // Modules move when the layout changes; keep the pony on the one it is standing on.
-   follow=setInterval(()=>{if(!raf&&!grab&&!doc.hidden)place();},500);
+   follow=setInterval(followPlace,500);
    dress();home();place();paint();plan(1400);roll();
   }
   function unmount(){
-   if(!layer)return;closeBubble();stop();
-   win.removeEventListener('scroll',place,{capture:true});container.removeEventListener('scroll',place,{capture:true});win.removeEventListener('resize',place);
+   if(!layer)return;closeBubble();stop();clearTimeout(node._cheer);releaseGrab?.();grab=null;goal=null;speed=0;life++;
+   node.removeEventListener('pointerdown',down);node.removeEventListener('click',click);node.removeEventListener('keydown',key);
+    for(const type of ['animationstart','animationcancel'])node.removeEventListener(type,resetReels);
+    cancelPlaces();resizeWatch?.disconnect();layoutWatch?.disconnect();resizeWatch=layoutWatch=null;watched.clear();layoutAnimations=new WeakSet();geometry=null;dirty=true;rig=null;
+   win.removeEventListener('scroll',invalidate,{capture:true});container.removeEventListener('scroll',invalidate,{capture:true});win.removeEventListener('resize',invalidate);
+   for(const type of ['load','transitionrun','transitionend','transitioncancel','animationend','animationcancel'])container.removeEventListener(type,invalidate,{capture:true});
+   doc.fonts?.removeEventListener?.('loadingdone',invalidate);
    doc.removeEventListener('pointermove',seen);doc.removeEventListener('keydown',seen);doc.removeEventListener('visibilitychange',wake);
-   clearInterval(follow);follow=0;clearTimeout(reel);reel=0;reels.clear();layer.remove();layer=node=null;
+    clearInterval(follow);follow=0;clearTimeout(reel);reel=0;reels.clear();resetReels();layer.remove();layer=node=null;
   }
   function seen(){lastInput=now();if(!reel&&layer&&!doc.hidden)roll();if(rest==='sleep'&&!goal&&!menuOpen)settle('lie',4000);}
-  function wake(){if(!doc.hidden&&layer){place();if(goal)run();else plan(900);roll();}}
+  function wake(){if(doc.hidden){stop();clearTimeout(reel);reel=0;cancelPlaces();releaseGrab?.();if(grab){grab=null;goal=null;speed=0;node.dataset.grabbed='false';setPose('stand');}return;}if(layer){invalidate();resetReels();run();if(!goal)plan(900);roll();}}
   // THE PONY ON THE FILM CLOCK. Its little loops (the tail, the nod, the blink, breathing, the Zs) are CSS animations.
   // Left to run, each one makes Chrome draw the whole page at the screen's own rate (60 to 240 times a second: on a
   // battery that was most of an idle page's cost) to move a few pixels. Like the drawings (motion.js), they are paused
   // and set to the film's time instead: 24 frames a second while someone uses the page, 12 after, none while the tab is
   // hidden. A loop between two keyframes that say the same thing (a blink's long open stretch) is not written at all.
   // Only endless loops: a short one (a hop, the book appearing) plays as written. Reduced motion has none.
-  const reels=new Map();
+  const reels=new Map();let reelsDirty=true;
+  function resetReels(){reelsDirty=true;}
   function restsOf(a){
    try{
     const timing=a.effect?.getTiming?.(),frames=a.effect?.getKeyframes?.();
@@ -93,15 +108,18 @@
   }
   function roll(){
    clearTimeout(reel);reel=0;if(!node||dead||doc.hidden)return;
-   const t=now();let list=[];
-   try{list=node.getAnimations?.({subtree:true})||[];}catch{}
+    const t=now();
    // every state is read before any time is written, so Chrome restyles once a frame, not once a loop
-   const live=new Set();
-   for(const a of list){
-    if(!a.animationName||a.playState==='idle'||a.playState==='finished'||a.effect?.getTiming?.().iterations!==Infinity)continue;
-    live.add(a);if(!reels.has(a)){try{a.pause();}catch{continue;}reels.set(a,{origin:t-(+a.currentTime||0),rests:restsOf(a),rest:-1});}
+    if(reelsDirty){
+     reelsDirty=false;let list=[];try{list=node.getAnimations?.({subtree:true})||[];}catch{reelsDirty=true;}
+     const live=new Set();
+     for(const a of list){
+      if(!a.animationName||a.playState==='idle'||a.playState==='finished'||a.effect?.getTiming?.().iterations!==Infinity)continue;
+      live.add(a);if(!reels.has(a)){try{a.pause();}catch{continue;}reels.set(a,{origin:t-(+a.currentTime||0),rests:restsOf(a),rest:-1});}
+     }
+     for(const a of [...reels.keys()])if(!live.has(a))reels.delete(a);
    }
-   for(const a of [...reels.keys()])if(!live.has(a))reels.delete(a);
+    for(const a of reels.keys()){const state=a.playState;if(state==='idle'||state==='finished')reels.delete(a);}
    for(const [a,r] of reels){
     const time=Math.max(0,t-r.origin);let at=-1;
     if(r.rests){const local=time-r.rests.delay;if(local>=0){const p=(local/r.rests.duration)%1;at=r.rests.list.findIndex(h=>p>=h[0]&&p<h[1]);}}
@@ -117,37 +135,55 @@
    if(!node)return;const c=art.COATS[pet.coat]||art.COATS.oat;
    node.style.setProperty('--pet-coat',c.coat);node.style.setProperty('--pet-shade',c.shade);node.style.setProperty('--pet-mane',c.mane);node.style.setProperty('--pet-muzzle',c.muzzle);
    node.style.setProperty('--pet-harness',art.HARNESS[pet.harness]||art.HARNESS.red);node.style.setProperty('--pet-size',size()+'px');
-   node.dataset.gear=pet.gear;node.setAttribute('aria-label',`${pet.name}, your pony. Open ${pet.name}'s menu`);
-   node.dataset.still=String(reduced());
+    if(node.dataset.gear!==pet.gear){node.dataset.gear=pet.gear;resetReels();}node.setAttribute('aria-label',`${pet.name}, your pony. Open ${pet.name}'s menu`);
+    const still=String(reduced());if(node.dataset.still!==still){node.dataset.still=still;resetReels();}
   }
-  function setPose(value,facing){if(!node)return;pose=value;node.dataset.pose=value;if(facing&&facing!==face){face=facing;node.dataset.face=facing;}}
+  function setPose(value,facing){if(!node)return;pose=value;if(facing)face=facing;if(stepping)return;if(node.dataset.pose!==pose){node.dataset.pose=pose;resetReels();}if(node.dataset.face!==face){node.dataset.face=face;resetReels();}}
   // ---- places to stand: the top edge of every module, inside the paddock, and the bottom of the window
-  function ledgeFor(el){
-   const vw=win.innerWidth;
-   if(!el)return {el:null,y:win.innerHeight-5,x0:14,x1:vw-14,floor:true,shown:true};
-   if(!el.isConnected)return null;
-   const r=el.getBoundingClientRect(),side=sides.get(el);if(r.width<120||!side&&r.height<30)return null;
-   const inside=el.dataset.petLedge==='inside',y=inside?r.bottom-9:side==='bottom'?r.bottom:r.top+1;
-   return {el,inside,paddock:inside,y,x0:r.left+(inside?26:18),x1:r.right-(inside?26:18),shown:y>96&&y<win.innerHeight-6&&r.right>60&&r.left<vw-60};
-  }
-  // Where it may stand: its paddock, the outline round a module (when one is drawn), the ruled lines inside
-  // modules that separate rows and sections, and the bottom of the window. No line, no standing.
-  const sides=new WeakMap(),drawn=color=>!!color&&color!=='transparent'&&!/,\s*0\)$/.test(color);
+  // A snapshot is measured on external changes and before decisions, never by a movement/easing frame. Keep the same drawn
+  // outlines and hit tests; caching the rectangles must not turn words, controls, or unruled modules into ground.
+  let sides=new WeakMap();const drawn=color=>!!color&&color!=='transparent'&&!/,\s*0\)$/.test(color);
   const framed=()=>container.dataset.panelFrame!=='none';
-  function ledges(){
-   const out=[],add=el=>{const l=ledgeFor(el);if(l&&l.shown&&l.x1-l.x0>60)out.push(l);};
+  function measurePlaces(){
+   const width=win.innerWidth,height=win.innerHeight,rects=new Map(),places=new Map(),out=[];sides=new WeakMap();
+   const rect=el=>{if(!rects.has(el))rects.set(el,el.getBoundingClientRect());return rects.get(el);};
+   const floor={el:null,y:height-5,x0:14,x1:width-14,floor:true,shown:true};
+   const read=el=>{
+    if(!el)return floor;if(places.has(el))return places.get(el);if(!el.isConnected)return null;
+    const r=rect(el),side=sides.get(el);if(r.width<120||!side&&r.height<30){places.set(el,null);return null;}
+    const inside=el.dataset.petLedge==='inside',y=inside?r.bottom-9:side==='bottom'?r.bottom:r.top+1;
+    const l={el,inside,paddock:inside,y,x0:r.left+(inside?26:18),x1:r.right-(inside?26:18),shown:y>96&&y<height-6&&r.right>60&&r.left<width-60};places.set(el,l);return l;
+   };
+   const add=el=>{const l=read(el);if(l&&l.shown&&l.x1-l.x0>60)out.push(l);};
    for(const el of container.querySelectorAll('[data-pet-ledge]'))add(el);
    if(framed())for(const el of container.querySelectorAll('.rd-main > [data-arrange-key]'))add(el);
    let found=0;
    for(const el of container.querySelectorAll('.rd-main > [data-arrange-key] :is(section,header,li,details,summary,article,hr,div)')){
     if(found>=40)break;
-    const r=el.getBoundingClientRect();if(r.width<150||r.top>win.innerHeight-6||r.bottom<96)continue;
+    const r=rect(el);if(r.width<150||r.top>height-6||r.bottom<96)continue;
     const cs=win.getComputedStyle(el);
     const top=parseFloat(cs.borderTopWidth)>0&&cs.borderTopStyle!=='none'&&drawn(cs.borderTopColor),bottom=parseFloat(cs.borderBottomWidth)>0&&cs.borderBottomStyle!=='none'&&drawn(cs.borderBottomColor);
     if(!top&&!bottom)continue;
-    sides.set(el,top?'top':'bottom');add(el);found++;
+    sides.set(el,top?'top':'bottom');places.delete(el);add(el);found++;
    }
-   out.push(ledgeFor(null));return out;
+   out.push(floor);read(spot.ledge);if(goal?.type==='jump')read(goal.target.el);
+   geometry={width,height,rects,places,all:out,floor};dirty=false;
+   if(resizeWatch){const live=new Set([container,...rects.keys(),...(bubble?[bubble]:[])]);for(const el of watched)if(!live.has(el)){resizeWatch.unobserve(el);watched.delete(el);}for(const el of live)if(!watched.has(el)){resizeWatch.observe(el);watched.add(el);}}
+   const checked=new Set(),mounted=life;
+   for(const el of rects.keys())for(let p=el;p&&!checked.has(p);p=p.parentElement||p.getRootNode?.().host){checked.add(p);for(const a of p.getAnimations?.()||[]){
+    if(a.playState==='idle'||a.playState==='finished'||a.effect?.getTiming?.().iterations===Infinity)continue;const done=a.finished;if(!done?.then||layoutAnimations.has(done))continue;layoutAnimations.add(done);const settled=()=>{if(mounted===life)invalidate();};done.then(settled,settled);
+   }}
+   measureBubble();
+  }
+  function ledgeFor(el){return el?(el.isConnected?geometry?.places.get(el)||null:null):geometry?.floor||null;}
+  function ledges(){if(!geometry)measurePlaces();else if(dirty)invalidate();return geometry.all;}
+  function cancelPlaces(){decisionPending=false;layoutVersion++;if(layoutFrame){if(win.requestAnimationFrame)win.cancelAnimationFrame?.(layoutFrame);else clearTimeout(layoutFrame);}clearTimeout(layoutTimer);layoutFrame=layoutTimer=0;}
+  // Let the changed click frame paint before reading its layout. Decisions and movement keep using the snapshot.
+  function invalidate(event){if(!node||dead||layer?.contains(event?.target))return;dirty=true;if(doc.hidden||layoutFrame||layoutTimer)return;const version=++layoutVersion,afterFrame=()=>{if(version!==layoutVersion||!node||dead||doc.hidden)return;layoutFrame=0;layoutTimer=setTimeout(()=>{if(version===layoutVersion)refreshPlaces();},0);};layoutFrame=win.requestAnimationFrame?win.requestAnimationFrame(afterFrame):setTimeout(afterFrame,16);}
+  function refreshPlaces(){clearTimeout(layoutTimer);layoutTimer=0;if(!node||dead||doc.hidden)return;measurePlaces();if(decisionPending){decisionPending=false;decide(true);}if(!grab&&!goal&&Number.isFinite(node._x)&&Number.isFinite(node._y)){const here=current();if(!free(here,spot.u))moveOff(here);}place();if(bubble)placeBubble();}
+  function followPlace(){
+    if(!node||grab||doc.hidden||layoutFrame||layoutTimer)return;if(!resizeWatch||!layoutWatch){invalidate();return;}if(film||!spot.ledge)return;
+   const r=spot.ledge.getBoundingClientRect(),old=geometry?.rects.get(spot.ledge);if(!spot.ledge.isConnected||!old||['left','top','right','bottom'].some(k=>r[k]!==old[k]))invalidate();
   }
   const current=()=>ledgeFor(spot.ledge)||ledgeFor(null);
   // A SPOT IS FREE when nothing the student reads or uses is under the pony's body there: no words, no button, link or
@@ -194,7 +230,7 @@
    spot.u=clamp(spot.u,6,Math.max(6,l.x1-l.x0-6));
    moveTo(l.x0+spot.u,l.y);
   }
-  function moveTo(x,y){if(!node)return;const s=size(),h=s*64/72;node.style.transform=`translate(${(x-s/2).toFixed(1)}px,${(y-h*60/64).toFixed(1)}px)`;node._x=x;node._y=y;if(bubble)placeBubble();}
+  function moveTo(x,y){if(!node)return;node._x=x;node._y=y;if(stepping)return;const s=size(),h=s*64/72,value=`translate(${(x-s/2).toFixed(1)}px,${(y-h*60/64).toFixed(1)}px)`;if(node.style.transform!==value)node.style.transform=value;if(bubble)placeBubble();}
   // The pose is written onto the few parts that move, and only when a value changed. (Setting the numbers as
   // variables on the pony instead would restyle every shape of the drawing on every frame.)
   let rig=null;
@@ -217,18 +253,18 @@
    for(const el of p.legs)put(el,'opacity',standing);for(const el of p.tuck)put(el,'opacity',lyingDown);
    put(p.shadow,'transform',free?'':`scaleX(${(1+down/60).toFixed(3)})`);
    put(node,'opacity',ch.alpha<.995?ch.alpha.toFixed(2):'');
-   const lying=String(down>5.5);if(node.dataset.lying!==lying)node.dataset.lying=lying;
+    const lying=String(down>5.5);if(node.dataset.lying!==lying){node.dataset.lying=lying;resetReels();}
   }
   // ---- deciding
-  function stop(){win.cancelAnimationFrame?.(raf);clearTimeout(timer);raf=0;timer=0;}
-  function run(){if(!raf&&node&&!dead){last=0;raf=win.requestAnimationFrame(frame);}}
+  function stop(){clearTimeout(film);clearTimeout(timer);film=0;timer=0;debt=0;}
+  function run(){if(!stepping&&!film&&node&&!dead&&!doc.hidden){last=filmNow();next=last+FILM;debt=0;film=setTimeout(frame,FILM);}}
   function plan(delay){clearTimeout(timer);timer=setTimeout(decide,delay);}
   function settle(as,ms){goal=null;rest=as;setPose(as);run();plan(ms);}
-  function decide(){
+  function decide(measured=false){
    timer=0;if(!node||dead)return;
    if(doc.hidden)return;
    if(menuOpen||grab||goal){plan(2500);return;}
-   const data=info(),idle=now()-lastInput,here=current();
+    if(dirty){decisionPending=true;invalidate();return;}if(!measured)measurePlaces();const data=info(),idle=now()-lastInput,here=current();
    if(reduced()){settle(nudge(data),30000);return;}
    if(focusing){settle('read',20000);return;}
    // its place has scrolled away or gone: come back to somewhere in view, quietly
@@ -253,7 +289,7 @@
   function nudge(data){return pet.nudges!=='off'&&data.next?.urgent&&now()>quietUntil?'flag':'stand';}
   // Off whatever it is standing on: the nearest free place on this ledge, else a free place on another one in view.
   function moveOff(here){
-   const u=freeOn(here,spot.u);if(u!=null){goal={type:'walk',to:u,max:26};rest='stand';run();return;}
+   const u=freeOn(here,spot.u);if(u!=null){if(reduced()){spot.u=u;return;}goal={type:'walk',to:u,max:26};rest='stand';run();return;}
    const other=ledges().find(l=>l.el!==here.el&&!l.floor&&freeOn(l)!=null)||ledgeFor(null);jumpTo(other);
   }
   function walk(){
@@ -265,18 +301,23 @@
   function jumpTo(target){
    if(!target){settle('stand',3000);return;}
    const u=freeOn(target)??clamp((target.x1-target.x0)*(.2+Math.random()*.6),14,Math.max(14,target.x1-target.x0-14));
-   goal={type:'jump',target,u,t:-.16,from:null};rest='stand';run();
+   place();goal={type:'jump',target,u,t:-.16,from:null};rest='stand';run();
   }
   function appear(target){
    spot={ledge:target.el,u:freeOn(target)??clamp((target.x1-target.x0)*(.2+Math.random()*.6),14,Math.max(14,target.x1-target.x0-14))};
    ch.alpha=0;ch.down=0;speed=0;goal=null;rest='stand';setPose('stand');place();run();plan(3500);
   }
   const ease=(key,to,rate,dt)=>{const d=to-ch[key];if(Math.abs(d)<.02){ch[key]=to;return false;}ch[key]+=d*Math.min(1,rate*dt);return true;};
-  function frame(ts){
-   raf=0;if(!node||dead)return;
-   // Walking is drawn at most 60 times a second: a 120 or 240 Hz screen would otherwise redraw the page that often.
-   if(last&&ts-last<15){raf=win.requestAnimationFrame(frame);return;}
-   const dt=last?Math.min(.05,(ts-last)/1000):.016;last=ts;let busy=false;
+  function frame(){
+   film=0;if(!node||dead||doc.hidden)return;const t=filmNow();debt+=Math.max(0,(t-last)/1000);last=t;let busy=!!goal;
+   // Retain the 60 Hz integrator in memory, including acceleration, braking and easing, but commit only one drawing
+   // per film tick. Elapsed time survives a late callback; missed drawings are skipped, never replayed in a burst.
+   stepping=true;try{while(debt+1e-9>=STEP){busy=step(STEP);debt=Math.max(0,debt-STEP);if(!busy){debt=0;break;}}}finally{stepping=false;}
+   setPose(pose,face);if(!grab&&goal?.type!=='jump')place();else if(!grab)moveTo(node._x,node._y);paint();
+   if(busy){next+=FILM;if(next<=t)next+=Math.floor((t-next)/FILM+1)*FILM;film=setTimeout(frame,Math.max(1,next-filmNow()));}
+  }
+  function step(dt){
+   let busy=false;
    const want=POSE[goal?'stand':rest]||POSE.stand;
    if(goal?.type==='walk'){
     if(ch.down>.6){busy=true;}            // get up first
@@ -288,7 +329,7 @@
      if(Math.abs(speed)>3)setPose(trot?'trot':'walk',speed>0?'right':'left');
      // the legs turn over as fast as the ground passes under them, so the feet do not slide
      spot.u+=speed*dt;phase+=Math.abs(speed)*dt*(trot?15.5:21.9)/size();
-     if(Math.abs(dist)<1.2||dir*(goal.to-spot.u)<=0){spot.u=goal.to;speed=0;goal=null;setPose('stand');plan(1800+Math.random()*3200);}
+     if(Math.abs(dist)<1.2||dir*(goal.to-spot.u)<=0){spot.u=goal.to;speed=0;goal=null;setPose('stand');const here=current();if(!free(here,spot.u))moveOff(here);if(!goal)plan(1800+Math.random()*3200);}
      busy=true;
     }
    }else if(goal?.type==='jump'){
@@ -303,7 +344,7 @@
       const p=clamp(g.t,0,1),e=g.drop?p*p:p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2,lift=g.drop?0:clamp(Math.abs(end.x-g.from.x)*.22+Math.max(0,g.from.y-end.y)*.25+26,30,90);
       if(pose!=='fall')setPose('fall');ch.down=0;
       moveTo(g.from.x+(end.x-g.from.x)*e,g.from.y+(end.y-g.from.y)*e-lift*Math.sin(Math.PI*p));
-      if(p>=1){spot={ledge:l.el,u:g.u};goal=null;ch.down=3.4;setPose('stand');place();plan(2600+Math.random()*2500);}
+      if(p>=1){spot={ledge:l.el,u:g.u};goal=null;ch.down=3.4;setPose('stand');const here=current();if(!free(here,spot.u))moveOff(here);place();if(!goal)plan(2600+Math.random()*2500);}
      }
      busy=true;
     }
@@ -316,47 +357,46 @@
    if(ease('head',want.head,5,dt))busy=true;
    if(ease('alpha',1,3.2,dt))busy=true;
    if(pose==='eat'){phase+=dt*4;busy=true;}
-   if(!grab&&goal?.type!=='jump')place();
-   paint();
-   if(busy)raf=win.requestAnimationFrame(frame);
+   return busy;
   }
   // ---- picking it up
   function down(event){
-   if(event.button!==undefined&&event.button!==0)return;
+   if(!node||dead||doc.hidden||event.button!==undefined&&event.button!==0)return;releaseGrab?.();const held=node;
    const start={x:event.clientX,y:event.clientY,id:event.pointerId,moved:false};try{node.setPointerCapture?.(start.id);}catch{}   // held from the first press, so a quick pull cannot slip off
    const move=e=>{
-    if(e.pointerId!==start.id)return;
+    if(node!==held||dead||doc.hidden||e.pointerId!==start.id)return;
     if(!start.moved&&Math.hypot(e.clientX-start.x,e.clientY-start.y)<7)return;
     if(!start.moved){start.moved=true;grab=start;stop();goal=null;speed=0;ch.leg=0;ch.down=0;paint();closeBubble();setPose('held');try{node.setPointerCapture?.(start.id);}catch{}node.dataset.grabbed='true';}
     moveTo(e.clientX,e.clientY+size()*.42);
    };
    const up=e=>{
     if(e.pointerId!==start.id)return;
-    node.removeEventListener('pointermove',move);node.removeEventListener('pointerup',up);node.removeEventListener('pointercancel',up);
-    if(!start.moved)return;
+    release();if(node!==held||dead||doc.hidden||!start.moved)return;
     node.dataset.grabbed='false';node._suppress=now()+350;grab=null;
     // set down on the nearest place at or below the feet
     const x=node._x,y=node._y,under=ledges().filter(l=>x>=l.x0-10&&x<=l.x1+10&&l.y>=y-14).sort((a,b)=>a.y-b.y)[0]||ledgeFor(null);
     goal={type:'jump',target:under,u:clamp(x-under.x0,10,Math.max(10,under.x1-under.x0-10)),t:0,drop:true,from:{x,y},dur:clamp(Math.sqrt(Math.max(0,under.y-y))/38,.14,.6)};rest='stand';setPose('fall');run();
    };
-   node.addEventListener('pointermove',move);node.addEventListener('pointerup',up);node.addEventListener('pointercancel',up);
+   const release=()=>{held.removeEventListener('pointermove',move);held.removeEventListener('pointerup',up);held.removeEventListener('pointercancel',up);try{held.releasePointerCapture?.(start.id);}catch{}if(releaseGrab===release)releaseGrab=null;};releaseGrab=release;
+   held.addEventListener('pointermove',move);held.addEventListener('pointerup',up);held.addEventListener('pointercancel',up);
   }
   function click(event){if(node._suppress&&now()<node._suppress){event.preventDefault();return;}if(menuOpen)closeBubble();else openMenu();}
   function key(event){if(event.key==='Escape'&&menuOpen){event.preventDefault();closeBubble();node.focus();}}
   // ---- what it says
+  function measureBubble(){if(bubble)bubbleBox={w:bubble.offsetWidth||250,h:bubble.offsetHeight||120};}
   function placeBubble(){
-   if(!bubble||!node)return;const vw=win.innerWidth,w=bubble.offsetWidth||250,h=bubble.offsetHeight||120,s=size();
+   if(!bubble||!node)return;const vw=geometry?.width||win.innerWidth,w=bubbleBox.w,h=bubbleBox.h,s=size();
    const x=clamp(node._x-w/2,10,vw-w-10),above=node._y-s-h-6;
    bubble.style.transform=`translate(${x.toFixed(0)}px,${(above>70?above:node._y+10).toFixed(0)}px)`;
    bubble.style.setProperty('--pet-tail-x',clamp(node._x-x,22,w-22).toFixed(0)+'px');bubble.dataset.below=String(above<=70);
   }
-  function closeBubble(){clearTimeout(sayTimer);if(bubble){bubble.remove();bubble=null;}if(menuOpen){menuOpen=false;node?.setAttribute('aria-expanded','false');plan(1500);}}
+  function closeBubble(){clearTimeout(sayTimer);if(bubble){resizeWatch?.unobserve(bubble);watched.delete(bubble);bubble.remove();bubble=null;}if(menuOpen){menuOpen=false;node?.setAttribute('aria-expanded','false');plan(1500);}}
   function show(html,{menu=false,ms=0}={}){
    closeBubble();if(!layer)return;
    bubble=doc.createElement('div');bubble.className='pet-bubble';bubble.innerHTML=html;
-   if(menu){bubble.setAttribute('role','menu');bubble.setAttribute('aria-label',pet.name);menuOpen=true;node.setAttribute('aria-expanded','true');if(goal?.type==='walk'){goal.to=spot.u+Math.sign(speed)*Math.min(18,Math.abs(speed)*.3);}}
+   if(menu){bubble.setAttribute('role','menu');bubble.setAttribute('aria-label',pet.name);menuOpen=true;node.setAttribute('aria-expanded','true');if(goal?.type==='walk'){goal=null;speed=0;setPose('stand');}}   // it stops where it is, so the menu opens in place
    else{bubble.setAttribute('role','status');bubble.setAttribute('aria-live','polite');}
-   layer.append(bubble);placeBubble();
+   layer.append(bubble);measureBubble();if(resizeWatch){resizeWatch.observe(bubble);watched.add(bubble);}placeBubble();
    bubble.addEventListener('click',onBubble);
    if(ms)sayTimer=setTimeout(()=>{if(bubble&&!menuOpen)closeBubble();},ms);
   }
@@ -395,7 +435,7 @@
   function sync(){
    if(dead)return;pet=clean(getPet());
    if(!visible()){unmount();return;}
-   if(!layer)mount();else{dress();if(!container.contains(layer))container.append(layer);place();}
+    if(!layer)mount();else{dress();if(!container.contains(layer)){container.append(layer);rig=null;resetReels();}invalidate();}
    const data=info();
    // Said once for each thing that becomes urgent, and only when reminders are fully on.
    if(pet.nudges==='helpful'&&data.next?.urgent&&data.next.id&&pet.told!==String(data.next.id)&&now()>quietUntil&&!menuOpen&&!grab){

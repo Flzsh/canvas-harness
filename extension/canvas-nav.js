@@ -87,6 +87,7 @@
   for(const node of header.querySelectorAll('.chn-ic, .chn-frames, .chn-logo-art'))node.remove();
   for(const node of header.querySelectorAll('.chn-drawn'))node.classList.remove('chn-drawn');
   for(const node of header.querySelectorAll('.chn-drawn-link'))node.classList.remove('chn-drawn-link');
+  for(const node of header.querySelectorAll('[data-chn-empty]'))delete node.dataset.chnEmpty;
  }
  // The workspace's colours (accent, page colour, ink, motion) as the dashboard last showed them, so every Canvas page
  // matches; the dashboard refreshes them whenever they change.
@@ -119,9 +120,10 @@
    // Chosen again in Make it yours or the popup: the bar changes on this page at once.
    root.chrome.storage.onChanged?.addListener((changes,area)=>{if(area==='local'&&changes[KEY])apply(changes[KEY].newValue);});
   }).catch(()=>{});
-  let linked=false,undo=[];
+  // canvas-nav.css comes with the page (manifest, document_start): a stylesheet linked from here arrived after the drawn
+  // frames, which then showed unstyled for a moment on every page change. It is scoped to html.chn-nav, so it is inert until then.
+  let undo=[];
   function enable(choice){
-   if(!linked){linked=true;const link=root.document.createElement('link');link.rel='stylesheet';link.href=root.chrome.runtime.getURL('canvas-nav.css');(root.document.head||html).append(link);}
    html.classList.add('chn-nav');layout(choice);applyPalette(saved[PALETTE]);
    if(header){decorate(header);setLogo();drawer();topBar();}else watch();
   }
@@ -174,19 +176,15 @@
    const doc=root.document,edge=doc.createElement('div'),off=new AbortController(),signal=off.signal,watching=[];edge.className='chn-edge';edge.setAttribute('aria-hidden','true');(doc.body||html).append(edge);
    const trays=['nav-tray-portal','global_nav_tray_container'].map(id=>doc.getElementById(id)).filter(Boolean);
    const trayOpen=()=>trays.some(t=>t.childElementCount>0);
-   let timer=0,pushed=0,moving=0;
-   // The page moves as one picture (a transform: nothing is laid out again while it moves), then takes its new width
-   // once, at the end. Laying the dashboard out again on every frame of the move would cost far more, on a battery too.
-   const still=()=>html.dataset.chnMotion==='off'||!!root.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+   let timer=0,pushed=0;
+   // The page makes room beside the bar: it eases narrower as the bar comes out and wider as it goes, together with the
+   // bar, so nothing of it is out of reach while the bar is out (the user, 2026-10-16) and nothing jumps (a width taken
+   // all at once had the whole dashboard shrink and grow back in one step). The ease is canvas-nav.css's transition on
+   // the page's margin; with reduced motion, or Motion off, it changes at once.
    function push(on){
     const page=doc.getElementById('wrapper');if(!page)return;
-    const by=on?Math.round(header.getBoundingClientRect().width)+6:0,from=pushed;if(by===from)return;pushed=by;
-    root.clearTimeout(moving);page.style.transition='none';
-    if(still()){page.style.transform='';html.style.setProperty('--chn-push',by+'px');delete html.dataset.chnMoving;return;}
-    html.dataset.chnMoving='true';
-    if(on){page.style.transform='translateX(0px)';void page.offsetWidth;page.style.transition='transform 280ms cubic-bezier(.2, .8, .3, 1)';page.style.transform=`translateX(${by-from}px)`;}
-    else{html.style.setProperty('--chn-push','0px');page.style.transform=`translateX(${from}px)`;void page.offsetWidth;page.style.transition='transform 220ms cubic-bezier(.4, 0, .9, .6)';page.style.transform='translateX(0px)';}
-    moving=root.setTimeout(()=>{page.style.transition='none';page.style.transform='';html.style.setProperty('--chn-push',pushed+'px');delete html.dataset.chnMoving;},on?290:230);
+    const by=on?Math.round(header.getBoundingClientRect().width)+6:0;if(by===pushed)return;pushed=by;
+    html.style.setProperty('--chn-push',by+'px');
    }
    const open=()=>{root.clearTimeout(timer);if(html.dataset.chnDrawer!=='open'){html.dataset.chnDrawer='open';push(true);}};
    const close=(ms=420)=>{root.clearTimeout(timer);timer=root.setTimeout(()=>{if(header.matches(':hover')||header.contains(doc.activeElement)||trayOpen())return;html.dataset.chnDrawer='closed';push(false);},ms);};
@@ -195,8 +193,7 @@
    header.addEventListener('focusin',open,{signal});header.addEventListener('focusout',()=>close(120),{signal});
    for(const t of trays){const o=new MutationObserver(()=>{if(!trayOpen())close();});o.observe(t,{childList:true});watching.push(o);}
    undo.push(()=>{
-    off.abort();for(const o of watching)o.disconnect();root.clearTimeout(timer);root.clearTimeout(moving);edge.remove();
-    const page=doc.getElementById('wrapper');if(page){page.style.transition='';page.style.transform='';}
+    off.abort();for(const o of watching)o.disconnect();root.clearTimeout(timer);edge.remove();
     html.style.removeProperty('--chn-push');delete html.dataset.chnDrawer;delete html.dataset.chnMoving;delete header.dataset.chnDrawer;
    });
   }
@@ -206,7 +203,7 @@
   // across the top of the page, which moves the page down. Its own outline and motion: nothing of the column's slide.
   function topBar(){
    if(html.dataset.chnLayout!=='top'||header.dataset.chnTop)return;header.dataset.chnTop='true';
-   const dashboard=/^\/?$/.test(root.location?.pathname||'');
+   const dashboard=/^\/?$/.test(root.location?.pathname||'')&&new URLSearchParams(root.location?.search||'').get('reserve')!=='native';
    for(const link of header.querySelectorAll('.ic-app-header__menu-list-link'))if(!link.title){const name=link.querySelector('.menu-item__text')?.textContent.trim();if(name)link.title=name;}
    const waitUntil=Date.now()+(dashboard?9000:0),set=(name,value)=>html.style.setProperty(name,value);
    let queued=0,watched=null,sizes=null;

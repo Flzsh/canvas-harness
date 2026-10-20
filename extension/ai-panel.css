@@ -174,3 +174,79 @@ pre { margin: 8px 0 0; padding: 10px; border: 1px solid var(--line); border-radi
 .composer-help, .privacy-note {font-size:11.5px;}
 .composer-help {margin-top:7px;}
 @media (max-height:560px){.panel-body > :is(.handoff-intro,.selected-context,.context-details,.fallback){padding:10px 12px 10px 42px}.composer > textarea{min-height:56px}}
+
+/* ===== house style (3.x): B's calm layout in A's materials - drawn ink edges, wax-seal steps, a paper tag for the
+   material, paper tabs for the AI sites, a stitched leather Send strap. No gradients, glows or blurred shadows. */
+:root{--hs-ink:#141413;--hs-leather:#9A6440;--hs-stitch:#F1E2C2;--hs-tag:#F6DE9A}
+:root[data-theme="dark"]{--hs-ink:#D2C8B2}
+.heading-row h1{position:relative;padding-bottom:6px}
+.heading-row h1::after{content:"";position:absolute;left:0;bottom:0;width:min(190px,80%);height:6px;background:var(--hs-ink);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 190 6%27 preserveAspectRatio=%27none%27%3E%3Cpath d=%27M2 3.6C40 2.2 80 4.4 120 3 150 2.2 170 3.6 188 2.6%27 fill=%27none%27 stroke=%27%23000%27 stroke-width=%271.8%27 stroke-linecap=%27round%27/%3E%3C/svg%3E") center/100% 100% no-repeat;opacity:.8}
+.providers{position:relative;border:0!important;border-radius:11px!important;background:var(--surface)!important;padding:4px!important}
+.providers::after{content:"";position:absolute;inset:-2px;border:14px solid transparent;pointer-events:none;background:var(--hs-ink);-webkit-mask-box-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2790%27 height=%2790%27 viewBox=%270 0 90 90%27%3E%3Cpath fill=%27none%27 stroke=%27%23000%27 stroke-width=%273%27 stroke-linecap=%27round%27 d=%27M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8%27/%3E%3C/svg%3E") 30 30 30 30 stretch}
+.providers>button{border:0!important;background:transparent!important;border-radius:8px!important}
+.providers>button[aria-pressed="true"]{background:var(--hs-tag)!important;color:#141413!important;box-shadow:1px 2px 0 rgb(20 20 19 / .18)!important}
+.panel-body>:is(.handoff-intro,.selected-context,.context-details){position:relative;border-color:transparent!important;box-shadow:2px 3px 0 rgb(20 20 19 / .1)}
+.panel-body>:is(.handoff-intro,.selected-context,.context-details)::after{content:"";position:absolute;inset:0;border:14px solid transparent;pointer-events:none;background:var(--hs-ink);-webkit-mask-box-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2790%27 height=%2790%27 viewBox=%270 0 90 90%27%3E%3Cpath fill=%27none%27 stroke=%27%23000%27 stroke-width=%273%27 stroke-linecap=%27round%27 d=%27M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8%27/%3E%3C/svg%3E") 30 30 30 30 stretch}
+.panel-body>:is(.handoff-intro,.selected-context,.context-details)::before{border:0!important;background:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 30 30%27%3E%3Cpath fill=%27%23B5442F%27 d=%27M15.4 1.8c3.2.3 4.6 2.6 7.4 3.4 2.6 1 4.8 3 5.1 6.1.4 2.9-.9 4.6-.6 7.5.2 3.2-2.4 5.7-5.4 6.9-2.8 1.3-4.6 2.9-7.6 2.6-3.2-.2-5.1-2.3-7.7-3.6-2.7-1.4-4.6-3.6-4.8-6.7-.2-2.9 1.4-4.5 1.3-7.4C3 7.4 5.6 5 8.6 3.6 11 2.4 12.4 1.6 15.4 1.8z%27/%3E%3Cpath fill=%27none%27 stroke=%27%237E2A1B%27 stroke-width=%271.4%27 opacity=%27.55%27 d=%27M15 5.6c4.8.2 8.8 3.9 8.8 9.2 0 5-3.8 8.8-8.8 8.8-5.1.1-8.9-3.9-8.8-8.9.1-4.6 3.8-8.6 8.4-9.1%27/%3E%3C/svg%3E") center/contain no-repeat!important;color:#FBF1DC!important;font-family:Literata,Georgia,serif!important;font-weight:700!important;box-shadow:none!important}
+.selected-items li{position:relative;border:0!important;background:#FFF6D8!important;border-radius:4px!important;transform:rotate(-.8deg);box-shadow:1px 2px 0 rgb(20 20 19 / .16)}
+.selected-items li::after{content:"";position:absolute;inset:0;border:14px solid transparent;pointer-events:none;background:var(--hs-ink);-webkit-mask-box-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2790%27 height=%2790%27 viewBox=%270 0 90 90%27%3E%3Cpath fill=%27none%27 stroke=%27%23000%27 stroke-width=%273%27 stroke-linecap=%27round%27 d=%27M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8%27/%3E%3C/svg%3E") 30 30 30 30 stretch}
+:root[data-theme="dark"] .selected-items li{background:#3A3528!important}
+.composer{position:relative;border-color:transparent!important;box-shadow:2px 3px 0 rgb(20 20 19 / .1)}
+.composer::after{content:"";position:absolute;inset:0;border:14px solid transparent;pointer-events:none;background:var(--hs-ink);-webkit-mask-box-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2790%27 height=%2790%27 viewBox=%270 0 90 90%27%3E%3Cpath fill=%27none%27 stroke=%27%23000%27 stroke-width=%273%27 stroke-linecap=%27round%27 d=%27M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8%27/%3E%3C/svg%3E") 30 30 30 30 stretch}
+.composer>textarea{border:0!important;background:transparent!important}
+.primary-button{position:relative;border:0!important;border-radius:999px!important;background:var(--hs-leather)!important;color:#FBF1DC!important;font-family:Literata,Georgia,serif;font-weight:700;padding-inline:16px!important}
+.primary-button::after{content:"";position:absolute;inset:3px;border:1.4px dashed var(--hs-stitch);border-radius:999px;opacity:.85;pointer-events:none}
+.primary-button:hover:not(:disabled){background:#A8744E!important}
+/* lighter ink for the cards and tabs (furniture), full ink only where you write; seals clear of the frame's corner */
+.providers::after,.panel-body>:is(.handoff-intro,.selected-context,.context-details)::after,.selected-items li::after{opacity:.55}
+.composer::after{opacity:.8}
+.panel-body>:is(.handoff-intro,.selected-context,.context-details)::before{left:15px!important;top:15px!important}
+
+/* ===== Ask AI, design A (3.x): a drawing on top, the AI sites, one writing pad with your material clipped to it,
+   Send; everything else behind "···". */
+.ai-simple{display:flex;flex-direction:column;height:100%;min-height:0}
+.ai-simple .panel-header{flex:none}
+.ai-simple .ai-scene{margin:2px 0 8px}
+.ai-simple .ai-scene-art{display:block;width:100%;max-width:300px;height:auto;margin:0 auto;overflow:visible}
+:root[data-theme="dark"] .ai-simple .ai-scene-art{--scene-ink:#D2C8B2}
+.ai-simple .ai-scene-arrow{transform-box:fill-box;transform-origin:0 50%}
+.ai-simple .ai-scene-star{transform-box:fill-box;transform-origin:50% 50%}
+.ai-simple:has(#prompt:focus) .ai-scene-arrow{animation:ai-arrow .9s ease-in-out 1}
+.ai-simple:has(#send:hover) .ai-scene-star,.ai-simple:has(#send:focus-visible) .ai-scene-star{animation:ai-star .7s cubic-bezier(.3,1.5,.5,1) 1}
+@keyframes ai-arrow{40%{transform:translateX(5px)}}@keyframes ai-star{40%{transform:rotate(14deg) scale(1.12)}}
+:root[data-motion="off"] .ai-simple :is(.ai-scene-arrow,.ai-scene-star){animation:none!important}
+@media (prefers-reduced-motion:reduce){.ai-simple :is(.ai-scene-arrow,.ai-scene-star){animation:none!important}}
+/* the steps' cards and their numbers give way: only rows that matter (linked pages, attached PDFs) stay, plainly */
+.ai-simple .panel-body{flex:0 1 auto;max-height:38%;padding-top:0}
+.ai-simple .panel-body>:is(.selected-context,.context-details){border:0!important;box-shadow:none!important;background:none!important;padding:0 2px!important}
+.ai-simple .panel-body>:is(.selected-context,.context-details)::before,.ai-simple .panel-body>:is(.selected-context,.context-details)::after{display:none!important}
+.ai-simple #selection-summary{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.ai-simple .context-details:not([open]){display:none}
+/* the pad fills the rest of the panel */
+.ai-simple .composer-footer{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+.ai-simple .composer{flex:1 1 auto;display:flex;flex-direction:column;min-height:190px}
+.ai-simple .composer>textarea{flex:1 1 auto;resize:none}
+.ai-simple .clips{display:flex;flex-direction:column;gap:6px;padding:12px 12px 0}
+.ai-simple .clips .selected-items{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.ai-simple .clips .selected-items li{padding:4px 10px 4px 26px!important;margin:0}
+.ai-simple .clips .selected-items li::before{content:"";position:absolute;left:7px;top:-7px;width:12px;height:24px;background:center/contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 22'%3E%3Cpath d='M7 15V4.6C7 2.6 8.2 1.4 9.6 1.4S12.2 2.6 12.2 4.4V16.2C12.2 18.8 10.8 20.4 9 20.4S5.6 18.8 5.6 16.4V6.6' fill='none' stroke='%236F7F8C' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E")}
+.ai-simple .clips .selected-items small{display:inline;margin-left:4px}
+.ai-simple .clips #scope-hint{margin:0;font-size:12px}
+.ai-simple .clips #scope-hint:empty{display:none}
+.ai-simple:has(.selected-items li) .clips #scope-hint{display:none}
+.ai-simple .prompt-count{display:none}
+/* "···": the extras on a small paper card */
+.ai-simple .more-menu{position:relative}
+.ai-simple .more-menu>summary{list-style:none;cursor:pointer;min-height:34px;padding:4px 10px;border-radius:8px;color:var(--muted);font-size:18px;letter-spacing:2px;line-height:1}
+.ai-simple .more-menu>summary::-webkit-details-marker{display:none}
+.ai-simple .more-menu>summary:hover{background:var(--soft)}
+.ai-simple .more-pop{position:absolute;left:0;bottom:calc(100% + 8px);z-index:5;display:flex;flex-direction:column;align-items:stretch;gap:4px;width:250px;padding:10px;background:var(--surface);border-radius:11px;box-shadow:3px 4px 0 rgb(20 20 19 / .13)}
+.ai-simple .more-pop::after{content:"";position:absolute;inset:-3px;border:14px solid transparent;pointer-events:none;background:var(--hs-ink);opacity:.7;-webkit-mask-box-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2790%27 height=%2790%27 viewBox=%270 0 90 90%27%3E%3Cpath fill=%27none%27 stroke=%27%23000%27 stroke-width=%273%27 stroke-linecap=%27round%27 d=%27M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8%27/%3E%3C/svg%3E") 30 30 30 30 stretch}
+.ai-simple .more-pop>button{justify-content:flex-start;text-align:left;border:0;background:none;min-height:32px}
+.ai-simple .more-pop>button:hover{background:var(--soft)}
+.ai-simple .more-pop .send-option{margin:0 0 4px}
+.ai-simple .more-pop #sharing-note{font-size:11.5px;margin-top:4px}
+.ai-simple .composer-toolbar{justify-content:space-between}
+.ai-simple .composer>textarea{height:auto!important;min-height:110px;flex:1 1 auto!important}
+.ai-simple .composer-toolbar{margin-top:auto;padding:6px 10px 10px}
+.ai-simple .more-pop #sharing-note{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}

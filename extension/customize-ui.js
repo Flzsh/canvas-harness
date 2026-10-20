@@ -87,7 +87,7 @@
 
   const pony=()=>{
    const P=root.ReservePets,A=root.ReservePetArt;if(!P||!A)return '';
-   const pet=P.clean(c.personal?.pet),lv=P.level(pet.xp),coat=A.COATS[pet.coat],style=`--pet-coat:${coat.coat};--pet-shade:${coat.shade};--pet-mane:${coat.mane};--pet-muzzle:${coat.muzzle};--pet-harness:${A.HARNESS[pet.harness]};--pet-size:112px`;
+   const pet=P.clean(c.personal?.pet),lv=P.level(pet.xp),coat=A.COATS[pet.coat]||A.COATS.oat,style=`--pet-coat:${coat.coat};--pet-shade:${coat.shade};--pet-mane:${coat.mane};--pet-muzzle:${coat.muzzle};--pet-harness:${A.HARNESS[pet.harness]};--pet-size:112px`;
    const petChoices=(key,title,options,cols)=>choices(key,title,options,{value:pet[key],cols,field:'pet',data:'key'});
    const dot=(a,b)=>`<span class="cz-dot" style="background:${a}"><i style="background:${b||a}"></i></span>`;
    const need=(kind,key)=>P.unlocked(kind,key,pet.xp)?'':`Level ${P.UNLOCKS[kind][key]}`;

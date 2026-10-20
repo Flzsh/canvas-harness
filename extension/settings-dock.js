@@ -4,6 +4,7 @@
  'use strict';
 
  function createDock({container,onOpen=()=>{},onChange=()=>{}}){
+  if(root.ReserveSite?.vanillaPage(root.location))return null;
   let open=false,opener=null,destroyed=false;
   const panel=()=>container.querySelector('.rd-appearance.ch-settings-dock');
   const toolbarButton=()=>container.querySelector('.rd-toolbar [data-rd-action="settings"]');

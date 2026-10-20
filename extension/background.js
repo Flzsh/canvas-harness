@@ -1,10 +1,11 @@
 /* Canvas Harness — extension-only AI routing. No externally_connectable entry point. */
-importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js','focus-guard-model.js');
+importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js','page-preferences.js','focus-guard-model.js');
+// Appearance changes from every page are applied here, one at a time (page-preferences.js).
+globalThis.ReservePagePreferences?.serve();
 (function(){
  'use strict';
  const channels=new Map(),panels=new Set(),requests=new Map(),handoffs=new Map();
  let offscreenPending;
-
  const post=(port,message)=>{try{port.postMessage(message);}catch{}};
  const fail=(port,id,error)=>post(port,{id,ok:false,error:String(error?.message||error||'The request could not finish.')});
  const validId=id=>typeof id==='string'&&/^[\w-]{1,100}$/.test(id);
@@ -77,6 +78,7 @@ importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js','focus-guar
  // access to that one site; the same scripts that run on instructure.com are then registered there.
  // Taking access away in the browser's extension settings removes them again.
  const SITES='reserve:sites',PENDING='reserve:pendingSite',PREFIX='ch-site-';
+ function schoolSender(sender){return sender?.id===chrome.runtime.id&&(sender.frameId===undefined||sender.frameId===0)&&['welcome.html','popup.html'].some(page=>sender.url===chrome.runtime.getURL(page));}
  async function grantedSites(){
   const saved=(await chrome.storage.local.get(SITES))[SITES],out=[];
   for(const value of Array.isArray(saved)?saved:[]){
@@ -88,7 +90,7 @@ importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js','focus-guar
  async function loadSites(){const sites=await grantedSites();ReserveSite.trustSites(sites);return sites;}
  async function registerSites(){
   const sites=await loadSites();
-  if(!chrome.scripting?.registerContentScripts)return sites;
+  if(!chrome.scripting?.registerContentScripts){if(sites.length)throw Error('School site registration is unavailable. Reload Canvas Harness and try again.');return sites;}
   const old=(await chrome.scripting.getRegisteredContentScripts()).map(s=>s.id).filter(id=>id.startsWith(PREFIX));
   if(old.length)await chrome.scripting.unregisterContentScripts({ids:old});
   if(sites.length){
@@ -99,10 +101,13 @@ importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js','focus-guar
   return sites;
  }
  let ready=loadSites().catch(()=>[]);
- const resync=()=>(ready=registerSites().catch(()=>[]));
- chrome.runtime.onInstalled?.addListener(resync);
- chrome.runtime.onStartup?.addListener(resync);
- chrome.permissions?.onRemoved?.addListener(resync);
+ // Keep the queue usable after a failure, but return this run's rejection to callers awaiting registration.
+ const resync=()=>{const run=ready.then(registerSites);ready=run.catch(()=>[]);return run;};
+ const sync=()=>resync().catch(()=>{});
+ chrome.storage?.onChanged?.addListener((changes,area)=>{if(area==='local'&&changes[SITES])sync();});
+ chrome.runtime.onInstalled?.addListener(sync);
+ chrome.runtime.onStartup?.addListener(sync);
+ chrome.permissions?.onRemoved?.addListener(sync);
  // A first install opens the welcome page, where the student sets their school's Canvas address before visiting it.
  chrome.runtime.onInstalled?.addListener(details=>{if(details?.reason==='install')chrome.tabs.create({url:chrome.runtime.getURL('welcome.html')}).catch?.(()=>{});});
  chrome.permissions?.onAdded?.addListener(async added=>{
@@ -190,10 +195,11 @@ importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js','focus-guar
  chrome.permissions?.onRemoved?.addListener(()=>syncGuard());
 
  chrome.runtime.onConnect.addListener(port=>{
-  // A school's own address is known only once the saved list has loaded; hold its early messages until then.
-  if(port.name==='ch-ai-source'&&!canvasSender(port.sender)&&ReserveSite.customSite(port.sender?.url)){
+  if(port.name==='ch-ai-panel'&&!panelSender(port.sender)){port.disconnect();return;}
+  if(['ch-ai-source','ch-ai-panel'].includes(port.name)){
    const held=[],hold=message=>held.push(message);port.onMessage.addListener(hold);
-   ready.then(()=>{port.onMessage.removeListener?.(hold);connect(port,held);});return;
+   let closed=false;port.onDisconnect.addListener(()=>{closed=true;});
+   ready.then(()=>{port.onMessage.removeListener?.(hold);if(!closed)connect(port,held);},()=>port.disconnect());return;
   }
   connect(port,[]);
  });
@@ -223,6 +229,7 @@ importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js','focus-guar
    });
   }else if(port.name==='ch-ai-panel'&&panelSender(port.sender)){
    panels.add(port);port.onMessage.addListener(message=>onPanel(port,message));
+   held.forEach(message=>onPanel(port,message));
    const data=sourceFor(port)?.catalog;if(data)post(port,{kind:'catalog',data});
    port.onDisconnect.addListener(()=>{
     panels.delete(port);handoffs.delete(port);
@@ -231,11 +238,17 @@ importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js','focus-guar
   }else port.disconnect();
  }
  chrome.runtime.onMessage.addListener((message,sender,reply)=>{
+  if(message?.type==='ch-school-ready'){
+   const origin=ReserveSite.customSite(message.origin);
+   if(!schoolSender(sender)||!origin||origin!==message.origin){reply({ok:false,error:'Invalid school registration request.'});return;}
+   resync().then(sites=>reply(sites.includes(origin)?{ok:true,origin}:{ok:false,error:'Allow access to your school’s Canvas site and try again.'}),error=>reply({ok:false,error:String(error?.message||error||'School registration failed. Try again.')}));
+   return true;
+  }
   if(message?.type!=='ch-ai-pdf')return;
   ready.then(()=>{
    if(!canvasSender(sender)||!channels.has(sender.tab.id)){reply({ok:false,error:'An active Canvas context is required.'});return;}
    return pdf(message.base64).then(result=>reply({ok:true,result}),error=>reply({ok:false,error:error.message}));
-  });
+  }).catch(error=>reply({ok:false,error:error.message}));
   return true;
  });
 })();
