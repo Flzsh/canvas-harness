@@ -6,6 +6,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const gpa=root.CanvasHarnessGPA||(typeof module==='object'&&module.exports?require('./gpa-model.js'):null);
   const customization=root.ReserveCustomization||(typeof module==='object'&&module.exports?require('./customization-model.js'):null);
   const layoutDefaults=customization?.defaults||{};
+  // The focus room's session, log and choices (focus-room-model.js); without it the Home timer keeps its old fields.
+  const focusModel=root.ReserveFocusRoomModel||(typeof module==='object'&&module.exports?require('./focus-room-model.js'):null);
   // appearanceVersion 2 (Canvas Harness 2.15) made Clay the default accent; see cleanData.
   // readingFont: teacher text in the book serif or the interface sans; greeting: the time-of-day heading.
   // hiddenCourses: hidden by hand. shownCourses (2.17): shown by hand, which keeps a course that is hidden
@@ -111,7 +113,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // Keep safe future toolbox fields while validating the fields this version owns.
       out.toolbox={...clone(value.toolbox),scratchpad:text(value.toolbox.scratchpad,30000),recent:[...new Set((value.toolbox.recent||[]).filter(id=>typeof id==='string'&&id.length<=500))].slice(0,24),dockSize:{...clone(size||{}),width:size?.width??0,height:size?.height??0}};
     }
-    if(isRecord(value.focus)) out.focus={minutes:[15,25,45,60].includes(value.focus.minutes)?value.focus.minutes:25,remaining:Number.isFinite(value.focus.remaining)?Math.max(0,Math.min(3600,value.focus.remaining)):1500,endsAt:Number.isFinite(value.focus.endsAt)?value.focus.endsAt:null,itemId:text(value.focus.itemId,100)||null,sessions:Number.isInteger(value.focus.sessions)?Math.max(0,value.focus.sessions):0};
+    if(isRecord(value.focus)) out.focus=focusModel?focusModel.cleanFocus(value.focus):{minutes:[15,25,45,60].includes(value.focus.minutes)?value.focus.minutes:25,remaining:Number.isFinite(value.focus.remaining)?Math.max(0,Math.min(3600,value.focus.remaining)):1500,endsAt:Number.isFinite(value.focus.endsAt)?value.focus.endsAt:null,itemId:text(value.focus.itemId,100)||null,sessions:Number.isInteger(value.focus.sessions)?Math.max(0,value.focus.sessions):0};
+    if(focusModel&&value.focusLog!==undefined)out.focusLog=focusModel.cleanLog(value.focusLog);
+    if(focusModel&&value.focusRoom!==undefined)out.focusRoom=focusModel.cleanRoom(value.focusRoom);
     if(value.pet!==undefined&&value.pet!==null){
       if(!isRecord(value.pet))throw Error('Invalid companion data in backup.');
       for(const [key,item] of Object.entries(value.pet).slice(0,32)){

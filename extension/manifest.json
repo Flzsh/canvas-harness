@@ -73,6 +73,7 @@
         "workspace-gestures.js",
         "customization-model.js",
         "gpa-model.js",
+        "focus-room-model.js",
         "storage.js",
         "quick-pack.js",
         "quick-upload.js",
@@ -110,6 +111,7 @@
         "planner-model.js",
         "pet-art.js",
         "pets.js",
+        "focus-room.js",
         "planner-ui.js",
         "widgets.js",
         "settings-dock.js",
@@ -141,6 +143,8 @@
         "responsive-layout.css",
         "widgets.css",
         "pet.css",
+        "focus-room.css",
+        "focus-scene.html",
         "canvas-nav.css"
       ],
       "matches": [
@@ -166,6 +170,8 @@
         "responsive-layout.css",
         "widgets.css",
         "pet.css",
+        "focus-room.css",
+        "focus-scene.html",
         "canvas-nav.css"
       ],
       "matches": [

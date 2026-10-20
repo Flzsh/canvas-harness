@@ -3,13 +3,13 @@
    answers their buttons; where they sit is workspace-arrange.js. Nothing here writes to Canvas. Creator: Flzsh. */
 (function(root){
  'use strict';
- const Arrange=()=>root.ReserveWorkspaceArrange,Plan=()=>root.ReservePlanner,Pets=()=>root.ReservePets;
+ const Arrange=()=>root.ReserveWorkspaceArrange,Plan=()=>root.ReservePlanner,Pets=()=>root.ReservePets,Room=()=>root.ReserveFocusRoomModel;
  // One line each: what the module is for. Shown in the gallery, so it has to be enough to choose by.
  const INFO={
   context:{hint:'Announcements, messages and the teacher’s page for one course.'},
   today:{hint:'What you planned for today and what is due. Tick things off, add your own.'},
   week:{hint:'Seven days at a glance: how much is on each one.'},
-  timer:{hint:'A 15 to 60 minute focus session. Your pony studies with you.'},
+  timer:{hint:'A focus session: a timer, Pomodoro rounds or an open session, and a full-screen focus room. Your pony studies with you.'},
   clock:{hint:'The time, the date, and how long until the next thing is due.'},
   notes:{hint:'A scratchpad that saves as you type.'},
   bookmarks:{hint:'The assignments and materials you bookmarked.'},
@@ -37,7 +37,9 @@
  const drafts={};   // text being typed in a module, kept across renders until it is saved
 
  const mmss=seconds=>`${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;
+ // The focus room's rules (focus-room-model.js) when they are loaded: Pomodoro breaks, open sessions, any length.
  function focusState(focus,now){
+  if(Room())return Room().state(focus,now);
   const f=focus||{},minutes=[15,25,45,60].includes(f.minutes)?f.minutes:25,total=minutes*60,running=!!f.endsAt;
   const left=running?Math.max(0,Math.ceil((f.endsAt-now)/1000)):Math.max(0,Math.min(total,Number.isFinite(f.remaining)?f.remaining:total));
   return {minutes,total,running,left:left||(!running?total:0),progress:1-(left||(!running?total:0))/total,sessions:f.sessions||0};
@@ -107,11 +109,12 @@ ${total?`<ul class="rd-todo-list">${d.all.map(e=>todo(e)).join('')}</ul>`:`<p cl
 ${board.waiting.length||board.overdue.length?`<p class="rd-widget-note">${[board.overdue.length?`${board.overdue.length} still open from before`:'',board.waiting.length?`${board.waiting.length} due soon with no day yet`:''].filter(Boolean).join(' · ')}</p>`:''}`;
    extra=action('workspace','Planner','data-tab="plan"','rd-text-button rd-widget-link');
   }else if(key==='timer'){
-   const f=focusState(mine.focus,c.now);
-   body=`<div class="rd-timer" data-running="${f.running}" data-rd-timer><div class="rd-timer-dial"><svg viewBox="0 0 120 120" aria-hidden="true"><path class="rd-timer-track" d="${RING}"/><path class="rd-timer-arc" pathLength="1" d="${RING}" style="stroke-dashoffset:${(1-f.progress).toFixed(4)}"/></svg><output data-rd-timer-text aria-live="off">${mmss(f.left)}</output></div>
+   const f=focusState(mine.focus,c.now),phase=f.mode==='open'?'Open session':f.brk?(f.phase==='long'?'Long break':'Short break'):f.mode==='pomodoro'?`Round ${f.round}`:'';
+   body=`<div class="rd-timer" data-running="${f.running}" data-rd-timer>${phase?`<p class="rd-widget-note rd-timer-phase">${E(phase)}</p>`:''}<div class="rd-timer-dial"><svg viewBox="0 0 120 120" aria-hidden="true"><path class="rd-timer-track" d="${RING}"/><path class="rd-timer-arc" pathLength="1" d="${RING}" style="stroke-dashoffset:${(1-f.progress).toFixed(4)}"/></svg><output data-rd-timer-text aria-live="off">${Room()?Room().clock(f.shown):mmss(f.left)}</output></div>
 <div class="rd-timer-actions">${action('timer-toggle',f.running?'Pause':f.left<f.total&&f.left>0?'Resume':'Start','','rd-button rd-button-primary')}${action('timer-reset','Reset',f.running||f.left<f.total?'':'disabled','rd-text-button')}</div>
-<div class="rd-timer-lengths" role="group" aria-label="Session length">${[15,25,45,60].map(n=>action('timer-minutes',`${n}`,`data-minutes="${n}" aria-pressed="${f.minutes===n}" aria-label="${n} minutes" ${f.running?'disabled':''}`,'rd-chip')).join('')}<span>min</span></div>
+<div class="rd-timer-lengths" role="group" aria-label="Session length">${[15,25,45,60].map(n=>action('timer-minutes',`${n}`,`data-minutes="${n}" aria-pressed="${f.minutes===n&&(f.mode||'timer')==='timer'}" aria-label="${n} minutes" ${f.running?'disabled':''}`,'rd-chip')).join('')}<span>min</span></div>
 ${f.sessions?`<p class="rd-widget-note">${f.sessions} session${f.sessions===1?'':'s'} finished</p>`:''}</div>`;
+   if(root.ReserveFocusRoom&&Room())extra=action('focus-room','Focus room','title="Open the full-screen focus room (Shift+F)"','rd-text-button rd-widget-link');
   }else if(key==='clock'){
    const next=nextDue(c,h);
    body=`<div class="rd-clock"><time class="rd-clock-time" data-rd-clock>${E(time(c.now,{hour:'numeric',minute:'2-digit'}))}</time><p class="rd-clock-date">${E(time(c.now,{weekday:'long',month:'long',day:'numeric'}))}</p>
@@ -155,6 +158,8 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
   const newId=()=>'local-'+(root.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const ctx=()=>getContext();
   const planner=root.ReservePlannerUI?.create({container,store,save,rerender,getContext,helpers,view:id=>preview(id)})||null;
+  // The full-screen focus room (focus-room.js): the same session as the timer module.
+  const room=root.ReserveFocusRoom&&Room()?root.ReserveFocusRoom.create({container,store,save,getContext,helpers,startTick:()=>startTick(),onFinished:kind=>finished(kind)}):null;
   // Size and place: the menu behind a module's three dots. It is built on demand and floats over the page.
   let menu=null,menuKey='';
   function closeMenu(refocus=false){
@@ -184,17 +189,18 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
   function ensurePets(){
    const P=Pets();if(!P||!root.ReservePetArt||pets||dead)return;
    pets=P.create({container,getPet:()=>store.get().pet,savePet:pet=>save(data=>{data.pet=pet;}),info:petInfo,
-    actions:{open:item=>preview(item.id),focus:()=>startFocus(),settings:()=>{settingsTab='pet';openSettings('pet');rerender();}}});
+    actions:{open:item=>preview(item.id),focus:item=>room?room.open({itemId:item?.id,start:true}):startFocus(),settings:()=>{settingsTab='pet';openSettings('pet');rerender();}}});
   }
-  function startFocus(){return save(data=>{const f=focusState(data.focus,Date.now());data.focus={...data.focus,minutes:f.minutes,remaining:f.left,endsAt:Date.now()+f.left*1000};}).then(()=>startTick());}
+  function startFocus(){return save(data=>{if(Room()){data.focus=Room().start(data.focus,Date.now());return;}const f=focusState(data.focus,Date.now());data.focus={...data.focus,minutes:f.minutes,remaining:f.left,endsAt:Date.now()+f.left*1000};}).then(()=>startTick());}
   // The dial and the clock move between renders without one.
   function tick(){
    if(dead)return;const now=Date.now(),data=store.get(),f=focusState(data.focus,now);
    for(const node of container.querySelectorAll('[data-rd-timer]')){
     const text=node.querySelector('[data-rd-timer-text]'),arc=node.querySelector('.rd-timer-arc');
-    if(text&&text.textContent!==mmss(f.left))text.textContent=mmss(f.left);if(arc)arc.style.strokeDashoffset=(1-f.progress).toFixed(4);
+    const shown=Room()?Room().clock(f.shown):mmss(f.left);
+    if(text&&text.textContent!==shown)text.textContent=shown;if(arc)arc.style.strokeDashoffset=(1-f.progress).toFixed(4);
    }
-   pets?.setFocus(f.running);
+   pets?.setFocus(f.running&&!f.brk);
    if(!f.running&&timerTick){clearInterval(timerTick);timerTick=0;}
   }
   function clock(){
@@ -204,10 +210,10 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
   }
   function sync(){
    if(dead)return;
-   const data=store.get(),running=!!data.focus?.endsAt;
+   const data=store.get(),running=!!data.focus?.endsAt||!!data.focus?.startedAt,brk=!!data.focus?.phase&&data.focus.phase!=='focus';
    if(running&&!timerTick)timerTick=setInterval(tick,1000);
    if(container.querySelector('[data-rd-clock]')){if(!clockTimer)clockTimer=setInterval(clock,15000);}else if(clockTimer){clearInterval(clockTimer);clockTimer=0;}
-   ensurePets();pets?.sync();pets?.setFocus(running);
+   ensurePets();pets?.sync();pets?.setFocus(running&&!brk);room?.sync();
   }
   async function quickAdd(input){
    const text=input?.value||'',c=ctx(),h=helpers(),today=h.dayKey(c.now,c.s.timeZone),parsed=Plan().parseQuick(text,today);
@@ -220,6 +226,7 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    else input.value=text;
   }
   function click(event){
+   if(room?.click(event))return true;
    if(planner?.click(event))return true;
    const button=event.target.closest?.('[data-rd-action]');if(!button||dead)return false;
    const action=button.dataset.rdAction,key=button.dataset.widget,A=Arrange();
@@ -238,13 +245,14 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    if(action==='widget-remove')closeMenu();
    if(action==='widget-add'&&(A.EXTRA.includes(key)||key==='context')){save(data=>{A.change(data.settings,key==='context'?{type:'restore-context'}:{type:'add',key});});return true;}
    if(action==='widget-remove'&&A.removable(key)){save(data=>{A.change(data.settings,key==='context'?{type:'hide-context'}:{type:'remove',key});});return true;}
+   if(action==='focus-room'&&room){room.open(button.dataset.id?{itemId:button.dataset.id}:{});return true;}
    if(action==='timer-toggle'){
     const f=focusState(store.get().focus,Date.now());
-    if(f.running)save(data=>{const g=focusState(data.focus,Date.now());data.focus={...data.focus,remaining:g.left,endsAt:null};});else startFocus();
+    if(f.running)save(data=>{if(Room()){data.focus=Room().pause(data.focus,Date.now());return;}const g=focusState(data.focus,Date.now());data.focus={...data.focus,remaining:g.left,endsAt:null};});else startFocus();
     return true;
    }
-   if(action==='timer-reset'){save(data=>{const g=focusState(data.focus,Date.now());data.focus={...data.focus,remaining:g.total,endsAt:null};});return true;}
-   if(action==='timer-minutes'){const n=Number(button.dataset.minutes);if([15,25,45,60].includes(n))save(data=>{data.focus={...data.focus,minutes:n,remaining:n*60,endsAt:null};});return true;}
+   if(action==='timer-reset'){save(data=>{if(Room()){data.focus=Room().reset(data.focus);return;}const g=focusState(data.focus,Date.now());data.focus={...data.focus,remaining:g.total,endsAt:null};});return true;}
+   if(action==='timer-minutes'){const n=Number(button.dataset.minutes);if([15,25,45,60].includes(n))save(data=>{data.focus=Room()?Room().setMinutes(data.focus,n):{...data.focus,minutes:n,remaining:n*60,endsAt:null};});return true;}
    if(action==='plan-quick-add'){quickAdd(button.closest('form')?.querySelector('[data-rd-field="plan-quick"]'));return true;}
    if(action==='plan-carry'){const c=ctx(),h=helpers(),{board,today}=plan(c,h);save(data=>{for(const e of board.overdue)Plan().plan(e.id,today)(data);});return true;}
    if(action==='pet-feed'){pets?.treat();return true;}
@@ -253,14 +261,18 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    return false;
   }
   function keydown(event){
+   if(room?.keydown(event))return true;
    if(planner?.keydown(event))return true;
    if(event.key==='Escape'&&menu){event.preventDefault();closeMenu(true);return true;}
    // Keys are heard on the document, where a shadow root hides the real target.
    const target=event.composedPath?.()[0]||event.target;
    if(event.key==='Enter'&&target?.dataset?.rdField==='plan-quick'){event.preventDefault();quickAdd(target);return true;}
+   // Shift+F opens the focus room, unless a field is being typed in.
+   if(room&&event.key==='F'&&event.shiftKey&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&!(target?.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName||''))){event.preventDefault();room.open();return true;}
    return false;
   }
   function input(event){
+   if(room?.input(event))return true;
    const field=event.target?.dataset?.rdField;
    if(field==='widget-notes'){
     drafts.notes=event.target.value.slice(0,30000);clearTimeout(notesTimer);
@@ -271,6 +283,7 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
   }
   // Switches and choices in "Make it yours" that this file owns: the pony, and the two on/off settings stored as words.
   function change(event){
+   if(room?.change(event))return true;
    const target=event.target,field=target?.dataset?.rdField;
    if(field==='pet'){
     const key=target.dataset.key,value=target.type==='checkbox'?target.checked:target.value;
@@ -288,13 +301,15 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
   }
   // Told by the workspace when a piece of work is ticked off or a focus session ends.
   function finished(kind,id){
-   if(!Pets()||dead)return;
+   if(dead)return;
+   if(kind==='focus'||kind==='break')room?.ended(kind);
+   if(kind==='break'||!Pets())return;
    if(kind==='done'&&lastDone===id)return;lastDone=kind==='done'?id:lastDone;
    ensurePets();const c=ctx(),h=helpers(),{board,today}=plan(c,h),d=board.days.find(x=>x.key===today);
    pets?.celebrate(kind,{today,left:d?d.open:undefined});
   }
-  function destroy(){dead=true;closeMenu();container.ownerDocument.removeEventListener('pointerdown',outside,true);win.removeEventListener('resize',closeMenu);clearInterval(clockTimer);clearInterval(timerTick);flushNotes();pets?.destroy();planner?.destroy();}
-  return {click,keydown,input,change,sync,finished,destroy,settingsTab:()=>settingsTab,planUI:()=>planner?.ui||{},editing:()=>editing,close(){if(editing){editing=false;rerender();}}};
+  function destroy(){dead=true;closeMenu();container.ownerDocument.removeEventListener('pointerdown',outside,true);win.removeEventListener('resize',closeMenu);clearInterval(clockTimer);clearInterval(timerTick);flushNotes();pets?.destroy();planner?.destroy();room?.destroy();}
+  return {click,keydown,input,change,sync,finished,destroy,focusRoom:()=>room,settingsTab:()=>settingsTab,planUI:()=>planner?.ui||{},editing:()=>editing,close(){if(editing){editing=false;rerender();}}};
  }
  const api={INFO,FRAMES,glyph,render,gallery,create,focusState,howLong,nextDue,plan};
  root.ReserveWidgets=api;if(typeof module==='object'&&module.exports)module.exports=api;
