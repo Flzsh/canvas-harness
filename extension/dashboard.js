@@ -685,13 +685,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // session ends here through the planner's own rule (ReserveCore.settleFocus).
     function syncFocus(){
       if(destroyed)return;const f=personal.focus,now=Date.now(),running=!!f?.endsAt,note='Focus session complete. Take a moment to breathe.';
-      if(!running&&focusDoneUntil&&now>=focusDoneUntil){focusDoneUntil=0;if(transientStatus===note){transientStatus='';render();return;}}
+      if(focusDoneUntil&&now>=focusDoneUntil){focusDoneUntil=0;if(transientStatus===note||transientStatus==='Break over. Ready for the next round?'){transientStatus='';render();return;}}
       const text=running?C.focusClock?.(f,now)||'':focusDoneUntil?'Done':'',clock=container.querySelector('[data-rd-focus-clock]');
       if(clock&&clock.textContent!==text){clock.textContent=text;clock.hidden=!text;clock.parentElement?.setAttribute('aria-label',running?'Planner, focus session running':'Planner');}
       if(running&&now>=f.endsAt&&!focusSettling&&C.settleFocus){
         focusSettling=true;let settled=false;const ended=f.endsAt;
         // A session that ended long before this page opened is recorded quietly.
-        store.update(data=>{settled=C.settleFocus(data,Date.now());}).then(()=>{if(settled&&!destroyed&&Date.now()-ended<60000){board?.finished('focus');focusDoneUntil=Date.now()+8000;if(!transientStatus){transientStatus=note;render();}else syncFocus();}}).catch(()=>{}).finally(()=>{focusSettling=false;});
+        // The focus room's rules (Pomodoro breaks, the session log) when they are loaded; the planner's otherwise.
+        const settle=root.ReserveFocusRoomModel?.settle||C.settleFocus;
+        store.update(data=>{settled=settle(data,Date.now());}).then(()=>{if(settled&&!destroyed&&Date.now()-ended<60000){const text=settled==='break'?'Break over. Ready for the next round?':note;board?.finished(settled==='break'?'break':'focus');focusDoneUntil=Date.now()+8000;if(!transientStatus){transientStatus=text;render();}else syncFocus();}}).catch(()=>{}).finally(()=>{focusSettling=false;});
       }
       const ticking=running||!!focusDoneUntil;
       if(ticking&&!focusTimer)focusTimer=setInterval(syncFocus,1000);else if(!ticking&&focusTimer){clearInterval(focusTimer);focusTimer=0;}
