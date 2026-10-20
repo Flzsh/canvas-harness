@@ -1,10 +1,12 @@
 /* Canvas Harness focus room: a full-screen place to work, opened from the Home timer, an assignment's Focus button,
    the pony's menu or Shift+F. It runs the same session as the Home timer (focus-room-model.js has the rules), over
    a moving scene, a course's artwork, or the student's own photo or video (focus-scene.html, an extension page that
-   also plays the room's sounds). Leaving the room keeps the timer running on Home. Nothing here writes to Canvas. */
+   also plays the room's sounds). The optional distraction guard (focus-guard-model.js) is set up in the Scene and
+   sound panel; its switch is a small extension page (focus-guard.html) because only an extension page can ask Chrome
+   for access to other websites. Leaving the room keeps the timer running on Home. Nothing here writes to Canvas. */
 (function(root){
  'use strict';
- const M=()=>root.ReserveFocusRoomModel;
+ const M=()=>root.ReserveFocusRoomModel,G=()=>root.ReserveFocusGuardModel;
  // The hand-drawn circle of the Home timer, so the two dials match.
  const RING='M61 9C90 7 112 31 111 61C110 90 87 112 59 111C31 110 8 88 9 59C10 32 32 9 60 9C65 9 70 10 75 12';
  const SCENE_NAMES={rain:'Rain on the window',night:'Night sky',ocean:'Ocean at dusk',lamp:'Lamp light',course:'Course art',photo:'Your photo',video:'Your video',plain:'Plain paper'};
@@ -20,11 +22,12 @@
  };
  const svg=k=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
  const sizeText=n=>n>=1048576?`${(n/1048576).toFixed(n>=10485760?0:1)} MB`:`${Math.max(1,Math.round(n/1024))} KB`;
- const sceneURL=()=>{try{const u=root.chrome?.runtime?.getURL?.('focus-scene.html');if(u)return u;}catch{}return new URL('../extension/focus-scene.html',root.location.href).href;};
+ const pageURL=file=>{try{const u=root.chrome?.runtime?.getURL?.(file);if(u)return u;}catch{}return new URL('../extension/'+file,root.location.href).href;};
+ const sceneURL=()=>pageURL('focus-scene.html');
 
  function create({container,store,save,getContext,helpers,startTick=()=>{},onFinished=()=>{}}){
   const doc=container.ownerDocument,win=doc.defaultView||root;
-  let node=null,ui=null,frame=null,ready=false,panel='',status='',statusTimer=0,tick=0,returnTo=null,goalTimer=0,goalDraft=null,overflow=null,sent={},cheerUntil=0,dead=false,ac=null;
+  let node=null,ui=null,frame=null,ready=false,panel='',status='',statusTimer=0,tick=0,returnTo=null,goalTimer=0,goalDraft=null,overflow=null,sent={},cheerUntil=0,dead=false,ac=null,guardDraft=null,guardGranted=null;
   const data=()=>store.get()||{};
   const room=()=>M().cleanRoom(data().focusRoom);
   const reduced=()=>!!win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -32,7 +35,7 @@
 
   function say(text,ms=5000){status=text;clearTimeout(statusTimer);if(ms)statusTimer=setTimeout(()=>{status='';paintStatus();},ms);paintStatus();}
   function paintStatus(){const el=node?.querySelector('[data-fr-status]');if(el&&el.textContent!==status)el.textContent=status;}
-  function saveRoom(patch){return save(d=>{const r=M().cleanRoom(d.focusRoom);d.focusRoom=M().cleanRoom({...r,...patch,sound:{...r.sound,...(patch.sound||{})},media:{...r.media,...(patch.media||{})}});});}
+  function saveRoom(patch){return save(d=>{const r=M().cleanRoom(d.focusRoom);d.focusRoom=M().cleanRoom({...r,...patch,sound:{...r.sound,...(patch.sound||{})},media:{...r.media,...(patch.media||{})},guard:{...r.guard,...(patch.guard||{})}});});}
   function saveFocus(fn){return save(d=>{d.focus=fn(M().full(d.focus),d);});}
 
   /* ---- the backdrop frame ---- */
@@ -44,6 +47,7 @@
    if(force||sent.sound!==b){sent.sound=b;post({op:'sound',sound});}
   }
   function onMessage(event){
+   if(guardMessage(event))return;
    if(!frame||event.source!==frame.contentWindow||event.data?.type!=='reserve-focus-scene')return;
    const m=event.data,kind=m.kind;
    if(m.op==='ready'){ready=true;sendLook(true);return;}
@@ -64,6 +68,38 @@
    const problem=M().checkMedia(kind,file);if(problem){say(problem);return;}
    if(!ready){say('The room is still opening. Try again in a moment.');return;}
    say(`Saving your ${MEDIA_NAMES[kind]}…`,0);post({op:'store',kind,file});
+  }
+
+  /* ---- the distraction guard ---- */
+  const guardFrame=()=>ui?.querySelector('iframe[data-fr-guard]')||null;
+  const tone=()=>node?.dataset.tone==='dark'?'dark':'light';
+  const guardURL=()=>`${pageURL('focus-guard.html')}?tone=${tone()}&on=${room().guard.on?1:0}`;
+  function postGuard(){const f=guardFrame();if(!f?.src)return;try{f.contentWindow.postMessage({type:'reserve-focus-room',op:'guard',on:room().guard.on,tone:tone()},new URL(f.src).origin);}catch{}}
+  // The switch tells the room what the student chose and whether Chrome allowed it.
+  function guardMessage(event){
+   const f=guardFrame();if(!f||event.source!==f.contentWindow||event.data?.type!=='reserve-focus-guard')return false;
+   try{if(event.origin!==new URL(f.src).origin)return true;}catch{return true;}
+   const m=event.data,known=guardGranted;if(typeof m.granted==='boolean')guardGranted=m.granted;
+   if(m.op==='ready'){postGuard();if(known!==guardGranted)render();}
+   else if(m.op==='set'){const on=m.on===true;saveRoom({guard:{on}}).then(()=>say(!on?'The distraction guard is off.':room().guard.sites.length?'The distraction guard is on. Sites on your list wait while you focus.':'The distraction guard is on. Add a site for it to cover.'));}
+   else if(m.op==='denied'){saveRoom({guard:{on:false}}).then(()=>say('Chrome did not allow it, so the distraction guard stays off.'));}
+   return true;
+  }
+  function addSite(input){
+   const r=room(),{host,problem}=G().check(input.value,r.guard.sites,[win.location.origin]);
+   if(problem){say(problem);return;}
+   guardDraft=null;input.value='';
+   saveRoom({guard:{sites:[...r.guard.sites,host]}}).then(()=>say(`${host} waits while you focus.`));
+  }
+  function guardSection(r){
+   if(!G())return '';
+   const sites=r.guard.sites.map(h=>`<li><span>${E(h)}</span><button type="button" class="fr-link-button" data-fr-action="guard-remove" data-value="${E(h)}" aria-label="Remove ${E(h)}">Remove</button></li>`).join('');
+   return `<h3 id="fr-guard">Distraction guard</h3>
+<iframe class="fr-guard-switch" data-fr-guard title="Distraction guard switch"></iframe>
+${r.guard.on&&guardGranted===false?'<p class="fr-fine fr-guard-lost">Chrome no longer lets the guard work on other sites. Switch it on again to allow it.</p>':''}
+<div class="fr-guard-add"><label class="fr-sr" for="fr-guard-site">Add a site</label><input type="text" id="fr-guard-site" data-fr-field="guard-site" maxlength="300" autocomplete="off" spellcheck="false" placeholder="youtube.com" value="${E(guardDraft??'')}" ${r.guard.sites.length>=G().MAX_SITES?'disabled':''}><button type="button" class="fr-button" data-fr-action="guard-add">Add</button></div>
+${sites?`<ul class="fr-guard-sites" aria-label="Sites the guard covers">${sites}</ul>`:''}
+<p class="fr-fine">During a focus session (not on breaks or while paused), these sites show a short reminder instead of the page, with a way to continue for 5 minutes. Canvas and your school’s sites are never covered. Switching the guard on asks Chrome for access to other websites; Canvas Harness uses it only on the sites in this list, only during a session.</p>`;
   }
 
   /* ---- what is on screen ---- */
@@ -127,6 +163,7 @@ ${range('sound-volume','Volume',Math.round(r.sound.volume*100),0,100)}${sounds}$
 <h3 id="fr-pomodoro">Pomodoro</h3><div class="fr-numbers">${[['work','Focus',5,120],['short','Short break',1,30],['long','Long break',5,60],['every','Long break after rounds',2,8]].map(([k,label,lo,hi])=>`<label><span>${label}</span><input type="number" data-fr-field="room-${k}" min="${lo}" max="${hi}" value="${r[k]}"></label>`).join('')}</div>
 <label class="fr-check"><input type="checkbox" data-fr-field="auto" ${r.auto?'checked':''}><span>Start the next round by itself after a break</span></label>
 <label class="fr-check"><input type="checkbox" data-fr-field="chime" ${r.chime?'checked':''}><span>A soft chime when a session or break ends</span></label>
+${guardSection(r)}
 <p class="fr-fine">Your photo, video and sound stay in Canvas Harness on this device. They are not uploaded anywhere.</p>`;
   }
   function statsPanel(c,h){
@@ -156,9 +193,17 @@ ${range('sound-volume','Volume',Math.round(r.sound.volume*100),0,100)}${sounds}$
    if(!node||dead)return;
    const active=node.getRootNode()?.activeElement,key=active&&ui.contains(active)?(active.dataset.frField?`[data-fr-field="${active.dataset.frField}"]${active.dataset.step?`[data-step="${active.dataset.step}"]`:''}`:active.dataset.frAction?`[data-fr-action="${active.dataset.frAction}"]${active.dataset.value!==undefined?`[data-value="${active.dataset.value}"]`:''}`:''):'';
    const caret=active?.selectionStart,html=view();
-   if(ui.__html!==html){ui.innerHTML=html;ui.__html=html;
+   if(ui.__html!==html){
+    // The guard's switch is a frame: moved aside and back (where the browser can) so a redraw does not reload it.
+    const kept=guardFrame(),scroll=ui.__panel===panel?ui.querySelector('.fr-panel')?.scrollTop||0:0;let parked=false;
+    if(kept&&typeof node.moveBefore==='function')try{node.moveBefore(kept,null);parked=true;}catch{}
+    ui.innerHTML=html;ui.__html=html;
+    const slot=guardFrame();let moved=false;
+    if(slot&&parked)try{slot.parentNode.moveBefore(kept,slot);slot.remove();moved=true;}catch{}
+    if(!moved){if(parked)kept.remove();if(slot)slot.src=guardURL();}
+    const side=ui.querySelector('.fr-panel');if(side&&scroll)side.scrollTop=scroll;ui.__panel=panel;   // the panel stays where the student was
     if(key){const el=ui.querySelector(key);if(el){el.focus({preventScroll:true});if(Number.isInteger(caret)&&el.setSelectionRange&&el.type==='text')try{el.setSelectionRange(caret,caret);}catch{}}}}
-   look();ticking();
+   look();postGuard();ticking();
   }
   // Between renders only the clock and its ring move.
   function step(){
@@ -195,7 +240,7 @@ ${range('sound-volume','Volume',Math.round(r.sound.volume*100),0,100)}${sounds}$
    if(doc.fullscreenElement===node)doc.exitFullscreen?.().catch(()=>{});
    win.removeEventListener('message',onMessage);doc.removeEventListener('fullscreenchange',render);
    clearInterval(tick);tick=0;clearTimeout(goalTimer);flushGoal();
-   node.remove();node=null;ui=null;frame=null;ready=false;panel='';status='';
+   node.remove();node=null;ui=null;frame=null;ready=false;panel='';status='';guardDraft=null;
    doc.documentElement.style.overflow=overflow||'';overflow=null;
    if(returnTo?.isConnected)returnTo.focus?.({preventScroll:true});returnTo=null;
   }
@@ -242,6 +287,8 @@ ${range('sound-volume','Volume',Math.round(r.sound.volume*100),0,100)}${sounds}$
    if(action==='fullscreen'){if(doc.fullscreenElement)doc.exitFullscreen?.().catch(()=>{});else node.requestFullscreen?.().catch(()=>say('Full screen is not available here.'));return true;}
    if(action==='scene'&&M().SCENES.includes(value)){saveRoom({scene:value});return true;}
    if(action==='pick'&&M().MEDIA[button.dataset.kind]){node.querySelector(`[data-fr-file="${button.dataset.kind}"]`)?.click();return true;}
+   if(action==='guard-add'&&G()){const field=node.querySelector('[data-fr-field="guard-site"]');if(field)addSite(field);return true;}
+   if(action==='guard-remove'&&G()){const r=room();saveRoom({guard:{sites:r.guard.sites.filter(h=>h!==value)}}).then(()=>say(`${value} is off the list.`));return true;}
    if(action==='remove-media'&&M().MEDIA[button.dataset.kind]){const kind=button.dataset.kind;post({op:'remove',kind});const r=room();saveRoom({media:{[kind]:null},...(r.scene===kind?{scene:'rain'}:{}),...(kind==='audio'?{sound:{own:0}}:{})});say(`Your ${MEDIA_NAMES[kind]} was removed from this device.`);return true;}
    return true;
   }
@@ -249,6 +296,7 @@ ${range('sound-volume','Volume',Math.round(r.sound.volume*100),0,100)}${sounds}$
    if(!node||!node.contains(event.target))return false;
    const t=event.target,field=t.dataset.frField;
    if(field==='goal'){goalDraft=t.value.slice(0,140);clearTimeout(goalTimer);goalTimer=setTimeout(flushGoal,600);return true;}
+   if(field==='guard-site'){guardDraft=t.value.slice(0,300);return true;}
    if(t.type==='range'){const out=t.parentElement?.querySelector('output');if(out)out.textContent=t.value;
     // Seen at once; saved when the slider is let go (change).
     if(field==='dim')node.style.setProperty('--fr-dim',String(t.value/100));
@@ -274,10 +322,11 @@ ${range('sound-volume','Volume',Math.round(r.sound.volume*100),0,100)}${sounds}$
    if(!node)return false;
    const target=event.composedPath?.()[0]||event.target,typing=/^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName||'')||target?.isContentEditable;
    if(event.key==='Escape'){event.preventDefault();if(panel){panel='';render();node.querySelector('[data-fr-action="panel"]')?.focus({preventScroll:true});}else close();return true;}
+   if(event.key==='Enter'&&target?.dataset?.frField==='guard-site'&&G()){event.preventDefault();addSite(target);return true;}
    if(event.key===' '&&!typing&&!target?.closest?.('button,a')){event.preventDefault();toggle();return true;}
    if(event.key==='Tab'){
     // Keep the keyboard inside the room.
-    const items=[...node.querySelectorAll('button:not([disabled]),a[href],input:not([type=hidden]):not([hidden]):not([disabled]),select')].filter(el=>el.getClientRects().length);
+    const items=[...node.querySelectorAll('button:not([disabled]),a[href],input:not([type=hidden]):not([hidden]):not([disabled]),select,iframe[data-fr-guard]')].filter(el=>el.getClientRects().length);
     if(items.length){const first=items[0],last=items[items.length-1],at=node.getRootNode().activeElement;
      if(event.shiftKey&&(at===first||!node.contains(at))){event.preventDefault();last.focus();}else if(!event.shiftKey&&(at===last||!node.contains(at))){event.preventDefault();first.focus();}}
    }

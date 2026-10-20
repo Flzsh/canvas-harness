@@ -1,5 +1,5 @@
 /* Canvas Harness — extension-only AI routing. No externally_connectable entry point. */
-importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js');
+importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js','focus-guard-model.js');
 (function(){
  'use strict';
  const channels=new Map(),panels=new Set(),requests=new Map(),handoffs=new Map();
@@ -116,6 +116,37 @@ importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js');
   await resync();
   await chrome.tabs.create({url:pending+'/?reserve=open'});
  });
+
+ // The focus room's distraction guard (focus-guard-model.js). The room copies a running session to its own key; while
+ // it runs, the reminder (focus-guard-page.js) is added to the sites on the student's list and nowhere else, and only
+ // once the student has allowed access to other websites by switching the guard on. Canvas and the school's own
+ // sites are left out. Pages already open on those sites get it when a session starts.
+ const Guard=globalThis.ReserveFocusGuardModel,GUARD_ID='ch-focus-guard',GUARD_FILES=['site.js','focus-guard-model.js','focus-guard-page.js'];
+ const ALL_SITES={permissions:['scripting'],origins:['https://*/*']};
+ let guardQueue=Promise.resolve();
+ const syncGuard=(fresh=false)=>(guardQueue=guardQueue.then(()=>applyGuard(fresh)).catch(()=>{}));
+ async function applyGuard(fresh){
+  if(!Guard||!chrome.scripting?.registerContentScripts||!chrome.storage?.local)return;
+  const rec=Guard.cleanRecord((await chrome.storage.local.get(Guard.KEY))[Guard.KEY]);
+  const old=await chrome.scripting.getRegisteredContentScripts({ids:[GUARD_ID]}).catch(()=>[]);
+  if(old.some(s=>s.id===GUARD_ID))await chrome.scripting.unregisterContentScripts({ids:[GUARD_ID]});
+  if(!(rec.until>Date.now())||!rec.sites.length||!await chrome.permissions.contains(ALL_SITES).catch(()=>false))return;
+  const schools=await grantedSites(),matches=Guard.matches(rec.sites);
+  await chrome.scripting.registerContentScripts([{id:GUARD_ID,matches,excludeMatches:['https://*.instructure.com/*',...schools.map(origin=>origin+'/*')],
+   js:GUARD_FILES,runAt:'document_start',allFrames:false,persistAcrossSessions:false}]);
+  if(!fresh||!chrome.tabs?.query)return;
+  for(const tab of await chrome.tabs.query({url:matches}).catch(()=>[]))
+   if(Guard.status(rec,tab.url,{protect:schools}).site)chrome.scripting.executeScript({target:{tabId:tab.id},files:GUARD_FILES}).catch(()=>{});
+ }
+ chrome.storage?.onChanged?.addListener((changes,area)=>{
+  const change=area==='local'&&Guard&&changes[Guard.KEY];if(!change)return;
+  const was=Guard.cleanRecord(change.oldValue),now=Guard.cleanRecord(change.newValue);
+  syncGuard(now.until>Date.now()&&(was.until!==now.until||was.sites.join()!==now.sites.join()));
+ });
+ chrome.runtime.onInstalled?.addListener(()=>syncGuard());
+ chrome.runtime.onStartup?.addListener(()=>syncGuard());
+ chrome.permissions?.onAdded?.addListener(()=>syncGuard(true));
+ chrome.permissions?.onRemoved?.addListener(()=>syncGuard());
 
  chrome.runtime.onConnect.addListener(port=>{
   // A school's own address is known only once the saved list has loaded; hold its early messages until then.

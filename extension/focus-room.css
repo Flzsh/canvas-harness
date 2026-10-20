@@ -129,3 +129,15 @@
  .fr-scenes{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 @media (prefers-reduced-motion:reduce){.fr-arc,.fr-dim{transition:none}}
+
+/* the distraction guard, in the Scene and sound panel: its switch (focus-guard.html) and the student's sites */
+.fr-guard-switch{display:block;width:100%;height:46px;margin:2px 0 0;border:0;background:transparent}
+.fr-guard-add{display:flex;gap:8px;margin:8px 0}
+.fr-guard-add input{flex:1;min-width:0;padding:7px 10px;border-radius:9px;border:1px solid var(--fr-glass-line);background:var(--fr-chip);color:var(--fr-ink);font:500 13px var(--fr-ui)}
+.fr-guard-add input::placeholder{color:var(--fr-muted)}
+.fr-guard-add input:disabled{opacity:.5}
+.fr-guard-add .fr-button{min-height:32px;padding:6px 14px;font-size:12px}
+.fr-guard-sites{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.fr-guard-sites li{display:inline-flex;align-items:center;gap:8px;max-width:100%;padding:5px 10px;border-radius:999px;background:var(--fr-chip);font-size:12px}
+.fr-guard-sites span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fr-guard-lost{margin:4px 0 0}

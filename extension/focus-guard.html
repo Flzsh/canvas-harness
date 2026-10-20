@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- Canvas Harness distraction guard switch, framed by the focus room's "Scene and sound" panel (focus-room.js). An
+     extension page, because only an extension page can ask Chrome for access to other websites, and Chrome asks the
+     student only when they click this switch themselves. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Distraction guard switch</title>
+<style>
+ :root{color-scheme:light;--ink:#1F1E1B;--accent:#C96442}
+ :root[data-tone=dark]{color-scheme:dark;--ink:#F7F5EF}
+ html,body{margin:0;background:transparent;overflow:hidden}
+ body{color:var(--ink);font:13px/1.45 "Segoe UI",system-ui,-apple-system,sans-serif}
+ label{display:flex;gap:8px;align-items:flex-start;padding:3px 2px;cursor:pointer}
+ input{margin:2px 0 0;accent-color:var(--accent)}
+ input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<label><input type="checkbox" id="on"><span>Cover the sites below while you focus</span></label>
+<script src="site.js"></script>
+<script src="focus-guard-frame.js"></script>
+</body>
+</html>

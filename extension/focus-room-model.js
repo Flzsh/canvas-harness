@@ -1,7 +1,7 @@
 /* Canvas Harness focus room: the rules, without any page. The Home timer and the full-screen focus room share one
    session (personal data `focus`): a plain timer, Pomodoro rounds with short and long breaks, or an open session that
    counts up. Finished sessions go to a small log (`focusLog`) for the room's numbers; the room's own choices (scene,
-   dimming, sounds, round lengths) are `focusRoom`. Everything stays on this device. Nothing here writes to Canvas. */
+   dimming, sounds, round lengths, the distraction guard of focus-guard-model.js) are `focusRoom`. Everything stays on this device. Nothing here writes to Canvas. */
 (function(root){
  'use strict';
  const MODES=['timer','pomodoro','open'],PHASES=['focus','short','long'];
@@ -15,7 +15,9 @@
   audio:{types:['audio/mpeg','audio/mp4','audio/aac','audio/ogg','audio/wav','audio/x-wav','audio/webm','audio/flac','audio/x-m4a'],max:30*1024*1024}};
  const LOG_MAX=400,LOG_DAYS=120,GOAL_MAX=140,DAY=864e5;
  const DEFAULT_ROOM={scene:'rain',dim:35,blur:0,work:25,short:5,long:15,every:4,auto:false,chime:true,
-  sound:{on:false,volume:.5,white:0,pink:0,brown:.6,rain:0,own:0},media:{photo:null,video:null,audio:null}};
+  sound:{on:false,volume:.5,white:0,pink:0,brown:.6,rain:0,own:0},media:{photo:null,video:null,audio:null},guard:{on:false,sites:[]}};
+ // The guard's rules live in focus-guard-model.js, which loads just after this file.
+ const Guard=()=>root.ReserveFocusGuardModel||(typeof module==='object'&&module.exports&&typeof require==='function'?require('./focus-guard-model.js'):null);
 
  const isRecord=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
  const int=(v,[lo,hi],fallback)=>Number.isFinite(v)?Math.max(lo,Math.min(hi,Math.round(v))):fallback;
@@ -33,7 +35,8 @@
   for(const k of SOUNDS)sound[k]=unit(s[k],d.sound[k]??0);
   return {scene:SCENES.includes(r.scene)?r.scene:d.scene,dim:int(r.dim,LIMITS.dim,d.dim),blur:int(r.blur,LIMITS.blur,d.blur),
    work:int(r.work,LIMITS.work,d.work),short:int(r.short,LIMITS.short,d.short),long:int(r.long,LIMITS.long,d.long),every:int(r.every,LIMITS.every,d.every),
-   auto:r.auto===true,chime:r.chime!==false,sound,media:{photo:cleanMedia(m.photo),video:cleanMedia(m.video),audio:cleanMedia(m.audio)}};
+   auto:r.auto===true,chime:r.chime!==false,sound,media:{photo:cleanMedia(m.photo),video:cleanMedia(m.video),audio:cleanMedia(m.audio)},
+   guard:Guard()?Guard().cleanGuard(r.guard):{on:false,sites:[]}};
  }
  // The session record. The first five fields are the ones the Home timer always had; the room's fields are stored only
  // when they say something (cleanFocus), so a plain timer's data is exactly what it was before the room. full() is the

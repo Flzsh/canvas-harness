@@ -8,6 +8,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const layoutDefaults=customization?.defaults||{};
   // The focus room's session, log and choices (focus-room-model.js); without it the Home timer keeps its old fields.
   const focusModel=root.ReserveFocusRoomModel||(typeof module==='object'&&module.exports?require('./focus-room-model.js'):null);
+  // The distraction guard (focus-guard-model.js) works outside Canvas, so a running session is copied to its own key.
+  const focusGuard=root.ReserveFocusGuardModel||(typeof module==='object'&&module.exports?require('./focus-guard-model.js'):null);
   // appearanceVersion 2 (Canvas Harness 2.15) made Clay the default accent; see cleanData.
   // readingFont: teacher text in the book serif or the interface sans; greeting: the time-of-day heading.
   // hiddenCourses: hidden by hand. shownCourses (2.17): shown by hand, which keeps a course that is hidden
@@ -149,12 +151,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function notify(){for(const listener of listeners){try{const result=listener(get());if(result&&typeof result.then==='function')Promise.resolve(result).catch(()=>{});}catch{}}}
     function update(mutator) {
       return lock(key,async()=>{const saved=await adapter.read(key),next=saved?cleanData(saved):defaults();
-        const oldLayout=next.settings.dashboardLayout,oldOrder=next.settings.deskOrder;
+        const oldLayout=next.settings.dashboardLayout,oldOrder=next.settings.deskOrder,oldGuard=focusGuard?JSON.stringify(focusGuard.record(next)):'';
         mutator(next);
         // Older Canvas Harness settings controls still write dashboardLayout alone.
         // Accept those updates without overwriting an explicit newer deskOrder.
         if(next.settings?.dashboardLayout!==oldLayout&&next.settings?.deskOrder===oldOrder&&['split','list'].includes(next.settings.dashboardLayout))next.settings.deskOrder=next.settings.dashboardLayout==='list'?'stacked':'context-first';
-        const clean=cleanData(next);await adapter.write(key,clean);current=clean;notify();return get();});
+        const clean=cleanData(next);await adapter.write(key,clean);current=clean;
+        // Written only when this save started, paused or ended a guarded session (or changed its sites), so another
+        // account's tab saving something else never switches the guard off.
+        if(focusGuard){const guard=focusGuard.record(clean);if(JSON.stringify(guard)!==oldGuard)try{await adapter.write(focusGuard.KEY,guard);}catch{}}
+        notify();return get();});
     }
     async function replace(data){const clean=cleanData(data);return update(next=>{for(const name of Object.keys(next))delete next[name];Object.assign(next,clean);});}
     function validCache(snapshot) {return snapshot&&snapshot.origin===origin&&String(snapshot.user?.id)===String(accountId)&&Array.isArray(snapshot.courses)&&Array.isArray(snapshot.assignments);}
