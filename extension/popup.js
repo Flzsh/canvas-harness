@@ -7,7 +7,7 @@
  const publicBuild=(manifest.optional_host_permissions||[]).includes('https://*/*'),titles={look:'Look',menu:'Canvas menu bar',pony:'Pony',native:'Canvas pages'};
  const navNames={drawn:'From the left edge',shown:'Full height',top:'Across the top',original:'Canvas’s own'};
  const preferences=ReservePagePreferences.create();
- let origin='',lastRow=null,statusTimer=0;
+ let origin='',lastRow=null,statusTimer=0,popupClosed=false;
  $('product-name').textContent=manifest.name;$('version').textContent=manifest.version;document.title=manifest.name;
  $('school-section').hidden=!publicBuild;
  // the drawn pictures: row icons, the real Biscuit on the Pony row, and the four menu-bar layouts
@@ -23,6 +23,7 @@
  // under the keyboard (three quick arrow presses save the third value).
  const pending=new Map();
  function drawPreferences(saved){
+  if(popupClosed)return;
   const data={...saved};for(const [key,item]of pending)data[key]=item.value;
   const settings=data,pet={enabled:data.pet},name='Biscuit',dark=settings.theme==='dark';
   document.documentElement.dataset.theme=dark?'dark':'light';
@@ -49,20 +50,22 @@
  chrome.storage.onChanged.addListener(storedChanged);
  enabled.addEventListener('change',async()=>{enabled.disabled=true;try{await chrome.storage.local.set({'reserve:enabled':enabled.checked});notice('Saved.');}catch{enabled.checked=!enabled.checked;notice('Could not save. Try again.',true);}finally{enabled.disabled=false;}});
  for(const row of all('[data-detail]'))row.addEventListener('click',()=>{
+  if(row.hidden)return;
   lastRow=row;$('main-view').hidden=true;$('detail-view').hidden=false;$('detail-title').textContent=titles[row.dataset.detail];
   for(const panel of all('[data-panel]'))panel.hidden=panel.dataset.panel!==row.dataset.detail;
   $('back').focus();
  });
- function back(){if($('detail-view').hidden)return;$('detail-view').hidden=true;$('main-view').hidden=false;lastRow?.focus();}
+ function back(){if($('detail-view').hidden)return;$('detail-view').hidden=true;$('main-view').hidden=false;(lastRow&&!lastRow.hidden?lastRow:$('open')).focus();}
  $('back').addEventListener('click',back);document.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();back();}});
  for(const button of all('[data-nav]'))button.addEventListener('click',async()=>{
   // Saves are short and queued; the control stays enabled so keyboard focus never drops.
   button.setAttribute('aria-busy','true');try{await chrome.storage.local.set({'reserve:canvasNav':button.dataset.nav});drawNav(button.dataset.nav);notice('Saved.');}catch{notice('Could not save. Try again.',true);}finally{button.removeAttribute('aria-busy');}
  });
  async function savePreference(input,patch){
+  if(popupClosed)return;
   for(const [key,value]of Object.entries(patch))pending.set(key,{count:(pending.get(key)?.count||0)+1,value});
   input.setAttribute('aria-busy','true');let failed=false;
-  try{await preferences.set(patch);notice('Saved.');}catch{failed=true;notice('Could not save. Try again.',true);}
+  try{await preferences.set(patch);if(!popupClosed)notice('Saved.');}catch{failed=true;if(!popupClosed)notice('Could not save. Try again.',true);}
   finally{for(const key of Object.keys(patch)){const item=pending.get(key);if(item&&--item.count<=0)pending.delete(key);}input.removeAttribute('aria-busy');}
   if(failed||!pending.size)drawPreferences(preferences.get());
  }
@@ -103,5 +106,5 @@
  },onError:error=>notice(error.message||'Appearance could not load.',true)});
  appearance.start().catch(error=>{if(error.code!=='cancelled')notice('Appearance could not load.',true);});
  for(const select of all('[data-native]'))select.addEventListener('change',()=>{select.disabled=true;appearance.set({[select.dataset.native]:select.value}).then(()=>notice('Saved.')).catch(error=>{select.value=appearance.get()[select.dataset.native];notice(error.message||'Appearance could not save.',true);}).finally(()=>{select.disabled=false;});});
- window.addEventListener('pagehide',()=>{appearance.destroy();preferences?.destroy();chrome.storage.onChanged.removeListener(storedChanged);clearTimeout(statusTimer);},{once:true});
+ window.addEventListener('pagehide',()=>{popupClosed=true;appearance.destroy();preferences?.destroy();chrome.storage.onChanged.removeListener(storedChanged);clearTimeout(statusTimer);},{once:true});
 })();

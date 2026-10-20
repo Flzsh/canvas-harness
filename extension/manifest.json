@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Canvas Harness",
   "short_name": "Canvas Harness",
-  "version": "2.29.0",
+  "version": "3.1.0",
   "description": "A Canvas workspace you build yourself: assignments beside their instructions, a weekly planner, study tools and a study companion.",
   "minimum_chrome_version": "120",
   "permissions": [
@@ -56,7 +56,9 @@
       ],
       "css": [
         "startup.css",
-        "startup-art.css", "canvas-nav.css"
+        "startup-art.css",
+        "canvas-nav.css",
+        "course-nav.css"
       ],
       "run_at": "document_start",
       "all_frames": false
@@ -118,6 +120,12 @@
         "settings-dock.js",
         "dashboard.js",
         "canvas-nav.js",
+        "course-nav-art.js",
+        "course-nav.js",
+        "modules-page.js",
+        "pdf-art.js",
+        "pdf-model.js",
+        "pdf-host.js",
         "content.js"
       ],
       "run_at": "document_start",
@@ -144,7 +152,12 @@
         "responsive-layout.css",
         "widgets.css",
         "pet.css",
-        "canvas-nav.css"
+        "canvas-nav.css",
+        "course-nav-art.css",
+        "course-nav.css",
+        "modules-page.css",
+        "pdf-reader.html",
+        "pdf-host.css"
       ],
       "matches": [
         "https://*.instructure.com/*"
@@ -169,7 +182,10 @@
         "responsive-layout.css",
         "widgets.css",
         "pet.css",
-        "canvas-nav.css"
+        "canvas-nav.css",
+        "course-nav-art.css",
+        "course-nav.css",
+        "modules-page.css"
       ],
       "matches": [
         "https://*/*"

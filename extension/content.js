@@ -7,37 +7,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const isDashboard=location.pathname==='/'||/^\/dashboard\/?$/.test(location.pathname);
   const params=new URLSearchParams(location.search);
   const startup=globalThis.ReserveStartup;
-  const build='2.29.0';
-  // Local timings contain only milliseconds, never account or course data.
-  // They make real startup measurable without delaying or storing the page.
+  const build='3.1.0';
   const stamp=()=>Math.round(globalThis.performance?.now?.()||0);
-  const timing={bootstrap:Math.round(startup?.startedAt||0),controller:stamp()};
   let host,root,area,toolbar,resumeCover,statusLabel,dashboard,planner,session,snapshot,store,ready=false,wanted=true;
-  let authorized=false,suspended=false,resumeGeneration=0,resumePending;
+  let authorized=false,suspended=false,resumeGeneration=0,resumePending,verifiedAt=-Infinity,verifiedWall=-Infinity;
   let launchObserver,launchAttempt,bootStopped=false;
   // "Open at once" (off unless the owner turns it on) remembers which account to open: an id, nothing else.
   const HINT_KEY='reserve:lastAccount:'+location.origin;let ownerHint=null;
   const quickOpen=settings=>settings?.quickOpen==='on';
   if(isDashboard)try{Promise.resolve(chrome.storage.local.get(HINT_KEY)).then(found=>{const id=String(found?.[HINT_KEY]??'');if(/^\d+$/.test(id))ownerHint={id};}).catch(()=>{});}catch{}
-  function mark(phase){
-    if(timing[phase]===undefined)timing[phase]=stamp();
-    // Network milestones distinguish time spent waiting for Canvas from local
-    // rendering. Only numeric, page-local timing values are exposed.
-    try{
-      const navigation=globalThis.performance?.getEntriesByType?.('navigation')?.[0];
-      for(const key of ['requestStart','responseStart','responseEnd'])if(navigation?.[key]>0)timing['navigation'+key[0].toUpperCase()+key.slice(1)]=Math.round(navigation[key]);
-      if(phase==='profileEnd'){
-        const profile=globalThis.performance?.getEntriesByName?.(location.origin+'/api/v1/users/self/profile','resource')?.find(entry=>entry.startTime>=timing.profileStart);
-        for(const key of ['startTime','requestStart','responseStart','responseEnd'])if(profile?.[key]>0)timing['profile'+key[0].toUpperCase()+key.slice(1)]=Math.round(profile[key]);
-      }
-    }catch{} // Missing resource timings must never affect account verification.
-    host?.setAttribute('data-reserve-startup-timing',JSON.stringify(timing));
-  }
   function stopWaiting(){launchObserver?.disconnect();launchObserver=null;if(launchAttempt)document.removeEventListener?.('DOMContentLoaded',launchAttempt);launchAttempt=null;}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>mark('parsed'),{once:true});
-  else mark('parsed');
   let manualOpen=false;
-  let dashboardState,dashboardScroll=0,restoreScroll=false,nativeTools,pageAppearance,launchPending=true;
+  let dashboardState,dashboardScroll=0,restoreScroll=false,nativeTools,pageAppearance,launchPending=true,launchAppearance=params.get('appearance')==='true';
   if(params.get('reserve')==='open'){const workspace=params.get('workspace'),courseId=params.get('course');if(['work','hub','materials','inbox','grades'].includes(workspace)||/^\d+$/.test(courseId||''))dashboardState={workspace,courseId};}
   const hidden=new Map();
   const pageStyle=document.createElement('style');
@@ -68,8 +49,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     host?.setAttribute('data-reserve-verifying',String(checking));
   }
   function reveal(){
-    if(!ready||!wanted||!authorized||suspended||bootStopped||!host||!snapshot||(!dashboard&&!planner)||document.visibilityState==='hidden')return;
-    if(!manualOpen&&startup&&!startup.complete())return;
+    if(!ready||!wanted||!authorized||suspended||bootStopped||!host||!snapshot||(!dashboard&&!planner)||(!planner&&dashboard?.isReady?.()===false)||document.visibilityState==='hidden')return;
+    if(startup){if(manualOpen)startup.dismiss?.();else if(!startup.complete())return;}
     const content=host.parentElement;
     for(const el of [...content.children,document.getElementById('right-side')]){
       if(!el||el===host||el.contains(host)||hidden.has(el))continue;
@@ -77,7 +58,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     document.documentElement.classList.add('reserve-inline-active');
     coverWorkspace(false);
-    host.hidden=false;dock.hidden=true;mark('visible');
+    host.hidden=false;dock.hidden=true;
   }
   function showCanvas(remember=true){
     authorized=false;resumeGeneration++;
@@ -87,6 +68,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     session?.destroy();session=null;
   }
   function setStatus(message){if(statusLabel)statusLabel.textContent=dashboard?'Canvas Harness '+build:message||'Canvas Harness '+build;dashboard?.setStatus(message);}
+  function openAppearance(){if(!launchAppearance)return;const button=area?.querySelector('[data-rd-action="settings"]');if(button){launchAppearance=false;button.click();}}
   function drawDashboard(){
     if(!area||!snapshot)return;
     if(dashboard)dashboardState=dashboard.getState();
@@ -94,8 +76,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // The dashboard's own command bar carries the Canvas dashboard switch (onNative) and its footer
     // the status (setStatus below), so this row folds away while the dashboard shows.
     toolbar.querySelector('[data-dashboard]').hidden=true;toolbar.hidden=true;
-    dashboard=ReserveDashboard.mount(area,{snapshot,store,initialState:dashboardState,onPlanner:openPlanner,onNative:()=>showCanvas(),refresh:()=>session.refresh(),onAuthError:()=>{showCanvas();session?.verify();}});
-    mark('mounted');
+    dashboard=ReserveDashboard.mount(area,{snapshot,store,initialState:dashboardState,onPlanner:openPlanner,onNative:()=>showCanvas(),refresh:()=>session.refresh(),onAuthError:()=>{showCanvas();session?.verify();},onReady:()=>{openAppearance();reveal();},onRenderError:error=>{dashboard?.destroy();dashboard=null;showCanvas(false);setStatus(error.message);dockBusy(false);dockRoot.querySelector('button').title=error.message+' Click to retry.';}});
+
     reveal();
     if(restoreScroll){restoreScroll=false;requestAnimationFrame(()=>window.scrollTo({top:dashboardScroll,behavior:'instant'}));}
   }
@@ -112,13 +94,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const content=document.getElementById('content');if(!content)return;
     host=document.createElement('div');host.id='reserve-companion-host';host.hidden=true;
     host.setAttribute('data-reserve-build',build);
-    mark('containers');
+
     root=host.attachShadow({mode:'open'});
     const loadingHost=host;let loaded=0;
     const sheets=startup?.styleFiles||['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css'];
     for(const file of sheets){
       const link=document.createElement('link');link.rel='stylesheet';link.href=chrome.runtime.getURL(file);
-      link.onload=()=>{if(host===loadingHost&&++loaded===sheets.length){ready=true;mark('styles');reveal();}};
+      link.onload=()=>{if(host===loadingHost&&++loaded===sheets.length){ready=true;reveal();}};
       link.onerror=()=>{if(host===loadingHost)showCanvas(false);};root.append(link);
     }
     const css=document.createElement('style');css.textContent=':host([hidden]){display:none!important}.reserve-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font:12px/1.5 system-ui;color:#5E5D59;padding:4px 0 12px}.reserve-toolbar div{display:flex;gap:8px}.reserve-toolbar button{font:600 12px system-ui;border:1px solid #D9D6CA;background:#fff;color:#3D3D3A;border-radius:999px;padding:8px 12px;cursor:pointer}.reserve-toolbar button:focus-visible{outline:2px solid #C96442;outline-offset:2px}.reserve-toolbar button[hidden],.reserve-toolbar[hidden]{display:none}'+
@@ -144,16 +126,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       dashboard?.destroy();dashboard=null;planner?.destroy();planner=null;
     }
     snapshot=next;store=verifiedStore;
-    authorized=true;
+    authorized=true;if(!meta?.unverified){verifiedAt=stamp();verifiedWall=Date.now();}
     if(!meta?.unverified)try{
       const id=String(next.user?.id??''),on=quickOpen(verifiedStore.get().settings);
       if(on&&/^\d+$/.test(id)&&ownerHint?.id!==id){ownerHint={id};Promise.resolve(chrome.storage.local.set({[HINT_KEY]:id})).catch(()=>{});}
       else if(!on&&ownerHint){ownerHint=null;Promise.resolve(chrome.storage.local.remove(HINT_KEY)).catch(()=>{});}
     }catch{}
-    makeHost();if(!host)return;mark('verifiedData');
+    makeHost();if(!host)return;
     if(planner)planner.updateSnapshot(next);
     else if(dashboard)dashboard.updateSnapshot(next);
-    else{drawDashboard();if(launchPending){launchPending=false;const page=params.get('plan'),id=params.get('item');if(['week','assignments'].includes(page))openPlanner({page,id:/^(\d+|local-[\w-]+)$/.test(id||'')?id:null,hideGrades:store.get().settings.showGrades!==true});else if(params.get('appearance')==='true')area.querySelector('[data-rd-action="settings"]')?.click();}}
+    else{drawDashboard();if(launchPending){launchPending=false;const page=params.get('plan'),id=params.get('item');if(['week','assignments'].includes(page))openPlanner({page,id:/^(\d+|local-[\w-]+)$/.test(id||'')?id:null,hideGrades:store.get().settings.showGrades!==true});else if(dashboard?.isReady?.()!==false)openAppearance();}}
     if(meta.stale)setStatus('Saved view · Updating in the background…');
     reveal();
   }
@@ -161,7 +143,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     makeHost();
     if(session)return session.start();
     session=ReserveSession.createSession({client:ReserveAPI.createClient(),createStore:ReserveStorage.createStore,...(ownerHint?{prefetchedProfile:ownerHint,quickOpen}:{}),
-      onSnapshot:receive,onStatus:setStatus,onTiming:mark,onError:(error,{clear})=>{
+      onSnapshot:receive,onStatus:setStatus,onError:(error,{clear})=>{
       if(clear){if(ownerHint){ownerHint=null;try{Promise.resolve(chrome.storage.local.remove(HINT_KEY)).catch(()=>{});}catch{}}dashboard?.destroy();dashboard=null;snapshot=null;store=null;showCanvas();dashboardState=undefined;dashboardScroll=0;restoreScroll=false;}
       else if(!dashboard&&!planner)showCanvas(false);
       dockBusy(false);dockRoot.querySelector('button').title=error.message+' Click to retry.';
@@ -193,6 +175,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(resumePending)return resumePending;
     if(!isDashboard||!wanted||!host||bootStopped||document.visibilityState==='hidden')return;
     if(!!document.querySelector('#login_form, #new_login, .ic-Login')||!(location.pathname==='/'||/^\/dashboard\/?$/.test(location.pathname))){showCanvas(false);return;}
+    // A page that loaded while its tab was hidden and was never shown: a check finished moments ago opens it now,
+    // and a first load still running carries on (it reveals itself). Only an older or interrupted check rechecks.
+    // Both clocks must agree the check is recent: performance.now() stands still while the computer sleeps.
+    if(!suspended){if(authorized&&snapshot&&(dashboard||planner)&&stamp()-verifiedAt<30000&&Math.abs(Date.now()-verifiedWall)<30000){reveal();return;}if(session&&verifiedAt===-Infinity){if(snapshot)reveal();return;}}
     suspended=false;manualOpen=true;const epoch=resumeGeneration;
     // With "Open at once" the workspace shows as the tab returns; the check below still runs and closes it on failure.
     try{if(snapshot&&session&&quickOpen(store?.get().settings)){authorized=true;reveal();}}catch{}
@@ -209,7 +195,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     resumePending=operation;operation.finally(()=>{if(resumePending===operation)resumePending=null;});return operation;
   }
   document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='hidden')pauseWorkspace();else resumeWorkspace();
+    // Leaving a tab while its first load still runs behind the opening cover keeps that load: the cover waits, unseen.
+    if(document.visibilityState==='hidden'){if(startup?.active&&!manualOpen&&!suspended&&host?.hidden!==false)return;pauseWorkspace();}else resumeWorkspace();
   });
   window.addEventListener('pagehide',event=>{bootStopped=true;stopWaiting();pauseWorkspace();if(!event.persisted){planner?.destroy();dashboard?.destroy();session?.destroy();nativeTools?.destroy();pageAppearance?.destroy();}});
   window.addEventListener('pageshow',event=>{if(event.persisted){bootStopped=false;resumeWorkspace();}});
@@ -229,7 +216,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(wanted)start();
   }
   (startup?.preferences||chrome.storage.local.get('reserve:enabled')).then(saved=>{
-    mark('enabledPreference');
+
     if(saved['reserve:enabled']===false||bootStopped)return;
     // Canvas's remaining scripts and markup do not need to block a verified
     // dashboard. Native course tools still initialize after parsing completes.

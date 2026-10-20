@@ -1,0 +1,72 @@
+/*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. */
+/* Only the course menu opts in. Its column, links, labels and hidden-item
+   semantics remain Canvas's; the generated action sheet is loaded alongside. */
+html.reserve-course-nav #section-tabs{
+ --cn-ink:#2B2A27;--cn-paper:#FAF9F5;--cn-wash:rgb(43 42 39 / .05);--cn-accent:#A9522F;
+ background:var(--cn-paper);
+}
+/* rows of their own: the restyle does not lean on Canvas's list styling (medium size, one row per item) */
+html.reserve-course-nav #section-tabs{list-style:none;margin:0;padding:4px 0}
+html.reserve-course-nav #section-tabs li{list-style:none;margin:0 0 2px}
+/* the row layout only for links Canvas shows: Canvas's own hiding (hidden attribute, .hidden) always wins */
+html.reserve-course-nav #section-tabs li a:not([hidden],.hidden){display:flex;align-items:center;gap:8px}
+html.reserve-course-nav #section-tabs li a{
+ min-height:34px;text-decoration:none;
+ position:relative;isolation:isolate;box-sizing:border-box;
+ font-size:14px;line-height:20px;padding:6px 10px 6px 36px;
+ border-radius:3px;border-color:transparent;background-color:transparent;
+}
+/* Do not override Canvas's disabled/hidden-from-students color or opacity. */
+html.reserve-course-nav #section-tabs li:where(:not(.section-hidden)) a:where(:not(.section-hidden,.disabled)){color:var(--cn-ink)}
+html.reserve-course-nav #section-tabs li a.active{
+ background:transparent;border-color:transparent;
+}
+html.reserve-course-nav #section-tabs li:where(:not(.section-hidden)) a.active:where(:not(.section-hidden,.disabled)){color:var(--cn-ink);font-weight:600}
+html.reserve-course-nav #section-tabs li.section-hidden a.cn-i,
+html.reserve-course-nav #section-tabs li a:is(.section-hidden,.disabled){--cn-ink:currentColor}
+html.reserve-course-nav #section-tabs li a:focus-visible{outline:2px solid var(--cn-accent);outline-offset:2px}
+html.reserve-course-nav #section-tabs .cn-icon{position:absolute;inset-inline-start:9px;top:50%;margin-top:-10px;width:20px;height:20px;pointer-events:none}
+html.reserve-course-nav #section-tabs .cn-icon>svg{display:block;width:20px;height:20px}
+html.reserve-course-nav #section-tabs .cn-tab{position:absolute;inset:0;z-index:-1;pointer-events:none}
+html.reserve-course-nav #section-tabs .cn-tab>svg{display:block;width:100%;height:100%}
+html.reserve-course-nav #section-tabs .nav-badge{
+ position:relative;isolation:isolate;background:transparent;color:#FFFDF6;border-color:transparent;
+ margin-inline-start:auto;flex:none;min-width:20px;height:20px;display:inline-grid;place-items:center;font-size:11px;font-weight:700;line-height:1;padding:0 4px;float:none;
+}
+html.reserve-course-nav #section-tabs .cn-seal{position:absolute;inset:-3px;z-index:-1;pointer-events:none}
+html.reserve-course-nav #section-tabs .cn-seal>svg{display:block;width:100%;height:100%;overflow:visible}
+/* A hand rule consumes no space and leaves the original list order alone. */
+html.reserve-course-nav #section-tabs li.cn-external-start{position:relative;margin-top:10px;padding-top:6px}
+html.reserve-course-nav #section-tabs li.cn-external-start::before{
+ content:"";position:absolute;inset-inline:8px;top:0;border-top:1.5px dashed var(--cn-ink);opacity:.3;transform:rotate(-.7deg);pointer-events:none;
+}
+@media(hover:hover) and (pointer:fine){
+ html.reserve-course-nav #section-tabs li a:hover{background-color:var(--cn-wash)}
+}
+/* The kit supplies a single action per interaction. Extend its load action to
+   every icon, and release the persistent is-current selector after that action. */
+html.reserve-course-nav #section-tabs .cn-i.is-current:not(:hover,:focus-visible,.cn-opening) .cn-icon svg *{animation:none}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-smoke{animation:cn-smoke 1s ease-out}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-b1{animation:cn-bob .6s ease-in-out}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-b2{animation:cn-bob .6s .15s ease-in-out}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-hand{transform-origin:0 100%;animation:cn-wave .7s ease-in-out}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-corner{transform-origin:0 100%;animation:cn-turn .6s ease-in-out}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-flap{transform-origin:50% 100%;animation:cn-open .6s ease-in-out}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-left{transform-origin:100% 50%;animation:cn-pl .7s ease-in-out}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-right{transform-origin:0 50%;animation:cn-pr .7s ease-in-out}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-m0{animation:cn-m0 .6s ease-in-out}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-m3{animation:cn-m3 .6s ease-in-out}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-q{transform-origin:50% 100%;animation:cn-tilt .6s ease-in-out}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-horn{transform-origin:20% 50%;animation:cn-blow .5s ease-in-out}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-waves{animation:cn-wv .6s ease-out both}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-dart{animation:cn-dart .5s cubic-bezier(.5,0,.5,1.5)}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-l{animation:cn-sl .6s ease-in-out}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-r{animation:cn-sr .6s ease-in-out}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-rec{animation:cn-blink .8s steps(2,end)}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-cog{transform-origin:50% 50%;animation:cn-spin .8s ease-in-out}
+html.reserve-course-nav #section-tabs .cn-i.cn-opening .cn-plus{transform-origin:50% 50%;animation:cn-spin .5s ease-in-out}
+html.reserve-course-nav #section-tabs .cn-i .cn-rec{animation-iteration-count:1}
+html.reserve-course-nav[data-cn-motion=off] #section-tabs .cn-i svg *{animation:none!important}
+@media(prefers-reduced-motion:reduce){
+ html.reserve-course-nav #section-tabs .cn-i svg *{animation:none!important}
+}

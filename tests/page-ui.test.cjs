@@ -70,7 +70,7 @@ function fixture({personal=false,page="popup",reduced=page==='welcome',savedValu
  }
  const document={documentElement:nodes.find(n=>n.tagName==='HTML'),body:nodes.find(n=>n.tagName==='BODY'),hidden:false,visibilityState:'visible',getElementById:id=>ids.get(id),querySelectorAll:selector=>select(nodes,selector),querySelector:selector=>select(nodes,selector)[0]||null,createElement:tag=>new Element(tag),createElementNS:(_ns,tag)=>new Element(tag),createTextNode:text=>({textContent:text,children:[]}),addEventListener:(name,fn)=>handlers.set(name,fn),removeEventListener:(name,fn)=>{if(handlers.get(name)===fn)handlers.delete(name);}};
  let firstSchoolRead=true;
- const chrome={runtime:{async sendMessage(message){return messageReply?messageReply(message):{ok:true,origin:message.origin};},getManifest:()=>({name:personal?'Personal build':'Canvas Harness',version:'9.8.7',optional_host_permissions:personal?[]:['https://*/*']}),getURL:p=>'chrome-extension://test/'+p,reload(){}},storage:{onChanged:{addListener:fn=>storageEvents.add(fn),removeListener:fn=>storageEvents.delete(fn)},local:{async get(keys){if(keys==='reserve:school'&&firstSchoolRead){firstSchoolRead=false;await schoolRead;}return Object.fromEntries((Array.isArray(keys)?keys:[keys]).map(key=>[key,saved[key]]));},async set(values){writes.push(values);const changes={};for(const [key,value]of Object.entries(values)){saved[key]=value;changes[key]={newValue:value};}for(const fn of storageEvents)fn(changes,'local');},async remove(key){delete saved[key];}}},tabs:{async query(){return [{url:'https://school.instructure.com/'}];},async create(value){opened.push(value);}},permissions:{async contains(){return true;},request(value){requests.push(value);return Promise.resolve(grant);},async remove(){return true;}}};
+ const chrome={runtime:{async sendMessage(message){return messageReply?messageReply(message):{ok:true,origin:message.origin};},getManifest:()=>({name:personal?'CH+':'Canvas Harness',version:'9.8.7',optional_host_permissions:personal?[]:['https://*/*']}),getURL:p=>'chrome-extension://test/'+p,reload(){}},storage:{onChanged:{addListener:fn=>storageEvents.add(fn),removeListener:fn=>storageEvents.delete(fn)},local:{async get(keys){if(keys==='reserve:school'&&firstSchoolRead){firstSchoolRead=false;await schoolRead;}return Object.fromEntries((Array.isArray(keys)?keys:[keys]).map(key=>[key,saved[key]]));},async set(values){writes.push(values);const changes={};for(const [key,value]of Object.entries(values)){saved[key]=value;changes[key]={newValue:value};}for(const fn of storageEvents)fn(changes,'local');},async remove(key){delete saved[key];}}},tabs:{async query(){return [{url:'https://school.instructure.com/'}];},async create(value){opened.push(value);}},permissions:{async contains(){return true;},request(value){requests.push(value);return Promise.resolve(grant);},async remove(){return true;}}};
 
  const introButton=new Element('g',{class:'startb'});
  introButton.getBoundingClientRect=()=>({left:480.25,top:600.5,width:320.5,height:72.25});
@@ -182,7 +182,7 @@ test('intro art has fixed bounds and Start has transparent keyboard focus stylin
  assert.match(focus.outline||'',/2px solid var\(--clay\)/);
 });
 
-test('A personal build keyboard Back restores intro focus and reuses the original drawing',async t=>{
+test('CH+ keyboard Back restores intro focus and reuses the original drawing',async t=>{
  const h=fixture({page:'welcome',personal:true});t.after(()=>h.cleanup());await settle();
  const first=h.introCalls.filter(call=>call.method==='mount').length;
  await start(h);assert.equal(h.ids.get('tour').dataset.currentStep,'navigation');
@@ -292,7 +292,7 @@ test('school form validates, requests permission in the submit gesture, and wait
  h.cleanup();denied.cleanup();
 });
 
-test('A personal build skips school and keyboard Back restores navigation from appearance',async()=>{
+test('CH+ skips school and keyboard Back restores navigation from appearance',async()=>{
  const h=fixture({page:'welcome',personal:true});await settle();
  assert.equal(h.nodes.find(n=>n.dataset.step==='school').hidden,true);
  await start(h);assert.equal(h.ids.get('tour').dataset.currentStep,'navigation');

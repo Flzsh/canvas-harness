@@ -12,7 +12,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const HINT='reserve:startup-theme',darkClass=on=>document.documentElement?.classList.toggle('reserve-startup-dark',on);
   try{if(localStorage.getItem(HINT)==='dark')darkClass(true);}catch{}
   try{globalThis.chrome?.storage?.local?.get('reserve:appearance').then(saved=>{const dark=saved?.['reserve:appearance']?.theme==='dark';darkClass(dark);try{if(dark)localStorage.setItem(HINT,'dark');else localStorage.removeItem(HINT);}catch{}}).catch(()=>{});}catch{}
-  const startedAt=performance.now(),deadline=startedAt+8000,subscribers=new Set();
+  const startedAt=performance.now(),subscribers=new Set();let deadline=startedAt+8000;
+  // The eight seconds count only while the page can be seen. A tab opened in the background waits, unseen,
+  // for its student; when it is shown it gets its eight seconds again (the CSS release switches restart too).
+  const expired=()=>performance.now()>=deadline&&document.visibilityState!=='hidden';
   const sheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css'];
   let state='pending',shell,observer,timer,preloaded=false;
   const preloadLinks=[];
@@ -24,6 +27,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     for(const link of preloadLinks)link.remove();preloadLinks.length=0;
     document.removeEventListener('pointerdown',interact,true);
     document.removeEventListener('keydown',interact,true);
+    document.removeEventListener('visibilitychange',shown);
     window.removeEventListener('pagehide',release);
     document.documentElement?.classList.remove('reserve-startup-active','reserve-startup-dark');
     shell?.remove();shell=null;
@@ -36,8 +40,21 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   }
   function canReveal(){
     if(state==='native')return false;
-    if(!dashboardPath()||loginPage()||(state!=='complete'&&performance.now()>=deadline)){release();return false;}
+    if(!dashboardPath()||loginPage()||(state!=='complete'&&expired())){release();return false;}
     return state==='active'||state==='complete';
+  }
+  // A reveal the student asked for (the CH+ button, or a returning tab after its account check) lifts the cover
+  // without the deadline: the controller has already decided to show the workspace.
+  function dismiss(){
+    if(state!=='pending'&&state!=='active')return;
+    state='complete';cleanup();subscribers.clear();
+  }
+  function expire(){if((state==='pending'||state==='active')&&document.visibilityState!=='hidden')release();}
+  function shown(){
+    if(document.visibilityState==='hidden'||(state!=='pending'&&state!=='active'))return;
+    deadline=performance.now()+8000;clearTimeout(timer);timer=setTimeout(expire,8000);
+    const html=document.documentElement;
+    if(state==='active'&&html?.classList.contains('reserve-startup-active')){html.classList.remove('reserve-startup-active');globalThis.getComputedStyle?.(shell)?.animationName;html.classList.add('reserve-startup-active');}
   }
   function complete(){
     if(!canReveal())return false;
@@ -69,7 +86,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   }
   function activate(){
     if(state!=='pending')return;
-    if(performance.now()>=deadline||!dashboardPath()||loginPage()){release();return;}
+    if(expired()||!dashboardPath()||loginPage()){release();return;}
     if(!document.documentElement)return;
     shell=document.createElement('section');shell.id='reserve-startup-shell';
     shell.setAttribute('aria-label','Canvas Harness is opening');
@@ -88,14 +105,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(getComputedStyle(shell).getPropertyValue('--reserve-startup-ready').trim()!=='1'){release();return;}
     state='active';document.documentElement.classList.add('reserve-startup-active');prepare();
   }
-  globalThis.ReserveStartup={canReveal,complete,release,startedAt,
+  globalThis.ReserveStartup={canReveal,complete,dismiss,release,startedAt,
     get active(){return state==='active';},
     styleFiles:sheets,
     onNative(fn){if(state==='native')fn();else if(state!=='complete')subscribers.add(fn);}
   };
-  timer=setTimeout(release,8000);
+  timer=setTimeout(expire,8000);
   document.addEventListener('pointerdown',interact,true);
   document.addEventListener('keydown',interact,true);
+  document.addEventListener('visibilitychange',shown);
   window.addEventListener('pagehide',release);
   // Manifest CSS is inert until the preference read succeeds; storage failure is native.
   globalThis.ReserveStartup.preferences=Promise.resolve().then(()=>chrome.storage.local.get('reserve:enabled')).then(saved=>{

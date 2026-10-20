@@ -233,7 +233,7 @@ function fixture({reduced=false,still=false,personal=false,hidden=false,grant=tr
  const media={matches:reduced,addEventListener:(_event,fn)=>mediaHandlers.add(fn),removeEventListener:(_event,fn)=>mediaHandlers.delete(fn)};
  let shouldFailOpen=openFails,permissionGranted=grant;
  const chrome={
-  runtime:{getManifest:()=>({name:personal?'Personal build':'Canvas Harness',version:'9.8.7',optional_host_permissions:personal?undefined:['https://*/*']}),getURL:name=>'chrome-extension://fixture/'+name,
+  runtime:{getManifest:()=>({name:personal?'CH+':'Canvas Harness',version:'9.8.7',optional_host_permissions:personal?undefined:['https://*/*']}),getURL:name=>'chrome-extension://fixture/'+name,
    async sendMessage(message){return {ok:true,origin:message.origin};}},
   storage:{onChanged:{addListener:fn=>storageHandlers.add(fn),removeListener:fn=>storageHandlers.delete(fn)},local:{
    async get(keys){
@@ -411,7 +411,7 @@ test('the standard tour is intro, school, navigation, appearance, companion with
  h.cleanup();
 });
 
-test('A personal build skips school and retains keyboard Back, including return to intro',async()=>{
+test('CH+ skips school and retains keyboard Back, including return to intro',async()=>{
  const h=fixture({personal:true,reduced:true});await settle();
  assert.equal(h.document.querySelector('[data-step="school"]').hidden,true);
  await h.next();assert.equal(h.active(),'navigation');
@@ -546,7 +546,7 @@ test('successful Go and Enter clear the spotlight and note after 300 ms while hi
  }
 });
 
-test('A personal build never exposes the school spotlight or Go when moving forward and Back',async t=>{
+test('CH+ never exposes the school spotlight or Go when moving forward and Back',async t=>{
  const h=fixture({personal:true,reduced:true});t.after(()=>h.cleanup());await settle();
  for(const name of ['intro','navigation','appearance','companion']){
   if(name!=='intro')await h.next();assert.equal(h.active(),name);assertGoState(h,false);
@@ -1196,7 +1196,7 @@ test('END idles at 8fps only while the visible intro remains active',async()=>{
  assert.equal(calls(h,'idle').length,left,'idle stops as soon as Start leaves intro');h.cleanup();
 });
 
-test('Start keeps the intro fade visible for 400 ms and A personal build Back restores the settled drawing',async()=>{
+test('Start keeps the intro fade visible for 400 ms and CH+ Back restores the settled drawing',async()=>{
  const h=fixture({personal:true});await settle();await complete(h);
  h.ids.get('intro-start').fire('click');await settle();
  assert.equal(opening(h).hidden,false,'the drawing stays visible during its exit fade');

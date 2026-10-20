@@ -8,9 +8,16 @@ assert.deepEqual(manifest.optional_permissions,['scripting']);
 const providers=require('../extension/ai-providers.js');
 // AI provider sites, plus a school's own Canvas address: optional, asked for one site at a time.
 assert.deepEqual(manifest.optional_host_permissions,[...providers.list.flatMap(p=>p.origins),'https://*/*']);
-// Other websites may reach the page resources only through the per-session address, so they cannot probe for the extension.
+// Only the PDF iframe entry and its Canvas host stylesheet need fixed-origin exposure.
+// Custom school sites keep the existing randomized-resource policy; do not add reader
+// assets to the wildcard dynamic entry or weaken the extension fingerprinting boundary.
 {const [fixed,dynamic,...rest]=manifest.web_accessible_resources;assert.equal(rest.length,0);assert.deepEqual(fixed.matches,['https://*.instructure.com/*']);
- assert.deepEqual(dynamic.matches,['https://*/*']);assert.equal(dynamic.use_dynamic_url,true);assert.deepEqual(dynamic.resources,fixed.resources);}
+ assert.deepEqual(dynamic.matches,['https://*/*']);assert.equal(dynamic.use_dynamic_url,true);
+ const readerResources=['pdf-reader.html','pdf-host.css'];
+ for(const file of readerResources){assert.ok(fixed.resources.includes(file),'Missing fixed Canvas reader resource '+file);assert.ok(!dynamic.resources.includes(file),'Reader resource exposed on arbitrary sites: '+file);}
+ for(const entry of [fixed,dynamic])for(const file of entry.resources)assert.ok(!/\*|\.js$|\.mjs$/.test(file)&&(!/^pdf-|^vendor\//.test(file)||readerResources.includes(file)),'Exposed extension internal: '+file);
+ assert.deepEqual(fixed.resources.filter(file=>!readerResources.includes(file)),dynamic.resources);
+}
 assert.equal(manifest.background.service_worker,'background.js');
 assert.equal(manifest.externally_connectable,undefined);
 assert.deepEqual(manifest.host_permissions,['https://*.instructure.com/*']);
@@ -20,12 +27,14 @@ const references=[manifest.background.service_worker,...manifest.content_scripts
 for(const ref of references)assert.ok(files.includes(ref.replaceAll('/',path.sep)),`Missing manifest resource: ${ref}`);
 const bootstrap=manifest.content_scripts.find(c=>c.js.includes('startup.js')),controller=manifest.content_scripts.find(c=>c.js.includes('content.js'));
 assert.deepEqual(bootstrap.js,['site.js','startup-art.js','startup.js']);
-assert.deepEqual(bootstrap.css,['startup.css','startup-art.css','canvas-nav.css']);
+assert.deepEqual(bootstrap.css,['startup.css','startup-art.css','canvas-nav.css','course-nav.css']);
 assert.ok(manifest.content_scripts.indexOf(bootstrap)<manifest.content_scripts.indexOf(controller));
 for(const entry of [bootstrap,controller]){assert.deepEqual(entry.matches,['https://*.instructure.com/*']);assert.equal(entry.all_frames,false);assert.equal(entry.run_at,'document_start');}
 assert.equal(controller.js.at(-1),'content.js');
+assert.deepEqual(controller.js.slice(-7),['course-nav-art.js','course-nav.js','modules-page.js','pdf-art.js','pdf-model.js','pdf-host.js','content.js']);
+assert.ok(!controller.css?.includes('pdf-host.css'),'PDF styling loads only after a PDF click');
 for(const size of [16,32,48,128]){const png=fs.readFileSync(path.join(extension,`icons/icon-${size}.png`));assert.equal(png.readUInt32BE(16),size);assert.equal(png.readUInt32BE(20),size);}
-for(const file of ['popup.html','welcome.html']){
+for(const file of ['popup.html','welcome.html','pdf-reader.html']){
  const html=fs.readFileSync(path.join(extension,file),'utf8');
  for(const match of html.matchAll(/(?:src|href)="([^"]+)"/g))if(!/^(?:https?:|#|data:)/.test(match[1]))assert.ok(fs.existsSync(path.join(extension,match[1])),`Missing HTML resource in ${file}: ${match[1]}`);
  assert.ok(!/<script(?![^>]*src=)[^>]*>\s*\S/i.test(html),'Inline executable script in '+file);

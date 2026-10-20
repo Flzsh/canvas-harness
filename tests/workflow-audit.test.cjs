@@ -237,7 +237,7 @@ async function aiFixture(t){
  const extensionId='a'.repeat(32),extensionURL='chrome-extension://'+extensionId+'/';
  const runtime={id:extensionId,getURL:file=>extensionURL+file,onConnect:event(),onMessage:event(),connectNative(){throw Error('Legacy native connection must never be used');}};
  tabs.set(12,{id:12,url:ORIGIN+'/',windowId:5,status:'complete',incognito:false});
- const chrome={runtime,permissions:{contains:async()=>grant},storage:{session:{get:async key=>({[key]:copy(session.get(key))}),set:async values=>{for(const [key,value] of Object.entries(values))session.set(key,copy(value));}}},
+ const chrome={runtime,permissions:{contains:async()=>grant},storage:{local:{get:async()=>({})},session:{get:async key=>({[key]:copy(session.get(key))}),set:async values=>{for(const [key,value] of Object.entries(values))session.set(key,copy(value));}}},
   tabs:{get:async id=>{if(!tabs.has(id))throw Error('Synthetic tab closed');return {...tabs.get(id)};},create:async details=>{const tab={id:nextTab++,url:details.url,windowId:details.windowId,status:'complete',incognito:false};tabs.set(tab.id,tab);return {...tab};},update:async(id,details)=>{if(!tabs.has(id))throw Error('Synthetic tab closed');Object.assign(tabs.get(id),details);return {...tabs.get(id)};}},
   windows:{get:async()=>({id:5,type:'normal'}),update:async()=>({id:5,type:'normal'})},
   scripting:{executeScript:async details=>{executions.push(details);return [{frameId:0,result:copy(webResult)}];}},
@@ -335,7 +335,7 @@ test('audit: a live Canvas account switch cannot send the already collected prom
 });
 
 test('audit regression: missing insertion code with permission already granted reports readiness rather than requesting access again',async t=>{
- const f=await aiFixture(t),c=f.controller;f.worker.CanvasHarnessInject=null;assert.equal(vm.runInContext('Boolean(globalThis.CanvasHarnessInject)',f.worker),false);c.setDraft('Synthetic code readiness question');
+ const f=await aiFixture(t),c=f.controller;f.worker.importScripts('ai-providers.js','ai-inject.js','ai-web.js');f.worker.CanvasHarnessInject=null;assert.equal(vm.runInContext('Boolean(globalThis.CanvasHarnessInject)',f.worker),false);c.setDraft('Synthetic code readiness question');
  assert.equal(await c.inject(),false);assert.equal(f.executions.length,0);assert.equal(c.state.busy,'');
  assert.equal([...f.tabs.values()].filter(tab=>tab.url.startsWith(f.chrome.runtime.getURL('ai-permission.html'))).length,0,'a missing script is not a missing permission');
  assert.match(c.state.error,/reload|unavailable|missing|code/i);

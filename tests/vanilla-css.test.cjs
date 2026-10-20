@@ -5,7 +5,7 @@ const read=file=>fs.readFileSync(path.join(__dirname,'..','extension',file),'utf
 // Static isolation checks, not a substitute for browser rendering or the route/DOM tests.
 // These sheets are linked inside extension shadow roots, never into Canvas's document.
 const shadowSheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css'];
-const globalSheets=['startup.css','startup-art.css','native-page.css','canvas-nav.css'];
+const globalSheets=['startup.css','startup-art.css','native-page.css','canvas-nav.css','course-nav.css','modules-page.css'];
 const grouping=/^@(media|supports|container|layer|scope|starting-style)\b/i;
 
 // Read punctuation outside strings, comments, functions and attribute selectors. Splitting
@@ -88,7 +88,10 @@ test('other document-level sheets require startup state or the explicitly retain
  const scopes={
   'startup.css':/^(?:#reserve-startup-shell(?=[\s.#[:>+~]|$)|html\.reserve-startup-active\s+(?:#reserve-startup-shell|#content|#right-side(?:-wrapper)?)(?=[\s.#[:>+~]|$)|html\.reserve-inline-active\.reserve-fit(?:\s+body)?$)/,
   'startup-art.css':/^(?:html\.reserve-startup-dark\s+)?#reserve-startup-shell(?=[\s.#[:>+~]|$)/,
-  'canvas-nav.css':/^html\.chn-nav(?=[\s.#[:>+~]|$)/
+  'canvas-nav.css':/^html\.chn-nav(?=[\s.#[:>+~]|$)/,
+  'course-nav.css':/^html\.reserve-course-nav(?:\[[^\]]+\])?\s+#section-tabs(?=[\s.#[:>+~]|$)/,
+  // 3.1: Canvas's Modules page, only its module list and the buttons above it
+  'modules-page.css':/^html\.reserve-modules(?:\[[^\]]+\])?\s+(?:#context_modules|:is\(\.header-bar,\.header-bar-right\))(?=[\s.#[:>+~]|$)/
  };
  for(const [file,scope]of Object.entries(scopes)){
   const parsed=stylesheet(read(file));assert.ok(parsed.rules.length,file+' must have rules to check');
@@ -115,12 +118,11 @@ test('broad workspace resets and standalone extension-page CSS are never manifes
  for(const file of shadowSheets)assert.ok(!injected.includes(file),file+' has shadow-only rules and must not enter the Canvas document');
  // New dynamically available sheets need an explicit global-gate or shadow-root classification.
  const available=new Set(manifest.web_accessible_resources.flatMap(entry=>entry.resources).filter(file=>file.endsWith('.css')));
- // The PDF reader's two extension-page styles and click-only host stylesheet
- // are restricted to fixed Canvas origins. Do not classify them as normal
- // Canvas document sheets or widen the dynamic wildcard resource exposure.
- const pdfSheets=['pdf-reader.css','pdf-art.css','pdf-host.css'];
+ // Canvas loads only the click-only host stylesheet; reader styles stay inside the extension iframe.
+ const pdfSheets=['pdf-host.css'];
  const fixed=manifest.web_accessible_resources.find(entry=>entry.matches?.includes('https://*.instructure.com/*'));
  const dynamic=manifest.web_accessible_resources.find(entry=>entry.matches?.includes('https://*/*'));
+ for(const file of ['pdf-reader.css','pdf-art.css'])assert.ok(!injected.includes(file)&&!available.has(file),'Iframe-only CSS must stay private: '+file);
  for(const file of available){
   if(pdfSheets.includes(file)){
    assert.ok(!injected.includes(file),'PDF styles may not load into Canvas at rest: '+file);
@@ -140,3 +142,20 @@ test('broad workspace resets and standalone extension-page CSS are never manifes
  }
 });
 
+test('course-menu art stays light like the Canvas page, uses Canvas fonts and bounded motion',()=>{
+ const css=read('course-nav.css'),kit=read('course-nav-art.css'),parsed=stylesheet(css);
+ assert.ok(!parsed.rules.some(rule=>rule.selector.includes('data-cn-theme')),'no dark palette on a light Canvas page');
+ assert.doesNotMatch(css,/prefers-color-scheme|\bfont(?:-family)?\s*:/,'Canvas continues to choose the label font');
+ assert.doesNotMatch(css+kit,/\binfinite\b/,'no continuously running action');
+ const reduced=parsed.rules.filter(rule=>rule.parents.some(parent=>parent.includes('prefers-reduced-motion')));
+ assert.ok(reduced.some(rule=>/animation\s*:\s*none\s*!important/.test(rule.body)),'reduced motion disables generated actions');
+ const size=parsed.rules.find(rule=>rule.selector==='html.reserve-course-nav #section-tabs .cn-icon');
+ assert.match(size.body,/width\s*:\s*20px\b/);assert.match(size.body,/height\s*:\s*20px\b/);
+ const row=parsed.rules.find(rule=>rule.selector==='html.reserve-course-nav #section-tabs li a');
+ assert.ok(row,'Canvas links receive their row layout before JS adds cn-i');
+ assert.match(row.body,/font-size\s*:\s*14px\b/);
+ assert.doesNotMatch(row.body,/\b(?:width|display|order)\s*:/,'Canvas keeps link widths, order and hidden-item display');
+ const visibleRow=parsed.rules.find(rule=>rule.selector==='html.reserve-course-nav #section-tabs li a:not([hidden],.hidden)');
+ assert.ok(visibleRow,'only visible Canvas links receive the drawn flex layout');
+ assert.match(visibleRow.body,/display\s*:\s*flex\b/);assert.match(visibleRow.body,/align-items\s*:\s*center\b/);assert.match(visibleRow.body,/gap\s*:\s*8px\b/);
+});

@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
-const Preferences=require('../extension/page-preferences.js'),{createStore}=require('../extension/storage.js'),{createSession}=require('../extension/session.js');
+const Preferences=require('../extension/page-preferences.js'),{createStore,validateBackup}=require('../extension/storage.js'),{createSession}=require('../extension/session.js');
 const origin='https://school.instructure.com',key='reserve:v1:'+origin+':1',appearance='reserve:appearance';
 function harness(seed={}){
  const data=structuredClone(seed),listeners=new Set(),writes=[];let fail=false;
@@ -103,4 +103,25 @@ test('when the worker cannot be reached the page still saves the change itself',
  vm.runInContext(fs.readFileSync(path.join(__dirname,'../extension/page-preferences.js'),'utf8'),context);
  const offline=context.ReservePagePreferences.create({local:h.local,events:h.events});await offline.load();await offline.set({theme:'dark'});
  assert.equal(h.data[appearance].theme,'dark');offline.destroy();
+});
+
+test('device appearance choices reach live account settings and survive reload, recovery and same-account backups',async()=>{
+ const legacy={settings:{theme:'dark',motion:'still',nightArt:15},pet:{enabled:false,name:'Saved pony'},tasks:{7:{notes:'Keep these notes'}}};
+ const h=harness({[key]:legacy}),store=createStore({origin,accountId:'1',adapter:h.adapter}),page=Preferences.create(h);await store.load();await page.load();
+ const seen=[];store.subscribe(data=>seen.push(data.settings.nightArt));await page.set({nightArt:60});await settle();
+ assert.equal(store.get().settings.nightArt,60);assert.ok(seen.includes(60));assert.deepEqual(h.data[key],legacy);
+ await store.update(data=>{data.settings.nightArt=85;data.tasks['7'].notes='A new note';});await settle();
+ assert.equal(page.get().nightArt,85);assert.equal(h.data[appearance].nightArt,85);assert.equal(h.data[key].settings.nightArt,undefined);assert.equal(h.data[key].tasks['7'].notes,'A new note');
+ await store.load();assert.equal(store.get().settings.nightArt,85);
+ const backup=store.exportBackup(),clean=validateBackup(backup,store.owner);assert.equal(clean.settings.nightArt,85);assert.equal(clean.tasks['7'].notes,'A new note');
+ await page.set({nightArt:25});await settle();await store.replace(clean);await settle();assert.equal(page.get().nightArt,85);assert.equal(store.get().settings.nightArt,85);
+ await store.saveRecovery();assert.equal((await store.readRecovery()).settings.nightArt,85);assert.equal(validateBackup(store.exportBackup(),store.owner).settings.nightArt,85);
+ assert.deepEqual(Preferences.personal(store.get()).settings.nightArt,undefined);page.destroy();store.destroy();assert.equal(h.count(),0);
+});
+
+test('personal appearance separation keeps device fields out of account writes without dropping them from live data',()=>{
+ const data={settings:{theme:'dark',motion:'off',nightArt:17,accent:'ocean'},pet:{enabled:false,name:'Keep'},tasks:{7:{notes:'Keep'}}};
+ const before=structuredClone(data),device=Preferences.fromData(data);assert.deepEqual(device,{theme:'dark',motion:'off',nightArt:17,pet:false});
+ const personal=Preferences.personal(data);assert.deepEqual(personal,{settings:{accent:'ocean'},pet:{name:'Keep'},tasks:{7:{notes:'Keep'}}});assert.deepEqual(data,before);
+ assert.equal(Preferences.apply(personal,{...device,theme:'light'}).settings.theme,'light');assert.deepEqual(Preferences.fromData({settings:{},pet:{}}),{theme:'light',motion:'gentle',nightArt:0,pet:true});
 });

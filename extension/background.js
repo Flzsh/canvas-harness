@@ -6,7 +6,6 @@ globalThis.ReservePagePreferences?.serve();
  'use strict';
  const channels=new Map(),panels=new Set(),requests=new Map(),handoffs=new Map();
  let offscreenPending;
-
  const post=(port,message)=>{try{port.postMessage(message);}catch{}};
  const fail=(port,id,error)=>post(port,{id,ok:false,error:String(error?.message||error||'The request could not finish.')});
  const validId=id=>typeof id==='string'&&/^[\w-]{1,100}$/.test(id);
@@ -124,10 +123,11 @@ globalThis.ReservePagePreferences?.serve();
  });
 
  chrome.runtime.onConnect.addListener(port=>{
-  // A school's own address is known only once the saved list has loaded; hold its early messages until then.
-  if(port.name==='ch-ai-source'&&!canvasSender(port.sender)&&ReserveSite.customSite(port.sender?.url)){
+  if(port.name==='ch-ai-panel'&&!panelSender(port.sender)){port.disconnect();return;}
+  if(['ch-ai-source','ch-ai-panel'].includes(port.name)){
    const held=[],hold=message=>held.push(message);port.onMessage.addListener(hold);
-   ready.then(()=>{port.onMessage.removeListener?.(hold);connect(port,held);});return;
+   let closed=false;port.onDisconnect.addListener(()=>{closed=true;});
+   ready.then(()=>{port.onMessage.removeListener?.(hold);if(!closed)connect(port,held);},()=>port.disconnect());return;
   }
   connect(port,[]);
  });
@@ -157,6 +157,7 @@ globalThis.ReservePagePreferences?.serve();
    });
   }else if(port.name==='ch-ai-panel'&&panelSender(port.sender)){
    panels.add(port);port.onMessage.addListener(message=>onPanel(port,message));
+   held.forEach(message=>onPanel(port,message));
    const data=sourceFor(port)?.catalog;if(data)post(port,{kind:'catalog',data});
    port.onDisconnect.addListener(()=>{
     panels.delete(port);handoffs.delete(port);
@@ -175,7 +176,7 @@ globalThis.ReservePagePreferences?.serve();
   ready.then(()=>{
    if(!canvasSender(sender)||!channels.has(sender.tab.id)){reply({ok:false,error:'An active Canvas context is required.'});return;}
    return pdf(message.base64).then(result=>reply({ok:true,result}),error=>reply({ok:false,error:error.message}));
-  });
+  }).catch(error=>reply({ok:false,error:error.message}));
   return true;
  });
 })();

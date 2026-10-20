@@ -96,7 +96,9 @@
 }
 .rd[data-banner-size=compact] { --ch-banner-h: 80px; --rd-band-h: clamp(90px,7cqi,120px); }
 .rd[data-banner-size=large] { --ch-banner-h: 220px; --rd-band-h: clamp(230px,17cqi,320px); }
-.rd[data-show-course-icons=false] .rd-course-rail .rd-rail-art { display: none; }
+/* as specific as refresh.css's rail-art rule, which otherwise keeps the icons showing */
+.rd[data-show-course-icons=false] .rd-course-rail .rd-rail-art,
+.rd[data-show-course-icons=false] .rd-course-rail :is(.rd-rail-title .rd-course-name, .rd-rail-all) > .rd-rail-art { display: none; }
 .rd[data-show-course-icons=false] :is(.rd-assignment-course,.rd-reader-course,.rd-deck-header h2,.rd-message-line,.rd-grade-table) .rd-mini { display: none; }
 .rd[data-show-course-icons=false] .rd-course-rail .rd-course-name,
 .rd[data-show-course-icons=false] .rd-course-rail .rd-rail-course:has(> .rd-frame) .rd-course-name { padding-left: 14px; }

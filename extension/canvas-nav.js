@@ -87,6 +87,7 @@
   for(const node of header.querySelectorAll('.chn-ic, .chn-frames, .chn-logo-art'))node.remove();
   for(const node of header.querySelectorAll('.chn-drawn'))node.classList.remove('chn-drawn');
   for(const node of header.querySelectorAll('.chn-drawn-link'))node.classList.remove('chn-drawn-link');
+  for(const node of header.querySelectorAll('[data-chn-empty]'))delete node.dataset.chnEmpty;
  }
  // The workspace's colours (accent, page colour, ink, motion) as the dashboard last showed them, so every Canvas page
  // matches; the dashboard refreshes them whenever they change.
@@ -202,7 +203,7 @@
   // across the top of the page, which moves the page down. Its own outline and motion: nothing of the column's slide.
   function topBar(){
    if(html.dataset.chnLayout!=='top'||header.dataset.chnTop)return;header.dataset.chnTop='true';
-   const dashboard=/^\/?$/.test(root.location?.pathname||'');
+   const dashboard=/^\/?$/.test(root.location?.pathname||'')&&new URLSearchParams(root.location?.search||'').get('reserve')!=='native';
    for(const link of header.querySelectorAll('.ic-app-header__menu-list-link'))if(!link.title){const name=link.querySelector('.menu-item__text')?.textContent.trim();if(name)link.title=name;}
    const waitUntil=Date.now()+(dashboard?9000:0),set=(name,value)=>html.style.setProperty(name,value);
    let queued=0,watched=null,sizes=null;

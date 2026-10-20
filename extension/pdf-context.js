@@ -6,10 +6,10 @@
  *
  * Vendored unchanged from the official npm pdfjs-dist 6.4.299 package (Mozilla
  * PDF.js build d0991a0d5), verified against its registry SHA-512 integrity.
- * legacy/build/pdf.min.mjs -> vendor/pdfjs/pdf.mjs
- * legacy/build/pdf.worker.min.mjs -> vendor/pdfjs/pdf.worker.mjs
+ * legacy/build/pdf.mjs -> vendor/pdfjs/pdf.mjs
+ * legacy/build/pdf.worker.mjs -> vendor/pdfjs/pdf.worker.mjs
  * LICENSE -> vendor/pdfjs/LICENSE (Apache-2.0)
- * The legacy ESM build includes compatibility polyfills for Chrome 120.
+ * The readable legacy ESM build, not minified, includes compatibility polyfills for Chrome 120.
  * Source/version/integrity and SHA-256 file hashes are exposed as `vendor` below.
  * API references: https://mozilla.github.io/pdf.js/examples/
  * https://mozilla.github.io/pdf.js/api/draft/api.js.html
@@ -48,8 +48,8 @@
     source: 'https://registry.npmjs.org/pdfjs-dist/-/pdfjs-dist-6.4.299.tgz',
     integrity: 'sha512-AVl138zALtfaAPvADulE0PZThbYzCBS79nL4pOSL/6Sm/4AH5A21BD9VHt97OlCuzJuCpmeZtAtkinisF4Vb1g==',
     sha256: Object.freeze({
-      'pdf.mjs': 'bccc24ea711db8e44503629519904a5292d73b9daaa214bbe7cdcc282b0f4259',
-      'pdf.worker.mjs': '145d2dd3ab0c86151011dba95acfa2d5336e2accd59388ea43dbee0efddaaec6',
+      'pdf.mjs': 'bc51f4874a66e3853189cb5d50aba4b3096afa83ed433b885d293a3d94583cdc',
+      'pdf.worker.mjs': 'bb422f60804477de4a0b09091d8347a916a387755ed1cbad24ccaec1d09c78bf',
       LICENSE: '0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594'
     })
   });

@@ -1,0 +1,21 @@
+/* Canvas's course menu icons (generated): one-shot actions on hover / focus-visible of a .cn-i link; the current page's
+   icon plays once when the page opens (.cn-i.is-current). */
+.cn-i svg{overflow:visible}.cn-i .hatch{opacity:.5}.cn-i svg *{transform-box:fill-box}
+.cn-i:is(:hover,:focus-visible) .cn-door,.cn-i.is-current .cn-door{transform-origin:0 50%;animation:cn-door .7s ease-in-out}@keyframes cn-door{45%{transform:scaleX(.35)}}
+.cn-i .cn-smoke{opacity:0}.cn-i:is(:hover,:focus-visible) .cn-smoke{animation:cn-smoke 1s ease-out}@keyframes cn-smoke{0%{opacity:0;transform:translateY(2px)}40%{opacity:1}100%{opacity:0;transform:translateY(-3px)}}
+.cn-i:is(:hover,:focus-visible) .cn-sheet,.cn-i.is-current .cn-sheet{transform-origin:50% 0;animation:cn-flip .6s ease-in-out}@keyframes cn-flip{50%{transform:scaleY(.82) skewX(-4deg)}}
+.cn-i:is(:hover,:focus-visible) .cn-b1{animation:cn-bob .6s ease-in-out}.cn-i:is(:hover,:focus-visible) .cn-b2{animation:cn-bob .6s .15s ease-in-out}@keyframes cn-bob{50%{transform:translateY(-2px)}}
+.cn-i .cn-tick{stroke-dashoffset:0}.cn-i:is(:hover,:focus-visible) .cn-tick,.cn-i.is-current .cn-tick{animation:cn-draw .5s ease-out both}@keyframes cn-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+.cn-i:is(:hover,:focus-visible) .cn-hand{transform-origin:0 100%;animation:cn-wave .7s ease-in-out}@keyframes cn-wave{25%{transform:rotate(-25deg)}75%{transform:rotate(15deg)}}
+.cn-i:is(:hover,:focus-visible) .cn-corner{transform-origin:0 100%;animation:cn-turn .6s ease-in-out}@keyframes cn-turn{50%{transform:rotate(-25deg) scale(1.15)}}
+.cn-i:is(:hover,:focus-visible) .cn-flap{transform-origin:50% 100%;animation:cn-open .6s ease-in-out}@keyframes cn-open{50%{transform:scaleY(.75) skewX(6deg)}}
+.cn-i:is(:hover,:focus-visible) .cn-left{transform-origin:100% 50%;animation:cn-pl .7s ease-in-out}.cn-i:is(:hover,:focus-visible) .cn-right{transform-origin:0 50%;animation:cn-pr .7s ease-in-out}@keyframes cn-pl{50%{transform:scaleX(.8)}}@keyframes cn-pr{50%{transform:scaleX(.8)}}
+.cn-i:is(:hover,:focus-visible) .cn-m0{animation:cn-m0 .6s ease-in-out}.cn-i:is(:hover,:focus-visible) .cn-m3{animation:cn-m3 .6s ease-in-out}@keyframes cn-m0{50%{transform:translate(1.5px,1.5px)}}@keyframes cn-m3{50%{transform:translate(-1.5px,-1.5px)}}
+.cn-i:is(:hover,:focus-visible) .cn-q{transform-origin:50% 100%;animation:cn-tilt .6s ease-in-out}@keyframes cn-tilt{30%{transform:rotate(-12deg)}70%{transform:rotate(8deg)}}
+.cn-i:is(:hover,:focus-visible) .cn-horn{transform-origin:20% 50%;animation:cn-blow .5s ease-in-out}.cn-i .cn-waves{opacity:.4}.cn-i:is(:hover,:focus-visible) .cn-waves{animation:cn-wv .6s ease-out both}@keyframes cn-blow{50%{transform:scale(1.08)}}@keyframes cn-wv{from{opacity:0;transform:translateX(-2px)}to{opacity:1}}
+.cn-i:is(:hover,:focus-visible) .cn-dart{animation:cn-dart .5s cubic-bezier(.5,0,.5,1.5)}@keyframes cn-dart{0%{transform:translate(4px,-4px);opacity:0}}
+.cn-i:is(:hover,:focus-visible) .cn-l{animation:cn-sl .6s ease-in-out}.cn-i:is(:hover,:focus-visible) .cn-r{animation:cn-sr .6s ease-in-out}@keyframes cn-sl{50%{transform:translateX(1.5px)}}@keyframes cn-sr{50%{transform:translateX(-1.5px)}}
+.cn-i:is(:hover,:focus-visible) .cn-rec{animation:cn-blink .8s steps(2,end) 2}@keyframes cn-blink{50%{opacity:0}}
+.cn-i:is(:hover,:focus-visible) .cn-cog{transform-origin:50% 50%;animation:cn-spin .8s ease-in-out}@keyframes cn-spin{to{transform:rotate(90deg)}}
+.cn-i:is(:hover,:focus-visible) .cn-plus{transform-origin:50% 50%;animation:cn-spin .5s ease-in-out}
+@media (prefers-reduced-motion:reduce){.cn-i svg *{animation:none!important}}

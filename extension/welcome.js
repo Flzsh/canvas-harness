@@ -7,7 +7,7 @@
  const all=selector=>Array.from(document.querySelectorAll(selector));
  const manifest=chrome.runtime.getManifest();
  const product=manifest.name||'Canvas Harness';
- const personal=!(manifest.optional_host_permissions||[]).length; // a build locked to one school asks for no other sites
+ const personal=/^CH\+/i.test(product)||!Array.isArray(manifest.optional_host_permissions);
  const stepNames=['intro',...(personal?[]:['school']),'navigation','appearance','companion'];
  const UI=ReserveWelcomeRoom.UI;
  const panels=stepNames.map(name=>document.querySelector('[data-step="'+name+'"]'));

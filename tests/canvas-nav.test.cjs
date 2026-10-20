@@ -39,7 +39,7 @@ test('it only ever touches Canvas’s menu bar, and only while it is switched on
 
 test('the copied frame rules match the workspace’s, and the files are wired in',()=>{
  const sync=require('../scripts/canvas-nav-css.cjs');assert.equal(sync.build(),read('canvas-nav.css'));
- const all=manifest.content_scripts.find(entry=>entry.js.includes('content.js'));
+ const all=manifest.content_scripts.find(entry=>entry.js?.includes('canvas-nav.js'));assert.ok(all,'the static manifest loads the menu');
  assert.ok(all.js.includes('canvas-nav.js'));assert.ok(all.js.indexOf('course-art.js')<all.js.indexOf('canvas-nav.js'),'it draws with the course frames');
  for(const entry of manifest.web_accessible_resources)assert.ok(entry.resources.includes('canvas-nav.css'));
  const popup=read('popup.html');

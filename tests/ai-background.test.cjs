@@ -7,7 +7,7 @@ function port(name,sender){return {name,sender,sent:[],onMessage:event(),onDisco
 function harness(){
  const ext='a'.repeat(32),url='chrome-extension://'+ext+'/',origin='https://school.instructure.com';
  const native=port('native',{}),runtime={id:ext,onConnect:event(),onMessage:event(),getURL:f=>url+f,connectNative:()=>{runtime.connects++;return native;},connects:0};
- const web=[],fake={chrome:{runtime,tabs:{get:async id=>({id,url:origin+'/'})}},ReserveSite:Site,CanvasHarnessWeb:{handle:async(m,s)=>{web.push({m,s});return {status:'injected'};}},importScripts:()=>{},crypto:crypto.webcrypto,TextEncoder,AbortSignal,URL,setTimeout,clearTimeout,fetch:async()=>({ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:'7'})})};
+ const web=[],fake={chrome:{runtime,storage:{local:{get:async()=>({})}},tabs:{get:async id=>({id,url:origin+'/'})}},ReserveSite:Site,CanvasHarnessWeb:{handle:async(m,s)=>{web.push({m,s});return {status:'injected'};}},importScripts:()=>{},crypto:crypto.webcrypto,TextEncoder,AbortSignal,URL,setTimeout,clearTimeout,fetch:async()=>({ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:'7'})})};
  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../extension/background.js'),'utf8'),fake);
  const source=port('ch-ai-source',{id:ext,frameId:0,tab:{id:1},url:origin+'/'});runtime.onConnect.emit(source);
  source.onMessage.emit({kind:'catalog',data:{scopeKey:origin+'|7|10|1',sources:[],courses:[]}});
@@ -41,8 +41,8 @@ test('website insertion verifies current Canvas account before crossing origins'
  assert.equal(h.web.length,0);assert.match(h.panel.sent.at(-1).error,/account changed/);
  h.panel.disconnect();
 });
-test('a stale Canvas source disconnects AI panels and aborts their host work',()=>{
- const h=harness();h.source.disconnect();assert.equal(h.panel.disconnected,true);
+test('a stale Canvas source disconnects AI panels and aborts their host work',async()=>{
+ const h=harness();await tick();h.source.disconnect();assert.equal(h.panel.disconnected,true);
 });
 test('switching course during the final account check stops sharing stale context',async()=>{
  const h=harness();let finish;h.fake.fetch=()=>new Promise(resolve=>{finish=resolve;});
@@ -71,4 +71,15 @@ test('closing AI while a provider loads revokes its handoff before insertion',as
 
 test('optional send is forwarded only as an explicit boolean on the verified handoff',async()=>{
  const h=harness();h.panel.onMessage.emit({id:'send-option',action:'web',op:'inject',provider:'chatgpt',text:'Synthetic context',scopeKey:h.origin+'|7|10|1',autoSend:true});await tick();await tick();assert.equal(h.web[0].m.autoSend,true);h.panel.disconnect();
+});
+
+test('PDF reader context passes the existing account guard and an account change stops a later insertion',async()=>{
+ const h=harness(),ai=require('../extension/ai-source.js');
+ const handoff=ai.createPdfHandoff({origin:h.origin,accountId:'7',fileId:'42',name:'Geometry.pdf',page:0,text:'Exactly the selected line.'});
+ const catalog=await handoff.catalog();h.source.onMessage.emit({kind:'catalog',data:catalog});
+ const context=await handoff.collect({ids:catalog.selectedIds});
+ const request={action:'web',op:'inject',provider:'chatgpt',text:context.text,scopeKey:catalog.scopeKey};
+ h.panel.onMessage.emit({id:'pdf-insert',...request});await tick();await tick();assert.equal(h.web.length,1);assert.equal(h.web[0].m.text,context.text);assert.match(h.web[0].m.text,/Geometry\.pdf, page 1/);
+ h.fake.fetch=async()=>({ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:'8'})});
+ h.panel.onMessage.emit({id:'pdf-account-switch',...request});await tick();await tick();assert.equal(h.web.length,1);assert.match(h.panel.sent.at(-1).error,/account changed/);handoff.destroy();h.panel.disconnect();
 });

@@ -1,6 +1,6 @@
 # Canvas Harness privacy
 
-Applies to Canvas Harness 2.29.0. Last updated October 17, 2026.
+Applies to Canvas Harness 3.1.0. Last updated October 19, 2026.
 
 Canvas Harness is a browser extension maintained by Flzsh. It displays information from the Canvas account already signed in on your school's website. It has no developer-operated account service, analytics collector or tracking endpoint in the extension code for this release.
 
@@ -16,6 +16,14 @@ Canvas Harness is a browser extension maintained by Flzsh. It displays informati
 
 Personal backups are files that you choose to export. They can contain private notes, preferences, artwork and other personal information. Keep them private. The public extension package and example previews should contain only shared code, generic artwork and artificial example data, never your exported backup or personal course records.
 
+## PDF reader
+
+Clicking an identified PDF link or preview on an Instructure Canvas assignment or submission page opens the split reader. It requests that chosen file through the signed-in Canvas session and reads its bytes, document name and page text locally for display, selection and search. The reader accepts files up to 32 MiB. Custom Canvas domains retain Canvas's original viewer, and a blocked or unsupported download falls back to that viewer. The reader does not upload the original PDF to an AI provider.
+
+Highlights, underlines, notes and pen strokes are saved in extension local storage on this device, separated by Canvas origin, verified account ID and file. Marks load only after sign-in verification and are hidden while the account is rechecked after returning to a hidden tab. Older site-and-file marks move once to the first verified account that opens that file, and the old record is deleted. These annotations do not change the original Canvas file. A copy you explicitly save with marks can contain them. The reader also remembers its split width and uses the browser's saved appearance choice.
+
+Reading or annotating a PDF does not share its text with an AI provider. Pressing **Ask AI** prepares only your chosen text or page text, with the document name and page reference, in the local AI pane after verifying your Canvas sign-in. Your annotations are not included. That chosen text leaves for the selected AI provider only when you then press **Send**. Review it first: the PDF's own words or filename may contain personal information.
+
 ## AI websites: your choice to share
 
 **Tools → AI** can open ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Qwen or Z.ai in a normal browser tab. Opening the site or reviewing context in Canvas Harness does not transfer coursework to that provider.
@@ -24,7 +32,7 @@ You choose sources using the selection circles in Canvas. An opened assignment s
 
 When you click **Send**, Canvas Harness prepares the chosen text and your question and inserts them into the selected AI website's chat box. **That text has reached the provider's website even if you have not submitted the chat.** By default, you review and submit it there. If you enable **Send automatically after inserting**, Canvas Harness also attempts to press that website's Send button. The provider's own account settings, privacy policy and data retention rules apply. **Copy** puts the prepared text on your clipboard only when you ask for it.
 
-PDF processing happens locally in the extension. A small PDF from Canvas or your device is converted into limited extracted text for your review. The AI handoff uses that text; it does not upload the original binary PDF file. PDFs are limited to 2 MiB and extraction to 20 pages and 60,000 characters per file, with a 100,000-character combined context limit. There is no OCR for scanned images. Attached-PDF text and your unsent question remain in the open panel's memory, not in the personal backup. Provider chat history is stored according to that provider's own rules.
+Separate from the split reader, PDF attachments selected in the AI pane are processed locally. A small PDF from Canvas or your device is converted into limited extracted text for your review. The AI handoff uses that text; it does not upload the original binary PDF file. PDFs are limited to 2 MiB and extraction to 20 pages and 60,000 characters per file, with a 100,000-character combined context limit. There is no OCR for scanned images. Attached-PDF text and your unsent question remain in the open panel's memory, not in the personal backup. Provider chat history is stored according to that provider's own rules.
 
 ## Browser permissions
 

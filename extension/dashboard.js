@@ -49,6 +49,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // The view emits only this placeholder for an unchanged, connected heading.
     // Do not walk its SVG or touch attributes owned by the running art film.
     if(next.hasAttribute('data-rd-preserve-heading')&&current.classList.contains('rd-workspace-heading')){patchLive(current,next);return;}
+    // Placement belongs to the layout controller; retain it on keyed nodes so unchanged renders need no layout pass.
+    const desk=current.classList.contains('rd-desk')&&next.classList.contains('rd-desk'),panel=current.getAttribute('data-arrange-key');
+    if(desk||panel&&panel===next.getAttribute('data-arrange-key')){
+      for(const name of desk?['--rd-layout-columns','--rd-layout-rows']:['--rd-panel-column','--rd-panel-row','--rd-panel-grow']){const value=current.style?.getPropertyValue?.(name);if(value)next.style.setProperty(name,value);}
+      if(desk&&current.hasAttribute('data-rows'))next.setAttribute('data-rows',current.getAttribute('data-rows'));
+    }
     for(const attr of Array.from(current.attributes)){
       if(attr.name==='data-motion'||current.tagName==='DETAILS'&&attr.name==='open')continue;
       if(!next.hasAttribute(attr.name))current.removeAttribute(attr.name);
@@ -123,7 +129,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
   // onNative (content.js): shows Canvas's own dashboard; with it the command bar ends in a quiet
   // "Canvas dashboard" switch (the phone drawer lists it), so the host needs no row of its own.
-  function mount(target,{snapshot,store,demo=false,onPlanner=()=>{},onNative=null,refresh=async()=>{},status='',initialState,materialClient,onAuthError=()=>{}}={}){
+  function mount(target,{snapshot,store,demo=false,onPlanner=()=>{},onNative=null,refresh=async()=>{},status='',initialState,materialClient,onAuthError=()=>{},onReady=()=>{},onRenderError=null}={}){
     if(!target||typeof target.append!=='function')throw Error('ReserveDashboard needs a shadow root or element target.');
     if(!snapshot||!Array.isArray(snapshot.courses)||!Array.isArray(snapshot.assignments))throw Error('ReserveDashboard needs a Canvas snapshot.');
     if(!store||typeof store.get!=='function')throw Error('ReserveDashboard needs the account-bound Canvas Harness store.');
@@ -145,7 +151,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let externalStatus=stringValue(status);
     let transientStatus='';
     let refreshing=false;
-    let destroyed=false;
+    let destroyed=false,rendering=false,mounted=false,sourceFrame=0,pendingRender=null;
+    const beforePaint=fn=>root.requestAnimationFrame?root.requestAnimationFrame(fn):root.setTimeout(fn,0);
+    const cancelPaint=id=>root.requestAnimationFrame?root.cancelAnimationFrame?.(id):root.clearTimeout(id);
+    function sourceChange(){scheduleRender();}
+    function scheduleRender(options=null){if(destroyed)return;if(options)pendingRender={...pendingRender,...options};if(!sourceFrame)sourceFrame=beforePaint(()=>{sourceFrame=0;try{render();}catch(error){if(!mounted&&onRenderError)onRenderError(error);else throw error;}});}
+    function consumeSources(){if(sourceFrame)cancelPaint(sourceFrame);sourceFrame=0;}
+    function render(options={}){
+      if(destroyed)return;if(rendering){scheduleRender(options);return;}
+      consumeSources();const next={...pendingRender,...options};pendingRender=null;rendering=true;
+      try{renderNow(next);}finally{rendering=false;}
+      if(!mounted){mounted=true;onReady();}
+    }
     let focusTimer=0,focusSettling=false,focusDoneUntil=0;// syncFocus
     const stateKey=store.owner?`reserve:dashboard:${store.owner.origin}:${store.owner.accountId}`:'';
     let savedState;
@@ -175,9 +192,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let draftTimer;
     const formatters=new Map();
     const resourceClient=materialClient||(!demo?root.ReserveAPI?.createClient():null);
-    const materials=root.ReserveMaterialsUI?.create({store,user:snapshot.user,client:resourceClient,...selectionOptions,onChange:()=>render(),onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))});
-    const hub=root.ReserveCourseHubUI?.create({store,user:snapshot.user,client:resourceClient,...selectionOptions,materials,onChange:()=>render(),onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))});
-    const quickUpload=root.CanvasHarnessQuickUpload?.create({store,getCourses:()=>normalizeData(settings()).allCourses,onChange:()=>{if(!destroyed)render();}});
+    const materials=root.ReserveMaterialsUI?.create({store,user:snapshot.user,client:resourceClient,...selectionOptions,onChange:sourceChange,onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))});
+    const hub=root.ReserveCourseHubUI?.create({store,user:snapshot.user,client:resourceClient,...selectionOptions,materials,onChange:sourceChange,onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))});
+    const quickUpload=root.CanvasHarnessQuickUpload?.create({store,getCourses:()=>normalizeData(settings()).allCourses,onChange:sourceChange});
     const motion=root.ReserveMotion?.create(container);
     const settingsDock=root.ReserveSettingsDock?.createDock({container,
       onOpen:()=>{if(drawerOpen())setDrawer(false,{focus:false});toolbox?.close({restoreFocus:false});customizeCourseId=state.courseId;},
@@ -242,12 +259,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       return /^#[0-9a-f]{6}$/i.test(value||'')?value:fallback;
     }
 
-    let railTimer=0,railTop='',railBelow='';
+    let railTimer=0,railSelectionFrame=0,railTop='',railBelow='',railDirty=true,railSignature='',railNodes=[],railStatusInline=true;
+    const railWatched=new Set(),railSizes=new WeakMap();
+    function queueRail(){if(destroyed)return;railDirty=true;if(!railTimer)railTimer=root.setTimeout(()=>{railTimer=0;measureRail();keepFocusVisible();sheetCover();},0);}
     // The rail fills the screen below the toolbar and Appearance panel, so measure
     // again whenever they or .rd resize: accordion frames, rewrapping, late fonts or
     // sheets, a revealed host. Always after the frame, so the write can never resize
     // an observed box inside its own callback.
-    const railLayout=typeof root.ResizeObserver==='function'?new root.ResizeObserver(()=>{root.clearTimeout(railTimer);railTimer=root.setTimeout(()=>{measureRail();keepFocusVisible();sheetCover();},0);}):null;
+    const railLayout=typeof root.ResizeObserver==='function'?new root.ResizeObserver(entries=>{if(destroyed)return;let changed=false;for(const entry of entries){const box=entry.borderBoxSize?.[0]||entry.borderBoxSize,size=[box?.inlineSize??entry.contentRect?.width,box?.blockSize??entry.contentRect?.height].join(','),old=railSizes.get(entry.target);if(old!==size){railSizes.set(entry.target,size);changed=true;}}if(changed)queueRail();}):null;
+    function watchRail(){const nodes=[container.querySelector('.rd-course-rail'),container.querySelector('.rd-shell'),container.querySelector('.rd-shell > .rd-workspace')];if(nodes.some((node,i)=>node!==railNodes[i])){railNodes=nodes;railDirty=true;}if(!railLayout)return;const next=new Set([container,...container.querySelectorAll('.rd-toolbar,.rd-appearance,.rd-shell,.rd-workspace,.rd-course-rail,.rd-course-name,.rd-rail-text,.rd-status')]);for(let node=container.parentElement||container.getRootNode?.()?.host;node?.nodeType===1;node=node.parentElement||node.getRootNode?.()?.host)next.add(node);for(const node of railWatched)if(!next.has(node)){railLayout.unobserve?.(node);railWatched.delete(node);}for(const node of next)if(!railWatched.has(node)){railWatched.add(node);railLayout.observe(node);}}
+    const railAncestors=typeof root.MutationObserver==='function'?new root.MutationObserver(records=>{if(records.some(record=>record.attributeName!=='class'||(record.oldValue||'').replace(/\breserve-fit\b/g,'').trim()!==(record.target.getAttribute('class')||'').replace(/\breserve-fit\b/g,'').trim()))queueRail();}):null;
+    if(railAncestors)for(let node=container.parentElement||container.getRootNode?.()?.host;node?.nodeType===1;node=node.parentElement||node.getRootNode?.()?.host)railAncestors.observe(node,{attributes:true,attributeOldValue:true,childList:true,attributeFilter:['class','style','hidden']});
+    root.addEventListener?.('resize',queueRail);document.fonts?.addEventListener?.('loadingdone',queueRail);
     // Phones: the open reader sheet (refresh.css section 16) covers the workspace below the command bar.
     // What it covers is inert, so Tab never lands behind it; the sheet stays non-modal (the bar above it,
     // Esc and Back to list still work). Every render and every resize past 600px sets or clears it (patchUI
@@ -355,17 +378,17 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // coordinates: bounding client rects include the scale/translation of active rail-drag and FLIP motion,
     // which would temporarily corrupt the shared row height. Only write when the natural height changes.
     let railRowH='';
-    function railRows(){
-      const rail=container.querySelector?.('.rd-shell .rd-course-rail'),rows=rail?.querySelectorAll?.(':scope > .rd-rail-course');if(destroyed||!rows?.length||!root.getComputedStyle)return false;
+    function railRows(rail,css,top){
+      const rows=rail?.querySelectorAll?.(':scope > .rd-rail-course');if(destroyed||!rows?.length||!root.getComputedStyle)return false;
       const px=(style,...names)=>names.reduce((sum,name)=>sum+(parseFloat(style[name])||0),0);let tallest=0;
       // Both the button and its children may be static-positioned under the row; their offsetParent can
       // be the row instead of the button. Accumulate offsets to the layout root and subtract them.
-      const layoutTop=node=>{let top=0;for(let part=node;part;part=part.offsetParent){if(!Number.isFinite(part.offsetTop))return null;top+=part.offsetTop;}return top;};
+      const offsets=new Map(),layoutTop=node=>{if(offsets.has(node))return offsets.get(node);let top=0;for(let part=node;part;part=part.offsetParent){const y=part.offsetTop;if(!Number.isFinite(y))return null;top+=y;}offsets.set(node,top);return top;};
       for(const row of rows){
         const button=row.querySelector('.rd-course-name');if(!button?.getClientRects?.().length)continue;
-        const rs=root.getComputedStyle(row),bs=root.getComputedStyle(button),top=layoutTop(button);if(top===null)continue;let bottom=top;
-        for(const child of button.children){const cs=root.getComputedStyle(child);if(cs.position==='absolute'||!child.getClientRects().length)continue;
-          const y=layoutTop(child);if(y!==null&&Number.isFinite(child.offsetHeight))bottom=Math.max(bottom,y+child.offsetHeight+(parseFloat(cs.marginBottom)||0));}
+        const rs=css(row),bs=css(button),top=layoutTop(button);if(top===null)continue;let bottom=top;
+        for(const child of button.children){const cs=css(child);if(cs.position==='absolute'||!child.getClientRects().length)continue;
+          const y=layoutTop(child),height=child.offsetHeight;if(y!==null&&Number.isFinite(height))bottom=Math.max(bottom,y+height+(parseFloat(cs.marginBottom)||0));}
         const content=bottom-top+px(bs,'paddingBottom','borderBottomWidth');
         tallest=Math.max(tallest,rs.boxSizing==='border-box'?content+px(rs,'paddingTop','paddingBottom','borderTopWidth','borderBottomWidth'):content);
       }
@@ -374,41 +397,41 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // its own height ('auto'), so one long course name does not make every course tall and push the rest
       // out of view. Only content heights, the window and the rail's other rows are read: never the rows'
       // own (grown) height, so the choice cannot feed back into itself.
-      const railStyle=root.getComputedStyle(rail);let others=0,gaps=0;
-      for(const child of rail.children){if(child.matches?.('.rd-rail-course')){gaps+=px(root.getComputedStyle(child),'marginTop','marginBottom');continue;}if(child.getClientRects?.().length&&root.getComputedStyle(child).position!=='absolute')others+=child.offsetHeight||0;}
-      const view=root.innerHeight||0,room=view-Math.min(parseFloat(railTop)||150,view*.45)-18-px(railStyle,'paddingTop','paddingBottom','borderTopWidth','borderBottomWidth')-others-12-gaps;
-      const value=!view||Math.ceil(tallest)*rows.length<=room?Math.ceil(tallest)+'px':'auto';if(value===railRowH)return false;
-      container.style.setProperty('--rd-rail-row-h',railRowH=value);return true;
+      const railStyle=css(rail);let others=0,gaps=0;
+      for(const child of rail.children){if(child.matches?.('.rd-rail-course')){gaps+=px(css(child),'marginTop','marginBottom');continue;}if(child.getClientRects?.().length&&css(child).position!=='absolute')others+=child.offsetHeight||0;}
+      const view=root.innerHeight||0,room=view-Math.min(parseFloat(top)||150,view*.45)-18-px(railStyle,'paddingTop','paddingBottom','borderTopWidth','borderBottomWidth')-others-12-gaps;
+      return !view||Math.ceil(tallest)*rows.length<=room?Math.ceil(tallest)+'px':'auto';
     }
     // After a render settles, record the rail column's page offset on .rd (render
     // never patches its own style) so the course rows can fill the first screen.
     // A hidden host has no boxes and a loading rail is not yet a flex column:
     // neither is measured (a 0 or partial offset would stick); retry briefly.
     function measureRail(tries=0,syncSelection=true){
-      if(railTimer)root.clearTimeout(railTimer);railTimer=0;
-      // While the workspace column scrolls by itself (desktop, courses down the side: refresh.css), Canvas's own page
-      // must not scroll as well (two scroll bars, the page moving first): startup.css stops it while this is set.
-      {const column=container.querySelector?.('.rd-shell > .rd-workspace'),fits=!!column&&/(auto|scroll)/.test(root.getComputedStyle?.(column)?.overflowY||'');root.document?.documentElement?.classList?.toggle?.('reserve-fit',fits);}
-      const rail=container.querySelector('.rd-shell .rd-course-rail');if(destroyed||!rail||typeof root.getComputedStyle!=='function'||typeof rail.getClientRects!=='function')return;
-      // A rail the layout hides (Course sidebar off, a narrow window, a closed phone drawer) has nothing to fill.
-      const display=root.getComputedStyle(rail).display;if(display==='none')return;
-      if(!rail.getClientRects().length||display!=='flex'){if(tries<20)railTimer=root.setTimeout(()=>measureRail(tries+1),100);return;}
-      // A rewrap (a resize, late fonts) can change the tallest row: the selection surface follows the new rows.
-      if(railRows()&&syncSelection)motion?.syncTabs(false);
-      const top=Math.max(0,Math.round(rail.parentElement.getBoundingClientRect().top+(root.scrollY||0)))+'px';
-      // Only a real change restyles .rd, so the observer settles instead of looping.
-      if(top!==railTop)container.style.setProperty('--rd-rail-top',railTop=top);
-      // --rd-status-h: what the page keeps below the shell (the status footer with its
-      // margins, then the bottom padding, border and margin of .rd and every box around
-      // it), so a short view can end at the fold. No heights of those boxes are read,
-      // so the rail height never feeds back into it.
-      // While the rail shows, the status line lives in its foot and the footer is visually hidden
-      // (position:absolute, refresh.css section 3): then only the padding below the shell counts.
-      const status=container.querySelector('.rd-status');if(!status)return;
-      const edge=(node,...sides)=>{const style=root.getComputedStyle(node);return sides.reduce((sum,side)=>sum+(parseFloat(style[side])||0),0);};
-      let below=root.getComputedStyle(status).position==='absolute'?0:status.getBoundingClientRect().height+edge(status,'marginTop','marginBottom');
-      for(let node=container;node?.nodeType===1;node=node.parentElement||node.getRootNode?.()?.host)below+=edge(node,'paddingBottom','borderBottomWidth','marginBottom');
-      below=Math.ceil(below)+'px';if(below!==railBelow)container.style.setProperty('--rd-status-h',railBelow=below);
+      if(destroyed||!railDirty)return;if(railTimer)root.clearTimeout(railTimer);railTimer=0;railDirty=false;
+      // One read phase; even Canvas's document class waits until every style and box has been read.
+      const styles=new Map(),css=node=>{if(!styles.has(node))styles.set(node,root.getComputedStyle(node));return styles.get(node);};
+      const column=container.querySelector?.('.rd-shell > .rd-workspace'),fits=!!column&&typeof root.getComputedStyle==='function'&&/(auto|scroll)/.test(css(column)?.overflowY||''),classes=root.document?.documentElement?.classList;
+      const rail=container.querySelector('.rd-shell .rd-course-rail'),display=rail&&typeof root.getComputedStyle==='function'?css(rail).display:'none';
+      const status=container.querySelector('.rd-status');railStatusInline=!!status&&(typeof root.getComputedStyle!=='function'||css(status).position!=='absolute');
+      let top='',rowHeight=false,below='',retry=false;
+      if(rail&&display!=='none'&&typeof rail.getClientRects==='function'){
+        if(!rail.getClientRects().length||display!=='flex')retry=true;
+        else{
+          top=Math.max(0,Math.round(rail.parentElement.getBoundingClientRect().top+(root.scrollY||0)))+'px';rowHeight=railRows(rail,css,top);
+          const edge=(node,...sides)=>{const style=css(node);return sides.reduce((sum,side)=>sum+(parseFloat(style[side])||0),0);};
+          let height=railStatusInline?status.getBoundingClientRect().height+edge(status,'marginTop','marginBottom'):0;
+          for(let node=container;node?.nodeType===1;node=node.parentElement||node.getRootNode?.()?.host)height+=edge(node,'paddingBottom','borderBottomWidth','marginBottom');
+          below=Math.ceil(height)+'px';
+        }
+      }
+      // Writes never repeat for an unchanged value, and cannot interrupt the read phase.
+      if(classes?.contains?.('reserve-fit')!==fits)root.document?.documentElement?.classList?.toggle?.('reserve-fit',fits);
+      const rowsChanged=!!rowHeight&&rowHeight!==railRowH;if(rowsChanged)container.style.setProperty('--rd-rail-row-h',railRowH=rowHeight);
+      if(top&&top!==railTop)container.style.setProperty('--rd-rail-top',railTop=top);
+      if(status&&below!==railBelow)container.style.setProperty('--rd-status-h',railBelow=below);
+      if(rowsChanged&&syncSelection&&!railSelectionFrame)railSelectionFrame=beforePaint(()=>{railSelectionFrame=0;if(!destroyed)motion?.syncTabs(false);});
+      // Ordinary renders leave a pending hidden/loading retry alone; only that retry or an invalidation reads again.
+      if(retry&&tries<20)railTimer=root.setTimeout(()=>{railTimer=0;railDirty=true;measureRail(tries+1);},100);
     }
 
     function readingContent(item){
@@ -510,7 +533,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       try{if(stateKey)root.sessionStorage?.setItem(stateKey,JSON.stringify(navigationState()));}catch{}
     }
 
-    function render({preserveFocus=true,tabMotion=false,motionTarget='',motionKind='workspace',direction=1,snapshot=null,resetWorkspaceScroll=false}={}){
+    function renderNow({preserveFocus=true,tabMotion=false,motionTarget='',motionKind='workspace',direction=1,snapshot=null,resetWorkspaceScroll=false}={}){
       if(destroyed)return;
       const oldReader=container.querySelector('.rd-reader-content'),previousCourse=container.dataset.courseId;
       const readerScroll=oldReader?.getClientRects().length?oldReader.scrollTop:courseMemory.recall(previousCourse).readerScroll;
@@ -529,6 +552,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(focus&&!focus.materialTitle&&!focus.section)focus.node=active;
       }
       const ctx=buildContext();
+      // Read synchronous deck/material state before markup. Notifications here are already represented below.
+      const deckId=workspace==='work'?ctx.deckCourse?.id||'':'';
+      if(deckId!==deckCourseRequested){deckCourseRequested=deckId;if(deckId)hub?.loadDeck?.(deckId);ctx.unread=hub?.unreadCount?.()||0;}
+      consumeSources();
+      // Later notifications (including any microtask chain) share one rAF after the task, before paint.
       container.dataset.theme=ctx.theme;applyNight(ctx.s.nightArt);
       container.dataset.density=ctx.s.density==='compact'?'compact':'comfortable';
       container.dataset.font=['humanist','serif'].includes(ctx.s.font)?ctx.s.font:'system';
@@ -554,7 +582,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         // Keep the actual transitioning nodes connected through data renders.
         const template=document.createElement('template');template.innerHTML=markup;
         const nextToolbar=template.content.querySelector('.rd-toolbar'),nextAppearance=template.content.querySelector('.rd-appearance');
-        const shell=container.querySelector('.rd-shell'),nextShell=template.content.querySelector('.rd-shell');
+        const shell=container.querySelector('.rd-shell'),nextShell=template.content.querySelector('.rd-shell'),footer=container.querySelector('.rd-status'),nextFooter=template.content.querySelector('.rd-status');
+        // The live region and its observed box stay connected across data renders too.
+        if(footer&&nextFooter){patchUI(footer,nextFooter);nextFooter.remove();}
         if(shell&&nextShell){
           const workspaceNode=shell.querySelector('.rd-workspace'),nextWorkspace=nextShell.querySelector('.rd-workspace');
           patchUI(workspaceNode,nextWorkspace);
@@ -582,7 +612,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const panel=appearance.querySelector('.t-acc-panel');panel.inert=!customizeOpen;
         if(customizeOpen)panel.removeAttribute('aria-hidden');else panel.setAttribute('aria-hidden','true');
         nextAppearance.remove();
-        for(const node of Array.from(container.childNodes)){if(node!==toolbar&&node!==appearance&&node!==shell&&!node.classList?.contains('rd-utility-dialog')&&!node.classList?.contains('pet-layer')&&!node.hasAttribute?.('data-rd-keep'))node.remove();}
+        for(const node of Array.from(container.childNodes)){if(node!==toolbar&&node!==appearance&&node!==shell&&node!==footer&&!node.classList?.contains('rd-utility-dialog')&&!node.classList?.contains('pet-layer')&&!node.hasAttribute?.('data-rd-keep'))node.remove();}
         if(shell)for(const warning of Array.from(template.content.querySelectorAll('.rd-warning')))container.insertBefore(warning,shell);
         container.append(template.content);
       }else container.innerHTML=markup;
@@ -595,11 +625,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(resetWorkspaceScroll){const column=container.querySelector('.rd-shell > .rd-workspace');if(column?.scrollTop)column.scrollTop=0;}
       // Arrange has now installed the final layout. Measure its layout before motion paints a drag spring
       // and before the next timer/frame, so course rows cannot linger at a compressed intermediate size.
-      sheetCover();measureRail(0,false);
-      // Keep one post-render pass for sheets/fonts that only settle after patching; unchanged geometry
-      // writes nothing. The immediate pass above already fixes the final size before that timer runs.
-      if(!railTimer)railTimer=root.setTimeout?.(()=>measureRail(),0)||0;
-      toolbox?.update();syncFocus();
+      const signature=JSON.stringify([ctx.courses,Array.from(ctx.courseLoad),ctx.s,workspace,workPage,readerOpen,customizeOpen,ctx.unread,container.dataset.arranging,container.dataset.boardEditing,container.dataset.drawer,renderWarning()]);
+      if(signature!==railSignature){railSignature=signature;railDirty=true;}
+      watchRail();sheetCover();measureRail(0,false);
+      updateStatus();toolbox?.update();syncFocus();
+      if(railSelectionFrame){cancelPaint(railSelectionFrame);railSelectionFrame=0;}
       motion?.syncTabs(tabMotion,false,snapshot);
       if(motionTarget)motion?.reveal(container.querySelector(motionTarget),{animate:tabMotion&&container.dataset.input==='pointer',kind:motionKind,direction,snapshot});
       for(const draft of drafts.values()){const field=container.querySelector(`[data-rd-field="${draft.field}"][data-id="${draft.id}"]`);if(field)field.value=draft.value;}
@@ -613,13 +643,6 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(!restoreReaderScroll()&&reader&&pendingReaderScroll)readerLayout?.observe(reader);
       }
       remember();
-      // Defer only secondary sources so assignments paint immediately. Mark the
-      // target first: source notifications may synchronously rerender the shell.
-      const deckId=workspace==='work'?ctx.deckCourse?.id||'':'';
-      if(deckId!==deckCourseRequested){
-        deckCourseRequested=deckId;
-        if(deckId)Promise.resolve().then(()=>{if(!destroyed&&workspace==='work'&&deckCourseRequested===deckId)hub?.loadDeck?.(deckId);});
-      }
       if(focus?.section){Array.from(container.querySelectorAll?.('details[data-rd-section]')||[]).find(el=>el.dataset.rdSection===focus.section)?.querySelector('summary')?.focus({preventScroll:true});}
       if(focus&&!focus.materialTitle&&!focus.section){
         const selector=(focus.field?`[data-rd-field="${focus.field}"]`:`[data-rd-action="${focus.action}"]`)+`${focus.id?`[data-id="${focus.id}"]`:''}${focus.setting?`[data-setting="${focus.setting}"]`:''}${focus.mode?`[data-mode="${focus.mode}"]`:''}${focus.day?`[data-day="${focus.day}"]`:''}${focus.accent?`[data-accent="${focus.accent}"]`:''}${focus.tab?`[data-tab="${focus.tab}"]`:''}${focus.choice!=null?`[data-value=${JSON.stringify(String(focus.choice))}]`:''}${focus.entry!=null?`[data-entry=${JSON.stringify(String(focus.entry))}]`:''}`;
@@ -642,6 +665,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         // The page glides to a chapter only for a pointer under Gentle motion; keyboard, Still, Off and reduced motion jump at once.
         if(list?.type==='chapter')materialFocus.scrollIntoView({block:'start',behavior:container.dataset.input==='pointer'&&container.dataset.motionStyle==='gentle'&&!root.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'smooth':'instant'});
         if(list?.type==='more')materialFocus.scrollIntoView({block:'nearest',behavior:'instant'});}
+    }
+
+    function updateStatus(){
+      const text=statusLabel(currentSnapshot,externalStatus,transientStatus),line=container.querySelector('.rd-status [role="status"]');
+      if(line&&line.textContent!==text){line.textContent=text;if(railStatusInline)queueRail();}
+      const button=container.querySelector('[data-rd-action="refresh"]'),synced=/^Updated (.+)$/.exec(text),failed=/^Refresh failed/.test(text),title=refreshing?'Syncing with Canvas?':synced?'Synced with Canvas ? '+synced[1]:failed?text+' ? click to try again':text||'Refresh Canvas data';
+      if(button){if(button.getAttribute('title')!==title)button.setAttribute('title',title);if(failed&&!refreshing){if(button.getAttribute('data-tone')!=='danger')button.setAttribute('data-tone','danger');}else if(button.hasAttribute('data-tone'))button.removeAttribute('data-tone');}
     }
 
     function updateFreshness(){
@@ -729,7 +759,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(field==='setting'){
         const key=event.target.dataset.setting;
         if(!['theme','accent','motion','livingArt','readingFont','greeting','font','density','textSize','dashboardLayout','showCourseStrip','showGrades','showRecentGrades',...Object.keys(root.ReserveCustomization?.defaults||{})].includes(key))return;
-        const value=event.target.type==='checkbox'?event.target.checked:key==='nightArt'?Math.max(0,Math.min(100,Math.round(Number(event.target.value)||0))):event.target.value;
+        const value=event.target.dataset.onoff==='true'?(event.target.checked?'on':'off'):event.target.type==='checkbox'?event.target.checked:key==='nightArt'?Math.max(0,Math.min(100,Math.round(Number(event.target.value)||0))):event.target.value;
         if(key==='showGrades'){
           const version=++gradeSaveVersion;gradeVisibilityOverride=value===true;motion?.cancel();render();
           savePersonal(data=>{data.settings.showGrades=value===true;}).then(saved=>{if(version===gradeSaveVersion){if(saved)gradeVisibilityOverride=null;render();}});return;
@@ -887,7 +917,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function setDrawer(open,{focus=true}={}){
       const trigger=container.querySelector('.rd-drawer-button'),within=container.querySelector('.rd-shell .rd-course-rail')?.contains?.(container.getRootNode?.()?.activeElement);
       if(open)container.dataset.drawer='open';else delete container.dataset.drawer;
-      trigger?.setAttribute('aria-expanded',String(open));
+      trigger?.setAttribute('aria-expanded',String(open));queueRail();
       // Like the Tools dock, the open drawer lifts the host's paint isolation so it covers Canvas's own chrome.
       container.getRootNode?.()?.host?.toggleAttribute?.('data-reserve-drawer',open);
       if(focus&&open)container.querySelector('.rd-drawer-close')?.focus({preventScroll:true});
@@ -1144,7 +1174,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     function onKeydown(event){
       if(destroyed||!container.getClientRects?.().length)return;
-      motion?.activity?.();if(event.key==='Tab')tabAt=Date.now();
+      motion?.activity?.();motion?.busy?.();if(event.key==='Tab')tabAt=Date.now();
       const enteringKeyboard=container.dataset.input!=='keyboard';container.dataset.input='keyboard';if(enteringKeyboard){motion?.cancel({preserveArt:true});motion?.syncTabs(false,true);}
       if(arrange?.keydown(event))return;
       if(board?.keydown(event))return;
@@ -1181,8 +1211,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     container.addEventListener('toggle',onDisclosure,true);
     // Pointer and key input also keep the living drawings going: after two minutes with none,
     // motion.js lets them rest where they stand until the next input (the idle rest).
-    const onPointerdown=event=>{container.dataset.input='pointer';motion?.activity?.();arrange?.pointerdown(event);};
-    container.addEventListener('pointerdown',onPointerdown);
+    const onPointerdown=event=>{container.dataset.input='pointer';motion?.activity?.();motion?.busy?.();arrange?.pointerdown(event);};
+    // Scrolling holds the drawings briefly (motion.js ART_BUSY_MS).
+    const onWheel=()=>{motion?.busy?.();};
+    container.addEventListener('pointerdown',onPointerdown);container.addEventListener('wheel',onWheel,{passive:true});
     const onArrangePointerUp=event=>arrange?.pointerup(event),onArrangePointerCancel=event=>arrange?.pointercancel(event),onArrangeContext=event=>arrange?.contextmenu(event);
     container.addEventListener('pointerup',onArrangePointerUp);
     container.addEventListener('pointercancel',onArrangePointerCancel);
@@ -1196,21 +1228,23 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // every scroll event or delaying departure from the page.
     root.addEventListener?.('pagehide',remember);
     const freshnessTimer=setInterval(updateFreshness,60000);
-    render();
-    // render() keeps the toolbar and Appearance nodes connected from here on.
-    if(railLayout)for(const node of [container,...(container.querySelectorAll?.('.rd-toolbar,.rd-appearance')||[])])railLayout.observe(node);
+    // Synchronous cache/loading notifications are already included in the first complete markup.
     if(workspace==='materials')materials?.load(state.courseId);
     if(workspace==='hub')hub?.loadCourse(state.courseId);
     if(workspace==='inbox')hub?.loadInbox();
+    // All startup data delivered in this task/microtask chain joins one complete pre-paint frame.
+    if(root.requestAnimationFrame)scheduleRender();else render();
 
     return {
+      isReady(){return mounted;},
       getState(){return navigationState();},
       destroy(){
         if(destroyed)return;
         remember();
         flushDrafts();
-        destroyed=true;root.chrome?.storage?.onChanged?.removeListener?.(navChanged);
-        readerLayout?.disconnect();railLayout?.disconnect();root.clearTimeout(railTimer);
+        destroyed=true;consumeSources();pendingRender=null;root.chrome?.storage?.onChanged?.removeListener?.(navChanged);
+        readerLayout?.disconnect();railLayout?.disconnect();railAncestors?.disconnect();root.clearTimeout(railTimer);if(railSelectionFrame)cancelPaint(railSelectionFrame);
+        root.removeEventListener?.('resize',queueRail);document.fonts?.removeEventListener?.('loadingdone',queueRail);
         ++quickPackRead;quickUpload?.destroy();arrange?.destroy();board?.destroy();settingsDock?.destroy();materials?.destroy();hub?.destroy();motion?.destroy();toolbox?.destroy();
         clearInterval(freshnessTimer);clearInterval(focusTimer);clearTimeout(entranceTimer);
         unsubscribe?.();
@@ -1220,7 +1254,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         container.removeEventListener('focusout',onFocusout);container.removeEventListener('focusin',onHeaderFocusin);
         container.removeEventListener('click',onClick);
         container.removeEventListener('toggle',onDisclosure,true);
-        container.removeEventListener('pointerdown',onPointerdown);container.removeEventListener('pointermove',onPointermove);
+        container.removeEventListener('pointerdown',onPointerdown);container.removeEventListener('wheel',onWheel,{passive:true});container.removeEventListener('pointermove',onPointermove);
         container.removeEventListener('pointerup',onArrangePointerUp);container.removeEventListener('pointercancel',onArrangePointerCancel);container.removeEventListener('contextmenu',onArrangeContext);
         document.removeEventListener('keydown',onKeydown);
         root.removeEventListener?.('pagehide',remember);
@@ -1228,9 +1262,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       },
       updateSnapshot(next){
         if(next&&Array.isArray(next.courses)&&Array.isArray(next.assignments)){currentSnapshot=next;normalizedCache=null;contentCache.clear();}
-        render();
+        scheduleRender();
       },
-      setStatus(text){externalStatus=stringValue(text);if(!refreshing)transientStatus='';render();},
+      setStatus(text){const next=stringValue(text);if(destroyed||next===externalStatus)return;const warning=!refreshing&&transientStatus.startsWith('Could not save:');externalStatus=next;if(!refreshing)transientStatus='';updateStatus();if(warning)scheduleRender();},
     };
   }
 

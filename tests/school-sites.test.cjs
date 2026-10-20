@@ -137,7 +137,7 @@ test('the AI source on a school site connects once the saved list loads, keeping
  port.onMessage.emit({kind:'catalog',data:{scopeKey:'https://canvas.school.edu|7|1|1',sources:[],courses:[]}});
  await tick(20);assert.notEqual(port.disconnected,true);
  const panel={name:'ch-ai-panel',sent:[],sender:{id:'a'.repeat(32),frameId:1,tab:{id:4},url:'chrome-extension://0f6c2a8e-1b2c-4d5e-8f90-123456789abc/ai-panel.html'},onMessage:event(),onDisconnect:event(),postMessage(m){this.sent.push(m);},disconnect(){this.disconnected=true;}};
- h.chrome.runtime.onConnect.emit(panel);
+ h.chrome.runtime.onConnect.emit(panel);await tick();
  assert.notEqual(panel.disconnected,true);assert.equal(panel.sent[0]?.kind,'catalog');
 });
 

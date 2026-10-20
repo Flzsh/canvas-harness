@@ -20,9 +20,12 @@ test('all seven workspace tabs retain heading, SVGs, title and date without rege
   assert.equal(column.scrollTop,0,'the existing tab scroll-to-top behavior survives');
   assert.strictEqual(f.container.querySelector('.pet-layer'),pony,'the companion layer survives');
   assert.deepEqual(f.animations.filter(a=>heading.contains(a.node)),films,'no replacement film, draw-in or heading fade');
-  assert.ok(loops.every((a,i)=>!a.cancelled&&a.currentTime>times[i]),'existing loops keep advancing');
+  assert.deepEqual(loops.map(a=>a.currentTime),times,'pointer activity holds each existing film at its current pose');
+  f.tick(800);f.tick(100);
+  assert.ok(loops.every((a,i)=>!a.cancelled&&a.currentTime>times[i]),'existing loops resume after the input hold without restarting');
+  times.splice(0,times.length,...loops.map(a=>a.currentTime));
   assert.equal(f.observers.length,observerCount,'no observer is added per tab');
-  assert.equal(f.timers.size,timerCount,'tab switching does not accumulate timers');
+  assert.ok(f.timers.size<=timerCount,'tab switching does not accumulate timers');
  }
  assert.equal(f.counts.scenes,1,'the banner is generated once');assert.equal(f.counts.titles,1,'the title artwork is generated once');
  column.scrollTop=275;f.dashboard.setStatus('Still connected');assert.equal(column.scrollTop,275,'ordinary renders retain workspace scroll');
@@ -49,7 +52,7 @@ test('course, theme, artwork and heading data changes replace the shared heading
  f.click('course',{id:'20'});replaced();await flush();
  await f.store.update(data=>{data.settings.theme='dark';});replaced();
  await f.store.update(data=>{data.settings.coursePrefs['20']={titlePlacement:'banner',bannerArt:{svg:'synthetic changed art'}};});replaced();
- f.dashboard.updateSnapshot({...f.snapshot,courses:[f.snapshot.courses[0],{id:'20',name:'New course title'}]});replaced();
+ f.dashboard.updateSnapshot({...f.snapshot,courses:[f.snapshot.courses[0],{id:'20',name:'New course title'}]});f.tick(0);replaced();
  assert.match(heading.querySelector('h1').textContent,/New course title/);
  const prior=f.animations.filter(a=>a.options.id==='rd-art-loop'&&!a.node.isConnected);await flush();assert.ok(prior.every(a=>a.cancelled),'removed films are released');
 });

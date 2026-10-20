@@ -39,7 +39,8 @@ function context(route){
   setTimeout:forbidden('setTimeout'),setInterval:forbidden('setInterval'),clearTimeout:forbidden('clearTimeout'),clearInterval:forbidden('clearInterval'),
   matchMedia:forbidden('matchMedia'),fetch:forbidden('fetch'),open:forbidden('open'),
   MutationObserver:forbidden('MutationObserver'),ResizeObserver:forbidden('ResizeObserver'),
-  chrome:{runtime:{getURL:forbidden('runtime.getURL')},storage:{local:{get:forbidden('storage.get'),set:forbidden('storage.set')},onChanged:{addListener:forbidden('storage.addListener')}}}});
+  sessionStorage:{getItem:forbidden('sessionStorage.getItem')},
+  chrome:{runtime:{getURL:forbidden('runtime.getURL'),onMessage:{addListener:forbidden('runtime.addListener')}},storage:{local:{get:forbidden('storage.get'),set:forbidden('storage.set')},onChanged:{addListener:forbidden('storage.addListener')}}}});
  vm.runInContext('window=globalThis; top=globalThis;',env);
  vm.runInContext(read('site.js'),env,{filename:'site.js'});
  return {env,attempts,allowedClicks,run:file=>{executing=file;try{return vm.runInContext(read(file),env,{filename:file});}finally{executing='';}}};
@@ -57,11 +58,11 @@ test('vanillaPage recognizes assignment, feedback and submit/upload URLs indepen
 });
 
 test('every content script except the allowed global menu loads on vanilla pages without any page effects',()=>{
- const scripts=manifest.content_scripts.flatMap(entry=>entry.js).filter(file=>file!=='canvas-nav.js');
+ const scripts=manifest.content_scripts.flatMap(entry=>entry.js||[]).filter(file=>file!=='canvas-nav.js');
  for(const route of protectedRoutes){
   const h=context(route);
   for(const file of scripts)assert.doesNotThrow(()=>h.run(file),route+' '+file);
-  assert.deepEqual(h.attempts,[],route);assert.equal(h.allowedClicks.length,0,'No listeners on vanilla pages in 2.29');
+  assert.deepEqual(h.attempts,[],route);assert.equal(h.allowedClicks.length,1,'One dormant PDF capture click listener');
   assert.equal(h.env.ReserveContentStarted,undefined);assert.equal(h.env.ReserveStartup,undefined);
  }
 });
