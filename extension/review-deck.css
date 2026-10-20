@@ -94,3 +94,7 @@
 
 @media (max-width:560px){.rv-overlay{padding:8px}.rv-panel{padding:14px}.rv-grade{min-width:0;flex:1}.rv-filter{grid-template-columns:1fr}.rv-card{font-size:18px;padding:20px 14px}}
 @media (prefers-reduced-motion:reduce){.rv-progress i{transition:none}}
+
+/* Ways in that are always visible: the toolbar's Cards button and each course's Flashcards button, with the count due */
+.rd .rv-count {display:inline-grid;place-items:center;min-width:18px;height:18px;margin-left:6px;padding:0 5px;border-radius:9px;background:var(--rd-accent);color:#fff;font:650 11px/1 var(--rd-ui-font,system-ui)}
+.rd .rv-course-button {display:inline-flex;align-items:center;gap:2px;white-space:nowrap}

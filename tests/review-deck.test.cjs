@@ -97,7 +97,10 @@ test('wired in: scripts, stylesheet, Home module, reader, hub, pony, focus room 
  assert.match(widgets,/if\(deck&&event\.key==='R'&&event\.shiftKey/);assert.match(widgets,/if\(deck&&action==='review-add'\)/);
  assert.match(read('pets.js'),/gain=\{done:10,focus:6,review:4,plan:2\}/);
  assert.match(read('dashboard-view.js'),/action\('review-add',icon\('plus'\)\+'<span>Add card<\/span>'/);
- assert.match(read('course-hub-ui.js'),/root\.ReserveReviewDeck\?\.current\?\.hubLink\?\.\(id\)/);
+ // Always-visible ways in: each course's page and hub heading, the toolbar (with the count due) and the focus room.
+ assert.equal((read('course-hub-ui.js').match(/root\.ReserveReviewDeck\?\.current\?\.courseButton\?\.\(id\)/g)||[]).length,2,'course page and hub headings');
+ assert.match(read('dashboard-view.js'),/action\('review-start',icon\('book'\)\+`<span>Cards<\/span>/);
+ assert.match(read('focus-room.js'),/class="fr-icon fr-cards" data-rd-action="review-start"/);
  assert.match(read('focus-room.js'),/<option value="review:deck"/);
  const ui=read('review-deck.js');
  assert.doesNotMatch(ui+read('review-model.js'),/fetch\(|XMLHttpRequest|sendBeacon|chrome\.runtime\.sendMessage/,'the deck reads and sends nothing');

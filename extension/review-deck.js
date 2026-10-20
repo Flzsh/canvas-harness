@@ -48,6 +48,12 @@ ${st.today.done?'<p class="rd-widget-note">Done for today. Nicely.</p>':boost.le
    return `<span aria-hidden="true"> · </span><button type="button" class="rv-hub-link" data-rd-action="review-course" data-id="${E(id)}">${cards?`Review deck${due?` · ${due} due`:` · ${cards}`}`:'Make flashcards'}</button>`;
   }
   const dueCount=()=>summary().due;
+  // A "Flashcards" button for a course's page and hub heading: that course's cards due, or a way to start making some.
+  function courseButton(courseId){
+   const d=deck(),id=String(courseId),cards=d.cards.filter(c=>c.c===id).length;
+   const due=cards?M().queue(d,today(),{tests:tests()}).filter(x=>d.cards.find(c=>c.id===x.id)?.c===id).length:0;
+   return `<button type="button" class="rd-button rv-course-button" data-rd-action="review-course" data-id="${E(id)}" title="${cards?'Review this course\'s flashcards':'Make flashcards for this course'} · Shift+R reviews every course">${cards?'Flashcards':'Make flashcards'}${due?` <b class="rv-count">${due}</b>`:''}</button>`;
+  }
 
   /* ---- the overlay ---- */
   function open(next='review',opts={}){
@@ -256,7 +262,7 @@ ${list.length?`<ul class="rv-list">${list.slice(0,filter.limit).map(c=>`<li data
   }
   function sync(){if(node&&view==='manage'&&tab==='cards')render();}
   function destroy(){dead=true;close();clearTimeout(statusTimer);if(api.current===instance)api.current=null;}
-  const instance={open,close,isOpen:()=>!!node,click,input,change,keydown,sync,destroy,moduleBody,todayLine,hubLink,dueCount};
+  const instance={open,close,isOpen:()=>!!node,click,input,change,keydown,sync,destroy,moduleBody,todayLine,hubLink,courseButton,dueCount};
   api.current=instance;
   return instance;
  }

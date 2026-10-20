@@ -190,3 +190,6 @@
 .fr-guard-status{margin:2px 0 10px;padding:8px 10px;border-radius:10px;background:var(--fr-chip);font-size:12.5px;line-height:1.45}
 .fr-guard-status[data-state=on]{box-shadow:inset 3px 0 0 #8FB996}
 .fr-guard-status[data-state=allow]{box-shadow:inset 3px 0 0 var(--fr-accent)}
+/* the room's Cards button (review-deck.js) and its count of cards due */
+.fr-cards {position:relative}
+.fr-badge {position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--fr-accent);color:#fff;font:650 10.5px/17px var(--fr-ui);text-align:center}
