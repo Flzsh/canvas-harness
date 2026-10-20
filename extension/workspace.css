@@ -472,3 +472,12 @@
  .rd .rd-grade-value{font-size:18px}
  .rd .rd-grade-table th a .rd-icon{display:none}
 }
+
+/* Grade impact (grade-impact.js): the graded work coming up and how far each piece can move its course grade. */
+.rd-impact{grid-column:1/-1}.rd-impact-list{list-style:none;margin:0;padding:0}
+.rd-impact-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 22px;border-top:1px solid var(--rd-line);border-left:3px solid var(--rd-course,var(--rd-line))}
+.rd-impact-row>div{display:grid;gap:3px;min-width:0}.rd-impact-row a{color:inherit;text-decoration:none}.rd-impact-row a:hover strong{text-decoration:underline}
+.rd-impact-row strong{font-size:14px;font-weight:550;overflow-wrap:anywhere}.rd-impact-row small{font-size:12px;color:var(--rd-muted)}
+.rd-impact-what{font-variant-numeric:tabular-nums}.rd-impact-swing{flex-shrink:0;font-size:12px;color:var(--rd-muted);white-space:nowrap}
+.rd-impact-swing b{font-size:17px;font-weight:600;color:var(--rd-ink,inherit);font-variant-numeric:tabular-nums}
+@media(max-width:800px){.rd-impact-row{padding:14px 16px;align-items:flex-start}}

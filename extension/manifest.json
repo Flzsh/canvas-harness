@@ -99,6 +99,7 @@
         "course-hub-model.js",
         "course-hub-ui.js",
         "grades-view.js",
+        "grade-impact.js",
         "customize-ui.js",
         "dashboard-view.js",
         "motion.js",
