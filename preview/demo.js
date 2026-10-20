@@ -4,7 +4,7 @@
  const now=new Date().toISOString(),user={id:'subject-gallery-preview',name:'Demo Student',short_name:'Demo'};
  const courseNames=['Chemistry','Calculus AB','English','World History','Spanish','AP Biology','Physics'];
  const demoGrades=[[94,'A'],[91,'A-'],[97,'A+'],[88,'B+'],[85,'B'],[93,'A'],[null,null]];
- const courses=courseNames.map((name,i)=>({id:String(101+i),name,course_code:name,enrollments:[{type:'StudentEnrollment',computed_current_score:demoGrades[i][0],computed_current_grade:demoGrades[i][1]}]}));
+ const courses=courseNames.map((name,i)=>({id:String(101+i),name,course_code:name,apply_assignment_group_weights:i%2===0,enrollments:[{type:'StudentEnrollment',computed_current_score:demoGrades[i][0],computed_current_grade:demoGrades[i][1]}]}));
  const activities=[
   ['101','Reaction rates: lab preparation',9,'<p>Read the experiment guide and prepare your observations table before our next lab.</p><h3>Before class</h3><ol><li>Read the introduction and safety notes.</li><li>Explain how temperature affects reaction rate.</li><li>Draw a results table with space for three trials.</li></ol><p>Bring your notebook. We will collect the results together in class.</p>'],
   ['102','Derivatives: practice set',26,'<p>Complete questions 1–8 on the practice sheet. Show your reasoning and mark one question you would like to discuss.</p>'],
@@ -25,7 +25,16 @@
    return {...base(id),modules:[{id:'m-'+id,name:'This week',position:1,items:[{id:'mi-'+id,title:id==='101'?'Reaction rates: experiment guide':'Weekly study guide',type:'Page',page_url:'study-guide',html_url:url+'/pages/study-guide'},{id:'mf-'+id,title:'Practice & class notes',type:'File',content_id:'f-'+id,html_url:url+'/files/f-'+id}]}],pages:[],files:[{id:'f-'+id,display_name:'Practice & class notes.pdf',filename:'practice-notes.pdf',content_type:'application/pdf',url:url+'/files/f-'+id+'/download'}],frontPage:{title:name+' · This week',url:'weekly-guide',html_url:url+'/pages/weekly-guide',body:id==='101'?'<h2>Our next lab</h2><p>We are investigating what changes the speed of a reaction.</p><p>Start with the experiment guide below, then complete your preparation questions. Bring your safety glasses and notebook.</p>':'<h2>This week in '+name+'</h2><p>Begin with the weekly study guide. Use the practice notes to prepare your questions for class.</p>'},syllabusBody:''};
   },
   async loadCourseUpdates(id){return {...base(id),announcements:[{id:'notice-'+id,title:id==='101'?'A note before the lab':'Getting ready for our next class',message:id==='101'?'<p>Please bring your notebook and safety glasses. The experiment guide is in This week.</p>':'<p>The study guide and practice notes are ready. Bring one question to discuss.</p>',posted_at:now,html_url:location.origin+'/courses/'+id+'/discussion_topics/notice-'+id,author:{display_name:'Your teacher'}}],tabs:[]};},
-  async listInbox(){return {...base(),conversations:[],truncated:false};}
+  async listInbox(){return {...base(),conversations:[],truncated:false};},
+  // Grade impact: weighted categories whose graded work matches each course's demo grade, plus two pieces still to come.
+  async list(path){
+   const id=(/\/courses\/(\d+)\/assignment_groups/.exec(path)||[])[1],i=courses.findIndex(c=>c.id===id),p=demoGrades[i]?.[0];
+   if(p==null)return [];
+   const day=d=>new Date(Date.now()+d*864e5).toISOString(),done=(n,pts)=>({id:id+'-g'+n,name:'Earlier work '+n,points_possible:pts,submission:{score:pts*p/100,workflow_state:'graded',submitted_at:day(-9)}});
+   return [{id:id+'-t',name:'Tests',group_weight:50,rules:{},assignments:[done(1,50),{id:id+'-u1',name:(courseNames[i]||'Unit')+': unit test',points_possible:50,due_at:day(3+i*2),html_url:location.origin+'/courses/'+id+'/assignments/'+id+'1',submission:{workflow_state:'unsubmitted'}}]},
+    {id:id+'-h',name:'Homework',group_weight:30,rules:{},assignments:[done(2,40),{id:id+'-u2',name:'Practice set',points_possible:10,due_at:day(2+i),html_url:location.origin+'/courses/'+id+'/assignments/'+id+'2',submission:{workflow_state:'unsubmitted'}}]},
+    {id:id+'-l',name:'Projects',group_weight:20,rules:{},assignments:[done(3,20)]}];
+  }
  };
  const store=ReserveStorage.createStore({accountId:user.id,origin:location.origin});await store.load();
  const shadow=document.getElementById('reserve-preview').attachShadow({mode:'open'});
