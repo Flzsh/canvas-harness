@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.2.1 - 2026-10-21
+
+- With the course strip across the top, the banner, the course strip and Home scroll together as one page. Home modules are as tall as their content, so nothing scrolls inside a module.
+- Scroll anchoring stays off for everything inside the workspace, not only the column (from @garywu000's #38).
+
 ## 3.2.0 - 2026-10-21
 
 - Added Features in the popup: Full, Lite and Custom with automatic dependencies. Full preserves the existing feature set; disabled features keep their saved data.

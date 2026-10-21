@@ -32,7 +32,7 @@ function rules(text) {
   return result;
 }
 
-test('topbar bounds the shell and scrolls Home modules inside their allocated space', () => {
+test('topbar scrolls the heading, the strip and Home as one page, never inside a module', () => {
   const shellSelector = '.rd[data-course-navigation=topbar] .rd-shell';
   const container = rules(read('workspace.css')).find(rule => rule.selector === shellSelector)?.body;
   assert.equal(container?.['container-type'], 'inline-size', 'the heading above the strip has a size container');
@@ -53,22 +53,19 @@ test('topbar bounds the shell and scrolls Home modules inside their allocated sp
   assert.equal(shell['min-height'], '0');
   assert.equal(shell.display, 'grid');
   assert.equal(shell['grid-template-columns'], 'minmax(0,1fr)!important');
-  const column = find(' .rd-shell > .rd-workspace', 'overflow-y');
-  assert.equal(column['min-height'], '0');
-  assert.equal(column['overflow-y'], 'auto');
-  assert.equal(column['overflow-anchor'], 'none');
+  assert.equal(shell['overflow-y'], 'auto', 'the whole page under the toolbar is the one scroll');
+  assert.equal(shell['overflow-anchor'], 'none');
+  assert.equal(shell['grid-template-rows'], 'auto');
+  const column = find(' .rd-shell > .rd-workspace', 'overflow');
+  assert.equal(column.overflow, 'visible');
+  assert.equal(column.height, 'auto');
   assert.equal(find(' .rd-shell > .rd-workspace > *', 'flex-shrink')['flex-shrink'], '0');
-  const home = find(' .rd-shell > .rd-workspace', 'overflow');
-  assert.equal(home.overflow, 'hidden');
   const desk = find(' .rd-main.rd-desk', 'grid-template-rows');
-  assert.equal(desk.flex, '1 1 0');
-  assert.match(desk['grid-template-rows'], /--rd-layout-rows/);
+  assert.equal(desk['grid-template-rows'], 'none!important');
   assert.equal(find(' .rd-main.rd-desk', 'grid-template-columns')['grid-template-columns'], 'var(--rd-layout-columns,minmax(0,1fr))!important');
   const module = find(' .rd-main.rd-desk > [data-arrange-key]', 'overflow');
-  assert.deepEqual(
-    ['height', 'min-height', 'max-height', 'overflow', 'overscroll-behavior', 'scrollbar-width', 'scrollbar-gutter'].map(key => module[key]),
-    ['100%', '0', '100%', 'auto', 'contain', 'thin', 'stable']
-  );
+  assert.deepEqual(['height', 'max-height', 'overflow'].map(key => module[key]), ['auto', 'none', 'visible']);
+  assert.equal(module['scrollbar-width'], undefined);
   assert.equal(module['grid-column'], 'var(--rd-panel-column,auto)!important');
   assert.equal(module['grid-row'], 'var(--rd-panel-row,auto)!important');
   assert.equal(find(' .rd-information > .rd-reader', 'position').position, 'static');
