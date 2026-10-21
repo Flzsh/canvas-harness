@@ -103,6 +103,12 @@ Describe your course to an AI using the [artwork skill](skills/canvas-harness-ar
 
 Works on HTTPS school sites under `*.instructure.com`, and on a school's own Canvas address once you add it in the popup (your browser asks to allow that one site). [Installation help](INSTALL.md).
 
+## NotePilot: organized notes from a Google Doc
+
+[NotePilot](notepilot/README.md) is a separate Chrome extension that lives in this repository. While you type notes in a Google Doc, it keeps a rewritten, organized copy in Chrome's side panel: sections, tables and numbered steps, with AI insights beside them. **Summarize** makes a short version in the same outline and saves everything to a separate Google Doc. It only reads your notes and never changes them.
+
+NotePilot is installed and set up on its own: it asks you to sign in with Google (read-only access to Docs) and to connect an AI model with your own key or a shared server, and it sends nothing until you approve. Canvas Harness does not include it and its permissions and privacy notes below are unchanged. [Set up NotePilot](notepilot/README.md#quick-start).
+
 ## Privacy
 
 Canvas Harness reads coursework without changing submissions or grades. Coursework stays in your browser, separated by account; PDF marks stay in your browser too. By default nothing saved is shown until Canvas confirms who is signed in. Clicking Send places your chosen context on the AI provider's website; automatic context excludes grades and GPA. [Privacy details](PRIVACY.md).

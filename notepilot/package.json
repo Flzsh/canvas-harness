@@ -1,0 +1,12 @@
+{
+  "name": "notepilot-ai",
+  "private": true,
+  "version": "0.3.0",
+  "workspaces": ["extension", "server"],
+  "scripts": {
+    "build": "npm run build -w extension && npm run build -w server",
+    "test": "npm run test -w extension && npm run test -w server",
+    "typecheck": "npm run typecheck -w extension && npm run typecheck -w server",
+    "e2e": "npm run e2e -w extension"
+  }
+}

@@ -1,0 +1,8 @@
+node_modules/
+extension/dist/
+extension/dist-e2e/
+extension/e2e/screenshots/
+server/dist/
+.env
+.env.local
+*.pem
