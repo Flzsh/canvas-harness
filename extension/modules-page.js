@@ -23,7 +23,7 @@
   item.querySelector(':scope>.ig-row')?.classList.add('cn-i');
  }
  function decorateAll(){for(const item of list.querySelectorAll('li.context_module_item'))decorate(item);}
- function motion(value){doc.documentElement.dataset.mdMotion=['still','off'].includes(value?.motion)?'off':'on';}
+ function motion(value){doc.documentElement.dataset.mdMotion=root.ReserveFeatures?.enabled('motion')===false||['still','off'].includes(value?.motion)?'off':'on';}
  function sheet(file){
   const href=root.chrome.runtime.getURL(file);
   if([...doc.querySelectorAll('link[rel="stylesheet"]')].some(link=>link.href===href))return;

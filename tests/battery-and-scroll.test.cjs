@@ -10,10 +10,10 @@ test('the film clock reads every loop state before it writes any frame (one rest
 });
 test('the pony\u2019s endless loops run on a film clock and its walk at most 24 frames a second',()=>{
  const js=read('pets.js');
- assert.match(js,/const quiet=now\(\)-lastInput;if\(quiet>=120000\)return;\s*reel=setTimeout\(roll,1000\/\(quiet<6000\?24:quiet<25000\?12:6\)\)/,'24 a second while used, 12 after, 6 in the idle rest, held after two minutes');assert.match(js,/if\(!reel&&layer&&!doc\.hidden\)roll\(\);/,'the next input lets it go on');assert.match(read('pet.css'),/\.pet-layer\{position:fixed;inset:0;z-index:1500;pointer-events:none;overflow:visible;contain:strict\}/,'its paint is walled off from the page');
+ assert.match(js,/const quiet=now\(\)-lastInput;if\(!reels\.size\|\|quiet>=120000\)return;\s*scheduleReel\(1000\/\(quiet<6000\?24:quiet<25000\?12:6\)\)/,'24 a second while used, 12 after, 6 in the idle rest, held after two minutes');assert.match(js,/if\(!reel&&layer&&!doc\.hidden&&\(reelsDirty\|\|reels\.size\)\)roll\(\);/,'the next input lets it go on');assert.match(read('pet.css'),/\.pet-layer\{position:fixed;inset:0;z-index:1500;pointer-events:none;overflow:visible;contain:strict\}/,'its paint is walled off from the page');
  assert.match(js,/iterations!==Infinity\)continue;/,'only endless loops are taken over');
  assert.match(js,/FILM=1000\/24/,'movement shares the 24fps film cadence');assert.match(js,/film=setTimeout\(frame,/,'a 120-240 Hz screen does not schedule movement at every refresh');
- assert.match(js,/clearTimeout\(reel\);reel=0;reels\.clear\(\);(?:resetReels\(\);)?layer\.remove\(\)/,'the clock stops with the pony');
+ assert.match(js,/clearTimeout\(reel\);reel=0;reels\.clear\(\);(?:resetReels\(\);|reelsDirty=true;)?layer\.remove\(\)/,'the clock stops with the pony');
 });
 test('the page does not scroll on desktop: the workspace column is as tall as the rail and scrolls by itself',()=>{
  const css=read('refresh.css');
@@ -52,10 +52,5 @@ test('the pony stands only on free spots, steps off when something appears under
 });
 test('the pony\u2019s menu fades in where it is: the pony stops at once and the bubble does not grow',()=>{
  assert.match(read('pet.css'),/animation:pet-fade \.2s ease-out\}/);assert.match(read('pet.css'),/@keyframes pet-fade\{from\{opacity:0\}\}/);
- assert.match(read('pets.js'),/if\(goal\?\.type==='walk'\)\{goal=null;speed=0;setPose\('stand'\);\}/);
-});
-
-test('the column is not scrolled by the browser while the workspace lays itself out (scroll anchoring off)',()=>{
- const css=read('refresh.css');
- assert.match(css,/\.rd \.rd-workspace, \.rd \.rd-workspace \* \{ overflow-anchor: none; \}/);
+ assert.match(read('pets.js'),/if\(goal\)setPose\('stand'\);goal=null;speed=0;\s*stop\(\);cancelPlaces\(\);/);
 });

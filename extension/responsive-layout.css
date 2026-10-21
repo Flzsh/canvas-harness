@@ -2,6 +2,46 @@
    Subject drawings, title SVGs, animated rigs and sketched rail frames stay
    owned by course-art.js and refresh.css. This layer only sizes their frames. */
 
+/* Topbar reserves the shared heading and course strip above the workspace.
+   Home modules scroll inside their cells; other workspaces scroll as a column. */
+.rd[data-course-navigation=topbar] { min-height: 0; }
+.rd[data-course-navigation=topbar] .rd-shell {
+  display: grid; grid-template-columns: minmax(0,1fr)!important;
+  height: max(0px,calc(100dvh - var(--rd-rail-top,150px) - var(--rd-status-h,56px)));
+  min-height: 0; flex: none; align-items: stretch; grid-template-rows: auto minmax(0,1fr);
+}
+.rd[data-course-navigation=topbar][data-courses=true] .rd-shell { grid-template-rows: auto auto minmax(0,1fr); }
+.rd[data-course-navigation=topbar] .rd-shell > .rd-workspace {
+  grid-row: -2 / -1; height: 100%; min-height: 0; min-width: 0;
+  overflow-x: clip; overflow-y: auto; overscroll-behavior: contain; overflow-anchor: none;
+  scrollbar-width: thin; scrollbar-gutter: stable;
+}
+.rd[data-course-navigation=topbar] .rd-shell > .rd-workspace > * { flex-shrink: 0; }
+.rd[data-course-navigation=topbar][data-workspace=work] .rd-shell > .rd-workspace {
+  display: flex; flex-direction: column; overflow: hidden; scrollbar-gutter: auto;
+}
+.rd[data-course-navigation=topbar][data-workspace=work] .rd-main.rd-desk {
+  flex: 1 1 0; min-height: 0;
+  grid-template-rows: var(--rd-layout-rows,var(--rd-fit-rows,minmax(0,1fr)))!important;
+  grid-auto-rows: minmax(0,1fr); align-items: stretch;
+}
+.rd[data-course-navigation=topbar][data-workspace=work] .rd-main.rd-desk > [data-arrange-key] {
+  grid-column: var(--rd-panel-column,auto)!important; grid-row: var(--rd-panel-row,auto)!important;
+  height: 100%; min-height: 0; max-height: 100%; overflow: auto;
+  overscroll-behavior: contain; scrollbar-width: thin; scrollbar-gutter: stable; align-self: stretch;
+}
+.rd[data-course-navigation=topbar][data-workspace=work] .rd-information > .rd-reader { position: static; height: auto; max-height: none; }
+.rd[data-course-navigation=topbar][data-workspace=work] .rd-information > .rd-reader .rd-reader-content { max-height: none; overflow: visible; }
+@container work-area (min-width: 940px) {
+  .rd[data-course-navigation=topbar][data-workspace=work][data-layout=split] .rd-main.rd-desk { --rd-fit-rows: minmax(0,1fr); }
+}
+@container work-area (max-width: 720px) {
+  .rd[data-course-navigation=topbar][data-workspace=work] .rd-main.rd-desk { grid-template-columns: var(--rd-layout-columns,minmax(0,1fr))!important; }
+}
+@media (max-width: 600px) {
+  .rd[data-course-navigation=topbar][data-courses=true] .rd-shell { grid-template-rows: auto minmax(0,1fr); }
+}
+
 /* Give course work the width: 1920/1440/1280 step down without narrowing the
    actual names or the small illustrations inside the rail. At <=900 the
    existing drawer / course selector takes over. */

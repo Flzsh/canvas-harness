@@ -25,3 +25,10 @@ html[data-theme=dark] .detail-header button{color:#B1AD9F}html[data-theme=dark] 
 .range-control input::-webkit-slider-runnable-track{height:6px;border-radius:4px;background:#E2DED3;box-shadow:inset 0 0 0 1px #C9C5BA}
 .range-control input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;margin-top:-5px;border-radius:50%;background:#A9522F;border:2px solid #FFFDF6;box-shadow:0 0 0 1.2px #7E3B20}
 html[data-theme=dark] .range-control input::-webkit-slider-runnable-track{background:#2C2E29;box-shadow:inset 0 0 0 1px #54564C}html[data-theme=dark] .range-control input::-webkit-slider-thumb{border-color:#2C2E29}
+/* Features uses the same drawn frames, segments and switches as quick settings. */
+#features-panel>fieldset{margin-bottom:17px}
+#feature-groups{max-height:340px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:3px 4px 5px;margin:0 -4px 12px}
+.feature-group{margin-bottom:18px}.feature-group:last-child{margin-bottom:0}.feature-group legend{font-size:12px;margin-bottom:9px}
+.feature-switch{min-height:44px;white-space:normal;cursor:pointer}.feature-switch>span:first-child{min-width:0}
+.feature-switch input{right:14px;top:50%;transform:translateY(-50%)}.feature-switch .switch-track{position:relative;flex:0 0 32px}
+#features-error{margin:8px 0;font-size:11px;color:#8C4226}html[data-theme=dark] #features-error{color:#E2A785}

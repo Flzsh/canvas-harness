@@ -14,6 +14,10 @@ Use a test student account on a supported Canvas site with at least two courses 
 6. Show grades and open GPA only using test data. Adjust weights; Canvas grades must remain unchanged.
 7. Under course artwork, import a self-contained animated SVG. Unsafe SVGs containing scripts, event handlers or external resource references must be rejected.
 8. Open Quick Upload in Appearance settings. Paste or choose a `.chpack` file, such as the repository's artificial Astronomy example. Verify the three isolated previews. Map its unmatched target to a test course (or uncheck it); Apply must remain disabled while an included course has no destination. Apply the pack, inspect the chosen course's banner/icon/border, then Undo last pack. Names, notes and grades must remain unchanged.
+9. Open Features in the popup. Verify Full is the default, choose Lite and reload Canvas, then use Custom switches. Dependencies should follow automatically, and switching back should restore access to saved notes, artwork and preferences.
+
+10. Choose course navigation across the top. The banner and title should precede the course strip, the page should fit the window, and a long Home module should scroll within its own space. Switch back to the sidebar and verify the heading remains usable.
+11. Open a PDF from course Files, a Modules file item, a page, announcement, discussion, syllabus, course home, Materials and Linked materials. Verify the reader opens with the correct file; explicit Download links and non-PDF files should retain Canvas behavior. In Tools, open AI and verify the toolbox supplies the single close control.
 
 ## Optional AI website handoff
 

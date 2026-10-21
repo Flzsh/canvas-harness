@@ -3,6 +3,8 @@
 // links, badges, trays and keyboard behaviour stay Canvas's. Off with the popup's "Menu bar: Canvas original".
 (function(root){
  'use strict';
+ let stop=()=>{};
+ function load(){
  // The stored choice -> the bar's layout. 'drawn' (the default) is the drawer.
  const LAYOUTS={drawn:'drawer',shown:'column',top:'top'};
  const KEY='reserve:canvasNav',PALETTE='reserve:navPalette',LOGO='reserve:navLogo';
@@ -97,7 +99,7 @@
  function applyPalette(palette){
   const style=root.document.documentElement.style;
   for(const [key,name] of Object.entries(NAMES))if(safe(palette?.[key]))style.setProperty(name,palette[key]);
-  root.document.documentElement.dataset.chnMotion=palette?.motion==='off'||palette?.motion==='still'?'off':'on';
+  root.document.documentElement.dataset.chnMotion=root.ReserveFeatures?.enabled('motion')===false||palette?.motion==='off'||palette?.motion==='still'?'off':'on';
  }
  function workspace(){return root.document.getElementById('reserve-companion-host')?.shadowRoot?.querySelector('.rd')||null;}
  function readPalette(rd){
@@ -111,14 +113,33 @@
 
  function start(){
   if(root.top!==root||root.ReserveCanvasNav||!root.ReserveSite?.supported?.(root.location?.href))return;
-  const html=root.document.documentElement;let saved={},header=null,observer=null,lastPalette='';
-  root.ReserveCanvasNav={kindOf,logoKind};
+  const html=root.document.documentElement;let saved={},header=null,observer=null,lastPalette='',stopped=false,pending=null,workspaceTimer,workspaceObserver,workspaceQueued=0;
+  const listeners=[];
+  const listen=(target,type,fn,options)=>{target.addEventListener(type,fn,options);listeners.push(()=>target.removeEventListener?.(type,fn,options));};
+  const api=root.ReserveCanvasNav={kindOf,logoKind};
+  stop=()=>{
+   if(stopped)return;stopped=true;apply('original');
+   observer?.disconnect();pending?.disconnect();workspaceObserver?.disconnect();
+   root.clearInterval?.(workspaceTimer);root.clearTimeout?.(workspaceQueued);
+   for(const remove of listeners)remove();
+   for(const name of Object.keys(html.dataset))if(name.startsWith('chn'))delete html.dataset[name];
+   for(const name of [...Object.values(NAMES),'--chn-top','--chn-bottom','--chn-push','--chn-bar-x','--chn-bar-y'])html.style.removeProperty(name);
+   if(header)for(const name of Object.keys(header.dataset))if(name.startsWith('chn'))delete header.dataset[name];
+   if(root.ReserveCanvasNav===api)delete root.ReserveCanvasNav;
+  };
   const store=root.chrome?.storage?.local;if(!store)return;
   store.get([KEY,PALETTE,LOGO,'reserve:enabled']).then(values=>{
+   if(stopped)return;
    saved=values;if(values['reserve:enabled']===false)return;
    if(values[KEY]!=='original')enable(values[KEY]);
+   // Course frames arrive through the deferred loader after this static script.
+   listen(root.document,'reserve:features-ready',()=>{
+    if(header&&html.classList.contains('chn-nav')&&[...header.querySelectorAll('.ic-app-header__menu-list-link')].some(link=>!link.querySelector(':scope > .chn-frames')))decorate(header);
+   },{once:true});
    // Chosen again in Make it yours or the popup: the bar changes on this page at once.
-   root.chrome?.storage?.onChanged?.addListener((changes,area)=>{if(area==='local'&&changes[KEY])apply(changes[KEY].newValue);});
+   const changed=(changes,area)=>{if(area==='local'&&changes[KEY])apply(changes[KEY].newValue);};
+   root.chrome?.storage?.onChanged?.addListener?.(changed);
+   listeners.push(()=>root.chrome?.storage?.onChanged?.removeListener?.(changed));
   }).catch(()=>{});
   // canvas-nav.css comes with the page (manifest, document_start): a stylesheet linked from here arrived after the drawn
   // frames, which then showed unstyled for a moment on every page change. It is scoped to html.chn-nav, so it is inert until then.
@@ -131,6 +152,7 @@
   // Each layout leaves an undo; a change runs them all, then sets up the new one with no motion at all for two frames
   // (data-chn-switching), so a column never turns into a row on screen.
   function apply(choice){
+   if(stopped&&choice!=='original')return;
    if(choice==='original'){
     if(!html.classList.contains('chn-nav'))return;
     for(const step of undo.splice(0))try{step();}catch{}
@@ -143,6 +165,7 @@
   }
 
   function found(){
+   if(stopped||!html.classList.contains('chn-nav'))return false;
    const next=root.document.getElementById('header');
    if(!next||!next.querySelector('.ic-app-header__menu-list-link'))return false;
    if(next!==header){header=next;setup();}
@@ -150,15 +173,16 @@
   }
   function watch(){
    if(found())return;
-   const pending=new MutationObserver(()=>{if(found())pending.disconnect();});
+   pending?.disconnect();
+   pending=new MutationObserver(()=>{if(found())pending.disconnect();});
    pending.observe(root.document.documentElement,{childList:true,subtree:true});
-   root.addEventListener('DOMContentLoaded',()=>{found();},{once:true});
+   listen(root,'DOMContentLoaded',()=>{found();},{once:true});
   }
   function setup(){
    if(root.getComputedStyle(header).position==='static')header.style.position='relative';
    // The bar's column takes the page's own background, so it reads as part of whichever page it is on.
    const page=()=>{const bg=root.getComputedStyle(root.document.body||html).backgroundColor;if(safe(bg)&&!/rgba\(0, 0, 0, 0\)|transparent/.test(bg))header.style.setProperty('--chn-page',bg);};
-   page();root.addEventListener('load',page,{once:true});
+   page();listen(root,'load',page,{once:true});
    const rootStyle=root.getComputedStyle(html);
    for(const [name,from] of [['--chn-school','--ic-brand-global-nav-bgd'],['--chn-school-logo','--ic-brand-global-nav-logo-bgd']]){const v=rootStyle.getPropertyValue(from).trim();if(safe(v)&&v)header.style.setProperty(name,v);}
    // Canvas re-renders parts of the bar (badges, the active item): decorate again, at most once a frame.
@@ -203,7 +227,8 @@
   // across the top of the page, which moves the page down. Its own outline and motion: nothing of the column's slide.
   function topBar(){
    if(html.dataset.chnLayout!=='top'||header.dataset.chnTop)return;header.dataset.chnTop='true';
-   const dashboard=/^\/?$/.test(root.location?.pathname||'')&&new URLSearchParams(root.location?.search||'').get('reserve')!=='native';
+   // Wait for the workspace only where Dashboard is enabled and requested.
+   const dashboard=/^\/?$/.test(root.location?.pathname||'')&&root.ReserveFeatures?.enabled?.('dashboard')!==false&&new URLSearchParams(root.location?.search||'').get('reserve')!=='native';
    for(const link of header.querySelectorAll('.ic-app-header__menu-list-link'))if(!link.title){const name=link.querySelector('.menu-item__text')?.textContent.trim();if(name)link.title=name;}
    const waitUntil=Date.now()+(dashboard?9000:0),set=(name,value)=>html.style.setProperty(name,value);
    let queued=0,watched=null,sizes=null;
@@ -248,13 +273,15 @@
    const known=saved[LOGO];
    if(known?.url===url&&['ink','dark','framed','plate'].includes(known.kind)){header.dataset.chnLogo=known.kind;return;}
    header.dataset.chnLogo='wait';
-   readLogo(url).then(kind=>{header.dataset.chnLogo=kind;store.set({[LOGO]:{url,kind}}).catch(()=>{});});
+   readLogo(url).then(kind=>{if(stopped)return;header.dataset.chnLogo=kind;store.set({[LOGO]:{url,kind}}).catch(()=>{});});
   }
   // On the dashboard: take the workspace's colours, and line the bar's top up with the workspace's top row.
   function followWorkspace(){
-   let tries=0;const timer=root.setInterval(()=>{
+   let tries=0;const timer=workspaceTimer=root.setInterval(()=>{
+    if(stopped)return;
     const rd=workspace();if(!rd&&++tries<30)return;root.clearInterval(timer);if(!rd)return;
     const sync=()=>{
+     if(stopped)return;
      const palette=readPalette(rd),text=JSON.stringify(palette);
      if(text!==lastPalette){lastPalette=text;applyPalette(palette);if(text!==JSON.stringify(saved[PALETTE]))store.set({[PALETTE]:palette}).then(()=>{saved[PALETTE]=palette;}).catch(()=>{});}
      const bar=rd.querySelector('.rd-toolbar');
@@ -263,13 +290,15 @@
      const rail=rd.querySelector('.rd-course-rail');
      if(rail&&root.scrollY===0&&rail.getClientRects().length){const gap=Math.round(root.innerHeight-rail.getBoundingClientRect().bottom);if(gap>=4&&gap<=80)html.style.setProperty('--chn-bottom',gap+'px');}
     };
-    let queued=0;const later=()=>{if(!queued)queued=root.setTimeout(()=>{queued=0;sync();},400);};
-    sync();new MutationObserver(later).observe(rd,{attributes:true,attributeFilter:['style','data-motion-style','data-motion','data-accent','data-page-tint','data-theme']});
-    root.addEventListener('resize',later,{passive:true});
+    const later=()=>{if(!stopped&&!workspaceQueued)workspaceQueued=root.setTimeout(()=>{workspaceQueued=0;sync();},400);};
+    sync();workspaceObserver=new MutationObserver(later);workspaceObserver.observe(rd,{attributes:true,attributeFilter:['style','data-motion-style','data-motion','data-accent','data-page-tint','data-theme']});
+    listen(root,'resize',later,{passive:true});
    },1000);
   }
  }
 
  if(typeof module==='object'&&module.exports)module.exports={kindOf,logoKind,DRAWINGS};
  else start();
+ }
+ if(root.ReserveFeatures)root.ReserveFeatures.early('canvas-nav',load,()=>stop());else load();
 })(globalThis);

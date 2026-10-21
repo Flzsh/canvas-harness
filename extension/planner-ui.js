@@ -3,12 +3,14 @@
    planner-model.js; this file draws the page and answers it. Nothing here writes to Canvas. Creator: Flzsh. */
 (function(root){
  'use strict';
+ const enabled=id=>!root.ReserveFeatures||root.ReserveFeatures.enabled(id);
  const Plan=()=>root.ReservePlanner,Widgets=()=>root.ReserveWidgets;
  const LENGTHS=[15,30,45,60,90,120];
  const TICK='<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M4.6 10.6l3.4 3.6 7.6-8.8"/></svg>';
  const DOTS='<svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="4.4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="15.6" cy="10" r="1.6"/></svg>';
 
  function render(c,h,ui={}){
+  if(!enabled('planner')||!Plan()||!Widgets()?.plan)return '';
   const {E}=h,P=Plan(),{list,today}=Widgets().plan(c,h),offset=ui.offset||0,board=P.board(list,today,offset),tz=c.s.timeZone;
   const action=(name,text,extra='',cls='rd-button')=>`<button type="button" class="${cls}" data-rd-action="${name}" ${extra}>${text}</button>`;
   const utc=key=>new Date(key+'T12:00:00Z').getTime(),fmt=(key,options)=>h.formatDate(utc(key),'UTC',options);
@@ -50,6 +52,7 @@ ${e.personal?action('plan-delete','Delete this task',`role="menuitem" data-id="$
  }
 
  function create({container,store,save,rerender,getContext,helpers,view=()=>{},quickAdd=()=>{}}){
+  if(!enabled('planner')||!Plan())return null;
   const ui={offset:0,menu:null,more:false,showDone:false,recent:new Map()};let dead=false,drag=null;
   const doc=container.ownerDocument||root.document,scope=()=>container.getRootNode?.()||doc;
   const closeMenu=()=>{if(ui.menu){const id=ui.menu;ui.menu=null;rerender();container.querySelector(`[data-rd-action="plan-menu"][data-id="${root.CSS?.escape?root.CSS.escape(id):id}"]`)?.focus({preventScroll:true});return true;}return false;};

@@ -6,7 +6,7 @@
 </head>
 <body>
 <main id="main-view">
- <header><img src="icon.svg" width="30" height="30" alt=""><div class="brand"><h1 id="product-name">Canvas Harness</h1><div id="version" class="version">3.1.0</div></div><label class="switch">On Canvas<input id="enabled" type="checkbox" role="switch" disabled><span class="switch-track" aria-hidden="true"></span></label></header>
+ <header><img src="icon.svg" width="30" height="30" alt=""><div class="brand"><h1 id="product-name">Canvas Harness</h1><div id="version" class="version">3.2.0</div></div><label class="switch">On Canvas<input id="enabled" type="checkbox" role="switch" disabled><span class="switch-track" aria-hidden="true"></span></label></header>
  <section id="school-section" hidden>
   <div class="school drawn"><span>Your Canvas:</span><b id="school-host">Choose school</b><span>·</span><button id="change-school" type="button" class="text-button" aria-expanded="false" aria-controls="school-editor">change</button></div>
   <form id="school-editor" hidden novalidate>
@@ -16,6 +16,7 @@
  </section>
  <button id="open" type="button" class="open drawn"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M7.6 27.4a12.8 12.8 0 0 1 6-10.9l3 5.2a6.8 6.8 0 0 0-3 5.7z" fill="#B7CBA5"/><path d="M14.4 16.1a12.8 12.8 0 0 1 12.2 0l-3 5.2a6.8 6.8 0 0 0-6.2 0z" fill="#E6C478"/><path d="M27.4 16.5a12.8 12.8 0 0 1 6 10.9h-6a6.8 6.8 0 0 0-3-5.7z" fill="#DE9A7C"/><path d="M6.2 27.2c-.1-7.9 6.2-14 13.8-14.1 7.8-.1 14 6.1 14 14M4.6 27.6c10.2-.4 20.6-.4 30.8 0M20 27l7-8.6" fill="none" stroke="#FFFDF6" stroke-width="1.5" stroke-linecap="round"/></svg><span><b>Open your dashboard</b><small>Every assignment on one page</small></span></button>
  <nav class="rows drawn" aria-label="Quick settings">
+  <button type="button" class="setting-row" data-detail="features"><span><b>Features</b><small id="features-value">Full</small></span><i aria-hidden="true">›</i></button>
   <button type="button" class="setting-row pi-i" data-detail="look"><svg viewBox="0 0 30 24" aria-hidden="true"><circle cx="11" cy="12" r="7" fill="#F2DC8E" stroke="#2B2A27" stroke-width="1.2"/><path d="M19 6a7 7 0 1 0 6 10 6 6 0 0 1-6-10z" fill="#3D3D3A"/></svg><span><b>Look</b><small id="look-value">Light · lively drawings</small></span><i aria-hidden="true">›</i></button>
   <button type="button" class="setting-row pi-i" data-detail="menu"><svg viewBox="0 0 30 24" aria-hidden="true"><rect x="9" y="3" width="19" height="18" rx="2" fill="none" stroke="#5E5D59" stroke-width="1.2"/><rect x="2" y="8" width="4" height="9" rx="1.5" fill="#E7C9B6" stroke="#A9522F" stroke-width="1.2"/></svg><span><b>Canvas menu bar</b><small id="menu-value">From the left edge</small></span><i aria-hidden="true">›</i></button>
   <button type="button" class="setting-row pi-i" data-detail="pony"><svg viewBox="0 0 30 24" aria-hidden="true"><path d="M6 18c0-5 3-7 8-7s8 2 8 7M20 11c1-3 3-5 5-5" fill="none" stroke="#2B2A27" stroke-width="1.3" stroke-linecap="round"/><circle cx="24" cy="7" r="2.6" fill="#F1DEC0" stroke="#2B2A27" stroke-width="1.1"/></svg><span><b>Pony</b><small id="pony-value">On · Biscuit</small></span><i aria-hidden="true">›</i></button>
@@ -25,6 +26,13 @@
 </main>
 <section id="detail-view" hidden aria-labelledby="detail-title">
  <div class="detail-header"><button id="back" type="button" aria-label="Back to quick settings">‹</button><h2 id="detail-title" tabindex="-1">Look</h2></div>
+ <div id="features-panel" data-panel="features" hidden aria-busy="true">
+  <fieldset><legend>Preset</legend><div class="segments"><label><input type="radio" name="features-preset" value="full" data-feature-preset checked disabled><span>Full</span></label><label><input type="radio" name="features-preset" value="lite" data-feature-preset disabled><span>Lite</span></label><label><input type="radio" name="features-preset" value="custom" data-feature-preset disabled><span>Custom</span></label></div></fieldset>
+  <div id="feature-groups"></div>
+  <p id="features-reload" class="hint">Reload Canvas to apply.</p>
+  <p id="features-status" class="hint" role="status" aria-live="polite" hidden></p>
+  <p id="features-error" role="alert" hidden></p><button id="features-retry" type="button" class="text-button" hidden>Try again</button>
+ </div>
  <div data-panel="look" hidden>
   <fieldset><legend>Theme</legend><div class="segments"><label><input type="radio" name="theme" value="light" data-preference="theme" disabled><span>☀ Light</span></label><label><input type="radio" name="theme" value="dark" data-preference="theme" disabled><span>☾ Dark</span></label></div></fieldset>
   <label id="night-art-control" class="range-control" hidden>Artwork at night <output id="night-art-value" for="night-art">0%</output><input id="night-art" type="range" min="0" max="100" step="1" value="0" data-preference="nightArt" disabled></label>
@@ -45,5 +53,5 @@
  </div>
 </section>
 <p id="status" role="status" aria-live="polite" hidden></p>
-<script src="site.js"></script><script src="school-address.js"></script><script src="page-preferences.js"></script><script src="native-appearance.js"></script><script src="native-page.js"></script><script src="pet-art.js"></script><script src="popup-art.js"></script><script src="popup.js"></script>
+<script src="site.js"></script><script src="school-address.js"></script><script src="page-preferences.js"></script><script src="native-appearance.js"></script><script src="native-page.js"></script><script src="pet-art.js"></script><script src="popup-art.js"></script><script src="features.js"></script><script src="popup.js"></script>
 </body></html>

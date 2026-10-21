@@ -2,13 +2,20 @@
    what it does; switches for what shows. Changes apply at once and save on this device. Original creator: Flzsh. */
 (function(root){
  'use strict';
+ const enabled=id=>!root.ReserveFeatures||root.ReserveFeatures.enabled(id);
+ const tabs=()=>enabled('customization')?TABS.filter(([key])=>(key!=='art'||enabled('course-art'))&&(key!=='pet'||enabled('pony'))):[];
+ const settingEnabled=key=>{
+  const feature={motion:'motion',livingArt:'course-art',nightArt:'course-art',bannerSize:'course-art',showCourseIcons:'course-art',courseCardStyle:'course-art',showCourseInformation:'course-hub',showRecentGrades:'grades',deskOrder:'arrange',courseNavigation:'arrange',canvasNav:'canvas-nav'}[key];
+  return (!feature||enabled(feature))&&(key!=='livingArt'||enabled('motion'));
+ };
  const E=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const TABS=[['layout','Layout'],['look','Look'],['art','Artwork'],['courses','Courses'],['pet','Pony']];
  // Little diagrams of the page: R a filled block, O an outlined block, L a line of text.
  const svg=inner=>`<svg viewBox="0 0 72 48" width="72" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
  const R=(x,y,w,h,cls='a')=>`<rect class="cz-${cls}" x="${x}" y="${y}" width="${w}" height="${h}" rx="2.5"/>`;
  const L=(x,y,w)=>`<path d="M${x} ${y}h${w}"/>`;
- const ART={
+ let diagrams;
+ const artDiagrams=()=>diagrams||(diagrams={
   sidebar:svg(R(3,4,15,40,'fill')+R(22,4,47,40)),
   topbar:svg(R(3,4,66,9,'fill')+R(3,17,66,27)),
   // Canvas's menu bar: a tab at the edge, a column, a row in the toolbar, Canvas's own dark column
@@ -33,30 +40,28 @@
   gentle:svg('<path d="M9 38C24 38 25 9 39 11.5C47 13 49 21 55 19.6C58.4 18.8 60.4 18.2 62.6 18.2"/><path d="M9 42.4h7M20 42.4h4" opacity=".45"/><circle class="cz-fill" cx="62.6" cy="18.2" r="3.4"/>'),
   still:svg(R(10,10,22,28,'soft')+R(40,10,22,28,'fill')),
   off:svg(R(14,10,44,28)+'<path d="M24 24h24"/>')
- };
+ });
  function render(c){
-  const s={...root.ReserveCustomization.defaults,theme:'system',accent:'clay',font:'system',textSize:'standard',motion:'gentle',livingArt:'on',readingFont:'book',greeting:'on',...c.s},id=c.customizeCourseId||'all',course=c.allCourses.find(x=>x.id===id),pref=id==='all'?(s.overviewArt||{}):(s.coursePrefs?.[id]||{});
+  if(!enabled('customization'))return '';
+  const shell=inner=>`<div class="rd-appearance t-acc ch-settings-dock" data-open="${!!c.customizeOpen}" role="complementary" aria-labelledby="rd-appearance-title" ${c.customizeOpen?'':'inert aria-hidden="true"'}><div class="t-acc-panel" id="rd-appearance-panel" ${c.customizeOpen?'':'inert aria-hidden="true"'}><div class="t-acc-panel-inner"${c.customizeOpen?'':' data-rd-key="customize-content"'}>${inner}</div></div></div>`;
+  if(!c.customizeOpen)return shell('');
+  const s={...root.ReserveCustomization.defaults,theme:'system',accent:'clay',font:'system',textSize:'standard',motion:'gentle',livingArt:'on',readingFont:'book',greeting:'on',...c.s,...(!enabled('motion')?{motion:'off',livingArt:'off'}:{})},id=c.customizeCourseId||'all',course=c.allCourses.find(x=>x.id===id),pref=id==='all'?(s.overviewArt||{}):(s.coursePrefs?.[id]||{});
   const label=course?.name||'All courses',visible=new Set(c.courses.map(x=>x.id));
   // With no tab named (a caller that only wants the markup) every section is drawn.
-  const tab=TABS.some(([key])=>key===c.customizeTab)?c.customizeTab:'all',on=key=>tab==='all'||tab===key;
+  const allowedTabs=tabs(),tab=c.customizeTab?(c.customizeTab==='all'?'all':allowedTabs.some(([key])=>key===c.customizeTab)?c.customizeTab:allowedTabs[0][0]):'all',on=key=>allowedTabs.some(([id])=>id===key)&&(tab==='all'||tab===key);
   const button=(action,label,extra='',cls='rd-button')=>`<button type="button" class="${cls}" data-rd-action="${action}" ${extra}>${label}</button>`;
-  const select=(key,label,options,field='setting',value=s[key])=>`<label class="rd-field"><span>${E(label)}</span><select data-rd-field="${field}" data-setting="${key}" data-id="${E(id)}" aria-label="${E(label)}">${options.map(([v,l])=>`<option value="${v}"${v===value?' selected':''}>${E(l)}</option>`).join('')}</select></label>`;
+  const select=(key,label,options,field='setting',value=s[key])=>!settingEnabled(key)?'':`<label class="rd-field"><span>${E(label)}</span><select data-rd-field="${field}" data-setting="${key}" data-id="${E(id)}" aria-label="${E(label)}">${options.map(([v,l])=>`<option value="${v}"${v===value?' selected':''}>${E(l)}</option>`).join('')}</select></label>`;
   // A set of picture choices: [value, name, one line, drawing]
-  const choices=(key,title,options,{value=s[key],cols=3,field='setting',data='setting'}={})=>`<div class="cz-choices" role="radiogroup" aria-label="${E(title)}" style="--cz-cols:${cols}">${options.map(([v,name,hint,art,locked])=>`<label class="cz-choice"${locked?' data-locked="true"':''}><input type="radio" name="cz-${key}" data-rd-field="${field}" data-${data}="${key}" value="${E(v)}" ${v===value?'checked':''} ${locked?'disabled':''}><span class="cz-choice-art">${art||''}</span><strong>${E(name)}</strong>${hint?`<small>${E(hint)}</small>`:''}</label>`).join('')}</div>`;
-  const toggle=(key,name,hint,{checked=s[key]!==false,field='setting',data='setting'}={})=>`<label class="cz-toggle"><span><strong>${E(name)}</strong><small>${E(hint)}</small></span><input type="checkbox" role="switch" data-rd-field="${field}" data-${data}="${key}" ${checked?'checked':''}><i aria-hidden="true"></i></label>`;
-  const group=(title,hint,body)=>`<section class="cz-group"><h3>${E(title)}</h3>${hint?`<p class="cz-hint">${hint}</p>`:''}${body}</section>`;
-  const currentIds=new Set(c.allCourses.map(x=>x.id));
-  const unused=Object.entries(s.coursePrefs||{}).filter(([id,pref])=>!currentIds.has(id)&&root.ReserveCustomization.artKeys.some(key=>pref[key]));
-  const unusedArt=unused.length?`<details class="ch-details" data-rd-section="unused-art"><summary>Artwork from other courses (${unused.length})</summary><p class="ch-hint">These courses are not in the current list. Remove individual uploads to free artwork space; names, colors, notes and bookmarks stay saved.</p><div class="ch-unused-art">${unused.map(([id,pref])=>`<div><strong>${E(pref.name||'Course '+id)}</strong>${root.ReserveCustomization.artKeys.filter(key=>pref[key]).map(key=>`<div><span>${E(pref[key].name)}</span>${button('art-remove','Remove '+key.replace('Art',''),`data-id="${E(id)}" data-kind="${key.replace('Art','')}"`,'rd-text-button')}</div>`).join('')}</div>`).join('')}</div></details>`:'';
-  const artCourse={id:id==='all'?'folio-home':id,name:label,originalName:course?.originalName,shortName:course?.shortName,artPrefs:pref,artMotion:s.livingArt!=='off'&&s.motion==='gentle'};
-  const paste=kind=>`<details class="ch-paste" data-rd-section="paste-${E(id)}-${kind}"><summary>Paste SVG</summary><label><span class="rd-sr-only">${kind==='border'?'frame':kind} SVG source</span><textarea data-rd-field="art-source" data-id="${E(id)}-${kind}" data-course="${E(id)}" data-kind="${kind}" maxlength="262144" spellcheck="false" aria-label="${kind==='border'?'frame':kind} SVG source" placeholder="<svg …>…</svg>">${E(c.customizeDrafts?.[id+':'+kind]||'')}</textarea></label>${button('art-paste','Apply SVG',`data-id="${E(id)}" data-kind="${kind}" ${c.customizeBusy?'disabled':''}`)}</details>`;
-  const artwork=(kind,title)=>{const key=kind+'Art',asset=pref[key],preview=asset&&root.ReserveCustomArt?root.ReserveCustomArt.render(asset,{kind,motion:artCourse.artMotion,fit:kind==='border'?'fill':'contain',className:'ch-art-image'}):kind==='banner'?root.ReserveCourseArt?.scene?.(artCourse,{crop:'wide',place:'customize'}):kind==='icon'?root.ReserveCourseArt?.mini?.(artCourse,{place:'customize'}):kind==='title'?(root.ReserveCourseArt?.title?.(artCourse,{place:'customize'})||'<span class="ch-title-fallback">Course title</span>'):(id==='all'?root.ReserveCourseArt?.frame?.('home','all'):root.ReserveCourseArt?.frame?.(root.ReserveCourseArt.kind?.(artCourse)||'home',id,artCourse));const word=kind==='border'?'frame':kind;return `<div class="ch-art-slot" data-kind="${kind}"><div class="ch-art-preview" aria-hidden="true">${preview||''}</div><div class="ch-art-caption"><strong>${title}</strong><span title="${E(asset?.name||'Built-in drawing')}">${E(asset?.name||'Built-in drawing')}</span></div><label class="rd-button ch-upload">${asset?'Replace':'Upload SVG'}<input type="file" accept="image/svg+xml,.svg" data-rd-field="art-upload" data-kind="${kind}" data-id="${E(id)}" aria-label="Upload ${word} for ${E(label)}" ${c.customizeBusy?'disabled':''}></label>${asset?button('art-remove','Use default',`data-id="${E(id)}" data-kind="${kind}" aria-label="Remove custom ${word}"`,'rd-text-button'):''}${button('art-template','Get template',`data-kind="${kind}"`,'rd-text-button')}${paste(kind)}</div>`;};
-  const swatch=(bg,line,ink)=>`<svg viewBox="0 0 72 48" width="72" height="48" aria-hidden="true"><rect x="3" y="4" width="66" height="40" rx="5" fill="${bg}" stroke="${line}" stroke-width="1.5"/><path d="M10 14h30M10 22h44M10 30h36" stroke="${ink}" stroke-width="2.4" stroke-linecap="round"/></svg>`;
-  const letters=family=>`<span class="cz-letters" style="font-family:${family}">Aa</span>`;
-  const accentButtons=[['clay','Clay','#A9522F'],['forest','Forest','#367964'],['indigo','Iris','#5f5ccc'],['rose','Rose','#9e4c6c'],['ocean','Ocean','#2f7185'],['amber','Amber','#956821']].map(([key,name,color])=>button('accent',`<i aria-hidden="true" style="background:${color}"></i><span>${name}</span>`,`data-accent="${key}" aria-label="${name} accent" title="${name} accent" aria-pressed="${s.accent===key}"`,'rd-swatch ch-accent-choice')).join('');
-  const frames=(root.ReserveWidgets?.FRAMES||[]).map(([value,name,hint])=>button('board-frame',`<i data-frame="${value}"></i>${E(name)}`,`role="radio" data-value="${value}" aria-checked="${(s.panelFrame||'pen')===value}" title="${E(hint)}"`,'rd-frame-choice')).join('');
+  const choices=(key,title,options,{value=s[key],cols=3,field='setting',data='setting'}={})=>!settingEnabled(key)?'':`<div class="cz-choices" role="radiogroup" aria-label="${E(title)}" style="--cz-cols:${cols}">${options.map(([v,name,hint,art,locked])=>`<label class="cz-choice"${locked?' data-locked="true"':''}><input type="radio" name="cz-${key}" data-rd-field="${field}" data-${data}="${key}" value="${E(v)}" ${v===value?'checked':''} ${locked?'disabled':''}><span class="cz-choice-art">${art||''}</span><strong>${E(name)}</strong>${hint?`<small>${E(hint)}</small>`:''}</label>`).join('')}</div>`;
+  const toggle=(key,name,hint,{checked=s[key]!==false,field='setting',data='setting'}={})=>!settingEnabled(key)?'':`<label class="cz-toggle"><span><strong>${E(name)}</strong><small>${E(hint)}</small></span><input type="checkbox" role="switch" data-rd-field="${field}" data-${data}="${key}" ${checked?'checked':''}><i aria-hidden="true"></i></label>`;
+  const group=(title,hint,body)=>{
+   const feature={'Start from a layout':'arrange','Modules on Home':'planner','Canvas\u2019s menu bar':'canvas-nav','Where your courses are':'arrange','Order of the three panels':'arrange',Banner:'course-art','Artwork at night':'course-art','Outline round modules':'planner','Course cards':'course-art',Motion:'motion'}[title];
+   return feature&&!enabled(feature)?'':`<section class="cz-group"><h3>${E(title)}</h3>${hint?`<p class="cz-hint">${hint}</p>`:''}${body}</section>`;};
 
-  const layout=()=>group('Start from a layout','Three ready-made pages. Pick one, then change anything below. Modules you added stay.',
+
+  const layout=()=>{
+   const ART=artDiagrams();
+   return group('Start from a layout','Three ready-made pages. Pick one, then change anything below. Modules you added stay.',
     `<div class="cz-presets" role="group" aria-label="Layout presets">${[['studio','Studio','Course news, then your work, then the assignment.'],['study','Study','Your work first; course news last.'],['focus','Focus','Just the work and the assignment, courses along the top.']].map(([key,title,hint])=>button('layout-preset',`<span class="cz-choice-art">${ART[key]}</span><strong>${title}</strong><small>${hint}</small>`,`data-value="${key}"`,'ch-preset cz-preset')).join('')}</div>`)
    +group('Modules on Home','Add a timer, today’s list, a clock, notes or your pony beside the three panels, and switch any of them off.',
     `<div class="cz-row">${button('board-edit','Edit Home…','data-from="settings"','rd-button rd-button-primary')}<span class="cz-note">To move a module, hold its heading until the circle closes, then drag.</span></div>`)
@@ -66,9 +71,16 @@
    +group('Banner','The drawing across the top of each course.',choices('bannerSize','Banner size',[['compact','Small','',ART.compact],['standard','Medium','',ART.standard],['large','Tall','',ART.large]]))
    +group('Spacing','',choices('density','Spacing',[['comfortable','Roomy','More air between rows.',ART.comfortable],['compact','Compact','More rows on the screen.',ART.dense]],{cols:2}))
    +group('What shows','',`<div class="cz-toggles">${toggle('showCourseStrip','Course list','The courses beside or above the page.')}${toggle('showCourseIcons','Course drawings','The small drawing on each course.')}${toggle('showDeadlinePreview','Next deadlines on courses','What is due next, under each course name.')}${toggle('showBookmarks','Bookmarks shelf','The row of bookmarks under the heading.')}${toggle('showCourseInformation','Course information','Announcements, messages and the teacher’s page.')}${toggle('showRecentGrades','Recent scored work','Shown only while Show grades is on.')}${toggle('greeting','Greeting','“Good morning” on All courses, instead of a plain title.',{checked:s.greeting!=='off'}).replace('data-setting="greeting"','data-setting="greeting" data-onoff="true"')}${toggle('quickOpen','Open at once','Shows your saved workspace straight away, then checks your Canvas sign-in. Leave this off on a shared computer.',{checked:s.quickOpen==='on'}).replace('data-setting="quickOpen"','data-setting="quickOpen" data-onoff="true"')}</div>${button('layout-reset','Reset layout choices','','rd-text-button')}`);
+  };
 
+  const look=()=>{
+   const ART=artDiagrams();
+  const swatch=(bg,line,ink)=>`<svg viewBox="0 0 72 48" width="72" height="48" aria-hidden="true"><rect x="3" y="4" width="66" height="40" rx="5" fill="${bg}" stroke="${line}" stroke-width="1.5"/><path d="M10 14h30M10 22h44M10 30h36" stroke="${ink}" stroke-width="2.4" stroke-linecap="round"/></svg>`;
+  const letters=family=>`<span class="cz-letters" style="font-family:${family}">Aa</span>`;
+  const accentButtons=[['clay','Clay','#A9522F'],['forest','Forest','#367964'],['indigo','Iris','#5f5ccc'],['rose','Rose','#9e4c6c'],['ocean','Ocean','#2f7185'],['amber','Amber','#956821']].map(([key,name,color])=>button('accent',`<i aria-hidden="true" style="background:${color}"></i><span>${name}</span>`,`data-accent="${key}" aria-label="${name} accent" title="${name} accent" aria-pressed="${s.accent===key}"`,'rd-swatch ch-accent-choice')).join('');
+  const frames=(enabled('planner')?root.ReserveWidgets?.FRAMES||[]:[]).map(([value,name,hint])=>button('board-frame',`<i data-frame="${value}"></i>${E(name)}`,`role="radio" data-value="${value}" aria-checked="${(s.panelFrame||'pen')===value}" title="${E(hint)}"`,'rd-frame-choice')).join('');
   const night=Math.max(0,Math.min(100,Math.round(Number(s.nightArt)||0)));
-  const look=()=>group('Light or dark','Dark is only ever on when you choose it here.',choices('theme','Theme',[['light','Light','Ivory paper, as always.',swatch('#FAF9F5','#E8E6DC','#3D3D3A')],['dark','Dark','A dark page for the evening.',swatch('#1F1E1D','#30302E','#E8E6DC')]],{value:s.theme==='dark'?'dark':'light',cols:2}))
+   return group('Light or dark','Dark is only ever on when you choose it here.',choices('theme','Theme',[['light','Light','Ivory paper, as always.',swatch('#FAF9F5','#E8E6DC','#3D3D3A')],['dark','Dark','A dark page for the evening.',swatch('#1F1E1D','#30302E','#E8E6DC')]],{value:s.theme==='dark'?'dark':'light',cols:2}))
    +(s.theme==='dark'?group('Artwork at night','How the drawings look on the dark page: chalk on the board at one end, the paper kept and dimmed at the other.',`<label class="cz-night"><span>Chalk</span><input type="range" min="0" max="100" step="5" data-rd-field="setting" data-setting="nightArt" value="${night}" aria-label="Artwork at night: chalk at 0, paper at 100" aria-valuetext="${night<50?'Chalk':'Paper'}, ${night}%"><span>Paper</span><output>${night}%</output></label>`):'')
    +group('Accent color','Buttons, links and highlights. Course drawings keep their own colors.',`<div class="ch-accent-actions cz-accents" role="group" aria-label="Accent color">${accentButtons}</div>`)
    +group('Page color','A very light tint behind everything. Accent is for buttons; this is for the mood of the page.',choices('pageTint','Page color',[['paper','Paper','',swatch('#FAF9F5','#E8E6DC','#8A8880')],['accent','Match accent','',swatch('color-mix(in srgb,var(--rd-accent) 9%,#FDFDFC)','color-mix(in srgb,var(--rd-accent) 30%,#E7E7E4)','var(--rd-accent)')],['sky','Sky','',swatch('#F2F7FC','#D3E2F0','#3F8FCC')],['sage','Sage','',swatch('#F3F8F2','#D6E5D3','#5E8F5A')],['lilac','Lilac','',swatch('#F7F4FC','#E0D8F0','#8B6FC9')],['blush','Blush','',swatch('#FCF4F6','#F0D6DD','#D0607F')],['sand','Sand','',swatch('#FBF7EF','#EADFC8','#B98A3E')],['snow','Snow','',swatch('#FCFCFD','#E4E6EA','#8A8F98')]],{cols:4}))
@@ -79,14 +91,23 @@
      +`<div class="cz-pair">${choices('textSize','Text size',[['standard','Standard size','',`<span class="cz-letters cz-small">Aa</span>`],['large','Larger','',`<span class="cz-letters">Aa</span>`]],{cols:2})}${choices('readingFont','Reading text',[['book','Book serif','For teachers’ text.',letters('Literata,Georgia,serif')],['interface','Same as above','',letters('inherit')]],{cols:2})}</div>`)
    +group('Motion','',choices('motion','Motion',[['gentle','Gentle','Things glide and settle.',ART.gentle],['still','Fades only','No sliding, only fades.',ART.still],['off','Off','Nothing moves.',ART.off]])
      +`<div class="cz-toggles">${toggle('livingArt','Living drawings',s.motion!=='gentle'?'They move only with Gentle motion.':'Course drawings keep moving gently once drawn.',{checked:s.livingArt!=='off'}).replace('data-setting="livingArt"','data-setting="livingArt" data-onoff="true"')}</div>`);
+  };
 
-  const art=()=>`<section class="ch-art-controls cz-art" aria-labelledby="ch-art-title">${root.CanvasHarnessQuickUploadUI?.render(c)||''}<div class="ch-art-heading"><h3 id="ch-art-title">Course artwork</h3><label class="rd-field"><span class="rd-sr-only">Customize course</span><select data-rd-field="customize-course" aria-label="Customize course"><option value="all"${id==='all'?' selected':''}>All courses</option>${c.allCourses.map(x=>`<option value="${E(x.id)}"${id===x.id?' selected':''}>${E(x.name)}</option>`).join('')}</select></label></div><p class="ch-hint">Give each course its own drawing. Self-contained SVGs can animate; your device’s reduced-motion setting is respected.</p><div class="ch-art-slots">${artwork('banner','Banner')}${artwork('icon','Icon')}${artwork('border','Frame')}${artwork('title','Title')}</div><div class="ch-field-grid">${select('bannerFit','Banner fit',[['contain','Show whole drawing'],['cover','Fill banner']], 'art-setting',pref.bannerFit||'contain')}${select('bannerPosition','Banner position',[['left','Left'],['center','Center'],['right','Right']], 'art-setting',pref.bannerPosition||'right')}${pref.bannerArt?select('titlePlacement','Course title',[['separate','Separate title drawing'],['banner','Already drawn in banner']], 'art-setting',pref.titlePlacement||'separate'):''}</div><p class="ch-hint">Up to 256 KiB per SVG · 2 MiB of artwork total. No scripts, embedded pages, or external resources.</p><div class="ch-art-status" aria-live="polite">${E(c.customizeStatus||'')}</div>${button('course-reset','Reset this course’s artwork',`data-id="${E(id)}"`,'rd-text-button')}</section>${unusedArt}`;
+  const art=()=>{
+  const currentIds=new Set(c.allCourses.map(x=>x.id));
+  const unused=Object.entries(s.coursePrefs||{}).filter(([id,pref])=>!currentIds.has(id)&&root.ReserveCustomization.artKeys.some(key=>pref[key]));
+  const unusedArt=unused.length?`<details class="ch-details" data-rd-section="unused-art"><summary>Artwork from other courses (${unused.length})</summary><p class="ch-hint">These courses are not in the current list. Remove individual uploads to free artwork space; names, colors, notes and bookmarks stay saved.</p><div class="ch-unused-art">${unused.map(([id,pref])=>`<div><strong>${E(pref.name||'Course '+id)}</strong>${root.ReserveCustomization.artKeys.filter(key=>pref[key]).map(key=>`<div><span>${E(pref[key].name)}</span>${button('art-remove','Remove '+key.replace('Art',''),`data-id="${E(id)}" data-kind="${key.replace('Art','')}"`,'rd-text-button')}</div>`).join('')}</div>`).join('')}</div></details>`:'';
+  const artCourse={id:id==='all'?'folio-home':id,name:label,originalName:course?.originalName,shortName:course?.shortName,artPrefs:pref,artMotion:s.livingArt!=='off'&&s.motion==='gentle'};
+  const paste=kind=>`<details class="ch-paste" data-rd-section="paste-${E(id)}-${kind}"><summary>Paste SVG</summary><label><span class="rd-sr-only">${kind==='border'?'frame':kind} SVG source</span><textarea data-rd-field="art-source" data-id="${E(id)}-${kind}" data-course="${E(id)}" data-kind="${kind}" maxlength="262144" spellcheck="false" aria-label="${kind==='border'?'frame':kind} SVG source" placeholder="<svg …>…</svg>">${E(c.customizeDrafts?.[id+':'+kind]||'')}</textarea></label>${button('art-paste','Apply SVG',`data-id="${E(id)}" data-kind="${kind}" ${c.customizeBusy?'disabled':''}`)}</details>`;
+  const artwork=(kind,title)=>{const key=kind+'Art',asset=pref[key],preview=asset&&root.ReserveCustomArt?root.ReserveCustomArt.render(asset,{kind,motion:artCourse.artMotion,fit:kind==='border'?'fill':'contain',className:'ch-art-image'}):kind==='banner'?root.ReserveCourseArt?.scene?.(artCourse,{crop:'wide',place:'customize'}):kind==='icon'?root.ReserveCourseArt?.mini?.(artCourse,{place:'customize'}):kind==='title'?(root.ReserveCourseArt?.title?.(artCourse,{place:'customize'})||'<span class="ch-title-fallback">Course title</span>'):(id==='all'?root.ReserveCourseArt?.frame?.('home','all'):root.ReserveCourseArt?.frame?.(root.ReserveCourseArt.kind?.(artCourse)||'home',id,artCourse));const word=kind==='border'?'frame':kind;return `<div class="ch-art-slot" data-kind="${kind}"><div class="ch-art-preview" aria-hidden="true">${preview||''}</div><div class="ch-art-caption"><strong>${title}</strong><span title="${E(asset?.name||'Built-in drawing')}">${E(asset?.name||'Built-in drawing')}</span></div><label class="rd-button ch-upload">${asset?'Replace':'Upload SVG'}<input type="file" accept="image/svg+xml,.svg" data-rd-field="art-upload" data-kind="${kind}" data-id="${E(id)}" aria-label="Upload ${word} for ${E(label)}" ${c.customizeBusy?'disabled':''}></label>${asset?button('art-remove','Use default',`data-id="${E(id)}" data-kind="${kind}" aria-label="Remove custom ${word}"`,'rd-text-button'):''}${button('art-template','Get template',`data-kind="${kind}"`,'rd-text-button')}${paste(kind)}</div>`;};
+   return `<section class="ch-art-controls cz-art" aria-labelledby="ch-art-title">${enabled('quick-pack')?root.CanvasHarnessQuickUploadUI?.render(c)||'':''}<div class="ch-art-heading"><h3 id="ch-art-title">Course artwork</h3><label class="rd-field"><span class="rd-sr-only">Customize course</span><select data-rd-field="customize-course" aria-label="Customize course"><option value="all"${id==='all'?' selected':''}>All courses</option>${c.allCourses.map(x=>`<option value="${E(x.id)}"${id===x.id?' selected':''}>${E(x.name)}</option>`).join('')}</select></label></div><p class="ch-hint">Give each course its own drawing. Self-contained SVGs can animate; your device’s reduced-motion setting is respected.</p><div class="ch-art-slots">${artwork('banner','Banner')}${artwork('icon','Icon')}${artwork('border','Frame')}${artwork('title','Title')}</div><div class="ch-field-grid">${select('bannerFit','Banner fit',[['contain','Show whole drawing'],['cover','Fill banner']], 'art-setting',pref.bannerFit||'contain')}${select('bannerPosition','Banner position',[['left','Left'],['center','Center'],['right','Right']], 'art-setting',pref.bannerPosition||'right')}${pref.bannerArt?select('titlePlacement','Course title',[['separate','Separate title drawing'],['banner','Already drawn in banner']], 'art-setting',pref.titlePlacement||'separate'):''}</div><p class="ch-hint">Up to 256 KiB per SVG · 2 MiB of artwork total. No scripts, embedded pages, or external resources.</p><div class="ch-art-status" aria-live="polite">${E(c.customizeStatus||'')}</div>${button('course-reset','Reset this course’s artwork',`data-id="${E(id)}"`,'rd-text-button')}</section>${unusedArt}`;
+  };
 
   const courses=()=>group('Course names, colors & visibility','Rename, recolor, reorder or hide a course. Canvas itself is not changed. You can also drag a course in the list on the page.',
     `<div class="ch-course-settings cz-courses">${c.allCourses.map((x,index)=>`<div class="ch-course-setting"><label title="Show this course"><input type="checkbox" data-rd-field="course-visible" data-id="${x.id}" aria-label="Show ${E(x.name)}" ${visible.has(x.id)?'checked':''}><span class="rd-sr-only">Show course</span></label><input type="color" data-rd-field="course-color" data-id="${x.id}" aria-label="${E(x.name)} color" value="${E(x.color)}"><input type="text" maxlength="100" data-rd-field="course-name" data-id="${x.id}" aria-label="${E(x.name)} display name" value="${E(x.name)}">${button('course-up','↑',`data-id="${x.id}" aria-label="Move ${E(x.name)} earlier" ${index===0?'disabled':''}`)}${button('course-down','↓',`data-id="${x.id}" aria-label="Move ${E(x.name)} later" ${index===c.allCourses.length-1?'disabled':''}`)}</div>`).join('')}</div>`);
 
   const pony=()=>{
-   const P=root.ReservePets,A=root.ReservePetArt;if(!P||!A)return '';
+   if(!enabled('pony'))return '';const P=root.ReservePets,A=root.ReservePetArt;if(!P||!A)return '';
    const pet=P.clean(c.personal?.pet),lv=P.level(pet.xp),coat=A.COATS[pet.coat]||A.COATS.oat,style=`--pet-coat:${coat.coat};--pet-shade:${coat.shade};--pet-mane:${coat.mane};--pet-muzzle:${coat.muzzle};--pet-harness:${A.HARNESS[pet.harness]};--pet-size:112px`;
    const petChoices=(key,title,options,cols)=>choices(key,title,options,{value:pet[key],cols,field:'pet',data:'key'});
    const dot=(a,b)=>`<span class="cz-dot" style="background:${a}"><i style="background:${b||a}"></i></span>`;
@@ -101,15 +122,77 @@
     +group('Size','',petChoices('size','Size',[['small','Small',''],['medium','Medium',''],['large','Large','']],3));
   };
 
-  const shell=inner=>`<div class="rd-appearance t-acc ch-settings-dock" data-open="${!!c.customizeOpen}" role="complementary" aria-labelledby="rd-appearance-title" ${c.customizeOpen?'':'inert aria-hidden="true"'}><div class="t-acc-panel" id="rd-appearance-panel" ${c.customizeOpen?'':'inert aria-hidden="true"'}><div class="t-acc-panel-inner">${inner}</div></div></div>`;
   const body=`${on('layout')?`<div class="cz-pane" data-pane="layout">${layout()}</div>`:''}${on('look')?`<div class="cz-pane" data-pane="look">${look()}</div>`:''}${on('art')?`<div class="cz-pane" data-pane="art">${art()}</div>`:''}${on('courses')?`<div class="cz-pane" data-pane="courses">${courses()}</div>`:''}${on('pet')?`<div class="cz-pane" data-pane="pet">${pony()}</div>`:''}`;
-  if(!c.customizeOpen&&c.customizeTab)return shell('<h2 id="rd-appearance-title" class="rd-sr-only">Make it yours</h2>');
   return shell(`<section class="rd-customize ch-customize cz" aria-label="Customize workspace"><div class="rd-section-heading"><div><span class="ch-eyebrow">Your workspace</span><h2 id="rd-appearance-title">Make it yours</h2><p>Changes show at once and save on this device.</p></div>${button('settings-close','Done','aria-label="Close customization" title="Close · Esc"')}</div>
-<div class="cz-tabs" role="tablist" aria-label="Settings">${TABS.map(([key,name])=>button('customize-tab',name,`role="tab" data-value="${key}" aria-selected="${tab===key}"`,'cz-tab')).join('')}</div>
+<div class="cz-tabs" role="tablist" aria-label="Settings">${allowedTabs.map(([key,name])=>button('customize-tab',name,`role="tab" data-value="${key}" aria-selected="${tab===key}"`,'cz-tab')).join('')}</div>
 ${body}<div class="ch-custom-footer"><span>Everything here stays on this device.</span>${button('advanced-settings','All settings & backups','','rd-text-button')}</div></section>`);
  }
+ function retainClosedContent(create,options){
+  const {container}=options,reduce=root.matchMedia?.('(prefers-reduced-motion: reduce)');
+  let open=false,closing=false,dead=false,timer=null,watched=null,started=0,delay=0;
+  const panel=()=>container.querySelector('.rd-appearance');
+  const now=()=>root.performance?.now?.()??Date.now();
+  function cancel(){
+   if(timer!==null){root.clearTimeout(timer);timer=null;}
+   watched?.removeEventListener('transitionend',ended);watched?.removeEventListener('transitioncancel',interrupted);watched=null;
+  }
+  function clearContent(){
+   cancel();closing=false;
+   panel()?.querySelector('.t-acc-panel-inner')?.replaceChildren();
+  }
+
+  function transitionTime(node){
+   if(reduce?.matches||container.dataset.featureMotion==='off'||container.dataset.motionStyle==='off'||container.dataset.input==='keyboard')return 0;
+   const style=root.getComputedStyle?.(node);
+   if(!style||style.transitionProperty==='none')return 0;
+   const times=value=>String(value||'0s').split(',').map(v=>{const n=parseFloat(v)||0;return v.trim().endsWith('ms')?n:n*1000;});
+   const durations=times(style.transitionDuration),delays=times(style.transitionDelay),properties=String(style.transitionProperty||'all').split(',');
+   return Math.max(0,...properties.map((property,i)=>property.trim()==='none'?0:durations[i%durations.length]+delays[i%delays.length]));
+  }
+  function ended(event){if(event.target===watched&&now()-started>=delay)clearContent();}
+  function interrupted(event){if(event.target===watched&&transitionTime(watched)===0)clearContent();}
+  function reduced(event){if(event.matches&&closing)clearContent();}
+  const controller=create({...options,onOpen(){
+   cancel();closing=false;panel()?.querySelector('.t-acc-panel-inner')?.removeAttribute('data-rd-key');options.onOpen?.();
+  },onChange(value){
+   open=value;
+   const inner=panel()?.querySelector('.t-acc-panel-inner');
+   if(open){cancel();closing=false;inner?.removeAttribute('data-rd-key');}
+   else{closing=true;inner?.setAttribute('data-rd-key','customize-content');}
+   try{options.onChange?.(value);}finally{sync();}
+  }});
+  if(!controller)return null;
+  const syncDock=controller.sync.bind(controller),destroyDock=controller.destroy.bind(controller);
+  function sync(){
+   if(dead)return;
+   const node=panel(),closedShell=node?.dataset.open==='false'&&node.querySelector('.t-acc-panel-inner')?.getAttribute('data-rd-key')==='customize-content';
+   syncDock();
+   if(open||!closing)return;
+   // Only the closed renderer placeholder transfers content ownership here.
+   if(!closedShell){cancel();closing=false;node?.querySelector('.t-acc-panel-inner')?.removeAttribute('data-rd-key');return;}
+   const duration=transitionTime(node);
+   if(!duration){clearContent();return;}
+   if(timer!==null)return;
+   watched=node;started=now();delay=duration;
+   node.addEventListener('transitionend',ended);node.addEventListener('transitioncancel',interrupted);
+   timer=root.setTimeout(()=>{if(!dead&&!open&&closing)clearContent();},duration);
+  }
+  reduce?.addEventListener?.('change',reduced);
+  controller.sync=sync;
+  controller.destroy=()=>{
+   if(dead)return;
+   const retained=panel()?.querySelector('.t-acc-panel-inner')?.getAttribute('data-rd-key')==='customize-content';
+   dead=true;cancel();reduce?.removeEventListener?.('change',reduced);destroyDock();if(retained)clearContent();
+  };
+  return controller;
+ }
  // The existing editor stays connected; this controls its dock, never the page's interactivity.
- function createDock({container,onOpen=()=>{},onChange=()=>{}}){
+ function createDock(options){
+  if(!enabled('customization'))return null;
+  return root.ReserveSettingsDock?.createDock(options)||retainClosedContent(createAppearanceDock,options);
+ }
+ function createAppearanceDock({container,onOpen=()=>{},onChange=()=>{}}){
+  if(!enabled('customization'))return null;
   let open=false,trigger=null,dead=false;
   const panel=()=>container.querySelector('.rd-appearance');
   const toolbarTrigger=()=>container.querySelector('.rd-toolbar [data-rd-action="settings"]');
@@ -146,5 +229,5 @@ ${body}<div class="ch-custom-footer"><span>Everything here stays on this device.
    destroy(){if(dead)return;open=false;sync();dead=true;trigger=null;}
   };
  }
- const api={render,createDock};root.ReserveCustomizeUI=api;if(typeof module==='object'&&module.exports)module.exports=api;
+ const api={render,createDock,tabs,retainClosedContent};root.ReserveCustomizeUI=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

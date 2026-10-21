@@ -1,6 +1,6 @@
 # Canvas Harness privacy
 
-Applies to Canvas Harness 3.1.0. Last updated October 19, 2026.
+Applies to Canvas Harness 3.2.0. Last updated October 21, 2026.
 
 Canvas Harness is a browser extension maintained by Flzsh. It displays information from the Canvas account already signed in on your school's website. It has no developer-operated account service, analytics collector or tracking endpoint in the extension code for this release.
 
@@ -15,6 +15,12 @@ Canvas Harness is a browser extension maintained by Flzsh. It displays informati
 - Checking off homework or making a personal plan changes only your local Canvas Harness data. It does not submit homework, edit a Canvas assignment or change your Canvas grade.
 
 Personal backups are files that you choose to export. They can contain private notes, preferences, artwork and other personal information. Keep them private. The public extension package and example previews should contain only shared code, generic artwork and artificial example data, never your exported backup or personal course records.
+
+## Feature choices
+
+Full, Lite and Custom choices are stored once for this extension in this browser, separately from your Canvas account data. Dependencies are included automatically. Turning a feature off changes which packaged modules load on your next Canvas page load; it does not erase notes, artwork, plans, GPA settings or reader annotations. Existing pages keep their loaded selection until reload.
+
+The Canvas site's local storage holds a small feature-selection hint for early drawings. It contains preset and feature IDs, with no account or coursework data. The worker keeps the current document's selection in extension session storage across worker restarts and removes its records when the tab closes. An origin that was closed when preferences changed can briefly use its previous hint until the extension confirms the new selection.
 
 ## PDF reader
 
@@ -36,11 +42,11 @@ Separate from the split reader, PDF attachments selected in the AI pane are proc
 
 ## Browser permissions
 
-Canvas Harness uses `storage` and `unlimitedStorage` for local data (so caches, artwork and notes are not cut off by the browser's default 10 MB extension limit), `offscreen` for local PDF text extraction, and access to HTTPS `*.instructure.com` Canvas pages. It does not request Canvas passwords or account API keys.
+Canvas Harness uses `storage` and `unlimitedStorage` for local data (so caches, artwork and notes are not cut off by the browser's default 10 MB extension limit), `offscreen` for local PDF text extraction, required `scripting` for the feature loader, and access to HTTPS `*.instructure.com` Canvas pages. The loader injects only extension-packaged files selected by Full, Lite or Custom, in the extension's isolated world; it does not download executable code. It does not request Canvas passwords or account API keys.
 
-Some schools run Canvas on their own address, such as `canvas.your-school.edu`. If you enter one in the popup, the browser asks you to allow Canvas Harness on **that exact site**, together with the optional `scripting` permission it uses to run there. Only then does it run on that site, and only on pages that are Canvas. The manifest lists `https://*/*` as an optional host permission so that any school's address can be asked for; Canvas Harness requests one origin at a time and never asks for access to all websites. Removing the site in the popup or in the browser's extension site settings stops it running there.
+Some schools run Canvas on their own address, such as `canvas.your-school.edu`. If you enter one in the popup, the browser asks you to allow Canvas Harness on **that exact site**, using the already-required `scripting` permission to run there. Only then does it run on that site, and only on pages that are Canvas. The manifest lists `https://*/*` as an optional host permission so that any school's address can be asked for; Canvas Harness requests one origin at a time and never asks for access to all websites. Removing the site in the popup or in the browser's extension site settings stops it running there.
 
-Draft insertion into an AI website asks for optional `scripting` permission and access to **that provider's exact origin**. The allowed origins are `chatgpt.com`, `claude.ai`, `gemini.google.com`, `grok.com`, `chat.deepseek.com`, `www.kimi.com`, `chat.qwen.ai` and `chat.z.ai`. These permissions are optional; using **Copy** and pasting yourself is an alternative. Permission is not a standing instruction to share future coursework. You can remove provider website access in the extension's permission page or your browser's extension site settings.
+Draft insertion into an AI website asks for optional access to **that provider's exact origin**; `scripting` is already required by the feature loader. The allowed origins are `chatgpt.com`, `claude.ai`, `gemini.google.com`, `grok.com`, `chat.deepseek.com`, `www.kimi.com`, `chat.qwen.ai` and `chat.z.ai`. These permissions are optional; using **Copy** and pasting yourself is an alternative. Permission is not a standing instruction to share future coursework. You can remove provider website access in the extension's permission page or your browser's extension site settings.
 
 Canvas Harness does not request access to all websites, cookie-reading, debugger or native-messaging permissions. Its normal AI handoff does not use a separate login, OAuth connection or companion service.
 
