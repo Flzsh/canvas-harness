@@ -6,6 +6,22 @@
  // The stored choice -> the bar's layout. 'drawn' (the default) is the drawer.
  const LAYOUTS={drawn:'drawer',shown:'column',top:'top'};
  const KEY='reserve:canvasNav',PALETTE='reserve:navPalette',LOGO='reserve:navLogo';
+ // FIRST PAINT. canvas-nav.css arrives only once the choice has been read from storage, so with the drawer (the
+ // default) every Canvas page opened with Canvas's 84px bar and then jumped left by its width about 0.1 s later
+ // (measured frame by frame on a real Canvas: a course's menu at x=100, then at x=16). The page's own localStorage
+ // remembers the last layout, and startup.css starts the next page in the drawer's final place
+ // (html[data-chn-early=drawer]). Written only when it differs: setting an attribute (or classList.add) to the value it
+ // already has is still a mutation, and an observer that answers its own write never stops.
+ const EARLY='reserve:navEarly';
+ function rememberLayout(html,storage,layout){
+  const value=layout==='drawer'?'drawer':'';
+  if(value){if(html.dataset.chnEarly!==value)html.dataset.chnEarly=value;}else if('chnEarly' in html.dataset)delete html.dataset.chnEarly;
+  try{if((storage?.getItem(EARLY)||'')!==value){if(value)storage.setItem(EARLY,value);else storage.removeItem(EARLY);}}catch{}
+ }
+ function earlyLayout(html,storage){
+  let value='';try{value=storage?.getItem(EARLY)||'';}catch{}
+  if(value==='drawer'&&html.dataset.chnEarly!=='drawer')html.dataset.chnEarly='drawer';
+ }
  // The drawings: ink lines over flat washes set a little off them, in the course art's palette. x-* parts move on hover.
  const DRAWINGS={
   account:'<path d="M10 37c1-7 5-10.5 10.6-10.5S30 30 31 37z" fill="#9DB4C8"/><g class="x-wave"><circle cx="21" cy="17" r="7.4" fill="#ECC5A0"/><path d="M13.6 14.4c1-4.6 4.3-7 8-6.8 3.8.2 6.6 2.9 7 6.6-2.4-1.2-4.6-3.4-5.6-5.4-1.6 2.8-5 4.8-9.4 5.6z" fill="#B98A55"/><path class="k" d="M12.6 16.4c-.1-4.8 3.1-8.2 7.4-8.3 4.4-.1 7.6 3.2 7.6 7.8 0 4.6-3.2 8.2-7.5 8.3-4.2 0-7.4-3.3-7.5-7.8z"/><path class="k" d="M13 13.8c4.3-.6 7.4-2.6 9-5.4 1 2.1 3.2 4.3 5.6 5.5"/><circle class="d" cx="17.6" cy="17.2" r=".9"/><circle class="d" cx="22.8" cy="17.2" r=".9"/><path class="h" d="M18.4 20.6c1 .8 2.4.8 3.4 0"/></g><path class="k" d="M8.6 36.4c1-6.8 5.3-10.6 11.4-10.6 6 0 10.4 3.8 11.4 10.6"/><path class="k" d="M16.6 26.4l3.4 4.6 3.4-4.6"/><path class="h" d="M12.4 32.6l1.6 3.4M27.8 32.4l-1.6 3.6"/>',
@@ -113,10 +129,11 @@
   if(root.top!==root||root.ReserveCanvasNav||!root.ReserveSite?.supported?.(root.location?.href))return;
   const html=root.document.documentElement;let saved={},header=null,observer=null,lastPalette='';
   root.ReserveCanvasNav={kindOf,logoKind};
+  const page=(()=>{try{return root.localStorage;}catch{return null;}})();earlyLayout(html,page);
   const store=root.chrome?.storage?.local;if(!store)return;
   store.get([KEY,PALETTE,LOGO,'reserve:enabled']).then(values=>{
-   saved=values;if(values['reserve:enabled']===false)return;
-   if(values[KEY]!=='original')enable(values[KEY]);
+   saved=values;if(values['reserve:enabled']===false){rememberLayout(html,page,'');return;}
+   if(values[KEY]!=='original')enable(values[KEY]);else rememberLayout(html,page,'');
    // Chosen again in Make it yours or the popup: the bar changes on this page at once.
    root.chrome.storage.onChanged?.addListener((changes,area)=>{if(area==='local'&&changes[KEY])apply(changes[KEY].newValue);});
   }).catch(()=>{});
@@ -127,14 +144,14 @@
    html.classList.add('chn-nav');layout(choice);applyPalette(saved[PALETTE]);
    if(header){decorate(header);setLogo();drawer();topBar();}else watch();
   }
-  function layout(choice){html.dataset.chnLayout=LAYOUTS[choice]||'drawer';if(html.dataset.chnLayout==='drawer')html.dataset.chnDrawer='closed';}
+  function layout(choice){html.dataset.chnLayout=LAYOUTS[choice]||'drawer';if(html.dataset.chnLayout==='drawer')html.dataset.chnDrawer='closed';rememberLayout(html,page,html.dataset.chnLayout);}
   // Each layout leaves an undo; a change runs them all, then sets up the new one with no motion at all for two frames
   // (data-chn-switching), so a column never turns into a row on screen.
   function apply(choice){
    if(choice==='original'){
     if(!html.classList.contains('chn-nav'))return;
     for(const step of undo.splice(0))try{step();}catch{}
-    if(header)undecorate(header);html.classList.remove('chn-nav');delete html.dataset.chnLayout;return;
+    if(header)undecorate(header);html.classList.remove('chn-nav');delete html.dataset.chnLayout;rememberLayout(html,page,'');return;
    }
    html.dataset.chnSwitching='true';
    if(!html.classList.contains('chn-nav'))enable(choice);
@@ -270,6 +287,6 @@
   }
  }
 
- if(typeof module==='object'&&module.exports)module.exports={kindOf,logoKind,DRAWINGS};
+ if(typeof module==='object'&&module.exports)module.exports={kindOf,logoKind,DRAWINGS,rememberLayout,earlyLayout};
  else start();
 })(globalThis);
