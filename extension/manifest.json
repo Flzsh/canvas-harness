@@ -112,6 +112,7 @@
         "native-appearance.js",
         "native-page.js",
         "native-tools.js",
+        "modules-plus.js",
         "planner-model.js",
         "pet-art.js",
         "pets.js",
