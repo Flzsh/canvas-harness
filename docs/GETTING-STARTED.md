@@ -21,6 +21,12 @@ Open an assignment to read its instructions in the workspace. Use Course hub for
 
 Use **Show grades** when you want grades visible. It starts off. Hiding grades controls their display; it does not guarantee that grade data is absent from the local cache.
 
+### Start a Google Doc
+
+To start writing, click **Start a Google Doc** next to **Open in Canvas**. It is in the Assignments reader and in an assignment's drawer in the Planner, for assignments only, not personal tasks. A new tab opens a Google Doc named "Course — Assignment" in the Google account your browser is signed into. Canvas Harness also copies a header: the assignment name as a heading, then the course, due date and an **Open in Canvas** link, then the teacher's instructions. Paste it at the top of the new doc. If the browser does not allow the copy, Canvas Harness says so; copy the instructions from the assignment instead. Equations are pasted as their TeX source between \\( \\) or \\[ \\], because Google Docs does not keep pasted equations.
+
+Each click makes a new doc. Canvas Harness does not remember which doc belongs to which assignment, so keep the tab or find the doc in Google Docs. If you also use NotePilot, its side panel can follow the new doc and organize your notes as you write.
+
 ## Select, complete, or bookmark
 
 A small circle beside an assignment is a selection control. Clicking it selects the assignment; it does not immediately complete or submit it. The selection bar shows a count and the available actions.

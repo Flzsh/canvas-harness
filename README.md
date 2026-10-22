@@ -79,6 +79,8 @@ Type "essay outline fri 45m #english" and the task lands on Friday, 45 minutes, 
 
 See teacher updates, upcoming work and assignment instructions together. Bookmark useful materials and mark homework done locally, including work you submit outside Canvas.
 
+**Start a Google Doc**, next to **Open in Canvas** in the Assignments reader and the Planner, opens a new Google Doc named for the course and assignment and copies the assignment's header and instructions for you to paste at the top. The doc is made in the Google account your browser is signed into; Canvas Harness does not sign in to Google.
+
 Open Desmos, GPA estimates or AI in a side dock while you read. For AI, select your materials, review the context, and send your question to your chosen AI website.
 
 On Instructure Canvas assignment and submission pages, click a PDF to read it beside the original page. Resize the split, search the document and keep highlights, notes and drawings in your browser. **Ask AI** opens chosen text in the AI pane for review; **Send** shares it with the provider you choose. [PDF reader details](docs/pdf-reader.md).

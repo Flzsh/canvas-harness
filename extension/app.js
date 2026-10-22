@@ -134,12 +134,22 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
    if(Date.now()-lastChord<900){const page={h:'home',a:'assignments',w:'week',g:'grades',s:'settings'}[key];lastChord=0;if(page){event.preventDefault();navigate(page);return;}}
    if(key==='g'){lastChord=Date.now();return;}if(key==='/'){event.preventDefault();navigate('assignments');container.querySelector('[data-field=search]')?.focus();}if(key==='n'){event.preventDefault();openModal('new-task');}if(key==='?'){event.preventDefault();openModal('shortcuts');}
   }
-  async function clicked(event){const button=event.target.closest('[data-action]');if(!button||button.disabled)return;if(button.dataset.action){event.preventDefault();try{await action(button.dataset.action,button);}catch(e){toast(e.message,true);}}}
+  // Start a Google Doc from the assignment drawer: the link opens the new doc (not prevented); in the same click, while
+  // this page still has focus, its header goes to the clipboard.
+  function startDoc(id){
+   const item=context.items.find(x=>x.id===id),Context=root.CanvasHarnessContext;if(!item||id.startsWith('local-')||!Context)return;
+   const due=item.dueAt?'Due '+context.date(item.dueAt,{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'',course=context.course(item.courseId);
+   const doc=Context.googleDoc(item,{origin:root.location.origin,courseName:course?.shortName||course?.name,html:item.description?U.safeRichHTML(item.description):'',due});
+   void Context.copyDoc(doc).then(copied=>{if(!destroyed)toast(`Your new Google Doc is open in another tab. ${copied?'The assignment header is copied: paste it at the top.':'The header could not be copied: copy the instructions from here instead.'}`,!copied);});
+  }
+  // A middle click opens the doc's link without a click event: same start.
+  function auxClicked(event){if(event.button!==1)return;const doc=event.target.closest('[data-doc-id]');if(doc)startDoc(doc.dataset.docId);}
+  async function clicked(event){const doc=event.target.closest('[data-doc-id]');if(doc){startDoc(doc.dataset.docId);return;}const button=event.target.closest('[data-action]');if(!button||button.disabled)return;if(button.dataset.action){event.preventDefault();try{await action(button.dataset.action,button);}catch(e){toast(e.message,true);}}}
   function dragStart(event){const card=event.target.closest('[data-drag-id]');if(card){event.dataTransfer.setData('text/plain',card.dataset.dragId);event.dataTransfer.effectAllowed='move';}}
   function dragOver(event){const day=event.target.closest('[data-drop-day]');if(day){event.preventDefault();event.dataTransfer.dropEffect='move';day.classList.add('drag-over');}}
   function dragLeave(event){event.target.closest('[data-drop-day]')?.classList.remove('drag-over');}
   async function dropped(event){const day=event.target.closest('[data-drop-day]');if(!day)return;event.preventDefault();const id=event.dataTransfer.getData('text/plain');if(!context.items.some(x=>x.id===id))return;await save(s=>{taskState(s,id).plannedDate=day.dataset.dropDay;},{message:'Work day added to your personal plan.'});}
-  container.addEventListener('click',clicked);container.addEventListener('input',onInput);container.addEventListener('change',onChange);container.addEventListener('submit',onSubmit);container.addEventListener('dragstart',dragStart);container.addEventListener('dragover',dragOver);container.addEventListener('dragleave',dragLeave);container.addEventListener('drop',dropped);document.addEventListener('keydown',keydown);
+  container.addEventListener('click',clicked);container.addEventListener('auxclick',auxClicked);container.addEventListener('input',onInput);container.addEventListener('change',onChange);container.addEventListener('submit',onSubmit);container.addEventListener('dragstart',dragStart);container.addEventListener('dragover',dragOver);container.addEventListener('dragleave',dragLeave);container.addEventListener('drop',dropped);document.addEventListener('keydown',keydown);
   const unsubscribe=store.subscribe(()=>{if(!saving&&!pendingNote&&!state.modal)render();});
   const timer=setInterval(tick,1000);render({focus:!!initialId});
   return {destroy(){flushNotes();destroyed=true;unsubscribe();clearInterval(timer);clearTimeout(toastTimer);clearTimeout(noteTimer);document.removeEventListener('keydown',keydown);container.remove();},updateSnapshot(next){if(next)currentSnapshot=next;render();},getState:()=>({...state})};

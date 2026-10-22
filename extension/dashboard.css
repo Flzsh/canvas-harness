@@ -73,7 +73,10 @@
 .rd-assignment-title{font-weight:600;letter-spacing:-.1px}.rd-assignment-course{font-size:10px}.rd-assignment-excerpt{margin-top:5px!important}.rd-assignment-meta{font-size:10px;margin-top:7px;gap:5px 9px}
 .rd-preview-button{color:var(--rd-muted);border-radius:6px}.rd-preview-button[aria-pressed=true]{color:var(--rd-accent);background:var(--rd-surface)}
 .rd-reader-heading{background:transparent;border-bottom:1px solid var(--rd-line);padding:14px 20px}.rd-reader-content{padding:22px 24px}.rd-reader h2{font-size:24px;letter-spacing:-.45px;line-height:1.28}.rd-reader-course{font-size:11px;font-weight:600}.rd-reader-facts{font-size:11px;line-height:1.7}
-.rd-reader-actions .rd-button{padding:9px 12px;border-radius:8px}.rd-reader-tabs{margin-top:25px}.rd-rich-text{font-size:14px;line-height:1.85}.rd-rich-text p+p{margin-top:13px}
+.rd-reader-actions .rd-button{padding:9px 12px;border-radius:8px}
+/* After Start a Google Doc: where the new doc is and what is on the clipboard, in the reader's own quiet note style */
+.rd-doc-note{display:flex;gap:8px;align-items:flex-start;margin:12px 0 0;padding:9px 12px;border:1px solid var(--rd-line);border-radius:8px;background:var(--rd-soft);color:var(--rd-muted);font-size:12.5px;line-height:1.5}.rd-doc-note svg{flex:none;width:15px;height:15px;margin-top:2px;color:var(--rd-accent)}
+.rd-reader-tabs{margin-top:25px}.rd-rich-text{font-size:14px;line-height:1.85}.rd-rich-text p+p{margin-top:13px}
 .rd-course-context{display:flex;gap:14px;flex-wrap:wrap;margin-top:22px;padding-top:16px;border-top:1px solid var(--rd-line)}.rd-course-context button{font-size:11px;gap:6px}.rd-course-context .rd-icon{width:14px;height:14px}
 .rd-related{margin-top:14px;padding-top:14px}.rd-customize{border:0;box-shadow:var(--rd-shadow);border-radius:12px}
 .rd-page-heading{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:0 0 20px}.rd-page-heading>div:first-child{min-width:0}.rd-page-heading h1{overflow-wrap:anywhere}.rd-page-heading p:not(.rd-eyebrow){font-size:12px;color:var(--rd-muted);margin-top:7px}

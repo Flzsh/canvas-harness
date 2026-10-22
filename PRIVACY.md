@@ -48,6 +48,8 @@ Canvas Harness does not request access to all websites, cookie-reading, debugger
 
 Opening **Tools → Calculator** loads Desmos's external graphing or scientific calculator in a frame. Canvas Harness does not pass your Canvas account or coursework to Desmos; Desmos can process its own site traffic under its privacy policy. Opening saved links also visits the destination website.
 
+**Start a Google Doc** opens Google Docs' own new-document address in a new tab. The doc's name, made from the course and assignment names, is part of that address, so Google receives it when the tab opens. The doc is made in the Google account your browser is signed into, and Google's terms and privacy policy apply to it. Canvas Harness does not sign in to Google, use a Google API or ask for extra permissions. The assignment header it copies stays on this device's clipboard until you paste it or copy something else. Nothing is sent to the developer, and Canvas Harness keeps no record of the doc.
+
 Some Canvas file downloads redirect from your school's Canvas site to an external file host chosen by Canvas. The extension requests the selected file from Canvas using your signed-in session, limits download size and does not add Canvas credentials to an external host request. If that browser download cannot be read, you can use Canvas to download the file yourself.
 
 Imported SVG artwork is checked for unsafe content and saved in your browser. It is not sent to the developer or included in public release files. Keep privately customized art and backups out of public uploads.

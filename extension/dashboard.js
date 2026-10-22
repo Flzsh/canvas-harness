@@ -150,6 +150,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let currentSnapshot=snapshot;
     let externalStatus=stringValue(status);
     let transientStatus='';
+    let docNotice=null;   // {id, copied}: the reader's note after Start a Google Doc, until another assignment is opened
     let refreshing=false;
     let destroyed=false,rendering=false,mounted=false,sourceFrame=0,pendingRender=null;
     const beforePaint=fn=>root.requestAnimationFrame?root.requestAnimationFrame(fn):root.setTimeout(fn,0);
@@ -576,7 +577,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       container.dataset.courses=String(ctx.s.showCourseStrip!==false);
       container.style.setProperty('--rd-accent',ctx.accent);
       const assignmentContent=readingContent(ctx.selected);
-       const markup=View.render({...ctx,state,workspace,workPage:workspace==='work'?workPage:'',gradeQuery,gradeLimit,arrangeOpen:!!arrange?.active(),boardEditing:!!board?.editing(),planUI:board?.planUI()||{},customizeTab:board?.settingsTab()||'layout',canvasNav,personal:{focus:personal.focus,pet:personal.pet,toolbox:personal.toolbox},hasLayoutUndo:!!ctx.s.workspaceUndo,deckHeader:workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:true})||'':'',deckContent:workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',hubContent:workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId),{sharedHeading:true}):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',materialLibrary:workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId),{sharedHeading:true}):'',relatedMaterials:materials?.renderRelated(ctx.selected,assignmentContent.links)||'',readerTab,customizeOpen,customizeCourseId,customizeStatus,customizeBusy,customizeDrafts,quickUpload:quickUpload?.state,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading,user:currentSnapshot.user,demo,nativeSwitch:typeof onNative==='function',refreshing,visibleLimit,noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',readerContent:assignmentContent,warning:renderWarning(),status:statusLabel(currentSnapshot,externalStatus,transientStatus)}, {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete}, {headingCache,reuseHeading:container.querySelector('.rd-workspace-heading')?.getAttribute('data-rd-key')===`heading-${headingCache.revision}`});
+       const markup=View.render({...ctx,state,workspace,docNotice,workPage:workspace==='work'?workPage:'',gradeQuery,gradeLimit,arrangeOpen:!!arrange?.active(),boardEditing:!!board?.editing(),planUI:board?.planUI()||{},customizeTab:board?.settingsTab()||'layout',canvasNav,personal:{focus:personal.focus,pet:personal.pet,toolbox:personal.toolbox},hasLayoutUndo:!!ctx.s.workspaceUndo,deckHeader:workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:true})||'':'',deckContent:workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',hubContent:workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId),{sharedHeading:true}):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',materialLibrary:workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId),{sharedHeading:true}):'',relatedMaterials:materials?.renderRelated(ctx.selected,assignmentContent.links)||'',readerTab,customizeOpen,customizeCourseId,customizeStatus,customizeBusy,customizeDrafts,quickUpload:quickUpload?.state,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading,user:currentSnapshot.user,demo,nativeSwitch:typeof onNative==='function',refreshing,visibleLimit,noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',readerContent:assignmentContent,warning:renderWarning(),status:statusLabel(currentSnapshot,externalStatus,transientStatus)}, {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete}, {headingCache,reuseHeading:container.querySelector('.rd-workspace-heading')?.getAttribute('data-rd-key')===`heading-${headingCache.revision}`});
       const toolbar=container.querySelector('.rd-toolbar'),appearance=container.querySelector('.rd-appearance');
       if(toolbar&&appearance){
         // Keep the actual transitioning nodes connected through data renders.
@@ -857,7 +858,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     function showPreview(id,event,snapshot=null){
       const ctx=buildContext(),item=ctx.items.find(x=>x.id===String(id));
-      if(!item)return;
+      if(!item)return;if(docNotice?.id!==item.id)docNotice=null;
       if(selectedId===String(id)&&readerOpen&&container.dataset.workspace==='work')return;
       if(!ctx.filtered.items.some(x=>x.id===item.id)){state.query='';state.day='';state.mode=C.isWorkComplete(item,personal.tasks?.[item.id])?'completed':item.personal&&personal.tasks?.[item.id]?.plannedDate===dayKey(Date.now(),settings().timeZone)?'planned':item.dueAt?'dated':'undated';}
       selectedId=String(id);readerOpen=true;readerTab=item.personal?'plan':'details';
@@ -927,7 +928,19 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // Scrolled past: on desktop the workspace column scrolls by itself (the page does not: refresh.css), so a heading
     // is out of sight once it is above the column's top; on phones, above the window's.
     function above(rect){const column=container.querySelector('.rd-shell > .rd-workspace'),scrolls=!!column&&column.scrollHeight>column.clientHeight+1;return rect.top<(scrolls?column.getBoundingClientRect().top:0)-1;}
-    function closePreview(){readerOpen=false;render();const previous=container.querySelector(`[data-rd-action="preview"][data-id="${selectedId}"]`);previous?.scrollIntoView({block:'nearest',behavior:'instant'});previous?.focus({preventScroll:true});}
+    // Start a Google Doc: the link opens the new doc in a new tab by itself (never prevented). In the same click (or middle
+    // click), while this page still has focus, the header goes to the clipboard; the reader then says where it is. The
+    // instructions come from the description itself: the reader moves attachment-only paragraphs to Linked materials,
+    // but the doc should have them. The course is named as the reader names it.
+    function startDoc(id){
+      const ctx=buildContext(),item=ctx.items.find(x=>x.id===id),Context=root.CanvasHarnessContext;if(!item||item.personal||!Context)return;
+      const course=ctx.courseMap.get(String(item.courseId)),due=dateMs(item.dueAt)===null?'':'Due '+formatDate(item.dueAt,ctx.s.timeZone,{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+      const doc=Context.googleDoc(item,{origin:root.location.origin,courseName:course?.shortName||course?.name,html:item.description?U.safeRichHTML(item.description):'',due});
+      void Context.copyDoc(doc).then(copied=>{if(destroyed)return;docNotice={id:item.id,copied};render();});
+    }
+    // A middle click opens the link in a new tab without a click event, so it starts the doc the same way here.
+    function onAuxClick(event){if(event.button!==1)return;const link=event.target.closest?.('[data-rd-action="google-doc"]');if(link)startDoc(String(link.dataset.id));}
+    function closePreview(){readerOpen=false;docNotice=null;render();const previous=container.querySelector(`[data-rd-action="preview"][data-id="${selectedId}"]`);previous?.scrollIntoView({block:'nearest',behavior:'instant'});previous?.focus({preventScroll:true});}
 
     function onClick(event){
       if(arrange?.click(event))return;
@@ -1027,6 +1040,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(workspace==='home'){captureCourseView();switchCourse('all');workspace='work';}showPreview(button.dataset.id,event,snapshot);return;
       }
       if(action==='close-preview'){closePreview();return;}
+      if(action==='google-doc'){startDoc(String(button.dataset.id));return;}
       if(action==='schedule'){
         const id=button.dataset.id,day=button.dataset.day;if(!/^(?:\d+|local-[\w-]+)$/.test(id||''))return;
         if(day&&Model.cleanState({day}).day!==day)return;
@@ -1206,7 +1220,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     container.addEventListener('input',onInput);
     container.addEventListener('change',onChange);
     container.addEventListener('focusout',onFocusout);container.addEventListener('focusin',onHeaderFocusin);
-    container.addEventListener('click',onClick);
+    container.addEventListener('click',onClick);container.addEventListener('auxclick',onAuxClick);
     const onDisclosure=event=>{if(event.target?.dataset?.message&&event.target.open)hub?.readMessage(event.target.dataset.message);};
     container.addEventListener('toggle',onDisclosure,true);
     // Pointer and key input also keep the living drawings going: after two minutes with none,
@@ -1252,7 +1266,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         container.removeEventListener('input',onInput);
         container.removeEventListener('change',onChange);
         container.removeEventListener('focusout',onFocusout);container.removeEventListener('focusin',onHeaderFocusin);
-        container.removeEventListener('click',onClick);
+        container.removeEventListener('click',onClick);container.removeEventListener('auxclick',onAuxClick);
         container.removeEventListener('toggle',onDisclosure,true);
         container.removeEventListener('pointerdown',onPointerdown);container.removeEventListener('wheel',onWheel,{passive:true});container.removeEventListener('pointermove',onPointermove);
         container.removeEventListener('pointerup',onArrangePointerUp);container.removeEventListener('pointercancel',onArrangePointerCancel);container.removeEventListener('contextmenu',onArrangeContext);
