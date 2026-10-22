@@ -63,6 +63,8 @@ Type a task in plain words and it lands on the right day with its time and cours
 
 Click a PDF anywhere in a course and it opens in a reader beside the page instead of a new tab. Jump by page or outline, find words, highlight in colour and write notes in the margin; they stay in your browser. **Ask AI** takes the pages or text you choose to the AI pane, where you review it before anything is sent. Assignment and submission pages stay exactly as Canvas made them until you click a PDF. [PDF reader details](docs/pdf-reader.md).
 
+The reader also exports your highlights, underlines and margin notes as a Markdown or plain-text study sheet, grouped by page. Choose **Export highlights and notes** in the reader’s heading.
+
 ## Canvas's own pages, drawn to match
 
 <p align="center">

@@ -499,3 +499,22 @@ for(const drag of [false,true])test('erase then remote edit then undo preserves 
  assert.equal(a.reader.state.annotations.undo(),false,'the conflicting erase undo step is gone');
  await a.reader.close();assert.equal(shared.storage[key].annotations[0].text,'newer from B');
 });
+
+test('study-note export downloads reviewed text and rechecks the same account',async()=>{
+ const h=fixture(),blobs=[],downloads=[];h.env.ReservePdfStudyNotes=require('../extension/pdf-study-notes.js');h.env.Blob=class{constructor(parts,options){blobs.push({parts,options});}};h.env.URL={createObjectURL:()=> 'blob:study-notes',revokeObjectURL(){}};
+ const create=h.doc.createElement;h.doc.createElement=tag=>{const node=create(tag);if(tag==='a')node.click=()=>downloads.push({name:node.download,href:node.href});return node;};
+ await h.initialise();await h.settle();await h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Add a note').fire('click');await h.get('pages').fire('pointerdown',{target:h.reader.state.slots[1].node,button:0,clientX:30,clientY:40});h.get('note-text').value='Remember this idea';h.get('note-editor').returnValue='save';await h.get('note-editor').fire('close');
+ const button=h.get('heading-actions').children.find(n=>n.attrs['aria-label']==='Export highlights and notes');await button.fire('click');assert(h.get('study-notes').open);assert.match(h.get('study-notes-count').textContent,/1 text mark/);h.get('study-notes-format').value='markdown';
+ await h.get('download-study-notes').fire('click');await h.settle();assert.equal(downloads.length,1);assert.equal(downloads[0].name,'Algebra-study-notes.md');assert.match(blobs[0].parts[0],/Page 2/);assert.match(blobs[0].parts[0],/Remember this idea/);assert.equal(h.env.documentOptions.data.byteLength,8);await h.reader.close();
+});
+test('study-note export rejects an account switch, hides its dialog on suspension and handles empty text',async()=>{
+ const h=fixture();h.env.ReservePdfStudyNotes=require('../extension/pdf-study-notes.js');let downloads=0;h.env.URL={createObjectURL(){downloads++;return 'blob:bad';}};h.env.Blob=class{};await h.initialise();await h.settle();
+ const button=h.get('heading-actions').children.find(n=>n.attrs['aria-label']==='Export highlights and notes');await button.fire('click');assert.match(h.get('status').textContent,/first/);assert(!h.get('study-notes').open);
+ await h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Add a note').fire('click');await h.get('pages').fire('pointerdown',{target:h.reader.state.slots[0].node,button:0,clientX:30,clientY:40});h.get('note-text').value='Private to account seven';h.get('note-editor').returnValue='save';await h.get('note-editor').fire('close');await button.fire('click');h.get('study-notes-format').value='text';h.env.accountId='8';await h.get('download-study-notes').fire('click');await h.settle();assert.equal(downloads,0);assert.match(h.get('status').textContent,/account could not be confirmed/);assert(!h.get('study-notes').open);assert.equal(h.reader.state.annotations.annotations.length,0);await h.reader.close();
+});
+test('study-note dialog keeps reader shortcuts outside it and restores focus when cancelled',async()=>{
+ const h=fixture();h.env.ReservePdfStudyNotes=require('../extension/pdf-study-notes.js');await h.initialise();await h.settle();h.reader.state.annotations.add({type:'note',page:0,point:[10,700],text:'A note'});
+ const button=h.get('heading-actions').children.find(n=>n.attrs['aria-label']==='Export highlights and notes');await button.fire('click');let prevented=0;
+ for(const event of [{key:'Escape'},{key:'f',ctrlKey:true}])h.listeners.get('keydown')({...event,target:h.get('study-notes-format'),preventDefault(){prevented++;}});
+ assert.equal(prevented,0);assert.equal(h.get('find-bar').hidden,true);assert(!h.sent.some(s=>s.message.type==='reserve-pdf-close'));await h.get('study-notes').fire('close');assert.strictEqual(h.doc.activeElement,button);await h.reader.close();
+});
