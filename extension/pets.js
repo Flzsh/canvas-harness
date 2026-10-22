@@ -14,6 +14,15 @@
  const level=xp=>{let n=1;while(n<LEVEL_XP.length&&xp>=LEVEL_XP[n])n++;return n;};
  const levelProgress=xp=>{const n=level(xp),from=LEVEL_XP[n-1],to=LEVEL_XP[n];return to===undefined?1:(xp-from)/(to-from);};
  const unlocked=(kind,key,xp)=>(UNLOCKS[kind]?.[key]||1)<=level(xp);
+ // Whether going from one experience total to another opens a coat or harness (the last levels open nothing).
+ const opens=(fromXp,toXp)=>Object.values(UNLOCKS).some(list=>Object.values(list).some(n=>n>level(fromXp)&&n<=level(toXp)));
+ // The run of days, while it is still going: its last day is today or yesterday. An old number would be wrong, and
+ // saying that the run ended would be a scold, so a run that stopped is simply not mentioned.
+ function currentRun(pet,today){
+  if(!(pet?.streak>1)||!pet.streakDay||!/^\d{4}-\d{2}-\d{2}$/.test(today||''))return 0;
+  const y=new Date(today+'T12:00:00Z');y.setUTCDate(y.getUTCDate()-1);
+  return pet.streakDay===today||pet.streakDay===y.toISOString().slice(0,10)?pet.streak:0;
+ }
  function clean(value){
   const v=value&&typeof value==='object'&&!Array.isArray(value)?value:{},art=root.ReservePetArt||(typeof module==='object'&&module.exports?require('./pet-art.js'):null);
   const out={...DEFAULTS},int=(n,max)=>Number.isInteger(n)?clamp(n,0,max):0;
@@ -46,7 +55,7 @@
  function create({container,getPet,savePet,info=()=>({}),actions={},now=()=>Date.now()}){
   if(root.ReserveSite?.vanillaPage(root.location))return null;
   const doc=container.ownerDocument||root.document,win=doc.defaultView||root,art=root.ReservePetArt,E=value=>root.ReserveUI?.escapeHTML?root.ReserveUI.escapeHTML(value):String(value).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
-  let pet=clean(getPet()),layer=null,node=null,bubble=null,dead=false,film=0,timer=0,last=0,next=0,debt=0,stepping=false,pose='stand',face='right';
+  let pet=clean(getPet()),layer=null,node=null,bubble=null,live=null,liveAt=0,liveTimer=0,said='',holding=[],dead=false,film=0,timer=0,last=0,next=0,debt=0,stepping=false,pose='stand',face='right';
   let spot={ledge:null,u:160},grab=null,releaseGrab=null,menuOpen=false,focusing=false,quietUntil=0,lastInput=now(),sayTimer=0,unseen=0;
   // what it is doing: null (resting), a walk, or a jump; and the eased numbers
   let goal=null,rest='stand',speed=0,phase=0,follow=0,reel=0;const ch={leg:0,down:0,neck:9,head:0,alpha:1};
@@ -57,11 +66,20 @@
   const reduced=()=>menuOpen||['off','still'].includes(container.dataset.motionStyle)||!!motionMedia?.matches;
   const size=()=>SIZES[pet.size]||SIZES.medium;
   const visible=()=>pet.enabled&&pet.roam!=='off';
+  // A running timer, the clock and the countdown rewrite their words every second or so. Words changing inside a widget
+  // of fixed size cannot move a ledge (a real size change still reaches the ResizeObserver), so they do not remeasure
+  // the page: a 25 to 60 minute focus session would otherwise read the whole layout every second.
+  const TICKING='[data-rd-timer],[data-rd-clock],[data-rd-countdown]';
+  const ticking=target=>!!(target?.nodeType===3?target.parentElement:target)?.closest?.(TICKING);
+  const localDay=t=>{const d=new Date(t);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
   function mount(){
    if(layer||dead)return;
    layer=doc.createElement('div');layer.className='pet-layer';
    layer.innerHTML=`<button type="button" class="pet" data-pose="stand" data-face="right" aria-haspopup="menu" aria-expanded="false"></button>`;
    container.append(layer);node=layer.firstElementChild;node.innerHTML=art.svg({title:pet.name});
+   // One announcer, in place before anything is said: screen readers read a status region when its words change, and
+   // often miss one that arrives already filled in (which is what a new bubble is).
+   live=doc.createElement('p');live.className='pet-live';live.setAttribute('role','status');live.setAttribute('aria-live','polite');live.setAttribute('aria-atomic','true');layer.append(live);liveAt=now();
    node.addEventListener('pointerdown',down);node.addEventListener('click',click);node.addEventListener('keydown',key);
    for(const type of ['animationstart','animationend','animationcancel'])node.addEventListener(type,resetReels);
    win.addEventListener('scroll',invalidate,{passive:true,capture:true});win.addEventListener('resize',invalidate,{passive:true});
@@ -102,7 +120,7 @@
    doc.fonts?.removeEventListener?.('loadingdone',invalidate);
    doc.removeEventListener('pointermove',seen);doc.removeEventListener('keydown',seen);doc.removeEventListener('visibilitychange',wake);
    for(const type of followEvents)doc.removeEventListener(type,scheduleFollow,{capture:true});
-   clearTimeout(reel);reel=0;reels.clear();reelsDirty=true;layer.remove();layer=node=null;
+   clearTimeout(reel);reel=0;reels.clear();reelsDirty=true;layer.remove();layer=node=live=null;
   }
   function seen(){lastInput=now();scheduleFollow();if(!reel&&layer&&!doc.hidden&&(reelsDirty||reels.size))roll();if(rest==='sleep'&&!goal&&!menuOpen)settle('lie',4000);}
   function wake(){if(doc.hidden){stop();clearTimeout(reel);reel=0;cancelPlaces();releaseGrab?.();if(grab){grab=null;goal=null;speed=0;node.dataset.grabbed='false';setPose('stand');}return;}if(layer){invalidate();resetReels();run();if(!goal)plan(900);roll();}}
@@ -190,7 +208,7 @@
    return typeof before==='string'&&typeof after==='string'&&before.length===after.length&&/^\d{2,}:\d{2}$/.test(before)&&/^\d{2,}:\d{2}$/.test(after);
   }
   function changesPlaces(record){
-   if(layer?.contains(record.target))return false;
+   if(layer?.contains(record.target)||ticking(record.target))return false;
    if(record.type==='attributes')return !cosmeticAttributes.has(record.attributeName)&&!(record.attributeName==='aria-selected'&&record.target.matches?.('[data-quick-index]'));
    if(record.type==='childList'){
     const changed=[...record.addedNodes,...record.removedNodes];
@@ -345,14 +363,15 @@
    if(doc.hidden)return;
    if(menuOpen||grab||goal){plan(2500);return;}
     if(dirty){decisionPending=true;invalidate();return;}if(!measured)measurePlaces();const data=info(),idle=now()-lastInput,here=current();
-   if(reduced()){settle(nudge(data),30000);return;}
-   if(focusing){settle('read',20000);return;}
-   // its place has scrolled away or gone: come back to somewhere in view, quietly
+   // its place has scrolled away or gone: come back to somewhere in view, quietly. Asked first, so that with reduced
+   // motion or beside a running timer it still comes back (it simply appears there, with no jump).
    const gone=here.el&&!framed()&&!sides.has(here.el)&&here.el.matches?.('.rd-main > [data-arrange-key]');
    if(!here.shown||gone||!here.el&&pet.roam==='home'){
     const all=ledges(),to=pet.roam==='home'?all.find(l=>l.paddock):all.filter(l=>!l.paddock&&!l.floor)[0]||all[all.length-1];
-    if(to&&(to.el!==here.el)){if(here.shown)jumpTo(to);else appear(to);return;}
+    if(to&&(to.el!==here.el)){if(here.shown&&!reduced())jumpTo(to);else appear(to);return;}
    }
+   if(reduced()){settle(nudge(data),30000);return;}
+   if(focusing){settle('read',20000);return;}
    if(idle>25000){settle('sleep',30000);return;}   // the same idle rest as the drawings (motion.js)
    // standing on something the student reads or uses (a list refreshed under it): step off it first
    if(!free(here,spot.u)){moveOff(here);return;}
@@ -388,7 +407,7 @@
   }
   function appear(target){
    spot={ledge:target.el,u:freeOn(target)??clamp((target.x1-target.x0)*(.2+Math.random()*.6),14,Math.max(14,target.x1-target.x0-14))};
-   ch.alpha=0;ch.down=0;speed=0;goal=null;rest='stand';setPose('stand');place();run();plan(3500);
+   ch.alpha=reduced()?1:0;ch.down=0;speed=0;goal=null;rest='stand';setPose('stand');place();run();plan(3500);   // no fade with reduced motion
   }
   const ease=(key,to,rate,dt)=>{const d=to-ch[key];if(Math.abs(d)<.02){ch[key]=to;return false;}ch[key]+=d*Math.min(1,rate*dt);return true;};
   function frame(){
@@ -464,7 +483,7 @@
    held.addEventListener('pointermove',move);held.addEventListener('pointerup',up);held.addEventListener('pointercancel',up);
   }
   function click(event){if(node._suppress&&now()<node._suppress){event.preventDefault();return;}if(menuOpen)closeBubble();else openMenu();}
-  function key(event){if(event.key==='Escape'&&menuOpen){event.preventDefault();closeBubble();node.focus();}}
+  function key(event){if(event.key==='Escape'&&menuOpen){seen();event.preventDefault();event.stopPropagation?.();closeBubble();node.focus();}}
   // ---- what it says
   function measureBubble(){if(bubble)bubbleBox={w:bubble.offsetWidth||250,h:bubble.offsetHeight||120};}
   function placeBubble(){
@@ -473,15 +492,26 @@
    bubble.style.transform=`translate(${x.toFixed(0)}px,${(above>70?above:node._y+10).toFixed(0)}px)`;
    bubble.style.setProperty('--pet-tail-x',clamp(node._x-x,22,w-22).toFixed(0)+'px');bubble.dataset.below=String(above<=70);
   }
+  // Closing a bubble that has keyboard focus hands it back to the pony, so a keyboard user does not lose their place.
+  // The announcer is emptied too, so a screen reader moving through the page later does not find words that are old.
   function closeBubble(){
-   clearTimeout(sayTimer);sayTimer=0;
+   clearTimeout(sayTimer);sayTimer=0;clearTimeout(liveTimer);liveTimer=0;if(live?.textContent)live.textContent='';
    if(bubble){
-    bubble.removeEventListener('click',onBubble);resizeWatch?.unobserve(bubble);watched.delete(bubble);
+    if(bubble.contains(doc.activeElement))node?.focus({preventScroll:true});
+    bubble.removeEventListener('click',onBubble);bubble.removeEventListener('keydown',bubbleKey);for(const [type,fn] of holding)bubble.removeEventListener(type,fn);holding=[];resizeWatch?.unobserve(bubble);watched.delete(bubble);
     bubble.remove();bubble=null;
    }
    if(menuOpen){menuOpen=false;node?.setAttribute('aria-expanded','false');dress();invalidate();run();plan(1500);}
   }
-  function show(html,{menu=false,ms=0}={}){
+  // The same words twice are still a change (closing emptied the announcer, but in the same moment that is no change),
+  // so a repeated line is read again. Words said in the moment the announcer was added (a reminder as the page opens)
+  // wait a little, until it is one the screen reader already knows.
+  function announce(text){
+   if(!live||!text)return;const wait=liveAt+600-now();
+   if(wait>0){clearTimeout(liveTimer);liveTimer=setTimeout(()=>{liveTimer=0;announce(text);},wait);return;}
+   said=said===text?text+' ':text;live.textContent=said;
+  }
+  function show(html,{menu=false,ms=0,speak=''}={}){
    closeBubble();if(!layer)return;
    bubble=doc.createElement('div');bubble.className='pet-bubble';bubble.innerHTML=html;
    if(menu){
@@ -489,22 +519,39 @@
     node.setAttribute('aria-expanded','true');if(goal)setPose('stand');goal=null;speed=0;
     stop();cancelPlaces();clearTimeout(node._cheer);clearTimeout(reel);reel=0;dress();
    }   // it stops where it is, so the menu opens in place
-   else{bubble.setAttribute('role','status');bubble.setAttribute('aria-live','polite');}
    layer.append(bubble);measureBubble();if(resizeWatch){resizeWatch.observe(bubble);watched.add(bubble);}placeBubble();
-   bubble.addEventListener('click',onBubble);
-   if(ms)sayTimer=setTimeout(()=>{if(bubble&&!menuOpen)closeBubble();},ms);
+   bubble.addEventListener('click',onBubble);bubble.addEventListener('keydown',bubbleKey);
+   announce(speak);
+   // A bubble that goes by itself waits while the pointer or keyboard focus is in it, so its buttons can be reached.
+   if(ms){
+    const box=bubble,hold=()=>clearTimeout(sayTimer),arm=()=>{clearTimeout(sayTimer);sayTimer=setTimeout(()=>{if(bubble===box&&!menuOpen&&!box.contains(doc.activeElement))closeBubble();},ms);};
+    holding=[['pointerenter',hold],['pointerleave',arm],['focusin',hold],['focusout',e=>{if(!box.contains(e.relatedTarget))arm();}]];for(const [type,fn] of holding)box.addEventListener(type,fn);arm();
+   }
   }
-  function say(text,ms=5200){if(visible()&&layer)show(`<p class="pet-say">${E(text)}</p>`,{ms});}
+  // In a bubble the keys work as in any menu: arrows, Home and End move between its items, Escape closes it, and Tab
+  // closes the menu and goes on from the pony. A key the pony uses stops here: the page's own Escape would otherwise
+  // also close the drawer or menu underneath, and its arrows would move things on the page.
+  function bubbleKey(event){
+   if(!bubble)return;seen();const used=()=>{event.preventDefault();event.stopPropagation?.();};
+   if(event.key==='Escape'){used();closeBubble();return;}
+   if(!menuOpen)return;
+   if(event.key==='Tab'){closeBubble();return;}   // not prevented: Tab then moves on from the pony, which now has focus
+   const items=[...bubble.querySelectorAll('.pet-item:not([disabled])')],at=items.indexOf(doc.activeElement);if(!items.length)return;
+   const to={ArrowDown:at<0?0:at+1,ArrowUp:at<0?items.length-1:at-1,Home:0,End:items.length-1}[event.key];if(to===undefined)return;
+   used();items[(to+items.length)%items.length].focus({preventScroll:true});
+  }
+  function say(text,ms=5200){if(visible()&&layer)show(`<p class="pet-say">${E(text)}</p>`,{ms,speak:text});}
   function summary(data){
    const n=data.todayOpen||0;
    if(data.next)return `<strong>Next:</strong> ${E(data.next.title)}<span class="pet-when">${E([data.next.course,data.next.when].filter(Boolean).join(' · '))}</span>`;
    return n?`${n} thing${n===1?'':'s'} left today.`:'Nothing due soon. Enjoy it.';
   }
   function openMenu(){
-   const data=info(),lv=level(pet.xp),item=(action,label,extra='')=>`<button type="button" role="menuitem" class="pet-item" data-pet-action="${action}" ${extra}>${label}</button>`;
-   show(`<div class="pet-head"><strong>${E(pet.name)}</strong><span>Level ${lv}${pet.streak>1?` · ${pet.streak} days in a row`:''}</span><span class="pet-meter" aria-hidden="true"><i style="width:${Math.round(levelProgress(pet.xp)*100)}%"></i></span></div>
+   const data=info(),lv=level(pet.xp),run=currentRun(pet,/^\d{4}-\d{2}-\d{2}$/.test(data.today||'')?data.today:localDay(now())),item=(action,label,extra='')=>`<button type="button" role="menuitem" class="pet-item" data-pet-action="${action}" ${extra}>${label}</button>`;
+   const minutes=Number.isInteger(data.focusMinutes)&&data.focusMinutes>0?data.focusMinutes:25;   // the length chosen in the Focus timer
+   show(`<div class="pet-head"><strong>${E(pet.name)}</strong><span>Level ${lv}${run?` · ${run} days in a row`:''}</span><span class="pet-meter" aria-hidden="true"><i style="width:${Math.round(levelProgress(pet.xp)*100)}%"></i></span></div>
 <p class="pet-say">${summary(data)}</p>
-<div class="pet-items">${data.next?item('open','Open it')+item('focus',focusing?'Timer is running':'Focus 25 min',focusing?'disabled':''):''}${item('feed',`Give a treat <span class="pet-count">${pet.treats}</span>`,pet.treats?'':'disabled')}${item('stay',pet.roam==='home'?'Let it roam':'Send it home')}${item('settings','Pet settings')}</div>`,{menu:true});
+<div class="pet-items">${data.next?item('open','Open it')+item('focus',focusing?'Timer is running':`Focus ${minutes} min`,focusing?'disabled':''):''}${item('feed',`Give a treat <span class="pet-count">${pet.treats}</span>`,pet.treats?'':'disabled')}${item('stay',pet.roam==='home'?'Let it roam':'Send it home')}${item('settings','Pet settings')}</div>`,{menu:true});
    bubble.querySelector('.pet-item:not([disabled])')?.focus({preventScroll:true});
   }
   function treat(){
@@ -534,14 +581,14 @@
    // Said once for each thing that becomes urgent, and only when reminders are fully on.
    if(pet.nudges==='helpful'&&data.next?.urgent&&data.next.id&&pet.told!==String(data.next.id)&&now()>quietUntil&&!menuOpen&&!grab){
     save({...pet,told:String(data.next.id)});
-    show(`<p class="pet-say"><strong>Due ${E(data.next.when||'soon')}:</strong> ${E(data.next.title)}</p><div class="pet-items"><button type="button" class="pet-item" data-pet-action="open">Open it</button><button type="button" class="pet-item" data-pet-action="quiet">Later</button></div>`,{ms:11000});
+    show(`<p class="pet-say"><strong>Due ${E(data.next.when||'soon')}:</strong> ${E(data.next.title)}</p><div class="pet-items"><button type="button" class="pet-item" data-pet-action="open">Open it</button><button type="button" class="pet-item" data-pet-action="quiet">Later</button></div>`,{ms:11000,speak:`Due ${data.next.when||'soon'}: ${data.next.title}`});
    }
   }
   function celebrate(kind='done',{today,left}={}){
-   const result=reward(clean(getPet()),kind,today);save(result.pet);
+   const before=clean(getPet()),result=reward(before,kind,today);save(result.pet);
    if(!visible()||!layer)return result;
    closeBubble();cheer(1300);
-   const line=result.leveled?`Level ${level(pet.xp)}! Something new is unlocked.`:kind==='focus'?'Good session. A treat for both of us.':left===0?'That was the last one for today.':left>0?`Done. ${left} left today.`:'Done. Nicely.';
+   const line=result.leveled?`Level ${level(pet.xp)}!${opens(before.xp,pet.xp)?' Something new is unlocked.':''}`:kind==='focus'?'Good session. A treat for both of us.':left===0?'That was the last one for today.':left>0?`Done. ${left} left today.`:'Done. Nicely.';
    say(line,4200);
    return result;
   }
@@ -550,6 +597,6 @@
   if(visible())mount();
   return {sync,celebrate,setFocus,say,treat,destroy,get pet(){return pet;}};
  }
- const api={DEFAULTS,SIZES,ROAM,NUDGES,GEAR,LEVEL_XP,UNLOCKS,level,levelProgress,unlocked,clean,reward,feed,create};
+ const api={DEFAULTS,SIZES,ROAM,NUDGES,GEAR,LEVEL_XP,UNLOCKS,level,levelProgress,unlocked,opens,currentRun,clean,reward,feed,create};
  root.ReservePets=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);
