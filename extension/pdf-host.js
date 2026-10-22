@@ -3,7 +3,7 @@
  'use strict';
  const MAX_BYTES=32*1024*1024,WIDTH_KEY='reserve:pdf-width',APPEARANCE_KEY='reserve:appearance';
  const filePath=/^\/(?:(?:courses\/\d+|api\/v1(?:\/courses\/\d+)?)\/)?files\/(\d+)(?:\/(?:download|preview))?\/?$/;
- const pdfEvidence=/(?:\.pdf)(?:$|[?#\s"'(),;])|(?:^|[\s;,])application\/pdf(?:$|[\s;,])/i;
+ const pdfEvidence=/(?:\.pdf)(?:$|[?#\s"'(),;])|(?:^|[\s;,])application\/pdf(?:$|[\s;,])|(?:^|\s)PDF File/i;
  const attribute=(node,key)=>String(node?.getAttribute?.(key)??'');
  function pdfPage(value){
   try{
@@ -22,8 +22,30 @@
   try{
    const url=new URL(value,origin);
    if(url.origin!==origin||url.username||url.password)return null;
-   const id=url.pathname.match(filePath)?.[1];return id?{id,url}:null;
+   // /files/ID, /courses/C/files/ID, and the Files page's own rows: /courses/C/files?preview=ID
+   const id=url.pathname.match(filePath)?.[1]||(/\/files(?:\/folder\/[^?#]*)?\/?$/.test(url.pathname)&&/^\d+$/.test(url.searchParams.get('preview')||'')?url.searchParams.get('preview'):null);
+   return id?{id,url}:null;
   }catch{return null;}
+ }
+ // A stable numeric id for a PDF on another website (annotations are stored per file id).
+ function localId(path){let h=2166136261;for(const c of String(path)){h^=c.charCodeAt(0);h=Math.imul(h,16777619)>>>0;}return '99'+h;}
+ function matchRemotePdf(el,origin){
+  if(!el?.matches?.('a[href]'))return null;
+  let url;try{url=new URL(el.href);}catch{return null;}
+  if(url.protocol!=='https:'||url.origin===origin||url.username||url.password||!/\.pdf$/i.test(decodeURIComponent(url.pathname)))return null;
+  const page=Number((url.hash.match(/page=(\d+)/)||[])[1]);url.hash='';
+  const text=String(el.textContent||'').replace(/[↗\s]+$/,'').trim();
+  return {element:el,remote:url.href,fileId:localId('remote:'+url.href),page:Number.isSafeInteger(page)&&page>0?page-1:null,
+   name:(text?text.replace(/\.pdf$/i,'')+'.pdf':decodeURIComponent(url.pathname.split('/').pop())).slice(0,240),url:url.href,preview:false};
+ }
+ // A Canvas file link with no sign of its type (a title only): checked with Canvas when it is clicked.
+ function matchCanvasFile(event,origin){
+  if(!event||event.button!==0||event.ctrlKey||event.metaKey||event.altKey||event.shiftKey||event.defaultPrevented)return null;
+  let el;try{const target=event.composedPath?.()[0]||event.target;el=(target?.closest?target:target?.parentElement)?.closest?.('a[href]');}catch{return null;}
+  if(!el||el.hasAttribute('download'))return null;
+  let url;try{url=new URL(el.href);}catch{return null;}
+  const id=url.origin===origin&&(url.pathname.match(/^\/(?:courses\/\d+\/)?files\/(\d+)(?:\/(?:preview|file_preview))?\/?$/)||[])[1];
+  return id?{element:el,fileId:id}:null;
  }
  function matchPdfClick(event,origin){
   if(!event||event.button!==0||event.ctrlKey||event.metaKey||event.altKey||event.shiftKey||event.defaultPrevented)return null;
@@ -35,6 +57,8 @@
    }
   }catch{return null;}
   if(!el)return null;
+  // An https .pdf link on another website opens in the reader too (the reader asks once for that site).
+  const remote=matchRemotePdf(el,origin);if(remote)return remote;
   const labels=[attribute(el,'title'),attribute(el,'aria-label'),el.textContent||''].join(' '),rawHref=attribute(el,'href');
   const href=rawHref.startsWith('#')?rawHref:typeof el.href==='string'&&el.href||rawHref;
   if(el.hasAttribute?.('download')||el.getAttribute?.('download')!=null||attribute(el,'data-pdf-download')==='true'||
@@ -91,7 +115,7 @@
   if(!found&&!itemURL)return null;
   const name=attribute(el,'data-pdf-name')||[attribute(el,'data-filename'),attribute(el,'data-display-name'),
    attribute(el,'title'),String(el.textContent||'').trim(),attribute(sibling,'title'),String(sibling?.textContent||'').trim()]
-   .find(value=>/\.pdf(?:$|[\s"'(),;])/i.test(value))||'Canvas PDF '+(found?.id||'document')+'.pdf';
+   .map(value=>value.replace(/^\s*PDF File\s*/i,'').trim()).find(value=>/\.pdf(?:$|[\s"'(),;])/i.test(value))||'Canvas PDF '+(found?.id||'document')+'.pdf';
   const originalURL=!placeholder?new URL(href,origin).href:fileURL(attribute(sibling,'href')||sibling?.href,origin)?.url.href||
    (found?origin+(/^\d+$/.test(courseId)?'/courses/'+courseId:'')+'/files/'+found.id:itemURL.href);
   return {element:el,originalURL,...(found?{fileId:found.id,url:origin+'/files/'+found.id+'/download'}:{moduleURL:itemURL.href,url:itemURL.href}),
@@ -139,6 +163,8 @@
   if(!enabled('pdf'))return null;
   const site=env.ReserveSite;
    const allowed=()=>site?.supported?.(env.location?.href)&&pdfPage(env.location);
+   // Assignment pages keep the reader beside the instructions; anywhere else (Files, modules, pages) it fills the window.
+   const splitPage=()=>!!site.vanillaPage?.(env.location);
    if(!env.document||!allowed())return null;
   const doc=env.document,model=env.ReservePdfModel||root.ReservePdfModel;
   if(!model)return null;
@@ -184,6 +210,8 @@
    inform(message.includes('inst-fs')?message:message+' Returning to the original Canvas viewer.');
    // Replay the same Canvas click once, bypassing only our delegated listener.
    // This preserves Canvas's own inline preview handlers and link behavior.
+   // opened from the page address (no link was clicked): Canvas's own preview is already there
+   if(!state.trigger)return;
     replayClick(state.info);
    }
    function replayClick(info){
@@ -305,7 +333,7 @@
     if(!dead){if(enabled('pdf')&&allowed())mount(info);else replayClick(info);}
   }
   function mount(info){
-   cleanNotice();
+   cleanNotice();hideSwitch();
    const currentRuntime=runtime();
    let readerURL,extensionOrigin;
    try{
@@ -374,17 +402,17 @@
    watch(env,'pagehide',()=>restore(state,false),{once:true});
    const sendIfReady=()=>{
     if(state.closed||!state.ready||!state.bytes||!state.appearanceLoaded||state.sent)return;
-    state.sent=true;const bytes=state.bytes;state.bytes=null;
+    state.sent=true;const bytes=state.bytes==='reader'?null:state.bytes;state.bytes=null;
     for(const timer of state.timers)env.clearTimeout?.(timer);state.timers=[];
     try{frame.contentWindow.postMessage({type:'reserve-pdf-init',token,origin:env.location.origin,fileId:info.fileId,
-     name:info.name,url:info.url,bytes,appearance:state.appearance,aiEnabled:enabled('ai')&&!!env.CanvasHarnessAISource?.mount},extensionOrigin,[bytes]);status.hidden=true;}
+     name:info.name,url:info.url,bytes,fetchInReader:!bytes,remote:info.remote||null,page:info.page??null,appearance:state.appearance,aiEnabled:enabled('ai')&&!!env.CanvasHarnessAISource?.mount},extensionOrigin,bytes?[bytes]:[]);status.hidden=true;}
     catch(error){fallback(state,error);}
    };
    watch(env,'message',event=>{
     if(state.closed||event.source!==frame.contentWindow||event.origin!==extensionOrigin)return;
     const data=event.data;
     if(!data||data.token!==token||typeof data.type!=='string')return;
-    if(data.type==='reserve-pdf-ready'){state.ready=true;sendIfReady();sendClose(state);}
+    if(data.type==='reserve-pdf-ready'){state.ready=true;sendIfReady();sendClose(state);if(isFull())fullChanged();}
     else if(data.type==='reserve-pdf-close')restore(state,true);
     else if(data.type==='reserve-pdf-close-result'){
      const request=state.closeRequest;
@@ -395,6 +423,7 @@
     else if(data.type==='reserve-pdf-error')fallback(state,Error(String(data.message||'The PDF reader could not display the file.')));
     else if(data.type==='reserve-pdf-ai')void openAI(state,data);
     else if(data.type==='reserve-pdf-fullscreen')toggleFullscreen();
+    else if(data.type==='reserve-pdf-canvas')toCanvasViewer(state);
    });
    // Full screen: the reader panel itself fills the screen (or, if the browser refuses, the window). Canvas's own
    // assignment details stay at hand as a card (a copy of Canvas's page content, shown in Canvas's page).
@@ -430,7 +459,7 @@
    const closeCard=()=>{card.hidden=true;assignTab.setAttribute('aria-expanded','false');};
    const fullChanged=()=>{
     if(state.closed)return;const on=isFull();if(!on)panel.classList.remove('is-maximized');
-    panel.classList.toggle('is-full',isFull());assignTab.hidden=!isFull();if(!isFull())closeCard();
+    panel.classList.toggle('is-full',isFull());assignTab.hidden=!isFull()||!splitPage();if(!isFull())closeCard();
     try{frame.contentWindow?.postMessage({type:'reserve-pdf-fullscreen-state',token,on:isFull()},extensionOrigin);}catch{}
    };
    // "Full screen" fills the browser window with the reader (not the browser's full-screen mode); Escape or the
@@ -449,25 +478,114 @@
     else body.textContent='The assignment details are on the Canvas page behind the reader.';
     card.append(clip,head,body);card.hidden=false;assignTab.setAttribute('aria-expanded','true');close.focus();
    });
+   if(!splitPage()){panel.classList.add('is-maximized');panel.classList.add('is-full');}
    frame.src=readerURL.href;
    state.timers.push(env.setTimeout?.(()=>{if(!state.sent)fallback(state,Error('The PDF reader did not establish a secure connection.'));},20000));
    state.timers.push(env.setTimeout?.(()=>state.abort.abort(),25000));
    Promise.resolve(persisted(WIDTH_KEY)).then(value=>{if(!state.closed&&Number.isFinite(value)&&value>0)setWidth(value);});
    Promise.resolve(persisted(APPEARANCE_KEY)).then(value=>{if(!state.closed){state.appearance=value&&typeof value==='object'?value:{theme:'light'};panel.dataset.theme=model.theme(state.appearance);setWidth(state.width);state.appearanceLoaded=true;sendIfReady();}});
-   Promise.resolve(readVerifiedPdf({origin:env.location.origin,fileId:info.fileId,fetchImpl:env.fetch?.bind(env),signal:state.abort.signal}))
-    .then(bytes=>{if(!state.closed){state.bytes=bytes;sendIfReady();}}).catch(error=>fallback(state,error));
+   // Canvas usually redirects a download to its file domain (canvas-user-content.com), which a Canvas page may
+   // not read (CORS). The reader is an extension page with access to that domain: it fetches the file itself.
+   if(info.remote){state.bytes='reader';env.setTimeout?.(sendIfReady,0);}
+   else Promise.resolve(readVerifiedPdf({origin:env.location.origin,fileId:info.fileId,fetchImpl:env.fetch?.bind(env),signal:state.abort.signal}))
+    .then(bytes=>{if(!state.closed){state.bytes=bytes;sendIfReady();}})
+    .catch(error=>{if(state.closed)return;if(state.info.openGeneration===openGeneration&&/inst-fs/.test(String(error?.message))){state.bytes='reader';sendIfReady();}else fallback(state,error);});
    return state;
   }
   function delegated(event){
     if(!enabled('pdf')||dead||replaying||!fixedReaderOrigin||!allowed())return;
    const info=matchPdfClick(event,env.location?.origin||'');
-   if(!info)return;
+   if(!info){
+    const file=!canvasMode()&&matchCanvasFile(event,env.location?.origin||'');
+    if(file){event.preventDefault?.();event.stopImmediatePropagation?.();void probeCanvasFile(file);}
+    return;
+   }
+   if(canvasMode()&&!info.remote){if(info.fileId)env.setTimeout?.(()=>showSwitch(info,true),400);return;}
    event.preventDefault?.();event.stopImmediatePropagation?.();void open(info);
   }
+  // A Canvas file link that does not say what it is: a PDF opens in the reader, anything else continues as the link.
+  async function probeCanvasFile(file){
+   const meta=await fileMeta(file.fileId);
+   if(meta&&isPdf(meta)&&!dead){void open({element:file.element,fileId:file.fileId,name:String(meta.display_name||'Canvas PDF '+file.fileId+'.pdf').slice(0,240),url:env.location.origin+'/files/'+file.fileId+'/download',preview:false});return;}
+   replaying=true;try{file.element?.click?.();}finally{replaying=false;}
+  }
+   async function fileMeta(id){
+   try{const r=await env.fetch(env.location.origin+'/api/v1/files/'+id,{credentials:'same-origin',headers:{Accept:'application/json'}});return r.ok?await r.json():null;}catch{return null;}
+  }
+  const isPdf=meta=>/application\/pdf/i.test(meta?.['content-type']||'')||/\.pdf$/i.test(meta?.display_name||meta?.filename||'');
+  // Canvas's own viewer or the Harness reader: the student can switch either way. Choosing Canvas's viewer holds for
+  // this tab (sessionStorage) until "Open in Harness reader" is pressed.
+  const MODE_KEY='ch-pdf-viewer';
+  const canvasMode=()=>{try{return env.sessionStorage?.getItem(MODE_KEY)==='canvas';}catch{return false;}};
+  const setMode=value=>{try{if(value==='canvas')env.sessionStorage.setItem(MODE_KEY,'canvas');else env.sessionStorage.removeItem(MODE_KEY);}catch{}};
+  const closeCanvasPreview=()=>{doc.querySelector('.ef-file-preview-overlay .ef-file-preview-header-close, .ef-file-preview-overlay button[aria-label="Close"]')?.click?.();};
+  function addressFileId(){
+   let url;try{url=new URL(env.location.href);}catch{return null;}
+   const id=url.searchParams.get('preview')&&/\/files(?:\/folder\/.*)?\/?$/.test(url.pathname)?url.searchParams.get('preview'):(url.pathname.match(/^\/(?:courses\/\d+\/)?files\/(\d+)\/?(?:file_preview)?\/?$/)||[])[1];
+   return /^\d+$/.test(id||'')?id:null;
+  }
+  let switchButton=null,switchFor=null,switchSticky=false;
+  function hideSwitch(){switchButton?.remove();switchButton=null;switchFor=null;switchSticky=false;}
+  function showSwitch(info,sticky=false){
+   if(dead||active||!doc.body||!/^\d+$/.test(String(info?.fileId||'')))return;
+   // sticky: Canvas showed the file inside the page (no address of its own), so the button stays until closed
+   sticky=sticky&&!addressFileId();
+   if(switchFor===String(info.fileId)&&switchButton?.isConnected){switchSticky=switchSticky&&sticky;return;}
+   hideSwitch();switchFor=String(info.fileId);switchSticky=sticky;
+   const bar=doc.createElement('div');bar.className='reserve-pdf-switch';bar.setAttribute('role','region');bar.setAttribute('aria-label','Harness PDF reader');
+   bar.style.cssText='position:fixed;z-index:2147483040;left:50%;bottom:84px;transform:translateX(-50%);display:flex;align-items:center;gap:2px;padding:4px;background:#fbfaf7;color:#23221f;border:1px solid #dcd7cc;border-radius:999px;box-shadow:0 10px 30px rgb(20 20 19 / .24),0 1px 3px rgb(20 20 19 / .12);font:600 13.5px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif';
+   const go=doc.createElement('button');go.type='button';go.title='Switch back to the Harness reader to highlight, type and draw on this PDF';
+   go.style.cssText='display:flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:9px 16px 9px 12px;background:#b5552e;color:#fff;font:inherit;cursor:pointer';
+   go.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5l5 5L9 20H4v-5z"/><path d="M12.5 6.5l5 5"/></svg><span>Open in Harness reader</span>';
+   const hide=doc.createElement('button');hide.type='button';hide.setAttribute('aria-label','Hide this button');hide.title='Hide';hide.textContent='×';
+   hide.style.cssText='border:0;background:none;color:#6f6b62;font:400 21px/1 system-ui,sans-serif;width:32px;height:32px;border-radius:50%;cursor:pointer';
+   go.addEventListener('click',()=>{
+    setMode('reader');const id=String(info.fileId),name=info.name;hideSwitch();
+    void open({element:null,fileId:id,name:name||'Canvas PDF '+id+'.pdf',url:env.location.origin+'/files/'+id+'/download',preview:true});
+    env.setTimeout?.(closeCanvasPreview,600);
+   });
+   hide.addEventListener('click',hideSwitch);
+   bar.append(go,hide);doc.body.append(bar);switchButton=bar;
+  }
+  // The reader's "Open in Canvas's viewer": close the reader and let Canvas show the same file.
+  function toCanvasViewer(state){
+   if(!state||state.closed||state.info.remote)return;
+   const info=state.info;setMode('canvas');restore(state,false);
+   if(info.element&&info.element.isConnected!==false&&typeof info.element.click==='function'){
+    replaying=true;try{info.element.click();}finally{replaying=false;}
+    env.setTimeout?.(()=>showSwitch(info,true),400);return;
+   }
+   // opened from the address: on a file page Canvas's viewer is right behind; on the Files page, bring its preview back
+   let url;try{url=new URL(env.location.href);}catch{return;}
+   if(addressFileId()===String(info.fileId)&&!url.searchParams.get('preview')){showSwitch(info);return;}
+   if(/\/files(?:\/folder\/.*)?\/?$/.test(url.pathname)){url.searchParams.set('preview',info.fileId);env.location.assign(url.href);}
+   else env.location.assign(env.location.origin+'/files/'+info.fileId);
+  }
+  // Landing on a PDF's own address (a file page, or the Files page with ?preview=ID) opens it in the reader too,
+  // or, after the student chose Canvas's viewer, offers the way back.
+  async function openFromAddress(){
+   const id=addressFileId();
+   if(!id){if(switchButton&&!switchSticky)hideSwitch();return;}
+   if(active)return;
+   const meta=await fileMeta(id);if(!meta||!isPdf(meta)||dead||active)return;
+   const info={element:null,fileId:id,name:String(meta.display_name||'Canvas PDF '+id+'.pdf').slice(0,240),url:env.location.origin+'/files/'+id+'/download',preview:true};
+   if(canvasMode()){showSwitch(info);return;}
+   if(switchFor&&switchFor!==id)hideSwitch();
+   await open(info);env.setTimeout?.(closeCanvasPreview,600);
+  }
+
   doc.addEventListener('click',delegated,true);
-   return {active:()=>active,destroy(){if(dead)return;dead=true;for(const task of pending){task.abort.abort();task.reject(Error('PDF loading was cancelled.'));}doc.removeEventListener('click',delegated,true);restore(active,false);cleanNotice();}};
+  // Only a Files route can name a PDF in its own address; every other page keeps just the click listener.
+  let hrefTimer=null;
+  if(/^\/(?:courses\/\d+\/)?files(?:\/|$)/.test(env.location.pathname||'')){
+   if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',()=>void openFromAddress(),{once:true});else void openFromAddress();
+   let lastHref=env.location.href;
+   // the Files page changes ?preview= without a page load
+   hrefTimer=env.setInterval?.(()=>{if(env.location.href!==lastHref){lastHref=env.location.href;void openFromAddress();}},700);
+  }
+   return {active:()=>active,destroy(){if(dead)return;dead=true;env.clearInterval?.(hrefTimer);hideSwitch();for(const task of pending){task.abort.abort();task.reject(Error('PDF loading was cancelled.'));}doc.removeEventListener('click',delegated,true);restore(active,false);cleanNotice();}};
  }
- const api=Object.freeze({create,matchPdfClick,readVerifiedPdf,MAX_BYTES});
+ const api=Object.freeze({create,matchPdfClick,readVerifiedPdf,localId,MAX_BYTES});
  root.ReservePdfHost=api;
  if(typeof module==='object'&&module.exports)module.exports=api;
   if(root.document&&pdfPage(root.location)&&root.ReserveSite?.supported?.(root.location?.href)&&!root.ReservePdfHostController)

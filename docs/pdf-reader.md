@@ -12,6 +12,24 @@ Each file's serialized annotations are capped at 1 MiB. If saved annotations can
 
 Ask AI hands off only the chosen text or page text, with the document name and page reference, to the existing local AI pane after verifying the Canvas account. Opening that pane does not send text to a provider. The student reviews the context and presses Send before it is placed on the chosen AI website. Annotations are never included. The handoff accepts up to 100,000 characters; the AI pane's separate PDF attachments retain their smaller limits. Image-only pages have no searchable/selectable text without OCR. Password-protected PDFs use the original Canvas viewer.
 
+## Mark-up tools and where PDFs open
+
+A floating dock at the foot of the reader holds the tools: **highlight**, **underline** and **strike through** for selected text; a **pen** with three widths and a see-through **highlighter pen**; **text boxes** typed straight onto the page; **sticky notes**; a **box, oval, arrow or line**; and an **eraser**. Each tool has a one-letter shortcut (H, U, K, P, M, T, N, R, E). **Undo** and **redo** cover every change (Command Z, Shift Command Z). Colours and widths are remembered for each tool.
+
+The **Marks** tab beside Pages and Outline lists every mark by page. A mark opens its page; **Copy as notes** and **Download .md** turn the list into study notes. **Save a copy with my marks** writes strike-through, text boxes, shapes and the highlighter pen into the PDF too, so other readers show them.
+
+The page fits the reader's width (up to 300%) when it opens and when the reader is resized, and **two pages side by side** is one click. Pinch and Command +/−/0 zoom (20% to 500%). The reader reopens each file at the page last read.
+
+PDFs also open from:
+- a Files-page row (`/courses/C/files?preview=ID`, folders included) and the PDF's own file address, which opens the reader on arrival. Only Files routes watch their address; other pages keep just the click listener.
+- module items Canvas names "PDF File …" (the label is dropped from the title).
+- a Canvas file link whose name doesn't say what it is: one read-only `GET /api/v1/files/ID` decides, and anything that isn't a PDF continues as the link.
+- an `https` link to a `.pdf` on another website, opened at its `#page=N`. The reader asks once for that site, through the existing optional host access. **Open it normally** leaves the link alone.
+
+**Open in Canvas's own viewer** in the reader's heading hands the same file to Canvas for the rest of the tab's session. A small **Open in Harness reader** button then switches back.
+
+When Canvas sends a download on to its file storage (`*.canvas-user-content.com`, `*.inscloudgate.net`) and CORS blocks the page from reading it, the reader page fetches the file instead. It first asks once for those two storage sites, which the manifest's existing optional `https://*/*` covers. No permission is added at install. If access isn't granted, the original Canvas viewer opens as before.
+
 ## Owner's browser acceptance
 
 No browser was launched for this documentation and preview pass. The source and fixture checks do not establish installed behavior. On an installed extension, check these with a signed-in Canvas session:

@@ -160,9 +160,12 @@ test('trusted token handshake transfers the verified bytes, clamps resize and re
  assert.equal(f.wrapper.getAttribute('style'),'width: 100%; color: navy');assert.equal(origin.focused,1);
  f.host.destroy();assert.equal(f.listeners.size,0);
 });
-test('a CORS redirect failure replays the original Canvas interaction and clears host state',async()=>{
+test('a CORS redirect hands the read to the reader page; if the reader cannot read it either, Canvas gets the click back',async()=>{
  const f=fixture({failFetch:new TypeError('CORS')}),link=anchor(),e=click(link);f.emit('click',e);await tick();await tick();
- assert.equal(e.prevented,true);assert.equal(f.host.active(),null);assert.equal(link.clicks,1);
+ assert.equal(e.prevented,true);assert.ok(f.host.active());f.ready();await tick();
+ const init=f.calls.messages.find(m=>m.msg.type==='reserve-pdf-init');assert.equal(init.msg.bytes,null);assert.equal(init.msg.fetchInReader,true);assert.deepEqual(init.transfer,[]);
+ f.message('reserve-pdf-error',{message:'Access to Canvas file storage was not granted.'});await tick();
+ assert.equal(f.host.active(),null);assert.equal(link.clicks,1);
  assert.equal(f.body.children.some(node=>node.id==='reserve-pdf-host'),false);
  assert.equal(f.wrapper.getAttribute('style'),'width: 100%; color: navy');
  f.host.destroy();
@@ -170,7 +173,7 @@ test('a CORS redirect failure replays the original Canvas interaction and clears
 const readingRoutes=['/','/dashboard','/courses/7','/courses/7/files','/courses/7/files/folder/Readings','/courses/7/files/42/preview','/files/42/preview','/courses/7/modules','/courses/7/pages/reading','/courses/7/announcements/9','/courses/7/discussion_topics/9','/courses/7/assignments/syllabus'];
 test('each new route opens the existing reader only after a PDF click and replays the same click on failure',async()=>{
  for(const route of readingRoutes)for(const fail of [false,true]){
-  const f=fixture({href:canvas+route,...(fail?{failFetch:new TypeError('CORS')}:{})});await tick();assert.ok(f.host,route);assert.equal(f.calls.fetches,0);assert.equal(f.body.children.length,0);
+  const f=fixture({href:canvas+route,...(fail?{failFetch:Error('offline')}:{})});await tick();assert.ok(f.host,route);assert.equal(f.calls.fetches,0);assert.equal(f.body.children.length,0);
   const link=anchor(),e=click(link);f.emit('click',e);await tick();await tick();assert.equal(e.prevented,true,route);assert.equal(e.stopped,true);assert.equal(f.calls.fetches,1);
   if(fail){assert.equal(link.clicks,1);assert.equal(f.host.active(),null);}else{assert.ok(f.host.active());f.ready();assert.equal(f.calls.messages[0].msg.type,'reserve-pdf-init');assert.equal(f.calls.messages[0].msg.fileId,'42');assert.equal(new TextDecoder().decode(f.calls.messages[0].transfer[0]),'%PDF-1.7');}
   f.host.destroy();
@@ -178,7 +181,7 @@ test('each new route opens the existing reader only after a PDF click and replay
 });
 test('dashboard shadow-root rows and Linked materials use the same reader and preserve replay targets',async()=>{
  for(const materials of [false,true])for(const fail of [false,true]){
-  const f=fixture({href:canvas+'/dashboard',...(fail?{failFetch:new TypeError('CORS')}:{})});await tick();const link=anchor();
+  const f=fixture({href:canvas+'/dashboard',...(fail?{failFetch:Error('offline')}:{})});await tick();const link=anchor();
   if(materials){const attrs={'data-pdf-file-id':'42','data-pdf-course-id':'7','data-pdf-name':'Reading.pdf','data-pdf-mime':'application/pdf'};link.tagName='BUTTON';delete link.href;link.className='';link.getAttribute=key=>attrs[key]??null;}
   const outside={closest:()=>null},e=click(outside,{composedPath:()=>[{closest:()=>link},link,{},outside]});f.emit('click',e);await tick();await tick();assert.equal(e.prevented,true);assert.equal(e.stopped,true);
   if(fail){assert.equal(link.clicks,1);assert.equal(f.host.active(),null);}else{f.ready();assert.equal(f.calls.messages[0].msg.fileId,'42');}
@@ -210,15 +213,15 @@ test('route changes between clicks are supported without reload and disabled PDF
  const off=fixture();await tick();off.root.ReserveFeatures={enabled:()=>false};const untouched=click(anchor());off.emit('click',untouched);assert.equal(untouched.prevented,false);assert.equal(off.calls.fetches,0);off.host.destroy();
 });
 test('a fallback replay bubbles to Canvas without recursively reopening the dashboard reader',async()=>{
- const f=fixture({href:canvas+'/dashboard',failFetch:new TypeError('CORS')});await tick();const link=anchor();let nativeClicks=0;
+ const f=fixture({href:canvas+'/dashboard',failFetch:Error('offline')});await tick();const link=anchor();let nativeClicks=0;
  link.click=()=>{link.clicks++;const replay=click({closest:()=>null},{composedPath:()=>[link,{}]});f.emit('click',replay);if(!replay.prevented)nativeClicks++;};
  f.emit('click',click({closest:()=>null},{composedPath:()=>[link,{}]}));await tick();await tick();assert.equal(nativeClicks,1);assert.equal(link.clicks,1);assert.equal(f.calls.fetches,1);assert.equal(f.host.active(),null);f.host.destroy();
 });
 test('a detached file link falls back to its original Canvas preview destination',async()=>{
- const download=deferred(),f=fixture({download:()=>download.promise}),destinations=[];await tick();f.root.location.assign=url=>destinations.push(url);const link=anchor({href:canvas+'/courses/7/files/42?schoolp=1#preview'});f.emit('click',click(link));link.isConnected=false;download.reject(new TypeError('CORS'));await tick();await tick();assert.deepEqual(destinations,[link.href]);assert.equal(link.clicks,0);f.host.destroy();
+ const download=deferred(),f=fixture({download:()=>download.promise}),destinations=[];await tick();f.root.location.assign=url=>destinations.push(url);const link=anchor({href:canvas+'/courses/7/files/42?schoolp=1#preview'});f.emit('click',click(link));link.isConnected=false;download.reject(Error('offline'));await tick();await tick();assert.deepEqual(destinations,[link.href]);assert.equal(link.clicks,0);f.host.destroy();
 });
 test('detached relative file links preserve the destination resolved by Canvas and its document base',async()=>{
- const download=deferred(),f=fixture({href:canvas+'/courses/7/files/41',download:()=>download.promise}),destinations=[];await tick();f.root.location.assign=url=>destinations.push(url);const link=anchor({href:canvas+'/courses/7/files/42?schoolp=1#preview'}),attribute=link.getAttribute;link.getAttribute=key=>key==='href'?'42?schoolp=1#preview':attribute(key);f.emit('click',click(link));assert.equal(f.host.active()?.info.fileId,'42');link.isConnected=false;download.reject(new TypeError('CORS'));await tick();await tick();assert.deepEqual(destinations,[link.href]);f.host.destroy();
+ const download=deferred(),f=fixture({href:canvas+'/courses/7/files/41',download:()=>download.promise}),destinations=[];await tick();f.root.location.assign=url=>destinations.push(url);const link=anchor({href:canvas+'/courses/7/files/42?schoolp=1#preview'}),attribute=link.getAttribute;link.getAttribute=key=>key==='href'?'42?schoolp=1#preview':attribute(key);f.emit('click',click(link));assert.equal(f.host.active()?.info.fileId,'42');link.isConnected=false;download.reject(Error('offline'));await tick();await tick();assert.deepEqual(destinations,[link.href]);f.host.destroy();
 });
 test('an obsolete PDF failure cannot replay over a newer pending module lookup',async()=>{
  for(const failedLookup of [false,true]){

@@ -54,24 +54,31 @@
   const a=viewportToPdf(viewport,[x1,y1]),b=viewportToPdf(viewport,[x2,y2]);
   return [Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[0],b[0]),Math.max(a[1],b[1])];
  }
+ const TYPES=['highlight','underline','strike','note','pen','text','shape'],SHAPES=['rect','ellipse','arrow','line'];
  function normalize(value,retainId=false){
   if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid PDF annotation.');
   const {type,page}=value;
-  if(!['highlight','underline','note','pen'].includes(type))throw Error('Invalid annotation type.');
+  if(!TYPES.includes(type))throw Error('Invalid annotation type.');
   if(!Number.isSafeInteger(page)||page<0)throw Error('Invalid annotation page.');
   if(value.text!=null&&(typeof value.text!=='string'||value.text.length>MAX_TEXT))throw Error('Annotation text exceeds the 10,000-character limit.');
   const color=value.color??'#f6de7a';
   if(typeof color!=='string'||color.length>32||!/^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$|^[a-z]{3,16}$/i.test(color))throw Error('Invalid annotation color.');
   const rects=value.rects??[],points=value.points??[],point=value.point??null;
   if(!Array.isArray(rects)||rects.length>10000||!Array.isArray(points)||points.length>20000)throw Error('Too many PDF coordinates.');
-  if(type==='note'&&point==null)throw Error('A note needs a PDF point.');
-  if((type==='highlight'||type==='underline')&&!rects.length)throw Error('A text mark needs a PDF rectangle.');
+  if((type==='note'||type==='text')&&point==null)throw Error('A note needs a PDF point.');
+  if((type==='highlight'||type==='underline'||type==='strike')&&!rects.length)throw Error('A text mark needs a PDF rectangle.');
   if(type==='pen'&&points.length<2)throw Error('A pen stroke needs at least two PDF points.');
+  if(type==='shape'&&(points.length!==2||!SHAPES.includes(value.shape)))throw Error('A shape needs a kind and two PDF points.');
   const result={
    id:retainId?value.id:(root.crypto?.randomUUID?.()||'pdf-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)),
    type,page,color,rects:rects.map(rect=>coordinates(rect,4,'Rectangle')),
    text:value.text??'',point:point==null?null:coordinates(point,2,'Point'),points:points.map(p=>coordinates(p,2,'Point'))
   };
+  // optional drawing details: stroke width (PDF units), opacity (a marker pen), font size (a text box), shape kind
+  if(value.width!=null){if(!finite(value.width)||value.width<.2||value.width>60)throw Error('Invalid stroke width.');result.width=value.width;}
+  if(value.opacity!=null){if(!finite(value.opacity)||value.opacity<.05||value.opacity>1)throw Error('Invalid opacity.');result.opacity=value.opacity;}
+  if(value.size!=null){if(!finite(value.size)||value.size<4||value.size>96)throw Error('Invalid font size.');result.size=value.size;}
+  if(type==='shape')result.shape=value.shape;
   if(typeof result.id!=='string'||result.id.length<1||result.id.length>100)throw Error('Invalid annotation ID.');
   return result;
  }
@@ -82,10 +89,10 @@
  }
  function createAnnotations(saved){
   if(saved!=null&&(!saved||saved.version!==1||!Array.isArray(saved.annotations)))throw Error('Unsupported PDF annotation version.');
-  const annotations=(saved?.annotations||[]).map(record=>normalize(record,true)),undoStack=[];
+  const annotations=(saved?.annotations||[]).map(record=>normalize(record,true)),undoStack=[],redoStack=[];
   if(new Set(annotations.map(item=>item.id)).size!==annotations.length)throw Error('Duplicate PDF annotation IDs.');
   checkSize(annotations);
-  const remember=action=>{undoStack.push(action);if(undoStack.length>UNDO_LIMIT)undoStack.shift();};
+  const remember=(action,keepRedo=false)=>{undoStack.push(action);if(undoStack.length>UNDO_LIMIT)undoStack.shift();if(!keepRedo)redoStack.length=0;};
   const find=id=>annotations.findIndex(record=>record.id===id);
   function add(value){
    const record=normalize(value);
@@ -116,15 +123,23 @@
   function undo(){
    const action=undoStack.at(-1);if(!action)return false;const previous=annotations.slice();
    try{
+   if(action.kind==='snapshot')annotations.splice(0,annotations.length,...clone(action.annotations));else
    if(action.kind==='add'){const i=find(action.id);if(i!==-1)annotations.splice(i,1);}
    else if(action.kind==='erase'){if(find(action.record.id)<0)annotations.splice(action.index,0,action.record);}
    else if(action.kind==='update'){const i=find(action.record.id);if(i>=0)annotations[i]=normalize({...annotations[i],...Object.fromEntries(action.keys.map(k=>[k,action.record[k]]))},true);}
    else if(action.kind==='eraseMany')for(const {record,index}of [...action.taken].reverse())if(find(record.id)<0)annotations.splice(index,0,record);
    checkSize(annotations);
    }catch(error){annotations.splice(0,annotations.length,...previous);throw error;}
-   undoStack.pop();return true;
+   undoStack.pop();redoStack.push(clone(previous));if(redoStack.length>UNDO_LIMIT)redoStack.shift();return true;
   }
-  return {add,erase,eraseMany,update,undo,replace:saved=>{const next=createAnnotations(saved).annotations;annotations.splice(0,annotations.length,...next);},serialise:()=>clone(checkSize(annotations)),get annotations(){return clone(annotations);}};
+  // Redo puts back what the last undo took away; the redo itself can be undone again.
+  function redo(){
+   const target=redoStack.pop();if(!target)return false;
+   const previous=clone(annotations);annotations.splice(0,annotations.length,...target);
+   try{checkSize(annotations);}catch(error){annotations.splice(0,annotations.length,...previous);redoStack.push(target);throw error;}
+   remember({kind:'snapshot',annotations:previous},true);return true;
+  }
+  return {add,erase,eraseMany,update,undo,redo,get canUndo(){return undoStack.length>0;},get canRedo(){return redoStack.length>0;},replace:saved=>{const next=createAnnotations(saved).annotations;annotations.splice(0,annotations.length,...next);},serialise:()=>clone(checkSize(annotations)),get annotations(){return clone(annotations);}};
  }
  const api=Object.freeze({clampWidth,renderWindow,storageKey,legacyStorageKey,mergeAnnotations,createAnnotations,viewportToPdf,pdfToViewport,rectToPdf,theme});
  root.ReservePdfModel=api;

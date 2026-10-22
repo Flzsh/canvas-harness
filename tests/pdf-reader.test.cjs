@@ -32,13 +32,16 @@ test('search finds literal case-insensitive spans and smoothed ink has finite SV
  assert.equal(smoothPath([]),'');assert.match(smoothPath([[1,2],[3,4],[5,6]]),/^M 1 2 Q 3 4 4 5 L 5 6$/);
 });
 
+// The reader's controls sit in the heading, the page toolbar and the mark-up dock; find one by its accessible name.
+const RENAMED={'Add a note':'Sticky note (N)','Draw with pen':'Pen (P)','Erase an annotation':'Eraser (E)','Show page navigation':'Pages, outline and marks','Zoom in (+)':'Zoom in (Command +; pinch also zooms)','Undo last annotation':'Undo (Command Z)'};
+const control=(h,label)=>['toolbar','heading-actions','side-slot','tool-buttons','history-buttons'].flatMap(id=>h.get(id).children).find(n=>n.attrs['aria-label']===(RENAMED[label]||label));
 // Deliberately small DOM/PDF.js doubles: no browser, network, real worker or PDF.
 function lockFixture(){const tails=new Map();return {request(key,fn){const next=(tails.get(key)||Promise.resolve()).catch(()=>{}).then(fn);tails.set(key,next);return next;}};}
 function fixture(shared={}){
  const listeners=new Map(),ids=new Map(),observers=[],resizeObservers=[],frames=new Map(),timers=new Map(),timerDelays=new Map(),sent=[],storage=shared.storage||{},renders=[],workers=[],cleanup=[];let seq=0,doc;const subscribers=shared.subscribers||new Set(),locks=shared.locks||lockFixture();
  class Element{
   constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[];this.dataset={};this.attrs={};this.className='';this.hidden=false;this.style={setProperty(k,v){this[k]=v;}};this.handlers=new Map();this.value='';this.width=0;this.height=0;this.scrollTop=0;this.disabled=false;this._text='';}
-  get classList(){return {toggle:(name,on)=>{const set=new Set(this.className.split(' ').filter(Boolean));if(on??!set.has(name))set.add(name);else set.delete(name);this.className=[...set].join(' ');},contains:name=>this.className.split(' ').includes(name)};}
+  get classList(){return {toggle:(name,on)=>{const set=new Set(this.className.split(' ').filter(Boolean));if(on??!set.has(name))set.add(name);else set.delete(name);this.className=[...set].join(' ');},contains:name=>this.className.split(' ').includes(name),add:(...names)=>{for(const name of names)this.classList.toggle(name,true);},remove:(...names)=>{for(const name of names)this.classList.toggle(name,false);}};}
   get textContent(){return this._text+this.children.map(c=>c.textContent).join('');}set textContent(value){this._text=String(value);this.children=[];}
   append(...nodes){for(const node of nodes){node.remove();this.children.push(node);node.parentNode=this;}}prepend(node){node.remove();this.children.unshift(node);node.parentNode=this;}
   remove(){if(this.parentNode){this.parentNode.children=this.parentNode.children.filter(n=>n!==this);this.parentNode=null;}}
@@ -89,7 +92,7 @@ test('reader rejects spoofed parent messages, suspends while hidden and sends th
  h.observers[0].callback([{target:h.reader.state.slots[10].node,isIntersecting:true}]);await h.settle();assert.equal(h.renders.length,before);assert.equal(h.reader.queue.paused,true);
  h.doc.hidden=false;h.listeners.get('visibilitychange')();await h.settle();
  assert.equal(h.sent.filter(s=>s.message.type==='reserve-pdf-ai').length,0);
- const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Ask AI about pages of this PDF');await ai.fire('click');await h.settle();
+ const ai=control(h,'Ask AI about pages of this PDF');await ai.fire('click');await h.settle();
  assert.equal(h.sent.filter(s=>s.message.type==='reserve-pdf-ai').length,0,'the button first asks which pages');
  const all=node=>[node,...(node.children||[]).flatMap(all)],menu=h.doc.body.children.find(n=>n.attrs?.id==='ai-range');assert.ok(menu&&!menu.hidden,'the range menu opens');
  await menu.fire('submit',{preventDefault(){}});await h.settle();
@@ -103,7 +106,7 @@ test('reader rejects spoofed parent messages, suspends while hidden and sends th
 
 test('the AI page menu contains only page choices and keeps keyboard navigation local',async t=>{
  const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
- const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Ask AI about pages of this PDF');await ai.fire('click');
+ const ai=control(h,'Ask AI about pages of this PDF');await ai.fire('click');
  const menu=h.doc.body.querySelector('#ai-range'),from=menu.querySelector('[aria-label="From page"]');
  assert.equal(menu.classList.contains('paper-popover'),true);assert.equal(menu.querySelector('[value="page"]').checked,true);
  assert.equal(menu.querySelector('.ai-range-go').textContent,'Ask AI');assert.deepEqual(menu.querySelectorAll('select'),[]);
@@ -117,7 +120,7 @@ test('the AI page menu contains only page choices and keeps keyboard navigation 
 
 test('Ask AI hands off every word of the chosen range using the plain pages message',async t=>{
  const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
- const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Ask AI about pages of this PDF');await ai.fire('click');
+ const ai=control(h,'Ask AI about pages of this PDF');await ai.fire('click');
  const menu=h.doc.body.querySelector('#ai-range');menu.querySelector('[value="range"]').checked=true;
  menu.querySelector('[aria-label="From page"]').value='2';menu.querySelector('[aria-label="To page"]').value='4';
  await menu.fire('submit');for(let i=0;i<3;i++)await h.settle();
@@ -129,7 +132,7 @@ test('Ask AI hands off every word of the chosen range using the plain pages mess
 
 test('Ask AI keeps the existing range size limit and empty-page handling',async t=>{
  const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
- const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Ask AI about pages of this PDF');await ai.fire('click');
+ const ai=control(h,'Ask AI about pages of this PDF');await ai.fire('click');
  const menu=h.doc.body.querySelector('#ai-range');
  menu.querySelector('[value="range"]').checked=true;menu.querySelector('[aria-label="From page"]').value='1';menu.querySelector('[aria-label="To page"]').value='2';
  h.pages[0].getTextContent=async()=>({items:[{str:'x'.repeat(60000)}]});h.pages[1].getTextContent=async()=>({items:[{str:'y'.repeat(60000)}]});
@@ -144,13 +147,13 @@ test('Ask AI keeps the existing range size limit and empty-page handling',async 
 
 test('a reader without its AI source transport keeps AI actions unavailable',async t=>{
  const h=fixture();t.after(()=>h.reader.destroy());await h.initialise({aiEnabled:false});await h.settle();
- const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Ask AI about pages of this PDF');assert.equal(ai.hidden,true);
+ const ai=control(h,'Ask AI about pages of this PDF');assert.equal(ai.hidden,true);
  await ai.fire('click');assert.equal(h.doc.body.querySelector('#ai-range'),null);assert.equal(h.sent.some(s=>s.message.type==='reserve-pdf-ai'),false);
 });
 
 test('a note is stored in PDF units; quota failure keeps the reader open and retry preserves the note',async()=>{
  const h=fixture();await h.initialise();await h.settle();
- const noteTool=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Add a note');await noteTool.fire('click');
+ const noteTool=control(h,'Add a note');await noteTool.fire('click');
  const slot=h.reader.state.slots[0];await h.get('pages').fire('pointerdown',{target:slot.node,button:0,clientX:30,clientY:slot.node.getBoundingClientRect().top+40});
  h.get('note-text').value='My private note';h.get('note-editor').returnValue='save';await h.get('note-editor').fire('close');
  const note=h.reader.state.annotations.annotations[0];assert.equal(note.type,'note');assert.equal(note.text,'My private note');assert.ok(Math.abs(note.point[0]-30/h.reader.state.zoom)<.01);
@@ -161,7 +164,7 @@ test('a note is stored in PDF units; quota failure keeps the reader open and ret
 
 test('thumbnails wait for idle time, share the render queue and are freed when the side view closes',async()=>{
  const h=fixture();await h.initialise();await h.settle();const before=h.renders.length;
- const side=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Show page navigation');await side.fire('click');
+ const side=control(h,'Show page navigation');await side.fire('click');
  const thumbnail=h.get('thumbnails').children[0];h.observers[1].callback([{target:thumbnail,isIntersecting:true}]);await h.settle();assert.equal(h.renders.length,before);
  const [id,run]=h.timers.entries().next().value;h.timers.delete(id);run();await h.settle();
  assert.ok(h.reader.state.slots[0].thumbnail);assert.ok(h.renders.at(-1).options.viewport.width<=100);
@@ -182,7 +185,7 @@ test('zoom during an active PDF.js render retries the visible page rather than l
  const h=fixture(),gate=deferred(),original=h.pages[0].render;let once=true,cancellations=0;
  h.pages[0].render=options=>{const task=original(options);if(!once)return task;once=false;return {promise:gate.promise,cancel(){cancellations++;const error=Error('zoom');error.name='RenderingCancelledException';gate.reject(error);}};};
  await h.initialise();for(let i=0;i<10;i++)await Promise.resolve();assert.equal(h.reader.state.slots[0].rendering,true);
- const zoomIn=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Zoom in (+)');await zoomIn.fire('click');await h.settle();
+ const zoomIn=control(h,'Zoom in (+)');await zoomIn.fire('click');await h.settle();
  assert.equal(cancellations,1);assert.equal(h.reader.state.slots[0].rendered,true);assert.ok(h.reader.state.slots[0].viewport.scale>1.2);h.reader.destroy();
 });
 
@@ -197,13 +200,13 @@ test('hiding the tab cancels a PDF.js text stream and resuming reconstructs the 
 test('failed annotation restore disables editing and never replaces the existing saved record',async()=>{
  const h=fixture(),model=require('../extension/pdf-model.js'),key=model.storageKey('https://school.instructure.com','7','42');
  const saved={version:99,annotations:[{text:'Preserve this original'}]};h.storage[key]=saved;await h.initialise();await h.settle();
- const note=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Add a note');assert.equal(note.disabled,true);await note.fire('click');
+ const note=control(h,'Add a note');assert.equal(note.disabled,true);await note.fire('click');
  await h.get('pages').fire('pointerdown',{target:h.reader.state.slots[0].node,button:0,clientX:30,clientY:40});assert.equal(h.get('note-editor').open,undefined);assert.match(h.get('status').textContent,/protect the existing record/);
  await h.reader.close();assert.equal(h.storage[key],saved);assert.equal(h.workers[0].terminated,true);
 });
 
 test('reopening a saved note clears the prior dialog result so Escape cannot save a draft',async()=>{
- const h=fixture();await h.initialise();await h.settle();const button=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Add a note');await button.fire('click');
+ const h=fixture();await h.initialise();await h.settle();const button=control(h,'Add a note');await button.fire('click');
  await h.get('pages').fire('pointerdown',{target:h.reader.state.slots[0].node,button:0,clientX:30,clientY:40});h.get('note-text').value='Saved';h.get('note-editor').returnValue='save';await h.get('note-editor').fire('close');
  await h.reader.state.slots[0].overlay.querySelector('.note-marker').fire('click');assert.equal(h.get('note-editor').returnValue,'');h.get('note-text').value='Draft to cancel';await h.get('note-editor').fire('close');assert.equal(h.reader.state.annotations.annotations[0].text,'Saved');await h.reader.close();
 });
@@ -219,7 +222,7 @@ test('zoom cancels intervening text extraction and user units reach text-layer s
  const originalViewport=h.pages[0].getViewport;h.pages[0].getViewport=options=>({...originalViewport(options),userUnit:2});
  h.pages[0].streamTextContent=()=>({getReader:()=>({read:()=>gate.promise,cancel(reason){assert.ok(reason instanceof Error);cancelled++;gate.resolve({done:true});return Promise.resolve();},releaseLock(){}})});
  await h.initialise();for(let i=0;i<12;i++)await Promise.resolve();delete h.pages[0].streamTextContent;
- await h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Zoom in (+)').fire('click');await h.settle();assert.equal(cancelled,1);assert.equal(h.reader.state.slots[0].rendered,true);assert.equal(h.reader.state.slots[0].node.style['--total-scale-factor'],h.reader.state.zoom*2);await h.reader.close();
+ await control(h,'Zoom in (+)').fire('click');await h.settle();assert.equal(cancelled,1);assert.equal(h.reader.state.slots[0].rendered,true);assert.equal(h.reader.state.slots[0].node.style['--total-scale-factor'],h.reader.state.zoom*2);await h.reader.close();
 });
 
 test('Escape closes the innermost layer first: selection actions, then search, then the reader',async()=>{
@@ -275,7 +278,7 @@ for(const cancel of ['Cancel','Escape'])test('closing the Ask AI range menu with
  const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
  const gate=deferred(),started=deferred();
  h.pages[0].getTextContent=()=>{started.resolve();return gate.promise;};
- const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Ask AI about pages of this PDF');
+ const ai=control(h,'Ask AI about pages of this PDF');
  await ai.fire('click');const menu=h.doc.body.children.find(n=>n.attrs.id==='ai-range');
  await menu.fire('submit');await started.promise;
  assert.equal(menu.querySelector('.ai-range-go').disabled,true,'the read is still pending');
@@ -291,7 +294,7 @@ for(const order of ['stale first','fresh first'])test('reopening and resubmittin
  const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
  const old=deferred(),fresh=deferred(),oldStarted=deferred(),freshStarted=deferred();let reads=0;
  h.pages[0].getTextContent=()=>{if(++reads===1){oldStarted.resolve();return old.promise;}freshStarted.resolve();return fresh.promise;};
- const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Ask AI about pages of this PDF');
+ const ai=control(h,'Ask AI about pages of this PDF');
  await ai.fire('click');const menu=h.doc.body.children.find(n=>n.attrs.id==='ai-range');
  await menu.fire('submit');await oldStarted.promise;
  await ai.fire('click');assert.equal(menu.hidden,false);assert.equal(menu.querySelector('.ai-range-go').disabled,false);
@@ -317,20 +320,20 @@ test('an eraser click with no coalesced events removes just the mark under it an
  ]};
  await h.initialise();await h.settle();const slot=h.reader.state.slots[0],zoom=h.reader.state.zoom;let batches=0;
  h.doc.elementsFromPoint=()=>[slot.node];
- await h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Erase an annotation').fire('click');
+ await control(h,'Erase an annotation').fire('click');
  const event={target:slot.node,button:0,pointerId:7,clientX:40*zoom,clientY:slot.node.getBoundingClientRect().top+40*zoom,getCoalescedEvents(){batches++;return [];}};
  await h.get('pages').fire('pointerdown',event);
  assert.equal(slot.overlay.querySelector('[data-annotation="under-click"]').style.display,'none');
  await h.get('pages').fire('pointerup',event);
  assert.equal(batches,1);assert.deepEqual(h.reader.state.annotations.annotations.map(a=>a.id),['untouched']);
  assert.equal(slot.node.hasPointerCapture(7),false);
- await h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Undo last annotation').fire('click');
+ await control(h,'Undo last annotation').fire('click');
  assert.deepEqual(h.reader.state.annotations.annotations.map(a=>a.id),['under-click','untouched']);
 });
 
 test('pen moves with no coalesced events still record the pointer points in PDF coordinates',async t=>{
  const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
- await h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Draw with pen').fire('click');
+ await control(h,'Draw with pen').fire('click');
  const slot=h.reader.state.slots[0],zoom=h.reader.state.zoom,top=slot.node.getBoundingClientRect().top;let batches=0;
  const event=(x,y)=>({target:slot.node,button:0,pointerId:9,clientX:x*zoom,clientY:top+y*zoom,getCoalescedEvents(){batches++;return [];}});
  await h.get('pages').fire('pointerdown',event(20,20));
@@ -367,7 +370,7 @@ test('highlight, underline and pen handles open their menus with Enter and regai
 });
 
 const noteRecord=(id,text=id)=>({id,type:'note',page:0,point:[30,760],text});
-async function addFixtureNote(h,text){await h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Add a note').fire('click');const slot=h.reader.state.slots[0];await h.get('pages').fire('pointerdown',{target:slot.node,button:0,clientX:30,clientY:slot.node.getBoundingClientRect().top+40});h.get('note-text').value=text;h.get('note-editor').returnValue='save';await h.get('note-editor').fire('close');}
+async function addFixtureNote(h,text){await control(h,'Add a note').fire('click');const slot=h.reader.state.slots[0];await h.get('pages').fire('pointerdown',{target:slot.node,button:0,clientX:30,clientY:slot.node.getBoundingClientRect().top+40});h.get('note-text').value=text;h.get('note-editor').returnValue='save';await h.get('note-editor').fire('close');}
 const parentMessage=(h,data)=>h.listeners.get('message')({source:h.env.parent,origin:'https://school.instructure.com',data:{token:'test',...data}});
 async function saveFixture(h){for(const [id,run]of [...h.timers])if(h.timerDelays.get(id)===450){h.timers.delete(id);run();}await h.settle();}
 
@@ -391,7 +394,7 @@ test('returning to the tab hides private marks until reverified and switches acc
  await h.initialise();await h.settle();assert.ok(h.reader.state.slots[0].overlay.querySelector('.note-marker'));
  h.doc.hidden=true;h.listeners.get('visibilitychange')();assert.equal(h.reader.state.slots[0].overlay,null);
  const gate=deferred();h.env.accountResponse=()=>gate.promise;h.doc.hidden=false;h.listeners.get('visibilitychange')();await h.settle();
- assert.equal(h.reader.state.slots[0].overlay,null);assert.equal(h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Add a note').disabled,true);
+ assert.equal(h.reader.state.slots[0].overlay,null);assert.equal(control(h,'Add a note').disabled,true);
  gate.resolve('8');await h.settle();assert.deepEqual(h.reader.state.annotations.annotations,[]);assert.equal(h.reader.state.slots[0].overlay.querySelector('.note-marker'),null);
  h.doc.hidden=true;h.listeners.get('visibilitychange')();h.env.accountResponse=()=>null;h.doc.hidden=false;h.listeners.get('visibilitychange')();await h.settle();assert.equal(h.reader.state.slots[0].overlay,null);assert.match(h.get('status').textContent,/sign-in/);
 });
@@ -408,7 +411,7 @@ test('two tabs serialize mutations and reconcile adds, edits, erasure and undo w
  await Promise.all([saveFixture(a),saveFixture(b)]);await Promise.all([a.settle(),b.settle()]);
  assert.deepEqual(shared.storage[key].annotations.map(n=>n.text).sort(),['from A','from B']);for(const h of [a,b])assert.equal(h.reader.state.annotations.annotations.length,2);
  const first=a.reader.state.annotations.annotations.find(n=>n.text==='from A');await a.reader.state.slots[0].overlay.querySelector('[data-annotation="'+first.id+'"]').fire('click');a.get('note-text').value='A edited';a.get('note-editor').returnValue='save';await a.get('note-editor').fire('close');await saveFixture(a);await b.settle();assert.ok(b.reader.state.annotations.annotations.some(n=>n.text==='A edited'));
- await b.get('toolbar').children.find(n=>n.attrs['aria-label']==='Undo last annotation').fire('click');await saveFixture(b);await a.settle();assert.deepEqual(a.reader.state.annotations.annotations.map(n=>n.text),['A edited']);assert.deepEqual(shared.storage[key].annotations.map(n=>n.text),['A edited']);
+ await control(b,'Undo last annotation').fire('click');await saveFixture(b);await a.settle();assert.deepEqual(a.reader.state.annotations.annotations.map(n=>n.text),['A edited']);assert.deepEqual(shared.storage[key].annotations.map(n=>n.text),['A edited']);
 });
 
 test('a host replacement request leaves the reader open after a failed save and reports its guarded result',async t=>{
@@ -419,7 +422,7 @@ test('a host replacement request leaves the reader open after a failed save and 
 
 test('PDF pages and thumbnails render embedded static annotations while keeping executable content disabled',async t=>{
  const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();assert.ok(h.renders.length);assert.ok(h.renders.every(r=>r.options.annotationMode===1));
- await h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Show page navigation').fire('click');h.observers[1].callback([{target:h.get('thumbnails').children[0],isIntersecting:true}]);for(const [id,run]of [...h.timers]){h.timers.delete(id);run();}await h.settle();
+ await control(h,'Show page navigation').fire('click');h.observers[1].callback([{target:h.get('thumbnails').children[0],isIntersecting:true}]);for(const [id,run]of [...h.timers]){h.timers.delete(id);run();}await h.settle();
  assert.ok(h.renders.some(r=>r.options.viewport.width<=100));assert.ok(h.renders.every(r=>r.options.annotationMode===1));assert.equal(h.env.documentOptions.isEvalSupported,false);assert.equal(h.env.documentOptions.enableXfa,false);
  const slot=h.reader.state.slots[0];assert.ok(slot.node.children.indexOf(slot.overlay)>slot.node.children.indexOf(slot.canvas));assert.equal(slot.node.querySelector('a'),null);assert.equal(slot.node.querySelector('input'),null);
 });
@@ -427,7 +430,7 @@ test('PDF pages and thumbnails render embedded static annotations while keeping 
 for(const streaming of [true,false])test('hiding during Ask AI restores controls and rejects stale extraction (streaming='+streaming+')',async t=>{
  const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();const gate=deferred(),started=deferred();
  if(streaming)h.pages[0].streamTextContent=()=>({getReader:()=>({read(){started.resolve();return gate.promise;},cancel(){gate.resolve({done:true});return Promise.resolve();},releaseLock(){}})});else h.pages[0].getTextContent=()=>{started.resolve();return gate.promise;};
- const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Ask AI about pages of this PDF');await ai.fire('click');const menu=h.doc.body.querySelector('#ai-range');await menu.fire('submit');await started.promise;assert.equal(menu.querySelector('.ai-range-go').disabled,true);
+ const ai=control(h,'Ask AI about pages of this PDF');await ai.fire('click');const menu=h.doc.body.querySelector('#ai-range');await menu.fire('submit');await started.promise;assert.equal(menu.querySelector('.ai-range-go').disabled,true);
  h.doc.hidden=true;h.listeners.get('visibilitychange')();assert.equal(menu.querySelector('.ai-range-go').disabled,false);assert.equal(menu.querySelector('.ai-range-note').textContent,'');
  h.doc.hidden=false;h.listeners.get('visibilitychange')();if(!streaming)gate.resolve({items:[{str:'stale hidden text'}]});await h.settle();assert.equal(menu.querySelector('.ai-range-go').disabled,false);assert.equal(menu.querySelector('.ai-range-note').textContent,'');assert.deepEqual(h.sent.filter(s=>s.message.type==='reserve-pdf-ai'),[]);
 });
@@ -442,7 +445,7 @@ test('search collapses whitespace and line breaks and maps cross-line matches ba
 test('Fit recalculates on page changes and when a newly loaded page has wider dimensions',async t=>{
  const h=fixture();t.after(()=>h.reader.destroy());h.pages[1].getViewport=({scale})=>({width:900*scale,height:600*scale,scale});h.pages[5].getViewport=({scale})=>({width:1200*scale,height:600*scale,scale});await h.initialise();await h.settle();assert.equal(h.reader.state.zoom,1.11);
  const input=h.get('toolbar').querySelector('input');input.value='2';await input.fire('change');await h.settle();assert.ok(Math.abs(h.reader.state.zoom-666/900)<1e-9);
- input.value='6';await input.fire('change');await h.settle();assert.ok(Math.abs(h.reader.state.zoom-666/1200)<1e-9);assert.ok(Math.abs(parseFloat(h.reader.state.slots[5].canvas.style.width)-666)<1e-9);assert.equal(h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Fit page width').attrs['aria-pressed'],'true');
+ input.value='6';await input.fire('change');await h.settle();assert.ok(Math.abs(h.reader.state.zoom-666/1200)<1e-9);assert.ok(Math.abs(parseFloat(h.reader.state.slots[5].canvas.style.width)-666)<1e-9);assert.equal(control(h,'Fit page width').attrs['aria-pressed'],'true');
 });
 
 test('Escape restores a maximised reader to split view before a second Escape closes it',async t=>{
@@ -463,7 +466,7 @@ test('an account reply from a previous visible turn cannot restore another accou
 function crowdedAnnotations(){return {version:1,annotations:Array.from({length:103},(_,i)=>noteRecord('remote-'+i,'x'.repeat(10000)))};}
 test('a quota conflict with another tab keeps undo available and coalesces the pending add and undo before checking size',async t=>{
  const h=fixture(),M=require('../extension/pdf-model.js'),key=M.storageKey('https://school.instructure.com','7','42'),saved=M.createAnnotations(crowdedAnnotations()).serialise();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();await addFixtureNote(h,'y'.repeat(10000));
- await h.env.chrome.storage.local.set({[key]:saved});const undo=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Undo last annotation');assert.equal(undo.disabled,false);assert.equal(h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Erase an annotation').disabled,false);assert.equal(h.reader.state.annotations.annotations.length,1);assert.match(h.get('status').textContent,/1 MiB/);
+ await h.env.chrome.storage.local.set({[key]:saved});const undo=control(h,'Undo last annotation');assert.equal(undo.disabled,false);assert.equal(control(h,'Erase an annotation').disabled,false);assert.equal(h.reader.state.annotations.annotations.length,1);assert.match(h.get('status').textContent,/1 MiB/);
  assert.equal(await h.reader.close(),false);assert.equal(h.workers[0].terminated,undefined);assert.deepEqual(h.storage[key],saved);
  await undo.fire('click');assert.equal(h.reader.state.annotations.annotations.length,103);assert.equal(await h.reader.close(),true);assert.deepEqual(h.storage[key],saved);assert.equal(h.workers[0].terminated,true);
 });
@@ -471,7 +474,7 @@ test('a quota conflict with another tab keeps undo available and coalesces the p
 test('quota-rejected undo does not leave an untracked mark that bypasses guarded close',async t=>{
  const h=fixture(),M=require('../extension/pdf-model.js'),key=M.storageKey('https://school.instructure.com','7','42'),saved=M.createAnnotations(crowdedAnnotations()).serialise();t.after(()=>h.reader.destroy());h.storage[key]=saved;await h.initialise();await h.settle();
  const removed=saved.annotations[0];h.reader.state.annotations.erase(removed.id);const remote={version:1,annotations:[...saved.annotations.slice(1),{...removed,id:'replacement'}]};await h.env.chrome.storage.local.set({[key]:remote});
- const before=h.reader.state.annotations.serialise();await h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Undo last annotation').fire('click');assert.match(h.get('status').textContent,/1 MiB/);assert.deepEqual(h.reader.state.annotations.serialise(),before);assert.equal(await h.reader.close(),true);assert.deepEqual(M.createAnnotations(h.storage[key]).serialise(),before);
+ const before=h.reader.state.annotations.serialise();await control(h,'Undo last annotation').fire('click');assert.match(h.get('status').textContent,/1 MiB/);assert.deepEqual(h.reader.state.annotations.serialise(),before);assert.equal(await h.reader.close(),true);assert.deepEqual(M.createAnnotations(h.storage[key]).serialise(),before);
 });
 
 test('an update after the initialization read but before the lock resolves is immediately visible',async t=>{
@@ -484,7 +487,7 @@ for(const drag of [false,true])test('erase then remote edit then undo preserves 
  const shared={storage:{},locks:lockFixture(),subscribers:new Set()},a=fixture(shared),b=fixture(shared),M=require('../extension/pdf-model.js'),key=M.storageKey('https://school.instructure.com','7','42');
  t.after(()=>{a.reader.destroy();b.reader.destroy();});shared.storage[key]={version:1,annotations:[noteRecord('shared-note','original')]};
  await Promise.all([a.initialise(),b.initialise()]);await Promise.all([a.settle(),b.settle()]);
- await a.get('toolbar').children.find(n=>n.attrs['aria-label']==='Erase an annotation').fire('click');
+ await control(a,'Erase an annotation').fire('click');
  const slot=a.reader.state.slots[0];
  if(drag){
   const marker=slot.overlay.querySelector('[data-annotation="shared-note"]');a.doc.elementsFromPoint=()=>[marker,slot.node];const event={target:slot.node,button:0,pointerId:7,clientX:30*a.reader.state.zoom,clientY:slot.node.getBoundingClientRect().top+40*a.reader.state.zoom};
@@ -493,7 +496,7 @@ for(const drag of [false,true])test('erase then remote edit then undo preserves 
  assert.deepEqual(a.reader.state.annotations.annotations,[]);
  await b.reader.state.slots[0].overlay.querySelector('[data-annotation="shared-note"]').fire('click');b.get('note-text').value='newer from B';b.get('note-editor').returnValue='save';await b.get('note-editor').fire('close');await saveFixture(b);await a.settle();
  assert.equal(shared.storage[key].annotations[0].text,'newer from B');assert.deepEqual(a.reader.state.annotations.annotations,[],'the pending erase is still applied locally');
- const undo=a.get('toolbar').children.find(n=>n.attrs['aria-label']==='Undo last annotation');await undo.fire('click');await saveFixture(a);await b.settle();
+ const undo=control(a,'Undo last annotation');await undo.fire('click');await saveFixture(a);await b.settle();
  assert.equal(shared.storage[key].annotations[0].text,'newer from B');
  for(const h of [a,b])assert.equal(h.reader.state.annotations.annotations[0].text,'newer from B');
  assert.equal(a.reader.state.annotations.undo(),false,'the conflicting erase undo step is gone');

@@ -13,8 +13,11 @@
 </head>
 <body>
   <header class="paper-strip">
-    <div class="document-heading"><span id="file-name">PDF reader</span><span id="heading-actions"></span></div>
-    <div id="toolbar" role="toolbar" aria-label="PDF tools"></div>
+    <div class="top-row">
+      <div class="document-heading"><span id="side-slot"></span><span id="file-name">PDF reader</span></div>
+      <div id="toolbar" role="toolbar" aria-label="Pages and zoom"></div>
+      <span id="heading-actions"></span>
+    </div>
     <div id="find-bar" hidden role="search">
       <label for="find-input">Find in document</label><input id="find-input" type="search" autocomplete="off">
       <span id="find-count" aria-live="polite"></span><span id="find-actions"></span>
@@ -26,13 +29,23 @@
       <div class="side-tabs" role="tablist" aria-label="Navigation view">
         <button id="thumbnails-tab" role="tab" aria-selected="true" aria-controls="thumbnails">Pages</button>
         <button id="outline-tab" role="tab" aria-selected="false" aria-controls="outline" hidden>Outline</button>
+        <button id="marks-tab" role="tab" aria-selected="false" aria-controls="marks" tabindex="-1">Marks <span id="marks-count"></span></button>
       </div>
       <nav id="thumbnails" role="tabpanel" aria-labelledby="thumbnails-tab"></nav>
       <nav id="outline" role="tabpanel" aria-labelledby="outline-tab" hidden></nav>
+      <section id="marks" role="tabpanel" aria-labelledby="marks-tab" hidden>
+        <div class="marks-actions"><button id="marks-copy" type="button">Copy as notes</button><button id="marks-download" type="button">Download .md</button></div>
+        <ol id="marks-list"></ol>
+        <p id="marks-empty">No marks yet. Highlight text, type on the page or draw, and everything you mark is listed here by page.</p>
+      </section>
     </aside>
     <div id="page-scroll" tabindex="0" role="region" aria-label="PDF pages"><div id="pages"></div></div>
   </main>
-  <div id="pen-palette" class="paper-popover" hidden role="group" aria-label="Highlight colour"></div>
+  <div id="tool-dock" role="toolbar" aria-label="Mark-up tools">
+    <div id="tool-buttons" class="dock-group"></div>
+    <div id="pen-palette" class="dock-group" hidden role="group" aria-label="Tool options"></div>
+    <div id="history-buttons" class="dock-group"></div>
+  </div>
   <div id="selection-menu" class="paper-popover" hidden role="toolbar" aria-label="Selected text actions"></div>
   <dialog id="note-editor" aria-labelledby="note-title">
     <form method="dialog"><h2 id="note-title">A note in the margin</h2><label for="note-text">Your note, saved on this device</label>

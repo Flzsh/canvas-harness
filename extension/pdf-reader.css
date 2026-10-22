@@ -43,3 +43,128 @@ html[data-hidden="true"] *,html[data-hidden="true"] *:before,html[data-hidden="t
 .annotation-layer .mark-handle{position:absolute;width:14px;height:14px;padding:0;border:0;background:transparent;pointer-events:none;opacity:0}
 .annotation-layer .mark-handle:focus-visible{opacity:1;outline:2px solid var(--clay);outline-offset:2px;border-radius:50%}
 .ai-range input[type=radio]{accent-color:#A9522F}
+
+/* ==== Reader refresh (local addition, see harness-tools/pdf-base): a calm top bar, a floating tool dock,
+   white pages on a soft backdrop, round swatches, a Marks list, text boxes and shapes. ==== */
+:root{--paper:#e9e7e1;--strip:#fbfaf7;--ink:#23221f;--muted:#6f6b62;--line:#dcd7cc;--soft:#f1efe9;--clay:#b5552e;--accent-tint:color-mix(in srgb,var(--clay) 13%,transparent);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+:root[data-theme="dark"]{--paper:#1b1c1a;--strip:#262724;--ink:#ecebe6;--muted:#a9a69d;--line:#3a3b37;--soft:#30312d;--clay:#e08a5f}
+body{background:var(--paper)}
+.paper-strip{padding:0 10px;background:var(--strip);border-bottom:1px solid var(--line);box-shadow:0 1px 8px rgb(20 20 19 / .05)}
+.paper-strip:after{display:none}
+.top-row{display:flex;align-items:center;gap:10px;min-height:50px}
+.document-heading{flex:1 1 0;margin:0;gap:6px;min-width:0}
+#side-slot{display:flex;flex:none}
+#file-name{font:600 14.5px/1.3 Literata,Georgia,serif;letter-spacing:.01em}
+#toolbar{flex:none;gap:2px;padding:3px 6px;background:var(--soft);border:1px solid var(--line);border-radius:12px;overflow:visible}
+#heading-actions{flex:1 1 0;justify-content:flex-end;gap:1px;display:flex}
+button.pa-i,a.pa-i{width:34px;height:34px;border-radius:9px;padding:4px;transition:background-color .15s ease,transform .1s ease}
+.pa-i>svg{width:24px;height:24px}
+button.pa-i:hover,a.pa-i:hover{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+button.pa-i:active,a.pa-i:active{transform:scale(.94)}
+.pa-i.is-active{background:var(--accent-tint)}
+.pa-i.is-active:after{display:none}
+.is-redo svg{transform:scaleX(-1)}
+.toolbar-rule,.dock-rule{width:1px;height:22px;background:var(--line);margin:0 5px;flex:none}
+.page-control{font-size:12.5px;color:var(--muted);gap:3px}
+.page-control input{width:36px;border:1px solid transparent;border-radius:6px;background:var(--strip);color:var(--ink);font-weight:600;padding:3px 2px}
+.page-control input:focus{border-color:var(--clay);outline:none}
+#zoom-label{min-width:48px;border:0;background:none;border-radius:7px;padding:5px 4px;font-size:12px;font-variant-numeric:tabular-nums;color:var(--ink)}
+#zoom-label:hover{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+#find-bar{margin:0 0 8px;padding:8px 2px 0;border-top:1px solid var(--line)}
+#find-input{border-radius:8px;padding:6px 9px;background:var(--strip)}
+#status{background:color-mix(in srgb,var(--clay) 9%,var(--strip));border-bottom:1px solid var(--line);padding:7px 16px}
+#page-scroll{padding:22px 18px 112px;scrollbar-width:thin}
+#pages{gap:22px}
+.pdf-page{border-radius:3px;box-shadow:0 1px 2px rgb(20 20 19 / .12),0 6px 22px rgb(20 20 19 / .09)}
+:root[data-theme="dark"] .pdf-page{box-shadow:0 2px 14px rgb(0 0 0 / .5)}
+.pdf-page:before{font:12px -apple-system,system-ui,sans-serif;color:#a3a097}
+
+/* the tool dock: floating at the bottom, out of the way of the page */
+#tool-dock{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:4px;max-width:calc(100vw - 20px);padding:5px 6px;background:color-mix(in srgb,var(--strip) 94%,transparent);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 30px rgb(20 20 19 / .16),0 1px 3px rgb(20 20 19 / .1);overflow-x:auto;scrollbar-width:none}
+#tool-dock::-webkit-scrollbar{display:none}
+.dock-group{display:flex;align-items:center;gap:2px;flex:none}
+.dock-group+.dock-group{padding-left:6px;margin-left:2px;border-left:1px solid var(--line)}
+#tool-buttons .pa-i{width:38px;height:38px;border-radius:11px}
+#tool-buttons .pa-i>svg{width:26px;height:26px}
+#tool-buttons .pa-i.is-active{background:color-mix(in srgb,var(--pen,var(--clay)) 30%,var(--strip));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--pen,var(--clay)) 70%,var(--ink))}
+#tool-buttons .pa-i[aria-label^="Eraser"].is-active,#tool-buttons .pa-i[aria-label^="Sticky"].is-active{background:var(--accent-tint);box-shadow:inset 0 0 0 1.5px var(--clay)}
+.swatch{width:26px;height:26px;padding:0;border:0;border-radius:50%;background:none;display:grid;place-items:center;flex:none;cursor:pointer}
+.swatch:before{content:"";width:18px;height:18px;border-radius:50%;background:var(--swatch);box-shadow:inset 0 0 0 1px rgb(20 20 19 / .18);transition:transform .12s ease}
+.swatch:hover:before{transform:scale(1.12)}
+.swatch[aria-pressed="true"]:before{box-shadow:0 0 0 2px var(--strip),0 0 0 3.5px var(--swatch),inset 0 0 0 1px rgb(20 20 19 / .2)}
+.size-dot,.size-a,.shape-kind{width:30px;height:30px;border:0;border-radius:8px;background:none;display:grid;place-items:center;flex:none;color:var(--ink);padding:0}
+.size-dot:before{content:"";width:var(--dot);height:var(--dot);border-radius:50%;background:var(--ink)}
+.size-a{font-weight:650;line-height:1;font-family:Helvetica,Arial,sans-serif}
+.shape-kind svg{width:20px;height:20px}
+:is(.size-dot,.size-a,.shape-kind):hover{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+:is(.size-dot,.size-a,.shape-kind)[aria-pressed="true"]{background:var(--accent-tint);box-shadow:inset 0 0 0 1.5px var(--clay)}
+#history-buttons .pa-i{width:34px;height:34px}
+
+/* popovers: clean cards */
+.paper-popover{border:1px solid var(--line);border-radius:12px;padding:6px;gap:2px;box-shadow:0 10px 28px rgb(20 20 19 / .18)}
+.paper-popover::after{display:none}
+.paper-popover button.menu-word,#mark-menu .mark-remove{padding:5px 9px;border-radius:7px;font-size:12.5px;font-weight:550;min-height:28px}
+.paper-popover .swatch{min-width:0;min-height:0;padding:0}
+.paper-popover button:hover{background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.paper-popover [aria-pressed="true"]{outline:none}
+dialog{border-radius:14px;box-shadow:0 18px 50px rgb(20 20 19 / .3)}
+dialog textarea{border-radius:8px}
+.note-actions button{border-radius:8px}
+
+/* side view: Pages, Outline, Marks */
+#side-view{width:212px;border-right:1px solid var(--line)}
+.side-tabs{margin:10px 10px 4px;padding:3px;gap:2px;background:var(--soft);border:1px solid var(--line);border-radius:10px}
+.side-tabs button{flex:1;border:0;border-radius:7px;padding:5px 4px;font-size:12px;font-weight:550;color:var(--muted)}
+.side-tabs [aria-selected="true"]{background:var(--strip);color:var(--ink);box-shadow:0 1px 3px rgb(20 20 19 / .12)}
+#marks-count:not(:empty){display:inline-block;min-width:17px;padding:0 4px;margin-left:2px;border-radius:9px;background:var(--clay);color:#fff;font-size:10.5px;line-height:16px}
+#thumbnails>button{height:auto;padding:6px 6px 4px;border-radius:8px;background:none}
+#thumbnails>button:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+#thumbnails>button[aria-current="page"]{border-color:var(--clay);border-radius:8px;background:var(--accent-tint)}
+#thumbnails canvas{max-height:200px;border-radius:2px;box-shadow:0 1px 4px rgb(20 20 19 / .2)}
+#thumbnails>button:not(:has(canvas)){min-height:150px}
+#marks{overflow:auto;flex:1;min-height:0;padding:6px 10px 16px}
+.marks-actions{display:flex;gap:6px;margin:2px 0 8px}
+.marks-actions button{flex:1;border:1px solid var(--line);background:var(--strip);border-radius:8px;padding:5px 4px;font-size:11.5px;font-weight:550}
+.marks-actions button:hover:not(:disabled){border-color:var(--clay)}
+#marks-list{list-style:none;margin:0;padding:0}
+.marks-page{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:12px 2px 4px}
+.mark-item{display:flex;gap:8px;align-items:flex-start;width:100%;text-align:left;border:0;background:none;border-radius:8px;padding:6px;font-size:12px}
+.mark-item:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.mark-chip{flex:none;width:12px;height:12px;margin-top:3px;border-radius:3px;background:var(--swatch);box-shadow:inset 0 0 0 1px rgb(20 20 19 / .15)}
+.mark-chip-underline,.mark-chip-strike,.mark-chip-shape{height:4px;margin-top:7px;border-radius:2px}
+.mark-chip-pen,.mark-chip-text{border-radius:50%}
+.mark-body{display:flex;flex-direction:column;min-width:0}
+.mark-body small{font-size:10.5px;color:var(--muted)}
+.mark-text{overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.mark-text:empty{display:none}
+#marks-empty{font-size:12px;color:var(--muted);margin:10px 2px;line-height:1.5}
+
+/* text boxes, the typing box, shapes and the new tools on the page */
+.annotation-layer .text-box{position:absolute;pointer-events:auto;white-space:pre;line-height:1.25;font-family:Helvetica,Arial,sans-serif;padding:0 1px;border:1px dashed transparent;border-radius:2px;cursor:move;user-select:none;z-index:1}
+.annotation-layer .text-box:hover,.annotation-layer .text-box:focus-visible{border-color:color-mix(in srgb,var(--clay) 70%,transparent);outline:none}
+.annotation-layer .text-box.dragging{opacity:.75;border-color:var(--clay)}
+.tool-text .annotation-layer .text-box{cursor:text}
+.text-editor{position:absolute;z-index:6;margin:-1px 0 0 -1px;padding:0 1px;min-width:4ch;field-sizing:content;resize:none;overflow:hidden;white-space:pre;line-height:1.25;font-family:Helvetica,Arial,sans-serif;background:rgb(255 255 255 / .75);border:1px solid var(--clay);border-radius:2px;box-shadow:0 0 0 3px color-mix(in srgb,var(--clay) 22%,transparent);outline:none}
+:is(.tool-pen,.tool-marker,.tool-shape) .annotation-layer .text-box,:is(.tool-pen,.tool-marker,.tool-shape,.tool-text,.tool-note) .note-marker{pointer-events:none}
+.tool-eraser .annotation-layer .text-box{pointer-events:all;cursor:crosshair}
+.tool-pen .pdf-page,.tool-marker .pdf-page,.tool-shape .pdf-page{cursor:crosshair}
+.tool-text .pdf-page{cursor:text}
+:is(.tool-marker,.tool-shape,.tool-text) .textLayer{pointer-events:none}
+:is(.tool-marker,.tool-shape,.tool-text) .annotation-layer{pointer-events:auto}
+:is(.tool-marker,.tool-shape) .annotation-layer{touch-action:none}
+.annotation-layer .note-marker{transform:none;border-radius:3px 3px 8px 3px;box-shadow:0 2px 6px rgb(20 20 19 / .2)}
+.flash{animation:mark-flash 1.7s ease-out}
+.annotation-layer :is(.text-box,.note-marker).flash{animation:mark-flash-box 1.7s ease-out}
+@keyframes mark-flash{0%,45%{filter:drop-shadow(0 0 5px var(--clay)) drop-shadow(0 0 2px var(--clay))}100%{filter:none}}
+@keyframes mark-flash-box{0%,45%{box-shadow:0 0 0 3px color-mix(in srgb,var(--clay) 55%,transparent)}100%{box-shadow:none}}
+@media(max-width:760px){.top-row{flex-wrap:wrap;padding:6px 0;gap:6px}.document-heading{flex-basis:calc(100% - 200px)}#toolbar{order:3;width:100%;justify-content:center}#tool-buttons .pa-i{width:34px;height:34px}#side-view{width:170px}}
+/* a narrow reader (the split view): the dock wraps onto two rows instead of scrolling */
+#tool-dock{flex-wrap:wrap;justify-content:center;overflow:visible;row-gap:4px}
+#tool-dock .dock-group{flex-wrap:nowrap}
+@media(max-width:900px){#tool-dock #history-buttons{order:1}#tool-dock #pen-palette:not([hidden]){order:2;flex-basis:100%;justify-content:center;border-left:0;margin-left:0;padding:4px 0 0;border-top:1px solid var(--line)}}
+.side-tabs button{white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:3px}
+#marks-count:not(:empty){margin-left:0}
+#tool-dock{left:0;right:0;margin-inline:auto;width:max-content;transform:none}
+
+#status .status-allow{margin:4px 6px 0 0;border:1px solid var(--clay);background:var(--clay);color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600}
+#status .status-allow.is-quiet{background:none;color:var(--ink);border-color:var(--line)}

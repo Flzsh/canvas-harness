@@ -15,19 +15,22 @@
   if(!record||typeof record!=='object'||Array.isArray(record)||!Number.isSafeInteger(record.page)||record.page<0)return false;
   if(record.type==='note')return coordinates(record.point,2)&&typeof record.text==='string'&&record.text.trim().length>0&&record.text.length<=10000;
   if(!color(record.color))return false;
+  if(record.type==='text')return coordinates(record.point,2)&&typeof record.text==='string'&&record.text.trim().length>0&&record.text.length<=10000;
+  if(record.type==='shape')return Array.isArray(record.points)&&record.points.length===2&&Array.from(record.points).every(p=>coordinates(p,2))&&['rect','ellipse','arrow','line'].includes(record.shape);
   if(record.type==='pen')return Array.isArray(record.points)&&record.points.length>=2&&record.points.length<=20000&&Array.from(record.points).every(p=>coordinates(p,2));
-  return (record.type==='highlight'||record.type==='underline')&&Array.isArray(record.rects)&&record.rects.length>0&&record.rects.length<=10000&&Array.from(record.rects).every(r=>coordinates(r,4)&&r[0]<r[2]&&r[1]<r[3]);
+  return (record.type==='highlight'||record.type==='underline'||record.type==='strike')&&Array.isArray(record.rects)&&record.rects.length>0&&record.rects.length<=10000&&Array.from(record.rects).every(r=>coordinates(r,4)&&r[0]<r[2]&&r[1]<r[3]);
  }
  function bounds(points,padding=0){
   const rect=[Infinity,Infinity,-Infinity,-Infinity];
   for(const [x,y]of points){rect[0]=Math.min(rect[0],x);rect[1]=Math.min(rect[1],y);rect[2]=Math.max(rect[2],x);rect[3]=Math.max(rect[3],y);}
   return [rect[0]-padding,rect[1]-padding,rect[2]+padding,rect[3]+padding];
  }
- function ink(base,strokes,thickness){
+ function ink(base,strokes,thickness,opacity=1){
   // InkEditor.serialize in PDF.js 6.4.299 uses BOTH paths.points (InkList)
   // and paths.lines (appearance). Each line starts with four NaN sentinels,
   // then its start point; another such sextuple means a straight segment.
-  return {...base,opacity:1,thickness,rect:bounds(strokes.flat(),thickness/2),paths:{
+  // The box reaches a whole stroke width past the points: PDF readers drop a /BS width wider than half the box.
+  return {...base,opacity,thickness,rect:bounds(strokes.flat(),thickness),paths:{
    points:strokes.map(points=>points.flat()),
    lines:strokes.map(points=>points.flatMap(([x,y])=>[NaN,NaN,NaN,NaN,x,y]))
   }};
@@ -91,6 +94,27 @@
   if(value!==original)result.popup={contents:original,deleted:false,rect:rect.slice()};
   return result;
  }
+ // A text box typed on the page: FreeText in the box's own colour and size, at the point where it was typed.
+ function textBox(base,page,mark){
+  const viewport=page.getViewport({scale:1/(page.userUnit||1)});
+  const value=mark.text.replace(/\r\n?/g,'\n').replace(/\t/g,'    ');
+  const fontSize=Math.max(4,Math.min(96,mark.size||12)),lines=value.split('\n');
+  const width=Math.min(viewport.width,Math.max(fontSize*2,Math.ceil(lines.reduce((m,l)=>Math.max(m,l.length),1)*fontSize*.56)+4));
+  const height=(lines.length*1.25+.3)*fontSize;
+  const point=viewport.convertToViewportPoint(...mark.point);
+  const x=Math.max(0,Math.min(point[0],viewport.width-width)),y=Math.max(0,Math.min(point[1],viewport.height-height));
+  const rect=bounds([viewport.convertToPdfPoint(x,y),viewport.convertToPdfPoint(x+width,y+height)]);
+  return {...base,fontSize,value,rect,rotation:viewport.rotation};
+ }
+ // Shapes are written as ink: a box, an oval, a line or an arrow, in PDF user space.
+ function shapeStrokes(mark){
+  const [[x1,y1],[x2,y2]]=mark.points;
+  if(mark.shape==='rect')return [[[x1,y1],[x2,y1],[x2,y2],[x1,y2],[x1,y1]]];
+  if(mark.shape==='ellipse'){const cx=(x1+x2)/2,cy=(y1+y2)/2,rx=Math.abs(x2-x1)/2,ry=Math.abs(y2-y1)/2,out=[];for(let i=0;i<=48;i++){const t=i/48*Math.PI*2;out.push([cx+rx*Math.cos(t),cy+ry*Math.sin(t)]);}return [out];}
+  const strokes=[[[x1,y1],[x2,y2]]];
+  if(mark.shape==='arrow'){const angle=Math.atan2(y2-y1,x2-x1),size=Math.max(6,(mark.width||1.5)*4);for(const turn of [.45,-.45])strokes.push([[x2,y2],[x2-size*Math.cos(angle+turn),y2-size*Math.sin(angle+turn)]]);}
+  return strokes;
+ }
  async function serialize(lib,pdf,mark){
   // Storage keys identify NEW editors; id must be null, never the model's id
   // (an existing PDF reference). Page indices and all geometry stay in PDF
@@ -110,7 +134,17 @@
     });
     return ink({...base,annotationType:lib.AnnotationEditorType.INK},strokes,.8);
    }
-   case 'pen':return ink({...base,annotationType:lib.AnnotationEditorType.INK},[mark.points],1.5);
+   case 'strike':{
+    const page=await pdf.getPage(mark.page+1),viewport=page.getViewport({scale:1});
+    const strokes=mark.rects.map(rect=>{
+     const [x1,y1]=viewport.convertToViewportPoint(rect[0],rect[1]),[x2,y2]=viewport.convertToViewportPoint(rect[2],rect[3]),middle=(y1+y2)/2;
+     return [viewport.convertToPdfPoint(Math.min(x1,x2),middle),viewport.convertToPdfPoint(Math.max(x1,x2),middle)];
+    });
+    return ink({...base,annotationType:lib.AnnotationEditorType.INK},strokes,.9);
+   }
+   case 'pen':return ink({...base,annotationType:lib.AnnotationEditorType.INK},[mark.points],mark.width||1.5,mark.opacity||1);
+   case 'shape':return ink({...base,annotationType:lib.AnnotationEditorType.INK},shapeStrokes(mark),mark.width||1.5);
+   case 'text':return textBox({...base,annotationType:lib.AnnotationEditorType.FREETEXT},await pdf.getPage(mark.page+1),mark);
    // saveNewAnnotations has no Text creation case; use FreeText with /AP.
    case 'note':return note({...base,annotationType:lib.AnnotationEditorType.FREETEXT},await pdf.getPage(mark.page+1),mark);
   }
