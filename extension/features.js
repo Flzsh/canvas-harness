@@ -5,6 +5,7 @@
  const feature=(id,name,group,js=[],css=[],needs=[])=>({id,name,label:name,group,files:{js,css},needs});
  const catalogue=[
   feature('dashboard','Dashboard & assignments','Study',['views.js','app.js','dashboard-model.js','work-model.js','dashboard-view.js','dashboard.js']),
+  feature('deadline-changes','Deadline changes','Study',['deadline-model.js','deadline-changes.js'],[],['dashboard']),
   feature('planner','Planner & home widgets','Study',['planner-model.js','planner-ui.js','widgets.js'],[],['dashboard']),
   feature('grades','Grades','Study',['grades-view.js'],[],['dashboard']),
   feature('materials','Materials library','Study',['materials-ui.js'],[],['dashboard']),
@@ -25,7 +26,7 @@
   feature('ai','AI context & handoff','Extras',['ai-context.js','ai-source.js'],[],['tools']),
  ];
  // Permitted 3.1 main declaration, retained as the single ordering authority.
- const order=["site.js","core.js","api.js","personal-work.js","custom-art.js","workspace-arrange.js","workspace-gestures.js","customization-model.js","gpa-model.js","page-preferences.js","storage.js","quick-pack.js","quick-upload.js","quick-upload-ui.js","math.js","ui-utils.js","icons.js","subject-art-data.js","subject-art.js","generic-art.js","course-art.js","views.js","app.js","session.js","dashboard-model.js","work-model.js","material-model.js","materials-ui.js","course-hub-model.js","course-hub-ui.js","grades-view.js","customize-ui.js","dashboard-view.js","motion.js","quick-open.js","toolbox-resize.js","ai-context.js","ai-source.js","gpa-ui.js","toolbox.js","toolbox-session.js","native-appearance.js","native-page.js","native-tools.js","planner-model.js","pet-art.js","pets.js","planner-ui.js","widgets.js","settings-dock.js","dashboard.js","canvas-nav.js","course-nav-art.js","course-nav.js","modules-page.js","pdf-art.js","pdf-model.js","pdf-host.js","content.js"];
+ const order=["site.js","core.js","api.js","personal-work.js","custom-art.js","workspace-arrange.js","workspace-gestures.js","customization-model.js","gpa-model.js","page-preferences.js","storage.js","quick-pack.js","quick-upload.js","quick-upload-ui.js","math.js","ui-utils.js","icons.js","subject-art-data.js","subject-art.js","generic-art.js","course-art.js","views.js","app.js","deadline-model.js","deadline-changes.js","session.js","dashboard-model.js","work-model.js","material-model.js","materials-ui.js","course-hub-model.js","course-hub-ui.js","grades-view.js","customize-ui.js","dashboard-view.js","motion.js","quick-open.js","toolbox-resize.js","ai-context.js","ai-source.js","gpa-ui.js","toolbox.js","toolbox-session.js","native-appearance.js","native-page.js","native-tools.js","planner-model.js","pet-art.js","pets.js","planner-ui.js","widgets.js","settings-dock.js","dashboard.js","canvas-nav.js","course-nav-art.js","course-nav.js","modules-page.js","pdf-art.js","pdf-model.js","pdf-host.js","content.js"];
  const dashboardCSS=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css'];
  const startupCSS=['startup.css','startup-art.css','canvas-nav.css','course-nav.css'];
  const nativeCSS=['app.css','dashboard.css','workspace.css','refresh.css','gpa.css'];

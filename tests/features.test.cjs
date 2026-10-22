@@ -5,8 +5,10 @@ const F=require('../extension/features.js'),original=require('./fixtures/addons-
 const json=value=>JSON.parse(JSON.stringify(value));
 const liteEnabled=['dashboard','planner','grades','math','gpa','tools','arrange','native-appearance'];
 function catalogue(){const env=vm.createContext({});vm.runInContext(read('features.js'),env);return env.ReserveFeatures;}
-test('Full preserves the complete original main declaration and defaults to Full',()=>{
- assert.deepEqual(F.resolve().js,original.content_scripts[1].js);
+test('Full preserves the original script order, adds the deadline observer before sessions, and defaults to Full',()=>{
+ assert.deepEqual(F.resolve().js.filter(file=>!['deadline-model.js','deadline-changes.js'].includes(file)),original.content_scripts[1].js);
+ assert.ok(F.resolve().js.indexOf('deadline-model.js')<F.resolve().js.indexOf('deadline-changes.js'));
+ assert.ok(F.resolve().js.indexOf('deadline-changes.js')<F.resolve().js.indexOf('session.js'));
  assert.deepEqual(F.resolve({preset:'full'}).enabled,F.catalogue.map(f=>f.id));
  assert.deepEqual(F.startupCSS,original.content_scripts[0].css);
 });
@@ -75,9 +77,10 @@ test('Full worker excludes early-paint files and preserves the remaining origina
  for(const file of ['startup-art.js',...early,...original.content_scripts[0].css])assert.ok(!injected.includes(file),file+' must stay static');
  const staticMain=main.js.filter(file=>original.content_scripts[1].js.includes(file));
  assert.deepEqual(staticMain,original.content_scripts[1].js.filter(file=>staticMain.includes(file)));
- assert.deepEqual(loaded,original.content_scripts[1].js.filter(file=>!staticMain.includes(file)));
+ assert.deepEqual(loaded,F.resolve().js.filter(file=>!staticMain.includes(file)));
+ assert.deepEqual(loaded.filter(file=>!['deadline-model.js','deadline-changes.js'].includes(file)),original.content_scripts[1].js.filter(file=>!staticMain.includes(file)));
  const full=[...staticMain,...loaded];
- assert.equal(new Set(full).size,full.length);assert.deepEqual(full.slice().sort(),original.content_scripts[1].js.slice().sort());
+ assert.equal(new Set(full).size,full.length);assert.deepEqual(full.slice().sort(),F.resolve().js.slice().sort());
  assert.equal(manifest.content_scripts.flatMap(entry=>entry.js).filter(file=>file==='features.js').length,1,'the shared early-selection state is not reset by the main entry');
 });
 
