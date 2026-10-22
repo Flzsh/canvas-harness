@@ -1,6 +1,17 @@
-# Release checks — Canvas Harness 3.2.0
+# Release checks — Canvas Harness 3.4.0
 
-The release runs `npm test`, `npm run check`, `npm run build`, then `node scripts/release-audit.cjs dist/unpacked-3.2.0` against the actual extracted ZIP. Browser tests are explicitly disabled. The sibling release scope report and `dist/audit-3.2.0.json` record final results, sizes and hashes.
+## 3.4.0 offline release scope
+
+This release adds local Biscuit commands, timers and routines; randomly dealt submission play tools; the Starry Night, Under the Sea, Starfield and Blueprint scene themes; a course dock; checked Market and local data packs; Modules progress and To hand in. Focus room, Review deck and Grade impact are opt-in Custom features. Full and Lite leave those three off. Lite also excludes scene themes, play and Market media. Public school registration, provider handoff, the feature loader and existing saved data are retained.
+
+The Market host is optional and is requested on its popup click. Only packaged code runs. Pack and asset SHA-256 hashes, schemas, SVG isolation, account separation and exact removal are checked offline. The four scene folders are bundled; dynamically loaded pages and styles are listed explicitly in the manifest. Media banners are outside this release.
+
+This port is verified by the serial Node suite, check, deterministic build and audit of the actual extracted ZIP. No browser or network is used for this port. Earlier browser observations below describe earlier versions; they do not establish 3.4 rendering, authenticated Canvas behavior, provider editor compatibility or live performance.
+
+
+The release runs `npm test`, `npm run check`, `npm run build`, then `node scripts/release-audit.cjs dist/unpacked-3.4.0` against the actual extracted ZIP. Browser tests are explicitly disabled. The sibling release scope report and `dist/audit-3.4.0.json` record final results, sizes and hashes.
+
+Backup fixtures cover checked kit bytes, fresh-device restore, account Market receipts, collision remapping, staged rollback and the Lite-page worker route. Concurrent-write regressions cover newer popup and Biscuit feature choices during Market verification and publication, expiring account-write capabilities, released media holds and a normal save after restore.
 
 The feature fixtures check Full ordering, Lite and Custom dependencies, stale hints, early drawing teardown, worker snapshots, custom school injection, missing optional modules, unchanged saved data, popup saves and rollback. Regression fixtures cover browser-restart boot order, Window resize targets, invalidated extension APIs, column anchoring, full-height square dashboard roots and text encoding.
 

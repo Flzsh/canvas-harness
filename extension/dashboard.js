@@ -49,6 +49,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const key=node=>node.nodeType===1?(node.getAttribute('data-rd-key')||node.id||(node.getAttribute('data-rd-section')?'section:'+node.getAttribute('data-rd-section'):'')):'';
     const compatible=(a,b)=>a&&a.nodeType===b.nodeType&&a.nodeName===b.nodeName&&key(a)===key(b);
     if(current.nodeType!==1){if(current.nodeValue!==next.nodeValue)current.nodeValue=next.nodeValue;return;}
+    // Only hydrated media owns its children; editor wrappers share the frame id attribute.
+    const framedMedia=current.hasAttribute('data-ch-frame')&&next.hasAttribute('data-ch-frame')&&current.dataset.chFrameId&&current.dataset.chFrameId===next.dataset.chFrameId;
     // The view emits only this placeholder for an unchanged, connected heading.
     // Do not walk its SVG or touch attributes owned by the running art film.
     if(next.hasAttribute('data-rd-preserve-heading')&&current.classList.contains('rd-workspace-heading')){patchLive(current,next);return;}
@@ -60,9 +62,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     for(const attr of Array.from(current.attributes)){
       if(attr.name==='data-motion'||current.tagName==='DETAILS'&&attr.name==='open')continue;
+      if(['src','poster'].includes(attr.name)&&current.dataset?.chMedia&&current.dataset.chMedia===next.dataset?.chMedia)continue;
       if(!next.hasAttribute(attr.name))current.removeAttribute(attr.name);
     }
     for(const attr of Array.from(next.attributes)){if(current.tagName==='DETAILS'&&attr.name==='open')continue;if(current.getAttribute(attr.name)!==attr.value)current.setAttribute(attr.name,attr.value);}
+    if(framedMedia)return;
     if(current.tagName==='INPUT'){if(current.value!==next.value)current.value=next.value;current.checked=next.checked;return;}
     if(current.tagName==='TEXTAREA'){if(current.value!==next.value)current.value=next.value;return;}
     if(current.classList.contains('rd-rich-text')){if(current.innerHTML!==next.innerHTML)current.innerHTML=next.innerHTML;return;}
@@ -132,6 +136,20 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
   // onNative (content.js): shows Canvas's own dashboard; with it the command bar ends in a quiet
   // "Canvas dashboard" switch (the phone drawer lists it), so the host needs no row of its own.
+  function createCourseDock(container,{env=root}={}){
+    let dock=null,items=[],tabId='',observer=null;
+    const layout=()=>{if(!dock)return;const r=(container.querySelector('.rd-shell')||container).getBoundingClientRect(),view=env.innerWidth||r.right,left=Math.max(0,r.left),right=Math.min(view,r.right);container.style.setProperty('--rd-dock-center',(left+right)/2+'px');container.style.setProperty('--rd-dock-available',Math.max(36,right-left)+'px');};
+    const resize=()=>layout();
+    const rove=el=>{if(!items.includes(el))return;tabId=el.dataset.id;for(const item of items)item.tabIndex=item===el?0:-1;};
+    const focus=ev=>rove(ev.target.closest?.('.rd-dock-it'));
+    const click=ev=>rove(ev.target.closest?.('.rd-dock-it'));
+    const listeners={focusin:focus,click};
+    function detach(){if(dock){for(const [name,fn] of Object.entries(listeners))dock.removeEventListener(name,fn);env.removeEventListener?.('resize',resize);}observer?.disconnect();observer=null;dock=null;items=[];}
+    function sync(){const next=container.querySelector('.rd-dock');if(next!==dock){detach();dock=next;tabId='';if(dock){for(const [name,fn] of Object.entries(listeners))dock.addEventListener(name,fn);env.addEventListener?.('resize',resize);if(typeof env.ResizeObserver==='function'){let last='';observer=new env.ResizeObserver(entries=>{const size=entries.map(e=>e.contentRect?.width).join(',');if(size!==last){last=size;resize();}});observer.observe(container);}layout();}}if(!dock)return;items=Array.from(dock.querySelectorAll('.rd-dock-it'));const active=container.getRootNode?.()?.activeElement||env.document?.activeElement,chosen=items.find(el=>el.getAttribute('aria-pressed')==='true');rove(items.includes(active)?active:items.find(el=>el.dataset.id===tabId)||chosen||items[0]);}
+    function keydown(ev){const it=(ev.composedPath?.()[0]||ev.target)?.closest?.('.rd-dock-it');if(!items.includes(it)||ev.altKey||ev.ctrlKey||ev.metaKey)return false;const key=ev.key;if(['ArrowLeft','ArrowRight','Home','End'].includes(key)){ev.preventDefault();const index=items.indexOf(it),next=key==='Home'?0:key==='End'?items.length-1:(index+(key==='ArrowRight'?1:-1)+items.length)%items.length;rove(items[next]);items[next].focus({preventScroll:true});items[next].scrollIntoView?.({block:'nearest',inline:'nearest',behavior:'instant'});return true;}if(key==='Enter'||key===' '){ev.preventDefault();if(!ev.repeat)it.click();return true;}return false;}
+    return {sync,keydown,destroy:detach};
+  }
+
   function mount(target,{snapshot,store,demo=false,onPlanner=()=>{},onNative=null,refresh=async()=>{},status='',initialState,materialClient,onAuthError=()=>{},onReady=()=>{},onRenderError=null}={}){
     if(!enabled('dashboard'))return null;
     if(!target||typeof target.append!=='function')throw Error('ReserveDashboard needs a shadow root or element target.');
@@ -184,7 +202,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const readerLayout=typeof root.ResizeObserver==='function'?new root.ResizeObserver(()=>{if(restoreReaderScroll())remember();}):null;
     const explicitWorkspace=initialState?.workspace||savedState?.workspace;
     let workspace=resolveWorkspace(explicitWorkspace==='assignments'?'work':explicitWorkspace),workPage=explicitWorkspace==='assignments'?'assignments':'home';
-    let savedWorkspace=['plan','materials','hub','inbox','grades'].includes(explicitWorkspace)&&workspace!==explicitWorkspace?explicitWorkspace:null;
+    let savedWorkspace=['plan','materials','hub','inbox','grades','review'].includes(explicitWorkspace)&&workspace!==explicitWorkspace?explicitWorkspace:null;
     let deckCourseRequested='';
     const headingCache={};
     let overviewMode='actionable',overviewQuery='',checkOffNotice=null;
@@ -197,9 +215,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let draftTimer;
     const formatters=new Map();
     const resourceClient=materialClient||(!demo?root.ReserveAPI?.createClient():null);
+    const reviewDeck=root.ReserveFeatures?.enabled('review-deck')===true?root.ReserveReviewDeck?.create({container,store,getContext:()=>({...buildContext(),user:currentSnapshot.user,origin:currentSnapshot.origin}),onChange:sourceChange,isEnabled:()=>root.ReserveFeatures?.enabled('review-deck')===true,isSelected:()=>workspace==='review',onAuthError}):null;
+    const gradeImpact=root.ReserveFeatures?.enabled('grade-impact')===true?root.ReserveGradeImpact?.create({client:resourceClient,user:currentSnapshot.user,onChange:sourceChange,onAuthError}):null;
     const materials=enabled('materials')?root.ReserveMaterialsUI?.create({store,user:snapshot.user,client:resourceClient,...selectionOptions,onChange:sourceChange,onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))}):null;
     const hub=enabled('course-hub')?root.ReserveCourseHubUI?.create({store,user:snapshot.user,client:resourceClient,...selectionOptions,materials,onChange:sourceChange,onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))}):null;
     const quickUpload=enabled('quick-pack')?root.CanvasHarnessQuickUpload?.create({store,getCourses:()=>normalizeData(settings()).allCourses,onChange:sourceChange}):null;
+    let customKits=[],kitName='',kitsLoaded=false,sceneActive=false,frameWrites=Promise.resolve();
+    const mediaStore=store.owner&&enabled('customization')?root.ReserveMedia?.createStore(store.owner):null;
+    const mediaController=mediaStore?root.ReserveMedia?.createController(container,mediaStore,{motion:()=>enabled('motion')&&settings().motion==='gentle',onError:error=>{customizeStatus=error.message;sourceChange();}}):null;
+    const frameController=mediaStore?root.ReserveMediaFrame?.createController(container,mediaStore,{motion:()=>enabled('motion')&&settings().motion==='gentle',onError:error=>{customizeStatus=error.message;scheduleRender();}}):null;
+    const frameEditor=root.ReserveFrameEditor?.create(container,{read:(id,kind)=>{const pref=id==='theme'?settings().themeArt:id==='all'?settings().overviewArt:settings().coursePrefs?.[id];return pref?.[kind+'Art'];},save:(...args)=>{const task=frameWrites.catch(()=>{}).then(()=>saveFraming(...args));frameWrites=task;return task;},shape:frameShape,onError:error=>{customizeStatus=error.message;scheduleRender();}});
+    const makeOwn=enabled('customization')?root.ReserveMakeYourOwn?.create({store,quickPack:quickUpload?file=>uploadQuickPack(file):null,kitImport:mediaStore&&root.ReserveCustomKits?file=>runKit('kit-import',{dataset:{},files:[file]}):null,onChange:sourceChange}):null;
+    const courseDock=createCourseDock(container);
     const motion=enabled('motion')?root.ReserveMotion?.create(container):null;
     const settingsDock=enabled('customization')&&root.ReserveCustomizeUI?.render?root.ReserveSettingsDock?.createDock({container,
       onOpen:()=>{if(drawerOpen())setDrawer(false,{focus:false});toolbox?.close({restoreFocus:false});customizeCourseId=state.courseId;},
@@ -213,11 +240,53 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }
     }):null;
     // Added Home modules (today, week, timer, clock, notes...) and the companion: widgets.js draws and runs them.
-    const board=enabled('planner')?root.ReserveWidgets?.create({container,store,save:change=>savePersonal(change),rerender:()=>render(),getContext:()=>buildContext(),
+    const board=enabled('planner')?root.ReserveWidgets?.create({container,store,getCustomPet:()=>makeOwn?.state.pet,save:change=>savePersonal(change),rerender:()=>render(),getContext:()=>{const c=buildContext();return {...c,pageKind:readerOpen?'assignment':state.courseId!=='all'?'course':'dashboard',unreadAnnouncements:c.courses.reduce((n,course)=>n+(hub?.getCourse(course.id)?.announcements||[]).filter(x=>x.unread).length,0)};},
       helpers:()=>({E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete}),
-      preview:id=>{workspace='work';showPreview(String(id),{detail:0,target:container,preventDefault(){}});},
-      openSettings:tab=>{customizeTab=tab||'layout';settingsDock?.open();},startTick:()=>syncFocus(),go:tab=>goWorkspace(tab),closeSettings:()=>settingsDock?.close({restoreFocus:false})}):null;
+      appearance:({key,value})=>saveAppearance(key,value),layoutPreset:({preset})=>saveLayoutPreset(preset),navigate:request=>navigateBiscuit(request),bookmark:request=>bookmarkItem(request.itemId,true),
+      preview:id=>{const undo=rememberBiscuitView();workspace='work';showPreview(String(id),{detail:0,target:container,preventDefault(){}});return {ok:true,undo};},
+      openSettings:tab=>{customizeTab=tab||'layout';settingsDock?.open();},startTick:()=>syncFocus(),go:tab=>goWorkspace(tab),closeSettings:()=>settingsDock?.close({restoreFocus:false}),askAI:question=>toolbox?.askAI?.(question),announcements:()=>{const course=buildContext().courses.find(c=>(hub?.getCourse(c.id)?.announcements||[]).some(x=>x.unread));if(!course||!workspaceEnabled('hub'))return false;switchCourse(String(course.id));goWorkspace('hub');hub?.loadCourse(course.id);return true;}}):null;
     // The Planner is a workspace of its own; older entry points that asked for the week land there.
+    function goWorkspace(tab){if(!workspaceEnabled(tab))return;savedWorkspace=null;if(destroyed||workspace===tab&&(tab!=='work'||workPage==='home'))return;captureCourseView();workspace=tab;if(tab==='work')workPage='home';render({motionTarget:'.rd-workspace'});container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});}
+    function selectWorkspace(action,button,event={},snapshot){
+        const tabMotion=event.detail>0;
+        const nextWorkspace=action==='open-materials'?'materials':action==='open-hub'?'hub':['plan','materials','hub','inbox','grades','review'].includes(button.dataset.tab)?button.dataset.tab:'work';
+        const nextPage=action==='workspace'&&nextWorkspace==='work'?(button.dataset.tab==='assignments'?'assignments':'home'):workPage;
+        if(action==='workspace'&&workspace===nextWorkspace&&workPage===nextPage)return;
+        const order=['home','work','assignments','plan','hub','materials','inbox','grades','review'],place=(w,p)=>order.indexOf(w==='work'&&p==='assignments'?'assignments':w),direction=place(nextWorkspace,nextPage)>=place(workspace,workPage)?1:-1;
+        savedWorkspace=null;captureCourseView();workspace=nextWorkspace;workPage=nextPage;if(workPage==='assignments')board?.close();
+        if(workspace==='inbox')hub?.setCourse?.('all');
+        if(workspace==='materials'||workspace==='hub'){
+          const ctx=buildContext();switchCourse(button.dataset.id||(state.courseId==='all'?String(ctx.selected?.courseId||ctx.courses[0]?.id||'all'):state.courseId));
+          materials?.activate(state.courseId);render({tabMotion,motionTarget:'.rd-workspace',direction,snapshot,resetWorkspaceScroll:true});if(workspace==='materials')materials?.load(state.courseId);else hub?.loadCourse(state.courseId);
+        }else{render({tabMotion,motionTarget:'.rd-workspace',direction,snapshot,resetWorkspaceScroll:true});if(workspace==='inbox')hub?.loadInbox();}
+        if(action!=='workspace'||!button.classList?.contains('rd-workspace-tab')){container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});container.querySelector('.rd-workspace-heading')?.scrollIntoView({block:'nearest',behavior:'instant'});}
+
+        return;
+    }
+    function selectDashboardCourse(id,event={},snapshot){
+        // The snapshot only reads, so an early return needs no undo.
+        if(!switchCourse(id))return;if(state.courseId==='all'&&!['home','grades','inbox','review'].includes(workspace))workspace='work';if(workspace==='inbox')hub?.setCourse?.(state.courseId);materials?.activate(state.courseId);render({tabMotion:event.detail>0,motionTarget:'.rd-workspace',motionKind:'course',snapshot});
+        // A switch from deep in a long list starts the new course at its heading.
+        const heading=container.querySelector('.rd-workspace-heading, .rd-page-heading, .rd-materials-header');if(heading&&above(heading.getBoundingClientRect()))heading.scrollIntoView({block:'start',behavior:'instant'});
+        if(workspace==='materials')materials?.load(state.courseId);if(workspace==='hub')hub?.loadCourse(state.courseId);return;
+    }
+    function bookmarkItem(id,on){
+      id=String(id);if(!buildContext().items.some(item=>String(item.id)===id))return false;
+      return savePersonal(data=>{data.tasks[id]={...data.tasks[id],pinned:on===undefined?!data.tasks[id]?.pinned:on};});
+    }
+    function navigateBiscuit(request){
+      const tab={planner:'plan',messages:'inbox','course-hub':'hub',assignments:'work',home:'work',materials:'materials',grades:'grades'}[request.tab];
+      if(!request.courseId&&!tab||tab&&!workspaceEnabled(tab))return false;
+      if(request.courseId&&!buildContext().courses.some(course=>String(course.id)===String(request.courseId)))return false;
+      const undo=rememberBiscuitView();
+      if(request.courseId)selectDashboardCourse(String(request.courseId));else selectWorkspace('workspace',{dataset:{tab:{planner:'plan',messages:'inbox','course-hub':'hub'}[request.tab]||request.tab}});
+      return {ok:true,undo};
+    }
+    function rememberBiscuitView(){
+      const before={state:JSON.parse(JSON.stringify(state)),workspace,workPage,selectedId,readerTab,readerOpen,visibleLimit,savedWorkspace,pendingReaderScroll,top:container.querySelector('.rd-workspace')?.scrollTop||0};
+      return ()=>{state=before.state;workspace=before.workspace;workPage=before.workPage;selectedId=before.selectedId;readerTab=before.readerTab;readerOpen=before.readerOpen;visibleLimit=before.visibleLimit;savedWorkspace=before.savedWorkspace;pendingReaderScroll=before.pendingReaderScroll;if(workspace==='inbox')hub?.setCourse?.(state.courseId);materials?.activate(state.courseId);render();const node=container.querySelector('.rd-workspace');if(node)node.scrollTop=before.top;return true;};
+    }
+
     function goWorkspace(tab){if(!workspaceEnabled(tab))return;savedWorkspace=null;if(destroyed||workspace===tab&&(tab!=='work'||workPage==='home'))return;captureCourseView();workspace=tab;if(tab==='work')workPage='home';render({motionTarget:'.rd-workspace'});container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});}
     const toolbox=enabled('tools')?root.ReserveToolbox?.create({container,store,materials,aiConfig:{client:resourceClient,user:snapshot.user,demo},getContext:()=>{
       const ctx=buildContext();return {...ctx,courseId:state.courseId,aiAssignmentId:workspace==='work'&&readerOpen?selectedId:null,aiSelectedIds:[...selectionIds],
@@ -330,7 +399,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         // A leading subject ("English: …") leads the line under the title ("Subject · Teacher").
         const label=C.courseLabel?.(course.name)||{title:course.name,teacher:'',sub:'',tag:'',subject:''},custom=pref.name||'';
         const extra=value=>custom&&value&&String(custom).toLowerCase().includes(value.toLowerCase())?'':value;
-        return {...course,name:custom||course.name,originalName:course.name,shortName:custom||label.title||course.name,subject:extra(label.subject||''),teacher:extra(label.teacher),sub:extra(label.sub),tag:label.tag,courseSearch:[course.name,course.code].filter(Boolean).join(' '),color,ownColor,image:safeCourseImage(pref.image)||safeCourseImage(course.image),artPrefs:pref,artMotion:enabled('motion')&&s.motion==='gentle'&&s.livingArt!=='off'};
+        return {...course,name:custom||course.name,originalName:course.name,shortName:custom||label.title||course.name,subject:extra(label.subject||''),teacher:extra(label.teacher),sub:extra(label.sub),tag:label.tag,courseSearch:[course.name,course.code].filter(Boolean).join(' '),color,ownColor,image:safeCourseImage(pref.image)||safeCourseImage(course.image),artPrefs:{...s.themeArt,...pref},artMotion:enabled('motion')&&s.motion==='gentle'&&s.livingArt!=='off'};
       });
       const courseMap=new Map(allCourses.map(course=>[course.id,course]));
       const courses=allCourses.filter(course=>!hidden.has(course.id));
@@ -358,7 +427,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const local=personal.tasks||{};
       const filtered=Model.filterAssignments(items,{...state,now,timeZone:s.timeZone,local,prioritizePins:false});
       const palette=effectiveTheme(s)==='dark'?DARK_ACCENTS:ACCENTS;
-      const accent=palette[s.accent]||palette.clay;
+      const accent=/^#[\da-f]{6}$/i.test(s.accent)?s.accent:palette[s.accent]||palette.clay;
       const retained=readerOpen?items.find(x=>x.id===selectedId&&x.personal&&(state.courseId==='all'||state.courseId===x.courseId)):null;
       const selected=retained||filtered.items.find(x=>x.id===selectedId)||filtered.items[0]||null;
       if(workspace==='work'&&selectedId!==(selected?.id||null)){selectedId=selected?.id||null;readerTab=selected?.personal?'plan':'details';readerOpen=false;}
@@ -423,7 +492,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(destroyed||!railDirty)return;if(railTimer)root.clearTimeout(railTimer);railTimer=0;railRetry=false;railDirty=false;
       // One read phase; even Canvas's document class waits until every style and box has been read.
       const styles=new Map(),css=node=>{if(!styles.has(node))styles.set(node,root.getComputedStyle(node));return styles.get(node);};
-      const fitted=container.dataset.courseNavigation==='topbar';
+      const fitted=['topbar','dock'].includes(container.dataset.courseNavigation);
       const column=container.querySelector?.('.rd-shell > .rd-workspace');
       const fits=!!column&&typeof root.getComputedStyle==='function'&&
         (/(auto|scroll)/.test(css(column)?.overflowY||'')||fitted&&css(column)?.overflowY==='hidden');
@@ -616,7 +685,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       consumeSources();
       // Later notifications (including any microtask chain) share one rAF after the task, before paint.
       container.dataset.featureMotion=enabled('motion')?'on':'off';container.dataset.arrange=arrange?'on':'off';
-      container.dataset.theme=ctx.theme;applyNight(ctx.s.nightArt);
+      const dataTheme=enabled('customization')&&!ctx.s.sceneTheme?makeOwn?.state.theme:null;
+      const scene=!dataTheme&&enabled('scene-themes')&&root.ReserveSceneThemes&&['starry','sea','stars','blueprint'].includes(ctx.s.sceneTheme)?ctx.s.sceneTheme:'';
+      container.dataset.theme=scene?'light':ctx.theme;applyNight(ctx.s.nightArt);
       container.dataset.density=ctx.s.density==='compact'?'compact':'comfortable';
       container.dataset.font=['humanist','serif'].includes(ctx.s.font)?ctx.s.font:'system';
       container.dataset.textSize=ctx.s.textSize||'standard';
@@ -633,9 +704,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       container.dataset.readingFont=ctx.s.readingFont==='interface'?'interface':'book';
       container.dataset.readerOpen=String(readerOpen);
       container.dataset.courses=String(ctx.s.showCourseStrip!==false);
-      container.style.setProperty('--rd-accent',ctx.accent);
+      if(scene||dataTheme)container.style.removeProperty('--rd-accent');else container.style.setProperty('--rd-accent',ctx.accent);
       const assignmentContent=readingContent(ctx.selected);
-       const markup=View.render({...ctx,state,workspace,workPage:workspace==='work'?workPage:'',gradeQuery,gradeLimit,arrangeOpen:!!arrange?.active(),boardEditing:!!board?.editing(),planUI:board?.planUI()||{},customizeTab:board?.settingsTab()||customizeTab,canvasNav,personal:{focus:personal.focus,pet:personal.pet,toolbox:personal.toolbox},hasLayoutUndo:!!ctx.s.workspaceUndo,deckHeader:workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:enabled('arrange')})||'':'',deckContent:workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',hubContent:workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId),{sharedHeading:true}):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',materialLibrary:workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId),{sharedHeading:true}):'',relatedMaterials:materials?.renderRelated(ctx.selected,assignmentContent.links)||'',readerTab,customizeOpen,customizeCourseId,customizeStatus,customizeBusy,customizeDrafts,quickUpload:quickUpload?.state,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading,user:currentSnapshot.user,demo,nativeSwitch:typeof onNative==='function',refreshing,visibleLimit,noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',readerContent:assignmentContent,warning:renderWarning(),status:statusLabel(currentSnapshot,externalStatus,transientStatus)}, {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete}, {headingCache,reuseHeading:container.querySelector('.rd-workspace-heading')?.getAttribute('data-rd-key')===`heading-${headingCache.revision}`});
+       const markup=View.render({...ctx,state,workspace,workPage:workspace==='work'?workPage:'',gradeImpact,gradeImpactRevision:currentSnapshot.fetchedAt,reviewDeckHTML:workspace==='review'?reviewDeck?.renderReviewDeck()||'':'',gradeQuery,gradeLimit,arrangeOpen:!!arrange?.active(),boardEditing:!!board?.editing(),planUI:board?.planUI()||{},customizeTab,canvasNav,personal:{focus:personal.focus,pet:personal.pet,toolbox:personal.toolbox},hasLayoutUndo:!!ctx.s.workspaceUndo,deckHeader:workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:enabled('arrange')})||'':'',deckContent:workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',hubContent:workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId),{sharedHeading:true}):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',materialLibrary:workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId),{sharedHeading:true}):'',relatedMaterials:materials?.renderRelated(ctx.selected,assignmentContent.links)||'',readerTab,customizeOpen,customizeCourseId,customizeStatus,customizeBusy,customizeDrafts,customKits,kitName,makeOwn:makeOwn?.state,quickUpload:quickUpload?.state,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading,user:currentSnapshot.user,demo,nativeSwitch:typeof onNative==='function',refreshing,visibleLimit,noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',readerContent:assignmentContent,warning:renderWarning(),status:statusLabel(currentSnapshot,externalStatus,transientStatus)}, {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete}, {headingCache,reuseHeading:container.querySelector('.rd-workspace-heading')?.getAttribute('data-rd-key')===`heading-${headingCache.revision}`});
       const toolbar=container.querySelector('.rd-toolbar'),appearance=container.querySelector('.rd-appearance');
       if(toolbar){
         // Keep the actual transitioning nodes connected through data renders.
@@ -656,10 +727,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
             }
           }else if(heading?.parentElement===shell)workspaceNode.prepend(heading);
           patchUI(workspaceNode,nextWorkspace);
-          const rail=shell.querySelector('.rd-course-rail'),nextRail=nextShell.querySelector('.rd-course-rail');
-          if(rail&&nextRail)patchUI(rail,nextRail);
-          else if(nextRail)shell.insertBefore(nextRail,workspaceNode);
-          else rail?.remove();
+          const rail=shell.querySelector('.rd-course-rail,.rd-dock'),nextRail=nextShell.querySelector('.rd-course-rail,.rd-dock');
+          if(rail&&nextRail&&rail.nodeName===nextRail.nodeName)patchUI(rail,nextRail);
+          else{rail?.remove();if(nextRail)shell.insertBefore(nextRail,workspaceNode);}
           nextShell.remove();
         }
         // Stable controls retain focus and let the grade switch finish its tween.
@@ -691,9 +761,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         container.append(template.content);
       }else container.innerHTML=markup;
       container.dataset.courseId=state.courseId;container.dataset.workspace=workspace;container.dataset.workPage=workspace==='work'?workPage:'';
+      if(scene){root.ReserveSceneThemes.apply(container.getRootNode?.()||target,container,scene,{motionStyle:container.dataset.motionStyle});sceneActive=true;}
+      else if(sceneActive){root.ReserveSceneThemes?.remove(container);sceneActive=false;}
+      if(dataTheme)root.ReserveDataTheme?.apply(container.getRootNode?.()||target,container,dataTheme,{theme:ctx.theme,motionStyle:container.dataset.motionStyle});
+      else root.ReserveDataTheme?.remove(container);
+      mediaController?.sync();frameController?.sync();frameEditor?.sync();
+      if(customizeOpen&&!kitsLoaded&&mediaStore){kitsLoaded=true;mediaStore.listKits().then(kits=>{if(!destroyed){customKits=kits;scheduleRender();}}).catch(error=>{if(!destroyed){customizeStatus=error.message;scheduleRender();}});}
       settingsDock?.sync();
+      if(ctx.s.courseNavigation==='dock'&&container.dataset.drawer==='open')setDrawer(false,{focus:false});
+      courseDock.sync();
       arrange?.sync();
       board?.sync();
+      gradeImpact?.ensure({...ctx,workspace,state,user:currentSnapshot.user,gradeImpactRevision:currentSnapshot.fetchedAt});
       // Preserve the column node; a newly chosen tab still starts at its top.
       // Reset before motion reads visibility, including when the old body was scrolled.
       if(resetWorkspaceScroll){const column=container.querySelector('.rd-shell > .rd-workspace');if(column?.scrollTop)column.scrollTop=0;}
@@ -793,9 +872,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const field=target?.dataset?.rdField,key=target?.dataset?.setting;
       if(field==='setting'){
         if(key==='showGrades')return enabled('grades');if(!enabled('customization'))return false;
-        const feature={motion:'motion',livingArt:'motion',nightArt:'course-art',bannerSize:'course-art',showCourseIcons:'course-art',courseCardStyle:'course-art',showCourseInformation:'course-hub',showRecentGrades:'grades',deskOrder:'arrange',dashboardLayout:'arrange',courseNavigation:'arrange'}[key];
+        const feature={sceneTheme:'scene-themes',dockSize:'arrange',motion:'motion',livingArt:'motion',nightArt:'course-art',bannerSize:'course-art',showCourseIcons:'course-art',courseCardStyle:'course-art',showCourseInformation:'course-hub',showRecentGrades:'grades',deskOrder:'arrange',dashboardLayout:'arrange',courseNavigation:'arrange'}[key];
         return (!feature||enabled(feature))&&(key!=='livingArt'||enabled('course-art'));
       }
+      if(field?.startsWith('make-'))return enabled('customization');
+      if(field?.startsWith('kit-'))return enabled('customization')&&enabled('course-art');
+      if(field?.startsWith('review-deck-'))return root.ReserveFeatures?.enabled('review-deck')===true;
       if(field?.startsWith('quick-pack'))return enabled('quick-pack');
       if(field?.startsWith('art-')||field==='customize-course')return enabled('customization')&&enabled('course-art');
       if(field==='pet')return enabled('customization')&&enabled('pony');
@@ -810,8 +892,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function onInput(event){if(!fieldEnabled(event.target))return;if(event.target?.dataset?.setting==='nightArt'){applyNight(event.target.value);const out=event.target.closest?.('.cz-night')?.querySelector('output');if(out)out.textContent=event.target.value+'%';return;}
       const field=event.target?.dataset?.rdField;
       if(board?.input(event))return;
+      if(field?.startsWith('review-deck-')){reviewDeck?.input(event);return;}
+      if(field==='make-week'){makeOwn?.week(event.target.value);return;}
+      if(field==='kit-name'){kitName=event.target.value.slice(0,40);return;}
       if(field==='quick-pack-source'){quickPackDraft=event.target.value.slice(0,3145728);quickPackFileName='';quickPackError='';return;}
-      if(field==='art-source'){const {course,kind}=event.target.dataset;if(validArtTarget(course)&&['banner','icon','border','title'].includes(kind))customizeDrafts[course+':'+kind]=event.target.value.slice(0,262144);return;}
+      if(field==='art-source'){const {course,kind}=event.target.dataset;if(validArtTarget(course)&&['banner','card','background','icon','border','title'].includes(kind))customizeDrafts[course+':'+kind]=event.target.value.slice(0,262144);return;}
       if(field?.startsWith('hub-')){hub?.input(field,field==='hub-unread'?event.target.checked:event.target.value,event.target.dataset);return;}
       if(field?.startsWith('material-')){materials?.input(field,event.target.value);return;}
       if(field==='new-step'&&/^(?:\d+|local-[\w-]+)$/.test(event.target.dataset.id||'')){stepDrafts.set(event.target.dataset.id,event.target.value.slice(0,300));return;}
@@ -830,6 +915,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(!fieldEnabled(event.target))return;
       const field=event.target?.dataset?.rdField;
       if(board?.change(event))return;
+      if(field==='make-file'){const file=event.target.files?.[0];event.target.value='';void makeOwn?.choose(file);return;}
+      if(field==='make-week'){makeOwn?.week(event.target.value);return;}
+      if(field==='kit-import'){void runKit('kit-import',event.target);return;}
+      if(field?.startsWith('review-deck-')){reviewDeck?.change(event);return;}
       const id=event.target?.dataset?.id;
       if(/^local-[\w-]+$/.test(id||'')&&['progress','check-step','personal-name','personal-due','planned-date','estimate','notes'].includes(field)){selectedId=id;readerOpen=true;}
       if(field?.startsWith('hub-')){hub?.input(field,field==='hub-unread'?event.target.checked:event.target.value,event.target.dataset);return;}
@@ -853,23 +942,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const key=event.target.dataset.setting;
         if(!['theme','accent','motion','livingArt','readingFont','greeting','font','density','textSize','dashboardLayout','showCourseStrip','showGrades','showRecentGrades',...Object.keys(root.ReserveCustomization?.defaults||{})].includes(key))return;
         const value=event.target.dataset.onoff==='true'?(event.target.checked?'on':'off'):event.target.type==='checkbox'?event.target.checked:key==='nightArt'?Math.max(0,Math.min(100,Math.round(Number(event.target.value)||0))):event.target.value;
-        if(key==='showGrades'){
-          const version=++gradeSaveVersion;gradeVisibilityOverride=value===true;motion?.cancel();render();
-          savePersonal(data=>{data.settings.showGrades=value===true;}).then(saved=>{if(version===gradeSaveVersion){if(saved)gradeVisibilityOverride=null;render();}});return;
-        }
-        savePersonal(data=>{
-          if(!Arrange){data.settings[key]=value;if(key==='deskOrder')data.settings.dashboardLayout=value==='stacked'?'list':'split';if(key==='dashboardLayout')data.settings.deskOrder=value==='list'?'stacked':'context-first';return;}
-          const before=Arrange.snapshot(data.settings);
-          if(key==='courseNavigation'){Arrange.change(data.settings,{type:'navigation',value});return;}
-          if(key==='showCourseInformation'){Arrange.change(data.settings,{type:value?'restore-context':'hide-context'});return;}
-          data.settings[key]=value;
-          if(key==='deskOrder'||key==='dashboardLayout'){
-            if(key==='dashboardLayout')data.settings.deskOrder=value==='list'?'stacked':'context-first';
-            data.settings.dashboardLayout=data.settings.deskOrder==='stacked'?'list':'split';
-            Arrange.resetCore(data.settings,before.layout);
-            if(JSON.stringify(Arrange.snapshot(data.settings))!==JSON.stringify(before))data.settings.workspaceUndo=before;
-          }
-        });return;
+        void saveAppearance(key,value);return;
       }
       if(/^(?:\d+|local-[\w-]+)$/.test(id||'')){
         if(['course-name','planned-date','estimate','notes','personal-name','personal-due'].includes(field)){const draft=stageDraft(event.target);if(draft)persistDraft(draft);return;}
@@ -1025,6 +1098,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function actionEnabled(action,button){
       const feature={planner:'planner',grades:'grades','more-grades':'grades','grades-visibility':'grades',settings:'customization','settings-close':'customization','hidden-courses':'customization','customize-tab':'customization','advanced-settings':'customization',accent:'customization',theme:'customization','course-up':'customization','course-down':'customization',toolbox:'tools',capture:'tools','selection-ai':'ai','select-source':'ai','open-hub':'course-hub','open-materials':'materials','timer-toggle':'planner','timer-reset':'planner','timer-minutes':'planner','timer-focus':'planner'}[action];
       if(feature&&!enabled(feature))return false;
+      if(action?.startsWith('make-'))return enabled('customization');
+      if(action?.startsWith('kit-'))return enabled('customization')&&enabled('course-art');
+      if(action?.startsWith('review-deck-'))return root.ReserveFeatures?.enabled('review-deck')===true;
+      if(action==='room-open'||action==='room-close')return root.ReserveFeatures?.enabled('focus-room')===true;
       if(action?.startsWith('quick-pack'))return enabled('quick-pack');
       if(action?.startsWith('layout-'))return enabled('customization')&&enabled('arrange');
       if(action?.includes('capture')&&!enabled('tools'))return false;
@@ -1042,8 +1119,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function onClick(event){
       const candidate=event.target.closest?.('[data-rd-action]');
       if(candidate&&!actionEnabled(candidate.dataset.rdAction,candidate))return;
-      if(!board&&candidate?.dataset.rdAction==='customize-tab'){customizeTab=candidate.dataset.value||'layout';render();container.querySelector('.cz-tab[aria-selected="true"]')?.focus({preventScroll:true});return;}
-      if(!board&&candidate?.dataset.rdAction==='hidden-courses')customizeTab='courses';
+      if(candidate?.dataset.rdAction==='customize-tab'){customizeTab=candidate.dataset.value||'layout';render();container.querySelector('.cz-tab[aria-selected="true"]')?.focus({preventScroll:true});return;}
+      if(candidate?.dataset.rdAction==='hidden-courses')customizeTab='courses';
       if(arrange?.click(event))return;
       if(board?.click(event))return;
       const button=event.target.closest?.('[data-rd-action]');
@@ -1070,6 +1147,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // Grades' inline "Show grades" runs the same path as the toolbar switch.
       if(action==='grades-visibility'){const value=settings().showGrades!==true,version=++gradeSaveVersion;gradeVisibilityOverride=value;motion?.cancel();render();savePersonal(data=>{data.settings.showGrades=value;}).then(saved=>{if(version===gradeSaveVersion){if(saved)gradeVisibilityOverride=null;render();}});return;}
       if(handleCustomizeAction(action,button))return;
+      if(action.startsWith('review-deck-')){void reviewDeck?.action(action,button.dataset);return;}
       if(action.startsWith('hub-')){hub?.handle(action,button.dataset);return;}
       if(action.startsWith('material-')){materials?.handle(action,button.dataset);return;}
       if(action==='select-item'){const item=buildContext().items.find(x=>x.id===String(button.dataset.id));if(item)toggleSelection('assignment:'+item.courseId+':'+item.id);return;}
@@ -1093,22 +1171,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const heading=container.querySelector('.rd-page-heading, .rd-workspace-heading'),rect=heading?.getBoundingClientRect?.();
         if(rect&&(above(rect)||rect.top>root.innerHeight-100))heading.scrollIntoView({block:'start',behavior:'instant'});return;
       }
-      if(action==='workspace'||action==='open-materials'||action==='open-hub'){
-        const tabMotion=event.detail>0;
-        const nextWorkspace=action==='open-materials'?'materials':action==='open-hub'?'hub':['plan','materials','hub','inbox','grades'].includes(button.dataset.tab)?button.dataset.tab:'work';
-        const nextPage=action==='workspace'&&nextWorkspace==='work'?(button.dataset.tab==='assignments'?'assignments':'home'):workPage;
-        if(action==='workspace'&&workspace===nextWorkspace&&workPage===nextPage)return;
-        const order=['home','work','assignments','plan','hub','materials','inbox','grades'],place=(w,p)=>order.indexOf(w==='work'&&p==='assignments'?'assignments':w),direction=place(nextWorkspace,nextPage)>=place(workspace,workPage)?1:-1;
-        savedWorkspace=null;captureCourseView();workspace=nextWorkspace;workPage=nextPage;if(workPage==='assignments')board?.close();
-        if(workspace==='inbox')hub?.setCourse?.('all');
-        if(workspace==='materials'||workspace==='hub'){
-          const ctx=buildContext();switchCourse(button.dataset.id||(state.courseId==='all'?String(ctx.selected?.courseId||ctx.courses[0]?.id||'all'):state.courseId));
-          materials?.activate(state.courseId);render({tabMotion,motionTarget:'.rd-workspace',direction,snapshot,resetWorkspaceScroll:true});if(workspace==='materials')materials?.load(state.courseId);else hub?.loadCourse(state.courseId);
-        }else{render({tabMotion,motionTarget:'.rd-workspace',direction,snapshot,resetWorkspaceScroll:true});if(workspace==='inbox')hub?.loadInbox();}
-        if(action!=='workspace'||!button.classList?.contains('rd-workspace-tab')){container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});container.querySelector('.rd-workspace-heading')?.scrollIntoView({block:'nearest',behavior:'instant'});}
-
-        return;
-      }
+      if(action==='workspace'||action==='open-materials'||action==='open-hub'){selectWorkspace(action,button,event,snapshot);return;}
       if(action==='capture'){toolbox?.open('plan',button);return;}
       if(action==='toolbox'){toolbox?.open(undefined,button);return;}
       if(action==='native'){if(drawerOpen())setDrawer(false,{focus:false});onNative?.();return;}
@@ -1126,16 +1189,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(section){section.open=true;section.querySelector?.('summary')?.focus?.();section.scrollIntoView?.({block:'nearest'});}
         return;
       }
-      if(action==='accent'){const accent=button.dataset.accent;if(Object.hasOwn(ACCENTS,accent))savePersonal(data=>{data.settings.accent=accent;});return;}
+      if(action==='accent'){const accent=button.dataset.accent;if(Object.hasOwn(ACCENTS,accent)||/^#[\da-f]{6}$/i.test(accent))savePersonal(data=>{data.settings.accent=accent;});return;}
       if(action==='advanced-settings'){openPlanner({page:'settings'});return;}
       if(action==='grades'){workspace='grades';render({tabMotion:event.detail>0,motionTarget:'.rd-workspace',snapshot});return;}
       if(action==='more-grades'){gradeLimit+=40;render();return;}
-      if(action==='course'){
-        // The snapshot only reads, so an early return needs no undo.
-        if(!switchCourse(button.dataset.id))return;if(state.courseId==='all'&&!['home','grades','inbox'].includes(workspace))workspace='work';if(workspace==='inbox')hub?.setCourse?.(state.courseId);materials?.activate(state.courseId);render({tabMotion:event.detail>0,motionTarget:'.rd-workspace',motionKind:'course',snapshot});
-        // A switch from deep in a long list starts the new course at its heading.
-        const heading=container.querySelector('.rd-workspace-heading, .rd-page-heading, .rd-materials-header');if(heading&&above(heading.getBoundingClientRect()))heading.scrollIntoView({block:'start',behavior:'instant'});
-        if(workspace==='materials')materials?.load(state.courseId);if(workspace==='hub')hub?.loadCourse(state.courseId);return;}
+      if(action==='course'){selectDashboardCourse(button.dataset.id,event,snapshot);return;}
       if(action==='reader-tab'){const next=button.dataset.tab==='plan'?'plan':'details';if(readerTab===next)return;readerTab=next;render({tabMotion:event.detail>0,motionTarget:'.rd-reader-body',motionKind:'section',direction:next==='plan'?1:-1,snapshot});return;}
       if(action==='preview'){
         if(workspace==='home'){captureCourseView();switchCourse('all');workspace='work';}showPreview(button.dataset.id,event,snapshot);return;
@@ -1183,22 +1241,55 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     // Personal appearance lives in the existing account-scoped store and shares
     // the private dock. Legacy course names, colors, images and art stay intact.
-    function validArtTarget(id){return id==='all'||/^\d+$/.test(id||'')&&normalizeData(settings()).allCourses.some(course=>course.id===id);}
-    function appearanceFor(data,id){return id==='all'?(data.settings.overviewArt||(data.settings.overviewArt={})):((data.settings.coursePrefs||(data.settings.coursePrefs={}))[id]||(data.settings.coursePrefs[id]={}));}
+    function validArtTarget(id){return id==='all'||id==='theme'||/^\d+$/.test(id||'')&&normalizeData(settings()).allCourses.some(course=>course.id===id);}
+    function appearanceFor(data,id){return id==='theme'?(data.settings.themeArt||(data.settings.themeArt={})):id==='all'?(data.settings.overviewArt||(data.settings.overviewArt={})):((data.settings.coursePrefs||(data.settings.coursePrefs={}))[id]||(data.settings.coursePrefs[id]={}));}
     async function uploadArtwork(input){
       const file=input.files?.[0],id=input.dataset.id,kind=input.dataset.kind;
-      if(!enabled('customization')||!enabled('course-art')||!root.ReserveCustomArt||!file||customizeBusy||!validArtTarget(id)||!['banner','icon','border','title'].includes(kind))return;
-      customizeBusy=true;customizeStatus='Checking artwork…';render();
+      if(!enabled('customization')||!enabled('course-art')||!root.ReserveCustomArt||!file||customizeBusy||!validArtTarget(id)||!['banner','card','background','icon','border','title'].includes(kind))return;
+      let hold=null;customizeBusy=true;customizeStatus='';render();
       try{
-        if(file.size>root.ReserveCustomArt.limits.fileBytes)throw Error('Choose an SVG smaller than 256 KiB.');
-        const asset=root.ReserveCustomArt.importSVG(await file.text(),file.name);
+        const svg=file.type==='image/svg+xml'||(!file.type&&/\.svg$/i.test(file.name));let asset,framing;
+        if(svg){if(file.size>root.ReserveCustomArt.limits.fileBytes)throw Error('Choose an SVG smaller than 256 KiB.');asset=root.ReserveCustomArt.importSVG(await file.text(),file.name);}
+        else{if(!mediaStore)throw Error('Local media storage is unavailable.');const item=await root.ReserveMedia.prepare(file,kind,file.name);if(destroyed)return;hold=root.crypto.randomUUID();await mediaStore.putMany([item],{...mediaOptions(),hold});asset=item.asset;framing=item.framing;}
         if(destroyed)return;
+        if(['banner','card','background'].includes(kind)&&root.ReserveMediaFrame)asset={...root.ReserveMediaFrame.resolve(asset,{bannerFit:'cover',bannerPosition:'center'}),...framing};
         const saved=await savePersonal(data=>{appearanceFor(data,id)[kind+'Art']=asset;});
-        customizeStatus=saved?'Artwork saved. The page has updated.':transientStatus;
+        customizeStatus=saved?'':transientStatus;
       }catch(error){customizeStatus=error?.message||'This SVG could not be loaded.';}
-      finally{customizeBusy=false;if(!destroyed)render();}
+      finally{if(hold)await mediaStore.release(hold).catch(()=>{});customizeBusy=false;if(!destroyed)render();else mediaStore?.close();}
     }
-    function packBusy(){return quickPackLoading||['reviewing','applying','undoing'].includes(quickUpload?.state.phase);}
+    function frameShape(id,kind,view,frame){
+      const selector=kind==='banner'?'.rd-heading-art,.rd-banner-art':kind==='card'?'.rd-rail-art,.rd-dock-tile':'.rd-shell',target=Array.from(container.querySelectorAll(selector)).find(node=>(node.dataset.chArtId||node.closest?.('[data-ch-art-id]')?.dataset.chArtId)===id)||container.querySelector(kind==='background'?'.rd-shell':'.ch-art-preview'),box=target?.getBoundingClientRect?.();
+      if(!box?.width||!box?.height)return null;
+      if(kind==='banner')return {width:view==='narrow'?Math.min(360,box.width):Math.max(960,box.width),height:({small:90,medium:140,tall:220})[frame.height]};
+      if(kind==='card')return {width:box.width,height:box.height};
+      return view==='narrow'?{width:390,height:Math.max(600,Math.min(844,box.height))}:{width:Math.max(960,box.width),height:box.height};
+    }
+    async function saveFraming(id,kind,value){
+      if(destroyed||!validArtTarget(id)||!['banner','card','background'].includes(kind))return;if(customizeBusy)throw Error('Artwork is busy. Try again.');
+      const pref=id==='theme'?settings().themeArt:id==='all'?settings().overviewArt:settings().coursePrefs?.[id],before=pref?.[kind+'Art'];if(!before)return;
+      let frame=root.ReserveMediaFrame.clean(value),hold=null;customizeBusy=true;
+      try{const old=root.ReserveMediaFrame.resolve(before,pref),changed=old.still!==frame.still||JSON.stringify(old.loop)!==JSON.stringify(frame.loop);
+        if(changed&&frame.asset.kind==='video'){const row=await mediaStore.get(frame.asset.mediaId);if(!row)throw Error('Saved media is missing.');const item=await root.ReserveMedia.prepare(row.blob,kind,row.asset.name,{loop:frame.loop,still:frame.still});if(destroyed)return;hold=root.crypto.randomUUID();await mediaStore.putMany([item],{...mediaOptions(),hold});frame={...frame,asset:item.asset,...item.framing};}
+        if(destroyed)return;const saved=await savePersonal(data=>{appearanceFor(data,id)[kind+'Art']=frame;});customizeStatus=saved?'':transientStatus;
+      }catch(error){customizeStatus=error.message;throw error;}finally{if(hold)await mediaStore.release(hold).catch(()=>{});customizeBusy=false;if(!destroyed)render();}
+    }
+    function artworkTarget(event){
+      if(!enabled('customization')||!enabled('course-art')||customizeBusy)return null;
+      const node=event.target?.closest?.('[data-ch-art-id],.ch-art-slot');
+      if(node){const id=node.dataset.chArtId||node.querySelector?.('[data-rd-field="art-upload"]')?.dataset.id,kind=node.dataset.chArtKind||node.dataset.kind;if(validArtTarget(id)&&['banner','card','background'].includes(kind))return {id,kind};}
+      const banner=event.target?.closest?.('.rd-course-heading,.rd-course-banner,.rd-heading-art,.rd-banner-art');if(banner&&validArtTarget(state.courseId))return {id:state.courseId,kind:'banner'};
+      const card=event.target?.closest?.('.rd-rail-course,.rd-dock-it,.rd-rail-all');if(card){const id=card.dataset.arrangeCourse||card.dataset.id||(card.classList.contains('rd-rail-all')?'all':null);if(validArtTarget(id))return {id,kind:'card'};}
+      if(event.type==='paste'&&!event.target?.closest?.('input,textarea,[contenteditable="true"]')&&customizeOpen&&customizeTab==='art')return {id:customizeCourseId,kind:'banner'};
+      return null;
+    }
+    function mediaFile(event){const transfer=event.clipboardData||event.dataTransfer,files=Array.from(transfer?.files||[]);if(files.length)return files;return Array.from(transfer?.items||[]).filter(item=>item.kind==='file').map(item=>item.getAsFile()).filter(Boolean);}
+    function onArtworkPaste(event){const target=artworkTarget(event),files=mediaFile(event);if(!target||!files.length)return;event.preventDefault();if(files.length!==1){customizeStatus='Choose one picture or video.';render();return;}void uploadArtwork({files,dataset:target});}
+    async function pasteArtwork(id,kind){
+      if(customizeBusy||!validArtTarget(id)||!['banner','card','background'].includes(kind))return;
+      try{if(!root.navigator?.clipboard?.read)throw Error('Paste a picture with Ctrl+V.');const items=await root.navigator.clipboard.read(),files=[];for(const item of items){const type=item.types.find(type=>/^image\/(?:png|jpeg|webp|avif|gif|svg\+xml)$|^video\/(?:mp4|webm)$/.test(type));if(type)files.push(await item.getType(type));}if(destroyed)return;if(files.length!==1)throw Error('Copy one picture or video first.');await uploadArtwork({files,dataset:{id,kind}});}catch(error){if(!destroyed){customizeStatus=error.message||'Paste a picture with Ctrl+V.';render();}}
+    }
+    function packBusy(){return makeOwn?.state.busy||quickPackLoading||['reviewing','applying','undoing'].includes(quickUpload?.state.phase);}
     async function reviewQuickPack(text){
       if(!quickUpload||packBusy())return;
       ++quickPackRead;quickPackError='';
@@ -1215,27 +1306,53 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }catch(error){if(!destroyed&&token===quickPackRead)quickPackError=error?.message||'The pack could not be read.';}
       finally{if(!destroyed){quickPackLoading=false;render();}}
     }
-    function packDropTarget(event){return event.target?.closest?.('[data-quick-pack-drop]');}
+    function packDropTarget(event){if(!enabled('customization'))return null;return event.target?.closest?.('[data-make-drop]')||(enabled('quick-pack')?event.target?.closest?.('[data-quick-pack-drop]'):null);}
     function onPackDragover(event){
+      const art=artworkTarget(event);if(art&&Array.from(event.dataTransfer?.types||[]).includes('Files')){event.preventDefault();event.dataTransfer.dropEffect='copy';return;}
       const node=packDropTarget(event);if(!node||!Array.from(event.dataTransfer?.types||[]).includes('Files'))return;
       event.preventDefault();event.dataTransfer.dropEffect=packBusy()?'none':'copy';node.dataset.over=String(!packBusy());
     }
     function onPackDragleave(event){const node=packDropTarget(event);if(node&&!node.contains(event.relatedTarget))delete node.dataset.over;}
     function onPackDrop(event){
+      const art=artworkTarget(event);if(art){event.preventDefault();const files=mediaFile(event);if(files.length!==1){customizeStatus='Choose one picture or video.';render();return;}void uploadArtwork({files,dataset:art});return;}
       const node=packDropTarget(event);if(!node)return;event.preventDefault();delete node.dataset.over;
       const files=Array.from(event.dataTransfer?.files||[]);if(files.length!==1){quickPackError='Choose one artwork pack at a time.';render();return;}
-      void uploadQuickPack(files[0]);
+      if(node.hasAttribute('data-make-drop'))void makeOwn?.choose(files[0]);else void uploadQuickPack(files[0]);
     }
+    function mediaOptions(){return {usedIds:()=>root.ReserveMedia.referenced(settings()),confirm:async()=>!destroyed&&root.confirm('Remove oldest unused media?')};}
+    function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+    async function runKit(action,button){
+      if(customizeBusy||!mediaStore||!root.ReserveCustomKits)return;
+      const id=button.dataset.id||customizeCourseId,file=button.files?.[0];if(action==='kit-import'&&!file)return;
+      if(['kit-save','kit-use'].includes(action)&&!validArtTarget(id))return;
+      let hold=null;customizeBusy=true;customizeStatus='';render();
+      try{
+        if(action==='kit-save'){const s=settings(),appearance=id==='theme'?s.themeArt:id==='all'?s.overviewArt:s.coursePrefs?.[id];const selected=Object.fromEntries([...root.ReserveCustomization.artKeys,'bannerFit','bannerPosition','titlePlacement'].filter(key=>appearance?.[key]!==undefined).map(key=>[key,appearance[key]])),kit=await root.ReserveCustomKits.capture(kitName,selected,{accent:s.accent,font:s.font,bannerSize:s.bannerSize},mediaStore);if(destroyed)return;await mediaStore.saveKit(kit,mediaOptions());kitName='';}
+        else if(action==='kit-import'){const imported=await root.ReserveCustomKits.importKit(file);if(destroyed)return;await mediaStore.putMany(imported.media,{...mediaOptions(),kit:imported.kit});}
+        else{const kit=customKits.find(k=>k.id===button.dataset.kit);if(!kit)return;
+          if(action==='kit-remove')await mediaStore.removeKit(kit.id);
+          if(action==='kit-export'){const blob=await root.ReserveCustomKits.exportKit(kit,mediaStore);if(!destroyed)download(blob,kit.name.replace(/[^\w -]/g,'_')+'.chkit');}
+          if(action==='kit-use'){const refs=root.ReserveMedia.referenced({overviewArt:kit.appearance});if(refs.size){hold=root.crypto.randomUUID();await mediaStore.reserve(refs,hold);}if(destroyed)return;const saved=await savePersonal(data=>{const pref=appearanceFor(data,id);for(const key of [...root.ReserveCustomization.artKeys,'bannerFit','bannerPosition','titlePlacement'])delete pref[key];Object.assign(pref,structuredClone(kit.appearance));Object.assign(data.settings,{accent:kit.accent,font:kit.font,bannerSize:kit.bannerSize});});if(!saved)throw Error(transientStatus);}
+        }
+        if(!destroyed)customKits=await mediaStore.listKits();
+      }catch(error){customizeStatus=error?.message||'This kit could not be read.';}
+      finally{if(hold)await mediaStore.release(hold).catch(()=>{});customizeBusy=false;if(!destroyed)render();else mediaStore.close();}
+    }
+
     function handleCustomizeAction(action,button){
+      if(action.startsWith('make-')){void makeOwn?.action(action.slice(5),button.dataset.id);return true;}
+      if(action.startsWith('kit-')){void runKit(action,button);return true;}
+      if(customizeBusy&&(action.startsWith('art-')||action==='course-reset'))return true;
       const id=button.dataset.id,kind=button.dataset.kind;
+      if(action==='art-clipboard'){void pasteArtwork(id,kind);return true;}
       if(action==='quick-pack-review'){void reviewQuickPack(quickPackDraft);return true;}
       if(action==='quick-pack-apply'){if(!packBusy()){quickPackError='';void quickUpload?.apply();}return true;}
       if(action==='quick-pack-undo'){if(!packBusy()){quickPackError='';void quickUpload?.undo();}return true;}
       if(action==='quick-pack-reset'){if(!packBusy()){++quickPackRead;quickPackDraft='';quickPackFileName='';quickPackError='';quickUpload?.reset();}return true;}
-      if(action==='art-paste'&&validArtTarget(id)&&['banner','icon','border','title'].includes(kind)){
+      if(action==='art-paste'&&validArtTarget(id)&&['banner','card','background','icon','border','title'].includes(kind)){
         if(customizeBusy)return true;
         try{
-          const asset=root.ReserveCustomArt.importSVG(customizeDrafts[id+':'+kind]||'','Pasted '+kind+'.svg');
+          let asset=root.ReserveCustomArt.importSVG(customizeDrafts[id+':'+kind]||'','Pasted '+kind+'.svg');if(['banner','card','background'].includes(kind)&&root.ReserveMediaFrame)asset=root.ReserveMediaFrame.resolve(asset);
           customizeBusy=true;customizeStatus='Saving artwork…';render();
           savePersonal(data=>{appearanceFor(data,id)[kind+'Art']=asset;}).then(saved=>{
             customizeBusy=false;customizeStatus=saved?'Artwork saved. The page has updated.':transientStatus;
@@ -1244,11 +1361,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         }catch(error){customizeStatus=error.message;render();}return true;
       }
       if(action==='art-template'){
-        if(!['banner','icon','border','title'].includes(kind))return true;
+        if(!['banner','card','background','icon','border','title'].includes(kind))return true;
         const url=URL.createObjectURL(new Blob([root.ReserveCustomArt.template(kind)],{type:'image/svg+xml'}));
         const a=document.createElement('a');a.href=url;a.download='canvas-harness-'+kind+'.svg';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return true;
       }
-      if(action==='art-remove'&&(validArtTarget(id)||/^\d+$/.test(id||'')&&Object.hasOwn(personal.settings.coursePrefs||{},id))&&['banner','icon','border','title'].includes(kind)){
+      if(action==='art-remove'&&(validArtTarget(id)||/^\d+$/.test(id||'')&&Object.hasOwn(personal.settings.coursePrefs||{},id))&&['banner','card','background','icon','border','title'].includes(kind)){
         customizeStatus='Custom artwork removed.';void savePersonal(data=>{delete appearanceFor(data,id)[kind+'Art'];});return true;
       }
       if(action==='course-reset'&&validArtTarget(id)){
@@ -1258,13 +1375,43 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           for(const key of [...(root.ReserveCustomization?.artKeys||[]),'bannerFit','bannerPosition','titlePlacement'])delete pref[key];
         });return true;
       }
-      if(action==='layout-preset'||action==='layout-reset'){
+      if(action==='layout-preset'||action==='layout-reset'){void saveLayoutPreset(action==='layout-reset'?'studio':button.dataset.value);return true;}
+      if(action==='course-up'||action==='course-down'){
+        const order=normalizeData(settings()).allCourses.map(course=>course.id),from=order.indexOf(id),to=from+(action==='course-up'?-1:1);
+        if(from>=0&&to>=0&&to<order.length){[order[from],order[to]]=[order[to],order[from]];void savePersonal(data=>{data.settings.courseOrder=order;});}return true;
+      }
+      return false;
+    }
+
+    function saveAppearance(key,value){
+      if(!fieldEnabled({dataset:{rdField:'setting',setting:key}}))return Promise.resolve(false);
+        if(key==='showGrades'){
+          const version=++gradeSaveVersion;gradeVisibilityOverride=value===true;motion?.cancel();render();
+          return savePersonal(data=>{data.settings.showGrades=value===true;}).then(saved=>{if(version===gradeSaveVersion){if(saved)gradeVisibilityOverride=null;render();}return saved;});
+        }
+        return savePersonal(data=>{
+          if(key==='sceneTheme'&&value&&data.settings.makeYourOwn)delete data.settings.makeYourOwn.theme;
+          if(!Arrange){data.settings[key]=value;if(key==='deskOrder')data.settings.dashboardLayout=value==='stacked'?'list':'split';if(key==='dashboardLayout')data.settings.deskOrder=value==='list'?'stacked':'context-first';return;}
+          const before=Arrange.snapshot(data.settings);
+          if(key==='courseNavigation'){Arrange.change(data.settings,{type:'navigation',value});return;}
+          if(key==='showCourseInformation'){const command={type:value?'restore-context':'hide-context'};Arrange.change(data.settings,command);return;}
+          data.settings[key]=value;
+          if(key==='deskOrder'||key==='dashboardLayout'){
+            if(key==='dashboardLayout')data.settings.deskOrder=value==='list'?'stacked':'context-first';
+            data.settings.dashboardLayout=data.settings.deskOrder==='stacked'?'list':'split';
+            Arrange.resetCore(data.settings,before.layout);
+            if(JSON.stringify(Arrange.snapshot(data.settings))!==JSON.stringify(before))data.settings.workspaceUndo=before;
+          }
+        });
+    }
+    function saveLayoutPreset(name){
+      if(!enabled('customization')||!enabled('arrange'))return Promise.resolve(false);
         const model=root.ReserveCustomization;
-        const preset=action==='layout-reset'?model.defaults:model.presets[button.dataset.value];
+        const preset=model?.presets[name];
         // Presets control layout only. Recent grades, spacing, AI and course art
         // remain the user's explicit choices until they edit those settings.
-        const keys=['courseNavigation','deskOrder','surfaceStyle','courseCardStyle','bannerSize','showCourseIcons','showDeadlinePreview','showBookmarks','showCourseInformation','showCourseStrip'];
-        if(preset)void savePersonal(data=>{
+        const keys=['courseNavigation','dockSize','deskOrder','surfaceStyle','courseCardStyle','bannerSize','showCourseIcons','showDeadlinePreview','showBookmarks','showCourseInformation','showCourseStrip'];
+        if(preset)return savePersonal(data=>{
           const before=Arrange?.snapshot(data.settings);
           for(const key of keys)if(fieldEnabled({dataset:{rdField:'setting',setting:key}})&&Object.hasOwn(preset,key))data.settings[key]=preset[key];
           data.settings.dashboardLayout=data.settings.deskOrder==='stacked'?'list':'split';
@@ -1272,13 +1419,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
             Arrange.resetCore(data.settings,before.layout);
             if(JSON.stringify(Arrange.snapshot(data.settings))!==JSON.stringify(before))data.settings.workspaceUndo=before;
           }
-        });return true;
-      }
-      if(action==='course-up'||action==='course-down'){
-        const order=normalizeData(settings()).allCourses.map(course=>course.id),from=order.indexOf(id),to=from+(action==='course-up'?-1:1);
-        if(from>=0&&to>=0&&to<order.length){[order[from],order[to]]=[order[to],order[from]];void savePersonal(data=>{data.settings.courseOrder=order;});}return true;
-      }
-      return false;
+        });return Promise.resolve(false);
     }
 
     async function savePersonal(change){
@@ -1292,6 +1433,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const enteringKeyboard=container.dataset.input!=='keyboard';container.dataset.input='keyboard';if(enteringKeyboard){motion?.cancel({preserveArt:true});motion?.syncTabs(false,true);}
       if(arrange?.keydown(event))return;
       if(board?.keydown(event))return;
+      if(reviewDeck?.keydown(event))return;
+      if(courseDock.keydown(event))return;
       if(settingsDock?.handleKeydown(event))return;
       // Esc closes the phone drawer, then the phone reader sheet (focus returns to its row).
       if(event.key==='Escape'&&drawerOpen()){event.preventDefault();setDrawer(false);return;}
@@ -1316,7 +1459,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
 
     const unsubscribe=typeof store.subscribe==='function'?store.subscribe(data=>{personal=data||store.get()||{};normalizedCache=null;render();}):()=>{};
-    container.addEventListener('dragover',onPackDragover);container.addEventListener('dragleave',onPackDragleave);container.addEventListener('drop',onPackDrop);
+    container.addEventListener('dragover',onPackDragover);container.addEventListener('dragleave',onPackDragleave);container.addEventListener('drop',onPackDrop);container.addEventListener('paste',onArtworkPaste);
     container.addEventListener('input',onInput);
     container.addEventListener('change',onChange);
     container.addEventListener('focusout',onFocusout);container.addEventListener('focusin',onHeaderFocusin);
@@ -1359,10 +1502,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         destroyed=true;consumeSources();pendingRender=null;root.chrome?.storage?.onChanged?.removeListener?.(navChanged);
         readerLayout?.disconnect();railLayout?.disconnect();railAncestors?.disconnect();root.clearTimeout(railTimer);if(railSelectionFrame)cancelPaint(railSelectionFrame);
         root.removeEventListener?.('resize',queueRail);document.fonts?.removeEventListener?.('loadingdone',queueRail);
+        if(sceneActive){root.ReserveSceneThemes?.remove(container);sceneActive=false;}
+        root.ReserveDataTheme?.remove(container);makeOwn?.destroy();frameEditor?.destroy();frameController?.destroy();mediaController?.destroy();courseDock.destroy();
+        if(!customizeBusy)mediaStore?.close();
+        reviewDeck?.destroy();gradeImpact?.destroy();
         ++quickPackRead;quickUpload?.destroy();arrange?.destroy();board?.destroy();settingsDock?.destroy();materials?.destroy();hub?.destroy();motion?.destroy();toolbox?.destroy();
         clearInterval(freshnessTimer);clearInterval(focusTimer);clearTimeout(entranceTimer);
         unsubscribe?.();
-        container.removeEventListener('dragover',onPackDragover);container.removeEventListener('dragleave',onPackDragleave);container.removeEventListener('drop',onPackDrop);
+        container.removeEventListener('dragover',onPackDragover);container.removeEventListener('dragleave',onPackDragleave);container.removeEventListener('drop',onPackDrop);container.removeEventListener('paste',onArtworkPaste);
         container.removeEventListener('input',onInput);
         container.removeEventListener('change',onChange);
         container.removeEventListener('focusout',onFocusout);container.removeEventListener('focusin',onHeaderFocusin);
@@ -1382,5 +1529,5 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     };
   }
 
-  return {mount,helpers:{patchUI,sameOriginLink,assignmentLink,gradePeriodLabel,filterAssignments:Model.filterAssignments,safeCourseImage,statusLabel,dateMs}};
+  return {mount,helpers:{patchUI,createCourseDock,sameOriginLink,assignmentLink,gradePeriodLabel,filterAssignments:Model.filterAssignments,safeCourseImage,statusLabel,dateMs}};
 });

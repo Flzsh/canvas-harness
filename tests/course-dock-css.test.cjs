@@ -1,0 +1,32 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+const read=name=>fs.readFileSync(path.join(__dirname,'..',name),'utf8');
+function parse(text){const rules=[],stack=[];let buf='';for(const ch of text.replace(/\/\*[\s\S]*?\*\//g,'')){if(ch==='{'){stack.push(buf.trim().replace(/\s+/g,' '));buf='';}else if(ch==='}'){const selector=stack.pop();if(selector&&!selector.startsWith('@')&&buf.trim())rules.push({selector,at:stack.filter(s=>s.startsWith('@')).join(' '),body:Object.fromEntries(buf.split(';').map(d=>d.trim()).filter(Boolean).map(d=>{const i=d.indexOf(':');return [d.slice(0,i).trim(),d.slice(i+1).trim()];}))});buf='';}else buf+=ch;}return rules;}
+const css=read('extension/customize.css'),rules=parse(css);
+const decl=(selector,key,at='')=>rules.filter(r=>r.selector===selector&&r.at===at).map(r=>r.body[key]).filter(v=>v!==undefined).at(-1);
+test('dock keeps the artist shelf/tile/seal masks and drafted dimensions and timing',()=>{
+ for(const [selector,hash] of [['.rd .rd-dock::before','dcf3123b1dfafa5cd4b4aeafae4141aa1d310a86df7330352044ce05f8db5ce5'],['.rd .rd-dock::after','dcf3123b1dfafa5cd4b4aeafae4141aa1d310a86df7330352044ce05f8db5ce5'],['.rd .rd-dock-ink','4216ec84e1c0eac18bdf4c2e0ae79f1090d18e42543970f2bdd40daf594a0086'],['.rd .rd-dock-tile::before','3e6926fd39df64d93fe24441780007abf73298b8c5ac9fa32b9a99387e888cae'],['.rd .rd-dock-tile::after','4ab26c16bf31a868f8bca5fd53f3c7571917f964f45ccdeb684068962b62e3ad'],['.rd .rd-dock-seal','b6234bc0170924a634fe4b5e597258b321a180abdab69831c69a4ed697fc1893']]){
+  for(const key of selector.endsWith('seal')?['-webkit-mask','mask']:['-webkit-mask-box-image','mask-border'])assert.equal(crypto.createHash('sha256').update(decl(selector,key)).digest('hex'),hash,selector+' '+key);
+ }
+ assert.equal(rules.find(r=>r.selector==='.rd .rd-dock'&&r.body.padding).body.padding,'9px 14px 10px');assert.equal(decl('.rd .rd-dock','--rd-dock-gap'),'8px');assert.equal(decl('.rd .rd-dock-it','transition'),undefined);assert.doesNotMatch(css,/rd-dock-bounce|\.rd-dock-it\.go/);
+ assert.equal(decl('.rd .rd-dock-seal','width'),'21px');assert.equal(decl('.rd .rd-dock-seal','height'),'21px');assert.equal(decl('.rd .rd-dock-seal','background'),'#E2463B');assert.equal(decl('.rd .rd-dock-seal[data-tone=neutral]','background'),'var(--rd-dock-neutral)');assert.equal(decl('.rd .rd-dock-it.on::after','width'),'5px');assert.match(css,/var\(--rd-course,#9A8F7A\) 26%,var\(--rd-dock-paper\)/);assert.doesNotMatch(css,/\.dk(?:\W|$)/);
+});
+function tileSize(space,n,size){const vars={'--rd-dock-space':space,'--rd-dock-n':n,'--rd-dock-gap':parseFloat(decl('.rd .rd-dock','--rd-dock-gap')),'--rd-dock-size':parseFloat(decl('.rd[data-dock-size='+size+'] .rd-dock','--rd-dock-size')||decl('.rd .rd-dock','--rd-dock-size'))},expression=decl('.rd .rd-dock','--rd-dock-t').replace(/var\((--[\w-]+)(?:,[^)]+)?\)/g,(_,key)=>{assert.ok(Number.isFinite(vars[key]),key);return vars[key];}).replace(/px\b/g,'').replace(/calc\(/g,'(');assert.match(expression,/^[\d\s.,()+*/a-z-]+$/);return Function('min','max','clamp','return '+expression)(Math.min,Math.max,(low,value,high)=>Math.max(low,Math.min(value,high)));}
+test('each dock size sets the existing tile token and defaults to medium',()=>{
+ for(const [size,want] of [['small',44],['medium',54],['large',66]])assert.equal(tileSize(1000,4,size),want,size);assert.equal(tileSize(1000,4,''),54);assert.equal(tileSize(573,12,'large'),36.75);assert.equal(tileSize(773,12,'small'),44);assert.ok(Math.abs(tileSize(773,12,'large')-53.4166666667)<.0001);
+});
+test('all tile sizes fit the dashboard down to a 36px floor before horizontal scrolling',()=>{
+ assert.equal(decl('.rd .rd-dock','overflow-x'),'auto');assert.equal(decl('.rd .rd-dock-it','flex'),'0 0 var(--rd-dock-t)');assert.match(decl('.rd .rd-dock','--rd-dock-space'),/--rd-dock-available/);
+ for(const [size,max] of [['small',44],['medium',54],['large',66]])for(const space of [390,573,773,996,1372])for(const n of [1,8,12,18,40,80]){const tile=tileSize(space,n,size),needed=36+n*(tile+8);assert.ok(tile>=36&&tile<=max);if(36+n*44<=space)assert.ok(needed<=space+.0001,`${size}, ${n} tiles at ${space}`);else assert.equal(tile,36);}
+ const phone='@media (max-width:600px)';assert.equal(decl('.rd .rd-dock','width',phone),'100vw');assert.equal(decl('.rd .rd-dock','--rd-dock-t',phone),undefined);assert.equal(decl('.rd .rd-dock-it,.rd .rd-dock-sep','transform',phone),'none!important');assert.equal(decl('.rd[data-course-navigation=dock] .rd-toolbar > .rd-drawer-button','display',phone),'none');assert.equal(decl('.rd[data-course-navigation=dock] .rd-toolbar > .rd-workspace-tabs','display',phone),'flex');
+});
+test('press scales the tile to .9 and motion preferences disable the press',()=>{
+ assert.equal(decl('.rd-dock-it:active .rd-dock-tile','scale'),'.9');assert.equal(decl('.rd-dock-it .rd-dock-tile','transition'),'scale .12s cubic-bezier(.2,.8,.3,1)');assert.equal(decl('.rd-dock-it:active .rd-dock-tile','transition-duration'),'.06s');
+ const reduced='@media (prefers-reduced-motion:reduce)';assert.equal(decl('.rd .rd-dock-tile','scale',reduced),'1!important');assert.equal(decl('.rd .rd-dock-tile','transition',reduced),'none!important');
+ for(const gate of ['[data-motion-style=off]','[data-motion-style=still]','[data-feature-motion=off]'])assert.ok(rules.some(r=>r.selector.includes(gate)&&r.selector.endsWith(' .rd-dock-tile')&&r.body.scale==='1!important'&&r.body.transition==='none!important'));
+});
+test('dock reserves page space, stays below the other docks, exposes focused names and obeys motion preferences',()=>{
+ assert.equal(decl('.rd .rd-dock','position'),'fixed');assert.equal(decl('.rd .rd-dock','left'),'var(--rd-dock-center,50%)');assert.equal(decl('.rd .rd-dock','bottom'),'14px');assert.match(decl('.rd[data-course-navigation=dock][data-courses=true]','padding-bottom'),/112px/);const z=+decl('.rd .rd-dock','z-index');assert.ok(z>1&&z<1100);
+ assert.ok(rules.some(r=>r.selector.includes('.rd-dock-it:focus-visible .rd-dock-name')&&r.body.opacity==='1'));
+ assert.match(css,/--rd-dock-shelf:#FFFDF8/);assert.match(css,/\.rd\[data-theme=dark\] \.rd-dock \{[^}]*--rd-dock-shelf:var\(--rd-surface\)/);assert.doesNotMatch(css,/\.rd \.rd-dock\s*\{[^}]*--rd-dock-width:/);
+});

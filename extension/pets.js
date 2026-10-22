@@ -4,7 +4,8 @@
    ignoring it. Only the student's own preferences and counters are stored. Creator: Flzsh. */
 (function(root){
  'use strict';
- const DEFAULTS={enabled:true,name:'Biscuit',coat:'oat',harness:'red',gear:'full',roam:'page',size:'medium',nudges:'helpful',treats:1,fed:0,xp:0,streakDay:'',streak:0,best:0,told:''};
+ const DEFAULTS={enabled:true,name:'Biscuit',coat:'oat',harness:'red',gear:'full',roam:'page',size:'medium',nudges:'helpful',treats:1,fed:0,xp:0,streakDay:'',streak:0,best:0,told:'',brain:null,skills:{},reminders:[],routines:[]};
+ const Brain=()=>root.ReservePonyBrain,Ask=()=>root.ReservePonyAsk,Parse=()=>root.ReserveBiscuitParse;
  const SIZES={small:46,medium:58,large:74};
  const ROAM=['page','home','off'],NUDGES=['helpful','quiet','off'],GEAR=['full','collar','none'];
  // What a level needs, and what it opens. Levels only go up.
@@ -24,6 +25,8 @@
   out.treats=v.treats===undefined?DEFAULTS.treats:int(v.treats,99);out.fed=int(v.fed,1e6);out.xp=int(v.xp,1e6);out.streak=int(v.streak,10000);out.best=Math.max(out.streak,int(v.best,10000));
   if(typeof v.streakDay==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v.streakDay))out.streakDay=v.streakDay;
   if(typeof v.told==='string')out.told=v.told.slice(0,140);
+  out.brain=Brain()?.cleanLearning(v.brain)||(v.brain&&typeof v.brain==='object'?v.brain:null);
+  out.skills=Brain()?.cleanSkills?.(v.skills)||{};out.reminders=Ask()?.cleanReminders(v.reminders,0)||[];out.routines=Ask()?.cleanRoutines(v.routines)||[];
   return out;
  }
  // Finishing a piece of work: a treat, some experience, and the day counts toward the run of days.
@@ -38,47 +41,75 @@
   return {pet:next,leveled:level(next.xp)>level(pet.xp)};
  }
  function feed(pet){return pet.treats>0?{...pet,treats:pet.treats-1,fed:pet.fed+1,xp:clamp(pet.xp+1,0,1e6)}:pet;}
+ function createActivity({now=()=>Date.now(),storage=()=>root.sessionStorage,hidden=()=>false}={}){
+  const key='canvas-harness:activity',gap=600000;let last=null,visibleAt=null,hiddenAt=null,active=0,offered=0,session=0,written=-Infinity,available=true,saved=null;
+  const reset=()=>{last=visibleAt=null;active=offered=0;session++;},snapshot=at=>{const inputAt=hiddenAt??at;if(last!==null&&(inputAt-last>=gap||inputAt<last||hiddenAt!==null&&at-hiddenAt>=gap))reset();return {active:active+(visibleAt!==null&&hiddenAt===null?at-visibleAt:0),offered,session:String(session)};};
+  try{saved=storage()?.getItem(key);}catch{available=false;}
+  try{
+   const v=JSON.parse(saved),at=now(),number=n=>Number.isFinite(n)&&n>=0;
+   if(v&&number(v.active)&&number(v.last)&&number(v.offered)&&number(v.savedAt)&&Number.isSafeInteger(v.session)&&v.session>=0&&v.session<Number.MAX_SAFE_INTEGER&&v.offered<=v.active&&v.active<=v.savedAt&&v.last<=v.savedAt&&v.savedAt<=at&&at-v.last<gap&&(v.hiddenAt===null||number(v.hiddenAt)&&v.hiddenAt>=v.last&&v.hiddenAt<=v.savedAt&&at-v.hiddenAt<gap)){
+    active=v.active;last=v.last;hiddenAt=v.hiddenAt;offered=v.offered;session=v.session;written=v.savedAt;visibleAt=hiddenAt===null?at:null;
+   }
+  }catch{}
+  function persist(at,force=false){
+   if(!available||hiddenAt!==null||hidden()||!force&&(last===null||at-written<30000))return;
+   const value=snapshot(at);if(!force&&last===null)return;written=at;
+   try{storage()?.setItem(key,JSON.stringify({active:value.active,last,hiddenAt,offered,session,savedAt:at}));}catch{available=false;}
+  }
+  function visibility(at,isHidden){
+   if(isHidden===(hiddenAt!==null))return;
+   if(isHidden){snapshot(at);if(visibleAt!==null)active+=at-visibleAt;visibleAt=null;hiddenAt=at;}
+   else{const pause=at-hiddenAt;if(pause>=gap||pause<0)reset();else if(last!==null)last+=pause;hiddenAt=null;snapshot(at);if(last!==null)visibleAt=at;persist(at);}
+  }
+  visibility(now(),hidden());
+  return {snapshot(at){const value=snapshot(at);persist(at);return value;},input(at){if(hiddenAt!==null||hidden())return;snapshot(at);if(last===null)visibleAt=at;last=at;persist(at);},visibility,shown(at){offered=snapshot(at).active;persist(at);},flush(at){persist(at,true);}};
+ }
 
  // How the pony moves. Everything that changes over time is a number eased every frame, so there is no cut between
  // resting and walking: speed builds and falls away, the legs' swing grows with the speed, the body sinks when it
  // lies down and rises before it walks, and the neck swings to wherever the pose wants it.
  const POSE={stand:{down:0,neck:9,head:0},flag:{down:0,neck:6,head:-2},lie:{down:11.5,neck:10,head:0},sleep:{down:11.5,neck:44,head:18},read:{down:11.5,neck:29,head:14},eat:{down:0,neck:60,head:22}};
- function create({container,getPet,savePet,info=()=>({}),actions={},now=()=>Date.now()}){
+ const CUSTOM_FALLBACK={trot:'walk',lie:'sleep'},customMedia=new WeakMap();
+ function customPose(pack,value='stand'){return Object.hasOwn(pack.poses,value)?value:Object.hasOwn(CUSTOM_FALLBACK,value)?CUSTOM_FALLBACK[value]:'stand';}
+ function customDrawing(pack,value='stand',face='right',still=false){
+  if(!pack)return null;let pose=customPose(pack,value),selected=pack.assets[pack.poses[pose]];if(still&&selected.animated&&!selected.svg)pose='stand';const asset=root.ReservePetPack?.pose?root.ReservePetPack.pose(pack,pose,still):pack.assets[pack.poses[pose]];let urls=customMedia.get(asset);
+  if(!urls){const moving=asset.svg?'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(asset.svg):'data:'+asset.type+';base64,'+asset.data;urls={moving,still:asset.svg?'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(asset.still):asset.firstFrame||moving};customMedia.set(asset,urls);}
+  return {pose,src:still?urls.still:urls.moving,width:pack.size[0],height:pack.size[1],ground:pack.ground,mirror:face!==pack.faces};
+ }
+ function create({container,getPet,getCustomPet=()=>null,savePet,claimNudge,claimOffer,info=()=>({}),actions={},now=()=>Date.now()}){
   if(root.ReserveSite?.vanillaPage(root.location))return null;
   const doc=container.ownerDocument||root.document,win=doc.defaultView||root,art=root.ReservePetArt,E=value=>root.ReserveUI?.escapeHTML?root.ReserveUI.escapeHTML(value):String(value).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
   let pet=clean(getPet()),layer=null,node=null,bubble=null,dead=false,film=0,timer=0,last=0,next=0,debt=0,stepping=false,pose='stand',face='right';
-  let spot={ledge:null,u:160},grab=null,releaseGrab=null,menuOpen=false,focusing=false,quietUntil=0,lastInput=now(),sayTimer=0,unseen=0;
+  let custom=null,drawingNode=null,customImage=null,customSource='';
+  let spot={ledge:null,u:160},grab=null,releaseGrab=null,menuOpen=false,focusing=false,quietUntil=pet.brain?.quietUntil||0,lastInput=now(),sayTimer=0,unseen=0;
+  let thought={mood:'calm',dueToday:0,suggestions:[]},snapshot={},thoughtKey='',thoughtVersion=0,nudgeCheck='',thoughtAt=-Infinity,brainTick=0,hideTimer=0,typingUntil=0,composing=false,dragging=false,nudgeOpen=false,claiming=false,exposed=[],focusDetails={},pendingBreak=false;
+  let askChoices=[],askSelected=0,askText='',bubbleVersion=0,scheduled=null,scheduleClaiming=false,commandBusy=false;const undoChanges=[];const offered=new Set(),newId=()=>`pony-${now()}-${root.crypto?.randomUUID?.()||Math.random().toString(36).slice(2)}`;
+  const activeUse=createActivity({now,storage:()=>win.sessionStorage,hidden:()=>doc.hidden});
   // what it is doing: null (resting), a walk, or a jump; and the eased numbers
   let goal=null,rest='stand',speed=0,phase=0,follow=0,reel=0;const ch={leg:0,down:0,neck:9,head:0,alpha:1};
   const FILM=1000/24,STEP=1/60,watched=new Set();let geometry=null,dirty=true,layoutFrame=0,layoutTimer=0,layoutVersion=0,resizeWatch=null,layoutWatch=null,life=0,decisionPending=false,layoutAnimations=new WeakSet(),bubbleBox={w:250,h:120};
-  const filmNow=()=>win.performance?.now?.()??now(),motionMedia=win.matchMedia?.('(prefers-reduced-motion: reduce)');
-  const followEvents=['input','beforeinput','compositionstart','compositionend','pointerdown','pointerup','pointercancel','dragstart','dragend'];
-  let motionChange=null;
+  const filmNow=()=>win.performance?.now?.()??now(),motionMedia=win.matchMedia?.('(prefers-reduced-motion: reduce)');let motionChange=null;
   const reduced=()=>menuOpen||['off','still'].includes(container.dataset.motionStyle)||!!motionMedia?.matches;
-  const size=()=>SIZES[pet.size]||SIZES.medium;
-  const visible=()=>pet.enabled&&pet.roam!=='off';
+  const size=()=>custom?custom.size[0]:SIZES[pet.size]||SIZES.medium,height=()=>custom?custom.size[1]:size()*64/72,ground=()=>custom?custom.ground:height()*60/64;
+  const visible=()=>pet.enabled&&pet.roam!=='off'&&!(pet.brain?.hiddenUntil>now());
   function mount(){
    if(layer||dead)return;
    layer=doc.createElement('div');layer.className='pet-layer';
-   layer.innerHTML=`<button type="button" class="pet" data-pose="stand" data-face="right" aria-haspopup="menu" aria-expanded="false"></button>`;
-   container.append(layer);node=layer.firstElementChild;node.innerHTML=art.svg({title:pet.name});
+   layer.innerHTML=`<button type="button" class="pet" data-pose="stand" data-face="right" aria-haspopup="${Brain()||Parse()?'dialog':'menu'}" aria-expanded="false"></button>`;
+   container.append(layer);node=layer.firstElementChild;
    node.addEventListener('pointerdown',down);node.addEventListener('click',click);node.addEventListener('keydown',key);
-   for(const type of ['animationstart','animationend','animationcancel'])node.addEventListener(type,resetReels);
+    for(const type of ['animationstart','animationend','animationcancel'])node.addEventListener(type,resetReels);
    win.addEventListener('scroll',invalidate,{passive:true,capture:true});win.addEventListener('resize',invalidate,{passive:true});
    container.addEventListener('scroll',invalidate,{passive:true,capture:true});   // the workspace column scrolls inside the workspace
    for(const type of ['load','transitionrun','transitionend','transitioncancel','animationend','animationcancel'])container.addEventListener(type,invalidate,{passive:true,capture:true});
    doc.fonts?.addEventListener?.('loadingdone',invalidate);
    const mounted=++life;
-   motionChange=()=>{if(mounted!==life)return;dress();resetReels();invalidate();};
-   motionMedia?.addEventListener?.('change',motionChange);
+   motionChange=()=>{if(mounted!==life)return;dress();resetReels();invalidate();};motionMedia?.addEventListener?.('change',motionChange);
    if(win.ResizeObserver)resizeWatch=new win.ResizeObserver(()=>{if(mounted===life)invalidate();});
    if(win.MutationObserver){
     layoutWatch=new win.MutationObserver(records=>{
      if(mounted!==life)return;
-     for(const r of records)if(node?.contains(r.target)){
-      if(r.type==='childList'){rig=null;resetReels();}
-      else if(r.type==='attributes'&&['class','data-pose','data-face','data-lying','data-still','data-gear'].includes(r.attributeName))resetReels();
-     }
+     for(const r of records)if(node?.contains(r.target)){if(r.type==='childList'){rig=null;resetReels();}else if(r.type==='attributes'&&['class','data-pose','data-face','data-lying','data-still','data-gear'].includes(r.attributeName))resetReels();}
      if(records.some(r=>r.type==='attributes'&&(r.target===container||r.target.contains?.(container))&&['class','style','data-motion-style','data-feature-motion'].includes(r.attributeName))){dress();resetReels();}
      if(records.some(changesPlaces))invalidate();
     });
@@ -86,26 +117,31 @@
     for(let p=container.parentElement||container.getRootNode?.().host;p;p=p.parentElement)layoutWatch.observe(p,{attributes:true});
    }
    doc.addEventListener('pointermove',seen,{passive:true});doc.addEventListener('keydown',seen,{passive:true});
-   for(const type of followEvents)doc.addEventListener(type,scheduleFollow,{passive:true,capture:true});
-   doc.addEventListener('visibilitychange',wake);
-   // Geometry events follow modules immediately; input checks once for an unobserved position change.
+   for(const type of ['input','beforeinput','compositionstart','compositionend','pointerdown','pointerup','pointercancel','dragstart','dragend'])doc.addEventListener(type,activity,{passive:true,capture:true});
+   doc.addEventListener('visibilitychange',wake);win.addEventListener('pagehide',saveActivity);
+   // Geometry events follow modules immediately; input also checks for an unobserved position change.
    dress();home();place();paint();plan(1400);roll();
+    if(Brain()){refreshBrain();checkSchedule();startBrain();}
   }
   function unmount(){
    if(!layer)return;closeBubble();stop();clearTimeout(node._cheer);releaseGrab?.();grab=null;goal=null;speed=0;life++;
    node.removeEventListener('pointerdown',down);node.removeEventListener('click',click);node.removeEventListener('keydown',key);
-   for(const type of ['animationstart','animationend','animationcancel'])node.removeEventListener(type,resetReels);
+    for(const type of ['animationstart','animationend','animationcancel'])node.removeEventListener(type,resetReels);
    motionMedia?.removeEventListener?.('change',motionChange);motionChange=null;
     cancelPlaces();resizeWatch?.disconnect();layoutWatch?.disconnect();resizeWatch=layoutWatch=null;watched.clear();layoutAnimations=new WeakSet();geometry=null;dirty=true;rig=null;
    win.removeEventListener('scroll',invalidate,{capture:true});container.removeEventListener('scroll',invalidate,{capture:true});win.removeEventListener('resize',invalidate);
    for(const type of ['load','transitionrun','transitionend','transitioncancel','animationend','animationcancel'])container.removeEventListener(type,invalidate,{capture:true});
    doc.fonts?.removeEventListener?.('loadingdone',invalidate);
-   doc.removeEventListener('pointermove',seen);doc.removeEventListener('keydown',seen);doc.removeEventListener('visibilitychange',wake);
-   for(const type of followEvents)doc.removeEventListener(type,scheduleFollow,{capture:true});
-   clearTimeout(reel);reel=0;reels.clear();reelsDirty=true;layer.remove();layer=node=null;
+   doc.removeEventListener('pointermove',seen);doc.removeEventListener('keydown',seen);doc.removeEventListener('visibilitychange',wake);win.removeEventListener('pagehide',saveActivity);
+   for(const type of ['input','beforeinput','compositionstart','compositionend','pointerdown','pointerup','pointercancel','dragstart','dragend'])doc.removeEventListener(type,activity,{capture:true});
+   clearInterval(brainTick);brainTick=0;
+    clearTimeout(reel);reel=0;reels.clear();reelsDirty=true;layer.remove();layer=node=drawingNode=customImage=null;customSource='';
   }
-  function seen(){lastInput=now();scheduleFollow();if(!reel&&layer&&!doc.hidden&&(reelsDirty||reels.size))roll();if(rest==='sleep'&&!goal&&!menuOpen)settle('lie',4000);}
-  function wake(){if(doc.hidden){stop();clearTimeout(reel);reel=0;cancelPlaces();releaseGrab?.();if(grab){grab=null;goal=null;speed=0;node.dataset.grabbed='false';setPose('stand');}return;}if(layer){invalidate();resetReels();run();if(!goal)plan(900);roll();}}
+  function startBrain(){if(Brain()&&!doc.hidden&&!brainTick)brainTick=setInterval(()=>{refreshBrain(true);checkSchedule();offerBreak();offerStretch();maybeNudge();},60000);}
+  function saveActivity(){activeUse.flush(now());}
+  function seen(){if(!doc.hidden)activeUse.input(now());lastInput=now();scheduleFollow();if(!reel&&layer&&!doc.hidden&&(reelsDirty||reels.size))roll();if(rest==='sleep'&&!goal&&!menuOpen)settle('lie',4000);}
+  function activity(event){scheduleFollow();const type=event.type;if(type==='pointerdown'&&!doc.hidden)activeUse.input(now());if(type==='compositionstart')composing=true;if(type==='compositionend'){composing=false;typingUntil=now()+5000;}if(type==='input'||type==='beforeinput')typingUntil=now()+5000;if(type==='pointerdown'||type==='dragstart')dragging=true;if(['pointerup','pointercancel','dragend'].includes(type))dragging=false;}
+  function wake(){activeUse.visibility(now(),doc.hidden);drawCustom();if(doc.hidden){clearInterval(brainTick);brainTick=0;stop();clearTimeout(reel);reel=0;cancelPlaces();releaseGrab?.();if(grab){grab=null;goal=null;speed=0;node.dataset.grabbed='false';setPose('stand');}return;}if(layer){startBrain();refreshBrain(true);invalidate();resetReels();run();if(!goal&&!menuOpen)plan(900);roll();}}
   // THE PONY ON THE FILM CLOCK. Its little loops (the tail, the nod, the blink, breathing, the Zs) are CSS animations.
   // Left to run, each one makes Chrome draw the whole page at the screen's own rate (60 to 240 times a second: on a
   // battery that was most of an idle page's cost) to move a few pixels. Like the drawings (motion.js), they are paused
@@ -113,15 +149,8 @@
   // hidden. A loop between two keyframes that say the same thing (a blink's long open stretch) is not written at all.
   // Only endless loops: a short one (a hop, the book appearing) plays as written. Reduced motion has none.
   const reels=new Map();let reelsDirty=true;
-  function scheduleReel(delay){
-   const mounted=life,id=setTimeout(()=>{if(mounted===life&&reel===id)roll();},delay);
-   reel=id;reel?.unref?.();
-  }
-  function resetReels(){
-   reelsDirty=true;
-   if(reduced()){clearTimeout(reel);reel=0;reels.clear();return;}
-   if(node&&!dead&&!doc.hidden&&!reel)scheduleReel(0);
-  }
+  function scheduleReel(delay){const mounted=life,id=setTimeout(()=>{if(mounted===life&&reel===id)roll();},delay);reel=id;reel?.unref?.();}
+  function resetReels(){reelsDirty=true;if(custom||reduced()){clearTimeout(reel);reel=0;reels.clear();return;}if(node&&!dead&&!doc.hidden&&!reel)scheduleReel(0);}
   function restsOf(a){
    try{
     const timing=a.effect?.getTiming?.(),frames=a.effect?.getKeyframes?.();
@@ -134,7 +163,7 @@
   }
   function roll(){
    clearTimeout(reel);reel=0;if(!node||dead||doc.hidden||menuOpen)return;
-   if(reduced()){reels.clear();reelsDirty=true;return;}
+   if(custom||reduced()){reels.clear();reelsDirty=true;return;}
     const t=now();
    // every state is read before any time is written, so Chrome restyles once a frame, not once a loop
     if(reelsDirty){
@@ -158,45 +187,49 @@
    const quiet=now()-lastInput;if(!reels.size||quiet>=120000)return;
    scheduleReel(1000/(quiet<6000?24:quiet<25000?12:6));
   }
+  function refreshDrawing(){
+   const value=getCustomPet()||null;if(value===custom&&drawingNode===node)return;custom=value;customSource='';rig=null;
+   if(custom){
+    ch.leg=ch.down=0;ch.neck=9;ch.head=0;
+    if(!customImage||drawingNode!==node){customImage=doc.createElement('img');customImage.className='pet-svg';customImage.alt='';customImage.draggable=false;customImage.decoding='async';customImage.setAttribute('aria-hidden','true');node.replaceChildren(customImage);}
+    customImage.width=custom.size[0];customImage.height=custom.size[1];
+   }else{customImage=null;node.innerHTML=art.svg({title:pet.name});}
+   drawingNode=node;resetReels();
+  }
+  function drawCustom(){
+   if(!customImage||!node)return;const drawing=customDrawing(custom,pose,face,doc.hidden||reduced()),transform=drawing.mirror?'scaleX(-1)':'scaleX(1)';
+   if(customSource!==drawing.src){customSource=drawing.src;customImage.src=drawing.src;}if(customImage.style.transform!==transform)customImage.style.transform=transform;
+  }
   function dress(){
-   if(!node)return;const c=art.COATS[pet.coat]||art.COATS.oat;
+   if(!node)return;refreshDrawing();const c=art.COATS[pet.coat]||art.COATS.oat;
    node.style.setProperty('--pet-coat',c.coat);node.style.setProperty('--pet-shade',c.shade);node.style.setProperty('--pet-mane',c.mane);node.style.setProperty('--pet-muzzle',c.muzzle);
    node.style.setProperty('--pet-harness',art.HARNESS[pet.harness]||art.HARNESS.red);node.style.setProperty('--pet-size',size()+'px');
-    if(node.dataset.gear!==pet.gear){node.dataset.gear=pet.gear;resetReels();}node.setAttribute('aria-label',`${pet.name}, your pony. Open ${pet.name}'s menu`);
-   const still=String(reduced());
-   if(node.dataset.still!==still){
-    node.dataset.still=still;resetReels();
-    if(still==='true'&&goal&&!goal.drop&&!grab){goal=null;speed=0;ch.leg=0;settle(focusing?'read':nudge(info()),30000);}
-   }
+   node.style.width=custom?size()+'px':'';node.style.height=custom?height()+'px':'';node.style.aspectRatio=custom?`${size()} / ${height()}`:'';
+    if(node.dataset.gear!==pet.gear){node.dataset.gear=pet.gear;resetReels();}node.setAttribute('aria-label',`${pet.name}, your ${custom?'companion':'pony'}. Open ${pet.name}'s menu`);
+    const still=String(reduced());if(node.dataset.still!==still){node.dataset.still=still;resetReels();if(still==='true'&&goal&&!goal.drop&&!grab){goal=null;speed=0;ch.leg=0;settle(focusing?'read':nudge(snapshot),30000);}}
+   drawCustom();if(Number.isFinite(node._x)&&Number.isFinite(node._y))moveTo(node._x,node._y);
   }
-  function setPose(value,facing){if(!node)return;pose=value;if(facing)face=facing;if(stepping)return;if(node.dataset.pose!==pose){node.dataset.pose=pose;resetReels();}if(node.dataset.face!==face){node.dataset.face=face;resetReels();}}
+  function setPose(value,facing){if(!node)return;pose=value;if(facing)face=facing;if(stepping)return;let changed=false;if(node.dataset.pose!==pose){node.dataset.pose=pose;changed=true;resetReels();}if(node.dataset.face!==face){node.dataset.face=face;changed=true;resetReels();}if(changed)drawCustom();}
   // ---- places to stand: the top edge of every module, inside the paddock, and the bottom of the window
   // A snapshot is measured on external changes and before decisions, never by a movement/easing frame. Keep the same drawn
   // outlines and hit tests; caching the rectangles must not turn words, controls, or unruled modules into ground.
   let sides=new WeakMap();const drawn=color=>!!color&&color!=='transparent'&&!/,\s*0\)$/.test(color);
   const framed=()=>container.dataset.panelFrame!=='none';
-  // Metadata and same-width tabular clock ticks cannot move a ledge. Layout and hit-test states still can.
+  // These metadata writes cannot move a ledge. Other ARIA states can change CSS layout (or hit tests).
   const cosmeticAttributes=new Set(['aria-label','aria-labelledby','aria-describedby','aria-controls','aria-activedescendant','aria-live','aria-atomic','aria-busy','title','tabindex']);
-  function clockTick(record){
-   const el=record.type==='characterData'?record.target.parentElement:record.target;
-   if(!el?.closest?.('[data-rd-focus-clock]'))return false;
+  function clockTick(r){
+   const el=r.type==='characterData'?r.target.parentElement:r.target;if(!el?.closest?.('[data-rd-focus-clock]'))return false;
    let before,after;
-   if(record.type==='characterData'){before=record.oldValue;after=record.target.textContent;}
-   else if(record.type==='childList'){
-    const added=[...record.addedNodes],removed=[...record.removedNodes];
-    if(!added.length||!removed.length||[...added,...removed].some(node=>node.nodeType!==3))return false;
-    before=removed.map(node=>node.textContent).join('');after=added.map(node=>node.textContent).join('');
-   }
+   if(r.type==='characterData'){before=r.oldValue;after=r.target.textContent;}
+   else if(r.type==='childList'){const added=[...r.addedNodes],removed=[...r.removedNodes];if(!added.length||!removed.length||[...added,...removed].some(n=>n.nodeType!==3))return false;before=removed.map(n=>n.textContent).join('');after=added.map(n=>n.textContent).join('');}
+   // The toolbar clock uses tabular digits. Starting/ending a session, visibility and wider times still invalidate.
    return typeof before==='string'&&typeof after==='string'&&before.length===after.length&&/^\d{2,}:\d{2}$/.test(before)&&/^\d{2,}:\d{2}$/.test(after);
   }
-  function changesPlaces(record){
-   if(layer?.contains(record.target))return false;
-   if(record.type==='attributes')return !cosmeticAttributes.has(record.attributeName)&&!(record.attributeName==='aria-selected'&&record.target.matches?.('[data-quick-index]'));
-   if(record.type==='childList'){
-    const changed=[...record.addedNodes,...record.removedNodes];
-    if(changed.length&&changed.every(node=>node===layer||layer?.contains(node)))return false;
-   }
-   return !clockTick(record);
+  function changesPlaces(r){
+   if(layer?.contains(r.target))return false;
+   if(r.type==='attributes')return !cosmeticAttributes.has(r.attributeName)&&!(r.attributeName==='aria-selected'&&r.target.matches?.('[data-quick-index]'));
+   if(r.type==='childList'){const changed=[...r.addedNodes,...r.removedNodes];if(changed.length&&changed.every(n=>n===layer||layer?.contains(n)))return false;}
+   return !clockTick(r);
   }
   function measurePlaces(){
    const width=win.innerWidth,height=win.innerHeight,rects=new Map(),places=new Map(),out=[];sides=new WeakMap();
@@ -234,33 +267,9 @@
   function cancelPlaces(){decisionPending=false;layoutVersion++;if(layoutFrame){if(win.requestAnimationFrame)win.cancelAnimationFrame?.(layoutFrame);else clearTimeout(layoutFrame);}clearTimeout(layoutTimer);clearTimeout(follow);layoutFrame=layoutTimer=follow=0;}
   // Let the changed click frame paint before reading its layout. Decisions and movement keep using the snapshot.
   // Window resize/scroll and the font set's loadingdone have targets that are not Nodes; only Nodes go to contains().
-  function invalidate(event){
-   if(!node||dead||(event?.target?.nodeType&&layer?.contains(event.target)))return;
-   dirty=true;if(menuOpen&&!['scroll','resize'].includes(event?.type))return;
-   if(doc.hidden||layoutFrame||layoutTimer)return;
-   const version=++layoutVersion,afterFrame=()=>{
-    if(version!==layoutVersion||!node||dead||doc.hidden)return;
-    layoutFrame=0;layoutTimer=setTimeout(()=>{if(version===layoutVersion)refreshPlaces();},0);
-   };
-   layoutFrame=win.requestAnimationFrame?win.requestAnimationFrame(afterFrame):setTimeout(afterFrame,16);
-  }
-  function refreshPlaces(){
-   clearTimeout(layoutTimer);layoutTimer=0;if(!node||dead||doc.hidden)return;
-   measurePlaces();if(menuOpen){place();placeBubble();return;}
-   if(decisionPending){decisionPending=false;decide(true);}
-   if(!grab&&!goal&&Number.isFinite(node._x)&&Number.isFinite(node._y)){
-    const here=current();if(!free(here,spot.u))moveOff(here);
-   }
-   place();if(bubble)placeBubble();
-  }
-  function scheduleFollow(){
-   if(!node||dead||doc.hidden||menuOpen||follow)return;
-   const mounted=life,id=setTimeout(()=>{
-    if(mounted!==life||follow!==id)return;
-    follow=0;followPlace();
-   },500);
-   follow=id;
-  }
+  function invalidate(event){if(!node||dead||(event?.target?.nodeType&&layer?.contains(event.target)))return;dirty=true;if(menuOpen&&!['scroll','resize'].includes(event?.type))return;if(doc.hidden||layoutFrame||layoutTimer)return;const version=++layoutVersion,afterFrame=()=>{if(version!==layoutVersion||!node||dead||doc.hidden)return;layoutFrame=0;layoutTimer=setTimeout(()=>{if(version===layoutVersion)refreshPlaces();},0);};layoutFrame=win.requestAnimationFrame?win.requestAnimationFrame(afterFrame):setTimeout(afterFrame,16);}
+  function refreshPlaces(){clearTimeout(layoutTimer);layoutTimer=0;if(!node||dead||doc.hidden)return;measurePlaces();if(menuOpen){place();placeBubble();return;}if(decisionPending){decisionPending=false;decide(true);}if(!grab&&!goal&&Number.isFinite(node._x)&&Number.isFinite(node._y)){const here=current();if(!free(here,spot.u))moveOff(here);}place();if(bubble)placeBubble();}
+  function scheduleFollow(){if(!node||dead||doc.hidden||menuOpen||follow)return;const mounted=life,id=setTimeout(()=>{if(mounted!==life||follow!==id)return;follow=0;followPlace();},500);follow=id;}
   function followPlace(){
     if(!node||grab||doc.hidden||layoutFrame||layoutTimer)return;if(!resizeWatch||!layoutWatch){invalidate();return;}if(film||!spot.ledge)return;
    const r=spot.ledge.getBoundingClientRect(),old=geometry?.rects.get(spot.ledge);if(!spot.ledge.isConnected||!old||['left','top','right','bottom'].some(k=>r[k]!==old[k]))invalidate();
@@ -286,9 +295,9 @@
    return false;
   }
   function free(l,u){
-   if(!l)return false;const s=size(),h=s*64/72,x=l.x0+u;
+   if(!l)return false;const s=size(),h=height(),x=l.x0+u;
    if(x-s*.4<4||x+s*.4>win.innerWidth-4)return false;
-   for(const dx of [-.34,0,.34])for(const dy of [.22,.55,.85])if(busy(x+dx*s,l.y-dy*h))return false;
+   for(const dx of [-.34,0,.34])for(const dy of [.22,.55,.85])if(busy(x+dx*s,custom?l.y-ground()+(1-dy)*h:l.y-dy*h))return false;
    return true;
   }
   // A free place on this ledge, as near to `near` as it can be (or anywhere on it); null if there is none.
@@ -310,7 +319,7 @@
    spot.u=clamp(spot.u,6,Math.max(6,l.x1-l.x0-6));
    moveTo(l.x0+spot.u,l.y);
   }
-  function moveTo(x,y){if(!node)return;node._x=x;node._y=y;if(stepping)return;const s=size(),h=s*64/72,value=`translate(${(x-s/2).toFixed(1)}px,${(y-h*60/64).toFixed(1)}px)`;if(node.style.transform!==value)node.style.transform=value;if(bubble&&!menuOpen)placeBubble();}
+  function moveTo(x,y){if(!node)return;node._x=x;node._y=y;if(stepping)return;const s=size(),value=`translate(${(x-s/2).toFixed(1)}px,${(y-ground()).toFixed(1)}px)`;if(node.style.transform!==value)node.style.transform=value;if(bubble&&!menuOpen)placeBubble();}
   // The pose is written onto the few parts that move, and only when a value changed. (Setting the numbers as
   // variables on the pony instead would restyle every shape of the drawing on every frame.)
   let rig=null;
@@ -321,7 +330,7 @@
   }
   function put(el,prop,value){if(!el)return;const seen=rig.last.get(el)||rig.last.set(el,{}).get(el);if(seen[prop]!==value){seen[prop]=value;el.style[prop]=value;}}
   function paint(){
-   if(!node)return;const p=parts(),leg=Math.sin(phase)*ch.leg,down=ch.down,bob=-Math.abs(Math.sin(phase))*ch.leg*.055;
+   if(!node)return;if(custom){const opacity=ch.alpha<.995?ch.alpha.toFixed(2):'';if(node.style.opacity!==opacity)node.style.opacity=opacity;return;}const p=parts(),leg=Math.sin(phase)*ch.leg,down=ch.down,bob=-Math.abs(Math.sin(phase))*ch.leg*.055;
    const neck=ch.neck+(pose==='eat'?Math.sin(phase*2.4)*2.5:leg*.12),fold=(1-down/14.6).toFixed(3);
    // in the air, held, or cheering, the stylesheet poses the legs and shadow itself
    const free=pose==='fall'||pose==='held'||pose==='cheer';
@@ -338,15 +347,15 @@
   // ---- deciding
   function stop(){clearTimeout(film);clearTimeout(timer);film=0;timer=0;debt=0;}
   function run(){if(!stepping&&!film&&node&&!dead&&!doc.hidden&&!menuOpen){last=filmNow();next=last+FILM;debt=0;film=setTimeout(frame,FILM);}}
-  function plan(delay){clearTimeout(timer);timer=0;if(node&&!dead&&!doc.hidden&&!menuOpen)timer=setTimeout(decide,delay);}
+  function plan(delay){clearTimeout(timer);timer=setTimeout(decide,delay);}
   function settle(as,ms){goal=null;rest=as;setPose(as);run();plan(ms);}
   function decide(measured=false){
    timer=0;if(!node||dead)return;
    if(doc.hidden)return;
    if(menuOpen||grab||goal){plan(2500);return;}
-    if(dirty){decisionPending=true;invalidate();return;}if(!measured)measurePlaces();const data=info(),idle=now()-lastInput,here=current();
-   if(reduced()){settle(nudge(data),30000);return;}
+    if(dirty){decisionPending=true;invalidate();return;}if(!measured)measurePlaces();const data=Brain()?snapshot:info(),idle=now()-lastInput,here=current();
    if(focusing){settle('read',20000);return;}
+   if(reduced()){settle(nudge(data),30000);return;}
    // its place has scrolled away or gone: come back to somewhere in view, quietly
    const gone=here.el&&!framed()&&!sides.has(here.el)&&here.el.matches?.('.rd-main > [data-arrange-key]');
    if(!here.shown||gone||!here.el&&pet.roam==='home'){
@@ -362,18 +371,15 @@
    const roll=Math.random();
    if(roll<.2)walk();
    else if(roll<.25&&pet.roam==='page'){const near=ledges().filter(l=>l.el!==here.el&&!l.paddock&&Math.abs(l.y-here.y)<360&&l.x0<node._x+420&&l.x1>node._x-420);const to=near[Math.floor(Math.random()*near.length)];if(to)jumpTo(to);else walk();}
-   else if(roll<.7)settle('lie',14000+Math.random()*18000);
+   else if(roll<.7)settle(Brain()&&(thought.mood==='alert'||thought.mood==='sleepy')?nudge(data):'lie',14000+Math.random()*18000);
    else settle(nudge(data),8000+Math.random()*10000);
   }
   // A due item is carried as a small flag, not announced, unless reminders are fully on.
-  function nudge(data){return pet.nudges!=='off'&&data.next?.urgent&&now()>quietUntil?'flag':'stand';}
+  function nudge(data){return Brain()?({alert:pet.nudges==='off'?'stand':'flag',sleepy:'sleep',happy:'cheer',calm:'stand'}[thought.mood]||'stand'):pet.nudges!=='off'&&data.next?.urgent&&now()>quietUntil?'flag':'stand';}
   // Off whatever it is standing on: the nearest free place on this ledge, else a free place on another one in view.
   function moveOff(here){
    const u=freeOn(here,spot.u);if(u!=null){if(reduced()){spot.u=u;return;}goal={type:'walk',to:u,max:26};rest='stand';run();return;}
-   for(const other of ledges())if(other.el!==here.el){
-    const to=freeOn(other);if(to!=null){jumpTo(other,to);return;}
-   }
-   settle('stand',6000);
+   for(const other of ledges())if(other.el!==here.el){const to=freeOn(other);if(to!=null){jumpTo(other,to);return;}}settle('stand',6000);
   }
   function walk(){
    const l=current(),span=l.x1-l.x0;if(span<70){settle('stand',4000);return;}
@@ -432,14 +438,17 @@
      busy=true;
     }
    }
-   if(!goal||goal.type==='walk'){
-    if(ease('leg',goal&&ch.down<=.6?clamp(Math.abs(speed)/26,0,1)*(Math.abs(speed)>40?27:21):0,9,dt))busy=true;
-    if(ease('down',want.down,goal?7:4.2,dt))busy=true;
+   if(custom)ch.down=0;
+   else{
+    if(!goal||goal.type==='walk'){
+     if(ease('leg',goal&&ch.down<=.6?clamp(Math.abs(speed)/26,0,1)*(Math.abs(speed)>40?27:21):0,9,dt))busy=true;
+     if(ease('down',want.down,goal?7:4.2,dt))busy=true;
+    }
+    if(ease('neck',goal?.type==='walk'&&ch.down<=.6?9:want.neck,5,dt))busy=true;
+    if(ease('head',want.head,5,dt))busy=true;
+    if(pose==='eat'){phase+=dt*4;busy=true;}
    }
-   if(ease('neck',goal?.type==='walk'&&ch.down<=.6?9:want.neck,5,dt))busy=true;
-   if(ease('head',want.head,5,dt))busy=true;
    if(ease('alpha',1,3.2,dt))busy=true;
-   if(pose==='eat'){phase+=dt*4;busy=true;}
    return busy;
   }
   // ---- picking it up
@@ -450,7 +459,7 @@
     if(node!==held||dead||doc.hidden||e.pointerId!==start.id)return;
     if(!start.moved&&Math.hypot(e.clientX-start.x,e.clientY-start.y)<7)return;
     if(!start.moved){start.moved=true;grab=start;stop();goal=null;speed=0;ch.leg=0;ch.down=0;paint();closeBubble();setPose('held');try{node.setPointerCapture?.(start.id);}catch{}node.dataset.grabbed='true';}
-    moveTo(e.clientX,e.clientY+size()*.42);
+    moveTo(e.clientX,e.clientY+(custom?ground()-height()/2:size()*.42));
    };
    const up=e=>{
     if(e.pointerId!==start.id)return;
@@ -463,49 +472,102 @@
    const release=()=>{held.removeEventListener('pointermove',move);held.removeEventListener('pointerup',up);held.removeEventListener('pointercancel',up);try{held.releasePointerCapture?.(start.id);}catch{}if(releaseGrab===release)releaseGrab=null;};releaseGrab=release;
    held.addEventListener('pointermove',move);held.addEventListener('pointerup',up);held.addEventListener('pointercancel',up);
   }
-  function click(event){if(node._suppress&&now()<node._suppress){event.preventDefault();return;}if(menuOpen)closeBubble();else openMenu();}
+  function click(event){if(node._suppress&&now()<node._suppress){event.preventDefault();return;}if(nudgeOpen){snooze();return;}if(menuOpen)closeBubble();else openMenu();}
   function key(event){if(event.key==='Escape'&&menuOpen){event.preventDefault();closeBubble();node.focus();}}
   // ---- what it says
   function measureBubble(){if(bubble)bubbleBox={w:bubble.offsetWidth||250,h:bubble.offsetHeight||120};}
   function placeBubble(){
    if(!bubble||!node)return;const vw=geometry?.width||win.innerWidth,w=bubbleBox.w,h=bubbleBox.h,s=size();
-   const x=clamp(node._x-w/2,10,vw-w-10),above=node._y-s-h-6;
-   bubble.style.transform=`translate(${x.toFixed(0)}px,${(above>70?above:node._y+10).toFixed(0)}px)`;
+   const x=clamp(node._x-w/2,10,vw-w-10),above=node._y-(custom?ground():s)-h-6;
+   bubble.style.transform=`translate(${x.toFixed(0)}px,${(above>70?above:node._y+(custom?height()-ground():0)+10).toFixed(0)}px)`;
    bubble.style.setProperty('--pet-tail-x',clamp(node._x-x,22,w-22).toFixed(0)+'px');bubble.dataset.below=String(above<=70);
   }
-  function closeBubble(){
-   clearTimeout(sayTimer);sayTimer=0;
-   if(bubble){
-    bubble.removeEventListener('click',onBubble);resizeWatch?.unobserve(bubble);watched.delete(bubble);
-    bubble.remove();bubble=null;
-   }
-   if(menuOpen){menuOpen=false;node?.setAttribute('aria-expanded','false');dress();invalidate();run();plan(1500);}
-  }
+   function closeBubble(){bubbleVersion++;clearTimeout(sayTimer);const ignored=exposed;exposed=[];nudgeOpen=false;scheduled=null;askChoices=[];askSelected=0;askText='';if(bubble){bubble.removeEventListener('click',onBubble);bubble.removeEventListener('submit',submitAsk);bubble.removeEventListener('keydown',askKey);bubble.removeEventListener('input',previewAsk);resizeWatch?.unobserve(bubble);watched.delete(bubble);bubble.remove();bubble=null;}if(menuOpen){menuOpen=false;node?.setAttribute('aria-expanded','false');dress();invalidate();run();plan(1500);}learn(ignored.map(s=>[s.kind,'ignored']));}
   function show(html,{menu=false,ms=0}={}){
    closeBubble();if(!layer)return;
    bubble=doc.createElement('div');bubble.className='pet-bubble';bubble.innerHTML=html;
-   if(menu){
-    bubble.setAttribute('role','menu');bubble.setAttribute('aria-label',pet.name);menuOpen=true;
-    node.setAttribute('aria-expanded','true');if(goal)setPose('stand');goal=null;speed=0;
-    stop();cancelPlaces();clearTimeout(node._cheer);clearTimeout(reel);reel=0;dress();
-   }   // it stops where it is, so the menu opens in place
+   if(menu){bubble.setAttribute('role',Brain()||Parse()?'dialog':'menu');bubble.setAttribute('aria-label',pet.name);menuOpen=true;node.setAttribute('aria-expanded','true');goal=null;speed=0;stop();cancelPlaces();clearTimeout(node._cheer);clearTimeout(reel);reel=0;dress();}
    else{bubble.setAttribute('role','status');bubble.setAttribute('aria-live','polite');}
    layer.append(bubble);measureBubble();if(resizeWatch){resizeWatch.observe(bubble);watched.add(bubble);}placeBubble();
    bubble.addEventListener('click',onBubble);
+    bubble.addEventListener('submit',submitAsk);bubble.addEventListener('keydown',askKey);bubble.addEventListener('input',previewAsk);
    if(ms)sayTimer=setTimeout(()=>{if(bubble&&!menuOpen)closeBubble();},ms);
   }
-  function say(text,ms=5200){if(visible()&&layer)show(`<p class="pet-say">${E(text)}</p>`,{ms});}
+  function say(text,ms=5200){if(now()>=quietUntil&&visible()&&layer)show(`<p class="pet-say">${E(text)}</p>`,{ms});}
+  function learn(events){const B=Brain();if(!B||!events.length)return;let learning=B.cleanLearning(pet.brain);for(const [kind,event]of events)learning=B.record(learning,kind,event);save({...pet,brain:learning},current=>{let next=B.cleanLearning(current.brain);for(const [kind,event]of events)next=B.record(next,kind,event);return {...current,brain:next};});}
+  function expose(list,shown=true){exposed=list.slice(0,3);if(shown){if(exposed.some(s=>s.kind==='stretch'))activeUse.shown(now());learn(exposed.map(s=>[s.kind,'shown']));}}
+  function suggestionItems(list,menu=true){return list.slice(0,menu?2:3).map(s=>`<button type="button" role="button" class="pet-item biscuit-suggestion" data-pet-action="suggestion" data-pet-suggestion="${E(s.id)}">${E(s.label)}</button>`).join('');}
+   function refreshBrain(force=false){const B=Brain();if(!B)return;const data=info();snapshot={...data,now:now(),pet:{treats:pet.treats,roam:pet.roam,nudges:pet.nudges},skills:pet.skills,activity:activeUse.snapshot(now()),focus:{...data.focus,running:focusing||!!data.focus?.running}};const kinds=Object.entries(pet.brain?.kinds||{}).map(([k,v])=>[k,v.used,v.streak]),key=JSON.stringify({...snapshot,now:0,kinds,activity:{...snapshot.activity,active:Math.floor(snapshot.activity.active/60000)}});if(!force&&key===thoughtKey&&now()-thoughtAt<60000)return;thoughtKey=key;thoughtAt=now();thoughtVersion++;const before=thought.mood;thought=B.evaluate(snapshot,pet.brain);if(before!==thought.mood&&layer&&!focusing&&!grab&&!goal&&!menuOpen)plan(400);}
+  function manners(){return {typing:composing||now()<typingUntil,dragging:dragging||!!grab,hidden:now()<quietUntil||doc.hidden||!visible()||menuOpen||!!bubble};}
+  function maybeNudge(){const B=Brain(),top=thought.suggestions[0];if(!B||!top||claiming||pet.nudges!=='helpful')return;const state=manners(),ledger=pet.brain?.nudges,key=JSON.stringify([thoughtVersion,Math.floor(now()/60000),focusing,pet.brain?.hiddenUntil,ledger?.day,ledger?.count,ledger?.items?.length,ledger?.items?.at(-1),state]);if(key===nudgeCheck)return;nudgeCheck=key;if(!B.canNudge(top,{...snapshot,now:now(),focus:{...snapshot.focus,running:focusing||!!snapshot.focus?.running}},pet.brain,state))return;const display=learning=>{if(!learning||dead)return;pet=clean({...pet,brain:learning});if(manners().typing||manners().dragging||manners().hidden||focusing)return;show(`<button type="button" class="pet-item" data-pet-action="quiet">${E(B.speech(top,{...snapshot,now:now()}))}</button>`,{ms:11000});nudgeOpen=true;expose([top]);};if(claimNudge){claiming=true;Promise.resolve(claimNudge(top,snapshot,state)).then(display).catch(()=>{}).finally(()=>{claiming=false;});}else{const learning=B.markNudge(pet.brain,top,snapshot);save({...pet,brain:learning});display(learning);}}
+  function scheduleReturn(){clearTimeout(hideTimer);hideTimer=0;if(!dead&&pet.enabled&&pet.roam!=='off'&&pet.brain?.hiddenUntil>now())hideTimer=setTimeout(()=>{hideTimer=0;sync();},Math.min(2147483647,pet.brain.hiddenUntil-now()));}
+  function snooze(minutes=60){closeBubble();const B=Brain();if(!B)return;const until=now()+Math.max(1,Math.min(1440,Number(minutes)||60))*60000;save({...pet,brain:{...B.cleanLearning(pet.brain),hiddenUntil:until}},current=>({...current,brain:{...B.cleanLearning(current.brain),hiddenUntil:until}}));unmount();scheduleReturn();}
+   function offerBreak(){if(pet.nudges!=='helpful'||pet.brain?.kinds?.break?.streak>=3)return;const hour=Ask()?Math.floor(Ask().calendar(snapshot.timeZone)(now()).minute/60):new Date(now()).getHours();if(pet.skills.night!==false&&(hour>=22||hour<7))return;if(!pendingBreak||!layer||focusing||manners().typing||manners().dragging||manners().hidden)return;const list=thought.suggestions.filter(s=>s.kind==='break');if(!list.length)return;pendingBreak=false;show(`<div class="pet-items">${suggestionItems(list,false)}</div>`,{ms:11000});expose(list);}
+   function offerStretch(){const state=manners(),stretch=thought.suggestions.find(s=>s.kind==='stretch');if(!layer||focusing||state.typing||state.dragging||state.hidden||pet.nudges!=='helpful'||pet.brain?.kinds?.stretch?.streak>=3||!stretch)return;show(`<div class="pet-items">${suggestionItems([stretch],false)}</div>`,{ms:11000});expose([stretch]);}
+   function checkSchedule(){const A=Ask();if(!A||scheduleClaiming||!layer)return;const snap={...snapshot,now:now(),focus:{...snapshot.focus,running:focusing||!!snapshot.focus?.running}},state={...manners(),seen:[...offered]},offer=A.due(pet,snap,state);if(!offer||offered.has(JSON.stringify([offer.type,offer.id,offer.occurrence])))return;const display=claimed=>{if(!claimed||dead)return;pet=clean(claimed);if(manners().typing||manners().dragging||manners().hidden||focusing)return;offered.add(JSON.stringify([offer.type,offer.id,offer.occurrence]));if(offered.size>64)offered.delete(offered.values().next().value);const reminder=offer.action==='remind';show(`<p class="pet-say">${E(reminder?offer.data.text:offer.label)}</p><div class="pet-items"><button type="button" class="pet-item" data-pet-action="schedule-use">${reminder?'Done':E({focus:'Focus '+offer.data.minutes+' min',break:'Break '+offer.data.minutes+' min',plan:'Plan '+(offer.data.mode==='week'?'my week':offer.data.mode)}[offer.action])}</button><button type="button" class="pet-item" data-pet-action="schedule-later">${offer.type==='reminder'?'Later 10 min':'Skip'}</button></div>`);scheduled=offer;};if(claimOffer){scheduleClaiming=true;Promise.resolve(claimOffer(offer,snap,state)).then(display).catch(()=>{}).finally(()=>{scheduleClaiming=false;});}else{const next=A.markOffer(pet,offer,snap);save(next);display(next);}}
+   function askForm(value=''){return `<form class="biscuit-ask" data-pet-ask><label class="rd-field"><span>Ask Biscuit</span><input type="text" maxlength="240" data-pet-question aria-label="Ask Biscuit" value="${E(value)}" autocomplete="off" aria-controls="biscuit-preview"></label></form>`;}
+   function updatePreview(){const line=bubble?.querySelector('[data-pet-preview]'),choice=askChoices[askSelected];if(line){line.textContent=choice?.preview||'';line.hidden=!choice;line.style.display=choice?'':'none';line.dataset.petChoice=String(askSelected);}const items=bubble?.querySelector('[data-pet-suggestions]');if(items){items.hidden=!!askChoices.length;items.style.display=askChoices.length?'none':'';}}
+   function previewAsk(event){const input=event?.composedPath?.()[0]||event?.target;if(!input?.hasAttribute?.('data-pet-question')||!Parse())return;refreshBrain();const text=input.value.trim(),routine=/^every\s/i.test(text)&&Ask()?.parse(text,{...snapshot,now:now()});askText=text;askChoices=routine?.action==='routine'?[{intent:'routine',fields:routine.data,preview:routine.label}]:text?Parse().parse(text,{...snapshot,now:now()}):[];askSelected=0;updatePreview();}
+   function askKey(event){if(!menuOpen||event.isComposing)return;const target=event.composedPath?.()[0]||event.target;if(event.key==='Escape'){event.preventDefault();event.stopPropagation?.();closeBubble();node?.focus({preventScroll:true});return;}const isInput=target?.hasAttribute?.('data-pet-question');if(!isInput){if(['ArrowDown','ArrowUp'].includes(event.key)){const buttons=[...bubble.querySelectorAll('[data-pet-suggestion]')].filter(b=>!b.disabled),index=buttons.indexOf(target),next=index+(event.key==='ArrowUp'?-1:1);if(index>=0){event.preventDefault();event.stopPropagation?.();(buttons[next]||bubble.querySelector('[data-pet-question]'))?.focus({preventScroll:true});}}return;}if(['ArrowDown','ArrowUp','Tab'].includes(event.key)){if(askChoices.length){event.preventDefault();event.stopPropagation?.();askSelected=(askSelected+(event.key==='ArrowUp'||event.key==='Tab'&&event.shiftKey?-1:1)+askChoices.length)%askChoices.length;updatePreview();}else if(event.key!=='Tab'){const buttons=[...bubble.querySelectorAll('[data-pet-suggestion]')].filter(b=>!b.disabled);if(buttons.length){event.preventDefault();event.stopPropagation?.();buttons[event.key==='ArrowUp'?buttons.length-1:0].focus({preventScroll:true});}}return;}if(event.key==='Enter'){event.preventDefault();event.stopPropagation?.();if(Parse()){if(!askChoices.length)previewAsk({target});const choice=askChoices[askSelected];if(choice)void useCandidate(choice);}else legacySubmitAsk({preventDefault(){},target:target.closest('form')});}}
+   function submitAsk(event){if(!event.target?.hasAttribute?.('data-pet-ask'))return;event.preventDefault();if(!Parse()){legacySubmitAsk(event);return;}const input=event.target.querySelector('[data-pet-question]');if(input?.value?.trim()!==askText)previewAsk({target:input});if(askChoices[askSelected])void useCandidate(askChoices[askSelected]);}
+   function legacySubmitAsk(event){if(!event.target?.hasAttribute?.('data-pet-ask'))return;event.preventDefault();const input=event.target.querySelector('[data-pet-question]'),question=input?.value?.trim();if(!question||!Ask())return;refreshBrain();const result=Ask().parse(question,{...snapshot,now:now()});if(result.action==='fallback'){show(askForm(question)+`<p class="pet-say">${E(result.message)}</p>`,{menu:true});return;}if(result.action==='ai'||result.choices?.length>1){const choices=result.action==='ai'?[result]:result.choices;show(askForm(question)+`<div class="pet-items">${choices.map((v,i)=>`<button type="button" class="pet-item" data-pet-action="ask-choice" data-pet-choice="${i}">${E(v.label)}</button>`).join('')}</div>`,{menu:true});askChoices=choices;return;}closeBubble();void runAsk(result);}
+   function afterSlip(message,{undo=false,reload=false,suggestions=[]}={}){
+    show(`<div class="biscuit-preview" role="status">${E(message)}</div><div class="pet-items">${undo?'<button type="button" class="pet-item" data-pet-action="undo">Undo</button>':''}${reload?'<button type="button" class="pet-item" data-pet-action="reload">Reload</button>':''}${suggestions.map((line,i)=>`<button type="button" class="pet-item biscuit-suggestion" data-pet-action="example" data-pet-choice="${i}">${E(line)}</button>`).join('')}<button type="button" class="pet-item" data-pet-action="ask">Ask Biscuit</button></div>`,{menu:true});
+    askChoices=suggestions.map(line=>({line}));bubble?.querySelector('.pet-item')?.focus({preventScroll:true});
+   }
+   async function undoChange(){
+    if(commandBusy)return;const entry=undoChanges.at(-1);if(!entry){afterSlip('Nothing to undo.');return;}
+    commandBusy=true;try{const result=await entry();if(result===false||result?.ok===false){afterSlip(result?.message||'Could not undo. Try again.',{undo:true});return;}undoChanges.pop();afterSlip(result?.message||'Undone.',{undo:!!undoChanges.length,reload:result?.reload});}catch{afterSlip('Could not undo. Try again.',{undo:true});}finally{commandBusy=false;}
+   }
+   async function useCandidate(choice){
+    if(commandBusy)return;const fields=choice.fields||{};
+    if(choice.intent==='undo'){closeBubble();await undoChange();return;}
+    if(choice.intent==='help'){afterSlip('Try a line:',{suggestions:['Dark mode','Hide the clock','Go to the planner','Note: bring goggles','25 minute focus','Undo']});return;}
+    const kind=choice.intent==='pet'?fields.action:choice.intent==='open'?(exposed.find(s=>s.action==='open'&&(!fields.itemId||s.data?.itemId===fields.itemId))?.kind||'next'):choice.intent==='focus-control'?'focus':choice.intent;
+    exposed=exposed.filter(s=>s.kind!==kind);closeBubble();const version=bubbleVersion,previous=clean(getPet());let ok=false,result=false,undo=null,before;commandBusy=true;
+    try{
+     const checkpoint=actions.checkpoint?.(choice.intent);before=checkpoint?.then?await checkpoint:checkpoint;
+     if(choice.intent==='quiet'){
+      if(Number.isFinite(fields.minutes)&&fields.minutes>0&&fields.minutes<=1440){const old=quietUntil,until=now()+fields.minutes*60000;quietUntil=until;const change=current=>({...current,brain:{...Brain().cleanLearning(current.brain),quietUntil:until}});const saved=await save(change(pet),change);ok=saved!==false;if(!ok)quietUntil=old;result={ok,undo:()=>{quietUntil=old;const restore=current=>({...current,brain:{...Brain().cleanLearning(current.brain),quietUntil:old}});return save(restore(pet),restore);}};}
+     }else if(choice.intent==='pet'){result=await runPet(fields);ok=result!==false;}
+     else if(choice.intent==='routine'){result=await runAsk({action:'routine',data:fields});ok=result!==false;}
+     else{
+      const action=actions[choice.intent],data=choice.intent==='ai'?{question:fields.text}:choice.intent==='focus'||choice.intent==='break'?{...fields,explicit:true}:choice.intent==='plan'?{...fields,mode:fields.endDate?'week':fields.date&&fields.date!==Ask()?.calendar(snapshot.timeZone)(now()).day?'tomorrow':'tonight'}:fields;
+      result=action?await action(data):false;ok=!!action&&result!==false&&result?.ok!==false;
+     }
+     if(ok){
+      undo=result?.undo||(before&&actions.changed?.(before));
+      if(!undo&&(choice.intent==='pet'||choice.intent==='routine')){const current=clean(getPet()),keys=Object.keys(previous).filter(key=>JSON.stringify(previous[key])!==JSON.stringify(current[key]));if(keys.length)undo=()=>save({...pet,...Object.fromEntries(keys.map(key=>[key,previous[key]]))},value=>({...value,...Object.fromEntries(keys.map(key=>[key,previous[key]]))}));}
+      if(undo){undoChanges.push(undo);if(undoChanges.length>20)undoChanges.shift();}
+     }
+    }catch{ok=false;}finally{commandBusy=false;}
+    if(!dead)learn([[kind,ok?'used':'ignored']]);
+    if(dead||version!==bubbleVersion&&menuOpen)return;
+    if(choice.intent==='focus-status'&&ok&&typeof result==='string'){say(result);return;}
+    if(ok&&undo)afterSlip(result?.message||choice.preview,{undo:true,reload:result?.reload});
+    else if(result?.message)afterSlip(result.message,{reload:result.reload,suggestions:result.suggestions});
+    else if(!ok&&choice.intent!=='ai')afterSlip(['setting','preset','navigate','bookmark'].includes(choice.intent)?'That feature is off or unavailable. Check Make it yours → Features.':'Unavailable');
+   }
+   async function runPet(fields){if(fields.action==='treat')return treat();if(fields.action==='home'){const ok=await save({...pet,roam:'home'},current=>({...current,roam:'home'}));if(ok!==false)plan(300);return ok!==false;}if(fields.action==='hide'){snooze(fields.minutes);return true;}if(fields.action==='quiet'){return (await save({...pet,nudges:'quiet'},current=>({...current,nudges:'quiet'})))!==false;}if(fields.action==='off'){afterSlip('The Pony switch is in the extension popup → Pony.');return false;}if(fields.action==='settings'){if(!actions.settings)return false;return (await actions.settings())!==false;}return false;}
+   async function runAsk(result){if(result.action==='remind'||result.action==='routine'){const key=result.action==='remind'?'reminders':'routines',limit=20,entry={...result.data,id:newId(),createdAt:now(),...(key==='routines'?{last:''}:{})};let added=false;const version=bubbleVersion;try{const ok=await save({...pet,[key]:[...pet[key],entry].slice(0,limit)},current=>{const list=key==='reminders'?Ask().cleanReminders(current[key],now()):Ask().cleanRoutines(current[key]);if(list.length>=limit)return current;added=true;return {...current,[key]:[...list,entry]};});const stored=ok!==false&&(added||pet[key].some(v=>v.id===entry.id));if(!dead&&stored&&version===bubbleVersion)say('Saved.');return stored;}catch{return false;}}try{await actions[result.action]?.(result.data);}catch{}}
+   function useSchedule(later){const offer=scheduled;if(!offer)return;closeBubble();if(offer.type==='reminder'){const at=Number(offer.occurrence),change=current=>({...current,reminders:current.reminders.flatMap(r=>r.id!==offer.id||r.at!==at?[r]:later?[{...r,at:now()+600000}]:[])});void save(change(pet),change);return;}if(!later&&offer.action!=='remind')void runAsk(offer);}
   function summary(data){
    const n=data.todayOpen||0;
    if(data.next)return `<strong>Next:</strong> ${E(data.next.title)}<span class="pet-when">${E([data.next.course,data.next.when].filter(Boolean).join(' · '))}</span>`;
    return n?`${n} thing${n===1?'':'s'} left today.`:'Nothing due soon. Enjoy it.';
   }
-  function openMenu(){
+  function legacyMenu(){
    const data=info(),lv=level(pet.xp),item=(action,label,extra='')=>`<button type="button" role="menuitem" class="pet-item" data-pet-action="${action}" ${extra}>${label}</button>`;
    show(`<div class="pet-head"><strong>${E(pet.name)}</strong><span>Level ${lv}${pet.streak>1?` · ${pet.streak} days in a row`:''}</span><span class="pet-meter" aria-hidden="true"><i style="width:${Math.round(levelProgress(pet.xp)*100)}%"></i></span></div>
 <p class="pet-say">${summary(data)}</p>
 <div class="pet-items">${data.next?item('open','Open it')+item('focus',focusing?'Timer is running':'Focus 25 min',focusing?'disabled':''):''}${item('feed',`Give a treat <span class="pet-count">${pet.treats}</span>`,pet.treats?'':'disabled')}${item('stay',pet.roam==='home'?'Let it roam':'Send it home')}${item('settings','Pet settings')}</div>`,{menu:true});
    bubble.querySelector('.pet-item:not([disabled])')?.focus({preventScroll:true});
+  }
+  function openMenu(){
+   if(!Brain()&&!Parse()){legacyMenu();return;}
+   refreshBrain();const list=thought.suggestions.slice(0,2);
+    show(`${askForm()}<button type="button" id="biscuit-preview" class="biscuit-preview" data-pet-preview data-pet-action="ask-choice" data-pet-choice="0" aria-live="polite" style="display:none" hidden></button><div class="pet-items biscuit-suggestions" data-pet-suggestions>${suggestionItems(list)}</div>`,{menu:true});expose(list);
+   (bubble.querySelector('[data-pet-question]')||bubble.querySelector('.pet-item:not([disabled])'))?.focus({preventScroll:true});
   }
   function treat(){
    if(!pet.treats||!node)return false;
@@ -516,40 +578,42 @@
   function cheer(ms=1300){if(!node)return;goal=null;speed=0;rest='stand';ch.down=0;setPose('cheer');run();plan(ms+600);clearTimeout(node._cheer);node._cheer=setTimeout(()=>{if(node&&pose==='cheer')setPose('stand');},ms);}
   function onBubble(event){
    const b=event.target.closest?.('[data-pet-action]');if(!b||b.disabled)return;
-   const what=b.dataset.petAction,data=info();
-   if(what==='open'&&data.next){closeBubble();actions.open?.(data.next);}
-   else if(what==='focus'&&data.next){closeBubble();actions.focus?.(data.next);}
+   const what=b.dataset.petAction;
+   if(what==='open'||what==='focus'){const data=info();if(data.next){closeBubble();actions[what]?.({itemId:data.next.id,...(what==='focus'?{minutes:25}:{})});}return;}
+   if(what==='undo'){void undoChange();return;}
+   if(what==='reload'){actions.reload?.();return;}
+   if(what==='ask'){openMenu();return;}
+   if(what==='example'){const line=askChoices[Number(b.dataset.petChoice)]?.line,choice=line&&Parse()?.parse(line,{...snapshot,now:now()})?.[0];if(choice)void useCandidate(choice);return;}
+    if(what==='ask-choice'){const result=askChoices[Number(b.dataset.petChoice)];if(result?.intent)void useCandidate(result);else if(result){closeBubble();void runAsk(result);}return;}
+    if(what==='schedule-use'||what==='schedule-later'){useSchedule(what==='schedule-later');return;}
+   if(nudgeOpen||what==='quiet'){snooze();return;}
+   if(what==='suggestion'){const s=exposed.find(s=>s.id===b.dataset.petSuggestion);if(!s)return;exposed=exposed.filter(e=>e!==s);closeBubble();const action=s.action==='pet'?runPet:actions[s.action];try{Promise.resolve(action?.(s.data)).then(ok=>{if(!dead)learn([[s.kind,action&&ok!==false?'used':'ignored']]);}).catch(()=>{if(!dead)learn([[s.kind,'ignored']]);});}catch{learn([[s.kind,'ignored']]);}}
    else if(what==='feed'){treat();}
    else if(what==='stay'){closeBubble();save({...pet,roam:pet.roam==='home'?'page':'home'});plan(300);}
    else if(what==='settings'){closeBubble();actions.settings?.();}
-   else if(what==='quiet'){closeBubble();quietUntil=now()+3600000;plan(300);}
   }
-  function save(nextPet){pet=clean(nextPet);dress();savePet?.(pet);}
+  function save(nextPet,mutate){const before=pet;pet=clean(nextPet);const patch=Object.fromEntries(Object.entries(pet).filter(([key,value])=>JSON.stringify(value)!==JSON.stringify(before[key])));dress();return savePet?.(pet,patch,mutate);}
   // ---- called by the workspace
   function sync(){
-   if(dead)return;pet=clean(getPet());
-   if(!visible()){unmount();return;}
+   if(dead)return;pet=clean(getPet());quietUntil=pet.brain?.quietUntil||0;
+   if(!visible()){unmount();scheduleReturn();return;}
     if(!layer)mount();else{dress();if(!container.contains(layer)){container.append(layer);rig=null;resetReels();}invalidate();}
-   const data=info();
-   // Said once for each thing that becomes urgent, and only when reminders are fully on.
-   if(pet.nudges==='helpful'&&data.next?.urgent&&data.next.id&&pet.told!==String(data.next.id)&&now()>quietUntil&&!menuOpen&&!grab){
-    save({...pet,told:String(data.next.id)});
-    show(`<p class="pet-say"><strong>Due ${E(data.next.when||'soon')}:</strong> ${E(data.next.title)}</p><div class="pet-items"><button type="button" class="pet-item" data-pet-action="open">Open it</button><button type="button" class="pet-item" data-pet-action="quiet">Later</button></div>`,{ms:11000});
-   }
+   refreshBrain();offerBreak();offerStretch();maybeNudge();
   }
   function celebrate(kind='done',{today,left}={}){
    const result=reward(clean(getPet()),kind,today);save(result.pet);
    if(!visible()||!layer)return result;
+   if(kind==='focus'){closeBubble();pendingBreak=true;focusing=false;setFocus(false);settle('stand',2000);refreshBrain();offerBreak();return result;}
    closeBubble();cheer(1300);
    const line=result.leveled?`Level ${level(pet.xp)}! Something new is unlocked.`:kind==='focus'?'Good session. A treat for both of us.':left===0?'That was the last one for today.':left>0?`Done. ${left} left today.`:'Done. Nicely.';
    say(line,4200);
    return result;
   }
-  function setFocus(running){const was=focusing;focusing=!!running;if(was!==focusing&&layer&&!grab&&!menuOpen&&!goal)plan(400);}
-  function destroy(){dead=true;unmount();}
-  if(visible())mount();
+  function setFocus(running,details){const was=focusing;if(details)focusDetails=details;focusing=!!running&&focusDetails.phase!=='break';if(node){const left=Math.max(0,Math.ceil(((focusDetails.endsAt||0)-now())/1000)),tag=running&&focusDetails.fromPony?`${String(Math.floor(left/60)).padStart(2,'0')}:${String(left%60).padStart(2,'0')}`:'';if(tag&&node.dataset.timeLeft!==tag)node.dataset.timeLeft=tag;else if(!tag)delete node.dataset.timeLeft;}if(was!==focusing&&layer&&!grab){if(focusing){goal=null;speed=0;if(!menuOpen){closeBubble();settle('read',20000);}}else if(!menuOpen)plan(400);}}
+  function destroy(){dead=true;clearTimeout(hideTimer);unmount();}
+  if(visible())mount();else scheduleReturn();
   return {sync,celebrate,setFocus,say,treat,destroy,get pet(){return pet;}};
  }
- const api={DEFAULTS,SIZES,ROAM,NUDGES,GEAR,LEVEL_XP,UNLOCKS,level,levelProgress,unlocked,clean,reward,feed,create};
+  const api={DEFAULTS,SIZES,ROAM,NUDGES,GEAR,LEVEL_XP,UNLOCKS,level,levelProgress,unlocked,clean,reward,feed,createActivity,customPose,customDrawing,create};
  root.ReservePets=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

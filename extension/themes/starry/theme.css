@@ -1,0 +1,160 @@
+/* Starry Night: van Gogh's sky as a reskin of the dashboard. Every surface is painted: the ground, the cards, the panels'
+   frames, the pills, the button; titles in a brush hand. Colours: night blues, a gold that is the stars' and the lamps'. */
+.rd.rd.rd.rd[data-theme-kit]{--rd-bg:#141B3D;--rd-surface:#1D2756;--rd-surface-2:#22306a;--rd-ink:#EFE9CF;--rd-muted:#AEB6DA;--rd-ink-2:#E4DEC4;--rd-faint:#9AA2C8;--rd-line:rgba(143,182,238,.28);--rd-accent:#F2C94C;--rd-soft:rgba(242,201,76,.14);--rd-course:#F2C94C;--rd-danger:#FF9C7A;
+  background:#141B3D url(ground.png) repeat!important;color:var(--rd-ink)!important}
+.rd[data-theme-kit] :is(h1,h2,h3,.rd-rail-name,.rd-rail-heading){font-family:"Caveat Brush",cursive!important;font-weight:400!important;letter-spacing:.01em;color:#FFF4C8!important}
+.rd[data-theme-kit] h1{font-size:46px!important;text-shadow:0 2px 0 #0d1440,0 0 22px rgba(10,16,60,.85)}
+.rd[data-theme-kit] .rd-rail-name{font-size:19px!important}.rd[data-theme-kit] .rd-rail-heading{font-size:20px!important}
+.rd[data-theme-kit] :is(small,p,.rd-heading-date,.rd-rail-next){color:var(--rd-muted)!important}
+/* the toolbar and the search */
+.rd[data-theme-kit] .rd-toolbar{background:transparent!important}
+.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week){background:url(pill.png) center/100% 100% no-repeat!important;box-shadow:none!important}
+.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter){color:#D7DCF2!important}
+.rd[data-theme-kit] :is(.rd-workspace-tab[aria-selected=true],.cz-tab[aria-selected=true],.rd-filter[aria-pressed=true],.rd-day-filter[aria-pressed=true]){background:url(pill-on.png) center/100% 100% no-repeat!important;color:#1B2350!important;font-weight:700}
+.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter)::before,.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week)::before{background:transparent!important;box-shadow:none!important}
+.rd[data-theme-kit] .rd-search input{background:rgba(20,27,61,.7)!important;color:var(--rd-ink)!important;border:1px solid rgba(143,182,238,.35)!important}
+/* the heading: the painted sky behind the greeting, falling into the ground at its left */
+.rd[data-theme-kit] .rd-heading-art{display:block!important;inset:0 0 auto 0;height:100%;z-index:-2;-webkit-mask-image:linear-gradient(90deg,rgba(0,0,0,.25),#000 34%);mask-image:linear-gradient(90deg,rgba(0,0,0,.25),#000 34%)}
+.rd[data-theme-kit] .rd-heading-art > svg{display:none!important}
+.rd[data-theme-kit] .tk-banner{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 40%;border-radius:14px}
+.rd[data-theme-kit] .rd-workspace-heading{position:relative;isolation:isolate}
+.rd[data-theme-kit] .rd-glance-chip{background:url(pill-on.png) center/100% 100%!important;color:#1B2350!important}
+/* the course rail: each card in a painted frame, its motif in place of the subject drawing */
+.rd[data-theme-kit] .rd-course-rail{background:transparent!important;box-shadow:none!important}
+.rd[data-theme-kit] .rd-frame > *{display:none!important}
+.rd[data-theme-kit] .rd-frame{border:13px solid transparent;border-image:url(frame-card.png) 30 round;background:url(sheet.png) padding-box;box-sizing:border-box}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame{filter:drop-shadow(0 0 7px rgba(246,216,74,.55))}
+.rd[data-theme-kit] .rd-rail-art > svg{display:none!important}
+.rd[data-theme-kit] .tk-icon{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 1px 1px rgba(5,8,30,.6))}
+/* the three panels: the big painted frame, the painted ground inside */
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information){background:url(sheet.png)!important;border-radius:4px!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{-webkit-mask-box-image:none!important;mask:none!important;background:none!important;border:26px solid transparent!important;border-image:url(frame-panel.png) 48 round!important;inset:-12px!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::before{display:none!important}
+.rd[data-theme-kit] :is(.rd-announcement,.rd-reader,.rd-work-item,.rd-deck-section){background:transparent!important}
+.rd[data-theme-kit] .rd-bookmarks{border-bottom:0!important;background:url(divider.png) bottom/600px 12px repeat-x;padding-bottom:16px}
+/* buttons */
+.rd[data-theme-kit] .rd-button--primary{background:url(button.png) center/100% 100%!important;color:#1B2350!important;border:0!important;font-weight:700;text-shadow:0 1px 0 rgba(255,240,180,.6)}
+.rd[data-theme-kit] .rd-button:not(.rd-button--primary){background:rgba(29,39,86,.85)!important;color:var(--rd-ink)!important;border:1px solid rgba(143,182,238,.4)!important}
+.rd[data-theme-kit] a{color:#F6D84A}
+/* text the dashboard colours by hand (warm greys, clay) follows the night's ink and gold here */
+.rd[data-theme-kit] :is(button,label,span,b,strong,small,em,time,li,td,th,dt,dd){color:inherit}
+.rd[data-theme-kit] :is(.rd-text-button,.rd-grade-switch,.rd-board-edit,.rd-toolbox-trigger){color:var(--rd-ink)!important}
+.rd[data-theme-kit] :is(.rd-rail-next b,.rd-reader-facts span:first-child,[class*=due],[class*=time]){color:#FFB08A!important}
+.rd[data-theme-kit] .rd-reader-facts span:not(:first-child){color:var(--rd-muted)!important}
+.rd.rd.rd.rd[data-theme-kit]{--rd-muted:#C3C9E6}
+/* the chosen assignment: a gold glaze, not a white card */
+.rd[data-theme-kit] .rd-assignment--selected,.rd[data-theme-kit] .rd-assignment--selected::before,.rd[data-theme-kit] .rd-assignment--selected::after{background:rgba(242,201,76,.13)!important;box-shadow:inset 0 0 0 1px rgba(246,216,74,.45)!important;border-radius:12px}
+.rd[data-theme-kit] .rd-assignment--selected :is(h3,h4,b,strong,a){color:#FFF4C8!important}
+/* the banner: no edges, it fades into the ground on the left and at the foot */
+.rd[data-theme-kit] .rd-heading-art{-webkit-mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.35) 18%,#000 46%),linear-gradient(180deg,#000 72%,transparent);-webkit-mask-composite:source-in;mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.35) 18%,#000 46%),linear-gradient(180deg,#000 72%,transparent);mask-composite:intersect}
+.rd[data-theme-kit] .tk-banner{border-radius:0}
+/* calm where you read: flat night blue inside every card and panel, thinner frames, full-contrast text */
+.rd.rd.rd.rd[data-theme-kit]{--rd-ink:#F3EEDA;--rd-muted:#C9CFEA}
+.rd[data-theme-kit] .rd-frame{border-width:9px;border-image:url(frame-card.png) 30 round;background:#1A2350 padding-box}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information){background:#19224D!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{border-width:16px!important;border-image:url(frame-panel.png) 48 round!important;inset:-8px!important}
+.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week){background:rgba(26,35,80,.92)!important;box-shadow:inset 0 0 0 1px rgba(143,182,238,.22)!important}
+.rd[data-theme-kit] h1{text-shadow:0 2px 6px rgba(8,12,40,.9)}
+.rd[data-theme-kit] .rd-bookmarks{background-size:600px 10px}
+/* the sliding highlight under the chosen assignment */
+.rd[data-theme-kit] .rd-assignment-list::before,.rd[data-theme-kit] .rd-assignment-list::after{background:rgba(242,201,76,.14)!important;box-shadow:inset 0 0 0 1px rgba(246,216,74,.4)!important}
+.rd[data-theme-kit] .rd-assignment--selected{background:transparent!important;box-shadow:none!important}
+/* the banner dissolves into the night on every side: a long fade on the left under the greeting, soft at the top, the
+   right and the foot */
+.rd[data-theme-kit] .rd-heading-art{
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.3) 16%,#000 44%,#000 86%,transparent 100%),linear-gradient(180deg,transparent 0,#000 24%,#000 52%,transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.3) 16%,#000 44%,#000 86%,transparent 100%),linear-gradient(180deg,transparent 0,#000 24%,#000 52%,transparent 100%);
+  -webkit-mask-composite:source-in;mask-composite:intersect;inset:-14px -10px auto 0;height:calc(100% + 30px)}
+/* the chosen course: only a gold glow round its painted frame, none of the original's inner box */
+.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course,.rd-course-name){background:transparent!important;box-shadow:none!important;outline:none!important;border-color:transparent!important}
+.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::before,.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::after{display:none!important}
+.rd[data-theme-kit] .rd-frame{background:#1A2350 border-box!important;border-radius:6px}
+.rd[data-theme-kit] .rd-rail-art::before,.rd[data-theme-kit] .rd-rail-art::after{display:none!important}
+/* the large sky: across the whole top, behind the toolbar, the rail's head and the greeting; it melts into the ground */
+.rd.rd.rd.rd[data-theme-kit]{position:relative;isolation:isolate;overflow:hidden}
+.rd[data-theme-kit] > .tk-sky{position:absolute;left:0;right:0;top:0;height:560px;z-index:0;pointer-events:none;
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 46%,rgba(0,0,0,.45) 70%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 46%,rgba(0,0,0,.45) 70%,transparent 100%)}
+.rd[data-theme-kit] > .tk-sky video{width:100%;height:100%;object-fit:cover;object-position:50% 30%;display:block}
+.rd[data-theme-kit] > .rd-shell{position:relative;z-index:1}
+.rd[data-theme-kit] .rd-heading-art{display:none!important}
+.rd[data-theme-kit] .rd-rail-heading{text-shadow:0 1px 4px rgba(8,12,40,.9)}
+.rd[data-theme-kit] .rd-heading-date{color:#F3EEDA!important;text-shadow:0 1px 4px rgba(8,12,40,.95)}
+.rd[data-theme-kit] .rd-bookmarks p,.rd[data-theme-kit] .rd-bookmarks small{color:#F3EEDA!important;text-shadow:0 1px 4px rgba(8,12,40,.95)}
+/* the greeting reads off the sky through a soft dusk, not a box */
+.rd[data-theme-kit] .rd-course-heading::before{background:radial-gradient(60% 75% at 30% 55%,rgba(14,20,52,.72),rgba(14,20,52,.35) 55%,transparent 80%)!important;inset:-30px -60px -30px -40px!important}
+/* the rail is a panel again: night inside, the painted frame round it */
+.rd[data-theme-kit] .rd-course-rail{background:rgba(25,34,77,.94)!important;border-radius:4px!important;position:relative}
+.rd[data-theme-kit] .rd-course-rail::after{content:"";position:absolute;inset:-8px;border:16px solid transparent;border-image:url(frame-panel.png) 48 round;pointer-events:none}
+/* the reader's two tabs: the same pills as the rest */
+.rd[data-theme-kit] .rd-reader-tabs{background:rgba(26,35,80,.92)!important;box-shadow:inset 0 0 0 1px rgba(143,182,238,.3)!important}
+.rd[data-theme-kit] .rd-reader-tab[aria-pressed=true],.rd[data-theme-kit] .rd-reader-tab[aria-selected=true],.rd[data-theme-kit] .rd-reader-tab.is-active{background:url(pill-on.png) center/100% 100%!important;color:#1B2350!important}
+.rd[data-theme-kit] .rd-reader-tabs::before{background:url(pill-on.png) center/100% 100%!important;box-shadow:none!important}
+/* everything typed by teachers, in the night's ink */
+.rd[data-theme-kit] .rd-rich-text,.rd[data-theme-kit] .rd-rich-text :is(p,li,ol,ul,span,em,strong,b,td,th,h4,h5,h6){color:var(--rd-ink)!important}
+/* the search over the sky: solid night */
+.rd[data-theme-kit] .rd-search input{background:rgba(16,22,54,.92)!important}
+.rd[data-theme-kit] .rd-search input::placeholder{color:#B9C0E2}
+/* the greeting's dusk: an overlay that fades out on every side */
+.rd[data-theme-kit] .rd-course-heading{position:relative}
+.rd[data-theme-kit] .rd-course-heading::before{position:absolute!important;inset:-40px -120px -30px -60px!important;z-index:-1!important;background:radial-gradient(closest-side,rgba(14,20,52,.78),rgba(14,20,52,.45) 55%,rgba(14,20,52,0) 100%)!important;grid-area:auto!important}
+/* the art is alive, the words are still */
+@keyframes tk-turn{to{transform:rotate(360deg)}}
+@keyframes tk-breathe{0%,100%{filter:drop-shadow(0 0 2px rgba(246,216,74,.35)) brightness(1)}50%{filter:drop-shadow(0 0 9px rgba(246,216,74,.85)) brightness(1.12)}}
+@keyframes tk-sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+@keyframes tk-flicker{0%,100%{filter:drop-shadow(0 0 3px rgba(242,201,76,.5))}40%{filter:drop-shadow(0 0 7px rgba(242,201,76,.95))}55%{filter:drop-shadow(0 0 2px rgba(242,201,76,.4))}70%{filter:drop-shadow(0 0 6px rgba(242,201,76,.85))}}
+@keyframes tk-glow{0%,100%{filter:drop-shadow(0 0 5px rgba(246,216,74,.4))}50%{filter:drop-shadow(0 0 11px rgba(246,216,74,.75))}}
+@keyframes tk-shimmer{0%{background-position:0 0,-140% 0}60%,100%{background-position:0 0,240% 0}}
+.rd[data-theme-kit] .tk-icon[data-motif=swirl]{animation:tk-turn 14s linear infinite}
+.rd[data-theme-kit] .tk-icon[data-motif=sunflower]{animation:tk-turn 40s linear infinite}
+.rd[data-theme-kit] .tk-icon:is([data-motif=star],[data-motif=moon]){animation:tk-breathe 4.5s ease-in-out infinite}
+.rd[data-theme-kit] .tk-icon[data-motif=cypress]{transform-origin:50% 96%;animation:tk-sway 5s ease-in-out infinite}
+.rd[data-theme-kit] .tk-icon[data-motif=cottage]{animation:tk-flicker 3.2s steps(1,end) infinite}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame{animation:tk-glow 4s ease-in-out infinite}
+.rd[data-theme-kit] .rd-button--primary{background:url(button.png) center/100% 100%,linear-gradient(100deg,transparent 30%,rgba(255,250,215,.55) 50%,transparent 70%) 0 0/60% 100% no-repeat!important;background-blend-mode:normal;animation:tk-shimmer 5.5s ease-in-out infinite}
+.rd[data-theme-kit] .rd-button--primary{background:linear-gradient(100deg,transparent 30%,rgba(255,250,215,.5) 50%,transparent 70%) -140% 0/60% 100% no-repeat,url(button.png) center/100% 100%!important}
+@keyframes tk-shimmer{0%{background-position:-140% 0,center}60%,100%{background-position:240% 0,center}}
+@media (prefers-reduced-motion:reduce){.rd[data-theme-kit] *{animation:none!important}}
+/* the title's own scrim (a hard band in the ground colour) gives way to the soft dusk */
+.rd[data-theme-kit] .rd-course-heading h1::before{background:none!important}
+.rd[data-theme-kit] .rd-course-heading::before{inset:-30px auto -20px -50px!important;width:620px!important;height:auto!important}
+/* smooth motion: only transform and opacity animate (the GPU's own work); every glow is a still halo that fades */
+.rd[data-theme-kit] .tk-icon{animation:none!important;filter:drop-shadow(0 1px 1px rgba(5,8,30,.6))!important;will-change:transform}
+.rd[data-theme-kit] .tk-icon[data-motif=swirl]{animation:tk-turn 16s linear infinite!important}
+.rd[data-theme-kit] .tk-icon[data-motif=sunflower]{animation:tk-turn 48s linear infinite!important}
+.rd[data-theme-kit] .tk-icon[data-motif=cypress]{transform-origin:50% 96%;animation:tk-sway 5s ease-in-out infinite!important}
+.rd[data-theme-kit] .rd-rail-art{position:relative}
+.rd[data-theme-kit] .rd-rail-art:has(.tk-icon:is([data-motif=star],[data-motif=moon],[data-motif=cottage],[data-motif=sunflower]))::before{display:block!important;content:"";position:absolute;inset:-30%;border-radius:50%;background:radial-gradient(closest-side,rgba(246,216,74,.55),rgba(246,216,74,.18) 55%,rgba(246,216,74,0));z-index:-1;animation:tk-halo 4.6s ease-in-out infinite;will-change:opacity,transform}
+.rd[data-theme-kit] .rd-rail-art:has(.tk-icon[data-motif=cottage])::before{animation-duration:2.6s;inset:-10% -10% 10% 0}
+@keyframes tk-halo{0%,100%{opacity:.35;transform:scale(.9)}50%{opacity:1;transform:scale(1.06)}}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame{animation:none!important;filter:none!important}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame::after,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame::after{content:"";position:absolute;inset:-12px;border-radius:10px;box-shadow:0 0 16px 3px rgba(246,216,74,.6);animation:tk-glowop 4s ease-in-out infinite;will-change:opacity;pointer-events:none}
+@keyframes tk-glowop{0%,100%{opacity:.35}50%{opacity:.95}}
+.rd[data-theme-kit] .rd-button--primary{background:url(button.png) center/100% 100%!important;animation:none!important;position:relative;overflow:hidden}
+.rd[data-theme-kit] .rd-button--primary::after{content:"";position:absolute;top:0;bottom:0;left:0;width:45%;background:linear-gradient(100deg,transparent,rgba(255,250,215,.55),transparent);transform:translateX(-120%);animation:tk-sweep 5.5s cubic-bezier(.4,0,.2,1) infinite;will-change:transform;pointer-events:none}
+@keyframes tk-sweep{0%{transform:translateX(-120%)}55%,100%{transform:translateX(330%)}}
+@media (prefers-reduced-motion:reduce){.rd[data-theme-kit] *,.rd[data-theme-kit] *::before,.rd[data-theme-kit] *::after{animation:none!important}}
+/* halos breathe slowly and only a little, never blink */
+@keyframes tk-halo{0%,100%{opacity:.55;transform:scale(.97)}50%{opacity:.85;transform:scale(1.03)}}
+.rd[data-theme-kit] .rd-rail-art::before{animation-duration:7s!important;animation-timing-function:ease-in-out!important}
+@keyframes tk-glowop{0%,100%{opacity:.55}50%{opacity:.85}}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame::after,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame::after{animation-duration:7s!important}
+/* the whole painting shows: the sky is as wide as the dashboard and as tall as its own proportions allow, never cropped */
+.rd[data-theme-kit] > .tk-sky{height:auto!important;aspect-ratio:1600/440;
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 62%,rgba(0,0,0,.4) 84%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 62%,rgba(0,0,0,.4) 84%,transparent 100%)}
+.rd[data-theme-kit] > .tk-sky video{object-fit:contain;object-position:50% 0}
+/* the last labels in the original serif follow the theme title face */
+.rd[data-theme-kit] :is(.rd-rail-heading,.rd-rail-heading *,.rd-rail-all > span,.rd-day-filter strong,.rd-day-filter b){font-family:"Caveat Brush",cursive!important;font-weight:400!important}
+/* small things in the painting's language: tick circles are painted gold rings, section headings sit on a brush stroke */
+.rd[data-theme-kit] .rd-check-off{border:0!important;background:radial-gradient(circle,transparent 0 55%,#f2c94c 59% 68%,#c99a2a 71%,transparent 76%)!important;box-shadow:none!important}
+.rd[data-theme-kit] :is(.rd-sheet-heading h3,.rd-deck-header h2,.rd-work-heading h2){padding-bottom:6px;background:url(divider.png) 0 100%/220px 7px no-repeat}
+/* room for the frames: the workspace clips what spills past its sides, so widen its box without moving anything in it */
+.rd[data-theme-kit] .rd-workspace{padding-inline:26px!important;margin-inline:-26px!important}
+/* the brush hand needs size to read: the rail heading and All courses at their own sizes */
+.rd[data-theme-kit] .rd-rail-heading,.rd[data-theme-kit] .rd-rail-heading *{font-size:21px!important}
+.rd[data-theme-kit] .rd-rail-all > span{font-size:18px!important}
+/* one border only, as in the other themes: the cards wear their painted frames, the rail round them is gone */
+.rd[data-theme-kit] .rd-course-rail{background:transparent!important;box-shadow:none!important;backdrop-filter:none!important}
+.rd[data-theme-kit] .rd-course-rail::before,.rd[data-theme-kit] .rd-course-rail::after{display:none!important}
+.rd[data-theme-kit] .rd-rail-heading{text-shadow:0 2px 6px rgba(8,12,40,.95)!important}
+/* every colour the interface uses, so nothing falls back to paper (beats page tint and page style) */
+.rd.rd.rd.rd[data-theme-kit]{--rd-control:#8F98C4;--rd-control-line:rgba(143,182,238,.38);--rd-line-strong:rgba(143,182,238,.42);--rd-tint:rgba(143,182,238,.13);--rd-row-hover:rgba(143,182,238,.10);--rd-sidebar:#182150;--rd-sidebar-hover:#202B62;--rd-sidebar-sel:#273472;--rd-surface-3:#26336E;--rd-mark:#F2C94C;--rd-deadline-soon:#FFB38A;--rd-danger-soft:rgb(255 156 122/.16);--rd-info:#9CC3FF;--rd-info-soft:rgb(156 195 255/.16);--rd-success:#9EDB9A;--rd-success-soft:rgb(158 219 154/.16);--rd-warn:#F2C94C;--rd-warn-soft:rgb(242 201 76/.16);--rd-switch-on:#E0B53C}

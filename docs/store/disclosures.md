@@ -12,10 +12,11 @@ Organize a signed-in student's Canvas coursework in a customizable study workspa
 | --- | --- |
 | `storage` | Save account-separated Canvas caches, settings, local plans, completion marks, bookmarks, GPA preferences and user-imported artwork on the device. |
 | `unlimitedStorage` | Lift the browser's default 10 MB extension storage limit so account caches, artwork and notes for several Canvas accounts fit on the device. Data stays local. |
-| `offscreen` | Use a local offscreen document to extract text from PDFs selected for AI context. The packaged PDF parser performs this work locally. |
+| `offscreen` | Use a local offscreen document to extract text from PDFs selected for AI context. The packaged PDF parser performs this work locally; the same local document validates bounded inline pack media. |
 | `https://*.instructure.com/*` | Render the workspace on supported Canvas sites and read coursework through the signed-in site's APIs. Different schools use different Canvas subdomains. The extension does not require the publisher's school. |
-| Optional `scripting` | Insert a user-requested question and context into the selected AI website's supported composer. |
+| `scripting` | Load only the selected packaged modules on supported Canvas pages; insert a user-requested draft into an AI website only after its separate host permission is granted. |
 | Optional AI host access | Grant access to the specific provider selected by the user. No permission to all websites is requested. |
+| Optional `https://flzsh.github.io/*` | Asked on the Market click. Download chosen data packs, check their SHA-256 hashes, and report only public catalogue pack IDs for installed-state labels. No Canvas information or local-file IDs are sent. |
 | Optional `https://*/*` (one school site at a time) | Some schools run Canvas on their own address instead of `*.instructure.com`. When a student enters that address in the popup, the extension requests access to that exact origin only (for example `https://canvas.school.edu/*`) and registers its Canvas scripts there. It never requests all websites; the wildcard only lets the student choose which school site to allow. Nothing runs on that site until the student allows it, and only on Canvas pages. |
 
 List the exact optional provider origins from `extension/manifest.json` in the store form if required. Provider permission is requested when the user chooses the corresponding handoff, not to collect general browsing activity.
@@ -43,3 +44,5 @@ Desmos is an external website in an isolated frame. AI chats open as external pr
 The intended uses are limited to the described coursework and optional study features. No selling user data, advertising use, creditworthiness decisions or unrelated analytics are implemented. The publisher must review the exact certification wording before agreeing to it.
 
 Policy URL: https://github.com/Flzsh/canvas-harness/blob/main/PRIVACY.md
+
+Use your own picture or short video as a banner, framed the way you want. Pictures and videos are processed and kept in the browser; nothing is uploaded. Framing and media can travel in user-exported kits and backups. Lite retains the data without loading media playback.

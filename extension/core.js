@@ -652,23 +652,65 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     );
   }
 
+  function focusState(focus, now) {
+    var f = focus || {}, at = typeof now === 'number' ? now : Date.now();
+    var minutes = Number.isFinite(f.minutes) && f.minutes > 0 && Number.isFinite(f.minutes * 60) ? f.minutes : 25;
+    var total = minutes * 60, running = !!f.endsAt, remaining = Number.isFinite(f.remaining) ? Math.max(0, f.remaining) : total;
+    var left = running ? Math.max(0, (f.endsAt - at) / 1000) : remaining;
+    // elapsed stores time in this phase before the current run; remaining anchors that run.
+    var elapsed = (Number.isFinite(f.elapsed) ? Math.max(0, f.elapsed) : Math.max(0, total - remaining)) + (running ? Math.max(0, remaining - left) : 0);
+    var paused = !running && !f.stoppedAt && !f.completedAt && left > 0 && (!!f.pausedAt || elapsed > 0 || left < total);
+    return {minutes:minutes,total:total,running:running,paused:paused,active:running||paused,left:left,elapsed:elapsed,progress:Math.max(0,Math.min(1,1-left/total)),sessions:f.sessions||0,phase:f.phase==='break'?'break':'focus'};
+  }
+
+  function resetFocus(focus, minutes, now) {
+    var at = typeof now === 'number' ? now : Date.now();
+    if (!Number.isFinite(minutes) || minutes <= 0 || !Number.isFinite(at + minutes * 60000) || at + minutes * 60000 > 8640000000000000) return null;
+    var next = Object.assign({}, focus, {minutes:minutes,remaining:minutes*60,elapsed:0,pausedAt:0,stoppedAt:0,endsAt:at+minutes*60000,completedAt:0,completedMinutes:0,breakUntil:0});
+    ['phase','focusMinutes','breakMinutes','cycles','cycle'].forEach(function (key) { delete next[key]; });
+    return next;
+  }
+
   // A focus session runs in the planner but may end while the dashboard (or
   // nothing) is open. Every view settles it through this one rule, once.
   function settleFocus(data, now) {
     var focus = data && data.focus;
     var at = typeof now === 'number' ? now : Date.now();
-    if (!focus || !focus.endsAt || at < focus.endsAt) return false;
-    focus.endsAt = null;
-    focus.remaining = 0;
-    focus.sessions = (Number.isInteger(focus.sessions) ? focus.sessions : 0) + 1;
-    return true;
+    if (!focus || !Number.isFinite(focus.endsAt) || !focus.endsAt || focus.stoppedAt || at < focus.endsAt) return false;
+    var completed = false;
+    var sequence = (focus.phase==='focus'||focus.phase==='break') && Number.isInteger(focus.cycles) && focus.cycles>0 && focus.cycles<=1000 && Number.isInteger(focus.cycle) && focus.cycle>0 && focus.cycle<=focus.cycles && Number.isFinite(focus.focusMinutes) && focus.focusMinutes>0 && Number.isFinite(focus.breakMinutes) && focus.breakMinutes>=0;
+    while (focus.endsAt && at>=focus.endsAt) {
+      var ended = focus.endsAt, rest = focus.phase==='break';
+      focus.elapsed = focusState(focus, ended).elapsed;
+      focus.endsAt = null;
+      focus.remaining = 0;
+      if (!rest) {
+        focus.completedAt = ended;
+        focus.completedMinutes = focus.elapsed / 60;
+        focus.sessions = (Number.isInteger(focus.sessions) ? focus.sessions : 0) + 1;
+        completed = true;
+      } else {
+        focus.breakUntil = 0;
+        focus.completedAt = 0;
+      }
+      if (!sequence) break;
+      var phase = !rest && focus.breakMinutes>0 ? 'break' : focus.cycle<focus.cycles ? 'focus' : null;
+      if (!phase) break;
+      var minutes = phase==='break' ? focus.breakMinutes : focus.focusMinutes, until = ended+minutes*60000;
+      if (!Number.isFinite(until) || until>8640000000000000 || until<=ended) break;
+      if (phase==='focus') focus.cycle+=1;
+      Object.assign(focus,{phase:phase,minutes:minutes,remaining:minutes*60,elapsed:0,pausedAt:0,completedAt:0,endsAt:until,breakUntil:phase==='break'?until:0});
+    }
+    // Views use this result to reward focus. A break transition still persists, but earns no reward.
+    return completed;
   }
 
-  // "mm:ss" left in a running session, or '' when none is running.
+  // "mm:ss" left in a running or paused session; stopped and finished sessions have no clock.
   function focusClock(focus, now) {
-    if (!focus || !focus.endsAt) return '';
-    var at = typeof now === 'number' ? now : Date.now();
-    var left = Math.max(0, Math.ceil((focus.endsAt - at) / 1000));
+    if (!focus || focus.stoppedAt) return '';
+    var state = focusState(focus, now);
+    if (!state.active) return '';
+    var left = Math.ceil(state.left);
     var pad = function (value) {
       return (value < 10 ? '0' : '') + value;
     };
@@ -734,6 +776,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     courseLabel: courseLabel,
     settleFocus: settleFocus,
     focusClock: focusClock,
+    focusState: focusState,
+    resetFocus: resetFocus,
     dayKey: dayKey,
     dueBucket: dueBucket,
     isComplete: isComplete,

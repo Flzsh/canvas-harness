@@ -1420,9 +1420,9 @@ test('external artwork preferences survive later theme and pony writes',async t=
  const h=fixture({reduced:true,savedValues:{'reserve:appearance':{theme:'dark',nightArt:15}}});t.after(()=>h.cleanup());await reachStep(h,'appearance');
  await h.chrome.storage.local.set({'reserve:appearance':{theme:'dark',motion:'still',nightArt:86,pet:false}});await settle();
  h.document.querySelector('[data-theme-choice="light"]').fire('click');await settle();
- assert.deepEqual({...h.storage['reserve:appearance']},{theme:'light',motion:'still',nightArt:86,pet:false});
+ assert.deepEqual({...h.storage['reserve:appearance']},{theme:'light',motion:'still',nightArt:86,pet:false,sceneTheme:''});
  await h.next();const checkbox=h.ids.get('pet-enabled');checkbox.checked=true;checkbox.fire('change');await settle();
- assert.deepEqual({...h.storage['reserve:appearance']},{theme:'light',motion:'still',nightArt:86,pet:true});
+ assert.deepEqual({...h.storage['reserve:appearance']},{theme:'light',motion:'still',nightArt:86,pet:true,sceneTheme:''});
 });
 
 test('finish celebration starts only from the real finish-board and uses its top-center point',async()=>{

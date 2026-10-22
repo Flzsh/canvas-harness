@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const read=file=>fs.readFileSync(path.join(__dirname,'../extension',file),'utf8');
 const roomArt={};
@@ -95,9 +95,10 @@ function fixture({personal=false,page="popup",reduced=page==='welcome',savedValu
  for(const file of scripts)if(!['welcome-intro.js','welcome-scenes.js','welcome-room.js'].includes(file))vm.runInContext(read(file),context,{filename:file});
  return {ids,nodes,personal,saved,writes,requests,opened,introCalls,introButton,roomCalls,handlers,document,timers,chrome,cleanup(){handlers.get('pagehide')?.();}};
 }
-test('popup has five detail rows, manifest branding, and a replay link',async()=>{
- const h=fixture();await settle();assert.equal(h.nodes.filter(n=>'detail'in n.dataset).length,5);assert.equal(h.ids.get('version').textContent,'9.8.7');assert.equal(h.ids.get('school-section').hidden,false);
- for(const name of ['features','look','menu','pony','native'])assert.ok(h.nodes.some(n=>n.dataset.detail===name));
+test('popup has six detail rows, manifest branding, and a replay link',async()=>{
+ const h=fixture();await settle();assert.equal(h.nodes.filter(n=>'detail'in n.dataset).length,6);assert.equal(h.ids.get('version').textContent,'9.8.7');assert.equal(h.ids.get('school-section').hidden,false);
+ for(const name of ['features','look','menu','pony','native','addons'])assert.ok(h.nodes.some(n=>n.dataset.detail===name));
+ assert.ok(h.ids.get('market-open'),'Market has its own first-use permission button');
  const tour=h.ids.get('welcome-tour');assert.equal(tour.attrs.href,'welcome.html');assert.equal(tour.attrs.target,'_blank');await tour.fire('click');assert.equal(h.opened[0].url,'chrome-extension://test/welcome.html');
  const row=h.nodes.find(n=>n.dataset.detail==='menu');row.fire('click');assert.equal(h.ids.get('main-view').hidden,true);assert.equal(h.ids.get('detail-title').textContent,'Canvas menu bar');h.handlers.get('keydown')({key:'Escape',preventDefault(){}});assert.equal(h.ids.get('main-view').hidden,false);assert.equal(h.document.activeElement,row);h.cleanup();
  const personal=fixture({personal:true});await settle();assert.equal(personal.ids.get('school-section').hidden,true);personal.cleanup();

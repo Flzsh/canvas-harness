@@ -2057,6 +2057,11 @@
 
 .rd .rd-tools .rd-focus-clock { margin-left: 2px; padding: 1px 7px; border-radius: 999px; background: var(--rd-soft); color: color-mix(in srgb, var(--rd-accent) 88%, var(--rd-ink)); font-size: 11px; font-weight: 600; line-height: 1.5; font-variant-numeric: tabular-nums; }
 .rd .rd-tools .rd-focus-clock[hidden] { display: none; }
+.rd .rd-focus-indicator { display: inline-flex; align-items: center; gap: 2px; }
+.rd .rd-focus-indicator .biscuit-focus-controls { display: inline-flex; align-items: center; gap: 1px; }
+.rd .rd-focus-indicator .biscuit-focus-controls[hidden] { display: none; }
+.rd .rd-focus-indicator .biscuit-focus-control { min-height: 22px; padding: 1px 6px; border-radius: 999px; color: var(--rd-muted); font-size: 11px; font-weight: 600; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.rd .rd-focus-indicator .biscuit-focus-control:hover:not(:disabled), .rd .rd-focus-indicator .biscuit-focus-control:focus-visible { color: var(--rd-ink); background: var(--rd-soft); }
 
 @media (min-width: 481px) { .rd .rd-tools .rd-button > .rd-focus-clock:not([hidden]) { display: inline-block; } }
 

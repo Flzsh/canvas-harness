@@ -27,14 +27,14 @@ function fixture({courseId='10',assignments=[],setup=()=>{}}={}){
    this.dataset=new Proxy({}, {get:(_,k)=>this.attrs['data-'+String(k).replace(/[A-Z]/g,c=>'-'+c.toLowerCase())],set:(_,k,v)=>{this.setAttribute('data-'+String(k).replace(/[A-Z]/g,c=>'-'+c.toLowerCase()),v);return true;},deleteProperty:(_,k)=>{this.removeAttribute('data-'+String(k).replace(/[A-Z]/g,c=>'-'+c.toLowerCase()));return true;}});
    this.classList={contains:c=>this.className.split(/\s+/).includes(c),add:(...cs)=>{this.className=[...new Set([...this.className.split(/\s+/),...cs])].join(' ');},remove:(...cs)=>{this.className=this.className.split(/\s+/).filter(c=>!cs.includes(c)).join(' ');},toggle:(c,on)=>{const yes=on??!this.classList.contains(c);this.classList[yes?'add':'remove'](c);return yes;}};
   }
-  get tagName(){return this.nodeName;}get id(){return this.attrs.id||'';}get className(){return this.attrs.class||'';}set className(v){this.attrs.class=v;}
+  get tagName(){return this.nodeName;}get type(){return this.attrs.type||'';}set type(v){this.attrs.type=String(v);}get id(){return this.attrs.id||'';}get className(){return this.attrs.class||'';}set className(v){this.attrs.class=v;}
   get attributes(){return Object.entries(this.attrs).map(([name,value])=>({name,value}));}
   get children(){return this.childNodes.filter(n=>n.nodeType===1);}get firstChild(){return this.childNodes[0]||null;}get firstElementChild(){return this.children[0]||null;}
   get parentElement(){return this.parentNode?.nodeType===1?this.parentNode:null;}get nextSibling(){return this.parentNode?.childNodes[this.parentNode.childNodes.indexOf(this)+1]||null;}
   get isConnected(){return this===document.documentElement||!!this.parentNode?.isConnected;}
   get hidden(){return this.hasAttribute('hidden');}set hidden(v){this.toggleAttribute('hidden',v);}
   get textContent(){return this.nodeType===3?this.nodeValue:this.childNodes.map(n=>n.textContent).join('');}set textContent(value){this.replaceChildren();if(value)this.append(text(String(value)));}
-  get innerHTML(){return this.childNodes.map(n=>n.outerHTML).join('');}set innerHTML(value){const target=this.nodeName==='TEMPLATE'?this.content:this;target.replaceChildren();parse(String(value),target);}
+  get innerHTML(){return this.childNodes.map(n=>n.outerHTML).join('');}set innerHTML(value){this.replaceChildren();const target=this.nodeName==='TEMPLATE'?this.content:this;parse(String(value),target);for(const select of target.querySelectorAll('select'))select.value=select.querySelector('option[selected]')?.value||select.querySelector('option')?.value||'';}
   get outerHTML(){return this.nodeType===3?this.nodeValue:`<${this.nodeName.toLowerCase()}${this.attributes.map(a=>` ${a.name}="${a.value}"`).join('')}>${this.innerHTML}</${this.nodeName.toLowerCase()}>`;}
   get clientWidth(){return 1000;}get clientHeight(){return 700;}get scrollHeight(){return 1500;}get offsetWidth(){return 100;}get offsetHeight(){return 40;}get offsetLeft(){return 0;}get offsetTop(){return 0;}
   getAttribute(k){return this.attrs[k]??null;}hasAttribute(k){return k in this.attrs;}setAttribute(k,v){this.attrs[k]=String(v);}removeAttribute(k){delete this.attrs[k];}toggleAttribute(k,on){if(on??!this.hasAttribute(k))this.setAttribute(k,'');else this.removeAttribute(k);}

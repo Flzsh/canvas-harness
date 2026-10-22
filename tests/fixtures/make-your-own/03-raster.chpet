@@ -1,0 +1,1 @@
+{"format":"chpet","version":1,"name":"Animated raster pet","size":[72,64],"ground":60,"faces":"right","poses":{"stand":"tile","walk":"tile","sleep":"tile"},"assets":{"tile":{"type":"image/gif","data":"R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAAh+QQBAAAAACwAAAAAAQABAAACAUQAOw==","sha256":"c2e0b8151788241a8469e37f7626eb4ca90a89ac6a2336d281e2ca3246768336"}}}

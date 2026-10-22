@@ -82,6 +82,18 @@ function fixture(t,{failSave=false,callback=true,resize=false,configure=()=>{},i
 }
 const flush=()=>new Promise(setImmediate);
 
+test('Biscuit AI handoff opens the public panel lazily and only queues the original draft',t=>{
+ const calls=[],f=fixture(t,{configure(root){root.CanvasHarnessAISource={mount(){calls.push(['mount']);return {update(){},focus(){},setDraft:text=>{calls.push(['draft',text]);return true;},destroy(){}};}};}});
+ assert.equal(f.dialog,null);const question='Explain this line exactly: π\n  second line';assert.equal(f.toolbox.askAI(question),true);assert.equal(f.dialog.dataset.tool,'ai');assert.deepEqual(calls,[['mount'],['draft',question]]);
+ assert.equal(f.toolbox.askAI('Another question'),true);assert.equal(calls.filter(row=>row[0]==='mount').length,1);assert.deepEqual(calls.at(-1),['draft','Another question']);
+ f.toolbox.destroy();assert.equal(f.toolbox.askAI('Closed'),false);assert.equal(calls.length,3);
+});
+
+test('disabled AI and invalid Biscuit drafts cannot mount a tool or post a question',t=>{
+ for(const off of ['tools','ai']){const calls=[],f=fixture(t,{configure(root){root.CanvasHarnessAISource={mount:()=>{calls.push('mount');}};}});f.root.ReserveFeatures={enabled:id=>id!==off};assert.equal(f.toolbox.askAI('Keep this local'),false);assert.equal(f.dialog,null);assert.deepEqual(calls,[]);}
+ const f=fixture(t,{configure(root){root.CanvasHarnessAISource={mount:()=>assert.fail('Invalid draft mounted AI')};}});for(const value of [null,42,'','   ','x'.repeat(20001),'bad\u0000text'])assert.equal(f.toolbox.askAI(value),false);assert.equal(f.dialog,null);
+});
+
 test('quick search writes selection ARIA only when pointer or keyboard selection changes',t=>{
  const f=fixture(t,{items:Array.from({length:60},(_,i)=>({id:String(i+1),name:'Synthetic assignment '+i,courseId:'7'}))});f.toolbox.open('quick');
  const input=f.type('[data-ui-field="quick"]','Synthetic assignment'),rows=f.dialog.querySelectorAll('[data-quick-index]');assert.equal(rows.length,50);

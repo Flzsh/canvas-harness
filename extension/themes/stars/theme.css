@@ -1,0 +1,114 @@
+/* Starfield: deep space as a reskin of the dashboard. A photographic sky across the top; every surface glass over the dark,
+   edged with a hairline of starlight; titles in a thin, wide sans; the motifs are stars, drawn in light. */
+.rd.rd.rd.rd[data-theme-kit]{--rd-bg:#04060C;--rd-surface:#0B1020;--rd-surface-2:#10172B;--rd-ink:#E8EDF7;--rd-muted:#A3ACC2;--rd-ink-2:#CDD5E6;--rd-faint:#828CA4;--rd-line:rgba(157,184,255,.18);--rd-accent:#A9C2FF;--rd-soft:rgba(157,184,255,.12);--rd-course:#A9C2FF;--rd-danger:#FF9C9C;
+  background:#04060C!important;color:var(--rd-ink)!important;position:relative;isolation:isolate;overflow:hidden}
+.rd[data-theme-kit] :is(h1,h2,h3,.rd-rail-name,.rd-rail-heading){font-family:"Sora",sans-serif!important;font-weight:300!important;letter-spacing:.005em;color:#F4F7FF!important}
+.rd[data-theme-kit] h1{font-weight:200!important;font-size:46px!important;text-shadow:0 0 24px rgba(4,6,12,.9)}
+.rd[data-theme-kit] .rd-rail-name{font-weight:400!important}
+.rd[data-theme-kit] :is(button,label,span,b,strong,small,em,time,li,td,th,dt,dd){color:inherit}
+.rd[data-theme-kit] :is(small,p,.rd-heading-date,.rd-rail-next){color:var(--rd-muted)!important}
+.rd[data-theme-kit] :is(.rd-text-button,.rd-grade-switch,.rd-board-edit,.rd-toolbox-trigger){color:var(--rd-ink)!important}
+.rd[data-theme-kit] :is(.rd-rail-next b,.rd-reader-facts span:first-child,[class*=due],[class*=time]){color:#FFC9A8!important}
+.rd[data-theme-kit] .rd-reader-facts span:not(:first-child){color:var(--rd-muted)!important}
+.rd[data-theme-kit] .rd-rich-text,.rd[data-theme-kit] .rd-rich-text :is(p,li,ol,ul,span,em,strong,b,td,th,h4,h5,h6){color:var(--rd-ink)!important}
+/* the sky: the whole picture across the top, melting into the dark */
+.rd[data-theme-kit] > .tk-sky{position:absolute;left:0;right:0;top:0;aspect-ratio:1600/440;z-index:0;pointer-events:none;
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 62%,rgba(0,0,0,.4) 84%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 62%,rgba(0,0,0,.4) 84%,transparent 100%)}
+.rd[data-theme-kit] > .tk-sky video{width:100%;height:100%;object-fit:contain;object-position:50% 0;display:block}
+.rd[data-theme-kit] > .rd-shell{position:relative;z-index:1}
+.rd[data-theme-kit] .rd-heading-art{display:none!important}
+.rd[data-theme-kit] .rd-course-heading h1::before,.rd[data-theme-kit] .rd-course-heading::before{background:none!important}
+/* glass: every card and panel, a hairline of starlight round it */
+.rd[data-theme-kit] .rd-toolbar{background:transparent!important}
+.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week,.rd-reader-tabs){background:rgba(12,18,36,.74)!important;box-shadow:inset 0 0 0 1px rgba(157,184,255,.2)!important;backdrop-filter:none}
+.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter,.rd-reader-tab){color:#C9D2E8!important}
+.rd[data-theme-kit] :is(.rd-workspace-tab[aria-selected=true],.cz-tab[aria-selected=true],.rd-filter[aria-pressed=true],.rd-day-filter[aria-pressed=true],.rd-reader-tab[aria-pressed=true],.rd-reader-tab[aria-selected=true]),.rd[data-theme-kit] .rd-glance-chip{background:radial-gradient(120% 140% at 50% 0%,rgba(190,210,255,.42),rgba(120,150,255,.16))!important;color:#F4F7FF!important;box-shadow:inset 0 0 0 1px rgba(190,210,255,.45),0 0 14px rgba(120,150,255,.25)!important}
+.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter)::before,.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week,.rd-reader-tabs)::before{background:transparent!important;box-shadow:none!important}
+.rd[data-theme-kit] .rd-search input{background:rgba(10,14,28,.78)!important;color:var(--rd-ink)!important;border:1px solid rgba(157,184,255,.28)!important}
+.rd[data-theme-kit] .rd-search input::placeholder{color:#AEB8D2}
+.rd[data-theme-kit] .rd-course-rail{background:rgba(9,13,26,.82)!important;border-radius:18px!important;box-shadow:inset 0 0 0 1px rgba(157,184,255,.16),0 20px 50px rgba(0,0,0,.5)!important;backdrop-filter:none}
+.rd[data-theme-kit] .rd-frame > *{display:none!important}
+.rd[data-theme-kit] .rd-frame{border-radius:14px;background:radial-gradient(120% 90% at 0% 0%,rgba(110,140,255,.12),transparent 60%),rgba(14,20,38,.85)!important;box-shadow:inset 0 0 0 1px rgba(157,184,255,.22)}
+.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course,.rd-course-name){background:transparent!important;box-shadow:none!important;outline:none!important}
+.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::before,.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::after,.rd[data-theme-kit] .rd-rail-art::after{display:none!important}
+.rd[data-theme-kit] .rd-rail-art > svg{display:none!important}
+.rd[data-theme-kit] .tk-icon{width:118%;height:118%;margin:-9%;object-fit:contain}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information){background:rgba(9,13,26,.86)!important;border-radius:18px!important;backdrop-filter:none}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{-webkit-mask-box-image:none!important;mask:none!important;background:none!important;border:0!important;border-radius:18px!important;inset:0!important;box-shadow:inset 0 0 0 1px rgba(157,184,255,.2),0 20px 50px rgba(0,0,0,.45)!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::before{display:none!important}
+.rd[data-theme-kit] :is(.rd-announcement,.rd-reader,.rd-work-item,.rd-deck-section){background:transparent!important}
+.rd[data-theme-kit] .rd-bookmarks{border-bottom:1px solid rgba(157,184,255,.16)!important}
+.rd[data-theme-kit] .rd-assignment-list::before,.rd[data-theme-kit] .rd-assignment-list::after{background:rgba(157,184,255,.1)!important;box-shadow:inset 0 0 0 1px rgba(157,184,255,.35)!important}
+.rd[data-theme-kit] .rd-assignment--selected{background:transparent!important;box-shadow:none!important}
+.rd[data-theme-kit] .rd-button--primary{background:radial-gradient(120% 160% at 50% 0%,#c9d8ff,#7f9cf0)!important;color:#06102A!important;border:0!important;font-weight:600;box-shadow:0 0 18px rgba(120,150,255,.35)!important;position:relative;overflow:hidden}
+.rd[data-theme-kit] .rd-button:not(.rd-button--primary){background:rgba(14,20,38,.8)!important;color:var(--rd-ink)!important;border:1px solid rgba(157,184,255,.3)!important}
+.rd[data-theme-kit] a{color:#B8CCFF}
+/* light that lives: the chosen card's edge glows, the motifs turn and breathe, a glint crosses the button */
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame{box-shadow:inset 0 0 0 1px rgba(190,210,255,.6)}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame::after,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame::after{content:"";position:absolute;inset:-6px;border-radius:18px;box-shadow:0 0 18px 2px rgba(130,160,255,.45);animation:tk-glowop 7s ease-in-out infinite;will-change:opacity;pointer-events:none}
+@keyframes tk-glowop{0%,100%{opacity:.5}50%{opacity:.95}}
+@keyframes tk-turn{to{transform:rotate(360deg)}}
+@keyframes tk-drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(2px,-1px) scale(1.04)}}
+@keyframes tk-halo{0%,100%{opacity:.5;transform:scale(.96)}50%{opacity:.9;transform:scale(1.04)}}
+.rd[data-theme-kit] .tk-icon[data-motif=galaxy]{animation:tk-turn 40s linear infinite}
+.rd[data-theme-kit] .tk-icon[data-motif=binary]{animation:tk-turn 18s linear infinite}
+.rd[data-theme-kit] .tk-icon:is([data-motif=nebula],[data-motif=remnant]){animation:tk-drift 9s ease-in-out infinite}
+.rd[data-theme-kit] .rd-rail-art{position:relative}
+.rd[data-theme-kit] .rd-rail-art:has(.tk-icon:is([data-motif=giant],[data-motif=redgiant],[data-motif=cluster]))::before{display:block!important;content:"";position:absolute;inset:-25%;border-radius:50%;background:radial-gradient(closest-side,rgba(170,195,255,.35),rgba(170,195,255,0));z-index:-1;animation:tk-halo 7s ease-in-out infinite;will-change:opacity,transform}
+.rd[data-theme-kit] .rd-rail-art:has(.tk-icon[data-motif=redgiant])::before{background:radial-gradient(closest-side,rgba(255,170,120,.35),rgba(255,170,120,0))}
+.rd[data-theme-kit] .rd-button--primary::after{content:"";position:absolute;top:0;bottom:0;left:0;width:40%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);transform:translateX(-120%);animation:tk-sweep 6s cubic-bezier(.4,0,.2,1) infinite;will-change:transform;pointer-events:none}
+@keyframes tk-sweep{0%{transform:translateX(-120%)}55%,100%{transform:translateX(330%)}}
+@media (prefers-reduced-motion:reduce){.rd[data-theme-kit] *,.rd[data-theme-kit] *::before,.rd[data-theme-kit] *::after{animation:none!important}}
+/* the last labels in the original serif follow the theme title face */
+.rd[data-theme-kit] :is(.rd-rail-heading,.rd-rail-heading *,.rd-rail-all > span,.rd-day-filter strong,.rd-day-filter b){font-family:"Sora",sans-serif!important;font-weight:400!important}
+/* drawn frames, never a plain rectangle: the cards and the panels wear the theme's own nine-slice frame */
+.rd[data-theme-kit] .rd-frame{border:20px solid transparent!important;border-image:url(stars-card.png) 50 round!important;background-clip:padding-box!important;box-shadow:none!important;border-radius:0!important}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame{box-shadow:none!important}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame::after,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame::after{inset:-14px!important;border-radius:16px!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{box-shadow:none!important;border-radius:0!important;border:36px solid transparent!important;border-image:url(stars-panel.png) 90 round!important;inset:-20px!important}
+.rd[data-theme-kit] .rd-course-rail{box-shadow:none!important}
+.rd[data-theme-kit] .rd-course-rail::after{content:"";position:absolute;inset:-20px;border:36px solid transparent;border-image:url(stars-panel.png) 90 round;pointer-events:none}
+/* the frame carries the pane: no rectangle of background inside or outside the drawn line */
+.rd[data-theme-kit] .rd-frame{border-width:18px!important;border-image:url(stars-card.png) 50 fill round!important;background:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail){background:transparent!important;backdrop-filter:none!important;isolation:isolate}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::after{display:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::before{display:block!important;content:""!important;position:absolute!important;inset:-20px!important;z-index:-1!important;border:36px solid transparent!important;border-image:url(stars-panel.png) 90 fill round!important;background:none!important;pointer-events:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::before{-webkit-mask-box-image:none!important;-webkit-mask:none!important;mask:none!important;opacity:1!important;filter:none!important}
+.rd[data-theme-kit] .rd-course-rail::before{inset:0!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-reader,.rd-work,.rd-course-deck,.rd-course-rail){border-color:transparent!important;box-shadow:none!important;outline:none!important}
+/* each theme its own frame (sea: a glass rim with reef life; stars: open brackets of light) */
+.rd[data-theme-kit] .rd-frame{border-width:24px!important;border-image:url(stars-card.png) 56 fill round!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::before{border-width:40px!important;border-image:url(stars-panel.png) 100 fill round!important;inset:-18px!important}
+.rd[data-theme-kit] .rd-course-rail::before{inset:0!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::before{box-shadow:none!important;outline:none!important;border-radius:0!important}
+.rd[data-theme-kit] > .tk-sky canvas{width:100%;height:100%;border:0;display:block}
+/* the frames are alive: glints twinkle at points round every panel and card, two sets out of step */
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{display:block!important;content:""!important;position:absolute!important;inset:-14px!important;border:0!important;box-shadow:none!important;border-radius:0!important;pointer-events:none!important;z-index:2!important;
+  background:radial-gradient(circle,rgba(255,255,255,.95) 0 1.2px,rgba(190,212,255,.5) 2px,rgba(190,212,255,0) 7px) 18% 0/14px 14px no-repeat,radial-gradient(circle,rgba(255,255,255,.95) 0 1.4px,rgba(190,212,255,.5) 2.4px,rgba(190,212,255,0) 8px) 100% 34%/16px 16px no-repeat,radial-gradient(circle,rgba(255,236,210,.95) 0 1.2px,rgba(255,205,160,.5) 2px,rgba(255,205,160,0) 7px) 62% 100%/14px 14px no-repeat,radial-gradient(circle,rgba(255,255,255,.95) 0 1.2px,rgba(190,212,255,.5) 2px,rgba(190,212,255,0) 7px) 0 72%/14px 14px no-repeat!important;
+  animation:tk-twinkle 4.6s ease-in-out infinite!important;will-change:opacity}
+.rd[data-theme-kit] .rd-work-column::after{animation-delay:-1.7s!important}.rd[data-theme-kit] .rd-information::after{animation-delay:-3.1s!important}
+.rd[data-theme-kit] .rd-rail-course .rd-frame::after{content:"";position:absolute;inset:-6px;pointer-events:none;background:radial-gradient(circle,rgba(255,255,255,.95) 0 1px,rgba(190,212,255,.5) 1.8px,rgba(190,212,255,0) 6px) 70% 0/12px 12px no-repeat,radial-gradient(circle,rgba(255,255,255,.95) 0 1px,rgba(190,212,255,.5) 1.8px,rgba(190,212,255,0) 6px) 100% 60%/12px 12px no-repeat;animation:tk-twinkle 3.8s ease-in-out infinite;will-change:opacity}
+.rd[data-theme-kit] .rd-rail-course:nth-child(2n) .rd-frame::after{animation-delay:-1.3s}.rd[data-theme-kit] .rd-rail-course:nth-child(3n) .rd-frame::after{animation-delay:-2.6s}
+@keyframes tk-twinkle{0%,100%{opacity:.25}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.rd[data-theme-kit] *::after{animation:none!important}}
+/* small things in the sky's language: tick circles are rings of starlight, section headings trail stardust */
+.rd[data-theme-kit] .rd-check-off{border:0!important;background:radial-gradient(circle,transparent 0 56%,rgba(200,220,255,.85) 60% 64%,rgba(150,180,255,.25) 68%,transparent 74%)!important;box-shadow:0 0 8px rgba(130,160,255,.25)!important}
+.rd[data-theme-kit] .rd-check-off:hover{box-shadow:0 0 12px rgba(160,190,255,.6)!important}
+.rd[data-theme-kit] :is(.rd-sheet-heading h3,.rd-deck-header h2,.rd-work-heading h2){padding-bottom:7px;background:radial-gradient(circle,rgba(230,238,255,.9) 0 .9px,transparent 1.4px) 0 100%/11px 6px repeat-x,radial-gradient(circle,rgba(190,212,255,.6) 0 .7px,transparent 1.1px) 5px calc(100% - 2px)/17px 6px repeat-x;animation:tk-dust 9s linear infinite}
+@keyframes tk-dust{to{background-position:44px 100%,-34px calc(100% - 2px)}}
+/* the lens bends the frames: the transform comes from the pointer (apply.js sets --lens) and eases */
+.rd[data-theme-kit] .rd-frame{transform:var(--lens,none);transition:transform .35s cubic-bezier(.2,.7,.3,1);will-change:transform}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::before,.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{transform:var(--lens,none)!important;transition:transform .35s cubic-bezier(.2,.7,.3,1)}
+@media (prefers-reduced-motion:reduce){.rd[data-theme-kit] .rd-frame,.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::before{transform:none!important}}
+/* room for the frames: the workspace clips what spills past its sides, so widen its box without moving anything in it */
+.rd[data-theme-kit] .rd-workspace{padding-inline:26px!important;margin-inline:-26px!important}
+/* one border only: the cards wear their stars, the rail round them wears none */
+.rd[data-theme-kit] .rd-course-rail::before{display:none!important}
+.rd[data-theme-kit] .rd-course-rail{background:transparent!important;box-shadow:none!important;backdrop-filter:none!important}
+/* every colour the interface uses, so nothing falls back to paper (beats page tint and page style) */
+.rd.rd.rd.rd[data-theme-kit]{--rd-control:#7C86A0;--rd-control-line:rgba(157,184,255,.26);--rd-line-strong:rgba(157,184,255,.30);--rd-tint:rgba(157,184,255,.09);--rd-row-hover:rgba(157,184,255,.07);--rd-sidebar:#080C18;--rd-sidebar-hover:#0E1426;--rd-sidebar-sel:#141C34;--rd-surface-3:#151D35;--rd-mark:#FFC88A;--rd-deadline-soon:#FFB59A;--rd-danger-soft:rgb(255 156 156/.14);--rd-info:#A9C2FF;--rd-info-soft:rgb(169 194 255/.13);--rd-success:#9FE0B8;--rd-success-soft:rgb(159 224 184/.13);--rd-warn:#FFD58A;--rd-warn-soft:rgb(255 213 138/.13);--rd-switch-on:#7F9CFF}
+/* The frames' stars are drawn live (scene-themes.js, starFrames) so each one bends in the pointer's lens; the frames keep only their dark glass. */
+.rd[data-theme-kit] .rd-frame{border:0!important;border-image:none!important;inset:2px!important;border-radius:5px!important;background:rgba(8,12,24,.86)!important;transform:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::before{border:0!important;border-image:none!important;inset:-8px!important;border-radius:6px!important;background:rgba(8,12,24,.86)!important;transform:none!important}
+.rd[data-theme-kit] .rd-course-rail::before{border:0!important;border-image:none!important;inset:0!important;border-radius:6px!important;background:rgba(8,12,24,.86)!important;transform:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::after{border-image:none!important;transform:none!important}

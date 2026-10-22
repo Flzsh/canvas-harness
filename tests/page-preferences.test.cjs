@@ -12,16 +12,16 @@ function harness(seed={}){
 const settle=async()=>{for(let i=0;i<20;i++)await new Promise(resolve=>setImmediate(resolve));};
 test('appearance pages read without creating defaults and change only fields in the device record',async()=>{
  const h=harness(),page=Preferences.create({origin,...h});
- assert.deepEqual(await page.load(),{theme:'light',motion:'gentle',nightArt:0,pet:true});assert.equal(h.writes.length,0);
+ assert.deepEqual(await page.load(),{theme:'light',motion:'gentle',nightArt:0,pet:true,sceneTheme:''});assert.equal(h.writes.length,0);
  await page.set({theme:'dark'});await page.set({motion:'off'});await page.set({nightArt:72});await page.set({pet:false});
  // Saved before any dashboard visit: the record lists what was chosen so a later migration keeps those fields.
- assert.deepEqual(h.data[appearance],{theme:'dark',motion:'off',nightArt:72,pet:false,chosen:['theme','motion','nightArt','pet']});assert.deepEqual(Object.keys(h.data),[appearance]);
- assert.deepEqual(page.get(),{theme:'dark',motion:'off',nightArt:72,pet:false});page.destroy();
+ assert.deepEqual(h.data[appearance],{theme:'dark',motion:'off',nightArt:72,pet:false,sceneTheme:'',chosen:['theme','motion','nightArt','pet']});assert.deepEqual(Object.keys(h.data),[appearance]);
+ assert.deepEqual(page.get(),{theme:'dark',motion:'off',nightArt:72,pet:false,sceneTheme:''});page.destroy();
 });
 test('first dashboard load migrates the old account appearance exactly once without touching personal data',async()=>{
  const legacy={settings:{theme:'dark',motion:'still',nightArt:65},pet:{enabled:false,name:'Maple',xp:90},tasks:{'7':{notes:'Keep me'}}};
  const h=harness({[key]:legacy}),store=createStore({origin,accountId:'1',adapter:h.adapter});await store.load();
- assert.deepEqual(h.data[appearance],{theme:'dark',motion:'still',nightArt:65,pet:false});assert.deepEqual(h.data[key],legacy);
+ assert.deepEqual(h.data[appearance],{theme:'dark',motion:'still',nightArt:65,pet:false,sceneTheme:''});assert.deepEqual(h.data[key],legacy);
  await store.load();const other=createStore({origin:'https://other.instructure.com',accountId:'2',adapter:h.adapter});await other.load();
  assert.equal(h.writes.length,1);assert.equal(other.get().settings.theme,'dark');assert.equal(other.get().tasks['7'],undefined);store.destroy();other.destroy();
 });
@@ -69,14 +69,14 @@ test('a popup save before the first dashboard visit keeps the older account choi
  const h=harness({[key]:legacy}),page=Preferences.create({origin,...h});await page.load();
  await page.set({pet:false});assert.deepEqual(h.data[appearance].chosen,['pet']);
  const store=createStore({origin,accountId:'1',adapter:h.adapter});await store.load();
- assert.deepEqual(h.data[appearance],{theme:'dark',motion:'still',nightArt:65,pet:false},'migration fills only the unchosen fields and ends the pending list');
+ assert.deepEqual(h.data[appearance],{theme:'dark',motion:'still',nightArt:65,pet:false,sceneTheme:''},'migration fills only the unchosen fields and ends the pending list');
  assert.equal(store.get().settings.theme,'dark');assert.equal(store.get().pet.enabled,false);assert.equal(page.get().theme,'dark');
- await page.set({theme:'light'});assert.deepEqual(h.data[appearance],{theme:'light',motion:'still',nightArt:65,pet:false});
+ await page.set({theme:'light'});assert.deepEqual(h.data[appearance],{theme:'light',motion:'still',nightArt:65,pet:false,sceneTheme:''});
  page.destroy();store.destroy();
 });
 test('damaged stored fields fall back to defaults instead of failing every page',async()=>{
  const h=harness({[appearance]:{theme:'purple',motion:'still',nightArt:'x',pet:false}}),page=Preferences.create({origin,...h});
- assert.deepEqual(await page.load(),{theme:'light',motion:'still',nightArt:0,pet:false});page.destroy();
+ assert.deepEqual(await page.load(),{theme:'light',motion:'still',nightArt:0,pet:false,sceneTheme:''});page.destroy();
 });
 test('the worker applies changes from separate pages one at a time, so neither is lost',async()=>{
  const vm=require('node:vm'),fs=require('node:fs'),path=require('node:path'),source=fs.readFileSync(path.join(__dirname,'../extension/page-preferences.js'),'utf8');
@@ -88,11 +88,11 @@ test('the worker applies changes from separate pages one at a time, so neither i
   const a=instance({}).create({local:slow,events:h.events,remote:remoteFor()}),b=instance({}).create({local:slow,events:h.events,remote:remoteFor()});
   await Promise.all([a.set({theme:'light'}),b.set({pet:false})]);a.destroy();b.destroy();return {...h.data[appearance]};
  };
- assert.deepEqual(await race(()=>null),{theme:'dark',motion:'gentle',nightArt:0,pet:false},'without the worker one page overwrites the other (the bug)');
+ assert.deepEqual(await race(()=>null),{theme:'dark',motion:'gentle',nightArt:0,pet:false,sceneTheme:''},'without the worker one page overwrites the other (the bug)');
  let listener;const runtime={id:'ext',onMessage:{addListener:fn=>{listener=fn;}}};
  instance({}).serve({runtime,local:slow});
  const page=instance({chrome:{runtime:{id:'ext',sendMessage:message=>new Promise(resolve=>{const kept=listener(structuredClone(message),{id:'ext'},value=>resolve(structuredClone(value)));assert.equal(kept,true);})}}});
- assert.deepEqual(await race(()=>page.messenger()),{theme:'light',motion:'gentle',nightArt:0,pet:false});
+ assert.deepEqual(await race(()=>page.messenger()),{theme:'light',motion:'gentle',nightArt:0,pet:false,sceneTheme:''});
  const ignored=listener({target:'ch-appearance',op:'write',value:{theme:'light'}},{id:'someone-else'},()=>assert.fail('a foreign sender is answered'));assert.equal(ignored,undefined);
  const rejected=await new Promise(resolve=>listener({target:'ch-appearance',op:'write',value:{tasks:{}}},{id:'ext'},resolve));assert.equal(rejected.ok,false);assert.match(rejected.error,/Invalid/);
 });
@@ -121,7 +121,7 @@ test('device appearance choices reach live account settings and survive reload, 
 
 test('personal appearance separation keeps device fields out of account writes without dropping them from live data',()=>{
  const data={settings:{theme:'dark',motion:'off',nightArt:17,accent:'ocean'},pet:{enabled:false,name:'Keep'},tasks:{7:{notes:'Keep'}}};
- const before=structuredClone(data),device=Preferences.fromData(data);assert.deepEqual(device,{theme:'dark',motion:'off',nightArt:17,pet:false});
+ const before=structuredClone(data),device=Preferences.fromData(data);assert.deepEqual(device,{theme:'dark',motion:'off',nightArt:17,pet:false,sceneTheme:''});
  const personal=Preferences.personal(data);assert.deepEqual(personal,{settings:{accent:'ocean'},pet:{name:'Keep'},tasks:{7:{notes:'Keep'}}});assert.deepEqual(data,before);
- assert.equal(Preferences.apply(personal,{...device,theme:'light'}).settings.theme,'light');assert.deepEqual(Preferences.fromData({settings:{},pet:{}}),{theme:'light',motion:'gentle',nightArt:0,pet:true});
+ assert.equal(Preferences.apply(personal,{...device,theme:'light'}).settings.theme,'light');assert.deepEqual(Preferences.fromData({settings:{},pet:{}}),{theme:'light',motion:'gentle',nightArt:0,pet:true,sceneTheme:''});
 });

@@ -1,0 +1,111 @@
+/* Under the sea: the dashboard as the deep. The sunlit reef across the top; below it the water darkens to a calm deep blue
+   where you read; cards and panels are panes of clear water, edged with light from the surface; titles round and friendly;
+   the motifs are creatures of the reef, cel-shaded like the scene. */
+.rd.rd.rd.rd[data-theme-kit]{--rd-bg:#05345E;--rd-surface:#0A3F6E;--rd-surface-2:#0E4A80;--rd-ink:#ECFBFF;--rd-muted:#B2DCEB;--rd-ink-2:#D6EEF6;--rd-faint:#93C2D4;--rd-line:rgba(150,235,255,.22);--rd-accent:#7FE6F2;--rd-soft:rgba(127,230,242,.14);--rd-course:#7FE6F2;--rd-danger:#FFB08A;
+  background:linear-gradient(180deg,#0a5c93 0,#06406f 40%,#042a4c 100%)!important;color:var(--rd-ink)!important;position:relative;isolation:isolate;overflow:hidden}
+.rd[data-theme-kit] :is(h1,h2,h3,.rd-rail-name,.rd-rail-heading){font-family:"M PLUS Rounded 1c","Nunito",sans-serif!important;font-weight:700!important;letter-spacing:.01em;color:#F4FDFF!important}
+.rd[data-theme-kit] h1{font-weight:800!important;font-size:44px!important;text-shadow:0 2px 0 rgba(3,40,70,.55),0 0 22px rgba(3,40,70,.7)}
+.rd[data-theme-kit] .rd-rail-heading,.rd[data-theme-kit] .rd-heading-date,.rd[data-theme-kit] .rd-bookmarks :is(p,small,h2){text-shadow:0 1px 4px rgba(3,40,70,.85)}
+.rd[data-theme-kit] :is(button,label,span,b,strong,small,em,time,li,td,th,dt,dd){color:inherit}
+.rd[data-theme-kit] :is(small,p,.rd-heading-date,.rd-rail-next){color:var(--rd-muted)!important}
+.rd[data-theme-kit] .rd-heading-date,.rd[data-theme-kit] .rd-bookmarks :is(p,small){color:#E4F8FF!important}
+.rd[data-theme-kit] :is(.rd-text-button,.rd-grade-switch,.rd-board-edit,.rd-toolbox-trigger){color:var(--rd-ink)!important}
+.rd[data-theme-kit] :is(.rd-rail-next b,.rd-reader-facts span:first-child,[class*=due],[class*=time]){color:#FFC49A!important}
+.rd[data-theme-kit] .rd-reader-facts span:not(:first-child){color:var(--rd-muted)!important}
+.rd[data-theme-kit] .rd-rich-text,.rd[data-theme-kit] .rd-rich-text :is(p,li,ol,ul,span,em,strong,b,td,th,h4,h5,h6){color:var(--rd-ink)!important}
+/* the scene: the whole picture across the top, sinking into the deep */
+.rd[data-theme-kit] > .tk-sky{position:absolute;left:0;right:0;top:0;aspect-ratio:1600/440;z-index:0;pointer-events:none;
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 66%,rgba(0,0,0,.4) 86%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 66%,rgba(0,0,0,.4) 86%,transparent 100%)}
+.rd[data-theme-kit] > .tk-sky video{width:100%;height:100%;object-fit:contain;object-position:50% 0;display:block}
+.rd[data-theme-kit] > .rd-shell{position:relative;z-index:1}
+.rd[data-theme-kit] .rd-heading-art{display:none!important}
+.rd[data-theme-kit] .rd-course-heading h1::before{background:none!important}
+.rd[data-theme-kit] .rd-course-heading{position:relative}
+.rd[data-theme-kit] .rd-course-heading::before{position:absolute!important;inset:-30px auto -20px -50px!important;width:620px!important;height:auto!important;z-index:-1!important;background:radial-gradient(closest-side,rgba(4,50,90,.55),rgba(4,50,90,0))!important}
+/* panes of clear water: deep-blue glass, a line of surface light along the top edge */
+.rd[data-theme-kit] .rd-toolbar{background:transparent!important}
+.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week,.rd-reader-tabs){background:rgba(4,46,84,.72)!important;box-shadow:inset 0 0 0 1px rgba(150,235,255,.28)!important;backdrop-filter:none}
+.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter,.rd-reader-tab){color:#D6F4FF!important}
+.rd[data-theme-kit] :is(.rd-workspace-tab[aria-selected=true],.cz-tab[aria-selected=true],.rd-filter[aria-pressed=true],.rd-day-filter[aria-pressed=true],.rd-reader-tab[aria-pressed=true],.rd-reader-tab[aria-selected=true]),.rd[data-theme-kit] .rd-glance-chip{background:linear-gradient(180deg,#a8f2ff,#5fd0e6)!important;color:#04304f!important;font-weight:700;box-shadow:inset 0 -3px 0 rgba(0,80,120,.25),inset 0 1px 0 rgba(255,255,255,.8),0 0 14px rgba(127,230,242,.35)!important}
+.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter)::before,.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week,.rd-reader-tabs)::before{background:transparent!important;box-shadow:none!important}
+.rd[data-theme-kit] .rd-search input{background:rgba(3,40,74,.82)!important;color:var(--rd-ink)!important;border:1px solid rgba(150,235,255,.35)!important}
+.rd[data-theme-kit] .rd-search input::placeholder{color:#B2DCEB}
+.rd[data-theme-kit] .rd-course-rail{background:rgba(3,40,74,.82)!important;border-radius:18px!important;box-shadow:inset 0 0 0 1px rgba(150,235,255,.22),inset 0 2px 0 rgba(200,250,255,.35),0 18px 40px rgba(0,20,40,.4)!important;backdrop-filter:none}
+.rd[data-theme-kit] .rd-frame > *{display:none!important}
+.rd[data-theme-kit] .rd-frame{border-radius:14px;background:linear-gradient(180deg,rgba(40,140,190,.32),rgba(6,52,92,.9) 40%)!important;box-shadow:inset 0 0 0 1px rgba(150,235,255,.3),inset 0 2px 0 rgba(210,250,255,.45)}
+.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course,.rd-course-name){background:transparent!important;box-shadow:none!important;outline:none!important}
+.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::before,.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::after,.rd[data-theme-kit] .rd-rail-art::after{display:none!important}
+.rd[data-theme-kit] .rd-rail-art > svg{display:none!important}
+.rd[data-theme-kit] .tk-icon{width:116%;height:116%;margin:-8%;object-fit:contain}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information){background:rgba(3,40,74,.87)!important;border-radius:18px!important;backdrop-filter:none}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{-webkit-mask-box-image:none!important;mask:none!important;background:none!important;border:0!important;border-radius:18px!important;inset:0!important;box-shadow:inset 0 0 0 1px rgba(150,235,255,.26),inset 0 2px 0 rgba(210,250,255,.4),0 18px 40px rgba(0,20,40,.4)!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::before{display:none!important}
+.rd[data-theme-kit] :is(.rd-announcement,.rd-reader,.rd-work-item,.rd-deck-section){background:transparent!important}
+.rd[data-theme-kit] .rd-bookmarks{border-bottom:1px solid rgba(150,235,255,.2)!important}
+.rd[data-theme-kit] .rd-assignment-list::before,.rd[data-theme-kit] .rd-assignment-list::after{background:rgba(127,230,242,.12)!important;box-shadow:inset 0 0 0 1px rgba(150,235,255,.45)!important}
+.rd[data-theme-kit] .rd-assignment--selected{background:transparent!important;box-shadow:none!important}
+.rd[data-theme-kit] .rd-button--primary{background:linear-gradient(180deg,#ffb27a,#ff8a4a)!important;color:#3a1606!important;border:0!important;font-weight:700;box-shadow:inset 0 -3px 0 rgba(160,60,20,.35),inset 0 1px 0 rgba(255,240,220,.9),0 4px 14px rgba(255,140,80,.35)!important;position:relative;overflow:hidden}
+.rd[data-theme-kit] .rd-button:not(.rd-button--primary){background:rgba(4,46,84,.8)!important;color:var(--rd-ink)!important;border:1px solid rgba(150,235,255,.35)!important}
+.rd[data-theme-kit] a{color:#9FF0FA}
+/* life: the chosen card shimmers like water, the creatures sway and swim, light runs across the button */
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame{box-shadow:inset 0 0 0 1px rgba(170,245,255,.7),inset 0 2px 0 rgba(220,252,255,.6)}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame::after,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame::after{content:"";position:absolute;inset:-6px;border-radius:18px;box-shadow:0 0 18px 2px rgba(127,230,242,.45);animation:tk-glowop 7s ease-in-out infinite;will-change:opacity;pointer-events:none}
+@keyframes tk-glowop{0%,100%{opacity:.5}50%{opacity:.95}}
+@keyframes tk-swim{0%,100%{transform:translate(0,0) rotate(0)}50%{transform:translate(3px,-2px) rotate(-3deg)}}
+@keyframes tk-sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+@keyframes tk-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.rd[data-theme-kit] .tk-icon:is([data-motif=turtle],[data-motif=fish],[data-motif=ray]){animation:tk-swim 6s ease-in-out infinite}
+.rd[data-theme-kit] .tk-icon[data-motif=coral]{transform-origin:50% 92%;animation:tk-sway 6s ease-in-out infinite}
+.rd[data-theme-kit] .tk-icon:is([data-motif=jelly],[data-motif=shell]){animation:tk-bob 5s ease-in-out infinite}
+.rd[data-theme-kit] .rd-button--primary::after{content:"";position:absolute;top:0;bottom:0;left:0;width:40%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);transform:translateX(-120%);animation:tk-sweep 6s cubic-bezier(.4,0,.2,1) infinite;will-change:transform;pointer-events:none}
+@keyframes tk-sweep{0%{transform:translateX(-120%)}55%,100%{transform:translateX(330%)}}
+@media (prefers-reduced-motion:reduce){.rd[data-theme-kit] *,.rd[data-theme-kit] *::before,.rd[data-theme-kit] *::after{animation:none!important}}
+/* the last labels in the original serif follow the theme title face */
+.rd[data-theme-kit] :is(.rd-rail-heading,.rd-rail-heading *,.rd-rail-all > span,.rd-day-filter strong,.rd-day-filter b){font-family:"M PLUS Rounded 1c","Nunito",sans-serif!important;font-weight:700!important}
+/* drawn frames, never a plain rectangle: the cards and the panels wear the theme's own nine-slice frame */
+.rd[data-theme-kit] .rd-frame{border:20px solid transparent!important;border-image:url(sea-card.png) 50 round!important;background-clip:padding-box!important;box-shadow:none!important;border-radius:0!important}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame{box-shadow:none!important}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame::after,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame::after{inset:-14px!important;border-radius:16px!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{box-shadow:none!important;border-radius:0!important;border:36px solid transparent!important;border-image:url(sea-panel.png) 90 round!important;inset:-20px!important}
+.rd[data-theme-kit] .rd-course-rail{box-shadow:none!important}
+.rd[data-theme-kit] .rd-course-rail::after{content:"";position:absolute;inset:-20px;border:36px solid transparent;border-image:url(sea-panel.png) 90 round;pointer-events:none}
+/* the frame carries the pane: no rectangle of background inside or outside the drawn line */
+.rd[data-theme-kit] .rd-frame{border-width:18px!important;border-image:url(sea-card.png) 50 fill round!important;background:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail){background:transparent!important;backdrop-filter:none!important;isolation:isolate}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::after{display:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::before{display:block!important;content:""!important;position:absolute!important;inset:-20px!important;z-index:-1!important;border:36px solid transparent!important;border-image:url(sea-panel.png) 90 fill round!important;background:none!important;pointer-events:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::before{-webkit-mask-box-image:none!important;-webkit-mask:none!important;mask:none!important;opacity:1!important;filter:none!important}
+.rd[data-theme-kit] .rd-course-rail::before{inset:0!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-reader,.rd-work,.rd-course-deck,.rd-course-rail){border-color:transparent!important;box-shadow:none!important;outline:none!important}
+/* each theme its own frame (sea: a glass rim with reef life; stars: open brackets of light) */
+.rd[data-theme-kit] .rd-frame{border-width:24px!important;border-image:url(sea-card.png) 56 fill round!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::before{border-width:40px!important;border-image:url(sea-panel.png) 100 fill round!important;inset:-18px!important}
+.rd[data-theme-kit] .rd-course-rail::before{inset:0!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::before{box-shadow:none!important;outline:none!important;border-radius:0!important}
+/* the frames are alive: bubbles stream up the sides of every glass rim, the two sides out of step */
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{display:block!important;content:""!important;position:absolute!important;inset:-14px!important;border:0!important;box-shadow:none!important;border-radius:0!important;pointer-events:none!important;z-index:2!important;
+  background:radial-gradient(circle at 50% 50%,transparent 0 2.6px,rgba(225,252,255,.85) 3.1px 3.8px,transparent 4.3px) 0 0/14px 46px repeat-y,radial-gradient(circle at 50% 50%,transparent 0 1.6px,rgba(225,252,255,.8) 2px 2.6px,transparent 3px) 6px 22px/14px 46px repeat-y,
+             radial-gradient(circle at 50% 50%,transparent 0 2.6px,rgba(225,252,255,.85) 3.1px 3.8px,transparent 4.3px) 100% 10px/14px 52px repeat-y,radial-gradient(circle at 50% 50%,transparent 0 1.6px,rgba(225,252,255,.8) 2px 2.6px,transparent 3px) calc(100% - 6px) 34px/14px 52px repeat-y!important;
+  -webkit-mask-image:linear-gradient(180deg,transparent,#000 18%,#000 82%,transparent);mask-image:linear-gradient(180deg,transparent,#000 18%,#000 82%,transparent);
+  animation:tk-rise 7s linear infinite!important;will-change:background-position}
+.rd[data-theme-kit] .rd-work-column::after{animation-duration:8.5s!important}.rd[data-theme-kit] .rd-information::after{animation-duration:6.2s!important}
+@keyframes tk-rise{from{background-position:0 0,6px 22px,100% 10px,calc(100% - 6px) 34px}to{background-position:0 -460px,6px -438px,100% -510px,calc(100% - 6px) -486px}}
+@media (prefers-reduced-motion:reduce){.rd[data-theme-kit] *::after{animation:none!important}}
+/* small things in the sea's language: tick circles are bubbles, section headings sit on a line of moving water */
+.rd[data-theme-kit] .rd-check-off{border:0!important;background:radial-gradient(circle at 35% 32%,rgba(255,255,255,.95) 0 2px,transparent 2.6px),radial-gradient(circle,rgba(200,245,255,.12) 0 52%,rgba(225,252,255,.9) 58% 66%,rgba(120,220,250,.25) 72%,transparent 76%)!important;box-shadow:none!important}
+.rd[data-theme-kit] .rd-check-off:hover{background:radial-gradient(circle at 35% 32%,rgba(255,255,255,.95) 0 2px,transparent 2.6px),radial-gradient(circle,rgba(127,230,242,.35) 0 52%,rgba(225,252,255,.95) 58% 66%,rgba(120,220,250,.35) 72%,transparent 76%)!important}
+.rd[data-theme-kit] :is(.rd-sheet-heading h3,.rd-deck-header h2,.rd-work-heading h2){padding-bottom:7px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='8'%3E%3Cpath d='M0 4c5-4 15-4 20 0s15 4 20 0' fill='none' stroke='%237fe6f2' stroke-width='1.6' stroke-opacity='.8'/%3E%3C/svg%3E") 0 100%/40px 8px repeat-x;animation:tk-flow 6s linear infinite}
+@keyframes tk-flow{to{background-position:40px 100%}}
+/* one border only: the course cards wear the glass rim, the rail round them wears none */
+.rd[data-theme-kit] .rd-course-rail::before{display:none!important}
+.rd[data-theme-kit] .rd-course-rail{background:transparent!important;box-shadow:none!important;backdrop-filter:none!important}
+/* room for the frames: the workspace clips what spills past its sides, so widen its box without moving anything in it */
+.rd[data-theme-kit] .rd-workspace{padding-inline:26px!important;margin-inline:-26px!important}
+/* bubbles inside the glass rim: a few at a time, unevenly spaced, rising through it (not a dotted second line) */
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{inset:-14px!important;
+  background:radial-gradient(circle at 50% 50%,transparent 0 2px,rgba(235,253,255,.9) 2.5px 3.2px,transparent 3.6px) 0 0/14px 190px repeat-y,radial-gradient(circle at 50% 50%,transparent 0 1.2px,rgba(235,253,255,.85) 1.6px 2.1px,transparent 2.5px) 0 70px/14px 260px repeat-y,
+             radial-gradient(circle at 50% 50%,transparent 0 2px,rgba(235,253,255,.9) 2.5px 3.2px,transparent 3.6px) 100% 40px/14px 230px repeat-y,radial-gradient(circle at 50% 50%,transparent 0 1.2px,rgba(235,253,255,.85) 1.6px 2.1px,transparent 2.5px) 100% 150px/14px 170px repeat-y!important}
+@keyframes tk-rise{from{background-position:0 0,0 70px,100% 40px,100% 150px}to{background-position:0 -760px,0 -970px,100% -880px,100% -700px}}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{animation:tk-rise 20s linear infinite!important}
+/* every colour the interface uses, so nothing falls back to paper (beats page tint and page style) */
+.rd.rd.rd.rd[data-theme-kit]{--rd-control:#7FB4CC;--rd-control-line:rgba(150,235,255,.32);--rd-line-strong:rgba(150,235,255,.36);--rd-tint:rgba(150,235,255,.12);--rd-row-hover:rgba(150,235,255,.09);--rd-sidebar:#083A66;--rd-sidebar-hover:#0C4677;--rd-sidebar-sel:#105387;--rd-surface-3:#11558F;--rd-mark:#FFB08A;--rd-deadline-soon:#FFC59E;--rd-danger-soft:rgb(255 176 138/.16);--rd-info:#9FE3FF;--rd-info-soft:rgb(159 227 255/.15);--rd-success:#8FE3B4;--rd-success-soft:rgb(143 227 180/.15);--rd-warn:#FFD98A;--rd-warn-soft:rgb(255 217 138/.15);--rd-switch-on:#3CC9DB}

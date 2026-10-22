@@ -1,4 +1,4 @@
-# Store submission kit — Canvas Harness 3.2.0
+# Store submission kit — Canvas Harness 3.4.0
 
 The publisher must register their own developer accounts before either store can accept this extension. This folder is preparation for submission, not evidence of approval or a published store listing.
 
@@ -11,8 +11,8 @@ Use a public publisher name such as **Flzsh**. Check which contact details each 
 
 ## Upload
 
-- Run `npm test`, `npm run check`, and `npm run build` from the repository.
-- Upload `dist/Canvas-Harness-3.2.0.zip`. Its `manifest.json` is at the ZIP root. Do not upload the source repository, a personal backup, or a private test build.
+- Run `npm test`, `npm run check`, and `npm run build` from the repository, then audit the extracted ZIP with `node scripts/release-audit.cjs dist/unpacked-3.4.0`. Compare the ZIP SHA-256 with `dist/release-manifest.json`.
+- Upload `dist/Canvas-Harness-3.4.0.zip`. Its `manifest.json` is at the ZIP root. Do not upload the source repository, a personal backup, or a private test build.
 - Use [listing.txt](listing.txt) for the description and links. Enter the manifest's actual description where the store derives the short description from the package.
 - Use `icon-128.png` for Chrome and `logo-300.png` for Edge. Both come from the original large Canvas Harness logo.
 - Use `promo-440x280.png` for the small promotional image and `marquee-1400x560.png` for the marquee image.
@@ -20,6 +20,8 @@ Use a public publisher name such as **Flzsh**. Check which contact details each 
 - Review [disclosures.md](disclosures.md) against the current dashboard questions and package. Do not select “no user data” merely because there is no developer server.
 - Add [reviewer-notes.md](reviewer-notes.md). Supply only a separately authorized test account if a reviewer requires one; never share your school credentials.
 - Save the listing as a draft, inspect every asset and disclosure, then submit for review when the account and required testing are ready. A successful upload does not mean store approval.
+
+The existing promotional pictures predate 3.4. Its offline port does not certify current browser rendering or a new store walkthrough. Use the reviewer checklist on artificial data before publishing.
 
 ## Official requirements checked
 
@@ -30,3 +32,5 @@ Checked October 11, 2026:
 - [Edge publishing](https://learn.microsoft.com/en-us/microsoft-edge/extensions/publish/publish-extension): square logo (300 × 300 recommended), listing text, privacy information, testing notes and review submission. The optional small tile is 440 × 280; accepted screenshots include 1280 × 800.
 
 Store dashboards can change. Their current form requirements take precedence over this kit.
+
+Use your own picture or short video as a banner, framed the way you want. Pictures and videos are processed and kept in the browser; nothing is uploaded. Framing and media can travel in user-exported kits and backups. Lite retains the data without loading media playback.

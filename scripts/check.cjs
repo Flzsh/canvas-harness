@@ -7,7 +7,7 @@ assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen',
 assert.equal(manifest.optional_permissions,undefined);
 const providers=require('../extension/ai-providers.js');
 // AI provider sites, plus a school's own Canvas address: optional, asked for one site at a time.
-assert.deepEqual(manifest.optional_host_permissions,[...providers.list.flatMap(p=>p.origins),'https://*/*']);
+assert.deepEqual(manifest.optional_host_permissions,[...providers.list.flatMap(p=>p.origins),'https://flzsh.github.io/*','https://*/*']);
 // Only the PDF iframe entry and its Canvas host stylesheet need fixed-origin exposure.
 // Custom school sites keep the existing randomized-resource policy; do not add reader
 // assets to the wildcard dynamic entry or weaken the extension fingerprinting boundary.

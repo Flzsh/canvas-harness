@@ -9,6 +9,7 @@
  // One line each: what the module is for. Shown in the gallery, so it has to be enough to choose by.
  const INFO={
   context:{hint:'Announcements, messages and the teacher’s page for one course.'},
+  handin:{hint:'Work to hand in, with local completion choices.'},
   today:{hint:'What you planned for today and what is due. Tick things off, add your own.'},
   week:{hint:'Seven days at a glance: how much is on each one.'},
   timer:{hint:'A 15 to 60 minute focus session. Your pony studies with you.'},
@@ -38,11 +39,15 @@
  const RING='M61 9C90 7 112 31 111 61C110 90 87 112 59 111C31 110 8 88 9 59C10 32 32 9 60 9C65 9 70 10 75 12';
  const drafts={};   // text being typed in a module, kept across renders until it is saved
 
- const mmss=seconds=>`${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;
+ const mmss=seconds=>{const n=Math.max(0,Math.ceil(seconds));return `${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;};
+ const duration=(value,fallback)=>value===undefined?fallback:Number.isFinite(value)&&value>0&&Number.isFinite(value*60000)?value:null;
+ const validDay=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&Number.isFinite(Date.parse(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;
  function focusState(focus,now){
-  const f=focus||{},minutes=[15,25,45,60].includes(f.minutes)?f.minutes:25,total=minutes*60,running=!!f.endsAt;
-  const left=running?Math.max(0,Math.ceil((f.endsAt-now)/1000)):Math.max(0,Math.min(total,Number.isFinite(f.remaining)?f.remaining:total));
-  return {minutes,total,running,left:left||(!running?total:0),progress:1-(left||(!running?total:0))/total,sessions:f.sessions||0};
+  if(root.ReserveCore?.focusState)return root.ReserveCore.focusState(focus,now);
+  const f=focus||{},minutes=duration(f.minutes,25)||25,total=minutes*60,running=!!f.endsAt,remaining=Number.isFinite(f.remaining)?Math.max(0,f.remaining):total;
+  const left=running?Math.max(0,(f.endsAt-now)/1000):remaining,elapsed=(Number.isFinite(f.elapsed)?Math.max(0,f.elapsed):Math.max(0,total-remaining))+(running?Math.max(0,remaining-left):0);
+  const paused=!running&&!f.stoppedAt&&!f.completedAt&&left>0&&(!!f.pausedAt||elapsed>0||left<total);
+  return {minutes,total,running,paused,active:running||paused,left,elapsed,progress:Math.max(0,Math.min(1,1-left/total)),sessions:f.sessions||0,phase:f.phase==='break'?'break':'focus'};
  }
  function howLong(ms){
   const m=Math.round(Math.abs(ms)/60000);
@@ -103,6 +108,8 @@ ${late.length?`<p class="rd-widget-label">Still open from before</p><ul class="r
 ${total?`<ul class="rd-todo-list">${d.all.map(e=>todo(e)).join('')}</ul>`:`<p class="rd-widget-empty">${late.length?'Nothing else for today.':'Nothing for today yet. Add a task below, or give something from Up next a day in the Planner.'}</p>`}
 <form class="rd-quick-add" data-rd-form="plan-quick" data-day="${today}"><input type="text" data-rd-field="plan-quick" data-day="${today}" maxlength="200" autocomplete="off" aria-label="Add a task for today" placeholder="Add a task…  try “read ch. 3 45m”">${action('plan-quick-add','Add',`data-day="${today}"`,'rd-button rd-quick-add-button')}</form>`;
    extra=action('workspace','Planner','data-tab="plan"','rd-text-button rd-widget-link');
+  }else if(key==='handin'){
+   body=root.ReserveHandIn?.render(c,h,{action})||'';
   }else if(key==='week'){
    const {board,today}=plan(c,h);
    body=`<div class="rd-wk" role="group" aria-label="This week">${board.days.map(d=>{
@@ -112,10 +119,11 @@ ${board.waiting.length||board.overdue.length?`<p class="rd-widget-note">${[board
    extra=action('workspace','Planner','data-tab="plan"','rd-text-button rd-widget-link');
   }else if(key==='timer'){
    const f=focusState(mine.focus,c.now);
-   body=`<div class="rd-timer" data-running="${f.running}" data-rd-timer><div class="rd-timer-dial"><svg viewBox="0 0 120 120" aria-hidden="true"><path class="rd-timer-track" d="${RING}"/><path class="rd-timer-arc" pathLength="1" d="${RING}" style="stroke-dashoffset:${(1-f.progress).toFixed(4)}"/></svg><output data-rd-timer-text aria-live="off">${mmss(f.left)}</output></div>
-<div class="rd-timer-actions">${action('timer-toggle',f.running?'Pause':f.left<f.total&&f.left>0?'Resume':'Start','','rd-button rd-button-primary')}${action('timer-reset','Reset',f.running||f.left<f.total?'':'disabled','rd-text-button')}</div>
+   body=`<div class="rd-timer" data-running="${f.running}" data-rd-timer><span data-rd-timer-phase ${f.phase==='break'?'':'hidden'}>Break</span><div class="rd-timer-dial"><svg viewBox="0 0 120 120" aria-hidden="true"><path class="rd-timer-track" d="${RING}"/><path class="rd-timer-arc" pathLength="1" d="${RING}" style="stroke-dashoffset:${(1-f.progress).toFixed(4)}"/></svg><output data-rd-timer-text aria-live="off">${mmss(f.left)}</output></div>
+<div class="rd-timer-actions biscuit-focus-controls">${action('timer-toggle',f.running?'Pause':f.paused?'Resume':'Start','','rd-button rd-button-primary biscuit-focus-control')}${[['stop','Stop'],['adjust','-5',-5],['adjust','+5',5]].map(([name,label,n])=>action('focus-control',label,`data-focus-action="${name}" ${n!==undefined?`data-minutes="${n}"`:''} ${f.active?'':'disabled'}`,'rd-text-button biscuit-focus-control')).join('')}${action('timer-reset','Reset',f.active||f.left!==f.total?'':'disabled','rd-text-button')}</div>
 <div class="rd-timer-lengths" role="group" aria-label="Session length">${[15,25,45,60].map(n=>action('timer-minutes',`${n}`,`data-minutes="${n}" aria-pressed="${f.minutes===n}" aria-label="${n} minutes" ${f.running?'disabled':''}`,'rd-chip')).join('')}<span>min</span></div>
 ${f.sessions?`<p class="rd-widget-note">${f.sessions} session${f.sessions===1?'':'s'} finished</p>`:''}</div>`;
+   if(enabled('focus-room'))extra=action('room-open','Focus room','','rd-text-button');
   }else if(key==='clock'){
    const next=nextDue(c,h);
    body=`<div class="rd-clock"><time class="rd-clock-time" data-rd-clock>${E(time(c.now,{hour:'numeric',minute:'2-digit'}))}</time><p class="rd-clock-date">${E(time(c.now,{weekday:'long',month:'long',day:'numeric'}))}</p>
@@ -154,13 +162,69 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
 ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" aria-label="Module outline"><span>Outline</span>${FRAMES.map(([value,name,hint])=>`<button type="button" class="rd-frame-choice" role="radio" data-rd-action="board-frame" data-value="${value}" aria-checked="${frame===value}" title="${E(hint)}"><i data-frame="${value}"></i>${E(name)}</button>`).join('')}</div>`:''}</section>`;
  }
 
- function create({container,store,save,rerender,getContext,helpers,preview=()=>{},openSettings=()=>{},startTick=()=>{},go=()=>{},closeSettings=()=>{}}){
+ function create({container,store,getCustomPet=null,save,rerender,getContext,helpers,preview=()=>{},openSettings=()=>{},startTick=()=>{},go=()=>{},selectCourse=null,closeSettings=()=>{},askAI=null,announcements=()=>false,appearance=null,layoutPreset=null,navigate=null,bookmark=null}){
   if(!enabled('planner')||root.ReserveSite?.vanillaPage(root.location))return null;
-  let dead=false,editing=false,settingsTab='layout',clockTimer=0,timerTick=0,notesTimer=0,pets=null,lastDone=null;
+  let dead=false,editing=false,settingsTab='layout',clockTimer=0,timerTick=0,notesTimer=0,pets=null,lastDone=null,focusSettlement=null;
   const win=container.ownerDocument?.defaultView||root;
   const newId=()=>'local-'+(root.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const ctx=()=>getContext();
+  const copy=value=>value===undefined?undefined:JSON.parse(JSON.stringify(value));
+  let requestedFeatures=null,playTray=null,playBox=null,commandCheckpoint=null;
+  const on=id=>enabled(id)&&(!requestedFeatures||requestedFeatures.includes(id)),unavailable=name=>({ok:false,message:name+' is off. Turn it on in Make it yours → Features.'});
+  function appearanceCommand(request){const feature={showGrades:'grades',sceneTheme:'scene-themes',motion:'motion',livingArt:'motion',nightArt:'course-art',bannerSize:'course-art',showCourseIcons:'course-art',courseCardStyle:'course-art',showCourseInformation:'course-hub',showRecentGrades:'grades',deskOrder:'arrange',dashboardLayout:'arrange',courseNavigation:'arrange',dockSize:'arrange'}[request.key];if(request.key!=='showGrades'&&!on('customization'))return unavailable('Appearance editor');if(feature&&!on(feature))return unavailable(root.ReserveFeatures?.catalogue?.find(f=>f.id===feature)?.name||feature);return appearance?appearance(request):false;}
+  function navigateCommand(request){const feature={planner:'planner',messages:'course-hub','course-hub':'course-hub',materials:'materials',grades:'grades'}[request.tab]||'dashboard';return on(feature)?navigate?navigate(request):false:unavailable(root.ReserveFeatures?.catalogue?.find(f=>f.id===feature)?.name||feature);}
+  function changes(before,after){
+   const patches=[],created=[],record=v=>v&&typeof v==='object'&&!Array.isArray(v),walk=(a,b,path=[])=>{if(JSON.stringify(a)===JSON.stringify(b))return;if(record(b)&&(record(a)||a===undefined)){if(a===undefined)created.push(path);for(const key of new Set([...Object.keys(a||{}),...Object.keys(b)]))walk(a?.[key],b[key],[...path,key]);}else patches.push({path,value:copy(a),after:copy(b)});};walk(before,after);return {patches,created};
+  }
+  function capture(checkpoint,action){
+   if(!checkpoint)return action();const update=store.update;
+   // Scope write submissions to this call; compare fresh drafts inside the serialized mutation.
+   store.update=(mutate,...options)=>{const entry={patches:[],created:[],done:false};checkpoint.writes.push(entry);entry.pending=update.call(store,data=>{const before=copy(data);mutate(data);Object.assign(entry,changes(before,data),{done:true});},...options);return entry.pending;};
+   try{return action();}finally{store.update=update;}
+  }
+  function command(action,deferred=false){return request=>{const checkpoint=commandCheckpoint;commandCheckpoint=null;return deferred?action(request,checkpoint):capture(checkpoint,()=>action(request,checkpoint));};}
+  function checkpoint(intent){const begin=()=>commandCheckpoint={intent,writes:[]};return intent==='note'?flushNotes().then(ok=>{if(ok===false)throw Error('Notes could not save.');return begin();}):begin();}
+  function changed(checkpoint){
+   if(commandCheckpoint===checkpoint)commandCheckpoint=null;const writes=checkpoint?.writes||[];
+   if(!writes.length||writes.every(entry=>entry.done&&!entry.patches.length&&!entry.created.length))return null;
+   return async()=>{await Promise.all(writes.map(entry=>entry.pending));let conflict=false;const ok=await save(data=>{const next=copy(data);for(const {patches,created} of [...writes].reverse()){if(patches.some(({path,after})=>JSON.stringify(path.reduce((value,key)=>value?.[key],next))!==JSON.stringify(after))){conflict=true;return;}for(const {path,value} of patches){let parent=next;for(const key of path.slice(0,-1))parent=parent[key]??={};if(value===undefined)delete parent[path.at(-1)];else parent[path.at(-1)]=copy(value);}for(const path of [...created].reverse()){const parent=path.slice(0,-1).reduce((value,key)=>value?.[key],next),value=parent?.[path.at(-1)];if(value&&typeof value==='object'&&!Array.isArray(value)&&!Object.keys(value).length)delete parent[path.at(-1)];}}for(const key of Object.keys(data))delete data[key];Object.assign(data,next);});if(conflict)return {ok:false,message:'That has changed since then. Your newer edits are kept.'};if(ok){startTick();sync();tick();rerender();}return ok;};
+  }
+  async function featureCommand(request){
+   const F=root.ReserveFeatures;if(!F||!root.chrome?.storage?.local)return {ok:false,message:'Features are unavailable. Reload Canvas.'};
+   if(request.id==='pony'&&!request.on)return {ok:false,message:'The Pony switch is in the extension popup → Pony.'};
+   if(request.id&&!F.catalogue.some(row=>row.id===request.id)||!request.id&&!['full','lite'].includes(request.preset))return false;
+   let saved;try{saved=await F.change(request.id?{id:request.id,on:request.on}:{preset:request.preset},{keepPony:true});}catch(error){return {ok:false,message:error.message};}
+   const {before,value:next}=saved;requestedFeatures=request.id?F.resolve(next).enabled:null;
+   return {ok:true,message:request.preset==='lite'?'Lite mode saved. Reload Canvas to apply.':'Saved. Reload Canvas to apply.',reload:true,undo:async()=>{try{await F.write(before,{expected:next});}catch(error){if(error.code==='feature-conflict')return {ok:false,message:error.message};throw error;}requestedFeatures=request.id?F.resolve(before).enabled:null;return {ok:true,message:'Undone. Reload Canvas to apply.',reload:true};}};
+  }
+  function moduleCommand({action,key}){
+   const A=Arrange(),feature={context:'course-hub',messages:'course-hub',grades:'grades',pet:'pony'}[key]||'planner';if(!on('arrange'))return unavailable('Arrange the workspace');if(!on(feature)||!available(key)||!A?.ALL.includes(key))return unavailable(A?.LABELS[key]||'That module');
+   if(!['show','hide','top','wide'].includes(action)||action==='hide'&&!A.removable(key))return false;
+   return save(data=>{if(action==='hide')A.change(data.settings,key==='context'?{type:'hide-context'}:{type:'remove',key});else{if(key==='context')A.change(data.settings,{type:'restore-context'});else if(A.EXTRA.includes(key))A.change(data.settings,{type:'add',key});if(action==='top')A.change(data.settings,{type:'dock',key,target:A.ROOT,edge:'top'});if(action==='wide')data.settings.moduleSize={...data.settings.moduleSize,[key]:'l'};}});
+  }
+  async function noteCommand({text},checkpoint){
+   if(!on('planner'))return unavailable('Notes');text=String(text||'').trim();if(!text)return false;
+   if(await flushNotes()===false)return false;
+   const current=store.get().toolbox?.scratchpad||'';if(current.length+text.length+(current?1:0)>30000)return {ok:false,message:'Notes is full. Make room in Notes first.'};
+   return capture(checkpoint,()=>save(data=>{const value=data.toolbox?.scratchpad||'';if(value.length+text.length+(value?1:0)>30000)throw Error('Notes is full.');data.toolbox={...data.toolbox,scratchpad:value+(value?'\n':'')+text};}));
+  }
+  function skillCommand({skill,on:value}){const B=root.ReservePonyBrain;if(!on('pony'))return unavailable('Pony companion');if(!B||!Object.hasOwn(B.SKILLS,skill)||typeof value!=='boolean')return false;return saveSkill(skill,value);}
+  function saveSkill(key,value){return save(data=>{const B=root.ReservePonyBrain,p=Pets().clean(data.pet);data.pet={...p,skills:{...B.cleanSkills(p.skills),[key]:value}};});}
+  async function playCommand({tool}){
+   const c=ctx(),blocked=()=>ctx().quizTaking===true||/\/quizzes\/[^/]+\/(?:take|resume)(?:\/|$)/.test(root.location?.pathname||c.pathname||'');
+   if(blocked())return {ok:false,message:'Play tools are unavailable while taking a quiz.'};
+   if(!on('play'))return {...unavailable('Play tools'),suggestions:['turn on play tools']};
+   if(!root.ReservePlay){const result=await root.chrome?.runtime?.sendMessage?.({target:'ch-play',op:'load'});if(!result?.ok)return {ok:false,message:'Play tools could not load. Reload Canvas and try again.',reload:true};}
+   if(dead||blocked())return {ok:false,message:'Play tools are unavailable while taking a quiz.'};
+   if(!playTray){playBox=container.ownerDocument.createElement('div');playBox.dataset.rdKeep='true';container.append(playBox);playTray=root.ReservePlay?.mount({box:playBox,all:true,root:()=>container.querySelector('.rd-workspace')||container,blocks:'.rd-main > *, .rd-workspace > *',ours:'.pet-layer,.chb-box',allowed:()=>!dead&&!blocked()&&on('play')});}
+   if(!playTray?.TOOLS?.some(row=>row[0]===tool))return false;if(!container.contains(playBox))container.append(playBox);
+   const previous=playTray.tool??null;if(previous!==tool)playTray.pick(tool);
+   return {ok:true,undo:()=>{playTray.pick(null);if(previous)playTray.pick(previous);return true;}};
+  }
+  const livePlan=(data=store.get())=>plan({...ctx(),local:data.tasks||{},__plan:null},helpers()).list;
+  const openWork=(request={},data=store.get())=>livePlan(data).filter(e=>!e.done&&(!request.itemId||e.id===String(request.itemId))&&(!request.courseId||e.courseId===String(request.courseId))).sort((a,b)=>(Date.parse(a.dueAt)||Infinity)-(Date.parse(b.dueAt)||Infinity));
   const planner=root.ReservePlannerUI?.create({container,store,save,rerender,getContext,helpers,view:id=>preview(id)})||null;
+  const room=enabled('focus-room')?root.ReserveFocusRoom?.create({container,store}):null;
   // Size and place: the menu behind a module's three dots. It is built on demand and floats over the page.
   let menu=null,menuKey='';
   function closeMenu(refocus=false){
@@ -169,11 +233,11 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
    if(refocus)container.querySelector(`.rd-arrange-more[data-widget="${key}"]`)?.focus({preventScroll:true});
   }
   function openMenu(button,key){
-   const A=Arrange(),size=ctx().s.moduleSize?.[key]||'m',E=helpers().E;closeMenu();
+   const A=Arrange(),size=ctx().s.moduleSize?.[key]||'m',E=helpers().E,label=A.LABELS[key];closeMenu();
    const box=(x,y,w,h)=>`<svg viewBox="0 0 34 24" aria-hidden="true"><rect x="1.5" y="1.5" width="31" height="21" rx="3.5"/><rect class="on" x="${x}" y="${y}" width="${w}" height="${h}" rx="2"/></svg>`;
    const pick=(action,value,label,art,on)=>`<button type="button" class="rd-mm-pick" role="menuitemradio" aria-checked="${!!on}" data-rd-action="${action}" data-widget="${key}" data-value="${value}">${art}<span>${label}</span></button>`;
-   menu=container.ownerDocument.createElement('div');menu.className='rd-module-menu';menu.dataset.rdKeep='true';menu.setAttribute('role','menu');menu.setAttribute('aria-label',`${A.LABELS[key]}: size and place`);
-   menu.innerHTML=`<h3>${E(A.LABELS[key])}</h3><p>Width</p><div class="rd-mm-row">${pick('module-size','s','Narrow',box(12,5,10,14),size==='s')}${pick('module-size','m','Normal',box(9,5,16,14),size==='m')}${pick('module-size','l','Wide',box(5,5,24,14),size==='l')}</div>
+   menu=container.ownerDocument.createElement('div');menu.className='rd-module-menu';menu.dataset.rdKeep='true';menu.setAttribute('role','menu');menu.setAttribute('aria-label',`${label}: size and place`);
+   menu.innerHTML=`<h3>${E(label)}</h3><p>Width</p><div class="rd-mm-row">${pick('module-size','s','Narrow',box(12,5,10,14),size==='s')}${pick('module-size','m','Normal',box(9,5,16,14),size==='m')}${pick('module-size','l','Wide',box(5,5,24,14),size==='l')}</div>
 <p>Give it a whole row or column</p><div class="rd-mm-row" data-cols="4">${pick('module-dock','top','Top',box(4.5,4.5,25,5))}${pick('module-dock','bottom','Bottom',box(4.5,14.5,25,5))}${pick('module-dock','left','Left',box(4.5,4.5,7,15))}${pick('module-dock','right','Right',box(22.5,4.5,7,15))}</div>
 ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" data-rd-action="widget-remove" data-widget="${key}">Remove from Home</button>`:''}`;
    container.append(menu);menuKey=key;button.setAttribute('aria-expanded','true');
@@ -185,22 +249,115 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
   container.ownerDocument.addEventListener('pointerdown',outside,true);win.addEventListener('resize',closeMenu);
   function petInfo(){
    const c=ctx(),h=helpers(),next=nextDue(c,h),{board,today}=plan(c,h),d=board.days.find(x=>x.key===today);
-   return {next:next?{id:next.id,title:next.title,course:next.course,when:`in ${howLong(next.ms)}`,urgent:next.ms<3*3600000}:null,todayOpen:d?.open||0,todayDone:d?.done||0};
+   const entries=livePlan().map(e=>({id:e.id,title:e.title,course:e.course,dueAt:e.dueAt,dueDay:e.dueDay,done:e.done,planned:e.planned,estimate:e.estimate,courseId:e.courseId,url:e.url})),focus=store.get().focus||{};
+   return {now:Date.now(),timeZone:c.s.timeZone,courses:c.courses.map(x=>({id:String(x.id),name:x.name||'',shortName:x.shortName||''})),workItems:entries,assignments:entries,planner:entries,ai:on('ai')&&typeof askAI==='function',skills:store.get().pet?.skills,unreadAnnouncements:c.unreadAnnouncements||0,pageKind:c.pageKind||'dashboard',quizTaking:c.quizTaking===true,pathname:root.location?.pathname||c.pathname||'',dark:c.theme==='dark',focus:{...focus,running:!!focus.endsAt},next:next?{id:next.id,title:next.title,course:next.course,when:`in ${howLong(next.ms)}`,urgent:next.ms<3*3600000}:null,todayOpen:d?.open||0,todayDone:d?.done||0};
   }
+  let customPet=null,customPetId='',customPetVersion=0;
+  function hydratePet(){
+   if(getCustomPet||dead)return;
+   const id=store.get().settings?.makeYourOwn?.pet?.id||'';
+   if(id===customPetId)return;
+   customPetId=id;customPet=null;const version=++customPetVersion;
+   if(!id||!root.ReservePacks?.readLocal)return;
+   Promise.resolve(root.ReservePacks.readLocal(id,{store})).then(value=>{if(dead||version!==customPetVersion||store.get().settings?.makeYourOwn?.pet?.id!==id)return;customPet=value?.kind==='pet'?value.pack:null;pets?.sync();}).catch(()=>{});
+  }
+  const selectedPet=()=>getCustomPet?getCustomPet():customPet;
   function ensurePets(){
-   if(!enabled('pony'))return;const P=Pets();if(!P||!root.ReservePetArt||pets||dead)return;
-   pets=P.create({container,getPet:()=>store.get().pet,savePet:pet=>save(data=>{data.pet=pet;}),info:petInfo,
-    actions:{open:item=>preview(item.id),focus:()=>startFocus(),settings:()=>{if(!enabled('customization'))return;settingsTab='pet';openSettings('pet');rerender();}}});
+   const P=Pets();if(!enabled('pony')||!P||!root.ReservePetArt||pets||dead)return;
+   pets=P.create({container,getPet:()=>store.get().pet,getCustomPet:selectedPet,savePet:(pet,patch,mutate)=>{const checkpoint=['pet','routine','quiet'].includes(commandCheckpoint?.intent)?commandCheckpoint:null;if(checkpoint)commandCheckpoint=null;return capture(checkpoint,()=>save(data=>{data.pet=mutate?mutate(P.clean(data.pet)):{...data.pet,...(patch||pet)};}));},info:petInfo,
+    claimNudge:async(top,snapshot,state)=>{let claimed=null;const ok=await save(data=>{const B=root.ReservePonyBrain,p=P.clean(data.pet),snap={...snapshot,skills:p.skills,now:Date.now(),focus:{...snapshot.focus,running:!!data.focus?.endsAt}};if(!B||p.nudges!=='helpful'||!B.canNudge(top,snap,p.brain,state))return;claimed=B.markNudge(p.brain,top,snap);data.pet={...p,brain:claimed};});return ok?claimed:null;},
+    claimOffer:async(offer,snapshot,state)=>{const A=root.ReservePonyAsk;if(!A||dead)return null;return A.claimOffer(store,offer,{...snapshot,now:Date.now()},state);},
+     actions:{checkpoint,changed,setting:command(appearanceCommand),preset:command(request=>on('customization')&&on('arrange')?layoutPreset?layoutPreset(request):false:unavailable('Appearance editor or arrangement')),feature:command(featureCommand),features:command(featureCommand),module:command(moduleCommand),navigate:command(navigateCommand),skill:command(skillCommand),note:command(noteCommand,true),bookmark:command(request=>bookmark?bookmark(request):false),play:command(playCommand),reload:command(()=>root.location?.reload()),open:command(openItem),focus:command(startPonyFocus),'focus-control':command(focusControl),'focus-status':command(focusStatus,true),reminder:command(addReminder),due:command(dueWork),plan:command(planTonight),break:command(startBreak),stretch:command(()=>store.get().pet?.skills?.wellbeing!==false?startBreak({minutes:5,explicit:true,stretch:true}):false),ai:command(request=>on('ai')&&askAI?askAI(request.question):unavailable('AI handoff')),inbox:command(()=>enabled('course-hub')?announcements():false),settings:command(()=>{if(!enabled('customization'))return false;settingsTab='pet';openSettings('pet');rerender();return true;})}});
   }
-  function startFocus(){return save(data=>{const f=focusState(data.focus,Date.now());data.focus={...data.focus,minutes:f.minutes,remaining:f.left,endsAt:Date.now()+f.left*1000};}).then(()=>startTick());}
+  function openItem(request={}){
+   if(request.itemId){const item=openWork(request)[0];if(!item)return false;const result=preview(item.id);return result?.undo?result:true;}
+   if(request.courseId&&navigate)return navigate(request);
+   const course=enabled('course-hub')&&ctx().courses.find(x=>String(x.id)===String(request.courseId));if(!course)return false;
+   go('hub');if(selectCourse)selectCourse(String(course.id));else{const button=[...container.querySelectorAll('[data-rd-action="course"]')].find(x=>String(x.dataset.id)===String(course.id));button?.click?.();}return true;
+  }
+  function dueWork(request={}){
+   const c=ctx(),from=request.date||helpers().dayKey(Date.now(),c.s.timeZone),to=request.endDate||from;if(!validDay(from)||!validDay(to)||to<from)return false;
+   const items=openWork(request).filter(e=>e.dueDay>=from&&e.dueDay<=to),label=items.length?`Due ${from}${to!==from?` to ${to}`:''}: ${items.slice(0,4).map(e=>`${e.title}${e.course?` (${e.course})`:''}`).join('; ')}${items.length>4?`; +${items.length-4} more`:''}.`:`Nothing due ${from}${to!==from?` to ${to}`:''}.`;
+   pets?.say?.(label);planner?.goto(from);go('plan');return label;
+  }
+  function addReminder(request={}){
+   const title=String(request.title||request.text||'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,200),c=ctx(),now=Date.now();let at=request.at;
+   if(at===undefined){const m=String(request.time||'').match(/^(\d{1,2}):(\d{2})$/);if(!validDay(request.date)||!m||Number(m[1])>23||Number(m[2])>59)return false;at=root.ReservePonyAsk?.wall(request.date,Number(m[1])*60+Number(m[2]),c.s.timeZone,now);}
+   else if(typeof at==='string')at=/T.*(?:Z|[+-]\d{2}:\d{2})$/.test(at)?Date.parse(at):NaN;
+   if(!title||!Number.isFinite(at)||at<=now||at>8640000000000000||request.courseId&&!c.courses.some(x=>String(x.id)===String(request.courseId)))return false;
+   const id=newId(),day=helpers().dayKey(at,c.s.timeZone),dueAt=new Date(at).toISOString(),createdAt=new Date(now).toISOString();let added=false;
+   return save(data=>{if((data.pet?.reminders||[]).length>=20||at<=Date.now())return;data.customTasks=data.customTasks||[];data.tasks=data.tasks||{};Plan().addTask({name:title,day},{courseId:request.courseId?String(request.courseId):'personal',id,nowISO:createdAt})(data);data.customTasks.find(x=>x.id===id).dueAt=dueAt;data.pet={...data.pet,reminders:[...(data.pet?.reminders||[]),{id,text:title,at,createdAt:now}]};added=true;}).then(ok=>ok&&added);
+  }
+  const freshFocus=(focus,minutes,now)=>{if(root.ReserveCore?.resetFocus)return root.ReserveCore.resetFocus(focus,minutes,now);const next={...focus,minutes,remaining:minutes*60,elapsed:0,pausedAt:0,stoppedAt:0,endsAt:now+minutes*60000,completedAt:0,completedMinutes:0,breakUntil:0};for(const key of ['phase','focusMinutes','breakMinutes','cycles','cycle'])delete next[key];return next;};
+  function afterFocus(ok){if(ok){startTick();sync();tick();}return ok;}
+  function settleTimer(checkpoint){
+   if(focusSettlement)return focusSettlement;const f=store.get().focus,C=root.ReserveCore;if(!f?.endsAt||Date.now()<f.endsAt||!C?.settleFocus)return Promise.resolve(true);
+   let completed=false,ended=0;focusSettlement=Promise.resolve().then(()=>capture(checkpoint,()=>save(data=>{ended=data.focus?.endsAt||0;completed=C.settleFocus(data,Date.now());}))).then(ok=>{if(ok&&completed&&Date.now()-ended<60000)finished('focus');if(ok&&!dead){sync();tick();}return ok;}).finally(()=>{focusSettlement=null;});return focusSettlement;
+  }
+  function focusStatus(_request,checkpoint){return settleTimer(checkpoint).then(ok=>{if(!ok)return false;const f=focusState(store.get().focus,Date.now());return f.active?`${f.phase==='break'?'Break':'Focus'} timer${f.paused?' paused':''}: ${mmss(f.left)} remaining.`:'No active timer.';});}
+  function startFocus(){if(focusState(store.get().focus,Date.now()).paused)return focusControl({action:'resume'});let started=false;return save(data=>{const f=focusState(data.focus,Date.now());if(f.running)return;data.focus={...freshFocus(data.focus,data.focus?.focusMinutes||f.minutes,Date.now()),fromPony:false};started=true;}).then(ok=>afterFocus(ok&&started));}
+  function startPonyFocus(item={}){
+   const minutes=duration(item.minutes,25),cycles=item.cycles===undefined?1:item.cycles,breakMinutes=item.breakMinutes===undefined?0:item.breakMinutes,blocked=f=>f?.endsAt&&!(f.phase==='break'&&!f.cycles),span=(minutes+breakMinutes)*cycles*60000;
+   if(!minutes||!Number.isInteger(cycles)||cycles<1||cycles>1000||!Number.isFinite(breakMinutes)||breakMinutes<0||!Number.isFinite(span)||Date.now()+span>8640000000000000||blocked(store.get().focus))return false;let started=false;
+   return save(data=>{const now=Date.now(),course=item.courseId&&ctx().courses.find(x=>String(x.id)===String(item.courseId)),work=item.itemId||item.courseId?openWork(item,data)[0]:null;if(blocked(data.focus)||now+span>8640000000000000||item.courseId&&!course||!work&&!(course&&!item.itemId||item.explicit&&!item.itemId&&!item.courseId))return;started=true;data.focus={...freshFocus(data.focus,minutes,now),...(cycles>1||breakMinutes>0?{phase:'focus',focusMinutes:minutes,breakMinutes,cycles,cycle:1}:{}),itemId:work?.id||null,courseId:work?.courseId||(course?String(course.id):null),fromPony:true};}).then(ok=>afterFocus(ok&&started));
+  }
+  function focusControl(request={}){
+   if(!['pause','resume','stop','adjust'].includes(request.action)||request.action==='adjust'&&!Number.isFinite(request.minutes))return false;let changed=false,completed=false,ended=0;
+   return save(data=>{const now=Date.now();ended=data.focus?.endsAt||0;completed=root.ReserveCore?.settleFocus?.(data,now)===true;const f=focusState(data.focus,now);if(!f.active||f.left<=0||request.action==='pause'&&!f.running||request.action==='resume'&&!f.paused)return;
+    const next={...data.focus,remaining:f.left,elapsed:f.elapsed};
+    if(request.action==='pause'){next.endsAt=null;next.pausedAt=now;}
+    if(request.action==='resume'){next.endsAt=now+f.left*1000;next.pausedAt=0;}
+    if(request.action==='stop')Object.assign(next,{endsAt:null,pausedAt:0,stoppedAt:now,completedAt:0,completedMinutes:0,breakUntil:0});
+    if(request.action==='adjust'){const left=Math.max(60,f.left+request.minutes*60);if(!Number.isFinite(left)||now+left*1000>8640000000000000)return;Object.assign(next,{remaining:left,minutes:(f.elapsed+left)/60,endsAt:f.running?now+left*1000:null});}
+    if(next.phase==='break')next.breakUntil=next.endsAt||0;
+    data.focus=next;changed=true;
+   }).then(ok=>{if(ok&&completed&&Date.now()-ended<60000)finished('focus');afterFocus(ok&&(changed||completed));return ok&&changed;});
+  }
+  function startBreak(request={}){let started=false;const minutes=duration(request.minutes,5);if(!minutes||Date.now()+minutes*60000>8640000000000000)return false;return save(data=>{const f=data.focus||{},now=Date.now(),completed=f.completedAt;if(focusState(f,now).active||f.breakUntil>now||request.stretch&&data.pet?.skills?.wellbeing===false||!request.explicit&&(request.sessionId!==completed||!Number.isFinite(completed)||completed<=0||completed>now||now-completed>3600000||(f.completedMinutes??f.minutes)<25))return;started=true;data.focus={...freshFocus(f,minutes,now),phase:'break',breakUntil:now+minutes*60000,fromPony:true};}).then(ok=>afterFocus(ok&&started));}
+  function planRange(request,data){
+   const start=request.date,end=request.endDate||start,count=Math.round((Date.parse(end+'T00:00:00Z')-Date.parse(start+'T00:00:00Z'))/86400000)+1,days=Array.from({length:count},(_,i)=>Plan().addDays(start,i)),entries=livePlan(data),loads=new Map(days.map(day=>[day,entries.filter(e=>!e.done&&e.planned===day).reduce((n,e)=>n+(e.estimate||25),0)])),chosen=request.items?new Set(request.items.map(e=>String(e.id))):null,items=[];
+   for(const e of entries.filter(e=>!e.done&&!e.planned&&(!request.courseId||e.courseId===String(request.courseId))&&(!request.itemId||e.id===String(request.itemId))&&(!chosen||chosen.has(e.id))&&(!e.dueDay||e.dueDay>=start)).sort((a,b)=>(Date.parse(a.dueAt)||Infinity)-(Date.parse(b.dueAt)||Infinity))){const eligible=days.filter(day=>!e.dueDay||day<=e.dueDay).sort((a,b)=>loads.get(a)-loads.get(b)||a.localeCompare(b));if(!eligible.length)continue;const day=eligible[0],estimate=request.minutes??(e.estimate||25);items.push({id:e.id,day,estimate});loads.set(day,loads.get(day)+estimate);}
+   return {day:start,items};
+  }
+  function planTonight(request={}){
+   const c=ctx(),h=helpers(),{list,today}=plan(c,h),A=root.ReservePonyAsk,range=request.date!==undefined||request.endDate!==undefined,scoped=!!(request.courseId||request.itemId),mode=request.mode||(!request.day&&(scoped||request.minutes!==undefined)?'tonight':'');
+   if(request.minutes!==undefined&&(!duration(request.minutes)||request.minutes>1440)||request.courseId&&!c.courses.some(x=>String(x.id)===String(request.courseId))||range&&(!validDay(request.date)||!validDay(request.endDate||request.date)||(request.endDate||request.date)<request.date||Date.parse(request.endDate||request.date)-Date.parse(request.date)>365*86400000)||!range&&(!mode&&request.day!==today||mode&&!['tonight','tomorrow','week'].includes(mode)))return false;
+   if(request.at!==undefined&&(typeof request.at!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(request.at)))return false;
+   const title=typeof request.title==='string'?request.title.replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,200):'';
+   if(!scoped&&title){
+    const day=request.date||(mode==='tomorrow'?Plan().addDays(today,1):today),id=newId();let added=false;
+    return save(data=>{if((data.customTasks||[]).length>=1000)return;data.customTasks??=[];data.tasks??={};Plan().addTask({name:title,day,estimate:request.minutes??25,...(request.at?{at:request.at}:{})},{id,nowISO:new Date().toISOString()})(data);added=true;}).then(ok=>{if(ok&&added){planner?.goto(day);go('plan');}return ok&&added;});
+   }
+   const matches=e=>(!request.courseId||e.courseId===String(request.courseId))&&(!request.itemId||e.id===String(request.itemId)),available=new Map(list.filter(e=>!e.done&&!e.planned&&matches(e)).map(e=>[e.id,e])),items=(request.items||[]).filter(e=>available.has(String(e.id)));if(!range&&!mode&&!items.length||scoped&&!available.size)return false;let planned=false,day=request.date||request.day;
+   return save(data=>{const entries=livePlan(data),start=mode==='tomorrow'?Plan().addDays(today,1):today,fresh=range?planRange(request,data):mode&&scoped?planRange({...request,date:start,endDate:mode==='week'?Plan().addDays(start,6):start},data):mode&&A?A.buildPlan(mode,{now:Date.now(),timeZone:c.s.timeZone,assignments:entries.filter(matches).map(e=>request.minutes===undefined?e:{...e,estimate:request.minutes})}):{day:today,items};day=fresh.day;for(const item of fresh.items){const id=String(item.id);if(data.tasks[id]?.checkedOff||data.tasks[id]?.plannedDate||!entries.some(e=>e.id===id&&!e.done&&!e.planned&&matches(e)))continue;Plan().plan(id,item.day||day)(data);if(request.at)data.tasks[id].plannedTime=request.at;if(request.minutes!==undefined)data.tasks[id].estimate=request.minutes;else if(!data.tasks[id].estimate&&Number.isFinite(item.estimate))Plan().estimate(id,item.estimate)(data);planned=true;}}).then(ok=>{if(ok){planner?.goto(day);go('plan');}return ok&&(planned||!scoped&&(!!mode||range));});
+  }
+  function focusControls(){
+   const f=focusState(store.get().focus,Date.now()),doc=container.ownerDocument;
+   for(let node of container.querySelectorAll('[data-rd-focus-clock]')){
+    if(node.tagName!=='BUTTON'&&doc?.createElement&&node.replaceWith){const button=doc.createElement('button');button.className='rd-focus-clock rd-text-button';button.type='button';button.dataset.rdFocusClock='';button.textContent=node.textContent;button.hidden=node.hidden;node.replaceWith(button);node=button;}
+    const label=f.phase==='break'?'break':'focus';node.disabled=!f.active;node.setAttribute?.('aria-label',f.running?`Pause ${label} timer`:f.paused?`Resume ${label} timer`:'Focus timer');
+    if(f.active){node.textContent=mmss(f.left);node.hidden=false;}else if(node.textContent!=='Done')node.hidden=true;
+    node.parentElement?.setAttribute?.('aria-label',f.running?`Planner, ${label} session running`:f.paused?`Planner, ${label} session paused`:'Planner');
+    let controls=node.parentElement?.querySelector?.('[data-rd-focus-controls]');
+    if(!controls&&doc?.createElement&&node.after){controls=doc.createElement('small');controls.className='biscuit-focus-controls';controls.dataset.rdFocusControls='';for(const [action,text,minutes] of [['pause','Pause'],['stop','Stop'],['adjust','-5',-5],['adjust','+5',5]]){const button=doc.createElement('button');button.type='button';button.className='rd-text-button biscuit-focus-control';button.dataset.rdAction='focus-control';button.dataset.focusAction=action;if(minutes!==undefined)button.dataset.minutes=String(minutes);button.textContent=text;controls.append(button);}node.after(controls);}
+    if(controls){controls.hidden=!f.active;for(const button of controls.querySelectorAll('[data-rd-action="focus-control"]')){if(['pause','resume'].includes(button.dataset.focusAction)){button.dataset.focusAction=f.running?'pause':'resume';button.textContent=f.running?'Pause':'Resume';}button.disabled=!f.active;button.setAttribute('aria-label',button.dataset.focusAction==='adjust'?`${Number(button.dataset.minutes)<0?'Remove':'Add'} 5 minutes`:`${button.textContent} ${label} timer`);}}
+   }
+  }
+  function focusClick(event){
+   const target=event.composedPath?.()[0]||event.target,clock=target?.closest?.('[data-rd-focus-clock]'),button=target?.closest?.('[data-rd-action]');
+   if(clock?.dataset?.rdFocusClock===undefined&&button?.dataset?.rdAction!=='focus-control')return false;
+   event.preventDefault?.();event.stopPropagation?.();if(dead||clock?.disabled||button?.disabled)return true;
+   const request=clock?.dataset?.rdFocusClock!==undefined?{action:focusState(store.get().focus,Date.now()).running?'pause':'resume'}:{action:button.dataset.focusAction,minutes:Number(button.dataset.minutes)};focusControl(request);return true;
+  }
   // The dial and the clock move between renders without one.
   function tick(){
    if(dead)return;const now=Date.now(),data=store.get(),f=focusState(data.focus,now);
+   if(data.focus?.phase&&f.running&&f.left<=0)void settleTimer().catch(()=>{});
    for(const node of container.querySelectorAll('[data-rd-timer]')){
-    const text=node.querySelector('[data-rd-timer-text]'),arc=node.querySelector('.rd-timer-arc');
+    const text=node.querySelector('[data-rd-timer-text]'),arc=node.querySelector('.rd-timer-arc'),phase=node.querySelector('[data-rd-timer-phase]');if(phase)phase.hidden=f.phase!=='break';
     if(text&&text.textContent!==mmss(f.left))text.textContent=mmss(f.left);if(arc)arc.style.strokeDashoffset=(1-f.progress).toFixed(4);
    }
-   pets?.setFocus(f.running);
+   focusControls();room?.sync();pets?.setFocus(f.running,data.focus);
    if(!f.running&&timerTick){clearInterval(timerTick);timerTick=0;}
   }
   function clock(){
@@ -213,7 +370,10 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    const data=store.get(),running=!!data.focus?.endsAt;
    if(running&&!timerTick)timerTick=setInterval(tick,1000);
    if(container.querySelector('[data-rd-clock]')){if(!clockTimer)clockTimer=setInterval(clock,15000);}else if(clockTimer){clearInterval(clockTimer);clockTimer=0;}
-   ensurePets();pets?.sync();pets?.setFocus(running);
+   room?.sync();hydratePet();ensurePets();pets?.sync();pets?.setFocus(running,data.focus);focusControls();
+   if(data.focus?.phase&&running&&Date.now()>=data.focus.endsAt)void settleTimer().catch(()=>{});
+   // Dashboard syncFocus follows sync in the same render. Restore a paused clock after its running-only update.
+   Promise.resolve().then(()=>{if(!dead)focusControls();});
   }
   async function quickAdd(input){
    const text=input?.value||'',c=ctx(),h=helpers(),today=h.dayKey(c.now,c.s.timeZone),parsed=Plan().parseQuick(text,today);
@@ -227,6 +387,8 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
   }
   function click(event){
    if(!enabled('planner'))return false;
+   if(room?.click(event))return true;
+   if(focusClick(event))return true;
    const candidate=event.target.closest?.('[data-rd-action]'),name=candidate?.dataset.rdAction;
    if(name?.startsWith('pet-')&&(!enabled('pony')||!Pets())||['customize-tab','pet-settings','board-frame'].includes(name)&&!enabled('customization')||['module-menu','module-size','module-dock'].includes(name)&&!enabled('arrange')||candidate?.dataset.widget&&!available(candidate.dataset.widget))return true;
    if(planner?.click(event))return true;
@@ -238,24 +400,30 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    if(action==='board-edit'&&button.dataset.from==='settings'){editing=true;closeSettings();go('work');rerender();container.querySelector('.rd-gallery')?.scrollIntoView({block:'nearest'});return true;}
    if(action==='board-edit'){editing=!editing;rerender();if(!editing)container.querySelector('[data-rd-action="board-edit"]')?.focus({preventScroll:true});return true;}
    if(action==='board-frame'){save(data=>{data.settings.panelFrame=button.dataset.value;});return true;}
-   if(action==='module-menu'){if(menu&&menuKey===key)closeMenu(true);else if(A.LABELS[key])openMenu(button,key);return true;}
+   if(action==='module-menu'){if(menu&&menuKey===key)closeMenu(true);else if(A.ALL.includes(key))openMenu(button,key);return true;}
    if(action==='module-size'&&A.ALL.includes(key)&&Object.hasOwn(A.SIZES,button.dataset.value)){
     const size=button.dataset.value;closeMenu(true);
     save(data=>{const sizes={...(data.settings.moduleSize||{})};if(size==='m')delete sizes[key];else sizes[key]=size;data.settings.moduleSize=sizes;});return true;
    }
-   if(action==='module-dock'&&A.ALL.includes(key)){const edge=button.dataset.value;closeMenu(true);save(data=>{A.change(data.settings,{type:'dock',key,target:A.ROOT,edge});});return true;}
+   if(action==='module-dock'&&A.ALL.includes(key)&&['top','bottom','left','right'].includes(button.dataset.value)){const edge=button.dataset.value;closeMenu(true);save(data=>{A.change(data.settings,{type:'dock',key,target:A.ROOT,edge});});return true;}
    if(action==='widget-remove')closeMenu();
+   if(action==='handin-dismiss'||action==='handin-undo'){
+    const id=String(button.dataset.id),why=root.ReserveHandIn?.cleanReason(button.dataset.value);
+    if(/^\d+$/.test(id)&&ctx().items.some(item=>String(item.id)===id)&&(action==='handin-undo'||why))save(data=>{data.tasks[id]={...data.tasks[id],checkedOff:action==='handin-dismiss'};if(action==='handin-dismiss')data.tasks[id].doneReason=why;else delete data.tasks[id].doneReason;});return true;
+   }
    if(action==='widget-add'&&(A.EXTRA.includes(key)||key==='context')){save(data=>{A.change(data.settings,key==='context'?{type:'restore-context'}:{type:'add',key});});return true;}
    if(action==='widget-remove'&&A.removable(key)){save(data=>{A.change(data.settings,key==='context'?{type:'hide-context'}:{type:'remove',key});});return true;}
    if(action==='timer-toggle'){
     const f=focusState(store.get().focus,Date.now());
-    if(f.running)save(data=>{const g=focusState(data.focus,Date.now());data.focus={...data.focus,remaining:g.left,endsAt:null};});else startFocus();
+    if(f.running)focusControl({action:'pause'});else startFocus();
     return true;
    }
-   if(action==='timer-reset'){save(data=>{const g=focusState(data.focus,Date.now());data.focus={...data.focus,remaining:g.total,endsAt:null};});return true;}
-   if(action==='timer-minutes'){const n=Number(button.dataset.minutes);if([15,25,45,60].includes(n))save(data=>{data.focus={...data.focus,minutes:n,remaining:n*60,endsAt:null};});return true;}
+   if(action==='timer-reset'){save(data=>{const g=focusState(data.focus,Date.now());data.focus={...freshFocus(data.focus,data.focus?.focusMinutes||g.minutes,Date.now()),endsAt:null};}).then(ok=>afterFocus(ok));return true;}
+   if(action==='timer-minutes'){const n=duration(Number(button.dataset.minutes));if(n)save(data=>{if(data.focus?.endsAt)return;data.focus={...freshFocus(data.focus,n,Date.now()),endsAt:null};}).then(ok=>afterFocus(ok));return true;}
    if(action==='plan-quick-add'){quickAdd(button.closest('form')?.querySelector('[data-rd-field="plan-quick"]'));return true;}
    if(action==='plan-carry'){const c=ctx(),h=helpers(),{board,today}=plan(c,h);save(data=>{for(const e of board.overdue)Plan().plan(e.id,today)(data);});return true;}
+   if(action==='pet-reset-learning'){if(enabled('pony'))save(data=>{const B=root.ReservePonyBrain,p=Pets().clean(data.pet);if(B)data.pet={...p,brain:{...B.cleanLearning(p.brain),kinds:{}}};});return true;}
+   if(action==='pet-routine-remove'){if(enabled('pony'))save(data=>{const p=Pets().clean(data.pet);data.pet={...p,routines:p.routines.filter(r=>r.id!==button.dataset.id)};});return true;}
    if(action==='pet-feed'){pets?.treat();return true;}
    if(action==='pet-roam'){save(data=>{const pet=Pets().clean(data.pet);data.pet={...pet,enabled:true,roam:pet.roam==='home'?'page':'home'};});return true;}
    if(action==='pet-settings'){settingsTab='pet';openSettings('pet');rerender();return true;}
@@ -263,6 +431,8 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
   }
   function keydown(event){
    if(!enabled('planner'))return false;
+   if(['Enter',' ','Spacebar'].includes(event.key)&&!event.altKey&&!event.ctrlKey&&!event.metaKey&&!event.repeat&&focusClick(event))return true;
+   if(room?.keydown(event))return true;
    if(planner?.keydown(event))return true;
    if(event.key==='Escape'&&menu){event.preventDefault();closeMenu(true);return true;}
    // Keys are heard on the document, where a shadow root hides the real target.
@@ -284,10 +454,11 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
   function change(event){
    if(!enabled('planner'))return false;
    const target=event.target,field=target?.dataset?.rdField;
+   if(field==='pet-skill'){const B=root.ReservePonyBrain,key=target.dataset.key;if(enabled('pony')&&B&&Object.hasOwn(B.SKILLS,key))saveSkill(key,target.checked===true);return true;}
    if(field==='pet'){
-     if(!enabled('pony')||!enabled('customization')||!Pets())return true;
+    if(!enabled('pony')||!enabled('customization')||!Pets())return true;
     const key=target.dataset.key,value=target.type==='checkbox'?target.checked:target.value;
-    if(!Object.hasOwn(Pets().DEFAULTS,key)||['treats','fed','xp','streak','best','streakDay','told'].includes(key))return true;
+    if(!Object.hasOwn(Pets().DEFAULTS,key)||['treats','fed','xp','streak','best','streakDay','told','brain','skills','reminders','routines'].includes(key))return true;
     if((key==='coat'||key==='harness')&&!Pets().unlocked(key,value,Pets().clean(store.get().pet).xp))return true;
     save(data=>{if(key==='enabled')data.pet.enabled=value;else data.pet={...Pets().clean(data.pet),[key]:value};});return true;
    }
@@ -304,9 +475,9 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    if(!enabled('pony')||!Pets()||dead)return;
    if(kind==='done'&&lastDone===id)return;lastDone=kind==='done'?id:lastDone;
    ensurePets();const c=ctx(),h=helpers(),{board,today}=plan(c,h),d=board.days.find(x=>x.key===today);
-   pets?.celebrate(kind,{today,left:d?d.open:undefined});
+   pets?.celebrate?.(kind,{today,left:d?d.open:undefined});const f=store.get().focus;if(kind==='focus'&&f?.phase)pets?.setFocus(!!f.endsAt,f);
   }
-  function destroy(){dead=true;closeMenu();container.ownerDocument.removeEventListener('pointerdown',outside,true);win.removeEventListener('resize',closeMenu);clearInterval(clockTimer);clearInterval(timerTick);flushNotes();pets?.destroy();planner?.destroy();}
+  function destroy(){dead=true;customPetVersion++;room?.destroy();playTray?.destroy?.();playBox?.remove();closeMenu();container.ownerDocument.removeEventListener('pointerdown',outside,true);win.removeEventListener('resize',closeMenu);clearInterval(clockTimer);clearInterval(timerTick);flushNotes();pets?.destroy();planner?.destroy();}
   return {click,keydown,input,change,sync,finished,destroy,settingsTab:()=>settingsTab,planUI:()=>planner?.ui||{},editing:()=>editing,close(){if(editing){editing=false;rerender();}}};
  }
  const api={INFO,FRAMES,glyph,render,gallery,create,focusState,howLong,nextDue,plan};

@@ -58,7 +58,7 @@
     link.classList.add('is-current','cn-opening');art(link,'cn-tab',Art.tab);
     // The supplied CSS handles hover/focus. Release the load action once so
     // subsequent interactions can replay it, with no repeating timer or loop.
-    if(sheetsReady===1)finishOpening(link);else opening.add(link);
+    if(sheetsReady===2)finishOpening(link);else opening.add(link);
    }else if(!current&&link.classList.contains('is-current')){
     opening.delete(link);link.classList.remove('is-current','cn-opening');link.querySelector(':scope > .cn-tab')?.remove();
    }

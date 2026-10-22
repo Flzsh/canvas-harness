@@ -1,0 +1,52 @@
+/* Scene lifecycle and motion controls; the packaged theme owns its artwork. */
+/* Counts on a chosen tab or filter take the chip's own text colour, so they stay readable on every scene's chip. */
+.rd[data-theme-kit] :is(.rd-workspace-tab[aria-selected=true],.rd-filter[aria-pressed=true],.rd-day-filter[aria-pressed=true],.rd-reader-tab[aria-pressed=true],.rd-reader-tab[aria-selected=true]) .rd-n,
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-rail-count { color:inherit;opacity:.82; }
+.rd[data-theme-kit] > .tk-sky { pointer-events:none; }
+/* The idle rest (no input for a while, motion.js): the scene rests with the drawings; the sky pauses too (scene-themes.js). */
+.rd[data-theme-kit][data-art-rest] *,.rd[data-theme-kit][data-art-rest] *::before,.rd[data-theme-kit][data-art-rest] *::after { animation-play-state:paused!important; }
+.rd[data-theme-kit][data-scene-paused] *,.rd[data-theme-kit][data-scene-paused] *::before,.rd[data-theme-kit][data-scene-paused] *::after { animation-play-state:paused!important; }
+/* The rail's footer sits on the scene like the rail itself (its paper colour is not part of any scene). */
+.rd[data-theme-kit] .rd-rail-foot { background:transparent!important; }
+.rd[data-theme-kit] .rd-rail-foot::before { display:none; }
+.rd[data-theme-kit] > .tk-sky canvas { pointer-events:none; }
+.rd[data-theme-kit] > .tk-sky .tk-poster { display:block;width:100%;height:100%;object-fit:contain;object-position:50% 0; }
+.rd[data-theme-kit] > .tk-sky [hidden] { display:none!important; }
+.rd[data-theme-kit][data-motion-style="still"],
+.rd[data-theme-kit][data-motion-style="off"],
+.rd[data-theme-kit][data-motion-style="still"] *,
+.rd[data-theme-kit][data-motion-style="off"] *,
+.rd[data-theme-kit][data-motion-style="still"] *::before,
+.rd[data-theme-kit][data-motion-style="off"] *::before,
+.rd[data-theme-kit][data-motion-style="still"] *::after,
+.rd[data-theme-kit][data-motion-style="off"] *::after { animation:none!important;transition:none!important; }
+.rd[data-theme-kit][data-motion-style="still"] .rd-frame,
+.rd[data-theme-kit][data-motion-style="off"] .rd-frame,
+.rd[data-theme-kit][data-motion-style="still"] :is(.rd-course-information,.rd-work-column,.rd-information)::before,
+.rd[data-theme-kit][data-motion-style="off"] :is(.rd-course-information,.rd-work-column,.rd-information)::before,
+.rd[data-theme-kit][data-motion-style="still"] :is(.rd-course-information,.rd-work-column,.rd-information)::after,
+.rd[data-theme-kit][data-motion-style="off"] :is(.rd-course-information,.rd-work-column,.rd-information)::after { transform:none!important; }
+@media(prefers-reduced-motion:reduce) {
+ .rd[data-theme-kit],.rd[data-theme-kit] *,.rd[data-theme-kit] *::before,.rd[data-theme-kit] *::after { animation:none!important;transition:none!important; }
+ .rd[data-theme-kit] .rd-frame,.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::before,.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after { transform:none!important; }
+}
+/* the dashboard's small drawings give way to the theme's pictures (scene-themes.js sync: .tk-mini) */
+.rd[data-theme-kit] svg.rd-mini:not(.rd-rail-art svg) { position:absolute; opacity:0; pointer-events:none; }
+.rd[data-theme-kit] .tk-icon.tk-mini { display:inline-block; margin:0; object-fit:contain; vertical-align:middle; flex:none; }
+/* Course navigation keeps the student's subject drawing or uploaded icon. */
+.rd[data-theme-kit][data-course-navigation=dock] .rd-dock svg.rd-mini { position:static; opacity:1; }
+.rd[data-theme-kit][data-course-navigation=topbar] .rd-course-rail .rd-rail-art > svg { display:block!important; }
+.rd[data-theme-kit][data-course-navigation=dock] .rd-dock .tk-icon,
+.rd[data-theme-kit][data-course-navigation=topbar] .rd-course-rail .rd-rail-art > .tk-icon { display:none!important; }
+/* The tools use the same plate as the Canvas dashboard button in each scene. */
+.rd[data-theme-kit][data-theme-kit=starry] { --rd-toolbar-plate:rgba(29,39,86,.85); --rd-toolbar-line:rgba(143,182,238,.4); }
+.rd[data-theme-kit][data-theme-kit=sea] { --rd-toolbar-plate:rgba(4,46,84,.8); --rd-toolbar-line:rgba(150,235,255,.35); }
+.rd[data-theme-kit][data-theme-kit=stars] { --rd-toolbar-plate:rgba(14,20,38,.8); --rd-toolbar-line:rgba(157,184,255,.3); }
+.rd[data-theme-kit][data-theme-kit=blueprint] { --rd-toolbar-plate:rgba(16,58,112,.8); --rd-toolbar-line:rgba(226,238,255,.35); }
+.rd[data-theme-kit] .rd-toolbar .rd-tools > :is(.rd-button,.rd-icon-button,.rd-grade-switch,.rd-demo,.rd-focus-indicator:has(> .rd-focus-clock:not([hidden]))),
+.rd[data-theme-kit] .rd-toolbar > .rd-drawer-button { background:var(--rd-toolbar-plate)!important; color:var(--rd-ink)!important; border:1px solid var(--rd-toolbar-line)!important; border-radius:var(--rd-r-control)!important; box-shadow:inset 0 0 0 1px var(--rd-control-line); }
+.rd[data-theme-kit] .rd-toolbar .rd-focus-indicator > .rd-focus-clock { background:transparent; color:inherit; }
+@container commands (max-width:960px) {
+ .rd[data-theme-kit] .rd-toolbar .rd-tools > :is(.rd-button,.rd-icon-button,.rd-grade-switch,.rd-demo,.rd-focus-indicator:has(> .rd-focus-clock:not([hidden]))),
+ .rd[data-theme-kit] .rd-toolbar > .rd-drawer-button { border-radius:999px!important; }
+}

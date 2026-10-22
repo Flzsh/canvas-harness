@@ -16,7 +16,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // The eight seconds count only while the page can be seen. A tab opened in the background waits, unseen,
   // for its student; when it is shown it gets its eight seconds again (the CSS release switches restart too).
   const expired=()=>performance.now()>=deadline&&document.visibilityState!=='hidden';
-  const allSheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css'];
+  const allSheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css'];
   let sheets=allSheets,state='pending',shell,artNode,observer,timer,preloaded=false,featuresSelected=false;
   function setFeatures(prefs,selected=false){
     if(featuresSelected&&!selected)return;
@@ -52,7 +52,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(!dashboardPath()||loginPage()||(state!=='complete'&&expired())){release();return false;}
     return state==='active'||state==='complete';
   }
-  // A reveal the student asked for (the CH+ button, or a returning tab after its account check) lifts the cover
+  // A reveal the student asked for (the Canvas Harness button, or a returning tab after its account check) lifts the cover
   // without the deadline: the controller has already decided to show the workspace.
   function dismiss(){
     if(state!=='pending'&&state!=='active')return;

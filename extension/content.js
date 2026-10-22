@@ -12,7 +12,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const isDashboard=location.pathname==='/'||/^\/dashboard\/?$/.test(location.pathname);
   const params=new URLSearchParams(location.search);
   const startup=globalThis.ReserveStartup;
-  const build='3.2.1';
+  const build='3.4.0';
   const stamp=()=>Math.round(globalThis.performance?.now?.()||0);
   let host,root,area,toolbar,resumeCover,statusLabel,dashboard,planner,session,snapshot,store,ready=false,wanted=true;
   let authorized=false,suspended=false,resumeGeneration=0,resumePending,verifiedAt=-Infinity,verifiedWall=-Infinity;
@@ -102,7 +102,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     root=host.attachShadow({mode:'open'});
     const loadingHost=host;let loaded=0;
-    const allSheets=startup?.styleFiles||['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css'];
+    const allSheets=startup?.styleFiles||['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css'];
     const sheets=globalThis.ReserveFeatures?.filterFiles(allSheets)||allSheets;
     if(!sheets.length)ready=true;
     for(const file of sheets){

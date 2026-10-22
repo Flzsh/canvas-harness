@@ -57,8 +57,8 @@ test('vanillaPage recognizes assignment, feedback and submit/upload URLs indepen
  const {env}=context('/');for(const value of [null,undefined,{},'https://[bad','/courses/%XX/assignments/12'])assert.equal(env.ReserveSite.vanillaPage(value),false);
 });
 
-test('every content script except the allowed global menu loads on vanilla pages without any page effects',()=>{
- const scripts=[...new Set(manifest.content_scripts.flatMap(entry=>entry.js||[]).concat(require('../extension/features.js').resolve().js))].filter(file=>!['features.js','feature-loader.js','canvas-nav.js'].includes(file));
+test('workspace scripts stay dormant on vanilla pages; menu, PDF and submission watcher have separate guards',()=>{
+ const scripts=[...new Set(manifest.content_scripts.flatMap(entry=>entry.js||[]).concat(require('../extension/features.js').resolve().js))].filter(file=>!['features.js','feature-loader.js','canvas-nav.js','submit-celebrate.js'].includes(file));
  for(const route of protectedRoutes){
   const h=context(route);
   for(const file of scripts)assert.doesNotThrow(()=>h.run(file),route+' '+file);
@@ -84,12 +84,13 @@ test('native appearance/tools, toolbox, resize, settings, widgets and pony canno
  }
 });
 
-test('the drawn menu remains an independent global chrome entry point',()=>{
+test('the drawn menu remains an independent global chrome entry point',async()=>{
  const h=context(protectedRoutes[0]),reads=[];
  h.env.chrome.storage.local.get=keys=>{reads.push(keys);return Promise.resolve({'reserve:enabled':false});};
  // The menu intentionally reads the root to prepare its controller, while all
  // page features above are prevented from even reaching the DOM.
  h.env.document={documentElement:{}};
  h.run('canvas-nav.js');
+ await Promise.resolve();await Promise.resolve();
  assert.ok(h.env.ReserveCanvasNav);assert.equal(reads.length,1);assert.deepEqual(h.attempts,[]);
 });

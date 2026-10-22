@@ -28,7 +28,7 @@ function context(files=[],extra={}){
  return env;
 }
 function panelAPI(){const env=context([],{module:{exports:{}}});vm.runInContext(read('ai-panel.js'),env,{filename:path.join(extension,'ai-panel.js')});return env.module.exports;}
-const STORE_FILES=['site.js','core.js','personal-work.js','custom-art.js','workspace-arrange.js','customization-model.js','gpa-model.js','page-preferences.js','storage.js','quick-pack.js','quick-upload.js'];
+const STORE_FILES=['site.js','core.js','personal-work.js','custom-art.js','workspace-arrange.js','media-reference.js','customization-model.js','backup-media.js','gpa-model.js','page-preferences.js','storage.js','quick-pack.js','quick-upload.js'];
 function memory(){
  const values=new Map(),subscribers=new Map(),writes=[];
  const control={failNext:false,writeGate:null,readGate:null,writeEntered:0,readEntered:0};
@@ -165,7 +165,7 @@ test('audit: mounted dashboard follows device appearance and Make it yours write
  }
  f.events.change({target:{dataset:{rdField:'pet',key:'enabled'},type:'checkbox',checked:true}});await f.idle();
  assert.equal(f.element.dataset.theme,'light');
- assert.deepEqual(copy(f.disk.values.get('reserve:appearance')),{theme:'light',motion:'still',nightArt:30,pet:true});
+ assert.deepEqual(copy(f.disk.values.get('reserve:appearance')),{theme:'light',motion:'still',nightArt:30,pet:true,sceneTheme:''});
  assert.deepEqual(copy(f.disk.values.get('reserve:v1:'+ORIGIN+':7')),before);
  assert.ok(f.disk.writes.length>=4);assert.ok(f.disk.writes.every(write=>write.key==='reserve:appearance'));
 });

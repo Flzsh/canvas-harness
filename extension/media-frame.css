@@ -1,0 +1,10 @@
+/*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. */
+.rd .ch-frame-media { display:block; position:relative; width:100%; height:100%; overflow:hidden; pointer-events:none; }
+.rd .ch-frame-media > .ch-frame-live, .rd .ch-frame-media > .ch-frame-still { display:block; max-width:none; object-fit:fill; }
+.rd .ch-frame-media > [hidden] { display:none; }
+.rd .rd-shell:has(> .ch-frame-background) { position:relative; isolation:isolate; }
+.rd .rd-shell > .ch-frame-background { position:absolute; inset:0; z-index:-1; opacity:.18; }
+.rd .ch-frame-card { min-width:0; min-height:0; }
+.rd .rd-heading-art:has(> .ch-frame-media[data-ch-frame-size="small"]), .rd .rd-banner-art:has(> .ch-frame-media[data-ch-frame-size="small"]) { --ch-banner-h:90px; }
+.rd .rd-heading-art:has(> .ch-frame-media[data-ch-frame-size="medium"]), .rd .rd-banner-art:has(> .ch-frame-media[data-ch-frame-size="medium"]) { --ch-banner-h:140px; }
+.rd .rd-heading-art:has(> .ch-frame-media[data-ch-frame-size="tall"]), .rd .rd-banner-art:has(> .ch-frame-media[data-ch-frame-size="tall"]) { --ch-banner-h:220px; }

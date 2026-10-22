@@ -70,7 +70,7 @@ test('topbar scrolls the heading, the strip and Home as one page, never inside a
   assert.equal(module['grid-row'], 'var(--rd-panel-row,auto)!important');
   assert.equal(find(' .rd-information > .rd-reader', 'position').position, 'static');
   assert.equal(find(' .rd-information > .rd-reader .rd-reader-content', 'overflow').overflow, 'visible');
-  assert.doesNotMatch(css, /data-course-navigation=dock/, 'the port adds no course dock layout');
+  assert.match(css, /data-course-navigation=dock/, 'dock rules are added while the existing topbar assertions remain');
 });
 
 test('topbar keeps stacked Home cells stable as content grows and cleans up its observers', () => {

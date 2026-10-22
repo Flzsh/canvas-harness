@@ -75,6 +75,11 @@
    if(focus&&(changed||!wasOpen||wasCollapsed||!dialog.contains(active)))focusFirst();
    if(tool==='quick')hydrate();if(tool==='ai')aiPanel?.update();if(tool==='gpa')gpaPanel?.update();
   }
+  // Biscuit hands a question to the same public composer. Opening it never presses Send.
+  function askAI(question){
+   if(dead||!toolEnabled('ai')||typeof question!=='string'||!question.trim()||question.length>20000||question.includes('\u0000'))return false;
+   open('ai');return typeof aiPanel?.setDraft==='function'&&aiPanel.setDraft(question)===true;
+  }
   function capture(draft,source){
    if(!enabled('tools'))return;
    if(captureDraft?.title.trim()){open('plan',source);showStatus('You have an unfinished reminder. Add it or clear the draft before capturing another source.');return;}
@@ -246,7 +251,7 @@
    if(tool==='plan'&&event.key==='Enter'&&!event.shiftKey&&event.target.getAttribute?.('name')==='title'){event.preventDefault();event.target.closest('[data-ui-form="capture"]')?.requestSubmit?.();return;}
   }
   const unsubscribe=store.subscribe(data=>{personal=data;poolCache=null;if(dialog?.open&&tool==='quick')renderResults();});
-  return {open:(next,source)=>open(next,source),capture,collapse,expand,close,isOpen:()=>!dead&&!!dialog?.open,update(){if(!dead){poolCache=null;aiPanel?.update();gpaPanel?.update();}},destroy(){if(dead)return;rememberCapture();dead=true;if(leaving)root.clearTimeout(leaving);dockResize?.destroy();aiPanel?.destroy();gpaPanel?.destroy();toolMotion?.destroy();unsubscribe?.();dialog?.remove();panels.clear();notifyDock();}};
+  return {open:(next,source)=>open(next,source),askAI,capture,collapse,expand,close,isOpen:()=>!dead&&!!dialog?.open,update(){if(!dead){poolCache=null;aiPanel?.update();gpaPanel?.update();}},destroy(){if(dead)return;rememberCapture();dead=true;if(leaving)root.clearTimeout(leaving);dockResize?.destroy();aiPanel?.destroy();gpaPanel?.destroy();toolMotion?.destroy();unsubscribe?.();dialog?.remove();panels.clear();notifyDock();}};
  }
  root.ReserveToolbox={create,sections};if(typeof module!=='undefined'&&module.exports)module.exports=root.ReserveToolbox;
 })(globalThis);

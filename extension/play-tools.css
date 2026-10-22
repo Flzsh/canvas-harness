@@ -1,0 +1,114 @@
+/*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. */
+/* "Play with this page" (3.3): the tray, the marks' animations, the painter's styles. Loaded only when the tray is shown. */
+/* ---- Canvas Harness: the tray (kraft, two shelves), the card that tells each tool's character */
+.chb-box{margin-top:16px;position:relative;z-index:2147483001}.chb-lbl{font:700 12px "Segoe UI";color:#5E5D59;margin:0 0 6px 4px}
+#chb-tray{position:relative;padding:4px 0 2px;background:none;border-radius:0;box-shadow:none}
+#chb-tray::after{display:none;content:"";position:absolute;inset:0;border:12px solid transparent;pointer-events:none;background:#141413;opacity:.7;-webkit-mask-box-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2790%27 height=%2790%27 viewBox=%270 0 90 90%27%3E%3Cpath fill=%27none%27 stroke=%27%23000%27 stroke-width=%273%27 stroke-linecap=%27round%27 d=%27M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8%27/%3E%3C/svg%3E") 30 30 30 30 stretch}
+.chb-shelf{display:flex;flex-wrap:wrap;gap:4px;padding-bottom:6px;margin-bottom:6px}
+.chb-shelf:has(+.chb-shelf){border-bottom:2px dashed rgb(20 20 19/.25)}
+.chb-shelf::before{content:attr(data-group);flex-basis:100%;font:700 9.5px "Segoe UI";letter-spacing:.08em;text-transform:uppercase;color:#5E5D59;margin:0 0 1px 2px}
+.chb-shelf[data-group=weapon]::before{content:"Weapons"}.chb-shelf[data-group=play]::before{content:"Play"}
+#chb-tray button{display:flex;flex-direction:column;align-items:center;gap:1px;width:52px;padding:4px 0 3px;border:0;border-radius:8px;background:#FAF9F5;font:600 9.5px "Segoe UI";color:#141413;cursor:pointer;box-shadow:1px 2px 0 rgb(20 20 19/.16)}
+#chb-tray button svg{width:36px;height:30px;overflow:visible}
+#chb-tray button[aria-pressed=true]{background:#F6DE9A;transform:translateY(-2px) rotate(-2deg);box-shadow:2px 4px 0 rgb(20 20 19/.22)}
+#chb-tray button:hover svg{animation:chb-nudge .5s ease-in-out}
+@keyframes chb-nudge{40%{transform:rotate(-10deg) scale(1.12)}}
+#chb-tray button:focus-visible{outline:2px solid #A9522F;outline-offset:2px}
+#chb-undo{display:none;margin:8px 0 0 6px;padding:4px 12px;border:0;background:none;font:600 12.5px "Segoe UI";color:#A9522F;text-decoration:underline;cursor:pointer}
+html.chb-armed[data-chb-tool] body *:not(.chb-box,.chb-box *){cursor:crosshair!important}
+html.chb-armed.chb-aiming[data-chb-tool],html.chb-armed.chb-aiming[data-chb-tool] body,html.chb-armed.chb-aiming[data-chb-tool] body *:not(.chb-box,.chb-box *){cursor:none!important}
+/* the aim: the drawn crosshair that follows the pointer while a tool is in hand, the tool as a badge beside it */
+#chb-aim{position:fixed;left:0;top:0;width:0;height:0;pointer-events:none;z-index:2147483001;opacity:0;transition:opacity .12s}
+#chb-aim.is-on{opacity:1}
+#chb-aim>svg{position:absolute;overflow:visible}
+#chb-aim .chb-ret{left:-21px;top:-21px;width:42px;height:42px}
+#chb-aim .chb-spin{transform-box:view-box;transform-origin:0 0;animation:chb-aimspin 14s linear infinite}@keyframes chb-aimspin{to{transform:rotate(360deg)}}
+#chb-aim .chb-ticks{transform-box:view-box;transform-origin:0 0;transition:transform .16s cubic-bezier(.3,1.5,.5,1)}
+#chb-aim.is-down .chb-ticks{transform:scale(.7) rotate(45deg)}
+#chb-aim .chb-badge{left:11px;top:12px;width:30px;height:30px;transform:rotate(-7deg);transition:transform .18s cubic-bezier(.3,1.4,.5,1),opacity .14s;filter:drop-shadow(1.5px 2px 0 rgb(20 20 19/.18))}
+#chb-aim.is-down .chb-badge{opacity:0;transform:translate(8px,8px) rotate(6deg) scale(.6)}
+
+/* ---- the page reacts: fixed sheets that blend with it (multiply stains and shadows, overlay dents, screen light) */
+.chb-blend{position:fixed;inset:0;pointer-events:none;z-index:2147483000;overflow:hidden}.chb-blend>*{position:absolute}
+.chb-grain{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.2 -.55'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.2 -.55'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");-webkit-mask-size:160px 160px;mask-size:160px 160px}
+.chb-glowbreathe{animation:chb-glowbreathe 3.6s ease-in-out infinite}@keyframes chb-glowbreathe{0%,100%{opacity:.55;transform:scale(.94)}50%{opacity:1;transform:scale(1.06)}}
+@media (prefers-reduced-motion:reduce){.chb-blend *{animation:none!important}}
+/* ---- the layer everything is drawn in (fixed: nothing in it can stretch the page) */
+#chb-layer{position:fixed;inset:0;pointer-events:none;z-index:2147483000;overflow:hidden}
+#chb-layer svg{position:absolute;overflow:visible}
+.chb-ch{display:inline-block;white-space:pre}.chb-word{white-space:nowrap;display:inline-block}
+
+/* ---- every mark keeps a small life of its own (transform and opacity only; paused when the page is hidden) */
+.chb-stream{animation:chb-stream 2.4s linear infinite}@keyframes chb-stream{to{transform:translateY(12.8px)}}
+.chb-spin{transform-box:fill-box;transform-origin:50% 50%;animation:chb-swirl 9s linear infinite}
+.chb-infall{transform-box:view-box;transform-origin:0 0;animation:chb-infall 3s cubic-bezier(.55,0,.85,.4) infinite}@keyframes chb-infall{0%{transform:none;opacity:0}20%{opacity:.85}100%{transform:rotate(160deg) scale(.06);opacity:0}}
+.chb-ember{animation:chb-ember 1.8s ease-in-out infinite}@keyframes chb-ember{0%,100%{opacity:.25}50%{opacity:1}}
+.chb-flicker{animation:chb-flicker 3.2s steps(4) infinite}@keyframes chb-flicker{0%,100%{opacity:.62}25%{opacity:.3}50%{opacity:.8}75%{opacity:.45}}
+.chb-blink{animation:chb-blink 2.4s ease-in-out infinite}@keyframes chb-blink{0%,100%{opacity:.35}50%{opacity:1}}
+.chb-warm{animation:chb-warm 3s ease-in-out infinite}@keyframes chb-warm{0%,100%{opacity:.18}50%{opacity:.45}}
+.chb-flow{animation:chb-flow 1.4s linear infinite}@keyframes chb-flow{to{transform:translateX(21.6px)}}
+.chb-hotedge{animation:chb-warm 2.2s ease-in-out infinite}
+.chb-swirl,.chb-swirl2{transform-box:fill-box;transform-origin:50% 50%;animation:chb-swirl 3s linear infinite}.chb-swirl2{animation-duration:1.6s}@keyframes chb-swirl{to{transform:rotate(360deg)}}
+.chb-flipA{animation:chb-flipA 4s steps(1) infinite}.chb-flipB{opacity:0;animation:chb-flipB 4s steps(1) infinite}
+@keyframes chb-flipA{0%,70%{opacity:1}71%,100%{opacity:0}}@keyframes chb-flipB{0%,70%{opacity:0}71%,100%{opacity:1}}
+.chb-drop{transform-box:fill-box;animation:chb-drop 3.2s ease-in infinite}@keyframes chb-drop{0%{transform:scale(.2);opacity:0}30%{transform:none;opacity:.9}60%{transform:none;opacity:.9}100%{transform:translateY(46px);opacity:0}}
+.chb-sheen{animation:chb-sheen 5s ease-in-out infinite}@keyframes chb-sheen{0%,60%{transform:translateX(0)}90%,100%{transform:translateX(80px)}}
+.chb-leaf{animation:chb-grow .5s cubic-bezier(.3,1.5,.5,1) backwards,chb-sway 4s ease-in-out infinite}
+.chb-flower{animation:chb-grow .6s cubic-bezier(.3,1.6,.5,1) backwards,chb-nod 5s ease-in-out infinite}
+@keyframes chb-grow{from{transform:scale(0)}}@keyframes chb-sway{0%,100%{rotate:0deg}50%{rotate:7deg}}@keyframes chb-nod{0%,100%{rotate:-4deg}50%{rotate:5deg}}
+.chb-streak{animation:chb-streak 1.6s linear infinite}@keyframes chb-streak{to{stroke-dashoffset:-64}}
+.chb-portal{animation:chb-breathe 2.6s ease-in-out infinite}@keyframes chb-breathe{0%,100%{transform:none}50%{transform:scale(1.04,1.08)}}
+
+/* ---- the painter's styles: each painted word comes alive in one of these, picked at random */
+.chb-painted{position:relative}
+.chb-p-wave .chb-ch{animation:chb-hue 2.4s linear infinite;animation-delay:calc(var(--i) * -.18s)}
+@keyframes chb-hue{0%,100%{color:#C96442}20%{color:#E2B865}40%{color:#7D8B5F}60%{color:#5F82BD}80%{color:#A98FBC}}
+.chb-p-hop .chb-ch{color:#C96442;animation:chb-hop 1.2s cubic-bezier(.3,0,.3,1) infinite;animation-delay:calc(var(--i) * .08s)}
+@keyframes chb-hop{0%,40%,100%{transform:none}20%{transform:translateY(-6px) rotate(-6deg)}}
+.chb-p-sweep{background:linear-gradient(90deg,#C96442,#E2B865,#7D8B5F,#5F82BD,#A98FBC,#C96442) 0 0/300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent!important;animation:chb-sweep 3s linear infinite}
+.chb-p-sweep .chb-ch{color:transparent!important}@keyframes chb-sweep{to{background-position:300% 0}}
+.chb-p-jelly{color:#5F82BD;animation:chb-jelly 1.6s ease-in-out infinite;transform-origin:50% 90%}
+@keyframes chb-jelly{0%,100%{transform:none}25%{transform:scale(1.12,.86)}50%{transform:scale(.92,1.1)}75%{transform:scale(1.04,.97)}}
+.chb-p-stack .chb-ch{color:#FAF9F5;text-shadow:1px 1px 0 #C96442,2px 2px 0 #E2B865,3px 3px 0 #7D8B5F,-.5px -.5px 0 #141413,.5px -.5px 0 #141413,-.5px .5px 0 #141413;animation:chb-tilt 2s ease-in-out infinite;animation-delay:calc(var(--i) * -.2s)}
+@keyframes chb-tilt{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+.chb-p-script{font-family:Literata,Georgia,serif;font-style:italic;color:#A9522F;background:linear-gradient(#E2B865,#E2B865) 0 100%/0 3px no-repeat;animation:chb-under 2.6s ease-in-out infinite}
+@keyframes chb-under{0%{background-size:0 3px}50%,70%{background-size:100% 3px}100%{background-size:100% 3px;background-position:100% 100%}}
+.chb-p-type .chb-ch{font-family:Consolas,monospace;color:#3C7D3E;animation:chb-type 2.8s steps(1) infinite;animation-delay:calc(var(--i) * .1s)}
+@keyframes chb-type{0%{opacity:0}10%,100%{opacity:1}}
+.chb-p-flag .chb-ch{color:#7D8B5F;animation:chb-flag 1.4s ease-in-out infinite;animation-delay:calc(var(--i) * -.12s)}
+@keyframes chb-flag{0%,100%{transform:translateY(0) skewY(0)}50%{transform:translateY(-3px) skewY(-6deg)}}
+
+@media (prefers-reduced-motion:reduce){#chb-layer *,#chb-aim *,.chb-painted,.chb-painted *{animation:none!important}}
+/* rarity: a small gem in the corner of each tool (all tools offered), and the reveal of the one tool dealt (play-tools.js) */
+#chb-tray button{position:relative}#chb-tray button[data-tier]:not([data-tier=common])::after{content:"";position:absolute;top:3px;right:4px;width:7px;height:7px;transform:rotate(45deg);border:1.2px solid #141413;border-radius:1.5px}
+#chb-tray button[data-tier=rare]::after{background:#9DB4C8}#chb-tray button[data-tier=epic]::after{background:#DE9A7C}#chb-tray button[data-tier=legendary]::after{background:#E2B865}
+.chb-tier{display:block;font:700 8.5px "Segoe UI";font-style:normal;letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
+#chb-tray button[data-tier=rare] .chb-tier{color:#4F7FA8}#chb-tray button[data-tier=epic] .chb-tier{color:#C96442}#chb-tray button[data-tier=legendary] .chb-tier{color:#A9771F}
+.chb-dealt #chb-tray{overflow:visible}#chb-tray button.chb-reveal{overflow:visible;animation:chb-deal .7s cubic-bezier(.2,1.5,.4,1) .15s backwards}#chb-tray button.chb-reveal>svg:not(.chb-rays):not(.chb-spark),#chb-tray button.chb-reveal>span,#chb-tray button.chb-reveal>em{position:relative;z-index:1}
+@keyframes chb-deal{0%{transform:scale(.2) rotate(-14deg);opacity:0}60%{transform:scale(1.16) rotate(3deg);opacity:1}100%{transform:none}}
+#chb-tray svg.chb-rays{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;z-index:0;pointer-events:none;animation:chb-rays 1.6s cubic-bezier(.2,.8,.3,1) .3s backwards;opacity:.9}
+@keyframes chb-rays{0%{transform:scale(.1) rotate(-40deg);opacity:0}50%{opacity:1}100%{transform:none;opacity:.9}}
+.chb-shine{position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:8px;overflow:hidden}.chb-shine::before{content:"";position:absolute;top:-20%;bottom:-20%;width:40%;left:-60%;background:linear-gradient(100deg,rgba(255,255,255,0),rgba(255,255,255,.85),rgba(255,255,255,0));transform:skewX(-18deg);animation:chb-shine .9s ease-in-out .75s backwards}
+@keyframes chb-shine{0%{left:-60%}100%{left:130%}}
+#chb-tray button svg.chb-spark{position:absolute;left:50%;top:40%;width:12px;height:12px;margin:-6px;z-index:3;pointer-events:none;opacity:0;animation:chb-spark .9s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes chb-spark{0%{transform:translate(0,0) scale(.2);opacity:0}30%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1) rotate(90deg);opacity:0}}
+@media (prefers-reduced-motion:reduce){#chb-tray button.chb-reveal,.chb-rays,.chb-shine::before,.chb-spark{animation:none}}
+/* the black hole's darkness lies above the letters it pulls in (they darken with the page) */
+#chb-layer > canvas.chb-space-dark{z-index:3}
+/* Physics stand-ins: dimensions are cached by the solver; only transforms change in its frame loop. */
+.chb-physics-body{pointer-events:auto;touch-action:none;user-select:none;cursor:grab;z-index:5}
+.chb-balloon-live,.chb-gravity-handle,.chb-portal-live,.chb-portal-knob,.chb-portal-edge{pointer-events:auto;touch-action:none;user-select:none;cursor:grab}
+.chb-balloon-live{z-index:5}.chb-balloon-string{pointer-events:none;transform-origin:0 50%;z-index:4}
+.chb-gravity-handle{z-index:7}.chb-portal-live{z-index:4}.chb-portal-knob,.chb-portal-edge{z-index:6}.chb-portal-knob{cursor:crosshair}.chb-portal-edge{cursor:nwse-resize}
+.chb-magnet-live{pointer-events:none;z-index:6}.chb-magnet-clump{z-index:5}.chb-magnet-live.is-repel{outline:1px dashed #C96442}
+.chb-balloon-pop,.chb-balloon-shred,.chb-portal-halo{pointer-events:none}
+/* text picked up by the live tools reads as cut-out paper, so it never blends into the lines it floats over */
+/* lifted letters stay the page's own type, with only a soft shadow that follows the letters (no card around each one) */
+#chb-layer .chb-physics-body{background:none;box-shadow:none;filter:drop-shadow(1.5px 2.5px 1px rgb(20 20 19/.22))}
+
+/* the portals live: the inside turns, sparks circle the rim, wisps rise from the side it faces */
+.chb-portal-spin{animation:chbPspin 2.6s linear infinite}.chb-portal-orbit{animation:chbPorbit 7s linear infinite}.chb-portal-wisp{animation:chbPwisp 1.8s ease-out infinite}@keyframes chbPspin{to{transform:rotate(360deg)}}@keyframes chbPorbit{to{transform:rotate(360deg)}}@keyframes chbPwisp{0%{opacity:0;transform:translateY(6px)}30%{opacity:.6}100%{opacity:0;transform:translateY(-10px)}}@media (prefers-reduced-motion:reduce){.chb-portal-spin,.chb-portal-orbit,.chb-portal-wisp{animation:none}}
+html.chb-paused :is(#chb-layer,#chb-aim,.chb-box) *,html.chb-paused :is(#chb-layer,#chb-aim,.chb-box) *::before{animation-play-state:paused!important}
+html.chb-reduced :is(#chb-layer,#chb-aim,.chb-box) *,html.chb-reduced :is(#chb-layer,#chb-aim,.chb-box) *::before{animation:none!important;transition:none!important}
+.chs-scene.chs-paused *{animation-play-state:paused!important}
+.chs-scene.chs-still *{animation-delay:-10s!important;animation-play-state:paused!important}

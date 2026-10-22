@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.4.0 - 2026-10-21
+
+- Use your own picture or short video as a banner, framed the way you want. Upload, drop or paste artwork for the heading, a course, card art or a dimmed page background. Fit, focus, zoom, height, video loops and stills carry into kits and backups; pictures and videos stay in your browser.
+
+- Biscuit understands focus time in more ways, pomodoros and breaks, reminders, Planner blocks, timer controls and what is due. Ask for settings, features, Home modules, tabs, notes, bookmarks or a play tool by name. Routines, skills and quiet time are yours to choose; Undo is close by.
+- Submitting work can bring a drawn scene and one random play tool. Powerful tools are rarer and get their own reveal.
+- Four scene themes: Starry Night, Under the Sea, Starfield and Blueprint. Courses can sit in a drawn dock, with a choice of sizes.
+- The optional Market installs checked add-ons, course artwork, kits, themes, pets and presets. Make it yours also accepts files you make yourself; installed add-ons have a Remove button.
+- Modules show your progress, and To hand in keeps unfinished submissions in sight. Focus room, Review deck and Grade impact are available in Custom and stay off in Full and Lite. Thank you @garywu000 for your pull requests, including the menu-bar jump fix.
+- Fixed the pony's resize guard, marks that moved away during a black-hole shake, white outlines on play letters, and the PDF reader closing after a failed lookup. Starfield's pointer reaches a smaller area.
+- Your saved choices, artwork, notes and plans carry over. Lite leaves out scenes, play and media playback; saved artwork stays in your backups. The Market asks for its own optional site access the first time you open it.
+
 ## 3.2.1 - 2026-10-21
 
 - With the course strip across the top, the banner, the course strip and Home scroll together as one page. Home modules are as tall as their content, so nothing scrolls inside a module.

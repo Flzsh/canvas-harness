@@ -34,7 +34,7 @@ test('it only ever touches Canvas’s menu bar, and only while it is switched on
  const css=read('canvas-nav.css').replace(/\/\*[\s\S]*?\*\//g,'');
  const selectors=[...css.matchAll(/(^|\})\s*([^@{}][^{}]*)\{/g)].map(m=>m[2].trim()).filter(s=>s&&!/^(@|from|to|\d+%)/.test(s));
  for(const group of selectors)for(const one of group.split(/,(?![^(]*\))/))assert.match(one.trim(),/^html\.chn-nav(\[|:not\(|\s)/,one);
- const js=read('canvas-nav.js');assert.match(js,/if\(values\['reserve:enabled'\]===false\)return;\s*if\(values\[KEY\]!=='original'\)enable\(values\[KEY\]\);/);
+ const js=read('canvas-nav.js');assert.match(js,/if\(values\['reserve:enabled'\]===false\)\{apply\('original'\);return;\}\s*if\(values\[KEY\]!=='original'\)enable\(values\[KEY\]\);else apply\('original'\);/);
 });
 
 test('the copied frame rules match the workspace’s, and the files are wired in',()=>{

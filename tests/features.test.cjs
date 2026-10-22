@@ -4,10 +4,25 @@ const ext=path.join(__dirname,'../extension'),read=file=>fs.readFileSync(path.jo
 const F=require('../extension/features.js'),original=require('./fixtures/addons-original-manifest.json');
 const json=value=>JSON.parse(JSON.stringify(value));
 const liteEnabled=['dashboard','planner','grades','math','gpa','tools','arrange','native-appearance'];
-function catalogue(){const env=vm.createContext({});vm.runInContext(read('features.js'),env);return env.ReserveFeatures;}
+test('media banners use the Appearance selection and Lite retains only pure backup validation',()=>{
+ const full=F.resolve({preset:'full'}),lite=F.resolve({preset:'lite'}),custom=F.resolve({preset:'custom',custom:['customization','course-art']});
+ for(const file of ['media-store.js','media-frame.js','frame-editor.js']){
+  assert.ok(full.js.includes(file),file);assert.ok(custom.js.includes(file),file);assert.ok(!lite.js.includes(file),file);
+ }
+ for(const file of ['media-frame.css','frame-editor.css']){
+  assert.ok(full.css.includes(file),file);assert.ok(custom.css.includes(file),file);assert.ok(!lite.css.includes(file),file);
+  assert.ok(read('startup.js').includes("'"+file+"'"));assert.ok(read('content.js').includes("'"+file+"'"));
+  for(const entry of JSON.parse(read('manifest.json')).web_accessible_resources)assert.ok(entry.resources.includes(file));
+ }
+ for(const file of ['media-reference.js','backup-media.js'])assert.ok(lite.js.includes(file),file);
+ const f=catalogue();f.apply({preset:'lite'});assert.ok(!f.filterFiles(F.dashboardCSS).some(file=>/^(?:media-frame|frame-editor)\./.test(file)));
+});
+function catalogue(){const env=vm.createContext({TextEncoder,TextDecoder,structuredClone,});vm.runInContext(read('features.js'),env);return env.ReserveFeatures;}
 test('Full preserves the complete original main declaration and defaults to Full',()=>{
- assert.deepEqual(F.resolve().js,original.content_scripts[1].js);
- assert.deepEqual(F.resolve({preset:'full'}).enabled,F.catalogue.map(f=>f.id));
+ assert.deepEqual(F.resolve().js.filter(file=>original.content_scripts[1].js.includes(file)),original.content_scripts[1].js);
+ for(const file of F.resolve().js)assert.ok(fs.existsSync(path.join(ext,file)),file);
+ assert.deepEqual(F.resolve({preset:'full'}).enabled,F.presets.full);
+ for(const id of ['focus-room','review-deck','grade-impact'])assert.ok(!F.presets.full.includes(id)&&!F.presets.lite.includes(id));
  assert.deepEqual(F.startupCSS,original.content_scripts[0].css);
 });
 test('every original manifest resource belongs to exactly one feature or core',()=>{
@@ -48,7 +63,7 @@ test('filtered styles and restored workspace names honor the page selection',()=
 function worker(prefs,session=null){
  const executions=[],styles=[],imports=[],listeners=[];
  const event=()=>({addListener(){}}),runtime={id:'test-extension',getURL:file=>'chrome-extension://test-extension/'+file,onMessage:{addListener:fn=>listeners.push(fn)},onConnect:event()};
- const env=vm.createContext({URL,console,setTimeout,clearTimeout,chrome:{runtime,storage:{local:{get:async key=>({[key]:prefs})},...(session?{session:{get:async key=>session.has(key)?{[key]:session.get(key)}:{},set:async values=>{for(const [key,value]of Object.entries(values))session.set(key,json(value));}}}:{})},
+ const env=vm.createContext({TextEncoder,TextDecoder,structuredClone,URL,console,setTimeout,clearTimeout,chrome:{runtime,storage:{local:{get:async key=>({[key]:prefs})},...(session?{session:{get:async key=>session.has(key)?{[key]:session.get(key)}:{},set:async values=>{for(const [key,value]of Object.entries(values))session.set(key,json(value));}}}:{})},
   scripting:{executeScript:async options=>executions.push(options),insertCSS:async options=>styles.push(options)}}});
  env.importScripts=(...files)=>{imports.push(...files);for(const file of files)vm.runInContext(read(file),env,{filename:file});};
  vm.runInContext(read('background.js'),env,{filename:'background.js'});
@@ -75,9 +90,10 @@ test('Full worker excludes early-paint files and preserves the remaining origina
  for(const file of ['startup-art.js',...early,...original.content_scripts[0].css])assert.ok(!injected.includes(file),file+' must stay static');
  const staticMain=main.js.filter(file=>original.content_scripts[1].js.includes(file));
  assert.deepEqual(staticMain,original.content_scripts[1].js.filter(file=>staticMain.includes(file)));
- assert.deepEqual(loaded,original.content_scripts[1].js.filter(file=>!staticMain.includes(file)));
+ assert.deepEqual(loaded,F.resolve().js.filter(file=>!staticMain.includes(file)));
+ assert.deepEqual(loaded.filter(file=>original.content_scripts[1].js.includes(file)),original.content_scripts[1].js.filter(file=>!staticMain.includes(file)));
  const full=[...staticMain,...loaded];
- assert.equal(new Set(full).size,full.length);assert.deepEqual(full.slice().sort(),original.content_scripts[1].js.slice().sort());
+ assert.equal(new Set(full).size,full.length);assert.deepEqual(full.slice().sort(),F.resolve().js.slice().sort());
  assert.equal(manifest.content_scripts.flatMap(entry=>entry.js).filter(file=>file==='features.js').length,1,'the shared early-selection state is not reset by the main entry');
 });
 
@@ -87,7 +103,7 @@ function earlyPage(hint,{denied=false}={}){
  let finish;
  const stored=new Promise(resolve=>{finish=resolve;});
  const html={classList:{add:name=>classes.add(name),remove:name=>classes.delete(name),contains:name=>classes.has(name)},dataset:{},style:{setProperty(){},removeProperty(){}}};
- const env=vm.createContext({URL,Event,console,location:new URL('https://school.instructure.com/courses/7/modules'),
+ const env=vm.createContext({TextEncoder,TextDecoder,structuredClone,URL,Event,console,location:new URL('https://school.instructure.com/courses/7/modules'),
   document:{documentElement:html,readyState:'loading',getElementById:()=>null,querySelector:()=>null,addEventListener:(...args)=>listeners.push(args),removeEventListener:(type,fn)=>{const at=listeners.findIndex(entry=>entry[0]===type&&entry[1]===fn);if(at>=0)listeners.splice(at,1);},dispatchEvent:event=>{
    for(const entry of [...listeners])if(entry[0]===event.type){if(entry[2]?.once)listeners.splice(listeners.indexOf(entry),1);entry[1](event);}return true;
   }},
@@ -408,13 +424,13 @@ test('loader failure releases the opening cover and leaves a newer hint intact',
 });
 
 test('CommonJS catalogue imports do not change the shared test process globals',()=>{
- const env=vm.createContext({module:{exports:{}}});vm.runInContext(read('features.js'),env);
+ const env=vm.createContext({TextEncoder,TextDecoder,structuredClone,module:{exports:{}}});vm.runInContext(read('features.js'),env);
  assert.ok(env.module.exports.resolve);assert.equal(env.ReserveFeatures,undefined);
 });
 
 test('an unrelated Lite save preserves disabled feature preferences and custom SVGs',async()=>{
  const values={};const adapter={read:async key=>structuredClone(values[key]),write:async(key,value)=>{values[key]=structuredClone(value);}};
- const env=vm.createContext({URL,Intl,TextEncoder,TextDecoder,structuredClone,location:new URL('https://school.instructure.com/')});
+ const env=vm.createContext({TextEncoder,TextDecoder,structuredClone,URL,Intl,TextEncoder,TextDecoder,structuredClone,location:new URL('https://school.instructure.com/')});
  for(const file of ['features.js',...F.core.js.filter(file=>!['features.js','content.js','startup.js','feature-loader.js'].includes(file))])vm.runInContext(read(file),env,{filename:file});
  const store=env.ReserveStorage.createStore({accountId:'7',origin:'https://school.instructure.com',adapter});await store.load();
  const art=env.ReserveCustomArt.importSVG('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 40"><path d="M1 1H99" stroke="#123456"/></svg>','saved.svg');
@@ -437,7 +453,7 @@ test('native Tools filters GPA styling and completes explicitly with no styleshe
   }
   const document={head:new Element('head'),body:new Element('body'),createElement:tag=>new Element(tag),addEventListener(){},removeEventListener(){}};
   const store={get:()=>({settings:{},focus:{}}),subscribe:()=>()=>{}};
-  const env=vm.createContext({URL,Intl,document,setTimeout,clearTimeout,location:new URL('https://school.instructure.com/courses/7/pages/intro'),
+  const env=vm.createContext({TextEncoder,TextDecoder,structuredClone,URL,Intl,document,setTimeout,clearTimeout,location:new URL('https://school.instructure.com/courses/7/pages/intro'),
    ReserveToolboxSession:{create:()=>({open:async()=>({store,user:{id:'7'},snapshot:{courses:[],assignments:[]}}),destroy(){}})},
    ReserveToolbox:{create:()=>({open:next=>opened.push(next),destroy(){},update(){},isOpen:()=>false})}});
   for(const file of ['features.js','site.js','core.js','native-tools.js'])vm.runInContext(read(file),env,{filename:file});

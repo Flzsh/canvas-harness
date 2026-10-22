@@ -70,6 +70,20 @@ test('typing dismisses a manual copy fallback without rerendering the context',a
  assert.equal(f.get('fallback').hidden,true);assert.equal(f.get('fallback-text').value,'');assert.equal(f.controller.state.manualCopy,false);assert.strictEqual(f.document.activeElement,f.get('prompt'));assert.equal(f.get('context-text').writes,writes);
 });
 
+test('a Biscuit draft appends to unsent text once and only acknowledges without collecting or sharing',async t=>{
+ const f=mountedPanel();t.after(f.close);await tick();f.controller.setDraft('My unsent question');const before=f.requests.length,draft={id:'biscuit-1',scopeKey:f.catalog.scopeKey,text:'Explain π\n  preserve spacing'};
+ f.receive({kind:'catalog',data:f.catalog});f.receive({kind:'draft',draft});assert.equal(f.controller.state.draft,'My unsent question\n\n'+draft.text);assert.equal(f.get('prompt').value,f.controller.state.draft);
+ f.receive({kind:'draft',draft});assert.equal(f.controller.state.draft,'My unsent question\n\n'+draft.text);const added=f.requests.slice(before);assert.deepEqual(added.map(message=>message.kind),['draft-ack','draft-ack']);assert.ok(added.every(message=>message.id===draft.id&&message.scopeKey===draft.scopeKey));
+ assert.equal(f.controller.state.context,null);assert.equal(f.controller.state.autoSend,false);assert.equal(f.requests.some(message=>message.action==='collect'||message.action==='web'),false);
+});
+
+test('Biscuit draft validation rejects foreign scope and waits for space without losing the unsent question',async t=>{
+ const f=mountedPanel();t.after(f.close);await tick();f.receive({kind:'catalog',data:f.catalog});const before=f.requests.length;
+ for(const draft of [{id:'wrong',scopeKey:'foreign',text:'Foreign question'},{id:'long',scopeKey:f.catalog.scopeKey,text:'x'.repeat(20001)},{id:'nul',scopeKey:f.catalog.scopeKey,text:'bad\u0000text'}])f.receive({kind:'draft',draft});assert.equal(f.controller.state.draft,'');assert.equal(f.requests.length,before);
+ f.controller.setDraft('x'.repeat(19999));const draft={id:'wait-for-room',scopeKey:f.catalog.scopeKey,text:'Biscuit question'};f.receive({kind:'draft',draft});assert.equal(f.controller.state.draft,'x'.repeat(19999));assert.equal(f.requests.length,before);
+ f.get('prompt').value='Short question';f.get('prompt').fire('input');assert.equal(f.controller.state.draft,'Short question\n\nBiscuit question');assert.equal(f.requests.at(-1).kind,'draft-ack');
+});
+
 test('PDF rows retain identity across typing and busy changes, and Remove remains current',async t=>{
  const f=mountedPanel();t.after(f.close);await tick();
  await f.controller.attach({name:'Notes.pdf',size:5,arrayBuffer:async()=>Buffer.from('%PDF-')});
@@ -214,6 +228,15 @@ test('localhost preview rejects another origin and non-parent messages',async()=
 });
 test('ordinary websites cannot use the preview transport',async()=>{
  const e=transportEnv({extension:false,host:'example.com'});const t=api().createTransport(e.env);assert.equal(t.available,false);await assert.rejects(t.request('catalog'),/unavailable|extension/i);assert.equal(e.listeners.has('message'),false);t.dispose();
+});
+
+test('draft transport deduplicates reconnect delivery and rejects stale scopes without sending requests',()=>{
+ const e=transportEnv(),timers=new Map();let timerId=0;const received=[];e.env.setTimeout=fn=>{const id=++timerId;timers.set(id,fn);return id;};e.env.clearTimeout=id=>timers.delete(id);
+ const t=api().createTransport(e.env,{draft:draft=>{received.push(draft.text);return true;}}),draft={id:'once',scopeKey:'assignment-a',text:'Original question'};
+ e.messages.at(-1)({kind:'draft',draft});assert.deepEqual(received,[]);e.messages.at(-1)({kind:'catalog',data:scope()});assert.deepEqual(received,['Original question']);assert.equal(e.sent.at(-1).kind,'draft-ack');
+ e.disconnects.at(-1)();const reconnect=[...timers.values()][0];timers.clear();reconnect();e.messages.at(-1)({kind:'catalog',data:scope()});e.messages.at(-1)({kind:'draft',draft});assert.deepEqual(received,['Original question']);assert.equal(e.sent.filter(message=>message.kind==='draft-ack').length,2);
+ e.messages.at(-1)({kind:'catalog',data:scope('assignment-b','b')});e.messages.at(-1)({kind:'draft',draft:{...draft,id:'stale'}});assert.deepEqual(received,['Original question']);assert.ok(e.sent.every(message=>message.kind==='draft-ack'));
+ t.dispose();e.messages.at(-1)({kind:'draft',draft:{...draft,id:'closed',scopeKey:'assignment-b'}});assert.deepEqual(received,['Original question']);assert.equal(timers.size,0);
 });
 
 test('unrequested sources returned by collect never reach a provider',async()=>{

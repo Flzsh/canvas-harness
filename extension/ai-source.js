@@ -1,7 +1,7 @@
 /* Canvas Harness: explicitly selected course context. No AI credentials or chat history here. */
 (function(root){
  'use strict';
- const MAX_BYTES=2*1024*1024;
+ const MAX_BYTES=2*1024*1024,MAX_DRAFT=20000;
  const C=()=>root.CanvasHarnessContext;
  // Context wrappers can be replaced while Canvas records also change in place.
  // Compare detached inputs before reparsing unchanged instructional content.
@@ -188,15 +188,28 @@
  function base64(bytes){let value='';for(let i=0;i<bytes.length;i+=16384)value+=String.fromCharCode(...bytes.subarray(i,i+16384));return root.btoa(value);}
  function mount({container,getContext,store,client,user,demo=false,pdfHandoff=null,embedded=false,onClose=()=>{}}){
   let frame,port,dead=false,lastSignature='',lastHeartbeat=0,lastData,lastSerialized;
+  let pendingDraft=null,sentDraft='',draftSequence=0;
+  const draftEnabled=()=>!root.ReserveFeatures||root.ReserveFeatures.enabled('tools')&&root.ReserveFeatures.enabled('ai');
   const runtime=root.chrome?.runtime,preview=demo&&!runtime?.id&&/^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(root.location?.origin||'');
   async function parsePDF(bytes){
    if(!runtime?.id)throw Error('Install the extension to read PDFs locally.');
    const response=await runtime.sendMessage({type:'ch-ai-pdf',base64:base64(bytes)});if(!response?.ok)throw Error(response?.error||'PDF text could not be read.');return response.result;
   }
   const source=pdfHandoff?createPdfHandoff(pdfHandoff):create({getContext,store,client,user,demo,parsePDF});
-  const send=message=>{if(dead)return;if(preview)frame?.contentWindow?.postMessage({type:'ch-ai-reply',reply:message},root.location.origin);else try{port?.postMessage(message);}catch{}};
+  const send=message=>{if(dead)return false;try{if(preview){if(!frame?.contentWindow)return false;frame.contentWindow.postMessage({type:'ch-ai-reply',reply:message},root.location.origin);}else{if(!port)return false;port.postMessage(message);}return true;}catch{return false;}};
+  function draftScope(data){
+   if(typeof data?.scopeKey!=='string'||!data.scopeKey||data.scopeKey.length>8192||data.scopeKey.includes('\u0000'))return false;
+   const [origin,accountId]=data.scopeKey.split('|'),owner=store?.owner;
+   return !owner||origin===owner.origin&&accountId===String(owner.accountId);
+  }
+  function acknowledgeDraft(message){if(pendingDraft&&message.id===pendingDraft.id&&message.scopeKey===pendingDraft.scopeKey){pendingDraft=null;sentDraft='';}}
+  function setDraft(text){
+   if(dead||!draftEnabled()||typeof text!=='string'||!text.trim()||text.length>MAX_DRAFT||text.includes('\u0000'))return false;
+   try{const data=source.summary();if(!draftScope(data)){pendingDraft=null;sentDraft='';return false;}pendingDraft={id:root.crypto?.randomUUID?.()||`draft-${Date.now()}-${++draftSequence}-${Math.random().toString(36).slice(2)}`,text,scopeKey:data.scopeKey};sentDraft='';update();return true;}catch{return false;}
+  }
   async function request(message){
    if(dead)return;
+   if(message?.kind==='draft-ack'){acknowledgeDraft(message);return;}
    const {id,action}=message||{};if(typeof id!=='string'||id.length>100)return;
    if(action==='close'){onClose();send({id,ok:true,result:{}});return;}
    try{
@@ -220,9 +233,9 @@
   function connect(){
    if(dead||port||!runtime?.id)return;
    try{
-    const next=runtime.connect({name:'ch-ai-source'});port=next;lastSignature='';lastHeartbeat=Date.now();
-    next.onMessage.addListener(message=>{if(port===next&&message.kind==='source-request')request(message);});
-    next.onDisconnect.addListener(()=>{if(port===next){port=null;lastSignature='';}});
+    const next=runtime.connect({name:'ch-ai-source'});port=next;lastSignature='';sentDraft='';lastHeartbeat=Date.now();
+    next.onMessage.addListener(message=>{if(port!==next||dead)return;if(message?.kind==='draft-ack')acknowledgeDraft(message);else if(message?.kind==='source-request')request(message);});
+    next.onDisconnect.addListener(()=>{if(port===next){port=null;lastSignature='';sentDraft='';}});
    }catch{port=null;}
   }
   container.append(frame);
@@ -237,20 +250,30 @@
   }
   const stopPolling=()=>{root.clearInterval(timer);timer=0;};
   function update(){
-   if(!visible()){stopPolling();return;}
+   if(!draftEnabled()){pendingDraft=null;sentDraft='';}
+   if(!visible()){
+    // A queued explicit question needs a scope invalidation even if the toolbox
+    // closes before the iframe connects. Idle hidden panels still do no work.
+    if(pendingDraft)try{const data=source.summary();if(!draftScope(data)||data.scopeKey!==pendingDraft.scopeKey){pendingDraft=null;sentDraft='';if(draftScope(data))send({kind:'catalog',data});else{try{port?.disconnect();}catch{}port=null;lastSignature='';}}}catch{pendingDraft=null;sentDraft='';}
+    stopPolling();return;
+   }
    if(!timer)timer=root.setInterval(update,1200);
    try{
     if(!preview)connect();
     const data=source.summary();
+    if(pendingDraft&&(!draftScope(data)||data.scopeKey!==pendingDraft.scopeKey)){pendingDraft=null;sentDraft='';}
     if(data!==lastData){lastSerialized=JSON.stringify(data);lastData=data;}
     const signature=lastSerialized;
     if(signature!==lastSignature){lastSignature=signature;send({kind:'catalog',data});}
+    // The worker retains this question for a panel that connects after its iframe loads.
+    // Keep our copy until the panel acknowledges, and retry the same id after reconnect.
+    if(pendingDraft&&sentDraft!==pendingDraft.id&&send({kind:'draft',draft:pendingDraft}))sentDraft=pendingDraft?.id||'';
     // Keep this open tool connected without republishing a catalog that would
     // invalidate in-progress context. Reconnect and resend metadata after sleep.
     if(port&&Date.now()-lastHeartbeat>=20000){port.postMessage({kind:'ping'});lastHeartbeat=Date.now();}
    }catch{}
   }
-  const onLoad=()=>{lastSignature='';update();};
+  const onLoad=()=>{lastSignature='';sentDraft='';update();};
   frame.addEventListener('load',onLoad);
   // Metadata only. Requests fetch text explicitly; no chat or credentials cross into this document.
   const visibility=()=>{if(!visible())stopPolling();else if(!timer)update();};
@@ -260,12 +283,12 @@
   const observer=root.MutationObserver?new root.MutationObserver(visibility):null;
   for(const node of ancestry())observer?.observe(node,{attributes:true,attributeFilter:['hidden','open','style','class','data-collapsed','data-leaving']});
   visibility();
-  return {update,focus(){if(!dead)frame.focus();},destroy(){
-   if(dead)return;dead=true;stopPolling();observer?.disconnect();
+  return {update,setDraft,focus(){if(!dead)frame.focus();},destroy(){
+   if(dead)return;dead=true;pendingDraft=null;sentDraft='';stopPolling();observer?.disconnect();
    root.document.removeEventListener?.('visibilitychange',visibility);root.removeEventListener('message',onPreview);frame.removeEventListener?.('load',onLoad);
    try{source.destroy();}finally{try{port?.disconnect();}catch{}port=null;frame.remove();lastData=lastSerialized=null;}
   }};
  }
- root.CanvasHarnessAISource={create,createPdfHandoff,mount,base64,MAX_BYTES};
+ root.CanvasHarnessAISource={create,createPdfHandoff,mount,base64,MAX_BYTES,MAX_DRAFT};
  if(typeof module==='object'&&module.exports)module.exports=root.CanvasHarnessAISource;
 })(globalThis);

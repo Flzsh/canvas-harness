@@ -110,7 +110,7 @@ function pollingSource({pdf=false,hidden=false,panelHidden=false,subscribe=true,
  const options={container,getContext(){counters.contextReads++;return freshContext?structuredClone(ctx):ctx;},store,user,client:{profile:async()=>user,...client},demo,embedded};
  if(pdf)options.pdfHandoff={...pdfSelection,appearance:{theme:'light'}};
  const source=mount?sandbox.CanvasHarnessAISource.mount(options):sandbox.CanvasHarnessAISource.create(options);
- return {source,ctx,store,account,counters,ports,intervals,listeners,events,observers,frame,container,panel,body,dialog,host,handoff:options.pdfHandoff,
+ return {source,ctx,store,account,counters,ports,intervals,listeners,events,observers,frame,container,panel,body,dialog,host,env:sandbox,handoff:options.pdfHandoff,
   get catalog(){return ports.at(-1)?.sent.filter(message=>message.kind==='catalog').at(-1)?.data;},
   visibility(value){document.hidden=value;for(const fn of events.get('visibilitychange')||[])fn();},
   mutate(target,key,value){target[key]=value;for(const observer of observers)if(observer.targets.has(target))observer.callback([{target,attributeName:key}]);},
@@ -178,4 +178,28 @@ test('PDF metadata reuses serialization while appearance changes still publish',
 test('toolbox embedding marks its iframe without changing its URL or source metadata',t=>{
  const standalone=pollingSource(),embedded=pollingSource({embedded:true});t.after(()=>{standalone.source.destroy();embedded.source.destroy();});
  assert.equal(standalone.frame.name,undefined);assert.equal(embedded.frame.name,'ch-toolbox-ai');assert.equal(embedded.frame.src,'chrome-extension://test/ai-panel.html');assert.deepEqual(embedded.catalog,standalone.catalog);
+});
+
+test('Biscuit draft waits for acknowledgement and reconnects only the newest original line after catalog',t=>{
+ const f=pollingSource();t.after(()=>f.source.destroy());const firstPort=f.ports[0],original='Explain π exactly\n  keep the second line';assert.equal(f.source.setDraft(original),true);
+ const first=firstPort.sent.at(-1);assert.equal(first.kind,'draft');assert.equal(first.draft.text,original);assert.equal(first.draft.scopeKey,f.catalog.scopeKey);assert.ok(first.draft.id);assert.equal(firstPort.sent.some(message=>message.action==='collect'||message.action==='web'),false);
+ assert.equal(f.source.setDraft('Newer question'),true);const newest=firstPort.sent.at(-1).draft;assert.notEqual(newest.id,first.draft.id);
+ firstPort.receive({kind:'draft-ack',id:first.draft.id,scopeKey:first.draft.scopeKey});f.frame.handlers.get('load')();assert.equal(firstPort.sent.at(-1).draft.id,newest.id);
+ firstPort.drop();f.advance(1200);const next=f.ports.at(-1);assert.equal(next.sent[0].kind,'catalog');assert.equal(next.sent[1].draft.id,newest.id);assert.equal(next.sent[1].draft.text,'Newer question');
+ firstPort.receive({kind:'draft-ack',id:newest.id,scopeKey:newest.scopeKey});next.receive({kind:'draft-ack',id:newest.id,scopeKey:'wrong'});f.frame.handlers.get('load')();assert.equal(next.sent.at(-1).kind,'draft');
+ next.receive({kind:'draft-ack',id:newest.id,scopeKey:newest.scopeKey});const before=next.sent.filter(message=>message.kind==='draft').length;f.frame.handlers.get('load')();assert.equal(next.sent.filter(message=>message.kind==='draft').length,before);
+});
+
+test('scope changes and disabled AI discard queued handoff drafts without replacing them on load',t=>{
+ const f=pollingSource();t.after(()=>f.source.destroy());assert.equal(f.source.setDraft('Old view question'),true);const port=f.ports[0],before=port.sent.filter(message=>message.kind==='draft').length;f.ctx.courseId='20';f.source.update();f.frame.handlers.get('load')();assert.equal(port.sent.filter(message=>message.kind==='draft').length,before);
+ f.store.owner.accountId='8';assert.equal(f.source.setDraft('Wrong account'),false);
+});
+
+test('disabled or invalid source draft handoffs cannot post a question',t=>{
+ for(const off of ['tools','ai']){const f=pollingSource();t.after(()=>f.source.destroy());const before=f.ports[0].sent.length;f.env.ReserveFeatures={enabled:id=>id!==off};assert.equal(f.source.setDraft('Question'),false);assert.equal(f.ports[0].sent.length,before);}
+ const f=pollingSource();t.after(()=>f.source.destroy());const before=f.ports[0].sent.length;for(const text of [null,7,'','  ','x'.repeat(20001),'bad\u0000text'])assert.equal(f.source.setDraft(text),false);assert.equal(f.ports[0].sent.length,before);
+});
+
+test('a pending draft is invalidated when its hidden source changes before iframe load',t=>{
+ const f=pollingSource();t.after(()=>f.source.destroy());assert.equal(f.source.setDraft('Old hidden question'),true);const port=f.ports[0],before=port.sent.filter(message=>message.kind==='draft').length;f.mutate(f.panel,'hidden',true);f.ctx.courseId='20';f.source.update();assert.equal(port.sent.at(-1).kind,'catalog');assert.equal(port.sent.at(-1).data.courseId,'20');f.frame.handlers.get('load')();assert.equal(port.sent.filter(message=>message.kind==='draft').length,before);assert.equal(f.intervals.size,0);
 });

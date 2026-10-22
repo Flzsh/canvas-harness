@@ -6,41 +6,65 @@ A Canvas workspace you build yourself: assignments beside their instructions, a 
 Description
 Canvas shows you everything. Canvas Harness shows you what to do next.
 
-It turns your Canvas dashboard into one calm page that you arrange yourself: what is due, how to do it, when you plan to do it, and the tools you study with. The original Canvas pages are always one click away.
+It turns your Canvas dashboard into one calm page that you arrange yourself: what is due, how to do it, when you plan to do it, and the tools you study with. The page fits your window, and the original Canvas pages are always one click away.
+
+★ NEW IN 3.4
+• Biscuit the pony now understands plain words: "25 minute focus", "remind me at 4pm to email my teacher", "plan essay fri 45m", "dark mode", "open Messages".
+• Scene themes: Starry Night, Under the Sea, Starfield and Blueprint.
+• Your own picture or short video as a banner, framed the way you want.
+• The Market: add themes, banners, pets and presets in one click, or make your own.
+• After you submit, a little scene and a play tool to celebrate.
+• Modules progress, To hand in, and three optional extras: Focus room, Review deck and Grade impact.
 
 ★ BUILD YOUR OWN HOME
-Add the modules you want: Today, This week, Focus timer, Clock, Notes, Bookmarks, Grades and Messages. Make them narrow or wide and drag them into place. Hold a heading, watch the hand-drawn circle close, and move it.
+Add the modules you want: Today, This week, Focus timer, Clock, Notes, Bookmarks, Grades and Messages. Make them narrow or wide and drag them into place. Hold a heading, watch the hand-drawn circle close, and move it. Put your courses in a dock along the bottom if you like them close at hand.
 
 ★ ASSIGNMENTS WITHOUT THE TAB MAZE
-Every assignment sits beside its instructions, with teacher updates and your bookmarks close by. Tick things off as you finish them, including work you hand in outside Canvas.
+Every assignment sits beside its instructions, with teacher updates and your bookmarks close by. Tick things off as you finish them. Work you hand in on paper, in class or by talking to your teacher goes in To hand in, so nothing finished keeps looking unfinished.
+
+★ READ YOUR PDFS RIGHT WHERE YOU WORK
+Click a PDF in an assignment, the Files page, Modules, a page, an announcement or your course materials, and it opens in a reader beside your work instead of a new tab. Jump by page or outline, find words, highlight in colour and leave notes in the margin. Your highlights and notes stay on this device.
+
+★ CANVAS'S OWN PAGES, DRAWN TO MATCH
+The course menu and the Modules page are drawn in the same hand-drawn style, with Canvas's order and names kept. Modules shows how far through each module you are. Assignment and submission pages stay exactly as Canvas made them.
 
 ★ A PLANNER THAT UNDERSTANDS YOU
 Type "essay outline fri 45m #english" and the task lands on Friday, 45 minutes, in English. Drag cards between days. Finished work gets out of the way. Canvas due dates are never changed.
 
-★ A STUDY COMPANION
-A small hand-drawn pony walks along your page, tells you what is next, studies beside your focus timer and cheers when you finish. It never scolds, and one switch turns it off.
+★ BISCUIT, YOUR STUDY COMPANION
+A small hand-drawn pony walks along your page, tells you what is next, studies beside your focus timer and cheers when you finish. Ask it in your own words to start a focus session or a break, set a reminder, plan a block, change a setting, switch a feature, open a page, save a note or a bookmark, and undo it if you change your mind. It never scolds, and one switch turns it off.
 
 ★ MAKE IT YOURS
-Hand-drawn artwork for every course, outline styles, colors, text sizes and layout presets, all chosen by picture. Pick an accent color for buttons and a page color for the mood. No artist needed for your own art: a free skill on GitHub teaches your AI to draw a banner, icon and frame for your course, and Quick Upload drops them in. Even Canvas's own menu bar on the left is drawn to match, with your school's logo.
+Hand-drawn artwork for every course, outline styles, colors, text sizes and layout presets, all chosen by picture. Give the whole page a scene theme, from a swirling starry sky to a quiet sea. Use your own photo, GIF or short muted video as a banner: drag to move it, zoom, pin the part that matters, and it stays in view on any window size. Even Canvas's own menu bar on the left is drawn to match, with your school's logo.
+
+★ THE MARKET
+Open the Market from the popup and add a theme, a course banner, a new pet or a preset in one click. Every download is checked against its published fingerprint before it is used, and Remove takes it out again exactly. Free skills on GitHub teach your AI to make your own themes, banners, pets and presets in any style you like, and you can share them back to the Market.
+
+★ A LITTLE FUN AFTER YOU SUBMIT
+Hand something in and a small scene plays, then you get a play tool for the page: balloons, a garden, portals, a magnet, a painter and more, with rare ones like the black hole that are worth the wait. One switch turns it off.
 
 ★ STUDY TOOLS BESIDE YOUR WORK
-A Desmos calculator, GPA estimates, and an optional AI hand-off where you pick exactly what is shared before anything is sent.
+A Desmos calculator, GPA estimates, and an optional AI hand-off: ask about the assignments, course materials or PDF pages you pick, and see exactly what is shared before anything is sent. Optional extras: a full-screen Focus room with just your timer, a Review deck of flashcards that come back when you need them, and Grade impact, which shows what 100, 85 or 70 percent on an upcoming assignment would do to your course grade.
+
+★ ONLY WHAT YOU USE
+Choose Full, Lite or Custom in the popup. Features you switch off are not loaded at all, so a slower laptop does less, and everything you saved is still there when you switch them back on.
 
 LIGHT ON SLOWER LAPTOPS
-Tuned to come back quickly when you return to the tab and to do very little while it sits idle.
+Tuned to come back quickly when you return to the tab and to do very little while it sits idle. Moving themes and videos pause when they are off screen, when the tab is hidden, or when your system asks for reduced motion.
 
 PRIVATE BY DESIGN
 • Uses the Canvas session you are already signed in to. It never changes submissions or grades.
-• Plans, notes, bookmarks, artwork and settings stay in your browser. No ads, no analytics, no developer server.
+• Plans, notes, highlights, bookmarks, artwork, pictures and settings stay in your browser. No ads, no analytics, no developer server.
 • By default nothing saved is shown until Canvas confirms who is signed in.
+• The Market is a public GitHub page. The extension asks before opening it the first time, downloads only what you add, checks each file's fingerprint, and sends nothing about you.
 • The optional AI tool sends only what you select, to the AI website you choose, after you review it. Desmos loads from its own website when opened.
 
 GOOD TO KNOW
 • Works on school Canvas sites under *.instructure.com. If your school uses its own Canvas address, add it in the extension's popup; your browser asks to allow that one site.
 • What you can see depends on your school's Canvas permissions.
-• GPA values are estimates, not official transcript calculations.
+• GPA values and Grade impact are estimates, not official transcript calculations.
 • The AI tool may need an account with the provider, and changes to their websites can affect it.
-• Free and open source (GPL-3.0): github.com/Flzsh/canvas-harness
+• Free and open source (GPL-3.0): github.com/Flzsh/canvas-harness. Thanks to Gary Wu for Modules progress, To hand in, Focus room, Review deck and Grade impact.
 
 Canvas Harness is an independent project by Flzsh. It is not affiliated with or endorsed by Instructure, Desmos, or the AI providers.
 
@@ -60,4 +84,4 @@ Privacy policy
 https://github.com/Flzsh/canvas-harness/blob/main/PRIVACY.md
 
 Edge search terms
-Canvas; assignments; coursework; study tools; course dashboard; bookmarks
+Canvas; assignments; coursework; study tools; course dashboard; planner; PDF reader

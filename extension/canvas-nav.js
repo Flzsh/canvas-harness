@@ -1,8 +1,23 @@
 /*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. Third-party components retain their respective attribution. */
+// Includes Gary Wu's menu-bar jump fix.
 // Canvas's own menu bar (#header) in the workspace's hand-drawn style (canvas-nav.css). This only decorates: Canvas's
 // links, badges, trays and keyboard behaviour stay Canvas's. Off with the popup's "Menu bar: Canvas original".
 (function(root){
  'use strict';
+ const EARLY='reserve:navEarly';
+ function rememberLayout(html,storage,layout){
+  const value=layout==='drawer'?'drawer':'';
+  try{if((storage?.getItem(EARLY)||'')!==value){if(value)storage.setItem(EARLY,value);else storage.removeItem(EARLY);}}catch{}
+  if(html.dataset?.chnEarly!==undefined)delete html.dataset.chnEarly;
+ }
+ function earlyLayout(html,storage){
+  let value;try{value=storage?.getItem(EARLY);}catch{}
+  if(value!=='drawer'||root.ReserveFeatures?.enabled('canvas-nav')===false||!html?.dataset||!html.classList?.contains)return;
+  if(html.dataset.chnLayout!=='drawer')html.dataset.chnLayout='drawer';
+  if(html.dataset.chnDrawer!=='closed')html.dataset.chnDrawer='closed';
+  if(html.dataset.chnEarly!=='drawer')html.dataset.chnEarly='drawer';
+  if(!html.classList.contains('chn-nav'))html.classList.add('chn-nav');
+ }
  let stop=()=>{};
  function load(){
  // The stored choice -> the bar's layout. 'drawn' (the default) is the drawer.
@@ -113,7 +128,7 @@
 
  function start(){
   if(root.top!==root||root.ReserveCanvasNav||!root.ReserveSite?.supported?.(root.location?.href))return;
-  const html=root.document.documentElement;let saved={},header=null,observer=null,lastPalette='',stopped=false,pending=null,workspaceTimer,workspaceObserver,workspaceQueued=0;
+  const html=root.document.documentElement;let saved={},header=null,observer=null,lastPalette='',stopped=false,pending=null,workspaceTimer,workspaceObserver,workspaceQueued=0,undo=[];
   const listeners=[];
   const listen=(target,type,fn,options)=>{target.addEventListener(type,fn,options);listeners.push(()=>target.removeEventListener?.(type,fn,options));};
   const api=root.ReserveCanvasNav={kindOf,logoKind};
@@ -127,11 +142,13 @@
    if(header)for(const name of Object.keys(header.dataset))if(name.startsWith('chn'))delete header.dataset[name];
    if(root.ReserveCanvasNav===api)delete root.ReserveCanvasNav;
   };
-  const store=root.chrome?.storage?.local;if(!store)return;
+  let page;try{page=root.localStorage;}catch{}
+  earlyLayout(html,page);
+  const store=root.chrome?.storage?.local;if(!store){apply('original');return;}
   store.get([KEY,PALETTE,LOGO,'reserve:enabled']).then(values=>{
    if(stopped)return;
-   saved=values;if(values['reserve:enabled']===false)return;
-   if(values[KEY]!=='original')enable(values[KEY]);
+   saved=values;if(values['reserve:enabled']===false){apply('original');return;}
+   if(values[KEY]!=='original')enable(values[KEY]);else apply('original');
    // Course frames arrive through the deferred loader after this static script.
    listen(root.document,'reserve:features-ready',()=>{
     if(header&&html.classList.contains('chn-nav')&&[...header.querySelectorAll('.ic-app-header__menu-list-link')].some(link=>!link.querySelector(':scope > .chn-frames')))decorate(header);
@@ -140,21 +157,21 @@
    const changed=(changes,area)=>{if(area==='local'&&changes[KEY])apply(changes[KEY].newValue);};
    root.chrome?.storage?.onChanged?.addListener?.(changed);
    listeners.push(()=>root.chrome?.storage?.onChanged?.removeListener?.(changed));
-  }).catch(()=>{});
+  }).catch(()=>apply('original'));
   // canvas-nav.css comes with the page (manifest, document_start): a stylesheet linked from here arrived after the drawn
   // frames, which then showed unstyled for a moment on every page change. It is scoped to html.chn-nav, so it is inert until then.
-  let undo=[];
   function enable(choice){
    html.classList.add('chn-nav');layout(choice);applyPalette(saved[PALETTE]);
    if(header){decorate(header);setLogo();drawer();topBar();}else watch();
   }
-  function layout(choice){html.dataset.chnLayout=LAYOUTS[choice]||'drawer';if(html.dataset.chnLayout==='drawer')html.dataset.chnDrawer='closed';}
+  function layout(choice){html.dataset.chnLayout=LAYOUTS[choice]||'drawer';if(html.dataset.chnLayout==='drawer')html.dataset.chnDrawer='closed';rememberLayout(html,page,html.dataset.chnLayout);}
   // Each layout leaves an undo; a change runs them all, then sets up the new one with no motion at all for two frames
   // (data-chn-switching), so a column never turns into a row on screen.
   function apply(choice){
    if(stopped&&choice!=='original')return;
    if(choice==='original'){
-    if(!html.classList.contains('chn-nav'))return;
+    rememberLayout(html,page,'');
+    if(!html.classList?.contains?.('chn-nav'))return;
     for(const step of undo.splice(0))try{step();}catch{}
     if(header)undecorate(header);html.classList.remove('chn-nav');delete html.dataset.chnLayout;return;
    }
@@ -297,7 +314,7 @@
   }
  }
 
- if(typeof module==='object'&&module.exports)module.exports={kindOf,logoKind,DRAWINGS};
+ if(typeof module==='object'&&module.exports)module.exports={kindOf,logoKind,DRAWINGS,rememberLayout,earlyLayout};
  else start();
  }
  if(root.ReserveFeatures)root.ReserveFeatures.early('canvas-nav',load,()=>stop());else load();

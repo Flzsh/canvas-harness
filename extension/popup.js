@@ -1,16 +1,18 @@
-﻿/*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. */
+/*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. */
 (function(){
  'use strict';
  const $=id=>document.getElementById(id),all=selector=>[...document.querySelectorAll(selector)];
  const manifest=chrome.runtime.getManifest(),school=$('school-url'),status=$('status'),enabled=$('enabled');
  // the school-address controls exist only in builds that can ask for a school's own Canvas site
- const publicBuild=(manifest.optional_host_permissions||[]).includes('https://*/*'),titles={look:'Look',menu:'Canvas menu bar',pony:'Pony',native:'Canvas pages',features:'Features'};
+ const publicBuild=(manifest.optional_host_permissions||[]).includes('https://*/*'),titles={look:'Look',menu:'Canvas menu bar',pony:'Pony',native:'Canvas pages',features:'Features',addons:'Installed add-ons'};
  const navNames={drawn:'From the left edge',shown:'Full height',top:'Across the top',original:'Canvas’s own'};
  const preferences=ReservePagePreferences.create();
  const Features=globalThis.ReserveFeatures,featureCatalogue=Features?.catalogue||[],featureControls=new Map();
  const featuresAvailable=Features&&Array.isArray(Features.catalogue)&&typeof Features.normalize==='function'&&typeof Features.resolve==='function';
  let featurePrefs,featureSaved,featureReady=false,featureLoading=false,featurePending=0,featureRevision=0,featureWrites=Promise.resolve();
  let origin='',lastRow=null,statusTimer=0,popupClosed=false;
+ const MARKET_URL='https://flzsh.github.io/canvas-harness-packs/',PACKS_KEY='reserve:packs';
+ let packInstalled=[],packLoading=false,packRevision=0,packWrites=Promise.resolve();const packPending=new Set();
  $('product-name').textContent=manifest.name;$('version').textContent=manifest.version;document.title=manifest.name;
  $('school-section').hidden=!publicBuild;
  // the drawn pictures: row icons, the real Biscuit on the Pony row, and the four menu-bar layouts
@@ -23,6 +25,50 @@
  function notice(message,error=false){clearTimeout(statusTimer);status.textContent=message;status.hidden=!message;status.classList.toggle('error',error);if(message&&!error)statusTimer=setTimeout(()=>{status.hidden=true;status.textContent='';},3500);}
  function featureStatus(message=''){$('features-status').textContent=message;$('features-status').hidden=!message;}
  function featureError(message=''){$('features-error').textContent=message;$('features-error').hidden=!message;}
+ function packStatus(message=''){$('addons-status').textContent=message;$('addons-status').hidden=!message;}
+ function packError(message=''){$('addons-error').textContent=message;$('addons-error').hidden=!message;}
+ function openMarket(){
+  // The optional host request must run in the original click stack.
+  const opening=globalThis.ReserveMarket?ReserveMarket.open(MARKET_URL):chrome.tabs.create({url:MARKET_URL});
+  return opening.catch(()=>{if(!popupClosed)notice('Could not open the Market. Try again.',true);});
+ }
+ function drawAddons(){
+  if(popupClosed)return;
+  $('addons-panel').setAttribute('aria-busy',String(packLoading||packPending.size>0));
+  const list=$('addons-list'),focused=document.activeElement?.dataset?.packRemove;list.replaceChildren();
+  const labels={'course-art':'Course artwork',kit:'Artwork kit',feature:'Feature',theme:'Theme',pet:'Companion',preset:'Preset'};
+  for(const row of packInstalled){
+   const item=document.createElement('li'),text=document.createElement('span'),name=document.createElement('b'),kind=document.createElement('small'),remove=document.createElement('button');
+   name.textContent=row.name;kind.textContent=labels[row.kind]||'Pack';text.append(name,kind);
+   remove.type='button';remove.className='text-button';remove.dataset.packRemove=row.id;remove.textContent=packPending.has(row.id)?'Removing…':'Remove';remove.disabled=packPending.has(row.id);remove.setAttribute('aria-label','Remove '+row.name);
+   remove.addEventListener('click',()=>removePack(row.id));item.append(text,remove);list.append(item);if(focused===row.id&&!remove.disabled)remove.focus();
+  }
+  $('addons-empty').hidden=packLoading||packInstalled.length>0;
+ }
+ async function refreshInstalled(){
+  if(popupClosed)return;
+  const turn=++packRevision;packLoading=true;packError();packStatus('Loading add-ons…');$('addons-retry').hidden=true;drawAddons();
+  try{
+   if(!globalThis.ReservePacks)throw Error('Pack support is unavailable.');
+   const rows=await ReservePacks.installed();if(popupClosed||turn!==packRevision)return;
+   packInstalled=rows.filter(row=>row&&typeof row.id==='string'&&typeof row.name==='string'&&['feature','course-art','kit','theme','pet','preset'].includes(row.kind));packStatus();
+  }catch(error){if(!popupClosed&&turn===packRevision){packStatus();packError(error?.message||'Could not read installed packs. Try again.');$('addons-retry').hidden=false;}}
+  finally{if(!popupClosed&&turn===packRevision){packLoading=false;drawAddons();}}
+ }
+ function removePack(id){
+  if(popupClosed||packPending.has(id)||!packInstalled.some(row=>row.id===id))return;
+  packPending.add(id);packError();drawAddons();
+  packWrites=packWrites.catch(()=>{}).then(async()=>{
+   try{
+    await ReservePacks.remove(id);if(popupClosed)return;
+    await refreshInstalled();packStatus('Pack removed. Reload Canvas to apply.');
+    if(document.activeElement===document.body)$('addons-panel').querySelector('button')?.focus();
+   }catch(error){if(!popupClosed)packError(error?.message||'Could not remove the pack. Try again.');}
+   finally{packPending.delete(id);drawAddons();}
+  });return packWrites;
+ }
+ $('market-open').addEventListener('click',openMarket);for(const button of all('.ap-market-open'))button.addEventListener('click',openMarket);
+ $('addons-retry').addEventListener('click',refreshInstalled);
  function buildFeatures(){
   if(!featuresAvailable)return;
   const groups=new Map();
@@ -66,7 +112,7 @@
   featureWrites=featureWrites.then(async()=>{
    if(popupClosed){featurePending--;return;}
    try{
-    await chrome.storage.local.set({[Features.KEY]:next});featureSaved=next;
+    await Features.write(next);featureSaved=next;
     if(!popupClosed&&turn===featureRevision){featureError();featureStatus('Saved.');}
    }catch{if(!popupClosed&&turn===featureRevision){featurePrefs=featureSaved;featureStatus();featureError('Could not save features. Your saved choices are still active. Try again.');}}
    finally{featurePending--;drawFeatures();}
@@ -117,6 +163,7 @@
  chrome.storage.local.get(['reserve:enabled','reserve:canvasNav']).then(saved=>{enabled.checked=saved['reserve:enabled']!==false;enabled.disabled=false;drawNav(saved['reserve:canvasNav']);}).catch(()=>notice('Could not load settings. Try again.',true));
  const storedChanged=(changes,area)=>{
   if(popupClosed||area!=='local')return;
+  if(Object.keys(changes).some(key=>key===PACKS_KEY||key.startsWith('reserve:market-media:')&&key.endsWith(':packs'))&&lastRow?.dataset.detail==='addons'&&!$('detail-view').hidden&&!packPending.size)void refreshInstalled();
   if(changes['reserve:canvasNav'])drawNav(changes['reserve:canvasNav'].newValue);if(changes['reserve:enabled'])enabled.checked=changes['reserve:enabled'].newValue!==false;
   if(featuresAvailable&&changes[Features.KEY]&&!featurePending){
    const next=Features.normalize(changes[Features.KEY].newValue);
@@ -132,6 +179,7 @@
   if(row.hidden)return;
   lastRow=row;$('main-view').hidden=true;$('detail-view').hidden=false;$('detail-title').textContent=titles[row.dataset.detail];
   for(const panel of all('[data-panel]'))panel.hidden=panel.dataset.panel!==row.dataset.detail;
+  if(row.dataset.detail==='addons')void refreshInstalled();
   $('back').focus();
  });
  function back(){if($('detail-view').hidden)return;$('detail-view').hidden=true;$('main-view').hidden=false;(lastRow&&!lastRow.hidden?lastRow:$('open')).focus();}

@@ -30,12 +30,16 @@ Canvas shows you everything. Canvas Harness shows you what to do next. It replac
 
 <p align="center"><sub>Every demo below uses fictional courses and assignments.</sub></p>
 
-## New in 3.2
+## New in 3.4
 
-- **Choose your features.** Full, Lite or Custom in the popup. A feature you switch off is never loaded, and what you saved stays for when you turn it back on.
-- **PDFs open in the reader from more places:** the Files page and its folders, Modules, pages, announcements, discussions, the syllabus and your dashboard's course materials. Download links still download.
-- **The page fits the window.** With the course strip across the top, the banner and title come first, and a long Home module scrolls inside itself.
-- Fixes: a cleaner edge around the dashboard, the column keeps its place while content loads, tabs left open across an update keep working, the pony waits instead of hopping around Messages.
+- Use your own picture or short video as a banner, framed the way you want. Upload, drop or paste it into Make it yours, then choose the fit, focus, zoom and height. Course cards and a dimmed page background can use your art too. Video loops and stills, framing and media carry over in kits and personal backups.
+
+- Ask Biscuit for focus time, a break, a reminder or a plan in the words you use. It also finds settings, features, tabs, notes and bookmarks, with Undo after a change. Set its skills, routines and quiet time yourself.
+- A submitted assignment can unlock one random play tool and a drawn celebration. Powerful tools are rarer.
+- Pick Starry Night, Under the Sea, Starfield or Blueprint, and try the drawn course dock in Make it yours.
+- Open the optional Market from the popup, or use Add from a file for artwork, kits, themes, pets and presets. Installed add-ons can be removed. [File formats and checker](docs/portable-packs.md).
+- Modules progress and To hand in help find the next step. Focus room, Review deck and Grade impact are optional switches in Custom, off by default in Full and Lite. Thanks to @garywu000 for the contributions.
+- Full, Lite and Custom keep your saved data when you switch. Lite leaves out scene themes, play and media playback; saved artwork stays in your backups.
 
 [Everything that changed](CHANGELOG.md)
 

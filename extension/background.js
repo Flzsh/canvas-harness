@@ -1,6 +1,8 @@
 /* Canvas Harness — extension-only AI routing. No externally_connectable entry point. */
-importScripts('features.js','site.js','ai-providers.js','ai-inject.js','ai-web.js','page-preferences.js',
- 'custom-art.js','workspace-arrange.js','customization-model.js','gpa-model.js','personal-work.js','storage.js');
+importScripts('features.js','site.js','core.js','market-site.js','ai-providers.js','ai-inject.js','ai-web.js','page-preferences.js',
+ 'custom-art.js','media-reference.js','media-store.js','workspace-arrange.js','customization-model.js','backup-media.js','custom-kits.js','quick-pack.js',
+ 'gpa-model.js','personal-work.js','storage.js','planner-model.js','pet-art.js','agent-clock.js','pony-ask.js',
+ 'pack-common.js','theme-pack.js','pet-pack.js','preset-pack.js','account-writes.js','market-holds.js','packs.js','market.js','market-media.js');
 // Appearance changes from every page are applied here, one at a time (page-preferences.js).
 globalThis.ReservePagePreferences?.serve();
 (function(){
@@ -59,6 +61,19 @@ globalThis.ReservePagePreferences?.serve();
  function canvasSender(sender){return sender?.id===chrome.runtime.id&&sender.frameId===0&&Number.isInteger(sender.tab?.id)&&ReserveSite.supported(sender.url);}
  // The panel frame may be served from the extension's per-session address (use_dynamic_url), so compare the page, not the host.
  function panelSender(sender){try{const u=new URL(sender.url);return sender.id===chrome.runtime.id&&Number.isInteger(sender.tab?.id)&&u.protocol==='chrome-extension:'&&u.pathname==='/ai-panel.html'&&!u.search&&!u.hash;}catch{return false;}}
+ // A Biscuit handoff is only a bounded composer draft in this exact source scope.
+ // It never enters the provider or context-collection request paths.
+ function validDraft(entry,draft){
+  if(!draft||typeof draft!=='object'||!validId(draft.id)||typeof draft.text!=='string'||!draft.text.trim()||draft.text.length>20000||draft.text.includes('\u0000')||typeof draft.scopeKey!=='string'||draft.scopeKey.length>8192||draft.scopeKey.includes('\u0000')||draft.scopeKey!==entry.catalog?.scopeKey)return false;
+  const [origin,accountId]=draft.scopeKey.split('|');return origin===new URL(entry.port.sender.url).origin&&/^\d+$/.test(accountId||'');
+ }
+ function publishDraft(entry,panel){if(entry?.draft&&panels.has(panel)&&sourceFor(panel)===entry&&validDraft(entry,entry.draft))post(panel,{kind:'draft',draft:entry.draft});}
+ function setSourceCatalog(entry,data,tabId){
+  const prior=entry.catalog?.scopeKey,owner=data.scopeKey.split('|').slice(0,2).join('|');
+  if(prior!==data.scopeKey)entry.draft=null;
+  if(prior&&owner!==prior.split('|').slice(0,2).join('|')){for(const panel of panels)if(panel.sender.tab.id===tabId)panel.disconnect();entry.catalog=null;return false;}
+  entry.catalog=data;return true;
+ }
  async function liveSource(port){
   await ready;
   const entry=sourceFor(port);if(!entry?.catalog)throw Error('Open Canvas Harness on a signed-in Canvas page first.');
@@ -92,11 +107,16 @@ globalThis.ReservePagePreferences?.serve();
   if(message.action==='preference'&&typeof message.autoSend!=='boolean')throw Error('Invalid AI preference.');
   if(message.action==='collect'&&(!Array.isArray(message.ids)||message.ids.length>30||message.ids.some(x=>typeof x!=='string'||x.length>1000)))throw Error('Choose at most 30 sources.');
   const id=crypto.randomUUID(),timer=setTimeout(()=>{const pending=requests.get(id);if(pending){requests.delete(id);fail(panel,message.id,'Context gathering took too long. Try fewer sources.');}},120000);
-  requests.set(id,{panel,originalId:message.id,source:entry.port,timer});
+  requests.set(id,{panel,originalId:message.id,source:entry.port,timer,scopeKey:entry.catalog.scopeKey});
   post(entry.port,{kind:'source-request',id,action:message.action,courseId:message.courseId,ids:message.ids,all:message.all===true,includeAssignmentPdfs:message.includeAssignmentPdfs===true,autoSend:message.autoSend===true});
  }
  async function onPanel(panel,message){
   if(!validId(message?.id))return;
+  if(message.kind==='draft-ack'){
+   const entry=sourceFor(panel),draft=entry?.draft;
+   if(!panels.has(panel)||!draft||message.id!==draft.id||message.scopeKey!==draft.scopeKey||!validDraft(entry,draft))return;
+   entry.draft=null;post(entry.port,{kind:'draft-ack',id:draft.id,scopeKey:draft.scopeKey});return;
+  }
   if(message.action==='cancel'){
    if(!validId(message.requestId))return;
    if(handoffs.get(panel)===message.requestId)handoffs.delete(panel);
@@ -148,8 +168,12 @@ globalThis.ReservePagePreferences?.serve();
   return sites;
  }
  let ready=loadSites().catch(()=>[]);
+ // Pack requests share the same registered-school trust list and account checks.
+ globalThis.ReserveMarketReady=()=>ready;
+ importScripts('market-worker.js');
  // Serialize account writes across origins after the current school registration settles.
  globalThis.ReserveStorage?.serveAccountWrites({ready:()=>ready});
+ globalThis.ReserveFeatures.serveWrites({ready:()=>ready});
  // Keep the queue usable after a failure, but return this run's rejection to callers awaiting registration.
  const resync=()=>{const run=ready.then(registerSites);ready=run.catch(()=>[]);return run;};
  const sync=()=>resync().catch(()=>{});
@@ -183,18 +207,22 @@ globalThis.ReservePagePreferences?.serve();
  function connect(port,held){
   if(port.name==='ch-ai-source'&&canvasSender(port.sender)){
    const tabId=port.sender.tab.id,old=channels.get(tabId);if(old)old.port.disconnect();
-   const entry={port,catalog:null};channels.set(tabId,entry);
+   const entry={port,catalog:null,draft:null};channels.set(tabId,entry);
    const onSource=message=>{
+    if(channels.get(tabId)!==entry)return;
     if(message?.kind==='catalog'&&message.data&&typeof message.data.scopeKey==='string'){
-     const owner=message.data.scopeKey.split('|').slice(0,2).join('|'),prior=entry.catalog?.scopeKey.split('|').slice(0,2).join('|');
      // An account switch destroys conversations rather than attaching a new account's sources.
-     if(prior&&owner!==prior){for(const panel of panels)if(panel.sender.tab.id===tabId)panel.disconnect();entry.catalog=null;return;}
-     entry.catalog=message.data;
-     for(const panel of panels)if(panel.sender.tab.id===tabId)post(panel,{kind:'catalog',data:message.data});
+     if(!setSourceCatalog(entry,message.data,tabId))return;
+     for(const panel of panels)if(panel.sender.tab.id===tabId){post(panel,{kind:'catalog',data:message.data});publishDraft(entry,panel);}
+    }else if(message?.kind==='draft'){
+     if(!validDraft(entry,message.draft))return;
+     entry.draft={id:message.draft.id,text:message.draft.text,scopeKey:message.draft.scopeKey};
+     for(const panel of panels)if(panel.sender.tab.id===tabId)publishDraft(entry,panel);
     }else if(validId(message?.id)){
      const pending=requests.get(message.id);if(!pending||pending.source!==port)return;
      clearTimeout(pending.timer);requests.delete(message.id);
-     if(message.ok&&message.result?.sources&&message.result?.scopeKey)entry.catalog=message.result;
+     if(message.ok&&message.result?.scopeKey&&pending.scopeKey!==entry.catalog?.scopeKey&&message.result.scopeKey!==entry.catalog?.scopeKey){fail(pending.panel,pending.originalId,'The Canvas view changed. Review the new sources.');return;}
+     if(message.ok&&message.result?.sources&&typeof message.result?.scopeKey==='string'&&!setSourceCatalog(entry,message.result,tabId))return;
      post(pending.panel,{...message,id:pending.originalId});
     }
    };
@@ -207,7 +235,7 @@ globalThis.ReservePagePreferences?.serve();
   }else if(port.name==='ch-ai-panel'&&panelSender(port.sender)){
    panels.add(port);port.onMessage.addListener(message=>onPanel(port,message));
    held.forEach(message=>onPanel(port,message));
-   const data=sourceFor(port)?.catalog;if(data)post(port,{kind:'catalog',data});
+   const entry=sourceFor(port),data=entry?.catalog;if(data){post(port,{kind:'catalog',data});publishDraft(entry,port);}
    port.onDisconnect.addListener(()=>{
     panels.delete(port);handoffs.delete(port);
     for(const [id,p] of requests)if(p.panel===port){clearTimeout(p.timer);requests.delete(id);}
@@ -215,6 +243,16 @@ globalThis.ReservePagePreferences?.serve();
   }else port.disconnect();
  }
  chrome.runtime.onMessage.addListener((message,sender,reply)=>{
+  if(message?.target==='ch-play'){
+   if(message.op!=='load'){reply({ok:false,error:'Unsupported play operation.'});return;}
+   (async()=>{
+    await ready;if(!canvasSender(sender))throw Error('Play tools require a trusted Canvas top frame.');
+    await requireFeature('play',sender);
+    const target=featureTarget(sender);
+    await chrome.scripting.executeScript({target,world:'ISOLATED',files:['submit-scenes.js','play-art.js','play-space.js','play-physics.js','play-tools.js']});
+    await chrome.scripting.insertCSS({target,files:['play-tools.css']});
+   })().then(()=>reply({ok:true}),error=>reply({ok:false,error:String(error?.message||error||'The play tools could not load.')}));return true;
+  }
   if(message?.target==='ch-features'){
    if(message.op!=='load'){reply({ok:false,error:'Unsupported feature operation.'});return;}
    loadFeatures(sender).then(reply,error=>reply({ok:false,error:String(error?.message||error)}));return true;

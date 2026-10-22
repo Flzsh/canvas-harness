@@ -83,3 +83,23 @@ test('PDF reader context passes the existing account guard and an account change
  h.fake.fetch=async()=>({ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:'8'})});
  h.panel.onMessage.emit({id:'pdf-account-switch',...request});await tick();await tick();assert.equal(h.web.length,1);assert.match(h.panel.sent.at(-1).error,/account changed/);handoff.destroy();h.panel.disconnect();
 });
+
+test('a pending draft reaches a late panel after its catalog and only a matching acknowledgement clears it',async()=>{
+ const h=harness();await tick();h.panel.disconnect();h.fake.fetch=async()=>assert.fail('Draft handoff must not read Canvas or call a provider');const draft={id:'biscuit-draft',scopeKey:h.origin+'|7|10|1',text:'Explain π exactly\n  original spacing'};
+ h.source.onMessage.emit({kind:'draft',draft});const later=port('ch-ai-panel',h.panel.sender);h.runtime.onConnect.emit(later);await tick();assert.deepEqual(later.sent.map(message=>message.kind),['catalog','draft']);assert.deepEqual(JSON.parse(JSON.stringify(later.sent[1].draft)),draft);
+ later.onMessage.emit({kind:'draft-ack',id:draft.id,scopeKey:'wrong'});assert.equal(h.source.sent.some(message=>message.kind==='draft-ack'),false);
+ later.onMessage.emit({kind:'draft-ack',id:draft.id,scopeKey:draft.scopeKey});assert.equal(h.source.sent.at(-1).kind,'draft-ack');later.disconnect();const after=port('ch-ai-panel',h.panel.sender);h.runtime.onConnect.emit(after);await tick();assert.deepEqual(after.sent.map(message=>message.kind),['catalog']);assert.equal(h.web.length,0);after.disconnect();h.source.disconnect();
+});
+
+test('draft protocol rejects account, scope, origin, size and stale source mismatches',async()=>{
+ const h=harness();await tick();const draft={id:'valid-draft',scopeKey:h.origin+'|7|10|1',text:'Question'},before=h.panel.sent.length;
+ for(const bad of [{...draft,scopeKey:h.origin+'|8|10|1'},{...draft,scopeKey:'https://other.instructure.com|7|10|1'},{...draft,scopeKey:h.origin+'|7|20|2'},{...draft,text:'x'.repeat(20001)},{...draft,text:'bad\u0000text'},{...draft,id:'not a valid id'}])h.source.onMessage.emit({kind:'draft',draft:bad});assert.equal(h.panel.sent.length,before);
+ h.source.onMessage.emit({kind:'draft',draft});assert.equal(h.panel.sent.at(-1).kind,'draft');const newer={...draft,id:'newer-draft',text:'Newer question'};h.source.onMessage.emit({kind:'draft',draft:newer});h.panel.onMessage.emit({kind:'draft-ack',id:draft.id,scopeKey:draft.scopeKey});assert.equal(h.source.sent.some(message=>message.kind==='draft-ack'),false);
+ h.source.onMessage.emit({kind:'catalog',data:{scopeKey:h.origin+'|7|20|2',sources:[],courses:[]}});h.panel.disconnect();const next=port('ch-ai-panel',h.panel.sender);h.runtime.onConnect.emit(next);await tick();assert.deepEqual(next.sent.map(message=>message.kind),['catalog']);
+ const replacement=port('ch-ai-source',h.source.sender);h.runtime.onConnect.emit(replacement);await tick();replacement.onMessage.emit({kind:'catalog',data:{scopeKey:draft.scopeKey,sources:[],courses:[]}});h.source.onMessage.emit({kind:'draft',draft});const last=port('ch-ai-panel',h.panel.sender);h.runtime.onConnect.emit(last);await tick();assert.deepEqual(last.sent.map(message=>message.kind),['catalog']);assert.equal(h.web.length,0);last.disconnect();replacement.disconnect();
+});
+
+test('changing account drops a pending draft and disconnects the old panels',async()=>{
+ const h=harness();await tick();const draft={id:'old-account',scopeKey:h.origin+'|7|10|1',text:'Old question'};h.source.onMessage.emit({kind:'draft',draft});h.source.onMessage.emit({kind:'catalog',data:{scopeKey:h.origin+'|8|all|',sources:[],courses:[]}});assert.equal(h.panel.disconnected,true);
+ const next=port('ch-ai-panel',h.panel.sender);h.runtime.onConnect.emit(next);await tick();assert.equal(next.sent.some(message=>message.kind==='draft'),false);assert.equal(h.web.length,0);next.disconnect();h.source.disconnect();
+});

@@ -1,5 +1,7 @@
 # Get started with Canvas Harness
 
+Canvas Harness 3.4.0: use Features in the popup for Full, Lite or Custom. The optional Market asks for its own site access on first use; Make it yours → Add from a file imports artwork, kits, themes, pets and presets. Modules progress and To hand in are included; Focus room, Review deck and Grade impact start off. Your school's own Canvas address is still added through the popup.
+
 Use this guide after [installing in Chrome or Edge](../INSTALL.md). Canvas Harness uses your signed-in school Canvas account, so there is no separate Canvas Harness login or Canvas API token to enter.
 
 ## Open your workspace and check the connection

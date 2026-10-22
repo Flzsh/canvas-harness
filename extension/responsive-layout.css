@@ -542,3 +542,15 @@
 }
 .rd .rd-course-heading:has(> .rd-title-embedded) > .rd-heading-art::before,
 .rd .rd-course-banner:has(> .rd-title-embedded) > .rd-banner-art::before { content: none; }
+
+/* Dock reserves space inside the work area's scroll; the floating shelf stays reachable. */
+.rd[data-course-navigation=dock] {min-height:0;}
+.rd[data-course-navigation=dock] .rd-shell {height:max(0px,calc(100dvh - var(--rd-rail-top,150px) - var(--rd-status-h,56px)));min-height:0;flex:none;align-items:stretch;grid-template-rows:minmax(0,1fr);}
+.rd[data-course-navigation=dock] .rd-shell > .rd-workspace {height:100%;min-height:0;min-width:0;overflow-x:clip;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-gutter:stable;}
+.rd[data-course-navigation=dock] .rd-shell > .rd-workspace > * {flex-shrink:0;}
+.rd[data-course-navigation=dock][data-courses=true] {padding-bottom:0;}
+.rd[data-course-navigation=dock][data-courses=true] .rd-shell > .rd-workspace {padding-bottom:calc(112px + env(safe-area-inset-bottom));scroll-padding-bottom:calc(112px + env(safe-area-inset-bottom));}
+.rd[data-course-navigation=dock][data-workspace=work] .rd-main.rd-desk {grid-template-rows:none!important;grid-auto-rows:auto;}
+.rd[data-course-navigation=dock][data-workspace=work] .rd-main.rd-desk > [data-arrange-key] {height:auto;max-height:none;overflow:visible;}
+.rd[data-course-navigation=dock][data-workspace=work] .rd-information > .rd-reader {position:static;height:auto;max-height:none;}
+.rd[data-course-navigation=dock][data-workspace=work] .rd-information > .rd-reader .rd-reader-content {max-height:none;overflow:visible;}

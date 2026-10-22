@@ -18,12 +18,15 @@
   const errorText = error => string(error?.message) || string(error) || 'The request could not be completed.';
   const compose = (prompt, context) => [prompt.trim(), context].filter(Boolean).join('\n\n---\n\n');
   const shouldSendKey = event => event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== 229 && !event.repeat;
+  const draftMessage = value => value && typeof value === 'object' && typeof value.id === 'string' && /^[\w-]{1,100}$/.test(value.id) && typeof value.scopeKey === 'string' && value.scopeKey.length > 0 && value.scopeKey.length <= 8192 && !value.scopeKey.includes('\u0000') && typeof value.text === 'string' && value.text.trim() && value.text.length <= PROMPT_LIMIT && !value.text.includes('\u0000');
 
   // Only the extension runtime port carries production prompts. The alternate
   // transport is restricted to the same-origin, direct parent on local previews.
   function createTransport(env, callbacks = {}) {
     const pending = new Map();
+    const appliedDrafts = new Set();
     let port = null, portListeners = null, closed = false, available = false, failure = '', reconnectTimer = null, reconnectDelay = 250;
+    let catalogScope = '', queuedDraft = null, applyingDraft = false;
     const production = Boolean(env.chrome?.runtime?.id);
     let preview = false;
     try { const url = new URL(env.location.origin); preview = !production && url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname); } catch {}
@@ -45,16 +48,48 @@
       item.timer = env.setTimeout(() => { cancel(id); settle(id, new Error('The request timed out. Review your draft before trying again.')); }, item.timeout);
       item.timer?.unref?.();
     }
+    function acknowledge(draft) {
+      if (closed || !available) return;
+      const message = {kind:'draft-ack', id:draft.id, scopeKey:draft.scopeKey};
+      try { if (production) port?.postMessage(message); else if (preview) env.parent.postMessage({type:'ch-ai-request',request:message},env.location.origin); } catch {}
+    }
+    function flushDraft() {
+      if (closed || applyingDraft || !queuedDraft || queuedDraft.scopeKey !== catalogScope) return;
+      const draft = queuedDraft, key = JSON.stringify([draft.scopeKey,draft.id]);
+      if (appliedDrafts.has(key)) { queuedDraft = null; acknowledge(draft); return; }
+      if (typeof callbacks.draft !== 'function') return;
+      applyingDraft = true;
+      try {
+        if (callbacks.draft(draft) !== true) return;
+        appliedDrafts.add(key); if (appliedDrafts.size > 256) appliedDrafts.delete(appliedDrafts.values().next().value);
+        if (queuedDraft === draft) queuedDraft = null;
+        acknowledge(draft);
+      } catch {} finally { applyingDraft = false; }
+    }
+    function updateScope(data) {
+      if (typeof data?.scopeKey !== 'string' || !data.scopeKey || data.scopeKey.length > 8192) return;
+      catalogScope = data.scopeKey;
+      if (queuedDraft && queuedDraft.scopeKey !== catalogScope) queuedDraft = null;
+    }
     function receive(message) {
       if (closed || !message || typeof message !== 'object') return;
-      if (message.kind === 'catalog') { callbacks.catalog?.(message.data); return; }
+      if (message.kind === 'catalog') { updateScope(message.data); callbacks.catalog?.(message.data); flushDraft(); return; }
+      if (message.kind === 'draft') {
+        if (!draftMessage(message.draft) || catalogScope && message.draft.scopeKey !== catalogScope) return;
+        queuedDraft = {id:message.draft.id,text:message.draft.text,scopeKey:message.draft.scopeKey}; flushDraft(); return;
+      }
       const item = pending.get(message.id); if (!item) return;
       if (message.kind === 'delta') { if (typeof message.text === 'string') { arm(message.id, item); item.onDelta?.(message.text); } return; }
-      if (message.ok === true) settle(message.id, null, message.result);
+      if (message.ok === true) {
+        if (['catalog','load-course'].includes(item.action) && (!catalogScope || message.result?.scopeKey === catalogScope)) updateScope(message.result);
+        settle(message.id, null, message.result);
+        // The controller applies the requested catalog in its promise continuation first.
+        if (queuedDraft) Promise.resolve().then(flushDraft);
+      }
       else if (message.ok === false) settle(message.id, new Error(string(message.error) || 'The background request failed.'));
     }
     function disconnected() {
-      if (closed) return; available = false; port = null;
+      if (closed) return; available = false; port = null; catalogScope = ''; queuedDraft = null;
       const reason = 'Reconnecting to Canvas. Your question is preserved; interrupted messages will not be sent again.';
       for (const id of [...pending.keys()]) settle(id, new Error(reason));
       callbacks.disconnect?.(reason);
@@ -89,7 +124,7 @@
       else failure = 'Open this panel from the Canvas Harness extension. Its connection is unavailable here.';
     } catch (error) { failure = errorText(error); }
     return {
-      get available() { return available && !closed; }, preview,
+      get available() { return available && !closed; }, preview, flushDraft,
       request(action, data = {}, options = {}) {
         const id = options.id || env.crypto.randomUUID();
         const promise = new Promise((resolve, reject) => {
@@ -97,7 +132,7 @@
           if (preview && ['native', 'web'].includes(action)) { reject(new Error('Artificial preview cannot sign in, contact AI, or inject into a provider website.')); return; }
           if (pending.has(id)) { reject(new Error('Duplicate request identifier.')); return; }
           const timeout = options.timeout || (action === 'web' && data.op === 'inject' ? 60000 : action === 'collect' || action === 'pdf' || action === 'load-course' ? 60000 : 15000);
-          const item = {resolve, reject, onDelta: options.onDelta, timeout}; pending.set(id, item); arm(id, item);
+          const item = {resolve, reject, onDelta: options.onDelta, timeout, action}; pending.set(id, item); arm(id, item);
           const request = {...data, id, action};
           try {
             if (production) port.postMessage(request);
@@ -110,7 +145,7 @@
       dispose() {
         if (closed) return;
         for (const id of [...pending.keys()]) settle(id, new Error('The panel closed.'));
-        closed = true; available = false;
+        closed = true; available = false; queuedDraft = null; appliedDrafts.clear(); catalogScope = '';
         if (reconnectTimer !== null) env.clearTimeout(reconnectTimer);
         if (production && port) { port.onMessage.removeListener?.(portListeners?.onMessage); port.onDisconnect.removeListener?.(portListeners?.onDisconnect); try { port.disconnect(); } catch {} }
         if (preview) env.removeEventListener('message', onWindowMessage);
@@ -302,6 +337,13 @@
       setAll(checked) { if (state.busy) return; state.all = checked === true && Boolean(state.catalog?.active); invalidate(); changed(); },
       setAssignmentPdfs(checked) { if (state.busy) return; state.includeAssignmentPdfs = checked === true; invalidate(); changed(); },
       setDraft(text) { state.draft = string(text); state.fallback = ''; state.manualCopy = false; changed('composer'); },
+      receiveDraft(draft) {
+        if (dead || !draftMessage(draft) || draft.scopeKey !== state.catalog?.scopeKey) return false;
+        const text = state.draft ? state.draft+'\n\n'+draft.text : draft.text;
+        if (text.length > PROMPT_LIMIT) { state.notice = 'Make room in your question to add Biscuit’s line. Your unsent text is preserved.'; changed(); return false; }
+        state.notice = 'Biscuit’s question is ready. Review it before clicking Send.';
+        controller.setDraft(text); changed(); return true;
+      },
       setAutoSend(value) { if (!state.busy) {
         state.autoSend = value === true; preferenceLoaded = true; changed();
         if (state.online) void transport.request('preference',{autoSend:state.autoSend}).catch(()=>{state.notice='This choice applies to the open panel, but could not be saved.';changed();});
@@ -342,7 +384,7 @@
     const rendered=new Map();
     // Store rendered primitive fields so in-place source edits invalidate the right list.
     const renderChanged=(key,inputs,draw)=>{const previous=rendered.get(key);if(previous&&previous.length===inputs.length&&inputs.every((value,i)=>Object.is(value,previous[i])))return;draw();rendered.set(key,inputs);};
-    const transport=createTransport(env,{catalog:data=>controller?.setCatalog(data),disconnect:reason=>controller?.disconnected(reason),connect:()=>{ if(controller)void controller.initialize(); }});
+    const transport=createTransport(env,{catalog:data=>controller?.setCatalog(data),draft:data=>controller?.receiveDraft(data)===true,disconnect:reason=>controller?.disconnected(reason),connect:()=>{ if(controller)void controller.initialize(); }});
     function renderComposer(state){
       const busy=Boolean(state.busy);
       byId('fallback').hidden=!state.fallback;if(byId('fallback-text').value!==state.fallback)byId('fallback-text').value=state.fallback;
@@ -403,11 +445,11 @@
     for(const id of ['copy','copy-fallback'])click(id,()=>controller.copy());
     for(const id of ['open-website','open-fallback'])click(id,()=>controller.openWebsite());
     click('close',()=>controller.close());
-    byId('prompt').addEventListener('input',e=>controller.setDraft(e.target.value));
+    byId('prompt').addEventListener('input',e=>{controller.setDraft(e.target.value);transport.flushDraft();});
     byId('composer').addEventListener('submit',e=>{e.preventDefault();if(!byId('send').disabled)void controller.inject();});
     byId('prompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();if(shouldSendKey(e)&&!byId('send').disabled)void controller.inject();}});
     env.addEventListener('pagehide',()=>{controller.dispose();transport.dispose();},{once:true});
-    render(controller.state);void controller.initialize();return controller;
+    render(controller.state);void controller.initialize();transport.flushDraft();return controller;
   }
   return {createTransport,createController,mount,shouldSendKey,CONTEXT_LIMIT,PROMPT_LIMIT,PDF_LIMIT};
 });

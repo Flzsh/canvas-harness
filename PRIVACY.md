@@ -1,6 +1,6 @@
 # Canvas Harness privacy
 
-Applies to Canvas Harness 3.2.0. Last updated October 21, 2026.
+Applies to Canvas Harness 3.4.0. Last updated October 22, 2026.
 
 Canvas Harness is a browser extension maintained by Flzsh. It displays information from the Canvas account already signed in on your school's website. It has no developer-operated account service, analytics collector or tracking endpoint in the extension code for this release.
 
@@ -22,6 +22,22 @@ Full, Lite and Custom choices are stored once for this extension in this browser
 
 The Canvas site's local storage holds a small feature-selection hint for early drawings. It contains preset and feature IDs, with no account or coursework data. The worker keeps the current document's selection in extension session storage across worker restarts and removes its records when the tab closes. An origin that was closed when preferences changed can briefly use its previous hint until the extension confirms the new selection.
 
+## Pictures and videos
+
+Your own pictures and short videos used as banners, card art or a dimmed page background stay in your browser, separated by Canvas site and account. Upload, drag and drop, and paste read only the files or clipboard items you choose. Pictures are scaled to WebP and large videos are shrunk on your device; SVGs pass the existing safety checks. Nothing is uploaded to Canvas, the developer, the Market or an AI provider. Framing, loops, stills and media bytes can be included in kits and personal backups that you choose to export. Lite keeps saved media and backups without loading media decoding or playback modules.
+
+## Market and files you import
+
+The Market is an optional static website at flzsh.github.io. Opening it from the popup asks the browser for access to that site; it is not a required permission. The extension registers a small packaged bridge only on the Market's own path and removes it when permission is withdrawn. The Market can report which of its public pack IDs are installed, so it can show an installed state. It does not receive your Canvas origin, account ID, courses, assignments, grades, notes, routines, backups or other personal records.
+
+Choosing an install downloads that pack's data and inline assets. Canvas Harness checks the declared file size and SHA-256 hash before parsing it, and checks embedded asset hashes and formats too. Supported packs contain course artwork, theme or pet drawings, local layouts, Planner templates, routines and setting choices. A feature pack can only switch on code already included in the extension. Downloaded JavaScript is never run; unknown pack kinds are skipped. SVGs are checked and shown in isolated images. Pack assets have no external URLs to fetch.
+
+Imported packs, receipts and media stay in extension storage and IndexedDB, separated by the student's own Canvas site and account where applicable. Installing or removing account data verifies that school's current signed-in account with a read-only Canvas profile request. Nothing personal is sent to the Market or the developer. As with visiting any website, the Market host receives the normal request for the page and selected download. No telemetry or coursework upload is added.
+
+Add from a file reads the file you choose locally. Personal backups include checked theme, pet and preset documents, saved kits and their media bytes, and account-specific Market receipts. Restore checks formats and hashes before saving. The browser's Full/Lite/Custom choice stays on that device. Remove and Undo use the saved install receipt to restore the settings and artwork that the pack replaced. Exported backups can contain these assets as well as your personal data; keep them private.
+
+Biscuit's language parser, focus timers, reminders, skills, routines and quiet time run locally. An unrecognized Ask line may open the existing optional AI handoff when that feature is enabled; you still review the context there before sending it. Scene themes and play tools use packaged assets. Reduced motion and hidden-page handling pause animated scenes.
+
 ## PDF reader
 
 Clicking an identified PDF link or preview on an Instructure Canvas assignment or submission page opens the split reader. It requests that chosen file through the signed-in Canvas session and reads its bytes, document name and page text locally for display, selection and search. The reader accepts files up to 32 MiB. Custom Canvas domains retain Canvas's original viewer, and a blocked or unsupported download falls back to that viewer. The reader does not upload the original PDF to an AI provider.
@@ -42,7 +58,7 @@ Separate from the split reader, PDF attachments selected in the AI pane are proc
 
 ## Browser permissions
 
-Canvas Harness uses `storage` and `unlimitedStorage` for local data (so caches, artwork and notes are not cut off by the browser's default 10 MB extension limit), `offscreen` for local PDF text extraction, required `scripting` for the feature loader, and access to HTTPS `*.instructure.com` Canvas pages. The loader injects only extension-packaged files selected by Full, Lite or Custom, in the extension's isolated world; it does not download executable code. It does not request Canvas passwords or account API keys.
+Canvas Harness uses `storage` and `unlimitedStorage` for local data (so caches, artwork and notes are not cut off by the browser's default 10 MB extension limit), `offscreen` for local PDF text extraction and bounded pack-media validation, required `scripting` for the feature loader, and access to HTTPS `*.instructure.com` Canvas pages. The loader injects only extension-packaged files selected by Full, Lite or Custom, in the extension's isolated world; it does not download executable code. It does not request Canvas passwords or account API keys.
 
 Some schools run Canvas on their own address, such as `canvas.your-school.edu`. If you enter one in the popup, the browser asks you to allow Canvas Harness on **that exact site**, using the already-required `scripting` permission to run there. Only then does it run on that site, and only on pages that are Canvas. The manifest lists `https://*/*` as an optional host permission so that any school's address can be asked for; Canvas Harness requests one origin at a time and never asks for access to all websites. Removing the site in the popup or in the browser's extension site settings stops it running there.
 

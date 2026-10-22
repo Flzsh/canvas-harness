@@ -56,14 +56,14 @@
   return items.map(item=>{
    const mine=local[item.id]||{},steps=Array.isArray(mine.checklist)?mine.checklist:[];
    return {id:String(item.id),title:item.name,courseId:String(item.courseId),course:item.courseName||'',color:item.courseColor||item.color||'',personal:!!item.personal,url:item.url||'',
-    dueAt:item.dueAt||null,dueDay:item.dueAt&&dayOf?dayOf(item.dueAt):'',planned:DAY.test(mine.plannedDate||'')?mine.plannedDate:'',estimate:Number.isFinite(mine.estimate)?mine.estimate:0,
+    dueAt:item.dueAt||null,dueDay:item.dueAt&&dayOf?dayOf(item.dueAt):'',planned:DAY.test(mine.plannedDate||'')?mine.plannedDate:'',estimate:Number.isFinite(mine.estimate)?mine.estimate:0,...(DAY.test(mine.plannedDate||'')&&typeof mine.plannedTime==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(mine.plannedTime)?{plannedTime:mine.plannedTime}:{}),
     done:!!isDone(item,mine),steps:steps.length,stepsDone:steps.filter(s=>s.done).length,pinned:mine.pinned===true,missing:!!item.missing,points:item.points??null};
   });
  }
  const byDue=(a,b)=>(a.dueAt?Date.parse(a.dueAt):Infinity)-(b.dueAt?Date.parse(b.dueAt):Infinity)||a.title.localeCompare(b.title);
  // A day of the plan: what the student put there, then what is due that day and was not planned for another day.
  function day(list,key){
-  const planned=list.filter(e=>e.planned===key).sort((a,b)=>a.done-b.done||byDue(a,b));
+  const planned=list.filter(e=>e.planned===key).sort((a,b)=>a.done-b.done||(a.plannedTime||'99:99').localeCompare(b.plannedTime||'99:99')||byDue(a,b));
   const due=list.filter(e=>!e.planned&&e.dueDay===key).sort((a,b)=>a.done-b.done||byDue(a,b));
   const all=[...planned,...due],open=all.filter(e=>!e.done);
   return {key,planned,due,all,open:open.length,done:all.length-open.length,minutes:open.reduce((n,e)=>n+e.estimate,0)};
@@ -82,10 +82,11 @@
  const estimate=(id,n)=>data=>{record(data.tasks,id).estimate=Math.max(0,Math.min(1440,Math.round(n)||0));};
  const carryOver=(today,ids)=>data=>{for(const id of ids){const r=data.tasks[id];if(r&&r.plannedDate&&r.plannedDate<today&&r.progress!=='done'&&!r.checkedOff)r.plannedDate=today;}};
  function addTask(parsed,{courseId='personal',id,nowISO}){
+  if(parsed.at!==undefined&&(typeof parsed.at!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(parsed.at)))throw Error('Invalid planned time.');
   return data=>{
    if(!parsed.name)return;
    data.customTasks.push({id,name:parsed.name,courseId,dueAt:null,createdAt:nowISO});
-   const r=record(data.tasks,id);r.plannedDate=parsed.day||'';r.estimate=parsed.estimate||0;
+   const r=record(data.tasks,id);r.plannedDate=parsed.day||'';r.estimate=parsed.estimate||0;if(parsed.at!==undefined)r.plannedTime=parsed.at;
   };
  }
  const api={addDays,weekdayOf,mondayOf,week,minutes,parseQuick,matchCourse,entries,day,board,plan,estimate,carryOver,addTask};

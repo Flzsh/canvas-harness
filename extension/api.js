@@ -1,4 +1,5 @@
 /*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. Third-party components retain their respective attribution. */
+// Assignment-group loading adapted from Gary Wu's pull requests.
 if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./site.js');
 (function (root) {
   'use strict';
@@ -22,6 +23,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       /^\/api\/v1\/courses\/?$/,
       /^\/api\/v1\/courses\/\d+\/?$/,
       /^\/api\/v1\/courses\/\d+\/assignments(?:\/\d+)?\/?$/,
+      /^\/api\/v1\/courses\/\d+\/assignment_groups\/?$/,
       /^\/api\/v1\/courses\/\d+\/modules\/?$/,
       /^\/api\/v1\/courses\/\d+\/modules\/\d+\/items\/?$/,
       /^\/api\/v1\/courses\/\d+\/pages\/?$/,
@@ -214,6 +216,21 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       await verifyExpectedUser(accountId,signal);
       return data;
     }
+    async function loadGradeImpact(value,{user,signal}={}) {
+      const id=courseId(value),accountId=expectedUser(user);
+      const initialUser=await verifyExpectedUser(accountId,signal);
+      const {data:course}=await request(`/api/v1/courses/${id}?include[]=total_scores&include[]=current_grading_period_scores`,{signal});
+      if(!course||typeof course!=='object'||Array.isArray(course)||String(course.id)!==id||course.access_restricted_by_date||course.workflow_state==='deleted')throw new CanvasError('Canvas returned incomplete course grading information.','data');
+      const enrollments=Array.isArray(course.enrollments)?course.enrollments:[];
+      const periods=course.multiple_grading_periods_enabled!==false||course.current_grading_period_id!=null||course.grading_period_set_id!=null||course.grading_periods_enabled===true||course.has_grading_periods===true||course.grading_periods_weighted===true||Array.isArray(course.grading_periods)&&course.grading_periods.length>0||enrollments.some(row=>row?.current_grading_period_id!=null||row?.grading_period_id!=null||row?.multiple_grading_periods_enabled===true);
+      let groups=[],assignments=[];
+      if(course.hide_final_grades===false&&!course.restrict_quantitative_data&&!periods&&typeof course.apply_assignment_group_weights==='boolean'){
+        groups=await list(`/api/v1/courses/${id}/assignment_groups?per_page=100`,{signal});
+        assignments=await list(`/api/v1/courses/${id}/assignments?include[]=submission&per_page=100`,{signal});
+      }
+      await verifyExpectedUser(accountId,signal,initialUser.id);
+      return {origin:base.origin,accountId,courseId:id,course,groups,assignments,fetchedAt:new Date().toISOString()};
+    }
     async function readFile(courseValue,fileValue,{user,signal}={}) {
       const id=courseId(courseValue),fileId=courseId(fileValue),accountId=expectedUser(user);
       await verifyExpectedUser(accountId,signal);
@@ -311,7 +328,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(String(finalUser.id)!==String(user.id)) throw new CanvasError('Your Canvas account changed during refresh. Reopen Canvas Harness.', 'auth');
       return {origin:base.origin,user,courses,assignments,errors,partial:errors.length>0,fetchedAt:new Date().toISOString()};
     }
-    return {origin:base.origin,list,profile,loadSnapshot,loadCourseResources,readCoursePage,readAssignment,readFile,loadCourseUpdates,listInbox,readConversation};
+    return {origin:base.origin,list,profile,loadSnapshot,loadCourseResources,readCoursePage,readAssignment,loadGradeImpact,readFile,loadCourseUpdates,listInbox,readConversation};
   }
   const api = { CanvasError, createClient };
   root.ReserveAPI = api;

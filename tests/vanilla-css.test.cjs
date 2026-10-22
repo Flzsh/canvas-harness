@@ -4,7 +4,7 @@ const read=file=>fs.readFileSync(path.join(__dirname,'..','extension',file),'utf
 
 // Static isolation checks, not a substitute for browser rendering or the route/DOM tests.
 // These sheets are linked inside extension shadow roots, never into Canvas's document.
-const shadowSheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css'];
+const shadowSheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','themes/starry/theme.css','themes/sea/theme.css','themes/stars/theme.css','themes/blueprint/theme.css'];
 const globalSheets=['startup.css','startup-art.css','native-page.css','canvas-nav.css','course-nav.css','modules-page.css'];
 const grouping=/^@(media|supports|container|layer|scope|starting-style)\b/i;
 

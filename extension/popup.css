@@ -1,4 +1,4 @@
-﻿/*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. */
+/*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. */
 @font-face{font-family:Literata;src:url("fonts/literata-latin.woff2") format("woff2");font-weight:200 900;font-display:swap}
 *{box-sizing:border-box}body{width:330px;margin:0;padding:18px 18px 14px;background:#FAF9F5;color:#141413;font:13px/1.45 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif}button,input,select{font:inherit}button{cursor:pointer;color:inherit}button:disabled,input:disabled,select:disabled{cursor:wait;opacity:.55}[hidden]{display:none!important}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #A9522F;outline-offset:4px}button{border:0}button,a,input,select{-webkit-tap-highlight-color:transparent}header{display:flex;align-items:center;gap:8px}header img{flex:none}h1{margin:0;font:560 16px/1.15 Literata,Georgia,serif;letter-spacing:-.025em}.brand{flex:1}.version{font-size:10px;color:#73726C;margin-top:3px}.switch{display:flex;align-items:center;gap:6px;position:relative;font-size:11px;white-space:nowrap}.switch input{position:absolute;right:0;width:32px;height:20px;margin:0;opacity:0;cursor:pointer}.switch-track{width:32px;height:20px;border-radius:12px;background:#D3D0C6;box-shadow:inset 0 0 0 1.2px #A8A59C;pointer-events:none;transition:background .16s}.switch-track:after{content:"";position:absolute;right:15px;top:3px;width:14px;height:14px;border-radius:50%;background:#FFFDF6;transition:transform .16s}.switch input:checked+.switch-track{background:#A9522F;box-shadow:inset 0 0 0 1.2px #7E3B20}.switch input:checked+.switch-track:after{transform:translateX(12px)}.switch input:focus-visible+.switch-track{outline:2px solid #A9522F;outline-offset:4px}
 .drawn{position:relative}.drawn:after{content:"";position:absolute;inset:-3px;border:14px solid transparent;pointer-events:none;background:var(--line,#2B2A27);-webkit-mask-box-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' d='M17 6.2C30 5.4 46 6.8 60 5.8C66 5.4 71 6.2 74.6 6C81.4 5.8 84.6 9.6 84.4 16.4C84.8 30 84 46 84.6 60C84.9 66 84.4 71 84.6 74C84.6 80.8 80.6 84.6 74 84.4C60 84.9 44 83.9 30 84.6C24 84.9 19 84.4 16 84.6C9.4 84.6 5.6 80.6 5.8 74C5.3 60 6.3 44 5.5 30C5.3 24 5.9 19 5.6 16.4C5.8 9.8 10 6.4 17 6.2Z'/%3E%3C/svg%3E") 28 28 28 28 stretch}
@@ -32,3 +32,16 @@ html[data-theme=dark] .range-control input::-webkit-slider-runnable-track{backgr
 .feature-switch{min-height:44px;white-space:normal;cursor:pointer}.feature-switch>span:first-child{min-width:0}
 .feature-switch input{right:14px;top:50%;transform:translateY(-50%)}.feature-switch .switch-track{position:relative;flex:0 0 32px}
 #features-error{margin:8px 0;font-size:11px;color:#8C4226}html[data-theme=dark] #features-error{color:#E2A785}
+/* Installed Market packs use the public popup's existing typography and controls. */
+.installed-addons{list-style:none;padding:0;margin:16px 0}
+.installed-addons li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line,#d9d6ca)}
+.installed-addons li>span{display:grid;gap:3px;min-width:0;overflow-wrap:anywhere}
+.installed-addons small{font-size:12px;color:var(--muted,#5e5d59)}
+.installed-addons button{flex:none;min-height:32px}
+#addons-error{color:var(--danger,#a33424);font-size:13px;overflow-wrap:anywhere}
+.ap-market-open{min-height:38px;margin-top:8px}
+.ap-market-open{padding:8px 11px;border-radius:7px;background:#f2efe6}
+html[data-theme="dark"] .installed-addons li{border-color:#45443f}
+html[data-theme="dark"] .installed-addons small{color:#aaa79e}
+html[data-theme="dark"] #addons-error{color:#f1aa98}
+html[data-theme="dark"] .ap-market-open{background:#30302c}

@@ -1,0 +1,52 @@
+'use strict';
+const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm');
+function fixture({ reduced = false, enabled = true, text = 'Play with words', width = 800, height = 600, mountOptions = {} } = {}) {
+  let now = 0, sequence = 0, reads = 0; const frames = new Map(), timers = new Map(), listeners = new Map(), animations = [];
+  const style = () => ({ setProperty(key, value) { this[key] = value; } });
+  const rect = (left, top, w, h) => ({ left, top, width: w, height: h, right: left + w, bottom: top + h });
+  class Text { constructor(value) { this.nodeValue = this.textContent = value; this.children = []; this.nodeType = 3; } get parentElement() { return this.parentNode; } replaceWith(node) { this.parentNode.replaceChild(node, this); } }
+  class Element {
+    constructor(tag = 'div') { this.tagName = tag.toUpperCase(); this.children = []; this.style = style(); this.dataset = {}; this.events = new Map(); this.className = ''; this.id = ''; this.attrs = {}; this.rect = rect(0, 0, 0, 0); this._text = ''; const classes = () => new Set(this.className.split(/\s+/).filter(Boolean)); this.classList = { add: (...names) => { this.className = [...new Set([...classes(), ...names])].join(' '); }, remove: (...names) => { this.className = [...classes()].filter(n => !names.includes(n)).join(' '); }, contains: n => classes().has(n), toggle: (n, value) => { const on = value ?? !classes().has(n); if (on) this.classList.add(n); else this.classList.remove(n); return on; } }; }
+    get isConnected() { return this === document.documentElement || !!this.parentNode?.isConnected; }
+    get parentElement() { return this.parentNode; }
+    get textContent() { return this.children.length ? this.children.map(n => n.textContent).join('') : this._text; }
+    set textContent(value) { this._text = value; this.children = []; }
+    append(...nodes) { for (let n of nodes) { if (typeof n === 'string') n = new Text(n); if (n.tagName === 'FRAGMENT') { this.append(...[...n.children]); continue; } n.remove?.(); n.parentNode = this; this.children.push(n); } }
+    prepend(node) { this.append(node); this.children.unshift(this.children.pop()); }
+    remove() { if (this.parentNode) { const i = this.parentNode.children.indexOf(this); if (i >= 0) this.parentNode.children.splice(i, 1); this.parentNode = null; } }
+    replaceChild(node, old) { const i = this.children.indexOf(old); if (node.parentNode) node.remove?.(); this.children[i] = node; node.parentNode = this; old.parentNode = null; layout(node, old.rect || old.parentRect || this.rect); }
+    replaceWith(node) { this.parentNode.replaceChild(node, this); }
+    before(node) { const host = this.parentNode; node.remove(); host.children.splice(host.children.indexOf(this), 0, node); node.parentNode = host; }
+    after(node) { const host = this.parentNode; node.remove(); host.children.splice(host.children.indexOf(this) + 1, 0, node); node.parentNode = host; }
+    matches(selector) { if (selector === '*') return true; if (selector[0] === '#') return this.id === selector.slice(1); if (selector[0] === '.') return selector.slice(1).split('.').every(n => this.classList.contains(n)); return this.tagName === selector.toUpperCase(); }
+    closest(selector) { return selector.split(',').some(s => this.matches(s.trim())) ? this : this.parentNode?.closest(selector) || null; }
+    querySelectorAll(selector) { return this.children.flatMap(n => n.nodeType === 3 ? [] : [...(selector.split(',').some(s => n.matches(s.trim())) ? [n] : []), ...n.querySelectorAll(selector)]); }
+    querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
+    setAttribute(name, value) { this.attrs[name] = String(value); if (name === 'class') this.className = value; }
+    getAttribute(name) { return this.attrs[name]; }
+    getBoundingClientRect() { reads++; if (this.style.position === 'absolute') { const m = this.style.transform?.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/), x = +parseFloat(this.style.left) + +(m?.[1] || 0), y = +parseFloat(this.style.top) + +(m?.[2] || 0); return rect(x, y, parseFloat(this.style.width) || this.textContent.length * 10, parseFloat(this.style.height) || parseFloat(this.style.lineHeight) || 20); } return this.rect; }
+    contains(node) { for(let el=node;el;el=el.parentNode)if(el===this)return true;return false; }
+    getAnimations(options = {}) { return animations.filter(a => (a.el === this || options.subtree && this.contains(a.el)) && !a.cancelled); }
+    animate(keys, options) { const a = { el: this, keys, options, cancelled: false, playState: 'running', playbackRate: 1, cancel() { this.cancelled = true; this.playState='idle'; }, pause() { this.playState='paused'; }, play() { this.playState='running'; }, updatePlaybackRate(value) { this.playbackRate=value; }, onfinish: null }; animations.push(a); return a; }
+    addEventListener(name, fn) { const set = this.events.get(name) || []; set.push(fn); this.events.set(name, set); }
+    removeEventListener(name,fn) { this.events.set(name,(this.events.get(name)||[]).filter(value=>value!==fn)); }
+    click() { for (const fn of this.events.get('click') || []) fn({ target: this }); }
+    setPointerCapture(id) { this.capture = id; }
+    releasePointerCapture() { this.capture = null; }
+    set innerHTML(html) { this.html = html; if (this.tagName === 'SVG') { this.children = []; for (const m of html.matchAll(/<path\s+([^>]+)\/>/g)) { const p = new Element('path'); for (const attr of m[1].matchAll(/([\w-]+)="([^"]*)"/g)) p.setAttribute(attr[1], attr[2]); this.append(p); } } if (this.tagName === 'SVG') for (const m of html.matchAll(/<g\s+([^>]+)>/g)) { const group = new Element('g'); for (const attr of m[1].matchAll(/([\w-]+)="([^"]*)"/g)) group.setAttribute(attr[1], attr[2]); this.append(group); } if (this.id === 'chb-tray') { this.children = []; for (const m of html.matchAll(/data-tool="([^"]+)" data-tier="([^"]+)"/g)) { const b = new Element('button'); b.dataset.tool = m[1]; b.dataset.tier = m[2]; this.append(b); } } }
+    get innerHTML() { return this.html || ''; }
+    insertAdjacentHTML(_position, html) { (this.fragments ||= []).push(html); if (!html.includes('id="chb-tray"')) return; const box = new Element(); box.className = 'chb-box'; const tray = new Element(); tray.id = 'chb-tray'; const undo = new Element('button'); undo.id = 'chb-undo'; box.append(tray, undo); this.append(box); }
+  }
+  function layout(node, bounds) { node.rect = bounds; let x = bounds.left; for (const child of node.children || []) { const w = child.textContent.length * 10; const r = rect(x, bounds.top, w, 20); child.parentRect = r; layout(child, r); x += w; } }
+  const document = { hidden: false, visibilityState: 'visible', createElement: tag => new Element(tag), createElementNS: (_ns, tag) => new Element(tag), createDocumentFragment: () => new Element('fragment'), createRange: () => ({ selectNodeContents(n) { this.node = n; }, getClientRects() { reads++; return [this.node.rect || this.node.parentRect]; } }), addEventListener(name, fn) { const set = listeners.get(name) || []; set.push(fn); listeners.set(name, set); }, removeEventListener(name, fn) { listeners.set(name, (listeners.get(name) || []).filter(f => f !== fn)); }, getElementById(id) { return this.documentElement.querySelector('#' + id); }, querySelectorAll(selector) { return this.documentElement.querySelectorAll(selector); }, getAnimations: () => animations, createTreeWalker(root, _type, filter) { const pool = []; const walk = el => { for (const n of el.children) if (n.nodeType === 3) { if (filter.acceptNode(n) === 1) pool.push(n); } else walk(n); }; walk(root); return { nextNode: () => pool.shift() || null }; } };
+  document.documentElement = new Element('html'); document.body = new Element('body'); document.documentElement.append(document.body); const page = new Element('main'), box = new Element(); page.rect = rect(80, 100, width - 160, 100); document.body.append(page, box); const original = new Text(text); original.rect = rect(100, 120, text.length * 10, 20); page.append(original);
+  document.querySelector = selector => document.documentElement.querySelector(selector);
+  const mediaListeners=new Set(),media={matches:reduced,addEventListener:(_type,fn)=>mediaListeners.add(fn),removeEventListener:(_type,fn)=>mediaListeners.delete(fn)};
+  const context = vm.createContext({ document, innerWidth: width, innerHeight: height, ReserveFeatures: { enabled: () => enabled }, NodeFilter: { SHOW_TEXT: 4, FILTER_ACCEPT: 1, FILTER_REJECT: 2 }, performance: { now: () => now }, matchMedia: () => media, localStorage: { getItem() {}, setItem() {} }, getComputedStyle: el => { reads++; return { font: '16px serif', color: '#141413', transform: el.style.transform || 'none', lineHeight: '20px' }; }, requestAnimationFrame(fn) { const id = ++sequence; frames.set(id, fn); return id; }, cancelAnimationFrame: id => frames.delete(id), setTimeout(fn, ms) { const id = ++sequence; timers.set(id, { fn, at: now + ms }); return id; }, clearTimeout: id => timers.delete(id), addEventListener: (name, fn) => document.addEventListener(name, fn), removeEventListener: (name, fn) => document.removeEventListener(name, fn), console });
+  for (const file of ['play-physics.js', 'play-tools.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../extension', file), 'utf8'), context, { filename: file }); const api = context.ReservePlay.mount({ root: page, box, all: true, ...mountOptions });
+  const frame = (ms = 16) => { now += ms; for (const [id, fn] of [...frames]) { frames.delete(id); fn(now); } for (const [id, timer] of [...timers]) if (timer.at <= now) { timers.delete(id); timer.fn(); } };
+  const dispatch = (type, target = page, x = 110, y = 130, extra = {}) => { const e = { target, clientX: x, clientY: y, timeStamp: now, pointerId: 1, isPrimary: true, button: 0, pointerType: 'touch', preventDefault() { this.prevented = true; }, stopPropagation() {}, ...extra }; for (const fn of listeners.get(type) || []) fn(e); return e; };
+  const finish = () => { for (const a of animations) if (!a.cancelled) a.onfinish?.(); frame(10000); };
+  return { api, document, page, box, original, context, frame, dispatch, finish, frames, timers, animations, listeners, setReduced(value) { media.matches=value;for(const fn of mediaListeners)fn({matches:value}); }, get reads() { return reads; }, get now() { return now; } };
+}
+module.exports = { fixture };

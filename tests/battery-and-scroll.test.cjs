@@ -52,7 +52,7 @@ test('the pony stands only on free spots, steps off when something appears under
 });
 test('the pony\u2019s menu fades in where it is: the pony stops at once and the bubble does not grow',()=>{
  assert.match(read('pet.css'),/animation:pet-fade \.2s ease-out\}/);assert.match(read('pet.css'),/@keyframes pet-fade\{from\{opacity:0\}\}/);
- assert.match(read('pets.js'),/if\(goal\)setPose\('stand'\);goal=null;speed=0;\s*stop\(\);cancelPlaces\(\);/);
+ assert.match(read('pets.js'),/menuOpen=true;[\s\S]*?goal=null;speed=0;\s*stop\(\);cancelPlaces\(\);/);
 });
 
 test('the column is not scrolled by the browser while the workspace lays itself out (scroll anchoring off)',()=>{
