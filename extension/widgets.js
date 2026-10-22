@@ -180,7 +180,7 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
   container.ownerDocument.addEventListener('pointerdown',outside,true);win.addEventListener('resize',closeMenu);
   function petInfo(){
    const c=ctx(),h=helpers(),next=nextDue(c,h),{board,today}=plan(c,h),d=board.days.find(x=>x.key===today);
-   return {next:next?{id:next.id,title:next.title,course:next.course,when:`in ${howLong(next.ms)}`,urgent:next.ms<3*3600000}:null,todayOpen:d?.open||0,todayDone:d?.done||0};
+   return {next:next?{id:next.id,title:next.title,course:next.course,when:`in ${howLong(next.ms)}`,urgent:next.ms<3*3600000}:null,todayOpen:d?.open||0,todayDone:d?.done||0,today,focusMinutes:focusState(store.get().focus,c.now).minutes};
   }
   function ensurePets(){
    const P=Pets();if(!P||!root.ReservePetArt||pets||dead)return;
