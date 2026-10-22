@@ -30,6 +30,8 @@ Highlights, underlines, notes and pen strokes are saved in extension local stora
 
 Reading or annotating a PDF does not share its text with an AI provider. Pressing **Ask AI** prepares only your chosen text or page text, with the document name and page reference, in the local AI pane after verifying your Canvas sign-in. Your annotations are not included. That chosen text leaves for the selected AI provider only when you then press **Send**. Review it first: the PDF's own words or filename may contain personal information.
 
+The PDF reader can export highlights, underlines and margin notes as a local Markdown or plain-text study sheet after you click Download notes. The export checks the signed-in account again, includes the document name and page numbers, and omits drawings. It is not sent to Canvas, an AI provider or the developer; sharing the downloaded file is your choice.
+
 ## AI websites: your choice to share
 
 **Tools → AI** can open ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Qwen or Z.ai in a normal browser tab. Opening the site or reviewing context in Canvas Harness does not transfer coursework to that provider.
