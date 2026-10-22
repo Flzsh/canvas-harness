@@ -30,6 +30,10 @@ Canvas shows you everything. Canvas Harness shows you what to do next. It replac
 
 <p align="center"><sub>Every demo below uses fictional courses and assignments.</sub></p>
 
+## New in 3.3
+
+- **Biscuit for everyone.** Its menu works from the keyboard, screen readers read its reminders and cheers, it stays quiet on battery during focus sessions, and it comes back into view with reduced motion on. Thanks to @hellyeahboys666 (#49).
+
 ## New in 3.2
 
 - **Choose your features.** Full, Lite or Custom in the popup. A feature you switch off is never loaded, and what you saved stays for when you turn it back on.
