@@ -1,5 +1,5 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
-function fixture(pathname='/',search='',{deferDashboard=false}={}){
+function fixture(pathname='/',search='',{deferDashboard=false,lateSite=false}={}){
  const nodes=new Map(),events={},winEvents={};
  class El{
   constructor(tag='div'){this.tagName=tag;this.children=[];this.hidden=false;this.style={};this.events={};this.dataset={};this._query={};}
@@ -14,14 +14,14 @@ function fixture(pathname='/',search='',{deferDashboard=false}={}){
   remove(){if(this.parentElement)this.parentElement.children=this.parentElement.children.filter(x=>x!==this);}
   scrollIntoView(){}
  }
- const body=new El('body'),head=new El('head'),html=new El('html');html.classList={add(){},remove(){}};
+ const body=new El('body'),head=new El('head'),html=new El('html'),classes=new Set();html.classList={add:(...names)=>names.forEach(name=>classes.add(name)),remove:(...names)=>names.forEach(name=>classes.delete(name)),contains:name=>classes.has(name)};
  const content=new El();content.id='content';const native=new El();native.id='dashboard';const sidebar=new El();sidebar.id='right-side';content.append(native);const application=new El();application.id='application';application.append(content,sidebar);body.append(application);
  const document={body,head,documentElement:html,visibilityState:'visible',getElementById:id=>nodes.get(id),createElement:tag=>new El(tag),addEventListener:(key,fn)=>events[key]=fn};
  let callbacks,started=0,dashboardOptions,plannerOptions,scrollRestored,nativeToolsCreated=0,mounts=0,painted=!deferDashboard;const statuses=[];
  const window={scrollY:460,scrollTo:(options)=>scrollRestored=options.top,addEventListener:(key,fn)=>winEvents[key]=fn};window.top=window;
  const session={start(){started++;},refresh:async()=>null,verify:async()=>true,destroy(){}};
  const mockView=()=>({destroy(){},setStatus:message=>statuses.push(message),updateSnapshot(){},getState:()=>({query:'gas',mode:'tomorrow',courseId:'7',day:'',limit:60})});
- const context={document,window,requestAnimationFrame:fn=>fn(),location:{origin:'https://school.instructure.com',pathname,search},URL,URLSearchParams,Date,
+ const context={document,window,requestAnimationFrame:fn=>fn(),setTimeout,location:{origin:'https://school.instructure.com',pathname,search},URL,URLSearchParams,Date,
   sessionStorage:{setItem(){},removeItem(){},getItem:()=>null},
   // This fixture isolates controller behavior; startup.test.cjs runs the real guard.
   ReserveStartup:{canReveal:()=>true,complete:()=>true,release(){},onNative(){}},
@@ -30,9 +30,10 @@ function fixture(pathname='/',search='',{deferDashboard=false}={}){
   ReserveStorage:{createStore(){}},ReserveAPI:{createClient:()=>({})},ReserveDashboard:{mount:(_target,options)=>{dashboardOptions=options;mounts++;const view=mockView();if(deferDashboard)view.isReady=()=>painted;return view;}},ReserveApp:{mount:(_target,options)=>{plannerOptions=options;return mockView();}}};
  context.ReserveNativeTools={create:()=>{nativeToolsCreated++;return {destroy(){}};}};
  context.location.href=context.location.origin+pathname+search;
- vm.runInNewContext(fs.readFileSync(require.resolve('../extension/site.js'),'utf8'),context);
+ if(!lateSite)vm.runInNewContext(fs.readFileSync(require.resolve('../extension/site.js'),'utf8'),context);
  vm.runInNewContext(fs.readFileSync(require.resolve('../extension/content.js'),'utf8'),context);
- return {nodes,body,head,native,sidebar,events,statuses,get mounts(){return mounts;},get nativeToolsCreated(){return nativeToolsCreated;},get dashboardOptions(){return dashboardOptions;},get plannerOptions(){return plannerOptions;},get scrollRestored(){return scrollRestored;},get started(){return started;},get callbacks(){return callbacks;},paintDashboard(){painted=true;dashboardOptions.onReady();},deliver(){callbacks.onSnapshot({courses:[],assignments:[]},{get:()=>({settings:{showGrades:false}})},{stale:false});},loadStyles(){for(const el of nodes.get('reserve-companion-host').shadowRoot.children)el.onload?.();}};
+ if(lateSite)vm.runInNewContext(fs.readFileSync(require.resolve('../extension/site.js'),'utf8'),context);
+ return {nodes,body,head,native,sidebar,events,statuses,classes,get mounts(){return mounts;},get nativeToolsCreated(){return nativeToolsCreated;},get dashboardOptions(){return dashboardOptions;},get plannerOptions(){return plannerOptions;},get scrollRestored(){return scrollRestored;},get started(){return started;},get callbacks(){return callbacks;},paintDashboard(){painted=true;dashboardOptions.onReady();},deliver(){callbacks.onSnapshot({courses:[],assignments:[]},{get:()=>({settings:{showGrades:false}})},{stale:false});},loadStyles(){for(const el of nodes.get('reserve-companion-host').shadowRoot.children)el.onload?.();}};
 }
 test('controller preloads hidden styles and waits for verified data before replacing Canvas',async()=>{
  const f=fixture();await new Promise(setImmediate);assert.equal(f.started,1);assert.equal(f.native.hidden,false);assert.equal(f.sidebar.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
@@ -102,4 +103,39 @@ test('a coalesced dashboard keeps Canvas visible until its complete first frame 
 
 test('an initial coalesced render failure leaves Canvas usable and a later readiness callback cannot reveal it',async()=>{
  const f=fixture('/','',{deferDashboard:true});await new Promise(setImmediate);f.deliver();f.loadStyles();f.dashboardOptions.onRenderError(Error('initial render failed'));assert.equal(f.native.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);f.paintDashboard();assert.equal(f.native.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
+});
+
+test('starts when Edge runs it before the manifest scripts (site.js only arrives after it)',async()=>{
+ const f=fixture('/','',{lateSite:true});assert.equal(f.started,0);await new Promise(r=>setTimeout(r,20));await new Promise(setImmediate);
+ assert.equal(f.started,1);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
+});
+
+
+test('dashboard page style removes Canvas padding, body margin and the page scrollbar only while active',()=>{
+ const code=fs.readFileSync(require.resolve('../extension/content.js'),'utf8');
+ assert.match(code,/html\.reserve-inline-active #content\{[^}]*padding:0!important/);
+ assert.ok(code.includes('html.reserve-inline-active body{margin:0!important}'));
+ assert.ok(code.includes('html.reserve-inline-active{scrollbar-width:none}'));
+ assert.ok(code.includes('html.reserve-inline-active::-webkit-scrollbar{display:none}'));
+});
+
+test('dashboard styles hide Canvas wrapper scrollbars and footer only while active',async()=>{
+ const f=fixture();await new Promise(setImmediate);
+ const css=f.head.children.find(node=>node.tagName==='style').textContent;
+ assert.ok(css.includes('html.reserve-inline-active :is(body,#application,#wrapper,#main,#not_right_side,#content-wrapper){scrollbar-width:none}'));
+ assert.ok(css.includes('html.reserve-inline-active :is(body,#application,#wrapper,#main,#not_right_side,#content-wrapper)::-webkit-scrollbar{display:none}'));
+ assert.ok(css.includes('html.reserve-inline-active :is(#footer,.ic-app-footer,footer[role=contentinfo]){display:none!important}'));
+ assert.ok(css.includes('html.reserve-inline-active.reserve-fit,html.reserve-inline-active.reserve-fit body{overflow-y:hidden!important}'));
+ assert.equal(f.classes.has('reserve-inline-active'),false);
+ f.deliver();f.loadStyles();assert.equal(f.classes.has('reserve-inline-active'),true);
+ f.dashboardOptions.onNative();assert.equal(f.classes.has('reserve-inline-active'),false);
+});
+
+for(const reason of ['native','account error','stylesheet error'])test('restoring Canvas clears fitted page layout after '+reason,async()=>{
+ const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();f.classes.add('reserve-fit');
+ if(reason==='native')f.dashboardOptions.onNative();
+ else if(reason==='account error')f.callbacks.onError(Error('Account changed'),{clear:true});
+ else f.nodes.get('reserve-companion-host').shadowRoot.children.find(node=>node.tagName==='link').onerror();
+ assert.equal(f.classes.has('reserve-inline-active'),false);assert.equal(f.classes.has('reserve-fit'),false);
+ assert.equal(f.native.hidden,false);assert.equal(f.sidebar.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
 });

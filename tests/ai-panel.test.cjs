@@ -8,6 +8,81 @@ const panelFile=path.join(__dirname,'../extension/ai-panel.js');
 const api=()=>require(panelFile);
 const scope=(key='assignment-a',active='a')=>({scopeKey:key,active:active?{id:active,title:'Assignment '+active,courseId:'c1'}:null,courseId:'c1',courses:[{id:'c1',name:'Biology'}],sources:[{id:'a',title:'Instructions A',kind:'assignment',courseId:'c1',loaded:true},{id:'b',title:'Reading B',kind:'page',courseId:'c1',loaded:false}],demo:false,theme:'light',motion:'standard'});
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
+
+function mountedPanel({embedded=false,clipboardFail=false,collect}={}){
+ const nodes=[],ids=new Map(),events=new Map(),requests=[];let receive;
+ class Element{
+  constructor(tag){this.tagName=tag.toUpperCase();this.children=[];this.events=new Map();this.dataset={};this.attrs={};this.value='';this.writes=0;this.replacements=0;nodes.push(this);}
+  get textContent(){return (this.text||'')+this.children.map(node=>node.textContent).join('');}
+  set textContent(value){this.writes++;this.text=String(value);this.children=[];}
+  append(...children){this.children.push(...children);}
+  replaceChildren(...children){this.replacements++;this.children=children;this.text='';}
+  setAttribute(key,value){this.attrs[key]=String(value);}
+  addEventListener(type,fn){this.events.set(type,fn);}
+  fire(type){this.events.get(type)?.({target:this,preventDefault(){}});}
+  focus(){document.activeElement=this;}
+  select(){this.selected=true;}
+ }
+ const get=id=>{if(!ids.has(id))ids.set(id,new Element('div'));return ids.get(id);};
+ const document={documentElement:{dataset:{}},activeElement:null,getElementById:get,createElement:tag=>new Element(tag),querySelectorAll:()=>[]};
+ const catalog={...scope(),selectedIds:['a']};
+ const port={postMessage(request){requests.push(request);queueMicrotask(()=>{
+  let result={};if(request.action==='catalog')result=catalog;
+  else if(request.action==='collect')result=collect?collect(request):{scopeKey:catalog.scopeKey,text:'Selected instructions',included:request.ids.map(id=>({id,title:id})),omitted:[{title:'Reading',reason:'Unavailable'}]};
+  else if(request.action==='pdf')result={text:'Attached PDF text',pages:1,totalPages:1,warnings:[]};
+  receive({id:request.id,ok:true,result});
+ });},onMessage:{addListener(fn){receive=fn;},removeListener(){}},onDisconnect:{addListener(){},removeListener(){}},disconnect(){}};
+ const env={document,name:embedded?'ch-toolbox-ai':'',location:{origin:'chrome-extension://test'},crypto:{randomUUID},setTimeout,clearTimeout,
+  addEventListener:(type,fn)=>events.set(type,fn),removeEventListener:type=>events.delete(type),
+  btoa:value=>Buffer.from(value,'binary').toString('base64'),navigator:{clipboard:{async writeText(){if(clipboardFail)throw Error('Clipboard unavailable');}}},
+  chrome:{runtime:{id:'test',connect:()=>port},permissions:{contains(_value,reply){reply(true);},request(_value,reply){reply(true);}}}};
+ const controller=api().mount(env);
+ return {controller,env,document,catalog,get,nodes,requests,receive:message=>receive(message),close:()=>events.get('pagehide')?.()};
+}
+
+test('typing updates only the composer and keeps reviewed context and list nodes',async t=>{
+ const f=mountedPanel();t.after(f.close);await tick();await f.controller.preview();f.controller.acceptIssues(true);
+ const selected=f.get('selected-items').children[0],issue=f.get('issue-list').children[0],context=f.controller.state.context;
+ const counts=()=>['selected-items','pdf-list','issue-list'].map(id=>f.get(id).replacements).concat(f.get('context-text').writes,f.get('context-count').writes);
+ const before=counts(),nodeCount=f.nodes.length,requests=f.requests.length;
+ f.get('prompt').focus();f.get('context-text').scrollTop=123;
+ for(let i=1;i<=100;i++){f.get('prompt').value='x'.repeat(i);f.get('prompt').fire('input');}
+ assert.deepEqual(counts(),before);assert.equal(f.nodes.length,nodeCount);assert.equal(f.requests.length,requests);
+ assert.strictEqual(f.get('selected-items').children[0],selected);assert.strictEqual(f.get('issue-list').children[0],issue);
+ assert.strictEqual(f.controller.state.context,context);assert.equal(f.get('accept-issues').checked,true);assert.equal(f.get('context-text').scrollTop,123);
+ assert.strictEqual(f.document.activeElement,f.get('prompt'));assert.equal(f.get('prompt-count').textContent,'100 / 20,000');assert.equal(f.get('send').disabled,false);
+ f.controller.setCatalog({...f.catalog,active:null,selectedIds:[]});f.controller.setDraft(' ');assert.equal(f.get('send').disabled,true);
+ f.controller.setDraft('Question');assert.equal(f.get('send').disabled,false);
+});
+
+test('unrelated panel changes preserve rendered lists, while changed context and titles render',async t=>{
+ let text='First context',reason='First issue';const f=mountedPanel({collect:data=>({scopeKey:'assignment-a',text,included:data.ids.map(id=>({id,title:id})),omitted:[{title:'Reading',reason}]})});t.after(f.close);await tick();await f.controller.preview();
+ const selected=f.get('selected-items').children[0],issue=f.get('issue-list').children[0],writes=f.get('context-text').writes,replacements=f.get('selected-items').replacements;
+ f.controller.setAutoSend(true);f.controller.setProvider('claude');await tick();
+ assert.strictEqual(f.get('selected-items').children[0],selected);assert.equal(f.get('selected-items').replacements,replacements);assert.equal(f.get('context-text').writes,writes);
+ text='Updated context';reason='Updated issue';await f.controller.preview();assert.equal(f.get('context-text').textContent,text);assert.match(f.get('issue-list').textContent,/Updated issue/);assert.notStrictEqual(f.get('issue-list').children[0],issue);
+ f.catalog.sources[0].title='Revised instructions';f.receive({kind:'catalog',data:f.catalog});assert.match(f.get('selected-items').textContent,/Revised instructions/);assert.equal(f.get('context-preview').hidden,true);
+});
+
+test('typing dismisses a manual copy fallback without rerendering the context',async t=>{
+ const f=mountedPanel({clipboardFail:true});t.after(f.close);await tick();f.controller.setDraft('First question');await f.controller.copy();assert.equal(f.get('fallback').hidden,false);
+ const writes=f.get('context-text').writes;f.get('prompt').focus();f.get('prompt').value='Edited question';f.get('prompt').fire('input');
+ assert.equal(f.get('fallback').hidden,true);assert.equal(f.get('fallback-text').value,'');assert.equal(f.controller.state.manualCopy,false);assert.strictEqual(f.document.activeElement,f.get('prompt'));assert.equal(f.get('context-text').writes,writes);
+});
+
+test('PDF rows retain identity across typing and busy changes, and Remove remains current',async t=>{
+ const f=mountedPanel();t.after(f.close);await tick();
+ await f.controller.attach({name:'Notes.pdf',size:5,arrayBuffer:async()=>Buffer.from('%PDF-')});
+ const row=f.get('pdf-list').children[0],remove=row.children[1];assert.match(row.textContent,/Notes.pdf/);
+ f.controller.setDraft('Question');assert.strictEqual(f.get('pdf-list').children[0],row);
+ const work=f.controller.preview();assert.equal(remove.disabled,true);await work;assert.strictEqual(f.get('pdf-list').children[0],row);assert.equal(remove.disabled,false);
+ remove.fire('click');assert.equal(f.get('pdf-list').children.length,0);assert.equal(f.controller.state.pdfs.length,0);
+});
+
+for(const embedded of [false,true])test((embedded?'toolbox':'standalone')+' AI panel exposes the appropriate close control',async t=>{
+ const f=mountedPanel({embedded});t.after(f.close);await tick();assert.equal(f.get('close').hidden,embedded);
+ if(!embedded){f.get('close').fire('click');await tick();assert.equal(f.requests.filter(request=>request.action==='close').length,1);}
+});
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};}
 function fixture(overrides={}){
  const calls=[];let connected=false;

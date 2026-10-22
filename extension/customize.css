@@ -112,6 +112,8 @@
 .rd[data-surface-style=contrast][data-theme=dark] { --rd-ink:#FFF; --rd-muted:#E0E0E0; --rd-faint:#DDD; --rd-line:#686868; --rd-line-strong:#999; --rd-control-line:#AAA; }
 @media(min-width:601px) {
  .rd[data-course-navigation=topbar][data-courses=true] .rd-shell { grid-template-columns: minmax(0,1fr); gap: 22px; }
+.rd[data-course-navigation=topbar] .rd-shell > .rd-course-rail { top: 0; }
+.rd[data-course-navigation=topbar] .rd-shell > .rd-workspace-heading { margin-bottom: 0; }
  /* above the heading below it, whose top otherwise paints over the cards' lower edge */
 .rd[data-course-navigation=topbar][data-courses=true] .rd-course-rail { z-index: 1; }
 .rd[data-course-navigation=topbar][data-courses=true] .rd-course-rail { --rd-rail-pad: 8px; position: relative; display: flex; flex-direction: row; flex-wrap: nowrap; width: 100%; height: auto; min-height: 0; max-height: none; padding: 10px; gap: 8px; overflow-x: auto; overflow-y: hidden; align-items: stretch; }

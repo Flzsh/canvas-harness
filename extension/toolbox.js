@@ -1,14 +1,19 @@
 /*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. Third-party components retain their respective attribution. */
 (function(root){
  'use strict';
+ const enabled=id=>!root.ReserveFeatures||root.ReserveFeatures.enabled(id);
+ const toolEnabled=id=>enabled('tools')&&({quick:()=>!!root.ReserveQuickOpen?.entries,ai:()=>enabled('ai')&&!!root.CanvasHarnessAISource?.mount,gpa:()=>enabled('gpa')&&!!root.CanvasHarnessGPAUI?.create,calculator:()=>true,plan:()=>true}[id]?.()??false);
  const captureDrafts=new Map();
  // A failed reminder draft remains protected even after its tool window is closed.
- if(!root.ReserveSite?.vanillaPage(root.location))root.addEventListener?.('beforeunload',event=>{if(captureDrafts.size){event.preventDefault();event.returnValue='';}});
- const sections=[['quick','Quick open','search'],['ai','AI','book'],['calculator','Calculator','calculator'],['gpa','GPA','grades']];
+ if(enabled('tools')&&!root.ReserveSite?.vanillaPage(root.location))root.addEventListener?.('beforeunload',event=>{if(captureDrafts.size){event.preventDefault();event.returnValue='';}});
+ const SECTIONS=[['quick','Quick open','search'],['ai','AI','book'],['calculator','Calculator','calculator'],['gpa','GPA','grades']];
+ const sections=()=>SECTIONS.filter(([id])=>toolEnabled(id));
  const E=value=>root.ReserveUI.escapeHTML(value),I=name=>root.ReserveIcon(name,'rd-icon');
  const mod=/Mac|iP(hone|ad|od)/.test(root.navigator?.platform||'')?'⌘':'Ctrl';
  function create({container,store,getContext,onNavigate,onPreview,onPlanner,onRefresh,materials,aiConfig={},onDockChange=()=>{}}){
-  if(root.ReserveSite?.vanillaPage(root.location))return null;
+  if(!enabled('tools')||root.ReserveSite?.vanillaPage(root.location))return null;
+  container.dataset.featureMotion=enabled('motion')?'on':'off';
+  const selectedSections=sections();
   let toolMotion,dockResize,aiPanel,gpaPanel,captureDraft=null,capturing=false,captureUndo=null;
   let dialog,tool='quick',trigger,dead=false,collapsed=false,calculatorMode='graphing',query='',index=0,results=[],cacheLoading=false,cacheMessage='',status='';
   let personal=store.get();
@@ -37,7 +42,7 @@
   // Release the workspace as the sheet starts leaving, using the same 340 ms
   // curve in refresh.css. Reopening cancels this close, without recreating tools.
   let leaving=0;
-  const calm=()=>container.dataset.input!=='pointer'||container.dataset.motionStyle==='off'||!!root.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  const calm=()=>!enabled('motion')||container.dataset.input!=='pointer'||container.dataset.motionStyle==='off'||!!root.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
   function close({restoreFocus=false}={}){
    if(dead||!dialog?.open)return;rememberCapture();
    const finish=()=>{leaving=0;delete dialog.dataset.leaving;if(!dialog.open)return;dialog.close();syncCollapsed(false);notifyDock();};
@@ -50,27 +55,28 @@
    if(dialog)return;dialog=document.createElement('dialog');dialog.className='rd-utility-dialog';dialog.dataset.docked='true';dialog.dataset.collapsed='false';dialog.setAttribute('aria-labelledby','rd-utility-title');
    // The segmented control is the header (its pill glides like the workspace tabs, ReserveMotion.syncTabs);
    // the "Tools" title stays for assistive technology and shows only while the dock is collapsed.
-   dialog.innerHTML=`<div class="rd-utility-shell"><header class="rd-utility-heading"><h2 id="rd-utility-title" class="rd-utility-title">Tools<span class="rd-utility-current" data-ui-current></span></h2><div class="rd-utility-nav t-tabs" role="tablist" aria-label="Tools"><span class="t-tabs-pill" aria-hidden="true"></span>${sections.map(([id,label,icon])=>button('tool',I(icon)+`<span>${label}</span>`,`role="tab" id="rd-tool-tab-${id}" data-tool="${id}" data-tab="${id}" aria-selected="false" tabindex="-1"`,'t-tab rd-dock-tab')).join('')}</div><div class="rd-utility-heading-actions">${button('expand','Open','hidden aria-label="Reopen tools" aria-expanded="true" aria-controls="rd-utility-body"','rd-button rd-utility-expand')}${button('collapse','<span class="rd-collapse-glyph" aria-hidden="true"></span>','aria-label="Collapse tools" title="Collapse" aria-controls="rd-utility-body"','rd-icon-button')}${button('close',I('close'),'aria-label="Close tools" title="Close · Esc"','rd-icon-button')}</div></header><div id="rd-utility-body" class="rd-utility-body"></div><footer class="rd-utility-foot"><span data-ui-status role="status"></span></footer></div>`;
-   container.append(dialog);dockResize=root.ReserveToolboxResize?.create({dialog,container,store,onSize:()=>notifyDock()});toolMotion=root.ReserveMotion?.create(dialog);
+   dialog.innerHTML=`<div class="rd-utility-shell"><header class="rd-utility-heading"><h2 id="rd-utility-title" class="rd-utility-title">Tools<span class="rd-utility-current" data-ui-current></span></h2><div class="rd-utility-nav t-tabs" role="tablist" aria-label="Tools"><span class="t-tabs-pill" aria-hidden="true"></span>${selectedSections.map(([id,label,icon])=>button('tool',I(icon)+`<span>${label}</span>`,`role="tab" id="rd-tool-tab-${id}" data-tool="${id}" data-tab="${id}" aria-selected="false" tabindex="-1"`,'t-tab rd-dock-tab')).join('')}</div><div class="rd-utility-heading-actions">${button('expand','Open','hidden aria-label="Reopen tools" aria-expanded="true" aria-controls="rd-utility-body"','rd-button rd-utility-expand')}${button('collapse','<span class="rd-collapse-glyph" aria-hidden="true"></span>','aria-label="Collapse tools" title="Collapse" aria-controls="rd-utility-body"','rd-icon-button')}${button('close',I('close'),'aria-label="Close tools" title="Close · Esc"','rd-icon-button')}</div></header><div id="rd-utility-body" class="rd-utility-body"></div><footer class="rd-utility-foot"><span data-ui-status role="status"></span></footer></div>`;
+   container.append(dialog);dockResize=root.ReserveToolboxResize?.create({dialog,container,store,onSize:()=>notifyDock()});toolMotion=enabled('motion')?root.ReserveMotion?.create(dialog):null;
    dialog.addEventListener('cancel',event=>{event.preventDefault();if(dialog.contains(dialog.getRootNode().activeElement))close({restoreFocus:true});});
    dialog.addEventListener('click',click);
    dialog.addEventListener('input',input);
    dialog.addEventListener('change',change);
    dialog.addEventListener('submit',submit);
    dialog.addEventListener('keydown',keydown);
-   dialog.addEventListener('pointermove',event=>{const option=event.target.closest('[data-quick-index]');if(option&&tool==='quick'){index=Number(option.dataset.quickIndex);selection();}});
+   dialog.addEventListener('pointermove',event=>{const option=event.target.closest('[data-quick-index]');if(option&&tool==='quick'&&index!==Number(option.dataset.quickIndex)){index=Number(option.dataset.quickIndex);selection();}});
   }
   function open(next=tool,source,{focus=true}={}){
-   if(dead)return;poolCache=null;init();if(leaving){root.clearTimeout(leaving);leaving=0;delete dialog.dataset.leaving;}const active=dialog.getRootNode().activeElement,candidate=source||active,wasOpen=dialog.open,wasCollapsed=collapsed;
+   if(dead||!enabled('tools'))return;poolCache=null;init();if(leaving){root.clearTimeout(leaving);leaving=0;delete dialog.dataset.leaving;}const active=dialog.getRootNode().activeElement,candidate=source||active,wasOpen=dialog.open,wasCollapsed=collapsed;
    if(candidate&&!dialog.contains(candidate))trigger=candidate;
    // Stale callers and saved recents may still name a retired tool.
-   next=next==='plan'||sections.some(x=>x[0]===next)?next:'quick';const changed=next!==tool;
+   next=toolEnabled(next)?next:selectedSections[0]?.[0]||'plan';const changed=next!==tool;
    if(changed){rememberCapture();tool=next;status='';}
    if(changed||!panels.has(tool))paint();syncCollapsed(false);if(!dialog.open)dialog.show();dockResize?.refresh();notifyDock();syncTabs(changed&&wasOpen&&!wasCollapsed);
    if(focus&&(changed||!wasOpen||wasCollapsed||!dialog.contains(active)))focusFirst();
    if(tool==='quick')hydrate();if(tool==='ai')aiPanel?.update();if(tool==='gpa')gpaPanel?.update();
   }
   function capture(draft,source){
+   if(!enabled('tools'))return;
    if(captureDraft?.title.trim()){open('plan',source);showStatus('You have an unfinished reminder. Add it or clear the draft before capturing another source.');return;}
    captureUndo=null;const link=root.ReservePersonalWork.safeSource(draft?.source?{...draft.source,title:String(draft.source.title||'').slice(0,200)}:null);
    captureDraft={title:String(draft?.name||'').slice(0,200),course:String(draft?.courseId||'personal'),planned:root.ReserveCore.dayKey(Date.now(),getContext().s.timeZone),due:'',source:link};
@@ -80,7 +86,7 @@
   function focusFirst(){if(tool==='ai'){aiPanel?.focus();return;}if(tool==='gpa'){gpaPanel?.focus();return;}const selector=tool==='quick'?'[data-ui-field="quick"]':tool==='calculator'?'[data-calc-mode="'+calculatorMode+'"]':'[name="title"]';body()?.querySelector(selector)?.focus({preventScroll:true});}
   function paint(){
    if(!dialog)return;const active=dialog.getRootNode().activeElement,focusWithin=dialog.contains(active),previousTool=dialog.dataset.tool,focusField=active?.dataset?.uiField,focusAction=active?.dataset?.uiAction;dialog.dataset.tool=tool;
-   dialog.querySelector('[data-ui-current]').textContent=' · '+(sections.find(x=>x[0]===tool)?.[1]||'New reminder');
+   dialog.querySelector('[data-ui-current]').textContent=' · '+(sections().find(x=>x[0]===tool)?.[1]||'New reminder');
    for(const tab of dialog.querySelectorAll('.rd-dock-tab')){const selected=tab.dataset.tool===tool;tab.setAttribute('aria-selected',String(selected));tab.setAttribute('tabindex',selected?'0':'-1');}
    let content=body();const fresh=!content,cacheNotice=getContext().cacheNotice||'';
    if(fresh){content=document.createElement('section');content.className='rd-tool-panel';content.dataset.toolPanel=tool;content.setAttribute('id','rd-tool-panel-'+tool);content.setAttribute('role','tabpanel');content.setAttribute('aria-labelledby','rd-tool-tab-'+tool);panels.set(tool,content);dialog.querySelector('.rd-utility-body').append(content);dialog.querySelector('[data-tab="'+tool+'"]')?.setAttribute('aria-controls',content.id);}
@@ -90,13 +96,13 @@
    if(tool==='calculator'){if(fresh)renderCalculator();selectCalculatorMode(calculatorMode);}
    if(tool==='ai'&&fresh){
     content.setAttribute('aria-label','AI study workspace');
-    aiPanel=root.CanvasHarnessAISource?.mount({container:content,store,getContext,...aiConfig,onClose:()=>close({restoreFocus:true})});
+    aiPanel=root.CanvasHarnessAISource?.mount({container:content,store,getContext,...aiConfig,embedded:true,onClose:()=>close({restoreFocus:true})});
     if(!aiPanel)content.textContent='Reload Canvas Harness to use the AI workspace.';
    }
    if(tool==='gpa'&&fresh){gpaPanel=root.CanvasHarnessGPAUI?.create({container:content,store,getContext,onRefresh});if(!gpaPanel)content.textContent='Reload Canvas Harness to use the GPA calculator.';}
    if(tool==='plan'){content.removeAttribute('aria-labelledby');content.setAttribute('aria-label','New reminder');if(fresh)renderPlan();else renderPlanLists();}
    if(tool==='quick')renderResults();showStatus(status||cacheNotice);
-   if(dialog.open&&previousTool!==tool)toolMotion?.reveal(content,{animate:container.dataset.input!=='keyboard',kind:'section',direction:sections.findIndex(x=>x[0]===tool)-sections.findIndex(x=>x[0]===previousTool)});
+   if(dialog.open&&previousTool!==tool)toolMotion?.reveal(content,{animate:container.dataset.input!=='keyboard',kind:'section',direction:selectedSections.findIndex(x=>x[0]===tool)-selectedSections.findIndex(x=>x[0]===previousTool)});
    if(previousTool===tool&&focusWithin&&!collapsed){const next=focusField?content.querySelector('[data-ui-field="'+focusField+'"]'):focusAction?[...content.querySelectorAll('[data-ui-action]')].find(node=>node.dataset.uiAction===focusAction&&['mode','value','index','tool'].every(key=>node.dataset[key]===active.dataset[key])):null;if(next&&next!==active)next.focus({preventScroll:true});}
   }
   function renderCalculator(){
@@ -136,28 +142,29 @@
    // Only a course's group keeps the drawing's slot (empty after its first row, so its rows align);
    // every other group starts flush with its heading, with no blank gutter.
    const tone=course=>/^#[0-9a-f]{6}$/i.test(course?.color||'')?` style="--rd-course:${course.color};--rd-course-ink:${root.ReserveCore?.courseInk?.(course.color)||course.color}"`:'';
-   const row=(entry,i)=>{const course=courseOf(entry.courseId),first=entry.courseGroup&&results[i-1]?.group!==entry.group,[label,tone_]=entry.dueAt&&!entry.done&&(entry.group==='Due soon'||entry.group==='Assignments'||entry.group==='Personal tasks')?when(entry.dueAt):!entry.group||entry.group==='Recent'?[entry.kind,'']:['',''];const text=entry.courseGroup?String(entry.label).replace(new RegExp('^'+String(courseNames(course).short).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'( · )?'),'')||'Course home':entry.label;return `<div class="rd-quick-row" role="option" id="rd-quick-${i}" aria-selected="${i===index}" data-quick-index="${i}"${tone(course)}>${entry.url?`<a class="rd-quick-main" href="${E(entry.url)}" data-ui-link="${i}" tabindex="-1">`:`<button class="rd-quick-main" type="button" data-ui-action="run" data-index="${i}" tabindex="-1">`}${entry.courseGroup?`<span class="rd-quick-art" aria-hidden="true">${first&&course?root.ReserveCourseArt?.mini?.(course,{place:'quick'})||'':''}</span>`:''}<span><strong>${E(text)}</strong>${entry.courseGroup?'':`<small>${E(entry.detail)}</small>`}</span>${label?`<span class="rd-quick-kind"${tone_?` data-tone="${tone_}"`:''}>${E(label)}</span>`:''}${entry.url?`<span class="rd-quick-go" aria-hidden="true">Open in Canvas ${I('external')}</span></a>`:'</button>'}${entry.assignmentId?button('preview-result',I('book'),`data-index="${i}" aria-label="Preview ${E(entry.label)}" tabindex="-1"`,'rd-icon-button'):''}</div>`;};
+   const row=(entry,i)=>{const course=courseOf(entry.courseId),first=entry.courseGroup&&results[i-1]?.group!==entry.group,[label,tone_]=entry.dueAt&&!entry.done&&(entry.group==='Due soon'||entry.group==='Assignments'||entry.group==='Personal tasks')?when(entry.dueAt):!entry.group||entry.group==='Recent'?[entry.kind,'']:['',''];const text=entry.courseGroup?String(entry.label).replace(new RegExp('^'+String(courseNames(course).short).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'( · )?'),'')||'Course home':entry.label;return `<div class="rd-quick-row" role="option" id="rd-quick-${i}" aria-selected="${i===index}" data-quick-index="${i}"${tone(course)}>${entry.url?`<a class="rd-quick-main" href="${E(entry.url)}" data-ui-link="${i}" tabindex="-1">`:`<button class="rd-quick-main" type="button" data-ui-action="run" data-index="${i}" tabindex="-1">`}${entry.courseGroup?`<span class="rd-quick-art" aria-hidden="true">${enabled('course-art')&&first&&course?root.ReserveCourseArt?.mini?.(course,{place:'quick'})||'':''}</span>`:''}<span><strong>${E(text)}</strong>${entry.courseGroup?'':`<small>${E(entry.detail)}</small>`}</span>${label?`<span class="rd-quick-kind"${tone_?` data-tone="${tone_}"`:''}>${E(label)}</span>`:''}${entry.url?`<span class="rd-quick-go" aria-hidden="true">Open in Canvas ${I('external')}</span></a>`:'</button>'}${entry.assignmentId&&enabled('dashboard')?button('preview-result',I('book'),`data-index="${i}" aria-label="Preview ${E(entry.label)}" tabindex="-1"`,'rd-icon-button'):''}</div>`;};
    // Suggestions arrive grouped (Saved, Schedules, Recent, Due soon, Go to); typed results stay ranked.
    let html='',group=null;results.forEach((entry,i)=>{if(entry.group!==group){if(group)html+='</div>';group=entry.group;if(group)html+=`<div class="rd-quick-group" role="group" aria-labelledby="rd-quick-group-${i}"><div class="rd-quick-heading" id="rd-quick-group-${i}">${E(group)}</div>`;}html+=row(entry,i);});if(group)html+='</div>';
    list.innerHTML=html||'<div class="rd-tool-empty"><h3>No matches yet</h3><p>Try a course name, assignment title, or “calculator”. Browse a course’s Materials to make more documents searchable here. External document contents are not indexed.</p></div>';
    const coverage=dialog.querySelector('[data-quick-coverage]');if(coverage){coverage.textContent=cacheLoading?'Checking material catalogs already saved on this device…':cacheMessage;coverage.hidden=!coverage.textContent;}selection();
   }
   function selection(){
-   const input=dialog.querySelector('[data-ui-field="quick"]');if(results.length)input?.setAttribute('aria-activedescendant','rd-quick-'+index);else input?.removeAttribute('aria-activedescendant');
-   for(const row of dialog.querySelectorAll('[data-quick-index]'))row.setAttribute('aria-selected',String(Number(row.dataset.quickIndex)===index));
+   const input=dialog.querySelector('[data-ui-field="quick"]'),active=results.length?'rd-quick-'+index:null;
+   if(input&&input.getAttribute('aria-activedescendant')!==active){if(active)input.setAttribute('aria-activedescendant',active);else input.removeAttribute('aria-activedescendant');}
+   for(const row of dialog.querySelectorAll('[data-quick-index]')){const selected=String(Number(row.dataset.quickIndex)===index);if(row.getAttribute('aria-selected')!==selected)row.setAttribute('aria-selected',selected);}
   }
   async function hydrate(){
-   if(cacheLoading)return;cacheLoading=true;
+   if(cacheLoading||!enabled('materials')||!root.ReserveMaterials?.normalizeCatalog)return;cacheLoading=true;
    const courses=getContext().courses;let changed=false;
    await Promise.all(courses.map(async c=>{try{const raw=await store.readResourceCache?.(c.id);if(!dead&&raw){const items=root.ReserveMaterials.normalizeCatalog(raw);if(JSON.stringify(items)!==JSON.stringify(catalogs.get(String(c.id)))){catalogs.set(String(c.id),items);changed=true;}}}catch{cacheMessage='Some saved catalogs could not be read. Saved documents and loaded assignments are still available.';}}));
    cacheLoading=false;if(changed)poolCache=null;if(dead||!dialog?.open)return;if(tool==='quick')renderResults();
   }
   function record(entry){save(data=>{data.toolbox.recent=[entry.id,...data.toolbox.recent.filter(x=>x!==entry.id)].slice(0,24);});}
   function run(entry,event={}){
-   if(!entry)return;
+   if(!entry||!enabled('tools')||root.ReserveQuickOpen?.available?.(entry)===false)return;
    if(entry.url){const link=dialog.querySelector(`[data-ui-link="${results.indexOf(entry)}"]`);if(link){link.target=event.ctrlKey||event.metaKey?'_blank':'';link.rel='noopener noreferrer';link.click();}return;}
    record(entry);
-   if(entry.action==='plan'){onPreview(entry.value);return;}
+   if(entry.action==='plan'&&enabled('dashboard')){onPreview(entry.value);return;}
    if(entry.action==='tool'){open(entry.value);return;}
    if(entry.action==='planner'){onPlanner?.({page:entry.value,id:null});return;}
    if(entry.action==='workspace')onNavigate(entry.value);
@@ -174,7 +181,7 @@
   }
   // The work day the composer means: a listed day, or the picked date when "Pick a date…" is chosen.
   const plannedOf=fd=>String(fd.get('planned')||'')==='pick'?String(fd.get('planned-pick')||''):String(fd.get('planned')||'');
-  function coursePill(ctx,id){const course=ctx.courses.find(c=>String(c.id)===String(id)),ok=/^#[0-9a-f]{6}$/i.test(course?.color||'');return {style:ok?`--rd-course:${course.color};--rd-course-ink:${root.ReserveCore?.courseInk?.(course.color)||course.color}`:'',art:course?root.ReserveCourseArt?.mini?.(course,{place:'composer'})||'':''};}
+  function coursePill(ctx,id){const course=ctx.courses.find(c=>String(c.id)===String(id)),ok=/^#[0-9a-f]{6}$/i.test(course?.color||'');return {style:ok?`--rd-course:${course.color};--rd-course-ink:${root.ReserveCore?.courseInk?.(course.color)||course.color}`:'',art:enabled('course-art')&&course?root.ReserveCourseArt?.mini?.(course,{place:'composer'})||'':''};}
   function renderPlan(){
    const ctx=getContext(),today=root.ReserveCore.dayKey(Date.now(),ctx.s.timeZone),draft=captureDraft||{title:'',course:ctx.courseId,planned:today,due:'',estimate:''},pill=coursePill(ctx,draft.course);
    panels.get('plan').innerHTML=`<form data-ui-form="capture" class="rd-capture-form rd-composer"><div class="rd-composer-card"><textarea name="title" maxlength="200" rows="2" required placeholder="What do you need to do?" aria-label="Personal task title" aria-describedby="rd-composer-note">${E(draft.title)}</textarea><div class="rd-composer-controls">${button('capture-more',I('plus'),`aria-label="Add a deadline" title="Add a deadline" aria-expanded="${!!draft.due}" aria-controls="rd-capture-more"`,'rd-icon-button rd-composer-plus')}<span class="rd-composer-course" data-composer-course style="${pill.style}"><span class="rd-composer-art" aria-hidden="true">${pill.art}</span><select name="course" aria-label="Personal task course"><option value="personal">Personal</option>${ctx.courses.map(c=>`<option value="${E(c.id)}" ${draft.course===c.id?'selected':''}>${E(courseNames(c).option)}</option>`).join('')}</select></span><span class="rd-composer-spacer"></span><span class="rd-select-text rd-composer-day"><select name="planned" aria-label="Personal task work date">${workDays(ctx,draft.planned).map(([key,label])=>`<option value="${E(key)}" ${draft.planned===key?'selected':''}>${E(label)}</option>`).join('')}</select></span><button type="submit" class="rd-composer-send" aria-label="Add to my plan" title="Add to my plan · Enter" ${draft.title.trim()?'':'aria-disabled="true"'}>${I('arrow')}</button></div></div><div class="rd-composer-tray">${draft.source?`<span class="rd-composer-source">${I('external')}<span>Source: <a href="${E(draft.source.url)}" target="_blank" rel="noopener noreferrer">${E(draft.source.title)}</a><small> · ${E(draft.source.kind.replace('-',' '))}</small></span>${button('remove-capture-source',I('close'),'aria-label="Remove linked source" title="Remove linked source"','rd-icon-button rd-remove-source')}</span>`:''}<span class="rd-select-text"><select name="estimate" aria-label="Estimated minutes">${[['','No estimate'],['15','About 15 min'],['30','About 30 min'],['45','About 45 min'],['60','About 1 hour'],['90','About 1½ hours'],['120','About 2 hours']].map(([value,label])=>`<option value="${value}" ${String(draft.estimate||'')===value?'selected':''}>${label}</option>`).join('')}</select></span><div class="rd-composer-more" id="rd-capture-pick" ${draft.planned==='pick'?'':'hidden'}>${field('Work date',`<input name="planned-pick" type="date" min="${E(today)}">`)}</div><div class="rd-composer-more" id="rd-capture-more" ${draft.due?'':'hidden'}>${field('Deadline · '+E(ctx.s.timeZone||'America/New_York'),`<input name="due" type="datetime-local" aria-label="Personal task deadline" value="${E(draft.due)}">`)}</div></div><p class="rd-composer-note" id="rd-composer-note"><span>Saved on this device · never submitted to Canvas</span><span>Enter adds it · Shift Enter for a new line</span></p><div class="rd-composer-drafts">${button('clear-capture','Clear draft',draft.title?'':'disabled','rd-text-button')}${captureUndo?button('undo-capture','Undo clear','','rd-text-button'):''}</div></form><div data-plan-lists></div>`;
@@ -188,6 +195,7 @@
    node.innerHTML=`<section class="rd-link-group"><h3>Planned for today <span>${planned.length}</span></h3>${list(planned)||'<p class="rd-utility-hint">Choose “Plan for today” beside an assignment to add it here.</p>'}</section>${personalItems.length?`<section class="rd-link-group"><h3>Personal tasks <span>${personalItems.length}</span></h3>${list(personalItems.slice(-15).reverse())}</section>`:''}`;
   }
   function click(event){
+   if(!enabled('tools'))return;
    const anchor=event.target.closest('[data-ui-link]');if(anchor){record(results[Number(anchor.dataset.uiLink)]);return;}
    const node=event.target.closest('[data-ui-action]');if(!node)return;const action=node.dataset.uiAction;
    if(action==='remove-capture-source'&&!capturing&&captureDraft){captureDraft={...captureDraft,source:null};if(captureDraft.title.trim())captureDrafts.set(draftKey,captureDraft);renderPlan();focusFirst();return;}
@@ -198,8 +206,8 @@
    if(action==='calculator-mode'){selectCalculatorMode(node.dataset.calcMode);return;}
    if(action==='tool'){open(node.dataset.tool);return;}
    if(action==='run'){run(results[Number(node.dataset.index)],event);return;}
-   if(action==='preview-result'){const row=results[Number(node.dataset.index)];if(row)onPreview(row.assignmentId);return;}
-   if(action==='plan-item'){onPreview(node.dataset.id);return;}
+   if(action==='preview-result'&&enabled('dashboard')){const row=results[Number(node.dataset.index)];if(row)onPreview(row.assignmentId);return;}
+   if(action==='plan-item'&&enabled('dashboard')){onPreview(node.dataset.id);return;}
   }
   function input(event){if(event.target.closest('[data-ui-form="capture"]'))rememberCapture();const f=event.target.dataset.uiField;if(f==='quick'){query=event.target.value.slice(0,240);index=0;results=[];renderResults();}}
   function change(event){
@@ -209,7 +217,7 @@
     if(event.target.getAttribute?.('name')==='planned'){const pick=body()?.querySelector('#rd-capture-pick');if(pick){pick.hidden=event.target.value!=='pick';if(!pick.hidden)pick.querySelector('[name="planned-pick"]')?.focus();}}
     if(event.target.getAttribute?.('name')==='course'){const pill=event.target.closest('[data-composer-course]'),next=coursePill(getContext(),event.target.value);if(pill){pill.setAttribute('style',next.style);const art=pill.querySelector('.rd-composer-art');if(art)art.innerHTML=next.art;}}}
   }
-  async function submit(event){if(event.target.dataset.uiForm!=='capture')return;event.preventDefault();if(capturing)return;rememberCapture();const form=event.target,fd=new FormData(form),title=String(fd.get('title')||'').trim();if(!title)return;
+  async function submit(event){if(!enabled('tools'))return;if(event.target.dataset.uiForm!=='capture')return;event.preventDefault();if(capturing)return;rememberCapture();const form=event.target,fd=new FormData(form),title=String(fd.get('title')||'').trim();if(!title)return;
    try{const due=String(fd.get('due')||''),id='local-'+root.crypto.randomUUID(),ctx=getContext(),courseId=String(fd.get('course')||'personal');if(courseId!=='personal'&&!ctx.courses.some(c=>c.id===courseId))throw Error('Choose an available course.');if(String(fd.get('planned')||'')==='pick'&&!/^\d{4}-\d{2}-\d{2}$/.test(plannedOf(fd)))throw Error('Pick a work date, or choose No work day.');
     const dueAt=due?root.ReserveUI.wallTimeToISO(due,ctx.s.timeZone||'America/New_York'):null,planned=plannedOf(fd),estimate=Math.min(1440,Math.max(0,Number(fd.get('estimate'))||0));const submitButton=form.querySelector('[type="submit"]');submitButton.disabled=true;capturing=true;const submittedDraft=captureDraft,source=submittedDraft?.source;for(const field of form.querySelectorAll('input,select,button,textarea'))field.disabled=true;
     const ok=await save(data=>{data.customTasks.push({id,name:title.slice(0,200),courseId,dueAt,createdAt:new Date().toISOString(),...(source?{source}:{})});data.tasks[id]={plannedDate:planned,notes:'',progress:'not-started',...(estimate?{estimate}:{})};});
@@ -227,12 +235,12 @@
    // Tabs follow the ARIA pattern: arrows move and select; Tab moves into the panel.
    const tab=event.target.closest?.('.rd-dock-tab');
    if(tab&&['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){
-    event.preventDefault();const ids=sections.map(x=>x[0]),at=ids.indexOf(tab.dataset.tool),next=ids[event.key==='Home'?0:event.key==='End'?ids.length-1:(at+(event.key==='ArrowRight'?1:-1)+ids.length)%ids.length];
+    event.preventDefault();const ids=selectedSections.map(x=>x[0]),at=ids.indexOf(tab.dataset.tool),next=ids[event.key==='Home'?0:event.key==='End'?ids.length-1:(at+(event.key==='ArrowRight'?1:-1)+ids.length)%ids.length];
     open(next,undefined,{focus:false});dialog.querySelector('[data-tab="'+next+'"]')?.focus({preventScroll:true});return;
    }
    if(tool==='quick'&&event.target.dataset.uiField==='quick'){
     if(['ArrowDown','ArrowUp'].includes(event.key)){event.preventDefault();if(results.length){index=(index+(event.key==='ArrowDown'?1:-1)+results.length)%results.length;selection();dialog.querySelector('#rd-quick-'+index)?.scrollIntoView({block:'nearest',behavior:'instant'});}}
-    if(event.key==='Enter'){event.preventDefault();const entry=results[index];if(event.altKey&&entry?.assignmentId)onPreview(entry.assignmentId);else run(entry,event);}
+    if(event.key==='Enter'){event.preventDefault();const entry=results[index];if(event.altKey&&entry?.assignmentId&&enabled('dashboard'))onPreview(entry.assignmentId);else run(entry,event);}
    }
    // The composer: Enter adds the reminder, Shift+Enter starts a new line.
    if(tool==='plan'&&event.key==='Enter'&&!event.shiftKey&&event.target.getAttribute?.('name')==='title'){event.preventDefault();event.target.closest('[data-ui-form="capture"]')?.requestSubmit?.();return;}
@@ -240,5 +248,5 @@
   const unsubscribe=store.subscribe(data=>{personal=data;poolCache=null;if(dialog?.open&&tool==='quick')renderResults();});
   return {open:(next,source)=>open(next,source),capture,collapse,expand,close,isOpen:()=>!dead&&!!dialog?.open,update(){if(!dead){poolCache=null;aiPanel?.update();gpaPanel?.update();}},destroy(){if(dead)return;rememberCapture();dead=true;if(leaving)root.clearTimeout(leaving);dockResize?.destroy();aiPanel?.destroy();gpaPanel?.destroy();toolMotion?.destroy();unsubscribe?.();dialog?.remove();panels.clear();notifyDock();}};
  }
- root.ReserveToolbox={create};if(typeof module!=='undefined'&&module.exports)module.exports=root.ReserveToolbox;
+ root.ReserveToolbox={create,sections};if(typeof module!=='undefined'&&module.exports)module.exports=root.ReserveToolbox;
 })(globalThis);

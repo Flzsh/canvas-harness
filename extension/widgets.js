@@ -3,7 +3,9 @@
    answers their buttons; where they sit is workspace-arrange.js. Nothing here writes to Canvas. Creator: Flzsh. */
 (function(root){
  'use strict';
- const Arrange=()=>root.ReserveWorkspaceArrange,Plan=()=>root.ReservePlanner,Pets=()=>root.ReservePets;
+ const enabled=id=>!root.ReserveFeatures||root.ReserveFeatures.enabled(id);
+ const available=key=>enabled('planner')&&(!['context','messages'].includes(key)||enabled('course-hub'))&&(key!=='grades'||enabled('grades'))&&(key!=='pet'||enabled('pony'));
+ const Arrange=()=>root.ReserveWorkspaceArrange,Plan=()=>root.ReservePlanner,Pets=()=>enabled('pony')?root.ReservePets:null;
  // One line each: what the module is for. Shown in the gallery, so it has to be enough to choose by.
  const INFO={
   context:{hint:'Announcements, messages and the teacher’s page for one course.'},
@@ -83,7 +85,9 @@ ${sign}
 </svg></div>`;
  }
  function render(key,c,h){
-  const {E}=h,A=Arrange(),label=A.LABELS[key],action=(name,text,extra='',cls='rd-button')=>`<button type="button" class="${cls}" data-rd-action="${name}" ${extra}>${text}</button>`;
+  if(!available(key)||!Arrange())return '';
+  if(['today','week'].includes(key)&&!Plan())return '';
+  const {E}=h,A=Arrange(),label=A.LABELS[key],action=(name,text,extra='',cls='rd-button')=>name==='pet-settings'&&!enabled('customization')?'':`<button type="button" class="${cls}" data-rd-action="${name}" ${extra}>${text}</button>`;
   const time=(value,options)=>h.formatDate(value,c.s.timeZone,options);
   const mine=c.personal||{};
   const todo=(e,{showDue=true}={})=>{
@@ -136,21 +140,22 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
 <div class="rd-pet-card"><p><strong>${E(pet.name)}</strong><span>Level ${P.level(pet.xp)}${pet.streak>1?` · ${pet.streak} days in a row`:''}</span></p><span class="rd-progress" aria-hidden="true"><i style="width:${Math.round(P.levelProgress(pet.xp)*100)}%"></i></span>
 <div class="rd-pet-actions">${action('pet-feed',`Give a treat <b>${pet.treats}</b>`,pet.treats&&pet.enabled&&pet.roam!=='off'?'':'disabled','rd-button')}${action('pet-roam',pet.roam==='home'?'Let it roam':'Keep it here','','rd-text-button')}${action('pet-settings','Change','','rd-text-button')}</div></div>`:'';
   }
-  return `<section class="rd-widget rd-widget-${key}" data-rd-key="widget-${key}" data-arrange-key="${key}" data-widget="${key}" aria-label="${E(label)}"><header class="rd-arrange-heading rd-widget-head" data-arrange-head="${key}">${glyph(key)}<h2>${E(label)}</h2>${extra}${A.controls(key)}</header><div class="rd-widget-body">${body}</div></section>`;
+  return `<section class="rd-widget rd-widget-${key}" data-rd-key="widget-${key}" data-arrange-key="${key}" data-widget="${key}" aria-label="${E(label)}"><header class="rd-arrange-heading rd-widget-head" data-arrange-head="${key}">${glyph(key)}<h2>${E(label)}</h2>${extra}${enabled('arrange')?A.controls(key):''}</header><div class="rd-widget-body">${body}</div></section>`;
  }
 
  // The tray that opens with "Edit Home": every module with a drawing, one line about it and a switch; then the outline.
  function gallery(c,h){
+  if(!enabled('planner')||!Arrange())return '';
   const {E}=h,A=Arrange(),on=new Set(A.snapshot(c.s).order),frame=c.s.panelFrame||'pen';
   const card=key=>{const shown=key==='context'?c.s.showCourseInformation!==false:on.has(key),fixed=!A.removable(key);
    return `<li class="rd-gallery-card" data-on="${shown}" data-rd-key="gallery-${key}">${glyph(key)}<div><strong>${E(A.LABELS[key])}</strong><p>${E(INFO[key]?.hint||'')}</p></div>${fixed?'<span class="rd-gallery-fixed">Always on</span>':`<button type="button" class="rd-gswitch" role="switch" data-rd-action="${shown?'widget-remove':'widget-add'}" data-widget="${key}" aria-checked="${shown}" aria-label="${shown?'Remove':'Add'} ${E(A.LABELS[key])}"><i></i></button>`}</li>`;};
   return `<section class="rd-gallery" data-rd-key="gallery" aria-label="Edit Home"><header><div><h2>Edit Home</h2><p>Switch modules on or off here. To move one, hold its heading until the circle closes, then drag it beside or below another.</p></div><button type="button" class="rd-button rd-button-primary" data-rd-action="board-edit">Done</button></header>
-<ul class="rd-gallery-list">${['context',...A.EXTRA].map(card).join('')}</ul>
-<div class="rd-gallery-frames" role="radiogroup" aria-label="Module outline"><span>Outline</span>${FRAMES.map(([value,name,hint])=>`<button type="button" class="rd-frame-choice" role="radio" data-rd-action="board-frame" data-value="${value}" aria-checked="${frame===value}" title="${E(hint)}"><i data-frame="${value}"></i>${E(name)}</button>`).join('')}</div></section>`;
+<ul class="rd-gallery-list">${['context',...A.EXTRA].filter(available).map(card).join('')}</ul>
+${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" aria-label="Module outline"><span>Outline</span>${FRAMES.map(([value,name,hint])=>`<button type="button" class="rd-frame-choice" role="radio" data-rd-action="board-frame" data-value="${value}" aria-checked="${frame===value}" title="${E(hint)}"><i data-frame="${value}"></i>${E(name)}</button>`).join('')}</div>`:''}</section>`;
  }
 
  function create({container,store,save,rerender,getContext,helpers,preview=()=>{},openSettings=()=>{},startTick=()=>{},go=()=>{},closeSettings=()=>{}}){
-  if(root.ReserveSite?.vanillaPage(root.location))return null;
+  if(!enabled('planner')||root.ReserveSite?.vanillaPage(root.location))return null;
   let dead=false,editing=false,settingsTab='layout',clockTimer=0,timerTick=0,notesTimer=0,pets=null,lastDone=null;
   const win=container.ownerDocument?.defaultView||root;
   const newId=()=>'local-'+(root.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -183,9 +188,9 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    return {next:next?{id:next.id,title:next.title,course:next.course,when:`in ${howLong(next.ms)}`,urgent:next.ms<3*3600000}:null,todayOpen:d?.open||0,todayDone:d?.done||0,today,focusMinutes:focusState(store.get().focus,c.now).minutes};
   }
   function ensurePets(){
-   const P=Pets();if(!P||!root.ReservePetArt||pets||dead)return;
+   if(!enabled('pony'))return;const P=Pets();if(!P||!root.ReservePetArt||pets||dead)return;
    pets=P.create({container,getPet:()=>store.get().pet,savePet:pet=>save(data=>{data.pet=pet;}),info:petInfo,
-    actions:{open:item=>preview(item.id),focus:()=>startFocus(),settings:()=>{settingsTab='pet';openSettings('pet');rerender();}}});
+    actions:{open:item=>preview(item.id),focus:()=>startFocus(),settings:()=>{if(!enabled('customization'))return;settingsTab='pet';openSettings('pet');rerender();}}});
   }
   function startFocus(){return save(data=>{const f=focusState(data.focus,Date.now());data.focus={...data.focus,minutes:f.minutes,remaining:f.left,endsAt:Date.now()+f.left*1000};}).then(()=>startTick());}
   // The dial and the clock move between renders without one.
@@ -221,12 +226,15 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    else input.value=text;
   }
   function click(event){
+   if(!enabled('planner'))return false;
+   const candidate=event.target.closest?.('[data-rd-action]'),name=candidate?.dataset.rdAction;
+   if(name?.startsWith('pet-')&&(!enabled('pony')||!Pets())||['customize-tab','pet-settings','board-frame'].includes(name)&&!enabled('customization')||['module-menu','module-size','module-dock'].includes(name)&&!enabled('arrange')||candidate?.dataset.widget&&!available(candidate.dataset.widget))return true;
    if(planner?.click(event))return true;
    const button=event.target.closest?.('[data-rd-action]');if(!button||dead)return false;
    const action=button.dataset.rdAction,key=button.dataset.widget,A=Arrange();
    if(action==='hidden-courses'){settingsTab='courses';return false;}
    if(action==='plan-open'){planner?.goto(button.dataset.day);go('plan');return true;}
-   if(action==='customize-tab'){settingsTab=button.dataset.value||'layout';rerender();container.querySelector('.cz-tab[aria-selected="true"]')?.focus({preventScroll:true});return true;}
+   if(action==='customize-tab'){settingsTab=button.dataset.value||'layout';if(settingsTab==='pet'&&!enabled('pony')||settingsTab==='art'&&!enabled('course-art'))settingsTab='layout';rerender();container.querySelector('.cz-tab[aria-selected="true"]')?.focus({preventScroll:true});return true;}
    if(action==='board-edit'&&button.dataset.from==='settings'){editing=true;closeSettings();go('work');rerender();container.querySelector('.rd-gallery')?.scrollIntoView({block:'nearest'});return true;}
    if(action==='board-edit'){editing=!editing;rerender();if(!editing)container.querySelector('[data-rd-action="board-edit"]')?.focus({preventScroll:true});return true;}
    if(action==='board-frame'){save(data=>{data.settings.panelFrame=button.dataset.value;});return true;}
@@ -254,6 +262,7 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    return false;
   }
   function keydown(event){
+   if(!enabled('planner'))return false;
    if(planner?.keydown(event))return true;
    if(event.key==='Escape'&&menu){event.preventDefault();closeMenu(true);return true;}
    // Keys are heard on the document, where a shadow root hides the real target.
@@ -262,6 +271,7 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    return false;
   }
   function input(event){
+   if(!enabled('planner'))return false;
    const field=event.target?.dataset?.rdField;
    if(field==='widget-notes'){
     drafts.notes=event.target.value.slice(0,30000);clearTimeout(notesTimer);
@@ -272,14 +282,16 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
   }
   // Switches and choices in "Make it yours" that this file owns: the pony, and the two on/off settings stored as words.
   function change(event){
+   if(!enabled('planner'))return false;
    const target=event.target,field=target?.dataset?.rdField;
    if(field==='pet'){
+     if(!enabled('pony')||!enabled('customization')||!Pets())return true;
     const key=target.dataset.key,value=target.type==='checkbox'?target.checked:target.value;
     if(!Object.hasOwn(Pets().DEFAULTS,key)||['treats','fed','xp','streak','best','streakDay','told'].includes(key))return true;
     if((key==='coat'||key==='harness')&&!Pets().unlocked(key,value,Pets().clean(store.get().pet).xp))return true;
     save(data=>{if(key==='enabled')data.pet.enabled=value;else data.pet={...Pets().clean(data.pet),[key]:value};});return true;
    }
-   if(field==='setting'&&target.dataset.onoff==='true'){const key=target.dataset.setting;if(['greeting','livingArt','quickOpen'].includes(key))save(data=>{data.settings[key]=target.checked?'on':'off';});return true;}
+   if(field==='setting'&&target.dataset.onoff==='true'){const key=target.dataset.setting;if(enabled('customization')&&(key!=='livingArt'||enabled('course-art')&&enabled('motion'))&&['greeting','livingArt','quickOpen'].includes(key))save(data=>{data.settings[key]=target.checked?'on':'off';});return true;}
    return false;
   }
   function flushNotes(){
@@ -289,7 +301,7 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
   }
   // Told by the workspace when a piece of work is ticked off or a focus session ends.
   function finished(kind,id){
-   if(!Pets()||dead)return;
+   if(!enabled('pony')||!Pets()||dead)return;
    if(kind==='done'&&lastDone===id)return;lastDone=kind==='done'?id:lastDone;
    ensurePets();const c=ctx(),h=helpers(),{board,today}=plan(c,h),d=board.days.find(x=>x.key===today);
    pets?.celebrate(kind,{today,left:d?d.open:undefined});

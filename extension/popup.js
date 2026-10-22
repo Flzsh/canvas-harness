@@ -4,9 +4,12 @@
  const $=id=>document.getElementById(id),all=selector=>[...document.querySelectorAll(selector)];
  const manifest=chrome.runtime.getManifest(),school=$('school-url'),status=$('status'),enabled=$('enabled');
  // the school-address controls exist only in builds that can ask for a school's own Canvas site
- const publicBuild=(manifest.optional_host_permissions||[]).includes('https://*/*'),titles={look:'Look',menu:'Canvas menu bar',pony:'Pony',native:'Canvas pages'};
+ const publicBuild=(manifest.optional_host_permissions||[]).includes('https://*/*'),titles={look:'Look',menu:'Canvas menu bar',pony:'Pony',native:'Canvas pages',features:'Features'};
  const navNames={drawn:'From the left edge',shown:'Full height',top:'Across the top',original:'Canvas’s own'};
  const preferences=ReservePagePreferences.create();
+ const Features=globalThis.ReserveFeatures,featureCatalogue=Features?.catalogue||[],featureControls=new Map();
+ const featuresAvailable=Features&&Array.isArray(Features.catalogue)&&typeof Features.normalize==='function'&&typeof Features.resolve==='function';
+ let featurePrefs,featureSaved,featureReady=false,featureLoading=false,featurePending=0,featureRevision=0,featureWrites=Promise.resolve();
  let origin='',lastRow=null,statusTimer=0,popupClosed=false;
  $('product-name').textContent=manifest.name;$('version').textContent=manifest.version;document.title=manifest.name;
  $('school-section').hidden=!publicBuild;
@@ -18,6 +21,72 @@
  }
  {const svg=document.querySelector('.setting-row[data-detail="pony"] svg');if(svg){const mini=document.createElement('span');mini.className='pet row-pet';mini.dataset.pose='stand';mini.dataset.face='right';mini.dataset.gear='full';mini.setAttribute('aria-hidden','true');mini.innerHTML=ReservePetArt.svg();svg.replaceWith(mini);}}
  function notice(message,error=false){clearTimeout(statusTimer);status.textContent=message;status.hidden=!message;status.classList.toggle('error',error);if(message&&!error)statusTimer=setTimeout(()=>{status.hidden=true;status.textContent='';},3500);}
+ function featureStatus(message=''){$('features-status').textContent=message;$('features-status').hidden=!message;}
+ function featureError(message=''){$('features-error').textContent=message;$('features-error').hidden=!message;}
+ function buildFeatures(){
+  if(!featuresAvailable)return;
+  const groups=new Map();
+  for(const feature of featureCatalogue){
+   let rows=groups.get(feature.group);
+   if(!rows){
+    const group=document.createElement('fieldset'),legend=document.createElement('legend');
+    group.className='feature-group';legend.textContent=feature.group;rows=document.createElement('div');rows.className='rows drawn';
+    group.append(legend,rows);$('feature-groups').append(group);groups.set(feature.group,rows);
+   }
+   const row=document.createElement('label'),name=document.createElement('span'),label=document.createElement('b'),input=document.createElement('input'),track=document.createElement('span');
+   row.className='setting-row switch feature-switch';label.textContent=feature.label||feature.name;name.append(label);
+   input.type='checkbox';input.id='feature-'+feature.id;input.dataset.feature=feature.id;input.setAttribute('role','switch');input.disabled=true;
+   track.className='switch-track';track.setAttribute('aria-hidden','true');row.append(name,input,track);rows.append(row);featureControls.set(feature.id,input);
+   input.addEventListener('change',()=>toggleFeature(feature.id,input.checked));
+  }
+ }
+ function drawFeatures(){
+  if(popupClosed)return;
+  const effective=new Set(featureReady?Features.resolve(featurePrefs).enabled:[]);
+  $('features-panel').setAttribute('aria-busy',String(featureLoading||featurePending>0));
+  $('features-value').textContent=featureReady?({full:'Full',lite:'Lite',custom:'Custom'}[featurePrefs.preset]):featureLoading?'Loading…':'Unavailable';
+  for(const input of all('[data-feature-preset]')){input.disabled=!featureReady;input.checked=featureReady&&input.value===featurePrefs.preset;}
+  for(const [id,input]of featureControls){input.disabled=!featureReady;input.checked=effective.has(id);}
+ }
+ async function loadFeatures(){
+  if(popupClosed)return;
+  if(!featuresAvailable){featureError('Features are unavailable. Reload the extension and try again.');drawFeatures();return;}
+  const turn=++featureRevision;featureLoading=true;featureReady=false;featureError();featureStatus('Loading features…');$('features-retry').hidden=true;drawFeatures();
+  try{
+   const saved=await chrome.storage.local.get(Features.KEY);if(popupClosed||turn!==featureRevision)return;
+   featurePrefs=Features.normalize(saved[Features.KEY]);featureSaved=featurePrefs;featureReady=true;featureStatus();
+  }catch{if(!popupClosed&&turn===featureRevision){featureStatus();featureError('Could not load features. Try again.');$('features-retry').hidden=false;}}
+  finally{if(turn===featureRevision){featureLoading=false;drawFeatures();}}
+ }
+ function saveFeatures(value){
+  if(!featureReady||popupClosed)return;
+  const next=Features.normalize(value),turn=++featureRevision;
+  featurePrefs=next;featurePending++;featureError();featureStatus('Saving features…');drawFeatures();
+  // One write at a time; keep the same enabled controls and the latest optimistic choice.
+  featureWrites=featureWrites.then(async()=>{
+   if(popupClosed){featurePending--;return;}
+   try{
+    await chrome.storage.local.set({[Features.KEY]:next});featureSaved=next;
+    if(!popupClosed&&turn===featureRevision){featureError();featureStatus('Saved.');}
+   }catch{if(!popupClosed&&turn===featureRevision){featurePrefs=featureSaved;featureStatus();featureError('Could not save features. Your saved choices are still active. Try again.');}}
+   finally{featurePending--;drawFeatures();}
+  });
+  return featureWrites;
+ }
+ function toggleFeature(id,on){
+  if(!featureReady||popupClosed)return;
+  const selected=new Set(featurePrefs.preset==='custom'?featurePrefs.custom:Features.resolve(featurePrefs).enabled);
+  if(on)selected.add(id);
+  else{
+   // An effective requirement can be switched off: remove all of its dependents too.
+   const removed=new Set([id]);let size;
+   do{size=removed.size;for(const feature of featureCatalogue)if(feature.needs?.some(need=>removed.has(need)))removed.add(feature.id);}while(size!==removed.size);
+   for(const removedId of removed)selected.delete(removedId);
+  }
+  return saveFeatures({preset:'custom',custom:[...selected]});
+ }
+ buildFeatures();$('features-retry').addEventListener('click',loadFeatures);
+ for(const input of all('[data-feature-preset]'))input.addEventListener('change',()=>{if(input.checked)saveFeatures({...featurePrefs,preset:input.value});});
  function editor(show=true){$('school-editor').hidden=!show;$('change-school').setAttribute('aria-expanded',String(show));if(show)school.focus();}
  // Values still being saved win over older saved ones, so a finishing save never moves a control back
  // under the keyboard (three quick arrow presses save the third value).
@@ -46,8 +115,18 @@
  preferences.subscribe(drawPreferences);preferences.load().then(drawPreferences).catch(()=>notice('Could not load your choices. Try again.',true));
  function drawNav(value){const nav=Object.hasOwn(navNames,value)?value:'drawn';$('menu-value').textContent=navNames[nav];for(const button of all('[data-nav]'))button.setAttribute('aria-pressed',String(button.dataset.nav===nav));}
  chrome.storage.local.get(['reserve:enabled','reserve:canvasNav']).then(saved=>{enabled.checked=saved['reserve:enabled']!==false;enabled.disabled=false;drawNav(saved['reserve:canvasNav']);}).catch(()=>notice('Could not load settings. Try again.',true));
- const storedChanged=(changes,area)=>{if(area!=='local')return;if(changes['reserve:canvasNav'])drawNav(changes['reserve:canvasNav'].newValue);if(changes['reserve:enabled'])enabled.checked=changes['reserve:enabled'].newValue!==false;};
+ const storedChanged=(changes,area)=>{
+  if(popupClosed||area!=='local')return;
+  if(changes['reserve:canvasNav'])drawNav(changes['reserve:canvasNav'].newValue);if(changes['reserve:enabled'])enabled.checked=changes['reserve:enabled'].newValue!==false;
+  if(featuresAvailable&&changes[Features.KEY]&&!featurePending){
+   const next=Features.normalize(changes[Features.KEY].newValue);
+   if(!featureReady||JSON.stringify(next)!==JSON.stringify(featurePrefs)){
+    featureRevision++;featureLoading=false;featurePrefs=next;featureSaved=next;featureReady=true;featureError();featureStatus();$('features-retry').hidden=true;drawFeatures();
+   }
+  }
+ };
  chrome.storage.onChanged.addListener(storedChanged);
+ loadFeatures();
  enabled.addEventListener('change',async()=>{enabled.disabled=true;try{await chrome.storage.local.set({'reserve:enabled':enabled.checked});notice('Saved.');}catch{enabled.checked=!enabled.checked;notice('Could not save. Try again.',true);}finally{enabled.disabled=false;}});
  for(const row of all('[data-detail]'))row.addEventListener('click',()=>{
   if(row.hidden)return;

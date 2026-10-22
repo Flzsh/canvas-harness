@@ -47,7 +47,7 @@ test('credentialed same-origin streaming enforces PDF signature and 32 MiB budge
  await assert.rejects(Host.readVerifiedPdf({origin:canvas,fileId:'42',maxBytes:5,fetchImpl:async()=>response()}),/32 MiB|size|limit/i);
  await assert.rejects(Host.readVerifiedPdf({origin:canvas,fileId:'42',fetchImpl:async()=>{throw new TypeError('Failed to fetch');}}),/inst-fs|CORS/i);
 });
-function fixture({allowed=true,vanilla=true,download=()=>response(),failFetch=null,width=650,origin=canvas}={}){
+function fixture({allowed=true,vanilla=true,href,download=()=>response(),failFetch=null,width=650,origin=canvas}={}){
  const listeners=new Map(),els=[],timers=new Map(),timerDelays=new Map(),calls={storageReads:0,storageWrites:[],fetches:0,profileReads:0,messages:[],focus:[]};
  let timerId=0;
  // Only the element/descendant selectors used by the host UI are needed here.
@@ -99,7 +99,7 @@ function fixture({allowed=true,vanilla=true,download=()=>response(),failFetch=nu
  const document={body,head,activeElement:body,createElement:element,getElementById:id=>id==='wrapper'?wrapper:null,
   fullscreenElement:null,querySelector:selector=>body.querySelector(selector)||head.querySelector(selector),
   addEventListener(type,fn,capture){listeners.set(type,{fn,capture});},removeEventListener(type){listeners.delete(type);}};
- const root={document,location:{origin,href:origin+'/courses/7/assignments/9'},innerWidth:1200,
+ const root={document,location:{origin,href:href||(vanilla?origin+'/courses/7/assignments/9':origin+'/profile')},innerWidth:1200,
   ReserveSite:{supported:()=>allowed,vanillaPage:()=>vanilla},ReservePdfModel:require('../extension/pdf-model.js'),
   ReservePdfArt:{divider:'<svg>stitched</svg>',grip:'<svg>handle</svg>'},
   chrome:{runtime:{id:'abc123',getURL:file=>'chrome-extension://abc123/'+file},storage:{local:{
@@ -166,6 +166,79 @@ test('a CORS redirect failure replays the original Canvas interaction and clears
  assert.equal(f.body.children.some(node=>node.id==='reserve-pdf-host'),false);
  assert.equal(f.wrapper.getAttribute('style'),'width: 100%; color: navy');
  f.host.destroy();
+});
+const readingRoutes=['/','/dashboard','/courses/7','/courses/7/files','/courses/7/files/folder/Readings','/courses/7/files/42/preview','/files/42/preview','/courses/7/modules','/courses/7/pages/reading','/courses/7/announcements/9','/courses/7/discussion_topics/9','/courses/7/assignments/syllabus'];
+test('each new route opens the existing reader only after a PDF click and replays the same click on failure',async()=>{
+ for(const route of readingRoutes)for(const fail of [false,true]){
+  const f=fixture({href:canvas+route,...(fail?{failFetch:new TypeError('CORS')}:{})});await tick();assert.ok(f.host,route);assert.equal(f.calls.fetches,0);assert.equal(f.body.children.length,0);
+  const link=anchor(),e=click(link);f.emit('click',e);await tick();await tick();assert.equal(e.prevented,true,route);assert.equal(e.stopped,true);assert.equal(f.calls.fetches,1);
+  if(fail){assert.equal(link.clicks,1);assert.equal(f.host.active(),null);}else{assert.ok(f.host.active());f.ready();assert.equal(f.calls.messages[0].msg.type,'reserve-pdf-init');assert.equal(f.calls.messages[0].msg.fileId,'42');assert.equal(new TextDecoder().decode(f.calls.messages[0].transfer[0]),'%PDF-1.7');}
+  f.host.destroy();
+ }
+});
+test('dashboard shadow-root rows and Linked materials use the same reader and preserve replay targets',async()=>{
+ for(const materials of [false,true])for(const fail of [false,true]){
+  const f=fixture({href:canvas+'/dashboard',...(fail?{failFetch:new TypeError('CORS')}:{})});await tick();const link=anchor();
+  if(materials){const attrs={'data-pdf-file-id':'42','data-pdf-course-id':'7','data-pdf-name':'Reading.pdf','data-pdf-mime':'application/pdf'};link.tagName='BUTTON';delete link.href;link.className='';link.getAttribute=key=>attrs[key]??null;}
+  const outside={closest:()=>null},e=click(outside,{composedPath:()=>[{closest:()=>link},link,{},outside]});f.emit('click',e);await tick();await tick();assert.equal(e.prevented,true);assert.equal(e.stopped,true);
+  if(fail){assert.equal(link.clicks,1);assert.equal(f.host.active(),null);}else{f.ready();assert.equal(f.calls.messages[0].msg.fileId,'42');}
+  f.host.destroy();
+ }
+});
+test('module item links resolve with a bounded read-only Canvas GET before reading file bytes',async()=>{
+ const f=fixture({href:canvas+'/courses/7/modules'}),requests=[];await tick();const fetching=f.root.fetch;
+ f.root.fetch=async(url,options)=>{requests.push({url,options});return url.includes('/modules/items/')?{ok:true,url:canvas+'/courses/7/files/42?module_item_id=123'}:fetching(url,options);};
+ const link=anchor({href:canvas+'/courses/7/modules/items/123'}),e=click(link);f.emit('click',e);await tick();await tick();f.ready();assert.equal(e.prevented,true);assert.equal(requests.length,2);assert.equal(requests[0].url,link.href);assert.equal(requests[0].options.method,'GET');assert.equal(requests[0].options.credentials,'same-origin');assert.equal(requests[1].url,canvas+'/files/42/download');assert.equal(f.calls.messages[0].msg.fileId,'42');assert.equal(link.clicks,0);f.host.destroy();
+});
+test('module resolution failures, wrong destinations and timeouts replay Canvas exactly once',async()=>{
+ for(const kind of ['denied','external','page','rejected','timeout','invalid-pdf']){
+  const f=fixture({href:canvas+'/courses/7/modules'});await tick();const fetching=f.root.fetch;let signal;
+  f.root.fetch=async(url,options)=>{if(!url.includes('/modules/items/'))return kind==='invalid-pdf'?response('Not PDF'):fetching(url,options);signal=options.signal;if(kind==='timeout')return new Promise(()=>{});if(kind==='rejected')throw new TypeError('CORS');return {ok:kind!=='denied',url:kind==='external'?'https://evil.example/files/42':kind==='page'?canvas+'/courses/7/pages/42':canvas+'/courses/7/files/42'};};
+  const link=anchor({href:canvas+'/courses/7/modules/items/123'}),e=click(link);f.emit('click',e);if(kind==='timeout'){const timer=[...f.timers.keys()].find(id=>f.timerDelays.get(id)===20000);assert.ok(timer);f.timers.get(timer)();}
+  await tick();await tick();assert.equal(e.prevented,true);assert.equal(link.clicks,1,kind);assert.equal(f.host.active(),null,kind);assert.equal(signal.aborted,true);f.host.destroy();
+ }
+});
+test('teardown cancels module lookup and route or feature changes during lookup leave Canvas in charge',async()=>{
+ for(const kind of ['destroy','route','feature']){
+  const f=fixture({href:canvas+'/courses/7/modules'});await tick();let resolve,signal;f.root.fetch=(_,options)=>{signal=options.signal;return new Promise(done=>{resolve=done;});};const link=anchor({href:canvas+'/courses/7/modules/items/123'});f.emit('click',click(link));
+  if(kind==='destroy')f.host.destroy();else if(kind==='route')f.root.location.href=canvas+'/profile';else f.root.ReserveFeatures={enabled:()=>false};
+  resolve({ok:true,url:canvas+'/courses/7/files/42'});await tick();await tick();assert.equal(f.host.active(),null);assert.equal(link.clicks,kind==='destroy'?0:1);assert.equal(signal.aborted,true);assert.equal(f.calls.fetches,0);f.host.destroy();
+ }
+});
+test('route changes between clicks are supported without reload and disabled PDF clicks stay native',async()=>{
+ const f=fixture();await tick();f.root.location.href=canvas+'/dashboard';const e=click(anchor());f.emit('click',e);await tick();await tick();assert.equal(e.prevented,true);assert.ok(f.host.active());f.host.destroy();
+ const off=fixture();await tick();off.root.ReserveFeatures={enabled:()=>false};const untouched=click(anchor());off.emit('click',untouched);assert.equal(untouched.prevented,false);assert.equal(off.calls.fetches,0);off.host.destroy();
+});
+test('a fallback replay bubbles to Canvas without recursively reopening the dashboard reader',async()=>{
+ const f=fixture({href:canvas+'/dashboard',failFetch:new TypeError('CORS')});await tick();const link=anchor();let nativeClicks=0;
+ link.click=()=>{link.clicks++;const replay=click({closest:()=>null},{composedPath:()=>[link,{}]});f.emit('click',replay);if(!replay.prevented)nativeClicks++;};
+ f.emit('click',click({closest:()=>null},{composedPath:()=>[link,{}]}));await tick();await tick();assert.equal(nativeClicks,1);assert.equal(link.clicks,1);assert.equal(f.calls.fetches,1);assert.equal(f.host.active(),null);f.host.destroy();
+});
+test('a detached file link falls back to its original Canvas preview destination',async()=>{
+ const download=deferred(),f=fixture({download:()=>download.promise}),destinations=[];await tick();f.root.location.assign=url=>destinations.push(url);const link=anchor({href:canvas+'/courses/7/files/42?schoolp=1#preview'});f.emit('click',click(link));link.isConnected=false;download.reject(new TypeError('CORS'));await tick();await tick();assert.deepEqual(destinations,[link.href]);assert.equal(link.clicks,0);f.host.destroy();
+});
+test('detached relative file links preserve the destination resolved by Canvas and its document base',async()=>{
+ const download=deferred(),f=fixture({href:canvas+'/courses/7/files/41',download:()=>download.promise}),destinations=[];await tick();f.root.location.assign=url=>destinations.push(url);const link=anchor({href:canvas+'/courses/7/files/42?schoolp=1#preview'}),attribute=link.getAttribute;link.getAttribute=key=>key==='href'?'42?schoolp=1#preview':attribute(key);f.emit('click',click(link));assert.equal(f.host.active()?.info.fileId,'42');link.isConnected=false;download.reject(new TypeError('CORS'));await tick();await tick();assert.deepEqual(destinations,[link.href]);f.host.destroy();
+});
+test('an obsolete PDF failure cannot replay over a newer pending module lookup',async()=>{
+ for(const failedLookup of [false,true]){
+  const download=deferred(),lookup=deferred(),f=fixture({download:()=>download.promise});await tick();const fetching=f.root.fetch;f.root.fetch=(url,options)=>url.includes('/modules/items/')?lookup.promise:url.includes('/files/43/')?Promise.resolve(response()):fetching(url,options);
+  const first=anchor(),next=anchor({href:canvas+'/courses/7/modules/items/123',name:'Next.pdf'});f.emit('click',click(first));f.emit('click',click(next));download.reject(new TypeError('CORS'));await tick();await tick();assert.equal(first.clicks,0,'the superseded click must never navigate away');
+  if(failedLookup)lookup.reject(new TypeError('CORS'));else lookup.resolve({ok:true,url:canvas+'/courses/7/files/43?module_item_id=123'});await tick();await tick();
+  if(failedLookup){assert.equal(next.clicks,1);assert.equal(f.host.active(),null);}else{assert.equal(next.clicks,0);assert.equal(f.host.active()?.info.fileId,'43');}
+  f.host.destroy();
+ }
+});
+test('an obsolete PDF failure releases a queued replacement without losing the newer click',async()=>{
+ const download=deferred(),f=fixture({download:()=>download.promise});await tick();const fetching=f.root.fetch;f.root.fetch=(url,options)=>url.includes('/files/43/')?Promise.resolve(response()):fetching(url,options);const first=anchor(),next=anchor({href:canvas+'/files/43',name:'Next.pdf'});f.emit('click',click(first));f.emit('click',click(next));download.reject(new TypeError('CORS'));await tick();await tick();assert.equal(first.clicks,0);assert.equal(next.clicks,0);assert.equal(f.host.active()?.info.fileId,'43');f.host.destroy();
+});
+test('a refused replacement leaves the surviving reader eligible for its own later fallback',async()=>{
+ const f=fixture(),state=await openReader(f),next=anchor({href:canvas+'/files/43',name:'Next.pdf'});f.emit('click',click(next));await tick();const request=f.calls.messages.at(-1).msg;f.message('reserve-pdf-close-result',{requestId:request.requestId,ok:false});await tick();assert.equal(f.host.active(),state);f.message('reserve-pdf-error',{message:'Reader failure'});assert.equal(state.trigger.clicks,1);assert.equal(next.clicks,0);assert.equal(f.host.active(),null);f.host.destroy();
+});
+test('a failed module lookup leaves the surviving reader eligible for its own later fallback',async()=>{
+ const f=fixture(),state=await openReader(f),fetching=f.root.fetch;f.root.fetch=async(url,options)=>url.includes('/modules/items/')?{ok:false,url}:fetching(url,options);
+ const item=anchor({href:canvas+'/courses/7/modules/items/123'});f.emit('click',click(item));await tick();await tick();assert.equal(item.clicks,1);assert.equal(f.host.active(),state);
+ f.message('reserve-pdf-error',{message:'Reader failure'});assert.equal(state.trigger.clicks,1,'the open reader still hands its own click back to Canvas');assert.equal(f.host.active(),null);f.host.destroy();
 });
 test('PDF selection opens the existing AI panel source transport with explicit page text only',async()=>{
  const f=fixture(),source=anchor(),mounted=[];
@@ -273,16 +346,22 @@ test('replacement before reader readiness queues one guarded close for the lates
  assert.ok(deadline.every(id=>!f.timers.has(id)),'settling a close removes its timer');
 });
 
-for(const readiness of ['never ready','already ready','ready while waiting'])test('replacement settles after a short unanswered close timeout: '+readiness,async t=>{
- const f=fixture();t.after(()=>f.host.destroy());f.emit('click',click(anchor()));await tick();if(readiness==='already ready')f.ready();
+for(const readiness of ['never ready','already ready','ready while waiting'])test('replacement timeout only releases a reader that never became ready: '+readiness,async t=>{
+ const f=fixture();t.after(()=>f.host.destroy());await tick();f.emit('click',click(anchor()));await tick();if(readiness==='already ready')f.ready();
  const state=f.host.active();f.emit('click',click(anchor({href:canvas+'/files/43/download'})));const waiting=state.closeRequest;
  if(readiness==='ready while waiting')f.ready();
  const deadline=[...f.timers].find(([id])=>f.timerDelays.get(id)>0&&f.timerDelays.get(id)<=3000);
  assert.ok(deadline,'a short close deadline survives the init transfer');
- deadline[1]();await tick();await tick();assert.equal(await waiting.promise,true);assert.equal(state.closed,true);
- assert.equal(f.host.active().info.fileId,'43');assert.equal(f.calls.fetches,2);assert.equal(state.trigger.clicks,0,'timeout does not replay Canvas');
+ let settled=false;waiting.promise.then(()=>{settled=true;});deadline[1]();await tick();await tick();const safe=readiness==='never ready';assert.equal(settled,safe);assert.equal(state.closed,safe);
+ assert.equal(f.host.active().info.fileId,safe?'43':'42');assert.equal(f.calls.fetches,safe?2:1);assert.equal(state.trigger.clicks,0,'timeout does not replay Canvas');
  const current=f.host.active();f.emit('window:message',{origin:state.extensionOrigin,source:state.frame.contentWindow,data:{type:'reserve-pdf-close-result',token:state.token,requestId:waiting.requestId,ok:true}});
- await tick();assert.equal(f.host.active(),current,'late replies cannot close the replacement');
+ await tick();if(safe)assert.equal(f.host.active(),current,'late replies cannot close the replacement');else{assert.equal(await waiting.promise,true);assert.equal(f.host.active().info.fileId,'43','a slow save still releases the latest replacement after confirmation');}
+});
+
+test('a slow guarded save cannot lose annotations or an AI draft when the replacement deadline expires',async t=>{
+ const f=fixture();t.after(()=>f.host.destroy());const state=await openReader(f);let destroyed=0;state.ai={draft:'Keep this draft',destroy(){destroyed++;}};f.emit('click',click(anchor({href:canvas+'/files/43/download'})));const request=state.closeRequest;f.timers.get(request.timer)();await tick();
+ assert.equal(state.closeRequest,request);assert.equal(state.closed,false);assert.equal(f.host.active()===state,true);assert.equal(state.ai.draft,'Keep this draft');assert.equal(destroyed,0);assert.equal(f.calls.fetches,1);
+ f.message('reserve-pdf-close-result',{requestId:request.requestId,ok:true});await tick();assert.equal(await request.promise,true);assert.equal(f.host.active().info.fileId,'43');assert.equal(destroyed,1);
 });
 
 for(const failure of ['removed frame','missing window','post failure'])test('replacement treats an unreachable reader as closed: '+failure,async t=>{

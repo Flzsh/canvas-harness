@@ -58,7 +58,7 @@ test('vanillaPage recognizes assignment, feedback and submit/upload URLs indepen
 });
 
 test('every content script except the allowed global menu loads on vanilla pages without any page effects',()=>{
- const scripts=manifest.content_scripts.flatMap(entry=>entry.js||[]).filter(file=>file!=='canvas-nav.js');
+ const scripts=[...new Set(manifest.content_scripts.flatMap(entry=>entry.js||[]).concat(require('../extension/features.js').resolve().js))].filter(file=>!['features.js','feature-loader.js','canvas-nav.js'].includes(file));
  for(const route of protectedRoutes){
   const h=context(route);
   for(const file of scripts)assert.doesNotThrow(()=>h.run(file),route+' '+file);

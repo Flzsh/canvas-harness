@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 require('../extension/pet-art.js');
 const P=require('../extension/pets.js');
-const {fixture}=require('./pet-fixture.cjs');
+const {fixture}=require('./pets-fixture.cjs');
 test('stored pet data is cleaned to known values and bounded counters',()=>{
  const p=P.clean({name:'  Oats '.padEnd(60,'x'),coat:'nope',harness:'gold',roam:'everywhere',treats:500,xp:-4,streak:3,best:1,streakDay:'2026-13-99x',enabled:'yes'});
  assert.equal(p.name.length,24);assert.equal(p.coat,'oat');assert.equal(p.harness,'gold');assert.equal(p.roam,'page');assert.equal(p.treats,99);assert.equal(p.xp,0);
@@ -37,7 +37,7 @@ test('a level says something is unlocked only when a coat or harness opens, and 
  assert.equal(P.currentRun(P.clean({streak:1,streakDay:'2026-10-20'}),'2026-10-20'),0);assert.equal(P.currentRun(pet,'not a day'),0);
 });
 
-// The pony's menu, bubbles and words, on the same simulated page as tests/pets-performance.test.cjs.
+// The pony's menu, bubbles and words, on the shared simulated page (tests/pets-fixture.cjs).
 // what happened to the key: kept from the browser (prevented), and kept from the page's own handlers (stopped)
 const key=(f,k)=>{let prevented=false,stopped=false;f.bubble.emit('keydown',{key:k,target:f.doc.activeElement,preventDefault(){prevented=true;},stopPropagation(){stopped=true;}});return {prevented,stopped};};
 const menu=f=>{f.node.emit('click',{preventDefault(){}});return f.bubble;};

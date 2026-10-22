@@ -4,7 +4,7 @@
 
 <p align="center">
   <b>A Canvas workspace you build yourself.</b><br>
-  Inspired by AI harnesses: find your work faster, plan your week, and make Canvas comfortable to use.
+  Everything due, the instructions, your PDFs and your plan on one calm page, drawn by hand.
 </p>
 
 <p align="center">
@@ -22,50 +22,30 @@
   <a href="PRIVACY.md">Privacy</a>
 </p>
 
+Canvas shows you everything. Canvas Harness shows you what to do next. It replaces the Canvas dashboard with a page you arrange yourself, and Canvas's own pages are always one click away.
+
+- **Find your work faster.** Every assignment sits beside its instructions, so there is no course card, assignment list, detail page and pile of tabs.
+- **Read and plan in one place.** PDFs open beside your work, and a planner turns "essay outline fri 45m" into a card on Friday.
+- **Comfortable to use.** Hand-drawn artwork for every course, light or dark, and only the features you switch on.
+
+<p align="center"><sub>Every demo below uses fictional courses and assignments.</sub></p>
+
+## New in 3.2
+
+- **Choose your features.** Full, Lite or Custom in the popup. A feature you switch off is never loaded, and what you saved stays for when you turn it back on.
+- **PDFs open in the reader from more places:** the Files page and its folders, Modules, pages, announcements, discussions, the syllabus and your dashboard's course materials. Download links still download.
+- **The page fits the window.** With the course strip across the top, the banner and title come first, and a long Home module scrolls inside itself.
+- Fixes: a cleaner edge around the dashboard, the column keeps its place while content loads, tabs left open across an update keep working, the pony waits instead of hopping around Messages.
+
+[Everything that changed](CHANGELOG.md)
+
+## Build your Home
+
 <p align="center">
   <img src="docs/media/home-modules.gif" width="880" alt="Switching on Home modules, making the Focus timer wider, and dragging Messages into a full-width row">
 </p>
 
-<p align="center"><sub>The demos use fictional courses and assignments.</sub></p>
-
-## What's inside
-
-<table>
-  <tr>
-    <td width="33%" valign="top">
-      <h3>Home you arrange</h3>
-      Add modules beside your coursework: Today, This week, a Focus timer, Clock, Notes, Bookmarks, Grades and Messages. Size them and drag them where you want.
-    </td>
-    <td width="33%" valign="top">
-      <h3>Planner</h3>
-      A week of cards. Type a task in plain words, drag work to the day you will do it, and tick it off. Canvas due dates never change.
-    </td>
-    <td width="33%" valign="top">
-      <h3>Assignments</h3>
-      The assignment list beside its instructions, with teacher updates, bookmarks and local check-offs close by.
-    </td>
-  </tr>
-  <tr>
-    <td valign="top">
-      <h3>Study companion</h3>
-      A small pony that walks along your modules, tells you what is next, studies beside a running timer and cheers finished work. It never scolds, and it can be switched off.
-    </td>
-    <td valign="top">
-      <h3>Your own look</h3>
-      Hand-drawn course artwork, outlines, colors, text size and layout presets, or upload your own SVG banners, icons, frames and titles. Canvas's own menu bar is drawn to match.
-    </td>
-    <td valign="top">
-      <h3>Tools beside your work</h3>
-      Desmos, GPA estimates and an AI hand-off in a side dock while you read. You choose what is shared before anything is sent.
-    </td>
-  </tr>
-</table>
-
-## Build your Home
-
-**Edit Home** switches modules on and off. Each module has a three-dot menu for its width, for giving it a whole row or column, and for removing it.
-
-To move something, hold its heading until the hand-drawn circle closes, then drag. Drop it beside or below another module, or above them all for a full-width row. **Undo move** puts things back.
+**Edit Home** switches modules on and off: Today, This week, Focus timer, Clock, Notes, Bookmarks, Grades and Messages. Each module's three-dot menu sets its width or gives it a whole row. To move one, hold its heading until the hand-drawn circle closes, then drag it. **Undo move** puts things back.
 
 ## Plan the week
 
@@ -73,23 +53,45 @@ To move something, hold its heading until the hand-drawn circle closes, then dra
   <img src="docs/media/planner.gif" width="880" alt="Typing a task into the Planner, which lands on Friday with a 45 minute estimate, then dragging a card to another day">
 </p>
 
-Type "essay outline fri 45m #english" and the task lands on Friday, 45 minutes, in English. Drag a card to another day or use its menu. Finished and archived work stays out of the way unless you ask for it.
+Type a task in plain words and it lands on the right day with its time and course. Drag cards between days and tick them off. Canvas due dates never change.
 
-## Read and do the work
+## Read your PDFs where you work
 
-See teacher updates, upcoming work and assignment instructions together. Bookmark useful materials and mark homework done locally, including work you submit outside Canvas.
+<p align="center">
+  <img src="docs/media/pdf-reader.gif" width="880" alt="Clicking a PDF on a course's Files page opens it in a reader beside the page; a sentence is highlighted and a note is added in the margin">
+</p>
 
-Open Desmos, GPA estimates or AI in a side dock while you read. For AI, select your materials, review the context, and send your question to your chosen AI website.
+Click a PDF anywhere in a course and it opens in a reader beside the page instead of a new tab. Jump by page or outline, find words, highlight in colour and write notes in the margin; they stay in your browser. **Ask AI** takes the pages or text you choose to the AI pane, where you review it before anything is sent. Assignment and submission pages stay exactly as Canvas made them until you click a PDF. [PDF reader details](docs/pdf-reader.md).
 
-On Instructure Canvas assignment and submission pages, click a PDF to read it beside the original page. Resize the split, search the document and keep highlights, notes and drawings in your browser. **Ask AI** opens chosen text in the AI pane for review; **Send** shares it with the provider you choose. [PDF reader details](docs/pdf-reader.md).
+## Canvas's own pages, drawn to match
 
-Canvas's course menu and **Modules** page use matching hand-drawn icons and outlines. Modules keeps Canvas's order, words, links, requirements and locked states, including course home pages that display modules.
+<p align="center">
+  <img src="docs/media/course-pages.gif" width="880" alt="A course's menu and its Modules page in the hand-drawn style, with Canvas's order and names kept">
+</p>
+
+The course menu, the Modules page and Canvas's menu bar on the left get the same hand-drawn icons and outlines. Canvas's order, words, links, requirements and locked states stay as they are.
 
 ## Make it yours
 
-Courses get animated subject artwork automatically. **Make it yours** has five tabs of picture choices: Layout, Look, Artwork, Courses and Pony.
+<p align="center">
+  <img src="docs/media/make-it-yours.gif" width="880" alt="Make it yours: choosing a layout, an outline style and a page colour by picture, and switching to dark">
+</p>
 
-Describe your course to an AI using the [artwork skill](skills/canvas-harness-art/SKILL.md). Import the resulting `.chpack` through Appearance settings → Quick Upload to preview and apply the set.
+Courses get animated subject artwork automatically. **Make it yours** has five tabs of picture choices: Layout, Look, Artwork, Courses and Pony. For your own art, describe your course to an AI with the free [artwork skill](skills/canvas-harness-art/SKILL.md) and drop the `.chpack` it makes into **Quick Upload**, or upload your own SVG banners, icons, frames and titles.
+
+## Only what you use
+
+<p align="center">
+  <img src="docs/media/features.gif" width="400" alt="The popup's Features page: switching from Full to Lite, then turning single features on in Custom">
+</p>
+
+Open the popup and choose **Features**. **Full** has everything. **Lite** keeps the dashboard, Planner and Home modules, grades, math and study tools. **Custom** remembers your own switches and adds anything a feature needs. Reload Canvas to apply a change.
+
+## Also inside
+
+- **A study companion.** A small hand-drawn pony walks along your modules, tells you what is next, studies beside a running timer and cheers finished work. It never scolds, and one switch turns it off.
+- **Tools beside your work.** Desmos, GPA estimates and an AI hand-off in a side dock while you read. You pick what is shared and see it before anything is sent.
+- **Light on slower laptops.** It comes back quickly when you return to the tab and does very little while it sits idle.
 
 ## Install in Chrome or Edge
 
@@ -98,14 +100,18 @@ Describe your course to an AI using the [artwork skill](skills/canvas-harness-ar
 **From GitHub instead:**
 
 1. Download and extract the extension ZIP from the [latest release](https://github.com/Flzsh/canvas-harness/releases/latest).
-2. Open `chrome://extensions` or `edge://extensions`, enable Developer mode, and choose Load unpacked.
+2. Open `chrome://extensions` or `edge://extensions`, turn on Developer mode, and choose **Load unpacked**.
 3. Select the folder containing `manifest.json`, then refresh Canvas.
 
-Works on HTTPS school sites under `*.instructure.com`, and on a school's own Canvas address once you add it in the popup (your browser asks to allow that one site). [Installation help](INSTALL.md).
+Works on school sites under `*.instructure.com`, and on a school's own Canvas address once you add it in the popup (your browser asks to allow that one site). [Installation help](INSTALL.md).
 
 ## Privacy
 
-Canvas Harness reads coursework without changing submissions or grades. Coursework stays in your browser, separated by account; PDF marks stay in your browser too. By default nothing saved is shown until Canvas confirms who is signed in. Clicking Send places your chosen context on the AI provider's website; automatic context excludes grades and GPA. [Privacy details](PRIVACY.md).
+Canvas Harness uses the Canvas session you are already signed in to and never changes submissions or grades. Plans, notes, PDF highlights, artwork and settings stay in your browser, kept apart per account; there are no ads, no analytics and no developer server. By default nothing saved is shown until Canvas confirms who is signed in. The AI hand-off sends only what you select, to the AI website you choose, after you review it. [Privacy details](PRIVACY.md).
+
+## Contributing
+
+Bug reports and ideas are welcome in [Issues](https://github.com/Flzsh/canvas-harness/issues). Pull requests are read carefully; changes are fitted into the next release so everything keeps one look. [How to run the tests](docs/TESTING.md).
 
 <p align="center">
   <a href="docs/GETTING-STARTED.md">User guide</a> ·

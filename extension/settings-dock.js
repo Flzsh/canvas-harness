@@ -3,7 +3,12 @@
 (function(root){
  'use strict';
 
- function createDock({container,onOpen=()=>{},onChange=()=>{}}){
+ function createDock(options){
+  if(root.ReserveFeatures&&!root.ReserveFeatures.enabled('customization'))return null;
+  return root.ReserveCustomizeUI?.retainClosedContent
+   ?root.ReserveCustomizeUI.retainClosedContent(createDockController,options):createDockController(options);
+ }
+ function createDockController({container,onOpen=()=>{},onChange=()=>{}}){
   if(root.ReserveSite?.vanillaPage(root.location))return null;
   let open=false,opener=null,destroyed=false;
   const panel=()=>container.querySelector('.rd-appearance.ch-settings-dock');

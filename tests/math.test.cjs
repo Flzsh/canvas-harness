@@ -107,7 +107,7 @@ test('plain text for rows, excerpts and search: the delimiters and commands go, 
  assert.equal(M.plain(T`\[E = mc^2\] and $$\ce{H2O}$$`),'E = mc² and H₂O');
  // The assignment row's excerpt (dashboard-view.js) uses both helpers.
  const view=fs.readFileSync(path.join(__dirname,'../extension/dashboard-view.js'),'utf8');
- assert.match(view,/const excerpt=item=>\{const M=root\.ReserveMath,text=String\(M\?M\.equationTeX\(item\.description\|\|''\):item\.description\|\|''\)/);assert.match(view,/return \(M\?M\.plain\(text\)\.replace\(\/\\s\+\/g,' '\):text\)\.slice\(0,170\);/);
+ assert.match(view,/const excerpt=item=>\{const M=enabled\('math'\)&&root\.ReserveMath,text=String\(M\?M\.equationTeX\(item\.description\|\|''\):item\.description\|\|''\)/);assert.match(view,/return \(M\?M\.plain\(text\)\.replace\(\/\\s\+\/g,' '\):text\)\.slice\(0,170\);/);
 });
 
 test('the sanitizer renders mathematics in text, from equation images and from MathML, and nowhere inside code',()=>{
@@ -129,8 +129,8 @@ test('the sanitizer renders mathematics in text, from equation images and from M
 });
 
 test('math.js ships as a content script before ui-utils.js, in the preview pages too; the page styles it without a new stylesheet',()=>{
- const root=path.join(__dirname,'..'),manifest=JSON.parse(fs.readFileSync(path.join(root,'extension/manifest.json'),'utf8')),js=manifest.content_scripts.flatMap(entry=>entry.js||[]);
- assert.equal(js.indexOf('math.js'),js.indexOf('ui-utils.js')-1);assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen']);assert.deepEqual(manifest.optional_permissions,['scripting']);assert.deepEqual(manifest.host_permissions,['https://*.instructure.com/*']);
+ const root=path.join(__dirname,'..'),manifest=JSON.parse(fs.readFileSync(path.join(root,'extension/manifest.json'),'utf8')),js=require('../extension/features.js').resolve().js;
+ assert.equal(js.indexOf('math.js'),js.indexOf('ui-utils.js')-1);assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen','scripting']);assert.equal(manifest.optional_permissions,undefined);assert.deepEqual(manifest.host_permissions,['https://*.instructure.com/*']);
  for(const page of ['preview/index.html'])assert.match(fs.readFileSync(path.join(root,page),'utf8'),/<script src="\.\.\/extension\/math\.js"><\/script><script src="\.\.\/extension\/ui-utils\.js"><\/script>/,page);
  const source=fs.readFileSync(path.join(root,'extension/math.js'),'utf8');
  assert.doesNotMatch(source,/\bfetch\(|XMLHttpRequest|\bimport\(|\beval\(|new Function|\.innerHTML|document\.(?:create|write|query|get|body|head)|https?:\/\/(?!www\.w3\.org)/,'no network, no DOM writes, no code from strings');

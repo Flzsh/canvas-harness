@@ -16,8 +16,17 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // The eight seconds count only while the page can be seen. A tab opened in the background waits, unseen,
   // for its student; when it is shown it gets its eight seconds again (the CSS release switches restart too).
   const expired=()=>performance.now()>=deadline&&document.visibilityState!=='hidden';
-  const sheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css'];
-  let state='pending',shell,observer,timer,preloaded=false;
+  const allSheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css'];
+  let sheets=allSheets,state='pending',shell,artNode,observer,timer,preloaded=false,featuresSelected=false;
+  function setFeatures(prefs,selected=false){
+    if(featuresSelected&&!selected)return;
+    if(selected)featuresSelected=true;
+    globalThis.ReserveFeatures?.apply(prefs);
+    sheets=globalThis.ReserveFeatures?.filterFiles(allSheets)||allSheets;
+    if(globalThis.ReserveFeatures&&!globalThis.ReserveFeatures.enabled('dashboard'))release();
+    for(const link of [...preloadLinks])if(!sheets.some(file=>link.href===chrome.runtime.getURL(file))){link.remove();preloadLinks.splice(preloadLinks.indexOf(link),1);}
+  }
+  function refreshArt(){if(artNode){artNode.innerHTML=globalThis.ReserveFeatures?.enabled('motion')===false?'':globalThis.ReserveStartupArt||'';artNode.hidden=!artNode.innerHTML;}}
   const preloadLinks=[];
   const loginPage=()=>!!document.querySelector('#login_form, #new_login, .ic-Login');
   // Once the page body has its main content (or finished parsing) without a Canvas layout, it is not Canvas.
@@ -99,15 +108,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     header.append(brand,escape);
     const message=document.createElement('p');message.textContent='Syncing Canvas…';message.setAttribute('role','status');
     const art=document.createElement('div');art.className='reserve-startup-art';art.setAttribute('aria-hidden','true');
-    art.innerHTML=globalThis.ReserveStartupArt||'';
+    artNode=art;refreshArt();
     shell.append(header,art,message);document.documentElement.append(shell);
     // If the bundled prepaint CSS failed, never apply the native-content gate.
     if(getComputedStyle(shell).getPropertyValue('--reserve-startup-ready').trim()!=='1'){release();return;}
     state='active';document.documentElement.classList.add('reserve-startup-active');prepare();
   }
-  globalThis.ReserveStartup={canReveal,complete,dismiss,release,startedAt,
+  globalThis.ReserveStartup={canReveal,complete,dismiss,release,startedAt,setFeatures,refreshArt,
     get active(){return state==='active';},
-    styleFiles:sheets,
+    get styleFiles(){return sheets;},
     onNative(fn){if(state==='native')fn();else if(state!=='complete')subscribers.add(fn);}
   };
   timer=setTimeout(expire,8000);
@@ -116,7 +125,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   document.addEventListener('visibilitychange',shown);
   window.addEventListener('pagehide',release);
   // Manifest CSS is inert until the preference read succeeds; storage failure is native.
-  globalThis.ReserveStartup.preferences=Promise.resolve().then(()=>chrome.storage.local.get('reserve:enabled')).then(saved=>{
+  globalThis.ReserveStartup.preferences=Promise.resolve(globalThis.ReserveFeatures?.earlyReady).then(()=>chrome.storage.local.get(['reserve:enabled','reserve:features'])).then(saved=>{
+    setFeatures(saved['reserve:features']);
     if(state==='native')return saved;
     const params=new URLSearchParams(location.search);
     // Choosing Canvas's dashboard is for that visit only (?reserve=native); an older tab-long choice is forgotten.
