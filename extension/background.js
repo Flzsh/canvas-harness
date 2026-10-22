@@ -1,16 +1,62 @@
 /* Canvas Harness — extension-only AI routing. No externally_connectable entry point. */
-importScripts('site.js','ai-providers.js','ai-inject.js','ai-web.js','page-preferences.js');
+importScripts('features.js','site.js','ai-providers.js','ai-inject.js','ai-web.js','page-preferences.js',
+ 'custom-art.js','workspace-arrange.js','customization-model.js','gpa-model.js','personal-work.js','storage.js');
 // Appearance changes from every page are applied here, one at a time (page-preferences.js).
 globalThis.ReservePagePreferences?.serve();
 (function(){
  'use strict';
  const channels=new Map(),panels=new Set(),requests=new Map(),handoffs=new Map();
  let offscreenPending;
+ const featureLoads=new Map(),featureTabs=new Map(),featureCurrent=new Map(),tabFeatureKey=(id,documentId)=>'reserve:features:tab:'+id+':'+(documentId||'frame-0');
+ const featureTarget=sender=>({tabId:sender.tab.id,...(sender.documentId?{documentIds:[sender.documentId]}:{frameIds:[sender.frameId??0]})});
+ async function featurePrefs(){return (await chrome.storage.local.get(ReserveFeatures.KEY))[ReserveFeatures.KEY];}
+ async function documentPrefs(sender){
+  const tab=sender?.tab?.id,documentId=sender?.frameId===0?sender.documentId:channels.get(tab)?.port.sender.documentId,key=tabFeatureKey(tab,documentId);
+  let prefs=featureTabs.get(key);
+  if(!featureTabs.has(key)){
+   const session=Number.isInteger(tab)?await chrome.storage.session?.get(key):null;
+   prefs=session&&Object.hasOwn(session,key)?session[key]:await featurePrefs();
+  }
+  return prefs;
+ }
+ async function requireFeature(id,sender){
+  const prefs=await documentPrefs(sender);
+  if(!ReserveFeatures.resolve(prefs).enabled.includes(id))throw Error('This add-on is off. Reload Canvas to apply your add-ons.');
+ }
+ async function loadFeatures(sender){
+  await ready;
+  if(!canvasSender(sender))throw Error('Features may load only in a trusted Canvas top frame.');
+  const key=tabFeatureKey(sender.tab.id,sender.documentId);
+  featureCurrent.set(sender.tab.id,key);
+  if(featureLoads.has(key))return featureLoads.get(key);
+  const task=(async()=>{
+   const prefs=await documentPrefs(sender),selection=ReserveFeatures.resolve(prefs),target=featureTarget(sender);
+   // The preference read can finish after another document becomes current.
+   // Probe the top frame without changing it, then publish only this document's snapshot.
+   if(sender.documentId){
+    const frames=await chrome.scripting.executeScript({target:{tabId:sender.tab.id,frameIds:[0]},world:'ISOLATED',func:()=>null});
+    if(frames?.[0]?.documentId&&frames[0].documentId!==sender.documentId)throw Error('This Canvas document changed before its add-ons finished loading.');
+   }
+   if(featureCurrent.get(sender.tab.id)===key){
+    featureTabs.set(key,prefs??null);
+    if(chrome.storage.session?.set)await chrome.storage.session.set({[key]:prefs??null});
+   }
+   await chrome.scripting.executeScript({target,world:'ISOLATED',injectImmediately:true,func:value=>{globalThis.ReserveFeatures.apply(value);globalThis.ReserveStartup?.setFeatures?.(value,true);},args:[prefs??null]});
+   // Prepaint JS/CSS already belongs to document_start; never evaluate it twice.
+   const files=[...selection.startupJS,...selection.js].filter(file=>!ReserveFeatures.staticJS.includes(file));
+   await chrome.scripting.executeScript({target,world:'ISOLATED',injectImmediately:true,files});
+   return {ok:true,preset:selection.preset,enabled:selection.enabled};
+  })();
+  featureLoads.set(key,task);
+  if(featureLoads.size>300)featureLoads.delete(featureLoads.keys().next().value);
+  task.catch(()=>featureLoads.delete(key));return task;
+ }
+
  const post=(port,message)=>{try{port.postMessage(message);}catch{}};
  const fail=(port,id,error)=>post(port,{id,ok:false,error:String(error?.message||error||'The request could not finish.')});
  const validId=id=>typeof id==='string'&&/^[\w-]{1,100}$/.test(id);
  const sourceFor=port=>channels.get(port.sender?.tab?.id);
- function canvasSender(sender){return sender.id===chrome.runtime.id&&sender.frameId===0&&Number.isInteger(sender.tab?.id)&&ReserveSite.supported(sender.url);}
+ function canvasSender(sender){return sender?.id===chrome.runtime.id&&sender.frameId===0&&Number.isInteger(sender.tab?.id)&&ReserveSite.supported(sender.url);}
  // The panel frame may be served from the extension's per-session address (use_dynamic_url), so compare the page, not the host.
  function panelSender(sender){try{const u=new URL(sender.url);return sender.id===chrome.runtime.id&&Number.isInteger(sender.tab?.id)&&u.protocol==='chrome-extension:'&&u.pathname==='/ai-panel.html'&&!u.search&&!u.hash;}catch{return false;}}
  async function liveSource(port){
@@ -61,6 +107,7 @@ globalThis.ReservePagePreferences?.serve();
   // are still pending, and it must not be overwritten when they resolve.
   if(message.action==='web'&&message.op==='inject')handoffs.set(panel,message.id);
   try{
+   await requireFeature('ai',panel.sender);
    const entry=await liveSource(panel);
    if(['catalog','load-course','collect','close','preference'].includes(message.action)){if(message.action==='close')handoffs.delete(panel);sourceRequest(panel,message,entry);return;}
    if(message.action==='web'){
@@ -101,6 +148,8 @@ globalThis.ReservePagePreferences?.serve();
   return sites;
  }
  let ready=loadSites().catch(()=>[]);
+ // Serialize account writes across origins after the current school registration settles.
+ globalThis.ReserveStorage?.serveAccountWrites({ready:()=>ready});
  // Keep the queue usable after a failure, but return this run's rejection to callers awaiting registration.
  const resync=()=>{const run=ready.then(registerSites);ready=run.catch(()=>[]);return run;};
  const sync=()=>resync().catch(()=>{});
@@ -127,7 +176,7 @@ globalThis.ReservePagePreferences?.serve();
   if(['ch-ai-source','ch-ai-panel'].includes(port.name)){
    const held=[],hold=message=>held.push(message);port.onMessage.addListener(hold);
    let closed=false;port.onDisconnect.addListener(()=>{closed=true;});
-   ready.then(()=>{port.onMessage.removeListener?.(hold);if(!closed)connect(port,held);},()=>port.disconnect());return;
+   ready.then(()=>requireFeature('ai',port.sender)).then(()=>{port.onMessage.removeListener?.(hold);if(!closed)connect(port,held);},()=>port.disconnect());return;
   }
   connect(port,[]);
  });
@@ -166,6 +215,10 @@ globalThis.ReservePagePreferences?.serve();
   }else port.disconnect();
  }
  chrome.runtime.onMessage.addListener((message,sender,reply)=>{
+  if(message?.target==='ch-features'){
+   if(message.op!=='load'){reply({ok:false,error:'Unsupported feature operation.'});return;}
+   loadFeatures(sender).then(reply,error=>reply({ok:false,error:String(error?.message||error)}));return true;
+  }
   if(message?.type==='ch-school-ready'){
    const origin=ReserveSite.customSite(message.origin);
    if(!schoolSender(sender)||!origin||origin!==message.origin){reply({ok:false,error:'Invalid school registration request.'});return;}
@@ -173,10 +226,15 @@ globalThis.ReservePagePreferences?.serve();
    return true;
   }
   if(message?.type!=='ch-ai-pdf')return;
-  ready.then(()=>{
+  ready.then(()=>requireFeature('ai',sender)).then(()=>{
    if(!canvasSender(sender)||!channels.has(sender.tab.id)){reply({ok:false,error:'An active Canvas context is required.'});return;}
    return pdf(message.base64).then(result=>reply({ok:true,result}),error=>reply({ok:false,error:error.message}));
   }).catch(error=>reply({ok:false,error:error.message}));
   return true;
+ });
+ chrome.tabs?.onRemoved?.addListener(tab=>{
+  featureCurrent.delete(tab);const prefix='reserve:features:tab:'+tab+':';
+  for(const map of [featureTabs,featureLoads])for(const key of map.keys())if(key.startsWith(prefix))map.delete(key);
+  void(async()=>{try{const saved=await chrome.storage.session?.get(null);if(saved)await chrome.storage.session.remove(Object.keys(saved).filter(key=>key.startsWith(prefix)));}catch{}})();
  });
 })();

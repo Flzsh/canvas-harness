@@ -61,7 +61,7 @@ function fixture(options={}){
     get resumeCover(){return this.host?.shadowRoot.children.find(el=>el.className==='reserve-resume');},
     get profileCalls(){return profileCalls;},get preflightCalls(){return preflightCalls;},get preflightRequest(){return preflightRequest;},get preflightAborted(){return preflightAborted;},get preloads(){return head.children.filter(el=>el.rel==='preload');},get cacheReads(){return cacheReads;},get mounts(){return mounts;},get storeAccount(){return storeAccount;},get aborted(){return aborted;},
     content(){run('session.js');run('content.js');},
-    manifestStart(){const manifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json')));if(manifest.content_scripts.find(x=>x.js.includes('content.js')).run_at==='document_start')this.content();},
+    manifestStart(){const manifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json')));if(manifest.content_scripts.find(x=>x.js.includes('feature-loader.js')).run_at==='document_start')this.content();},
     parserAddsContainers(){if(!document.head){document.head=head;html.append(head);}if(!document.body){document.body=body;html.append(body);}for(const observer of [...observers])observer.fn();},
     parserMutation(){for(const observer of [...observers])observer.fn();},
     parsed(){document.readyState='interactive';dispatch(events.DOMContentLoaded);},
@@ -235,8 +235,8 @@ test('manifest starts the small guard before the early controller with optional 
   const manifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json')));
   const startup=manifest.content_scripts.find(x=>x.js.includes('startup.js'));
   assert.ok(startup,'a document_start bootstrap must be registered');
-  assert.equal(manifest.content_scripts[0],startup);assert.equal(startup.run_at,'document_start');assert.deepEqual(startup.js,['site.js','startup-art.js','startup.js']);assert.deepEqual(startup.css,['startup.css','startup-art.css','canvas-nav.css','course-nav.css']);assert.equal(startup.all_frames,false);
- assert.equal(manifest.content_scripts.find(x=>x.js.includes('content.js')).run_at,'document_start');assert.ok(manifest.content_scripts.indexOf(startup)<manifest.content_scripts.findIndex(x=>x.js.includes('content.js')));assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen']);
+  assert.equal(manifest.content_scripts[0],startup);assert.equal(startup.run_at,'document_start');assert.deepEqual(startup.js,['features.js','site.js','startup-art.js','startup.js']);assert.deepEqual(startup.css,['startup.css','startup-art.css','canvas-nav.css','course-nav.css']);assert.equal(startup.all_frames,false);
+ assert.equal(manifest.content_scripts.find(x=>x.js.includes('feature-loader.js')).run_at,'document_start');assert.ok(manifest.content_scripts.indexOf(startup)<manifest.content_scripts.findIndex(x=>x.js.includes('feature-loader.js')));assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen','scripting']);
 });
 
 test('warm dashboard is revealed while Canvas is still parsing, without waiting for DOMContentLoaded',async()=>{
@@ -295,7 +295,7 @@ test('startup timeout before page containers appear cannot cause a late automati
  assert.equal(f.profileCalls,0);assert.equal(f.host,undefined);assert.equal(f.native.hidden,false);
 });
 test('opted-in dashboard gets a generic prepaint shell without reading cached data or making a competing request',async()=>{
-  const f=fixture();await flush();assert.equal(f.active,true);assert.ok(f.shell);assert.deepEqual(JSON.parse(JSON.stringify(f.reads.filter(key=>key!=='reserve:appearance'))),['reserve:enabled'],'only the enable preference and device theme are read');assert.equal(f.preflightCalls,0);assert.equal(f.profileCalls,0);assert.equal(f.cacheReads,0);assert.equal(f.native.hidden,false);
+  const f=fixture();await flush();assert.equal(f.active,true);assert.ok(f.shell);assert.deepEqual(JSON.parse(JSON.stringify(f.reads.filter(key=>key!=='reserve:appearance'))),[['reserve:enabled','reserve:features']],'only enable, features and device theme are read');assert.equal(f.preflightCalls,0);assert.equal(f.profileCalls,0);assert.equal(f.cacheReads,0);assert.equal(f.native.hidden,false);
   assert.equal(f.preloads.length,12,'local styles begin fetching before the main controller');
   assert.ok(f.preloads.every(link=>link.as==='style'&&link.href.startsWith('chrome-extension://fixture/')));
 });

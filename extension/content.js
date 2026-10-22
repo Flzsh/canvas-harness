@@ -2,12 +2,17 @@
 if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./site.js');
 (function(){
   'use strict';
-  if(window.top!==window||!globalThis.ReserveSite.supported(location.href)||globalThis.ReserveSite.vanillaPage(location)||globalThis.ReserveContentStarted||document.getElementById('reserve-companion-dock'))return;
+  if(window.top!==window)return;
+  const feature=id=>!globalThis.ReserveFeatures||globalThis.ReserveFeatures.enabled(id);
+  let tries=0;
+  (function boot(){
+  if(!globalThis.ReserveSite||(globalThis.ReserveFeatures&&!globalThis.ReserveFeatureLoad)){if(++tries<=80)setTimeout(boot,tries<4?0:25);else console.warn('Canvas Harness page scripts did not load; reload Canvas.');return;}
+  if(!globalThis.ReserveSite.supported(location.href)||globalThis.ReserveSite.vanillaPage(location)||globalThis.ReserveContentStarted||document.getElementById('reserve-companion-dock'))return;
   globalThis.ReserveContentStarted=true;
   const isDashboard=location.pathname==='/'||/^\/dashboard\/?$/.test(location.pathname);
   const params=new URLSearchParams(location.search);
   const startup=globalThis.ReserveStartup;
-  const build='3.1.0';
+  const build='3.2.1';
   const stamp=()=>Math.round(globalThis.performance?.now?.()||0);
   let host,root,area,toolbar,resumeCover,statusLabel,dashboard,planner,session,snapshot,store,ready=false,wanted=true;
   let authorized=false,suspended=false,resumeGeneration=0,resumePending,verifiedAt=-Infinity,verifiedWall=-Infinity;
@@ -19,10 +24,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   function stopWaiting(){launchObserver?.disconnect();launchObserver=null;if(launchAttempt)document.removeEventListener?.('DOMContentLoaded',launchAttempt);launchAttempt=null;}
   let manualOpen=false;
   let dashboardState,dashboardScroll=0,restoreScroll=false,nativeTools,pageAppearance,launchPending=true,launchAppearance=params.get('appearance')==='true';
-  if(params.get('reserve')==='open'){const workspace=params.get('workspace'),courseId=params.get('course');if(['work','hub','materials','inbox','grades'].includes(workspace)||/^\d+$/.test(courseId||''))dashboardState={workspace,courseId};}
+  if(params.get('reserve')==='open'){const requested=params.get('workspace'),workspace=globalThis.ReserveFeatures?globalThis.ReserveFeatures.workspace(requested):requested,courseId=params.get('course');if(['work','hub','materials','inbox','grades'].includes(workspace)||/^\d+$/.test(courseId||''))dashboardState={workspace,courseId};}
   const hidden=new Map();
   const pageStyle=document.createElement('style');
-  pageStyle.textContent='html.reserve-inline-active #content-wrapper{max-width:none!important;width:100%!important}html.reserve-inline-active #content{width:100%!important;max-width:none!important;padding:8px 16px 20px!important;box-sizing:border-box!important}html.reserve-inline-active #content-wrapper{flex:1 1 auto!important;min-width:0!important}html.reserve-inline-active #main{width:100%!important;min-width:0!important}html.reserve-inline-active #not_right_side{width:100%!important;min-width:0!important}html.reserve-inline-active #wrapper{max-width:none!important}html.reserve-inline-active #not_right_side{margin-right:0!important;padding-right:0!important}html.reserve-inline-active #right-side-wrapper,html.reserve-inline-active #right-side,html.reserve-inline-active #content>:not(#reserve-companion-host){display:none!important}#reserve-companion-host{min-width:0;width:100%}';
+  pageStyle.textContent='html.reserve-inline-active{scrollbar-width:none}html.reserve-inline-active::-webkit-scrollbar{display:none}html.reserve-inline-active :is(body,#application,#wrapper,#main,#not_right_side,#content-wrapper){scrollbar-width:none}html.reserve-inline-active :is(body,#application,#wrapper,#main,#not_right_side,#content-wrapper)::-webkit-scrollbar{display:none}html.reserve-inline-active :is(#footer,.ic-app-footer,footer[role=contentinfo]){display:none!important}html.reserve-inline-active.reserve-fit,html.reserve-inline-active.reserve-fit body{overflow-y:hidden!important}html.reserve-inline-active body{margin:0!important}html.reserve-inline-active #content-wrapper{max-width:none!important;width:100%!important}html.reserve-inline-active #content{width:100%!important;max-width:none!important;padding:0!important;box-sizing:border-box!important}html.reserve-inline-active #content-wrapper{flex:1 1 auto!important;min-width:0!important}html.reserve-inline-active #main{width:100%!important;min-width:0!important}html.reserve-inline-active #not_right_side{width:100%!important;min-width:0!important}html.reserve-inline-active #wrapper{max-width:none!important}html.reserve-inline-active #not_right_side{margin-right:0!important;padding-right:0!important}html.reserve-inline-active #right-side-wrapper,html.reserve-inline-active #right-side,html.reserve-inline-active #content>:not(#reserve-companion-host){display:none!important}#reserve-companion-host{min-width:0;width:100%}';
   const dock=document.createElement('div');dock.id='reserve-companion-dock';
   dock.style.cssText='position:fixed;bottom:16px;right:16px;z-index:1000';
   const dockRoot=dock.attachShadow({mode:'open'});
@@ -38,7 +43,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   }
   function restoreNative(){
     for(const [el,previous] of hidden)el.hidden=previous;
-    hidden.clear();document.documentElement.classList.remove('reserve-inline-active');
+    hidden.clear();document.documentElement.classList.remove('reserve-inline-active','reserve-fit');
   }
   function coverWorkspace(checking){
     // Keep the enhanced page's place while its account is revalidated. Only a
@@ -68,9 +73,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     session?.destroy();session=null;
   }
   function setStatus(message){if(statusLabel)statusLabel.textContent=dashboard?'Canvas Harness '+build:message||'Canvas Harness '+build;dashboard?.setStatus(message);}
-  function openAppearance(){if(!launchAppearance)return;const button=area?.querySelector('[data-rd-action="settings"]');if(button){launchAppearance=false;button.click();}}
+  function openAppearance(){if(!launchAppearance||!feature('customization'))return;const button=area?.querySelector('[data-rd-action="settings"]');if(button){launchAppearance=false;button.click();}}
   function drawDashboard(){
-    if(!area||!snapshot)return;
+    if(!area||!snapshot||!feature('dashboard'))return;
     if(dashboard)dashboardState=dashboard.getState();
     planner?.destroy();planner=null;dashboard?.destroy();
     // The dashboard's own command bar carries the Canvas dashboard switch (onNative) and its footer
@@ -82,7 +87,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(restoreScroll){restoreScroll=false;requestAnimationFrame(()=>window.scrollTo({top:dashboardScroll,behavior:'instant'}));}
   }
   function openPlanner(options={page:'week'}){
-    if(!snapshot||!area)return;
+    if(!snapshot||!area||!feature('dashboard')||options.page==='settings'&&!feature('customization')||options.page!=='settings'&&!feature(options.page==='grades'?'grades':'planner'))return;
     dashboardState=dashboard?.getState()||dashboardState;dashboardScroll=window.scrollY;restoreScroll=true;
     dashboard?.destroy();dashboard=null;planner?.destroy();
     toolbar.hidden=false;toolbar.querySelector('[data-dashboard]').hidden=false;
@@ -97,7 +102,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     root=host.attachShadow({mode:'open'});
     const loadingHost=host;let loaded=0;
-    const sheets=startup?.styleFiles||['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css'];
+    const allSheets=startup?.styleFiles||['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css'];
+    const sheets=globalThis.ReserveFeatures?.filterFiles(allSheets)||allSheets;
+    if(!sheets.length)ready=true;
     for(const file of sheets){
       const link=document.createElement('link');link.rel='stylesheet';link.href=chrome.runtime.getURL(file);
       link.onload=()=>{if(host===loadingHost&&++loaded===sheets.length){ready=true;reveal();}};
@@ -152,7 +159,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   }
   dockRoot.querySelector('button').addEventListener('click',()=>{
     dockBusy(true);
-    if(!isDashboard){location.assign(globalThis.ReserveSite.origin()+'/?reserve=open');return;}
+    if(!isDashboard||!feature('dashboard')){
+      if(!feature('tools'))return;location.assign(globalThis.ReserveSite.origin()+'/?reserve=open');return;}
     startup?.release();manualOpen=true;wanted=true;
     if(host&&!ready){host.remove();host=null;}
     makeHost();
@@ -204,9 +212,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   function initialize(){
     if(globalThis.ReserveSite.vanillaPage(location))return;
     registerFont();
-    pageAppearance=globalThis.ReserveNativePage?.create();if(pageAppearance){globalThis.ReservePageAppearance=pageAppearance;pageAppearance.start().catch(()=>{});}
+    pageAppearance=feature('native-appearance')?globalThis.ReserveNativePage?.create():null;if(pageAppearance){globalThis.ReservePageAppearance=pageAppearance;pageAppearance.start().catch(()=>{});}
+    dockButton.hidden=!feature('dashboard');
     document.body.append(dock);
-    if(!isDashboard){
+    if(!isDashboard||!feature('dashboard')){
+      if(!feature('tools'))return;
       const button=document.createElement('button');button.className='reserve-dock-button';button.textContent='Tools';button.title='Quick open, Plan and Calculator · Ctrl K outside an editor';button.setAttribute('aria-label','Open Canvas Harness tools');dockRoot.append(button);
       const css=document.createElement('style');css.textContent='.rd-native-tools{position:fixed;inset:0 auto auto 0;width:0;min-height:0;padding:0;background:none}.reserve-tool-status{display:block;position:absolute;bottom:48px;right:0;width:260px;max-width:calc(100vw - 40px);padding:10px 13px;border:1px solid #dfe3e8;border-radius:9px;box-shadow:0 3px 15px #17212c10;background:#fff;color:#425062;font:12px/1.5 system-ui}.reserve-tool-status[hidden]{display:none}.reserve-dock-button+.reserve-dock-button{margin-left:6px}';dockRoot.append(css);
       nativeTools=globalThis.ReserveNativeTools?.create({button,dockRoot});return;
@@ -215,9 +225,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // Styles preload while the session verifies identity; no account data bypasses it.
     if(wanted)start();
   }
-  (startup?.preferences||chrome.storage.local.get('reserve:enabled')).then(saved=>{
+  Promise.all([startup?.preferences||chrome.storage.local.get('reserve:enabled'),globalThis.ReserveFeatureLoad]).then(([saved,loaded])=>{
 
-    if(saved['reserve:enabled']===false||bootStopped)return;
+    if(saved['reserve:enabled']===false||loaded?.ok===false||bootStopped)return;
     // Canvas's remaining scripts and markup do not need to block a verified
     // dashboard. Native course tools still initialize after parsing completes.
     launchAttempt=()=>{
@@ -235,4 +245,5 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     launchAttempt();
   }).catch(()=>showCanvas(false));
+  })();
 })();

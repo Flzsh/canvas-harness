@@ -3,8 +3,8 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),asse
 const root=path.resolve(__dirname,'..'),extension=path.join(root,'extension');
 const manifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json'),'utf8'));
 assert.equal(manifest.manifest_version,3);
-assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen']);
-assert.deepEqual(manifest.optional_permissions,['scripting']);
+assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen','scripting']);
+assert.equal(manifest.optional_permissions,undefined);
 const providers=require('../extension/ai-providers.js');
 // AI provider sites, plus a school's own Canvas address: optional, asked for one site at a time.
 assert.deepEqual(manifest.optional_host_permissions,[...providers.list.flatMap(p=>p.origins),'https://*/*']);
@@ -25,13 +25,14 @@ const files=fs.readdirSync(extension,{recursive:true}).filter(f=>fs.statSync(pat
 for(const file of files.filter(f=>f.endsWith('.js')))new vm.Script(fs.readFileSync(path.join(extension,file),'utf8'),{filename:file});
 const references=[manifest.background.service_worker,...manifest.content_scripts.flatMap(c=>[...(c.js||[]),...(c.css||[])]),...Object.values(manifest.icons),manifest.action.default_popup,'custom-site.js','welcome.html','school-address.js',...Object.values(manifest.action.default_icon),...manifest.web_accessible_resources.flatMap(r=>r.resources)];
 for(const ref of references)assert.ok(files.includes(ref.replaceAll('/',path.sep)),`Missing manifest resource: ${ref}`);
-const bootstrap=manifest.content_scripts.find(c=>c.js.includes('startup.js')),controller=manifest.content_scripts.find(c=>c.js.includes('content.js'));
-assert.deepEqual(bootstrap.js,['site.js','startup-art.js','startup.js']);
+const bootstrap=manifest.content_scripts.find(c=>c.js.includes('startup.js')),controller=manifest.content_scripts.find(c=>c.js.includes('feature-loader.js'));
+assert.deepEqual(bootstrap.js,['features.js','site.js','startup-art.js','startup.js']);
 assert.deepEqual(bootstrap.css,['startup.css','startup-art.css','canvas-nav.css','course-nav.css']);
 assert.ok(manifest.content_scripts.indexOf(bootstrap)<manifest.content_scripts.indexOf(controller));
 for(const entry of [bootstrap,controller]){assert.deepEqual(entry.matches,['https://*.instructure.com/*']);assert.equal(entry.all_frames,false);assert.equal(entry.run_at,'document_start');}
-assert.equal(controller.js.at(-1),'content.js');
-assert.deepEqual(controller.js.slice(-7),['course-nav-art.js','course-nav.js','modules-page.js','pdf-art.js','pdf-model.js','pdf-host.js','content.js']);
+assert.equal(controller.js.at(-1),'feature-loader.js');
+assert.deepEqual(controller.js.slice(-4),['canvas-nav.js','course-nav-art.js','course-nav.js','feature-loader.js']);
+const features=require('../extension/features.js');for(const file of features.resolve().js)assert.ok(files.includes(file),`Missing feature file: ${file}`);
 assert.ok(!controller.css?.includes('pdf-host.css'),'PDF styling loads only after a PDF click');
 for(const size of [16,32,48,128]){const png=fs.readFileSync(path.join(extension,`icons/icon-${size}.png`));assert.equal(png.readUInt32BE(16),size);assert.equal(png.readUInt32BE(20),size);}
 for(const file of ['popup.html','welcome.html','pdf-reader.html']){
@@ -43,6 +44,7 @@ for(const file of ['popup.html','welcome.html','pdf-reader.html']){
 // Every place that names the release version must agree, so a release never ships mixed numbers.
 const version=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version;
 assert.equal(manifest.version,version,'manifest.json version must match package.json');
+assert.equal(manifest.version_name,version,'manifest.json version_name must match package.json');
 assert.equal(JSON.parse(fs.readFileSync(path.join(extension,'provenance.json'),'utf8')).version,version,'provenance.json version must match package.json');
 assert.equal(fs.readFileSync(path.join(extension,'content.js'),'utf8').match(/const build='([^']+)'/)?.[1],version,'content.js build must match package.json');
 assert.ok(fs.readFileSync(path.join(extension,'popup.html'),'utf8').includes(version),'popup.html must show the package.json version');

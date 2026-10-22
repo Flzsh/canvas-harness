@@ -3,11 +3,27 @@
  'use strict';
  const MAX_BYTES=2*1024*1024;
  const C=()=>root.CanvasHarnessContext;
+ // Context wrappers can be replaced while Canvas records also change in place.
+ // Compare detached inputs before reparsing unchanged instructional content.
+ function sameData(a,b){
+  if(Object.is(a,b))return true;
+  if(!a||!b||typeof a!=='object'||typeof b!=='object'||Array.isArray(a)!==Array.isArray(b))return false;
+  if(Array.isArray(a)&&a.length!==b.length)return false;
+  const keys=Object.keys(a);return keys.length===Object.keys(b).length&&keys.every(key=>Object.hasOwn(b,key)&&sameData(a[key],b[key]));
+ }
+ function snapshot(value){return !value||typeof value!=='object'?value:Array.isArray(value)?value.map(snapshot):Object.fromEntries(Object.keys(value).map(key=>[key,snapshot(value[key])]));}
  function create({getContext,store,client,user,demo=false,parsePDF,fetchImpl=root.fetch?.bind(root)}){
   const origin=store.owner?.origin||client?.origin||root.location?.origin,accountId=String(user?.id||store.owner?.accountId||'');
-  const resources=new Map(),updates=new Map(),freshAssignments=new Map();
-  let dead=false;
-  const scopeKey=()=>{const ctx=getContext();return [origin,accountId,ctx.courseId||'all',ctx.aiAssignmentId||'',JSON.stringify(ctx.aiSelectedIds||[])].join('|');};
+  const resources=new Map(),updates=new Map(),freshAssignments=new Map(),freshInputs=new Map();
+  let dead=false,catalogInputs,cachedCatalog,cachedSummary,summarySources,summaryActive,selectionSnapshot,selectionJSON;
+  const subscribed=typeof store.subscribe==='function';
+  let autoSend=subscribed&&store.get?.()?.toolbox?.aiAutoSend===true;
+  const unsubscribe=subscribed?store.subscribe(data=>{autoSend=(data||store.get?.())?.toolbox?.aiAutoSend===true;}):null;
+  const scopeKey=(ctx=getContext())=>{
+   const selected=ctx.aiSelectedIds||[];
+   if(selectionJSON===undefined||!sameData(selected,selectionSnapshot)){selectionSnapshot=snapshot(selected);selectionJSON=JSON.stringify(selected);}
+   return [origin,accountId,ctx.courseId||'all',ctx.aiAssignmentId||'',selectionJSON].join('|');
+  };
   function assertScope(key){if(dead||key!==scopeKey())throw Error('The Canvas view changed. Review the sources for the new page.');}
   async function verify(signal){
    if(demo)return;
@@ -17,26 +33,36 @@
   }
   function current(){
    const ctx=getContext(),extra=ctx.aiResources||[],news=ctx.aiUpdates||[];
-   const items=(ctx.items||[]).map(x=>freshAssignments.get(String(x.courseId)+':'+String(x.id))||x);
-   for(const item of freshAssignments.values())if(!items.some(x=>String(x.id)===String(item.id)&&String(x.courseId)===String(item.courseId)))items.push(item);
-   // The panel filters the catalog by course. Explicitly choosing a different
-   // course must not lose its selected sources when another list is loaded.
-   const raw=C().catalog({...ctx,items,courseId:'all'},{origin,resources:[...new Map([...extra,...resources.values()].map(r=>[String(r.courseId),r])).values()],updates:[...new Map([...news,...updates.values()].map(r=>[String(r.courseId),r])).values()]});
-   return {ctx,...raw};
+   if(freshInputs.size){const items=new Map((ctx.items||[]).map(item=>[String(item.courseId)+':'+String(item.id),item]));for(const [key,value]of freshInputs)if(!sameData(items.get(key),value)){freshAssignments.delete(key);freshInputs.delete(key);}}
+   const inputs=[ctx.items||[],ctx.courses||[],extra,news,ctx.aiAssignmentId,[...resources.values()],[...updates.values()],[...freshAssignments.values()]];
+   if(!cachedCatalog||!sameData(inputs,catalogInputs)){
+    const items=(ctx.items||[]).map(x=>freshAssignments.get(String(x.courseId)+':'+String(x.id))||x);
+    for(const item of freshAssignments.values())if(!items.some(x=>String(x.id)===String(item.id)&&String(x.courseId)===String(item.courseId)))items.push(item);
+    // The panel filters the catalog by course. Explicitly choosing a different
+    // course must not lose its selected sources when another list is loaded.
+    cachedCatalog=C().catalog({...ctx,items,courseId:'all'},{origin,resources:[...new Map([...extra,...resources.values()].map(r=>[String(r.courseId),r])).values()],updates:[...new Map([...news,...updates.values()].map(r=>[String(r.courseId),r])).values()]});
+    catalogInputs=snapshot(inputs);
+   }
+   return {ctx,...cachedCatalog};
   }
   function summary(){
    const {ctx,sources,active}=current();
-   return {selectedIds:Array.isArray(ctx.aiSelectedIds)&&ctx.aiSelectedIds.length?[...ctx.aiSelectedIds]:active?[active.id]:[],scopeKey:scopeKey(),courseId:ctx.courseId||'all',active:active?{id:active.id,title:active.title,courseName:active.courseName,courseId:active.courseId}:null,
+   if(!subscribed)autoSend=store.get?.()?.toolbox?.aiAutoSend===true;
+   const key=scopeKey(ctx),courseId=ctx.courseId||'all',motion=ctx.s?.motion||'gentle';
+   if(cachedSummary&&summarySources===sources&&summaryActive===active&&cachedSummary.scopeKey===key&&cachedSummary.courseId===courseId&&cachedSummary.autoSend===autoSend&&cachedSummary.motion===motion)return cachedSummary;
+   summarySources=sources;summaryActive=active;
+   return cachedSummary={selectedIds:Array.isArray(ctx.aiSelectedIds)&&ctx.aiSelectedIds.length?[...ctx.aiSelectedIds]:active?[active.id]:[],scopeKey:key,courseId,active:active?{id:active.id,title:active.title,courseName:active.courseName,courseId:active.courseId}:null,
     courses:(ctx.courses||[]).map(c=>({id:String(c.id),name:c.shortName||c.name})),
     sources:sources.map(({id,title,kind,courseName,courseId,url,text,size})=>({id,title,kind,courseName,courseId,url,loaded:typeof text==='string',size})),
-    demo,autoSend:store.get?.().toolbox?.aiAutoSend===true,theme:'light',motion:ctx.s?.motion||'gentle'};
+    demo,autoSend,theme:'light',motion};
   }
   async function readAssignment(courseId,id,signal){
    const data=await client.readAssignment(courseId,id,{user:{id:accountId},signal});
    const course=getContext().courses.find(c=>String(c.id)===String(courseId));
    // Select instructional fields only; never the submission, score, or student list.
    const item={id:String(data.id),courseId:String(courseId),name:data.name,description:data.description,rubric:data.rubric,dueAt:data.due_at,courseName:course?.shortName||course?.name||'',url:origin+'/courses/'+courseId+'/assignments/'+id};
-   freshAssignments.set(String(courseId)+':'+String(id),item);return C().assignment(item,origin);
+   const key=String(courseId)+':'+String(id),previous=getContext().items?.find(x=>String(x.id)===String(id)&&String(x.courseId)===String(courseId));
+   freshAssignments.set(key,item);freshInputs.set(key,snapshot(previous));return C().assignment(item,origin);
   }
   async function catalog({signal}={}){
    const key=scopeKey(),ctx=getContext();
@@ -134,7 +160,7 @@
    for(const s of resolved)for(const warning of s.warnings||[])result.omitted.push({title:s.title,reason:warning});
    return {...result,scopeKey:key};
   }
-  return {summary,catalog,loadCourse,collect,verify,destroy(){dead=true;resources.clear();updates.clear();freshAssignments.clear();}};
+  return {summary,catalog,loadCourse,collect,verify,destroy(){if(dead)return;dead=true;try{unsubscribe?.();}finally{resources.clear();updates.clear();freshAssignments.clear();freshInputs.clear();catalogInputs=cachedCatalog=cachedSummary=summarySources=summaryActive=selectionSnapshot=null;}}};
  }
  // An already-open PDF reader can hand one explicit text selection to the same
  // AI panel and provider setup as the Canvas toolbox. No PDF URL, background
@@ -149,10 +175,10 @@
   const scopeKey=[origin,String(accountId),'pdf-page',String(fileId),String(page)+(endPage===page?'':'-'+endPage),String(text.length)].join('|');
   const source={id,title:title+' · '+pages,kind:'file',courseId:'all',loaded:true};
   const selected='[PDF text: '+title+', '+pages+']\n'+text.trim();
-  let dead=false;
+  let dead=false,metadata;
   function ensure(){if(dead)throw Error('This PDF selection is closed and its context is unavailable.');}
-  function summary(){ensure();return {scopeKey,selectedIds:[id],courseId:'all',active:null,courses:[],sources:[source],demo:false,
-   autoSend:false,theme:appearance?.theme==='dark'?'dark':'light',motion:'gentle'};}
+  function summary(){ensure();const theme=appearance?.theme==='dark'?'dark':'light';if(!metadata||metadata.theme!==theme)metadata={scopeKey,selectedIds:[id],courseId:'all',active:null,courses:[],sources:[source],demo:false,
+   autoSend:false,theme,motion:'gentle'};return metadata;}
   return {summary,catalog:async()=>summary(),loadCourse:async()=>{throw Error('Choose the PDF selection already shown.');},
    async collect({ids=[],all=false}={}){
     ensure();if(all||!Array.isArray(ids)||ids.length!==1||ids[0]!==id)throw Error('The selected PDF text changed. Review the selection again.');
@@ -160,8 +186,8 @@
    },destroy(){dead=true;}};
  }
  function base64(bytes){let value='';for(let i=0;i<bytes.length;i+=16384)value+=String.fromCharCode(...bytes.subarray(i,i+16384));return root.btoa(value);}
- function mount({container,getContext,store,client,user,demo=false,pdfHandoff=null,onClose=()=>{}}){
-  let frame,port,dead=false,lastSignature='',lastHeartbeat=0;
+ function mount({container,getContext,store,client,user,demo=false,pdfHandoff=null,embedded=false,onClose=()=>{}}){
+  let frame,port,dead=false,lastSignature='',lastHeartbeat=0,lastData,lastSerialized;
   const runtime=root.chrome?.runtime,preview=demo&&!runtime?.id&&/^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(root.location?.origin||'');
   async function parsePDF(bytes){
    if(!runtime?.id)throw Error('Install the extension to read PDFs locally.');
@@ -170,6 +196,7 @@
   const source=pdfHandoff?createPdfHandoff(pdfHandoff):create({getContext,store,client,user,demo,parsePDF});
   const send=message=>{if(dead)return;if(preview)frame?.contentWindow?.postMessage({type:'ch-ai-reply',reply:message},root.location.origin);else try{port?.postMessage(message);}catch{}};
   async function request(message){
+   if(dead)return;
    const {id,action}=message||{};if(typeof id!=='string'||id.length>100)return;
    if(action==='close'){onClose();send({id,ok:true,result:{}});return;}
    try{
@@ -187,6 +214,7 @@
   }
   function onPreview(event){if(preview&&event.origin===root.location.origin&&event.source===frame.contentWindow&&event.data?.type==='ch-ai-request')request(event.data.request);}
   frame=document.createElement('iframe');frame.className='rd-ai-frame';frame.title='AI study workspace';frame.referrerPolicy='no-referrer';
+  if(embedded)frame.name='ch-toolbox-ai';
   frame.src=runtime?.id?runtime.getURL('ai-panel.html'):new URL('../extension/ai-panel.html?preview=1',root.location.href).href;
   if(preview)root.addEventListener('message',onPreview);
   function connect(){
@@ -197,26 +225,46 @@
     next.onDisconnect.addListener(()=>{if(port===next){port=null;lastSignature='';}});
    }catch{port=null;}
   }
-  if(!preview)connect();
   container.append(frame);
+  let timer=0;
+  function* ancestry(){for(let node=frame;node;node=node.parentElement||node.getRootNode?.()?.host)yield node;}
+  function visible(){
+   if(dead||root.document.hidden||container.isConnected===false||frame.isConnected===false)return false;
+   for(const node of ancestry())if(node.hidden||node.tagName==='DIALOG'&&!node.open||node.dataset?.collapsed==='true'||node.dataset?.leaving==='true')return false;
+   if(frame.checkVisibility)return frame.checkVisibility({checkVisibilityCSS:true,visibilityProperty:true});
+   if(root.getComputedStyle)for(const node of ancestry()){const style=root.getComputedStyle(node);if(style.display==='none'||style.visibility==='hidden'||style.visibility==='collapse')return false;}
+   return !frame.getClientRects||frame.getClientRects().length>0;
+  }
+  const stopPolling=()=>{root.clearInterval(timer);timer=0;};
   function update(){
-   if(dead||pdfHandoff&&root.document.hidden)return;try{
+   if(!visible()){stopPolling();return;}
+   if(!timer)timer=root.setInterval(update,1200);
+   try{
     if(!preview)connect();
-    const data=source.summary(),signature=JSON.stringify(data);
+    const data=source.summary();
+    if(data!==lastData){lastSerialized=JSON.stringify(data);lastData=data;}
+    const signature=lastSerialized;
     if(signature!==lastSignature){lastSignature=signature;send({kind:'catalog',data});}
     // Keep this open tool connected without republishing a catalog that would
     // invalidate in-progress context. Reconnect and resend metadata after sleep.
     if(port&&Date.now()-lastHeartbeat>=20000){port.postMessage({kind:'ping'});lastHeartbeat=Date.now();}
    }catch{}
   }
-  frame.addEventListener('load',()=>{lastSignature='';update();});
-  update();
+  const onLoad=()=>{lastSignature='';update();};
+  frame.addEventListener('load',onLoad);
   // Metadata only. Requests fetch text explicitly; no chat or credentials cross into this document.
-  let timer=0;
-  const visibility=()=>{root.clearInterval(timer);timer=0;if(!dead&&(!pdfHandoff||!root.document.hidden)){update();timer=root.setInterval(update,1200);}};
-  if(pdfHandoff)root.document.addEventListener('visibilitychange',visibility);
+  const visibility=()=>{if(!visible())stopPolling();else if(!timer)update();};
+  root.document.addEventListener?.('visibilitychange',visibility);
+  // Mounted toolbox panels can switch, collapse and close across shadow hosts.
+  // Observe only their ancestry; page content changes do not trigger this work.
+  const observer=root.MutationObserver?new root.MutationObserver(visibility):null;
+  for(const node of ancestry())observer?.observe(node,{attributes:true,attributeFilter:['hidden','open','style','class','data-collapsed','data-leaving']});
   visibility();
-  return {update,focus(){frame.focus();},destroy(){dead=true;root.clearInterval(timer);if(pdfHandoff)root.document.removeEventListener('visibilitychange',visibility);root.removeEventListener('message',onPreview);source.destroy();port?.disconnect();frame.remove();}};
+  return {update,focus(){if(!dead)frame.focus();},destroy(){
+   if(dead)return;dead=true;stopPolling();observer?.disconnect();
+   root.document.removeEventListener?.('visibilitychange',visibility);root.removeEventListener('message',onPreview);frame.removeEventListener?.('load',onLoad);
+   try{source.destroy();}finally{try{port?.disconnect();}catch{}port=null;frame.remove();lastData=lastSerialized=null;}
+  }};
  }
  root.CanvasHarnessAISource={create,createPdfHandoff,mount,base64,MAX_BYTES};
  if(typeof module==='object'&&module.exports)module.exports=root.CanvasHarnessAISource;

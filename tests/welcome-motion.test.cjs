@@ -377,7 +377,7 @@ async function reachStep(h,name){
 test('one room controller supplies the static schoolhouse and all scene locations through a single stage',async()=>{
  const source=read('welcome-room.js'),html=read('welcome.html'),h=fixture({reduced:true});
  await settle();
- assert.match(source,/SCHOOLHOUSE/);assert.match(source,/root\.ReserveWelcomeRoom=\{mount,SCHOOLHOUSE/);
+ assert.match(source,/SCHOOLHOUSE/);assert.match(source,/root\.ReserveWelcomeRoom=\{\s*mount,\s*SCHOOLHOUSE/);
  assert.equal(roomCalls(h,'mount').length,1,'mount happens once for the whole tour');
  assert.equal(h.ids.get('room-stage').getAttribute('aria-hidden'),'true');
  assert.equal(h.room.pcContent.classList.contains('wr-pc-content'),true);
@@ -1756,7 +1756,7 @@ test('all four Canvas navigation layouts reuse their supplied SVG rigs',()=>{
  assert.ok(kinds.length>=5);
  for(const kind of kinds){
   const drawing=Nav.DRAWINGS[kind];assert.ok(drawing,kind+' is a live menu drawing');
-  assert.ok(html.includes(drawing),kind+' uses the actual exported drawing');
+  assert.ok(html.replace(/>\s+</g,'><').includes(drawing.replace(/>\s+</g,'><')),kind+' uses the actual exported drawing');
  }
  assert.match(js,/function renderMenuArt\(/);
  assert.match(js,/function animateMenuLayout\(/);

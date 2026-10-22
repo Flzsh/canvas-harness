@@ -108,6 +108,7 @@
       },
       abort(id, reason = new Error('Request stopped.')) { cancel(id); settle(id, reason); },
       dispose() {
+        if (closed) return;
         for (const id of [...pending.keys()]) settle(id, new Error('The panel closed.'));
         closed = true; available = false;
         if (reconnectTimer !== null) env.clearTimeout(reconnectTimer);
@@ -137,7 +138,7 @@
       fallback: '', manualCopy: false, revision: 0, scopeVersion: 0
     };
     let operation = 0, websiteCheck = 0, dead = false, preferenceLoaded = false;
-    const changed = () => { if (!dead) onChange(state); };
+    const changed = area => { if (!dead) onChange(state, area); };
     const fail = message => { throw new Error(message); };
     const providerName = () => PROVIDERS.find(p => p[0] === state.provider)?.[1] || 'provider';
     function invalidate() { state.revision++; state.context = null; state.reviewAccepted = null; state.fallback = ''; state.manualCopy = false; }
@@ -300,7 +301,7 @@
       setSelection(id, checked) { if (state.busy || state.all) return; if (!state.knownSources.has(id) && !state.selected.has(id)) return; if (checked) state.selected.add(id); else state.selected.delete(id); invalidate(); changed(); },
       setAll(checked) { if (state.busy) return; state.all = checked === true && Boolean(state.catalog?.active); invalidate(); changed(); },
       setAssignmentPdfs(checked) { if (state.busy) return; state.includeAssignmentPdfs = checked === true; invalidate(); changed(); },
-      setDraft(text) { state.draft = string(text); state.fallback = ''; state.manualCopy = false; changed(); },
+      setDraft(text) { state.draft = string(text); state.fallback = ''; state.manualCopy = false; changed('composer'); },
       setAutoSend(value) { if (!state.busy) {
         state.autoSend = value === true; preferenceLoaded = true; changed();
         if (state.online) void transport.request('preference',{autoSend:state.autoSend}).catch(()=>{state.notice='This choice applies to the open panel, but could not be saved.';changed();});
@@ -313,7 +314,7 @@
       clear() { if (state.busy) return; state.history = []; state.messages = []; state.notice = 'Conversation cleared from this panel.'; changed(); },
       async close() { operation++; state.busy=''; changed(); try { await transport.request('close'); return true; } catch(error) {state.error=errorText(error);changed();return false;} },
       disconnected(reason) {operation++;state.online=false;state.busy='';state.error=reason;changed();},
-      dispose() {dead=true;operation++;}
+      dispose() {if(dead)return;dead=true;operation++;}
 
     };
     return controller;
@@ -333,11 +334,25 @@
   function mount(env) {
     const document=env.document, byId=id=>document.getElementById(id);
     if(!byId('composer'))return null;
+    // The containing toolbox supplies its own close control. A standalone panel keeps this one.
+    byId('close').hidden=env.name==='ch-toolbox-ai';
     const make=(tag,text,cls)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(cls)node.className=cls;return node;};
     for(const [id,label] of PROVIDERS.slice(3)){const option=make('option',label);option.value=id;byId('more-providers').append(option);}
-    let controller;
+    let controller,pdfButtons=[];
+    const rendered=new Map();
+    // Store rendered primitive fields so in-place source edits invalidate the right list.
+    const renderChanged=(key,inputs,draw)=>{const previous=rendered.get(key);if(previous&&previous.length===inputs.length&&inputs.every((value,i)=>Object.is(value,previous[i])))return;draw();rendered.set(key,inputs);};
     const transport=createTransport(env,{catalog:data=>controller?.setCatalog(data),disconnect:reason=>controller?.disconnected(reason),connect:()=>{ if(controller)void controller.initialize(); }});
-    function render(state){
+    function renderComposer(state){
+      const busy=Boolean(state.busy);
+      byId('fallback').hidden=!state.fallback;if(byId('fallback-text').value!==state.fallback)byId('fallback-text').value=state.fallback;
+      if(byId('prompt').value!==state.draft)byId('prompt').value=state.draft;
+      byId('prompt').disabled=busy;byId('prompt-count').textContent=state.draft.length.toLocaleString()+' / 20,000';
+      byId('send').textContent=busy?'Preparing…':!state.online?'Reconnecting…':'Send ↗';
+      byId('send').disabled=busy||!state.online||state.demo||!state.catalog||(!state.draft.trim()&&!state.selected.size&&!state.pdfs.length);
+    }
+    function render(state,area){
+      if(area==='composer'){renderComposer(state);return;}
       const busy=Boolean(state.busy),catalog=state.catalog,name=PROVIDERS.find(x=>x[0]===state.provider)[1];
       document.documentElement.dataset.theme=catalog?.theme==='dark'?'dark':'light';
       document.documentElement.dataset.motion=['off','reduced','none','still'].includes(catalog?.motion)?'off':'standard';
@@ -351,23 +366,25 @@
       const fromPdf=chosen.length>0&&chosen.every(source=>String(source.id).startsWith('pdf-page:'));
       byId('prompt').placeholder=fromPdf?'Ask about these pages…':'What would you like help with?';
       byId('selection-summary').textContent=fromPdf?'From your PDF':chosen.length?chosen.length+' selected on Canvas':catalog?.active?'Opened assignment':'No Canvas items selected';
-      byId('selected-items').replaceChildren(...chosen.map(source=>{const li=make('li');li.append(make('strong',source.title),make('small',fromPdf?'every word on these pages':source.courseName||source.kind));return li;}));
+      renderChanged('selected',chosen.flatMap(source=>[source.id,source.title,fromPdf?'every word on these pages':source.courseName||source.kind]),()=>{byId('selected-items').replaceChildren(...chosen.map(source=>{const li=make('li');li.append(make('strong',source.title),make('small',fromPdf?'every word on these pages':source.courseName||source.kind));return li;}));});
       byId('scope-hint').textContent=fromPdf?'These words go to the AI site with your question.':chosen.length?'Change your selection using the circles on Canvas.':'Use the circles on Canvas to choose assignments or material. You can also ask a question without context.';
       byId('all-row').hidden=!catalog?.active||chosen.length!==1||chosen[0]?.id!==catalog.active.id;
       byId('all-linked').checked=state.all;byId('all-linked').disabled=busy;
       byId('assignment-pdfs-row').hidden=!chosen.some(source=>source.kind==='assignment');
       byId('assignment-pdfs').checked=state.includeAssignmentPdfs;byId('assignment-pdfs').disabled=busy;
-      byId('pdf-list').replaceChildren(...state.pdfs.map(pdf=>{const li=make('div',undefined,'pdf-item');li.append(make('span',pdf.title));const remove=make('button','Remove','quiet-button');remove.type='button';remove.disabled=busy;remove.addEventListener('click',()=>controller.removePDF(pdf.id));li.append(remove);return li;}));
-      const context=state.context;if(!context)byId('context-count').textContent='';byId('context-preview').hidden=!context;
-      if(context){byId('context-text').textContent=context.text;byId('context-count').textContent=context.characters.toLocaleString()+' characters';byId('issue-list').replaceChildren(...context.issues.map(x=>make('li',x.title+': '+x.reason)));byId('context-issues').hidden=!context.issues.length;if(context.issues.length)byId('context-details').open=true;}
+      renderChanged('pdfs',state.pdfs.flatMap(pdf=>[pdf.id,pdf.title]),()=>{
+        pdfButtons=[];byId('pdf-list').replaceChildren(...state.pdfs.map(pdf=>{const li=make('div',undefined,'pdf-item');li.append(make('span',pdf.title));const remove=make('button','Remove','quiet-button');remove.type='button';remove.addEventListener('click',()=>controller.removePDF(pdf.id));li.append(remove);pdfButtons.push(remove);return li;}));
+      });
+      for(const button of pdfButtons)button.disabled=busy;
+      const context=state.context;
+      renderChanged('context',[Boolean(context),context?.text,context?.characters,...array(context?.issues).flatMap(issue=>[issue.title,issue.reason])],()=>{
+        if(!context)byId('context-count').textContent='';byId('context-preview').hidden=!context;
+        if(context){byId('context-text').textContent=context.text;byId('context-count').textContent=context.characters.toLocaleString()+' characters';byId('issue-list').replaceChildren(...context.issues.map(x=>make('li',x.title+': '+x.reason)));byId('context-issues').hidden=!context.issues.length;if(context.issues.length)byId('context-details').open=true;}
+      });
       byId('accept-issues').checked=Boolean(context&&state.reviewAccepted===context.fingerprint);byId('accept-issues').disabled=busy;
-      byId('fallback').hidden=!state.fallback;byId('fallback-text').value=state.fallback;
       byId('notice').textContent=state.busy||state.notice;byId('notice').hidden=!(state.busy||state.notice);
       byId('error').textContent=state.error;byId('error').hidden=!state.error;
-      if(byId('prompt').value!==state.draft)byId('prompt').value=state.draft;
-      byId('prompt').disabled=busy;byId('prompt-count').textContent=state.draft.length.toLocaleString()+' / 20,000';
-      byId('send').textContent=busy?'Preparing…':!state.online?'Reconnecting…':'Send ↗';
-      byId('send').disabled=busy||!state.online||state.demo||!catalog||(!state.draft.trim()&&!state.selected.size&&!state.pdfs.length);
+      renderComposer(state);
       for(const id of ['preview','composer-attach','copy','copy-fallback'])byId(id).disabled=busy;
       for(const id of ['open-website','open-fallback'])byId(id).disabled=busy||state.demo||!state.online;
       if(state.manualCopy&&!busy){byId('fallback-text').focus();byId('fallback-text').select();}

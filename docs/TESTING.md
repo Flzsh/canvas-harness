@@ -1,16 +1,16 @@
-# Release checks — Canvas Harness 3.1.0
+# Release checks — Canvas Harness 3.2.0
 
-The final 3.1.0 release pass ran `npm test`, `npm run check`, and `npm run build`: 964 tests passed, zero failed, and three optional browser tests were skipped. No browser was launched. All 79 JavaScript files in the unpacked ZIP passed `node --check`; every manifest resource exists, both readable PDF.js vendor hashes match, and the removed-feature token scan has zero matches. Historical browser measurements below describe earlier releases.
+The release runs `npm test`, `npm run check`, `npm run build`, then `node scripts/release-audit.cjs dist/unpacked-3.2.0` against the actual extracted ZIP. Browser tests are explicitly disabled. The sibling release scope report and `dist/audit-3.2.0.json` record final results, sizes and hashes.
 
-## 3.1.0 release scope
+The feature fixtures check Full ordering, Lite and Custom dependencies, stale hints, early drawing teardown, worker snapshots, custom school injection, missing optional modules, unchanged saved data, popup saves and rollback. Regression fixtures cover browser-restart boot order, Window resize targets, invalidated extension APIs, column anchoring, full-height square dashboard roots and text encoding.
 
-- Retain the 2.29.0 workspace and its fixes.
-- Check the split PDF reader, local annotations, Ask AI handoff and simplified AI pane. Ask AI prepares selected text locally; only Send places it on a provider's website.
-- Check the drawn course menu and native Modules page, including course homes that show modules. Preserve Canvas item order, links, requirements, locked states and expand/collapse controls.
-- Keep assignment, submission and feedback controls native until the student opens a PDF. See [PDF reader acceptance](pdf-reader.md#owners-browser-acceptance) and [native-page boundaries](vanilla-assignment-pages.md).
-- Keep the artificial preview at 3.1.0 with synthetic data and only release resources. The local preview server serves `preview/` and `extension/`.
+Quick Upload retains the 3.1 parser, controller, review UI, helper CLI, format vectors and tests. Its catalogue entry is next to course artwork in Drawings, is enabled in Full and the default Custom selection, and includes its artwork/editor dependencies. Importer checks cover validation, course matching, atomic Apply, guarded Undo and the artificial example pack.
 
-Additional documentation and preview checks cover JavaScript syntax, preview resource references, a synthetic mount and local HTTP routes. Automated checks do not establish installed Canvas behavior, PDF layout or provider insertion; those browser acceptance steps remain unverified under the no-browser instruction.
+The release audit compares every ZIP payload, extracted file and current source byte to the release manifest. It checks references, Node syntax, immutable vendor hashes, readable line lengths and removed-feature identifiers. JavaScript drawing formatting is checked for AST equivalence with identical string values; its hashes are in `dist/readable-source-evidence.json`.
+
+Second-pass regressions cover PDF routes and click fallback, Materials and Linked materials identities, topbar heading placement and contained module scrolling, Messages with no safe pony destination, dormant animation work, lazy AI/editor setup, and account-bound concurrent writes. Run checks sequentially: finish `npm test` before `npm run check`, then `npm run build` and the extracted-package audit. Set `FOLIO_RESPONSIVE_BROWSER=0` for the no-browser run.
+
+Fixtures and source checks do not establish installed rendering, live Canvas behavior, provider insertion or measured first-paint speed. No browser is launched for this release.
 
 ## Earlier release checks
 

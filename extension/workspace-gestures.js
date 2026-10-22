@@ -48,7 +48,7 @@
    const width=observedWidth||desk.clientWidth||desk.getBoundingClientRect().width,list=panels(),heights={};let measured=false;
    // Observer sizes are border-box heights, like offsetHeight. Unknown sizes are read before any style write.
    for(const node of list){const h=panelSizes.get(node)??(Number(node.offsetHeight)||0);heights[node.dataset.arrangeKey]=h;if(h>0)measured=true;}
-   const sizes=fixed?{reader:'l'}:getSettings().moduleSize||{},signature=JSON.stringify([layout,width,sizes,heights,drag?.key||'']);
+   const fits=container.dataset.courseNavigation==='topbar',sizes=fixed?{reader:'l'}:getSettings().moduleSize||{},signature=JSON.stringify([layout,width,sizes,heights,fits,drag?.key||'']);
    if(layoutMemo?.desk===desk&&layoutMemo.signature===signature&&list.length===layoutMemo.list.length&&list.every((node,i)=>node===layoutMemo.list[i]))return;
    const spec=M.grid(layout,width,sizes);layoutMemo={desk,signature,list};
    // Written only when it changed, so an unchanged layout costs no restyle.
@@ -56,14 +56,14 @@
    put(desk,'--rd-layout-columns',spec.columns);
    for(const node of list){const cell=spec.cells[node.dataset.arrangeKey];if(cell)put(node,'--rd-panel-column',cell.column);}
    // Column rewraps deliver fresh heights through ResizeObserver before paint, without a read-after-write flush.
-   if(measured&&M.rows){
+   if(measured&&M.rows&&!fits){
     const placed=M.rows(spec.resolved,heights,{gap:ROW_GAP,unit:ROW_UNIT});
     put(desk,'--rd-layout-rows','none');if(desk.dataset.rows!=='measured')desk.dataset.rows='measured';
     // A module drawn down to its row's bottom edge keeps its own height; only its outline grows (widgets.css).
     for(const node of list){const key=node.dataset.arrangeKey,row=placed.cells[key];if(row)put(node,'--rd-panel-row',row);put(node,'--rd-panel-grow',placed.fill[key]&&node!==drag?.node?Math.max(0,placed.fill[key]-heights[key])+'px':'0px');}
    }else{
-    put(desk,'--rd-layout-rows',spec.rows);delete desk.dataset.rows;
-    for(const node of list){const cell=spec.cells[node.dataset.arrangeKey];if(cell)put(node,'--rd-panel-row',cell.row);}
+    put(desk,'--rd-layout-rows',fits?spec.fitRows:spec.rows);delete desk.dataset.rows;
+    for(const node of list){const cell=spec.cells[node.dataset.arrangeKey];if(cell)put(node,'--rd-panel-row',cell.row);if(fits)put(node,'--rd-panel-grow','0px');}
    }
    watch(list);
   }

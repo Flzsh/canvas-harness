@@ -42,13 +42,26 @@ function background({saved=[],granted=[]}={}){
   permissions:{contains:async q=>q.origins.every(o=>perms.has(o)),onAdded:event(),onRemoved:event()},
   scripting:{getRegisteredContentScripts:async()=>[...registered.values()],unregisterContentScripts:async({ids})=>ids.forEach(id=>registered.delete(id)),registerContentScripts:async list=>list.forEach(s=>registered.set(s.id,s))},
   tabs:{create:async t=>opened.push(t.url),get:async id=>({id,url:'https://canvas.school.edu/'})}};
- const fake={chrome,importScripts:()=>{},crypto:crypto.webcrypto,URL,Intl,setTimeout,clearTimeout,AbortSignal,TextEncoder,fetch:async()=>{throw Error('no network');}};
+ const fake={ReserveFeatures:require('../extension/features.js'),chrome,importScripts:()=>{},crypto:crypto.webcrypto,URL,Intl,setTimeout,clearTimeout,AbortSignal,TextEncoder,fetch:async()=>{throw Error('no network');}};
  fake.globalThis=fake;vm.runInNewContext(read('site.js'),fake);vm.runInNewContext(read('background.js'),fake);
  return {store,perms,registered,opened,chrome,fake};
 }
 function registration(h,origin='https://canvas.school.edu',sender={id:h.chrome.runtime.id,url:h.chrome.runtime.getURL('welcome.html'),frameId:0}){
  const replies=[],held=h.chrome.runtime.onMessage.emit({type:'ch-school-ready',origin},sender,r=>replies.push(r));return {replies,held};
 }
+
+test('registered custom schools receive the same ordered feature loader and document-scoped Lite modules',async()=>{
+ const origin='https://canvas.school.edu',h=background({saved:[origin],granted:[origin+'/*']}),calls=[];
+ h.store['reserve:features']={preset:'lite'};
+ h.chrome.scripting.executeScript=async options=>{calls.push(options);return [{documentId:'custom-document'}];};
+ const reply=await new Promise(resolve=>h.chrome.runtime.onMessage.emit({target:'ch-features',op:'load'},
+  {id:h.chrome.runtime.id,url:origin+'/dashboard',tab:{id:31},frameId:0,documentId:'custom-document'},resolve));
+ assert.equal(reply.ok,true);assert.equal(reply.preset,'lite');
+ const files=calls.flatMap(call=>call.files||[]),F=require('../extension/features.js');
+ same(files,F.resolve('lite').js.filter(file=>!F.staticJS.includes(file)));
+ assert.ok(files.includes('dashboard.js'));assert.ok(!files.includes('pets.js'));assert.ok(!files.includes('pdf-host.js'));
+ for(const call of calls.filter(call=>call.files||call.args))same(call.target,{tabId:31,documentIds:['custom-document']});
+});
 function gate(){let resolve;const promise=new Promise(r=>{resolve=r;});return {promise,resolve};}
 
 test('school registration acknowledgement waits for its serialized registration, without opening a tab',async()=>{

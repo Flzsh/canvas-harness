@@ -32,6 +32,7 @@
    }).catch(error=>{link?.remove();link=null;loading=null;throw error;});return loading;
   }
   const controller=root.ReserveNativeAppearance.create({adapter,media,onError,apply:(prefs,theme)=>{
+   if(root.ReserveFeatures&&!root.ReserveFeatures.enabled('native-appearance')){revision++;restore();return;}
    if(root.ReserveSite?.vanillaPage(root.location)){revision++;restore();link?.remove();return;}
    const version=++revision;if(theme==='original'){restore();return;}
    styles().then(()=>{if(dead||version!==revision)return;if(root.ReserveSite?.vanillaPage(root.location)){restore();link?.remove();link=null;loading=null;return;}html.setAttribute(attributes[0],theme);html.setAttribute(attributes[1],prefs.readingWidth);html.setAttribute(attributes[2],prefs.textSize);html.setAttribute(attributes[3],prefs.accent);html.classList.add('reserve-native-enabled');}).catch(error=>{if(dead||version!==revision)return;restore();onError(error);});

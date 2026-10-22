@@ -16,7 +16,25 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const isRecord = v => v !== null && typeof v === 'object' && !Array.isArray(v);
   const personalWork = root.ReservePersonalWork || (typeof module === 'object' && module.exports && typeof require === 'function' ? require('./personal-work.js') : null);
   const queues = new Map();
+  const accountServers = new WeakMap();
   const bytes = value => new TextEncoder().encode(typeof value==='string'?value:JSON.stringify(value)).length;
+  // Compare snapshots without serializing large notes and uploaded artwork.
+  function same(a,b) {
+    if(a===b)return true;
+    if(!a||!b||typeof a!=='object'||typeof b!=='object'||Array.isArray(a)!==Array.isArray(b))return false;
+    if(Array.isArray(a)&&a.length!==b.length)return false;
+    const kind=Object.prototype.toString.call(a);
+    if(kind!==Object.prototype.toString.call(b))return false;
+    if(!['[object Object]','[object Array]'].includes(kind))return JSON.stringify(a)===JSON.stringify(b);
+    const keys=Object.keys(a);
+    return keys.length===Object.keys(b).length&&keys.every(key=>Object.hasOwn(b,key)&&same(a[key],b[key]));
+  }
+  // Private projection: branches remain private until a draft or public snapshot is cloned.
+  function personal(data) {
+    const out={...data,settings:{...data.settings},pet:{...data.pet}};
+    for(const key of ['theme','motion','nightArt'])delete out.settings[key];
+    delete out.pet.enabled;return out;
+  }
   function validDay(value) {return /^\d{4}-\d{2}-\d{2}$/.test(value) && new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;}
   function instant(value) {
     if(value==null||value==='')return null;
@@ -41,15 +59,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(!clean)throw Error('Invalid personal task source. Use a supported HTTP(S) link and source kind.');
     return clean;
   }
-  function cleanData(value) {
+  function cleanData(value,previous) {
     if (!isRecord(value)) throw Error('Backup data must be an object.');
     safeKeys(value);
-    const out = defaults(), settings=value.settings || {};
-    out.gpa=gpa.cleanPreferences(value.gpa);
+    const out = defaults(), settings=value.settings || {},sameSettings=previous&&same(settings,previous.settings);
+    out.gpa=previous&&same(value.gpa,previous.gpa)?previous.gpa:gpa.cleanPreferences(value.gpa);
     if (!isRecord(settings) || (value.tasks && !isRecord(value.tasks)) || (value.customTasks && !Array.isArray(value.customTasks))) throw Error('Backup data has an invalid structure.');
     // Validate every restored SVG before returning data or committing a save.
     if(!customization)throw Error('Canvas Harness customization modules are missing. Reload the extension.');
-    Object.assign(out.settings,customization.cleanSettings(settings));
+    Object.assign(out.settings,sameSettings?previous.settings:customization.cleanSettings(settings));
     for(const [key,allowed] of Object.entries({theme:['light','dark','system'],accent:['clay','forest','indigo','rose','ocean','amber'],motion:['gentle','still','off'],livingArt:['on','off'],readingFont:['book','interface'],greeting:['on','off'],quickOpen:['on','off'],density:['comfortable','compact'],font:['system','humanist','serif'],textSize:['standard','large'],dashboardLayout:['split','list']})) {
       if (settings[key] !== undefined && !allowed.includes(settings[key])) throw Error(`Invalid ${key} setting in backup.`);
       if (settings[key]) out.settings[key]=settings[key];
@@ -70,11 +88,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     for(const key of ['courseOrder','hiddenCourses','shownCourses']) if(Array.isArray(settings[key])) out.settings[key]=[...new Set(settings[key].filter(x=>typeof x==='string'&&/^\d+$/.test(x)))].slice(0,500);
     // Hidden by hand wins over shown by hand, so the two lists never disagree.
     out.settings.shownCourses=out.settings.shownCourses.filter(id=>!out.settings.hiddenCourses.includes(id));
+    out.settings.coursePrefs={};
     if (isRecord(settings.coursePrefs)) for(const [id,pref] of Object.entries(settings.coursePrefs)) {
       if (!/^\d+$/.test(id)||!isRecord(pref)) continue;
-      out.settings.coursePrefs[id]={name:text(pref.name,100),color:/^#[\da-f]{6}$/i.test(pref.color)?pref.color:'',image:typeof pref.image==='string'&&/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(pref.image)&&pref.image.length<400000?pref.image:'',...customization.cleanAppearance(pref)};
+      out.settings.coursePrefs[id]=previous&&Object.hasOwn(previous.settings.coursePrefs,id)&&same(pref,previous.settings.coursePrefs[id])?previous.settings.coursePrefs[id]:{name:text(pref.name,100),color:/^#[\da-f]{6}$/i.test(pref.color)?pref.color:'',image:typeof pref.image==='string'&&/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(pref.image)&&pref.image.length<400000?pref.image:'',...customization.cleanAppearance(pref)};
     }
-    customization.checkBudget(out.settings);
+    if(!sameSettings)customization.checkBudget(out.settings);
     if(value.resourcePins!==undefined&&!Array.isArray(value.resourcePins))throw Error('Invalid saved materials in backup.');
     if((value.resourcePins||[]).length>300)throw Error('Save up to 300 materials. Remove a shortcut before adding another.');
     const resourceIds=new Set();
@@ -88,6 +107,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const taskEntries=Object.entries(value.tasks || {});
     if(taskEntries.length>10000)throw Error('Backup contains too many task records.');
     for(const [id,item] of taskEntries) {
+      if(previous&&Object.hasOwn(previous.tasks,id)&&same(item,previous.tasks[id])){out.tasks[id]=previous.tasks[id];continue;}
       if(!/^(\d+|local-[\w-]+)$/.test(id)||!isRecord(item))throw Error('Invalid task record in backup.');
       if(item.plannedDate && !validDay(item.plannedDate))throw Error('Invalid planned date in backup.');
       if(typeof item.notes==='string' && item.notes.length>20000)throw Error('A task note exceeds the 20,000 character limit.');
@@ -110,7 +130,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(size!==undefined&&!isRecord(size))throw Error('Invalid toolbox dock size in backup.');
       for(const axis of ['width','height'])if(size?.[axis]!==undefined&&(!Number.isFinite(size[axis])||size[axis]<0||size[axis]>10000))throw Error('Toolbox dock size must contain finite numbers between 0 and 10,000 pixels.');
       // Keep safe future toolbox fields while validating the fields this version owns.
-      out.toolbox={...clone(value.toolbox),scratchpad:text(value.toolbox.scratchpad,30000),recent:[...new Set((value.toolbox.recent||[]).filter(id=>typeof id==='string'&&id.length<=500))].slice(0,24),dockSize:{...clone(size||{}),width:size?.width??0,height:size?.height??0}};
+      out.toolbox=previous&&same(value.toolbox,previous.toolbox)?previous.toolbox:{...clone(value.toolbox),scratchpad:text(value.toolbox.scratchpad,30000),recent:[...new Set((value.toolbox.recent||[]).filter(id=>typeof id==='string'&&id.length<=500))].slice(0,24),dockSize:{...clone(size||{}),width:size?.width??0,height:size?.height??0}};
     }
     if(isRecord(value.focus)) out.focus={minutes:[15,25,45,60].includes(value.focus.minutes)?value.focus.minutes:25,remaining:Number.isFinite(value.focus.remaining)?Math.max(0,Math.min(3600,value.focus.remaining)):1500,endsAt:Number.isFinite(value.focus.endsAt)?value.focus.endsAt:null,itemId:text(value.focus.itemId,100)||null,sessions:Number.isInteger(value.focus.sessions)?Math.max(0,value.focus.sessions):0};
     if(value.pet!==undefined&&value.pet!==null){
@@ -132,37 +152,132 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(owner && (!input.owner||String(input.owner.accountId)!==String(owner.accountId)||input.owner.origin!==owner.origin))throw Error('This backup belongs to a different Canvas account or site. Sign in to its original account to restore it.');
     return cleanData(input.data);
   }
+  // Only private, previously validated branches may be reused by the worker.
+  // Changed input, hostile keys, and the total byte budget are checked every time.
+  function accountValidator(){let previous;return value=>{previous=cleanData(value,previous&&personal(previous));};}
+  // The background opts in after loading the shared validators. One worker owns
+  // compare-and-write across documents; Canvas-origin locks alone cannot do that.
+  function serveAccountWrites({runtime=root.chrome?.runtime,local=root.chrome?.storage?.local,ready=Promise.resolve()}={}){
+    if(!runtime?.onMessage?.addListener||!local)return null;
+    if(accountServers.has(runtime))return accountServers.get(runtime);
+    const validators=new Map();let dead=false;
+    function validate(key,value){
+      let validator=validators.get(key);
+      if(!validator){validator=accountValidator();if(validators.size>=8)validators.delete(validators.keys().next().value);validators.set(key,validator);}
+      validator(value);
+    }
+    const handler=(message,sender,reply)=>{
+      if(dead||message?.target!=='ch-account-write')return;
+      (async()=>{
+        await (typeof ready==='function'?ready():ready);
+        let url;try{url=new URL(sender?.url);}catch{}
+        const prefix='reserve:v1:'+url?.origin+':';
+        if(dead||sender?.id!==runtime.id||sender.frameId!==0||!Number.isInteger(sender.tab?.id)||!url||url.username||url.password||
+          !root.ReserveSite?.supported(url.href)||typeof message.key!=='string'||!message.key.startsWith(prefix)||!/^\d+$/.test(message.key.slice(prefix.length))||
+          !isRecord(message.value)||message.before!=null&&!isRecord(message.before)||bytes(message.value)>4000000)throw Error('Invalid account write.');
+        return lock('account-write:'+message.key,async()=>{
+          if(dead)throw Error('Account writer is closed.');
+          validate(message.key,message.value);
+          const current=(await local.get(message.key))[message.key];
+          if(!same(current,message.before))return {ok:false,conflict:true};
+          await local.set({[message.key]:message.value});return {ok:true};
+        });
+      })().then(reply,error=>reply({ok:false,error:String(error?.message||'Account write failed.')}));
+      return true;
+    };
+    const server={destroy(){if(dead)return;dead=true;runtime.onMessage.removeListener?.(handler);validators.clear();accountServers.delete(runtime);}};
+    runtime.onMessage.addListener(handler);accountServers.set(runtime,server);return server;
+  }
   function browserAdapter() {
-    if(root.chrome?.storage?.local)return {remote:appearance?.messenger?.(),read:async key=>(await chrome.storage.local.get(key))[key],write:async(key,value)=>chrome.storage.local.set({[key]:value}),subscribe:(key,fn)=>{const handler=(changes,area)=>{if(area==='local'&&changes[key])fn();};chrome.storage.onChanged.addListener(handler);return()=>chrome.storage.onChanged.removeListener(handler);}};
-    return {read:async key=>{const v=localStorage.getItem(key);return v?JSON.parse(v):null;},write:async(key,value)=>localStorage.setItem(key,JSON.stringify(value)),subscribe:(key,fn)=>{const handler=event=>{if(event.key===key)fn();};root.addEventListener('storage',handler);return()=>root.removeEventListener('storage',handler);}};
+    if(root.chrome?.storage?.local)return {
+      remote:appearance?.messenger?.(),
+      read:async key=>(await root.chrome.storage.local.get(key))[key],
+      write:async(key,value)=>root.chrome.storage.local.set({[key]:value}),
+      ...(root.chrome.runtime?.id&&root.chrome.runtime.sendMessage?{compareWrite:async(key,value,before)=>{
+        const reply=await root.chrome.runtime.sendMessage({target:'ch-account-write',key,value,before});
+        // Older workers use the existing Canvas-origin lock. Recheck its baseline
+        // before falling back; the worker serializer remains authoritative when installed.
+        if(reply===undefined){
+          const current=(await root.chrome.storage.local.get(key))[key];
+          if(!same(current,before))throw Object.assign(Error('Account changed. Try again.'),{code:'storage-conflict'});
+          return root.chrome.storage.local.set({[key]:value});
+        }
+        if(reply?.ok!==true)throw Object.assign(Error(reply?.error||'Account changed. Try again.'),{code:reply?.conflict?'storage-conflict':'storage-error'});
+      }}:{}),
+      subscribe:(key,fn)=>{const handler=(changes,area)=>{if(area==='local'&&changes[key])fn(changes[key]);};root.chrome.storage.onChanged.addListener(handler);return()=>root.chrome.storage.onChanged.removeListener(handler);}
+    };
+    return {read:async key=>{const v=localStorage.getItem(key);return v?JSON.parse(v):null;},write:async(key,value)=>localStorage.setItem(key,JSON.stringify(value)),subscribe:(key,fn)=>{const handler=event=>{if(event.key===key){let newValue;try{newValue=event.newValue?JSON.parse(event.newValue):null;}catch{return fn();}fn({newValue});}};root.addEventListener('storage',handler);return()=>root.removeEventListener('storage',handler);}};
   }
   function createStore({accountId,origin=(globalThis.ReserveSite.origin()),adapter=browserAdapter()} = {}) {
     if(!accountId)throw Error('A verified account is required before loading personal data.');
-    const owner={accountId:String(accountId),origin},key=`reserve:v1:${origin}:${accountId}`,listeners=new Set();let current=defaults();
-    async function readData(){const saved=await adapter.read(key),next=saved?cleanData(saved):defaults();return appearance.apply(next,await appearance.read(adapter,next));}
+    const owner={accountId:String(accountId),origin},key=`reserve:v1:${origin}:${accountId}`,listeners=new Set();let current=defaults(),savedRaw,savedClean,pendingWrite=null,destroyed=false;
+    async function fromSaved(saved){
+      if(!savedClean||!same(saved,savedRaw)){savedClean=saved?cleanData(saved,savedClean&&personal(savedClean)):null;savedRaw=saved;}
+      const base=savedClean||defaults(),next={...base,settings:{...base.settings},pet:{...base.pet}};
+      return appearance.apply(next,await appearance.read(adapter,next));
+    }
+    async function readData(){return fromSaved(await adapter.read(key));}
     async function load(){current=await readData();return clone(current);}
     function get(){return clone(current);}
     // A view failing after a successful write must not turn persistence into a
     // rejected transaction. Give each listener its own snapshot and isolation.
     function notify(){for(const listener of listeners){try{const result=listener(get());if(result&&typeof result.then==='function')Promise.resolve(result).catch(()=>{});}catch{}}}
-    function update(mutator) {
-      return lock(key,async()=>{const next=await readData(),before=appearance.fromData(next),personalBefore=JSON.stringify(appearance.personal(next));
+    function edits(before,after,path=[]){
+      const out=[];
+      for(const name of new Set([...Object.keys(before),...Object.keys(after)])){
+        const had=Object.hasOwn(before,name),has=Object.hasOwn(after,name),a=before[name],b=after[name];
+        if(a===b&&had===has)continue;
+        if(had&&has&&isRecord(a)&&isRecord(b))out.push(...edits(a,b,[...path,name]));
+        else if(had!==has||!same(a,b))out.push({path:[...path,name],had,has,...(had?{before:clone(a)}:{}),...(has?{after:clone(b)}:{})});
+      }
+      return out;
+    }
+    function rebase(next,changes){
+      const conflict=()=>Object.assign(Error('Settings changed. Try again.'),{code:'storage-conflict'});
+      for(const change of changes){
+        let node=next;
+        for(const name of change.path.slice(0,-1)){if(!isRecord(node[name]))throw conflict();node=node[name];}
+        const name=change.path.at(-1),has=Object.hasOwn(node,name);
+        if(has===change.has&&(!has||same(node[name],change.after)))continue;
+        if(has!==change.had||has&&!same(node[name],change.before))throw conflict();
+        if(change.has)node[name]=clone(change.after);else delete node[name];
+      }
+    }
+    function update(mutator,{retry=true}={}) {
+      return lock(key,async()=>{let changesToRetry=null;
+        for(let attempt=0;attempt<8;attempt++){
+        const rawBefore=await adapter.read(key),draftBefore=await fromSaved(rawBefore),next=clone(draftBefore),before=appearance.fromData(draftBefore);
         const oldLayout=next.settings.dashboardLayout,oldOrder=next.settings.deskOrder;
-        mutator(next);
+        if(changesToRetry)rebase(next,changesToRetry);else mutator(next);
         // Older Canvas Harness settings controls still write dashboardLayout alone.
         // Accept those updates without overwriting an explicit newer deskOrder.
         if(next.settings?.dashboardLayout!==oldLayout&&next.settings?.deskOrder===oldOrder&&['split','list'].includes(next.settings.dashboardLayout))next.settings.deskOrder=next.settings.dashboardLayout==='list'?'stacked':'context-first';
-        const clean=cleanData(next),after=appearance.fromData(clean),changes={};
+        const clean=cleanData(next,savedClean?draftBefore:undefined),after=appearance.fromData(clean),changes={};
+        if(adapter.compareWrite&&!changesToRetry)changesToRetry=edits(draftBefore,clean);
         for(const name of Object.keys(after))if(after[name]!==before[name])changes[name]=after[name];
-        const personal=appearance.personal(clean);
-        if(JSON.stringify(personal)!==personalBefore)await adapter.write(key,personal);
+        const personalNext=personal(clean);
+        try{
+        if(!same(personalNext,personal(draftBefore))){
+          pendingWrite=personalNext;
+          try{
+            if(adapter.compareWrite)await adapter.compareWrite(key,personalNext,rawBefore);else await adapter.write(key,personalNext);
+            savedRaw=personalNext;savedClean=clean;
+          }finally{pendingWrite=null;}
+        }
         if(Object.keys(changes).length)await appearance.write(adapter,changes);
-        current=appearance.apply(clean,await appearance.read(adapter));notify();return get();});
+        current=appearance.apply(clean,await appearance.read(adapter));notify();return get();
+        }catch(error){if(retry&&error?.code==='storage-conflict'&&attempt<7)continue;throw error;}
+      }});
     }
-    async function replace(data){const clean=cleanData(data);return update(next=>{for(const name of Object.keys(next))delete next[name];Object.assign(next,clean);});}
+    async function replace(data){const clean=cleanData(data);return update(next=>{for(const name of Object.keys(next))delete next[name];Object.assign(next,clean);},{retry:false});}
     function validCache(snapshot) {return snapshot&&snapshot.origin===origin&&String(snapshot.user?.id)===String(accountId)&&Array.isArray(snapshot.courses)&&Array.isArray(snapshot.assignments);}
-    const reload=()=>{lock(key,async()=>{const previous=JSON.stringify(current);await load();if(JSON.stringify(current)!==previous)notify();}).catch(()=>{});};
-    const unsubscribe=adapter.subscribe?.(key,reload),unsubscribeAppearance=adapter.subscribe?.(appearance.KEY,reload);
+    const reload=change=>{
+      if(destroyed)return;
+      if(change&&Object.hasOwn(change,'newValue')&&(pendingWrite&&same(change.newValue,pendingWrite)||savedClean&&same(change.newValue,savedRaw)))return;
+      lock(key,async()=>{if(destroyed)return;const previous=current,next=await readData();if(!destroyed){current=next;if(!same(current,previous))notify();}}).catch(()=>{});
+    };
+    const reloadAppearance=()=>{if(destroyed)return;lock(key,async()=>{if(destroyed)return;const next=await appearance.read(adapter),before=appearance.fromData(current);if(!destroyed&&!same(next,before)){current=appearance.apply({...current,settings:{...current.settings},pet:{...current.pet}},next);notify();}}).catch(()=>{});};
+    const unsubscribe=adapter.subscribe?.(key,reload),unsubscribeAppearance=adapter.subscribe?.(appearance.KEY,reloadAppearance);
     async function saveRecovery(){return lock(key,async()=>{await load();await adapter.write(`${key}:cache`,null);await adapter.write(`${key}:recovery`,{format:'reserve-backup',version:1,owner,data:get()});});}
     async function readRecovery(){const v=await adapter.read(`${key}:recovery`);return v?validateBackup(v,owner):null;}
     const materialKey=`${key}:materials`;
@@ -177,9 +292,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         await adapter.write(materialKey,entries);
       });
     }
-    return {load,get,update,replace,owner,saveRecovery,readRecovery,readResourceCache,writeResourceCache,subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn);},destroy:()=>{unsubscribe?.();unsubscribeAppearance?.();listeners.clear();},exportBackup:()=>({format:'reserve-backup',version:1,owner,exportedAt:new Date().toISOString(),data:cleanData(get())}),readCache:async()=>{const v=await adapter.read(`${key}:cache`);return validCache(v)?v:null;},writeCache:async snapshot=>{if(!validCache(snapshot))throw Error('Cache owner, origin, or account is invalid.');if(bytes(snapshot)>4000000)throw Error('Canvas snapshot is too large to cache. Live data is still available.');return adapter.write(`${key}:cache`,snapshot);}};
+    return {load,get,update,replace,owner,saveRecovery,readRecovery,readResourceCache,writeResourceCache,subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn);},destroy:()=>{if(destroyed)return;destroyed=true;try{unsubscribe?.();}catch{}try{unsubscribeAppearance?.();}catch{}listeners.clear();},exportBackup:()=>({format:'reserve-backup',version:1,owner,exportedAt:new Date().toISOString(),data:cleanData(get())}),readCache:async()=>{const v=await adapter.read(`${key}:cache`);return validCache(v)?v:null;},writeCache:async snapshot=>{if(!validCache(snapshot))throw Error('Cache owner, origin, or account is invalid.');if(bytes(snapshot)>4000000)throw Error('Canvas snapshot is too large to cache. Live data is still available.');return adapter.write(`${key}:cache`,snapshot);}};
   }
-  const api = { createStore, validateBackup };
+  const api = { createStore, validateBackup, accountValidator, serveAccountWrites };
   root.ReserveStorage = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);

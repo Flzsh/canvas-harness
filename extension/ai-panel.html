@@ -1,41 +1,174 @@
 <!doctype html>
 <html lang="en" data-theme="light">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer">
-<title>Canvas Harness · Ask AI</title><link rel="stylesheet" href="ai-panel.css">
-<script src="ai-providers.js" defer></script><script src="ai-panel.js" defer></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Canvas Harness · Ask AI</title>
+<link rel="stylesheet" href="ai-panel.css">
+<script src="ai-providers.js" defer>
+</script>
+<script src="ai-panel.js" defer>
+</script>
 </head>
-<body><main class="ai-panel ai-simple" aria-labelledby="panel-title">
+<body>
+<main class="ai-panel ai-simple" aria-labelledby="panel-title">
 <header class="panel-header">
-<div class="heading-row"><h1 id="panel-title">Ask AI</h1><button id="close" class="icon-button" type="button" aria-label="Close AI panel">×</button></div>
+<div class="heading-row">
+<h1 id="panel-title">Ask AI</h1>
+<button id="close" class="icon-button" type="button" aria-label="Close AI panel">×</button>
+</div>
 <p id="demo-label" class="demo-label" hidden>Preview · AI websites are disabled here</p>
-<div class="ai-scene"><svg class="ai-scene-art" viewBox="0 0 300 96" aria-hidden="true" focusable="false"><path d="M20.2 87.8L119.7 85.6L199.8 89.2L280.4 86.8L279.9 92.3L20.1 93.3Z" fill="#CFC2AC" opacity="0.7"/><g transform="rotate(-8 52 52)"><path d="M31.3 23.2L69.0 23.6L75.5 29.0L75.6 81.5L31.3 81.2Z" fill="#FFFFFF"/><path d="M30.1 21.9L68.3 21.7L73.8 28.3L74.3 80.3L30.3 80.2Z" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M67.7 21.9L68.0 27.8L73.7 28.1" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M36.2 36.8L62.4 37.0L61.7 41.7L36.0 42.0Z" fill="#F6DE7A" opacity="0.9"/><path d="M36.8 38.7L53.5 38.7" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/><path d="M37.0 49.9L67.3 49.6" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/><path d="M37.3 56.0L67.1 55.7" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/><path d="M37.0 61.8L66.8 62.1" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/><path d="M36.9 68.3L55.0 68.0" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/></g><g transform="rotate(-2 68 48)"><path d="M47.1 19.5L85.4 19.8L91.4 25.1L91.1 77.2L47.0 77.1Z" fill="#FFFFFF"/><path d="M46.0 18.1L84.2 18.2L89.7 24.1L89.7 76.2L45.8 76.0Z" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M83.9 17.9L84.3 24.1L90.1 23.7" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M52.0 33.1L78.2 32.6L77.9 38.1L52.2 38.0Z" fill="#B5DE9A" opacity="0.9"/><path d="M53.2 35.0L69.6 35.2" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/><path d="M53.3 46.3L83.1 45.7" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/><path d="M52.9 52.0L83.3 51.7" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/><path d="M53.2 58.2L83.1 58.4" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/><path d="M52.9 64.2L70.9 64.2" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/></g><g transform="rotate(5 84 46)"><path d="M63.2 17.4L101.2 17.5L107.5 23.7L107.4 75.2L63.3 75.2Z" fill="#FFFFFF"/><path d="M62.1 15.8L100.4 16.3L106.2 21.8L106.3 73.7L62.4 74.4Z" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M100.1 16.0L100.4 22.2L106.3 22.4" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M67.8 31.0L94.0 31.0L93.8 36.4L67.9 35.7Z" fill="#F6DE7A" opacity="0.9"/><path d="M68.9 32.9L85.7 33.2" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/><path d="M68.8 44.1L99.4 44.0" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/><path d="M69.0 50.0L98.8 50.0" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/><path d="M69.1 55.9L99.2 55.9" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/><path d="M68.7 62.1L86.9 61.8" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/></g><g class="ai-scene-arrow"><path d="M118.0 52.0Q150.0 30.0 184.0 48.0" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M176.2 40.3L184.8 48.2L173.8 52.1" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g><path d="M197.3 15.4L279.3 15.7L286.8 23.0L287.0 63.5L278.9 71.4L231.6 71.6L215.2 85.2L219.4 71.2L205.3 71.4L197.4 63.7L197.2 23.1Z" fill="#FFF6D8"/><path d="M196.0 13.9L278.2 13.8L286.0 22.2L286.3 61.8L278.0 70.3L230.1 70.3L213.9 84.1L218.2 70.0L204.2 69.8L196.1 62.1L195.6 22.1Z" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><g class="ai-scene-star"><path d="M240.9 24.2L244.5 38.0L258.4 41.8L244.3 44.9L241.1 58.1L238.1 44.5L224.4 41.4L238.1 38.2Z" fill="#F6C04A"/><path d="M239.8 22.9L243.2 37.0L257.2 39.6L243.6 43.1L240.2 56.9L236.7 43.5L222.9 40.2L236.3 36.8Z" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M263.2 19.6L264.9 25.2L271.1 27.5L265.2 29.3L262.8 35.4L261.6 29.3L255.0 27.5L261.0 25.5Z" fill="#E2463B"/><path d="M262.2 17.9L264.1 23.7L270.1 26.2L263.9 28.3L261.8 33.9L260.0 27.6L254.2 25.7L260.2 24.1Z" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M219.0 53.5L220.5 57.5L224.9 58.8L220.6 60.7L219.1 64.3L217.5 60.3L214.0 58.8L217.5 57.4Z" fill="#7FB8AE"/><path d="M218.0 51.7L219.4 55.9L223.3 57.8L219.2 58.9L217.8 62.7L216.4 58.7L212.1 57.2L216.6 56.0Z" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></g><path d="M265.9 51.8L263.4 59.2" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/><path d="M270.3 51.8L267.0 59.4" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/><path d="M274.2 51.9L271.5 59.3" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/></svg></div>
+<div class="ai-scene">
+<svg class="ai-scene-art" viewBox="0 0 300 96" aria-hidden="true" focusable="false">
+<path d="M20.2 87.8L119.7 85.6L199.8 89.2L280.4 86.8L279.9 92.3L20.1 93.3Z" fill="#CFC2AC" opacity="0.7"/>
+<g transform="rotate(-8 52 52)">
+<path d="M31.3 23.2L69.0 23.6L75.5 29.0L75.6 81.5L31.3 81.2Z" fill="#FFFFFF"/>
+<path d="M30.1 21.9L68.3 21.7L73.8 28.3L74.3 80.3L30.3 80.2Z" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M67.7 21.9L68.0 27.8L73.7 28.1" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M36.2 36.8L62.4 37.0L61.7 41.7L36.0 42.0Z" fill="#F6DE7A" opacity="0.9"/>
+<path d="M36.8 38.7L53.5 38.7" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+<path d="M37.0 49.9L67.3 49.6" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+<path d="M37.3 56.0L67.1 55.7" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+<path d="M37.0 61.8L66.8 62.1" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+<path d="M36.9 68.3L55.0 68.0" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+</g>
+<g transform="rotate(-2 68 48)">
+<path d="M47.1 19.5L85.4 19.8L91.4 25.1L91.1 77.2L47.0 77.1Z" fill="#FFFFFF"/>
+<path d="M46.0 18.1L84.2 18.2L89.7 24.1L89.7 76.2L45.8 76.0Z" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M83.9 17.9L84.3 24.1L90.1 23.7" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M52.0 33.1L78.2 32.6L77.9 38.1L52.2 38.0Z" fill="#B5DE9A" opacity="0.9"/>
+<path d="M53.2 35.0L69.6 35.2" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+<path d="M53.3 46.3L83.1 45.7" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+<path d="M52.9 52.0L83.3 51.7" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+<path d="M53.2 58.2L83.1 58.4" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+<path d="M52.9 64.2L70.9 64.2" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+</g>
+<g transform="rotate(5 84 46)">
+<path d="M63.2 17.4L101.2 17.5L107.5 23.7L107.4 75.2L63.3 75.2Z" fill="#FFFFFF"/>
+<path d="M62.1 15.8L100.4 16.3L106.2 21.8L106.3 73.7L62.4 74.4Z" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M100.1 16.0L100.4 22.2L106.3 22.4" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M67.8 31.0L94.0 31.0L93.8 36.4L67.9 35.7Z" fill="#F6DE7A" opacity="0.9"/>
+<path d="M68.9 32.9L85.7 33.2" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+<path d="M68.8 44.1L99.4 44.0" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+<path d="M69.0 50.0L98.8 50.0" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+<path d="M69.1 55.9L99.2 55.9" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+<path d="M68.7 62.1L86.9 61.8" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+</g>
+<g class="ai-scene-arrow">
+<path d="M118.0 52.0Q150.0 30.0 184.0 48.0" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M176.2 40.3L184.8 48.2L173.8 52.1" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<path d="M197.3 15.4L279.3 15.7L286.8 23.0L287.0 63.5L278.9 71.4L231.6 71.6L215.2 85.2L219.4 71.2L205.3 71.4L197.4 63.7L197.2 23.1Z" fill="#FFF6D8"/>
+<path d="M196.0 13.9L278.2 13.8L286.0 22.2L286.3 61.8L278.0 70.3L230.1 70.3L213.9 84.1L218.2 70.0L204.2 69.8L196.1 62.1L195.6 22.1Z" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<g class="ai-scene-star">
+<path d="M240.9 24.2L244.5 38.0L258.4 41.8L244.3 44.9L241.1 58.1L238.1 44.5L224.4 41.4L238.1 38.2Z" fill="#F6C04A"/>
+<path d="M239.8 22.9L243.2 37.0L257.2 39.6L243.6 43.1L240.2 56.9L236.7 43.5L222.9 40.2L236.3 36.8Z" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M263.2 19.6L264.9 25.2L271.1 27.5L265.2 29.3L262.8 35.4L261.6 29.3L255.0 27.5L261.0 25.5Z" fill="#E2463B"/>
+<path d="M262.2 17.9L264.1 23.7L270.1 26.2L263.9 28.3L261.8 33.9L260.0 27.6L254.2 25.7L260.2 24.1Z" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M219.0 53.5L220.5 57.5L224.9 58.8L220.6 60.7L219.1 64.3L217.5 60.3L214.0 58.8L217.5 57.4Z" fill="#7FB8AE"/>
+<path d="M218.0 51.7L219.4 55.9L223.3 57.8L219.2 58.9L217.8 62.7L216.4 58.7L212.1 57.2L216.6 56.0Z" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<path d="M265.9 51.8L263.4 59.2" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+<path d="M270.3 51.8L267.0 59.4" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+<path d="M274.2 51.9L271.5 59.3" fill="none" stroke="var(--scene-ink,#141413)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+</svg>
+</div>
 <div class="providers" role="group" aria-label="AI provider">
-<button type="button" data-provider="chatgpt" aria-pressed="true">ChatGPT</button><button type="button" data-provider="claude" aria-pressed="false">Claude</button><button type="button" data-provider="gemini" aria-pressed="false">Gemini</button>
-<label class="more-provider"><span class="sr-only">More AI providers</span><select id="more-providers"><option value="">More</option></select></label>
-</div></header>
+<button type="button" data-provider="chatgpt" aria-pressed="true">ChatGPT</button>
+<button type="button" data-provider="claude" aria-pressed="false">Claude</button>
+<button type="button" data-provider="gemini" aria-pressed="false">Gemini</button>
+<label class="more-provider">
+<span class="sr-only">More AI providers</span>
+<select id="more-providers">
+<option value="">More</option>
+</select>
+</label>
+</div>
+</header>
 <div id="scrollbox" class="panel-body" tabindex="-1">
 
 <section class="selected-context" aria-labelledby="selection-summary">
 <h2 id="selection-summary">No Canvas items selected</h2>
-<label id="all-row" class="check-row" hidden><input id="all-linked" type="checkbox"><span>Include this assignment’s linked pages &amp; small files</span></label>
-<label id="assignment-pdfs-row" class="check-row" hidden><input id="assignment-pdfs" type="checkbox" checked><span>Include attached assignment PDFs <small class="hint">Read text locally · up to 2 MiB per PDF</small></span></label>
-<div id="pdf-list" class="pdf-list"></div>
+<label id="all-row" class="check-row" hidden>
+<input id="all-linked" type="checkbox">
+<span>Include this assignment’s linked pages &amp; small files</span>
+</label>
+<label id="assignment-pdfs-row" class="check-row" hidden>
+<input id="assignment-pdfs" type="checkbox" checked>
+<span>Include attached assignment PDFs <small class="hint">Read text locally · up to 2 MiB per PDF</small>
+</span>
+</label>
+<div id="pdf-list" class="pdf-list">
+</div>
 </section>
-<details id="context-details" class="context-details"><summary>Context preview <span id="context-count" class="hint"></span></summary>
-<div id="context-preview" class="context-preview" hidden><pre id="context-text" tabindex="0" aria-label="Text that will be shared"></pre>
-<div id="context-issues" class="context-issues" hidden><h3>Some material could not be read</h3><ul id="issue-list"></ul><label class="check-row"><input id="accept-issues" type="checkbox"><span>Continue with the available text shown above.</span></label></div>
-</div></details>
-<section id="fallback" class="fallback" aria-labelledby="fallback-title" hidden><h2 id="fallback-title">Your draft is still here</h2><p class="hint">If the website cannot accept it, copy and paste it yourself.</p>
-<textarea id="fallback-text" readonly rows="5" aria-label="Prepared question and context"></textarea>
-<div class="context-actions"><button id="copy-fallback" type="button">Copy draft</button><button id="open-fallback" type="button" class="quiet-button">Open website ↗</button></div>
-</section></div>
+<details id="context-details" class="context-details">
+<summary>Context preview <span id="context-count" class="hint">
+</span>
+</summary>
+<div id="context-preview" class="context-preview" hidden>
+<pre id="context-text" tabindex="0" aria-label="Text that will be shared">
+</pre>
+<div id="context-issues" class="context-issues" hidden>
+<h3>Some material could not be read</h3>
+<ul id="issue-list">
+</ul>
+<label class="check-row">
+<input id="accept-issues" type="checkbox">
+<span>Continue with the available text shown above.</span>
+</label>
+</div>
+</div>
+</details>
+<section id="fallback" class="fallback" aria-labelledby="fallback-title" hidden>
+<h2 id="fallback-title">Your draft is still here</h2>
+<p class="hint">If the website cannot accept it, copy and paste it yourself.</p>
+<textarea id="fallback-text" readonly rows="5" aria-label="Prepared question and context">
+</textarea>
+<div class="context-actions">
+<button id="copy-fallback" type="button">Copy draft</button>
+<button id="open-fallback" type="button" class="quiet-button">Open website ↗</button>
+</div>
+</section>
+</div>
 <footer class="composer-footer">
-<p id="notice" class="notice" role="status" aria-live="polite" hidden></p><p id="error" class="error" role="alert" hidden></p>
+<p id="notice" class="notice" role="status" aria-live="polite" hidden>
+</p>
+<p id="error" class="error" role="alert" hidden>
+</p>
 
-<form id="composer" class="composer"><div class="clips"><ul id="selected-items" class="selected-items"></ul><p id="scope-hint" class="hint">Select items using the circles on Canvas.</p></div><label for="prompt" class="sr-only">Your question</label><textarea id="prompt" rows="4" maxlength="20000" placeholder="What would you like help with?" aria-describedby="composer-help" autocomplete="off"></textarea>
-<div class="composer-toolbar"><details class="more-menu"><summary aria-label="More options">···</summary><div class="more-pop"><label class="check-row send-option"><input id="auto-send" type="checkbox"><span>Send automatically</span></label><button id="composer-attach" type="button" class="quiet-button" title="Attach a PDF up to 2 MiB">Add a PDF</button><button id="copy" type="button" class="quiet-button">Copy</button><button id="open-website" type="button" class="quiet-button">Open website / sign in ↗</button><button id="preview" type="button" class="quiet-button">Review text to share</button><p id="sharing-note" class="hint">Send opens the AI website with your question and selected material ready to send.</p></div></details><span id="prompt-count" class="prompt-count">0 / 20,000</span><button id="send" type="submit" class="primary-button">Send ↗</button></div>
-<input id="pdf-input" type="file" accept="application/pdf,.pdf" class="sr-only" aria-label="Attach a PDF up to 2 MiB"></form>
+<form id="composer" class="composer">
+<div class="clips">
+<ul id="selected-items" class="selected-items">
+</ul>
+<p id="scope-hint" class="hint">Select items using the circles on Canvas.</p>
+</div>
+<label for="prompt" class="sr-only">Your question</label>
+<textarea id="prompt" rows="4" maxlength="20000" placeholder="What would you like help with?" aria-describedby="composer-help" autocomplete="off">
+</textarea>
+<div class="composer-toolbar">
+<details class="more-menu">
+<summary aria-label="More options">···</summary>
+<div class="more-pop">
+<label class="check-row send-option">
+<input id="auto-send" type="checkbox">
+<span>Send automatically</span>
+</label>
+<button id="composer-attach" type="button" class="quiet-button" title="Attach a PDF up to 2 MiB">Add a PDF</button>
+<button id="copy" type="button" class="quiet-button">Copy</button>
+<button id="open-website" type="button" class="quiet-button">Open website / sign in ↗</button>
+<button id="preview" type="button" class="quiet-button">Review text to share</button>
+<p id="sharing-note" class="hint">Send opens the AI website with your question and selected material ready to send.</p>
+</div>
+</details>
+<span id="prompt-count" class="prompt-count">0 / 20,000</span>
+<button id="send" type="submit" class="primary-button">Send ↗</button>
+</div>
+<input id="pdf-input" type="file" accept="application/pdf,.pdf" class="sr-only" aria-label="Attach a PDF up to 2 MiB">
+</form>
 <p id="composer-help" class="composer-help sr-only">Enter to send · Shift + Enter for a new line</p>
 <p class="privacy-note">Only what you picked is shared. Grades never are.</p>
-</footer></main></body></html>
+</footer>
+</main>
+</body>
+</html>

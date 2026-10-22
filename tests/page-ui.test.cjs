@@ -95,9 +95,9 @@ function fixture({personal=false,page="popup",reduced=page==='welcome',savedValu
  for(const file of scripts)if(!['welcome-intro.js','welcome-scenes.js','welcome-room.js'].includes(file))vm.runInContext(read(file),context,{filename:file});
  return {ids,nodes,personal,saved,writes,requests,opened,introCalls,introButton,roomCalls,handlers,document,timers,chrome,cleanup(){handlers.get('pagehide')?.();}};
 }
-test('popup has exactly four detail rows, manifest branding, and a replay link',async()=>{
- const h=fixture();await settle();assert.equal(h.nodes.filter(n=>'detail'in n.dataset).length,4);assert.equal(h.ids.get('version').textContent,'9.8.7');assert.equal(h.ids.get('school-section').hidden,false);
- for(const name of ['look','menu','pony','native'])assert.ok(h.nodes.some(n=>n.dataset.detail===name));
+test('popup has five detail rows, manifest branding, and a replay link',async()=>{
+ const h=fixture();await settle();assert.equal(h.nodes.filter(n=>'detail'in n.dataset).length,5);assert.equal(h.ids.get('version').textContent,'9.8.7');assert.equal(h.ids.get('school-section').hidden,false);
+ for(const name of ['features','look','menu','pony','native'])assert.ok(h.nodes.some(n=>n.dataset.detail===name));
  const tour=h.ids.get('welcome-tour');assert.equal(tour.attrs.href,'welcome.html');assert.equal(tour.attrs.target,'_blank');await tour.fire('click');assert.equal(h.opened[0].url,'chrome-extension://test/welcome.html');
  const row=h.nodes.find(n=>n.dataset.detail==='menu');row.fire('click');assert.equal(h.ids.get('main-view').hidden,true);assert.equal(h.ids.get('detail-title').textContent,'Canvas menu bar');h.handlers.get('keydown')({key:'Escape',preventDefault(){}});assert.equal(h.ids.get('main-view').hidden,false);assert.equal(h.document.activeElement,row);h.cleanup();
  const personal=fixture({personal:true});await settle();assert.equal(personal.ids.get('school-section').hidden,true);personal.cleanup();
@@ -119,7 +119,7 @@ test('popup requests custom-site permission within the original click, before yi
 });
 test('the two extension pages use local external scripts and explicitly respect reduced motion',()=>{
  for(const name of ['popup','welcome']){const html=read(name+'.html'),css=read(name+'.css');assert.doesNotMatch(html,/<script\b(?![^>]*\bsrc=)[^>]*>\s*\S/i);assert.doesNotMatch(html,/(?:src|href)="(?:https?:)?\/\//i);assert.doesNotMatch(html,/\son\w+=/i);assert.match(css,/@media\s*\(prefers-reduced-motion:\s*reduce\)/);}
- const popup=read('popup.html');assert.doesNotMatch(popup,/<option value="system"|Reload Canvas to apply|class="intro"/);
+ const popup=read('popup.html');assert.doesNotMatch(popup,/<option value="system"|class="intro"/);
 });
 
 test('welcome uses one hidden art stage with accessible school, navigation and companion controls',async()=>{

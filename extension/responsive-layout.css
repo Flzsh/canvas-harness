@@ -2,6 +2,29 @@
    Subject drawings, title SVGs, animated rigs and sketched rail frames stay
    owned by course-art.js and refresh.css. This layer only sizes their frames. */
 
+/* Topbar: the heading, the course strip and the workspace scroll together as one page under the toolbar. Home's
+   modules are as tall as their content: never a scroll inside a module. */
+.rd[data-course-navigation=topbar] { min-height: 0; }
+.rd[data-course-navigation=topbar] .rd-shell {
+  display: grid; grid-template-columns: minmax(0,1fr)!important;
+  height: max(0px,calc(100dvh - var(--rd-rail-top,150px) - var(--rd-status-h,56px)));
+  min-height: 0; flex: none; align-items: stretch; grid-template-rows: auto; grid-auto-rows: auto;
+  overflow-x: clip; overflow-y: auto; overscroll-behavior: contain; overflow-anchor: none;
+  scrollbar-width: thin; scrollbar-gutter: stable;
+}
+.rd[data-course-navigation=topbar] .rd-shell > .rd-workspace { min-height: 0; min-width: 0; height: auto; overflow: visible; }
+.rd[data-course-navigation=topbar] .rd-shell > .rd-workspace > * { flex-shrink: 0; }
+.rd[data-course-navigation=topbar][data-workspace=work] .rd-main.rd-desk { grid-template-rows: none!important; grid-auto-rows: auto; }
+.rd[data-course-navigation=topbar][data-workspace=work] .rd-main.rd-desk > [data-arrange-key] {
+  grid-column: var(--rd-panel-column,auto)!important; grid-row: var(--rd-panel-row,auto)!important;
+  height: auto; max-height: none; overflow: visible;
+}
+.rd[data-course-navigation=topbar][data-workspace=work] .rd-information > .rd-reader { position: static; height: auto; max-height: none; }
+.rd[data-course-navigation=topbar][data-workspace=work] .rd-information > .rd-reader .rd-reader-content { max-height: none; overflow: visible; }
+@container work-area (max-width: 720px) {
+  .rd[data-course-navigation=topbar][data-workspace=work] .rd-main.rd-desk { grid-template-columns: var(--rd-layout-columns,minmax(0,1fr))!important; }
+}
+
 /* Give course work the width: 1920/1440/1280 step down without narrowing the
    actual names or the small illustrations inside the rail. At <=900 the
    existing drawer / course selector takes over. */

@@ -51,8 +51,10 @@
   // what it is doing: null (resting), a walk, or a jump; and the eased numbers
   let goal=null,rest='stand',speed=0,phase=0,follow=0,reel=0;const ch={leg:0,down:0,neck:9,head:0,alpha:1};
   const FILM=1000/24,STEP=1/60,watched=new Set();let geometry=null,dirty=true,layoutFrame=0,layoutTimer=0,layoutVersion=0,resizeWatch=null,layoutWatch=null,life=0,decisionPending=false,layoutAnimations=new WeakSet(),bubbleBox={w:250,h:120};
-  const filmNow=()=>win.performance?.now?.()??now();
-  const reduced=()=>['off','still'].includes(container.dataset.motionStyle)||win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const filmNow=()=>win.performance?.now?.()??now(),motionMedia=win.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const followEvents=['input','beforeinput','compositionstart','compositionend','pointerdown','pointerup','pointercancel','dragstart','dragend'];
+  let motionChange=null;
+  const reduced=()=>menuOpen||['off','still'].includes(container.dataset.motionStyle)||!!motionMedia?.matches;
   const size=()=>SIZES[pet.size]||SIZES.medium;
   const visible=()=>pet.enabled&&pet.roam!=='off';
   function mount(){
@@ -61,32 +63,48 @@
    layer.innerHTML=`<button type="button" class="pet" data-pose="stand" data-face="right" aria-haspopup="menu" aria-expanded="false"></button>`;
    container.append(layer);node=layer.firstElementChild;node.innerHTML=art.svg({title:pet.name});
    node.addEventListener('pointerdown',down);node.addEventListener('click',click);node.addEventListener('keydown',key);
-    for(const type of ['animationstart','animationcancel'])node.addEventListener(type,resetReels);
+   for(const type of ['animationstart','animationend','animationcancel'])node.addEventListener(type,resetReels);
    win.addEventListener('scroll',invalidate,{passive:true,capture:true});win.addEventListener('resize',invalidate,{passive:true});
    container.addEventListener('scroll',invalidate,{passive:true,capture:true});   // the workspace column scrolls inside the workspace
    for(const type of ['load','transitionrun','transitionend','transitioncancel','animationend','animationcancel'])container.addEventListener(type,invalidate,{passive:true,capture:true});
    doc.fonts?.addEventListener?.('loadingdone',invalidate);
    const mounted=++life;
+   motionChange=()=>{if(mounted!==life)return;dress();resetReels();invalidate();};
+   motionMedia?.addEventListener?.('change',motionChange);
    if(win.ResizeObserver)resizeWatch=new win.ResizeObserver(()=>{if(mounted===life)invalidate();});
-    if(win.MutationObserver){layoutWatch=new win.MutationObserver(records=>{if(mounted!==life)return;for(const r of records)if(node?.contains(r.target)){if(r.type==='childList'){rig=null;resetReels();}else if(r.type==='attributes'&&['class','data-pose','data-face','data-lying','data-still','data-gear'].includes(r.attributeName))resetReels();}if(records.some(r=>!layer?.contains(r.target)&&!(r.type==='childList'&&[...r.addedNodes,...r.removedNodes].length&&[...r.addedNodes,...r.removedNodes].every(n=>n===layer||layer?.contains(n)))))invalidate();});layoutWatch.observe(container,{subtree:true,childList:true,attributes:true,characterData:true});for(let p=container.parentElement||container.getRootNode?.().host;p;p=p.parentElement)layoutWatch.observe(p,{attributes:true});}
+   if(win.MutationObserver){
+    layoutWatch=new win.MutationObserver(records=>{
+     if(mounted!==life)return;
+     for(const r of records)if(node?.contains(r.target)){
+      if(r.type==='childList'){rig=null;resetReels();}
+      else if(r.type==='attributes'&&['class','data-pose','data-face','data-lying','data-still','data-gear'].includes(r.attributeName))resetReels();
+     }
+     if(records.some(r=>r.type==='attributes'&&(r.target===container||r.target.contains?.(container))&&['class','style','data-motion-style','data-feature-motion'].includes(r.attributeName))){dress();resetReels();}
+     if(records.some(changesPlaces))invalidate();
+    });
+    layoutWatch.observe(container,{subtree:true,childList:true,attributes:true,characterData:true,characterDataOldValue:true});
+    for(let p=container.parentElement||container.getRootNode?.().host;p;p=p.parentElement)layoutWatch.observe(p,{attributes:true});
+   }
    doc.addEventListener('pointermove',seen,{passive:true});doc.addEventListener('keydown',seen,{passive:true});
+   for(const type of followEvents)doc.addEventListener(type,scheduleFollow,{passive:true,capture:true});
    doc.addEventListener('visibilitychange',wake);
-   // Modules move when the layout changes; keep the pony on the one it is standing on.
-   follow=setInterval(followPlace,500);
+   // Geometry events follow modules immediately; input checks once for an unobserved position change.
    dress();home();place();paint();plan(1400);roll();
   }
   function unmount(){
    if(!layer)return;closeBubble();stop();clearTimeout(node._cheer);releaseGrab?.();grab=null;goal=null;speed=0;life++;
    node.removeEventListener('pointerdown',down);node.removeEventListener('click',click);node.removeEventListener('keydown',key);
-    for(const type of ['animationstart','animationcancel'])node.removeEventListener(type,resetReels);
+   for(const type of ['animationstart','animationend','animationcancel'])node.removeEventListener(type,resetReels);
+   motionMedia?.removeEventListener?.('change',motionChange);motionChange=null;
     cancelPlaces();resizeWatch?.disconnect();layoutWatch?.disconnect();resizeWatch=layoutWatch=null;watched.clear();layoutAnimations=new WeakSet();geometry=null;dirty=true;rig=null;
    win.removeEventListener('scroll',invalidate,{capture:true});container.removeEventListener('scroll',invalidate,{capture:true});win.removeEventListener('resize',invalidate);
    for(const type of ['load','transitionrun','transitionend','transitioncancel','animationend','animationcancel'])container.removeEventListener(type,invalidate,{capture:true});
    doc.fonts?.removeEventListener?.('loadingdone',invalidate);
    doc.removeEventListener('pointermove',seen);doc.removeEventListener('keydown',seen);doc.removeEventListener('visibilitychange',wake);
-    clearInterval(follow);follow=0;clearTimeout(reel);reel=0;reels.clear();resetReels();layer.remove();layer=node=null;
+   for(const type of followEvents)doc.removeEventListener(type,scheduleFollow,{capture:true});
+   clearTimeout(reel);reel=0;reels.clear();reelsDirty=true;layer.remove();layer=node=null;
   }
-  function seen(){lastInput=now();if(!reel&&layer&&!doc.hidden)roll();if(rest==='sleep'&&!goal&&!menuOpen)settle('lie',4000);}
+  function seen(){lastInput=now();scheduleFollow();if(!reel&&layer&&!doc.hidden&&(reelsDirty||reels.size))roll();if(rest==='sleep'&&!goal&&!menuOpen)settle('lie',4000);}
   function wake(){if(doc.hidden){stop();clearTimeout(reel);reel=0;cancelPlaces();releaseGrab?.();if(grab){grab=null;goal=null;speed=0;node.dataset.grabbed='false';setPose('stand');}return;}if(layer){invalidate();resetReels();run();if(!goal)plan(900);roll();}}
   // THE PONY ON THE FILM CLOCK. Its little loops (the tail, the nod, the blink, breathing, the Zs) are CSS animations.
   // Left to run, each one makes Chrome draw the whole page at the screen's own rate (60 to 240 times a second: on a
@@ -95,7 +113,15 @@
   // hidden. A loop between two keyframes that say the same thing (a blink's long open stretch) is not written at all.
   // Only endless loops: a short one (a hop, the book appearing) plays as written. Reduced motion has none.
   const reels=new Map();let reelsDirty=true;
-  function resetReels(){reelsDirty=true;}
+  function scheduleReel(delay){
+   const mounted=life,id=setTimeout(()=>{if(mounted===life&&reel===id)roll();},delay);
+   reel=id;reel?.unref?.();
+  }
+  function resetReels(){
+   reelsDirty=true;
+   if(reduced()){clearTimeout(reel);reel=0;reels.clear();return;}
+   if(node&&!dead&&!doc.hidden&&!reel)scheduleReel(0);
+  }
   function restsOf(a){
    try{
     const timing=a.effect?.getTiming?.(),frames=a.effect?.getKeyframes?.();
@@ -107,7 +133,8 @@
    }catch{return null;}
   }
   function roll(){
-   clearTimeout(reel);reel=0;if(!node||dead||doc.hidden)return;
+   clearTimeout(reel);reel=0;if(!node||dead||doc.hidden||menuOpen)return;
+   if(reduced()){reels.clear();reelsDirty=true;return;}
     const t=now();
    // every state is read before any time is written, so Chrome restyles once a frame, not once a loop
     if(reelsDirty){
@@ -128,15 +155,19 @@
    }
    // 24 a second while the page is used, 12 after, 6 in the idle rest (a sleeping pony's breathing is slow), and after
    // two minutes without input it holds where it is until the next input (seen()), so an open page costs nothing.
-   const quiet=now()-lastInput;if(quiet>=120000)return;
-   reel=setTimeout(roll,1000/(quiet<6000?24:quiet<25000?12:6));reel?.unref?.();
+   const quiet=now()-lastInput;if(!reels.size||quiet>=120000)return;
+   scheduleReel(1000/(quiet<6000?24:quiet<25000?12:6));
   }
   function dress(){
    if(!node)return;const c=art.COATS[pet.coat]||art.COATS.oat;
    node.style.setProperty('--pet-coat',c.coat);node.style.setProperty('--pet-shade',c.shade);node.style.setProperty('--pet-mane',c.mane);node.style.setProperty('--pet-muzzle',c.muzzle);
    node.style.setProperty('--pet-harness',art.HARNESS[pet.harness]||art.HARNESS.red);node.style.setProperty('--pet-size',size()+'px');
     if(node.dataset.gear!==pet.gear){node.dataset.gear=pet.gear;resetReels();}node.setAttribute('aria-label',`${pet.name}, your pony. Open ${pet.name}'s menu`);
-    const still=String(reduced());if(node.dataset.still!==still){node.dataset.still=still;resetReels();}
+   const still=String(reduced());
+   if(node.dataset.still!==still){
+    node.dataset.still=still;resetReels();
+    if(still==='true'&&goal&&!goal.drop&&!grab){goal=null;speed=0;ch.leg=0;settle(focusing?'read':nudge(info()),30000);}
+   }
   }
   function setPose(value,facing){if(!node)return;pose=value;if(facing)face=facing;if(stepping)return;if(node.dataset.pose!==pose){node.dataset.pose=pose;resetReels();}if(node.dataset.face!==face){node.dataset.face=face;resetReels();}}
   // ---- places to stand: the top edge of every module, inside the paddock, and the bottom of the window
@@ -144,6 +175,29 @@
   // outlines and hit tests; caching the rectangles must not turn words, controls, or unruled modules into ground.
   let sides=new WeakMap();const drawn=color=>!!color&&color!=='transparent'&&!/,\s*0\)$/.test(color);
   const framed=()=>container.dataset.panelFrame!=='none';
+  // Metadata and same-width tabular clock ticks cannot move a ledge. Layout and hit-test states still can.
+  const cosmeticAttributes=new Set(['aria-label','aria-labelledby','aria-describedby','aria-controls','aria-activedescendant','aria-live','aria-atomic','aria-busy','title','tabindex']);
+  function clockTick(record){
+   const el=record.type==='characterData'?record.target.parentElement:record.target;
+   if(!el?.closest?.('[data-rd-focus-clock]'))return false;
+   let before,after;
+   if(record.type==='characterData'){before=record.oldValue;after=record.target.textContent;}
+   else if(record.type==='childList'){
+    const added=[...record.addedNodes],removed=[...record.removedNodes];
+    if(!added.length||!removed.length||[...added,...removed].some(node=>node.nodeType!==3))return false;
+    before=removed.map(node=>node.textContent).join('');after=added.map(node=>node.textContent).join('');
+   }
+   return typeof before==='string'&&typeof after==='string'&&before.length===after.length&&/^\d{2,}:\d{2}$/.test(before)&&/^\d{2,}:\d{2}$/.test(after);
+  }
+  function changesPlaces(record){
+   if(layer?.contains(record.target))return false;
+   if(record.type==='attributes')return !cosmeticAttributes.has(record.attributeName)&&!(record.attributeName==='aria-selected'&&record.target.matches?.('[data-quick-index]'));
+   if(record.type==='childList'){
+    const changed=[...record.addedNodes,...record.removedNodes];
+    if(changed.length&&changed.every(node=>node===layer||layer?.contains(node)))return false;
+   }
+   return !clockTick(record);
+  }
   function measurePlaces(){
    const width=win.innerWidth,height=win.innerHeight,rects=new Map(),places=new Map(),out=[];sides=new WeakMap();
    const rect=el=>{if(!rects.has(el))rects.set(el,el.getBoundingClientRect());return rects.get(el);};
@@ -177,10 +231,36 @@
   }
   function ledgeFor(el){return el?(el.isConnected?geometry?.places.get(el)||null:null):geometry?.floor||null;}
   function ledges(){if(!geometry)measurePlaces();else if(dirty)invalidate();return geometry.all;}
-  function cancelPlaces(){decisionPending=false;layoutVersion++;if(layoutFrame){if(win.requestAnimationFrame)win.cancelAnimationFrame?.(layoutFrame);else clearTimeout(layoutFrame);}clearTimeout(layoutTimer);layoutFrame=layoutTimer=0;}
+  function cancelPlaces(){decisionPending=false;layoutVersion++;if(layoutFrame){if(win.requestAnimationFrame)win.cancelAnimationFrame?.(layoutFrame);else clearTimeout(layoutFrame);}clearTimeout(layoutTimer);clearTimeout(follow);layoutFrame=layoutTimer=follow=0;}
   // Let the changed click frame paint before reading its layout. Decisions and movement keep using the snapshot.
-  function invalidate(event){if(!node||dead||layer?.contains(event?.target))return;dirty=true;if(doc.hidden||layoutFrame||layoutTimer)return;const version=++layoutVersion,afterFrame=()=>{if(version!==layoutVersion||!node||dead||doc.hidden)return;layoutFrame=0;layoutTimer=setTimeout(()=>{if(version===layoutVersion)refreshPlaces();},0);};layoutFrame=win.requestAnimationFrame?win.requestAnimationFrame(afterFrame):setTimeout(afterFrame,16);}
-  function refreshPlaces(){clearTimeout(layoutTimer);layoutTimer=0;if(!node||dead||doc.hidden)return;measurePlaces();if(decisionPending){decisionPending=false;decide(true);}if(!grab&&!goal&&Number.isFinite(node._x)&&Number.isFinite(node._y)){const here=current();if(!free(here,spot.u))moveOff(here);}place();if(bubble)placeBubble();}
+  // Window resize/scroll and the font set's loadingdone have targets that are not Nodes; only Nodes go to contains().
+  function invalidate(event){
+   if(!node||dead||(event?.target?.nodeType&&layer?.contains(event.target)))return;
+   dirty=true;if(menuOpen&&!['scroll','resize'].includes(event?.type))return;
+   if(doc.hidden||layoutFrame||layoutTimer)return;
+   const version=++layoutVersion,afterFrame=()=>{
+    if(version!==layoutVersion||!node||dead||doc.hidden)return;
+    layoutFrame=0;layoutTimer=setTimeout(()=>{if(version===layoutVersion)refreshPlaces();},0);
+   };
+   layoutFrame=win.requestAnimationFrame?win.requestAnimationFrame(afterFrame):setTimeout(afterFrame,16);
+  }
+  function refreshPlaces(){
+   clearTimeout(layoutTimer);layoutTimer=0;if(!node||dead||doc.hidden)return;
+   measurePlaces();if(menuOpen){place();placeBubble();return;}
+   if(decisionPending){decisionPending=false;decide(true);}
+   if(!grab&&!goal&&Number.isFinite(node._x)&&Number.isFinite(node._y)){
+    const here=current();if(!free(here,spot.u))moveOff(here);
+   }
+   place();if(bubble)placeBubble();
+  }
+  function scheduleFollow(){
+   if(!node||dead||doc.hidden||menuOpen||follow)return;
+   const mounted=life,id=setTimeout(()=>{
+    if(mounted!==life||follow!==id)return;
+    follow=0;followPlace();
+   },500);
+   follow=id;
+  }
   function followPlace(){
     if(!node||grab||doc.hidden||layoutFrame||layoutTimer)return;if(!resizeWatch||!layoutWatch){invalidate();return;}if(film||!spot.ledge)return;
    const r=spot.ledge.getBoundingClientRect(),old=geometry?.rects.get(spot.ledge);if(!spot.ledge.isConnected||!old||['left','top','right','bottom'].some(k=>r[k]!==old[k]))invalidate();
@@ -230,7 +310,7 @@
    spot.u=clamp(spot.u,6,Math.max(6,l.x1-l.x0-6));
    moveTo(l.x0+spot.u,l.y);
   }
-  function moveTo(x,y){if(!node)return;node._x=x;node._y=y;if(stepping)return;const s=size(),h=s*64/72,value=`translate(${(x-s/2).toFixed(1)}px,${(y-h*60/64).toFixed(1)}px)`;if(node.style.transform!==value)node.style.transform=value;if(bubble)placeBubble();}
+  function moveTo(x,y){if(!node)return;node._x=x;node._y=y;if(stepping)return;const s=size(),h=s*64/72,value=`translate(${(x-s/2).toFixed(1)}px,${(y-h*60/64).toFixed(1)}px)`;if(node.style.transform!==value)node.style.transform=value;if(bubble&&!menuOpen)placeBubble();}
   // The pose is written onto the few parts that move, and only when a value changed. (Setting the numbers as
   // variables on the pony instead would restyle every shape of the drawing on every frame.)
   let rig=null;
@@ -257,8 +337,8 @@
   }
   // ---- deciding
   function stop(){clearTimeout(film);clearTimeout(timer);film=0;timer=0;debt=0;}
-  function run(){if(!stepping&&!film&&node&&!dead&&!doc.hidden){last=filmNow();next=last+FILM;debt=0;film=setTimeout(frame,FILM);}}
-  function plan(delay){clearTimeout(timer);timer=setTimeout(decide,delay);}
+  function run(){if(!stepping&&!film&&node&&!dead&&!doc.hidden&&!menuOpen){last=filmNow();next=last+FILM;debt=0;film=setTimeout(frame,FILM);}}
+  function plan(delay){clearTimeout(timer);timer=0;if(node&&!dead&&!doc.hidden&&!menuOpen)timer=setTimeout(decide,delay);}
   function settle(as,ms){goal=null;rest=as;setPose(as);run();plan(ms);}
   function decide(measured=false){
    timer=0;if(!node||dead)return;
@@ -290,7 +370,10 @@
   // Off whatever it is standing on: the nearest free place on this ledge, else a free place on another one in view.
   function moveOff(here){
    const u=freeOn(here,spot.u);if(u!=null){if(reduced()){spot.u=u;return;}goal={type:'walk',to:u,max:26};rest='stand';run();return;}
-   const other=ledges().find(l=>l.el!==here.el&&!l.floor&&freeOn(l)!=null)||ledgeFor(null);jumpTo(other);
+   for(const other of ledges())if(other.el!==here.el){
+    const to=freeOn(other);if(to!=null){jumpTo(other,to);return;}
+   }
+   settle('stand',6000);
   }
   function walk(){
    const l=current(),span=l.x1-l.x0;if(span<70){settle('stand',4000);return;}
@@ -298,9 +381,9 @@
    if(Math.abs(to-spot.u)<36){settle('stand',3500);return;}
    goal={type:'walk',to,max:Math.abs(to-spot.u)>420?58:26};rest='stand';run();
   }
-  function jumpTo(target){
+  function jumpTo(target,u=target?freeOn(target):null){
    if(!target){settle('stand',3000);return;}
-   const u=freeOn(target)??clamp((target.x1-target.x0)*(.2+Math.random()*.6),14,Math.max(14,target.x1-target.x0-14));
+   if(u==null){settle('stand',6000);return;}
    place();goal={type:'jump',target,u,t:-.16,from:null};rest='stand';run();
   }
   function appear(target){
@@ -309,7 +392,7 @@
   }
   const ease=(key,to,rate,dt)=>{const d=to-ch[key];if(Math.abs(d)<.02){ch[key]=to;return false;}ch[key]+=d*Math.min(1,rate*dt);return true;};
   function frame(){
-   film=0;if(!node||dead||doc.hidden)return;const t=filmNow();debt+=Math.max(0,(t-last)/1000);last=t;let busy=!!goal;
+   film=0;if(!node||dead||doc.hidden||menuOpen)return;const t=filmNow();debt+=Math.max(0,(t-last)/1000);last=t;let busy=!!goal;
    // Retain the 60 Hz integrator in memory, including acceleration, braking and easing, but commit only one drawing
    // per film tick. Elapsed time survives a late callback; missed drawings are skipped, never replayed in a burst.
    stepping=true;try{while(debt+1e-9>=STEP){busy=step(STEP);debt=Math.max(0,debt-STEP);if(!busy){debt=0;break;}}}finally{stepping=false;}
@@ -390,11 +473,22 @@
    bubble.style.transform=`translate(${x.toFixed(0)}px,${(above>70?above:node._y+10).toFixed(0)}px)`;
    bubble.style.setProperty('--pet-tail-x',clamp(node._x-x,22,w-22).toFixed(0)+'px');bubble.dataset.below=String(above<=70);
   }
-  function closeBubble(){clearTimeout(sayTimer);if(bubble){resizeWatch?.unobserve(bubble);watched.delete(bubble);bubble.remove();bubble=null;}if(menuOpen){menuOpen=false;node?.setAttribute('aria-expanded','false');plan(1500);}}
+  function closeBubble(){
+   clearTimeout(sayTimer);sayTimer=0;
+   if(bubble){
+    bubble.removeEventListener('click',onBubble);resizeWatch?.unobserve(bubble);watched.delete(bubble);
+    bubble.remove();bubble=null;
+   }
+   if(menuOpen){menuOpen=false;node?.setAttribute('aria-expanded','false');dress();invalidate();run();plan(1500);}
+  }
   function show(html,{menu=false,ms=0}={}){
    closeBubble();if(!layer)return;
    bubble=doc.createElement('div');bubble.className='pet-bubble';bubble.innerHTML=html;
-   if(menu){bubble.setAttribute('role','menu');bubble.setAttribute('aria-label',pet.name);menuOpen=true;node.setAttribute('aria-expanded','true');if(goal?.type==='walk'){goal=null;speed=0;setPose('stand');}}   // it stops where it is, so the menu opens in place
+   if(menu){
+    bubble.setAttribute('role','menu');bubble.setAttribute('aria-label',pet.name);menuOpen=true;
+    node.setAttribute('aria-expanded','true');if(goal)setPose('stand');goal=null;speed=0;
+    stop();cancelPlaces();clearTimeout(node._cheer);clearTimeout(reel);reel=0;dress();
+   }   // it stops where it is, so the menu opens in place
    else{bubble.setAttribute('role','status');bubble.setAttribute('aria-live','polite');}
    layer.append(bubble);measureBubble();if(resizeWatch){resizeWatch.observe(bubble);watched.add(bubble);}placeBubble();
    bubble.addEventListener('click',onBubble);

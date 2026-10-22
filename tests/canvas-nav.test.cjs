@@ -1,6 +1,6 @@
 'use strict';
 // Canvas's own menu bar drawn in the workspace's style (extension/canvas-nav.js and canvas-nav.css).
-const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const ext=path.join(__dirname,'../extension'),read=f=>fs.readFileSync(path.join(ext,f),'utf8');
 const Nav=require('../extension/canvas-nav.js'),manifest=JSON.parse(read('manifest.json'));
 
@@ -90,7 +90,6 @@ test('Make it yours offers the four menu bar choices, stored where the popup kee
  assert.match(ui,/choices\('canvasNav','Canvas menu bar',\[\['drawn','From the left edge'[\s\S]*?\['shown','Full height'[\s\S]*?\['top','Across the top'[\s\S]*?\['original','Canvas\u2019s own'[\s\S]*?\{value:c\.canvasNav\|\|'drawn',cols:2,field:'canvas-nav'\}\)/);
  assert.match(dash,/if\(field==='canvas-nav'\)\{const value=event\.target\.value;if\(!NAV_CHOICES\.includes\(value\)\)return;canvasNav=value;root\.chrome\?\.storage\?\.local\?\.set\?\.\(\{'reserve:canvasNav':value\}\)/);
  assert.match(dash,/root\.chrome\?\.storage\?\.onChanged\?\.addListener\?\.\(navChanged\)/);assert.match(dash,/removeListener\?\.\(navChanged\)/);
- assert.match(js,/root\.chrome\.storage\.onChanged\?\.addListener\(\(changes,area\)=>\{if\(area==='local'&&changes\[KEY\]\)apply\(changes\[KEY\]\.newValue\);\}\);/);
  assert.match(js,/for\(const step of undo\.splice\(0\)\)try\{step\(\);\}catch\{\}/,'each layout is undone before the next');
  assert.match(js,/if\(header\)undecorate\(header\);html\.classList\.remove\('chn-nav'\)/,'Canvas original takes every drawing off');
  assert.match(css,/html\.chn-nav\[data-chn-switching\] #header, html\.chn-nav\[data-chn-switching\] #header \*, html\.chn-nav\[data-chn-switching\] #wrapper \{ transition: none !important; animation: none !important; \}/);
@@ -103,4 +102,28 @@ test('across the top, the logo and the navigation take only their own width, and
  assert.match(css,/html\.chn-nav\[data-chn-layout=top\] #header \.ic-app-header__main-navigation \{[^}]*width: auto !important; flex: none !important;/);
  assert.match(css,/html\.chn-nav\[data-chn-layout=top\] #header \.ic-app-header__logomark-container \{ flex: none !important; width: auto !important;/);
  assert.match(js,/if\(Math\.max\(header\.offsetWidth,header\.scrollWidth\)<=width\)return true;/);
+});
+
+function storageFixture(){
+ const listeners=new Set(),classes=new Set(),errors=[];let resolveRead,completion;
+ const ready=new Promise(resolve=>{resolveRead=resolve;}),html={dataset:{},style:{setProperty(){}},classList:{add:name=>classes.add(name),remove:name=>classes.delete(name),contains:name=>classes.has(name)}};
+ const local={get(keys){assert.deepEqual(Array.from(keys),['reserve:canvasNav','reserve:navPalette','reserve:navLogo','reserve:enabled']);return {then(fn){completion=ready.then(fn);completion.catch(error=>errors.push(error));return completion;}};}};
+ const env=vm.createContext({chrome:{storage:{local,onChanged:{addListener:fn=>listeners.add(fn)}}},ReserveSite:{supported:()=>true},location:{href:'https://canvas.example.edu/'},document:{documentElement:html,getElementById:()=>null,addEventListener(){},removeEventListener(){}},MutationObserver:class{observe(){}disconnect(){}},addEventListener(){},requestAnimationFrame:()=>1});
+ vm.runInContext('globalThis.top=globalThis;',env);
+ vm.runInContext(read('canvas-nav.js'),env,{filename:'canvas-nav.js'});
+ return {env,html,classes,errors,listeners,async finish(values={'reserve:canvasNav':'original'}){resolveRead(values);await completion.catch(()=>{});},change(changes,area='local'){for(const fn of listeners)fn(changes,area);}};
+}
+
+for(const [name,chrome] of [['chrome is gone',undefined],['storage is gone',{}],['onChanged is gone',{storage:{}}],['addListener is gone',{storage:{onChanged:{}}}]]){
+ test('a tab open across an extension update finishes its storage read when '+name,async()=>{
+  const f=storageFixture();f.env.chrome=chrome;await f.finish();assert.deepEqual(f.errors,[],'the late storage continuation does not throw');assert.equal(f.listeners.size,0);assert.equal(f.classes.has('chn-nav'),false);
+ });
+}
+
+test('available storage listeners still switch the open page and ignore unrelated changes',async()=>{
+ const f=storageFixture();await f.finish();assert.deepEqual(f.errors,[]);assert.equal(f.listeners.size,1);
+ f.change({'reserve:canvasNav':{newValue:'shown'}},'sync');f.change({'reserve:unrelated':{newValue:'shown'}});assert.equal(f.classes.has('chn-nav'),false);
+ f.change({'reserve:canvasNav':{newValue:'shown'}});assert.equal(f.classes.has('chn-nav'),true);assert.equal(f.html.dataset.chnLayout,'column');
+ f.change({'reserve:canvasNav':{newValue:'top'}});assert.equal(f.html.dataset.chnLayout,'top');
+ f.change({'reserve:canvasNav':{newValue:'original'}});assert.equal(f.classes.has('chn-nav'),false);assert.equal(f.html.dataset.chnLayout,undefined);
 });

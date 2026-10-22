@@ -2,6 +2,7 @@
 if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./site.js');
 (function(root){
  'use strict';
+ const enabled=id=>!root.ReserveFeatures||root.ReserveFeatures.enabled(id);
  const BASE=(globalThis.ReserveSite.origin());
  function context(snapshot,personal,pathname){
   // Hidden as on the dashboard: by hand, or not a class (NameCoach, College Counseling) and never shown by hand.
@@ -19,6 +20,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
  }
  function dashboardURL({workspace,courseId,page,id,appearance}={}){
   const url=new URL(BASE+'/');url.searchParams.set('reserve','open');
+  if(root.ReserveFeatures){workspace=root.ReserveFeatures.workspace(workspace);if(page==='week'&&!enabled('planner')||page==='grades'&&!enabled('grades')||page==='settings'&&!enabled('customization'))page=undefined;if(appearance&&!enabled('customization'))appearance=false;}
   if(['work','hub','materials','inbox','grades'].includes(workspace))url.searchParams.set('workspace',workspace);
   if(/^\d+$/.test(courseId||''))url.searchParams.set('course',courseId);
   if(['week','assignments'].includes(page))url.searchParams.set('plan',page);
@@ -27,13 +29,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
  }
  // A removable stylesheet reserves room without rewriting Canvas inline styles.
  function pageDock(doc=document,{setTimer=root.setTimeout,clearTimer=root.clearTimeout}={}){
-  if(root.ReserveSite?.vanillaPage(root.location))return null;
+  if(!enabled('tools')||root.ReserveSite?.vanillaPage(root.location))return null;
   let sheet,padding,leaving=0;
   const remove=()=>{sheet?.remove();sheet=null;leaving=0;};
   return {update({open,collapsed,width,height,motion='gentle',input,resizing}){
    if(root.ReserveSite?.vanillaPage(root.location)){remove();return;}
    if(leaving){clearTimer(leaving);leaving=0;}
-   const animate=motion==='gentle'&&input!=='keyboard'&&resizing!=='true'&&!root.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+   const animate=enabled('motion')&&motion==='gentle'&&input!=='keyboard'&&resizing!=='true'&&!root.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
    const transition=animate?'body{transition:padding-right 340ms cubic-bezier(.22,.8,.24,1),padding-bottom 340ms cubic-bezier(.22,.8,.24,1)}':'';
    if(!open||collapsed){
     if(!sheet)return;
@@ -50,11 +52,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
  // as on the dashboard. One timeout waits for a running session's end; with no session there is no timer.
  function focusSettler(store,{setTimer=setTimeout,clearTimer=clearTimeout,now=Date.now}={}){
   let timer=0;
-  function check(){clearTimer(timer);timer=0;const f=store.get()?.focus,C=root.ReserveCore;if(!f?.endsAt||!C?.settleFocus)return;const left=f.endsAt-now();if(left>0){timer=setTimer(check,Math.min(left+50,864e5));return;}Promise.resolve(store.update(data=>{C.settleFocus(data,now());})).catch(()=>{});}
+  function check(){clearTimer(timer);timer=0;if(!enabled('planner'))return;const f=store.get()?.focus,C=root.ReserveCore;if(!f?.endsAt||!C?.settleFocus)return;const left=f.endsAt-now();if(left>0){timer=setTimer(check,Math.min(left+50,864e5));return;}Promise.resolve(store.update(data=>{C.settleFocus(data,now());})).catch(()=>{});}
   return {check,stop(){clearTimer(timer);timer=0;}};
  }
  function create({button,dockRoot,client,createStore,origin=BASE,pathname=()=>root.location.pathname,styleURL=file=>root.chrome.runtime.getURL(file),navigate=url=>root.open(url,'_blank','noopener,noreferrer')}={}){
-  if(root.ReserveSite?.vanillaPage(root.location))return null;
+  if(!enabled('tools')||!root.ReserveToolbox?.create||!root.ReserveToolboxSession?.create||root.ReserveSite?.vanillaPage(root.location))return null;
   client??=root.ReserveAPI.createClient();createStore??=root.ReserveStorage.createStore;
   let session=root.ReserveToolboxSession.create({client,createStore,origin}),toolbox,area,verified,unsubscribe,focus,pending=null,dead=false,version=0,stylesPromise,styleNodes=[];
   const layout=pageDock(),label=button.textContent,status=document.createElement('span');status.className='reserve-tool-status';status.setAttribute('role','status');status.hidden=true;dockRoot.append(status);
@@ -62,7 +64,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   function clearView(){layout.destroy();focus?.stop();focus=null;toolbox?.destroy();toolbox=null;unsubscribe?.();unsubscribe=null;area?.remove();area=null;verified=null;button.hidden=false;}
   function styleReady(){
    if(stylesPromise)return stylesPromise;
-   stylesPromise=Promise.all(['app.css','dashboard.css','workspace.css','refresh.css','gpa.css'].map(file=>new Promise((resolve,reject)=>{
+   const allSheets=['app.css','dashboard.css','workspace.css','refresh.css','gpa.css'];
+   const sheets=root.ReserveFeatures?.filterFiles(allSheets)||allSheets;
+   stylesPromise=Promise.all(sheets.map(file=>new Promise((resolve,reject)=>{
     const link=document.createElement('link');link.rel='stylesheet';link.href=styleURL(file);styleNodes.push(link);
     const timer=setTimeout(()=>reject(Error('Toolbox styles could not load. Try opening it again.')),8000);
     link.onload=()=>{clearTimeout(timer);resolve();};link.onerror=()=>{clearTimeout(timer);reject(Error('Toolbox styles could not load. Try opening it again.'));};dockRoot.append(link);
@@ -71,6 +75,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   function appearance(){
    if(!area||!verified)return;const s=verified.store.get().settings||{},dark=false;
    area.dataset.theme=dark?'dark':'light';area.dataset.font=s.font||'system';area.dataset.textSize=s.textSize||'standard';
+   area.dataset.featureMotion=enabled('motion')?'on':'off';area.dataset.motionStyle=enabled('motion')?s.motion||'gentle':'off';area.dataset.livingArt=enabled('motion')&&s.livingArt!=='off'?'on':'off';
    const accents={clay:['#A9522F','#E08A6A'],forest:['#367964','#9bd1b4'],indigo:['#5f5ccc','#bec8ff'],ocean:['#2f7185','#a3d4e5'],rose:['#9e4c6c','#efb0c0'],amber:['#956821','#e8c68b']};
    area.style.setProperty('--rd-accent',(accents[s.accent]||accents.clay)[dark?1:0]);
   }

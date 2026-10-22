@@ -22,7 +22,7 @@ function load(files,env=vm.createContext({TextEncoder,URL})){
  return env;
 }
 function runtime(){
- const scripts=manifest().content_scripts.find(entry=>entry.js?.includes('course-art.js'))?.js;
+ const scripts=require('../extension/features.js').resolve().js;
  assert.ok(scripts,'the runtime manifest loads course-art.js');
  return load(scripts.filter(file=>artFiles.has(file)));
 }
@@ -59,7 +59,7 @@ function inert(svg){
 }
 
 test('runtime content scripts load generic art before course art and expose a working classic-script fallback',()=>{
- const entries=manifest().content_scripts.filter(entry=>entry.js?.includes('course-art.js'));assert.ok(entries.length);
+ const entries=[{js:require('../extension/features.js').resolve().js}];assert.ok(entries.length);
  for(const entry of entries){
   assert.equal(entry.js.filter(file=>file==='generic-art.js').length,1);
   assert.ok(entry.js.indexOf('generic-art.js')<entry.js.indexOf('course-art.js'));

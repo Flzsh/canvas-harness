@@ -16,6 +16,12 @@ The easiest way: open [Canvas Harness on the Chrome Web Store](https://chromeweb
 
 Keep the installed folder where it is. Moving or deleting it can break an unpacked installation. If your managed browser blocks unpacked extensions, ask your school's IT team which installation methods are allowed.
 
+## Version 3.2.0 feature choices
+
+Open **Features** in the popup and choose Full, Lite or Custom. Full is the default. Custom switches include dependencies automatically and remember your selection when you try another preset. Reload Canvas to apply. Turning features off preserves their saved data. Local artwork packs appear with Drawings; they are on in Full and in the default Custom selection and include the artwork editor they need.
+
+Version 3.2.0 requires the browser's `scripting` permission to inject only the selected packaged modules into supported Canvas pages. School and AI website access is still requested one site at a time.
+
 ## First use
 
 Open **Appearance settings** to choose the layout, rename or hide courses locally, and upload your own SVG artwork. **Quick Upload** accepts a complete artwork pack by paste, file selection or drop. Review the previews and course matches before Apply; Undo last pack restores the previous affected artwork.
@@ -32,7 +38,7 @@ The popup can detect the current Canvas tab or accept your school's Canvas URL. 
 - Course information and fetched Canvas data can be cached in local browser storage. Personal settings, notes, bookmarks, checked-off work, imported art and GPA preferences are stored locally per Canvas site and account. Grades are hidden by default in the interface but may still exist in the local cache.
 - Checking off work in Canvas Harness does not submit an assignment or change Canvas grades.
 - Opening Desmos loads an external site. Canvas Harness does not send Canvas context to it.
-- **Tools → AI** opens an AI website. Clicking **Send** inserts your question and the chosen course text into that provider's draft; optional automatic submission can also send the message. On first use, the browser may ask for optional scripting and that provider's site permission. You can always use **Copy** and paste manually. Grades and local GPA data are excluded from AI context.
+- **Tools → AI** opens an AI website. Clicking **Send** inserts your question and the chosen course text into that provider's draft; optional automatic submission can also send the message. On first use, the browser may ask for that provider's optional site permission. You can always use **Copy** and paste manually. Grades and local GPA data are excluded from AI context.
 - The package contains shared extension files, not the developer's private classes, assignments, grades, notes, account data or imported artwork. Never share your personal backup or private SVGs with a public release.
 
 Read the full [Privacy notice](PRIVACY.md) before using third-party AI tools.

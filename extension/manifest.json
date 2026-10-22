@@ -2,15 +2,13 @@
   "manifest_version": 3,
   "name": "Canvas Harness",
   "short_name": "Canvas Harness",
-  "version": "3.1.0",
+  "version": "3.2.1",
   "description": "A Canvas workspace you build yourself: assignments beside their instructions, a weekly planner, study tools and a study companion.",
   "minimum_chrome_version": "120",
   "permissions": [
     "storage",
     "unlimitedStorage",
-    "offscreen"
-  ],
-  "optional_permissions": [
+    "offscreen",
     "scripting"
   ],
   "optional_host_permissions": [
@@ -50,6 +48,7 @@
         "https://*.instructure.com/*"
       ],
       "js": [
+        "features.js",
         "site.js",
         "startup-art.js",
         "startup.js"
@@ -74,59 +73,10 @@
         "personal-work.js",
         "custom-art.js",
         "workspace-arrange.js",
-        "workspace-gestures.js",
-        "customization-model.js",
-        "gpa-model.js",
-        "page-preferences.js",
-        "storage.js",
-        "quick-pack.js",
-        "quick-upload.js",
-        "quick-upload-ui.js",
-        "math.js",
-        "ui-utils.js",
-        "icons.js",
-        "subject-art-data.js",
-        "subject-art.js",
-        "generic-art.js",
-        "course-art.js",
-        "views.js",
-        "app.js",
-        "session.js",
-        "dashboard-model.js",
-        "work-model.js",
-        "material-model.js",
-        "materials-ui.js",
-        "course-hub-model.js",
-        "course-hub-ui.js",
-        "grades-view.js",
-        "customize-ui.js",
-        "dashboard-view.js",
-        "motion.js",
-        "quick-open.js",
-        "toolbox-resize.js",
-        "ai-context.js",
-        "ai-source.js",
-        "gpa-ui.js",
-        "toolbox.js",
-        "toolbox-session.js",
-        "native-appearance.js",
-        "native-page.js",
-        "native-tools.js",
-        "planner-model.js",
-        "pet-art.js",
-        "pets.js",
-        "planner-ui.js",
-        "widgets.js",
-        "settings-dock.js",
-        "dashboard.js",
         "canvas-nav.js",
         "course-nav-art.js",
         "course-nav.js",
-        "modules-page.js",
-        "pdf-art.js",
-        "pdf-model.js",
-        "pdf-host.js",
-        "content.js"
+        "feature-loader.js"
       ],
       "run_at": "document_start",
       "all_frames": false
@@ -195,5 +145,6 @@
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'; worker-src 'self'"
-  }
+  },
+  "version_name": "3.2.1"
 }

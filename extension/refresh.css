@@ -328,7 +328,7 @@
 @media (min-width: 801px) {
   .rd:not([data-course-navigation=topbar]) .rd-shell > .rd-workspace {
     height: calc(100dvh - min(var(--rd-rail-top, 150px), 45dvh) - var(--rd-status-h, 56px)); min-height: min(300px, calc(100dvh - 36px));
-    overflow-x: clip; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-gutter: stable;
+    overflow-x: clip; overflow-y: auto; overscroll-behavior: contain; overflow-anchor: none; scrollbar-width: thin; scrollbar-gutter: stable;
   }
   /* the column has a fixed height now, so its parts must keep their own: squeezed, a course's banner collapsed to
      nothing and its drawing spilled over the modules (2.26.0) */
@@ -336,6 +336,12 @@
   .rd .rd-course-rail { overscroll-behavior: contain; }
 }
 .rd .rd-workspace .rd-reader-content, .rd .rd-workspace .rd-reader, .rd .rd-workspace .rd-overview-agenda, .rd .rd-workspace .rd-material-page { overscroll-behavior: contain; }
+/* THE COLUMN STAYS WHERE THE STUDENT PUT IT. Right after a course opens the workspace lays its parts out again (the
+   desk toolbar, the arrange guide, the desk are removed and added back), and the browser's scroll anchoring took that
+   for content moving above what was in view: it scrolled the column to "follow" it, often to the very bottom.
+   Measured on a real Canvas: a course scrolled to 700px moved to 1092px, then 2062px (the bottom) within 4 seconds;
+   with anchoring off it stayed at 700px on five courses, also on the first load after a refresh. */
+.rd .rd-workspace, .rd .rd-workspace * { overflow-anchor: none; }
 
 .rd .rd-rail-heading { flex: none; padding: 4px 10px 10px; font-size: 12px; font-weight: 450; letter-spacing: normal; text-transform: none; color: var(--rd-faint); }
 

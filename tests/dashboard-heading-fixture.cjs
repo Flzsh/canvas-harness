@@ -34,17 +34,19 @@ function fixture({courseId='10',assignments=[],setup=()=>{}}={}){
   get isConnected(){return this===document.documentElement||!!this.parentNode?.isConnected;}
   get hidden(){return this.hasAttribute('hidden');}set hidden(v){this.toggleAttribute('hidden',v);}
   get textContent(){return this.nodeType===3?this.nodeValue:this.childNodes.map(n=>n.textContent).join('');}set textContent(value){this.replaceChildren();if(value)this.append(text(String(value)));}
-  get innerHTML(){return this.childNodes.map(n=>n.outerHTML).join('');}set innerHTML(value){this.replaceChildren();parse(String(value),this.nodeName==='TEMPLATE'?this.content:this);}
+  get innerHTML(){return this.childNodes.map(n=>n.outerHTML).join('');}set innerHTML(value){const target=this.nodeName==='TEMPLATE'?this.content:this;target.replaceChildren();parse(String(value),target);}
   get outerHTML(){return this.nodeType===3?this.nodeValue:`<${this.nodeName.toLowerCase()}${this.attributes.map(a=>` ${a.name}="${a.value}"`).join('')}>${this.innerHTML}</${this.nodeName.toLowerCase()}>`;}
   get clientWidth(){return 1000;}get clientHeight(){return 700;}get scrollHeight(){return 1500;}get offsetWidth(){return 100;}get offsetHeight(){return 40;}get offsetLeft(){return 0;}get offsetTop(){return 0;}
   getAttribute(k){return this.attrs[k]??null;}hasAttribute(k){return k in this.attrs;}setAttribute(k,v){this.attrs[k]=String(v);}removeAttribute(k){delete this.attrs[k];}toggleAttribute(k,on){if(on??!this.hasAttribute(k))this.setAttribute(k,'');else this.removeAttribute(k);}
   append(...nodes){for(const node of nodes)this.insertBefore(node,null);}appendChild(n){this.append(n);return n;}prepend(n){this.insertBefore(n,this.firstChild);}
-  insertBefore(node,before){if(node===before)return;if(node.nodeType===11){for(const child of [...node.childNodes])this.insertBefore(child,before);return;}node.remove();const i=before?this.childNodes.indexOf(before):this.childNodes.length;this.childNodes.splice(i,0,node);node.parentNode=this;}
+  after(node){if(this.parentNode)this.parentNode.insertBefore(node,this.nextSibling);}
+  insertBefore(node,before){if(node===before)return;if(before&&before.parentNode!==this)throw Error('NotFoundError: insertion reference is not a child');if(node===this||node.contains(this))throw Error('HierarchyRequestError: insertion would create a DOM cycle');if(node.nodeType===11){for(const child of [...node.childNodes])this.insertBefore(child,before);return;}node.remove();const i=before?this.childNodes.indexOf(before):this.childNodes.length;this.childNodes.splice(i,0,node);node.parentNode=this;}
   replaceChildren(...nodes){for(const child of this.childNodes)child.parentNode=null;this.childNodes=[];this.append(...nodes);}
   remove(){if(this.parentNode){this.parentNode.childNodes.splice(this.parentNode.childNodes.indexOf(this),1);this.parentNode=null;}}
   contains(node){for(let n=node;n;n=n.parentNode)if(n===this)return true;return false;}
   matches(s){return matches(this,s,this);}closest(s){for(let n=this;n;n=n.parentElement)if(matches(n,s,n))return n;return null;}
-  querySelectorAll(s){const out=[];const walk=n=>{for(const child of n.childNodes){if(matches(child,s,this))out.push(child);walk(child);}};walk(this);return out;}querySelector(s){return this.querySelectorAll(s)[0]||null;}
+  querySelectorAll(s){const out=[];const walk=n=>{for(const child of n.childNodes){if(matches(child,s,this))out.push(child);walk(child);}};walk(this);return out;}
+  querySelector(s){const find=n=>{for(const child of n.childNodes){if(matches(child,s,this))return child;const found=find(child);if(found)return found;}return null;};return find(this);}
   getBoundingClientRect(){return {left:0,top:20,right:480,bottom:260,width:480,height:240};}getClientRects(){return this.isConnected&&!this.hidden?[this.getBoundingClientRect()]:[];}getBBox(){return {x:0,y:0,width:30,height:30};}getTotalLength(){return 100;}
   getRootNode(){return document;}focus(options){document.activeElement=this;this.focusOptions=options;}setSelectionRange(){}scrollIntoView(){}
   addEventListener(k,fn){this.events.set(k,fn);}removeEventListener(k){this.events.delete(k);}click(){container.events.get('click')?.({detail:0,target:this,preventDefault(){}});}
