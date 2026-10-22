@@ -1,0 +1,167 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* The main scroll container keeps the reader's place when content above changes. */
+.np-scroll {
+  overflow-y: auto;
+  overflow-anchor: auto;
+  scrollbar-gutter: stable;
+}
+
+.np-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.np-scroll::-webkit-scrollbar-thumb {
+  background: rgb(0 0 0 / 0.12);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+@media (prefers-color-scheme: dark) {
+  .np-scroll::-webkit-scrollbar-thumb {
+    background: rgb(255 255 255 / 0.14);
+    background-clip: content-box;
+  }
+}
+
+/* Reading typography for rendered notes (restricted markdown). */
+.np-prose {
+  @apply font-serif text-[14.5px] leading-[1.62] text-ink-800 dark:text-ink-200;
+}
+.np-prose p {
+  @apply my-0;
+}
+/* Words the AI added to finish an unfinished note (see core/fills.ts). */
+.np-filled {
+  @apply rounded-[2px] bg-sky-100/70 text-sky-900 decoration-sky-400/80 dark:bg-sky-400/10 dark:text-sky-100 dark:decoration-sky-400/60;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  cursor: help;
+}
+.np-prose p + p,
+.np-prose p + ul,
+.np-prose p + ol,
+.np-prose ul + p,
+.np-prose ol + p {
+  @apply mt-2;
+}
+.np-prose ul {
+  @apply list-disc pl-5 my-1 space-y-0.5 marker:text-ink-300 dark:marker:text-ink-600;
+}
+.np-prose ol {
+  @apply list-decimal pl-5 my-1 space-y-0.5 marker:text-ink-400;
+}
+.np-prose li > ul,
+.np-prose li > ol {
+  @apply mt-0.5;
+}
+.np-prose li > ul {
+  list-style-type: circle;
+}
+.np-prose p + div,
+.np-prose div + p,
+.np-prose ul + div,
+.np-prose ol + div,
+.np-prose div + ul,
+.np-prose div + ol {
+  @apply mt-2;
+}
+.np-prose strong {
+  @apply font-semibold text-ink-900 dark:text-ink-50;
+  background: linear-gradient(transparent 58%, rgb(250 204 21 / 0.32) 58%);
+}
+@media (prefers-color-scheme: dark) {
+  .np-prose strong {
+    background: linear-gradient(transparent 58%, rgb(250 204 21 / 0.18) 58%);
+  }
+}
+.np-prose em {
+  @apply italic;
+}
+.np-prose code {
+  @apply font-mono text-[12px] px-1 py-px rounded bg-ink-100 dark:bg-ink-800;
+}
+.np-prose a {
+  @apply text-accent-600 dark:text-accent-300 underline decoration-accent-300/60 underline-offset-2;
+}
+.np-prose blockquote {
+  @apply border-l-2 border-ink-200 dark:border-ink-700 pl-3 text-ink-600 dark:text-ink-400;
+}
+.np-prose table {
+  @apply w-full border-collapse font-sans text-[12.5px] my-1;
+}
+.np-prose th {
+  @apply text-left font-semibold bg-ink-50 dark:bg-ink-900 border border-ink-200 dark:border-ink-700 px-2 py-1;
+}
+.np-prose td {
+  @apply border border-ink-200 dark:border-ink-700 px-2 py-1 align-top;
+}
+.np-prose tbody tr:nth-child(even) td {
+  @apply bg-ink-50/60 dark:bg-ink-900/40;
+}
+.np-prose td:first-child {
+  @apply font-medium text-ink-900 dark:text-ink-100;
+}
+.np-prose h1,
+.np-prose h2,
+.np-prose h3,
+.np-prose h4 {
+  @apply font-sans font-semibold text-[13.5px] mt-2 mb-1;
+}
+.np-prose .katex-display {
+  @apply my-2 overflow-x-auto overflow-y-hidden py-1;
+}
+.np-prose hr {
+  @apply my-3 border-ink-200 dark:border-ink-800;
+}
+
+/* Markdown rendered inline (summary review items followed by section chips, term meanings). */
+.np-inline,
+.np-inline p {
+  display: inline;
+}
+
+/* Smaller prose for insight cards. */
+.np-prose-sm {
+  @apply font-sans text-[12.75px] leading-[1.55] text-ink-700 dark:text-ink-300;
+}
+.np-prose-sm strong {
+  @apply font-semibold text-ink-900 dark:text-ink-100;
+}
+.np-prose-sm ul {
+  @apply list-disc pl-4 my-1;
+}
+.np-prose-sm p + p {
+  @apply mt-1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.np-focus {
+  @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/70 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-ink-950;
+}
