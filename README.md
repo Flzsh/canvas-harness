@@ -89,6 +89,7 @@ Open the popup and choose **Features**. **Full** has everything. **Lite** keeps 
 
 ## Also inside
 
+- **Deadline changes.** See due dates that moved, were added or were removed since your previous refresh. Optional in Features; [how observations work](docs/deadline-changes.md).
 - **A study companion.** A small hand-drawn pony walks along your modules, tells you what is next, studies beside a running timer and cheers finished work. It never scolds, and one switch turns it off.
 - **Tools beside your work.** Desmos, GPA estimates and an AI hand-off in a side dock while you read. You pick what is shared and see it before anything is sent.
 - **Light on slower laptops.** It comes back quickly when you return to the tab and does very little while it sits idle.

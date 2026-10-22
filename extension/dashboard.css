@@ -1278,3 +1278,5 @@
 
 
 .rd-check-off{border-color:color-mix(in srgb,var(--rd-muted) 60%,var(--rd-line))}
+
+.rd-deadline-dialog{width:min(620px,calc(100vw - 32px));max-height:80vh;overflow:auto;background:var(--rd-surface,#fffdf8);color:var(--rd-ink,#292720);border:1px solid var(--rd-line,#c9beab);border-radius:12px;padding:24px}.rd-deadline-dialog::backdrop{background:#0005}.rd-deadline-dialog>p{font-size:13px;line-height:1.6}.rd-deadline-list{list-style:none;margin:20px 0;padding:0}.rd-deadline-entry{padding:14px 0;border-top:1px solid var(--rd-line,#c9beab)}.rd-deadline-entry>a{font-weight:600;overflow-wrap:anywhere;color:var(--rd-accent)}.rd-deadline-entry p{margin:5px 0;font-size:12px}.rd-deadline-course,.rd-deadline-entry small{color:var(--rd-muted,#716b5f);font-size:11px}.rd-deadline-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.rd-deadline-dialog button{min-height:40px}

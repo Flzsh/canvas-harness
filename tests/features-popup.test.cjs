@@ -4,7 +4,7 @@ const read=file=>fs.readFileSync(path.join(__dirname,'../extension',file),'utf8'
 const plain=value=>value===undefined?undefined:JSON.parse(JSON.stringify(value));
 const settle=async()=>{for(let i=0;i<12;i++)await new Promise(resolve=>setImmediate(resolve));};
 const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done;});return {promise,resolve};};
-const IDS=['dashboard','planner','grades','materials','course-hub','math','gpa','tools','customization','arrange','course-art','quick-pack','pony','motion','canvas-nav','course-nav','native-appearance','pdf','ai'];
+const IDS=['dashboard','deadline-changes','planner','grades','materials','course-hub','math','gpa','tools','customization','arrange','course-art','quick-pack','pony','motion','canvas-nav','course-nav','native-appearance','pdf','ai'];
 const LITE=['dashboard','planner','grades','math','gpa','tools','arrange','native-appearance'];
 
 // A DOM/storage boundary fixture: real popup and catalogue, no browser launch.

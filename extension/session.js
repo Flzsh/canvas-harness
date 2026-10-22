@@ -31,10 +31,13 @@
           if(String(next.user?.id)!==String(user.id)){
             const error=Error('Your Canvas account changed. Reload Canvas to continue.');error.code='auth';throw error;
           }
+          let deadlineWarning='';
+          try{await root.ReserveDeadlineChanges?.record(store,next,{current:()=>alive(epoch)});}catch{deadlineWarning='Deadline changes could not be saved on this device.';}
+          if(!alive(epoch))return null;
           current=next;
           onSnapshot(next,store,{stale:false});
           if(!alive(epoch))return null;
-          onStatus(next.partial?'Some courses could not refresh. See the course notices.':'');
+          onStatus([next.partial?'Some courses could not refresh. See the course notices.':'',deadlineWarning].filter(Boolean).join(' '));
           try{await store.writeCache(next);}catch{if(alive(epoch))onStatus('Updated · This visit could not be saved for faster loading.');}
           return next;
         }catch(error){fail(error,epoch);return null;}

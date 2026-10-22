@@ -201,6 +201,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const hub=enabled('course-hub')?root.ReserveCourseHubUI?.create({store,user:snapshot.user,client:resourceClient,...selectionOptions,materials,onChange:sourceChange,onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))}):null;
     const quickUpload=enabled('quick-pack')?root.CanvasHarnessQuickUpload?.create({store,getCourses:()=>normalizeData(settings()).allCourses,onChange:sourceChange}):null;
     const motion=enabled('motion')?root.ReserveMotion?.create(container):null;
+    const deadlineChanges=enabled('deadline-changes')?root.ReserveDeadlineChanges?.create({container,store,onChange:sourceChange,getTimeZone:()=>settings().timeZone}):null;
     const settingsDock=enabled('customization')&&root.ReserveCustomizeUI?.render?root.ReserveSettingsDock?.createDock({container,
       onOpen:()=>{if(drawerOpen())setDrawer(false,{focus:false});toolbox?.close({restoreFocus:false});customizeCourseId=state.courseId;},
       onChange:open=>{customizeOpen=open;render();}
@@ -380,7 +381,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const deckCourse=courses.find(course=>course.id===(state.courseId==='all'?String(selected?.courseId||''):state.courseId))||courses[0]||null;
       // Each view filter shows the count its list would show once chosen (the same rules, the same search).
       const modeCounts=workspace==='work'?Object.fromEntries(['actionable','today','week','planned'].map(mode=>[mode,mode===state.mode&&!state.day?filtered.items.length:Model.filterAssignments(items,{...state,mode,day:'',now,timeZone:s.timeZone,local}).items.length])):{};
-      return {s,courses,allCourses,courseMap,items,filtered,now,accent,local,resourcePins:personal.resourcePins||[],insights,courseLoad,glance,modeCounts,unread:hub?.unreadCount?.()||0,selected,deckCourse,overviewItems,overviewMode,overviewQuery,checkOffNotice,selectionIds,archiveUndo,archiving,theme:effectiveTheme(s),focusClock:C.focusClock?.(personal.focus,now)||''};
+      return {s,courses,allCourses,courseMap,items,filtered,now,accent,local,deadlineChanges:deadlineChanges?.summary(),resourcePins:personal.resourcePins||[],insights,courseLoad,glance,modeCounts,unread:hub?.unreadCount?.()||0,selected,deckCourse,overviewItems,overviewMode,overviewQuery,checkOffNotice,selectionIds,archiveUndo,archiving,theme:effectiveTheme(s),focusClock:C.focusClock?.(personal.focus,now)||''};
     }
 
     // Every course row in the rail is as tall as the tallest one's content (refresh.css section 3:
@@ -664,6 +665,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         }
         // Stable controls retain focus and let the grade switch finish its tween.
         const tools=toolbar.querySelector('.rd-tools');
+        const deadlineButton=tools.querySelector('[data-rd-action="deadline-changes"]'),nextDeadline=nextToolbar?.querySelector('[data-rd-action="deadline-changes"]');
+        if(deadlineButton&&nextDeadline)patchUI(deadlineButton,nextDeadline);else if(nextDeadline)tools.prepend(nextDeadline);else deadlineButton?.remove();
         const gradeSwitch=tools.querySelector('[data-setting="showGrades"]');if(gradeSwitch)gradeSwitch.checked=ctx.s.showGrades===true;
         tools.querySelector('[data-rd-action="settings"]')?.setAttribute('aria-expanded',String(customizeOpen));
         // While syncing, the refresh glyph gives way to the dotted ring (CSS on aria-busy).
@@ -1023,7 +1026,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function closePreview(){readerOpen=false;render();const previous=container.querySelector(`[data-rd-action="preview"][data-id="${selectedId}"]`);previous?.scrollIntoView({block:'nearest',behavior:'instant'});previous?.focus({preventScroll:true});}
 
     function actionEnabled(action,button){
-      const feature={planner:'planner',grades:'grades','more-grades':'grades','grades-visibility':'grades',settings:'customization','settings-close':'customization','hidden-courses':'customization','customize-tab':'customization','advanced-settings':'customization',accent:'customization',theme:'customization','course-up':'customization','course-down':'customization',toolbox:'tools',capture:'tools','selection-ai':'ai','select-source':'ai','open-hub':'course-hub','open-materials':'materials','timer-toggle':'planner','timer-reset':'planner','timer-minutes':'planner','timer-focus':'planner'}[action];
+      const feature={'deadline-changes':'deadline-changes',planner:'planner',grades:'grades','more-grades':'grades','grades-visibility':'grades',settings:'customization','settings-close':'customization','hidden-courses':'customization','customize-tab':'customization','advanced-settings':'customization',accent:'customization',theme:'customization','course-up':'customization','course-down':'customization',toolbox:'tools',capture:'tools','selection-ai':'ai','select-source':'ai','open-hub':'course-hub','open-materials':'materials','timer-toggle':'planner','timer-reset':'planner','timer-minutes':'planner','timer-focus':'planner'}[action];
       if(feature&&!enabled(feature))return false;
       if(action?.startsWith('quick-pack'))return enabled('quick-pack');
       if(action?.startsWith('layout-'))return enabled('customization')&&enabled('arrange');
@@ -1066,6 +1069,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(!button||button.disabled||button.getAttribute?.('aria-disabled')==='true')return;
       const action=button.dataset.rdAction,snapshot=MOTION_ACTIONS.has(action)?take():null;
       if(arrange?.action(button))return;
+      if(action==='deadline-changes'){deadlineChanges?.open(button);return;}
       if(action==='drawer'){setDrawer(!button.dataset.close&&container.dataset.drawer!=='open');return;}
       // Grades' inline "Show grades" runs the same path as the toolbar switch.
       if(action==='grades-visibility'){const value=settings().showGrades!==true,version=++gradeSaveVersion;gradeVisibilityOverride=value;motion?.cancel();render();savePersonal(data=>{data.settings.showGrades=value;}).then(saved=>{if(version===gradeSaveVersion){if(saved)gradeVisibilityOverride=null;render();}});return;}
@@ -1359,7 +1363,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         destroyed=true;consumeSources();pendingRender=null;root.chrome?.storage?.onChanged?.removeListener?.(navChanged);
         readerLayout?.disconnect();railLayout?.disconnect();railAncestors?.disconnect();root.clearTimeout(railTimer);if(railSelectionFrame)cancelPaint(railSelectionFrame);
         root.removeEventListener?.('resize',queueRail);document.fonts?.removeEventListener?.('loadingdone',queueRail);
-        ++quickPackRead;quickUpload?.destroy();arrange?.destroy();board?.destroy();settingsDock?.destroy();materials?.destroy();hub?.destroy();motion?.destroy();toolbox?.destroy();
+        ++quickPackRead;deadlineChanges?.destroy();quickUpload?.destroy();arrange?.destroy();board?.destroy();settingsDock?.destroy();materials?.destroy();hub?.destroy();motion?.destroy();toolbox?.destroy();
         clearInterval(freshnessTimer);clearInterval(focusTimer);clearTimeout(entranceTimer);
         unsubscribe?.();
         container.removeEventListener('dragover',onPackDragover);container.removeEventListener('dragleave',onPackDragleave);container.removeEventListener('drop',onPackDrop);
