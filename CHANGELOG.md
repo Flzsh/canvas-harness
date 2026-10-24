@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.3.0 - 2026-10-22
+
+- Biscuit's menu works from the keyboard: Escape closes it, the arrow keys, Home and End move between items, Tab moves on, and focus goes back to the pony when a bubble closes.
+- Screen readers now read Biscuit's reminders and cheers, and a reminder stays while your pointer or keyboard is in it, so its buttons can be reached.
+- Focus sessions are quieter on battery: the pony no longer remeasures the page every time the timer or clock ticks.
+- With reduced motion on, the pony comes back into view after its module scrolls away.
+- Biscuit's words are right: a run of days shows only while it lasts, levels 9 and 10 no longer promise an unlock, and the menu's focus length follows your timer.
+- Thank you @hellyeahboys666 for #49.
+
 ## 3.2.1 - 2026-10-21
 
 - With the course strip across the top, the banner, the course strip and Home scroll together as one page. Home modules are as tall as their content, so nothing scrolls inside a module.

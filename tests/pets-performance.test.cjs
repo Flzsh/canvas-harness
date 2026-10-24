@@ -40,6 +40,20 @@ test('unmount/destroy cancel movement, observers, geometry refreshes and held-po
 test('external invalidation promptly moves a resting pony off inserted controls or text, before any movement write',()=>{
  for(const kind of ['control','text']){const f=fixture();f.advance(1400);const x=f.node._x,y=f.node._y,used=new f.Element('used');used.rect=f.box(x-40,y-60,80,60);used.control=kind==='control';if(kind==='text')used.childNodes=[{nodeType:3,textContent:'Synthetic assignment title',rect:used.rect}];f.blockers.push(used);f.panels[0].append(used);f.random(...Array(9).fill(.8));f.clear();f.mutate([{type:'childList',target:f.panels[0],addedNodes:[used],removedNodes:[]}]);f.advance(150);assert.ok(f.reads.hit>0,'external layout invalidation rechecks occupancy');assert.ok(f.node._x>x+.1,'it leaves immediately, without waiting for the next decision');const firstWrite=f.trace.findIndex(t=>t.kind==='write'&&t.el===f.node&&t.key==='transform'),lastHit=f.trace.findLastIndex(t=>t.kind==='read'&&t.read==='hit');assert.ok(lastHit>=0&&firstWrite>lastHit,'collision reads precede movement writes');f.clear();f.advance(1000);assert.equal(f.reads.hit,0,'movement does not repeat collision hit tests');f.controller.destroy();}
 });
+test('a running timer, clock or countdown changing its words does not remeasure the page',()=>{
+ const f=fixture();f.advance(1400);const marks=[{rdTimer:''},{rdClock:''},{rdCountdown:''}].map(data=>{const w=new f.Element('widget',data);w.rect=f.box(200,320,300,200);f.panels[0].append(w);const inner=new f.Element('inner');w.append(inner);return inner;});
+ f.clear();f.advance(2000);const quiet=f.reads.rect;   // the follow check alone, for comparison
+ f.clear();f.mutate(marks.flatMap(inner=>[{type:'childList',target:inner,addedNodes:[],removedNodes:[]},{type:'attributes',attributeName:'style',target:inner},{type:'characterData',target:{nodeType:3,parentElement:inner}}]));f.advance(2000);
+ assert.equal(f.rafCalls,0,'no geometry refresh is scheduled');assert.equal(f.reads.rect,quiet,'nothing beyond the usual follow check is measured');
+ f.mutate([{type:'attributes',attributeName:'style',target:f.panels[0]}]);assert.equal(f.rafCalls,1,'other page changes still refresh the places');f.controller.destroy();
+});
+for(const mode of ['reduced','focus'])test('a pony whose place scrolled away comes back into view: '+mode,()=>{
+ const f=fixture({extra:true});if(mode==='reduced')f.container.dataset.motionStyle='off';f.advance(1400);if(mode==='focus')f.controller.setFocus(true);assert.equal(f.node._y,301);
+ f.panels[0].rect.top=-500;f.panels[0].rect.bottom=-150;f.win.emit('scroll');f.postpaint();f.clear();f.advance(32000);
+ assert.equal(f.node._y,601,'it stands on the module that is in view');assert.notEqual(f.node.dataset.pose,'fall');
+ if(mode==='reduced')assert.ok(!f.writes.some(w=>w.el===f.node&&w.key==='opacity'&&w.value!==''&&Number(w.value)<1),'with reduced motion it appears without a fade');
+ f.controller.destroy();
+});
 test('reduced motion also clears a new obstruction promptly without starting a walk',()=>{
  const f=fixture();f.container.dataset.motionStyle='off';f.advance(1400);const x=f.node._x,used=new f.Element('control');used.control=true;used.rect=f.box(x-40,f.node._y-60,80,60);f.blockers.push(used);f.panels[0].append(used);f.random(...Array(9).fill(.8));f.mutate([{type:'childList',target:f.panels[0],addedNodes:[used],removedNodes:[]}]);f.postpaint();assert.ok(f.node._x>x+100,'the occupied spot is cleared immediately after paint');assert.notEqual(f.node.dataset.pose,'walk');f.controller.destroy();
 });

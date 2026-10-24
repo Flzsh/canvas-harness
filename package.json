@@ -1,6 +1,6 @@
 {
   "name": "canvas-harness",
-  "version": "3.2.1",
+  "version": "3.3.0",
   "license": "GPL-3.0-only",
   "private": true,
   "description": "A Canvas workspace you build yourself: assignments beside their instructions, a weekly planner, study tools and a study companion.",
