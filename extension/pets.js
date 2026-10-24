@@ -71,6 +71,9 @@
   // the page: a 25 to 60 minute focus session would otherwise read the whole layout every second.
   const TICKING='[data-rd-timer],[data-rd-clock],[data-rd-countdown]';
   const ticking=target=>!!(target?.nodeType===3?target.parentElement:target)?.closest?.(TICKING);
+  // Canvas Harness draws inside a shadow root, where document.activeElement is only its host: the item with focus is
+  // known to the pony layer's own root.
+  const focused=()=>(layer?.getRootNode?.()||doc).activeElement;
   const localDay=t=>{const d=new Date(t);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
   function mount(){
    if(layer||dead)return;
@@ -497,7 +500,7 @@
   function closeBubble(){
    clearTimeout(sayTimer);sayTimer=0;clearTimeout(liveTimer);liveTimer=0;if(live?.textContent)live.textContent='';
    if(bubble){
-    if(bubble.contains(doc.activeElement))node?.focus({preventScroll:true});
+    if(bubble.contains(focused()))node?.focus({preventScroll:true});
     bubble.removeEventListener('click',onBubble);bubble.removeEventListener('keydown',bubbleKey);for(const [type,fn] of holding)bubble.removeEventListener(type,fn);holding=[];resizeWatch?.unobserve(bubble);watched.delete(bubble);
     bubble.remove();bubble=null;
    }
@@ -524,7 +527,7 @@
    announce(speak);
    // A bubble that goes by itself waits while the pointer or keyboard focus is in it, so its buttons can be reached.
    if(ms){
-    const box=bubble,hold=()=>clearTimeout(sayTimer),arm=()=>{clearTimeout(sayTimer);sayTimer=setTimeout(()=>{if(bubble===box&&!menuOpen&&!box.contains(doc.activeElement))closeBubble();},ms);};
+    const box=bubble,hold=()=>clearTimeout(sayTimer),arm=()=>{clearTimeout(sayTimer);sayTimer=setTimeout(()=>{if(bubble===box&&!menuOpen&&!box.contains(focused()))closeBubble();},ms);};
     holding=[['pointerenter',hold],['pointerleave',arm],['focusin',hold],['focusout',e=>{if(!box.contains(e.relatedTarget))arm();}]];for(const [type,fn] of holding)box.addEventListener(type,fn);arm();
    }
   }
@@ -536,7 +539,7 @@
    if(event.key==='Escape'){used();closeBubble();return;}
    if(!menuOpen)return;
    if(event.key==='Tab'){closeBubble();return;}   // not prevented: Tab then moves on from the pony, which now has focus
-   const items=[...bubble.querySelectorAll('.pet-item:not([disabled])')],at=items.indexOf(doc.activeElement);if(!items.length)return;
+   const items=[...bubble.querySelectorAll('.pet-item:not([disabled])')],at=items.indexOf(focused());if(!items.length)return;
    const to={ArrowDown:at<0?0:at+1,ArrowUp:at<0?items.length-1:at-1,Home:0,End:items.length-1}[event.key];if(to===undefined)return;
    used();items[(to+items.length)%items.length].focus({preventScroll:true});
   }

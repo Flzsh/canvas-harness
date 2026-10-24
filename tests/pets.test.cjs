@@ -50,6 +50,13 @@ test('the menu works from the keyboard: arrows, Home and End move, Escape and Ta
  menu(f);assert.deepEqual(key(f,'Tab'),{prevented:false,stopped:false},'Tab is left to the browser');assert.equal(f.bubble,undefined);assert.equal(f.doc.activeElement,f.node,'Tab moves on from the pony');
  f.controller.destroy();
 });
+test('inside the shadow root Canvas Harness draws in, the menu keys still move and focus still returns to the pony',()=>{
+ const f=fixture({pet:{treats:2},shadow:true});f.advance(1400);const items=menu(f).children;
+ assert.equal(f.shadowRoot.activeElement,items[0]);assert.equal(f.doc.activeElement,f.host,'the document only sees the host');
+ key(f,'ArrowDown');assert.equal(f.shadowRoot.activeElement,items[1],'down moves to the second item, not back to the first');key(f,'ArrowUp');key(f,'ArrowUp');assert.equal(f.shadowRoot.activeElement,items[items.length-1],'up from the first item wraps to the last');
+ key(f,'Escape');assert.equal(f.bubble,undefined);assert.equal(f.shadowRoot.activeElement,f.node,'focus is back on the pony');
+ f.controller.destroy();
+});
 test('choosing a menu item hands keyboard focus back to the pony',()=>{
  for(const action of ['feed','stay','settings']){const f=fixture({pet:{treats:2}});f.advance(1400);const item=menu(f).children.find(n=>n.dataset.petAction===action);item.focus();f.bubble.emit('click',{target:item});assert.equal(f.bubble,undefined,action);assert.equal(f.doc.activeElement,f.node,action+' keeps the keyboard user in place');f.controller.destroy();}
 });
