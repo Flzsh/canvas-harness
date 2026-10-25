@@ -30,7 +30,14 @@ Canvas shows you everything. Canvas Harness shows you what to do next. It replac
 
 <p align="center"><sub>Every demo below uses fictional courses and assignments.</sub></p>
 
-## New in 3.4
+## New in 3.5
+
+- Keep personal course links and files in **My links & files**. PDFs open in the workspace reader; files stay on this device and carry into bounded backups. Thanks to @garywu000 for #47.
+- Mark up PDFs with strike-through, highlighter pen, text boxes, shapes and redo. The Marks list jumps to each mark; Copy as notes and Download .md make a study sheet from text marks. Thanks to @garywu000 for #51 and @HarryX081125 for #53. [PDF tools](docs/pdf-reader.md).
+- **Changes** in the toolbar shows observed deadline changes and an unread count. Full includes it; Lite leaves it out. History stays local to each Canvas account. Thanks to @garywu000 for #52. [Deadline changes](docs/deadline-changes.md).
+- Make it yours groups controls into Look, Home, Courses, your companion and More, and remembers where you left it. Course artwork is in Courses; file imports and Start over are in More.
+
+## Also in 3.4
 
 - Use your own picture or short video as a banner, framed the way you want. Upload, drop or paste it into Make it yours, then choose the fit, focus, zoom and height. Course cards and a dimmed page background can use your art too. Video loops and stills, framing and media carry over in kits and personal backups.
 
@@ -67,7 +74,7 @@ Type a task in plain words and it lands on the right day with its time and cours
 
 Click a PDF anywhere in a course and it opens in a reader beside the page instead of a new tab. Jump by page or outline, find words, highlight in colour and write notes in the margin; they stay in your browser. **Ask AI** takes the pages or text you choose to the AI pane, where you review it before anything is sent. Assignment and submission pages stay exactly as Canvas made them until you click a PDF. [PDF reader details](docs/pdf-reader.md).
 
-The reader also exports your highlights, underlines and margin notes as a Markdown or plain-text study sheet, grouped by page. Choose **Export highlights and notes** in the reader’s heading.
+The Marks list can copy text marks as notes or download a Markdown study sheet grouped by page and position. Drawings and empty marks are counted as omitted. The reader rechecks the Canvas account before downloading.
 
 ## Canvas's own pages, drawn to match
 
@@ -83,7 +90,7 @@ The course menu, the Modules page and Canvas's menu bar on the left get the same
   <img src="docs/media/make-it-yours.gif" width="880" alt="Make it yours: choosing a layout, an outline style and a page colour by picture, and switching to dark">
 </p>
 
-Courses get animated subject artwork automatically. **Make it yours** has five tabs of picture choices: Layout, Look, Artwork, Courses and Pony. For your own art, describe your course to an AI with the free [artwork skill](skills/canvas-harness-art/SKILL.md) and drop the `.chpack` it makes into **Quick Upload**, or upload your own SVG banners, icons, frames and titles.
+Courses get animated subject artwork automatically. **Make it yours** has five tabs of picture choices: Look, Home, Courses, Pony and More. For your own art, describe your course to an AI with the free [artwork skill](skills/canvas-harness-art/SKILL.md) and drop the `.chpack` it makes into **Quick Upload**, or upload your own SVG banners, icons, frames and titles.
 
 ## Only what you use
 

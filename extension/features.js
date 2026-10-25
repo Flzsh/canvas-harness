@@ -1,5 +1,5 @@
 // Adapted from Gary Wu's pull request #47 to Canvas Harness.
-/*! Canvas Harness 3.4 feature catalogue. Packaged files only; no account data. */
+/*! Canvas Harness 3.5 feature catalogue. Packaged files only; no account data. */
 (function(root){
  'use strict';
  const KEY='reserve:features',HINT='reserve:features-hint';

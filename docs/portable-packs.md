@@ -1,6 +1,6 @@
 # Make your own Canvas Harness packs
 
-In **Make it yours → Add from a file**, choose `.chpack`, `.chkit`, `.chtheme`, `.chpet`, or `.chpreset`. The existing Quick Upload also accepts pasted `.chpack` text. Review a file before applying it. Files change local settings and assets; they never submit work to Canvas.
+In **Make it yours → More → Add from a file**, choose `.chpack`, `.chkit`, `.chtheme`, `.chpet`, or `.chpreset`. The existing Quick Upload also accepts pasted `.chpack` text. Review a file before applying it. Files change local settings and assets; they never submit work to Canvas.
 
 The Market uses these same codecs. Its first click asks for the optional `https://flzsh.github.io/*` permission. Declining still opens the website; installation requires that permission. Removing a pack restores its own changes and preserves later edits. Installing a preset from the Market saves it for review rather than applying it immediately.
 

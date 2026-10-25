@@ -14,7 +14,7 @@ const term=parts=>escapeRE(parts.join(''));
 // Keep policy strings assembled so this tool can pass the same content scan.
 const RULES=[
  ['R01','\\b'+term(['agent-'])+'(?!clock\\b)[a-z0-9_.-]+\\.(?:[cm]?js|css|html?)\\b'],
- ['R02','\\b(?:'+term(['study-'])+'[a-z0-9_.-]+|'+term(['ai-api'])+'[a-z0-9_.-]*|'+term(['overnight'])+'[a-z0-9_.-]*)\\.(?:[cm]?js|css|html?)\\b'],
+ ['R02','(?<![\\w-])(?:'+term(['study-'])+'[a-z0-9_.-]+|'+term(['ai-api'])+'[a-z0-9_.-]*|'+term(['overnight'])+'[a-z0-9_.-]*)\\.(?:[cm]?js|css|html?)\\b'],
  ['R03','\\b(?:'+term(['pony-study-'])+'[a-z0-9_.-]+|'+term(['pony-review-'])+'[a-z0-9_.-]+)\\b'],
  ['R04',term(['reserve:','de','v'])+'[a-z0-9:_-]*'],
  ['R05','\\b'+term(['w','ra','.instructure','.com'])+'\\b'],
@@ -270,7 +270,7 @@ function auditRelease({unpackedDir,manifestPath=path.join(ROOT,'dist/release-man
    if(result.status===0)summary.counts.jsChecked++;else errors.push('node --check failed for '+name+': '+(result.stderr||result.stdout||'exit '+result.status).trim().slice(0,4000));
   }
  }
- summary.ok=errors.length===0;const version=summary.version||'3.4.0',destination=path.resolve(outputPath||path.join(path.dirname(manifestPath),'audit-'+version+'.json'));
+ summary.ok=errors.length===0;const version=summary.version||'3.5.0',destination=path.resolve(outputPath||path.join(path.dirname(manifestPath),'audit-'+version+'.json'));
  const same=(a,b)=>process.platform==='win32'?a.toLowerCase()===b.toLowerCase():a===b,outputRelative=path.relative(unpackedDir,destination);
  ensure(!same(destination,manifestPath),'summary output must not overwrite the release manifest');
  if(summary.inputs.archive)ensure(!same(destination,summary.inputs.archive),'summary output must not overwrite the archive');

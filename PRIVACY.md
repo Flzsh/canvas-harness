@@ -1,12 +1,12 @@
 # Canvas Harness privacy
 
-Applies to Canvas Harness 3.4.0. Last updated October 22, 2026.
+Applies to Canvas Harness 3.5.0. Last updated October 25, 2026.
 
 Canvas Harness is a browser extension maintained by Flzsh. It displays information from the Canvas account already signed in on your school's website. It has no developer-operated account service, analytics collector or tracking endpoint in the extension code for this release.
 
 ## Canvas access and local storage
 
-The optional Deadline changes feature keeps a bounded, separate observation record per Canvas site and account: assignment/course identifiers and names, due dates, detection times and read flags. It keeps at most 100 recent changes and 10,000 baseline assignments, makes no additional Canvas requests and adds no permissions. It is not included in personal workspace backups. Disabling the feature stops observation while retaining its saved record.
+The optional Deadline changes feature keeps a bounded, separate observation record per Canvas site and account: assignment/course identifiers and names, due dates, detection times and read flags. It keeps at most 100 changes from the past 30 days and 10,000 baseline assignments, makes no additional Canvas requests and adds no permissions. It is not included in personal workspace backups. Disabling the feature stops observation while retaining its saved record.
 
 - Canvas Harness reads courses, assignments, due dates, teacher materials, announcements and grades that your signed-in Canvas account is allowed to view. Canvas API requests are read-only.
 - The extension can cache fetched Canvas information, including course and assignment details and grade data, in your browser. Personal notes, plans, bookmarks, homework check-offs, imported course artwork, layout choices, GPA preferences and the study companion's name, look and progress counters are also stored locally.
@@ -40,15 +40,21 @@ Add from a file reads the file you choose locally. Personal backups include chec
 
 Biscuit's language parser, focus timers, reminders, skills, routines and quiet time run locally. An unrecognized Ask line may open the existing optional AI handoff when that feature is enabled; you still review the context there before sending it. Scene themes and play tools use packaged assets. Reduced motion and hidden-page handling pause animated scenes.
 
+## My links & files
+
+Personal course links and files stay in this browser, separated by Canvas site, account and course. Nothing is uploaded to Canvas, the developer or any other service. Files are kept locally in IndexedDB, up to 25 MB each and 250 MB per account. Opening a saved link visits its destination. PDFs open locally in the workspace reader; images and text open in a local viewer, and other documents download with their original filename. Local PDFs are not offered to the AI handoff.
+
+Backups include links, filenames and file bytes within the 66.5 MB backup cap, and say when files are left out because they are unavailable or do not fit. Keep exported backups private. Canvas-site file storage can be removed by clearing that site's browser data.
+
 ## PDF reader
 
-Clicking an identified PDF link or preview on an Instructure Canvas assignment or submission page opens the split reader. It requests that chosen file through the signed-in Canvas session and reads its bytes, document name and page text locally for display, selection and search. The reader accepts files up to 32 MiB. Custom Canvas domains retain Canvas's original viewer, and a blocked or unsupported download falls back to that viewer. The reader does not upload the original PDF to an AI provider.
+Clicking a PDF link or preview on Instructure Canvas opens the workspace reader, including Files rows, file addresses, modules, the Course hub and My links & files. Unlabelled Canvas file links use one read-only file-metadata request to identify PDFs. Quiz pages do not activate the reader. It requests that chosen file through the signed-in Canvas session and reads its bytes, document name and page text locally for display, selection and search. The reader accepts files up to 32 MiB. Saved local PDFs on trusted custom Canvas domains use the same reader through randomized extension URLs; ordinary Canvas links there retain the original viewer. A blocked or unsupported download falls back to the original viewer or link. The reader does not upload the original PDF to an AI provider.
 
-Highlights, underlines, notes and pen strokes are saved in extension local storage on this device, separated by Canvas origin, verified account ID and file. Marks load only after sign-in verification and are hidden while the account is rechecked after returning to a hidden tab. Older site-and-file marks move once to the first verified account that opens that file, and the old record is deleted. These annotations do not change the original Canvas file. A copy you explicitly save with marks can contain them. The reader also remembers its split width and uses the browser's saved appearance choice.
+Highlights, underlines, strike-through, sticky notes, text boxes, shapes, pen and highlighter strokes are saved in extension local storage on this device, separated by Canvas origin, verified account ID and file. Marks load only after sign-in verification and are hidden while the account is rechecked after returning to a hidden tab. Older site-and-file marks move once to the first verified account that opens that file, and the old record is deleted. These annotations do not change the original Canvas file. A copy you explicitly save with marks can contain them. The reader also remembers its split width, the last page per verified account and file, and each tool's colour, width or text size on this device. It uses the browser's saved appearance choice. Copy as notes sends your marks to the clipboard only when pressed; Download .md saves them locally as a Markdown study sheet after rechecking the account. Text marks are grouped by page and position; document text stays literal, safe filenames are used, and drawings or empty marks are counted as omitted. These exports stay on the device unless you choose to share them. Open in Canvas's own viewer remembers that choice for the tab's session, with a button to switch back.
 
 Reading or annotating a PDF does not share its text with an AI provider. Pressing **Ask AI** prepares only your chosen text or page text, with the document name and page reference, in the local AI pane after verifying your Canvas sign-in. Your annotations are not included. That chosen text leaves for the selected AI provider only when you then press **Send**. Review it first: the PDF's own words or filename may contain personal information.
 
-The PDF reader can export highlights, underlines and margin notes as a local Markdown or plain-text study sheet after you click Download notes. The export checks the signed-in account again, includes the document name and page numbers, and omits drawings. It is not sent to Canvas, an AI provider or the developer; sharing the downloaded file is your choice.
+HTTPS links to PDFs on other websites can open in the reader. When access is needed, the existing optional `https://*/*` permission is requested once for that exact site; refusing opens the original viewer or link and prevents repeated prompts. No install-time permission is added. External PDF requests omit credentials and do not send Canvas account information. The external host receives the selected file request. Annotations and reading position remain separated by the verified Canvas account and file.
 
 ## AI websites: your choice to share
 

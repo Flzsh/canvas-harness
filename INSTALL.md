@@ -1,6 +1,6 @@
 # Install Canvas Harness
 
-Canvas Harness 3.4.0: use Features in the popup for Full, Lite or Custom. The optional Market asks for its own site access on first use; Make it yours → Add from a file imports artwork, kits, themes, pets and presets. Modules progress and To hand in are included; Focus room, Review deck and Grade impact start off. Your school's own Canvas address is still added through the popup.
+Canvas Harness 3.5.0: use Features in the popup for Full, Lite or Custom. The optional Market asks for its own site access on first use; Make it yours → More → Add from a file imports artwork, kits, themes, pets and presets. Modules progress and To hand in are included; Focus room, Review deck and Grade impact start off. Your school's own Canvas address is still added through the popup.
 
 Canvas Harness is a browser extension for your signed-in Canvas courses, assignments, bookmarks, artwork and study tools. It is designed for desktop Chrome and Edge.
 
@@ -18,7 +18,7 @@ The easiest way: open [Canvas Harness on the Chrome Web Store](https://chromeweb
 
 Keep the installed folder where it is. Moving or deleting it can break an unpacked installation. If your managed browser blocks unpacked extensions, ask your school's IT team which installation methods are allowed.
 
-## Version 3.4.0 feature choices
+## Version 3.5.0 feature choices
 
 Open **Features** in the popup and choose Full, Lite or Custom. Full is the default. Custom switches include dependencies automatically and remember your selection when you try another preset. Reload Canvas to apply. Turning features off preserves their saved data. Local artwork packs appear with Drawings; they are on in Full and in the default Custom selection and include the artwork editor they need.
 

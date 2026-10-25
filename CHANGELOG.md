@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.5.0 - 2026-10-25
+
+- My links & files keeps your course links and uploaded files on this device, with in-workspace viewers and bounded backups. Thank you @garywu000 for pull request #47.
+- Copy PDF text marks as study notes or download a Markdown study sheet, with literal document text, safe filenames and an account check before downloading. Thank you @garywu000 for pull request #51.
+- Changes in the toolbar lists observed deadline changes, with an unread count and history kept locally per account. Full includes it; Lite leaves it out. Thank you @garywu000 for pull request #52.
+- PDF mark-up adds strike-through, highlighter pen, text boxes, shapes, redo, a Marks list and nine drawn tool icons. Reading position and tool choices stay on the device. Thank you @HarryX081125 for your work in issue #53.
+- Make it yours now has Look, Home, Courses, your companion and More. Artwork lives with Courses, imports and resets live in More, and the panel remembers the last tab. Controls use their drawings and names.
+- Keep the course picker clear of the heading when the settings dock hides the rail. Selection motion writes geometry on each surface, and the companion waits before its first animation reel.
+
 ## 3.4.0 - 2026-10-21
 
 - Use your own picture or short video as a banner, framed the way you want. Upload, drop or paste artwork for the heading, a course, card art or a dimmed page background. Fit, focus, zoom, height, video loops and stills carry into kits and backups; pictures and videos stay in your browser.

@@ -1,27 +1,16 @@
-# Release checks — Canvas Harness 3.4.0
+# Release checks — Canvas Harness 3.5.0
 
-## 3.4.0 offline release scope
+## 3.5.0 GitHub release scope
 
-This release adds local Biscuit commands, timers and routines; randomly dealt submission play tools; the Starry Night, Under the Sea, Starfield and Blueprint scene themes; a course dock; checked Market and local data packs; Modules progress and To hand in. Focus room, Review deck and Grade impact are opt-in Custom features. Full and Lite leave those three off. Lite also excludes scene themes, play and Market media. Public school registration, provider handoff, the feature loader and existing saved data are retained.
+This GitHub-only release merges #47 My links & files, #51 PDF study-sheet export and #52 observed deadline changes, and ports issue #53 PDF tools and nine drawn icons. Make it yours has Look, Home, Courses, the existing companion tab and More. Selection geometry stays on its own surface; the companion delays its first reel. Existing public feature choices and handoff modules remain; no new AI runtime modules are included.
 
-The Market host is optional and is requested on its popup click. Only packaged code runs. Pack and asset SHA-256 hashes, schemas, SVG isolation, account separation and exact removal are checked offline. The four scene folders are bundled; dynamically loaded pages and styles are listed explicitly in the manifest. Media banners are outside this release.
+Run `npm test`, `npm run check` and `npm run build`, then audit the extracted ZIP with `node scripts/release-audit.cjs dist/unpacked-3.5.0`. The build writes entry sizes and SHA-256 hashes to `dist/release-manifest.json`; the audit writes `dist/audit-3.5.0.json`. Nothing is pushed or submitted by these local checks.
 
-This port is verified by the serial Node suite, check, deterministic build and audit of the actual extracted ZIP. No browser or network is used for this port. Earlier browser observations below describe earlier versions; they do not establish 3.4 rendering, authenticated Canvas behavior, provider editor compatibility or live performance.
+The suite covers account and site isolation, local course-file backup/restore and limits, literal-safe study sheets, account changes before download, deadline retention/partial refreshes/storage failures, PDF tools, settings routing and selection motion. Full includes Deadline changes and My links & files; Lite leaves them out. Focus room, Review deck and Grade impact remain opt-in Custom features.
 
+The 3.5.0 suite passed 3,089 tests with three pre-existing browser-only skips (3,092 total). The artificial Edge preview verified all five settings tabs, last-tab reopening, import/reset controls, group order and the open-dock heading at 901, 1200 and 1400 px, with no new console errors.
 
-The release runs `npm test`, `npm run check`, `npm run build`, then `node scripts/release-audit.cjs dist/unpacked-3.4.0` against the actual extracted ZIP. Browser tests are explicitly disabled. The sibling release scope report and `dist/audit-3.4.0.json` record final results, sizes and hashes.
-
-Backup fixtures cover checked kit bytes, fresh-device restore, account Market receipts, collision remapping, staged rollback and the Lite-page worker route. Concurrent-write regressions cover newer popup and Biscuit feature choices during Market verification and publication, expiring account-write capabilities, released media holds and a normal save after restore.
-
-The feature fixtures check Full ordering, Lite and Custom dependencies, stale hints, early drawing teardown, worker snapshots, custom school injection, missing optional modules, unchanged saved data, popup saves and rollback. Regression fixtures cover browser-restart boot order, Window resize targets, invalidated extension APIs, column anchoring, full-height square dashboard roots and text encoding.
-
-Quick Upload retains the 3.1 parser, controller, review UI, helper CLI, format vectors and tests. Its catalogue entry is next to course artwork in Drawings, is enabled in Full and the default Custom selection, and includes its artwork/editor dependencies. Importer checks cover validation, course matching, atomic Apply, guarded Undo and the artificial example pack.
-
-The release audit compares every ZIP payload, extracted file and current source byte to the release manifest. It checks references, Node syntax, immutable vendor hashes, readable line lengths and removed-feature identifiers. JavaScript drawing formatting is checked for AST equivalence with identical string values; its hashes are in `dist/readable-source-evidence.json`.
-
-Second-pass regressions cover PDF routes and click fallback, Materials and Linked materials identities, topbar heading placement and contained module scrolling, Messages with no safe pony destination, dormant animation work, lazy AI/editor setup, and account-bound concurrent writes. Run checks sequentially: finish `npm test` before `npm run check`, then `npm run build` and the extracted-package audit. Set `FOLIO_RESPONSIVE_BROWSER=0` for the no-browser run.
-
-Fixtures and source checks do not establish installed rendering, live Canvas behavior, provider insertion or measured first-paint speed. No browser is launched for this release.
+Offline fixtures and a local artificial preview do not establish installed behavior. Check authenticated Canvas PDF opening, custom domains, real clipboard/download behavior, multiple tabs and account switching in an installed extension before describing those flows as browser-verified. The earlier observations below concern earlier versions.
 
 ## Earlier release checks
 

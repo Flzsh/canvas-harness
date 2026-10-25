@@ -1,6 +1,6 @@
 # Reviewer testing notes
 
-## 3.4.0 offline release scope
+## 3.5.0 offline release scope
 
 This release adds local Biscuit commands, timers and routines; randomly dealt submission play tools; the Starry Night, Under the Sea, Starfield and Blueprint scene themes; a course dock; checked Market and local data packs; Modules progress and To hand in. Focus room, Review deck and Grade impact are opt-in Custom features. Full and Lite leave those three off. Lite also excludes scene themes, play and media playback; saved media stays in backups. Public school registration, provider handoff, the feature loader and existing saved data are retained.
 
