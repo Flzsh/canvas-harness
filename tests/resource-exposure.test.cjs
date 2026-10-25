@@ -1,3 +1,4 @@
+// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const ext=path.join(__dirname,'../extension'),read=file=>fs.readFileSync(path.join(ext,file),'utf8');
@@ -6,7 +7,8 @@ const manifest=JSON.parse(read('manifest.json')),[fixed,dynamic]=manifest.web_ac
 test('only the PDF iframe entry and Canvas host stylesheet are web accessible',()=>{
  const pdfResources=fixed.resources.filter(file=>/^pdf-|^vendor\//.test(file));assert.deepEqual(pdfResources,['pdf-reader.html','pdf-host.css']);
  assert.deepEqual(fixed.matches,['https://*.instructure.com/*']);assert.deepEqual(dynamic.matches,['https://*/*']);assert.equal(dynamic.use_dynamic_url,true);
- assert.deepEqual(fixed.resources.filter(file=>!pdfResources.includes(file)),dynamic.resources);
+ assert.deepEqual(fixed.resources,dynamic.resources);
+ assert.deepEqual(dynamic.resources.filter(file=>/^pdf-|^vendor\//.test(file)),pdfResources,'custom Canvas local PDFs expose only the reader entry and host sheet at randomized URLs');
  for(const entry of manifest.web_accessible_resources)assert.ok(!entry.resources.some(file=>/\*|\.js$|\.mjs$/.test(file)),'no scripts, vendor modules or wildcard resources are exposed');
  assert.match(read('pdf-host.js'),/getURL\('pdf-reader\.html'\)/);assert.match(read('pdf-host.js'),/link\.rel='stylesheet';link\.href=currentRuntime\.getURL\('pdf-host\.css'\)/);
 });

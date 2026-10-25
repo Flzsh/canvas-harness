@@ -1,3 +1,5 @@
+// PDF mark-up tools adapted from HarryX081125's work, issue #53.
+// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const Host=require('../extension/pdf-host.js');
@@ -47,8 +49,8 @@ test('credentialed same-origin streaming enforces PDF signature and 32 MiB budge
  await assert.rejects(Host.readVerifiedPdf({origin:canvas,fileId:'42',maxBytes:5,fetchImpl:async()=>response()}),/32 MiB|size|limit/i);
  await assert.rejects(Host.readVerifiedPdf({origin:canvas,fileId:'42',fetchImpl:async()=>{throw new TypeError('Failed to fetch');}}),/inst-fs|CORS/i);
 });
-function fixture({allowed=true,vanilla=true,href,download=()=>response(),failFetch=null,width=650,origin=canvas}={}){
- const listeners=new Map(),els=[],timers=new Map(),timerDelays=new Map(),calls={storageReads:0,storageWrites:[],fetches:0,profileReads:0,messages:[],focus:[]};
+function fixture({allowed=true,vanilla=true,href,download=()=>response(),failFetch=null,width=650,origin=canvas,metadata=null,viewer='reader',readyState='complete'}={}){
+ const listeners=new Map(),els=[],timers=new Map(),timerDelays=new Map(),intervals=new Map(),sessionValues=new Map(viewer==='canvas'?[['reserve:pdf-viewer','canvas']]:[]),calls={storageReads:0,storageWrites:[],fetches:0,profileReads:0,metadataReads:[],messages:[],focus:[],destinations:[]};
  let timerId=0;
  // Only the element/descendant selectors used by the host UI are needed here.
  function matches(node,selector){
@@ -96,27 +98,149 @@ function fixture({allowed=true,vanilla=true,href,download=()=>response(),failFet
   els.push(e);return e;
  }
  const body=element('body'),head=element('head'),wrapper=element('div');wrapper.id='wrapper';wrapper.setAttribute('style','width: 100%; color: navy');
- const document={body,head,activeElement:body,createElement:element,getElementById:id=>id==='wrapper'?wrapper:null,
+ const document={body,head,activeElement:body,readyState,createElement:element,getElementById:id=>id==='wrapper'?wrapper:null,
   fullscreenElement:null,querySelector:selector=>body.querySelector(selector)||head.querySelector(selector),
   addEventListener(type,fn,capture){listeners.set(type,{fn,capture});},removeEventListener(type){listeners.delete(type);}};
- const root={document,location:{origin,href:href||(vanilla?origin+'/courses/7/assignments/9':origin+'/profile')},innerWidth:1200,
+ const root={document,location:{origin,href:href||(vanilla?origin+'/courses/7/assignments/9':origin+'/profile'),assign:url=>calls.destinations.push(url)},innerWidth:1200,
+  sessionStorage:{getItem:key=>sessionValues.get(key)??null,setItem:(key,value)=>sessionValues.set(key,value),removeItem:key=>sessionValues.delete(key)},
   ReserveSite:{supported:()=>allowed,vanillaPage:()=>vanilla},ReservePdfModel:require('../extension/pdf-model.js'),
   ReservePdfArt:{divider:'<svg>stitched</svg>',grip:'<svg>handle</svg>'},
   chrome:{runtime:{id:'abc123',getURL:file=>'chrome-extension://abc123/'+file},storage:{local:{
    get:async key=>{calls.storageReads++;return {[key]:key==='reserve:pdf-width'?width:{theme:'dark'}};},
    set:async data=>calls.storageWrites.push(data)}}},
-  crypto:{randomUUID:()=> 'token-1234567890abc'},fetch:async(...args)=>{
+  crypto:{randomUUID:()=> 'token-1234567890abc',subtle:require('node:crypto').webcrypto.subtle},fetch:async(...args)=>{
    if(String(args[0]).includes('/api/v1/users/self/profile')){calls.profileReads++;return {ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:'7'})};}
+   if(/\/api\/v1\/files\/\d+$/.test(String(args[0]))){calls.metadataReads.push({url:args[0],options:args[1]});return typeof metadata==='function'?metadata(...args):{ok:true,headers:{get:()=> 'application/json'},json:async()=>metadata||{}};}
    calls.fetches++;if(failFetch)throw failFetch;return typeof download==='function'?download():download;
   },
   addEventListener(name,fn){listeners.set('window:'+name,{fn});},removeEventListener(name){listeners.delete('window:'+name);},
-  setTimeout(fn,delay){const id=++timerId;timers.set(id,fn);timerDelays.set(id,delay);return id;},clearTimeout:id=>timers.delete(id)};
+  setTimeout(fn,delay){const id=++timerId;timers.set(id,fn);timerDelays.set(id,delay);return id;},clearTimeout:id=>timers.delete(id),
+  setInterval(fn,delay){const id=++timerId;intervals.set(id,{fn,delay});return id;},clearInterval:id=>intervals.delete(id)};
  const host=Host.create({root});
  const emit=(name,data={})=>listeners.get(name)?.fn(data);
  const message=(type,data={})=>emit('window:message',{origin:'chrome-extension://abc123',source:host.active()?.frame?.contentWindow,data:{type,token:'token-1234567890abc',...data}});
  const ready=()=>message('reserve-pdf-ready');
- return {root,host,calls,listeners,body,head,wrapper,timers,timerDelays,emit,message,ready};
+ return {root,host,calls,listeners,body,head,wrapper,timers,timerDelays,intervals,sessionValues,emit,message,ready};
 }
+test('local course PDFs use the workspace reader on a custom Canvas site with AI off and release their Blob URL',async()=>{
+ const origin='https://canvas.my-school.edu',f=fixture({origin}),made=[],revoked=[];
+  let aiMounts=0;f.root.CanvasHarnessAISource={mount(){aiMounts++;}};
+ f.root.URL={createObjectURL:blob=>{made.push(blob);return 'blob:'+origin+'/saved-pdf';},revokeObjectURL:url=>revoked.push(url)};
+ const blob=new Blob(['%PDF-1.7 local bytes'],{type:'application/pdf'});
+ assert.equal(await f.host.openLocal({blob,id:'cf-local-notes',name:'My notes.pdf',owner:{origin,accountId:'7'}}),true);
+ await tick();f.ready();await tick();
+ const payload=f.calls.messages.find(x=>x.msg.type==='reserve-pdf-init').msg;
+ assert.equal(payload.local,true);assert.equal(payload.fileId,'cf-local-notes');assert.equal(payload.accountId,'7');
+ assert.equal(payload.name,'My notes.pdf');assert.equal(payload.url,'blob:'+origin+'/saved-pdf');assert.equal(payload.aiEnabled,false);
+ assert.equal(new TextDecoder().decode(payload.bytes),'%PDF-1.7 local bytes');assert.equal(f.calls.fetches,0);
+ assert.ok(f.calls.profileReads>0);assert.equal(made[0],blob);assert.deepEqual(revoked,[]);
+  const profiles=f.calls.profileReads;f.message('reserve-pdf-ai',{text:'private saved text',page:0});await tick();
+  assert.equal(aiMounts,0);assert.equal(f.calls.profileReads,profiles,'local text never enters the AI account/context path');
+ f.host.destroy();assert.deepEqual(revoked,['blob:'+origin+'/saved-pdf']);
+});
+test('local PDF opening rejects a different owner or invalid bytes before displaying anything',async()=>{
+ const f=fixture(),blob=new Blob(['%PDF-1.7']);
+ await assert.rejects(f.host.openLocal({blob,id:'cf-local-notes',owner:{origin:'https://another.instructure.com',accountId:'7'}}),/site|account|origin/i);
+ await assert.rejects(f.host.openLocal({blob:new Blob(['not a PDF']),id:'cf-local-notes',owner:{origin:canvas,accountId:'7'}}),/PDF/);
+ f.root.fetch=async()=>({ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:'8'})});
+ await assert.rejects(f.host.openLocal({blob,id:'cf-local-notes',owner:{origin:canvas,accountId:'7'}}),/account.*changed/i);
+ assert.equal(f.host.active(),null);assert.equal(f.body.children.length,0);f.host.destroy();
+});
+test('local PDF identities, secure owners and byte limits are checked before account or download requests',async t=>{
+ const f=fixture(),blob=new Blob(['%PDF-1.7']),owner={origin:canvas,accountId:'7'};t.after(()=>f.host.destroy());
+ for(const id of ['42','cf-a','cf-../../private'])await assert.rejects(f.host.openLocal({blob,id,owner}),/link|invalid/i);
+ for(const origin of ['http://school.instructure.com',canvas+'/courses/7','https://user@school.instructure.com'])await assert.rejects(f.host.openLocal({blob,id:'cf-private-notes',owner:{origin,accountId:'7'}}),/origin|site|account/i);
+ await assert.rejects(f.host.openLocal({blob:{size:8,arrayBuffer:async()=>new ArrayBuffer(8)},id:'cf-private-notes',owner}),/PDF/);
+ class LargeBlob extends Blob{get size(){return Host.MAX_BYTES+1;}}
+ await assert.rejects(f.host.openLocal({blob:new LargeBlob(['%PDF-1.7']),id:'cf-private-notes',owner}),/limit/);
+ assert.equal(f.calls.profileReads,0);assert.equal(f.calls.fetches,0);assert.equal(f.host.active(),null);
+});
+test('local reader failure revokes its Blob URL without replaying a Canvas click',async t=>{
+ const f=fixture(),revoked=[],element=anchor();t.after(()=>f.host.destroy());
+ f.root.URL={createObjectURL:()=> 'blob:'+canvas+'/failed-local',revokeObjectURL:url=>revoked.push(url)};
+ await f.host.openLocal({blob:new Blob(['%PDF-1.7']),id:'cf-private-notes',owner:{origin:canvas,accountId:'7'},element});await tick();f.ready();
+ f.message('reserve-pdf-error',{message:'The saved PDF is damaged.'});
+ assert.equal(f.host.active(),null);assert.equal(element.clicks,0);assert.equal(f.calls.fetches,0);assert.deepEqual(revoked,['blob:'+canvas+'/failed-local']);
+ assert.match(f.body.textContent,/damaged/);
+});
+test('a slower saved Blob cannot replace a newer verified local PDF',async t=>{
+ const f=fixture(),owner={origin:canvas,accountId:'7'};let finish;t.after(()=>f.host.destroy());
+ f.root.URL={createObjectURL:()=> 'blob:'+canvas+'/newest',revokeObjectURL:()=>{}};
+ class SlowBlob extends Blob{arrayBuffer(){return new Promise(resolve=>{finish=resolve;});}}
+ const older=f.host.openLocal({blob:new SlowBlob(['%PDF-1.7']),id:'cf-older-notes',owner});await tick();
+ assert.equal(await f.host.openLocal({blob:new Blob(['%PDF-1.7']),id:'cf-newer-notes',owner}),true);
+ finish(new TextEncoder().encode('%PDF-1.7').buffer);assert.equal(await older,false);assert.equal(f.host.active().info.fileId,'cf-newer-notes');
+});
+test('local PDF handoff waits for saved annotations and keeps its Blob URL when closing is refused',async()=>{
+ const f=fixture(),revoked=[];let sequence=0;
+ f.root.URL={createObjectURL:()=> 'blob:'+canvas+'/'+(++sequence),revokeObjectURL:url=>revoked.push(url)};
+ const open=id=>f.host.openLocal({blob:new Blob(['%PDF-1.7']),id,name:id+'.pdf',owner:{origin:canvas,accountId:'7'}});
+ await open('cf-first-notes');await tick();f.ready();const first=f.host.active();
+ const refused=open('cf-next-notes');await tick();
+ f.message('reserve-pdf-close-result',{requestId:first.closeRequest.requestId,ok:false});
+ assert.equal(await refused,false);assert.equal(f.host.active(),first);assert.deepEqual(revoked,[]);
+ const accepted=open('cf-next-notes');await tick();
+ f.message('reserve-pdf-close-result',{requestId:first.closeRequest.requestId,ok:true});
+ assert.equal(await accepted,true);assert.notEqual(f.host.active(),first);assert.deepEqual(revoked,['blob:'+canvas+'/1']);
+ f.host.destroy();assert.deepEqual(revoked,['blob:'+canvas+'/1','blob:'+canvas+'/2']);
+});
+test('an account change closes an already-open local PDF rather than exposing it under the new account',async()=>{
+ const f=fixture(),revoked=[];
+ f.root.URL={createObjectURL:()=> 'blob:'+canvas+'/private',revokeObjectURL:url=>revoked.push(url)};
+ await f.host.openLocal({blob:new Blob(['%PDF-1.7']),id:'cf-private-notes',owner:{origin:canvas,accountId:'7'}});await tick();f.ready();
+ f.root.fetch=async()=>({ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:'8'})});
+ f.message('reserve-pdf-account',{requestId:3});await tick();
+ assert.equal(f.host.active(),null);assert.deepEqual(revoked,['blob:'+canvas+'/private']);
+ assert.equal(f.calls.messages.some(x=>x.msg.type==='reserve-pdf-account-result'&&x.msg.accountId==='8'),false);f.host.destroy();
+});
+test('dashboard cleanup closes only its own local PDF and waits for the reader save guard',async()=>{
+ const f=fixture(),owner={origin:canvas,accountId:'7'};
+ f.root.URL={createObjectURL:()=> 'blob:'+canvas+'/private',revokeObjectURL:()=>{}};
+ await f.host.openLocal({blob:new Blob(['%PDF-1.7']),id:'cf-private-notes',owner});await tick();f.ready();const state=f.host.active();
+ assert.equal(await f.host.closeLocal({...owner,accountId:'8'}),false);assert.equal(f.host.active(),state);
+ const closing=f.host.closeLocal(owner);assert.equal(f.host.active(),state);assert.equal(state.panel.hidden,true);assert.equal(state.scope.textContent,'');
+ f.message('reserve-pdf-close-result',{requestId:state.closeRequest.requestId,ok:true});
+ assert.equal(await closing,true);assert.equal(f.host.active(),null);f.host.destroy();
+});
+test('cleanup keeps unsaved local marks hidden until their verified owner reopens the reader',async()=>{
+ const f=fixture(),owner={origin:canvas,accountId:'7'};
+ f.root.URL={createObjectURL:()=> 'blob:'+canvas+'/private',revokeObjectURL:()=>{}};
+ const open=()=>f.host.openLocal({blob:new Blob(['%PDF-1.7']),id:'cf-private-notes',owner});
+ await open();await tick();f.ready();const state=f.host.active(),closing=f.host.closeLocal(owner);
+ f.message('reserve-pdf-close-result',{requestId:state.closeRequest.requestId,ok:false});assert.equal(await closing,false);assert.equal(state.panel.hidden,true);
+ const reopening=open();await tick();f.message('reserve-pdf-close-result',{requestId:state.closeRequest.requestId,ok:false});
+ assert.equal(await reopening,false);assert.equal(state.panel.hidden,false);assert.notEqual(state.scope.textContent,'');f.host.destroy();
+});
+test('dashboard cleanup cancels a local PDF that is still reading its Blob',async()=>{
+ const f=fixture(),owner={origin:canvas,accountId:'7'};let finish;
+ const bytes=new TextEncoder().encode('%PDF-1.7').buffer;
+ class SlowBlob extends Blob{arrayBuffer(){return new Promise(resolve=>{finish=resolve;});}}
+ const opening=f.host.openLocal({blob:new SlowBlob(['%PDF-1.7']),id:'cf-private-notes',owner});await tick();
+ await f.host.closeLocal(owner);finish(bytes);assert.equal(await opening,false);assert.equal(f.host.active(),null);f.host.destroy();
+});
+test('dashboard teardown cancels a local PDF queued behind the previous reader save guard',async()=>{
+ const f=fixture(),owner={origin:canvas,accountId:'7'},created=[];
+ f.root.URL={createObjectURL:blob=>{created.push(blob);return 'blob:'+canvas+'/queued';},revokeObjectURL:()=>{}};
+ await tick();f.emit('click',click(anchor()));await tick();await tick();f.ready();const previous=f.host.active();
+ const opening=f.host.openLocal({blob:new Blob(['%PDF-1.7']),id:'cf-queued-notes',owner});await tick();
+ assert.ok(previous.closeRequest,'the local open reached the existing reader save guard');
+ await f.host.closeLocal(owner);
+ f.message('reserve-pdf-close-result',{requestId:previous.closeRequest.requestId,ok:true});
+ assert.equal(await opening,false);assert.equal(f.host.active(),null);assert.deepEqual(created,[]);f.host.destroy();
+});
+for(const queuedFirst of [false,true])test('a retired local PDF cannot block another verified owner (queued first='+queuedFirst+')',async()=>{
+ const f=fixture(),owner={origin:canvas,accountId:'7'},other={origin:canvas,accountId:'8'},revoked=[];let urls=0;
+ f.root.URL={createObjectURL:()=> 'blob:'+canvas+'/'+(++urls),revokeObjectURL:url=>revoked.push(url)};
+ const open=who=>f.host.openLocal({blob:new Blob(['%PDF-1.7']),id:'cf-private-notes',owner:who});
+ await open(owner);await tick();f.ready();const previous=f.host.active();
+ f.root.fetch=async()=>({ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:'8'})});
+ let opening;if(queuedFirst){opening=open(other);await tick();assert.ok(previous.closeRequest);}
+ const closing=f.host.closeLocal(owner);assert.equal(previous.panel.hidden,true);
+ f.message('reserve-pdf-close-result',{requestId:previous.closeRequest.requestId,ok:false});assert.equal(await closing,false);
+ if(!queuedFirst)opening=open(other);
+ assert.equal(await opening,true);assert.equal(f.host.active().info.owner.accountId,'8');assert.equal(previous.closed,true);
+ assert.deepEqual(revoked,['blob:'+canvas+'/1']);f.host.destroy();
+});
 test('boot is dormant except for one delegated capture click; unrelated routes do nothing',()=>{
  const f=fixture();assert.equal(f.listeners.get('click')?.capture,true);
  assert.equal(f.body.children.length,0);assert.equal(f.head.children.length,0);
@@ -124,7 +248,7 @@ test('boot is dormant except for one delegated capture click; unrelated routes d
  for(const f2 of [fixture({allowed:false}),fixture({vanilla:false})])assert.equal(f2.listeners.size,0);
  f.host.destroy();assert.equal(f.listeners.size,0);
 });
-test('registered custom-site pages leave Canvas links alone without wildcard PDF reader exposure',()=>{
+test('registered custom-site pages leave ordinary Canvas links alone while local PDFs use the reader',()=>{
  const f=fixture({origin:'https://canvas.my-school.edu'}),e=click(anchor({href:'https://canvas.my-school.edu/courses/7/files/42/download'}));
  f.emit('click',e);assert.equal(e.prevented,false);assert.equal(f.calls.fetches,0);
  assert.equal(f.body.children.length,0);f.host.destroy();
@@ -520,4 +644,174 @@ test('repeated Assignment card openings through fullscreen messages and UI toggl
   assert.equal(state.dispose.length,initialDisposers,'Assignment opening '+(turn*3+3)+' must not retain another disposer');
  }
  assert.equal(source.textContent,'Original assignment instructions');
+});
+
+
+test('an encrypted local PDF keeps a verified named download after its reader closes',async()=>{
+ const f=fixture(),made=[],revoked=[],downloads=[],owner={origin:canvas,accountId:'7'};
+ f.root.URL={createObjectURL:blob=>{made.push(blob);return 'blob:'+canvas+'/encrypted-'+made.length;},revokeObjectURL:url=>revoked.push(url)};
+ const create=f.root.document.createElement;f.root.document.createElement=tag=>{const element=create(tag);if(tag==='a')element.click=()=>downloads.push({href:element.href,name:element.download});return element;};
+ await f.host.openLocal({blob:new Blob(['%PDF-1.7 encrypted']),id:'cf-secret-notes',name:'Private notes.pdf',owner});await tick();f.ready();
+ f.message('reserve-pdf-error',{message:'Password-protected PDF: download the saved file to open it.'});
+ assert.equal(f.host.active(),null);const button=f.body.querySelector('.reserve-pdf-fallback button');assert.ok(button,'a download remains available after reader failure');
+ await button.handlers.get('click')();assert.equal(downloads.length,1);assert.equal(downloads[0].name,'Private notes.pdf');assert.equal(downloads[0].href,'blob:'+canvas+'/encrypted-2');assert.equal(f.calls.fetches,0);
+ await f.host.closeLocal(owner);assert.equal(f.body.querySelector('.reserve-pdf-fallback'),null);assert.deepEqual(revoked,['blob:'+canvas+'/encrypted-1','blob:'+canvas+'/encrypted-2']);f.host.destroy();
+});
+
+
+test('a failed local PDF cannot download after its Canvas account changes',async()=>{
+ const f=fixture(),made=[],owner={origin:canvas,accountId:'7'};
+ f.root.URL={createObjectURL:blob=>{made.push(blob);return 'blob:'+canvas+'/private-'+made.length;},revokeObjectURL(){}};
+ await f.host.openLocal({blob:new Blob(['%PDF-1.7 encrypted']),id:'cf-secret-notes',name:'Private.pdf',owner});await tick();f.ready();f.message('reserve-pdf-error',{message:'Password required.'});
+ const button=f.body.querySelector('.reserve-pdf-fallback button');assert.ok(button);f.root.fetch=async()=>({ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:'8'})});
+ await button.handlers.get('click')();assert.equal(made.length,1,'no download URL is created for the changed account');assert.match(f.body.textContent,/account changed/i);assert.equal(f.body.querySelector('.reserve-pdf-fallback button'),null);f.host.destroy();
+});
+
+test('Files preview rows and PDF File module labels preserve their original destinations',()=>{
+ for(const path of ['/files?preview=42','/courses/7/files?preview=42','/courses/7/files/folder/Readings?preview=42']){
+  const link=anchor({href:canvas+path}),info=Host.matchPdfClick(click(link),canvas);assert.equal(info.fileId,'42');assert.equal(info.originalURL,link.href);assert.equal(info.url,canvas+'/files/42/download');
+ }
+ for(const path of ['/courses/7/pages?preview=42','/courses/7/files?preview=no','/courses/7/files?preview=-42','/other/files?preview=42'])assert.equal(Host.matchPdfClick(click(anchor({href:canvas+path})),canvas),null);
+ const module=anchor({href:canvas+'/courses/7/modules/items/9',name:'PDF File Chapter one'}),info=Host.matchPdfClick(click(module),canvas);
+ assert.equal(info.moduleURL,module.href);assert.equal(info.name,'Chapter one.pdf');assert.equal(info.originalURL,module.href);
+ const row={className:'quiz',getAttribute:key=>key==='data-module-type'?'Quiz':null};module.closest=selector=>selector.includes('a[')?module:selector==='.context_module_item,.ef-item-row'?row:null;
+ assert.equal(Host.matchPdfClick(click(module),canvas),null);assert.equal(Host.matchCanvasFile(click(module),canvas),null);
+});
+
+test('file-address arrivals verify one metadata GET before opening and watch only Files addresses',async()=>{
+ for(const path of ['/files/42','/files/42/preview','/files/42/file_preview','/courses/7/files/42','/courses/7/files/42/preview','/files?preview=42','/courses/7/files?preview=42','/courses/7/files/folder/Readings?preview=42']){
+  const f=fixture({href:canvas+path,metadata:{id:'42',display_name:'On arrival.pdf','content-type':'application/pdf'}});await tick();await tick();
+  assert.equal(f.calls.metadataReads.length,1,path);assert.equal(f.calls.fetches,1,path);assert.equal(f.host.active()?.info.fileId,'42',path);assert.equal(f.intervals.size,1,path);
+  const lookup=f.calls.metadataReads[0];assert.equal(lookup.url,canvas+'/api/v1/files/42');assert.equal(lookup.options.method,'GET');assert.equal(lookup.options.credentials,'same-origin');assert.equal(lookup.options.redirect,'error');assert.equal(lookup.options.cache,'no-store');assert.equal(lookup.options.signal.aborted,true);
+  f.ready();assert.equal(f.calls.messages[0].msg.name,'On arrival.pdf');f.host.destroy();assert.equal(f.intervals.size,0);assert.equal(f.listeners.size,0);assert.equal(f.timers.size,0);
+ }
+ for(const path of ['/dashboard','/courses/7/modules','/courses/7/pages/reading','/courses/7/assignments/9']){
+  const f=fixture({href:canvas+path});assert.equal(f.listeners.size,1,path);assert.equal(f.intervals.size,0,path);assert.equal(f.timers.size,0,path);assert.equal(f.calls.metadataReads.length,0,path);assert.equal(f.calls.storageReads,0,path);f.host.destroy();
+ }
+ for(const path of ['/courses/7/quizzes/4','/courses/7/quizzes/4/take','/courses/7/assignments','/profile']){
+  const f=fixture({href:canvas+path});assert.equal(f.host,null,path);assert.equal(f.listeners.size,0,path);assert.equal(f.intervals.size,0,path);assert.equal(f.calls.metadataReads.length,0,path);
+ }
+});
+
+test('address loading waits for DOM readiness and teardown removes the pending callback',async()=>{
+ const options={href:canvas+'/files/42',readyState:'loading',metadata:{id:'42',filename:'Ready.pdf'}};
+ const f=fixture(options);assert.equal(f.calls.metadataReads.length,0);f.emit('DOMContentLoaded');await tick();await tick();assert.equal(f.host.active()?.info.fileId,'42');assert.equal(f.listeners.has('DOMContentLoaded'),false);f.host.destroy();
+ const retired=fixture(options);retired.host.destroy();retired.emit('DOMContentLoaded');await tick();assert.equal(retired.calls.metadataReads.length,0);assert.equal(retired.intervals.size,0);assert.equal(retired.listeners.size,0);
+});
+
+test('a Files address change replaces through the save guard and leaving Files retires its watcher',async()=>{
+ const f=fixture({href:canvas+'/courses/7/files?preview=42',metadata:url=>({ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:url.split('/').pop(),filename:'Address.pdf'})})});await tick();await tick();f.ready();const first=f.host.active(),watch=[...f.intervals.values()][0].fn;
+ f.root.location.href=canvas+'/courses/7/files/folder/Readings?preview=43';watch();await tick();await tick();assert.equal(f.host.active(),first);assert.ok(first.closeRequest);
+ f.message('reserve-pdf-close-result',{requestId:first.closeRequest.requestId,ok:false});await tick();assert.equal(f.host.active(),first);assert.equal(f.calls.fetches,1);
+ f.root.location.href=canvas+'/courses/7/files?preview=44';watch();await tick();await tick();f.message('reserve-pdf-close-result',{requestId:first.closeRequest.requestId,ok:true});await tick();await tick();assert.equal(f.host.active()?.info.fileId,'44');assert.equal(f.calls.fetches,2);
+ const reads=f.calls.metadataReads.length;f.root.location.href=canvas+'/courses/7/quizzes/4/take';watch();await tick();assert.equal(f.intervals.size,0);assert.equal(f.calls.metadataReads.length,reads);f.host.destroy();
+});
+
+test('file arrivals with non-PDF metadata or denied reads keep the existing native viewer without navigation',async()=>{
+ for(const kind of ['non-pdf','denied','invalid-bytes','cors']){
+  const f=fixture({href:canvas+'/files/42',metadata:kind==='non-pdf'?{id:'42',filename:'Other.txt'}:kind==='denied'?()=>({ok:false}):{id:'42',filename:'Reading.pdf'},...(kind==='invalid-bytes'?{download:()=>response('Not a PDF')}:kind==='cors'?{failFetch:new TypeError('CORS')}:{})});
+  await tick();await tick();assert.equal(f.host.active(),null,kind);assert.deepEqual(f.calls.destinations,[],kind);assert.equal(f.calls.profileReads,0);assert.equal(f.calls.fetches,kind==='non-pdf'||kind==='denied'?0:1);f.host.destroy();
+ }
+});
+
+test('an unlabeled Canvas link performs one read-only metadata GET then opens verified PDF bytes',async()=>{
+ const f=fixture({metadata:{id:'42',display_name:'Verified.pdf','content-type':'application/pdf'}}),link=anchor({href:canvas+'/courses/7/files/42',name:'Read this document'}),event=click(link);
+ assert.equal(Host.matchPdfClick(event,canvas),null);assert.equal(Host.matchCanvasFile(event,canvas)?.fileId,'42');f.emit('click',event);await tick();await tick();f.ready();
+ assert.equal(event.prevented,true);assert.equal(f.calls.metadataReads.length,1);assert.equal(f.calls.metadataReads[0].options.method,'GET');assert.equal(f.calls.fetches,1);assert.equal(link.clicks,0);assert.equal(f.calls.messages[0].msg.name,'Verified.pdf');assert.equal(f.calls.profileReads,0);f.host.destroy();
+});
+
+test('non-PDF, denied, malformed and expired metadata replay the original unlabeled click once',async()=>{
+ for(const kind of ['non-pdf','denied','wrong-file','wrong-type','invalid-json','rejected','timeout']){
+  let signal;const meta=deferred(),f=fixture({metadata:(_,options)=>{signal=options.signal;if(kind==='timeout')return meta.promise;if(kind==='rejected')throw new TypeError('CORS');return {ok:kind!=='denied',headers:{get:()=>kind==='wrong-type'?'text/html':'application/json'},json:async()=>{if(kind==='invalid-json')throw Error('Invalid JSON');return {id:kind==='wrong-file'?'43':'42',filename:kind==='non-pdf'?'Document.txt':'Document.pdf'};}};}}),link=anchor({href:canvas+'/files/42',name:'Open the document'});
+  let native=0;link.click=()=>{link.clicks++;const event=click(link);f.emit('click',event);if(!event.prevented)native++;};f.emit('click',click(link));
+  if(kind==='timeout'){const timer=[...f.timers.keys()].find(id=>f.timerDelays.get(id)===15000);assert.ok(timer);f.timers.get(timer)();}
+  await tick();await tick();assert.equal(f.calls.metadataReads.length,1,kind);assert.equal(f.calls.fetches,0,kind);assert.equal(f.host.active(),null,kind);assert.equal(link.clicks,1,kind);assert.equal(native,1,kind);assert.equal(signal.aborted,true,kind);f.host.destroy();
+ }
+});
+
+test('unlabeled links preserve modified clicks, downloads and unrelated targets without a lookup',()=>{
+ const f=fixture();
+ for(const options of [{button:1},{ctrlKey:true},{metaKey:true},{altKey:true},{shiftKey:true},{defaultPrevented:true}]){const event=click(anchor({href:canvas+'/files/42',name:'A document'}),options);f.emit('click',event);assert.equal(event.prevented,false);}
+ for(const href of [canvas+'/files/42/download','https://other.example.test/files/42',canvas+'/courses/7/quizzes/4',canvas+'/courses/7/pages/42']){const event=click(anchor({href,name:'A document'}));f.emit('click',event);assert.equal(event.prevented,false);}
+ const link=anchor({href:canvas+'/files/42',name:'A document'}),attr=link.getAttribute;link.getAttribute=key=>key==='download'?'':attr(key);const event=click(link);f.emit('click',event);assert.equal(event.prevented,false);assert.equal(f.calls.metadataReads.length,0);assert.equal(f.calls.fetches,0);f.host.destroy();
+});
+
+test('stale metadata cannot replace a newer reader or act after teardown, route or feature changes',async()=>{
+ for(const kind of ['newer','destroy','route','feature']){
+  const lookup=deferred(),f=fixture({metadata:()=>lookup.promise}),link=anchor({href:canvas+'/files/42',name:'A document'});f.emit('click',click(link));
+  if(kind==='newer')f.emit('click',click(anchor({href:canvas+'/files/43',name:'Newer.pdf'})));else if(kind==='destroy')f.host.destroy();else if(kind==='route')f.root.location.href=canvas+'/courses/7/quizzes/4/take';else f.root.ReserveFeatures={enabled:()=>false};
+  lookup.resolve({ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:'42',filename:'Old.pdf'})});await tick();await tick();assert.equal(f.host.active()?.info.fileId,kind==='newer'?'43':undefined,kind);assert.equal(link.clicks,kind==='feature'?1:0,kind);assert.equal(f.calls.fetches,kind==='newer'?1:0,kind);f.host.destroy();
+ }
+});
+
+test('an out-of-order file-address lookup cannot reopen a stale preview',async()=>{
+ const pending=[],f=fixture({href:canvas+'/courses/7/files?preview=42',metadata:()=>{const value=deferred();pending.push(value);return value.promise;}}),watch=[...f.intervals.values()][0].fn;
+ f.root.location.href=canvas+'/courses/7/files?preview=43';watch();assert.equal(pending.length,2);
+ pending[1].resolve({ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:'43',filename:'Latest.pdf'})});await tick();await tick();assert.equal(f.host.active()?.info.fileId,'43');
+ pending[0].resolve({ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:'42',filename:'Old.pdf'})});await tick();await tick();assert.equal(f.host.active()?.info.fileId,'43');assert.equal(f.calls.fetches,1);f.host.destroy();
+});
+
+test('external PDF matching keeps the original fragment, plain-click policy and download exclusions',()=>{
+ const url='https://files.example.test/Chapter.PDF?version=2#page=5',link=anchor({href:url,name:'Chapter \u2197'}),info=Host.matchPdfClick(click(link),canvas);
+ assert.equal(info.remote,'https://files.example.test/Chapter.PDF?version=2');assert.equal(info.url,info.remote);assert.equal(info.originalURL,url);assert.equal(info.page,4);assert.equal(info.name,'Chapter.pdf');assert.equal(info.fileId,undefined);
+ for(const href of ['http://files.example.test/chapter.pdf','https://user@files.example.test/chapter.pdf','https://files.example.test/chapter.docx','https://files.example.test/%ZZ.pdf','https://files.example.test/chapter.pdf.exe'])assert.equal(Host.matchPdfClick(click(anchor({href})),canvas),null);
+ for(const hash of ['#page=0','#page=-1','#page=NaN','#page=1.5','#page=9007199254740992'])assert.equal(Host.matchPdfClick(click(anchor({href:info.remote+hash})),canvas).page,null);
+ for(const options of [{button:1},{ctrlKey:true},{metaKey:true},{shiftKey:true},{altKey:true},{defaultPrevented:true}])assert.equal(Host.matchPdfClick(click(link,options),canvas),null);
+ const attr=link.getAttribute;link.getAttribute=key=>key==='download'?'':attr(key);assert.equal(Host.matchPdfClick(click(link),canvas),null);
+});
+
+test('external identity uses the canonical URL SHA-256 in a separate namespace and ignores page fragments',async()=>{
+ const url='https://files.example.test/chapter.pdf?version=2',crypto=require('node:crypto'),first=await Host.remoteFileId(url+'#page=2',crypto.webcrypto),next=await Host.remoteFileId(url+'#page=9',crypto.webcrypto);
+ assert.equal(first,'remote-'+crypto.createHash('sha256').update(url).digest('hex'));assert.equal(first,next);assert.match(first,/^remote-[0-9a-f]{64}$/);assert.notEqual(first,await Host.remoteFileId(url+'3',crypto.webcrypto));
+ await assert.rejects(Host.remoteFileId('http://files.example.test/chapter.pdf',crypto.webcrypto),/secure/);await assert.rejects(Host.remoteFileId(url,{}),/identity/);
+});
+
+async function openRemoteReader(f,href='https://files.example.test/notes.pdf#page=3'){
+ f.root.crypto.subtle={digest:async(_,input)=>Uint8Array.from(require('node:crypto').createHash('sha256').update(input).digest()).buffer};
+ const link=anchor({href,name:'External notes'}),event=click(link);f.emit('click',event);await tick();await tick();f.ready();return {link,event,state:f.host.active()};
+}
+
+test('external PDFs use the authenticated reader fetch interface without host fetch or permission calls',async()=>{
+ const f=fixture(),permissions=[];f.root.chrome.permissions={request:request=>{permissions.push(request);return Promise.resolve(true);}};
+ const {link,event,state}=await openRemoteReader(f),init=f.calls.messages.find(call=>call.msg.type==='reserve-pdf-init');assert.ok(state);assert.equal(event.prevented,true);assert.equal(init.msg.bytes,null);assert.deepEqual(init.transfer,[]);
+ assert.equal(init.msg.remote,'https://files.example.test/notes.pdf');assert.equal(init.msg.url,init.msg.remote);assert.equal(init.msg.fetchInReader,true);assert.equal(init.msg.page,2);assert.equal(init.msg.fileId,'remote-'+require('node:crypto').createHash('sha256').update(init.msg.remote).digest('hex'));assert.equal(init.msg.aiEnabled,false);assert.equal(init.msg.local,undefined);assert.deepEqual(permissions,[]);assert.equal(f.calls.fetches,0);assert.equal(f.calls.metadataReads.length,0);assert.equal(link.clicks,0);
+ f.message('reserve-pdf-ai',{text:'External text',page:0});await tick();assert.equal(f.calls.profileReads,0);f.message('reserve-pdf-canvas');assert.equal(f.host.active(),state);f.host.destroy();
+});
+
+test('external permission declines and reader fetch errors replay the original external click exactly once',async()=>{
+ for(const message of ['Access to this PDF site was not granted.','The external PDF exceeds the 32 MiB reading limit.','The external PDF fetch failed.']){
+  const f=fixture(),{link,state}=await openRemoteReader(f);let native=0;link.click=()=>{link.clicks++;const event=click(link);f.emit('click',event);if(!event.prevented)native++;};
+  f.emit('window:message',{origin:'https://other.example.test',source:state.frame.contentWindow,data:{type:'reserve-pdf-error',token:state.token,message}});assert.equal(f.host.active(),state);
+  f.message('reserve-pdf-error',{message});f.message('reserve-pdf-error',{message});await tick();assert.equal(f.host.active(),null);assert.equal(link.clicks,1);assert.equal(native,1);assert.equal(f.calls.fetches,0);assert.equal(f.calls.metadataReads.length,0);assert.equal(f.timers.size,1);f.host.destroy();assert.equal(f.timers.size,0);
+ }
+ const f=fixture(),{link}=await openRemoteReader(f);link.isConnected=false;f.message('reserve-pdf-error',{message:'Access was not granted.'});assert.deepEqual(f.calls.destinations,[link.href]);f.host.destroy();
+});
+
+test('native Canvas escape authenticates the message, remembers the tab choice and offers a paper return control',async()=>{
+ const f=fixture(),state=await openReader(f);f.emit('window:message',{origin:'https://other.example.test',source:state.frame.contentWindow,data:{type:'reserve-pdf-canvas',token:state.token}});assert.equal(f.host.active(),state);
+ f.emit('window:message',{origin:state.extensionOrigin,source:{},data:{type:'reserve-pdf-canvas',token:state.token}});assert.equal(f.host.active(),state);f.message('reserve-pdf-canvas',{token:'wrong-token'});assert.equal(f.host.active(),state);
+ f.message('reserve-pdf-canvas');assert.equal(f.host.active(),null);assert.equal(state.trigger.clicks,1);assert.equal(f.sessionValues.get('reserve:pdf-viewer'),'canvas');
+ const bar=f.body.querySelector('.reserve-pdf-switch'),buttons=bar.querySelectorAll('button');assert.equal(buttons[0].textContent,'Open in Harness reader');assert.equal(buttons[1].textContent,'Hide');assert.equal(buttons[0].className,'rd-text-button');assert.match(bar.style.cssText,/#fffdf8/);assert.match(bar.style.cssText,/1\.6px solid #141413/);assert.equal(bar.querySelectorAll('svg').length,0);
+ const next=anchor({href:canvas+'/files/43',name:'Next.pdf'}),event=click(next);f.emit('click',event);assert.equal(event.prevented,false);assert.equal(f.calls.fetches,1);assert.equal(f.body.querySelectorAll('.reserve-pdf-switch').length,1);
+ f.body.querySelector('.reserve-pdf-switch button').click();await tick();await tick();assert.equal(f.host.active()?.info.fileId,'43');assert.equal(f.sessionValues.has('reserve:pdf-viewer'),false);assert.equal(f.body.querySelector('.reserve-pdf-switch'),null);f.host.destroy();
+});
+
+test('native file-address choice offers a return without downloads and a failed return keeps Canvas visible',async()=>{
+ const f=fixture({href:canvas+'/files/42',viewer:'canvas',metadata:{id:'42',filename:'Native.pdf'},failFetch:new TypeError('CORS')});await tick();await tick();assert.equal(f.host.active(),null);assert.equal(f.calls.metadataReads.length,1);assert.equal(f.calls.fetches,0);
+ const bar=f.body.querySelector('.reserve-pdf-switch');assert.ok(bar);bar.querySelector('button').click();await tick();await tick();assert.equal(f.host.active(),null);assert.equal(f.calls.metadataReads.length,1);assert.equal(f.calls.fetches,1);assert.deepEqual(f.calls.destinations,[]);f.host.destroy();
+});
+
+test('a native return remains usable when the same file address changes its fragment',async()=>{
+ const f=fixture({href:canvas+'/files/42',viewer:'canvas',metadata:{id:'42',filename:'Native.pdf'}});await tick();await tick();
+ f.root.location.href=canvas+'/files/42#page=3';[...f.intervals.values()][0].fn();f.body.querySelector('.reserve-pdf-switch button').click();await tick();await tick();assert.equal(f.host.active()?.info.fileId,'42');assert.equal(f.host.active()?.info.addressHref,f.root.location.href);assert.equal(f.calls.metadataReads.length,1);f.host.destroy();
+});
+
+test('native Canvas escape from an address reveals the native file and Hide removes its return control',async()=>{
+ const f=fixture({href:canvas+'/courses/7/files?preview=42',metadata:{id:'42',filename:'Preview.pdf'}});await tick();await tick();f.ready();f.message('reserve-pdf-canvas');assert.equal(f.host.active(),null);assert.deepEqual(f.calls.destinations,[]);
+ const buttons=f.body.querySelector('.reserve-pdf-switch').querySelectorAll('button');buttons[1].click();assert.equal(f.body.querySelector('.reserve-pdf-switch'),null);f.host.destroy();assert.equal(f.intervals.size,0);
+});
+
+test('saved local PDFs and readers awaiting readiness cannot switch to the native Canvas viewer',async()=>{
+ const f=fixture();f.emit('click',click(anchor()));await tick();f.message('reserve-pdf-canvas');assert.ok(f.host.active());assert.equal(f.sessionValues.has('reserve:pdf-viewer'),false);f.host.destroy();
+ const local=fixture();local.root.URL={createObjectURL:()=> 'blob:'+canvas+'/native-test',revokeObjectURL(){}};await local.host.openLocal({blob:new Blob(['%PDF-1.7']),id:'cf-native-notes',owner:{origin:canvas,accountId:'7'}});await tick();local.ready();const state=local.host.active();local.message('reserve-pdf-canvas');assert.equal(local.host.active(),state);assert.equal(local.body.querySelector('.reserve-pdf-switch'),null);assert.equal(local.sessionValues.has('reserve:pdf-viewer'),false);local.host.destroy();
 });

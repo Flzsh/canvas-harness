@@ -1,10 +1,11 @@
+// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const read=file=>fs.readFileSync(path.join(__dirname,'..','extension',file),'utf8');
 
 // Static isolation checks, not a substitute for browser rendering or the route/DOM tests.
 // These sheets are linked inside extension shadow roots, never into Canvas's document.
-const shadowSheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','themes/starry/theme.css','themes/sea/theme.css','themes/stars/theme.css','themes/blueprint/theme.css'];
+const shadowSheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','course-links.css','themes/starry/theme.css','themes/sea/theme.css','themes/stars/theme.css','themes/blueprint/theme.css'];
 const globalSheets=['startup.css','startup-art.css','native-page.css','canvas-nav.css','course-nav.css','modules-page.css'];
 const grouping=/^@(media|supports|container|layer|scope|starting-style)\b/i;
 
@@ -127,7 +128,7 @@ test('broad workspace resets and standalone extension-page CSS are never manifes
   if(pdfSheets.includes(file)){
    assert.ok(!injected.includes(file),'PDF styles may not load into Canvas at rest: '+file);
    assert.ok(fixed?.resources.includes(file),'PDF styles need fixed Canvas origin exposure: '+file);
-   assert.ok(!dynamic?.resources.includes(file),'PDF styles must not enter wildcard resources: '+file);
+   assert.ok(dynamic?.resources.includes(file)&&dynamic.use_dynamic_url,'Local PDFs on granted custom Canvas sites use randomized host styles: '+file);
   }else if(file==='course-nav-art.css'){
    // The owner's generated kit is unchanged and loaded only with the guarded
    // course-menu restyle. Its selectors must stay on decorated menu links.

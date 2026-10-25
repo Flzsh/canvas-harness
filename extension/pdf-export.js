@@ -1,3 +1,4 @@
+// PDF mark-up tools adapted from HarryX081125's work, issue #53.
 /*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. */
 (function(root){
  'use strict';
@@ -13,21 +14,27 @@
  }
  function valid(record){
   if(!record||typeof record!=='object'||Array.isArray(record)||!Number.isSafeInteger(record.page)||record.page<0)return false;
+  if(record.width!=null&&(!finite(record.width)||record.width<.2||record.width>60))return false;
+  if(record.opacity!=null&&(!finite(record.opacity)||record.opacity<.05||record.opacity>1))return false;
+  if(record.size!=null&&(!finite(record.size)||record.size<4||record.size>96))return false;
   if(record.type==='note')return coordinates(record.point,2)&&typeof record.text==='string'&&record.text.trim().length>0&&record.text.length<=10000;
   if(!color(record.color))return false;
+  if(record.type==='text')return coordinates(record.point,2)&&typeof record.text==='string'&&record.text.trim().length>0&&record.text.length<=10000;
+  if(record.type==='shape')return Array.isArray(record.points)&&record.points.length===2&&Array.from(record.points).every(p=>coordinates(p,2))&&['rect','ellipse','arrow','line'].includes(record.shape);
   if(record.type==='pen')return Array.isArray(record.points)&&record.points.length>=2&&record.points.length<=20000&&Array.from(record.points).every(p=>coordinates(p,2));
-  return (record.type==='highlight'||record.type==='underline')&&Array.isArray(record.rects)&&record.rects.length>0&&record.rects.length<=10000&&Array.from(record.rects).every(r=>coordinates(r,4)&&r[0]<r[2]&&r[1]<r[3]);
+  return (record.type==='highlight'||record.type==='underline'||record.type==='strike')&&Array.isArray(record.rects)&&record.rects.length>0&&record.rects.length<=10000&&Array.from(record.rects).every(r=>coordinates(r,4)&&r[0]<r[2]&&r[1]<r[3]);
  }
  function bounds(points,padding=0){
   const rect=[Infinity,Infinity,-Infinity,-Infinity];
   for(const [x,y]of points){rect[0]=Math.min(rect[0],x);rect[1]=Math.min(rect[1],y);rect[2]=Math.max(rect[2],x);rect[3]=Math.max(rect[3],y);}
   return [rect[0]-padding,rect[1]-padding,rect[2]+padding,rect[3]+padding];
  }
- function ink(base,strokes,thickness){
+ function ink(base,strokes,thickness,opacity=1){
   // InkEditor.serialize in PDF.js 6.4.299 uses BOTH paths.points (InkList)
   // and paths.lines (appearance). Each line starts with four NaN sentinels,
   // then its start point; another such sextuple means a straight segment.
-  return {...base,opacity:1,thickness,rect:bounds(strokes.flat(),thickness/2),paths:{
+  // PDF readers reject border widths greater than half the annotation box's smallest dimension.
+  return {...base,opacity,thickness,rect:bounds(strokes.flat(),thickness+.01),paths:{
    points:strokes.map(points=>points.flat()),
    lines:strokes.map(points=>points.flatMap(([x,y])=>[NaN,NaN,NaN,NaN,x,y]))
   }};
@@ -91,6 +98,44 @@
   if(value!==original)result.popup={contents:original,deleted:false,rect:rect.slice()};
   return result;
  }
+ function textBox(base,page,mark){
+  const viewport=page.getViewport({scale:1/(page.userUnit||1)}),original=mark.text;
+  const normalized=original.replace(/\r\n?/g,'\n').replace(/\t/g,'    ').replace(/\u00a0/g,' ').replace(/\u00ad/g,'-');
+  const encodable=/^[\n\x20-\x7e\xa1-\xac\xae-\xff\u20ac\u201a\u0192\u201e\u2026\u2020\u2021\u02c6\u2030\u0160\u2039\u0152\u017d\u2018\u2019\u201c\u201d\u2022\u2013\u2014\u02dc\u2122\u0161\u203a\u0153\u017e\u0178]*$/.test(normalized);
+  let value=encodable?normalized:'Text (open comment)',fontSize=Math.min(mark.size??12,viewport.width/1.02,viewport.height/1.75);
+  function layout(){
+   const longest=value.split('\n').reduce((max,line)=>Math.max(max,line.length),1);
+   const width=Math.min(viewport.width,Math.max(fontSize*2,Math.ceil(longest*fontSize*1.02))),columns=Math.max(1,Math.floor(width/(fontSize*1.02))),lines=[];
+   for(const line of value.split('\n')){
+    if(!line.length)lines.push('');
+    for(let i=0;i<line.length;i+=columns)lines.push(line.slice(i,i+columns));
+   }
+   return {width,height:(lines.length*1.35+.4)*fontSize,value:lines.join('\n')};
+  }
+  let box=layout();
+  if(box.height>viewport.height){value='Text (open comment)';fontSize=Math.min(fontSize,viewport.width/(20*1.02));box=layout();}
+  const point=viewport.convertToViewportPoint(...mark.point);
+  const x=Math.max(0,Math.min(point[0],viewport.width-box.width)),y=Math.max(0,Math.min(point[1],viewport.height-box.height));
+  const rect=bounds([viewport.convertToPdfPoint(x,y),viewport.convertToPdfPoint(x+box.width,y+box.height)]);
+  const result={...base,fontSize,value:box.value,rect,rotation:viewport.rotation};
+  if(box.value!==original)result.popup={contents:original,deleted:false,rect:rect.slice()};
+  return result;
+ }
+ function shapeStrokes(mark){
+  const [[x1,y1],[x2,y2]]=mark.points;
+  if(mark.shape==='rect')return [[[x1,y1],[x2,y1],[x2,y2],[x1,y2],[x1,y1]]];
+  if(mark.shape==='ellipse'){
+   const cx=x1/2+x2/2,cy=y1/2+y2/2,rx=Math.abs(x2/2-x1/2),ry=Math.abs(y2/2-y1/2),points=[];
+   for(let i=0;i<=48;i++){const angle=i/48*Math.PI*2;points.push([cx+rx*Math.cos(angle),cy+ry*Math.sin(angle)]);}
+   return [points];
+  }
+  const strokes=[[[x1,y1],[x2,y2]]];
+  if(mark.shape==='arrow'){
+   const angle=Math.atan2(y2-y1,x2-x1),size=Math.max(6,(mark.width??1.5)*4);
+   for(const turn of [.45,-.45])strokes.push([[x2,y2],[x2-size*Math.cos(angle+turn),y2-size*Math.sin(angle+turn)]]);
+  }
+  return strokes;
+ }
  async function serialize(lib,pdf,mark){
   // Storage keys identify NEW editors; id must be null, never the model's id
   // (an existing PDF reference). Page indices and all geometry stay in PDF
@@ -102,15 +147,17 @@
     // PDF.js expects Z order for each quad, plus polygon outlines for /AP.
     quadPoints:mark.rects.flatMap(([x1,y1,x2,y2])=>[x1,y2,x2,y2,x1,y1,x2,y1]),
     outlines:highlightOutlines(mark.rects)};
-   case 'underline':{
+   case 'underline':case 'strike':{
     const page=await pdf.getPage(mark.page+1),viewport=page.getViewport({scale:1});
     const strokes=mark.rects.map(rect=>{
-     const [x1,y1]=viewport.convertToViewportPoint(rect[0],rect[1]),[x2,y2]=viewport.convertToViewportPoint(rect[2],rect[3]),bottom=Math.max(y1,y2);
-     return [viewport.convertToPdfPoint(Math.min(x1,x2),bottom),viewport.convertToPdfPoint(Math.max(x1,x2),bottom)];
+     const [x1,y1]=viewport.convertToViewportPoint(rect[0],rect[1]),[x2,y2]=viewport.convertToViewportPoint(rect[2],rect[3]),y=mark.type==='strike'?y1/2+y2/2:Math.max(y1,y2);
+     return [viewport.convertToPdfPoint(Math.min(x1,x2),y),viewport.convertToPdfPoint(Math.max(x1,x2),y)];
     });
-    return ink({...base,annotationType:lib.AnnotationEditorType.INK},strokes,.8);
+    return ink({...base,annotationType:lib.AnnotationEditorType.INK},strokes,mark.type==='strike'?.9:.8);
    }
-   case 'pen':return ink({...base,annotationType:lib.AnnotationEditorType.INK},[mark.points],1.5);
+   case 'pen':return ink({...base,annotationType:lib.AnnotationEditorType.INK},[mark.points],mark.width??1.5,mark.opacity??1);
+   case 'shape':return ink({...base,annotationType:lib.AnnotationEditorType.INK},shapeStrokes(mark),mark.width??1.5,mark.opacity??1);
+   case 'text':return textBox({...base,annotationType:lib.AnnotationEditorType.FREETEXT},await pdf.getPage(mark.page+1),mark);
    // saveNewAnnotations has no Text creation case; use FreeText with /AP.
    case 'note':return note({...base,annotationType:lib.AnnotationEditorType.FREETEXT},await pdf.getPage(mark.page+1),mark);
   }

@@ -1,3 +1,4 @@
+// Adapted from Gary Wu's pull request #51 to Canvas Harness.
 /*! Canvas Harness · PDF study notes · Original creator Flzsh · GPL-3.0-only. */
 (function(root,factory){
  'use strict';

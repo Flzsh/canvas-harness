@@ -1,3 +1,4 @@
+// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 'use strict';
 // Canvas on a school's own address (canvas.school.edu): added by the student, allowed by the browser one site
 // at a time, and given the same scripts as *.instructure.com.
@@ -336,4 +337,14 @@ test('beforeOpen never runs for defer or background-owned permission opens',asyn
  assert.equal((await pending).ok,true);same(untrusted.operations,['set','request']);same(untrusted.opened,[]);assert.equal(calls,0);
  const denied=school();denied.deny();assert.equal((await denied.School.open('https://canvas.other.edu',{beforeOpen})).ok,false);
  assert.equal(calls,0);same(denied.opened,[]);
+});
+
+
+test('explicit course file backups load only on a granted custom Canvas site',async()=>{
+ const origin='https://canvas.school.edu',h=background({saved:[origin],granted:[origin+'/*']}),calls=[];
+ h.chrome.scripting.executeScript=async options=>{calls.push(options);return [];};
+ const who={id:h.chrome.runtime.id,url:origin+'/dashboard',tab:{id:31},frameId:0,documentId:'custom-files'};
+ const request=sender=>new Promise(resolve=>h.chrome.runtime.onMessage.emit({target:'ch-course-files',op:'load'},sender,resolve));
+ assert.equal((await request(who)).ok,true);same(calls[0].files,['course-files.js']);same(calls[0].target,{tabId:31,documentIds:['custom-files']});
+ assert.equal((await request({...who,url:'https://not-granted.school.edu/dashboard'})).ok,false);assert.equal(calls.length,1);
 });

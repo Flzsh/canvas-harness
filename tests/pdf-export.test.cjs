@@ -1,3 +1,4 @@
+// PDF mark-up tools adapted from HarryX081125's work, issue #53.
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
@@ -249,5 +250,120 @@ test('overlapping highlight rectangles still paint the overlap in the PDF appear
   assert.equal(covers(60,305),true);assert.equal(covers(120,325),true);
   assert.equal(covers(90,315),true,'overlap must stay painted, rather than cancel under even-odd fill');
   assert.equal(covers(35,315),false);
+ }finally{await pdf.loadingTask.destroy();}
+});
+
+test('invalid drawing dimensions and new mark geometry are skipped without opening a PDF',async()=>{
+ const data=tinyPdf(),stroke={type:'pen',page:0,color:'#123456',points:[[10,20],[30,40]]},text={type:'text',page:0,color:'#123456',point:[40,300],text:'Text'},invalid=[];
+ for(const width of [NaN,Infinity,-Infinity,0,-1,.199,60.001,'2',true,{},[]])invalid.push({...stroke,width});
+ for(const opacity of [NaN,Infinity,0,.049,1.001,'0.4',false,{}])invalid.push({...stroke,opacity});
+ for(const size of [NaN,Infinity,0,3.999,96.001,'12',true,{}])invalid.push({...text,size});
+ const sparse=new Array(2);sparse[0]=[1,2];
+ invalid.push({...text,point:[0,NaN]},{...text,text:' '},{...text,text:'x'.repeat(10001)},
+  {type:'shape',page:0,color:'#123456',shape:'star',points:[[1,2],[3,4]]},
+  {type:'shape',page:0,color:'#123456',shape:'rect',points:sparse},
+  {type:'shape',page:0,color:'#123456',shape:'line',points:[[1,2],[3,4],[5,6]]},
+  {type:'strike',page:0,color:'#123456',rects:[[1,2,1,4]]},{...stroke,type:'marker'});
+ const result=await exporter().withMarks({data,annotations:invalid});assert.strictEqual(result.bytes,data);
+});
+
+test('wide and fractional strokes keep their actual border width even when their geometry is almost flat',async()=>{
+ const lib=await pdfjs(),data=tinyPdf(),widths=[.2,.8,7,12,20,60],annotations=[];
+ for(let i=0;i<widths.length;i++)for(const points of [[[80,50+i*40],[81,50+i*40]],[[180,50+i*40],[180,51+i*40]]])annotations.push({type:'pen',page:0,color:'#f6de7a',points,width:widths[i],opacity:.35});
+ const result=await exporter().withMarks({lib,data,annotations}),pdf=await open(lib,result.bytes);
+ try{
+  const page=await pdf.getPage(1),inks=(await page.getAnnotations()).filter(a=>a.subtype==='Ink');assert.equal(inks.length,annotations.length);
+  for(const mark of annotations){
+   const ink=inks.find(a=>a.inkLists[0][0]===mark.points[0][0]&&a.inkLists[0][1]===mark.points[0][1]);assert.ok(ink);
+   assert.equal(ink.borderStyle.width,mark.width);assert.equal(ink.opacity,.35);near(ink.inkLists[0],mark.points.flat());
+   assert.ok(ink.rect[2]-ink.rect[0]>mark.width*2&&ink.rect[3]-ink.rect[1]>mark.width*2,'ink bounds retain the PDF border width after rounding');assert.ok(ink.hasAppearance);
+  }
+  assert.ok((await page.getOperatorList()).fnArray.length>0);
+ }finally{await pdf.loadingTask.destroy();}
+});
+
+test('ellipse and line shapes preserve reversed PDF-space endpoints and have usable appearances',async()=>{
+ const lib=await pdfjs(),data=tinyPdf(),annotations=[
+  {type:'shape',page:1,color:'#123456',shape:'ellipse',points:[[140,150],[60,90]],width:3},
+  {type:'shape',page:1,color:'#654321',shape:'line',points:[[190,170],[160,100]],width:2.5}
+ ];
+ const result=await exporter().withMarks({lib,data,annotations}),pdf=await open(lib,result.bytes);
+ try{
+  const page=await pdf.getPage(2),inks=(await page.getAnnotations()).filter(a=>a.subtype==='Ink');assert.equal(inks.length,2);
+  const ellipse=inks.find(a=>a.inkLists[0].length===98),line=inks.find(a=>a.inkLists[0].length===4);assert.ok(ellipse);assert.ok(line);
+  for(const [index,point]of [[0,[140,120]],[12,[100,150]],[24,[60,120]],[36,[100,90]],[48,[140,120]]])near(ellipse.inkLists[0].slice(index*2,index*2+2),point);
+  near(line.inkLists[0],[190,170,160,100]);assert.equal(ellipse.borderStyle.width,3);assert.equal(line.borderStyle.width,2.5);
+  for(const mark of inks)assert.ok(mark.hasAppearance);assert.ok((await page.getOperatorList()).fnArray.length>0);
+ }finally{await pdf.loadingTask.destroy();}
+});
+
+test('strikes follow the visual text middle at every page rotation',async()=>{
+ const lib=await pdfjs(),model=require('../extension/pdf-model.js');
+ for(const rotation of [0,90,180,270]){
+  const data=tinyPdf(rotation),original=await open(lib,data);
+  try{
+   const viewport=(await original.getPage(1)).getViewport({scale:1}),rect=model.rectToPdf(viewport,[50,60,150,74]);
+   const result=await exporter().withMarks({lib,data,annotations:[{type:'strike',page:0,color:'#c8372d',rects:[rect]}]}),pdf=await open(lib,result.bytes);
+   try{
+    const strike=(await(await pdf.getPage(1)).getAnnotations()).find(a=>a.subtype==='Ink'),line=strike.inkLists[0];
+    near(viewport.convertToViewportPoint(line[0],line[1]),[50,67]);near(viewport.convertToViewportPoint(line[2],line[3]),[150,67]);assert.ok(strike.hasAppearance);
+   }finally{await pdf.loadingTask.destroy();}
+  }finally{await original.loadingTask.destroy();}
+ }
+});
+
+test('typed text keeps its color, requested font size and displayed anchor at every rotation',async()=>{
+ const lib=await pdfjs();
+ for(const rotation of [0,90,180,270]){
+  const data=tinyPdf(rotation),original=await open(lib,data);
+  try{
+   const viewport=(await original.getPage(1)).getViewport({scale:1}),point=viewport.convertToPdfPoint(30,40);
+   const result=await exporter().withMarks({lib,data,annotations:[{type:'text',page:0,point,color:'#2457c5',size:14,text:'Typed text'}]}),pdf=await open(lib,result.bytes);
+   try{
+    const text=(await(await pdf.getPage(1)).getAnnotations()).find(a=>a.subtype==='FreeText'),a=viewport.convertToViewportPoint(...text.rect.slice(0,2)),b=viewport.convertToViewportPoint(...text.rect.slice(2));
+    near([Math.min(a[0],b[0]),Math.min(a[1],b[1])],[30,40]);assert.equal(text.contentsObj.str,'Typed text');assert.equal(text.defaultAppearanceData.fontSize,14);near(text.defaultAppearanceData.fontColor,[36,87,197],1);assert.ok(text.hasAppearance);
+   }finally{await pdf.loadingTask.destroy();}
+  }finally{await original.loadingTask.destroy();}
+ }
+});
+
+test('typed Unicode and normalized spacing preserve their exact full native PDF comments',async()=>{
+ const lib=await pdfjs(),data=tinyPdf(),texts=['Check: \u03b1 = 5; \u4e2d\u6587; caf\u00e9; \ud83d\udd0e','First\r\nSecond\tline','caf\u00e9; Bond\u00a0length; soft\u00adhyphen; \u20ac\u2014'];
+ const annotations=texts.map((text,index)=>({type:'text',page:1,point:[70,220-index*50],text,color:'#2457c5',size:16})),result=await exporter().withMarks({lib,data,annotations}),pdf=await open(lib,result.bytes);
+ try{
+  const page=await pdf.getPage(2),found=await page.getAnnotations();
+  for(const original of texts){
+   const text=found.find(a=>a.subtype==='FreeText'&&a.contentsObj.str===original);assert.ok(text);assert.ok(text.hasAppearance);assert.ok(text.popupRef);near(text.defaultAppearanceData.fontColor,[36,87,197],1);
+   assert.ok(found.some(a=>a.subtype==='Popup'&&a.contentsObj.str===original));
+  }
+  assert.ok((await page.getOperatorList()).fnArray.length>0);
+ }finally{await pdf.loadingTask.destroy();}
+});
+
+test('long or edge text stays visible inside the page and retains every original character',async()=>{
+ const lib=await pdfjs(),data=tinyPdf(),texts=['First line\nSecond line\nThird line','An explanation that exceeds the available page height. '.repeat(160)];
+ const annotations=texts.map((text,index)=>({type:'text',page:0,point:[299,1],text,color:'#123456',size:index?96:18}));
+ const result=await exporter().withMarks({lib,data,annotations}),pdf=await open(lib,result.bytes);
+ try{
+  const found=await(await pdf.getPage(1)).getAnnotations();
+  for(const original of texts){
+   const text=found.find(a=>a.subtype==='FreeText'&&a.contentsObj.str===original);assert.ok(text);assert.ok(text.hasAppearance);
+   assert.ok(text.rect[0]>=0&&text.rect[2]<=300&&text.rect[1]>=0&&text.rect[3]<=400);assert.ok(text.defaultAppearanceData.fontSize>0&&text.defaultAppearanceData.fontSize<=96);
+  }
+  assert.ok(found.some(a=>a.subtype==='Popup'&&a.contentsObj.str===texts[1]));
+ }finally{await pdf.loadingTask.destroy();}
+});
+
+test('font-size boundary values and missing drawing details retain supported defaults',async()=>{
+ const lib=await pdfjs(),data=tinyPdf(),annotations=[
+  ...[4,96].map(size=>({type:'text',page:0,point:[40,300],text:'X',size,color:'#123456'})),
+  {type:'text',page:0,point:[40,200],text:'Default text',color:'#123456'},
+  {type:'shape',page:0,shape:'line',points:[[40,50],[60,50]],color:'#123456'}
+ ];
+ const result=await exporter().withMarks({lib,data,annotations}),pdf=await open(lib,result.bytes);
+ try{
+  const found=await(await pdf.getPage(1)).getAnnotations(),text=found.filter(a=>a.subtype==='FreeText');
+  assert.deepEqual(text.map(a=>a.defaultAppearanceData.fontSize).sort((a,b)=>a-b),[4,12,96]);
+  const shape=found.find(a=>a.subtype==='Ink');assert.equal(shape.borderStyle.width,1.5);assert.equal(shape.opacity,1);
  }finally{await pdf.loadingTask.destroy();}
 });
