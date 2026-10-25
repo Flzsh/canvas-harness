@@ -62,7 +62,7 @@ test('detached initial event handlers and already queued observer deliveries can
  const f=fixture(),old=f.node,resize=f.resizes[0].fn,mutate=f.mutations[0].fn;f.setPet({enabled:false});assert.ok([...old.events.values()].every(s=>!s.size),'all detached pony handlers are removed');f.setPet({enabled:true});f.clear();resize([{target:f.panels[0]}]);mutate([{type:'attributes',target:f.panels[0]}]);f.advance(1);assert.equal(f.reads.rect,0,'old observer generations are ignored');f.controller.destroy();
 });
 test('idle CSS reels keep their existing 24/12/6 cadence and stop after two minutes',()=>{
- const f=fixture();let times=[],pauses=0;const loop={animationName:'pet-tail',playState:'running',effect:{getTiming:()=>({duration:3400,iterations:Infinity}),getKeyframes:()=>[{computedOffset:0,transform:'rotate(5deg)'},{computedOffset:1,transform:'rotate(-7deg)'}]},pause(){pauses++;this.playState='paused';},set currentTime(v){times.push({at:f.clock,time:v});},get currentTime(){return 0;}},finite={...loop,animationName:'pet-show',effect:{getTiming:()=>({duration:300,iterations:1})},pause(){throw Error('finite animation must remain native');}};f.animations.push(loop,finite);f.node.emit('animationstart');f.advance(1000);assert.equal(pauses,1);assert.ok(times.length>=23&&times.length<=25);f.advance(5001);times=[];f.advance(2000);assert.ok(times.length>=23&&times.length<=25,'quiet reel is 12fps');f.advance(18000);times=[];f.advance(2000);assert.ok(times.length>=11&&times.length<=13,'long-idle reel is 6fps');f.advance(93000);times=[];f.advance(2000);assert.equal(times.length,0,'two-minute idle reel is held');f.doc.emit('pointermove');assert.ok(times.length>0,'input restarts the existing reel');f.controller.destroy();
+ const f=fixture();let times=[],pauses=0;const loop={animationName:'pet-tail',playState:'running',effect:{getTiming:()=>({duration:3400,iterations:Infinity}),getKeyframes:()=>[{computedOffset:0,transform:'rotate(5deg)'},{computedOffset:1,transform:'rotate(-7deg)'}]},pause(){pauses++;this.playState='paused';},set currentTime(v){times.push({at:f.clock,time:v});},get currentTime(){return 0;}},finite={...loop,animationName:'pet-show',effect:{getTiming:()=>({duration:300,iterations:1})},pause(){throw Error('finite animation must remain native');}};f.animations.push(loop,finite);f.node.emit('animationstart');f.advance(1500);assert.equal(pauses,1);times=[];f.advance(1000);assert.ok(times.length>=23&&times.length<=25);f.advance(3501);times=[];f.advance(2000);assert.ok(times.length>=23&&times.length<=25,'quiet reel is 12fps');f.advance(18000);times=[];f.advance(2000);assert.ok(times.length>=11&&times.length<=13,'long-idle reel is 6fps');f.advance(93000);times=[];f.advance(2000);assert.equal(times.length,0,'two-minute idle reel is held');f.doc.emit('pointermove');assert.ok(times.length>0,'input restarts the existing reel');f.controller.destroy();
 });
 
 test('an initial floor obstruction cannot start an evacuation before home establishes the pony position',()=>{
@@ -86,10 +86,10 @@ test('hidden, unmounted and destroyed ponies cancel both stages of the geometry 
  for(const stage of ['frame','task'])for(const action of ['hidden','unmount','destroy']){const f=fixture();f.win.emit('resize');if(stage==='task')f.paint();const queued=[...f.timers.values()].find(t=>stage==='frame'?t.kind==='raf':t.at===f.clock);assert.ok(queued,'the cancellable '+stage+' stage is queued');const stale=queued.fn;f.clear();if(action==='hidden'){f.doc.hidden=true;f.doc.emit('visibilitychange');}else if(action==='unmount')f.setPet({enabled:false});else f.controller.destroy();f.clear();f.advance(1000);assert.equal(f.reads.rect,0,stage+' '+action);if(action==='hidden'){stale();assert.equal(f.reads.rect,0);f.doc.hidden=false;f.doc.emit('visibilitychange');assert.equal(f.reads.rect,0,'wake also yields until paint');f.postpaint();assert.equal(f.reads.rect,1);}else if(action==='unmount'){f.setPet({enabled:true});f.clear();stale();f.advance(1);assert.equal(f.reads.rect,0,'a stale refresh cannot measure the remounted pony');}f.controller.destroy();assert.equal(f.timers.size,0);}
 });
 test('roll caches animation enumeration while the pony and pose are unchanged',()=>{
- const f=fixture();let times=[],pauses=0;const loop={animationName:'pet-tail',playState:'running',effect:{getTiming:()=>({duration:3400,iterations:Infinity}),getKeyframes:()=>[{computedOffset:0,transform:'rotate(5deg)'},{computedOffset:1,transform:'rotate(-7deg)'}]},pause(){this.playState='paused';pauses++;},get currentTime(){return 17;},set currentTime(v){times.push(v);}};f.animations.push(loop);f.node.emit('animationstart');f.advance(1000);assert.equal(pauses,1);f.clear();times=[];f.advance(200);assert.equal(f.enumerations,0,'24fps ticks reuse the discovered loops');assert.equal(f.layoutEnumerations,0,'unchanged ticks do not enumerate ledge animations either');assert.ok(times.length>=4);nearly(times.at(-1)-times[0],(times.length-1)*1000/24,.001,'cached loops retain elapsed time');f.mutate([{type:'attributes',attributeName:'style',target:f.node.children[0]}]);f.advance(100);assert.equal(f.enumerations,0,'rig transform writes do not enumerate');f.controller.destroy();
+ const f=fixture();let times=[],pauses=0;const loop={animationName:'pet-tail',playState:'running',effect:{getTiming:()=>({duration:3400,iterations:Infinity}),getKeyframes:()=>[{computedOffset:0,transform:'rotate(5deg)'},{computedOffset:1,transform:'rotate(-7deg)'}]},pause(){this.playState='paused';pauses++;},get currentTime(){return 17;},set currentTime(v){times.push(v);}};f.animations.push(loop);f.node.emit('animationstart');f.advance(1500);assert.equal(pauses,1);f.clear();times=[];f.advance(200);assert.equal(f.enumerations,0,'24fps ticks reuse the discovered loops');assert.equal(f.layoutEnumerations,0,'unchanged ticks do not enumerate ledge animations either');assert.ok(times.length>=4);nearly(times.at(-1)-times[0],(times.length-1)*1000/24,.001,'cached loops retain elapsed time');f.mutate([{type:'attributes',attributeName:'style',target:f.node.children[0]}]);f.advance(100);assert.equal(f.enumerations,0,'rig transform writes do not enumerate');f.controller.destroy();
 });
 test('roll rediscovers loops after pose, DOM, visibility, motion settings and remount changes',()=>{
- const f=fixture();let oldTimes=[],newTimes=[];const loop=times=>({animationName:'pet-tail',playState:'running',effect:{getTiming:()=>({duration:3400,iterations:Infinity}),getKeyframes:()=>[{computedOffset:0,transform:'rotate(5deg)'},{computedOffset:1,transform:'rotate(-7deg)'}]},pause(){this.playState='paused';},get currentTime(){return 0;},set currentTime(v){times.push(v);}});f.animations.push(loop(oldTimes));f.node.emit('animationstart');f.advance(100);f.animations.splice(0,1,loop(newTimes));f.node.innerHTML='<svg></svg>';f.mutate([{type:'childList',target:f.node,addedNodes:f.node.children,removedNodes:[]}]);f.clear();const oldCount=oldTimes.length;f.advance(100);assert.equal(f.enumerations,1,'a replaced rig refreshes the animation list once');assert.equal(oldTimes.length,oldCount,'detached animations leave the reel');assert.ok(newTimes.length>0);f.controller.setFocus(true);f.clear();f.advance(500);assert.ok(f.enumerations>0,'a new pose discovers its loops');f.advance(3000);f.clear();f.advance(500);assert.equal(f.enumerations,0,'settled pose ticks stay cached');f.container.dataset.motionStyle='off';f.setPet({});f.clear();f.advance(100);assert.equal(f.enumerations,0,'reduced motion does not enumerate disabled loops');f.container.dataset.motionStyle='full';f.setPet({});f.doc.hidden=true;f.doc.emit('visibilitychange');f.clear();f.advance(1000);assert.equal(f.enumerations,0);f.doc.hidden=false;f.doc.emit('visibilitychange');assert.equal(f.enumerations,1,'wake rediscovers rebuilt CSS animations');f.setPet({enabled:false});f.clear();f.setPet({enabled:true});assert.equal(f.enumerations,1,'remount starts a fresh animation cache');assert.equal(f.layoutEnumerations,3,'remount separately discovers finite ledge/ancestor animations');f.controller.destroy();
+ const f=fixture();let oldTimes=[],newTimes=[];const loop=times=>({animationName:'pet-tail',playState:'running',effect:{getTiming:()=>({duration:3400,iterations:Infinity}),getKeyframes:()=>[{computedOffset:0,transform:'rotate(5deg)'},{computedOffset:1,transform:'rotate(-7deg)'}]},pause(){this.playState='paused';},get currentTime(){return 0;},set currentTime(v){times.push(v);}});f.animations.push(loop(oldTimes));f.node.emit('animationstart');f.advance(1500);f.animations.splice(0,1,loop(newTimes));f.node.innerHTML='<svg></svg>';f.mutate([{type:'childList',target:f.node,addedNodes:f.node.children,removedNodes:[]}]);f.clear();const oldCount=oldTimes.length;f.advance(100);assert.equal(f.enumerations,1,'a replaced rig refreshes the animation list once');assert.equal(oldTimes.length,oldCount,'detached animations leave the reel');assert.ok(newTimes.length>0);f.controller.setFocus(true);f.clear();f.advance(500);assert.ok(f.enumerations>0,'a new pose discovers its loops');f.advance(3000);f.clear();f.advance(500);assert.equal(f.enumerations,0,'settled pose ticks stay cached');f.container.dataset.motionStyle='off';f.setPet({});f.clear();f.advance(100);assert.equal(f.enumerations,0,'reduced motion does not enumerate disabled loops');f.container.dataset.motionStyle='full';f.setPet({});f.doc.hidden=true;f.doc.emit('visibilitychange');f.clear();f.advance(1000);assert.equal(f.enumerations,0);f.doc.hidden=false;f.doc.emit('visibilitychange');assert.equal(f.enumerations,1,'wake rediscovers rebuilt CSS animations');f.setPet({enabled:false});f.clear();f.setPet({enabled:true});assert.equal(f.enumerations,0,'remount queues the cache refresh');f.advance(0);assert.equal(f.enumerations,1,'remount starts a fresh animation cache');assert.equal(f.layoutEnumerations,3,'remount separately discovers finite ledge/ancestor animations');f.controller.destroy();
 });
 
 function layoutAnimation(el){
@@ -171,9 +171,18 @@ function reelAnimation(f,times){
   set currentTime(value){time=value;times.push({at:f.clock,time:value});}};
 }
 
+test('the first reel enumerates at 1500ms after mount and animation events do not restart the wait',t=>{
+ const f=fixture(),times=[];t.after(()=>teardown(f));f.animations.push(reelAnimation(f,times));
+ assert.equal(f.enumerations,0,'mount leaves the authored CSS animations running');
+ f.advance(1000);f.node.emit('animationstart');f.advance(499);
+ assert.equal(f.enumerations,0,'animation enumeration waits through 1499ms');assert.equal(times.length,0,'the film clock has not written animation time');
+ f.advance(1);assert.equal(f.enumerations,1,'the first enumeration runs at 1500ms after mount');assert.deepEqual(times,[{at:1500,time:0}]);
+ f.advance(42);assert.equal(f.enumerations,1,'the next frame uses the discovered animation cache');assert.equal(times.length,2);nearly(times[1].time,1000/24,.001,'the first active interval keeps the 24fps cadence');
+});
+
 test('an empty reel resumes on animationstart and stops when its last loop is cancelled or finishes',t=>{
  for(const state of ['idle','finished']){
-  const f=fixture();t.after(()=>teardown(f));f.advance(1000);
+  const f=fixture();t.after(()=>teardown(f));f.advance(1500);assert.equal(f.enumerations,1,'the initial empty reel has completed');
   const times=[],animation=reelAnimation(f,times);f.animations.push(animation);
   f.node.emit('animationstart');f.advance(100);
   assert.ok(times.length>=2,'a dormant reel discovers the new loop');
@@ -188,7 +197,7 @@ test('an empty reel resumes on animationstart and stops when its last loop is ca
 test('reduced motion stops active reels and both workspace and OS motion changes resume them',t=>{
  for(const mode of ['off','still','media']){
   const f=fixture(),times=[];t.after(()=>teardown(f));
-  f.animations.push(reelAnimation(f,times));f.node.emit('animationstart');f.advance(100);assert.ok(times.length>0);
+  f.animations.push(reelAnimation(f,times));f.node.emit('animationstart');f.advance(1500);assert.ok(times.length>0);
   if(mode==='media'){f.motionMedia.matches=true;f.motionMedia.emit('change');}
   else{f.container.dataset.motionStyle=mode;f.mutate([{type:'attributes',attributeName:'data-motion-style',target:f.container}]);}
   f.advance(50);f.clear();const before=times.length;f.advance(1000);
@@ -221,16 +230,19 @@ test('hidden and unmounted ponies cancel input follow wakeups and dormant reel r
 });
 
 test('cancelled follow and reel callbacks cannot restart a hidden or replacement pony',t=>{
- for(const action of ['hide','remount']){
-  const f=fixture();t.after(()=>teardown(f));
+ for(const started of [false,true])for(const action of ['hide','remount']){
+  const f=fixture();t.after(()=>teardown(f));if(started)f.advance(1500);
   f.doc.emit('pointermove');f.node.emit('animationstart');
   const follow=[...f.timers.values()].find(timer=>timer.at===f.clock+500)?.fn;
-  const reel=[...f.timers.values()].find(timer=>timer.at===f.clock)?.fn;
+  const reel=[...f.timers.values()].find(timer=>timer.at===f.clock+(started?0:1500))?.fn;
   assert.ok(follow&&reel,'both one-shot callbacks are queued');
   if(action==='hide'){f.doc.hidden=true;f.doc.emit('visibilitychange');}
-  else{f.setPet({enabled:false});f.setPet({enabled:true});}
+  else{f.setPet({enabled:false});f.setPet({enabled:true});if(started)f.advance(0);}
   const count=f.timers.size;f.clear();follow();reel();f.advance(1);
   assert.equal(f.scans,0);assert.equal(f.enumerations,0);assert.equal(f.timers.size,count);
+  if(action==='hide'){f.advance(2000);assert.equal(f.enumerations,0);assert.equal(f.callbacks,0,'a hidden pony stays asleep beyond the cancelled deadline');assert.equal(f.timers.size,0);}
+  else if(!started){f.advance(1498);assert.equal(f.enumerations,0,'the replacement keeps its own initial delay');reel();assert.equal(f.enumerations,0,'the cancelled callback cannot start the replacement');f.advance(1);assert.equal(f.enumerations,1,'the replacement starts only on its own 1500ms callback');}
+  else{f.node.emit('animationstart');f.advance(0);assert.equal(f.enumerations,1,'a valid replacement callback still restarts immediately after the first reel');}
  }
 });
 

@@ -120,7 +120,7 @@
    for(const type of ['input','beforeinput','compositionstart','compositionend','pointerdown','pointerup','pointercancel','dragstart','dragend'])doc.addEventListener(type,activity,{passive:true,capture:true});
    doc.addEventListener('visibilitychange',wake);win.addEventListener('pagehide',saveActivity);
    // Geometry events follow modules immediately; input also checks for an unobserved position change.
-   dress();home();place();paint();plan(1400);roll();
+   dress();home();place();paint();plan(1400);resetReels();
     if(Brain()){refreshBrain();checkSchedule();startBrain();}
   }
   function unmount(){
@@ -148,9 +148,12 @@
   // and set to the film's time instead: 24 frames a second while someone uses the page, 12 after, none while the tab is
   // hidden. A loop between two keyframes that say the same thing (a blink's long open stretch) is not written at all.
   // Only endless loops: a short one (a hop, the book appearing) plays as written. Reduced motion has none.
-  const reels=new Map();let reelsDirty=true;
+  const reels=new Map();let reelsDirty=true,reelStarted=false;
+  // The first reel waits until the page has drawn: reading every animation forces a full restyle, which on a slow
+  // laptop cost a quarter second of the dashboard's start. The drawing simply plays as written until then.
+  const FIRST_REEL_MS=1500;
   function scheduleReel(delay){const mounted=life,id=setTimeout(()=>{if(mounted===life&&reel===id)roll();},delay);reel=id;reel?.unref?.();}
-  function resetReels(){reelsDirty=true;if(custom||reduced()){clearTimeout(reel);reel=0;reels.clear();return;}if(node&&!dead&&!doc.hidden&&!reel)scheduleReel(0);}
+  function resetReels(){reelsDirty=true;if(custom||reduced()){clearTimeout(reel);reel=0;reels.clear();return;}if(node&&!dead&&!doc.hidden&&!reel)scheduleReel(reelStarted?0:FIRST_REEL_MS);}
   function restsOf(a){
    try{
     const timing=a.effect?.getTiming?.(),frames=a.effect?.getKeyframes?.();
@@ -164,6 +167,7 @@
   function roll(){
    clearTimeout(reel);reel=0;if(!node||dead||doc.hidden||menuOpen)return;
    if(custom||reduced()){reels.clear();reelsDirty=true;return;}
+   reelStarted=true;
     const t=now();
    // every state is read before any time is written, so Chrome restyles once a frame, not once a loop
     if(reelsDirty){

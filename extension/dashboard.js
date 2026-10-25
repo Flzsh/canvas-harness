@@ -61,6 +61,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       for(const name of desk?['--rd-layout-columns','--rd-layout-rows']:['--rd-panel-column','--rd-panel-row','--rd-panel-grow']){const value=current.style?.getPropertyValue?.(name);if(value)next.style.setProperty(name,value);}
       if(desk&&current.hasAttribute('data-rows'))next.setAttribute('data-rows',current.getAttribute('data-rows'));
     }
+    // A selection surface keeps the geometry motion.js wrote on it, so a render that leaves the selection in place
+    // needs no new snap.
+    if(current.style?.length&&current.style.cssText.includes('--rd-'))for(const name of Array.from(current.style))if((name.startsWith('--rd-sel-')||name.startsWith('--rd-echo-'))&&!next.style.getPropertyValue(name))next.style.setProperty(name,current.style.getPropertyValue(name));
     for(const attr of Array.from(current.attributes)){
       if(attr.name==='data-motion'||current.tagName==='DETAILS'&&attr.name==='open')continue;
       if(['src','poster'].includes(attr.name)&&current.dataset?.chMedia&&current.dataset.chMedia===next.dataset?.chMedia)continue;

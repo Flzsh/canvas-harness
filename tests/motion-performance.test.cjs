@@ -142,7 +142,7 @@ test('syncTabs measures selection surfaces once before pill/scroll writes and ke
 });
 test('surface snap writes are grouped before pseudo flushes; glides and crossfade options stay intact',()=>{
  const f=fixture(),group=f.make(f.shell,'div','filters',{class:'rd-filter-group'}),filter=f.make(group,'button','filter',{class:'rd-filter','aria-pressed':'true'}),list=f.make(f.shell,'div','assignments',{class:'rd-assignment-list'}),pick=f.make(list,'button','pick',{class:'rd-assignment rd-assignment--selected'}),tabs=f.make(f.shell,'div','readerTabs',{class:'rd-reader-tabs'});f.make(tabs,'button','readerTab',{class:'rd-reader-tab','aria-pressed':'true'});
- f.reset();f.controller.place();const flush=f.events.findIndex(e=>e.type==='style'&&e.pseudo),last=f.events.findLastIndex(e=>e.kind==='write'&&e.key?.startsWith('--rd-sel-'));assert.ok(flush>last);const style=f.shell.style;assert.equal(style.getPropertyValue('--rd-sel-flt-w'),'100px');
+ f.reset();f.controller.place();const flush=f.events.findIndex(e=>e.type==='style'&&e.pseudo),last=f.events.findLastIndex(e=>e.kind==='write'&&e.key?.startsWith('--rd-sel-'));assert.ok(flush>last);const style=group.style;assert.equal(style.getPropertyValue('--rd-sel-flt-w'),'100px');
  filter.layout.offsetLeft=50;f.controller.place(true);assert.equal(style.getPropertyValue('--rd-sel-flt-dur'),'350ms');assert.equal(f.animations.length,0);pick.layout.offsetTop=300;f.controller.place(true);const a=f.animations;assert.deepEqual(a.map(a=>a.options),[{pseudoElement:'::before',duration:220,easing:f.Motion.easings.fade},{pseudoElement:'::after',duration:200,easing:f.Motion.easings.release}]);f.controller.destroy();
 });
 

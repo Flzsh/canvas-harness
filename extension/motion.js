@@ -561,8 +561,12 @@
     }
     const same=(a,b)=>!!a&&!!b&&a.o===b.o&&a.box===b.box&&(!a.o||['x','y','w','h'].every(k=>Math.abs((a[k]||0)-(b[k]||0))<.5));
     const travel=(a,b,surface)=>surface.rows?Math.abs(a.y-b.y)+Math.abs(a.h-b.h)/2:Math.abs(a.x-b.x)+Math.abs(a.w-b.w)/2;
+    // Geometry goes on the surface's own box (its pseudo reads it from there), not the shell: an inherited variable
+    // on the shell restyles the whole dashboard, which cost a slow laptop about 0.1 s per snap at start-up.
+    // patchUI (dashboard.js) carries these variables over when the box is re-rendered.
+    const owner=(shell,g)=>g?.box||shell;
     function write(shell,key,g){
-      const set=(name,value)=>shell.style?.setProperty?.(`--rd-sel-${key}-${name}`,value);
+      const target=owner(shell,g),set=(name,value)=>target.style?.setProperty?.(`--rd-sel-${key}-${name}`,value);
       if(g.o){set('x',`${g.x}px`);set('y',`${g.y}px`);set('w',`${g.w}px`);set('h',`${g.h}px`);}
       set('o',String(g.o?1:0));
     }
@@ -600,14 +604,16 @@
         const hop=style()==='still'||!from?.o||(lead.rows&&(distance>GLIDE_PX||Math.abs(to.i-from.i)>GLIDE_ROWS));
         if(!hop){
           if(from!==geo[lead.key]&&!same(from,geo[lead.key])&&from.box===to.box)snapTo(shell,[[lead,from]]);
-          shell.style?.setProperty?.(`--rd-sel-${lead.key}-dur`,`${surfaceMs(distance)}ms`);write(shell,lead.key,to);
+          // A re-built box has no geometry of its own yet: it starts where the old one was, then glides.
+          else if(from?.o&&from.box!==to.box)snapTo(shell,[[lead,{...from,box:to.box}]]);
+          owner(shell,to).style?.setProperty?.(`--rd-sel-${lead.key}-dur`,`${surfaceMs(distance)}ms`);write(shell,lead.key,to);
         }else{
-            // A crossfade in place: the new surface appears at its final position;
-            // the old one fades out where it was. No entrance translation.
+          // A crossfade in place: the new surface appears at its final position;
+          // the old one fades out where it was. No entrance translation.
           snapTo(shell,[[lead,to]]);
           play(to.box,[{opacity:0},{opacity:1}],{pseudoElement:lead.pseudo,duration:220,easing:FADE});
           if(lead.echo&&from?.o&&from.box===to.box){
-            shell.style?.setProperty?.(`--rd-echo-${lead.key}-y`,`${from.y}px`);shell.style?.setProperty?.(`--rd-echo-${lead.key}-h`,`${from.h}px`);
+            to.box.style?.setProperty?.(`--rd-echo-${lead.key}-y`,`${from.y}px`);to.box.style?.setProperty?.(`--rd-echo-${lead.key}-h`,`${from.h}px`);
             play(to.box,[{opacity:1},{opacity:0}],{pseudoElement:lead.echo,duration:200,easing:RELEASE});
           }
         }
