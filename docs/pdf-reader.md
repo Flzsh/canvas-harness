@@ -12,6 +12,12 @@ Each file's serialized annotations are capped at 1 MiB. If saved annotations can
 
 Ask AI hands off only the chosen text or page text, with the document name and page reference, to the existing local AI pane after verifying the Canvas account. Opening that pane does not send text to a provider. The student reviews the context and presses Send before it is placed on the chosen AI website. Annotations are never included. The handoff accepts up to 100,000 characters; the AI pane's separate PDF attachments retain their smaller limits. Image-only pages have no searchable/selectable text without OCR. Password-protected PDFs use the original Canvas viewer.
 
+## Export a study sheet
+
+Choose **Export highlights and notes** in the reader's heading. Review the text-mark count and choose Markdown (.md) or plain text (.txt), then select **Download notes**. The file groups highlights, underlines and margin notes by page and position. Drawings and marks without text are counted as omitted; no OCR is attempted. Markdown-looking and HTML-looking document text is exported literally.
+
+The download uses the current account's local annotations, including pending edits. Canvas is asked to confirm the account again before download; an account switch or failed check cancels the export. This creates a local text file, leaves the original PDF and annotations unchanged, and sends nothing to AI. Keep the file private if it includes your own notes. **Save a copy with my marks** continues to export a PDF.
+
 ## Owner's browser acceptance
 
 No browser was launched for this documentation and preview pass. The source and fixture checks do not establish installed behavior. On an installed extension, check these with a signed-in Canvas session:

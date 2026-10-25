@@ -9,6 +9,7 @@
   <script src="pdf-art.js" defer></script>
   <script src="pdf-model.js" defer></script>
   <script src="pdf-export.js" defer></script>
+  <script src="pdf-study-notes.js" defer></script>
   <script src="pdf-reader.js" defer></script>
 </head>
 <body>
@@ -38,6 +39,13 @@
     <form method="dialog"><h2 id="note-title">A note in the margin</h2><label for="note-text">Your note, saved on this device</label>
       <textarea id="note-text" maxlength="10000" rows="7"></textarea>
       <div class="note-actions"><button value="cancel">Cancel</button><button id="save-note" value="save">Save note</button></div>
+    </form>
+  </dialog>
+  <dialog id="study-notes" aria-labelledby="study-notes-title">
+    <form method="dialog"><h2 id="study-notes-title">Export study notes</h2>
+      <p id="study-notes-count"></p><p>Highlights, underlines and margin notes, grouped by page. Drawings and marks without text are omitted. The file stays on this device until you share it.</p>
+      <label for="study-notes-format">File format</label><select id="study-notes-format"><option value="markdown">Markdown (.md)</option><option value="text">Plain text (.txt)</option></select>
+      <div class="note-actions"><button value="cancel">Cancel</button><button id="download-study-notes" value="download">Download notes</button></div>
     </form>
   </dialog>
 </body>

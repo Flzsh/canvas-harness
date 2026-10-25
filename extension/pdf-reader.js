@@ -115,6 +115,7 @@
    buttons.undo=makeButton('undo','Undo last annotation',()=>{if(!annotationAccess())return;try{if(annotations.undo())changed();}catch(error){notice(error.message);}});rule();
    buttons.ai=makeButton('ai','Ask AI about pages of this PDF',()=>openAskRange());buttons.ai.setAttribute('aria-haspopup','dialog');
    buttons.fullscreen=makeButton('fullscreen','Fill the window',()=>send('reserve-pdf-fullscreen'),$('heading-actions'));
+   buttons.studyNotes=makeButton('note','Export highlights and notes',openStudyNotes,$('heading-actions'));buttons.studyNotes.setAttribute('aria-haspopup','dialog');
    buttons.save=makeButton('save','Save a copy with my marks',()=>void saveWithMarks(),$('heading-actions'));
    const download=doc.createElement('a');download.className='pa-i';download.title='Download original Canvas file';download.setAttribute('aria-label',download.title);download.target='_blank';download.rel='noopener noreferrer';download.innerHTML=env.ReservePdfArt.icons.download;$('heading-actions').append(download);buttons.download=download;
    buttons.close=makeButton('close','Close PDF reader (Escape)',close,$('heading-actions'));
@@ -406,12 +407,34 @@
    }catch(error){notice('The copy could not be written: '+error.message+' Use Download for the original.');}
    finally{buttons.save.disabled=false;}
   }
+  const studySheet=format=>env.ReservePdfStudyNotes.exportNotes({name:meta.name,saved:annotations.serialise(),format,totalPages:pdf.numPages});
+  function openStudyNotes(){
+   if(!annotationAccess()||!env.ReservePdfStudyNotes)return;
+   try{const result=studySheet();
+    if(!result.count){notice('Add a text highlight, underline or margin note first. Drawings cannot be exported as text.');return;}
+    $('study-notes-count').textContent=result.count+' text '+(result.count===1?'mark':'marks')+' · '+result.omitted+' omitted';
+    $('study-notes').showModal();$('study-notes-format').focus();
+   }catch(error){notice('Study notes could not be prepared: '+error.message);}
+  }
+  async function downloadStudyNotes(){
+   if(!annotationAccess()||!env.ReservePdfStudyNotes)return;
+   const expected=session?.key,format=$('study-notes-format').value;
+   notice('Checking the Canvas account before exporting notes…');
+   await verifyAnnotations();
+   if(!alive||doc.hidden||!storageWritable||session?.key!==expected){notice('The account could not be confirmed. Review this account’s notes before exporting.');return;}
+   try{const result=studySheet(format);
+    if(!result.count){notice('There are no text notes to export.');return;}
+    const url=env.URL.createObjectURL(new env.Blob([result.body],{type:result.mime})),link=doc.createElement('a');link.href=url;link.download=result.name;doc.body.append(link);link.click();link.remove();env.setTimeout(()=>env.URL.revokeObjectURL(url),60000);
+    notice('Exported '+result.count+' text '+(result.count===1?'mark':'marks')+' to “'+result.name+'”.');buttons.studyNotes.focus();
+   }catch(error){notice('Study notes could not be exported: '+error.message);}
+  }
   function syncAnnotationAccess(){
-   for(const name of ['highlight','underline','note','pen','eraser','undo','save'])if(buttons[name])buttons[name].disabled=!storageWritable;
+   for(const name of ['highlight','underline','note','pen','eraser','undo','save','studyNotes'])if(buttons[name])buttons[name].disabled=!storageWritable;
    slots.filter(s=>s.rendered).forEach(drawAnnotations);
   }
   function suspendAnnotations(){
    storageWritable=false;accountTurn++;if(accountWait){env.clearTimeout(accountWait.timer);accountWait.reject(Error('Account check cancelled.'));accountWait=null;}
+   if($('study-notes').open)$('study-notes').close('cancel');
    if(tool)setTool(tool);selection=null;noteDraft=null;$('selection-menu').hidden=true;$('note-text').value='';if($('note-editor').open)$('note-editor').close('cancel');closeMarkMenu();syncAnnotationAccess();
   }
   function reconcileAnnotations(target,saved){
@@ -646,6 +669,7 @@
    if(!matches.length)return;matchIndex=(matchIndex+direction+matches.length)%matches.length;go(matches[matchIndex].page);slots.filter(s=>s.textLayer).forEach(markSearch);revealMatch();updateFindCount();
   }
   function keydown(event){
+   if($('study-notes').open)return;
    // Escape closes the innermost thing first: a note, a menu, the search bar, a tool; then the reader.
    if(event.key==='Escape'){
     event.preventDefault();
@@ -751,6 +775,8 @@
   listen($('selection-menu'),'pointerdown',event=>event.preventDefault());
   listen($('find-input'),'input',resetSearch);listen($('find-input'),'keydown',event=>{if(event.key==='Enter'){event.preventDefault();findNext(event.shiftKey?-1:1);}});
   for(const name of ['thumbnails','outline']){listen($(name+'-tab'),'click',()=>switchSide(name));listen($(name+'-tab'),'keydown',event=>{if(['ArrowLeft','ArrowRight'].includes(event.key)&&!$('outline-tab').hidden){event.preventDefault();const next=name==='outline'?'thumbnails':'outline';switchSide(next);$(next+'-tab').focus();}});}
+  listen($('download-study-notes'),'click',event=>{event.preventDefault();void downloadStudyNotes();});
+  listen($('study-notes'),'close',()=>buttons.studyNotes?.focus());
   listen($('note-editor'),'close',()=>{
    if($('note-editor').returnValue!=='save'||!noteDraft||!annotationAccess())return;
    try{const text=$('note-text').value;if(noteDraft.id){if(annotations.update)annotations.update(noteDraft.id,{text});else{annotations.erase(noteDraft.id);annotations.add({...noteDraft,text});}}else annotations.add({...noteDraft,text});changed();noteDraft=null;}catch(error){notice(error.message);}
