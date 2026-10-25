@@ -20,6 +20,7 @@ test('media banners use the Appearance selection and Lite retains only pure back
 });
 function catalogue(){const env=vm.createContext({TextEncoder,TextDecoder,structuredClone,});vm.runInContext(read('features.js'),env);return env.ReserveFeatures;}
 test('Full preserves the complete original main declaration and defaults to Full',()=>{
+ for(const [before,after]of [['deadline-model.js','deadline-changes.js'],['deadline-changes.js','session.js']])assert.ok(F.resolve().js.indexOf(before)<F.resolve().js.indexOf(after));
  assert.deepEqual(F.resolve().js.filter(file=>original.content_scripts[1].js.includes(file)),original.content_scripts[1].js);
  for(const file of F.resolve().js)assert.ok(fs.existsSync(path.join(ext,file)),file);
  assert.deepEqual(F.resolve({preset:'full'}).enabled,F.presets.full);

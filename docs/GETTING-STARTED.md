@@ -23,6 +23,10 @@ Open an assignment to read its instructions in the workspace. Use Course hub for
 
 Use **Show grades** when you want grades visible. It starts off. Hiding grades controls their display; it does not guarantee that grade data is absent from the local cache.
 
+## Notice deadline changes
+
+Choose **Changes** in the dashboard toolbar to see due dates that moved, were added or were removed since a previous successful refresh. The first refresh establishes the baseline. Failed course loads do not count as deadline edits. Enable or disable the feature in the popup’s Features page. [Details](deadline-changes.md).
+
 ## Select, complete, or bookmark
 
 A small circle beside an assignment is a selection control. Clicking it selects the assignment; it does not immediately complete or submit it. The selection bar shows a count and the available actions.

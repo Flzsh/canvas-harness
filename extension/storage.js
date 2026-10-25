@@ -498,7 +498,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         await adapter.write(materialKey,entries);
       });
     }
-    const api={load,sync,get,update,replace,owner,saveRecovery,readRecovery,readRecoveryBackup,readCourseFiles,readResourceCache,writeResourceCache,subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn);},destroy:()=>{if(destroyed)return;destroyed=true;try{unsubscribe?.();}catch{}try{unsubscribeAppearance?.();}catch{}listeners.clear();},exportBackup,exportBackupWithPacks,importBackup,readCache:async()=>{const v=await adapter.read(`${key}:cache`);return validCache(v)?v:null;},writeCache:async snapshot=>{if(!validCache(snapshot))throw Error('Cache owner, origin, or account is invalid.');if(bytes(snapshot)>4000000)throw Error('Canvas snapshot is too large to cache. Live data is still available.');return adapter.write(`${key}:cache`,snapshot);}};return api;
+    // Optional deadline metadata has its own bounded, account-scoped record. It never rewrites personal notes or cached coursework.
+    const deadlineKey=`${key}:deadline-changes`;
+    const readDeadlineChanges=()=>adapter.read(deadlineKey);
+    function updateDeadlineChanges(change){return lock(deadlineKey,async()=>{const previous=await adapter.read(deadlineKey),next=change(previous);if(next===undefined)return previous;if(bytes(next)>2000000)throw Error('Deadline observations exceed the device storage limit.');if(!same(previous,next))await adapter.write(deadlineKey,next);return clone(next);});}
+    const subscribeDeadlineChanges=fn=>adapter.subscribe?.(deadlineKey,fn)||(()=>{});
+    const api={load,sync,get,update,replace,owner,readDeadlineChanges,updateDeadlineChanges,subscribeDeadlineChanges,saveRecovery,readRecovery,readRecoveryBackup,readCourseFiles,readResourceCache,writeResourceCache,subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn);},destroy:()=>{if(destroyed)return;destroyed=true;try{unsubscribe?.();}catch{}try{unsubscribeAppearance?.();}catch{}listeners.clear();},exportBackup,exportBackupWithPacks,importBackup,readCache:async()=>{const v=await adapter.read(`${key}:cache`);return validCache(v)?v:null;},writeCache:async snapshot=>{if(!validCache(snapshot))throw Error('Cache owner, origin, or account is invalid.');if(bytes(snapshot)>4000000)throw Error('Canvas snapshot is too large to cache. Live data is still available.');return adapter.write(`${key}:cache`,snapshot);}};return api;
   }
   // Market and media mutations share the account server's queue and validation lifecycle.
   const accountWriteLeases=new WeakMap();

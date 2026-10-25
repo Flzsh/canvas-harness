@@ -1304,3 +1304,16 @@
 .rd .ch-deck-view .rd-material-group {margin-bottom:12px;overflow-wrap:anywhere;}
 .rd .ch-impact-scores {white-space:normal;}
 .rd .ch-impact-swing small {display:block;max-width:16ch;font-size:11px;white-space:normal;}
+/* Deadline changes (PR #52): a paper sheet in the theme's colours, entries ruled like the Up next list. */
+.rd-deadline-dialog{width:min(620px,calc(100vw - 32px));max-height:80vh;overflow:auto;background:var(--rd-surface,#fffdf8);color:var(--rd-ink,#292720);border:1px solid var(--rd-line,#c9beab);border-radius:14px;padding:22px 24px;box-shadow:0 18px 40px color-mix(in srgb,var(--rd-ink,#292720) 18%,transparent)}
+.rd-deadline-dialog::backdrop{background:color-mix(in srgb,var(--rd-ink,#292720) 30%,transparent)}
+.rd-deadline-dialog h2{margin:0 0 6px;font:600 20px/1.3 var(--rd-heading-font,Literata,Georgia,serif)}
+.rd-deadline-dialog>p{margin:0 0 4px;font-size:13px;line-height:1.6;color:var(--rd-muted,#716b5f)}
+.rd-deadline-list{list-style:none;margin:16px 0;padding:0}
+.rd-deadline-entry{padding:12px 0;border-top:1px dashed color-mix(in srgb,var(--rd-line,#c9beab) 80%,transparent)}
+.rd-deadline-entry>a{font-weight:600;overflow-wrap:anywhere;color:var(--rd-ink,#292720);text-decoration:none}
+.rd-deadline-entry>a:hover{color:var(--rd-accent);text-decoration:underline;text-underline-offset:3px}
+.rd-deadline-entry p{margin:4px 0;font-size:12.5px}
+.rd-deadline-course,.rd-deadline-entry small{color:var(--rd-muted,#716b5f);font-size:11.5px}
+.rd-deadline-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.rd-deadline-trigger .rd-n{margin-inline-start:6px}
