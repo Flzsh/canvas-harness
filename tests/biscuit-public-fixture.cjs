@@ -1,0 +1,7 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),{createRequire}=require('node:module');
+// Inject optional engine and lazy readers without changing the shared public DOM fixture.
+function fixture(options={},runtime={}){const file=path.join(__dirname,'pony-fixture.cjs'),module={exports:{}},localRequire=createRequire(file),injected={...vm,createContext:value=>vm.createContext({...value,...runtime})};vm.runInNewContext(fs.readFileSync(file,'utf8'),{module,exports:module.exports,__dirname,require:name=>name==='node:vm'?injected:localRequire(name)},{filename:file});return module.exports.fixture(options);}
+// Parse the small Ask form as fixture nodes so reopening and example clicks use the actual controller path.
+function askInputs(f){const descriptor=Object.getOwnPropertyDescriptor(f.Element.prototype,'innerHTML');Object.defineProperty(f.Element.prototype,'innerHTML',{...descriptor,set(html){descriptor.set.call(this,html);if(this.className!=='pet-bubble')return;delete this.slots;if(!html.includes('data-pet-question'))return;const input=new f.Element(),preview=new f.Element(),suggestions=new f.Element();input.value=/data-pet-question[^>]*\bvalue="([^"]*)"/.exec(html)?.[1]||'';input.setAttribute('data-pet-question','');input.parentNode=this;preview.parentNode=this;suggestions.parentNode=this;this.slots={'[data-pet-question]':input,'[data-pet-preview]':preview,'[data-pet-suggestions]':suggestions};}});return f;}
+module.exports={fixture,askInputs};

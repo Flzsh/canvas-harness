@@ -6,7 +6,7 @@ test('Biscuit setting values stay aligned with every customization enum and bool
  for(const [key,value] of Object.entries(M.defaults))if(typeof value==='boolean')for(const on of [true,false])assert.deepEqual(first('set '+key+' '+on).fields,{key,value:on});
 });
 test('every public feature and Biscuit skill can be addressed by its identifier',()=>{
- for(const {id} of F.catalogue){const result=first('disable '+id);if(id==='pony')assert.equal(result.intent,'pet');else assert.deepEqual(result.fields,{id,on:false});}
+ for(const {id} of F.catalogue){if(id==='ai'){assert.deepEqual(P.parse('disable '+id,ctx),[]);assert.deepEqual(P.parse('enable '+id,ctx),[]);continue;}const result=first('disable '+id);if(id==='pony')assert.equal(result.intent,'pet');else assert.deepEqual(result.fields,{id,on:false});}
  for(const skill of Object.keys(B.SKILLS)){const phrase={focus:'focus buddy',planner:'planner help',quiz:'quiz prep',reading:'reading helper',rubric:'rubric helper',feedback:'feedback helper',inbox:'inbox watch'}[skill]||skill;assert.deepEqual(first('disable '+phrase).fields,{skill,on:false});}
  for(const key of W.EXTRA)assert.deepEqual(first('show '+key+' module').fields,{action:'show',key});
 });

@@ -7,14 +7,14 @@
  const courses=courseNames.map((name,i)=>({id:String(101+i),name,course_code:name,enrollments:[{type:'StudentEnrollment',computed_current_score:demoGrades[i][0],computed_current_grade:demoGrades[i][1]}]}));
  const activities=[
   ['101','Reaction rates: lab preparation',9,'<p>Read the experiment guide and prepare your observations table before our next lab.</p><h3>Before class</h3><ol><li>Read the introduction and safety notes.</li><li>Explain how temperature affects reaction rate.</li><li>Draw a results table with space for three trials.</li></ol><p>Bring your notebook. We will collect the results together in class.</p>'],
-  ['102','Derivatives: practice set',26,'<p>Complete questions 1–8 on the practice sheet. Show your reasoning and mark one question you would like to discuss.</p>'],
+  ['102','Derivatives: homework practice set',26,'<p>Complete questions 1–8 on the practice sheet. Show your reasoning and mark one question you would like to discuss.</p>'],
   ['103','A close reading: chapter three',31,'<p>Choose one passage from chapter three. Annotate its imagery and bring a short reflection to our discussion.</p>'],
   ['104','Mapping the trade routes',50,'<p>Label the main routes on your map and connect two traded goods to their places of origin.</p>'],
   ['105','Prepare a short conversation',53,'<p>Practise a two-minute conversation using this week’s vocabulary. Bring your notes to class.</p>'],
   ['106','Cell transport: compare and explain',75,'<p>Compare diffusion, osmosis and active transport. Include a labelled sketch of each process.</p>'],
   ['107','Motion graphs: a quick investigation',98,'<p>Sketch position and velocity graphs for a journey with two stops. Explain how the graphs relate.</p>'],
   ['101','Lab notes: interpreting the results',57,'<p>Use your observations to compare the three trials. Include one source of uncertainty.</p>'],
-  ['102','Limits and continuity: reflection',81,'<p>Write a short explanation of continuity using a graph of your choice.</p>']
+  ['102','Limits and continuity: homework reflection',81,'<p>Write a short explanation of continuity using a graph of your choice.</p>']
  ];
  const assignments=activities.map(([id,name,hours,description],i)=>({id:String(401+i),course_id:id,name,due_at:new Date(Date.now()+hours*3600000).toISOString(),points_possible:10,published:true,description,submission_types:['on_paper'],submission:{workflow_state:'unsubmitted'},html_url:location.origin+'/courses/'+id+'/assignments/'+(401+i)}));
  const snapshot={origin:location.origin,user,courses,assignments,fetchedAt:now,errors:[],partial:false};

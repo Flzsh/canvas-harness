@@ -162,7 +162,11 @@
         "themes/stars/sky.html",
         "themes/stars/stars-card.png",
         "themes/stars/stars-panel.png",
-        "themes/stars/theme.css"
+        "themes/stars/theme.css",
+        "biscuit-rules/basic.json",
+        "biscuit-rules/more.json",
+        "biscuit-rules/most.json",
+        "biscuit-rules/school-language.json"
       ],
       "matches": [
         "https://*.instructure.com/*"
@@ -246,7 +250,11 @@
         "themes/stars/sky.html",
         "themes/stars/stars-card.png",
         "themes/stars/stars-panel.png",
-        "themes/stars/theme.css"
+        "themes/stars/theme.css",
+        "biscuit-rules/basic.json",
+        "biscuit-rules/more.json",
+        "biscuit-rules/most.json",
+        "biscuit-rules/school-language.json"
       ],
       "matches": [
         "https://*/*"

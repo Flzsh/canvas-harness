@@ -1,0 +1,15 @@
+"use strict";
+const test=require('node:test'),assert=require('node:assert/strict'),E=require('../extension/biscuit-engine.js'),S=require('../extension/biscuit-selection.js'),R=require('../extension/biscuit-registry.js');
+const work=[{id:'101',title:'Coral model',courseId:'c-1'},{id:'202',title:'Flow worksheet',courseId:'c-2'},{id:'303',title:'Trade response',courseId:'c-3'}],state=()=>({now:1893456000000,activeCourseId:'c-3',selectedItemId:'303',courses:[{id:'c-1',name:'Marine science'},{id:'c-2',name:'Physics'},{id:'c-3',name:'History'}],workItems:work.map(x=>({...x}))}),memory=()=>({lastItemId:'101',items:[work[0],work[1],work[2]]});
+function result(line,s=state(),m=memory()){return E.create().evaluate(line,s,m);}
+function none(r){assert.equal(r.action,'none',JSON.stringify(r));assert.ok(!r.next.fields.itemId);assert.match(r.message,/\?/);}
+test('next consumes the actual displayed order and prior cursor across courses',()=>{const r=result('next');assert.equal(r.action,'find');assert.equal(r.next.fields.itemId,'202');assert.equal(r.items[0].id,'202');});
+test('previous consumes actual order instead of background source order',()=>{const m=memory();m.lastItemId='202';const s=state();s.workItems.reverse();const r=result('previous',s,m);assert.equal(r.action,'find');assert.equal(r.next.fields.itemId,'101');});
+test('short wrappers and relative result nouns share that read-only reference',()=>{for(const line of ['next one','open next','previous result','show previous item']){const m=memory();m.lastItemId='202';const ref=S.reference(line,R.entries(state()),state(),m,{actor:'open/find'});assert.equal(ref.owner,'relative');assert.equal(ref.row.id,line.includes('previous')?'101':'303');}});
+test('no displayed order never borrows work array order',()=>none(result('next',state(),{lastItemId:'101'})));
+test('missing cursor never assumes the first or selected row',()=>none(result('next',state(),{items:work})));
+test('end of list asks instead of looping or inventing another result',()=>{const m=memory();m.lastItemId='303';none(result('next',state(),m));m.lastItemId='101';none(result('previous',state(),m));});
+test('a stale or duplicated displayed identity invalidates the ordering',()=>{for(const items of [[work[0],{id:'missing'},work[1]],[work[0],work[1],work[1]]])none(result('next',state(),{lastItemId:'101',items}));});
+test('one displayed item has no proven successor',()=>none(result('next',state(),{lastItemId:'101',items:[work[0]]})));
+test('literal, hypothetical, conceptual and future planning phrases retain their owner',()=>{for(const line of ['note: next','what next','next week plan','do not open next','if next'])assert.notEqual(S.reference(line,R.entries(state()),state(),memory(),{actor:'open/find'}).owner,'relative',line);});
+test('a real exact named source has precedence over a relative word',()=>{const s=state();s.workItems[1].title='Next';const ref=S.reference('open Next',R.entries(s),s,memory(),{actor:'open/find'});assert.equal(ref.owner,'named');assert.equal(ref.row.id,'202');});

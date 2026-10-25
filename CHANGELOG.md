@@ -7,7 +7,8 @@
 - Changes in the toolbar lists observed deadline changes, with an unread count and history kept locally per account. Full includes it; Lite leaves it out. Thank you @garywu000 for pull request #52.
 - PDF mark-up adds strike-through, highlighter pen, text boxes, shapes, redo, a Marks list and nine drawn tool icons. Reading position and tool choices stay on the device. Thank you @HarryX081125 for your work in issue #53.
 - Make it yours now has Look, Home, Courses, your companion and More. Artwork lives with Courses, imports and resets live in More, and the panel remembers the last tab. Controls use their drawings and names.
-- Keep the course picker clear of the heading when the settings dock hides the rail. Selection motion writes geometry on each surface, and the companion waits before its first animation reel.
+- Biscuit understands short typed lines much better ("calc hw", "tmrw", "focus 25", "open planner") and offers the likely matches to pick when a line could mean several things. It all runs on your computer; no AI.
+- The dashboard opens faster on slower laptops. The course picker no longer covers the greeting while settings are open, and the PDF find box's magnifier is no longer cut off.
 
 ## 3.4.0 - 2026-10-21
 

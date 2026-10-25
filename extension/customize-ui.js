@@ -150,6 +150,7 @@
     +group('Coat',`New coats arrive as it levels up: finish work and focus sessions to get there.`,petChoices('coat','Coat',Object.entries(A.COATS).map(([key,v])=>[key,v.label,need('coat',key),dot(v.coat,v.mane),!!need('coat',key)]),3))
     +group('Harness','',petChoices('harness','Harness color',Object.entries(A.HARNESS).map(([key,color])=>[key,key[0].toUpperCase()+key.slice(1),need('harness',key),dot(color),!!need('harness',key)]),3)
       +petChoices('gear','Tack',[['full','Collar and blanket',''],['collar','Collar only',''],['none','Bare','']],3))
+    +(root.ReserveFeatures?.enabled?.('biscuit-more-rules')===true?group('How much Biscuit knows','',petChoices('knowledge','How much Biscuit knows',[['basic','Basic',''],['more','More',''],['most','Most','']],3)):'')
     +group('Size','',petChoices('size','Size',[['small','Small',''],['medium','Medium',''],['large','Large','']],3))
     +group('Saved companions','',picker({kinds:['pet'],label:'Saved companions'}))
     +group('Saved routines','',pet.routines.map(r=>`<div class="cz-row"><span>${E(r.name||'Routine')}</span>${button('pet-routine-remove','Remove',`data-id="${E(r.id)}" aria-label="Remove ${E(r.name||'routine')}"`,'rd-text-button')}</div>`).join('')+picker({kinds:['preset'],presetKinds:['routines'],label:'Saved routine packs'}));

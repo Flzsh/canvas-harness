@@ -138,3 +138,5 @@
 .biscuit-suggestions{display:grid;gap:2px}
 /* The drawn line turning clay is this field's focus mark; no square ring round it. */
 .rd .pet-bubble .biscuit-ask input:focus,.rd .pet-bubble .biscuit-ask input:focus-visible,.pet-bubble .biscuit-ask input:focus-visible{outline:none;box-shadow:none}
+.biscuit-row small{display:block;margin-top:3px;font-size:.85em;font-weight:400;line-height:1.35;opacity:.78}
+.biscuit-preview strong{font-weight:800;color:var(--rd-ink,#141413);text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 22%,transparent);text-underline-offset:3px}

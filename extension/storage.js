@@ -12,7 +12,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // readingFont: teacher text in the book serif or the interface sans; greeting: the time-of-day heading.
   // hiddenCourses: hidden by hand. shownCourses (2.17): shown by hand, which keeps a course that is hidden
   // by default (NameCoach, College Counseling: ReserveCore.hiddenCourseIds) on screen. An id is in one list at most.
-  const defaults = () => ({version:1,settings:{...layoutDefaults,makeYourOwn:{theme:null,pet:null,installed:{}},theme:'system',accent:'clay',appearanceVersion:2,motion:'gentle',livingArt:'on',readingFont:'book',greeting:'on',quickOpen:'off',density:'comfortable',font:'system',textSize:'standard',dashboardLayout:'split',showCourseStrip:true,showGrades:false,showRecentGrades:false,timeZone:globalThis.ReserveSite.timeZone(),courseOrder:[],hiddenCourses:[],shownCourses:[],coursePrefs:{},overviewArt:{}},tasks:{},moduleProgress:{},courseFiles:{},resourcePins:[],customTasks:[],gpa:gpa.defaults(),toolbox:{scratchpad:'',recent:[],dockSize:{width:0,height:0}},focus:{minutes:25,remaining:1500,endsAt:null,itemId:null,sessions:0},pet:{skills:petSkills(),reminders:[],routines:[]}});
+  const defaults = () => ({version:1,settings:{...layoutDefaults,makeYourOwn:{theme:null,pet:null,installed:{}},theme:'system',accent:'clay',appearanceVersion:2,motion:'gentle',livingArt:'on',readingFont:'book',greeting:'on',quickOpen:'off',density:'comfortable',font:'system',textSize:'standard',dashboardLayout:'split',showCourseStrip:true,showGrades:false,showRecentGrades:false,timeZone:globalThis.ReserveSite.timeZone(),courseOrder:[],hiddenCourses:[],shownCourses:[],coursePrefs:{},overviewArt:{}},tasks:{},moduleProgress:{},courseFiles:{},resourcePins:[],customTasks:[],gpa:gpa.defaults(),toolbox:{scratchpad:'',recent:[],dockSize:{width:0,height:0}},focus:{minutes:25,remaining:1500,endsAt:null,itemId:null,sessions:0},pet:{knowledge:'basic',skills:petSkills(),reminders:[],routines:[]}});
   const text = (value,max=20000) => typeof value === 'string' ? value.slice(0,max) : '';
   const isRecord = v => v !== null && typeof v === 'object' && !Array.isArray(v);
   const courseFileTypes={pdf:'application/pdf',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',ppt:'application/vnd.ms-powerpoint',pptx:'application/vnd.openxmlformats-officedocument.presentationml.presentation',xls:'application/vnd.ms-excel',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',txt:'text/plain',md:'text/plain',csv:'text/csv',rtf:'application/rtf',odt:'application/vnd.oasis.opendocument.text',pages:'application/vnd.apple.pages',key:'application/vnd.apple.keynote',numbers:'application/vnd.apple.numbers',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',avif:'image/avif',bmp:'image/bmp',tif:'image/tiff',tiff:'image/tiff',heic:'image/heic',heif:'image/heif'};
@@ -243,10 +243,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     if(value.pet!==undefined&&value.pet!==null){
       if(!isRecord(value.pet))throw Error('Invalid companion data in backup.');
+      out.pet.knowledge=Object.hasOwn(value.pet,'knowledge')&&['basic','more','most'].includes(value.pet.knowledge)?value.pet.knowledge:'basic';
       if(isRecord(value.pet.brain))out.pet.brain=petBrain(value.pet.brain);
       out.pet.skills=petSkills(value.pet.skills);out.pet.reminders=petReminders(value.pet.reminders);out.pet.routines=petRoutines(value.pet.routines);
       for(const [key,item] of Object.entries(value.pet).slice(0,32)){
-        if(!/^[a-zA-Z]{1,24}$/.test(key)||['brain','skills','reminders','routines'].includes(key))continue;
+        if(!/^[a-zA-Z]{1,24}$/.test(key)||['brain','skills','reminders','routines','knowledge'].includes(key))continue;
         if(typeof item==='boolean')out.pet[key]=item;
         else if(typeof item==='string')out.pet[key]=item.slice(0,140);
         else if(Number.isFinite(item))out.pet[key]=Math.max(0,Math.min(1000000,Math.trunc(item)));
