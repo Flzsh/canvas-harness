@@ -1,3 +1,4 @@
+// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 /*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. Third-party components retain their respective attribution. */
 if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./site.js');
 (function(){
@@ -15,7 +16,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const build='3.4.0';
   const stamp=()=>Math.round(globalThis.performance?.now?.()||0);
   let host,root,area,toolbar,resumeCover,statusLabel,dashboard,planner,session,snapshot,store,ready=false,wanted=true;
-  let authorized=false,suspended=false,resumeGeneration=0,resumePending,verifiedAt=-Infinity,verifiedWall=-Infinity;
+  let authorized=false,personalVerified=false,suspended=false,resumeGeneration=0,resumePending,verifiedAt=-Infinity,verifiedWall=-Infinity;
   let launchObserver,launchAttempt,bootStopped=false;
   // "Open at once" (off unless the owner turns it on) remembers which account to open: an id, nothing else.
   const HINT_KEY='reserve:lastAccount:'+location.origin;let ownerHint=null;
@@ -66,7 +67,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     host.hidden=false;dock.hidden=true;
   }
   function showCanvas(remember=true){
-    authorized=false;resumeGeneration++;
+    authorized=false;personalVerified=false;resumeGeneration++;
+    dashboard?.closePersonalFiles?.();
     wanted=false;planner?.destroy();planner=null;
     if(host)host.hidden=true;coverWorkspace(false);restoreNative();dock.hidden=false;
     startup?.release();
@@ -74,6 +76,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   }
   function setStatus(message){if(statusLabel)statusLabel.textContent=dashboard?'Canvas Harness '+build:message||'Canvas Harness '+build;dashboard?.setStatus(message);}
   function openAppearance(){if(!launchAppearance||!feature('customization'))return;const button=area?.querySelector('[data-rd-action="settings"]');if(button){launchAppearance=false;button.click();}}
+  function resumePersonalFiles(){personalVerified=true;dashboard?.resumePersonalFiles?.();}
   function drawDashboard(){
     if(!area||!snapshot||!feature('dashboard'))return;
     if(dashboard)dashboardState=dashboard.getState();
@@ -81,8 +84,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // The dashboard's own command bar carries the Canvas dashboard switch (onNative) and its footer
     // the status (setStatus below), so this row folds away while the dashboard shows.
     toolbar.querySelector('[data-dashboard]').hidden=true;toolbar.hidden=true;
-    dashboard=ReserveDashboard.mount(area,{snapshot,store,initialState:dashboardState,onPlanner:openPlanner,onNative:()=>showCanvas(),refresh:()=>session.refresh(),onAuthError:()=>{showCanvas();session?.verify();},onReady:()=>{openAppearance();reveal();},onRenderError:error=>{dashboard?.destroy();dashboard=null;showCanvas(false);setStatus(error.message);dockBusy(false);dockRoot.querySelector('button').title=error.message+' Click to retry.';}});
+    dashboard=ReserveDashboard.mount(area,{snapshot,store,personalVerified,initialState:dashboardState,onPlanner:openPlanner,onNative:()=>showCanvas(),refresh:()=>session.refresh(),onAuthError:()=>{showCanvas();session?.verify();},onReady:()=>{openAppearance();reveal();},onRenderError:error=>{dashboard?.destroy();dashboard=null;showCanvas(false);setStatus(error.message);dockBusy(false);dockRoot.querySelector('button').title=error.message+' Click to retry.';}});
 
+    if(personalVerified)dashboard?.resumePersonalFiles?.();else dashboard?.closePersonalFiles?.();
     reveal();
     if(restoreScroll){restoreScroll=false;requestAnimationFrame(()=>window.scrollTo({top:dashboardScroll,behavior:'instant'}));}
   }
@@ -102,7 +106,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     root=host.attachShadow({mode:'open'});
     const loadingHost=host;let loaded=0;
-    const allSheets=startup?.styleFiles||['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css'];
+    const allSheets=startup?.styleFiles||['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','course-links.css'];
     const sheets=globalThis.ReserveFeatures?.filterFiles(allSheets)||allSheets;
     if(!sheets.length)ready=true;
     for(const file of sheets){
@@ -133,7 +137,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       dashboard?.destroy();dashboard=null;planner?.destroy();planner=null;
     }
     snapshot=next;store=verifiedStore;
-    authorized=true;if(!meta?.unverified){verifiedAt=stamp();verifiedWall=Date.now();}
+    authorized=true;personalVerified=!meta?.unverified;if(!meta?.unverified){verifiedAt=stamp();verifiedWall=Date.now();}
     if(!meta?.unverified)try{
       const id=String(next.user?.id??''),on=quickOpen(verifiedStore.get().settings);
       if(on&&/^\d+$/.test(id)&&ownerHint?.id!==id){ownerHint={id};Promise.resolve(chrome.storage.local.set({[HINT_KEY]:id})).catch(()=>{});}
@@ -143,6 +147,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(planner)planner.updateSnapshot(next);
     else if(dashboard)dashboard.updateSnapshot(next);
     else{drawDashboard();if(launchPending){launchPending=false;const page=params.get('plan'),id=params.get('item');if(['week','assignments'].includes(page))openPlanner({page,id:/^(\d+|local-[\w-]+)$/.test(id||'')?id:null,hideGrades:store.get().settings.showGrades!==true});else if(dashboard?.isReady?.()!==false)openAppearance();}}
+    if(personalVerified)resumePersonalFiles();else dashboard?.closePersonalFiles?.();
     if(meta.stale)setStatus('Saved view · Updating in the background…');
     reveal();
   }
@@ -173,7 +178,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   },{passive:true});
   function pauseWorkspace(){
     const keepPlace=wanted&&host&&!host.hidden&&ready&&snapshot&&(dashboard||planner);
-    suspended=true;authorized=false;resumeGeneration++;resumePending=null;
+    dashboard?.closePersonalFiles?.();
+    suspended=true;authorized=false;personalVerified=false;resumeGeneration++;resumePending=null;
     if(keepPlace){coverWorkspace(true);dock.hidden=true;}
     else{if(host)host.hidden=true;coverWorkspace(false);restoreNative();dock.hidden=false;}
     if(snapshot)session?.suspend();else{session?.destroy();session=null;}
@@ -196,7 +202,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(epoch!==resumeGeneration||!wanted||suspended||bootStopped||document.visibilityState==='hidden')return;
       if(!verified){showCanvas(false);return;}
       // Lift the cover first; the refresh of what it shows (times, anything saved meanwhile) follows the first frame.
-      authorized=true;reveal();
+      authorized=true;resumePersonalFiles();reveal();
       const refresh=()=>{if(epoch===resumeGeneration&&!suspended&&wanted&&snapshot)dashboard?.updateSnapshot(snapshot);};
       if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(refresh,0));else refresh();
     })().catch(()=>{if(epoch===resumeGeneration)showCanvas(false);});

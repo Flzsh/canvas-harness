@@ -1,3 +1,4 @@
+// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 /*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. Third-party components retain their respective attribution. */
 if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./site.js');
 (function(){
@@ -16,7 +17,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // The eight seconds count only while the page can be seen. A tab opened in the background waits, unseen,
   // for its student; when it is shown it gets its eight seconds again (the CSS release switches restart too).
   const expired=()=>performance.now()>=deadline&&document.visibilityState!=='hidden';
-  const allSheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css'];
+  const allSheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','course-links.css'];
   let sheets=allSheets,state='pending',shell,artNode,observer,timer,preloaded=false,featuresSelected=false;
   function setFeatures(prefs,selected=false){
     if(featuresSelected&&!selected)return;

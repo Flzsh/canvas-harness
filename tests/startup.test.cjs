@@ -1,3 +1,4 @@
+// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const extension=path.join(__dirname,'../extension');
@@ -34,7 +35,7 @@ function fixture(options={}){
   const window={scrollY:0,scrollTo(){},addEventListener:(key,fn)=>listen(winEvents,key,fn),removeEventListener:(key,fn)=>winEvents[key]=(winEvents[key]||[]).filter(x=>x!==fn)};window.top=options.frame?{}:window;
   const storage=options.storage||Promise.resolve({'reserve:enabled':options.enabled!==false});
   const profile=options.profile||deferred(),network=options.network||deferred(),preflight=options.preflight||deferred(),profiles=[profile];let profileCalls=0,preflightCalls=0,preflightAborted=false,cacheReads=0,mounts=0,storeAccount,aborted=false,preflightRequest;
-  const mountedUsers=[];
+  const mountedUsers=[],personalFiles=[];
   const store={load:async()=>{},readCache:async()=>{cacheReads++;return String(options.cache?.user?.id)===String(storeAccount)?options.cache:null;},writeCache:async()=>{},get:()=>({settings:{showGrades:false,...options.settings}}),destroy(){}};
   const loc={origin:options.origin||'https://school.instructure.com',pathname:options.pathname||'/',search:options.search||''};
   loc.href=loc.origin+loc.pathname+loc.search;
@@ -48,14 +49,14 @@ function fixture(options={}){
     chrome:{storage:{local:{set:async()=>{},remove:async()=>{},get:key=>{reads.push(key);if(options.hint&&typeof key==='string'&&key.startsWith('reserve:lastAccount:'))return Promise.resolve({[key]:options.hint});return storage;}}},runtime:{getURL:name=>'chrome-extension://fixture/'+name}},
     ReserveAPI:{createClient:()=>({profile:({signal})=>{const check=profiles[profileCalls++]||profile;signal.addEventListener('abort',()=>aborted=true);return check.promise;},loadSnapshot:()=>network.promise})},
     ReserveStorage:{createStore:({accountId})=>{storeAccount=accountId;return store;}},
-    ReserveDashboard:{mount:(_area,{snapshot})=>{if(options.mountError)throw Error('render failed');mounts++;mountedUsers.push(String(snapshot.user.id));return {destroy(){},getState:()=>({}),updateSnapshot(){},setStatus(){}};}}
+    ReserveDashboard:{mount:(_area,{snapshot})=>{if(options.mountError)throw Error('render failed');mounts++;mountedUsers.push(String(snapshot.user.id));return {destroy(){},getState:()=>({}),updateSnapshot(){},setStatus(){},closePersonalFiles(){personalFiles.push('closed');},resumePersonalFiles(){personalFiles.push('resumed');}};}}
   };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(extension,'site.js'),'utf8'),context);
   function run(name,optional=false){const file=path.join(extension,name);if(optional&&!fs.existsSync(file))return;vm.runInContext(fs.readFileSync(file,'utf8'),context,{filename:name});}
   if(!options.skipStartup){if(!options.missingArt)run('startup-art.js');run('startup.js',true);}
   function dispatch(list,event={}){for(const fn of [...(list||[])])fn(event);}
-  return {context,html,native,sidebar,profile,network,preflight,reads,sessionData,document,mountedUsers,
+  return {context,html,native,sidebar,profile,network,preflight,reads,sessionData,document,mountedUsers,personalFiles,
     get active(){return html.classList.contains('reserve-startup-active');},get shell(){return document.getElementById('reserve-startup-shell');},get host(){return document.getElementById('reserve-companion-host');},
     get privateArea(){return this.host?.shadowRoot.children.find(el=>el.className==='reserve-workspace')||this.host?.shadowRoot.children.at(-1);},
     get resumeCover(){return this.host?.shadowRoot.children.find(el=>el.className==='reserve-resume');},
@@ -296,7 +297,7 @@ test('startup timeout before page containers appear cannot cause a late automati
 });
 test('opted-in dashboard gets a generic prepaint shell without reading cached data or making a competing request',async()=>{
   const f=fixture();await flush();assert.equal(f.active,true);assert.ok(f.shell);assert.deepEqual(JSON.parse(JSON.stringify(f.reads.filter(key=>key!=='reserve:appearance'))),[['reserve:enabled','reserve:features']],'only enable, features and device theme are read');assert.equal(f.preflightCalls,0);assert.equal(f.profileCalls,0);assert.equal(f.cacheReads,0);assert.equal(f.native.hidden,false);
-  assert.equal(f.preloads.length,15,'local styles begin fetching before the main controller');
+  assert.equal(f.preloads.length,16,'local styles begin fetching before the main controller');
   assert.ok(f.preloads.every(link=>link.as==='style'&&link.href.startsWith('chrome-extension://fixture/')));
 });
 
@@ -382,7 +383,7 @@ test('styles preload during identity verification; only verified data plus all s
   f.loadStyles();assert.equal(f.host.hidden,true);assert.equal(f.active,true);f.profile.resolve({id:'7'});await flush();assert.equal(f.storeAccount,'7');assert.equal(f.cacheReads,1);assert.equal(f.mounts,0);
   f.snapshot();await flush();assert.equal(f.mounts,1);assert.equal(f.host.hidden,false);assert.equal(f.active,false);assert.equal(f.native.hidden,true);f.tick(3000);assert.equal(f.host.hidden,false);
 });
-test('verified data still waits for the last stylesheet behind the startup shell',async()=>{const f=fixture();f.content();await flush();f.profile.resolve({id:'7'});f.snapshot();await flush();assert.equal(f.mounts,1);assert.equal(f.active,true);assert.equal(f.host.hidden,true);const links=f.host.shadowRoot.children.filter(x=>x.tagName==='link');assert.equal(links.length,15);links.slice(0,-1).forEach(link=>link.onload());assert.equal(f.active,true);links.at(-1).onload();assert.equal(f.active,false);assert.equal(f.host.hidden,false);});
+test('verified data still waits for the last stylesheet behind the startup shell',async()=>{const f=fixture();f.content();await flush();f.profile.resolve({id:'7'});f.snapshot();await flush();assert.equal(f.mounts,1);assert.equal(f.active,true);assert.equal(f.host.hidden,true);const links=f.host.shadowRoot.children.filter(x=>x.tagName==='link');assert.equal(links.length,16);links.slice(0,-1).forEach(link=>link.onload());assert.equal(f.active,true);links.at(-1).onload();assert.equal(f.active,false);assert.equal(f.host.hidden,false);});
 test('timeout restores native and aborts startup; late account/network/styles cannot surprise-swap',async()=>{const f=fixture();f.content();await flush();f.tick(8000);assert.equal(f.active,false);assert.equal(f.aborted,true);f.profile.resolve({id:'7'});f.snapshot();f.loadStyles();await flush();assert.equal(f.cacheReads,0);assert.equal(f.mounts,0);assert.equal(f.native.hidden,false);assert.equal(f.host.hidden,true);});
 test('native escape during account verification prevents late data from rendering',async()=>{const f=fixture();f.content();await flush();assert.ok(f.shell);f.nativeChoice();f.profile.resolve({id:'7'});f.snapshot();f.loadStyles();await flush();assert.equal(f.mounts,0);assert.equal(f.native.hidden,false);assert.equal(f.host.hidden,true);});
 test('authentication rejection releases the shell without reading any account cache',async()=>{const f=fixture();f.content();await flush();const error=Error('Signed out');error.code='auth';f.profile.reject(error);await flush();assert.equal(f.active,false);assert.equal(f.cacheReads,0);assert.equal(f.native.hidden,false);});
@@ -424,3 +425,12 @@ test('clicking Canvas’s menu bar or pressing a key while the cover waits keeps
  {const f=fixture();await flush();f.interact('pointerdown');assert.equal(f.active,false,'a click on Canvas’s page hands it over');assert.equal(ctx(f)?.complete(),false);}
 });
 
+
+
+test('cached course links stay closed until account verification and close again on tab suspension',async()=>{
+ const f=fixture({hint:'7',settings:{quickOpen:'on'},cache:{user:{id:'7'},courses:[],assignments:[],fetchedAt:new Date(0).toISOString()}});
+ f.content();await flush();f.loadStyles();await flush();assert.ok(f.mounts>0);assert.equal(f.personalFiles.at(-1),'closed');assert.ok(!f.personalFiles.includes('resumed'));
+ f.profile.resolve({id:'7'});f.snapshot();await flush();assert.equal(f.personalFiles.at(-1),'resumed');
+ f.hide();assert.equal(f.personalFiles.at(-1),'closed');const profile=f.queueProfile();f.show();await flush();assert.equal(f.personalFiles.at(-1),'closed');
+ profile.resolve({id:'7'});await flush();assert.equal(f.personalFiles.at(-1),'resumed');
+});

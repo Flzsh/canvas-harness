@@ -1,3 +1,4 @@
+// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 /* Canvas Harness — extension-only AI routing. No externally_connectable entry point. */
 importScripts('features.js','site.js','core.js','market-site.js','ai-providers.js','ai-inject.js','ai-web.js','page-preferences.js',
  'custom-art.js','media-reference.js','media-store.js','workspace-arrange.js','customization-model.js','backup-media.js','custom-kits.js','quick-pack.js',
@@ -243,6 +244,13 @@ globalThis.ReservePagePreferences?.serve();
   }else port.disconnect();
  }
  chrome.runtime.onMessage.addListener((message,sender,reply)=>{
+  if(message?.target==='ch-course-files'){
+   if(message.op!=='load'){reply({ok:false,error:'Unsupported course file operation.'});return;}
+   (async()=>{
+    await ready;if(!canvasSender(sender))throw Error('Course file backups require a trusted Canvas top frame.');
+    await chrome.scripting.executeScript({target:featureTarget(sender),world:'ISOLATED',files:['course-files.js']});
+   })().then(()=>reply({ok:true}),error=>reply({ok:false,error:String(error?.message||error)}));return true;
+  }
   if(message?.target==='ch-play'){
    if(message.op!=='load'){reply({ok:false,error:'Unsupported play operation.'});return;}
    (async()=>{

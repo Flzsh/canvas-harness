@@ -1,3 +1,4 @@
+// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const ext=path.join(__dirname,'../extension'),read=file=>fs.readFileSync(path.join(ext,file),'utf8');
@@ -482,4 +483,16 @@ test('local artwork packs default on and share the artwork editor dependencies',
   assert.ok(selection.js.indexOf(before)<selection.js.indexOf(after),before+' must precede '+after);
  for(const prefs of [{preset:'lite'},{preset:'custom',custom:['customization','course-art']}])
   assert.ok(!F.resolve(prefs).js.some(file=>/^quick-(?:pack|upload)/.test(file)));
+});
+
+
+test('course file codecs load only for an explicit backup request in a trusted top document',async()=>{
+ const w=worker({preset:'lite'});assert.equal((await w.request()).ok,true);
+ assert.ok(!w.imports.includes('course-files.js'));assert.ok(!w.executions.some(call=>call.files?.includes('course-files.js')));
+ w.env.fetch=async()=>{throw Error('Local backup must not fetch');};
+ assert.equal((await w.request({target:'ch-course-files',op:'load'})).ok,true);
+ const call=w.executions.at(-1);assert.deepEqual(json(call.files),['course-files.js']);assert.equal(call.world,'ISOLATED');assert.deepEqual(json(call.target),{tabId:12,documentIds:['document-one']});
+ const before=w.executions.length;
+ for(const bad of [{...w.sender,id:'other'},{...w.sender,frameId:1},{...w.sender,url:'https://attacker.test/'},{...w.sender,tab:undefined}])assert.equal((await w.request({target:'ch-course-files',op:'load'},bad)).ok,false);
+ assert.equal((await w.request({target:'ch-course-files',op:'other'})).ok,false);assert.equal(w.executions.length,before);
 });

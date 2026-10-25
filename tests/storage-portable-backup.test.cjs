@@ -1,3 +1,4 @@
+// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),{webcrypto,createHash}=require('node:crypto');
 const {worker,message}=require('./market-worker-fixture.cjs'),{read}=require('./market-fixture.cjs'),{bounded,indexedMemory}=require('./market-indexed-fixture.cjs');
@@ -36,4 +37,20 @@ for(const full of [false,true])for(const [place,kind,framed]of [['overviewArt','
  assert.equal(page.store.get().tasks['1'].notes,'Original note');assert.deepEqual(plain((place==='course'?page.store.get().settings.coursePrefs['10']:page.store.get().settings[place])[kind]),value);assert.equal(page.store.get().settings.theme,'light');assert.equal(h.data[key].tasks['1'].notes,'Original note');
  assert.deepEqual(Buffer.from(await (await localStore.get(oldAsset.mediaId)).blob.arrayBuffer()),png);assert.equal(await pool.get(newAsset.mediaId),null);assert.ok(h.media.media.every(row=>!row.holds.length));
  await bounded(page.store.update(data=>{data.tasks['1'].notes='Saved after failure';}),'save after failed restore');assert.equal(h.data[key].tasks['1'].notes,'Saved after failure');pool.close();page.store.destroy();
+});
+
+
+test('portable backups keep course files alongside artwork, Market receipts and saved feature choices',async()=>{
+ const {fakeIndexedDB}=require('./fake-indexeddb.cjs'),Files=require('../extension/course-files.js');
+ const source=worker({indexedDB:indexedMemory()}),sourceDB=fakeIndexedDB(),page=litePage(source,{courseFilesIndexedDB:sourceDB});
+ source.env.ReservePackMedia={prepare:async()=>({asset:{mediaId:webcrypto.randomUUID(),name:'Pixel.png',type:'image/png',kind:'image',width:1,height:1,palette:[]},blob:new Blob([png],{type:'image/png'})})};
+ const kit={version:1,name:'Course kit',assets:{bannerArt:{name:'Pixel.png',type:'image/png',data:png.toString('base64'),sha256:createHash('sha256').update(png).digest('hex')}},accent:'clay',font:'system',bannerSize:'standard',bannerFit:'contain',bannerPosition:'right',titlePlacement:'separate'};
+ assert.equal((await source.request(message('kit',kit,'course-kit'))).ok,true);await page.store.load();
+ const files=Files.create({store:page.store,indexedDB:sourceDB}),[saved]=await files.addFiles('10',[Object.assign(new Blob(['Course notes']),{name:'notes.txt'})]);await files.addLink('10','https://docs.google.com/document/d/notes');
+ vm.runInContext(read('course-files.js'),page.env);source.env.fetch=async()=>{throw Error('Export must be local');};
+ const backup=plain(await page.store.exportBackupWithPacks());assert.equal(backup.courseFileBytes.length,1);assert.equal(backup.courseFilesOmitted,0);assert.equal(backup.media.assets.length,1);assert.ok(backup.market.rows['course-kit']);
+ const target=worker({indexedDB:indexedMemory(),saved:{'reserve:features':{preset:'lite',custom:['gpa']}}}),targetDB=fakeIndexedDB(),restored=litePage(target,{courseFilesIndexedDB:targetDB});vm.runInContext(read('course-files.js'),restored.env);await restored.store.load();
+ await bounded(restored.store.importBackup(backup),'combined course-file restore',5000);
+ const targetFiles=Files.create({store:restored.store,indexedDB:targetDB});assert.equal(await (await targetFiles.getFile('10',saved.id)).text(),'Course notes');assert.equal(targetFiles.list('10').length,2);assert.equal(target.data['reserve:features'].preset,'lite');assert.equal(target.media.kits.length,1);
+ files.destroy();targetFiles.destroy();page.store.destroy();restored.store.destroy();
 });

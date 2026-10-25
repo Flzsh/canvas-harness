@@ -1,0 +1,28 @@
+/*
+// Adapted from Gary Wu's pull request #47 to Canvas Harness.
+*/
+.rd .ch-links { min-width: 0; }
+.rd[data-ch-links-pending] .ch-links { display: none; }
+.rd .ch-links-heading { gap: 8px 12px; }
+.rd .ch-links-heading h3 { min-width: 0; margin: 0; }
+.rd .ch-links-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.rd .ch-links-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-width: 0; }
+.rd .ch-links-open { flex: 1 1 100px; min-width: 0; overflow-wrap: anywhere; }
+.rd .ch-links-kind { flex: none; }
+.rd .ch-links-actions { position: relative; z-index: 1; display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.rd .ch-links-row > .ch-links-actions { margin-left: auto; }
+.rd .ch-links-action { min-height: 28px; }
+.rd .ch-links-form { display: grid; gap: 10px; margin: 8px 0 12px; }
+.rd .ch-links-field { display: grid; gap: 4px; min-width: 0; }
+.rd .ch-links-field input { box-sizing: border-box; width: 100%; min-width: 0; }
+.rd .ch-links-field input:not([type=file]) { min-height: 34px; padding: 6px 8px; }
+.rd .ch-links-files { margin-top: 4px; }
+.rd .ch-links-files input { max-width: 100%; }
+.rd .ch-links-rename { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-width: 0; }
+.rd .ch-links-rename > .ch-links-field { flex: 1 1 120px; }
+.rd .ch-links-error { margin: 8px 0 0; overflow-wrap: anywhere; }
+.rd .rd-course-updates > .ch-links { margin-top: 24px; }
+.rd .ch-links-viewer { width: min(900px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
+.rd .ch-links-picture { display: block; max-width: 100%; max-height: 70vh; object-fit: contain; }
+.rd .ch-links-picture[hidden] { display: none; }
+.rd .ch-links-text { white-space: pre-wrap; overflow-wrap: anywhere; }

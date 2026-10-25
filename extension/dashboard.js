@@ -1,3 +1,4 @@
+// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 /*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. Third-party components retain their respective attribution. */
 if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./site.js');
 (function(root,factory){
@@ -150,7 +151,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     return {sync,keydown,destroy:detach};
   }
 
-  function mount(target,{snapshot,store,demo=false,onPlanner=()=>{},onNative=null,refresh=async()=>{},status='',initialState,materialClient,onAuthError=()=>{},onReady=()=>{},onRenderError=null}={}){
+  function mount(target,{snapshot,store,demo=false,personalVerified=true,onPlanner=()=>{},onNative=null,refresh=async()=>{},status='',initialState,materialClient,onAuthError=()=>{},onReady=()=>{},onRenderError=null}={}){
     if(!enabled('dashboard'))return null;
     if(!target||typeof target.append!=='function')throw Error('ReserveDashboard needs a shadow root or element target.');
     if(!snapshot||!Array.isArray(snapshot.courses)||!Array.isArray(snapshot.assignments))throw Error('ReserveDashboard needs a Canvas snapshot.');
@@ -163,6 +164,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     const container=document.createElement('section');
     container.className='rd';
+    if(!personalVerified)container.dataset.chLinksPending='true';
     container.setAttribute('aria-label','Canvas Harness Canvas dashboard');
     // One short staggered entrance per mount. CSS skips it for reduced motion.
     if(enabled('motion'))container.dataset.entrance='true';
@@ -218,7 +220,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const reviewDeck=root.ReserveFeatures?.enabled('review-deck')===true?root.ReserveReviewDeck?.create({container,store,getContext:()=>({...buildContext(),user:currentSnapshot.user,origin:currentSnapshot.origin}),onChange:sourceChange,isEnabled:()=>root.ReserveFeatures?.enabled('review-deck')===true,isSelected:()=>workspace==='review',onAuthError}):null;
     const gradeImpact=root.ReserveFeatures?.enabled('grade-impact')===true?root.ReserveGradeImpact?.create({client:resourceClient,user:currentSnapshot.user,onChange:sourceChange,onAuthError}):null;
     const materials=enabled('materials')?root.ReserveMaterialsUI?.create({store,user:snapshot.user,client:resourceClient,...selectionOptions,onChange:sourceChange,onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))}):null;
-    const hub=enabled('course-hub')?root.ReserveCourseHubUI?.create({store,user:snapshot.user,client:resourceClient,...selectionOptions,materials,onChange:sourceChange,onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))}):null;
+    const courseFiles=enabled('course-files')&&store.owner?root.ReserveCourseFiles?.create({store}):null;
+    const courseFileOpen=courseFiles?root.ReserveCourseFileOpen?.create({store,files:courseFiles,container}):null;
+    const ownFiles=courseFiles?root.ReserveCourseLinksUI?.create({files:courseFiles,onChange:sourceChange,onOpen:(course,id)=>courseFileOpen?.open(course,id,container.querySelector(':focus'))}):null;
+    const hub=enabled('course-hub')?root.ReserveCourseHubUI?.create({store,user:snapshot.user,client:resourceClient,...selectionOptions,materials,ownFiles,onChange:sourceChange,onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))}):null;
     const quickUpload=enabled('quick-pack')?root.CanvasHarnessQuickUpload?.create({store,getCourses:()=>normalizeData(settings()).allCourses,onChange:sourceChange}):null;
     let customKits=[],kitName='',kitsLoaded=false,sceneActive=false,frameWrites=Promise.resolve();
     const mediaStore=store.owner&&enabled('customization')?root.ReserveMedia?.createStore(store.owner):null;
@@ -672,8 +677,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const active=container.querySelector(':focus');
         if(active?.id==='rd-material-title')focus={materialTitle:true};
         if(active?.tagName==='SUMMARY'&&active.parentElement?.dataset.rdSection)focus={section:active.parentElement.dataset.rdSection};
-        if(active?.dataset?.rdField){focus={field:active.dataset.rdField,id:active.dataset.id,step:active.dataset.step,setting:active.dataset.setting,message:active.dataset.message,value:active.value,start:active.selectionStart,end:active.selectionEnd};}
-        else if(active?.dataset?.rdAction){focus={action:active.dataset.rdAction,id:active.dataset.id,mode:active.dataset.mode,day:active.dataset.day,accent:active.dataset.accent,tab:active.dataset.tab,resource:active.dataset.resource,course:active.dataset.course,message:active.dataset.message,choice:active.dataset.value,entry:active.dataset.entry};}
+        if(active?.dataset?.rdField){focus={course:active.dataset.course,place:active.dataset.place,file:active.dataset.file,field:active.dataset.rdField,id:active.dataset.id,step:active.dataset.step,setting:active.dataset.setting,message:active.dataset.message,value:active.value,start:active.selectionStart,end:active.selectionEnd};}
+        else if(active?.dataset?.rdAction){focus={place:active.dataset.place,file:active.dataset.file,action:active.dataset.rdAction,id:active.dataset.id,mode:active.dataset.mode,day:active.dataset.day,accent:active.dataset.accent,tab:active.dataset.tab,resource:active.dataset.resource,course:active.dataset.course,message:active.dataset.message,choice:active.dataset.value,entry:active.dataset.entry};}
         // The control itself: patchUI keeps it, so when it is still the same control and still shown, focus stays on it
         // (siblings that differ only by data-value or data-entry, like All | Unread or two Read more buttons, never trade places).
         if(focus&&!focus.materialTitle&&!focus.section)focus.node=active;
@@ -799,8 +804,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(focus?.section){Array.from(container.querySelectorAll?.('details[data-rd-section]')||[]).find(el=>el.dataset.rdSection===focus.section)?.querySelector('summary')?.focus({preventScroll:true});}
       if(focus&&!focus.materialTitle&&!focus.section){
         const selector=(focus.field?`[data-rd-field="${focus.field}"]`:`[data-rd-action="${focus.action}"]`)+`${focus.id?`[data-id="${focus.id}"]`:''}${focus.setting?`[data-setting="${focus.setting}"]`:''}${focus.mode?`[data-mode="${focus.mode}"]`:''}${focus.day?`[data-day="${focus.day}"]`:''}${focus.accent?`[data-accent="${focus.accent}"]`:''}${focus.tab?`[data-tab="${focus.tab}"]`:''}${focus.choice!=null?`[data-value=${JSON.stringify(String(focus.choice))}]`:''}${focus.entry!=null?`[data-entry=${JSON.stringify(String(focus.entry))}]`:''}`;
-        const kept=focus.node,same=kept?.isConnected!==false&&!!kept?.getClientRects?.().length&&(focus.field?kept.dataset?.rdField===focus.field:kept.dataset?.rdAction===focus.action)&&[['id','id'],['setting','setting'],['mode','mode'],['day','day'],['accent','accent'],['tab','tab'],['value','choice'],['entry','entry'],['step','step'],['message','message'],['resource','resource'],['course','course']].every(([key,was])=>(kept.dataset?.[key]??null)===(focus[was]??null));
-        const active=same?kept:focus.step||focus.resource||focus.message?Array.from(container.querySelectorAll?.(selector)||[]).find(el=>focus.message?el.dataset.message===focus.message:focus.step?el.dataset.step===focus.step:el.dataset.resource===focus.resource&&el.dataset.course===focus.course):(matches=>matches.find(el=>el.getClientRects?.().length)||container.querySelector(selector))(Array.from(container.querySelectorAll?.(selector)||[]));
+        const ownFocus=String(focus.field||focus.action||'').startsWith('hub-own-'),ownSuffix=ownFocus?`[data-course="${focus.course}"][data-place="${focus.place}"]${focus.file?`[data-file="${focus.file}"]`:''}`:'';
+        const kept=focus.node,same=kept?.isConnected!==false&&!!kept?.getClientRects?.().length&&(focus.field?kept.dataset?.rdField===focus.field:kept.dataset?.rdAction===focus.action)&&[['id','id'],['setting','setting'],['mode','mode'],['day','day'],['accent','accent'],['tab','tab'],['value','choice'],['entry','entry'],['step','step'],['message','message'],['resource','resource'],['course','course'],['place','place'],['file','file']].every(([key,was])=>(kept.dataset?.[key]??null)===(focus[was]??null));
+        const active=same?kept:ownFocus?container.querySelector(selector+ownSuffix):focus.step||focus.resource||focus.message?Array.from(container.querySelectorAll?.(selector)||[]).find(el=>focus.message?el.dataset.message===focus.message:focus.step?el.dataset.step===focus.step:el.dataset.resource===focus.resource&&el.dataset.course===focus.course):(matches=>matches.find(el=>el.getClientRects?.().length)||container.querySelector(selector))(Array.from(container.querySelectorAll?.(selector)||[]));
         if(active){if(focus.field==='new-step')active.value=focus.value;active.focus({preventScroll:true});if(typeof active.setSelectionRange==='function'&&focus.start!=null)active.setSelectionRange(focus.start,focus.end);}
         else if(focus.action==='arrange-menu')container.querySelector('.rd-toolbar [data-rd-action="arrange"]')?.focus({preventScroll:true});
       }
@@ -814,6 +820,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(list?.type==='chapter')materialFocus=Array.from(container.querySelectorAll?.('.rd-chapter-head[data-chapter]')||[]).find(el=>el.dataset.chapter===list.id&&el.dataset.course===list.courseId);
       if(list?.type==='row')materialFocus=Array.from(container.querySelectorAll?.('[data-rd-row]')||[]).find(el=>el.dataset.rdRow===list.id)?.querySelector?.('.rd-row-open');
       if(list?.type==='more')materialFocus=Array.from(container.querySelectorAll?.(`[data-rd-action="${list.action}"]`)||[]).find(el=>(el.dataset.resource??el.dataset.entry)===list.id&&el.dataset.course===list.courseId);
+      if(list?.type==='own')materialFocus=Array.from(container.querySelectorAll?.(list.field?`[data-rd-field="${list.field}"]`:`[data-rd-action="${list.action}"]`)||[]).find(el=>el.dataset.course===list.courseId&&el.dataset.place===list.place&&(!list.file||el.dataset.file===list.file));
       if(materialFocus){materialFocus.focus({preventScroll:true});if(requested?.type==='title'&&root.innerWidth<=1200)materialFocus.scrollIntoView({block:'start',behavior:'instant'});
         // The page glides to a chapter only for a pointer under Gentle motion; keyboard, Still, Off and reduced motion jump at once.
         if(list?.type==='chapter')materialFocus.scrollIntoView({block:'start',behavior:container.dataset.input==='pointer'&&container.dataset.motionStyle==='gentle'&&!root.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'smooth':'instant'});
@@ -870,6 +877,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     function fieldEnabled(target){
       const field=target?.dataset?.rdField,key=target?.dataset?.setting;
+      if(field?.startsWith('hub-own-'))return !container.dataset.chLinksPending&&enabled('course-files')&&enabled('course-hub');
       if(field==='setting'){
         if(key==='showGrades')return enabled('grades');if(!enabled('customization'))return false;
         const feature={sceneTheme:'scene-themes',dockSize:'arrange',motion:'motion',livingArt:'motion',nightArt:'course-art',bannerSize:'course-art',showCourseIcons:'course-art',courseCardStyle:'course-art',showCourseInformation:'course-hub',showRecentGrades:'grades',deskOrder:'arrange',dashboardLayout:'arrange',courseNavigation:'arrange'}[key];
@@ -891,6 +899,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     function onInput(event){if(!fieldEnabled(event.target))return;if(event.target?.dataset?.setting==='nightArt'){applyNight(event.target.value);const out=event.target.closest?.('.cz-night')?.querySelector('output');if(out)out.textContent=event.target.value+'%';return;}
       const field=event.target?.dataset?.rdField;
+      if(field==='hub-own-files')return;
       if(board?.input(event))return;
       if(field?.startsWith('review-deck-')){reviewDeck?.input(event);return;}
       if(field==='make-week'){makeOwn?.week(event.target.value);return;}
@@ -914,6 +923,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function onChange(event){
       if(!fieldEnabled(event.target))return;
       const field=event.target?.dataset?.rdField;
+      if(field==='hub-own-files'){const files=Array.from(event.target.files||[]);event.target.value='';void hub?.input(field,files,event.target.dataset);return;}
       if(board?.change(event))return;
       if(field==='make-file'){const file=event.target.files?.[0];event.target.value='';void makeOwn?.choose(file);return;}
       if(field==='make-week'){makeOwn?.week(event.target.value);return;}
@@ -1096,6 +1106,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function closePreview(){readerOpen=false;render();const previous=container.querySelector(`[data-rd-action="preview"][data-id="${selectedId}"]`);previous?.scrollIntoView({block:'nearest',behavior:'instant'});previous?.focus({preventScroll:true});}
 
     function actionEnabled(action,button){
+      if(action?.startsWith('hub-own-'))return !container.dataset.chLinksPending&&enabled('course-files')&&enabled('course-hub');
       const feature={planner:'planner',grades:'grades','more-grades':'grades','grades-visibility':'grades',settings:'customization','settings-close':'customization','hidden-courses':'customization','customize-tab':'customization','advanced-settings':'customization',accent:'customization',theme:'customization','course-up':'customization','course-down':'customization',toolbox:'tools',capture:'tools','selection-ai':'ai','select-source':'ai','open-hub':'course-hub','open-materials':'materials','timer-toggle':'planner','timer-reset':'planner','timer-minutes':'planner','timer-focus':'planner'}[action];
       if(feature&&!enabled(feature))return false;
       if(action?.startsWith('make-'))return enabled('customization');
@@ -1429,6 +1440,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     function onKeydown(event){
       if(destroyed||!container.getClientRects?.().length)return;
+      if(!container.dataset.chLinksPending&&enabled('course-files')&&hub?.keydown?.(event))return;
       motion?.activity?.();motion?.busy?.();if(event.key==='Tab')tabAt=Date.now();
       const enteringKeyboard=container.dataset.input!=='keyboard';container.dataset.input='keyboard';if(enteringKeyboard){motion?.cancel({preserveArt:true});motion?.syncTabs(false,true);}
       if(arrange?.keydown(event))return;
@@ -1495,6 +1507,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     return {
       isReady(){return mounted;},
       getState(){return navigationState(true);},
+      closePersonalFiles(){container.dataset.chLinksPending='true';courseFileOpen?.close();},
+      resumePersonalFiles(){delete container.dataset.chLinksPending;},
       destroy(){
         if(destroyed)return;
         remember();
@@ -1506,7 +1520,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         root.ReserveDataTheme?.remove(container);makeOwn?.destroy();frameEditor?.destroy();frameController?.destroy();mediaController?.destroy();courseDock.destroy();
         if(!customizeBusy)mediaStore?.close();
         reviewDeck?.destroy();gradeImpact?.destroy();
-        ++quickPackRead;quickUpload?.destroy();arrange?.destroy();board?.destroy();settingsDock?.destroy();materials?.destroy();hub?.destroy();motion?.destroy();toolbox?.destroy();
+        ++quickPackRead;quickUpload?.destroy();arrange?.destroy();board?.destroy();settingsDock?.destroy();materials?.destroy();hub?.destroy();ownFiles?.destroy();courseFiles?.destroy();courseFileOpen?.destroy();motion?.destroy();toolbox?.destroy();
         clearInterval(freshnessTimer);clearInterval(focusTimer);clearTimeout(entranceTimer);
         unsubscribe?.();
         container.removeEventListener('dragover',onPackDragover);container.removeEventListener('dragleave',onPackDragleave);container.removeEventListener('drop',onPackDrop);container.removeEventListener('paste',onArtworkPaste);

@@ -1,3 +1,4 @@
+// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 /*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. Third-party components retain their respective attribution. */
 if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./site.js');
 (function (root) {
@@ -11,9 +12,22 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // readingFont: teacher text in the book serif or the interface sans; greeting: the time-of-day heading.
   // hiddenCourses: hidden by hand. shownCourses (2.17): shown by hand, which keeps a course that is hidden
   // by default (NameCoach, College Counseling: ReserveCore.hiddenCourseIds) on screen. An id is in one list at most.
-  const defaults = () => ({version:1,settings:{...layoutDefaults,makeYourOwn:{theme:null,pet:null,installed:{}},theme:'system',accent:'clay',appearanceVersion:2,motion:'gentle',livingArt:'on',readingFont:'book',greeting:'on',quickOpen:'off',density:'comfortable',font:'system',textSize:'standard',dashboardLayout:'split',showCourseStrip:true,showGrades:false,showRecentGrades:false,timeZone:globalThis.ReserveSite.timeZone(),courseOrder:[],hiddenCourses:[],shownCourses:[],coursePrefs:{},overviewArt:{}},tasks:{},moduleProgress:{},resourcePins:[],customTasks:[],gpa:gpa.defaults(),toolbox:{scratchpad:'',recent:[],dockSize:{width:0,height:0}},focus:{minutes:25,remaining:1500,endsAt:null,itemId:null,sessions:0},pet:{skills:petSkills(),reminders:[],routines:[]}});
+  const defaults = () => ({version:1,settings:{...layoutDefaults,makeYourOwn:{theme:null,pet:null,installed:{}},theme:'system',accent:'clay',appearanceVersion:2,motion:'gentle',livingArt:'on',readingFont:'book',greeting:'on',quickOpen:'off',density:'comfortable',font:'system',textSize:'standard',dashboardLayout:'split',showCourseStrip:true,showGrades:false,showRecentGrades:false,timeZone:globalThis.ReserveSite.timeZone(),courseOrder:[],hiddenCourses:[],shownCourses:[],coursePrefs:{},overviewArt:{}},tasks:{},moduleProgress:{},courseFiles:{},resourcePins:[],customTasks:[],gpa:gpa.defaults(),toolbox:{scratchpad:'',recent:[],dockSize:{width:0,height:0}},focus:{minutes:25,remaining:1500,endsAt:null,itemId:null,sessions:0},pet:{skills:petSkills(),reminders:[],routines:[]}});
   const text = (value,max=20000) => typeof value === 'string' ? value.slice(0,max) : '';
   const isRecord = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+  const courseFileTypes={pdf:'application/pdf',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',ppt:'application/vnd.ms-powerpoint',pptx:'application/vnd.openxmlformats-officedocument.presentationml.presentation',xls:'application/vnd.ms-excel',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',txt:'text/plain',md:'text/plain',csv:'text/csv',rtf:'application/rtf',odt:'application/vnd.oasis.opendocument.text',pages:'application/vnd.apple.pages',key:'application/vnd.apple.keynote',numbers:'application/vnd.apple.numbers',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',avif:'image/avif',bmp:'image/bmp',tif:'image/tiff',tiff:'image/tiff',heic:'image/heic',heif:'image/heif'};
+  function cleanCourseFiles(value){
+    if(!isRecord(value))return {};const out={},seen=new Set(),words=(v,n)=>typeof v==='string'?v.replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,n):'';let count=0,total=0;
+    for(const [course,rows]of Object.entries(value)){
+      if(!/^\d{1,20}$/.test(course)||Object.keys(out).length>=500)continue;const list=[],local=new Set();
+      for(const x of Array.isArray(rows)?rows:[]){
+        if(!isRecord(x)||typeof x.id!=='string'||!/^cf-[\w-]{4,60}$/.test(x.id)||local.has(x.id))continue;const title=words(x.title,120)||'Untitled',added=words(x.added,40);let row;
+        if(x.kind==='link'&&typeof x.url==='string'&&!/[\u0000-\u001f\u007f]/.test(x.url)){let link=x.url.trim();if(link&&link.length<=2048){if(!/^[a-z][a-z0-9+.-]*:/i.test(link))link='https://'+link;try{const u=new URL(link);if(/^https?:$/.test(u.protocol)&&u.hostname.includes('.')&&!u.username&&!u.password&&u.href.length<=2048)row={id:x.id,kind:'link',title,url:u.href,...(added?{added}:{})};}catch{}}}
+        else if(x.kind==='file'&&typeof x.name==='string'&&x.name.trim()&&x.name.length<=200&&!/[\u0000-\u001f\u007f/\\]/.test(x.name)&&Number.isSafeInteger(x.size)&&x.size>0&&x.size<=25000000){const name=x.name.trim(),extension=name.match(/\.([^.]+)$/)?.[1].toLowerCase(),type=Object.hasOwn(courseFileTypes,extension)?courseFileTypes[extension]:'';if(type)row={id:x.id,kind:'file',title,name,type,size:x.size,...(added?{added}:{})};}
+        if(row){local.add(row.id);if(!seen.has(row.id)){if(++count>1000)throw Error('Keep up to 1,000 course links and files. Remove an item before adding another.');if(row.kind==='file'&&(total+=row.size)>250000000)throw Error('Saved course files exceed 250 MB. Remove a file before adding another.');seen.add(row.id);list.push(row);}}if(local.size>=60)break;
+      }if(list.length)out[course]=list;
+    }return out;
+  }
   const personalWork = root.ReservePersonalWork || (typeof module === 'object' && module.exports && typeof require === 'function' ? require('./personal-work.js') : null);
   const queues = new Map();
   const accountServers = new WeakMap();
@@ -135,9 +149,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   }
   function cleanData(value,previous) {
     if (!isRecord(value)) throw Error('Backup data must be an object.');
+    if(value.courseFiles!==undefined)value={...value,courseFiles:cleanCourseFiles(value.courseFiles)};
     safeKeys(value);
     const out = defaults(), settings=value.settings || {},sameSettings=previous&&same(settings,previous.settings);
     out.moduleProgress=previous&&same(value.moduleProgress,previous.moduleProgress)?previous.moduleProgress:cleanModuleProgress(value.moduleProgress);
+    out.courseFiles=previous&&same(value.courseFiles,previous.courseFiles)?previous.courseFiles:cleanCourseFiles(value.courseFiles);
     out.gpa=previous&&same(value.gpa,previous.gpa)?previous.gpa:gpa.cleanPreferences(value.gpa);
     if (!isRecord(settings) || (value.tasks && !isRecord(value.tasks)) || (value.customTasks && !Array.isArray(value.customTasks))) throw Error('Backup data has an invalid structure.');
     // Validate every restored SVG before returning data or committing a save.
@@ -240,14 +256,26 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     return out;
   }
   function validateBackup(input,owner) {
-    if(bytes(input)>90000000)throw Error('Backup is too large.');
+    const inputBytes=bytes(input);if(inputBytes>90000000)throw Error('Backup is too large.');
     if(typeof input==='string') {try{input=JSON.parse(input);}catch{throw Error('Choose a valid Canvas Harness JSON backup.');}}
     if(!isRecord(input)||input.format!=='reserve-backup'||input.version!==1)throw Error('This is not a supported Canvas Harness backup format.');
-    if(input.packs===undefined&&input.media===undefined&&input.market===undefined&&bytes(input)>6500000||input.packs!==undefined&&(!Array.isArray(input.packs)||input.packs.length>50))throw Error('Backup is too large or contains invalid packs.');
+    const withFiles=Array.isArray(input.courseFileBytes)&&input.courseFileBytes.length>0;
+    if(withFiles&&inputBytes>66500000)throw Error('Backup is too large.');
+    if(input.packs===undefined&&input.media===undefined&&input.market===undefined&&!withFiles&&bytes(input)>6500000||input.packs!==undefined&&(!Array.isArray(input.packs)||input.packs.length>50))throw Error('Backup is too large or contains invalid packs.');
     if(input.media!==undefined&&(!isRecord(input.media)||input.media.version!==1||!Array.isArray(input.media.assets)||input.media.assets.length>2000||!Array.isArray(input.media.kits)||input.media.kits.length>200))throw Error('Invalid artwork media in backup.');
     if(input.market!==undefined&&(!isRecord(input.market)||input.market.version!==1||!isRecord(input.market.rows)||!isRecord(input.market.receipts)||Object.keys(input.market.rows).length>50||Object.keys(input.market.receipts).length>50))throw Error('Invalid account add-ons in backup.');
     if(owner && (!input.owner||String(input.owner.accountId)!==String(owner.accountId)||input.owner.origin!==owner.origin))throw Error('This backup belongs to a different Canvas account or site. Sign in to its original account to restore it.');
-    return cleanData(input.data);
+    const data=cleanData(input.data),files=new Map(Object.entries(data.courseFiles).flatMap(([course,list])=>list.filter(x=>x.kind==='file').map(x=>[course+':'+x.id,x]))),seen=new Set();
+    if(input.courseFileBytes!==undefined){
+      if(!Array.isArray(input.courseFileBytes)||input.courseFileBytes.length>1000)throw Error('Invalid course file backup payload.');
+      for(const row of input.courseFileBytes){
+        if(!isRecord(row)||Object.keys(row).some(k=>!['course','id','base64'].includes(k))||typeof row.course!=='string'||!/^\d{1,20}$/.test(row.course)||typeof row.id!=='string'||!/^cf-[\w-]{4,60}$/.test(row.id))throw Error('Invalid course file backup payload.');
+        const key=row.course+':'+row.id,item=files.get(key),encoded=row.base64;if(!item||seen.has(key))throw Error('Invalid or duplicate course file in backup.');seen.add(key);
+        if(typeof encoded!=='string'||encoded.length!==4*Math.ceil(item.size/3)||encoded.length%4||!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)||encoded.length/4*3-(encoded.endsWith('==')?2:encoded.endsWith('=')?1:0)!==item.size)throw Error('Course file backup bytes do not match the saved file.');
+      }
+    }
+    if(input.courseFilesOmitted!==undefined&&(!Number.isInteger(input.courseFilesOmitted)||input.courseFilesOmitted!==files.size-seen.size)||input.courseFilesNotice!==undefined&&(typeof input.courseFilesNotice!=='string'||input.courseFilesNotice.length>500))throw Error('Invalid course file backup notice.');
+    return data;
   }
   // Only private, previously validated branches may be reused by the worker.
   // Changed input, hostile keys, and the total byte budget are checked every time.
@@ -305,14 +333,29 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     };
     return {read:async key=>{const v=localStorage.getItem(key);return v?JSON.parse(v):null;},write:async(key,value)=>localStorage.setItem(key,JSON.stringify(value)),subscribe:(key,fn)=>{const handler=event=>{if(event.key===key){let newValue;try{newValue=event.newValue?JSON.parse(event.newValue):null;}catch{return fn();}fn({newValue});}};root.addEventListener('storage',handler);return()=>root.removeEventListener('storage',handler);}};
   }
-  function createStore({accountId,origin=(globalThis.ReserveSite.origin()),adapter=browserAdapter(),mediaStore=null,backupMediaStore=null} = {}) {
+  let courseFileLoading;
+  async function courseFileModule(){
+    if(root.ReserveCourseFiles)return root.ReserveCourseFiles;
+    if(typeof module==='object'&&module.exports&&typeof require==='function')return require('./course-files.js');
+    if(typeof root.importScripts==='function'){root.importScripts('course-files.js');if(root.ReserveCourseFiles)return root.ReserveCourseFiles;}
+    if(root.chrome?.runtime?.sendMessage){
+      try{await (courseFileLoading||=root.chrome.runtime.sendMessage({target:'ch-course-files',op:'load'}).then(reply=>{if(reply?.ok!==true)throw Error(reply?.error||'Course file support could not load.');}));}
+      catch(error){courseFileLoading=null;throw error;}
+      if(root.ReserveCourseFiles)return root.ReserveCourseFiles;
+    }
+    throw Error('Course file support is unavailable. Enable My links & files, reload Canvas and try again.');
+  }
+  const courseFileCount=data=>Object.values(data.courseFiles||{}).reduce((n,list)=>n+list.filter(x=>x.kind==='file').length,0);
+  const courseFileNotice=count=>count?`${count} uploaded file${count===1?' was':'s were'} not included in this backup. Links and file names are included.`:'';
+  function createStore({accountId,origin=(globalThis.ReserveSite.origin()),adapter=browserAdapter(),mediaStore=null,backupMediaStore=null,courseFilesIndexedDB=root.indexedDB} = {}) {
     if(!accountId)throw Error('A verified account is required before loading personal data.');
-    const owner={accountId:String(accountId),origin},key=`reserve:v1:${origin}:${accountId}`,listeners=new Set();let current=defaults(),savedRaw,savedClean,pendingWrite=null,destroyed=false,packCache=[],mediaCache,marketCache;
+    const owner={accountId:String(accountId),origin},key=`reserve:v1:${origin}:${accountId}`,listeners=new Set();let current=defaults(),savedRaw,savedClean,pendingWrite=null,destroyed=false,packCache=[],mediaCache,marketCache,recoveryCourseFiles=null;
     async function refreshPacks(){const rows=Object.values(current.settings.makeYourOwn?.installed||{});if(!rows.length){packCache=[];return;}const references=root.ReserveMediaReference||(typeof module==='object'&&module.exports?require('./media-reference.js'):null),pool=references?.createPackReader(owner,{storage:{get:async key=>({[key]:await adapter.read(key)})}});if(!pool?.getPack)throw Error('Pack storage is unavailable.');try{const documents=[];for(const row of rows){const doc=await pool.getPack(row.id);if(!doc||doc.kind!==row.kind||doc.name!==row.name)throw Error('Saved pack is missing.');documents.push(doc);}packCache=documents;}finally{pool.close();}}
     function envelope(data,documents,media,market){
       const rows=Object.keys(data.settings.makeYourOwn?.installed||{});
       if(rows.length!==documents.length||rows.some(id=>!documents.some(p=>p.id===id)))throw Error('Reload packs before exporting this backup.');
       const result={format:'reserve-backup',version:1,owner,exportedAt:new Date().toISOString(),data:cleanData(data),...(documents.length?{packs:clone(documents)}:{}),...(media?{media:clone(media)}:{}),...(market?{market:clone(market)}:{})};
+      const count=courseFileCount(result.data);if(count){result.courseFilesOmitted=count;result.courseFilesNotice=courseFileNotice(count);}
       if(bytes(result)>66500000)throw Error('Backup is too large to restore as one file. Export large artwork kits separately before making a smaller backup.');
       return result;
     }
@@ -326,15 +369,19 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const reply=await root.chrome.runtime.sendMessage({type:'market-local',op:'backup',owner});
       if(reply?.ok!==true)throw Error(reply?.error||reply?.reason||'Add-ons could not be backed up.');return reply.market;
     }
+    async function withCourseFiles(backup){
+      if(!courseFileCount(backup.data))return backup;let files;try{files=await courseFileModule();}catch(error){const omitted={...backup,courseFilesNotice:courseFileNotice(backup.courseFilesOmitted)+' '+error.message};if(bytes(omitted)>66500000)throw Error('Backup is too large.');return omitted;}return files.exportFiles(backup,{store:api,indexedDB:courseFilesIndexedDB});
+    }
     async function captureBackup(){
       const data=get(),documents=clone(packCache),codec=root.ReserveBackupMedia||(typeof module==='object'&&module.exports?require('./backup-media.js'):null);
       if(!codec)throw Error('Artwork backup support is unavailable. Reload Canvas Harness.');
       const media=await codec.capture({owner,settings:data.settings,adapter,...(backupMediaStore?{localStore:backupMediaStore}:{})}),market=await accountMarketBackup();
-      const result=envelope(data,documents,media,market);mediaCache=media;marketCache=market;return result;
+      const result=await withCourseFiles(envelope(data,documents,media,market));mediaCache=media;marketCache=market;return result;
     }
     async function exportBackupWithPacks(){await sync();return captureBackup();}
     async function importBackup(input){
       const data=validateBackup(input,owner),backup=typeof input==='string'?JSON.parse(input):input;
+      const publish=async()=>{
       const references=root.ReserveMediaReference||(typeof module==='object'&&module.exports?require('./media-reference.js'):null);
       if(!backup.packs?.length&&!backup.media&&!backup.market&&!references?.referenced(data.settings).size&&!Object.keys(data.settings.makeYourOwn.installed).length&&!Object.keys(current.settings.makeYourOwn?.installed||{}).length)return replace(data);
       await sync();const codec=root.ReserveBackupMedia||(typeof module==='object'&&module.exports?require('./backup-media.js'):null);
@@ -343,6 +390,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const packs=root.ReservePacks||(typeof module==='object'&&module.exports?require('./packs.js'):null);
       if(packs?.restoreBackup)return packs.restoreBackup(backup,{store:api,targetMedia,conflicts});
       if(root.chrome?.runtime?.sendMessage){const reply=await root.chrome.runtime.sendMessage({type:'market-local',op:'restore',backup,owner,...(targetMedia?{targetMedia}:{}),...(conflicts?{conflicts}:{})});if(reply?.ok!==true)throw Error(reply?.error||reply?.reason||'Pack restore failed.');await sync();return get();}throw Error('Pack support is unavailable.');
+      };
+      const beforeRestore=async()=>{if(recoveryCourseFiles!==null&&!same(await readCourseFiles(),recoveryCourseFiles))throw Error('Course links and files changed after the recovery backup. Review the backup and try restoring again.');};
+      if(recoveryCourseFiles===null&&!courseFileCount(data)&&!courseFileCount({courseFiles:await readCourseFiles()}))return publish();
+      const files=await courseFileModule(),result=await files.restoreFiles({...backup,data},{store:api,indexedDB:courseFilesIndexedDB,publish,beforeRestore});
+      recoveryCourseFiles=null;return result;
     }
     async function fromSaved(saved){
       if(!savedClean||!same(saved,savedRaw)){savedClean=saved?cleanData(saved,savedClean&&personal(savedClean)):null;savedRaw=saved;}
@@ -394,18 +446,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const personalNext=personal(clean);
         // Protect newly referenced bytes while another document might remove their kit.
         const added=new Set([...(media?.referenced(clean.settings)||[])].filter(id=>!oldMedia.has(id))),refStore=added.size?(mediaStore||media.createStore(owner)):null;
-        const token=refStore?(root.crypto||(typeof require==='function'?require('node:crypto').webcrypto:null)).randomUUID():null;
+        const token=refStore?(root.crypto||(typeof require==='function'?require('node:crypto').webcrypto:null)).randomUUID():null;let accountCommitted=false;
         try{if(refStore)await refStore.reserve(added,token,accountWriteLease===undefined?undefined:{accountWriteLease});
         if(!same(personalNext,personal(draftBefore))){
           pendingWrite=personalNext;
           try{
             if(adapter.compareWrite)await adapter.compareWrite(key,personalNext,rawBefore);else await adapter.write(key,personalNext);
-            savedRaw=personalNext;savedClean=clean;
+            accountCommitted=true;savedRaw=personalNext;savedClean=clean;
           }finally{pendingWrite=null;}
         }
         if(Object.keys(changes).length)await appearance.write(adapter,changes);
         current=appearance.apply(clean,await appearance.read(adapter));notify();return get();
-        }catch(error){if(retry&&error?.code==='storage-conflict'&&attempt<7)continue;throw error;}finally{if(refStore){await refStore.release(token,accountWriteLease===undefined?undefined:{accountWriteLease}).catch(()=>{});if(!mediaStore)refStore.close();}}
+        }catch(error){if(accountCommitted){current=appearance.apply(clean,before);notify();throw Object.assign(Error(error?.message||String(error)),{cause:error,accountCommitted:true});}if(retry&&error?.code==='storage-conflict'&&attempt<7)continue;throw error;}finally{if(refStore){await refStore.release(token,accountWriteLease===undefined?undefined:{accountWriteLease}).catch(()=>{});if(!mediaStore)refStore.close();}}
       }});
     }
     async function replace(data){const clean=cleanData(data);return update(next=>{for(const name of Object.keys(next))delete next[name];Object.assign(next,clean);},{retry:false});}
@@ -417,7 +469,21 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     };
     const reloadAppearance=()=>{if(destroyed)return;lock(key,async()=>{if(destroyed)return;const next=await appearance.read(adapter),before=appearance.fromData(current);if(!destroyed&&!same(next,before)){current=appearance.apply({...current,settings:{...current.settings},pet:{...current.pet}},next);notify();}}).catch(()=>{});};
     const unsubscribe=adapter.subscribe?.(key,reload),unsubscribeAppearance=adapter.subscribe?.(appearance.KEY,reloadAppearance);
-    async function saveRecovery(){return lock(key,async()=>{await load();const backup=await captureBackup();await adapter.write(`${key}:cache`,null);await adapter.write(`${key}:recovery`,backup);});}
+    async function saveRecovery(){
+      // Capture bytes before the account lock; file operations publish in the opposite order.
+      for(let attempt=0;attempt<8;attempt++){
+        await sync();const backup=await captureBackup();
+        if(backup.courseFilesOmitted>0)throw Error(`Cannot restore while the recovery backup would omit ${backup.courseFilesOmitted} uploaded file${backup.courseFilesOmitted===1?'':'s'}. Save copies and remove those files, or resolve missing uploads, then try again.`);
+        const saved=await lock(key,async()=>{
+          if(!same(await readCourseFiles(),backup.data.courseFiles))return false;
+          await adapter.write(`${key}:cache`,null);await adapter.write(`${key}:recovery`,backup);
+          recoveryCourseFiles=clone(backup.data.courseFiles);return true;
+        });
+        if(saved)return;
+      }
+      throw Error('Course links and files changed while saving recovery. Try restoring again.');
+    }
+    async function readCourseFiles(){const saved=await adapter.read(key);return cleanCourseFiles(saved?.courseFiles);}
     async function readRecovery(){const v=await adapter.read(`${key}:recovery`);return v?validateBackup(v,owner):null;}
     async function readRecoveryBackup(){const value=await adapter.read(`${key}:recovery`);if(!value)return null;validateBackup(value,owner);return clone(value);}
     const materialKey=`${key}:materials`;
@@ -432,7 +498,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         await adapter.write(materialKey,entries);
       });
     }
-    const api={load,sync,get,update,replace,owner,saveRecovery,readRecovery,readRecoveryBackup,readResourceCache,writeResourceCache,subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn);},destroy:()=>{if(destroyed)return;destroyed=true;try{unsubscribe?.();}catch{}try{unsubscribeAppearance?.();}catch{}listeners.clear();},exportBackup,exportBackupWithPacks,importBackup,readCache:async()=>{const v=await adapter.read(`${key}:cache`);return validCache(v)?v:null;},writeCache:async snapshot=>{if(!validCache(snapshot))throw Error('Cache owner, origin, or account is invalid.');if(bytes(snapshot)>4000000)throw Error('Canvas snapshot is too large to cache. Live data is still available.');return adapter.write(`${key}:cache`,snapshot);}};return api;
+    const api={load,sync,get,update,replace,owner,saveRecovery,readRecovery,readRecoveryBackup,readCourseFiles,readResourceCache,writeResourceCache,subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn);},destroy:()=>{if(destroyed)return;destroyed=true;try{unsubscribe?.();}catch{}try{unsubscribeAppearance?.();}catch{}listeners.clear();},exportBackup,exportBackupWithPacks,importBackup,readCache:async()=>{const v=await adapter.read(`${key}:cache`);return validCache(v)?v:null;},writeCache:async snapshot=>{if(!validCache(snapshot))throw Error('Cache owner, origin, or account is invalid.');if(bytes(snapshot)>4000000)throw Error('Canvas snapshot is too large to cache. Live data is still available.');return adapter.write(`${key}:cache`,snapshot);}};return api;
   }
   // Market and media mutations share the account server's queue and validation lifecycle.
   const accountWriteLeases=new WeakMap();
@@ -441,7 +507,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const lease=Object.freeze({});accountWriteLeases.set(lease,key);
     try{return await fn(lease);}finally{accountWriteLeases.delete(lease);}
   });
-  const api = { createStore, validateBackup, accountValidator, serveAccountWrites, runAccountWrite, ownsAccountWrite };
+  const api = { createStore, validateBackup, accountValidator, serveAccountWrites, runAccountWrite, ownsAccountWrite, cleanCourseFiles };
   root.ReserveStorage = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);

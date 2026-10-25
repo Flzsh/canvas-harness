@@ -1,3 +1,4 @@
+// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..'),extension=path.join(root,'extension');
@@ -8,15 +9,14 @@ assert.equal(manifest.optional_permissions,undefined);
 const providers=require('../extension/ai-providers.js');
 // AI provider sites, plus a school's own Canvas address: optional, asked for one site at a time.
 assert.deepEqual(manifest.optional_host_permissions,[...providers.list.flatMap(p=>p.origins),'https://flzsh.github.io/*','https://*/*']);
-// Only the PDF iframe entry and its Canvas host stylesheet need fixed-origin exposure.
-// Custom school sites keep the existing randomized-resource policy; do not add reader
-// assets to the wildcard dynamic entry or weaken the extension fingerprinting boundary.
+// The reader entry and host sheet also use randomized URLs for local PDFs on
+// granted custom Canvas sites. Executable reader internals remain private.
 {const [fixed,dynamic,...rest]=manifest.web_accessible_resources;assert.equal(rest.length,0);assert.deepEqual(fixed.matches,['https://*.instructure.com/*']);
  assert.deepEqual(dynamic.matches,['https://*/*']);assert.equal(dynamic.use_dynamic_url,true);
  const readerResources=['pdf-reader.html','pdf-host.css'];
- for(const file of readerResources){assert.ok(fixed.resources.includes(file),'Missing fixed Canvas reader resource '+file);assert.ok(!dynamic.resources.includes(file),'Reader resource exposed on arbitrary sites: '+file);}
+ for(const file of readerResources){assert.ok(fixed.resources.includes(file),'Missing fixed Canvas reader resource '+file);assert.ok(dynamic.resources.includes(file),'Missing randomized custom Canvas reader resource '+file);}
  for(const entry of [fixed,dynamic])for(const file of entry.resources)assert.ok(!/\*|\.js$|\.mjs$/.test(file)&&(!/^pdf-|^vendor\//.test(file)||readerResources.includes(file)),'Exposed extension internal: '+file);
- assert.deepEqual(fixed.resources.filter(file=>!readerResources.includes(file)),dynamic.resources);
+ assert.deepEqual(fixed.resources,dynamic.resources);
 }
 assert.equal(manifest.background.service_worker,'background.js');
 assert.equal(manifest.externally_connectable,undefined);

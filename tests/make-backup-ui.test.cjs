@@ -1,3 +1,4 @@
+// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm');
 const {createDOM,read,deferred}=require('./contributor-fixture.cjs'),Storage=require('../extension/storage.js');
@@ -96,4 +97,11 @@ test('cancelling a pending file read cannot reopen its confirmation later',async
 });
 test('an Export that finishes after app teardown cannot trigger a download',async t=>{
  const h=fixture(t),gate=deferred(),started=deferred();h.store.exportBackupWithPacks=async()=>{started.resolve();return gate.promise;};const click=h.click('export-backup');await started.promise;h.app.destroy();gate.resolve(packedBackup());await click;assert.equal(h.downloads.length,0);
+});
+
+
+test('Export reports omitted course files while retaining the downloaded backup',async t=>{
+ const h=fixture(t),backup={...envelope(workspace()),courseFilesOmitted:2,courseFilesNotice:'2 uploaded files were not included because the backup size limit was reached. Links and file names are included.'};
+ h.store.exportBackupWithPacks=async()=>backup;await h.click('export-backup');
+ assert.equal(h.downloads.length,1);assert.equal(h.toast(),backup.courseFilesNotice);assert.deepEqual(JSON.parse(await h.blobs.get(h.downloads[0].url).text()),backup);
 });
