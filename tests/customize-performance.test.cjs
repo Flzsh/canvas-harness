@@ -30,16 +30,16 @@ test('closed appearance renders an inert constant-size shell without inspecting 
 
 test('named appearance panes build only their own previews and collection-dependent controls',()=>{
  const f=editor();f.context.customizeOpen=true;
- for(const tab of ['layout','look','art','courses','pet']){
+ for(const tab of ['look','layout','courses','pet','settings']){
   f.reset();f.context.customizeTab=tab;const html=f.render();
   assert.deepEqual([...html.matchAll(/class="cz-pane" data-pane="([^"]+)"/g)].map(match=>match[1]),[tab]);
-  assert.equal(f.work.archives,tab==='art'?1:0);assert.equal(f.work.frames,tab==='look'?1:0);
-  assert.equal((html.match(/class="ch-art-slot"/g)||[]).length,tab==='art'?4:0);
+  assert.equal(f.work.archives,tab==='courses'?1:0);assert.equal(f.work.frames,tab==='look'?1:0);
+  assert.equal((html.match(/class="ch-art-slot"/g)||[]).length,tab==='courses'?4:0);
   assert.equal((html.match(/class="ch-course-setting"/g)||[]).length,tab==='courses'?2:0);
-  assert.deepEqual(f.work.previews,tab==='art'?['render','scene','mini','frame','title']:tab==='pet'?['svg']:[]);
+  assert.deepEqual(f.work.previews,tab==='courses'?['render','scene','mini','frame','title']:tab==='pet'?['svg']:[]);
  }
- for(const tab of [undefined,'all']){f.context.customizeTab=tab;assert.equal((f.render().match(/class="cz-pane"/g)||[]).length,5);}
- f.context.customizeTab='missing';assert.match(f.render(),/class="cz-pane" data-pane="layout"/);
+ for(const tab of [undefined,'all']){f.context.customizeTab=tab;assert.equal((f.render().match(/class="cz-pane"/g)||[]).length,1);}
+ f.context.customizeTab='missing';assert.match(f.render(),/class="cz-pane" data-pane="look"/);
 });
 
 test('lazy appearance panes retain current course edits, SVG drafts and quick-pack controls',()=>{
@@ -70,9 +70,11 @@ function transitionDashboard({duration=340,reduced=false,motion='gentle'}={}){
  return {...f,dock:()=>f.container.querySelector('.ch-settings-dock'),mediaListeners,reduce(){reduce=true;for(const fn of [...mediaListeners])fn({matches:true});}};
 }
 
+const openHome=f=>{f.click('settings');f.container.querySelector('[data-rd-action="customize-tab"][data-value="layout"]').click();};
+
 test('closing keeps the actual outgoing controls for the transition, then releases them',t=>{
  const f=transitionDashboard();t.after(()=>f.dashboard.destroy());
- assert.equal(f.container.querySelector('.cz-pane'),null);f.click('settings');
+ assert.equal(f.container.querySelector('.cz-pane'),null);openHome(f);
  const section=f.dock().querySelector('.rd-customize'),control=section.querySelector('[data-setting="density"]');assert.ok(control);
  f.click('settings-close');assert.ok(f.dock().querySelector('.rd-customize')===section,'closing retains the outgoing controls');assert.equal(f.dock().inert,true);
  f.dashboard.setStatus('Background update');assert.ok(f.dock().querySelector('[data-setting="density"]')===control,'background updates retain the outgoing input');
@@ -80,18 +82,18 @@ test('closing keeps the actual outgoing controls for the transition, then releas
 });
 
 for(const [name,options]of [['off',{motion:'off'}],['reduced',{reduced:true}],['zero duration',{duration:0}]])test(name+' clears closed appearance controls immediately',t=>{
- const f=transitionDashboard(options);t.after(()=>f.dashboard.destroy());f.click('settings');
+ const f=transitionDashboard(options);t.after(()=>f.dashboard.destroy());openHome(f);
  const control=f.dock().querySelector('[data-setting="density"]');f.click('settings-close');assert.equal(control.isConnected,false);
 });
 
 test('rapid reopening cancels close cleanup and reduced motion and destroy release resources',t=>{
- const f=transitionDashboard();t.after(()=>f.dashboard.destroy());f.click('settings');f.click('settings-close');f.tick(100);f.click('settings');
+ const f=transitionDashboard();t.after(()=>f.dashboard.destroy());openHome(f);f.click('settings-close');f.tick(100);openHome(f);
  const control=f.dock().querySelector('[data-setting="density"]');f.tick(240);assert.ok(control.isConnected);
  f.click('settings-close');f.tick(100);f.reduce();assert.equal(control.isConnected,false);
- f.click('settings');f.dashboard.destroy();assert.equal(f.mediaListeners.size,0);assert.equal([...f.timers.values()].filter(timer=>timer.delay===340).length,0);
+ openHome(f);f.dashboard.destroy();assert.equal(f.mediaListeners.size,0);assert.equal([...f.timers.values()].filter(timer=>timer.delay===340).length,0);
 });
 
 test('disabling the motion feature clears outgoing settings immediately',t=>{
- const f=transitionDashboard();t.after(()=>f.dashboard.destroy());f.click('settings');const control=f.dock().querySelector('[data-setting="density"]');
+ const f=transitionDashboard();t.after(()=>f.dashboard.destroy());openHome(f);const control=f.dock().querySelector('[data-setting="density"]');
  f.env.ReserveFeatures={enabled:id=>id!=='motion'};f.click('settings-close');assert.equal(control.isConnected,false);assert.equal([...f.timers.values()].filter(timer=>timer.delay===340).length,0);
 });

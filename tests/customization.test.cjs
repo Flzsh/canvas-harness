@@ -41,9 +41,9 @@ test('editor exposes archived artwork removal and templates alongside existing u
  const art=require('../extension/custom-art.js'),ui=require('../extension/customize-ui.js'),store=make();await store.load();
  const icon=art.importSVG(art.template('icon'),'icon.svg');
  await store.update(d=>{d.settings.coursePrefs['101']={iconArt:icon};d.settings.coursePrefs['999']={name:'Archived <course>',iconArt:icon,color:'#123456'};});
- const course={id:'101',name:'Current course',color:'#123456'},html=ui.render({s:store.get().settings,allCourses:[course],courses:[course],customizeCourseId:'101',customizeOpen:true});
+ const course={id:'101',name:'Current course',color:'#123456'},html=ui.render({s:store.get().settings,allCourses:[course],courses:[course],customizeCourseId:'101',customizeOpen:true,customizeTab:'courses'});
  assert.match(html,/Artwork from other courses \(1\)/);assert.match(html,/Archived &lt;course&gt;/);
  assert.match(html,/data-rd-action="art-remove" data-id="999" data-kind="icon"/);
  assert.equal((html.match(/data-rd-action="art-template"/g)||[]).length,4);
- assert.match(html,/Remove custom icon/);
+ assert.match(html,/Remove custom icon/);assert.doesNotMatch(html,/These courses are not in the current list/);
 });

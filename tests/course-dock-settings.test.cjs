@@ -75,13 +75,13 @@ test('course dock leaves older backup defaults and all layout preset navigation 
  for(const [name,want] of [['studio','sidebar'],['study','sidebar'],['focus','topbar']]){await store.update(data=>Object.assign(data.settings,structuredClone(customization.presets[name])));assert.equal((await store.load()).settings.courseNavigation,want);}
 });
 
-test('course dock Layout choice is a named native radio with its own dock artwork',()=>{
+test('course dock Home choice is a named native radio with its own dock artwork',()=>{
  for(const courseNavigation of ['sidebar','topbar','dock']){
   const document=editor({courseNavigation}),group=document.querySelector('[role="radiogroup"][aria-label="Course navigation"]');assert.ok(group);
   const radios=group.querySelectorAll('input');assert.deepEqual(radios.map(input=>input.value),['sidebar','topbar','dock']);assert.deepEqual(radios.map(input=>input.closest('label').querySelector('strong').textContent),['Down the side','Across the top','Along the bottom']);
   assert.deepEqual(radios.filter(input=>input.checked).map(input=>input.value),[courseNavigation]);
   for(const input of radios){assert.equal(input.type,'radio');assert.equal(input.getAttribute('name'),'cz-courseNavigation');assert.equal(input.dataset.rdField,'setting');assert.equal(input.dataset.setting,'courseNavigation');assert.equal(input.disabled,false);assert.equal(input.hasAttribute('tabindex'),false);}
-  const dock=radios[2].closest('label');assert.ok(dock.querySelector('small').textContent.trim());assert.notEqual(dock.querySelector('svg').outerHTML,radios[1].closest('label').querySelector('svg').outerHTML);assert.ok(dock.querySelector('svg rect.cz-fill[y="38"]'));
+  const dock=radios[2].closest('label');assert.equal(dock.querySelector('small'),null);assert.notEqual(dock.querySelector('svg').outerHTML,radios[1].closest('label').querySelector('svg').outerHTML);assert.ok(dock.querySelector('svg rect.cz-fill[y="38"]'));
  }
  assert.deepEqual(editor().querySelector('[aria-label="Course navigation"]').querySelectorAll('input').filter(input=>input.checked).map(input=>input.value),['sidebar']);
 });
@@ -144,7 +144,7 @@ test('legacy saved settings, backups, recovery, undo and presets default dock si
 test('dock course size choices follow course location and expose named native radios with dock artwork',()=>{
  for(const dockSize of ['small','medium','large']){
   const document=editor({courseNavigation:'dock',dockSize}),group=document.querySelector('[role="radiogroup"][aria-label="Course size"]');assert.ok(group);
-  const section=group.closest('section'),sections=section.parentElement.children,index=sections.indexOf(section);assert.equal(section.querySelector('h3').textContent,'Course size');assert.equal(sections[index-1].querySelector('h3').textContent,'Where your courses are');assert.equal(sections[index+1].querySelector('h3').textContent,'Order of the three panels');
+  const section=group.closest('section'),sections=section.parentElement.children,index=sections.indexOf(section);assert.equal(section.querySelector('h3').textContent,'Course size');assert.equal(sections[index-1].querySelector('h3').textContent,'Where your courses are');assert.equal(sections[index+1].querySelector('h3').textContent,'Spacing');
   const radios=group.querySelectorAll('input');assert.deepEqual(radios.map(input=>input.value),['small','medium','large']);assert.deepEqual(radios.map(input=>input.closest('label').querySelector('strong').textContent),['Small','Medium','Large']);assert.deepEqual(radios.filter(input=>input.checked).map(input=>input.value),[dockSize]);
   const dockArt=document.querySelector('[data-setting="courseNavigation"][value="dock"]').closest('label').querySelector('svg').outerHTML;
   for(const input of radios){assert.equal(input.type,'radio');assert.equal(input.getAttribute('name'),'cz-dockSize');assert.equal(input.dataset.rdField,'setting');assert.equal(input.dataset.setting,'dockSize');assert.equal(input.disabled,false);assert.equal(input.hasAttribute('tabindex'),false);assert.equal(input.closest('label').querySelector('svg').outerHTML,dockArt);}

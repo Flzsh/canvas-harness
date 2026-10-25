@@ -1,15 +1,19 @@
-/* Canvas Harness: the "Make it yours" panel. Five tabs; every choice is a picture with a name and one line saying
-   what it does; switches for what shows. Changes apply at once and save on this device. Original creator: Flzsh. */
+/* Canvas Harness "Make it yours": five focused tabs for public settings.
+   Changes apply immediately and save on this device. Original creator: Flzsh. */
 (function(root){
  'use strict';
  const enabled=id=>!root.ReserveFeatures||root.ReserveFeatures.enabled(id);
- const tabs=()=>enabled('customization')?TABS.filter(([key])=>(key!=='art'||enabled('course-art'))&&(key!=='pet'||enabled('pony'))):[];
+ const tabs=()=>enabled('customization')?TABS.filter(([key])=>key!=='pet'||enabled('pony')):[];
  const settingEnabled=key=>{
   const feature={sceneTheme:'scene-themes',dockSize:'arrange',motion:'motion',livingArt:'course-art',nightArt:'course-art',bannerSize:'course-art',showCourseIcons:'course-art',courseCardStyle:'course-art',showCourseInformation:'course-hub',showRecentGrades:'grades',deskOrder:'arrange',courseNavigation:'arrange',canvasNav:'canvas-nav'}[key];
   return (!feature||enabled(feature))&&(key!=='livingArt'||enabled('motion'));
  };
  const E=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const TABS=[['layout','Layout'],['look','Look'],['art','Artwork'],['courses','Courses'],['pet','Pony']];
+ const TABS=[['look','Look'],['layout','Home'],['courses','Courses'],['pet','Pony'],['settings','More']];
+ // Keep old entry points useful after removing Artwork and the combined view.
+ const ALIASES={all:'look',art:'courses'};
+ const SETTING_TABS={layout:['courseNavigation','dockSize','deskOrder','density','showCourseStrip','showCourseIcons','showDeadlinePreview','showBookmarks','showCourseInformation','showRecentGrades','greeting','quickOpen','canvasNav'],courses:['bannerSize','courseCardStyle']};
+ const tabFor=key=>typeof key==='string'&&key.startsWith('pet.')?'pet':Object.keys(SETTING_TABS).find(tab=>SETTING_TABS[tab].includes(key))||'look';
  // Little diagrams of the page: R a filled block, O an outlined block, L a line of text.
  const svg=inner=>`<svg viewBox="0 0 72 48" width="72" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
  const R=(x,y,w,h,cls='a')=>`<rect class="cz-${cls}" x="${x}" y="${y}" width="${w}" height="${h}" rx="2.5"/>`;
@@ -48,32 +52,38 @@
   if(!c.customizeOpen)return shell('');
   const s={...root.ReserveCustomization.defaults,theme:'system',accent:'clay',font:'system',textSize:'standard',motion:'gentle',livingArt:'on',readingFont:'book',greeting:'on',...c.s,...(!enabled('motion')?{motion:'off',livingArt:'off'}:{})},id=c.customizeCourseId||'all',course=c.allCourses.find(x=>x.id===id),pref=id==='all'?(s.overviewArt||{}):(s.coursePrefs?.[id]||{});
   const label=course?.name||'All courses',visible=new Set(c.courses.map(x=>x.id));
-  // With no tab named (a caller that only wants the markup) every section is drawn.
-  const allowedTabs=tabs(),tab=c.customizeTab?(c.customizeTab==='all'?'all':allowedTabs.some(([key])=>key===c.customizeTab)?c.customizeTab:allowedTabs[0][0]):'all',on=key=>allowedTabs.some(([id])=>id===key)&&(tab==='all'||tab===key);
+   // A missing, removed or unavailable tab opens Look; each render builds one pane.
+   const allowedTabs=tabs(),asked=ALIASES[c.customizeTab]||c.customizeTab||'look',tab=allowedTabs.some(([key])=>key===asked)?asked:'look',on=key=>tab===key;
   const button=(action,label,extra='',cls='rd-button')=>`<button type="button" class="${cls}" data-rd-action="${action}" ${extra}>${label}</button>`;
   const select=(key,label,options,field='setting',value=s[key])=>!settingEnabled(key)?'':`<label class="rd-field"><span>${E(label)}</span><select data-rd-field="${field}" data-setting="${key}" data-id="${E(id)}" aria-label="${E(label)}">${options.map(([v,l])=>`<option value="${v}"${v===value?' selected':''}>${E(l)}</option>`).join('')}</select></label>`;
-  // A set of picture choices: [value, name, one line, drawing]
-  const choices=(key,title,options,{value=s[key],cols=3,field='setting',data='setting',className=''}={})=>!settingEnabled(key)?'':`<div class="cz-choices${className?' '+E(className):''}" role="radiogroup" aria-label="${E(title)}" style="--cz-cols:${cols}">${options.map(([v,name,hint,art,locked])=>`<label class="cz-choice"${locked?' data-locked="true"':''}><input type="radio" name="cz-${key}" data-rd-field="${field}" data-${data}="${key}" value="${E(v)}" ${v===value?'checked':''} ${locked?'disabled':''}><span class="cz-choice-art">${art||''}</span><strong>${E(name)}</strong>${hint?`<small>${E(hint)}</small>`:''}</label>`).join('')}</div>`;
-  const toggle=(key,name,hint,{checked=s[key]!==false,field='setting',data='setting'}={})=>!settingEnabled(key)?'':`<label class="cz-toggle"><span><strong>${E(name)}</strong><small>${E(hint)}</small></span><input type="checkbox" role="switch" data-rd-field="${field}" data-${data}="${key}" ${checked?'checked':''}><i aria-hidden="true"></i></label>`;
+   // Only level locks show their requirement; scene locks have no description.
+   const choices=(key,title,options,{value=s[key],cols=3,field='setting',data='setting',className=''}={})=>!settingEnabled(key)?'':`<div class="cz-choices${className?' '+E(className):''}" role="radiogroup" aria-label="${E(title)}" style="--cz-cols:${cols}">${options.map(([v,name,hint,art,locked])=>`<label class="cz-choice"${locked?' data-locked="true"':''}><input type="radio" name="cz-${key}" data-rd-field="${field}" data-${data}="${key}" value="${E(v)}" ${v===value?'checked':''} ${locked?'disabled':''}><span class="cz-choice-art">${art||''}</span><strong>${E(name)}</strong>${locked&&/^Level \d+$/.test(hint||'')?`<small>${E(hint)}</small>`:''}</label>`).join('')}</div>`;
+   // Keep the shared-computer caution next to Open at once.
+   const toggle=(key,name,hint,{checked=s[key]!==false,field='setting',data='setting',warn=false}={})=>!settingEnabled(key)?'':`<label class="cz-toggle"><span><strong>${E(name)}</strong>${warn&&hint?`<small>${E(hint)}</small>`:''}</span><input type="checkbox" role="switch" data-rd-field="${field}" data-${data}="${key}" ${checked?'checked':''}><i aria-hidden="true"></i></label>`;
   const group=(title,hint,body)=>{
    const feature={'Start from a layout':'arrange','Modules on Home':'planner','Canvas\u2019s menu bar':'canvas-nav','Where your courses are':'arrange','Course size':'arrange','Order of the three panels':'arrange',Banner:'course-art','Artwork at night':'course-art','Outline round modules':'planner','Course cards':'course-art',Motion:'motion'}[title];
-   return feature&&!enabled(feature)?'':`<section class="cz-group"><h3>${E(title)}</h3>${hint?`<p class="cz-hint">${hint}</p>`:''}${body}</section>`;};
+    return feature&&!enabled(feature)?'':`<section class="cz-group"><h3>${E(title)}</h3>${body}</section>`;};
+
+   const picker=options=>root.ReserveMakeYourOwn?.picker(c.makeOwn,s,options)||'';
 
 
   const layout=()=>{
    const ART=artDiagrams();ART.dockSize=ART.dock;
    return group('Start from a layout','Three ready-made pages. Pick one, then change anything below. Modules you added stay.',
-    `<div class="cz-presets" role="group" aria-label="Layout presets">${[['studio','Studio','Course news, then your work, then the assignment.'],['study','Study','Your work first; course news last.'],['focus','Focus','Just the work and the assignment, courses along the top.']].map(([key,title,hint])=>button('layout-preset',`<span class="cz-choice-art">${ART[key]}</span><strong>${title}</strong><small>${hint}</small>`,`data-value="${key}"`,'ch-preset cz-preset')).join('')}</div>`)
+     `<div class="cz-presets" role="group" aria-label="Layout presets">${[['studio','Studio'],['study','Study'],['focus','Focus']].map(([key,title])=>button('layout-preset',`<span class="cz-choice-art">${ART[key]}</span><strong>${title}</strong>`,`data-value="${key}" aria-pressed="${Object.entries(root.ReserveCustomization.presets?.[key]||{}).every(([k,v])=>JSON.stringify(s[k])===JSON.stringify(v))}"`,'ch-preset cz-preset')).join('')}</div>`)
    +group('Modules on Home','Add a timer, today’s list, a clock, notes or your pony beside the three panels, and switch any of them off.',
-    `<div class="cz-row">${button('board-edit','Edit Home…','data-from="settings"','rd-button rd-button-primary')}<span class="cz-note">To move a module, hold its heading until the circle closes, then drag.</span></div>`)
-   +group('Canvas’s menu bar','The column of Canvas links (Account, Courses, Calendar, Inbox…) on every Canvas page. It changes at once; the toolbar popup has the same choice.',choices('canvasNav','Canvas menu bar',[['drawn','From the left edge','Hidden until you point at the edge; moves the page aside.',ART.navEdge],['shown','Full height','Always there, down the left side.',ART.navColumn],['top','Across the top','In the toolbar’s free space, or a strip.',ART.navTop],['original','Canvas’s own','Canvas’s dark bar, as Canvas draws it.',ART.navOriginal]],{value:c.canvasNav||'drawn',cols:2,field:'canvas-nav'}))
+     `<div class="cz-row">${button('board-edit','Edit Home…','data-from="settings"','rd-button rd-button-primary')}</div>`)
+    +group('Order of the three panels','',choices('deskOrder','Panel order',[['context-first','Course first','Course news, work, details.',ART['context-first']],['work-first','Work first','Work, details, course news.',ART['work-first']],['stacked','One column','Everything in one stack.',ART.stacked]]))
    +group('Where your courses are','',choices('courseNavigation','Course navigation',[['sidebar','Down the side','A list that stays beside the page.',ART.sidebar],['topbar','Across the top','A strip of cards; more room for the page.',ART.topbar],['dock','Along the bottom','A dock of courses at the bottom of the page.',ART.dock]]))
    +(s.courseNavigation==='dock'?group('Course size','',choices('dockSize','Course size',[['small','Small','',ART.dockSize],['medium','Medium','',ART.dockSize],['large','Large','',ART.dockSize]])):'')
-   +group('Order of the three panels','',choices('deskOrder','Panel order',[['context-first','Course first','Course news, work, details.',ART['context-first']],['work-first','Work first','Work, details, course news.',ART['work-first']],['stacked','One column','Everything in one stack.',ART.stacked]]))
-   +group('Banner','The drawing across the top of each course.',choices('bannerSize','Banner size',[['compact','Small','',ART.compact],['standard','Medium','',ART.standard],['large','Tall','',ART.large]]))
    +group('Spacing','',choices('density','Spacing',[['comfortable','Roomy','More air between rows.',ART.comfortable],['compact','Compact','More rows on the screen.',ART.dense]],{cols:2}))
-   +group('What shows','',`<div class="cz-toggles">${toggle('showCourseStrip','Course list','The courses beside, above or below the page.')}${toggle('showCourseIcons','Course drawings','The small drawing on each course.')}${toggle('showDeadlinePreview','Next deadlines on courses','What is due next, under each course name.')}${toggle('showBookmarks','Bookmarks shelf','The row of bookmarks under the heading.')}${toggle('showCourseInformation','Course information','Announcements, messages and the teacher’s page.')}${toggle('showRecentGrades','Recent scored work','Shown only while Show grades is on.')}${toggle('greeting','Greeting','“Good morning” on All courses, instead of a plain title.',{checked:s.greeting!=='off'}).replace('data-setting="greeting"','data-setting="greeting" data-onoff="true"')}${toggle('quickOpen','Open at once','Shows your saved workspace straight away, then checks your Canvas sign-in. Leave this off on a shared computer.',{checked:s.quickOpen==='on'}).replace('data-setting="quickOpen"','data-setting="quickOpen" data-onoff="true"')}</div>${button('layout-reset','Reset layout choices','','rd-text-button')}`);
+    +group('What shows','',`<div class="cz-toggles">${toggle('showCourseStrip','Course list','The courses beside, above or below the page.')}${toggle('showCourseIcons','Course drawings','The small drawing on each course.')}${toggle('showDeadlinePreview','Next deadlines on courses','What is due next, under each course name.')}${toggle('showBookmarks','Bookmarks shelf','The row of bookmarks under the heading.')}${toggle('showCourseInformation','Course information','Announcements, messages and the teacher’s page.')}${toggle('showRecentGrades','Recent scored work','Shown only while Show grades is on.')}${toggle('greeting','Greeting','“Good morning” on All courses, instead of a plain title.',{checked:s.greeting!=='off'}).replace('data-setting="greeting"','data-setting="greeting" data-onoff="true"')}${toggle('quickOpen','Open at once','Leave this off on a shared computer.',{checked:s.quickOpen==='on',warn:true}).replace('data-setting="quickOpen"','data-setting="quickOpen" data-onoff="true"')}</div>`)
+    +group('Canvas’s menu bar','',choices('canvasNav','Canvas menu bar',[['drawn','From the left edge','',ART.navEdge],['shown','Full height','',ART.navColumn],['top','Across the top','',ART.navTop],['original','Canvas’s own','',ART.navOriginal]],{value:c.canvasNav||'drawn',cols:2,field:'canvas-nav'}))
+    +group('Saved layouts & plans','',picker({kinds:['preset'],presetKinds:['layout','planner'],label:'Saved layouts and plans'}));
   };
+
+   const bannerGroup=()=>{const ART=artDiagrams();return group('Banner','',choices('bannerSize','Banner size',[['compact','Small','',ART.compact],['standard','Medium','',ART.standard],['large','Tall','',ART.large]]));};
+   const courseCardGroup=()=>{const ART=artDiagrams();return group('Course cards','',choices('courseCardStyle','Course frames',[['sketch','Hand-drawn','',ART.sketch],['rounded','Rounded','',ART.rounded],['minimal','Minimal','',ART.minimal]]));};
 
   const look=()=>{
    const ART=artDiagrams();
@@ -97,11 +107,11 @@
    +group('Page color','A very light tint behind everything. Accent is for buttons; this is for the mood of the page.',choices('pageTint','Page color',[['paper','Paper','',swatch('#FAF9F5','#E8E6DC','#8A8880')],['accent','Match accent','',swatch('color-mix(in srgb,var(--rd-accent) 9%,#FDFDFC)','color-mix(in srgb,var(--rd-accent) 30%,#E7E7E4)','var(--rd-accent)')],['sky','Sky','',swatch('#F2F7FC','#D3E2F0','#3F8FCC')],['sage','Sage','',swatch('#F3F8F2','#D6E5D3','#5E8F5A')],['lilac','Lilac','',swatch('#F7F4FC','#E0D8F0','#8B6FC9')],['blush','Blush','',swatch('#FCF4F6','#F0D6DD','#D0607F')],['sand','Sand','',swatch('#FBF7EF','#EADFC8','#B98A3E')],['snow','Snow','',swatch('#FCFCFD','#E4E6EA','#8A8F98')]],{cols:4}))
    +group('Page','',choices('surfaceStyle','Page style',[['paper','Warm paper','Ivory, soft lines.',swatch('#FAF9F5','#E8E6DC','#5E5D59')],['clean','Clean','Cool white, grey lines.',swatch('#F8FAFC','#D8DEE6','#566070')],['contrast','High contrast','Darker text and lines.',swatch('#FFFFFF','#555555','#111111')]]))
    +group('Outline round modules','How each module on Home is framed.',`<div class="cz-frames" role="radiogroup" aria-label="Module outline">${frames}</div>`)
-   +group('Course cards','',choices('courseCardStyle','Course frames',[['sketch','Hand-drawn','Each course in its own drawn frame.',ART.sketch],['rounded','Rounded','A soft plain card.',ART.rounded],['minimal','Minimal','Just the name, with a line when chosen.',ART.minimal]]))
    +group('Type','',choices('font','Interface type',[['system','Modern','',letters('"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif')],['humanist','Humanist','',letters('Calibri,Candara,"Segoe UI",sans-serif')],['serif','Bookish','',letters('Literata,Georgia,serif')]])
      +`<div class="cz-pair">${choices('textSize','Text size',[['standard','Standard size','',`<span class="cz-letters cz-small">Aa</span>`],['large','Larger','',`<span class="cz-letters">Aa</span>`]],{cols:2})}${choices('readingFont','Reading text',[['book','Book serif','For teachers’ text.',letters('Literata,Georgia,serif')],['interface','Same as above','',letters('inherit')]],{cols:2})}</div>`)
    +group('Motion','',choices('motion','Motion',[['gentle','Gentle','Things glide and settle.',ART.gentle],['still','Fades only','No sliding, only fades.',ART.still],['off','Off','Nothing moves.',ART.off]])
-     +`<div class="cz-toggles">${toggle('livingArt','Living drawings',s.motion!=='gentle'?'They move only with Gentle motion.':'Course drawings keep moving gently once drawn.',{checked:s.livingArt!=='off'}).replace('data-setting="livingArt"','data-setting="livingArt" data-onoff="true"')}</div>`);
+      +`<div class="cz-toggles">${toggle('livingArt','Living drawings','',{checked:s.livingArt!=='off'}).replace('data-setting="livingArt"','data-setting="livingArt" data-onoff="true"')}</div>`)
+    +group('Saved looks','',picker({kinds:['theme','preset'],presetKinds:['settings'],label:'Saved looks'}));
   };
 
   const art=()=>{
@@ -110,7 +120,7 @@
   const F=root.ReserveMediaFrame,frames=!!(F&&root.ReserveFrameEditor),artAsset=value=>F?.asset(value)||value?.asset||value;
   const currentIds=new Set(c.allCourses.map(x=>x.id));
   const unused=Object.entries(s.coursePrefs||{}).filter(([id,pref])=>!currentIds.has(id)&&root.ReserveCustomization.artKeys.some(key=>pref[key]));
-  const unusedArt=unused.length?`<details class="ch-details" data-rd-section="unused-art"><summary>Artwork from other courses (${unused.length})</summary><p class="ch-hint">These courses are not in the current list. Remove individual uploads to free artwork space; names, colors, notes and bookmarks stay saved.</p><div class="ch-unused-art">${unused.map(([id,pref])=>`<div><strong>${E(pref.name||'Course '+id)}</strong>${root.ReserveCustomization.artKeys.filter(key=>pref[key]).map(key=>`<div><span>${E(artAsset(pref[key])?.name||'Artwork')}</span>${button('art-remove','Remove '+key.replace('Art',''),`data-id="${E(id)}" data-kind="${key.replace('Art','')}"`,'rd-text-button')}</div>`).join('')}</div>`).join('')}</div></details>`:'';
+  const unusedArt=unused.length?`<details class="ch-details" data-rd-section="unused-art"><summary>Artwork from other courses (${unused.length})</summary><div class="ch-unused-art">${unused.map(([id,pref])=>`<div><strong>${E(pref.name||'Course '+id)}</strong>${root.ReserveCustomization.artKeys.filter(key=>pref[key]).map(key=>`<div><span>${E(artAsset(pref[key])?.name||'Artwork')}</span>${button('art-remove','Remove '+key.replace('Art',''),`data-id="${E(id)}" data-kind="${key.replace('Art','')}"`,'rd-text-button')}</div>`).join('')}</div>`).join('')}</div></details>`:'';
   const artCourse={id:id==='all'||id==='theme'?'folio-home':id,name:label,originalName:course?.originalName,shortName:course?.shortName,artPrefs:pref,artMotion:s.livingArt!=='off'&&s.motion==='gentle'};
   const paste=kind=>`<details class="ch-paste" data-rd-section="paste-${E(id)}-${kind}"><summary>Paste SVG</summary><label><span class="rd-sr-only">${kind==='border'?'frame':kind} SVG source</span><textarea data-rd-field="art-source" data-id="${E(id)}-${kind}" data-course="${E(id)}" data-kind="${kind}" maxlength="262144" spellcheck="false" aria-label="${kind==='border'?'frame':kind} SVG source" placeholder="<svg …>…</svg>">${E(c.customizeDrafts?.[id+':'+kind]||'')}</textarea></label>${button('art-paste','Apply SVG',`data-id="${E(id)}" data-kind="${kind}" ${c.customizeBusy?'disabled':''}`)}</details>`;
   const artwork=(kind,title)=>{
@@ -124,7 +134,7 @@
    return `<section class="ch-art-controls cz-art" aria-busy="${!!c.customizeBusy}" aria-labelledby="ch-art-title">${enabled('quick-pack')?root.CanvasHarnessQuickUploadUI?.render(c)||'':''}<div class="ch-art-heading"><h3 id="ch-art-title">${id==='theme'?'Theme artwork':'Course artwork'}</h3><label class="rd-field"><span class="rd-sr-only">Customize course</span><select data-rd-field="customize-course" aria-label="Customize course"><option value="all"${id==='all'?' selected':''}>All courses</option><option value="theme"${id==='theme'?' selected':''}>Theme</option>${c.allCourses.map(x=>`<option value="${E(x.id)}"${id===x.id?' selected':''}>${E(x.name)}</option>`).join('')}</select></label></div><div class="ch-art-slots">${artwork('banner','Banner')}${frames?artwork('card','Card art')+artwork('background','Page background'):''}${artwork('icon','Icon')}${artwork('border','Frame')}${artwork('title','Title')}</div>${banner?.palette?.length?`<div class="cz-accents" role="group" aria-label="Banner colours">${banner.palette.map(colour=>button('accent',`<i aria-hidden="true" style="background:${E(colour)}"></i><span class="rd-sr-only">${E(colour)}</span>`,`data-accent="${E(colour)}" aria-label="${E(colour)} accent" aria-pressed="${s.accent===colour}"`,'rd-swatch ch-accent-choice')).join('')}</div>`:''}<div class="ch-field-grid">${frames&&pref.bannerArt?'':select('bannerFit','Banner fit',[['contain','Show whole banner'],['cover','Fill banner']], 'art-setting',pref.bannerFit||'contain')+select('bannerPosition','Banner position',[['left','Left'],['center','Center'],['right','Right']], 'art-setting',pref.bannerPosition||'right')}${pref.bannerArt?select('titlePlacement','Course title',[['separate','Separate title drawing'],['banner','In banner']], 'art-setting',pref.titlePlacement||'separate'):''}</div><div class="ch-art-status" aria-live="polite">${E(c.customizeBusy?'Working…':(c.customizeStatus||'').slice(0,180))}</div>${button('course-reset',id==='theme'?'Reset theme artwork':'Reset this course’s artwork',`data-id="${E(id)}"`,'rd-text-button')}</section>${root.ReserveCustomKits?kits():''}${unusedArt}`;
   };
 
-  const courses=()=>group('Course names, colors & visibility','Rename, recolor, reorder or hide a course. Canvas itself is not changed. You can also drag a course in the list on the page.',
+   const courses=()=>group('Course list','',
     `<div class="ch-course-settings cz-courses">${c.allCourses.map((x,index)=>`<div class="ch-course-setting"><label title="Show this course"><input type="checkbox" data-rd-field="course-visible" data-id="${x.id}" aria-label="Show ${E(x.name)}" ${visible.has(x.id)?'checked':''}><span class="rd-sr-only">Show course</span></label><input type="color" data-rd-field="course-color" data-id="${x.id}" aria-label="${E(x.name)} color" value="${E(x.color)}"><input type="text" maxlength="100" data-rd-field="course-name" data-id="${x.id}" aria-label="${E(x.name)} display name" value="${E(x.name)}">${button('course-up','↑',`data-id="${x.id}" aria-label="Move ${E(x.name)} earlier" ${index===0?'disabled':''}`)}${button('course-down','↓',`data-id="${x.id}" aria-label="Move ${E(x.name)} later" ${index===c.allCourses.length-1?'disabled':''}`)}</div>`).join('')}</div>`);
 
   const pony=()=>{
@@ -140,13 +150,22 @@
     +group('Coat',`New coats arrive as it levels up: finish work and focus sessions to get there.`,petChoices('coat','Coat',Object.entries(A.COATS).map(([key,v])=>[key,v.label,need('coat',key),dot(v.coat,v.mane),!!need('coat',key)]),3))
     +group('Harness','',petChoices('harness','Harness color',Object.entries(A.HARNESS).map(([key,color])=>[key,key[0].toUpperCase()+key.slice(1),need('harness',key),dot(color),!!need('harness',key)]),3)
       +petChoices('gear','Tack',[['full','Collar and blanket',''],['collar','Collar only',''],['none','Bare','']],3))
-    +group('Size','',petChoices('size','Size',[['small','Small',''],['medium','Medium',''],['large','Large','']],3));
+    +group('Size','',petChoices('size','Size',[['small','Small',''],['medium','Medium',''],['large','Large','']],3))
+    +group('Saved companions','',picker({kinds:['pet'],label:'Saved companions'}))
+    +group('Saved routines','',pet.routines.map(r=>`<div class="cz-row"><span>${E(r.name||'Routine')}</span>${button('pet-routine-remove','Remove',`data-id="${E(r.id)}" aria-label="Remove ${E(r.name||'routine')}"`,'rd-text-button')}</div>`).join('')+picker({kinds:['preset'],presetKinds:['routines'],label:'Saved routine packs'}));
   };
 
-  const body=`${on('layout')?`<div class="cz-pane" data-pane="layout">${layout()}</div>`:''}${on('look')?`<div class="cz-pane" data-pane="look">${look()}</div>`:''}${on('art')?`<div class="cz-pane" data-pane="art">${art()}</div>`:''}${on('courses')?`<div class="cz-pane" data-pane="courses">${courses()}</div>`:''}${on('pet')?`<div class="cz-pane" data-pane="pet">${pony()}</div>`:''}`;
-  return shell(`<section class="rd-customize ch-customize cz" aria-label="Customize workspace"><div class="rd-section-heading"><div><span class="ch-eyebrow">Your workspace</span><h2 id="rd-appearance-title">Make it yours</h2><p>Changes show at once and save on this device.</p></div>${button('settings-close','Done','aria-label="Close customization" title="Close · Esc"')}</div>
+   // File import belongs on More. An unfinished preview or error follows the student
+   // between tabs until it is applied or dismissed.
+   const files=add=>root.ReserveMakeYourOwn?.render(c.makeOwn,s,{add,list:false})||'';
+   const body=on('look')?`<div class="cz-pane" data-pane="look">${files(false)}${look()}</div>`
+    :on('layout')?`<div class="cz-pane" data-pane="layout">${files(false)}${layout()}</div>`
+    :on('courses')?`<div class="cz-pane" data-pane="courses">${files(false)}${courses()}${enabled('course-art')?bannerGroup()+courseCardGroup()+art():''}</div>`
+    :on('pet')?`<div class="cz-pane" data-pane="pet">${files(false)}${pony()}</div>`
+    :`<div class="cz-pane" data-pane="settings">${files(true)}${group('Start over','',`<div class="cz-row">${button('layout-reset','Reset layout','','rd-text-button')}${button('reset-appearance','Reset appearance','','rd-text-button')}</div>`)}</div>`;
+   return shell(`<section class="rd-customize ch-customize cz" aria-label="Customize workspace"><div class="rd-section-heading"><div><span class="ch-eyebrow">Your workspace</span><h2 id="rd-appearance-title">Make it yours</h2></div>${button('settings-close','Done','aria-label="Close customization" title="Close · Esc"')}</div>
 <div class="cz-tabs" role="tablist" aria-label="Settings">${allowedTabs.map(([key,name])=>button('customize-tab',name,`role="tab" data-value="${key}" aria-selected="${tab===key}"`,'cz-tab')).join('')}</div>
-${c.makeOwn?root.ReserveMakeYourOwn?.render(c.makeOwn,s,{kits:c.customKits||[],quickUpload:c.quickUpload})||'':''}${body}<div class="ch-custom-footer"><span>Everything here stays on this device.</span>${button('advanced-settings','All settings & backups','','rd-text-button')}</div></section>`);
+ ${body}</section>`);
  }
  function retainClosedContent(create,options){
   const {container}=options,reduce=root.matchMedia?.('(prefers-reduced-motion: reduce)');
@@ -250,5 +269,5 @@ ${c.makeOwn?root.ReserveMakeYourOwn?.render(c.makeOwn,s,{kits:c.customKits||[],q
    destroy(){if(dead)return;open=false;sync();dead=true;trigger=null;}
   };
  }
- const api={render,createDock,tabs,retainClosedContent};root.ReserveCustomizeUI=api;if(typeof module==='object'&&module.exports)module.exports=api;
+  const api={render,createDock,tabs,tabFor,retainClosedContent};root.ReserveCustomizeUI=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

@@ -20,7 +20,7 @@ async function panel(t,{stored=true}={}){
   };
  }});t.after(()=>h.dashboard.destroy());
  const flush=async()=>{await settle();h.tick(0);await settle();h.tick(0);await settle();};
- h.click('settings');const tab=h.container.querySelector('[data-rd-action="customize-tab"][data-value="art"]');h.container.events.get('click')({target:tab,detail:0,preventDefault(){}});await flush();
+ h.click('settings');const tab=h.container.querySelector('[data-rd-action="customize-tab"][data-value="courses"]');h.container.events.get('click')({target:tab,detail:0,preventDefault(){}});await flush();
  const choose=async id=>{const select=h.container.querySelector('[data-rd-field="customize-course"]');select.value=id;h.container.events.get('change')({target:select});await flush();};
  const controls=(id,kind)=>{
   editor.sync();

@@ -85,7 +85,7 @@
  background:var(--rd-surface);
 }
 .rd .ch-settings-dock .rd-section-heading > div { min-width:0; }
-.rd .ch-settings-dock .rd-section-heading h2 { font-size:23px; }
+.rd .ch-settings-dock .rd-section-heading h2 { font-size:23px; margin:0; }
 .rd .ch-settings-dock .rd-section-heading p { font-size:11px; line-height:1.5; }
 .rd .ch-settings-dock [data-rd-action="settings-close"] { flex-shrink:0; min-height:40px; min-width:40px; }
 

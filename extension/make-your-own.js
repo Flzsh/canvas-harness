@@ -22,21 +22,36 @@
    return `<section class="ch-make-preview" style="background:${colors.bg};color:${colors.ink}"><h4>${E(mode)}</h4>${pack.background?`<figure>${image(pack.assets?.[pack.background.still||pack.background.asset])}<figcaption>Background</figcaption></figure>`:''}${image(pack.assets?.[pack.banner?.still||pack.banner?.asset])}<div style="background:${colors.surface};color:${colors.ink};border:1px solid ${colors.line}"><h5>${E(pack.name)}</h5>${pack.title?`<span>${E(pack.title.family)}</span>`:''}<span style="color:${colors.muted}">Planner</span> <span style="color:${colors.accent}">Courses</span>${(pack.icons||[]).map(id=>image(pack.assets?.[id])).join('')}</div>${Object.entries(pack.frames||{}).map(([kind,frame])=>`<figure>${image(pack.assets?.[frame.asset])}<figcaption>${E(kind)}</figcaption></figure>`).join('')}</section>`;
   }).join('');
  }
+ // Show each installed item where it belongs. Preset kinds are read from their
+ // validated saved packs by the existing local controller, not guessed by name.
+ function picker(state,settings={},options={}){
+  const kinds=options.kinds||['theme','pet','preset'];
+  const rows=Object.values(settings.makeYourOwn?.installed||{}).filter(row=>
+   kinds.includes(row.kind)&&(!options.presetKinds||row.kind!=='preset'||options.presetKinds.includes(state?.presetKinds?.[row.id])));
+  return `<div class="ch-make-list" role="group" aria-label="${E(options.label||'Saved choices')}">${rows.map(row=>`<div class="cz-row"><span>${E(row.name)}</span>${button('review','Preview',row.id,state?.busy)}${button('use','Use',row.id,state?.busy)}${button('remove','Remove',row.id,state?.busy)}</div>`).join('')}</div>`;
+ }
  function render(state,settings={},extras={}){
   if(!state)return '';
   const rows=Object.values(settings.makeYourOwn?.installed||{}),draft=state.draft,pack=draft?.pack;
-  return `<section class="cz-group ch-make-files" data-make-drop aria-busy="${!!state.busy}" aria-label="Files"><label class="rd-button ch-upload ch-make-add">Add from a file<input type="file" accept=".chpack,.chkit,.chtheme,.chpet,.chpreset" data-rd-field="make-file"${state.busy?' disabled':''}></label>${state.status?`<p role="status">${E(state.status)}</p>`:''}${pack?`<section class="ch-make-review"><h3>${E(pack.name)}</h3>${preview(pack)}${pack.format==='chpreset'&&pack.kind==='planner'?`<label class="rd-field"><span>Week</span><input type="date" data-rd-field="make-week" value="${E(state.week)}" required></label>`:''}${button('apply','Apply','',state.busy)}${button('cancel','Cancel','',state.busy)}</section>`:''}<div class="ch-make-list">${rows.map(row=>`<div class="cz-row"><span>${E(row.name)}</span>${button('review','Preview',row.id,state.busy)}${button('use','Use',row.id,state.busy)}${button('remove','Remove',row.id,state.busy)}</div>`).join('')}</div>${(extras.kits||[]).map(kit=>`<div class="cz-row"><span>${E(kit.name)}</span><button type="button" class="rd-text-button" data-rd-action="kit-use" data-kit="${E(kit.id)}" data-id="all">Use</button><button type="button" class="rd-text-button" data-rd-action="kit-remove" data-kit="${E(kit.id)}">Remove</button></div>`).join('')}${extras.quickUpload?.phase==='applied'?`<div class="cz-row"><span>${E(extras.quickUpload.name||'Artwork pack')}</span><button type="button" class="rd-text-button" data-rd-action="quick-pack-undo">Remove</button></div>`:''}</section>`;
+  if(extras.add===false&&extras.list===false&&!pack&&!state.status)return '';
+  return `<section class="cz-group ch-make-files" data-make-drop aria-busy="${!!state.busy}" aria-label="Files">${extras.add===false?'':`<label class="rd-button ch-upload ch-make-add">Add from a file<input type="file" accept=".chpack,.chkit,.chtheme,.chpet,.chpreset" data-rd-field="make-file"${state.busy?' disabled':''}></label>`}${state.status?`<p role="status">${E(state.status)}</p>`:''}${pack?`<section class="ch-make-review"><h3>${E(pack.name)}</h3>${preview(pack)}${pack.format==='chpreset'&&pack.kind==='planner'?`<label class="rd-field"><span>Week</span><input type="date" data-rd-field="make-week" value="${E(state.week)}" required></label>`:''}${button('apply','Apply','',state.busy)}${button('cancel','Cancel','',state.busy)}</section>`:''}${extras.list===false?'':`<div class="ch-make-list">${rows.map(row=>`<div class="cz-row"><span>${E(row.name)}</span>${button('review','Preview',row.id,state.busy)}${button('use','Use',row.id,state.busy)}${button('remove','Remove',row.id,state.busy)}</div>`).join('')}</div>${(extras.kits||[]).map(kit=>`<div class="cz-row"><span>${E(kit.name)}</span><button type="button" class="rd-text-button" data-rd-action="kit-use" data-kit="${E(kit.id)}" data-id="all">Use</button><button type="button" class="rd-text-button" data-rd-action="kit-remove" data-kit="${E(kit.id)}">Remove</button></div>`).join('')}${extras.quickUpload?.phase==='applied'?`<div class="cz-row"><span>${E(extras.quickUpload.name||'Artwork pack')}</span><button type="button" class="rd-text-button" data-rd-action="quick-pack-undo">Remove</button></div>`:''}`}</section>`;
  }
  function create({store,quickPack,kitImport,onChange=()=>{}}){
   let dead=false,revision=0,hydration=0,signature='';
-  const state={busy:false,draft:null,status:'',week:'',theme:null,pet:null};
+  const state={busy:false,draft:null,status:'',week:'',theme:null,pet:null,presetKinds:{}};
   const notify=()=>{if(!dead)onChange();};
   async function read(id){const result=await root.ReservePacks.readLocal(id,{store});return result.pack||result;}
   function sync(){
-   if(dead)return;const own=store.get().settings?.makeYourOwn||{},next=JSON.stringify([own.theme?.id||null,own.pet?.id||null]);if(next===signature)return;signature=next;
-   const token=++hydration;state.theme=state.pet=null;
-   if(!own.theme&&!own.pet){notify();return;}
-   Promise.all(['theme','pet'].map(kind=>own[kind]?read(own[kind].id):null)).then(([theme,pet])=>{if(dead||token!==hydration)return;state.theme=theme;state.pet=pet;notify();},error=>{if(dead||token!==hydration)return;state.status=error?.message||'Could not load pack';notify();});
+   if(dead)return;const own=store.get().settings?.makeYourOwn||{},presets=Object.values(own.installed||{}).filter(row=>row.kind==='preset'),next=JSON.stringify([own.theme?.id||null,own.pet?.id||null,presets.map(row=>row.id)]);
+   if(next===signature)return;signature=next;
+   const token=++hydration;state.theme=state.pet=null;state.presetKinds={};
+   if(!own.theme&&!own.pet&&!presets.length){notify();return;}
+   Promise.all([...['theme','pet'].map(kind=>own[kind]?read(own[kind].id):null),...presets.map(row=>read(row.id).catch(()=>null))]).then(([theme,pet,...saved])=>{
+    if(dead||token!==hydration)return;
+    state.theme=theme;state.pet=pet;
+    state.presetKinds=Object.fromEntries(saved.map((pack,i)=>[presets[i].id,pack?.kind]).filter(([,kind])=>kind));
+    notify();
+   },error=>{if(dead||token!==hydration)return;state.status=error?.message||'Could not load pack';notify();});
   }
   async function choose(file){
    if(dead||state.busy||!file)return;
@@ -70,5 +85,5 @@
   const unsubscribe=store.subscribe?.(sync);sync();
   return {state,choose,action,sync,week(value){state.week=value;},destroy(){dead=true;++revision;++hydration;unsubscribe?.();state.draft=null;state.theme=state.pet=null;}};
  }
- const api={render,preview,create};root.ReserveMakeYourOwn=api;if(typeof module==='object'&&module.exports)module.exports=api;
+ const api={render,preview,picker,create};root.ReserveMakeYourOwn=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

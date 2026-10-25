@@ -126,12 +126,12 @@ test('Widgets hides disabled cards while preserving the saved layout',()=>{
 test('customization filters disabled settings and avoids all disabled art and pet calls',()=>{
  const env=load(environment(),'workspace-arrange.js','customization-model.js','customize-ui.js');features(env,custom('dashboard','customization'));
  for(const name of ['ReserveCourseArt','ReserveCustomArt','ReservePets','ReservePetArt'])env[name]=new Proxy({},{get(){throw Error('Disabled artwork accessed');}});
- const c={s:{theme:'dark',motion:'gentle',livingArt:'on',coursePrefs:{}},courses:[],allCourses:[],customizeOpen:true},before=JSON.stringify(c),ui=env.ReserveCustomizeUI,html=ui.render(c);
- assert.deepEqual(plain(ui.tabs()).map(x=>x[0]),['layout','look','courses']);
+ const c={s:{theme:'dark',motion:'gentle',livingArt:'on',coursePrefs:{}},courses:[],allCourses:[],customizeOpen:true},before=JSON.stringify(c),ui=env.ReserveCustomizeUI,html=Array.from(ui.tabs(),([customizeTab])=>ui.render({...c,customizeTab})).join('');
+ assert.deepEqual(plain(ui.tabs()).map(x=>x[0]),['look','layout','courses','settings']);
  assert.match(html,/data-rd-action="accent"/);
  assert.doesNotMatch(html,/data-value="(?:art|pet)"|data-setting="(?:motion|livingArt|nightArt|canvasNav|showRecentGrades|showCourseInformation)"|data-rd-action="board-edit"/);
  assert.equal(JSON.stringify(c),before);
- assert.match(ui.render({...c,customizeTab:'pet'}),/data-value="layout" aria-selected="true"/);
+ assert.match(ui.render({...c,customizeTab:'pet'}),/data-value="look" aria-selected="true"/);
  env.ReserveFeatures.apply('lite');assert.equal(ui.render(c),'');assert.equal(ui.createDock({}),null);
 });
 

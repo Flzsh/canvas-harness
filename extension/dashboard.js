@@ -198,7 +198,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let personal=store.get()||{};
     let normalizedCache=null,gradeVisibilityOverride=(initialState?.gradeVisibilityOverride??savedState?.gradeVisibilityOverride)===false?false:null,gradeSaveVersion=0;
     let selectedId=restoredView.selectedId;
-    let readerTab=restoredView.readerTab,customizeTab='layout',customizeOpen=false,canvasNav='drawn',customizeCourseId='all',customizeStatus='',customizeBusy=false,customizeDrafts={},readerOpen=restoredView.readerOpen,gradeQuery='',gradeLimit=40;
+    let readerTab=restoredView.readerTab,customizeTab='look',customizeOpen=false,canvasNav='drawn',customizeCourseId='all',customizeStatus='',customizeBusy=false,customizeDrafts={},readerOpen=restoredView.readerOpen,gradeQuery='',gradeLimit=40;
     let quickPackDraft='',quickPackFileName='',quickPackError='',quickPackLoading=false,quickPackRead=0;
     let pendingReaderScroll={courseId:state.courseId,id:selectedId,top:restoredView.readerScroll};
     const readerLayout=typeof root.ResizeObserver==='function'?new root.ResizeObserver(()=>{if(restoreReaderScroll())remember();}):null;
@@ -232,7 +232,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const mediaController=mediaStore?root.ReserveMedia?.createController(container,mediaStore,{motion:()=>enabled('motion')&&settings().motion==='gentle',onError:error=>{customizeStatus=error.message;sourceChange();}}):null;
     const frameController=mediaStore?root.ReserveMediaFrame?.createController(container,mediaStore,{motion:()=>enabled('motion')&&settings().motion==='gentle',onError:error=>{customizeStatus=error.message;scheduleRender();}}):null;
     const frameEditor=root.ReserveFrameEditor?.create(container,{read:(id,kind)=>{const pref=id==='theme'?settings().themeArt:id==='all'?settings().overviewArt:settings().coursePrefs?.[id];return pref?.[kind+'Art'];},save:(...args)=>{const task=frameWrites.catch(()=>{}).then(()=>saveFraming(...args));frameWrites=task;return task;},shape:frameShape,onError:error=>{customizeStatus=error.message;scheduleRender();}});
-    const makeOwn=enabled('customization')?root.ReserveMakeYourOwn?.create({store,quickPack:quickUpload?file=>uploadQuickPack(file):null,kitImport:mediaStore&&root.ReserveCustomKits?file=>runKit('kit-import',{dataset:{},files:[file]}):null,onChange:sourceChange}):null;
+    const makeOwn=enabled('customization')?root.ReserveMakeYourOwn?.create({store,quickPack:quickUpload?file=>{customizeTab='courses';return uploadQuickPack(file);}:null,kitImport:mediaStore&&root.ReserveCustomKits?file=>{customizeTab='courses';return runKit('kit-import',{dataset:{},files:[file]});}:null,onChange:sourceChange}):null;
     const courseDock=createCourseDock(container);
     const motion=enabled('motion')?root.ReserveMotion?.create(container):null;
     const settingsDock=enabled('customization')&&root.ReserveCustomizeUI?.render?root.ReserveSettingsDock?.createDock({container,
@@ -251,7 +251,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       helpers:()=>({E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete}),
       appearance:({key,value})=>saveAppearance(key,value),layoutPreset:({preset})=>saveLayoutPreset(preset),navigate:request=>navigateBiscuit(request),bookmark:request=>bookmarkItem(request.itemId,true),
       preview:id=>{const undo=rememberBiscuitView();workspace='work';showPreview(String(id),{detail:0,target:container,preventDefault(){}});return {ok:true,undo};},
-      openSettings:tab=>{customizeTab=tab||'layout';settingsDock?.open();},startTick:()=>syncFocus(),go:tab=>goWorkspace(tab),closeSettings:()=>settingsDock?.close({restoreFocus:false}),askAI:question=>toolbox?.askAI?.(question),announcements:()=>{const course=buildContext().courses.find(c=>(hub?.getCourse(c.id)?.announcements||[]).some(x=>x.unread));if(!course||!workspaceEnabled('hub'))return false;switchCourse(String(course.id));goWorkspace('hub');hub?.loadCourse(course.id);return true;}}):null;
+      openSettings:tab=>{if(tab)customizeTab=tab;settingsDock?.open();},startTick:()=>syncFocus(),go:tab=>goWorkspace(tab),closeSettings:()=>settingsDock?.close({restoreFocus:false}),askAI:question=>toolbox?.askAI?.(question),announcements:()=>{const course=buildContext().courses.find(c=>(hub?.getCourse(c.id)?.announcements||[]).some(x=>x.unread));if(!course||!workspaceEnabled('hub'))return false;switchCourse(String(course.id));goWorkspace('hub');hub?.loadCourse(course.id);return true;}}):null;
     // The Planner is a workspace of its own; older entry points that asked for the week land there.
     function goWorkspace(tab){if(!workspaceEnabled(tab))return;savedWorkspace=null;if(destroyed||workspace===tab&&(tab!=='work'||workPage==='home'))return;captureCourseView();workspace=tab;if(tab==='work')workPage='home';render({motionTarget:'.rd-workspace'});container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});}
     function selectWorkspace(action,button,event={},snapshot){
@@ -1111,7 +1111,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     function actionEnabled(action,button){
       if(action?.startsWith('hub-own-'))return !container.dataset.chLinksPending&&enabled('course-files')&&enabled('course-hub');
-      const feature={'deadline-changes':'deadline-changes',planner:'planner',grades:'grades','more-grades':'grades','grades-visibility':'grades',settings:'customization','settings-close':'customization','hidden-courses':'customization','customize-tab':'customization','advanced-settings':'customization',accent:'customization',theme:'customization','course-up':'customization','course-down':'customization',toolbox:'tools',capture:'tools','selection-ai':'ai','select-source':'ai','open-hub':'course-hub','open-materials':'materials','timer-toggle':'planner','timer-reset':'planner','timer-minutes':'planner','timer-focus':'planner'}[action];
+      const feature={'deadline-changes':'deadline-changes',planner:'planner',grades:'grades','more-grades':'grades','grades-visibility':'grades',settings:'customization','settings-close':'customization','hidden-courses':'customization','customize-tab':'customization','advanced-settings':'customization','reset-appearance':'customization',accent:'customization',theme:'customization','course-up':'customization','course-down':'customization',toolbox:'tools',capture:'tools','selection-ai':'ai','select-source':'ai','open-hub':'course-hub','open-materials':'materials','timer-toggle':'planner','timer-reset':'planner','timer-minutes':'planner','timer-focus':'planner'}[action];
       if(feature&&!enabled(feature))return false;
       if(action?.startsWith('make-'))return enabled('customization');
       if(action?.startsWith('kit-'))return enabled('customization')&&enabled('course-art');
@@ -1134,7 +1134,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function onClick(event){
       const candidate=event.target.closest?.('[data-rd-action]');
       if(candidate&&!actionEnabled(candidate.dataset.rdAction,candidate))return;
-      if(candidate?.dataset.rdAction==='customize-tab'){customizeTab=candidate.dataset.value||'layout';render();container.querySelector('.cz-tab[aria-selected="true"]')?.focus({preventScroll:true});return;}
+      if(candidate?.dataset.rdAction==='customize-tab'){customizeTab=candidate.dataset.value||'look';render();container.querySelector('.cz-tab[aria-selected="true"]')?.focus({preventScroll:true});return;}
       if(candidate?.dataset.rdAction==='hidden-courses')customizeTab='courses';
       if(arrange?.click(event))return;
       if(board?.click(event))return;
@@ -1296,7 +1296,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(node){const id=node.dataset.chArtId||node.querySelector?.('[data-rd-field="art-upload"]')?.dataset.id,kind=node.dataset.chArtKind||node.dataset.kind;if(validArtTarget(id)&&['banner','card','background'].includes(kind))return {id,kind};}
       const banner=event.target?.closest?.('.rd-course-heading,.rd-course-banner,.rd-heading-art,.rd-banner-art');if(banner&&validArtTarget(state.courseId))return {id:state.courseId,kind:'banner'};
       const card=event.target?.closest?.('.rd-rail-course,.rd-dock-it,.rd-rail-all');if(card){const id=card.dataset.arrangeCourse||card.dataset.id||(card.classList.contains('rd-rail-all')?'all':null);if(validArtTarget(id))return {id,kind:'card'};}
-      if(event.type==='paste'&&!event.target?.closest?.('input,textarea,[contenteditable="true"]')&&customizeOpen&&customizeTab==='art')return {id:customizeCourseId,kind:'banner'};
+      if(event.type==='paste'&&!event.target?.closest?.('input,textarea,[contenteditable="true"]')&&customizeOpen&&['art','courses'].includes(customizeTab))return {id:customizeCourseId,kind:'banner'};
       return null;
     }
     function mediaFile(event){const transfer=event.clipboardData||event.dataTransfer,files=Array.from(transfer?.files||[]);if(files.length)return files;return Array.from(transfer?.items||[]).filter(item=>item.kind==='file').map(item=>item.getAsFile()).filter(Boolean);}
@@ -1391,6 +1391,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           for(const key of [...(root.ReserveCustomization?.artKeys||[]),'bannerFit','bannerPosition','titlePlacement'])delete pref[key];
         });return true;
       }
+      if(action==='reset-appearance'){void savePersonal(data=>{data.settings.theme='light';data.settings.accent='clay';data.settings.density='comfortable';data.settings.font='system';});return true;}
       if(action==='layout-preset'||action==='layout-reset'){void saveLayoutPreset(action==='layout-reset'?'studio':button.dataset.value);return true;}
       if(action==='course-up'||action==='course-down'){
         const order=normalizeData(settings()).allCourses.map(course=>course.id),from=order.indexOf(id),to=from+(action==='course-up'?-1:1);

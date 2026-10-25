@@ -8,12 +8,12 @@ const View=require('../extension/dashboard-view.js');
 const SettingsDock=require('../extension/settings-dock.js');
 const source=file=>fs.readFileSync(path.join(__dirname,'..','extension',file),'utf8');
 
-function dashboard(customizeOpen=false){
+function dashboard(customizeOpen=false,customizeTab='look'){
  const courses=[{id:'7',name:'CL Chemistry',color:'#367964'},{id:'8',name:'Latin',color:'#956821'}];
  const c={s:{theme:'dark',dashboardLayout:'split',density:'compact',accent:'forest',motion:'gentle',livingArt:'on',showCourseStrip:true,showRecentGrades:true,showGrades:false},
   state:{courseId:'all',query:'',mode:'actionable'},courses,allCourses:courses,courseMap:new Map(courses.map(course=>[course.id,course])),
   items:[],local:{},insights:{ready:[],recentGrades:[]},filtered:{items:[]},now:Date.parse('2026-10-09T16:00:00Z'),
-  workspace:'materials',customizeOpen,user:{name:'Student'},status:'Ready',materialLibrary:'<button type="button">Materials stay usable</button>'};
+  workspace:'materials',customizeOpen,customizeTab,user:{name:'Student'},status:'Ready',materialLibrary:'<button type="button">Materials stay usable</button>'};
  const h={E:String,icon:()=>'',assignmentLink:()=>'',formatDate:()=>'',dueText:()=>'',scoreText:()=>'',gradePeriodLabel:()=>'',dayKey:()=> '2026-10-09',complete:()=>false};
  return View.render(c,h);
 }
@@ -48,8 +48,8 @@ test('the personal editor renders as an accessible, nonmodal settings dock',()=>
  assert.doesNotMatch(open,/<main[^>]*(inert|aria-hidden)/);
 });
 
-test('every original personal customization field, course editor, and grade control remains present',()=>{
- const html=dashboard(true);
+test('every original personal customization field, course editor, and grade control remains present across its panes',()=>{
+ const html=['look','layout','courses','pet','settings'].map(tab=>dashboard(true,tab)).join('');
  // "Workspace columns" (dashboardLayout) was a second control for the panel order; its one-column choice now lives in deskOrder.
  for(const key of ['deskOrder','density','textSize','font','motion','livingArt','readingFont','greeting','showCourseStrip','showRecentGrades']){
   assert.ok(html.includes(`data-setting="${key}"`),`keep personal ${key} control`);
@@ -57,7 +57,7 @@ test('every original personal customization field, course editor, and grade cont
  for(const field of ['course-visible','course-color','course-name']){
   assert.equal((html.match(new RegExp(`data-rd-field="${field}"`,'g'))||[]).length,2,`keep ${field} for both courses`);
  }
- for(const text of ['Accent color','Course names, colors &amp; visibility','All settings &amp; backups','Living drawings','Iris accent','CL Chemistry','Latin']){
+ for(const text of ['Accent color','Course list','Start over','Reset layout','Reset appearance','Living drawings','Iris accent','CL Chemistry','Latin']){
   if(text==='Course names, colors &amp; visibility'||text==='All settings &amp; backups'){
    assert.ok(html.includes(text.replace('&amp;','&'))||html.includes(text),`keep ${text}`);
   }else assert.ok(html.includes(text),`keep ${text}`);
