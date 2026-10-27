@@ -84,6 +84,10 @@
     // Reader sections: a white chip on a tint track (refresh.css 11.1), like the other segments.
     {key:'rtab',host:'.rd-reader-tabs',pseudo:'::before',pick:':scope>.rd-reader-tab[aria-pressed="true"]'}
   ];
+  // A surface's geometry is not inherited: written on the list's box, an inherited variable restyled every row under it
+  // at each snap (about 340 elements, every frame while Make it yours slides open). The pseudo that draws the surface
+  // takes the values explicitly (refresh.css). Registration is per page and may already exist; without it nothing changes.
+  try{const register=root.CSS?.registerProperty;if(register)for(const {key} of SURFACES)for(const [name,syntax,initialValue] of [['x','<length>','0px'],['y','<length>','0px'],['w','<length>','0px'],['h','<length>','0px'],['o','<number>','0'],['dur','<time>','0ms']])try{register.call(root.CSS,{name:`--rd-sel-${key}-${name}`,syntax,inherits:false,initialValue});}catch{}}catch{}
   const TITLES=[['heading','.rd-workspace-heading h1'],['page',':is(.rd-page-heading,.rd-course-banner) h1'],['materials','.rd-materials-header h2'],['reader','#rd-reader-title'],['work','.rd-work-heading h2']];
   // .rd-n is the plain numeral in segmented controls, tabs and group heads.
   const COUNTS='.rd-work-heading>div>span,.rd-group-count,.rd-rail-count,.rd-n';

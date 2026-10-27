@@ -35,10 +35,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const art=enabled('course-art')&&root.ReserveCourseArt;if(!art?.frame)return '';
   return course?art.frame(art.kind(course),course.id,course):art.frame('home','all');
  }
+ // What every part of the page reads; the settings panel alone (renderCustomization) reads the same.
+ function viewContext(c){
+  return {...c,workspace:resolveWorkspace(c.workspace||'work'),s:{...c.s,
+   ...(!enabled('grades')?{showGrades:false}:{}),...(!enabled('course-hub')?{showCourseInformation:false}:{}),...(!enabled('motion')?{motion:'off',livingArt:'off'}:{})}};
+ }
+ // Make it yours on its own: a settings tab switch redraws only the panel (dashboard.js renderPanel).
+ function renderCustomization(c){if(!enabled('dashboard'))return '';c=viewContext(c);const {quickUpload,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading}=c;return enabled('customization')?root.ReserveCustomizeUI?.render({...c,quickUpload,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading})||'':'';}
  function render(c,h,{headingCache=null,reuseHeading=false}={}){
   if(!enabled('dashboard'))return '';
-  c={...c,workspace:resolveWorkspace(c.workspace||'work'),s:{...c.s,
-   ...(!enabled('grades')?{showGrades:false}:{}),...(!enabled('course-hub')?{showCourseInformation:false}:{}),...(!enabled('motion')?{motion:'off',livingArt:'off'}:{})}};
+  c=viewContext(c);
   const {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete}=h;
   const {state,local,insights,quickUpload,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading}=c;
   // Course art is decorative (course-art.js): a small hand-drawn mini wherever a course appears and
@@ -261,5 +267,5 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   return `${toolbar()}${customization()}${c.warning||''}<div class="rd-shell">${enabled('course-art')&&root.ReserveMediaFrame&&(c.courseMap.get(state.courseId)?.artPrefs?.backgroundArt||c.s.overviewArt?.backgroundArt||c.s.themeArt?.backgroundArt)?root.ReserveMediaFrame.render(c.courseMap.get(state.courseId)?.artPrefs?.backgroundArt||c.s.overviewArt?.backgroundArt||c.s.themeArt.backgroundArt,{kind:'background',className:'ch-frame-background'}):''}${topbar?heading():''}${courses()}<main class="rd-workspace" role="tabpanel" id="rd-workspace-panel" aria-labelledby="rd-tab-${tabHere}"${state.courseId!=='all'&&c.courseMap.get(state.courseId)?` style="${tone(c.courseMap.get(state.courseId).color)}"`:''}>${topbar?'':heading()}${c.workspace&&c.workspace!=='work'?`<div class="rd-selection-other">${selectionBar()}</div>`:''}${c.workspace==='plan'&&root.ReservePlannerUI?root.ReservePlannerUI.render(c,h,c.planUI):c.workspace==='review'?c.reviewDeckHTML||'':c.workspace==='grades'?`<label class="rd-mobile-course rd-field"><span>Course</span><select data-rd-field="course" aria-label="Grades course"><option value="all">All courses</option>${c.courses.map(course=>`<option value="${E(course.id)}" ${state.courseId===course.id?'selected':''}>${E(option(course))}</option>`).join('')}</select></label>`+(Grades.render(c,h)+(root.ReserveGradeImpact?.render(c,h,c.gradeImpact)||'')):['hub','inbox'].includes(c.workspace)?`${c.workspace==='hub'?`${courseFilter()}`:''}${c.hubContent||''}`:c.workspace==='materials'?`${courseFilter()}${c.materialLibrary||'<p>Choose a course to browse its materials.</p>'}`:`${c.s.showBookmarks!==false?bookmarks():''}<div class="rd-desk-toolbar" data-rd-key="desk-toolbar">${filters()}${week()}<div class="rd-selection-slot" data-rd-key="selection-slot">${selectionBar()}</div></div>${arrangeGuide()}${desk()}${c.s.showGrades===true&&c.s.showRecentGrades!==false?grades():''}`}</main></div><footer class="rd-status"><span role="status">${E(c.status)}</span><span>Check course home and messages for work outside assignments.</span></footer><div class="rd-sr-only" aria-live="polite">${!c.workspace||c.workspace==='work'?`${c.filtered.items.length} item${c.filtered.items.length===1?'':'s'} shown.`:''}</div>`;
 
  }
- return {render,bookmarkItems,deadlineTone,workspaceEnabled,resolveWorkspace};
+ return {render,renderCustomization,bookmarkItems,deadlineTone,workspaceEnabled,resolveWorkspace};
 });

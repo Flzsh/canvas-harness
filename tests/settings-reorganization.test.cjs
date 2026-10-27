@@ -8,7 +8,7 @@ const path=require('node:path');
 const vm=require('node:vm');
 
 const extension=path.resolve(__dirname,'../extension'),read=file=>fs.readFileSync(path.join(extension,file),'utf8');
-const headings=html=>[...html.matchAll(/<section class="cz-group"><h3>([^<]+)<\/h3>/g)].map(match=>match[1].replaceAll('&amp;','&'));
+const headings=html=>[...html.matchAll(/<section class="cz-group" data-art="[^"]*"><h3>([^<]+)<\/h3>/g)].map(match=>match[1].replaceAll('&amp;','&'));
 const pane=html=>[...html.matchAll(/class="cz-pane" data-pane="([^"]+)"/g)].map(match=>match[1]);
 
 function editor(){

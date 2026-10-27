@@ -332,6 +332,13 @@
    const all=ledges(),paddock=all.find(l=>l.paddock),target=pet.roam==='home'?(paddock||all[all.length-1]):(all.find(l=>!l.floor&&!l.paddock)||all[all.length-1]);
    spot={ledge:target.el,u:clamp((target.x1-target.x0)*(.25+Math.random()*.5),20,Math.max(20,target.x1-target.x0-20))};
   }
+  function moveForRoam(before){
+   if(!node||before===pet.roam||!['page','home'].includes(pet.roam))return false;
+   releaseGrab?.();if(grab){grab=null;node.dataset.grabbed='false';}
+   stop();cancelPlaces();clearTimeout(node._cheer);goal=null;speed=0;ch.leg=0;
+   measurePlaces();home();place();rest=focusing?'read':'stand';setPose(rest);paint();if(bubble)placeBubble();
+   if(!menuOpen){run();plan(1400);}return true;
+  }
   // The pony stays on the thing it stands on, wherever that scrolls to.
   function place(){
    if(!node||grab||goal?.type==='jump')return;
@@ -616,12 +623,12 @@
    else if(what==='stay'){closeBubble();save({...pet,roam:pet.roam==='home'?'page':'home'});plan(300);}
    else if(what==='settings'){closeBubble();actions.settings?.();}
   }
-  function save(nextPet,mutate){const before=pet;pet=clean(nextPet);const patch=Object.fromEntries(Object.entries(pet).filter(([key,value])=>JSON.stringify(value)!==JSON.stringify(before[key])));dress();return savePet?.(pet,patch,mutate);}
+  function save(nextPet,mutate){const before=pet;pet=clean(nextPet);const patch=Object.fromEntries(Object.entries(pet).filter(([key,value])=>JSON.stringify(value)!==JSON.stringify(before[key])));dress();moveForRoam(before.roam);return savePet?.(pet,patch,mutate);}
   // ---- called by the workspace
   function sync(){
-   if(dead)return;const before=pet.knowledge,more=snapshot.biscuitMoreRules;pet=clean(getPet());void loadKnowledge();quietUntil=pet.brain?.quietUntil||0;
+   if(dead)return;const before=pet.knowledge,roam=pet.roam,more=snapshot.biscuitMoreRules;pet=clean(getPet());void loadKnowledge();quietUntil=pet.brain?.quietUntil||0;
    if(!visible()){unmount();scheduleReturn();return;}
-    if(!layer)mount();else{dress();if(!container.contains(layer)){container.append(layer);rig=null;resetReels();}invalidate();}
+    if(!layer)mount();else{dress();if(!container.contains(layer)){container.append(layer);rig=null;resetReels();}if(!moveForRoam(roam))invalidate();}
    refreshBrain();if(before!==pet.knowledge||more!==snapshot.biscuitMoreRules){const input=bubble?.querySelector('[data-pet-question]');if(input?.value?.trim())previewAsk({target:input,flush:true});}offerBreak();offerStretch();maybeNudge();
   }
   function celebrate(kind='done',{today,left}={}){

@@ -35,7 +35,8 @@ test('manifest keeps required permissions and publishes only explicit page resou
 });
 test('release versions and contributor source credits agree',()=>{
  const version=JSON.parse(read('package.json')).version,m=JSON.parse(read('extension/manifest.json'));
- assert.equal(version,'3.5.0');assert.equal(m.version,version);assert.equal(m.version_name,version);
+ assert.equal(version,'3.6.0');assert.equal(m.version,version);assert.equal(m.version_name,version);
+ assert.match(read('CHANGELOG.md'),/## 3\.6\.0 - 2026-10-27/);
  const entry=read('CHANGELOG.md').split('## 3.5.0')[1]?.split('## ')[0]||'';for(const pr of [47,51,52])assert.match(entry,new RegExp('@garywu000[^\\n]*#'+pr));assert.match(entry,/@HarryX081125[^\n]*#53/);
  for(const file of ['modules-page.js','hand-in.js','focus-room.js','review-deck.js','review-deck-model.js','grade-impact.js','canvas-nav.js','api.js'])assert.match(read('extension/'+file).split('\n').slice(0,3).join('\n'),/Gary Wu|garywu000/i,file);
 });

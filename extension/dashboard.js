@@ -670,6 +670,29 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       try{if(stateKey)root.sessionStorage?.setItem(stateKey,JSON.stringify(navigationState(true)));}catch{}
     }
 
+    // The view's arguments. The panel-only form (renderPanel) leaves out the page's own HTML parts, which it never shows.
+    function viewArgs(ctx,assignmentContent,panel=false){return {...ctx,state,workspace,workPage:workspace==='work'?workPage:'',gradeImpact,gradeImpactRevision:currentSnapshot.fetchedAt,reviewDeckHTML:!panel&&workspace==='review'?reviewDeck?.renderReviewDeck()||'':'',gradeQuery,gradeLimit,arrangeOpen:!!arrange?.active(),boardEditing:!!board?.editing(),planUI:board?.planUI()||{},customizeTab,canvasNav,personal:{focus:personal.focus,pet:personal.pet,toolbox:personal.toolbox},hasLayoutUndo:!!ctx.s.workspaceUndo,deckHeader:!panel&&workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:enabled('arrange')})||'':'',deckContent:!panel&&workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',hubContent:panel?'':workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId),{sharedHeading:true}):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',materialLibrary:!panel&&workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId),{sharedHeading:true}):'',relatedMaterials:panel?'':materials?.renderRelated(ctx.selected,assignmentContent.links)||'',readerTab,customizeOpen,customizeCourseId,customizeStatus,customizeBusy,customizeDrafts,customKits,kitName,makeOwn:makeOwn?.state,quickUpload:quickUpload?.state,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading,user:currentSnapshot.user,demo,nativeSwitch:typeof onNative==='function',refreshing,visibleLimit,noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',readerContent:assignmentContent,warning:panel?'':renderWarning(),status:statusLabel(currentSnapshot,externalStatus,transientStatus)};}
+    // A Make it yours tab shows another page of the panel and changes nothing else on the page, so only the panel is
+    // redrawn: a whole render patched and then measured about 3,000 nodes for it (0.2-0.3 s on a real Canvas page).
+    // Anything else waiting to render, or a course that vanished (buildContext switches course), takes the whole render.
+    function renderPanel(){
+      if(destroyed||rendering||pendingRender||sourceFrame||!mounted||!View.renderCustomization)return false;
+      const inner=container.querySelector('.rd-appearance .t-acc-panel-inner');if(!inner)return false;
+      const course=state.courseId,ctx=buildContext();if(state.courseId!==course)return false;
+      const template=document.createElement('template');template.innerHTML=View.renderCustomization(viewArgs(ctx,{html:'',links:[]},true));
+      const next=template.content.querySelector('.rd-appearance .t-acc-panel-inner');if(!next)return false;
+      const sections=new Map(Array.from(inner.querySelectorAll?.('details[data-rd-section]')||[]).map(el=>[el.dataset.rdSection,el.open]));
+      rendering=true;try{patchUI(inner,next);}finally{rendering=false;}
+      // What a whole render does for the panel after its patch: media and frame previews, saved kits, the Features
+      // mount, unsaved text and open sections.
+      mediaController?.sync();frameController?.sync();frameEditor?.sync();
+      if(customizeOpen&&!kitsLoaded&&mediaStore){kitsLoaded=true;mediaStore.listKits().then(kits=>{if(!destroyed){customKits=kits;scheduleRender();}}).catch(error=>{if(!destroyed){customizeStatus=error.message;scheduleRender();}});}
+      settingsDock?.sync();
+      for(const draft of drafts.values()){const field=container.querySelector(`[data-rd-field="${draft.field}"][data-id="${draft.id}"]`);if(field)field.value=draft.value;}
+      for(const [id,value] of stepDrafts){const field=container.querySelector(`[data-rd-field="new-step"][data-id="${id}"]`);if(field)field.value=value;}
+      for(const el of inner.querySelectorAll?.('details[data-rd-section]')||[])if(sections.has(el.dataset.rdSection))el.open=sections.get(el.dataset.rdSection);
+      return true;
+    }
     function renderNow({preserveFocus=true,tabMotion=false,motionTarget='',motionKind='workspace',direction=1,snapshot=null,resetWorkspaceScroll=false}={}){
       if(destroyed)return;
       const oldReader=container.querySelector('.rd-reader-content'),previousCourse=container.dataset.courseId;
@@ -716,7 +739,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       container.dataset.courses=String(ctx.s.showCourseStrip!==false);
       if(scene||dataTheme)container.style.removeProperty('--rd-accent');else container.style.setProperty('--rd-accent',ctx.accent);
       const assignmentContent=readingContent(ctx.selected);
-       const markup=View.render({...ctx,state,workspace,workPage:workspace==='work'?workPage:'',gradeImpact,gradeImpactRevision:currentSnapshot.fetchedAt,reviewDeckHTML:workspace==='review'?reviewDeck?.renderReviewDeck()||'':'',gradeQuery,gradeLimit,arrangeOpen:!!arrange?.active(),boardEditing:!!board?.editing(),planUI:board?.planUI()||{},customizeTab,canvasNav,personal:{focus:personal.focus,pet:personal.pet,toolbox:personal.toolbox},hasLayoutUndo:!!ctx.s.workspaceUndo,deckHeader:workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:enabled('arrange')})||'':'',deckContent:workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',hubContent:workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId),{sharedHeading:true}):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',materialLibrary:workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId),{sharedHeading:true}):'',relatedMaterials:materials?.renderRelated(ctx.selected,assignmentContent.links)||'',readerTab,customizeOpen,customizeCourseId,customizeStatus,customizeBusy,customizeDrafts,customKits,kitName,makeOwn:makeOwn?.state,quickUpload:quickUpload?.state,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading,user:currentSnapshot.user,demo,nativeSwitch:typeof onNative==='function',refreshing,visibleLimit,noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',readerContent:assignmentContent,warning:renderWarning(),status:statusLabel(currentSnapshot,externalStatus,transientStatus)}, {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete}, {headingCache,reuseHeading:container.querySelector('.rd-workspace-heading')?.getAttribute('data-rd-key')===`heading-${headingCache.revision}`});
+       const markup=View.render(viewArgs(ctx,assignmentContent), {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete}, {headingCache,reuseHeading:container.querySelector('.rd-workspace-heading')?.getAttribute('data-rd-key')===`heading-${headingCache.revision}`});
       const toolbar=container.querySelector('.rd-toolbar'),appearance=container.querySelector('.rd-appearance');
       if(toolbar){
         // Keep the actual transitioning nodes connected through data renders.
@@ -1137,7 +1160,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function onClick(event){
       const candidate=event.target.closest?.('[data-rd-action]');
       if(candidate&&!actionEnabled(candidate.dataset.rdAction,candidate))return;
-      if(candidate?.dataset.rdAction==='customize-tab'){customizeTab=candidate.dataset.value||'look';render();container.querySelector('.cz-tab[aria-selected="true"]')?.focus({preventScroll:true});return;}
+      if(candidate?.dataset.rdAction==='customize-tab'){customizeTab=candidate.dataset.value||'look';if(!renderPanel())render();container.querySelector('.cz-tab[aria-selected="true"]')?.focus({preventScroll:true});return;}
       if(candidate?.dataset.rdAction==='hidden-courses')customizeTab='courses';
       if(arrange?.click(event))return;
       if(board?.click(event))return;

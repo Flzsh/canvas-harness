@@ -32,7 +32,7 @@ test('control dispatch leaves unrelated negation, AI privacy and note payloads a
 
 test('values and reset proposals stay inside the supported settings domain',()=>{
  for(const [text,key,value]of [['set page tint to sage','pageTint','sage'],['change panel frame to none','panelFrame','none'],['set course navigation to bottom','courseNavigation','dock'],['set motion to off','motion','off'],['set night art to 50%','nightArt',50],['reset grades','showGrades',false],['reset page tint','pageTint','paper']])expect(text,'setting',{key,value});
- assert.equal(Controls.propose('set bedtime to 9:45 pm',snapshot()),null);
+ expect('set bedtime to 9:45 pm','setting',{key:'bedtime',value:'21:45'});expect('set biscuit offers to off','setting',{key:'biscuitOffers',value:false});expect('reset bedtime','setting',{key:'bedtime',value:'22:30'});expect('reset biscuit offers','setting',{key:'biscuitOffers',value:true});
  for(const text of ['set page tint to plutonium','set bedtime to 29:99','set night art to 101'])assert.equal(Controls.propose(text,snapshot()).action,'none',text);
  const legacy=expect('set theme to system','none',{});assert.equal(legacy.ui?.path,undefined);assert.match(legacy.message,/theme/i);
  assert.equal(Controls.propose('set constructor to off',snapshot()),null);
@@ -44,7 +44,7 @@ test('Home and feature controls use existing actions; protected panels and depen
  for(const text of ['hide Up next module on Home','remove Assignment details module from Home','turn off Dashboard & assignments feature','turn off Planner & home widgets feature']){const r=expect(text,'none',{});assert.ok(r.ui.path.length>=2,text);}
  assert.equal(Controls.propose('turn off Companion feature',snapshot()),null);
  const reset=expect('reset Notes module size','none',{});assert.deepEqual(reset.ui.path,['Home','Notes','Size and place','Medium']);
- expect('enable Focus room feature','feature',{id:'focus-room',on:true});assert.equal(Controls.propose('disable Deadline watch skill',snapshot()),null);
+ expect('enable Focus room feature','feature',{id:'focus-room',on:true});expect('disable Deadline watch skill','skill',{skill:'deadline',on:false});
 });
 
 test('companion visibility reaches the pet setting before bare feature aliases',()=>{

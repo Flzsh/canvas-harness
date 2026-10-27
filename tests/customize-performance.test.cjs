@@ -6,7 +6,7 @@ const load=(env,...files)=>{for(const file of files)vm.runInContext(fs.readFileS
 
 function editor(){
  const work={previews:[],frames:0,archives:0},env=vm.createContext({console,TextEncoder});
- load(env,'workspace-arrange.js','customization-model.js','custom-art.js','course-art.js','pet-art.js','pets.js','quick-upload-ui.js','settings-dock.js','customize-ui.js');
+ load(env,'workspace-arrange.js','customization-model.js','custom-art.js','course-art.js','pet-art.js','pony-brain.js','pets.js','quick-upload-ui.js','settings-dock.js','customize-ui.js');
  for(const [name,methods]of [['ReserveCourseArt',['scene','mini','frame','title']],['ReservePetArt',['svg']],['CanvasHarnessQuickUploadUI',['render']]]){
   const owner=env[name]={...env[name]};
   for(const method of methods){const original=owner[method];owner[method]=function(...args){work.previews.push(method);return original.apply(this,args);};}
@@ -37,9 +37,17 @@ test('named appearance panes build only their own previews and collection-depend
   assert.equal((html.match(/class="ch-art-slot"/g)||[]).length,tab==='courses'?4:0);
   assert.equal((html.match(/class="ch-course-setting"/g)||[]).length,tab==='courses'?2:0);
   assert.deepEqual(f.work.previews,tab==='courses'?['render','scene','mini','frame','title']:tab==='pet'?['svg']:[]);
+  if(tab==='pet'){assert.equal((html.match(/class="pet cz-pony"/g)||[]).length,12);assert.equal((html.match(/data-rd-field="pet-skill"/g)||[]).length,7);assert.match(html,/class="cz-toggles cz-checks"/);}
  }
  for(const tab of [undefined,'all']){f.context.customizeTab=tab;assert.equal((f.render().match(/class="cz-pane"/g)||[]).length,1);}
  f.context.customizeTab='missing';assert.match(f.render(),/class="cz-pane" data-pane="look"/);
+});
+
+test('drawn settings label each section and align three named type rows',()=>{
+ const f=editor();f.context.customizeOpen=true;const html=f.render(),type=html.match(/<section class="cz-group" data-art="Type">([\s\S]*?)<\/section>/)?.[1];
+ assert.ok(type);assert.deepEqual([...type.matchAll(/<h4 class="cz-subhead">([^<]+)<\/h4>/g)].map(m=>m[1]),['Letters','Size','Reading text']);assert.equal((type.match(/--cz-cols:3/g)||[]).length,3);assert.match(type,/>Standard<\/strong>/);assert.match(type,/>Same as letters<\/strong>/);
+ assert.equal((html.match(/<section class="cz-group">/g)||[]).length,0);
+ f.context.customizeTab='layout';f.context.s.courseNavigation='dock';assert.match(f.render(),/data-art="Course size"/);assert.doesNotMatch(f.render(),/data-art="Course dock"/);
 });
 
 test('lazy appearance panes retain current course edits, SVG drafts and quick-pack controls',()=>{

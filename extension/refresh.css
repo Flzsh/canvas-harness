@@ -1780,6 +1780,10 @@
 }
 .rd[data-theme=dark] .rd-filter-group::before, .rd[data-theme=dark] .rd-reader-tabs::before { background: var(--rd-surface-3); }
 
+/* The geometry variables are not inherited (motion.js registers them), so each surface's pseudo takes them from its box. */
+.rd .rd-filter-group::before { --rd-sel-flt-x: inherit; --rd-sel-flt-y: inherit; --rd-sel-flt-w: inherit; --rd-sel-flt-h: inherit; --rd-sel-flt-o: inherit; --rd-sel-flt-dur: inherit; }
+.rd .rd-assignment-list::before { --rd-sel-pick-x: inherit; --rd-sel-pick-y: inherit; --rd-sel-pick-w: inherit; --rd-sel-pick-h: inherit; --rd-sel-pick-o: inherit; --rd-sel-pick-dur: inherit; }
+.rd .rd-reader-tabs::before { --rd-sel-rtab-x: inherit; --rd-sel-rtab-y: inherit; --rd-sel-rtab-w: inherit; --rd-sel-rtab-h: inherit; --rd-sel-rtab-o: inherit; --rd-sel-rtab-dur: inherit; }
 .rd .rd-shell[data-sel-snap~=flt] .rd-filter-group::before, .rd .rd-shell[data-sel-snap~=pick] .rd-assignment-list::before, .rd .rd-shell[data-sel-snap~=rtab] .rd-reader-tabs::before, .rd:is([data-input=keyboard], [data-motion-style=still]) .rd-assignment-list::before, .rd:is([data-input=keyboard], [data-motion-style=still]) .rd-filter-group::before, .rd:is([data-input=keyboard], [data-motion-style=still]) .rd-reader-tabs::before { transition: none !important; }
 
 
@@ -2297,3 +2301,18 @@
 .rd .rd-tool-panel:is([data-tool-panel=ai],[data-tool-panel=gpa]) { height:100%; min-height:0; overflow:hidden; }
 .rd .rd-ai-frame { display:block; border:0; width:100%; height:100%; min-height:240px; background:var(--rd-surface,#FAF9F5); color-scheme:light; }
 .rd[data-theme=dark] .rd-ai-frame { color-scheme:dark; }
+/* Top bar (owner, 2026-10-27). The tabs are words, the open
+   one underlined by hand; the search sits on a dashed line. */
+.rd .rd-toolbar { padding: 6px 14px; border-radius: 16px; background: var(--rd-toolbar-plate, var(--rd-surface)); isolation: isolate; }
+/* No outline round the bar (owner, 2026-10-27: the search line ran under it; "let just remove that outline"). */
+.rd .rd-workspace-tabs.t-tabs { background: none; padding: 0; gap: 2px; }
+.rd .rd-workspace-tabs .t-tabs-pill { display: none; }
+.rd .rd-workspace-tabs .t-tab { position: relative; border-radius: 6px 9px 5px 8px; }
+.rd .rd-workspace-tabs .t-tab[aria-selected=true] { color: var(--rd-ink); }
+.rd .rd-workspace-tabs .t-tab[aria-selected=true]::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 2px; height: 8px; background: var(--rd-accent); -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%2010'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M2%206.2C20%204.4%2038%207.4%2055%205.6S84%204.2%2098%205.4'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'2.6'%20stroke-linecap%3D'round'%2F%3E%3Cpath%20d%3D'M8%208.4C30%207.1%2060%208.8%2092%207.4'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.2'%20stroke-linecap%3D'round'%20opacity%3D'.55'%2F%3E%3C%2Fsvg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%2010'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M2%206.2C20%204.4%2038%207.4%2055%205.6S84%204.2%2098%205.4'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'2.6'%20stroke-linecap%3D'round'%2F%3E%3Cpath%20d%3D'M8%208.4C30%207.1%2060%208.8%2092%207.4'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.2'%20stroke-linecap%3D'round'%20opacity%3D'.55'%2F%3E%3C%2Fsvg%3E") center / 100% 100% no-repeat; pointer-events: none; }
+.rd .rd-workspace-tabs .t-tab:not([aria-selected=true]):hover { background: color-mix(in srgb, #F6DE9A 38%, transparent); }
+.rd[data-theme=dark] .rd-workspace-tabs .t-tab:not([aria-selected=true]):hover { background: color-mix(in srgb, #F6DE9A 14%, transparent); }
+.rd .rd-toolbar > .rd-bar-search { border: 0; border-bottom: 1.6px dashed color-mix(in srgb, var(--rd-ink) 55%, transparent); border-radius: 0; background: none; box-shadow: none; }
+.rd .rd-toolbar > .rd-bar-search input { border-radius: 0; background: transparent; box-shadow: none; }
+.rd .rd-toolbar > .rd-bar-search:focus-within { border-bottom: 1.6px solid var(--rd-mark); }
+.rd .rd-toolbar > .rd-bar-search input:focus-visible { box-shadow: none; }

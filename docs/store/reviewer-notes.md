@@ -1,12 +1,12 @@
 # Reviewer testing notes
 
-## 3.5.0 offline release scope
+## 3.6.0 offline release scope
 
-This release adds local Biscuit commands, timers and routines; randomly dealt submission play tools; the Starry Night, Under the Sea, Starfield and Blueprint scene themes; a course dock; checked Market and local data packs; Modules progress and To hand in. Focus room, Review deck and Grade impact are opt-in Custom features. Full and Lite leave those three off. Lite also excludes scene themes, play and media playback; saved media stays in backups. Public school registration, provider handoff, the feature loader and existing saved data are retained.
+This release redraws Make it yours and the top bar, fixes Biscuit settings, and restores the workspace button after a tab returned to Canvas during loading. It retains local Biscuit commands, timers and routines; submission play tools; the Starry Night, Under the Sea, Starfield and Blueprint themes; course docks, the Market, Modules progress and To hand in. Focus room, Review deck and Grade impact are opt-in Custom features. Lite excludes scene themes, play and media playback; saved media stays in backups. Public school registration, provider handoff, the feature loader and existing saved data are retained.
 
 The Market host is optional and is requested on its popup click. Only packaged code runs. Pack and asset SHA-256 hashes, schemas, SVG isolation, account separation and exact removal are checked offline. The four scene folders are bundled; dynamically loaded pages and styles are listed explicitly in the manifest. Use your own picture or short video as a banner, framed the way you want. Upload, drop and paste support dashboard and course banners, card art and an optional dimmed background. Images are scaled on the device; large videos are recorded at the slot size. Motion off, reduced motion, hidden tabs and offscreen slots show stills. The frame editor, kits and backups retain framing and media. Nothing is uploaded.
 
-This port is verified by the serial Node suite, check, deterministic build and audit of the actual extracted ZIP. No browser or network is used for this port. Earlier browser observations below describe earlier versions; they do not establish 3.4 rendering, authenticated Canvas behavior, provider editor compatibility or live performance.
+The 3.6.0 port requires the serial Node suite, check, deterministic build and extracted ZIP audit before release. Earlier browser observations below describe earlier versions; they do not establish 3.6.0 rendering, authenticated Canvas behavior, provider editor compatibility or live performance.
 
 
 Canvas Harness is an independent Canvas study workspace. It supports HTTPS school sites on `*.instructure.com`. A school that runs Canvas on its own address can be added in the popup: entering `https://canvas.your-school.edu` asks the browser for access to that one origin (optional host permission), after which the same Canvas scripts are registered for it with `chrome.scripting.registerContentScripts`. Removing the site revokes the permission and unregisters the scripts.

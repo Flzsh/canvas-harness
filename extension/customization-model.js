@@ -3,7 +3,7 @@
  'use strict';
  const arrange=root.ReserveWorkspaceArrange||(typeof module==='object'&&module.exports?require('./workspace-arrange.js'):null);
  const enums={sceneTheme:['','starry','sea','stars','blueprint'],dockSize:['small','medium','large'],pageTint:['paper','accent','sky','sage','lilac','blush','sand','snow'],courseNavigation:['sidebar','topbar','dock'],deskOrder:['context-first','work-first','stacked'],surfaceStyle:['paper','clean','contrast'],courseCardStyle:['sketch','rounded','minimal'],bannerSize:['compact','standard','large'],panelFrame:['pen','stitch','card','line','none']};
- const defaults={sceneTheme:'',dockSize:'medium',nightArt:0,pageTint:'paper',courseNavigation:'sidebar',deskOrder:'context-first',surfaceStyle:'paper',courseCardStyle:'sketch',bannerSize:'standard',showCourseIcons:true,showDeadlinePreview:true,showBookmarks:true,showCourseInformation:true,showCourseStrip:true,showRecentGrades:false,density:'comfortable',panelFrame:'pen',moduleSize:{},workspaceOrder:['context','work','reader'],workspaceMode:'side-by-side',workspaceLayout:null,workspaceUndo:null};
+ const defaults={sceneTheme:'',dockSize:'medium',nightArt:0,pageTint:'paper',courseNavigation:'sidebar',deskOrder:'context-first',surfaceStyle:'paper',courseCardStyle:'sketch',bannerSize:'standard',showCourseIcons:true,showDeadlinePreview:true,showBookmarks:true,showCourseInformation:true,showCourseStrip:true,showRecentGrades:false,bedtime:'22:30',biscuitOffers:true,density:'comfortable',panelFrame:'pen',moduleSize:{},workspaceOrder:['context','work','reader'],workspaceMode:'side-by-side',workspaceLayout:null,workspaceUndo:null};
  const artKeys=['bannerArt','cardArt','backgroundArt','borderArt','iconArt','titleArt'];
  const presets={studio:{...defaults},study:{...defaults,deskOrder:'work-first',workspaceOrder:['work','reader','context'],surfaceStyle:'clean',courseCardStyle:'rounded',bannerSize:'compact'},focus:{...defaults,courseNavigation:'topbar',deskOrder:'work-first',workspaceOrder:['work','reader','context'],bannerSize:'compact',showCourseInformation:false,showDeadlinePreview:false}};
  function cleanAppearance(value={}){
@@ -33,6 +33,7 @@
    if(settings[key]!==undefined&&typeof settings[key]!=='boolean')throw Error(`Invalid ${key} setting in backup.`);
    if(settings[key]!==undefined)out[key]=settings[key];
   }
+  if(settings.bedtime!==undefined&&(typeof settings.bedtime!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(settings.bedtime)))throw Error('Choose a bedtime as HH:MM.');out.bedtime=settings.bedtime||'22:30';
   if(settings.nightArt!==undefined){const n=Number(settings.nightArt);if(!Number.isFinite(n)||n<0||n>100)throw Error('Invalid nightArt setting in backup.');out.nightArt=Math.round(n);}
   if(!arrange)throw Error('Workspace arrangement is unavailable. Reload Canvas Harness and try again.');
   Object.assign(out,arrange.cleanSaved(settings));

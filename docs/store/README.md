@@ -1,6 +1,6 @@
-# Store submission kit — Canvas Harness 3.5.0
+# Store submission kit — Canvas Harness 3.6.0
 
-3.5.0 is a GitHub-only release. These store instructions are retained for a future submission; no store upload is part of this release.
+3.6.0 is a GitHub-only release. These store instructions are retained for a future submission; no store upload is part of this release.
 
 The publisher must register their own developer accounts before either store can accept this extension. This folder is preparation for submission, not evidence of approval or a published store listing.
 
@@ -13,8 +13,8 @@ Use a public publisher name such as **Flzsh**. Check which contact details each 
 
 ## Upload
 
-- Run `npm test`, `npm run check`, and `npm run build` from the repository, then audit the extracted ZIP with `node scripts/release-audit.cjs dist/unpacked-3.5.0`. Compare the ZIP SHA-256 with `dist/release-manifest.json`.
-- Upload `dist/Canvas-Harness-3.5.0.zip`. Its `manifest.json` is at the ZIP root. Do not upload the source repository, a personal backup, or a private test build.
+- Run `npm test`, `npm run check`, and `npm run build` from the repository, then audit the extracted ZIP with `node scripts/release-audit.cjs dist/unpacked-3.6.0`. Compare the ZIP SHA-256 with `dist/release-manifest.json`.
+- Upload `dist/Canvas-Harness-3.6.0.zip`. Its `manifest.json` is at the ZIP root. Do not upload the source repository, a personal backup, or a private test build.
 - Use [listing.txt](listing.txt) for the description and links. Enter the manifest's actual description where the store derives the short description from the package.
 - Use `icon-128.png` for Chrome and `logo-300.png` for Edge. Both come from the original large Canvas Harness logo.
 - Use `promo-440x280.png` for the small promotional image and `marquee-1400x560.png` for the marquee image.

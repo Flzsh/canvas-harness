@@ -63,11 +63,11 @@ test('grade visibility accepts a finite display/politeness/emoji tail',()=>{
   const r=load().C.surface(line,state(),{});assert.equal(r?.action,'setting',line);assert.equal(fields(r).key,'showGrades');assert.equal(fields(r).value,false);
  }
 });
-test('setting tails preserve public numeric values and refuse unavailable clock and unsupported literals',()=>{
- const h=load();for(const [line,key,value]of [['Set night art to 35% please.','nightArt',35],['Set night art to 100% please.','nightArt',100]]){const r=h.C.surface(line,state(),{});assert.equal(r?.action,'setting',line);assert.equal(fields(r).key,key);assert.equal(fields(r).value,value);}
+test('setting tails preserve public numeric and bedtime values and refuse unsupported literals',()=>{
+ const h=load();for(const [line,key,value]of [['Set night art to 35% please.','nightArt',35],['Set night art to 100% please.','nightArt',100],['Set bedtime to 21:45 please.','bedtime','21:45']]){const r=h.C.surface(line,state(),{});assert.equal(r?.action,'setting',line);assert.equal(fields(r).key,key);assert.equal(fields(r).value,value);}
  // The existing consumer normalizes away decimal points and does not support
  // arbitrary hex accent values; ownership recovery must not invent either.
- for(const line of ['Set bedtime to 21:45 please.','Set accent to #A1B2C3 please ??','Set night art to 35.5% please.','Set density to "compact please".'])noMutation(h.C.surface(line,state(),{}),line);
+ for(const line of ['Set bedtime to 29:99 please.','Set accent to #A1B2C3 please ??','Set night art to 35.5% please.','Set density to "compact please".'])noMutation(h.C.surface(line,state(),{}),line);
 });
 test('setting recovery preserves literal notes, hypothetical explanations and compounds',()=>{
  for(const line of ['Note: grades off on my screen pls ??','What does grades off mean?','Do not set grades off on my screen.','If grades off on my screen would help, should I do it?','Grades off on my screen then turn on the Math tools feature.'])noMutation(load().C.surface(line,state(),{}),line);

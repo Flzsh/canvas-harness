@@ -74,7 +74,7 @@ async function fixture(t,{saved={},readGate=null,failReads=0,missingAPI=false,la
   addEventListener:(name,fn)=>handlers.set(name,fn)};
  const get=selector=>{const node=document.querySelector(selector);assert.ok(node,'Missing '+selector);return node;};
  const emit=(value,area='local')=>{for(const fn of events)fn({'reserve:features':{newValue:plain(value)}},area);};
- const chrome={runtime:{getManifest:()=>({name:'Canvas Harness',version:'3.5.0',optional_host_permissions:publicBuild?['https://*/*']:[]}),getURL:file=>'chrome-extension://fixture/'+file,reload:()=>effects.push('reload')},
+ const chrome={runtime:{getManifest:()=>({name:'Canvas Harness',version:'3.6.0',optional_host_permissions:publicBuild?['https://*/*']:[]}),getURL:file=>'chrome-extension://fixture/'+file,reload:()=>effects.push('reload')},
   storage:{onChanged:{addListener:fn=>events.add(fn),removeListener:fn=>events.delete(fn)},local:{async get(keys){
    reads.push(plain(keys));const result=Object.fromEntries((Array.isArray(keys)?keys:[keys]).map(key=>[key,plain(data[key])]));
    if(keys==='reserve:features'){const fail=state.failReads-->0;await state.readGate;if(fail)throw Error('read failed');}return result;
@@ -106,9 +106,9 @@ async function fixture(t,{saved={},readGate=null,failReads=0,missingAPI=false,la
   key(key){let prevented=false;handlers.get('keydown')?.({key,preventDefault(){prevented=true;}});return prevented;}};
 }
 
-test('popup keeps author and branding, shows 3.5.0, and loads the catalogue before its controls',()=>{
+test('popup keeps author and branding, shows 3.6.0, and loads the catalogue before its controls',()=>{
  const html=read('popup.html'),scripts=[...html.matchAll(/<script\b[^>]*src="([^"]+)"/g)].map(match=>match[1]);
- assert.match(html,/<meta name="author" content="Flzsh">/);assert.match(html,/id="version"[^>]*>3.5.0</);
+ assert.match(html,/<meta name="author" content="Flzsh">/);assert.match(html,/id="version"[^>]*>3.6.0</);
  assert.ok(scripts.indexOf('features.js')>=0&&scripts.indexOf('features.js')<scripts.indexOf('popup.js'));
  assert.match(html,/id="welcome-tour" href="welcome.html" target="_blank" rel="noopener"/);
  assert.match(read('popup.js'),/@preserve Canvas Harness original creator: Flzsh/);
@@ -238,7 +238,7 @@ test('close during a save leaves no late DOM updates or further queued writes',a
 
 test('missing catalogue reports an integration error while the rest of the popup still initializes',async t=>{
  const h=await fixture(t,{missingAPI:true});await h.open();assert.match(h.get('#features-error').textContent,/unavailable/i);assert.equal(h.get('#features-error').hidden,false);
- assert.equal(h.get('#version').textContent,'3.5.0');assert.equal(h.get('#enabled').disabled,false);assert.deepEqual(h.writes,[]);
+ assert.equal(h.get('#version').textContent,'3.6.0');assert.equal(h.get('#enabled').disabled,false);assert.deepEqual(h.writes,[]);
 });
 
 test('feature layout reuses light/dark drawn rows, native switches and segments without a separate skin',()=>{

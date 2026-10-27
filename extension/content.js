@@ -13,7 +13,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const isDashboard=location.pathname==='/'||/^\/dashboard\/?$/.test(location.pathname);
   const params=new URLSearchParams(location.search);
   const startup=globalThis.ReserveStartup;
-  const build='3.5.0';
+  const build='3.6.0';
   const stamp=()=>Math.round(globalThis.performance?.now?.()||0);
   let host,root,area,toolbar,resumeCover,statusLabel,dashboard,planner,session,snapshot,store,ready=false,wanted=true;
   let authorized=false,personalVerified=false,suspended=false,resumeGeneration=0,resumePending,verifiedAt=-Infinity,verifiedWall=-Infinity;
@@ -163,14 +163,19 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     return session.start();
   }
   dockRoot.querySelector('button').addEventListener('click',()=>{
+    // An old page context needs a reload to load the updated extension.
+    if(chrome.runtime&&!chrome.runtime.id){location.reload();return;}
     dockBusy(true);
     if(!isDashboard||!feature('dashboard')){
       if(!feature('tools'))return;location.assign(globalThis.ReserveSite.origin()+'/?reserve=open');return;}
-    startup?.release();manualOpen=true;wanted=true;
-    if(host&&!ready){host.remove();host=null;}
+    // A manual open resets a hidden-tab pause and any host Canvas detached.
+    startup?.release();manualOpen=true;wanted=true;suspended=false;
+    if(host&&(!ready||host.isConnected===false)){dashboard?.destroy();dashboard=null;host.remove();host=null;ready=false;}
     makeHost();
     authorized=false;resumeGeneration++;
     session?.destroy();session=null;start();
+    // A stalled, visible manual launch gets one fresh page load after 15 seconds.
+    const attempt=session;setTimeout(()=>{if(attempt&&session===attempt&&wanted&&!suspended&&!bootStopped&&host?.hidden&&document.visibilityState!=='hidden')location.reload();},15000);
   });
   document.addEventListener('pointerdown',event=>{
     // Do not move a Canvas control out from under a student who has started using it.

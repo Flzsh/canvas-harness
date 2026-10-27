@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.6.0 - 2026-10-27
+
+- Make it yours redrawn, and its tabs switch several times faster.
+- Top bar redrawn.
+- Biscuit settings now save and apply, including a bedtime after midnight.
+- Fix Canvas showing after leaving a tab during loading.
+
 ## 3.5.0 - 2026-10-25
 
 - My links & files keeps your course links and uploaded files on this device, with in-workspace viewers and bounded backups. Thank you @garywu000 for pull request #47.

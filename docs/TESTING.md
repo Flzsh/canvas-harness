@@ -1,14 +1,14 @@
-# Release checks — Canvas Harness 3.5.0
+# Release checks — Canvas Harness 3.6.0
 
-## 3.5.0 GitHub release scope
+## 3.6.0 GitHub release scope
 
-This GitHub-only release merges #47 My links & files, #51 PDF study-sheet export and #52 observed deadline changes, and ports issue #53 PDF tools and nine drawn icons. Make it yours has Look, Home, Courses, the existing companion tab and More. Selection geometry stays on its own surface; the companion delays its first reel. Existing public feature choices and handoff modules remain; no new AI runtime modules are included.
+This GitHub-only release redraws Make it yours and the top bar, fixes Biscuit settings, and restores the Canvas Harness button after the tab was left during loading. It retains the 3.5.0 contributions: #47 My links & files, #51 PDF study-sheet export, #52 deadline changes, and issue #53 PDF tools and icons. Existing public feature choices and handoff modules remain; no new AI runtime modules are included.
 
-Run `npm test`, `npm run check` and `npm run build`, then audit the extracted ZIP with `node scripts/release-audit.cjs dist/unpacked-3.5.0`. The build writes entry sizes and SHA-256 hashes to `dist/release-manifest.json`; the audit writes `dist/audit-3.5.0.json`. Nothing is pushed or submitted by these local checks.
+Run `npm test`, `npm run check` and `npm run build`, then audit the extracted ZIP with `node scripts/release-audit.cjs dist/unpacked-3.6.0`. The build writes entry sizes and SHA-256 hashes to `dist/release-manifest.json`; the audit writes `dist/audit-3.6.0.json`. Nothing is pushed or submitted by these local checks.
 
 The suite covers account and site isolation, local course-file backup/restore and limits, literal-safe study sheets, account changes before download, deadline retention/partial refreshes/storage failures, PDF tools, settings routing and selection motion. Full includes Deadline changes and My links & files; Lite leaves them out. Focus room, Review deck and Grade impact remain opt-in Custom features.
 
-The 3.5.0 suite passed 3,089 tests with three pre-existing browser-only skips (3,092 total). The artificial Edge preview verified all five settings tabs, last-tab reopening, import/reset controls, group order and the open-dock heading at 901, 1200 and 1400 px, with no new console errors.
+For historical comparison, the 3.5.0 suite passed 3,089 tests with three pre-existing browser-only skips (3,092 total). The 3.5.0 artificial Edge preview verified all five settings tabs, last-tab reopening, import/reset controls, group order and the open-dock heading at 901, 1200 and 1400 px, with no new console errors. For 3.6.0, the serial suite passed 4,660 tests with three skips (4,663 total), and `npm run check` passed. A local artificial Edge preview checked the drawn toolbar, regular tab weight, the dock at 16 px from the top, Look and Pony artwork, and all seven public skills. The packaged build and extracted ZIP audit were not run in this preparation.
 
 Offline fixtures and a local artificial preview do not establish installed behavior. Check authenticated Canvas PDF opening, custom domains, real clipboard/download behavior, multiple tabs and account switching in an installed extension before describing those flows as browser-verified. The earlier observations below concern earlier versions.
 

@@ -46,7 +46,7 @@ function fixture(options={}){
     getComputedStyle:()=>({getPropertyValue:()=>options.css===false?'':'1'}),
     fetch:(url,init)=>{preflightCalls++;preflightRequest={url,init};init.signal.addEventListener('abort',()=>preflightAborted=true);return preflight.promise;},
     sessionStorage:{getItem:key=>{if(options.sessionError)throw Error('storage denied');return sessionData.get(key)||null;},setItem:(key,value)=>{if(options.sessionError)throw Error('storage denied');sessionData.set(key,value);},removeItem:key=>{if(options.sessionError)throw Error('storage denied');sessionData.delete(key);}},
-    chrome:{storage:{local:{set:async()=>{},remove:async()=>{},get:key=>{reads.push(key);if(options.hint&&typeof key==='string'&&key.startsWith('reserve:lastAccount:'))return Promise.resolve({[key]:options.hint});return storage;}}},runtime:{getURL:name=>'chrome-extension://fixture/'+name}},
+    chrome:{storage:{local:{set:async()=>{},remove:async()=>{},get:key=>{reads.push(key);if(options.hint&&typeof key==='string'&&key.startsWith('reserve:lastAccount:'))return Promise.resolve({[key]:options.hint});return storage;}}},runtime:{id:'fixture',getURL:name=>'chrome-extension://fixture/'+name}},
     ReserveAPI:{createClient:()=>({profile:({signal})=>{const check=profiles[profileCalls++]||profile;signal.addEventListener('abort',()=>aborted=true);return check.promise;},loadSnapshot:()=>network.promise})},
     ReserveStorage:{createStore:({accountId})=>{storeAccount=accountId;return store;}},
     ReserveDashboard:{mount:(_area,{snapshot})=>{if(options.mountError)throw Error('render failed');mounts++;mountedUsers.push(String(snapshot.user.id));return {destroy(){},getState:()=>({}),updateSnapshot(){},setStatus(){},closePersonalFiles(){personalFiles.push('closed');},resumePersonalFiles(){personalFiles.push('resumed');}};}}
@@ -433,4 +433,34 @@ test('cached course links stay closed until account verification and close again
  f.profile.resolve({id:'7'});f.snapshot();await flush();assert.equal(f.personalFiles.at(-1),'resumed');
  f.hide();assert.equal(f.personalFiles.at(-1),'closed');const profile=f.queueProfile();f.show();await flush();assert.equal(f.personalFiles.at(-1),'closed');
  profile.resolve({id:'7'});await flush();assert.equal(f.personalFiles.at(-1),'resumed');
+});
+
+test('the Canvas Harness button opens the workspace after the tab was left and came back while Canvas was showing',async()=>{
+ const f=fixture({cache:{user:{id:'7'},courses:[],assignments:[],fetchedAt:new Date(0).toISOString()}});
+ f.content();await flush();f.profile.resolve({id:'7'});await flush();f.loadStyles();
+ f.click(f.host.shadowRoot.querySelector('[data-native]'));await flush();
+ f.hide();await flush();f.show();await flush();
+ const check=f.queueProfile();f.dockClick();await flush();
+ check.resolve({id:'7'});await flush();assert.equal(f.host.hidden,false);
+});
+
+test('the launcher reloads a page whose extension context lost its runtime ID',async()=>{
+ const f=fixture({skipStartup:true}),reloads=[];f.context.location.reload=()=>reloads.push('reload');
+ f.content();await flush();delete f.context.chrome.runtime.id;f.dockClick();
+ assert.deepEqual(reloads,['reload']);assert.equal(f.profileCalls,0);
+});
+
+test('a visible launcher attempt still hidden after fifteen seconds reloads once',async()=>{
+ const f=fixture({skipStartup:true}),reloads=[];f.context.location.reload=()=>reloads.push('reload');
+ f.content();await flush();f.dockClick();await flush();assert.equal(f.profileCalls,1);
+ f.tick(14999);assert.equal(reloads.length,0);f.tick(1);assert.deepEqual(reloads,['reload']);
+});
+
+test('opening an old disconnected workspace host creates a new styled host',async()=>{
+ const f=fixture({cache:{user:{id:'7'},courses:[],assignments:[],fetchedAt:new Date(0).toISOString()}});
+ f.content();await flush();f.profile.resolve({id:'7'});await flush();f.loadStyles();
+ f.click(f.host.shadowRoot.querySelector('[data-native]'));await flush();
+ const oldHost=f.host,check=f.queueProfile();oldHost.isConnected=false;f.dockClick();await flush();
+ assert.notEqual(f.host,oldHost);assert.equal(f.host.hidden,true);
+ f.loadStyles();check.resolve({id:'7'});await flush();assert.equal(f.host.hidden,false);
 });
