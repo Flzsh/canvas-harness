@@ -1,10 +1,10 @@
 <h1 align="center">
-  <img src="docs/media/banner.gif" width="880" alt="Canvas Harness: a hammer knocks a lobe out of the gear, the school subjects fly out and line up, and the name is painted in">
+  <img src="docs/media/banner.gif" width="880" alt="Canvas Harness: a hammer knocks a lobe out of the gear, the subjects line up and the name is painted in; then the same picture is repainted as the sea, Starry Night, a starfield and a blueprint">
 </h1>
 
 <p align="center">
-  <b>A Canvas workspace you build yourself.</b><br>
-  Everything due, the instructions, your PDFs and your plan on one calm page, drawn by hand.
+  <b>Your Canvas, on one calm page.</b><br>
+  Everything due beside its instructions, in a workspace you arrange and draw your way.
 </p>
 
 <p align="center">
@@ -18,127 +18,52 @@
   <a href="https://chromewebstore.google.com/detail/bppjpjpbichfcbgajlppkgbbncbfohgd"><b>Add to Chrome</b></a> ·
   <a href="https://github.com/Flzsh/canvas-harness/releases/latest">Download</a> ·
   <a href="INSTALL.md">Install</a> ·
-  <a href="docs/GETTING-STARTED.md">Get started</a> ·
   <a href="PRIVACY.md">Privacy</a>
 </p>
 
-Canvas shows you everything. Canvas Harness shows you what to do next. It replaces the Canvas dashboard with a page you arrange yourself, and Canvas's own pages are always one click away.
+<table>
+<tr>
+<td width="50%" valign="top"><img src="docs/media/home.gif" width="100%" alt="Switching on Home modules and dragging one into a full-width row"><br><b>Build your Home</b><br><sub>Pick the modules you want and drag them into place.</sub></td>
+<td width="50%" valign="top"><img src="docs/media/planner.gif" width="100%" alt="Typing a task that lands on Friday with a 45 minute estimate"><br><b>Plan the week</b><br><sub>Type “essay fri 45m” and it lands on Friday.</sub></td>
+</tr>
+<tr>
+<td valign="top"><img src="docs/media/pdf-reader.gif" width="100%" alt="A PDF opening beside the course page, with a highlight and a margin note"><br><b>PDFs beside your work</b><br><sub>Highlight, note and mark up without a new tab.</sub></td>
+<td valign="top"><img src="docs/media/make-it-yours.gif" width="100%" alt="Make it yours: choosing a layout, a page colour and an outline by picture"><br><b>Make it yours</b><br><sub>Every choice is a picture: layout, colour, type, outline.</sub></td>
+</tr>
+<tr>
+<td valign="top"><img src="docs/media/themes.gif" width="100%" alt="The workspace switching between the Under the Sea, Starry Night, Starfield and Blueprint themes"><br><b>Themes</b><br><sub>Under the Sea, Starry Night, Starfield and Blueprint.</sub></td>
+<td valign="top"><img src="docs/media/biscuit.gif" width="100%" alt="Biscuit the pony walking along the modules and answering a short request"><br><b>Biscuit</b><br><sub>A small pony that knows what is next. One switch turns it off.</sub></td>
+</tr>
+</table>
 
-- **Find your work faster.** Every assignment sits beside its instructions, so there is no course card, assignment list, detail page and pile of tabs.
-- **Read and plan in one place.** PDFs open beside your work, and a planner turns "essay outline fri 45m" into a card on Friday.
-- **Comfortable to use.** Hand-drawn artwork for every course, light or dark, and only the features you switch on.
-
-<p align="center"><sub>Every demo below uses fictional courses and assignments.</sub></p>
+<p align="center"><sub>Every demo uses made-up courses and assignments.</sub></p>
 
 ## New in 3.6
 
-- **Make it yours, redrawn.** Every choice is a picture on a drawn card, and its tabs switch several times faster.
+- **Make it yours, redrawn.** Pictures for every choice on drawn cards, and its tabs switch several times faster.
 - **A new top bar**: the tabs are words, the open one underlined by hand, and the search sits on a dashed line.
 - **Biscuit's settings now stick**: bedtime (also after midnight), offers, skills and where it walks.
 - **Opens reliably** after you leave the tab while Canvas is still loading.
 
-## Also in 3.5
+Thanks to @garywu000 and @HarryX081125 for their contributions. [Every change](CHANGELOG.md)
 
-- Keep personal course links and files in **My links & files**. PDFs open in the workspace reader; files stay on this device and carry into bounded backups. Thanks to @garywu000 for #47.
-- Mark up PDFs with strike-through, highlighter pen, text boxes, shapes and redo. The Marks list jumps to each mark; Copy as notes and Download .md make a study sheet from text marks. Thanks to @garywu000 for #51 and @HarryX081125 for #53. [PDF tools](docs/pdf-reader.md).
-- **Changes** in the toolbar shows observed deadline changes and an unread count. Full includes it; Lite leaves it out. History stays local to each Canvas account. Thanks to @garywu000 for #52. [Deadline changes](docs/deadline-changes.md).
-- Make it yours groups controls into Look, Home, Courses, your companion and More, and remembers where you left it. Course artwork is in Courses; file imports and Start over are in More.
+## Install
 
-## Also in 3.4
+**Chrome Web Store:** [Add to Chrome](https://chromewebstore.google.com/detail/bppjpjpbichfcbgajlppkgbbncbfohgd). Edge can install it from the same page. It updates by itself.
 
-- Use your own picture or short video as a banner, framed the way you want. Upload, drop or paste it into Make it yours, then choose the fit, focus, zoom and height. Course cards and a dimmed page background can use your art too. Video loops and stills, framing and media carry over in kits and personal backups.
+**From GitHub:** download the ZIP from the [latest release](https://github.com/Flzsh/canvas-harness/releases/latest), open `chrome://extensions`, turn on Developer mode and choose **Load unpacked**.
 
-- Ask Biscuit for focus time, a break, a reminder or a plan in the words you use. It also finds settings, features, tabs, notes and bookmarks, with Undo after a change. Set its skills, routines and quiet time yourself.
-- A submitted assignment can unlock one random play tool and a drawn celebration. Powerful tools are rarer.
-- Pick Starry Night, Under the Sea, Starfield or Blueprint, and try the drawn course dock in Make it yours.
-- Open the optional Market from the popup, or use Add from a file for artwork, kits, themes, pets and presets. Installed add-ons can be removed. [File formats and checker](docs/portable-packs.md).
-- Modules progress and To hand in help find the next step. Focus room, Review deck and Grade impact are optional switches in Custom, off by default in Full and Lite. Thanks to @garywu000 for the contributions.
-- Full, Lite and Custom keep your saved data when you switch. Lite leaves out scene themes, play and media playback; saved artwork stays in your backups.
-
-[Everything that changed](CHANGELOG.md)
-
-## Build your Home
-
-<p align="center">
-  <img src="docs/media/home-modules.gif" width="880" alt="Switching on Home modules, making the Focus timer wider, and dragging Messages into a full-width row">
-</p>
-
-**Edit Home** switches modules on and off: Today, This week, Focus timer, Clock, Notes, Bookmarks, Grades and Messages. Each module's three-dot menu sets its width or gives it a whole row. To move one, hold its heading until the hand-drawn circle closes, then drag it. **Undo move** puts things back.
-
-## Plan the week
-
-<p align="center">
-  <img src="docs/media/planner.gif" width="880" alt="Typing a task into the Planner, which lands on Friday with a 45 minute estimate, then dragging a card to another day">
-</p>
-
-Type a task in plain words and it lands on the right day with its time and course. Drag cards between days and tick them off. Canvas due dates never change.
-
-## Read your PDFs where you work
-
-<p align="center">
-  <img src="docs/media/pdf-reader.gif" width="880" alt="Clicking a PDF on a course's Files page opens it in a reader beside the page; a sentence is highlighted and a note is added in the margin">
-</p>
-
-Click a PDF anywhere in a course and it opens in a reader beside the page instead of a new tab. Jump by page or outline, find words, highlight in colour and write notes in the margin; they stay in your browser. **Ask AI** takes the pages or text you choose to the AI pane, where you review it before anything is sent. Assignment and submission pages stay exactly as Canvas made them until you click a PDF. [PDF reader details](docs/pdf-reader.md).
-
-The Marks list can copy text marks as notes or download a Markdown study sheet grouped by page and position. Drawings and empty marks are counted as omitted. The reader rechecks the Canvas account before downloading.
-
-## Canvas's own pages, drawn to match
-
-<p align="center">
-  <img src="docs/media/course-pages.gif" width="880" alt="A course's menu and its Modules page in the hand-drawn style, with Canvas's order and names kept">
-</p>
-
-The course menu, the Modules page and Canvas's menu bar on the left get the same hand-drawn icons and outlines. Canvas's order, words, links, requirements and locked states stay as they are.
-
-## Make it yours
-
-<p align="center">
-  <img src="docs/media/make-it-yours.gif" width="880" alt="Make it yours: choosing a layout, an outline style and a page colour by picture, and switching to dark">
-</p>
-
-Courses get animated subject artwork automatically. **Make it yours** has five tabs of picture choices: Look, Home, Courses, Pony and More. For your own art, describe your course to an AI with the free [artwork skill](skills/canvas-harness-art/SKILL.md) and drop the `.chpack` it makes into **Quick Upload**, or upload your own SVG banners, icons, frames and titles.
-
-## Only what you use
-
-<p align="center">
-  <img src="docs/media/features.gif" width="400" alt="The popup's Features page: switching from Full to Lite, then turning single features on in Custom">
-</p>
-
-Open the popup and choose **Features**. **Full** has everything. **Lite** keeps the dashboard, Planner and Home modules, grades, math and study tools. **Custom** remembers your own switches and adds anything a feature needs. Reload Canvas to apply a change.
-
-## Also inside
-
-- **Deadline changes.** See due dates that moved, were added or were removed since your previous refresh. Optional in Features; [how observations work](docs/deadline-changes.md).
-- **A study companion.** A small hand-drawn pony walks along your modules, tells you what is next, studies beside a running timer and cheers finished work. It never scolds, and one switch turns it off.
-- **Tools beside your work.** Desmos, GPA estimates and an AI hand-off in a side dock while you read. You pick what is shared and see it before anything is sent.
-- **Light on slower laptops.** It comes back quickly when you return to the tab and does very little while it sits idle.
-
-## Install in Chrome or Edge
-
-**From the Chrome Web Store (easiest):** open [Canvas Harness on the Chrome Web Store](https://chromewebstore.google.com/detail/bppjpjpbichfcbgajlppkgbbncbfohgd) and click **Add to Chrome**. A welcome page asks for your school's Canvas address, then opens it. Edge can install it from the same page after you allow extensions from other stores. Store installs update by themselves.
-
-**From GitHub instead:**
-
-1. Download and extract the extension ZIP from the [latest release](https://github.com/Flzsh/canvas-harness/releases/latest).
-2. Open `chrome://extensions` or `edge://extensions`, turn on Developer mode, and choose **Load unpacked**.
-3. Select the folder containing `manifest.json`, then refresh Canvas.
-
-Works on school sites under `*.instructure.com`, and on a school's own Canvas address once you add it in the popup (your browser asks to allow that one site). [Installation help](INSTALL.md).
+Works on `*.instructure.com` and on your school's own Canvas address once you add it in the popup. [Help](INSTALL.md)
 
 ## Privacy
 
-Canvas Harness uses the Canvas session you are already signed in to and never changes submissions or grades. Plans, notes, PDF highlights, artwork and settings stay in your browser, kept apart per account; there are no ads, no analytics and no developer server. By default nothing saved is shown until Canvas confirms who is signed in. The AI hand-off sends only what you select, to the AI website you choose, after you review it. [Privacy details](PRIVACY.md).
-
-## Contributing
-
-Bug reports and ideas are welcome in [Issues](https://github.com/Flzsh/canvas-harness/issues). Pull requests are read carefully; changes are fitted into the next release so everything keeps one look. [How to run the tests](docs/TESTING.md).
+Everything you make stays in your browser: no ads, no analytics, no server of ours. It never changes submissions or grades. [Details](PRIVACY.md)
 
 <p align="center">
-  <a href="docs/GETTING-STARTED.md">User guide</a> ·
+  <a href="docs/GETTING-STARTED.md">Guide</a> ·
   <a href="docs/THEMES.md">Themes</a> ·
-  <a href="AI.md">AI guide</a> ·
+  <a href="docs/TESTING.md">Tests</a> ·
   <a href="https://github.com/Flzsh/canvas-harness/issues">Report a bug</a>
 </p>
 
-<p align="center"><sub>Created by Flzsh · <a href="LICENSE">GPL-3.0-only</a> · <a href="extension/NOTICE.txt">Third-party notices</a></sub></p>
+<p align="center"><sub>Made by Flzsh · <a href="LICENSE">GPL-3.0-only</a> · <a href="extension/NOTICE.txt">Third-party notices</a></sub></p>
