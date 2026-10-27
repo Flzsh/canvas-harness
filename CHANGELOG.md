@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.7.0 - 2026-10-27
+
+- Course dock: drag the shelf to move it and its top edge to resize it; right-click for its card.
+- Cards look: each course on a small card with its name and what is due next.
+- Shelf, motion and name choices; Biscuit can change them too.
+
 ## 3.6.0 - 2026-10-27
 
 - Make it yours redrawn, and its tabs switch several times faster.

@@ -47,7 +47,7 @@ test('drawn settings label each section and align three named type rows',()=>{
  const f=editor();f.context.customizeOpen=true;const html=f.render(),type=html.match(/<section class="cz-group" data-art="Type">([\s\S]*?)<\/section>/)?.[1];
  assert.ok(type);assert.deepEqual([...type.matchAll(/<h4 class="cz-subhead">([^<]+)<\/h4>/g)].map(m=>m[1]),['Letters','Size','Reading text']);assert.equal((type.match(/--cz-cols:3/g)||[]).length,3);assert.match(type,/>Standard<\/strong>/);assert.match(type,/>Same as letters<\/strong>/);
  assert.equal((html.match(/<section class="cz-group">/g)||[]).length,0);
- f.context.customizeTab='layout';f.context.s.courseNavigation='dock';assert.match(f.render(),/data-art="Course size"/);assert.doesNotMatch(f.render(),/data-art="Course dock"/);
+ f.context.customizeTab='layout';f.context.s.courseNavigation='dock';assert.match(f.render(),/data-art="Course dock"/);assert.doesNotMatch(f.render(),/data-art="Course size"/);
 });
 
 test('lazy appearance panes retain current course edits, SVG drafts and quick-pack controls',()=>{

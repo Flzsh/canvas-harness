@@ -140,16 +140,38 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
   // onNative (content.js): shows Canvas's own dashboard; with it the command bar ends in a quiet
   // "Canvas dashboard" switch (the phone drawer lists it), so the host needs no row of its own.
-  function createCourseDock(container,{env=root}={}){
-    let dock=null,items=[],tabId='',observer=null;
-    const layout=()=>{if(!dock)return;const r=(container.querySelector('.rd-shell')||container).getBoundingClientRect(),view=env.innerWidth||r.right,left=Math.max(0,r.left),right=Math.min(view,r.right);container.style.setProperty('--rd-dock-center',(left+right)/2+'px');container.style.setProperty('--rd-dock-available',Math.max(36,right-left)+'px');};
+  function createCourseDock(container,{env=root,save=()=>{},menu=()=>{}}={}){
+    let dock=null,items=[],tabId='',observer=null,drag=null,nearFrame=0;
+    const num=(v,d)=>{const n=Number(v);return Number.isFinite(n)?n:d;};
+    // Its place: dockShift -1..1 of the room either side of the middle of the workspace.
+    const room=()=>{const r=(container.querySelector('.rd-shell')||container).getBoundingClientRect(),view=env.innerWidth||r.right,left=Math.max(0,r.left),right=Math.min(view,r.right),w=dock?.getBoundingClientRect?.().width||0;return {left,right,half:Math.max(0,(right-left-w)/2-8)};};
+    const place=shift=>{const {half}=room();container.style.setProperty('--rd-dock-shift',Math.round(shift*half)+'px');};
+    const layout=()=>{if(!dock)return;const {left,right}=room();container.style.setProperty('--rd-dock-center',(left+right)/2+'px');container.style.setProperty('--rd-dock-available',Math.max(36,right-left)+'px');place(drag?.shift??num(container.dataset.dockShift,0));};
+    // Pressing the empty shelf moves the dock along the bottom (it settles in the middle when let go near it); the
+    // shelf's top edge resizes it. Arrows show where the press would grab, only while the pointer is there.
+    const edgeOf=ev=>{if(!dock||ev.target.closest?.('.rd-dock-it,.rd-dock-menu'))return '';const r=dock.getBoundingClientRect(),top=r.top+num(env.getComputedStyle?.(dock)?.getPropertyValue?.('--rd-dock-headroom')?.replace('px',''),80);return ev.clientY<top-2?'':ev.clientY<top+9?'size':'move';};
+    const hover=ev=>{if(drag)return;const edge=edgeOf(ev);if(edge)dock.dataset.grab=edge;else delete dock.dataset.grab;};
+    const down=ev=>{if(ev.button!==0)return;const edge=edgeOf(ev);if(!edge)return;ev.preventDefault();dock.setPointerCapture?.(ev.pointerId);drag={edge,x:ev.clientX,y:ev.clientY,shift:num(container.dataset.dockShift,0),scale:num(container.dataset.dockScale,1),half:room().half};dock.dataset.grab=edge;dock.dataset.dragging='true';};
+    const move=ev=>{if(!drag)return;if(drag.edge==='move'){const s=drag.half?Math.max(-1,Math.min(1,(drag.shift*drag.half+ev.clientX-drag.x)/drag.half)):0;drag.shiftNow=Math.abs(s)<.06?0:Math.round(s*100)/100;place(drag.shiftNow);}else{const s=Math.max(.7,Math.min(1.5,drag.scale*(1+(drag.y-ev.clientY)/140)));drag.scaleNow=Math.round(s*100)/100;container.style.setProperty('--rd-dock-scale',String(drag.scaleNow));}};
+    const up=ev=>{if(!drag)return;const d=drag;drag=null;delete dock.dataset.dragging;dock.releasePointerCapture?.(ev.pointerId);if(d.edge==='move'&&d.shiftNow!=null){container.dataset.dockShift=String(d.shiftNow);save({dockShift:d.shiftNow});}if(d.edge==='size'&&d.scaleNow!=null){container.dataset.dockScale=String(d.scaleNow);save({dockScale:d.scaleNow});}};
+    // A right-click on the dock opens its card; a click elsewhere or Escape closes it.
+    const context=ev=>{if(!dock)return;ev.preventDefault();menu(true);};
+    const outside=ev=>{if(!container.querySelector('.rd-dock-menu'))return;const path=ev.composedPath?.()||[];if(!path.some(n=>n?.classList?.contains?.('rd-dock-menu')||n?.classList?.contains?.('rd-dock')))menu(false);};
+    const escape=ev=>{if(ev.key==='Escape'&&container.querySelector('.rd-dock-menu')){menu(false);dock?.querySelector('.rd-dock-it[tabindex="0"]')?.focus?.({preventScroll:true});}};
+    // Hovering a course plays its drawing once (Lively); the parts move from rest back to rest.
+    const play=ev=>{const it=ev.target.closest?.('.rd-dock-it');if(!it||container.dataset.dockLively==='false'||container.dataset.motionStyle==='off'||env.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches)return;const M=root.ReserveMotion,svg=it.querySelector('svg.rd-mini');if(!M?.loopSpec||!svg||svg.dataset.playing)return;const C=M.cycleOf?.(svg)||6,rigs=M.rigsOf?.(svg);let longest=0;for(const g of svg.querySelectorAll('g.art-loop')){const spec=M.loopSpec(g,C,rigs),frames=M.loopFrames(spec,1,{node:g});if(!frames.length)continue;const t=Math.min(1600,spec.period*1000);longest=Math.max(longest,t);try{g.animate(frames,{duration:t,iterations:1,easing:'linear'});}catch{}}if(longest){svg.dataset.playing='true';env.setTimeout?.(()=>{delete svg.dataset.playing;},longest);}};
+    // Hide until near: the dock waits below the window's edge until the pointer comes within reach of it.
+    const near=ev=>{if(container.dataset.dockHide!=='true'||!dock||nearFrame)return;nearFrame=env.requestAnimationFrame?.(()=>{nearFrame=0;const show=ev.clientY>(env.innerHeight||0)-110||dock.contains?.(container.getRootNode?.().activeElement);if(show)dock.dataset.near='true';else delete dock.dataset.near;})||0;};
     const resize=()=>layout();
     const rove=el=>{if(!items.includes(el))return;tabId=el.dataset.id;for(const item of items)item.tabIndex=item===el?0:-1;};
     const focus=ev=>rove(ev.target.closest?.('.rd-dock-it'));
     const click=ev=>rove(ev.target.closest?.('.rd-dock-it'));
-    const listeners={focusin:focus,click};
-    function detach(){if(dock){for(const [name,fn] of Object.entries(listeners))dock.removeEventListener(name,fn);env.removeEventListener?.('resize',resize);}observer?.disconnect();observer=null;dock=null;items=[];}
-    function sync(){const next=container.querySelector('.rd-dock');if(next!==dock){detach();dock=next;tabId='';if(dock){for(const [name,fn] of Object.entries(listeners))dock.addEventListener(name,fn);env.addEventListener?.('resize',resize);if(typeof env.ResizeObserver==='function'){let last='';observer=new env.ResizeObserver(entries=>{const size=entries.map(e=>e.contentRect?.width).join(',');if(size!==last){last=size;resize();}});observer.observe(container);}layout();}}if(!dock)return;items=Array.from(dock.querySelectorAll('.rd-dock-it'));const active=container.getRootNode?.()?.activeElement||env.document?.activeElement,chosen=items.find(el=>el.getAttribute('aria-pressed')==='true');rove(items.includes(active)?active:items.find(el=>el.dataset.id===tabId)||chosen||items[0]);}
+    const listeners={focusin:focus,click,pointermove:hover,pointerdown:down,pointerup:up,pointercancel:up,contextmenu:context,pointerover:play};
+    // The size slider moves the dock as it slides; the setting is saved when it is let go (change).
+    const slide=ev=>{const t=ev.target;if(t?.dataset?.setting!=='dockScale')return;const v=Math.max(.7,Math.min(1.5,Number(t.value)||1));t.style.setProperty('--v',String((v-.7)/.8));container.style.setProperty('--rd-dock-scale',String(v));};
+    const docListeners={pointermove:ev=>{move(ev);near(ev);},pointerdown:outside,keydown:escape,input:slide};
+    function detach(){if(dock){for(const [name,fn] of Object.entries(listeners))dock.removeEventListener(name,fn);for(const [name,fn] of Object.entries(docListeners))container.removeEventListener(name,fn,true);env.removeEventListener?.('resize',resize);}if(nearFrame)env.cancelAnimationFrame?.(nearFrame);nearFrame=0;drag=null;observer?.disconnect();observer=null;dock=null;items=[];}
+    function sync(){const next=container.querySelector('.rd-dock');if(next!==dock){detach();dock=next;tabId='';if(dock){for(const [name,fn] of Object.entries(listeners))dock.addEventListener(name,fn);for(const [name,fn] of Object.entries(docListeners))container.addEventListener(name,fn,true);env.addEventListener?.('resize',resize);if(typeof env.ResizeObserver==='function'){let last='';observer=new env.ResizeObserver(entries=>{const size=entries.map(e=>e.contentRect?.width).join(',');if(size!==last){last=size;resize();}});observer.observe(container);}layout();}}if(!dock)return;items=Array.from(dock.querySelectorAll('.rd-dock-it'));const active=container.getRootNode?.()?.activeElement||env.document?.activeElement,chosen=items.find(el=>el.getAttribute('aria-pressed')==='true');rove(items.includes(active)?active:items.find(el=>el.dataset.id===tabId)||chosen||items[0]);}
     function keydown(ev){const it=(ev.composedPath?.()[0]||ev.target)?.closest?.('.rd-dock-it');if(!items.includes(it)||ev.altKey||ev.ctrlKey||ev.metaKey)return false;const key=ev.key;if(['ArrowLeft','ArrowRight','Home','End'].includes(key)){ev.preventDefault();const index=items.indexOf(it),next=key==='Home'?0:key==='End'?items.length-1:(index+(key==='ArrowRight'?1:-1)+items.length)%items.length;rove(items[next]);items[next].focus({preventScroll:true});items[next].scrollIntoView?.({block:'nearest',inline:'nearest',behavior:'instant'});return true;}if(key==='Enter'||key===' '){ev.preventDefault();if(!ev.repeat)it.click();return true;}return false;}
     return {sync,keydown,destroy:detach};
   }
@@ -210,7 +232,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let savedWorkspace=['plan','materials','hub','inbox','grades','review'].includes(explicitWorkspace)&&workspace!==explicitWorkspace?explicitWorkspace:null;
     let deckCourseRequested='';
     const headingCache={};
-    let overviewMode='actionable',overviewQuery='',checkOffNotice=null;
+    let overviewMode='actionable',overviewQuery='',checkOffNotice=null,dockMenu=false;
     const checkingOff=new Set();
     const selectionIds=new Set();let archiveUndo=null,archiving=false;
     const selectionOptions={isSelected:id=>selectionIds.has(id)};
@@ -236,7 +258,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const frameController=mediaStore?root.ReserveMediaFrame?.createController(container,mediaStore,{motion:()=>enabled('motion')&&settings().motion==='gentle',onError:error=>{customizeStatus=error.message;scheduleRender();}}):null;
     const frameEditor=root.ReserveFrameEditor?.create(container,{read:(id,kind)=>{const pref=id==='theme'?settings().themeArt:id==='all'?settings().overviewArt:settings().coursePrefs?.[id];return pref?.[kind+'Art'];},save:(...args)=>{const task=frameWrites.catch(()=>{}).then(()=>saveFraming(...args));frameWrites=task;return task;},shape:frameShape,onError:error=>{customizeStatus=error.message;scheduleRender();}});
     const makeOwn=enabled('customization')?root.ReserveMakeYourOwn?.create({store,quickPack:quickUpload?file=>{customizeTab='courses';return uploadQuickPack(file);}:null,kitImport:mediaStore&&root.ReserveCustomKits?file=>{customizeTab='courses';return runKit('kit-import',{dataset:{},files:[file]});}:null,onChange:sourceChange}):null;
-    const courseDock=createCourseDock(container);
+    const courseDock=createCourseDock(container,{save:patch=>savePersonal(data=>{Object.assign(data.settings,patch);}),menu:open=>{if(dockMenu===open)return;dockMenu=open;render();}});
     const motion=enabled('motion')?root.ReserveMotion?.create(container):null;
     const settingsDock=enabled('customization')&&root.ReserveCustomizeUI?.render?root.ReserveSettingsDock?.createDock({container,
       onOpen:()=>{if(drawerOpen())setDrawer(false,{focus:false});toolbox?.close({restoreFocus:false});customizeCourseId=state.courseId;},
@@ -459,7 +481,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const deckCourse=courses.find(course=>course.id===(state.courseId==='all'?String(selected?.courseId||''):state.courseId))||courses[0]||null;
       // Each view filter shows the count its list would show once chosen (the same rules, the same search).
       const modeCounts=workspace==='work'?Object.fromEntries(['actionable','today','week','planned'].map(mode=>[mode,mode===state.mode&&!state.day?filtered.items.length:Model.filterAssignments(items,{...state,mode,day:'',now,timeZone:s.timeZone,local}).items.length])):{};
-      return {s,courses,allCourses,courseMap,items,filtered,now,accent,local,deadlineChanges:deadlineChanges?.summary(),resourcePins:personal.resourcePins||[],insights,courseLoad,glance,modeCounts,unread:hub?.unreadCount?.()||0,selected,deckCourse,overviewItems,overviewMode,overviewQuery,checkOffNotice,selectionIds,archiveUndo,archiving,theme:effectiveTheme(s),focusClock:C.focusClock?.(personal.focus,now)||''};
+      return {dockMenu,s,courses,allCourses,courseMap,items,filtered,now,accent,local,deadlineChanges:deadlineChanges?.summary(),resourcePins:personal.resourcePins||[],insights,courseLoad,glance,modeCounts,unread:hub?.unreadCount?.()||0,selected,deckCourse,overviewItems,overviewMode,overviewQuery,checkOffNotice,selectionIds,archiveUndo,archiving,theme:effectiveTheme(s),focusClock:C.focusClock?.(personal.focus,now)||''};
     }
 
     // Every course row in the rail is as tall as the tallest one's content (refresh.css section 3:
@@ -728,6 +750,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       container.dataset.workspaceMode=Arrange?.snapshot(ctx.s).mode||'side-by-side';
       container.dataset.arranging=String(!!arrange?.active());
       for(const [key,value] of Object.entries(root.ReserveCustomization?.defaults||{})){const shown=ctx.s[key]??value;if(shown===null||typeof shown!=='object')container.dataset[key]=String(shown);}
+      container.style.setProperty('--rd-dock-scale',String(Number(ctx.s.dockScale)||1));
       container.dataset.boardEditing=String(!!board?.editing());
       // Gentle (default), Still or Off; motion.js also treats a reduced-motion device as Off.
       container.dataset.motionStyle=MOTION_STYLES.includes(ctx.s.motion)?ctx.s.motion:'gentle';
@@ -763,6 +786,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           const rail=shell.querySelector('.rd-course-rail,.rd-dock'),nextRail=nextShell.querySelector('.rd-course-rail,.rd-dock');
           if(rail&&nextRail&&rail.nodeName===nextRail.nodeName)patchUI(rail,nextRail);
           else{rail?.remove();if(nextRail)shell.insertBefore(nextRail,workspaceNode);}
+          // The dock's card (right-click the dock) sits beside the dock.
+          const dockCard=shell.querySelector(':scope > .rd-dock-menu'),nextDockCard=nextShell.querySelector(':scope > .rd-dock-menu');
+          if(dockCard&&nextDockCard)patchUI(dockCard,nextDockCard);else{dockCard?.remove();if(nextDockCard)shell.insertBefore(nextDockCard,shell.querySelector(':scope > .rd-dock')||workspaceNode);}
           nextShell.remove();
         }
         // Stable controls retain focus and let the grade switch finish its tween.
@@ -981,7 +1007,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(field==='setting'){
         const key=event.target.dataset.setting;
         if(!['theme','accent','motion','livingArt','readingFont','greeting','font','density','textSize','dashboardLayout','showCourseStrip','showGrades','showRecentGrades',...Object.keys(root.ReserveCustomization?.defaults||{})].includes(key))return;
-        const value=event.target.dataset.onoff==='true'?(event.target.checked?'on':'off'):event.target.type==='checkbox'?event.target.checked:key==='nightArt'?Math.max(0,Math.min(100,Math.round(Number(event.target.value)||0))):event.target.value;
+        const value=event.target.dataset.onoff==='true'?(event.target.checked?'on':'off'):event.target.type==='checkbox'?event.target.checked:key==='nightArt'?Math.max(0,Math.min(100,Math.round(Number(event.target.value)||0))):key==='dockScale'?Math.max(.7,Math.min(1.5,Math.round((Number(event.target.value)||1)*100)/100)):event.target.value;
         void saveAppearance(key,value);return;
       }
       if(/^(?:\d+|local-[\w-]+)$/.test(id||'')){

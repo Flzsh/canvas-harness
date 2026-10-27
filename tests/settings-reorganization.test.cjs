@@ -64,10 +64,11 @@ test('Home has the intended group order, dock size and only one switch caution',
  const html=f.render('layout');
  assert.deepEqual(headings(html),[
   'Start from a layout','Modules on Home','Order of the three panels',
-  'Where your courses are','Course size','Spacing','What shows',
+  'Where your courses are','Course dock','Spacing','What shows',
   'Canvas’s menu bar','Saved layouts & plans'
  ]);
- assert.match(html,/data-setting="dockSize"/);
+ // 3.7: the dock's size is a slider (dockScale) in its own Course dock group.
+ assert.match(html,/data-setting="dockScale"/);
  assert.match(html,/data-setting="quickOpen"/);
  assert.equal((html.match(/<small>/g)||[]).length,1);
  assert.match(html,/Leave this off on a shared computer/);

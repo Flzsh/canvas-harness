@@ -1,10 +1,10 @@
-# Release checks — Canvas Harness 3.6.0
+# Release checks — Canvas Harness 3.7.0
 
-## 3.6.0 GitHub release scope
+## 3.7.0 Chrome Web Store submission scope
 
-This GitHub-only release redraws Make it yours and the top bar, fixes Biscuit settings, and restores the Canvas Harness button after the tab was left during loading. It retains the 3.5.0 contributions: #47 My links & files, #51 PDF study-sheet export, #52 deadline changes, and issue #53 PDF tools and icons. Existing public feature choices and handoff modules remain; no new AI runtime modules are included.
+This Chrome Web Store submission adds a movable, resizable course dock, Cards look and shelf, motion and name choices that Biscuit can change. It includes the 3.6.0 Make it yours and top-bar redraws, Biscuit settings fixes and Canvas Harness button recovery after leaving a loading tab. It retains the 3.5.0 contributions: #47 My links & files, #51 PDF study-sheet export, #52 deadline changes, and issue #53 PDF tools and icons. Existing public feature choices and handoff modules remain; no new AI runtime modules are included.
 
-Run `npm test`, `npm run check` and `npm run build`, then audit the extracted ZIP with `node scripts/release-audit.cjs dist/unpacked-3.6.0`. The build writes entry sizes and SHA-256 hashes to `dist/release-manifest.json`; the audit writes `dist/audit-3.6.0.json`. Nothing is pushed or submitted by these local checks.
+Run `npm.cmd run check`, `node scripts/test.cjs` and `npm.cmd run build` one at a time. Extract with `Expand-Archive -LiteralPath dist/Canvas-Harness-3.7.0.zip -DestinationPath dist/unpacked-3.7.0`, then run `node scripts/release-audit.cjs dist/unpacked-3.7.0`. The build writes entry sizes and SHA-256 hashes to `dist/release-manifest.json`; the audit writes `dist/audit-3.7.0.json`. Nothing is pushed or submitted by these local checks.
 
 The suite covers account and site isolation, local course-file backup/restore and limits, literal-safe study sheets, account changes before download, deadline retention/partial refreshes/storage failures, PDF tools, settings routing and selection motion. Full includes Deadline changes and My links & files; Lite leaves them out. Focus room, Review deck and Grade impact remain opt-in Custom features.
 

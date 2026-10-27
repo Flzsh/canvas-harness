@@ -14,10 +14,10 @@ async function saveDock(store,dockSize='medium'){
   data.toolbox.scratchpad='Keep my scratchpad';Arrange.change(data.settings,{type:'hide-context'});
  });return store.get();
 }
-function editor(settings={},enabled=()=>true){
+function editor(settings={},enabled=()=>true,tab='layout'){
  const env=vm.createContext({ReserveFeatures:{enabled}});
  for(const file of ['workspace-arrange.js','customization-model.js','customize-ui.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../extension',file),'utf8'),env,{filename:file});
- const context={s:settings,allCourses:[],courses:[],customizeOpen:true,customizeTab:'layout'},before=structuredClone(settings);
+ const context={s:settings,allCourses:[],courses:[],customizeOpen:true,customizeTab:tab},before=structuredClone(settings);
  const document=createDOM('<html><body>'+env.ReserveCustomizeUI.render(context)+'</body></html>');assert.deepEqual(settings,before,'rendering does not change saved settings');return document;
 }
 
@@ -75,7 +75,7 @@ test('course dock leaves older backup defaults and all layout preset navigation 
  for(const [name,want] of [['studio','sidebar'],['study','sidebar'],['focus','topbar']]){await store.update(data=>Object.assign(data.settings,structuredClone(customization.presets[name])));assert.equal((await store.load()).settings.courseNavigation,want);}
 });
 
-test('course dock Home choice is a named native radio with its own dock artwork',()=>{
+test('course dock Home choice is a named native radio with its own dock artwork and no descriptions',()=>{
  for(const courseNavigation of ['sidebar','topbar','dock']){
   const document=editor({courseNavigation}),group=document.querySelector('[role="radiogroup"][aria-label="Course navigation"]');assert.ok(group);
   const radios=group.querySelectorAll('input');assert.deepEqual(radios.map(input=>input.value),['sidebar','topbar','dock']);assert.deepEqual(radios.map(input=>input.closest('label').querySelector('strong').textContent),['Down the side','Across the top','Along the bottom']);
@@ -88,6 +88,14 @@ test('course dock Home choice is a named native radio with its own dock artwork'
 
 test('course dock choice respects the existing Arrange feature gate',()=>{
  const document=editor({courseNavigation:'dock'},id=>id!=='arrange');assert.equal(document.querySelector('[aria-label="Course navigation"]'),null);
+});
+
+test('Home keeps its section order and only the shared-computer switch warning',()=>{
+ const document=editor({courseNavigation:'dock'}),groups=document.querySelectorAll('[data-pane="layout"] .cz-group h3').map(node=>node.textContent);assert.deepEqual(groups,['Start from a layout','Modules on Home','Order of the three panels','Where your courses are','Course dock','Spacing','What shows','Canvas\u2019s menu bar','Saved layouts & plans']);assert.equal(document.querySelectorAll('[data-pane="layout"] .cz-group > .cz-hint').length,0);assert.equal(document.querySelectorAll('[data-pane="layout"] .cz-choice small').length,0);const warnings=document.querySelectorAll('[data-pane="layout"] .cz-toggle small').map(node=>node.textContent);assert.deepEqual(warnings,['Leave this off on a shared computer.']);assert.equal(document.querySelector('[data-rd-action="layout-reset"]'),null);
+});
+
+test('Courses always keeps the course list while its banner, card, and artwork controls obey the course-art gate',()=>{
+ const shown=editor({},()=>true,'courses'),gated=editor({},id=>id!=='course-art','courses');assert.ok(shown.querySelector('[data-pane="courses"] .ch-course-settings'));assert.ok(shown.querySelector('[data-setting="bannerSize"]'));assert.ok(shown.querySelector('[data-setting="courseCardStyle"]'));assert.ok(shown.querySelector('.ch-art-controls'));assert.ok(gated.querySelector('[data-pane="courses"] .ch-course-settings'));assert.equal(gated.querySelector('[data-setting="bannerSize"]'),null);assert.equal(gated.querySelector('[data-setting="courseCardStyle"]'),null);assert.equal(gated.querySelector('.ch-art-controls'),null);
 });
 
 test('dock size cleaning preserves each current choice independently of the undo choice',()=>{
@@ -141,16 +149,18 @@ test('legacy saved settings, backups, recovery, undo and presets default dock si
  for(const name of ['studio','study','focus']){await next.update(data=>{data.settings.dockSize='large';Object.assign(data.settings,structuredClone(customization.presets[name]));});assert.equal((await next.load()).settings.dockSize,'medium');}
 });
 
-test('dock course size choices follow course location and expose named native radios with dock artwork',()=>{
- for(const dockSize of ['small','medium','large']){
-  const document=editor({courseNavigation:'dock',dockSize}),group=document.querySelector('[role="radiogroup"][aria-label="Course size"]');assert.ok(group);
-  const section=group.closest('section'),sections=section.parentElement.children,index=sections.indexOf(section);assert.equal(section.querySelector('h3').textContent,'Course size');assert.equal(sections[index-1].querySelector('h3').textContent,'Where your courses are');assert.equal(sections[index+1].querySelector('h3').textContent,'Spacing');
-  const radios=group.querySelectorAll('input');assert.deepEqual(radios.map(input=>input.value),['small','medium','large']);assert.deepEqual(radios.map(input=>input.closest('label').querySelector('strong').textContent),['Small','Medium','Large']);assert.deepEqual(radios.filter(input=>input.checked).map(input=>input.value),[dockSize]);
-  const dockArt=document.querySelector('[data-setting="courseNavigation"][value="dock"]').closest('label').querySelector('svg').outerHTML;
-  for(const input of radios){assert.equal(input.type,'radio');assert.equal(input.getAttribute('name'),'cz-dockSize');assert.equal(input.dataset.rdField,'setting');assert.equal(input.dataset.setting,'dockSize');assert.equal(input.disabled,false);assert.equal(input.hasAttribute('tabindex'),false);assert.equal(input.closest('label').querySelector('svg').outerHTML,dockArt);}
+// 3.7 (owner, 2026-10-27): the dock's own controls replace Small/Medium/Large: a size slider, the shelf, the look and
+// four switches, the same as the dock's right-click card.
+test('dock controls follow course location: a size slider, shelf and look choices and its switches',()=>{
+ for(const dockScale of [.8,1,1.4]){
+  const document=editor({courseNavigation:'dock',dockScale}),section=document.querySelectorAll('[data-pane="layout"] .cz-group').find(g=>g.querySelector('h3')?.textContent==='Course dock');assert.ok(section);
+  const sections=section.parentElement.children,index=sections.indexOf(section);assert.equal(sections[index-1].querySelector('h3').textContent,'Where your courses are');assert.equal(sections[index+1].querySelector('h3').textContent,'Spacing');
+  const range=section.querySelector('input[type="range"]');assert.equal(range.dataset.setting,'dockScale');assert.equal(range.dataset.rdField,'setting');assert.equal(Number(range.getAttribute('value')),dockScale);
+  for(const [key,values] of [['dockShelf',['kraft','paper','none']],['dockStyle',['tiles','cards']]]){const group=section.querySelectorAll('input').filter(i=>i.dataset.setting===key);assert.deepEqual(group.map(i=>i.value),values);assert.ok(group.every(i=>i.type==='radio'&&i.getAttribute('name')==='cz-'+key));}
+  assert.deepEqual(section.querySelectorAll('input[type="checkbox"]').map(i=>i.dataset.setting),['dockNamesAlways','dockCounts','dockLively','dockHide']);
  }
- assert.deepEqual(editor({courseNavigation:'dock'}).querySelector('[aria-label="Course size"]').querySelectorAll('input').filter(input=>input.checked).map(input=>input.value),['medium']);
- for(const settings of [{},{courseNavigation:'sidebar',dockSize:'large'},{courseNavigation:'topbar',dockSize:'small'}])assert.equal(editor(settings).querySelector('[aria-label="Course size"]'),null);
- const gated=editor({courseNavigation:'dock',dockSize:'large'},id=>id!=='arrange');assert.equal(gated.querySelector('[aria-label="Course size"]'),null);assert.equal(gated.querySelectorAll('.cz-group').some(group=>group.querySelector('h3')?.textContent==='Course size'),false);
- assert.ok(editor({courseNavigation:'dock'},id=>id!=='course-art').querySelector('[aria-label="Course size"]'),'dock sizing depends on Arrange, independently of course artwork');
+ const find=doc=>doc.querySelectorAll('.cz-group').some(group=>group.querySelector('h3')?.textContent==='Course dock');
+ for(const settings of [{},{courseNavigation:'sidebar'},{courseNavigation:'topbar'}])assert.equal(find(editor(settings)),false);
+ assert.equal(find(editor({courseNavigation:'dock'},id=>id!=='arrange')),false);
+ assert.ok(find(editor({courseNavigation:'dock'},id=>id!=='course-art')),'dock controls depend on Arrange, independently of course artwork');
 });
