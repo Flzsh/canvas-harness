@@ -507,9 +507,11 @@
 /* Cards: each course in a mini of its own frame from the course list, its drawing, its name and what is due next;
    the count stands inside the card. */
 .rd .rd-dock[data-look=cards]{--rd-dock-gap:10px}
-/* Cards share the window: each grows to 300 px, shrinks to 160 px, and only then do they take a second row (never off-screen). */
-.rd .rd-dock[data-look=cards]{flex-wrap:wrap;justify-content:center;width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box}
-.rd .rd-dock[data-look=cards] .rd-dock-it{flex:1 1 160px;width:auto;min-width:0;max-width:300px}
+/* Cards keep their own width (up to 300 px) and shrink, down to 120 px, only when the row would not fit the window;
+   past that the row scrolls sideways (never off-screen, never a second row over the page). */
+.rd .rd-dock[data-look=cards]{flex-wrap:nowrap;width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;overflow-x:auto;scrollbar-width:none}
+.rd .rd-dock[data-look=cards] .rd-dock-it{flex:0 1 auto;width:auto;min-width:120px;max-width:300px}
+.rd .rd-dock[data-look=cards] .rd-dock-it:has(.rd-dock-all){flex-shrink:0}
 .rd .rd-dock[data-look=cards] .rd-dock-card{width:100%;box-sizing:border-box}
 .rd .rd-dock-card{position:relative;isolation:isolate;display:grid;grid-template-columns:auto minmax(0,auto);align-items:center;gap:8px;height:calc(var(--rd-dock-t) + 6px);max-width:300px;padding:5px 12px 5px 8px;rotate:-.6deg}
 .rd .rd-dock-it:nth-of-type(2n) .rd-dock-card{rotate:.7deg}
