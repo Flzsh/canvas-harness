@@ -30,7 +30,14 @@ Canvas shows you everything. Canvas Harness shows you what to do next. It replac
 
 <p align="center"><sub>Every demo below uses fictional courses and assignments.</sub></p>
 
-## New in 3.5
+## New in 3.6
+
+- **Make it yours, redrawn.** Every choice is a picture on a drawn card, and its tabs switch several times faster.
+- **A new top bar**: the tabs are words, the open one underlined by hand, and the search sits on a dashed line.
+- **Biscuit's settings now stick**: bedtime (also after midnight), offers, skills and where it walks.
+- **Opens reliably** after you leave the tab while Canvas is still loading.
+
+## Also in 3.5
 
 - Keep personal course links and files in **My links & files**. PDFs open in the workspace reader; files stay on this device and carry into bounded backups. Thanks to @garywu000 for #47.
 - Mark up PDFs with strike-through, highlighter pen, text boxes, shapes and redo. The Marks list jumps to each mark; Copy as notes and Download .md make a study sheet from text marks. Thanks to @garywu000 for #51 and @HarryX081125 for #53. [PDF tools](docs/pdf-reader.md).

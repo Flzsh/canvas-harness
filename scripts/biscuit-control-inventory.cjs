@@ -180,7 +180,7 @@ function declarations(inventory){
 }
 function runtimeSource(inventory,source){
  const start=' /* BEGIN BISCUIT CONTROL UI */',end=' /* END BISCUIT CONTROL UI */',a=source.indexOf(start),b=source.indexOf(end);if(a<0||b<a)throw Error('Runtime UI catalogue markers moved.');
- let next=source.slice(0,a)+start+'\n const UI='+JSON.stringify(runtimeCatalogue(inventory))+';\n'+source.slice(b);
+ let next=source.slice(0,a)+start+'\n const UI='+'[\n  '+runtimeCatalogue(inventory).map(row=>JSON.stringify(row)).join(',\n  ')+'\n ]'+';\n'+source.slice(b);
  for(const [name,value]of Object.entries(declarations(inventory))){const declaration=named(next,name,'{');if(!declaration)throw Error('Missing runtime declaration: '+name);next=next.slice(0,declaration.at)+JSON.stringify(value)+next.slice(declaration.at+declaration.raw.length);}
  // Aliases may only point at settings that the public editor actually exposes.
  for(const name of ['ALIASES','VALUES']){const declaration=named(next,name,'{'),values=literal(declaration.raw),allowed=new Set(inventory.controls.filter(c=>c.family==='setting').map(c=>c.key));next=next.slice(0,declaration.at)+JSON.stringify(Object.fromEntries(Object.entries(values).filter(([key])=>allowed.has(key))))+next.slice(declaration.at+declaration.raw.length);}
