@@ -1,6 +1,6 @@
 # Canvas Harness privacy
 
-Applies to Canvas Harness 3.6.0. Last updated October 27, 2026.
+Applies to Canvas Harness 3.6.0 through 3.8.0. Last updated October 28, 2026.
 
 Canvas Harness is a browser extension maintained by Flzsh. It displays information from the Canvas account already signed in on your school's website. It has no developer-operated account service, analytics collector or tracking endpoint in the extension code for this release.
 
@@ -8,7 +8,7 @@ Canvas Harness is a browser extension maintained by Flzsh. It displays informati
 
 The optional Deadline changes feature keeps a bounded, separate observation record per Canvas site and account: assignment/course identifiers and names, due dates, detection times and read flags. It keeps at most 100 changes from the past 30 days and 10,000 baseline assignments, makes no additional Canvas requests and adds no permissions. It is not included in personal workspace backups. Disabling the feature stops observation while retaining its saved record.
 
-- Canvas Harness reads courses, assignments, due dates, teacher materials, announcements and grades that your signed-in Canvas account is allowed to view. Canvas API requests are read-only.
+- Canvas Harness reads courses, assignments, due dates, teacher materials, announcements, Canvas Inbox messages and grades that your signed-in Canvas account is allowed to view. Canvas API requests are read-only. Inbox messages are shown in the Course hub without changing their read status, and they are never included in AI context.
 - The extension can cache fetched Canvas information, including course and assignment details and grade data, in your browser. Personal notes, plans, bookmarks, homework check-offs, imported course artwork, layout choices, GPA preferences and the study companion's name, look and progress counters are also stored locally.
 - Your look settings (light or dark theme, motion, artwork at night, whether the pony is shown) are kept once for this browser, not per account. So the opening screen can be dark from its first moment, the word "dark" (and nothing else) is remembered in the Canvas site's own browser storage while dark is chosen; choosing light removes it.
 - The extension uses Chrome/Edge extension local storage and separates saved data by school Canvas origin and account ID. It does not send these records to a Canvas Harness developer server or synchronize them through a Canvas Harness account.
