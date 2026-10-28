@@ -5,6 +5,7 @@
 - Course dock: drag the shelf to move it and its top edge to resize it; right-click for its card.
 - Cards look: each course on a small card with its name and what is due next.
 - Shelf, motion and name choices; Biscuit can change them too.
+- The PDF reader opens again in current Chrome and Edge. Since 3.5.0 it waited for a reader frame it could not recognise and fell back after 20 seconds.
 
 ## 3.6.0 - 2026-10-27
 

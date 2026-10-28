@@ -430,7 +430,8 @@
     readerURL=new URL(currentRuntime.getURL('pdf-reader.html'));
     if(readerURL.protocol!=='chrome-extension:'||!readerURL.host)throw Error('Invalid extension URL.');
     // URL.origin is "null" for chrome-extension: under Node; derive scheme and host.
-    extensionOrigin=readerURL.protocol+'//'+readerURL.host;
+    // The frame loads from the dynamic URL (use_dynamic_url), but its messages carry the extension's real origin.
+    extensionOrigin=readerURL.protocol+'//'+(/^[a-p]{32}$/.test(String(currentRuntime.id||''))?currentRuntime.id:readerURL.host);
     }catch{if(info.local)inform('The PDF reader is unavailable. Download the saved file to open it.');else{inform('The PDF reader is unavailable. Opening the Canvas viewer.');replayClick(info);}return;}
    const token=env.crypto?.randomUUID?.();
     if(typeof token!=='string'||token.length<16){inform('A secure PDF session could not be created.');if(!info.local)replayClick(info);return;}

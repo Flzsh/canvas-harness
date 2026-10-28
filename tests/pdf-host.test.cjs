@@ -815,3 +815,15 @@ test('saved local PDFs and readers awaiting readiness cannot switch to the nativ
  const f=fixture();f.emit('click',click(anchor()));await tick();f.message('reserve-pdf-canvas');assert.ok(f.host.active());assert.equal(f.sessionValues.has('reserve:pdf-viewer'),false);f.host.destroy();
  const local=fixture();local.root.URL={createObjectURL:()=> 'blob:'+canvas+'/native-test',revokeObjectURL(){}};await local.host.openLocal({blob:new Blob(['%PDF-1.7']),id:'cf-native-notes',owner:{origin:canvas,accountId:'7'}});await tick();local.ready();const state=local.host.active();local.message('reserve-pdf-canvas');assert.equal(local.host.active(),state);assert.equal(local.body.querySelector('.reserve-pdf-switch'),null);assert.equal(local.sessionValues.has('reserve:pdf-viewer'),false);local.host.destroy();
 });
+test('a reader frame loaded from the dynamic URL is trusted by the extension\'s real origin, not the dynamic one',async()=>{
+ const real='abcdefghijklmnopabcdefghijklmnop',dynamic='ponmlkjihgfedcbaponmlkjihgfedcba',f=fixture();
+ f.root.chrome.runtime={...f.root.chrome.runtime,id:real,getURL:file=>'chrome-extension://'+dynamic+'/'+file};
+ f.emit('click',click(anchor()));await tick();await tick();
+ assert.match(f.host.active().frame.src,new RegExp('^chrome-extension://'+dynamic+'/pdf-reader\.html'));
+ const source=f.host.active().frame.contentWindow,token='token-1234567890abc';
+ f.emit('window:message',{origin:'chrome-extension://'+dynamic,source,data:{type:'reserve-pdf-ready',token}});
+ assert.equal(f.calls.messages.length,0,'the dynamic origin never posts messages');
+ f.emit('window:message',{origin:'chrome-extension://'+real,source,data:{type:'reserve-pdf-ready',token}});
+ assert.equal(f.calls.messages.length,1);assert.equal(f.calls.messages[0].origin,'chrome-extension://'+real);
+ f.host.destroy();
+});
