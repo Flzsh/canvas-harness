@@ -1,7 +1,10 @@
 'use strict';
 /* Shared training/selection boundary. Reserved validation never enters any fitting head. */
-const METHOD='short-majority-v1',TARGET=.65,count=line=>String(line||'').trim().split(/\s+/).filter(Boolean).length,isShort=row=>{const n=count(row.line);return n>=1&&n<=4;},isLong=row=>count(row.line)>=9;
-const supplemental=row=>String(row.source||'').includes('biscuit-controls-training')||!!row.controlId&&String(row.source||'').includes('biscuit-short-r6-');
+const METHOD='short-majority-v1',TARGET=.65,LONG_SHARE=.4,count=line=>String(line||'').trim().split(/\s+/).filter(Boolean).length,isShort=row=>{const n=count(row.line);return n>=1&&n<=4;},isLong=row=>count(row.line)>=9;
+/* Control-contract rows stay supplemental (one tenth of the action weight, outside the item and detail heads), as in
+   round 6. From round 7, a round file's control rows that only point at a place in the UI (action none) are too:
+   the action head cannot produce their UI path, so at full weight they only teach it to abstain on short lines. */
+const supplemental=row=>String(row.source||'').includes('biscuit-controls-training')||!!row.controlId&&(String(row.source||'').includes('biscuit-short-r6-')||/biscuit-r\d+-train/.test(String(row.source||''))&&row.expected?.action==='none');
 function validationSource(source){return /(?:^|[\\/])(?:tests[\\/])?validation(?:[\\/]|$)|biscuit-short-r6-validation|short-v-/i.test(String(source||''));}
 function assertFitRows(rows){for(const row of rows){const world=typeof row.world==='string'?row.world:row.world?.base||row.world?.id;if(row.validationOnly||row.trainingPartition==='validation'||validationSource(row.source)||validationSource(world)||validationSource(row.snapshot?.id))throw Error('Reserved short validation is forbidden to fitting');}return rows;}
 function mass(rows){let short=0,other=0;for(const row of rows){const weight=row.trainingWeight??1;if(!Number.isFinite(weight)||weight<=0)throw Error('Invalid fitting weight');if(isShort(row))short+=weight;else other+=weight;}return {short,other,share:short/(short+other)||0};}
@@ -10,10 +13,14 @@ function balanceExamples(examples){
  if(!examples.length)return {short:0,other:0,share:null};let short=0,other=0;for(const ex of examples){if(!Number.isFinite(ex.weight??1)||(ex.weight??1)<=0)throw Error('Invalid example weight');if(ex.shortInput)short+=ex.weight??1;else other+=ex.weight??1;}if(!short)throw Error('Fitting head has no authored short examples');const factor=Math.max(1,TARGET*other/((1-TARGET)*short));for(const ex of examples)if(ex.shortInput)ex.weight=(ex.weight??1)*factor;return {short:short*factor,other,share:short*factor/(short*factor+other)};
 }
 function balanceHeads(data){const mass={};for(const key of ['action','kind','item','context'])mass[key]=balanceExamples(data[key]);for(const [key,examples]of Object.entries(data.details))mass['detail:'+key]=balanceExamples(examples);Object.defineProperty(data,'shortObjective',{value:{method:METHOD,target:TARGET,heads:mass},enumerable:true});return data;}
+/* Long lines (9+ words) keep at least LONG_SHARE of the non-short mass: each round adds many normal lines, which on their
+   own would push long lines' share down (round 6 69%, round 7 32%, round 8 23%) and cost long-line accuracy. Short lines are
+   then scaled to their majority as before, so the 65% short rule is unchanged. */
+function longFloor(rows){let normal=0,long=0;for(const row of rows){if(isShort(row))continue;const w=row.trainingWeight??1;if(isLong(row))long+=w;else normal+=w;}return long&&normal&&long/(long+normal)<LONG_SHARE?LONG_SHARE*normal/((1-LONG_SHARE)*long):1;}
 function weightRows(rows){
  assertFitRows(rows);if(rows.length&&rows.every(r=>r.shortWeightPolicy===METHOD)){if(mass(rows).share<TARGET-1e-12)throw Error('Short fitting mass lost its majority');return rows;}
- if(rows.some(r=>r.shortWeightPolicy))throw Error('Mixed weighted and unweighted short objective');const before=mass(rows);if(!before.short)throw Error('Short training examples required');const factor=Math.max(1,TARGET*before.other/((1-TARGET)*before.short));
- return rows.map(row=>({...row,trainingWeight:(row.trainingWeight??1)*(isShort(row)?factor:1),shortWeightPolicy:METHOD}));
+ if(rows.some(r=>r.shortWeightPolicy))throw Error('Mixed weighted and unweighted short objective');const lift=longFloor(rows),lifted=rows.map(row=>isLong(row)&&lift!==1?{...row,trainingWeight:(row.trainingWeight??1)*lift}:row),before=mass(lifted);if(!before.short)throw Error('Short training examples required');const factor=Math.max(1,TARGET*before.other/((1-TARGET)*before.short));
+ return lifted.map(row=>({...row,trainingWeight:(row.trainingWeight??1)*(isShort(row)?factor:1),shortWeightPolicy:METHOD}));
 }
 function ambiguityCorrect(label,result){
  if(!label)return true;if(!result||result.action!=='none'||result.next&&result.next.action!=='none')return false;
@@ -32,4 +39,4 @@ function gate(baseline,candidate){
  }
  return {ok:!reasons.length,reasons,objective:selection(candidate),shortWeight:.65};
 }
-module.exports={METHOD,TARGET,count,isShort,isLong,supplemental,validationSource,assertFitRows,mass,enabled,balanceExamples,balanceHeads,weightRows,ambiguityCorrect,selection,gate};
+module.exports={METHOD,TARGET,LONG_SHARE,longFloor,count,isShort,isLong,supplemental,validationSource,assertFitRows,mass,enabled,balanceExamples,balanceHeads,weightRows,ambiguityCorrect,selection,gate};

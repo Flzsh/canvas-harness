@@ -47,7 +47,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     return !!value&&value.published!==false&&value.workflow_state!=='deleted'&&value.state!=='deleted'&&value.hidden!==true&&value.hidden_for_user!==true;
   }
   function locked(value){
-    return !!value&&(value.locked===true||value.locked_for_user===true||value.state==='locked'||value.content_details?.locked===true||value.content_details?.locked_for_user===true);
+    return !!value&&
+      (value.locked===true||value.locked_for_user===true||value.state==='locked'||value.content_details?.locked===true||value.content_details?.locked_for_user===true);
   }
   function moduleLink(courseId,itemId){return ORIGIN+'/courses/'+encodeURIComponent(courseId)+'/modules/items/'+encodeURIComponent(itemId);}
   function pageLink(courseId,slug){return ORIGIN+'/courses/'+encodeURIComponent(courseId)+'/pages/'+encodeURIComponent(slug);}
@@ -107,7 +108,22 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       var front=raw.frontPage,frontSlug=text(front.url||front.page_url),frontTitle=text(front.title||'Course home page');
       var frontLocked=locked(front);
       var frontUrl=safeURL(front.html_url)||(frontSlug?pageLink(courseId,frontSlug):ORIGIN+'/courses/'+encodeURIComponent(courseId));
-      add({id:'front:'+courseId+':'+text(front.page_id||frontSlug||'home'),courseId,title:frontTitle,kind:'FrontPage',category:classify(frontTitle,'FrontPage'),url:frontUrl,moduleId:null,moduleName:'',contentId:null,pageUrl:frontSlug||'front_page',locked:frontLocked},frontSlug?'page:'+frontSlug:null,false);
+      add(
+        {
+          id:'front:'+courseId+':'+text(front.page_id||frontSlug||'home'),
+          courseId,
+          title:frontTitle,
+          kind:'FrontPage',
+          category:classify(frontTitle,'FrontPage'),
+          url:frontUrl,
+          moduleId:null,
+          moduleName:'',
+          contentId:null,
+          pageUrl:frontSlug||'front_page',
+          locked:frontLocked
+        },
+        frontSlug?'page:'+frontSlug:null,
+        false);
     }
     (Array.isArray(raw.pages)?raw.pages:[]).forEach(function(page){
       if(!visible(page))return;
@@ -117,7 +133,22 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(key&&seen.has(key))return;
       var title=text(page.title||'Untitled page'),isLocked=locked(page);
       var url=safeURL(page.html_url)||(slug?pageLink(courseId,slug):ORIGIN+'/courses/'+encodeURIComponent(courseId));
-      add({id:'page:'+courseId+':'+text(pageId||slug),courseId,title,kind:'Page',category:classify(title,'Page'),url,moduleId:null,moduleName:'',contentId:pageId,pageUrl:slug||null,locked:isLocked},key,false);
+      add(
+        {
+          id:'page:'+courseId+':'+text(pageId||slug),
+          courseId,
+          title,
+          kind:'Page',
+          category:classify(title,'Page'),
+          url,
+          moduleId:null,
+          moduleName:'',
+          contentId:pageId,
+          pageUrl:slug||null,
+          locked:isLocked
+        },
+        key,
+        false);
     });
     (Array.isArray(raw.files)?raw.files:[]).forEach(function(file){
       if(!visible(file))return;
@@ -128,9 +159,28 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       var title=text(file.display_name||file.filename||file.name||'Untitled file'),isLocked=locked(file);
       var direct=safeURL(file.url||file.html_url||file.preview_url);
       var url=isLocked?fileLink(courseId,fileId):(direct||fileLink(courseId,fileId));
-      add({id:'file:'+courseId+':'+fileId,courseId,title,kind:'File',category:classify(title,'File'),url,moduleId:null,moduleName:'',contentId:fileId,pageUrl:null,locked:isLocked},key,false);
+      add(
+        {id:'file:'+courseId+':'+fileId,courseId,title,kind:'File',category:classify(title,'File'),url,moduleId:null,moduleName:'',contentId:fileId,pageUrl:null,locked:isLocked},
+        key,
+        false);
     });
-    if(typeof raw.syllabusBody==='string'&&raw.syllabusBody.trim())add({id:'syllabus:'+courseId,courseId,title:'Course syllabus',kind:'Syllabus',category:'Syllabus',url:ORIGIN+'/courses/'+courseId+'/assignments/syllabus',moduleId:null,moduleName:'',contentId:null,pageUrl:'__syllabus__',locked:false},null,true);
+    if(typeof raw.syllabusBody==='string'&&raw.syllabusBody.trim())
+      add(
+        {
+          id:'syllabus:'+courseId,
+          courseId,
+          title:'Course syllabus',
+          kind:'Syllabus',
+          category:'Syllabus',
+          url:ORIGIN+'/courses/'+courseId+'/assignments/syllabus',
+          moduleId:null,
+          moduleName:'',
+          contentId:null,
+          pageUrl:'__syllabus__',
+          locked:false
+        },
+        null,
+        true);
     return result;
   }
   var STOP=new Set(['assignment','homework','worksheet','practice','review','writeup','project','odds','evens','unit','lesson','chapter','page','problem','problems','question','questions','daily','work','with','answer','answers','the','and','for','from','this','that','your']);
@@ -144,7 +194,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     return out;
   }
   function suggestions(items,assignment,options){
-    var source=Array.isArray(items)?items:[],target=assignment&&typeof assignment==='object'?assignment:{},limit=Number.isFinite(options?.limit)?Math.max(1,Math.min(20,Math.floor(options.limit))):4;
+    var source=Array.isArray(items)?items:[],
+      target=assignment&&typeof assignment==='object'?assignment:{},
+      limit=Number.isFinite(options?.limit)?Math.max(1,Math.min(20,Math.floor(options.limit))):4;
     var assignmentId=target.id==null?'':text(target.id);
     var marker=source.find(function(item){return item?.kind==='Assignment'&&text(item.contentId)===assignmentId;});
     var moduleId=marker?.moduleId||null,moduleIds=marker?.moduleIds||[moduleId],targetTerms=terms(target.name||target.title);
@@ -179,7 +231,45 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // How teacher materials read in a list. Teachers' file names carry the file system with them
   // ("Copy of … (1).docx", "HW WS 1-ANSWER KEY.pdf"): displayTitle tidies how a name reads, and the
   // original stays with the item (the row's tooltip and accessible description, and search).
-  var FORMATS={pdf:'PDF',doc:'Word',docx:'Word',dotx:'Word',odt:'Doc',rtf:'Doc',pages:'Pages',txt:'Text',ppt:'Slides',pptx:'Slides',pps:'Slides',ppsx:'Slides',key:'Slides',odp:'Slides',xls:'Sheet',xlsx:'Sheet',xlsm:'Sheet',csv:'Sheet',numbers:'Sheet',ods:'Sheet',jpg:'Image',jpeg:'Image',png:'Image',gif:'Image',heic:'Image',webp:'Image',svg:'Image',mp4:'Video',m4v:'Video',mov:'Video',webm:'Video',mp3:'Audio',m4a:'Audio',wav:'Audio',zip:'ZIP',html:'Web page',htm:'Web page'};
+  var FORMATS={
+    pdf:'PDF',
+    doc:'Word',
+    docx:'Word',
+    dotx:'Word',
+    odt:'Doc',
+    rtf:'Doc',
+    pages:'Pages',
+    txt:'Text',
+    ppt:'Slides',
+    pptx:'Slides',
+    pps:'Slides',
+    ppsx:'Slides',
+    key:'Slides',
+    odp:'Slides',
+    xls:'Sheet',
+    xlsx:'Sheet',
+    xlsm:'Sheet',
+    csv:'Sheet',
+    numbers:'Sheet',
+    ods:'Sheet',
+    jpg:'Image',
+    jpeg:'Image',
+    png:'Image',
+    gif:'Image',
+    heic:'Image',
+    webp:'Image',
+    svg:'Image',
+    mp4:'Video',
+    m4v:'Video',
+    mov:'Video',
+    webm:'Video',
+    mp3:'Audio',
+    m4a:'Audio',
+    wav:'Audio',
+    zip:'ZIP',
+    html:'Web page',
+    htm:'Web page'
+  };
   // Short abbreviations teachers write in capitals on purpose keep their capitals.
   var ACRONYMS=new Set(('AP CL HW WS CW SAT ACT PSAT IB CHEM BIO PHYS CALC ECON GOV HIST ENG SPAN LAT ALG GEOM STAT STATS COMP SCI PSYCH ENVI APES APUSH WHAP EURO LIT LANG '+
     'DNA RNA MRNA PCR CRISPR IUPAC ELISA ATP ADP NAD NADH NADPH PH UV IR MRI HIV STEM STEAM NASA NOAA MLA APA USA US UK EU UN PE ID PDF SI ACC GPS AI CAD CNC LED LEDS '+
@@ -233,7 +323,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(kind==='ExternalUrl'){
       try{
         var url=new URL(text(item.url)),host=url.hostname.replace(/^www\./,'');
-        if(host==='docs.google.com'){if(/^\/document\//.test(url.pathname))return 'Doc';if(/^\/presentation\//.test(url.pathname))return 'Slides';if(/^\/spreadsheets\//.test(url.pathname))return 'Sheet';if(/^\/forms\//.test(url.pathname))return 'Form';}
+        if(host==='docs.google.com'){
+          if(/^\/document\//.test(url.pathname))return 'Doc';
+          if(/^\/presentation\//.test(url.pathname))return 'Slides';
+          if(/^\/spreadsheets\//.test(url.pathname))return 'Sheet';
+          if(/^\/forms\//.test(url.pathname))return 'Form';
+        }
         if(/(?:^|\.)(?:youtube\.com|youtu\.be|vimeo\.com|edpuzzle\.com|loom\.com)$/.test(host))return 'Video';
       }catch(_error){}
       return 'Link';
@@ -254,7 +349,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // aside) joins that worksheet's row; unmatched keys stay rows of their own.
   var KEY_WORDS=/\b(?:answer\s*keys?|answers?|solutions?|keys?)\b/gi;
   function present(items){
-    var rows=(Array.isArray(items)?items:[]).filter(Boolean).map(function(item){return {item,title:displayTitle(item.title),original:text(item.title).replace(/\s+/g,' ').trim(),format:formatOf(item),kind:kindOf(item),key:null};});
+    var rows=(Array.isArray(items)?items:[]).filter(Boolean).map(function(item){
+      return {item,title:displayTitle(item.title),original:text(item.title).replace(/\s+/g,' ').trim(),format:formatOf(item),kind:kindOf(item),key:null};
+    });
     var sheets=new Map();
     rows.forEach(function(row){var base=plain(row.title);if(row.item.category!=='Answer key'&&base&&!sheets.has(base))sheets.set(base,row);});
     return rows.filter(function(row){
@@ -274,12 +371,23 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   }
   function outline(all,visible,options){
     var chapters=[],byKey=new Map(),numbers=options?.numbers!==false;
-    function chapter(item){var key=chapterKey(item);if(!byKey.has(key)){byKey.set(key,{key,name:text(item.moduleName)||'Course resources',resources:key==='resources',number:0,single:false,all:[],items:[],rows:[]});chapters.push(byKey.get(key));}return byKey.get(key);}
+    function chapter(item){
+      var key=chapterKey(item);
+      if(!byKey.has(key)){
+        byKey.set(key,{key,name:text(item.moduleName)||'Course resources',resources:key==='resources',number:0,single:false,all:[],items:[],rows:[]});
+        chapters.push(byKey.get(key));
+      }
+      return byKey.get(key);
+    }
     (Array.isArray(all)?all:[]).forEach(function(item){if(item)chapter(item).all.push(item);});
     (Array.isArray(visible)?visible:Array.isArray(all)?all:[]).forEach(function(item){if(item)chapter(item).items.push(item);});
     var modules=chapters.filter(function(c){return !c.resources&&c.all.length;});
     if(numbers&&modules.length>1&&!modules.some(function(c){return NUMBERED.test(c.name);}))modules.forEach(function(c,i){c.number=i+1;});
-    chapters.forEach(function(c){var list=c.all.length?c.all:c.items;c.single=!c.resources&&list.length===1&&plain(displayTitle(list[0].title))===plain(c.name);c.rows=present(c.items);});
+    chapters.forEach(function(c){
+      var list=c.all.length?c.all:c.items;
+      c.single=!c.resources&&list.length===1&&plain(displayTitle(list[0].title))===plain(c.name);
+      c.rows=present(c.items);
+    });
     return chapters.filter(function(c){return c.items.length;});
   }
   return {normalizeCatalog,safeURL,classify,suggestions,filter,displayTitle,formatOf,kindOf,searchText,present,outline,chapterKey};

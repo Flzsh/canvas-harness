@@ -24,7 +24,9 @@
    const groupParts=(g.partIndexes||[]).map(index=>parts.find(p=>p.index===index)).filter(Boolean);
    return `<section class="ch-pack-group" data-rd-key="pack-group-${E(g.key)}" data-included="${g.included!==false}"><div class="ch-pack-group-heading"><label class="ch-check"><input type="checkbox" data-rd-field="quick-pack-group" data-group="${E(g.key)}" ${g.included!==false?'checked':''} ${busy?'disabled':''}><strong>${E(targetLabel(g))}</strong></label>${destination}</div><div class="ch-pack-pieces">${groupParts.map(p=>{
     const validated=p.asset&&root.ReserveCustomArt?.render?root.ReserveCustomArt.render(p.asset,{kind:p.slot==='frame'?'border':p.slot,motion:false,fit:'contain',className:'ch-pack-image'}):'';
-    const error=(p.errors||[]).map(x=>x.message).join(' '),status=error|| (p.status==='replaced'?'Replaced by a later piece':p.status==='unresolved'?'Choose a course above':p.status==='excluded'?'Not included':p.replaces?'Replaces current artwork':p.status==='partial'?'Applied where not overridden':'Ready');
+    const error=(p.errors||[]).map(x=>x.message).join(' '),
+     status=error||
+      (p.status==='replaced'?'Replaced by a later piece':p.status==='unresolved'?'Choose a course above':p.status==='excluded'?'Not included':p.replaces?'Replaces current artwork':p.status==='partial'?'Applied where not overridden':'Ready');
     return `<label class="ch-pack-piece" data-rd-key="pack-part-${p.index}" data-status="${E(p.status)}"><span class="ch-pack-preview" aria-hidden="true">${validated||'<span>—</span>'}</span><span class="ch-pack-piece-caption"><strong>${E(slotLabel(p.slot))}</strong><small>${E(status)}</small></span><input type="checkbox" data-rd-field="quick-pack-part" data-index="${p.index}" aria-label="Include ${E(slotLabel(p.slot))} from ${E(targetLabel(g))}" ${p.included!==false?'checked':''} ${busy||g.included===false||error?'disabled':''}></label>`;
    }).join('')}</div></section>`;
   }).join('');

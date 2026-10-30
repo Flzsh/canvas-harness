@@ -35,22 +35,81 @@
  const BIG=words('sum:∑ prod:∏ coprod:∐ bigcup:⋃ bigcap:⋂ bigoplus:⨁ bigotimes:⨂ bigvee:⋁ bigwedge:⋀',(k,v)=>[k,v]);
  const INTEGRAL=words('int:∫ iint:∬ iiint:∭ oint:∮',(k,v)=>[k,v]);
  // Accents: [the mark over the base, stretchy, the combining character for the plain form].
- const ACCENT=bare({vec:['→',false,'\u20d7'],hat:['^',false,'\u0302'],widehat:['^',true,'\u0302'],bar:['¯',false,'\u0304'],overline:['¯',true,'\u0305'],tilde:['~',false,'\u0303'],widetilde:['~',true,'\u0303'],dot:['˙',false,'\u0307'],ddot:['¨',false,'\u0308'],overrightarrow:['→',true,'\u20d7'],overleftarrow:['←',true,'\u20d6'],check:['ˇ',false,'\u030c'],breve:['˘',false,'\u0306'],acute:['´',false,'\u0301'],grave:['`',false,'\u0300']});
- const SPACE=bare({',':'0.167em',':':'0.222em','>':'0.222em',';':'0.278em','!':'-0.167em',' ':'0.333em',quad:'1em',qquad:'2em',enspace:'0.5em',thinspace:'0.167em',medspace:'0.222em',thickspace:'0.278em',negthinspace:'-0.167em'});
+ const ACCENT=bare({
+  vec:['→',false,'\u20d7'],
+  hat:['^',false,'\u0302'],
+  widehat:['^',true,'\u0302'],
+  bar:['¯',false,'\u0304'],
+  overline:['¯',true,'\u0305'],
+  tilde:['~',false,'\u0303'],
+  widetilde:['~',true,'\u0303'],
+  dot:['˙',false,'\u0307'],
+  ddot:['¨',false,'\u0308'],
+  overrightarrow:['→',true,'\u20d7'],
+  overleftarrow:['←',true,'\u20d6'],
+  check:['ˇ',false,'\u030c'],
+  breve:['˘',false,'\u0306'],
+  acute:['´',false,'\u0301'],
+  grave:['`',false,'\u0300']
+ });
+ const SPACE=bare({
+  ',':'0.167em',
+  ':':'0.222em',
+  '>':'0.222em',
+  ';':'0.278em',
+  '!':'-0.167em',
+  ' ':'0.333em',
+  quad:'1em',
+  qquad:'2em',
+  enspace:'0.5em',
+  thinspace:'0.167em',
+  medspace:'0.222em',
+  thickspace:'0.278em',
+  negthinspace:'-0.167em'
+ });
  const FONT=bare({mathbf:'bf',bf:'bf',boldsymbol:'bs',bm:'bs',mathrm:'rm',rm:'rm',mathit:'it',mathsf:'sf',mathtt:'tt',mathbb:'bb',mathcal:'cal',mathscr:'cal',mathfrak:'frak',mathnormal:''});
  const TEXT=['text','textrm','textnormal','mbox','textbf','textit','textsf','texttt'];
  const IGNORED=['displaystyle','textstyle','scriptstyle','scriptscriptstyle','limits','nolimits','nonumber','notag','left.','right.','strut','mathstrut','allowbreak','relax','hfill','centering'];
  const SIZED=bare({big:'1.2em',Big:'1.8em',bigg:'2.4em',Bigg:'3em'});
- const BB={C:'ℂ',H:'ℍ',N:'ℕ',P:'ℙ',Q:'ℚ',R:'ℝ',Z:'ℤ'},CAL={B:'ℬ',E:'ℰ',F:'ℱ',H:'ℋ',I:'ℐ',L:'ℒ',M:'ℳ',R:'ℛ',e:'ℯ',g:'ℊ',o:'ℴ'},FRAK={C:'ℭ',H:'ℌ',I:'ℑ',R:'ℜ',Z:'ℨ'};
+ const BB={C:'ℂ',H:'ℍ',N:'ℕ',P:'ℙ',Q:'ℚ',R:'ℝ',Z:'ℤ'},
+  CAL={B:'ℬ',E:'ℰ',F:'ℱ',H:'ℋ',I:'ℐ',L:'ℒ',M:'ℳ',R:'ℛ',e:'ℯ',g:'ℊ',o:'ℴ'},
+  FRAK={C:'ℭ',H:'ℌ',I:'ℑ',R:'ℜ',Z:'ℨ'};
  const styled=(ch,font)=>{const A=ch>='A'&&ch<='Z',a=ch>='a'&&ch<='z';if(!A&&!a)return ch;
   if(font==='bb')return BB[ch]||String.fromCodePoint((A?0x1D538-65:0x1D552-97)+ch.charCodeAt(0));
   if(font==='cal')return CAL[ch]||String.fromCodePoint((A?0x1D49C-65:0x1D4B6-97)+ch.charCodeAt(0));
   if(font==='frak')return FRAK[ch]||String.fromCodePoint((A?0x1D504-65:0x1D51E-97)+ch.charCodeAt(0));
   return ch;};
- const SUP={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','−':'⁻','n':'ⁿ','i':'ⁱ','(':'⁽',')':'⁾','=':'⁼'},SUB={'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','+':'₊','-':'₋','−':'₋','(':'₍',')':'₎','=':'₌'};
- const script=(text,map,mark)=>{const t=text.trim();if(!t)return '';if([...t].every(ch=>map[ch]))return [...t].map(ch=>map[ch]).join('');return mark+(/^[\p{L}\p{N}]+$/u.test(t)||[...t].length===1?t:`(${t})`);};
+ const SUP={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','−':'⁻','n':'ⁿ','i':'ⁱ','(':'⁽',')':'⁾','=':'⁼'},
+  SUB={'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','+':'₊','-':'₋','−':'₋','(':'₍',')':'₎','=':'₌'};
+ const script=(text,map,mark)=>{
+  const t=text.trim();
+  if(!t)return '';
+  if([...t].every(ch=>map[ch]))return [...t].map(ch=>map[ch]).join('');
+  return mark+(/^[\p{L}\p{N}]+$/u.test(t)||[...t].length===1?t:`(${t})`);
+ };
  const DELIMS=bare({'(':'(',')':')','[':'[',']':']','|':'|','/':'/','.':'','<':'⟨','>':'⟩'});
- const ENVS=bare({matrix:['',''],smallmatrix:['',''],pmatrix:['(',')'],bmatrix:['[',']'],Bmatrix:['{','}'],vmatrix:['|','|'],Vmatrix:['‖','‖'],cases:['{',''],array:['',''],aligned:['',''],align:['',''],'align*':['',''],split:['',''],gathered:['',''],gather:['',''],'gather*':['',''],equation:['',''],'equation*':['',''],eqnarray:['',''],'eqnarray*':['','']});
+ const ENVS=bare({
+  matrix:['',''],
+  smallmatrix:['',''],
+  pmatrix:['(',')'],
+  bmatrix:['[',']'],
+  Bmatrix:['{','}'],
+  vmatrix:['|','|'],
+  Vmatrix:['‖','‖'],
+  cases:['{',''],
+  array:['',''],
+  aligned:['',''],
+  align:['',''],
+  'align*':['',''],
+  split:['',''],
+  gathered:['',''],
+  gather:['',''],
+  'gather*':['',''],
+  equation:['',''],
+  'equation*':['',''],
+  eqnarray:['',''],
+  'eqnarray*':['','']
+ });
  const ALIGNED=['aligned','align','align*','split','eqnarray','eqnarray*'];
 
  // ---- The parser: TeX in, {m: MathML, p: plain text} out -----------------------------------------------------
@@ -72,7 +131,13 @@
   const isC=(t,ch)=>t&&t.c===ch,isCmd=(t,name)=>t&&t.cmd===name;
   const expect=ch=>{const t=read();if(!isC(t,ch))fail();};
   // The raw text of a {…} argument (for \text, \begin{…}, \ce{…}): braces balanced, nothing interpreted.
-  const rawArg=()=>{ws();if(s[i]!=='{')fail();let level=0,start=i+1;for(;i<s.length;i++){if(s[i]==='\\'){i++;continue;}if(s[i]==='{')level++;else if(s[i]==='}'&&--level===0){const text=s.slice(start,i);i++;return text;}}return fail();};
+  const rawArg=()=>{
+   ws();
+   if(s[i]!=='{')fail();
+   let level=0,start=i+1;
+   for(;i<s.length;i++){if(s[i]==='\\'){i++;continue;}if(s[i]==='{')level++;else if(s[i]==='}'&&--level===0){const text=s.slice(start,i);i++;return text;}}
+   return fail();
+  };
   const join=list=>node(list.map(x=>x.m).join(''),list.map(x=>x.p).join('').replace(/\s+/g,' '),{n:list.length,single:list.length===1?list[0]:null});
   function group(stop,font){if(++depth>LIMIT.depth)fail();const list=[];
    for(;;){const t=peek();if(!t||stop(t))break;let x=scripted(font);
@@ -101,7 +166,10 @@
     out=node(m,p,{n:1,fn:base.fn,lim:false});
    }
    // A function name is applied to what follows: an invisible operator, and a thin space unless a bracket follows.
-   if(out.fn){const n=peek(),tight=!n||isC(n,'(')||isCmd(n,'left')||isC(n,'}')||isC(n,'^')||isC(n,'_');out=node(row(out.m+mo('\u2061')+(tight?'':'<mspace width="0.167em"/>')),out.p.replace(/ $/,'')+(tight?'':' '),{n:1,named:true});}
+   if(out.fn){
+    const n=peek(),tight=!n||isC(n,'(')||isCmd(n,'left')||isC(n,'}')||isC(n,'^')||isC(n,'_');
+    out=node(row(out.m+mo('\u2061')+(tight?'':'<mspace width="0.167em"/>')),out.p.replace(/ $/,'')+(tight?'':' '),{n:1,named:true});
+   }
    return out;}
   const letter=(ch,font)=>{
    if(font==='bf')return node(mi(ch,' mathvariant="normal" class="rd-mb"'),ch,{n:1});
@@ -145,7 +213,12 @@
     else if((x=/^\((aq|s|l|g)\)/.exec(rest))){m+=`<mtext>${E(x[0])}</mtext>`;p+=x[0];prev='state';}
     else if((x=/^[A-Z][a-z]?/.exec(rest))){m+=mi(x[0],' mathvariant="normal"');p+=x[0];prev='el';}
     else if((x=/^\d+(\.\d+)?/.exec(rest))){if(prev==='el'||prev===')'){attach('msub',mn(x[0]),script(x[0],SUB,'_'));prev='sub';}else{m+=mn(x[0]);p+=x[0];prev='num';}}
-    else if((x=/^\^\{([^{}]*)\}|^\^(\d*[+-]+|\d+)/.exec(rest))){const v=(x[1]??x[2]).replace(/-/g,'−');if(!/^[\d+−]+$/.test(v)||!m)fail();attach('msup',mn(v.replace(/[+−]/g,''))+(/[+−]/.test(v)?mo(v.replace(/\d/g,'')):''),script(v,SUP,'^'));prev='sup';}
+    else if((x=/^\^\{([^{}]*)\}|^\^(\d*[+-]+|\d+)/.exec(rest))){
+     const v=(x[1]??x[2]).replace(/-/g,'−');
+     if(!/^[\d+−]+$/.test(v)||!m)fail();
+     attach('msup',mn(v.replace(/[+−]/g,''))+(/[+−]/.test(v)?mo(v.replace(/\d/g,'')):''),script(v,SUP,'^'));
+     prev='sup';
+    }
     else if((x=/^_\{([^{}]*)\}|^_(\d+)/.exec(rest))){const v=x[1]??x[2];if(!/^[\dA-Za-z]+$/.test(v)||!m)fail();attach('msub',/^\d+$/.test(v)?mn(v):mi(v),script(v,SUB,'_'));prev='sub';}
     else if((x=/^[+-]/.exec(rest))){const sign=x[0]==='-'?'−':'+',after=text[k+1];
      if((prev==='el'||prev==='sub'||prev===')')&&(after===undefined||/[\s)\]]/.test(after))){attach('msup',mo(sign),SUP[sign]);prev='sup';}
@@ -187,16 +260,27 @@
    if(c==='\\'||c==='cr'||c==='newline')return node('<mspace width="1em"/>',' ',{n:1});
    if(c==='frac'||c==='dfrac'||c==='tfrac'||c==='cfrac'){const a=arg(font),b=arg(font),simple=x=>/^[\p{L}\p{N}.]+$/u.test(x.p.trim());
     return node(`<mfrac>${row(a.m)}${row(b.m)}</mfrac>`,`${simple(a)?a.p.trim():`(${a.p.trim()})`}/${simple(b)?b.p.trim():`(${b.p.trim()})`}`,{n:1});}
-   if(c==='binom'||c==='dbinom'||c==='tbinom'){const a=arg(font),b=arg(font);return node(row(fence('(')+`<mfrac linethickness="0">${row(a.m)}${row(b.m)}</mfrac>`+fence(')')),`C(${a.p.trim()}, ${b.p.trim()})`,{n:1});}
+   if(c==='binom'||c==='dbinom'||c==='tbinom'){
+    const a=arg(font),b=arg(font);
+    return node(row(fence('(')+`<mfrac linethickness="0">${row(a.m)}${row(b.m)}</mfrac>`+fence(')')),`C(${a.p.trim()}, ${b.p.trim()})`,{n:1});
+   }
    if(c==='sqrt'){ws();let index=null;if(s[i]==='['){i++;index=group(t=>isC(t,']'),font);expect(']');}const a=arg(font),inner=/^[\p{L}\p{N}.]+$/u.test(a.p.trim())?a.p.trim():`(${a.p.trim()})`;
     return index?node(`<mroot>${row(a.m)}${small(index.m)}</mroot>`,`${script(index.p,SUP,'')||''}√${inner}`,{n:1}):node(`<msqrt>${a.m}</msqrt>`,`√${inner}`,{n:1});}
    if(c in FONT){
     // \mathrm{proj}: a word in upright letters is one identifier.
-    if(FONT[c]==='rm'){const at=i;ws();if(s[i]==='{'){const raw=rawArg();if(/^[A-Za-z][A-Za-z0-9 ]*$/.test(raw))return node(mi(raw.replace(/ /g,'\u00a0'),' mathvariant="normal"'),raw+' ',{n:1,fn:raw.length>1});i=at;}}
+    if(FONT[c]==='rm'){
+     const at=i;
+     ws();
+     if(s[i]==='{'){const raw=rawArg();if(/^[A-Za-z][A-Za-z0-9 ]*$/.test(raw))return node(mi(raw.replace(/ /g,'\u00a0'),' mathvariant="normal"'),raw+' ',{n:1,fn:raw.length>1});i=at;}
+    }
     return arg(FONT[c]);}
    if(TEXT.includes(c)){const raw=rawArg();if(/[\\{}$]/.test(raw.replace(/\\[%&#_ ]/g,'')))fail();const text=raw.replace(/\\([%&#_ ])/g,'$1');
     return node(`<mtext${c==='textbf'?' class="rd-mb"':c==='textit'?' class="rd-mit"':''}>${E(text.replace(/^ | $/g,'\u00a0'))}</mtext>`,text,{n:1});}
-   if(c==='operatorname'||c==='operatorname*'){const raw=rawArg();if(!/^[A-Za-z][A-Za-z0-9 ]*$/.test(raw))fail();return c.endsWith('*')?node(mo(raw,' movablelimits="true"'),raw+' ',{n:1,fn:true,lim:true}):node(mi(raw,' mathvariant="normal"'),raw+' ',{n:1,fn:true});}
+   if(c==='operatorname'||c==='operatorname*'){
+    const raw=rawArg();
+    if(!/^[A-Za-z][A-Za-z0-9 ]*$/.test(raw))fail();
+    return c.endsWith('*')?node(mo(raw,' movablelimits="true"'),raw+' ',{n:1,fn:true,lim:true}):node(mi(raw,' mathvariant="normal"'),raw+' ',{n:1,fn:true});
+   }
    if(c in ACCENT){const a=arg(font),[mark,stretchy,combining]=ACCENT[c],single=[...a.p.trim()].length===1;
     return node(`<mover accent="true">${row(a.m)}${mo(mark,` stretchy="${stretchy}"`)}</mover>`,single?a.p.trim()+combining:a.p,{n:1});}
    if(c==='underline'){const a=arg(font);return node(`<munder accentunder="true">${row(a.m)}${mo('_',' stretchy="true"')}</munder>`,a.p,{n:1});}
@@ -204,7 +288,12 @@
    if(c==='overbrace'||c==='underbrace'){const a=arg(font),over=c==='overbrace';return node(`<${over?'mover':'munder'}>${row(a.m)}${mo(over?'⏞':'⏟',' stretchy="true"')}</${over?'mover':'munder'}>`,a.p,{n:1,lim:true});}
    if(c==='boxed'){const a=arg(font);return node(`<mrow class="rd-mbox">${a.m}</mrow>`,a.p,{n:1});}
    if(c==='not'){const a=atom(font);return node(a.m.replace(/<\/(mo|mi)>$/,'\u0338</$1>'),a.p.trim()==='='?' ≠ ':a.p.replace(/(\S)(\s*)$/,'$1\u0338$2'),{n:1});}
-   if(c==='left'){const open=delimiter(),inner=group(t=>isCmd(t,'right'),font);read();const close=delimiter();return node(row(fence(open)+inner.m+fence(close)),(open||'')+inner.p.trim()+(close||''),{n:1});}
+   if(c==='left'){
+    const open=delimiter(),inner=group(t=>isCmd(t,'right'),font);
+    read();
+    const close=delimiter();
+    return node(row(fence(open)+inner.m+fence(close)),(open||'')+inner.p.trim()+(close||''),{n:1});
+   }
    if(c==='middle'){const d=delimiter();return node(fence(d),` ${d} `,{n:1});}
    if(c==='right')fail();
    {const m=/^(big|Big|bigg|Bigg)([lrm]?)$/.exec(c);if(m){const d=delimiter();return node(d?mo(d,` stretchy="true" minsize="${SIZED[m[1]]}" maxsize="${SIZED[m[1]]}"`):'',d,{n:1});}}
@@ -229,7 +318,11 @@
  // \( … \) and \[ … \] and $$ … $$ (never a single $: prices). A part is {text} or {tex, display, source}.
  const DELIMITED=/\\\(([\s\S]+?)\\\)|\\\[([\s\S]+?)\\\]|\$\$([\s\S]+?)\$\$/g;
  function split(text){const out=[],s=String(text??'');let last=0;
-  for(const m of s.matchAll(DELIMITED)){if(m.index>last)out.push({text:s.slice(last,m.index)});out.push({tex:m[1]??m[2]??m[3],display:m[1]===undefined,source:m[0]});last=m.index+m[0].length;}
+  for(const m of s.matchAll(DELIMITED)){
+   if(m.index>last)out.push({text:s.slice(last,m.index)});
+   out.push({tex:m[1]??m[2]??m[3],display:m[1]===undefined,source:m[0]});
+   last=m.index+m[0].length;
+  }
   if(last<s.length)out.push({text:s.slice(last)});return out;}
   const hasMath=text=>/\\\(|\\\[|\$\$/.test(String(text??''));
  // Text for the page: escaped, with its mathematics rendered. `budget` ({left}) caps the expressions per document.
@@ -240,7 +333,10 @@
  function plain(text){
   if(!hasMath(text))return String(text??'');
   let left=LIMIT.count;
-  return split(text).map(part=>part.tex===undefined?part.text:(left-->0&&convert(part.tex,part.display)?.plain)||part.tex.replace(/\\[,;:! ]/g,' ').replace(/\\([A-Za-z]+)/g,'$1 ').replace(/[{}]/g,'').replace(/\s+/g,' ').trim()).join('');}
+  return split(text).map(part=>
+   part.tex===undefined?
+    part.text:
+    (left-->0&&convert(part.tex,part.display)?.plain)||part.tex.replace(/\\[,;:! ]/g,' ').replace(/\\([A-Za-z]+)/g,'$1 ').replace(/[{}]/g,'').replace(/\s+/g,' ').trim()).join('');}
  // Canvas's equation editor stores an image with its TeX beside it.
  const decode=v=>String(v).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&nbsp;|&#160;/g,' ').replace(/&amp;/g,'&');
  function equationTeX(markup){
@@ -254,8 +350,33 @@
  // attributes with checked values pass; text is escaped; anything else (annotation-xml, maction, href, style,
  // event handlers, foreign elements) is dropped with its attributes, keeping only its allowed descendants' text.
  const M_TAGS=new Set('math mrow mi mn mo mtext mspace ms mfrac msqrt mroot msub msup msubsup munder mover munderover mmultiscripts mprescripts none mtable mtr mtd mstyle mpadded mphantom merror semantics annotation'.split(' '));
- const M_ATTRS={display:/^(block|inline)$/,mathvariant:/^[a-z-]{1,24}$/,displaystyle:/^(true|false)$/,scriptlevel:/^[+-]?\d$/,stretchy:/^(true|false)$/,fence:/^(true|false)$/,separator:/^(true|false)$/,largeop:/^(true|false)$/,movablelimits:/^(true|false)$/,symmetric:/^(true|false)$/,accent:/^(true|false)$/,accentunder:/^(true|false)$/,form:/^(prefix|infix|postfix)$/,
-  lspace:/^-?[\d.]{1,6}(em|ex|px|pt|%)?$/,rspace:/^-?[\d.]{1,6}(em|ex|px|pt|%)?$/,width:/^-?[\d.]{1,6}(em|ex|px|pt|%)?$/,height:/^-?[\d.]{1,6}(em|ex|px|pt|%)?$/,depth:/^-?[\d.]{1,6}(em|ex|px|pt|%)?$/,minsize:/^[\d.]{1,6}(em|ex|px|pt|%)?$/,maxsize:/^[\d.]{1,6}(em|ex|px|pt|%)?$/,linethickness:/^([\d.]{1,6}(em|ex|px|pt|%)?|thin|medium|thick)$/,columnspan:/^[1-9]\d?$/,rowspan:/^[1-9]\d?$/,dir:/^(ltr|rtl)$/,encoding:/^application\/x-tex$/};
+ const M_ATTRS={
+  display:/^(block|inline)$/,
+  mathvariant:/^[a-z-]{1,24}$/,
+  displaystyle:/^(true|false)$/,
+  scriptlevel:/^[+-]?\d$/,
+  stretchy:/^(true|false)$/,
+  fence:/^(true|false)$/,
+  separator:/^(true|false)$/,
+  largeop:/^(true|false)$/,
+  movablelimits:/^(true|false)$/,
+  symmetric:/^(true|false)$/,
+  accent:/^(true|false)$/,
+  accentunder:/^(true|false)$/,
+  form:/^(prefix|infix|postfix)$/,
+  lspace:/^-?[\d.]{1,6}(em|ex|px|pt|%)?$/,
+  rspace:/^-?[\d.]{1,6}(em|ex|px|pt|%)?$/,
+  width:/^-?[\d.]{1,6}(em|ex|px|pt|%)?$/,
+  height:/^-?[\d.]{1,6}(em|ex|px|pt|%)?$/,
+  depth:/^-?[\d.]{1,6}(em|ex|px|pt|%)?$/,
+  minsize:/^[\d.]{1,6}(em|ex|px|pt|%)?$/,
+  maxsize:/^[\d.]{1,6}(em|ex|px|pt|%)?$/,
+  linethickness:/^([\d.]{1,6}(em|ex|px|pt|%)?|thin|medium|thick)$/,
+  columnspan:/^[1-9]\d?$/,
+  rowspan:/^[1-9]\d?$/,
+  dir:/^(ltr|rtl)$/,
+  encoding:/^application\/x-tex$/
+ };
  function cleanMathML(node,state={left:LIMIT.parts}){
   if(!node||state.left--<=0)return '';
   if(node.nodeType===3)return E(node.textContent);

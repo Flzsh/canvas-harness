@@ -2,6 +2,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const path=require('node:path'),{pathToFileURL}=require('node:url');
+require('./pdfjs-node-fixture.cjs');
 const Model=require('../extension/pdf-model.js'),Export=require('../extension/pdf-export.js');
 let library;
 async function pdfjs(){

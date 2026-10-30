@@ -14,7 +14,16 @@
  }
  function preview(pack){
   if(!pack)return '';
-  if(pack.format==='chpet')return `<div class="cz-row ch-make-poses">${['stand','walk','sleep','trot','lie','read','eat','cheer','flag','fall','held'].map(pose=>{const id=pack.poses[pose]||pack.poses[{trot:'walk',lie:'sleep'}[pose]||'stand'],asset=pack.assets[id],rest=asset.animated&&!asset.svg?pack.assets[pack.poses.stand]:asset;let art=image(asset,pose,pack.size);if(!asset.svg){const url=rest.svg?'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(rest.still||rest.svg):rest.firstFrame||'data:'+rest.type+';base64,'+rest.data;art=`<picture><source media="(prefers-reduced-motion: reduce)" srcset="${E(url)}">${art}</picture>`;}return `<figure>${art}<figcaption>${E(pose)}</figcaption></figure>`;}).join('')}</div>`;
+  if(pack.format==='chpet')
+    return `<div class="cz-row ch-make-poses">${['stand','walk','sleep','trot','lie','read','eat','cheer','flag','fall','held'].map(pose=>{
+      const id=pack.poses[pose]||pack.poses[{trot:'walk',lie:'sleep'}[pose]||'stand'],asset=pack.assets[id],rest=asset.animated&&!asset.svg?pack.assets[pack.poses.stand]:asset;
+      let art=image(asset,pose,pack.size);
+      if(!asset.svg){
+        const url=rest.svg?'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(rest.still||rest.svg):rest.firstFrame||'data:'+rest.type+';base64,'+rest.data;
+        art=`<picture><source media="(prefers-reduced-motion: reduce)" srcset="${E(url)}">${art}</picture>`;
+      }
+      return `<figure>${art}<figcaption>${E(pose)}</figcaption></figure>`;
+    }).join('')}</div>`;
   if(pack.format==='chpreset')return `<ul>${(root.ReservePresetPack?.describe(pack)||[pack.kind]).map(label=>`<li>${E(label)}</li>`).join('')}</ul>`;
   if(pack.format!=='chtheme')return '';
   return Object.entries(pack.colors).map(([mode,colors])=>{
@@ -42,7 +51,10 @@
   const notify=()=>{if(!dead)onChange();};
   async function read(id){const result=await root.ReservePacks.readLocal(id,{store});return result.pack||result;}
   function sync(){
-   if(dead)return;const own=store.get().settings?.makeYourOwn||{},presets=Object.values(own.installed||{}).filter(row=>row.kind==='preset'),next=JSON.stringify([own.theme?.id||null,own.pet?.id||null,presets.map(row=>row.id)]);
+   if(dead)return;
+   const own=store.get().settings?.makeYourOwn||{},
+     presets=Object.values(own.installed||{}).filter(row=>row.kind==='preset'),
+     next=JSON.stringify([own.theme?.id||null,own.pet?.id||null,presets.map(row=>row.id)]);
    if(next===signature)return;signature=next;
    const token=++hydration;state.theme=state.pet=null;state.presetKinds={};
    if(!own.theme&&!own.pet&&!presets.length){notify();return;}
@@ -70,20 +82,29 @@
    const P=root.ReservePacks;if(!P){state.status='Pack storage is unavailable';notify();return;}
    if(name==='review'||name==='use'){
     const row=store.get().settings?.makeYourOwn?.installed?.[id];
-    if(!row)return;state.busy=true;notify();try{const pack=row.pack||await read(id);if(dead)return;state.draft={id,pack};}catch(error){state.status=error?.message||'Could not load pack';}finally{state.busy=false;notify();}return;
+    if(!row)return;
+    state.busy=true;
+    notify();
+    try{const pack=row.pack||await read(id);if(dead)return;state.draft={id,pack};}catch(error){state.status=error?.message||'Could not load pack';}finally{state.busy=false;notify();}
+    return;
    }
    if(name==='apply'&&!state.draft)return;
    state.busy=true;state.status='';notify();
    try{
     if(name==='remove')await P.removeLocal(id,{store});
-    else if(name==='apply'){if(state.draft.id&&P.useLocal)await P.useLocal(state.draft.id,{store,week:state.week});else await P.installLocal(state.draft.file,{store,week:state.week});state.draft=null;}
+    else if(name==='apply'){
+      if(state.draft.id&&P.useLocal)await P.useLocal(state.draft.id,{store,week:state.week});else await P.installLocal(state.draft.file,{store,week:state.week});
+      state.draft=null;
+    }
     else return;
     state.status=name==='remove'?'Removed':'Added';
    }catch(error){state.status=error?.message||'Could not save';}
    finally{state.busy=false;notify();}
   }
   const unsubscribe=store.subscribe?.(sync);sync();
-  return {state,choose,action,sync,week(value){state.week=value;},destroy(){dead=true;++revision;++hydration;unsubscribe?.();state.draft=null;state.theme=state.pet=null;}};
+  return {state,choose,action,sync,week(value){
+    state.week=value;
+  },destroy(){dead=true;++revision;++hydration;unsubscribe?.();state.draft=null;state.theme=state.pet=null;}};
  }
  const api={render,preview,picker,create};root.ReserveMakeYourOwn=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

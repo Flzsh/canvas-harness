@@ -2,9 +2,9 @@
   "manifest_version": 3,
   "name": "Canvas Harness",
   "short_name": "Canvas Harness",
-  "version": "3.7.0",
-  "description": "A Canvas workspace you build yourself: assignments beside their instructions, a weekly planner, study tools and a study companion.",
-  "minimum_chrome_version": "120",
+  "version": "3.8.0",
+  "description": "For students on Canvas LMS: your courses, assignments, planner and PDFs redrawn as one calm page you arrange yourself.",
+  "minimum_chrome_version": "126",
   "permissions": [
     "storage",
     "unlimitedStorage",
@@ -265,5 +265,5 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'; worker-src 'self'"
   },
-  "version_name": "3.7.0"
+  "version_name": "3.8.0"
 }

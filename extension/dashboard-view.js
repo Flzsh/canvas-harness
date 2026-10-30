@@ -6,7 +6,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
  'use strict';
  const enabled=id=>!root.ReserveFeatures||root.ReserveFeatures.enabled(id);
  const WORKSPACES={work:'dashboard',assignments:'dashboard',plan:'planner',materials:'materials',hub:'course-hub',inbox:'course-hub',grades:'grades',review:'review-deck'};
- const workspaceEnabled=name=>(name!=='review'||root.ReserveFeatures?.enabled('review-deck')===true&&!!root.ReserveReviewDeck?.create)&&Object.hasOwn(WORKSPACES,name)&&enabled(WORKSPACES[name])&&(!root.ReserveFeatures||({
+ const workspaceEnabled=name=>
+   (name!=='review'||root.ReserveFeatures?.enabled('review-deck')===true&&!!root.ReserveReviewDeck?.create)&&
+     Object.hasOwn(WORKSPACES,name)&&
+     enabled(WORKSPACES[name])&&
+     (!root.ReserveFeatures||({
   plan:()=>!!root.ReservePlannerUI?.render&&!!root.ReserveWidgets?.plan,
   grades:()=>!!(root.ReserveGradesView||Grades)?.render,review:()=>!!root.ReserveReviewDeck?.create,
   materials:()=>!!root.ReserveMaterialsUI?.create,
@@ -17,10 +21,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
  function bookmarkItems(c){
   const visible=new Set(c.courses.map(x=>String(x.id))),scope=String(c.state.courseId),seen=new Set();
   const allowed=id=>visible.has(String(id))&&(scope==='all'||scope===String(id));
-  const assignments=c.items.filter(x=>c.local[x.id]?.pinned&&(allowed(x.courseId)||(scope==='all'&&x.personal&&(!x.courseId||x.courseId==='personal')))).map(x=>({kind:'assignment',id:String(x.id),courseId:String(x.courseId||''),title:x.name}));
+  const assignments=c.items.filter(x=>c.local[x.id]?.pinned&&(allowed(x.courseId)||(scope==='all'&&x.personal&&(!x.courseId||x.courseId==='personal')))).map(x=>
+    ({kind:'assignment',id:String(x.id),courseId:String(x.courseId||''),title:x.name}));
   const resources=(enabled('materials')?c.resourcePins||[]:[]).filter(x=>allowed(x.courseId)).flatMap(x=>{
    const module=String(x.id).match(/^module:\d+:(\d+)$/);let url;
-   try{url=new URL(module?`${globalThis.ReserveSite.origin()}/courses/${x.courseId}/modules/items/${module[1]}`:x.url);if(!['https:','http:'].includes(url.protocol)||url.username||url.password)return [];}catch{return [];}
+   try{
+     url=new URL(module?`${globalThis.ReserveSite.origin()}/courses/${x.courseId}/modules/items/${module[1]}`:x.url);
+     if(!['https:','http:'].includes(url.protocol)||url.username||url.password)return [];
+   }catch{return [];}
    const key=String(x.courseId)+':'+String(x.id);if(seen.has(key))return [];seen.add(key);
    return [{kind:'resource',id:String(x.id),courseId:String(x.courseId),title:root.ReserveMaterials?.displayTitle?.(x.title)||x.title||'Course document',url:url.href,category:x.category||'Material'}];
   });
@@ -41,7 +49,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
    ...(!enabled('grades')?{showGrades:false}:{}),...(!enabled('course-hub')?{showCourseInformation:false}:{}),...(!enabled('motion')?{motion:'off',livingArt:'off'}:{})}};
  }
  // Make it yours on its own: a settings tab switch redraws only the panel (dashboard.js renderPanel).
- function renderCustomization(c){if(!enabled('dashboard'))return '';c=viewContext(c);const {quickUpload,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading}=c;return enabled('customization')?root.ReserveCustomizeUI?.render({...c,quickUpload,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading})||'':'';}
+ function renderCustomization(c){
+   if(!enabled('dashboard'))return '';
+   c=viewContext(c);
+   const {quickUpload,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading}=c;
+   return enabled('customization')?root.ReserveCustomizeUI?.render({...c,quickUpload,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading})||'':'';
+ }
  function render(c,h,{headingCache=null,reuseHeading=false}={}){
   if(!enabled('dashboard'))return '';
   c=viewContext(c);
@@ -49,25 +62,48 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const {state,local,insights,quickUpload,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading}=c;
   // Course art is decorative (course-art.js): a small hand-drawn mini wherever a course appears and
   // its whole wide scene as the heading's banner. Without the art module the frames stay empty and the plain markup remains.
-  const art=enabled('course-art')&&root.ReserveCourseArt,mini=(course,place)=>course?.id&&art?.mini?art.mini(course,{place}):'',scene=(course,place)=>course?.id&&art?.scene?art.scene(course,{crop:'wide',place}):'';
+  const art=enabled('course-art')&&root.ReserveCourseArt,
+    mini=(course,place)=>course?.id&&art?.mini?art.mini(course,{place}):'',
+    scene=(course,place)=>course?.id&&art?.scene?art.scene(course,{crop:'wide',place}):'';
   // Course colour for fills and washes, and its text-safe ink for words, rings and strokes (ReserveCore.courseInk).
   const inkOf=color=>root.ReserveCore?.courseInk?.(color)||color,tone=color=>`--rd-course:${E(color)};--rd-course-ink:${E(inkOf(color))}`;
   // Short labels (normalizeData) where space is tight; the full Canvas name stays in tooltips, aria-labels and selects.
   // The line under a title leads with a subject moved out of it ("Subject · Teacher"), then the teacher or cohort.
-  const short=course=>course?.shortName||course?.name||'',detail=course=>[course?.subject,course?.teacher,course?.sub].filter(Boolean).join(' · '),option=course=>[short(course),detail(course)].filter(Boolean).join(' — ');
+  const short=course=>course?.shortName||course?.name||'',
+    detail=course=>[course?.subject,course?.teacher,course?.sub].filter(Boolean).join(' · '),
+    option=course=>[short(course),detail(course)].filter(Boolean).join(' — ');
   const full=course=>course?.originalName&&course.originalName!==course.name?`${course.name} · ${course.originalName}`:course?.name||'';
   const unbreak=text=>text.replace(/(\d)-(\d)/g,'$1\u2011$2');// a non-breaking hyphen keeps "26-27" on one line
   const online=item=>(item.submissionTypes||[]).some(type=>['online_upload','online_text_entry','online_url','media_recording'].includes(type));
   const doneLabel=item=>online(item)?'Ready to submit':'Done in my plan';
-  const today=dayKey(c.now,c.s.timeZone),tomorrowDate=new Date(today+'T12:00:00Z');tomorrowDate.setUTCDate(tomorrowDate.getUTCDate()+1);const tomorrow=tomorrowDate.toISOString().slice(0,10);
+  const today=dayKey(c.now,c.s.timeZone),tomorrowDate=new Date(today+'T12:00:00Z');
+  tomorrowDate.setUTCDate(tomorrowDate.getUTCDate()+1);
+  const tomorrow=tomorrowDate.toISOString().slice(0,10);
   const action=(name,label,extra='',cls='rd-button')=>{
-   const feature={toolbox:'tools',capture:'tools','selection-ai':'ai','open-hub':'course-hub','open-materials':'materials',planner:'planner',settings:'customization','hidden-courses':'customization','board-edit':'planner','arrange-undo':'arrange','arrange-restore':'arrange',grades:'grades','more-grades':'grades'}[name];
+   const feature={
+     toolbox:'tools',
+     capture:'tools',
+     'selection-ai':'ai',
+     'open-hub':'course-hub',
+     'open-materials':'materials',
+     planner:'planner',
+     settings:'customization',
+     'hidden-courses':'customization',
+     'board-edit':'planner',
+     'arrange-undo':'arrange',
+     'arrange-restore':'arrange',
+     grades:'grades',
+     'more-grades':'grades'
+   }[name];
    if(feature&&!enabled(feature)||name==='selection-ai'&&!enabled('tools'))return '';
-   if(root.ReserveFeatures&&(['toolbox','capture'].includes(name)&&!root.ReserveToolbox?.create||['settings','hidden-courses'].includes(name)&&(!root.ReserveCustomizeUI?.render||!root.ReserveSettingsDock?.createDock)))return '';
+   if(root.ReserveFeatures&&
+     (['toolbox','capture'].includes(name)&&!root.ReserveToolbox?.create||['settings','hidden-courses'].includes(name)&&(!root.ReserveCustomizeUI?.render||!root.ReserveSettingsDock?.createDock)))
+     return '';
    return `<button type="button" class="${cls}" data-rd-action="${name}" ${extra}>${label}</button>`;};
   const checked=item=>local[item.id]?.checkedOff===true;
   const finished=item=>complete(item)||checked(item);
-  const overviewArt={id:'folio-home',name:'All courses',color:'#C96442',artPrefs:{...c.s.themeArt,...c.s.overviewArt},artMotion:c.s.motion==='gentle'&&c.s.livingArt!=='off'},bookmarkArt={id:'folio-bookmarks',name:'Bookmarks',color:'#C96442'};
+  const overviewArt={id:'folio-home',name:'All courses',color:'#C96442',artPrefs:{...c.s.themeArt,...c.s.overviewArt},artMotion:c.s.motion==='gentle'&&c.s.livingArt!=='off'},
+    bookmarkArt={id:'folio-bookmarks',name:'Bookmarks',color:'#C96442'};
   const dueTone=item=>deadlineTone(item,c.now,finished(item));
   const linkedPDF=link=>{
    if(!enabled('pdf'))return '';
@@ -80,9 +116,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
    return action(done?'undo-check-off':'select-item',icon('check')+(label?`<span>${done?'Undo mark done':chosen?'Selected':'Select'}</span>`:''),`data-id="${E(item.id)}" aria-label="${name}: ${E(item.name)}" title="${done?'Put back in Up next':enabled('ai')&&enabled('tools')?'Select for AI context or archive':'Select for archive'}" aria-pressed="${done||!!chosen}" data-selected="${!!chosen}"`,label?'rd-button rd-check-label':'rd-check-off');
   }
   // A toast in a zero-height sticky dock at the end of the list: it takes no layout space, so the column never moves.
-  function bookmarkButton(item,label=false){const saved=!!local[item.id]?.pinned;return action('pin',icon('bookmark')+(label?`<span>${saved?'Bookmarked':'Bookmark'}</span>`:''),`data-id="${E(item.id)}" aria-label="${saved?'Remove bookmark:':'Bookmark'} ${E(item.name)}" title="${saved?'Remove bookmark':'Bookmark in All courses and this course'}" aria-pressed="${saved}"`,label?'rd-button rd-bookmark-button':'rd-pin-button');}
-  function bookmarks(){const items=bookmarkItems(c);return `<section class="rd-bookmarks" data-rd-key="bookmarks" aria-labelledby="rd-bookmarks-title"><div class="rd-bookmarks-heading"><span class="rd-bookmarks-art rd-rail-art" aria-hidden="true">${mini(bookmarkArt,'bookmarks')}</span><h2 id="rd-bookmarks-title">Bookmarks</h2>${items.length?`<span class="rd-bookmarks-count">${items.length}</span>`:''}</div>${items.length?`<ul class="rd-bookmark-list">${items.map(item=>{const course=c.courseMap.get(item.courseId),label=`<small>${E(short(course)||'Personal')} · ${E(item.kind==='assignment'?'Assignment':item.category)}</small><strong>${E(item.title)}</strong>`;return `<li class="rd-bookmark" data-rd-key="bookmark-${E(item.kind+'-'+item.courseId+'-'+item.id)}" style="${tone(course?.color||'#C96442')}">${item.kind==='assignment'?action('preview',label,`data-id="${E(item.id)}" aria-label="Preview bookmarked assignment: ${E(item.title)}"`,'rd-bookmark-open'):`<a class="rd-bookmark-open" href="${E(item.url)}" target="_blank" rel="noopener noreferrer">${label}</a>`}${action(item.kind==='assignment'?'pin':'bookmark-remove-resource',icon('close'),`data-id="${E(item.id)}" data-course="${E(item.courseId)}" aria-label="Remove bookmark: ${E(item.title)}" title="Remove bookmark"`,'rd-icon-button rd-bookmark-remove')}</li>`;}).join('')}</ul>`:'<p>Keep assignments and documents here with Bookmark.</p>'}</section>`;}
-  function selectionBar(){const count=c.selectionIds?.size||0,assignments=c.items.filter(x=>c.selectionIds?.has('assignment:'+x.courseId+':'+x.id)).length;return count?`<section class="rd-selection-bar" data-rd-key="selection-bar" aria-label="Selected items"><span role="status">${count} selected</span><div>${action('selection-ai','Use in AI','','rd-button')}${assignments?action('selection-archive','Archive'+(assignments!==count?' '+assignments:''),(c.archiving?'disabled aria-busy="true" ':'')+'title="Hide from your plan only; no Canvas submission or grade changes"','rd-button'):''}${action('selection-clear','Clear','','rd-text-button')}</div></section>`:c.archiveUndo?`<section class="rd-selection-bar" data-rd-key="selection-undo"><span role="status">${c.archiveUndo.length} archived in Canvas Harness</span>${action('selection-undo','Undo',c.archiving?'disabled':'','rd-button')}</section>`:'';}
+  function bookmarkButton(item,label=false){
+    const saved=!!local[item.id]?.pinned;
+    return action('pin',icon('bookmark')+(label?`<span>${saved?'Bookmarked':'Bookmark'}</span>`:''),`data-id="${E(item.id)}" aria-label="${saved?'Remove bookmark:':'Bookmark'} ${E(item.name)}" title="${saved?'Remove bookmark':'Bookmark in All courses and this course'}" aria-pressed="${saved}"`,label?'rd-button rd-bookmark-button':'rd-pin-button');
+  }
+  function bookmarks(){
+    const items=bookmarkItems(c);
+    return `<section class="rd-bookmarks" data-rd-key="bookmarks" aria-labelledby="rd-bookmarks-title"><div class="rd-bookmarks-heading"><span class="rd-bookmarks-art rd-rail-art" aria-hidden="true">${mini(bookmarkArt,'bookmarks')}</span><h2 id="rd-bookmarks-title">Bookmarks</h2>${items.length?`<span class="rd-bookmarks-count">${items.length}</span>`:''}</div>${items.length?`<ul class="rd-bookmark-list">${items.map(item=>{const course=c.courseMap.get(item.courseId),label=`<small>${E(short(course)||'Personal')} · ${E(item.kind==='assignment'?'Assignment':item.category)}</small><strong>${E(item.title)}</strong>`;return `<li class="rd-bookmark" data-rd-key="bookmark-${E(item.kind+'-'+item.courseId+'-'+item.id)}" style="${tone(course?.color||'#C96442')}">${item.kind==='assignment'?action('preview',label,`data-id="${E(item.id)}" aria-label="Preview bookmarked assignment: ${E(item.title)}"`,'rd-bookmark-open'):`<a class="rd-bookmark-open" href="${E(item.url)}" target="_blank" rel="noopener noreferrer">${label}</a>`}${action(item.kind==='assignment'?'pin':'bookmark-remove-resource',icon('close'),`data-id="${E(item.id)}" data-course="${E(item.courseId)}" aria-label="Remove bookmark: ${E(item.title)}" title="Remove bookmark"`,'rd-icon-button rd-bookmark-remove')}</li>`;}).join('')}</ul>`:'<p>Keep assignments and documents here with Bookmark.</p>'}</section>`;
+  }
+  function selectionBar(){
+    const count=c.selectionIds?.size||0,assignments=c.items.filter(x=>c.selectionIds?.has('assignment:'+x.courseId+':'+x.id)).length;
+    return count?`<section class="rd-selection-bar" data-rd-key="selection-bar" aria-label="Selected items"><span role="status">${count} selected</span><div>${action('selection-ai','Use in AI','','rd-button')}${assignments?action('selection-archive','Archive'+(assignments!==count?' '+assignments:''),(c.archiving?'disabled aria-busy="true" ':'')+'title="Hide from your plan only; no Canvas submission or grade changes"','rd-button'):''}${action('selection-clear','Clear','','rd-text-button')}</div></section>`:c.archiveUndo?`<section class="rd-selection-bar" data-rd-key="selection-undo"><span role="status">${c.archiveUndo.length} archived in Canvas Harness</span>${action('selection-undo','Undo',c.archiving?'disabled':'','rd-button')}</section>`:'';
+  }
   function completionNotice(){return c.checkOffNotice?`<div class="rd-completion-notice rd-toast" data-rd-key="check-off-notice"><span role="status">${icon('check')}<span>Marked done <small>${E(c.checkOffNotice.name)}</small></span></span>${action('undo-check-off','Undo',`data-id="${E(c.checkOffNotice.id)}"`,'rd-text-button')}</div>`:'';}
   // The dotted clay ring says Canvas is syncing (static under Off and reduced motion).
   const syncRing='<span class="rd-sync-ring" aria-hidden="true"></span>';
@@ -95,29 +140,68 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // The switch keeps its whole name when a narrow bar shows only "Canvas".
   // Assignments is the Home workspace with only the list and the reader; it has its own tab.
   const tabHere=(c.workspace||'work')==='work'&&c.workPage==='assignments'?'assignments':(c.workspace||'work');
-  function toolbar(){const unread=c.unread||0;return `<header class="rd-toolbar">${action('drawer','<span class="rd-drawer-glyph" aria-hidden="true"></span>','aria-label="Menu: workspaces and courses" aria-expanded="false" aria-controls="rd-course-rail"','rd-icon-button rd-drawer-button')}<div class="rd-workspace-tabs t-tabs" role="tablist" aria-label="Workspace"><span class="t-tabs-pill" aria-hidden="true"></span>${[['work','Home'],['assignments','Assignments'],['plan','Planner'],['hub','Course hub'],['materials','Materials'],['inbox','Messages'],['grades','Grades'],['review','Review']].filter(([key])=>workspaceEnabled(key)).map(([key,label])=>action('workspace',`<span>${label}</span>${key==='inbox'?`<span class="rd-n" data-rd-unread aria-hidden="true"${unread?'':' hidden'}>${unread||''}</span><span class="rd-sr-only" data-rd-unread-sr>${unread?`, ${unread} unread`:''}</span>`:''}`,`data-tab="${key}" role="tab" id="rd-tab-${key}" aria-controls="rd-workspace-panel" aria-selected="${tabHere===key}" tabindex="${tabHere===key?0:-1}"`,'rd-workspace-tab t-tab')).join('')}</div>${searchField(true)}<div class="rd-tools">${c.deadlineChanges?.total||c.deadlineChanges?.error?action('deadline-changes',icon('calendar')+`<span>Changes${c.deadlineChanges.count?`<span class="rd-n" aria-hidden="true">${c.deadlineChanges.count}</span>`:''}</span>`,`data-rd-key="deadline-changes" aria-label="Deadline changes${c.deadlineChanges.count?`, ${c.deadlineChanges.count} unread`:''}" aria-haspopup="dialog" ${!c.deadlineChanges.loaded?'aria-disabled="true" aria-busy="true"':''}`,'rd-button rd-deadline-trigger'):''}${root.ReserveFeatures?.enabled('focus-room')===true&&root.ReserveFocusRoom?.create?action('room-open','Focus room','','rd-text-button'):''}${action('toolbox',icon('search')+`<span>Tools</span><kbd aria-hidden="true">${mod} K</kbd>`,`aria-label="Tools" title="Tools · ${mod} K" aria-keyshortcuts="Control+K Meta+K"`,'rd-button rd-toolbox-trigger')}${c.demo?'<span class="rd-demo">Sample data</span>':''}${enabled('planner')?`<span class="rd-focus-indicator" aria-label="${c.focusClock?'Planner, focus session running':'Planner'}"><span class="rd-focus-clock" data-rd-focus-clock ${c.focusClock?'':'hidden'}>${E(c.focusClock||'')}</span></span>`:''}${enabled('grades')?`<label class="rd-grade-switch"><input type="checkbox" role="switch" data-rd-field="setting" data-setting="showGrades" aria-label="Show grades" ${c.s.showGrades===true?'checked':''}><span class="rd-switch-track" aria-hidden="true"></span><span>Show grades</span></label>`:''}${action('settings',icon('sliders'),`aria-label="Appearance settings" title="Appearance settings" aria-expanded="${!!c.customizeOpen}" aria-controls="rd-appearance-panel"`,'rd-icon-button')}${(()=>{const sync=syncState();return action('refresh',icon('refresh')+syncRing,`aria-label="Refresh Canvas data" title="${E(sync.text)}"${sync.failed&&!c.refreshing?' data-tone="danger"':''} ${c.refreshing?'aria-disabled="true" aria-busy="true"':''}`,'rd-icon-button rd-refresh-button');})()}${c.nativeSwitch?action('native',`${icon('grid')}<span>Canvas<span class="rd-native-word"> dashboard</span></span>`,'aria-label="Canvas dashboard" title="Show Canvas’s own dashboard"','rd-button rd-native-switch'):''}</div></header>`;}
+  function toolbar(){
+    const unread=c.unread||0;
+    return `<header class="rd-toolbar">${action('drawer','<span class="rd-drawer-glyph" aria-hidden="true"></span>','aria-label="Menu: workspaces and courses" aria-expanded="false" aria-controls="rd-course-rail"','rd-icon-button rd-drawer-button')}<div class="rd-workspace-tabs t-tabs" role="tablist" aria-label="Workspace"><span class="t-tabs-pill" aria-hidden="true"></span>${[['work','Home'],['assignments','Assignments'],['plan','Planner'],['hub','Course hub'],['materials','Materials'],['inbox','Messages'],['grades','Grades'],['review','Review']].filter(([key])=>workspaceEnabled(key)).map(([key,label])=>action('workspace',`<span>${label}</span>${key==='inbox'?`<span class="rd-n" data-rd-unread aria-hidden="true"${unread?'':' hidden'}>${unread||''}</span><span class="rd-sr-only" data-rd-unread-sr>${unread?`, ${unread} unread`:''}</span>`:''}`,`data-tab="${key}" role="tab" id="rd-tab-${key}" aria-controls="rd-workspace-panel" aria-selected="${tabHere===key}" tabindex="${tabHere===key?0:-1}"`,'rd-workspace-tab t-tab')).join('')}</div>${searchField(true)}<div class="rd-tools">${c.deadlineChanges?.total||c.deadlineChanges?.error?action('deadline-changes',icon('calendar')+`<span>Changes${c.deadlineChanges.count?`<span class="rd-n" aria-hidden="true">${c.deadlineChanges.count}</span>`:''}</span>`,`data-rd-key="deadline-changes" aria-label="Deadline changes${c.deadlineChanges.count?`, ${c.deadlineChanges.count} unread`:''}" aria-haspopup="dialog" ${!c.deadlineChanges.loaded?'aria-disabled="true" aria-busy="true"':''}`,'rd-button rd-deadline-trigger'):''}${root.ReserveFeatures?.enabled('focus-room')===true&&root.ReserveFocusRoom?.create?action('room-open','Focus room','','rd-text-button'):''}${action('toolbox',icon('search')+`<span>Tools</span><kbd aria-hidden="true">${mod} K</kbd>`,`aria-label="Tools" title="Tools · ${mod} K" aria-keyshortcuts="Control+K Meta+K"`,'rd-button rd-toolbox-trigger')}${c.demo?'<span class="rd-demo">Sample data</span>':''}${enabled('planner')?`<span class="rd-focus-indicator" aria-label="${c.focusClock?'Planner, focus session running':'Planner'}"><span class="rd-focus-clock" data-rd-focus-clock ${c.focusClock?'':'hidden'}>${E(c.focusClock||'')}</span></span>`:''}${enabled('grades')?`<label class="rd-grade-switch"><input type="checkbox" role="switch" data-rd-field="setting" data-setting="showGrades" aria-label="Show grades" ${c.s.showGrades===true?'checked':''}><span class="rd-switch-track" aria-hidden="true"></span><span>Show grades</span></label>`:''}${action('settings',icon('sliders'),`aria-label="Appearance settings" title="Appearance settings" aria-expanded="${!!c.customizeOpen}" aria-controls="rd-appearance-panel"`,'rd-icon-button')}${(()=>{const sync=syncState();return action('refresh',icon('refresh')+syncRing,`aria-label="Refresh Canvas data" title="${E(sync.text)}"${sync.failed&&!c.refreshing?' data-tone="danger"':''} ${c.refreshing?'aria-disabled="true" aria-busy="true"':''}`,'rd-icon-button rd-refresh-button');})()}${c.nativeSwitch?action('native',`${icon('grid')}<span>Canvas<span class="rd-native-word"> dashboard</span></span>`,'aria-label="Canvas dashboard" title="Show Canvas’s own dashboard"','rd-button rd-native-switch'):''}</div></header>`;
+  }
   // Open-work counts; red when something is overdue. The visible number is
   // decorative, the screen-reader text carries the meaning.
   function railCount(load,place='rail'){return load?.open?`<span class="${place==='dock'?'rd-dock-seal':'rd-rail-count'}" data-tone="${load.overdue?'danger':'neutral'}" aria-hidden="true">${load.open}</span><span class="rd-sr-only">, ${load.open} open${load.overdue?`, ${load.overdue} overdue`:''}</span>`:'';}
   // The dock's card (right-click the dock): size, shelf, look and switches. Its controls save like Make it yours.
-  function dockMenu(){if(!c.dockMenu)return '';const s=c.s,sw=(key,label)=>`<label class="rd-dock-switch"><span>${label}</span><input type="checkbox" role="switch" data-rd-field="setting" data-setting="${key}"${s[key]===true?' checked':''}><i aria-hidden="true"></i></label>`,pick=(key,value,label)=>`<label class="rd-dock-pick" data-value="${value}"><input type="radio" name="rd-dock-${key}" data-rd-field="setting" data-setting="${key}" value="${value}"${(s[key]||(key==='dockShelf'?'kraft':'tiles'))===value?' checked':''}><span class="rd-dock-pick-art" aria-hidden="true"></span><span>${label}</span></label>`;
+  function dockMenu(){
+    if(!c.dockMenu)return '';
+    const s=c.s,sw=(key,label)=>`<label class="rd-dock-switch"><span>${label}</span><input type="checkbox" role="switch" data-rd-field="setting" data-setting="${key}"${s[key]===true?' checked':''}><i aria-hidden="true"></i></label>`,pick=(key,value,label)=>`<label class="rd-dock-pick" data-value="${value}"><input type="radio" name="rd-dock-${key}" data-rd-field="setting" data-setting="${key}" value="${value}"${(s[key]||(key==='dockShelf'?'kraft':'tiles'))===value?' checked':''}><span class="rd-dock-pick-art" aria-hidden="true"></span><span>${label}</span></label>`;
    return `<section class="rd-dock-menu" role="dialog" aria-label="Course dock"><h3>Course dock</h3><label class="rd-dock-size"><span>Size</span><span class="rd-dock-slider"><input type="range" min="0.7" max="1.5" step="0.05" value="${E(String(Number(s.dockScale)||1))}" style="--v:${((Number(s.dockScale)||1)-.7)/.8}" data-rd-field="setting" data-setting="dockScale"></span></label><div class="rd-dock-picks" role="radiogroup" aria-label="Shelf">${pick('dockShelf','kraft','Kraft')}${pick('dockShelf','paper','Paper')}${pick('dockShelf','none','None')}</div><div class="rd-dock-picks" role="radiogroup" aria-label="Look">${pick('dockStyle','tiles','Icons')}${pick('dockStyle','cards','Cards')}</div>${sw('dockNamesAlways','Names always')}${sw('dockCounts','Counts')}${sw('dockLively','Lively')}${sw('dockHide','Hide until near')}</section>`;}
   // A card's second line: what is due next for the course, short enough for the card.
-  function dockNext(course){const open=c.items.filter(x=>String(x.courseId)===String(course.id)&&!finished(x)&&Number.isFinite(Date.parse(x.dueAt||''))).sort((a,b)=>Date.parse(a.dueAt)-Date.parse(b.dueAt))[0];if(!open)return {text:'Nothing due',late:false};const days=daysFrom(dayKey(open.dueAt,c.s.timeZone)),late=Date.parse(open.dueAt)<c.now,when=late?'late':days===0?'today':days===1?'tmrw':days<7?formatDate(open.dueAt,c.s.timeZone,{weekday:'short'}):formatDate(open.dueAt,c.s.timeZone,{month:'short',day:'numeric'});
+  function dockNext(course){
+    const open=c.items.filter(x=>String(x.courseId)===String(course.id)&&!finished(x)&&Number.isFinite(Date.parse(x.dueAt||''))).sort((a,b)=>
+      Date.parse(a.dueAt)-Date.parse(b.dueAt))[0];
+    if(!open)return {text:'Nothing due',late:false};
+    const days=daysFrom(dayKey(open.dueAt,c.s.timeZone)),
+      late=Date.parse(open.dueAt)<c.now,
+      when=late?'late':days===0?'today':days===1?'tmrw':days<7?formatDate(open.dueAt,c.s.timeZone,{weekday:'short'}):formatDate(open.dueAt,c.s.timeZone,{month:'short',day:'numeric'});
    // The title, short: dates and a "Type |" lead-in dropped, "Homework for Friday" said as Homework, then cut at a word.
-   let name=String(open.name||'').replace(/\s+/g,' ').trim().replace(/\s*[,(–-]?\s*\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b\)?/g,'').replace(/^[^|]{2,30}\|\s*(?=\S{2})/,'').replace(/^([a-z]+)\s+(?:for|due)\s+(?:mon|tues|wednes|thurs|fri|satur|sun)day\b.*$/i,'$1').trim()||String(open.name||'').trim();if(name.length>24){const cut=name.slice(0,24).replace(/[\s·:,-]+\S*$/,'');name=(cut.length>=8?cut:name.slice(0,22))+'…';}return {text:name+' · '+when,late};}
-  function dock(total){const cards=c.s.dockStyle==='cards',item=(course,load)=>{const id=course?.id||'all',selected=state.courseId===id,name=course?full(course):'All courses',label=course?short(course):name,artwork=course?mini(course,'dock'):'<svg viewBox="0 0 28 28" width="30" height="30" aria-hidden="true"><g fill="#F6DE9A" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="4.5" y="5" width="8.5" height="8.5" rx="2"/><rect x="15" y="5.4" width="8.5" height="8.5" rx="2" fill="#BFDDEA"/><rect x="4.8" y="15.3" width="8.5" height="8.5" rx="2" fill="#F7D6CF"/><rect x="15.2" y="15" width="8.5" height="8.5" rx="2" fill="#CFE5C4"/></g></svg>';if(cards){const next=course?dockNext(course):{text:(total?.open||0)+' open',late:false};return action('course',`<span class="rd-dock-card" aria-hidden="true">${courseOutline(course)}<span class="rd-dock-tile${course?'':' rd-dock-all'}">${artwork}</span><span class="rd-dock-words"><b>${E(label)}</b><small${next.late?' data-late="true"':''}>${E(next.text)}</small></span>${railCount(load,'dock')}</span>`,`data-rd-key="dock-${E(id)}" data-id="${E(id)}" aria-pressed="${selected}" tabindex="${selected?0:-1}" aria-label="${E(name)}, ${load?.open||0} open${load?.overdue?`, ${load.overdue} overdue`:''}" style="${tone(course?.color||'#9A8F7A')}"`,'rd-dock-it'+(selected?' on':''));}return action('course',`<span class="rd-dock-tile${course?'':' rd-dock-all'}" aria-hidden="true">${artwork}</span>${railCount(load,'dock')}<span class="rd-dock-name" aria-hidden="true">${E(label)}</span>`,`data-rd-key="dock-${E(id)}" data-id="${E(id)}" aria-pressed="${selected}" tabindex="${selected?0:-1}" aria-label="${E(name)}, ${load?.open||0} open${load?.overdue?`, ${load.overdue} overdue`:''}" style="${tone(course?.color||'#9A8F7A')}"`,'rd-dock-it'+(selected?' on':''));};return `${dockMenu()}<nav class="rd-dock" aria-label="Courses" data-look="${cards?'cards':'tiles'}" style="--rd-dock-n:${c.courses.length+1}"><span class="rd-dock-ink" aria-hidden="true"></span>${item(null,total)}<span class="rd-dock-sep" aria-hidden="true"></span>${c.courses.map(course=>item(course,c.courseLoad?.get(course.id))).join('')}</nav>`;}
+   let name=String(open.name||'').replace(/\s+/g,' ').trim().replace(/\s*[,(–-]?\s*\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b\)?/g,'').replace(/^[^|]{2,30}\|\s*(?=\S{2})/,'').replace(
+     /^([a-z]+)\s+(?:for|due)\s+(?:mon|tues|wednes|thurs|fri|satur|sun)day\b.*$/i,
+     '$1').trim()||
+     String(open.name||'').trim();
+   if(name.length>24){const cut=name.slice(0,24).replace(/[\s·:,-]+\S*$/,'');name=(cut.length>=8?cut:name.slice(0,22))+'…';}
+   return {text:name+' · '+when,late};
+  }
+  function dock(total){
+    const cards=c.s.dockStyle==='cards',item=(course,load)=>{
+      const id=course?.id||'all',
+        selected=state.courseId===id,
+        name=course?full(course):'All courses',
+        label=course?short(course):name,
+        artwork=course?mini(course,'dock'):'<svg viewBox="0 0 28 28" width="30" height="30" aria-hidden="true"><g fill="#F6DE9A" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="4.5" y="5" width="8.5" height="8.5" rx="2"/><rect x="15" y="5.4" width="8.5" height="8.5" rx="2" fill="#BFDDEA"/><rect x="4.8" y="15.3" width="8.5" height="8.5" rx="2" fill="#F7D6CF"/><rect x="15.2" y="15" width="8.5" height="8.5" rx="2" fill="#CFE5C4"/></g></svg>';
+      if(cards){
+        const next=course?dockNext(course):{text:(total?.open||0)+' open',late:false};
+        return action('course',`<span class="rd-dock-card" aria-hidden="true">${courseOutline(course)}<span class="rd-dock-tile${course?'':' rd-dock-all'}">${artwork}</span><span class="rd-dock-words"><b>${E(label)}</b><small${next.late?' data-late="true"':''}>${E(next.text)}</small></span>${railCount(load,'dock')}</span>`,`data-rd-key="dock-${E(id)}" data-id="${E(id)}" aria-pressed="${selected}" tabindex="${selected?0:-1}" aria-label="${E(name)}, ${load?.open||0} open${load?.overdue?`, ${load.overdue} overdue`:''}" style="${tone(course?.color||'#9A8F7A')}"`,'rd-dock-it'+(selected?' on':''));
+      }
+      return action('course',`<span class="rd-dock-tile${course?'':' rd-dock-all'}" aria-hidden="true">${artwork}</span>${railCount(load,'dock')}<span class="rd-dock-name" aria-hidden="true">${E(label)}</span>`,`data-rd-key="dock-${E(id)}" data-id="${E(id)}" aria-pressed="${selected}" tabindex="${selected?0:-1}" aria-label="${E(name)}, ${load?.open||0} open${load?.overdue?`, ${load.overdue} overdue`:''}" style="${tone(course?.color||'#9A8F7A')}"`,'rd-dock-it'+(selected?' on':''));
+    };
+    return `${dockMenu()}<nav class="rd-dock" aria-label="Courses" data-look="${cards?'cards':'tiles'}" style="--rd-dock-n:${c.courses.length+1}"><span class="rd-dock-ink" aria-hidden="true"></span>${item(null,total)}<span class="rd-dock-sep" aria-hidden="true"></span>${c.courses.map(course=>item(course,c.courseLoad?.get(course.id))).join('')}</nav>`;
+  }
   // The day word for a rail due item, in the list's terms.
-  function railDay(item){const tone=urgency(item),key=item.dueAt?dayKey(item.dueAt,c.s.timeZone):'',ahead=key?Math.round((Date.parse(key+'T12:00:00Z')-Date.parse(today+'T12:00:00Z'))/864e5):0;return tone==='overdue'?'Overdue':tone==='today'?'Today':tone==='tomorrow'?'Tomorrow':!key?'Planned':formatDate(item.dueAt,c.s.timeZone,ahead<7?{weekday:'short'}:{month:'short',day:'numeric'});}
+  function railDay(item){
+    const tone=urgency(item),key=item.dueAt?dayKey(item.dueAt,c.s.timeZone):'',ahead=key?Math.round((Date.parse(key+'T12:00:00Z')-Date.parse(today+'T12:00:00Z'))/864e5):0;
+    return tone==='overdue'?'Overdue':tone==='today'?'Today':tone==='tomorrow'?'Tomorrow':!key?'Planned':formatDate(item.dueAt,c.s.timeZone,ahead<7?{weekday:'short'}:{month:'short',day:'numeric'});
+  }
   // A course's earliest open items, each dated in the list's tones; the second shows on tall screens.
   // The lines are aria-hidden so the button's name stays "title, N open"; railSay reads both once as its
   // description at any height, from a hidden span so browse mode does not read it a second time.
   function railDue(item,cls){return `<small class="${cls}" data-tone="${dueTone(item)}" aria-hidden="true">${dueTone(item)==='overdue'?'':`<b>${E(railDay(item))}</b> · `}${E(item.name)}</small>`;}
-  function railNext(load){return load?.next?railDue(load.next,'rd-rail-next')+(load.then?railDue(load.then,'rd-rail-next rd-rail-then'):''):'<small class="rd-rail-next" aria-hidden="true">No open work</small>';}
+  function railNext(load){
+    return load?.next?railDue(load.next,'rd-rail-next')+(load.then?railDue(load.then,'rd-rail-next rd-rail-then'):''):'<small class="rd-rail-next" aria-hidden="true">No open work</small>';
+  }
   function railSay(load){return load?.next?[load.next,load.then].filter(Boolean).map(item=>`${railDay(item)}, ${item.name}`).join('; then '):'No open work';}
   // The full Canvas name leads that description once, unless the short title (and teacher line) already say it.
   const letters=text=>String(text||'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,'');
-  function railFull(course){const name=course?.originalName||course?.name||'',said=letters(short(course));return name&&![said,said+letters(detail(course))].includes(letters(name))?name+'. ':'';}
+  function railFull(course){
+    const name=course?.originalName||course?.name||'',said=letters(short(course));
+    return name&&![said,said+letters(detail(course))].includes(letters(name))?name+'. ':'';
+  }
   // The sync line at the foot of the rail. The live region itself stays in the page
   // footer (always rendered, visually hidden while the rail shows), so there is exactly
   // one role=status whether the rail is shown, hidden, or a closed phone drawer.
@@ -126,7 +210,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const shownIds=new Set(c.courses.map(course=>course.id)),hiddenCount=(c.allCourses||[]).filter(course=>!shownIds.has(course.id)).length;
   // The Canvas sync line is the refresh button's tooltip (with a red mark when a refresh failed); the rail's foot only
   // says how many courses are hidden, and is not there when none are. Screen readers hear the status line (.rd-status).
-  function syncState(){const synced=/^Updated (.+)$/.exec(c.status||''),failed=/^Refresh failed/.test(c.status||'');return {failed,text:c.refreshing?'Syncing with Canvas…':synced?`Synced with Canvas · ${synced[1]}`:failed?`${c.status} · click to try again`:(c.status||'Refresh Canvas data')};}
+  function syncState(){
+    const synced=/^Updated (.+)$/.exec(c.status||''),failed=/^Refresh failed/.test(c.status||'');
+    return {failed,text:c.refreshing?'Syncing with Canvas…':synced?`Synced with Canvas · ${synced[1]}`:failed?`${c.status} · click to try again`:(c.status||'Refresh Canvas data')};
+  }
   function railFoot(){return hiddenCount?`<div class="rd-rail-foot" data-rd-key="rail-foot">${action('hidden-courses',`${hiddenCount} hidden<span class="rd-sr-only"> course${hiddenCount===1?'':'s'}: choose which courses show</span>`,'','rd-text-button rd-rail-hidden')}</div>`:'';}
   // Phones: the rail is also the drawer; its head and the workspaces show only there (refresh.css section 16).
   // The switch to Canvas's own dashboard ends the list there (the command bar's copy is hidden on phones).
@@ -136,16 +223,48 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
    const text=E(scoreText(course)),known=Number.isFinite(course.score)&&text!=='—',fill=known?Math.max(0,Math.min(100,course.score)):0,d='M1.6 3.7C8 2.5 15 4.5 23 3.3C30 2.3 37 4.3 44.4 2.9';
    return `<span class="rd-grade-n">${text}</span>${known?`<svg class="rd-grade-mark" viewBox="0 0 46 7" width="46" height="7" aria-hidden="true" focusable="false"><path class="rd-grade-track" d="${d}"/><path class="rd-grade-ink" pathLength="100" stroke-dasharray="${Math.round(fill*10)/10} 100" d="${d}"/></svg>`:''}`;
   }
-  function courses(){const total=c.courses.reduce((sum,course)=>{const load=c.courseLoad?.get(course.id);return {open:sum.open+(load?.open||0),overdue:sum.overdue+(load?.overdue||0)};},{open:0,overdue:0});if(c.s.courseNavigation==='dock')return dock(total);return `<aside class="rd-course-rail" data-arrange-key="rail" id="rd-course-rail" aria-label="Course shortcuts" style="--rd-rail-n:${c.courses.length}">${drawerNav(total)}<div class="rd-rail-heading" data-arrange-head="rail"><span>Courses</span>${layoutTools('rail')}</div>${action('course',`${courseOutline(overviewArt)}<span class="rd-rail-art rd-rail-art--all" aria-hidden="true">${mini(overviewArt,'rail')}</span><span>All courses</span>${railCount(total)}`,`data-id="all" aria-pressed="${state.courseId==='all'}"`,'rd-rail-all')}${c.courses.map((course,index)=>{const href=(globalThis.ReserveSite.origin()+"/courses/")+course.id,load=c.courseLoad?.get(course.id),line=detail(course);return `<div class="rd-rail-course" data-rd-key="course-${course.id}" data-arrange-course="${E(course.id)}" style="${tone(course.color)};--i:${index}" data-selected="${state.courseId===course.id}"${course.ownColor?' data-own-color="true"':''}>${courseOutline(course)}<div class="rd-rail-title">${action('course',`<span class="rd-rail-art" aria-hidden="true">${mini(course,'rail')}</span><span class="rd-rail-text"><b class="rd-rail-name">${unbreak(E(short(course)))}</b>${line?`<small class="rd-rail-sub">${E(line)}</small>`:''}${railNext(load)}</span>${railCount(load)}`,`data-id="${course.id}" aria-pressed="${state.courseId===course.id}" aria-describedby="rd-rail-due-${E(course.id)}" aria-keyshortcuts="Alt+Space" title="${E(full(course))}"`,'rd-course-name')}<span id="rd-rail-due-${E(course.id)}" hidden>${E(railFull(course)+railSay(load))}</span></div>${enabled('arrange')?`<button type="button" class="rd-arrange-grip rd-course-drag" data-arrange-grip aria-label="Move ${E(short(course))}" aria-describedby="rd-move-help" title="Hold to move · Space for keyboard"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="9" cy="5" r="1.4"/><circle cx="15" cy="5.5" r="1.4"/><circle cx="8.5" cy="12" r="1.4"/><circle cx="15.5" cy="12" r="1.4"/><circle cx="9" cy="19" r="1.4"/><circle cx="15" cy="18.5" r="1.4"/></svg></button>`:''}${c.s.showGrades===true?`<a class="rd-grade" href="${href}/grades" title="${E(gradePeriodLabel(course))}" aria-label="${E(course.name)} grades: ${E(scoreText(course))}">${gradeMark(course)}</a>`:''}</div>`;}).join('')}${railFoot()}</aside>`;}
+  function courses(){
+    const total=c.courses.reduce((sum,course)=>{
+      const load=c.courseLoad?.get(course.id);
+      return {open:sum.open+(load?.open||0),overdue:sum.overdue+(load?.overdue||0)};
+    },{open:0,overdue:0});
+    if(c.s.courseNavigation==='dock')return dock(total);
+    return `<aside class="rd-course-rail" data-arrange-key="rail" id="rd-course-rail" aria-label="Course shortcuts" style="--rd-rail-n:${c.courses.length}">${drawerNav(total)}<div class="rd-rail-heading" data-arrange-head="rail"><span>Courses</span>${layoutTools('rail')}</div>${action('course',`${courseOutline(overviewArt)}<span class="rd-rail-art rd-rail-art--all" aria-hidden="true">${mini(overviewArt,'rail')}</span><span>All courses</span>${railCount(total)}`,`data-id="all" aria-pressed="${state.courseId==='all'}"`,'rd-rail-all')}${c.courses.map((course,index)=>{
+      const href=(globalThis.ReserveSite.origin()+"/courses/")+course.id,load=c.courseLoad?.get(course.id),line=detail(course);
+      return `<div class="rd-rail-course" data-rd-key="course-${course.id}" data-arrange-course="${E(course.id)}" style="${tone(course.color)};--i:${index}" data-selected="${state.courseId===course.id}"${course.ownColor?' data-own-color="true"':''}>${courseOutline(course)}<div class="rd-rail-title">${action('course',`<span class="rd-rail-art" aria-hidden="true">${mini(course,'rail')}</span><span class="rd-rail-text"><b class="rd-rail-name">${unbreak(E(short(course)))}</b>${line?`<small class="rd-rail-sub">${E(line)}</small>`:''}${railNext(load)}</span>${railCount(load)}`,`data-id="${course.id}" aria-pressed="${state.courseId===course.id}" aria-describedby="rd-rail-due-${E(course.id)}" aria-keyshortcuts="Alt+Space" title="${E(full(course))}"`,'rd-course-name')}<span id="rd-rail-due-${E(course.id)}" hidden>${E(railFull(course)+railSay(load))}</span></div>${enabled('arrange')?`<button type="button" class="rd-arrange-grip rd-course-drag" data-arrange-grip aria-label="Move ${E(short(course))}" aria-describedby="rd-move-help" title="Hold to move · Space for keyboard"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="9" cy="5" r="1.4"/><circle cx="15" cy="5.5" r="1.4"/><circle cx="8.5" cy="12" r="1.4"/><circle cx="15.5" cy="12" r="1.4"/><circle cx="9" cy="19" r="1.4"/><circle cx="15" cy="18.5" r="1.4"/></svg></button>`:''}${c.s.showGrades===true?`<a class="rd-grade" href="${href}/grades" title="${E(gradePeriodLabel(course))}" aria-label="${E(course.name)} grades: ${E(scoreText(course))}">${gradeMark(course)}</a>`:''}</div>`;
+    }).join('')}${railFoot()}</aside>`;
+  }
   // Motion: Gentle (default), Still, or Off. A device that asks for reduced motion always gets Off.
   const motionStyles=[['gentle','Gentle','Your selection glides softly to what you pick, and new content settles into place.'],['still','Still','Nothing slides. Selections and new content fade in right where they are.'],['off','Off','Changes appear instantly, with no animation.']];
-  function motionField(){const current=motionStyles.find(([value])=>value===c.s.motion)||motionStyles[0];return `<label class="rd-field rd-motion-field"><span>Motion</span><select data-rd-field="setting" data-setting="motion" aria-label="Motion" aria-describedby="rd-motion-hint">${motionStyles.map(([value,name,hint])=>`<option value="${value}" title="${hint}" ${current[0]===value?'selected':''}>${name}</option>`).join('')}</select><small class="rd-field-hint" id="rd-motion-hint">${current[2]} If your device asks for reduced motion, Canvas Harness always uses Off.</small></label>`;}
+  function motionField(){
+    const current=motionStyles.find(([value])=>value===c.s.motion)||motionStyles[0];
+    return `<label class="rd-field rd-motion-field"><span>Motion</span><select data-rd-field="setting" data-setting="motion" aria-label="Motion" aria-describedby="rd-motion-hint">${motionStyles.map(([value,name,hint])=>`<option value="${value}" title="${hint}" ${current[0]===value?'selected':''}>${name}</option>`).join('')}</select><small class="rd-field-hint" id="rd-motion-hint">${current[2]} If your device asks for reduced motion, Canvas Harness always uses Off.</small></label>`;
+  }
   // Living drawings: On (default) or Off. Once drawn, the course drawings keep moving (Gentle motion only).
   const livingStates=[['on','On','Once drawn, the course drawings keep moving gently.'],['off','Off','The course drawings rest once they are drawn.']];
-  function livingField(){const current=livingStates.find(([value])=>value===c.s.livingArt)||livingStates[0],gentle=!c.s.motion||c.s.motion==='gentle';return `<label class="rd-field rd-living-field"><span>Living drawings</span><select data-rd-field="setting" data-setting="livingArt" aria-label="Living drawings" aria-describedby="rd-living-hint">${livingStates.map(([value,name])=>`<option value="${value}" ${current[0]===value?'selected':''}>${name}</option>`).join('')}</select><small class="rd-field-hint" id="rd-living-hint">${current[0]==='on'&&!gentle?'They move only with Gentle motion.':current[2]}</small></label>`;}
-  function customization(){return enabled('customization')?root.ReserveCustomizeUI?.render({...c,quickUpload,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading})||'':'';}
+  function livingField(){
+    const current=livingStates.find(([value])=>value===c.s.livingArt)||livingStates[0],gentle=!c.s.motion||c.s.motion==='gentle';
+    return `<label class="rd-field rd-living-field"><span>Living drawings</span><select data-rd-field="setting" data-setting="livingArt" aria-label="Living drawings" aria-describedby="rd-living-hint">${livingStates.map(([value,name])=>`<option value="${value}" ${current[0]===value?'selected':''}>${name}</option>`).join('')}</select><small class="rd-field-hint" id="rd-living-hint">${current[0]==='on'&&!gentle?'They move only with Gentle motion.':current[2]}</small></label>`;
+  }
+  function customization(){
+    return enabled('customization')?root.ReserveCustomizeUI?.render({...c,quickUpload,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading})||'':'';
+  }
   function courseFilter(){return `<label class="rd-mobile-course rd-field"><span>Course</span><select data-rd-field="course" aria-label="Select course"><option value="all" ${state.courseId==='all'?'selected':''}>All courses</option>${c.courses.map(course=>`<option value="${E(course.id)}" ${state.courseId===course.id?'selected':''}>${E(option(course))}</option>`).join('')}</select></label>`;}
-  const modeNames={actionable:'Up next',today:'Today',tomorrow:'Tomorrow',week:'This week',planned:'My plan',missing:'Missing / redo',ready:'Ready / check completion',completed:'Completed',pinned:'Bookmarks',dated:'All dated',undated:'No due date',overdue:'Overdue',upcoming:'Upcoming'};
+  const modeNames={
+    actionable:'Up next',
+    today:'Today',
+    tomorrow:'Tomorrow',
+    week:'This week',
+    planned:'My plan',
+    missing:'Missing / redo',
+    ready:'Ready / check completion',
+    completed:'Completed',
+    pinned:'Bookmarks',
+    dated:'All dated',
+    undated:'No due date',
+    overdue:'Overdue',
+    upcoming:'Upcoming'
+  };
   // When the rail is hidden this select is the visible title: the chosen course shows its short title
   // (the detail line beneath already names the teacher); the open list keeps "Title — Teacher".
   function workCourseFilter(){return `<label class="rd-course-select"><span class="rd-sr-only">Course filter</span><select aria-label="Course filter" data-rd-field="course"><option value="all">All courses</option>${c.courses.map(x=>`<option value="${x.id}" ${state.courseId===x.id?'selected':''}>${E(state.courseId===x.id?short(x):option(x))}</option>`).join('')}</select></label>`;}
@@ -156,64 +275,186 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // follows the filters in the top row (not only in Week), so each day's count shows without a click.
   // It stays a direct child of the desk toolbar: motion.js snapshots that row's children, so an
   // unchanged strip never fades again when a filter is picked.
-  function week(){const base=new Date(today+'T12:00:00Z');return `<div class="rd-week" data-rd-key="week" role="group" aria-label="Choose a due date">${Array.from({length:7},(_,i)=>{const day=new Date(base);day.setUTCDate(day.getUTCDate()+i);const key=day.toISOString().slice(0,10);const count=c.items.filter(x=>!finished(x)&&x.dueAt&&(state.courseId==='all'||String(x.courseId)===state.courseId)&&dayKey(x.dueAt,c.s.timeZone)===key).length;return action('day',`<span>${E(formatDate(day.getTime(),'UTC',{weekday:'short'}))}</span><strong>${day.getUTCDate()}</strong><small>${count||''}</small>`,`data-day="${key}" ${i===0?'aria-current="date" ':''}aria-label="Show work for ${i===0?'today, ':''}${E(formatDate(day.getTime(),'UTC',{weekday:'long',month:'short',day:'numeric'}))}: ${count} due" aria-pressed="${state.day===key}"`,'rd-day-filter');}).join('')}</div>`;}
+  function week(){
+    const base=new Date(today+'T12:00:00Z');
+    return `<div class="rd-week" data-rd-key="week" role="group" aria-label="Choose a due date">${Array.from({length:7},(_,i)=>{
+      const day=new Date(base);
+      day.setUTCDate(day.getUTCDate()+i);
+      const key=day.toISOString().slice(0,10);
+      const count=c.items.filter(x=>!finished(x)&&x.dueAt&&(state.courseId==='all'||String(x.courseId)===state.courseId)&&dayKey(x.dueAt,c.s.timeZone)===key).length;
+      return action('day',`<span>${E(formatDate(day.getTime(),'UTC',{weekday:'short'}))}</span><strong>${day.getUTCDate()}</strong><small>${count||''}</small>`,`data-day="${key}" ${i===0?'aria-current="date" ':''}aria-label="Show work for ${i===0?'today, ':''}${E(formatDate(day.getTime(),'UTC',{weekday:'long',month:'short',day:'numeric'}))}: ${count} due" aria-pressed="${state.day===key}"`,'rd-day-filter');
+    }).join('')}</div>`;
+  }
   // Tones give each deadline and status a consistent weight across the list,
   // the reader and the heading summary.
-  const urgency=item=>{if(finished(item))return 'done';if(!item.dueAt)return 'none';if(Number(new Date(item.dueAt))<c.now)return 'overdue';const day=dayKey(item.dueAt,c.s.timeZone);return day===today?'today':day===tomorrow?'tomorrow':'later';};
+  const urgency=item=>{
+    if(finished(item))return 'done';
+    if(!item.dueAt)return 'none';
+    if(Number(new Date(item.dueAt))<c.now)return 'overdue';
+    const day=dayKey(item.dueAt,c.s.timeZone);
+    return day===today?'today':day===tomorrow?'tomorrow':'later';
+  };
   const stateTone=label=>/missing|redo|resubmission/i.test(label)?'danger':/^(Graded|Submitted|Done)/.test(label)?'success':'neutral';
   const groupTones={'Past due':'danger','Due today':'warn','Due tomorrow':'info','Planned for today':'accent','Completed work':'success'};
   // A row's excerpt is plain text: mathematics in it reads in a plain form (a·b = ‖a‖ ‖b‖ cos θ), never as raw TeX
   // (math.js; an equation image gives its TeX first, before the tags go).
-  const excerpt=item=>{const M=enabled('math')&&root.ReserveMath,text=String(M?M.equationTeX(item.description||''):item.description||'').replace(/<(script|style)[\s\S]*?<\/\1>/gi,'').replace(/<[^>]*>/g,' ').replace(/&nbsp;|&#160;/g,' ').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/\s+/g,' ').trim();return (M?M.plain(text).replace(/\s+/g,' '):text).slice(0,170);};
+  const excerpt=item=>{
+    const M=enabled('math')&&root.ReserveMath,
+      text=String(M?M.equationTeX(item.description||''):item.description||'').replace(/<(script|style)[\s\S]*?<\/\1>/gi,'').replace(/<[^>]*>/g,' ').replace(/&nbsp;|&#160;/g,' ').replace(
+        /&lt;/g,
+        '<').replace(
+        /&gt;/g,
+        '>').replace(
+        /&amp;/g,
+        '&').replace(
+        /\s+/g,
+        ' ').trim();
+    return (M?M.plain(text).replace(/\s+/g,' '):text).slice(0,170);
+  };
   // The due time, relative to the row's group: "2 days late", "11:59 PM", "Thu · 10:00 AM", "Oct 5 · 11:59 PM", "Overdue · Sep 30, 2024".
   // The full due text stays for assistive technology.
   const daysFrom=key=>Math.round((Date.parse(key+'T12:00:00Z')-Date.parse(today+'T12:00:00Z'))/864e5);
   // The row's due text: the time alone under Due today / Due tomorrow, "N days late" for work late by a week or less,
   // and otherwise the day (this week) or the date, always with its time, so a 10 AM deadline never reads as a night one.
   // Where no Due today / Due tomorrow head stands over the row (My plan, Completed work) it says "Today" or "Tomorrow" too.
-  function dueShort(item){const due=Date.parse(item.dueAt||'');if(!Number.isFinite(due))return '';const key=dayKey(item.dueAt,c.s.timeZone),days=daysFrom(key),time=formatDate(item.dueAt,c.s.timeZone,{hour:'numeric',minute:'2-digit'}),date=formatDate(item.dueAt,c.s.timeZone,{month:'short',day:'numeric',...(key.slice(0,4)!==today.slice(0,4)?{year:'numeric'}:{})});if(!finished(item)&&due<c.now)return days<-7?`Overdue · ${date}`:days<0?`${-days} day${days<-1?'s':''} late`:time;if(days===0||days===1)return state.mode!=='planned'&&!finished(item)?time:`${days===0?'Today':'Tomorrow'} · ${time}`;return `${days>1&&days<7?formatDate(item.dueAt,c.s.timeZone,{weekday:'short'}):date} · ${time}`;}
+  function dueShort(item){
+    const due=Date.parse(item.dueAt||'');
+    if(!Number.isFinite(due))return '';
+    const key=dayKey(item.dueAt,c.s.timeZone),
+      days=daysFrom(key),
+      time=formatDate(item.dueAt,c.s.timeZone,{hour:'numeric',minute:'2-digit'}),
+      date=formatDate(item.dueAt,c.s.timeZone,{month:'short',day:'numeric',...(key.slice(0,4)!==today.slice(0,4)?{year:'numeric'}:{})});
+    if(!finished(item)&&due<c.now)return days<-7?`Overdue · ${date}`:days<0?`${-days} day${days<-1?'s':''} late`:time;
+    if(days===0||days===1)return state.mode!=='planned'&&!finished(item)?time:`${days===0?'Today':'Tomorrow'} · ${time}`;
+    return `${days>1&&days<7?formatDate(item.dueAt,c.s.timeZone,{weekday:'short'}):date} · ${time}`;
+  }
   // Row: check | title … due › / course · points · estimate · state · plan · progress / excerpt | quiet actions.
-  function row(item){const course=c.courseMap.get(String(item.courseId))||{};const plan=local[item.id]||{};const chosen=c.selected?.id===item.id;const canvasState=item.personal?(complete(item)?'Done in my plan':'Personal reminder'):item.state==='excused'?'Excused':item.redoRequested?'Redo requested':item.missing?'Missing':complete(item)?item.state==='graded'?'Graded':'Submitted':'';const progress=checked(item)?'Done in Canvas Harness':plan.progress==='in-progress'?'In progress':plan.progress==='done'?doneLabel(item):'';const urgent=!finished(item)&&item.dueAt&&Number(new Date(item.dueAt))<c.now;
+  function row(item){
+    const course=c.courseMap.get(String(item.courseId))||{};
+    const plan=local[item.id]||{};
+    const chosen=c.selected?.id===item.id;
+    const canvasState=item.personal?
+      (complete(item)?'Done in my plan':'Personal reminder'):
+      item.state==='excused'?'Excused':item.redoRequested?'Redo requested':item.missing?'Missing':complete(item)?item.state==='graded'?'Graded':'Submitted':'';
+    const progress=checked(item)?'Done in Canvas Harness':plan.progress==='in-progress'?'In progress':plan.progress==='done'?doneLabel(item):'';
+    const urgent=!finished(item)&&item.dueAt&&Number(new Date(item.dueAt))<c.now;
    return `<article data-rd-key="assignment-${E(item.id)}" data-preview-id="${E(item.id)}" data-urgency="${urgency(item)}" class="rd-assignment${chosen?' rd-assignment--selected':''}${urgent?' rd-assignment--overdue':''}" style="${tone(course.color||'#69758b')}">${checkButton(item)}<div class="rd-assignment-main"><div class="rd-assignment-top">${item.personal?action('preview',E(item.name),`data-id="${E(item.id)}"`,'rd-assignment-title rd-personal-title'):`<a class="rd-assignment-title" href="${E(assignmentLink(item))}">${E(item.name)}</a>`}<time class="rd-due" data-tone="${dueTone(item)}"${item.dueAt?` datetime="${E(item.dueAt)}"`:''}><span aria-hidden="true">${E(dueShort(item))}</span><span class="rd-sr-only">${E(dueText(item,c))}</span></time><span class="rd-pick-mark" aria-hidden="true">›</span></div><div class="rd-assignment-meta"><span class="rd-assignment-course" title="${E(full(course)||item.courseName)}">${mini(course,'row')}${unbreak(E(short(course)||item.courseName))}</span>${Number.isFinite(item.points)?`<span>${item.points} pts</span>`:''}${plan.estimate?`<span>${E(plan.estimate)} min</span>`:''}${canvasState?`<span class="rd-state-tag" data-tone="${stateTone(canvasState)}">${E(canvasState)}</span>`:''}${plan.plannedDate?`<span class="rd-plan-date">Planned ${plan.plannedDate===today?'today':plan.plannedDate===tomorrow?'tomorrow':E(formatDate(plan.plannedDate+'T12:00:00Z','UTC',{month:'short',day:'numeric'}))}</span>`:''}${progress&&!complete(item)?`<span class="rd-progress">${E(progress)}</span>`:''}</div>${excerpt(item)?`<p class="rd-assignment-excerpt">${E(excerpt(item))}</p>`:''}</div><div class="rd-row-actions">${bookmarkButton(item)}${action('preview',icon('book')+'<span>Preview</span>',`data-id="${E(item.id)}" aria-label="Preview ${E(item.name)}" aria-pressed="${chosen}"`,'rd-preview-button')}</div></article>`;
   }
   // An empty view: the course's small drawing, one serif sentence, one plain one, at most two quiet actions.
   // The frame is keyed per course (a mini itself never is): another course's empty state gets a new drawing,
   // which the art film can draw, instead of the old svg patched into the next course's lines.
   const emptyArt=course=>`<span class="rd-empty-art" data-rd-key="empty-art-${E(course?.id||'all')}" aria-hidden="true">${mini(course||{id:'0',name:'Canvas Harness',color:c.accent||'#A9522F'},'empty')}</span>`;
-  const emptyTitles={planned:'Nothing is planned for today',missing:'Nothing is missing or waiting for a redo',ready:'Nothing is waiting for a completion check',completed:'No completed work yet',pinned:'No bookmarked assignments',dated:'No dated work',undated:'No work without a due date',overdue:'Nothing is overdue',upcoming:'Nothing is coming up'};
+  const emptyTitles={
+    planned:'Nothing is planned for today',
+    missing:'Nothing is missing or waiting for a redo',
+    ready:'Nothing is waiting for a completion check',
+    completed:'No completed work yet',
+    pinned:'No bookmarked assignments',
+    dated:'No dated work',
+    undated:'No work without a due date',
+    overdue:'Nothing is overdue',
+    upcoming:'Nothing is coming up'
+  };
   function emptyList(){const course=state.courseId==='all'?null:c.courseMap.get(state.courseId)||null,name=course?short(course):'';
    if(c.filtered.searching||state.query)return `<div class="rd-empty" data-rd-key="empty" style="${tone(course?.color||c.accent||'#A9522F')}">${emptyArt(course)}<div><h3>No matches for “${E(state.query)}”.</h3><p>Try a course name, or ${mod} K to search everything.</p></div></div>`;
    const when=state.day?`on ${formatDate(state.day+'T12:00:00Z','UTC',{weekday:'long',month:'short',day:'numeric'})}`:{actionable:'today',today:'today',tomorrow:'tomorrow',week:'this week'}[state.mode];
    const title=when?course?`Nothing due in ${name} ${when}.`:state.mode==='actionable'||state.mode==='today'?'Nothing due tonight.':`Nothing due ${when}.`:`${emptyTitles[state.mode]||'Nothing in this view'}${course?` in ${name}`:''}.`;
-   const next=c.items.filter(x=>!finished(x)&&x.dueAt&&Date.parse(x.dueAt)>=c.now&&(!course||String(x.courseId)===course.id)).sort((a,b)=>Date.parse(a.dueAt)-Date.parse(b.dueAt))[0];
-   const nextDay=next?(d=>d===0?'today':d===1?'tomorrow':formatDate(next.dueAt,c.s.timeZone,d<7?{weekday:'long'}:{weekday:'long',month:'short',day:'numeric'}))(daysFrom(dayKey(next.dueAt,c.s.timeZone))):'';
+   const next=c.items.filter(x=>!finished(x)&&x.dueAt&&Date.parse(x.dueAt)>=c.now&&(!course||String(x.courseId)===course.id)).sort((a,b)=>
+     Date.parse(a.dueAt)-Date.parse(b.dueAt))[0];
+   const nextDay=next?
+     (d=>d===0?'today':d===1?'tomorrow':formatDate(next.dueAt,c.s.timeZone,d<7?{weekday:'long'}:{weekday:'long',month:'short',day:'numeric'}))(daysFrom(dayKey(next.dueAt,c.s.timeZone))):
+     '';
    const line=next&&state.mode!=='week'?`Next up is ${E(next.name)}, ${E(nextDay)} at ${E(formatDate(next.dueAt,c.s.timeZone,{hour:'numeric',minute:'2-digit'}))}.`:course?'Teacher updates are beside your work, in case anything was posted outside assignments.':'Enjoy the quiet. Teacher updates are beside your work, in case anything was posted outside assignments.';
    return `<div class="rd-empty" data-rd-key="empty" style="${tone(course?.color||c.accent||'#A9522F')}">${emptyArt(course)}<div><h3>${title}</h3><p>${line}</p>${state.mode!=='week'||course?`<div class="rd-empty-actions">${state.mode!=='week'?action('view','See this week','data-mode="week"','rd-button rd-button--outline'):''}${course?action('open-hub','Open course hub',`data-id="${E(course.id)}"`,'rd-text-button'):''}</div>`:''}</div></div>`;}
   // Group heads are keyed (by name and run), so a head that stays is the same node across a check-off or an Undo
   // and the list's rows and heads can glide from where they were (motion.js listRows) instead of trading text.
-  function work(){const selected=c.filtered.items,visible=selected.slice(0,c.visibleLimit);let group='';const heading=state.day?formatDate(state.day+'T12:00:00Z','UTC',{weekday:'long',month:'short',day:'numeric'}):c.filtered.searching?'Search results':modeNames[state.mode]||'Your work';const groupOf=item=>state.mode==='planned'?'Planned for today':finished(item)?'Completed work':item.dueAt?dayKey(item.dueAt,c.s.timeZone)===today?'Due today':dayKey(item.dueAt,c.s.timeZone)===tomorrow?'Due tomorrow':Number(new Date(item.dueAt))<c.now?'Past due':'Coming up':item.personal&&local[item.id]?.plannedDate===today?'Planned for today':'Without a due date';const keys=visible.map(groupOf),run=keys.map(()=>1),seen={};for(let i=keys.length-2;i>=0;i--)if(keys[i]===keys[i+1])run[i]=run[i+1]+1;const rows=visible.map((item,i)=>{const key=keys[i];const title=key!==group?`<h3 data-rd-key="group-${key.toLowerCase().replace(/\W+/g,'-')}-${seen[key]=(seen[key]||0)+1}" class="rd-date-group" data-tone="${groupTones[key]||'neutral'}"><span>${E(key)}</span><span class="rd-group-count">${run[i]}</span></h3>`:'';group=key;return title+row(item);}).join('');return `<section class="rd-work" data-rd-key="work" aria-labelledby="rd-work-title"><div class="rd-work-heading" data-rd-key="work-heading" data-arrange-head="work"><div><h2 id="rd-work-title" tabindex="-1">${E(heading)}</h2><span>${selected.length} ${selected.some(x=>x.personal)?'item':'assignment'}${selected.length===1?'':'s'}</span></div><div class="rd-work-heading-actions"><small>${c.refreshing?`${syncRing}Checking Canvas for new work…`:c.filtered.searching?'All dates & submission states':''}</small>${layoutTools('work')}${action('capture',icon('plus')+'Add reminder','','rd-text-button')}</div></div><div class="rd-assignment-list" data-rd-key="list">${rows||emptyList()}</div>${selected.length>visible.length?action('more','Show more assignments','','rd-load-more'):''}${state.mode==='actionable'&&!state.query&&c.filtered.olderCount?action('show-dated',`${c.filtered.olderCount} older dated item${c.filtered.olderCount===1?'':'s'} · Browse archive`,'','rd-older'):''}<div class="rd-toast-dock" data-rd-key="toast-dock">${completionNotice()}</div>${action('capture',`${icon('plus')}<span>Add a reminder…</span>`,'aria-label="Add a reminder"','rd-phone-composer')}</section>`;}
+  function work(){
+    const selected=c.filtered.items,visible=selected.slice(0,c.visibleLimit);
+    let group='';
+    const heading=state.day?formatDate(state.day+'T12:00:00Z','UTC',{weekday:'long',month:'short',day:'numeric'}):c.filtered.searching?'Search results':modeNames[state.mode]||'Your work';
+    const groupOf=item=>
+      state.mode==='planned'?
+        'Planned for today':
+        finished(item)?
+          'Completed work':
+          item.dueAt?
+            dayKey(item.dueAt,c.s.timeZone)===today?'Due today':dayKey(item.dueAt,c.s.timeZone)===tomorrow?'Due tomorrow':Number(new Date(item.dueAt))<c.now?'Past due':'Coming up':
+            item.personal&&local[item.id]?.plannedDate===today?'Planned for today':'Without a due date';
+    const keys=visible.map(groupOf),run=keys.map(()=>1),seen={};
+    for(let i=keys.length-2;i>=0;i--)if(keys[i]===keys[i+1])run[i]=run[i+1]+1;
+    const rows=visible.map((item,i)=>{
+      const key=keys[i];
+      const title=key!==group?`<h3 data-rd-key="group-${key.toLowerCase().replace(/\W+/g,'-')}-${seen[key]=(seen[key]||0)+1}" class="rd-date-group" data-tone="${groupTones[key]||'neutral'}"><span>${E(key)}</span><span class="rd-group-count">${run[i]}</span></h3>`:'';
+      group=key;
+      return title+row(item);
+    }).join('');
+    return `<section class="rd-work" data-rd-key="work" aria-labelledby="rd-work-title"><div class="rd-work-heading" data-rd-key="work-heading" data-arrange-head="work"><div><h2 id="rd-work-title" tabindex="-1">${E(heading)}</h2><span>${selected.length} ${selected.some(x=>x.personal)?'item':'assignment'}${selected.length===1?'':'s'}</span></div><div class="rd-work-heading-actions"><small>${c.refreshing?`${syncRing}Checking Canvas for new work…`:c.filtered.searching?'All dates & submission states':''}</small>${layoutTools('work')}${action('capture',icon('plus')+'Add reminder','','rd-text-button')}</div></div><div class="rd-assignment-list" data-rd-key="list">${rows||emptyList()}</div>${selected.length>visible.length?action('more','Show more assignments','','rd-load-more'):''}${state.mode==='actionable'&&!state.query&&c.filtered.olderCount?action('show-dated',`${c.filtered.olderCount} older dated item${c.filtered.olderCount===1?'':'s'} · Browse archive`,'','rd-older'):''}<div class="rd-toast-dock" data-rd-key="toast-dock">${completionNotice()}</div>${action('capture',`${icon('plus')}<span>Add a reminder…</span>`,'aria-label="Add a reminder"','rd-phone-composer')}</section>`;
+  }
   function plan(item){const l=local[item.id]||{},checklist=l.checklist||[];return `<section class="rd-inline-plan"><div class="rd-section-heading"><h3>Make a plan</h3><span>Saved on this device</span></div><div class="rd-field"><span>Work on this</span><div class="rd-plan-days">${action('schedule','Today',`data-id="${item.id}" data-day="${today}" aria-pressed="${l.plannedDate===today}"`)}${action('schedule','Tomorrow',`data-id="${item.id}" data-day="${tomorrow}" aria-pressed="${l.plannedDate===tomorrow}"`)}<input type="date" data-rd-field="planned-date" data-id="${item.id}" aria-label="Plan a work date" value="${E(l.plannedDate||'')}">${l.plannedDate?action('schedule',icon('close'),`data-id="${item.id}" data-day="" aria-label="Clear planned date"`,'rd-icon-button'):''}</div></div><div class="rd-plan-fields"><label class="rd-field"><span>My progress</span><select data-rd-field="progress" data-id="${item.id}" aria-label="My progress">${[['not-started','Not started'],['in-progress','In progress'],['done',checked(item)?'Done in Canvas Harness':doneLabel(item)]].map(([v,label])=>`<option value="${v}" ${(checked(item)?'done':l.progress||'not-started')===v?'selected':''}>${label}</option>`).join('')}</select></label><label class="rd-field"><span>My estimate · min</span><input type="number" min="0" max="1440" step="5" data-rd-field="estimate" data-id="${item.id}" aria-label="Estimated minutes" value="${l.estimate||''}" placeholder="e.g. 30"></label></div>${l.progress==='done'&&!complete(item)?`<p class="rd-submit-reminder">${online(item)?'Your work is marked ready. Open Canvas to submit it.':'Done in your plan. Check the teacher’s instructions for how to hand it in or confirm completion.'}</p>`:''}<div class="rd-checklist"><h4>Steps <span>${checklist.filter(x=>x.done).length}/${checklist.length}</span></h4>${checklist.map(step=>`<div class="rd-checklist-row"><label><input type="checkbox" data-rd-field="check-step" data-id="${item.id}" data-step="${E(step.id)}" ${step.done?'checked':''}><span>${E(step.text)}</span></label>${action('remove-step',icon('close'),`data-id="${item.id}" data-step="${E(step.id)}" aria-label="Remove step: ${E(step.text)}"`,'rd-icon-button')}</div>`).join('')}<div class="rd-add-step"><input type="text" maxlength="300" data-rd-field="new-step" data-id="${item.id}" aria-label="New checklist step" placeholder="Break this into a small step…">${action('add-step',icon('plus'),`data-id="${item.id}" aria-label="Add checklist step"`,'rd-icon-button')}</div></div><label class="rd-field rd-note-field"><span>My note</span><textarea data-rd-field="notes" data-id="${item.id}" aria-label="My assignment note" maxlength="20000" rows="3" placeholder="An idea, a reminder, a question for class…">${E(l.notes||'')}</textarea><small data-rd-note-status role="status">${E(c.noteStatus)}</small></label></section>`;}
   function personalReader(item){
    const source=root.ReservePersonalWork?.safeSource(item.source),l=local[item.id]||{};
-   let due='';if(item.dueAt){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:c.s.timeZone||'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(item.dueAt)),v=Object.fromEntries(parts.map(p=>[p.type,p.value]));due=`${v.year}-${v.month}-${v.day}T${v.hour}:${v.minute}`;}
+   let due='';
+   if(item.dueAt){
+     const parts=new Intl.DateTimeFormat('en-CA',{
+       timeZone:c.s.timeZone||'America/New_York',
+       year:'numeric',
+       month:'2-digit',
+       day:'2-digit',
+       hour:'2-digit',
+       minute:'2-digit',
+       hourCycle:'h23'
+     }).formatToParts(new Date(item.dueAt)),
+       v=Object.fromEntries(parts.map(p=>[p.type,p.value]));
+     due=`${v.year}-${v.month}-${v.day}T${v.hour}:${v.minute}`;
+   }
    return `<aside data-rd-key="reader" class="rd-reader rd-personal-reader" data-id="${E(item.id)}" aria-labelledby="rd-reader-title" style="${tone(item.color||'#69758b')}">${readerTop(c.courseMap.get(String(item.courseId)),item,'<small> · Personal reminder</small>')}<div class="rd-reader-content" data-rd-key="reader-content"><h2 id="rd-reader-title" tabindex="-1">${E(item.name)}</h2><p class="rd-reader-facts"><span${item.dueAt?` data-tone="${dueTone(item)}"`:''}>${item.dueAt?E(dueLong(item)):'No deadline set'}</span><span>${complete(item)?'Done in my plan':'Saved in your personal plan'}</span></p>${source?`<a class="rd-capture-source" href="${E(source.url)}" target="_blank" rel="noopener noreferrer">${icon('external')}<span><small>Original ${E(source.kind.replace('-',' '))}</small><strong>${E(source.title)}</strong></span></a>`:''}<details class="rd-reminder-edit" data-rd-section="edit-${E(item.id)}"><summary>Edit reminder</summary><label class="rd-field"><span>Title</span><input type="text" maxlength="200" data-rd-field="personal-name" data-id="${E(item.id)}" aria-label="Reminder title" value="${E(item.name)}"></label><label class="rd-field"><span>Optional deadline · ${E(c.s.timeZone||'America/New_York')}</span><input type="datetime-local" data-rd-field="personal-due" data-id="${E(item.id)}" aria-label="Reminder deadline" value="${E(due)}"></label></details><div class="rd-reader-body" data-rd-key="reader-body">${plan(item)}</div></div></aside>`;
   }
   // The reader's top row: the course drawing and short name, the teacher, and two quiet circles
   // (a new tab for the original, and × back to the list where the list and reader share a column).
   function readerTop(course,item,extra='',href=''){return `<header class="rd-reader-heading" data-rd-key="reader-heading" data-arrange-head="reader"><p class="rd-reader-course" title="${E(full(course||{})||item.courseName||'')}">${mini(course,'reader')}<span>${unbreak(E(short(course)||item.courseName||'Personal'))}</span>${extra}</p><div class="rd-reader-tools">${layoutTools('reader')}${href?`<a class="rd-icon-button rd-reader-open" href="${E(href)}" target="_blank" rel="noopener noreferrer" aria-label="Open the original in a new tab" title="Open the original in a new tab">${icon('external')}</a>`:''}${action('close-preview',icon('close'),'aria-label="Back to work list" title="Back to work list"','rd-icon-button rd-reader-back')}</div></header>`;}
   // "Due today at 11:59 PM"; overdue work keeps its date ("Overdue · Sep 29, 3:59 PM").
-  function dueLong(item){const text=dueText(item,c),m=/^(Today|Tomorrow) · (.+)$/.exec(text);if(m)return `Due ${m[1].toLowerCase()} at ${m[2]}`;const d=/^(\w{3} \d+(?:, \d{4})?) · (.+)$/.exec(text);return d?`Due ${d[1]} at ${d[2]}`:text;}
+  function dueLong(item){
+    const text=dueText(item,c),m=/^(Today|Tomorrow) · (.+)$/.exec(text);
+    if(m)return `Due ${m[1].toLowerCase()} at ${m[2]}`;
+    const d=/^(\w{3} \d+(?:, \d{4})?) · (.+)$/.exec(text);
+    return d?`Due ${d[1]} at ${d[2]}`:text;
+  }
   // "Updated yesterday" / "Updated Sep 12", when Canvas gives a date.
-  function updated(value){const ms=Date.parse(value||'');if(!Number.isFinite(ms)||ms>c.now+60000)return '';const days=daysFrom(dayKey(value,c.s.timeZone));return days===0?'Updated today':days===-1?'Updated yesterday':`Updated ${formatDate(value,c.s.timeZone,{month:'short',day:'numeric'})}`;}
-  function reader(){const item=c.selected;if(item?.personal)return personalReader(item);if(!item)return '';const course=c.courseMap.get(String(item.courseId))||{},l=local[item.id]||{},content=c.readerContent||{html:'',links:[]},steps=(l.checklist||[]).length,link=assignmentLink(item),changed=updated(item.updatedAt),points=(item.rubric||[]).reduce((sum,r)=>sum+(Number(r.points)||0),0),planned=l.plannedDate===today;
+  function updated(value){
+    const ms=Date.parse(value||'');
+    if(!Number.isFinite(ms)||ms>c.now+60000)return '';
+    const days=daysFrom(dayKey(value,c.s.timeZone));
+    return days===0?'Updated today':days===-1?'Updated yesterday':`Updated ${formatDate(value,c.s.timeZone,{month:'short',day:'numeric'})}`;
+  }
+  function reader(){
+    const item=c.selected;
+    if(item?.personal)return personalReader(item);
+    if(!item)return '';
+    const course=c.courseMap.get(String(item.courseId))||{},
+      l=local[item.id]||{},
+      content=c.readerContent||{html:'',links:[]},
+      steps=(l.checklist||[]).length,
+      link=assignmentLink(item),
+      changed=updated(item.updatedAt),
+      points=(item.rubric||[]).reduce((sum,r)=>sum+(Number(r.points)||0),0),
+      planned=l.plannedDate===today;
     return `<aside data-rd-key="reader" class="rd-reader" data-id="${item.id}" aria-labelledby="rd-reader-title" style="${tone(course.color||'#69758b')}">${readerTop(course,item,detail(course)?`<small> · ${E(detail(course))}</small>`:'',link)}<div class="rd-reader-content" data-rd-key="reader-content"><h2 id="rd-reader-title" tabindex="-1">${E(item.name)}</h2><p class="rd-reader-facts"><span data-tone="${dueTone(item)}">${E(dueLong(item))}</span>${Number.isFinite(item.points)?`<span>${c.s.showGrades===true&&item.score!==null&&Number.isFinite(item.score)?E(item.score)+' / ':''}${E(item.points)} points</span>`:''}${(status=>`<span data-tone="${stateTone(status)}">${E(status)}</span>`)(item.state==='excused'?'Excused':item.redoRequested?'Resubmission requested':item.missing?'Marked missing in Canvas':complete(item)?item.state==='graded'?'Graded':'Submitted':item.state==='unknown'?'Check submission in Canvas':'Not submitted')}</p><div class="rd-reader-actions"><a class="rd-button rd-button--primary" href="${E(link)}">${l.progress==='done'&&!complete(item)?online(item)?'Open Canvas to submit':'Check completion in Canvas':'Open in Canvas'} ${icon('external')}</a>${checkButton(item,true)}${bookmarkButton(item,true)}${action('schedule',icon(planned?'check':'plus')+(planned?'In today’s plan':'Plan for today'),`data-id="${item.id}" data-day="${today}" aria-pressed="${planned}"`,'rd-button rd-plan-today')}</div><div class="rd-reader-sections"><div class="rd-reader-tabs" data-rd-key="reader-tabs" role="group" aria-label="Assignment preview sections">${action('reader-tab','Instructions',`data-tab="details" aria-pressed="${c.readerTab==='details'}"`,'rd-reader-tab')}${action('reader-tab',`My plan${steps?` <span class="rd-n">${steps} step${steps===1?'':'s'}</span>`:''}`,`data-tab="plan" aria-pressed="${c.readerTab==='plan'}"`,'rd-reader-tab')}</div>${changed?`<small>${E(changed)}</small>`:''}</div><div class="rd-reader-body" data-rd-key="reader-body">${c.readerTab==='plan'?plan(item):`${content.links.length?`<section class="rd-resources"><h3>Linked materials <span>${content.links.length}</span></h3>${content.links.map(link=>`<a href="${E(link.url)}" target="_blank" rel="noopener noreferrer"${linkedPDF(link)}>${icon('folder')}<span>${E(link.label)}</span>${icon('external')}</a>`).join('')}</section>`:''}<section class="rd-instructions" aria-label="Teacher instructions"><div class="rd-rich-text">${content.html.trim()||(content.links.length?'<p>Open the linked material to continue.</p>':'<p>No instructions were included. Check the teacher’s course information or open the original.</p>')}</div></section>${item.rubric?.length?`<details class="rd-rubric" data-rd-section="rubric"><summary>${icon('chevron')}<span>Grading rubric</span><small> · ${item.rubric.length} criteri${item.rubric.length===1?'on':'a'}${points?` · ${E(points)} points`:''}</small></summary>${item.rubric.map(r=>`<div><strong>${E(r.description)}</strong><span>${E(r.points??'—')} pts</span><p>${E(r.long_description||'')}</p></div>`).join('')}</details>`:''}`}</div></div></aside>`;}
   function grades(){return `<section class="rd-grades" data-rd-key="recent-grades" aria-label="Recent scored work"><div class="rd-section-heading"><h2>Recent scored work</h2>${action('grades','All grades '+icon('arrow'),'','rd-text-button')}</div><div class="rd-grade-results">${insights.recentGrades.map(item=>`<a href="${E(assignmentLink(item))}" class="rd-grade-result"><span>${unbreak(E(short(c.courseMap.get(String(item.courseId)))||item.courseName))}</span><strong>${E(item.name)}</strong><b>${E(item.score)}${Number.isFinite(item.points)?` <small>/ ${E(item.points)}</small>`:''}</b></a>`).join('')||'<p class="rd-muted">Scored assignments will appear when Canvas returns them.</p>'}</div></section>`;}
   const alerts=insights.ready.length?`<div class="rd-ready-note" data-rd-key="ready">${icon('upload')}<span>${insights.ready.length} assignment${insights.ready.length===1?' is':'s are'} done in your plan; completion still needs to be checked.</span>${action('view','Review',`data-mode="ready"`,'rd-text-button')}</div>`:'';
   // The most urgent counts sit beside the heading; each opens its own view.
-  function glance(){const g=c.glance||{},chips=[['overdue','danger',g.overdue,'Overdue'],['today','warn',g.today,'Due today'],['tomorrow','info',g.tomorrow,'Tomorrow']].filter(chip=>chip[2]>0);return chips.length?`<div class="rd-glance" data-rd-key="glance" role="group" aria-label="At a glance">${chips.map(([mode,tone,count,label])=>action('glance',`<span>${label}</span><b>${count}</b>`,`data-mode="${mode}" data-tone="${tone}" aria-pressed="${state.mode===mode&&!state.day}"`,'rd-glance-chip')).join('')}</div>`:'';}
+  function glance(){
+    const g=c.glance||{},chips=[['overdue','danger',g.overdue,'Overdue'],['today','warn',g.today,'Due today'],['tomorrow','info',g.tomorrow,'Tomorrow']].filter(chip=>chip[2]>0);
+    return chips.length?`<div class="rd-glance" data-rd-key="glance" role="group" aria-label="At a glance">${chips.map(([mode,tone,count,label])=>action('glance',`<span>${label}</span><b>${count}</b>`,`data-mode="${mode}" data-tone="${tone}" aria-pressed="${state.mode===mode&&!state.day}"`,'rd-glance-chip')).join('')}</div>`:'';
+  }
   // All courses opens with a greeting by the time of day in the student's time zone
   // (Make it yours: Greeting off keeps "Your work"). The first name comes from Canvas.
-  function greeting(){if(c.s.greeting==='off')return '';const hour=Number(formatDate(c.now,c.s.timeZone,{hour:'numeric',hourCycle:'h23'}))%24,name=String(c.user?.short_name||c.user?.name||'').trim().split(/\s+/)[0]||'',words=hour>=5&&hour<12?'Good morning':hour>=12&&hour<17?'Good afternoon':hour>=17&&hour<22?'Good evening':'Working late';return name?`${words}, ${name}`:words;}
+  function greeting(){
+    if(c.s.greeting==='off')return '';
+    const hour=Number(formatDate(c.now,c.s.timeZone,{hour:'numeric',hourCycle:'h23'}))%24,
+      name=String(c.user?.short_name||c.user?.name||'').trim().split(/\s+/)[0]||'',
+      words=hour>=5&&hour<12?'Good morning':hour>=12&&hour<17?'Good afternoon':hour>=17&&hour<22?'Good evening':'Working late';
+    return name?`${words}, ${name}`:words;
+  }
   // "/" searches this list; the hint on focus points to Tools for everything else.
   // The field is rendered twice with the same controls: in the command bar (on Assignments; hidden on the
   // other workspaces) and in the heading. refresh.css shows exactly one of them (--rd-search-at): the command
@@ -235,7 +476,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // the band, and the detail line and chips sit under its floor (refresh.css 4.2). Its frame is the heading's last
   // child and the h1 stays in the page, hidden only visually and only where the piece shows.
   // All courses keeps its time-based greeting unless the student explicitly supplies overview title artwork.
-  function headingLinks(course){const href=(globalThis.ReserveSite.origin()+"/courses/")+course.id;return `<span class="rd-heading-links"><a class="rd-course-cover" href="${href}" title="${E(course.name)} in Canvas">Canvas home <span aria-hidden="true">↗</span></a><span aria-hidden="true"> · </span><a href="${href}/modules">Modules</a><span aria-hidden="true"> · </span><a href="${href}/assignments">Assignments</a></span>`;}
+  function headingLinks(course){
+    const href=(globalThis.ReserveSite.origin()+"/courses/")+course.id;
+    return `<span class="rd-heading-links"><a class="rd-course-cover" href="${href}" title="${E(course.name)} in Canvas">Canvas home <span aria-hidden="true">↗</span></a><span aria-hidden="true"> · </span><a href="${href}/modules">Modules</a><span aria-hidden="true"> · </span><a href="${href}/assignments">Assignments</a></span>`;
+  }
   function heading(){
    const course=state.courseId==='all'?null:c.courseMap.get(state.courseId)||null,line=detail(course),hello=course?'':greeting();
    const date=E(formatDate(c.now,c.s.timeZone,{weekday:'long',month:'short',day:'numeric'})),filter=workCourseFilter(),chips=glance();
@@ -249,12 +493,17 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
    if(headingCache&&!unchanged){headingCache.signature=signature;headingCache.revision=(headingCache.revision||0)+1;}
    const key=headingCache?`heading-${headingCache.revision}`:'heading';
    if(reuseHeading&&unchanged)return `<div class="rd-workspace-heading" data-rd-key="${key}" data-rd-preserve-heading>${chips}${search}</div>`;
-   const overviewTitle=overviewArt.artPrefs?.titleArt||(overviewArt.artPrefs?.bannerArt&&overviewArt.artPrefs?.titlePlacement==='banner'),nameArt=course||(overviewTitle?overviewArt:null),named=nameArt&&art?.titleFrame?art.titleFrame(nameArt,{place:'heading'}):'';
+   const overviewTitle=overviewArt.artPrefs?.titleArt||(overviewArt.artPrefs?.bannerArt&&overviewArt.artPrefs?.titlePlacement==='banner'),
+     nameArt=course||(overviewTitle?overviewArt:null),
+     named=nameArt&&art?.titleFrame?art.titleFrame(nameArt,{place:'heading'}):'';
    return `<div class="rd-workspace-heading" data-rd-key="${key}"${course?` style="${tone(course.color)}"`:''}><div class="rd-course-heading"${named?` data-titled="true" style="${art.titleStyle?.(nameArt)||''}"`:''}><span class="rd-heading-art" aria-hidden="true">${scene(course||overviewArt,'heading')}</span><h1${course?` title="${E(full(course))}"`:''}>${course?unbreak(E(short(course))):hello?`${E(hello)}<span class="rd-sr-only"> — your work</span>`:'Your work'}</h1>${filter}<p>${line?`<span class="rd-heading-detail">${E(line)}</span><span aria-hidden="true"> · </span>`:''}<span class="rd-heading-date">${date}</span>${course?`<span aria-hidden="true"> · </span>${headingLinks(course)}`:''}</p>${chips}${named}</div>${search}</div>`;
   }
   // These controls belong to pane headers. Teacher links and selected text remain untouched.
   function layoutTools(key){return enabled('arrange')?root.ReserveWorkspaceArrange?.controls(key)||'':'';}
-  function arrangeGuide(){if(!enabled('arrange'))return enabled('planner')&&root.ReserveWidgets?action('board-edit',c.boardEditing?'Done editing':'Edit Home','','rd-text-button'):'';return `<div class="rd-arrange-guide" data-rd-key="arrange-guide" data-open="${!!c.arrangeOpen}"><span id="rd-move-help" class="rd-sr-only">Hold a heading or course to move it. Move across another panel to swap; move to its top or bottom to stack. Space on a heading grip, or Alt+Space on a course, picks it up. Arrows choose a place. Tab chooses another panel. Enter places; Escape cancels.</span><div>${enabled('planner')&&root.ReserveWidgets?action('board-edit',c.boardEditing?'Done editing':'Edit Home',`aria-pressed="${!!c.boardEditing}"`,'rd-text-button rd-board-edit'):''}${c.hasLayoutUndo?action('arrange-undo','Undo move','','rd-text-button'):''}${c.s.showCourseInformation===false&&enabled('course-hub')?action('arrange-restore','Show course information','','rd-text-button'):''}</div></div>`;}
+  function arrangeGuide(){
+    if(!enabled('arrange'))return enabled('planner')&&root.ReserveWidgets?action('board-edit',c.boardEditing?'Done editing':'Edit Home','','rd-text-button'):'';
+    return `<div class="rd-arrange-guide" data-rd-key="arrange-guide" data-open="${!!c.arrangeOpen}"><span id="rd-move-help" class="rd-sr-only">Hold a heading or course to move it. Move across another panel to swap; move to its top or bottom to stack. Space on a heading grip, or Alt+Space on a course, picks it up. Arrows choose a place. Tab chooses another panel. Enter places; Escape cancels.</span><div>${enabled('planner')&&root.ReserveWidgets?action('board-edit',c.boardEditing?'Done editing':'Edit Home',`aria-pressed="${!!c.boardEditing}"`,'rd-text-button rd-board-edit'):''}${c.hasLayoutUndo?action('arrange-undo','Undo move','','rd-text-button'):''}${c.s.showCourseInformation===false&&enabled('course-hub')?action('arrange-restore','Show course information','','rd-text-button'):''}</div></div>`;
+  }
   // Keep the private assignment selection and reader intact in every arrangement.
   function desk(){
     const visible=enabled('course-hub')&&c.s.showCourseInformation!==false;
@@ -271,7 +520,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   }
   // The rail is always rendered: with "Course sidebar" off it still serves as the phone drawer (refresh.css).
   const topbar=c.s.courseNavigation==='topbar';
-  return `${toolbar()}${customization()}${c.warning||''}<div class="rd-shell">${enabled('course-art')&&root.ReserveMediaFrame&&(c.courseMap.get(state.courseId)?.artPrefs?.backgroundArt||c.s.overviewArt?.backgroundArt||c.s.themeArt?.backgroundArt)?root.ReserveMediaFrame.render(c.courseMap.get(state.courseId)?.artPrefs?.backgroundArt||c.s.overviewArt?.backgroundArt||c.s.themeArt.backgroundArt,{kind:'background',className:'ch-frame-background'}):''}${topbar?heading():''}${courses()}<main class="rd-workspace" role="tabpanel" id="rd-workspace-panel" aria-labelledby="rd-tab-${tabHere}"${state.courseId!=='all'&&c.courseMap.get(state.courseId)?` style="${tone(c.courseMap.get(state.courseId).color)}"`:''}>${topbar?'':heading()}${c.workspace&&c.workspace!=='work'?`<div class="rd-selection-other">${selectionBar()}</div>`:''}${c.workspace==='plan'&&root.ReservePlannerUI?root.ReservePlannerUI.render(c,h,c.planUI):c.workspace==='review'?c.reviewDeckHTML||'':c.workspace==='grades'?`<label class="rd-mobile-course rd-field"><span>Course</span><select data-rd-field="course" aria-label="Grades course"><option value="all">All courses</option>${c.courses.map(course=>`<option value="${E(course.id)}" ${state.courseId===course.id?'selected':''}>${E(option(course))}</option>`).join('')}</select></label>`+(Grades.render(c,h)+(root.ReserveGradeImpact?.render(c,h,c.gradeImpact)||'')):['hub','inbox'].includes(c.workspace)?`${c.workspace==='hub'?`${courseFilter()}`:''}${c.hubContent||''}`:c.workspace==='materials'?`${courseFilter()}${c.materialLibrary||'<p>Choose a course to browse its materials.</p>'}`:`${c.s.showBookmarks!==false?bookmarks():''}<div class="rd-desk-toolbar" data-rd-key="desk-toolbar">${filters()}${week()}<div class="rd-selection-slot" data-rd-key="selection-slot">${selectionBar()}</div></div>${arrangeGuide()}${desk()}${c.s.showGrades===true&&c.s.showRecentGrades!==false?grades():''}`}</main></div><footer class="rd-status"><span role="status">${E(c.status)}</span><span>Check course home and messages for work outside assignments.</span></footer><div class="rd-sr-only" aria-live="polite">${!c.workspace||c.workspace==='work'?`${c.filtered.items.length} item${c.filtered.items.length===1?'':'s'} shown.`:''}</div>`;
+  return `${toolbar()}${customization()}${c.warning||''}<div class="rd-shell">${enabled('course-art')&&root.ReserveMediaFrame&&(c.courseMap.get(state.courseId)?.artPrefs?.backgroundArt||c.s.overviewArt?.backgroundArt||c.s.themeArt?.backgroundArt)?root.ReserveMediaFrame.render(c.courseMap.get(state.courseId)?.artPrefs?.backgroundArt||c.s.overviewArt?.backgroundArt||c.s.themeArt.backgroundArt,{kind:'background',className:'ch-frame-background'}):''}${topbar?heading():''}${courses()}<main class="rd-workspace" role="tabpanel" id="rd-workspace-panel" aria-labelledby="rd-tab-${tabHere}"${state.courseId!=='all'&&c.courseMap.get(state.courseId)?` style="${tone(c.courseMap.get(state.courseId).color)}"`:''}>${topbar?'':heading()}${c.workspace&&c.workspace!=='work'?`<div class="rd-selection-other">${selectionBar()}</div>`:''}${c.workspace==='plan'&&root.ReservePlannerUI?root.ReservePlannerUI.render(c,h,c.planUI):c.workspace==='review'?c.reviewDeckHTML||'':c.workspace==='grades'?`<label class="rd-mobile-course rd-field"><span>Course</span><select data-rd-field="course" aria-label="Grades course"><option value="all">All courses</option>${c.courses.map(course=>`<option value="${E(course.id)}" ${state.courseId===course.id?'selected':''}>${E(option(course))}</option>`).join('')}</select></label>`+(Grades.render(c,h)+(root.ReserveGradeImpact?.render(c,h,c.gradeImpact)||'')):['hub','inbox'].includes(c.workspace)?`${c.workspace==='hub'?`${courseFilter()}`:''}${c.hubContent||''}`:c.workspace==='materials'?`${courseFilter()}${c.materialLibrary||'<p>Choose a course to browse its materials.</p>'}`:`${c.s.showBookmarks!==false?bookmarks():''}<div class="rd-desk-toolbar" data-rd-key="desk-toolbar">${filters()}${week()}<div class="rd-selection-slot" data-rd-key="selection-slot">${selectionBar()}</div></div>${arrangeGuide()}${desk()}${c.s.showGrades===true&&c.s.showRecentGrades!==false?grades():''}`}</main></div><footer class="rd-status"><span role="status">${E(c.status)}</span><span>Check course home and messages for work outside assignments.</span></footer><div class="rd-sr-only" aria-live="polite" data-rd-list-live>${!c.workspace||c.workspace==='work'?`${c.filtered.items.length} item${c.filtered.items.length===1?'':'s'} shown.`:''}</div>`;
 
  }
  return {render,renderCustomization,bookmarkItems,deadlineTone,workspaceEnabled,resolveWorkspace};

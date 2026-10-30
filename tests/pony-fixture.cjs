@@ -1,7 +1,7 @@
 'use strict';
 // Deterministic DOM/clock for the public pony controller; no browser, timers, or dependencies escape the VM.
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
-function fixture({hz=60,extra=false,observers=true,hidden=false,frame='pen',rule=null,paddock=false,roam='page',initialBlocker=false,brain,ask,parser,claimOffer,info=()=>({}),actions={},initialPet={},savePet,sessionStorage,epoch=Date.UTC(2026,9,19,16)}={}){
+function fixture({hz=60,extra=false,observers=true,hidden=false,frame='pen',rule=null,paddock=false,roam='page',initialBlocker=false,brain,ask,parser,engine,claimOffer,info=()=>({}),actions={},initialPet={},savePet,sessionStorage,epoch=Date.UTC(2026,9,19,16),film}={}){
  let clock=0,seq=0,random=[],pet={enabled:true,roam,...initialPet},trace=[],reads={rect:0,style:0,hit:0,range:0,offset:0},writes=[],rafCalls=0,enumerations=0,layoutEnumerations=0;
  const timers=new Map(),resizes=[],mutations=[],listeners=new Map(),animations=[],box=(left,top,width,height)=>({left,top,width,height,right:left+width,bottom:top+height});
  const schedule=(fn,delay=0,repeat=0,kind='task')=>{const id=++seq;timers.set(id,{fn,at:clock+Math.max(0,delay),repeat,kind});return id;};
@@ -33,7 +33,7 @@ function fixture({hz=60,extra=false,observers=true,hidden=false,frame='pen',rule
  if(observers){win.ResizeObserver=ResizeObserver;win.MutationObserver=MutationObserver;}
  const math=Object.create(Math);math.random=()=>random.length?random.shift():.5;
  const env=vm.createContext({console,Math:math,Date,Map,Set,WeakMap,setTimeout:(fn,ms)=>schedule(fn,ms),clearTimeout:id=>timers.delete(id),setInterval:(fn,ms)=>schedule(fn,ms,ms),clearInterval:id=>timers.delete(id),...win,document:doc});
- env.ReservePonyBrain=brain;env.ReservePonyAsk=ask;env.ReserveBiscuitParse=parser;for(const file of ['pet-art.js','pets.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../extension',file),'utf8'),env,{filename:file});
+ env.ReservePonyBrain=brain;env.ReservePonyAsk=ask;env.ReserveBiscuitParse=parser;if(engine)env.ReserveBiscuitEngine=engine;if(film)env.ReserveMotion=film;for(const file of ['pet-art.js','pets.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../extension',file),'utf8'),env,{filename:file});
  const controller=env.ReservePets.create({container,getPet:()=>pet,savePet:(p,patch,mutate)=>{pet=savePet?savePet(p,patch,mutate,pet):p;},now:()=>epoch+clock,info,actions,claimOffer});
  const advance=ms=>{const end=clock+ms;let count=0;for(;;){const ready=[...timers].filter(([,t])=>t.at<=end+1e-7).sort((a,b)=>a[1].at-b[1].at||a[0]-b[0])[0];if(!ready)break;if(++count>50000)throw Error('Timer loop');clock=Math.max(clock,ready[1].at);if(ready[1].repeat)ready[1].at=clock+ready[1].repeat;else timers.delete(ready[0]);ready[1].fn();}clock=end;};
  const stall=ms=>{clock+=ms;const due=[...timers].filter(([,t])=>t.at<=clock);for(const [id,t]of due){if(!timers.has(id))continue;if(t.repeat)t.at=clock+t.repeat;else timers.delete(id);t.fn();}};

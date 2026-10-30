@@ -1,5 +1,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const M=require('../extension/math.js');
+// scripts/readable-lines.cjs spreads dense code over several lines (whitespace only); match the code without them.
+const compact=text=>text.replace(/\n[ \t]*/g,'');
 // Mathematics in teacher text (Canvas Harness 2.17.2). The student showed an assignment whose description displayed raw
 // LaTeX and wrote: "you should support format like latex form, or other possible format so it does not look weird".
 // extension/math.js turns TeX into MathML (which Chromium renders), safely and without a network or a font;
@@ -106,7 +108,7 @@ test('plain text for rows, excerpts and search: the delimiters and commands go, 
  assert.equal(M.plain('No mathematics here: $5.'),'No mathematics here: $5.');
  assert.equal(M.plain(T`\[E = mc^2\] and $$\ce{H2O}$$`),'E = mc² and H₂O');
  // The assignment row's excerpt (dashboard-view.js) uses both helpers.
- const view=fs.readFileSync(path.join(__dirname,'../extension/dashboard-view.js'),'utf8');
+ const view=compact(fs.readFileSync(path.join(__dirname,'../extension/dashboard-view.js'),'utf8'));
  assert.match(view,/const excerpt=item=>\{const M=enabled\('math'\)&&root\.ReserveMath,text=String\(M\?M\.equationTeX\(item\.description\|\|''\):item\.description\|\|''\)/);assert.match(view,/return \(M\?M\.plain\(text\)\.replace\(\/\\s\+\/g,' '\):text\)\.slice\(0,170\);/);
 });
 

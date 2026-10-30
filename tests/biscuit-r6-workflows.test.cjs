@@ -101,3 +101,10 @@ test('uncommitted failed receipts cannot invent plan history or replace a real p
 });
 
 // private-build batch execution and Undo integration require unavailable public actions.batch and related architecture.
+
+test('round 8 course, calendar and announcements navigations open the course, Planner and Course hub of this build',async t=>{
+ const f=await fixture(t,{homeNavigation:true});
+ ok(await f.actions.navigate({tab:'course',courseId:'2'}));ok(await f.actions.navigate({tab:'calendar'}));ok(await f.actions.navigate({tab:'announcements'}));
+ assert.deepEqual(f.navigation,[{courseId:'2'},{tab:'planner'},{tab:'course-hub'}]);
+ assert.equal(await f.actions.navigate({tab:'course'}),false);assert.equal(await f.actions.navigate({tab:'course',courseId:'missing'}),false);assert.equal(f.navigation.length,3);
+});

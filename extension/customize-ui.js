@@ -5,7 +5,21 @@
  const enabled=id=>!root.ReserveFeatures||root.ReserveFeatures.enabled(id);
  const tabs=()=>enabled('customization')?TABS.filter(([key])=>key!=='pet'||enabled('pony')):[];
  const settingEnabled=key=>{
-  const feature={sceneTheme:'scene-themes',dockSize:'arrange',motion:'motion',livingArt:'course-art',nightArt:'course-art',bannerSize:'course-art',showCourseIcons:'course-art',courseCardStyle:'course-art',showCourseInformation:'course-hub',showRecentGrades:'grades',deskOrder:'arrange',courseNavigation:'arrange',canvasNav:'canvas-nav'}[key];
+  const feature={
+    sceneTheme:'scene-themes',
+    dockSize:'arrange',
+    motion:'motion',
+    livingArt:'course-art',
+    nightArt:'course-art',
+    bannerSize:'course-art',
+    showCourseIcons:'course-art',
+    courseCardStyle:'course-art',
+    showCourseInformation:'course-hub',
+    showRecentGrades:'grades',
+    deskOrder:'arrange',
+    courseNavigation:'arrange',
+    canvasNav:'canvas-nav'
+  }[key];
   return (!feature||enabled(feature))&&(key!=='livingArt'||enabled('motion'));
  };
  const E=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -50,16 +64,33 @@
   if(!enabled('customization'))return '';
   const shell=inner=>`<div class="rd-appearance t-acc ch-settings-dock" data-open="${!!c.customizeOpen}" role="complementary" aria-labelledby="rd-appearance-title" ${c.customizeOpen?'':'inert aria-hidden="true"'}><div class="t-acc-panel" id="rd-appearance-panel" ${c.customizeOpen?'':'inert aria-hidden="true"'}><div class="t-acc-panel-inner"${c.customizeOpen?'':' data-rd-key="customize-content"'}>${inner}</div></div></div>`;
   if(!c.customizeOpen)return shell('');
-  const s={...root.ReserveCustomization.defaults,theme:'system',accent:'clay',font:'system',textSize:'standard',motion:'gentle',livingArt:'on',readingFont:'book',greeting:'on',...c.s,...(!enabled('motion')?{motion:'off',livingArt:'off'}:{})},id=c.customizeCourseId||'all',course=c.allCourses.find(x=>x.id===id),pref=id==='all'?(s.overviewArt||{}):(s.coursePrefs?.[id]||{});
+  const s={
+    ...root.ReserveCustomization.defaults,
+    theme:'system',
+    accent:'clay',
+    font:'system',
+    textSize:'standard',
+    motion:'gentle',
+    livingArt:'on',
+    readingFont:'book',
+    greeting:'on',
+    ...c.s,
+    ...(!enabled('motion')?{motion:'off',livingArt:'off'}:{})
+  },
+    id=c.customizeCourseId||'all',
+    course=c.allCourses.find(x=>x.id===id),
+    pref=id==='all'?(s.overviewArt||{}):(s.coursePrefs?.[id]||{});
   const label=course?.name||'All courses',visible=new Set(c.courses.map(x=>x.id));
    // A missing, removed or unavailable tab opens Look; each render builds one pane.
    const allowedTabs=tabs(),asked=ALIASES[c.customizeTab]||c.customizeTab||'look',tab=allowedTabs.some(([key])=>key===asked)?asked:'look',on=key=>tab===key;
   const button=(action,label,extra='',cls='rd-button')=>`<button type="button" class="${cls}" data-rd-action="${action}" ${extra}>${label}</button>`;
   const select=(key,label,options,field='setting',value=s[key])=>!settingEnabled(key)?'':`<label class="rd-field"><span>${E(label)}</span><select data-rd-field="${field}" data-setting="${key}" data-id="${E(id)}" aria-label="${E(label)}">${options.map(([v,l])=>`<option value="${v}"${v===value?' selected':''}>${E(l)}</option>`).join('')}</select></label>`;
    // Only level locks show their requirement; scene locks have no description.
-   const choices=(key,title,options,{value=s[key],cols=3,field='setting',data='setting',className=''}={})=>!settingEnabled(key)?'':`<div class="cz-choices${className?' '+E(className):''}" role="radiogroup" aria-label="${E(title)}" style="--cz-cols:${cols}">${options.map(([v,name,hint,art,locked])=>`<label class="cz-choice"${locked?' data-locked="true"':''}><input type="radio" name="cz-${key}" data-rd-field="${field}" data-${data}="${key}" value="${E(v)}" ${v===value?'checked':''} ${locked?'disabled':''}><span class="cz-choice-art">${art||''}</span><strong>${E(name)}</strong>${locked&&/^Level \d+$/.test(hint||'')?`<small>${E(hint)}</small>`:''}</label>`).join('')}</div>`;
+   const choices=(key,title,options,{value=s[key],cols=3,field='setting',data='setting',className=''}={})=>
+     !settingEnabled(key)?'':`<div class="cz-choices${className?' '+E(className):''}" role="radiogroup" aria-label="${E(title)}" style="--cz-cols:${cols}">${options.map(([v,name,hint,art,locked])=>`<label class="cz-choice"${locked?' data-locked="true"':''}><input type="radio" name="cz-${key}" data-rd-field="${field}" data-${data}="${key}" value="${E(v)}" ${v===value?'checked':''} ${locked?'disabled':''}><span class="cz-choice-art">${art||''}</span><strong>${E(name)}</strong>${locked&&/^Level \d+$/.test(hint||'')?`<small>${E(hint)}</small>`:''}</label>`).join('')}</div>`;
    // Keep the shared-computer caution next to Open at once.
-   const toggle=(key,name,hint,{checked=s[key]!==false,field='setting',data='setting',warn=false}={})=>!settingEnabled(key)?'':`<label class="cz-toggle"><span><strong>${E(name)}</strong>${warn&&hint?`<small>${E(hint)}</small>`:''}</span><input type="checkbox" role="switch" data-rd-field="${field}" data-${data}="${key}" ${checked?'checked':''}><i aria-hidden="true"></i></label>`;
+   const toggle=(key,name,hint,{checked=s[key]!==false,field='setting',data='setting',warn=false}={})=>
+     !settingEnabled(key)?'':`<label class="cz-toggle"><span><strong>${E(name)}</strong>${warn&&hint?`<small>${E(hint)}</small>`:''}</span><input type="checkbox" role="switch" data-rd-field="${field}" data-${data}="${key}" ${checked?'checked':''}><i aria-hidden="true"></i></label>`;
   const group=(title,hint,body)=>{
    const feature={'Start from a layout':'arrange','Modules on Home':'planner','Canvas\u2019s menu bar':'canvas-nav','Where your courses are':'arrange','Course size':'arrange','Course dock':'arrange','Order of the three panels':'arrange',Banner:'course-art','Artwork at night':'course-art','Outline round modules':'planner','Course cards':'course-art',Motion:'motion'}[title];
     return feature&&!enabled(feature)?'':`<section class="cz-group" data-art="${E(title)}"><h3>${E(title)}</h3>${body}</section>`;};
@@ -81,19 +112,35 @@
   '<svg viewBox="0 0 64 30" width="64" height="30" aria-hidden="true"><path d="M6 8h15v14H6z" fill="#EBDBBC" transform="translate(1 1)"/><path d="M6 7.8c5-.2 10-.2 15 0 .2 4.8.2 9.6 0 14.4-5 .2-10 .2-15 0-.2-4.8-.2-9.6 0-14.4zM9 12h8M9 16h6" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M24 8h15v14H24z" fill="#EBDBBC" transform="translate(1 1)"/><path d="M24 7.8c5-.2 10-.2 15 0 .2 4.8.2 9.6 0 14.4-5 .2-10 .2-15 0-.2-4.8-.2-9.6 0-14.4zM27 12h8M27 16h6" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M42 8h15v14H42z" fill="#EBDBBC" transform="translate(1 1)"/><path d="M42 7.8c5-.2 10-.2 15 0 .2 4.8.2 9.6 0 14.4-5 .2-10 .2-15 0-.2-4.8-.2-9.6 0-14.4zM45 12h8M45 16h6" fill="none" stroke="currentColor" stroke-width="1.1"/></svg>']],{cols:2})+`<div class="cz-toggles">${toggle('dockNamesAlways','Names always','',{checked:s.dockNamesAlways===true})}${toggle('dockCounts','Counts','',{checked:s.dockCounts!==false})}${toggle('dockLively','Lively','',{checked:s.dockLively!==false})}${toggle('dockHide','Hide until near','',{checked:s.dockHide===true})}</div>`):'')
    +group('Spacing','',choices('density','Spacing',[['comfortable','Roomy','More air between rows.',ART.comfortable],['compact','Compact','More rows on the screen.',ART.dense]],{cols:2}))
     +group('What shows','',`<div class="cz-toggles">${toggle('showCourseStrip','Course list','The courses beside, above or below the page.')}${toggle('showCourseIcons','Course drawings','The small drawing on each course.')}${toggle('showDeadlinePreview','Next deadlines on courses','What is due next, under each course name.')}${toggle('showBookmarks','Bookmarks shelf','The row of bookmarks under the heading.')}${toggle('showCourseInformation','Course information','Announcements, messages and the teacher’s page.')}${toggle('showRecentGrades','Recent scored work','Shown only while Show grades is on.')}${toggle('greeting','Greeting','“Good morning” on All courses, instead of a plain title.',{checked:s.greeting!=='off'}).replace('data-setting="greeting"','data-setting="greeting" data-onoff="true"')}${toggle('quickOpen','Open at once','Leave this off on a shared computer.',{checked:s.quickOpen==='on',warn:true}).replace('data-setting="quickOpen"','data-setting="quickOpen" data-onoff="true"')}</div>`)
-    +group('Canvas’s menu bar','',choices('canvasNav','Canvas menu bar',[['drawn','From the left edge','',ART.navEdge],['shown','Full height','',ART.navColumn],['top','Across the top','',ART.navTop],['original','Canvas’s own','',ART.navOriginal]],{value:c.canvasNav||'drawn',cols:2,field:'canvas-nav'}))
+    +
+    group(
+      'Canvas’s menu bar',
+      '',
+      choices(
+        'canvasNav',
+        'Canvas menu bar',
+        [['drawn','From the left edge','',ART.navEdge],['shown','Full height','',ART.navColumn],['top','Across the top','',ART.navTop],['original','Canvas’s own','',ART.navOriginal]],
+        {value:c.canvasNav||'drawn',cols:2,field:'canvas-nav'}))
     +group('Saved layouts & plans','',picker({kinds:['preset'],presetKinds:['layout','planner'],label:'Saved layouts and plans'}));
   };
 
-   const bannerGroup=()=>{const ART=artDiagrams();return group('Banner','',choices('bannerSize','Banner size',[['compact','Small','',ART.compact],['standard','Medium','',ART.standard],['large','Tall','',ART.large]]));};
-   const courseCardGroup=()=>{const ART=artDiagrams();return group('Course cards','',choices('courseCardStyle','Course frames',[['sketch','Hand-drawn','',ART.sketch],['rounded','Rounded','',ART.rounded],['minimal','Minimal','',ART.minimal]]));};
+   const bannerGroup=()=>{
+     const ART=artDiagrams();
+     return group('Banner','',choices('bannerSize','Banner size',[['compact','Small','',ART.compact],['standard','Medium','',ART.standard],['large','Tall','',ART.large]]));
+   };
+   const courseCardGroup=()=>{
+     const ART=artDiagrams();
+     return group('Course cards','',choices('courseCardStyle','Course frames',[['sketch','Hand-drawn','',ART.sketch],['rounded','Rounded','',ART.rounded],['minimal','Minimal','',ART.minimal]]));
+   };
 
   const look=()=>{
    const ART=artDiagrams();
   const swatch=(bg,line,ink)=>`<svg viewBox="0 0 72 48" width="72" height="48" aria-hidden="true"><rect x="3" y="4" width="66" height="40" rx="5" fill="${bg}" stroke="${line}" stroke-width="1.5"/><path d="M10 14h30M10 22h44M10 30h36" stroke="${ink}" stroke-width="2.4" stroke-linecap="round"/></svg>`;
   const letters=family=>`<span class="cz-letters" style="font-family:${family}">Aa</span>`;
-  const accentButtons=[['clay','Clay','#A9522F'],['forest','Forest','#367964'],['indigo','Iris','#5f5ccc'],['rose','Rose','#9e4c6c'],['ocean','Ocean','#2f7185'],['amber','Amber','#956821']].map(([key,name,color])=>button('accent',`<i aria-hidden="true" style="background:${color}"></i><span>${name}</span>`,`data-accent="${key}" aria-label="${name} accent" title="${name} accent" aria-pressed="${s.accent===key}"`,'rd-swatch ch-accent-choice')).join('');
-  const frames=(enabled('planner')?root.ReserveWidgets?.FRAMES||[]:[]).map(([value,name,hint])=>button('board-frame',`<i data-frame="${value}"></i>${E(name)}`,`role="radio" data-value="${value}" aria-checked="${(s.panelFrame||'pen')===value}" title="${E(hint)}"`,'rd-frame-choice')).join('');
+  const accentButtons=[['clay','Clay','#A9522F'],['forest','Forest','#367964'],['indigo','Iris','#5f5ccc'],['rose','Rose','#9e4c6c'],['ocean','Ocean','#2f7185'],['amber','Amber','#956821']].map(([key,name,color])=>
+    button('accent',`<i aria-hidden="true" style="background:${color}"></i><span>${name}</span>`,`data-accent="${key}" aria-label="${name} accent" title="${name} accent" aria-pressed="${s.accent===key}"`,'rd-swatch ch-accent-choice')).join('');
+  const frames=(enabled('planner')?root.ReserveWidgets?.FRAMES||[]:[]).map(([value,name,hint])=>
+    button('board-frame',`<i data-frame="${value}"></i>${E(name)}`,`role="radio" data-value="${value}" aria-checked="${(s.panelFrame||'pen')===value}" title="${E(hint)}"`,'rd-frame-choice')).join('');
   const night=Math.max(0,Math.min(100,Math.round(Number(s.nightArt)||0))),sceneActive=enabled('scene-themes')&&['starry','sea','stars','blueprint'].includes(s.sceneTheme);
   // No page-relative URLs: a browserless preview keeps the plain illustration.
   const poster=scene=>root.chrome?.runtime?.getURL?`<img class="cz-scene-poster" src="${E(root.chrome.runtime.getURL(`themes/${scene}/poster.jpg`))}" alt="" aria-hidden="true" width="160" height="90" loading="lazy">`:ART.still;
@@ -104,10 +151,35 @@
    ['stars','Starfield','',poster('stars')],
    ['blueprint','Blueprint','',poster('blueprint')]
   ],{cols:2,className:'cz-scenes'})):'';
-   return sceneChoices()+group('Light or dark','Dark is only ever on when you choose it here.',choices('theme','Theme',[['light','Light','Ivory paper, as always.',swatch('#FAF9F5','#E8E6DC','#3D3D3A'),sceneActive],['dark','Dark','A dark page for the evening.',swatch('#1F1E1D','#30302E','#E8E6DC'),sceneActive]],{value:s.theme==='dark'?'dark':'light',cols:2}))
+   return sceneChoices()+
+     group(
+       'Light or dark',
+       'Dark is only ever on when you choose it here.',
+       choices(
+         'theme',
+         'Theme',
+         [['light','Light','Ivory paper, as always.',swatch('#FAF9F5','#E8E6DC','#3D3D3A'),sceneActive],['dark','Dark','A dark page for the evening.',swatch('#1F1E1D','#30302E','#E8E6DC'),sceneActive]],
+         {value:s.theme==='dark'?'dark':'light',cols:2}))
    +(sceneActive?'':(s.theme==='dark'?group('Artwork at night','How the drawings look on the dark page: chalk on the board at one end, the paper kept and dimmed at the other.',`<label class="cz-night"><span>Chalk</span><input type="range" min="0" max="100" step="5" data-rd-field="setting" data-setting="nightArt" value="${night}" aria-label="Artwork at night: chalk at 0, paper at 100" aria-valuetext="${night<50?'Chalk':'Paper'}, ${night}%"><span>Paper</span><output>${night}%</output></label>`):''))
    +group('Accent color','Buttons, links and highlights. Course drawings keep their own colors.',`<div class="ch-accent-actions cz-accents" role="group" aria-label="Accent color">${accentButtons}</div>`)
-   +group('Page color','A very light tint behind everything. Accent is for buttons; this is for the mood of the page.',choices('pageTint','Page color',[['paper','Paper','',swatch('#FAF9F5','#E8E6DC','#8A8880')],['accent','Match accent','',swatch('color-mix(in srgb,var(--rd-accent) 9%,#FDFDFC)','color-mix(in srgb,var(--rd-accent) 30%,#E7E7E4)','var(--rd-accent)')],['sky','Sky','',swatch('#F2F7FC','#D3E2F0','#3F8FCC')],['sage','Sage','',swatch('#F3F8F2','#D6E5D3','#5E8F5A')],['lilac','Lilac','',swatch('#F7F4FC','#E0D8F0','#8B6FC9')],['blush','Blush','',swatch('#FCF4F6','#F0D6DD','#D0607F')],['sand','Sand','',swatch('#FBF7EF','#EADFC8','#B98A3E')],['snow','Snow','',swatch('#FCFCFD','#E4E6EA','#8A8F98')]],{cols:4}))
+   +
+   group(
+     'Page color',
+     'A very light tint behind everything. Accent is for buttons; this is for the mood of the page.',
+     choices(
+       'pageTint',
+       'Page color',
+       [
+         ['paper','Paper','',swatch('#FAF9F5','#E8E6DC','#8A8880')],
+         ['accent','Match accent','',swatch('color-mix(in srgb,var(--rd-accent) 9%,#FDFDFC)','color-mix(in srgb,var(--rd-accent) 30%,#E7E7E4)','var(--rd-accent)')],
+         ['sky','Sky','',swatch('#F2F7FC','#D3E2F0','#3F8FCC')],
+         ['sage','Sage','',swatch('#F3F8F2','#D6E5D3','#5E8F5A')],
+         ['lilac','Lilac','',swatch('#F7F4FC','#E0D8F0','#8B6FC9')],
+         ['blush','Blush','',swatch('#FCF4F6','#F0D6DD','#D0607F')],
+         ['sand','Sand','',swatch('#FBF7EF','#EADFC8','#B98A3E')],
+         ['snow','Snow','',swatch('#FCFCFD','#E4E6EA','#8A8F98')]
+       ],
+       {cols:4}))
    +group('Page','',choices('surfaceStyle','Page style',[['paper','Warm paper','Ivory, soft lines.',swatch('#FAF9F5','#E8E6DC','#5E5D59')],['clean','Clean','Cool white, grey lines.',swatch('#F8FAFC','#D8DEE6','#566070')],['contrast','High contrast','Darker text and lines.',swatch('#FFFFFF','#555555','#111111')]]))
    +group('Outline round modules','How each module on Home is framed.',`<div class="cz-frames" role="radiogroup" aria-label="Module outline">${frames}</div>`)
    +group('Type','',`<h4 class="cz-subhead">Letters</h4>`+choices('font','Interface type',[['system','Modern','',letters('"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif')],['humanist','Humanist','',letters('Calibri,Candara,"Segoe UI",sans-serif')],['serif','Bookish','',letters('Literata,Georgia,serif')]])
@@ -118,17 +190,39 @@
   };
 
   const art=()=>{
-   const id=c.customizeCourseId||'all',course=c.allCourses.find(x=>x.id===id),pref=id==='theme'?(s.themeArt||{}):id==='all'?(s.overviewArt||{}):(s.coursePrefs?.[id]||{}),label=id==='theme'?'Theme':course?.name||'All courses';
+   const id=c.customizeCourseId||'all',
+     course=c.allCourses.find(x=>x.id===id),
+     pref=id==='theme'?(s.themeArt||{}):id==='all'?(s.overviewArt||{}):(s.coursePrefs?.[id]||{}),
+     label=id==='theme'?'Theme':course?.name||'All courses';
   const select=(key,label,options,field='setting',value=s[key])=>`<label class="rd-field"><span>${E(label)}</span><select data-rd-field="${field}" data-setting="${key}" data-id="${E(id)}" aria-label="${E(label)}">${options.map(([v,l])=>`<option value="${v}"${v===value?' selected':''}>${E(l)}</option>`).join('')}</select></label>`;
   const F=root.ReserveMediaFrame,frames=!!(F&&root.ReserveFrameEditor),artAsset=value=>F?.asset(value)||value?.asset||value;
   const currentIds=new Set(c.allCourses.map(x=>x.id));
   const unused=Object.entries(s.coursePrefs||{}).filter(([id,pref])=>!currentIds.has(id)&&root.ReserveCustomization.artKeys.some(key=>pref[key]));
   const unusedArt=unused.length?`<details class="ch-details" data-rd-section="unused-art"><summary>Artwork from other courses (${unused.length})</summary><div class="ch-unused-art">${unused.map(([id,pref])=>`<div><strong>${E(pref.name||'Course '+id)}</strong>${root.ReserveCustomization.artKeys.filter(key=>pref[key]).map(key=>`<div><span>${E(artAsset(pref[key])?.name||'Artwork')}</span>${button('art-remove','Remove '+key.replace('Art',''),`data-id="${E(id)}" data-kind="${key.replace('Art','')}"`,'rd-text-button')}</div>`).join('')}</div>`).join('')}</div></details>`:'';
-  const artCourse={id:id==='all'||id==='theme'?'folio-home':id,name:label,originalName:course?.originalName,shortName:course?.shortName,artPrefs:pref,artMotion:s.livingArt!=='off'&&s.motion==='gentle'};
+  const artCourse={
+    id:id==='all'||id==='theme'?'folio-home':id,
+    name:label,
+    originalName:course?.originalName,
+    shortName:course?.shortName,
+    artPrefs:pref,
+    artMotion:s.livingArt!=='off'&&s.motion==='gentle'
+  };
   const paste=kind=>`<details class="ch-paste" data-rd-section="paste-${E(id)}-${kind}"><summary>Paste SVG</summary><label><span class="rd-sr-only">${kind==='border'?'frame':kind} SVG source</span><textarea data-rd-field="art-source" data-id="${E(id)}-${kind}" data-course="${E(id)}" data-kind="${kind}" maxlength="262144" spellcheck="false" aria-label="${kind==='border'?'frame':kind} SVG source" placeholder="<svg …>…</svg>">${E(c.customizeDrafts?.[id+':'+kind]||'')}</textarea></label>${button('art-paste','Apply SVG',`data-id="${E(id)}" data-kind="${kind}" ${c.customizeBusy?'disabled':''}`)}</details>`;
   const artwork=(kind,title)=>{
    const value=pref[kind+'Art'],asset=artAsset(value),framing=['banner','card','background'].includes(kind),word=kind==='border'?'frame':kind;
-   const preview=value&&frames&&framing?'':asset?.mediaId&&root.ReserveMedia?root.ReserveMedia.render(asset,{kind,className:'ch-art-image',fit:'contain'}):asset&&root.ReserveCustomArt?root.ReserveCustomArt.render(asset,{kind,motion:artCourse.artMotion,fit:kind==='border'?'fill':'contain',className:'ch-art-image'}):kind==='banner'?root.ReserveCourseArt?.scene?.(artCourse,{crop:'wide',place:'customize'}):kind==='icon'?root.ReserveCourseArt?.mini?.(artCourse,{place:'customize'}):kind==='title'?(root.ReserveCourseArt?.title?.(artCourse,{place:'customize'})||'<span class="ch-title-fallback">Course title</span>'):kind==='border'?(id==='all'?root.ReserveCourseArt?.frame?.('home','all'):root.ReserveCourseArt?.frame?.(root.ReserveCourseArt.kind?.(artCourse)||'home',id,artCourse)):'';
+   const preview=value&&frames&&framing?
+     '':
+     asset?.mediaId&&root.ReserveMedia?
+       root.ReserveMedia.render(asset,{kind,className:'ch-art-image',fit:'contain'}):
+       asset&&root.ReserveCustomArt?
+         root.ReserveCustomArt.render(asset,{kind,motion:artCourse.artMotion,fit:kind==='border'?'fill':'contain',className:'ch-art-image'}):
+         kind==='banner'?
+           root.ReserveCourseArt?.scene?.(artCourse,{crop:'wide',place:'customize'}):
+           kind==='icon'?
+             root.ReserveCourseArt?.mini?.(artCourse,{place:'customize'}):
+             kind==='title'?
+               (root.ReserveCourseArt?.title?.(artCourse,{place:'customize'})||'<span class="ch-title-fallback">Course title</span>'):
+               kind==='border'?(id==='all'?root.ReserveCourseArt?.frame?.('home','all'):root.ReserveCourseArt?.frame?.(root.ReserveCourseArt.kind?.(artCourse)||'home',id,artCourse)):'';
    const accept=framing?'image/svg+xml,.svg,image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4,video/webm,.png,.jpg,.jpeg,.webp,.avif,.gif,.mp4,.webm':kind==='title'?'image/svg+xml,.svg,image/png,image/webp,.png,.webp':'image/svg+xml,.svg';
    return `<div class="ch-art-slot" data-kind="${kind}" data-id="${E(id)}"${framing?` data-ch-frame-target tabindex="0" role="group" aria-label="${E(title)} media for ${E(label)}"`:''}>${value&&frames&&framing?'':`<div class="ch-art-preview" aria-hidden="true">${preview||''}</div>`}<div class="ch-art-caption"><strong>${title}</strong><span title="${E(asset?.name||'Built-in drawing')}">${E(asset?.name||'Built-in drawing')}</span></div><label class="rd-button ch-upload">${asset?'Replace':framing||kind==='title'?'Upload':'Upload SVG'}<input type="file" accept="${accept}" data-rd-field="art-upload" data-kind="${kind}" data-id="${E(id)}" aria-label="Upload ${word} for ${E(label)}" ${c.customizeBusy?'disabled':''}></label>${framing?button('art-clipboard','Paste',`data-id="${E(id)}" data-kind="${kind}" aria-label="Paste ${word}" ${c.customizeBusy?'disabled':''}`):''}${asset?button('art-remove','Use default',`data-id="${E(id)}" data-kind="${kind}" aria-label="Remove custom ${word}" ${c.customizeBusy?'disabled':''}`,'rd-text-button'):''}${['banner','icon','border','title'].includes(kind)?button('art-template','Get template',`data-kind="${kind}"`,'rd-text-button'):''}${paste(kind)}${frames&&framing?root.ReserveFrameEditor.render(value,{id,kind,appearance:{...pref,bannerSize:s.bannerSize,shapes:c.frameShapes?.[id]?.[kind]}}):''}</div>`;
   };
@@ -147,22 +241,49 @@
    if(!enabled('pony'))return '';const P=root.ReservePets,A=root.ReservePetArt;if(!P||!A)return '';
    const pet=P.clean(c.personal?.pet),lv=P.level(pet.xp);
    const petChoices=(key,title,options,cols)=>choices(key,title,options,{value:pet[key],cols,field:'pet',data:'key'});
-   const look=({coat=pet.coat,harness=pet.harness}={})=>{const v=A.COATS[coat]||A.COATS.oat;return `--pet-coat:${v.coat};--pet-shade:${v.shade};--pet-mane:${v.mane};--pet-muzzle:${v.muzzle};--pet-harness:${A.HARNESS[harness]||A.HARNESS.red}`;};
+   const look=({coat=pet.coat,harness=pet.harness}={})=>{
+     const v=A.COATS[coat]||A.COATS.oat;
+     return `--pet-coat:${v.coat};--pet-shade:${v.shade};--pet-mane:${v.mane};--pet-muzzle:${v.muzzle};--pet-harness:${A.HARNESS[harness]||A.HARNESS.red}`;
+   };
    // Reuse one drawing for the hero and all its coat, tack and size choices.
    const drawing=A.svg({title:pet.name});let ponySvg='';const plain=()=>ponySvg||(ponySvg=drawing.replace(/ role="img" aria-label="[^"]*"/,''));
    const mini=(w,o={})=>`<span class="pet cz-pony" data-pose="stand" data-face="right" data-gear="${o.gear||pet.gear}" style="width:${w}px;height:${Math.round(w*64/72)}px;${look(o)}" aria-hidden="true">${plain()}</span>`;
    const inScene=svg=>svg.replace(/\{PONY (\S+) (\S+) (\S+)\}/g,(m,x,y,w)=>`<g style="${look()}">${plain().replace('<svg ',`<svg x="${x}" y="${y}" width="${w}" height="${Math.round(w*64/72)}" `)}</g>`);
    const need=(kind,key)=>P.unlocked(kind,key,pet.xp)?'':`Level ${P.UNLOCKS[kind][key]}`;
-   const SK=root.ReservePonyBrain?.SKILLS||{},study=['quiz','labprep','reading','rubric','feedback'],day=['deadline','planner','focus','wellbeing','reminders','night','inbox'],skill=keys=>keys.filter(key=>SK[key]).map(key=>toggle(key,SK[key].label,'',{checked:pet.skills[key]!==false,field:'pet-skill',data:'key'})).join(''),studySkills=skill(study),daySkills=skill([...day,...Object.keys(SK).filter(key=>![...study,...day].includes(key))]);
+   const SK=root.ReservePonyBrain?.SKILLS||{},
+     study=['quiz','labprep','reading','rubric','feedback'],
+     day=['deadline','planner','focus','wellbeing','reminders','night','inbox'],
+     skill=keys=>keys.filter(key=>SK[key]).map(key=>toggle(key,SK[key].label,'',{checked:pet.skills[key]!==false,field:'pet-skill',data:'key'})).join(''),
+     studySkills=skill(study),
+     daySkills=skill([...day,...Object.keys(SK).filter(key=>![...study,...day].includes(key))]);
    return `<div class="cz-pet-hero"><div class="pet" data-pose="${pet.enabled?'stand':'sleep'}" data-face="right" data-gear="${pet.gear}" style="${look()};--pet-size:112px">${drawing}</div><div><label class="rd-field"><span>Name</span><input type="text" maxlength="24" data-rd-field="pet" data-key="name" value="${E(pet.name)}" aria-label="Pony name"></label><p class="cz-note">Level ${lv} · ${pet.treats} treat${pet.treats===1?'':'s'}${pet.streak>1?` · ${pet.streak} days in a row`:''}</p></div></div>
 <div class="cz-toggles">${toggle('enabled','Keep a pony','It keeps you company, tells you what is next, and enjoys a treat when work is done. It never nags.',{checked:pet.enabled,field:'pet',data:'key'})}</div>`
-    +group('Where it goes','',petChoices('roam','Where the pony goes',[['page','Anywhere','It walks along the tops of your modules and the bottom of the window.',inScene(CZ_WHERE.page)],['home','Its paddock','It stays in the Paddock module on Home.',inScene(CZ_WHERE.home)],['off','Out of sight','Hidden for now. Treats and level are kept.',CZ_WHERE.off]],3))
+    +
+    group(
+      'Where it goes',
+      '',
+      petChoices(
+        'roam',
+        'Where the pony goes',
+        [['page','Anywhere','It walks along the tops of your modules and the bottom of the window.',inScene(CZ_WHERE.page)],['home','Its paddock','It stays in the Paddock module on Home.',inScene(CZ_WHERE.home)],['off','Out of sight','Hidden for now. Treats and level are kept.',CZ_WHERE.off]],
+        3))
     +group('Planning','',`<label class="rd-field"><span>Bedtime</span><input type="time" data-rd-field="setting" data-setting="bedtime" value="${E(s.bedtime||'22:30')}"></label>${toggle('biscuitOffers','Biscuit offers','One timely offer, with less after you skip it.',{checked:s.biscuitOffers!==false})}`)
-    +group('Reminders','',petChoices('nudges','Reminders',[['helpful','Speaks up','Once, when something is due within three hours.',CZ_REMIND.helpful],['quiet','A small flag','Carries a flag when something is due soon. Says nothing.',CZ_REMIND.quiet],['off','None','It never mentions deadlines.',CZ_REMIND.off]],3))
-    +group('Coat','New coats arrive as it levels up: finish work and focus sessions to get there.',petChoices('coat','Coat',Object.entries(A.COATS).map(([key,v])=>[key,v.label,need('coat',key),mini(44,{coat:key}),!!need('coat',key)]),6))
+    +
+    group(
+      'Reminders',
+      '',
+      petChoices('nudges','Reminders',[['helpful','Speaks up','Once, when something is due within three hours.',CZ_REMIND.helpful],['quiet','A small flag','Carries a flag when something is due soon. Says nothing.',CZ_REMIND.quiet],['off','None','It never mentions deadlines.',CZ_REMIND.off]],3))
+    +
+    group(
+      'Coat',
+      'New coats arrive as it levels up: finish work and focus sessions to get there.',
+      petChoices('coat','Coat',Object.entries(A.COATS).map(([key,v])=>[key,v.label,need('coat',key),mini(44,{coat:key}),!!need('coat',key)]),6))
     +group('Harness','',petChoices('harness','Harness color',Object.entries(A.HARNESS).map(([key,color])=>[key,key[0].toUpperCase()+key.slice(1),need('harness',key),czDab(color),!!need('harness',key)]),6)
       +petChoices('gear','Tack',[['full','Collar and blanket','',mini(56,{gear:'full'})],['collar','Collar only','',mini(56,{gear:'collar'})],['none','Bare','',mini(56,{gear:'none'})]],3))
-    +(root.ReserveFeatures?.enabled?.('biscuit-more-rules')===true?group('How much Biscuit knows','',petChoices('knowledge','How much Biscuit knows',[['basic','Basic',''],['more','More',''],['most','Most','']],3)):'')
+    +
+    (root.ReserveFeatures?.enabled?.('biscuit-more-rules')===true?
+      group('How much Biscuit knows','',petChoices('knowledge','How much Biscuit knows',[['basic','Basic',''],['more','More',''],['most','Most','']],3)):
+      '')
     +group('Size','',petChoices('size','Size',[['small','Small','',mini(40)],['medium','Medium','',mini(52)],['large','Large','',mini(66)]],3))
     +group('Skills','',`${studySkills?`<h4 class="cz-subhead">For study</h4><div class="cz-toggles cz-checks">${studySkills}</div>`:''}<h4 class="cz-subhead">For the day</h4><div class="cz-toggles cz-checks">${daySkills}</div>`)
     +group('Saved companions','',picker({kinds:['pet'],label:'Saved companions'}))

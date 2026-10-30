@@ -628,10 +628,6 @@
 .rd .rd-frame[data-kind=home] > .rd-frame-orn[data-o="3"] { left:calc(3px + (100% - 6px) * 0.86 + -4px);top:-3.5px; width:8px; height:13.5px; }
 .rd .rd-frame[data-kind=home] > .rd-frame-orn[data-o="4"] { left:calc(3px + (100% - 6px) * 0.3 + -4px);bottom:-4px; width:8.5px; height:8px; }
 .rd .rd-frame[data-kind=home] > .rd-frame-wash { border-top-left-radius:3.67% 12%; border-top-right-radius:3.67% 12%; border-bottom-right-radius:3.67% 12%; border-bottom-left-radius:3.67% 12%; }
-@keyframes rd-fl-home-2 { 0% { transform: translate(0, 0); animation-timing-function: cubic-bezier(.4,0,.2,1); } 3% { transform: translate(0, -2px); animation-timing-function: cubic-bezier(.4,0,.2,1); } 13% { transform: translate(44px, -2px); } 15% { transform: translate(44px, 0); } 44% { transform: translate(44px, 0); animation-timing-function: cubic-bezier(.4,0,.2,1); } 46% { transform: translate(44px, -2px); animation-timing-function: cubic-bezier(.4,0,.2,1); } 56% { transform: translate(0, -2px); } 58% { transform: translate(0, 0); } 100% { transform: translate(0, 0); } }
-.rd[data-motion-style=gentle]:not([data-living-art=off]) .rd-frame[data-kind=home] > .rd-frame-orn[data-o="2"] { animation: rd-fl-home-2 15s linear calc(var(--i, 0) * -2.3s - 0s) infinite; }
-@keyframes rd-fl-home-4 { 0% { transform: translate(0, 0); } 60% { transform: translate(0, 0); animation-timing-function: cubic-bezier(.4,0,.2,1); } 74% { transform: translate(22cqw, 0); } 86% { transform: translate(22cqw, 0); animation-timing-function: cubic-bezier(.4,0,.2,1); } 98% { transform: translate(0, 0); } 100% { transform: translate(0, 0); } }
-.rd[data-motion-style=gentle]:not([data-living-art=off]) .rd-frame[data-kind=home] > .rd-frame-orn[data-o="4"] { animation: rd-fl-home-4 15s linear calc(var(--i, 0) * -2.3s - 0s) infinite; }
 
 .rd .rd-rail-art--all .rd-mini { width: 32px; height: 32px; }
 
@@ -1798,15 +1794,18 @@
 .rd[data-input=keyboard] .rd-settle-layer { display: none; }
 
 
+/* backwards, not both: rd-fade is only from{opacity:0}, so the end frame is the
+   element's own opacity. A `both` fill keeps a finished opacity animation (and a
+   composited layer) on every node for its whole life. */
 .rd .rd-deck-section, .rd .rd-announcement, .rd .rd-message, .rd .rd-home-body, .rd .rd-home-module, .rd .rd-chapter, .rd .rd-teacher-row, .rd .rd-document-link, .rd .rd-thread-message, .rd .rd-warning {
-  animation: rd-fade 190ms var(--rd-fade) both;
+  animation: rd-fade 190ms var(--rd-fade) backwards;
 }
 /* The JS finishes a new node's CSS fade when its containing region is already
    fading. Changing the duration to zero and back can replay unchanged content. */
 
 
 .rd .rd-toast { animation: rd-enter var(--rd-enter-dur) var(--rd-fade) both; }
-.rd .rd-toast > [role=status] > .rd-icon { animation: rd-fade 170ms var(--rd-fade) both; }
+.rd .rd-toast > [role=status] > .rd-icon { animation: rd-fade 170ms var(--rd-fade) backwards; }
 
 
 .rd .rd-utility-dialog[open],

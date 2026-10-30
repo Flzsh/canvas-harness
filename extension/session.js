@@ -4,13 +4,27 @@
   // The caller keeps Canvas visible. This session only publishes verified data.
   // A partial snapshot (some courses failed) stays fresh for a shorter time, so a
   // course that keeps failing does not reload every course on each tab return.
-  function createSession({client,createStore,onSnapshot,onStatus=()=>{},onError=()=>{},onTiming=()=>{},maxAge=300000,partialMaxAge=60000,prefetchedProfile=null,quickOpen=null}){
+  function createSession({
+    client,
+    createStore,
+    onSnapshot,
+    onStatus=()=>{},
+    onError=()=>{},
+    onTiming=()=>{},
+    maxAge=300000,
+    partialMaxAge=60000,
+    prefetchedProfile=null,
+    quickOpen=null
+  }){
     let controller=new AbortController(),generation=0,paused=false;
     let store,user,current,dead=false,pending=null,starting=null,checking=null;
     // When the account was last confirmed with Canvas (start, or a return to the tab).
     let verifiedAt=0;
     const alive=(epoch=generation)=>!dead&&!paused&&epoch===generation&&!controller.signal.aborted;
-    function isFresh(value){const age=value?Date.now()-Date.parse(value.fetchedAt):Infinity;return !!value&&Number.isFinite(age)&&age>=0&&age<(value.partial?Math.min(partialMaxAge,maxAge):maxAge);}
+    function isFresh(value){
+      const age=value?Date.now()-Date.parse(value.fetchedAt):Infinity;
+      return !!value&&Number.isFinite(age)&&age>=0&&age<(value.partial?Math.min(partialMaxAge,maxAge):maxAge);
+    }
     function phase(name){try{onTiming(name);}catch{}}
     function fail(error,epoch=generation){
       if(!alive(epoch)||error.code==='cancelled')return;

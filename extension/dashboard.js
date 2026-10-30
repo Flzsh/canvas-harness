@@ -11,6 +11,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
   const CANVAS_ORIGIN=(globalThis.ReserveSite.origin());
   const DAY=86400000;
+  const SVG_NS='http://www.w3.org/2000/svg';
   const COURSE_COLORS=['#286452','#315f8f','#76549a','#a05252','#9a6a24','#34737a','#6c7443','#8a5573'];
   // Clay is the default (2.15). Light clay #A9522F carries text at 4.6:1 or better on every
   // surface and white text on it at 5.3:1; dark clay #E08A6A reads at 5:1 or better.
@@ -50,6 +51,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const key=node=>node.nodeType===1?(node.getAttribute('data-rd-key')||node.id||(node.getAttribute('data-rd-section')?'section:'+node.getAttribute('data-rd-section'):'')):'';
     const compatible=(a,b)=>a&&a.nodeType===b.nodeType&&a.nodeName===b.nodeName&&key(a)===key(b);
     if(current.nodeType!==1){if(current.nodeValue!==next.nodeValue)current.nodeValue=next.nodeValue;return;}
+    // A drawing that already is the wanted one (same attributes, same children in order) would be walked to change
+    // nothing: rail frames, minis and icons are most of a render's nodes. Any difference, including one other code
+    // wrote on it, still takes the full patch below.
+    if(current.localName==='svg'&&current.namespaceURI===SVG_NS&&current.isEqualNode?.(next))return;
     // Only hydrated media owns its children; editor wrappers share the frame id attribute.
     const framedMedia=current.hasAttribute('data-ch-frame')&&next.hasAttribute('data-ch-frame')&&current.dataset.chFrameId&&current.dataset.chFrameId===next.dataset.chFrameId;
     // The view emits only this placeholder for an unchanged, connected heading.
@@ -58,18 +63,34 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // Placement belongs to the layout controller; retain it on keyed nodes so unchanged renders need no layout pass.
     const desk=current.classList.contains('rd-desk')&&next.classList.contains('rd-desk'),panel=current.getAttribute('data-arrange-key');
     if(desk||panel&&panel===next.getAttribute('data-arrange-key')){
-      for(const name of desk?['--rd-layout-columns','--rd-layout-rows']:['--rd-panel-column','--rd-panel-row','--rd-panel-grow']){const value=current.style?.getPropertyValue?.(name);if(value)next.style.setProperty(name,value);}
+      for(const name of desk?['--rd-layout-columns','--rd-layout-rows']:['--rd-panel-column','--rd-panel-row','--rd-panel-grow']){
+        const value=current.style?.getPropertyValue?.(name);
+        if(value)next.style.setProperty(name,value);
+      }
       if(desk&&current.hasAttribute('data-rows'))next.setAttribute('data-rows',current.getAttribute('data-rows'));
     }
     // A selection surface keeps the geometry motion.js wrote on it, so a render that leaves the selection in place
     // needs no new snap.
-    if(current.style?.length&&current.style.cssText.includes('--rd-'))for(const name of Array.from(current.style))if((name.startsWith('--rd-sel-')||name.startsWith('--rd-echo-'))&&!next.style.getPropertyValue(name))next.style.setProperty(name,current.style.getPropertyValue(name));
+    // A drawing's part that motion.js moves through its custom properties (a living loop, a frame ornament's loop on the
+    // film clock) keeps them the same way: the inline --rd-tf/--rd-op and the transform/opacity that read them. A render
+    // that dropped them left the loop running on nothing, so the part stood still until something drew it again, and
+    // whether it moved depended on when the last render happened.
+    if(current.style?.length&&current.style.cssText.includes('--rd-')){
+      for(const name of Array.from(current.style))
+        if((name.startsWith('--rd-sel-')||name.startsWith('--rd-echo-')||name==='--rd-tf'||name==='--rd-op')&&!next.style.getPropertyValue(name))
+          next.style.setProperty(name,current.style.getPropertyValue(name));
+      for(const [name,value] of [['transform','var(--rd-tf)'],['opacity','var(--rd-op)']])
+        if(current.style.getPropertyValue(name)===value&&!next.style.getPropertyValue(name))next.style.setProperty(name,value);
+    }
     for(const attr of Array.from(current.attributes)){
       if(attr.name==='data-motion'||current.tagName==='DETAILS'&&attr.name==='open')continue;
       if(['src','poster'].includes(attr.name)&&current.dataset?.chMedia&&current.dataset.chMedia===next.dataset?.chMedia)continue;
       if(!next.hasAttribute(attr.name))current.removeAttribute(attr.name);
     }
-    for(const attr of Array.from(next.attributes)){if(current.tagName==='DETAILS'&&attr.name==='open')continue;if(current.getAttribute(attr.name)!==attr.value)current.setAttribute(attr.name,attr.value);}
+    for(const attr of Array.from(next.attributes)){
+      if(current.tagName==='DETAILS'&&attr.name==='open')continue;
+      if(current.getAttribute(attr.name)!==attr.value)current.setAttribute(attr.name,attr.value);
+    }
     if(framedMedia)return;
     if(current.tagName==='INPUT'){if(current.value!==next.value)current.value=next.value;current.checked=next.checked;return;}
     if(current.tagName==='TEXTAREA'){if(current.value!==next.value)current.value=next.value;return;}
@@ -144,39 +165,176 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let dock=null,items=[],tabId='',observer=null,drag=null,nearFrame=0;
     const num=(v,d)=>{const n=Number(v);return Number.isFinite(n)?n:d;};
     // Its place: dockShift -1..1 of the room either side of the middle of the workspace.
-    const room=()=>{const r=(container.querySelector('.rd-shell')||container).getBoundingClientRect(),view=env.innerWidth||r.right,left=Math.max(0,r.left),right=Math.min(view,r.right),w=dock?.getBoundingClientRect?.().width||0;return {left,right,half:Math.max(0,(right-left-w)/2-8)};};
+    const room=()=>{
+      const r=(container.querySelector('.rd-shell')||container).getBoundingClientRect(),
+        view=env.innerWidth||r.right,
+        left=Math.max(0,r.left),
+        right=Math.min(view,r.right),
+        w=dock?.getBoundingClientRect?.().width||0;
+      return {left,right,half:Math.max(0,(right-left-w)/2-8)};
+    };
     const place=shift=>{const {half}=room();container.style.setProperty('--rd-dock-shift',Math.round(shift*half)+'px');};
-    const layout=()=>{if(!dock)return;const {left,right}=room();container.style.setProperty('--rd-dock-center',(left+right)/2+'px');container.style.setProperty('--rd-dock-available',Math.max(36,right-left)+'px');place(drag?.shift??num(container.dataset.dockShift,0));};
+    const layout=()=>{
+      if(!dock)return;
+      const {left,right}=room();
+      container.style.setProperty('--rd-dock-center',(left+right)/2+'px');
+      container.style.setProperty('--rd-dock-available',Math.max(36,right-left)+'px');
+      place(drag?.shift??num(container.dataset.dockShift,0));
+    };
     // Pressing the empty shelf moves the dock along the bottom (it settles in the middle when let go near it); the
     // shelf's top edge resizes it. Arrows show where the press would grab, only while the pointer is there.
-    const edgeOf=ev=>{if(!dock||ev.target.closest?.('.rd-dock-it,.rd-dock-menu'))return '';const r=dock.getBoundingClientRect(),top=r.top+num(env.getComputedStyle?.(dock)?.getPropertyValue?.('--rd-dock-headroom')?.replace('px',''),80);return ev.clientY<top-2?'':ev.clientY<top+9?'size':'move';};
+    const edgeOf=ev=>{
+      if(!dock||ev.target.closest?.('.rd-dock-it,.rd-dock-menu'))return '';
+      const r=dock.getBoundingClientRect(),top=r.top+num(env.getComputedStyle?.(dock)?.getPropertyValue?.('--rd-dock-headroom')?.replace('px',''),80);
+      return ev.clientY<top-2?'':ev.clientY<top+9?'size':'move';
+    };
     const hover=ev=>{if(drag)return;const edge=edgeOf(ev);if(edge)dock.dataset.grab=edge;else delete dock.dataset.grab;};
-    const down=ev=>{if(ev.button!==0)return;const edge=edgeOf(ev);if(!edge)return;ev.preventDefault();dock.setPointerCapture?.(ev.pointerId);drag={edge,x:ev.clientX,y:ev.clientY,shift:num(container.dataset.dockShift,0),scale:num(container.dataset.dockScale,1),half:room().half};dock.dataset.grab=edge;dock.dataset.dragging='true';};
-    const move=ev=>{if(!drag)return;if(drag.edge==='move'){const s=drag.half?Math.max(-1,Math.min(1,(drag.shift*drag.half+ev.clientX-drag.x)/drag.half)):0;drag.shiftNow=Math.abs(s)<.06?0:Math.round(s*100)/100;place(drag.shiftNow);}else{const s=Math.max(.7,Math.min(1.5,drag.scale*(1+(drag.y-ev.clientY)/140)));drag.scaleNow=Math.round(s*100)/100;container.style.setProperty('--rd-dock-scale',String(drag.scaleNow));}};
-    const up=ev=>{if(!drag)return;const d=drag;drag=null;delete dock.dataset.dragging;dock.releasePointerCapture?.(ev.pointerId);if(d.edge==='move'&&d.shiftNow!=null){container.dataset.dockShift=String(d.shiftNow);save({dockShift:d.shiftNow});}if(d.edge==='size'&&d.scaleNow!=null){container.dataset.dockScale=String(d.scaleNow);save({dockScale:d.scaleNow});}};
+    const down=ev=>{
+      if(ev.button!==0)return;
+      const edge=edgeOf(ev);
+      if(!edge)return;
+      ev.preventDefault();
+      dock.setPointerCapture?.(ev.pointerId);
+      drag={edge,x:ev.clientX,y:ev.clientY,shift:num(container.dataset.dockShift,0),scale:num(container.dataset.dockScale,1),half:room().half};
+      dock.dataset.grab=edge;
+      dock.dataset.dragging='true';
+    };
+    const move=ev=>{
+      if(!drag)return;
+      if(drag.edge==='move'){
+        const s=drag.half?Math.max(-1,Math.min(1,(drag.shift*drag.half+ev.clientX-drag.x)/drag.half)):0;
+        drag.shiftNow=Math.abs(s)<.06?0:Math.round(s*100)/100;
+        place(drag.shiftNow);
+      }
+      else{const s=Math.max(.7,Math.min(1.5,drag.scale*(1+(drag.y-ev.clientY)/140)));drag.scaleNow=Math.round(s*100)/100;container.style.setProperty('--rd-dock-scale',String(drag.scaleNow));}
+    };
+    const up=ev=>{
+      if(!drag)return;
+      const d=drag;
+      drag=null;
+      delete dock.dataset.dragging;
+      dock.releasePointerCapture?.(ev.pointerId);
+      if(d.edge==='move'&&d.shiftNow!=null){container.dataset.dockShift=String(d.shiftNow);save({dockShift:d.shiftNow});}
+      if(d.edge==='size'&&d.scaleNow!=null){container.dataset.dockScale=String(d.scaleNow);save({dockScale:d.scaleNow});}
+    };
     // A right-click on the dock opens its card; a click elsewhere or Escape closes it.
     const context=ev=>{if(!dock)return;ev.preventDefault();menu(true);};
-    const outside=ev=>{if(!container.querySelector('.rd-dock-menu'))return;const path=ev.composedPath?.()||[];if(!path.some(n=>n?.classList?.contains?.('rd-dock-menu')||n?.classList?.contains?.('rd-dock')))menu(false);};
+    const outside=ev=>{
+      if(!container.querySelector('.rd-dock-menu'))return;
+      const path=ev.composedPath?.()||[];
+      if(!path.some(n=>n?.classList?.contains?.('rd-dock-menu')||n?.classList?.contains?.('rd-dock')))menu(false);
+    };
     const escape=ev=>{if(ev.key==='Escape'&&container.querySelector('.rd-dock-menu')){menu(false);dock?.querySelector('.rd-dock-it[tabindex="0"]')?.focus?.({preventScroll:true});}};
     // Hovering a course plays its drawing once (Lively); the parts move from rest back to rest.
-    const play=ev=>{const it=ev.target.closest?.('.rd-dock-it');if(!it||container.dataset.dockLively==='false'||container.dataset.motionStyle==='off'||env.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches)return;const M=root.ReserveMotion,svg=it.querySelector('svg.rd-mini');if(!M?.loopSpec||!svg||svg.dataset.playing)return;const C=M.cycleOf?.(svg)||6,rigs=M.rigsOf?.(svg);let longest=0;for(const g of svg.querySelectorAll('g.art-loop')){const spec=M.loopSpec(g,C,rigs),frames=M.loopFrames(spec,1,{node:g});if(!frames.length)continue;const t=Math.min(1600,spec.period*1000);longest=Math.max(longest,t);try{g.animate(frames,{duration:t,iterations:1,easing:'linear'});}catch{}}if(longest){svg.dataset.playing='true';env.setTimeout?.(()=>{delete svg.dataset.playing;},longest);}};
+    const play=ev=>{
+      const it=ev.target.closest?.('.rd-dock-it');
+      if(!it||container.dataset.dockLively==='false'||container.dataset.motionStyle==='off'||env.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches)return;
+      const M=root.ReserveMotion,svg=it.querySelector('svg.rd-mini');
+      if(!M?.loopSpec||!svg||svg.dataset.playing)return;
+      const C=M.cycleOf?.(svg)||6,rigs=M.rigsOf?.(svg);
+      let longest=0;
+      for(const g of svg.querySelectorAll('g.art-loop')){
+        const spec=M.loopSpec(g,C,rigs),frames=M.loopFrames(spec,1,{node:g});
+        if(!frames.length)continue;
+        const t=Math.min(1600,spec.period*1000);
+        longest=Math.max(longest,t);
+        try{g.animate(frames,{duration:t,iterations:1,easing:'linear'});}catch{}
+      }
+      if(longest){svg.dataset.playing='true';env.setTimeout?.(()=>{delete svg.dataset.playing;},longest);}
+    };
     // Hide until near: the dock waits below the window's edge until the pointer comes within reach of it.
-    const near=ev=>{if(container.dataset.dockHide!=='true'||!dock||nearFrame)return;nearFrame=env.requestAnimationFrame?.(()=>{nearFrame=0;const show=ev.clientY>(env.innerHeight||0)-110||dock.contains?.(container.getRootNode?.().activeElement);if(show)dock.dataset.near='true';else delete dock.dataset.near;})||0;};
+    const near=ev=>{
+      if(container.dataset.dockHide!=='true'||!dock||nearFrame)return;
+      nearFrame=env.requestAnimationFrame?.(()=>{
+        nearFrame=0;
+        const show=ev.clientY>(env.innerHeight||0)-110||dock.contains?.(container.getRootNode?.().activeElement);
+        if(show)dock.dataset.near='true';else delete dock.dataset.near;
+      })||0;
+    };
     const resize=()=>layout();
-    const rove=el=>{if(!items.includes(el))return;tabId=el.dataset.id;for(const item of items)item.tabIndex=item===el?0:-1;};
+    const rove=el=>{if(!items.includes(el))return;tabId=el.dataset.id;for(const item of items){const index=item===el?0:-1;if(item.tabIndex!==index)item.tabIndex=index;}};
     const focus=ev=>rove(ev.target.closest?.('.rd-dock-it'));
     const click=ev=>rove(ev.target.closest?.('.rd-dock-it'));
     const listeners={focusin:focus,click,pointermove:hover,pointerdown:down,pointerup:up,pointercancel:up,contextmenu:context,pointerover:play};
     // The size slider moves the dock as it slides; the setting is saved when it is let go (change).
-    const slide=ev=>{const t=ev.target;if(t?.dataset?.setting!=='dockScale')return;const v=Math.max(.7,Math.min(1.5,Number(t.value)||1));t.style.setProperty('--v',String((v-.7)/.8));container.style.setProperty('--rd-dock-scale',String(v));};
+    const slide=ev=>{
+      const t=ev.target;
+      if(t?.dataset?.setting!=='dockScale')return;
+      const v=Math.max(.7,Math.min(1.5,Number(t.value)||1));
+      t.style.setProperty('--v',String((v-.7)/.8));
+      container.style.setProperty('--rd-dock-scale',String(v));
+    };
     const docListeners={pointermove:ev=>{move(ev);near(ev);},pointerdown:outside,keydown:escape,input:slide};
-    function detach(){if(dock){for(const [name,fn] of Object.entries(listeners))dock.removeEventListener(name,fn);for(const [name,fn] of Object.entries(docListeners))container.removeEventListener(name,fn,true);env.removeEventListener?.('resize',resize);}if(nearFrame)env.cancelAnimationFrame?.(nearFrame);nearFrame=0;drag=null;observer?.disconnect();observer=null;dock=null;items=[];}
-    function sync(){const next=container.querySelector('.rd-dock');if(next!==dock){detach();dock=next;tabId='';if(dock){for(const [name,fn] of Object.entries(listeners))dock.addEventListener(name,fn);for(const [name,fn] of Object.entries(docListeners))container.addEventListener(name,fn,true);env.addEventListener?.('resize',resize);if(typeof env.ResizeObserver==='function'){let last='';observer=new env.ResizeObserver(entries=>{const size=entries.map(e=>e.contentRect?.width).join(',');if(size!==last){last=size;resize();}});observer.observe(container);}layout();}}if(!dock)return;items=Array.from(dock.querySelectorAll('.rd-dock-it'));const active=container.getRootNode?.()?.activeElement||env.document?.activeElement,chosen=items.find(el=>el.getAttribute('aria-pressed')==='true');rove(items.includes(active)?active:items.find(el=>el.dataset.id===tabId)||chosen||items[0]);}
-    function keydown(ev){const it=(ev.composedPath?.()[0]||ev.target)?.closest?.('.rd-dock-it');if(!items.includes(it)||ev.altKey||ev.ctrlKey||ev.metaKey)return false;const key=ev.key;if(['ArrowLeft','ArrowRight','Home','End'].includes(key)){ev.preventDefault();const index=items.indexOf(it),next=key==='Home'?0:key==='End'?items.length-1:(index+(key==='ArrowRight'?1:-1)+items.length)%items.length;rove(items[next]);items[next].focus({preventScroll:true});items[next].scrollIntoView?.({block:'nearest',inline:'nearest',behavior:'instant'});return true;}if(key==='Enter'||key===' '){ev.preventDefault();if(!ev.repeat)it.click();return true;}return false;}
+    function detach(){
+      if(dock){
+        for(const [name,fn] of Object.entries(listeners))dock.removeEventListener(name,fn);
+        for(const [name,fn] of Object.entries(docListeners))container.removeEventListener(name,fn,true);
+        env.removeEventListener?.('resize',resize);
+      }
+      if(nearFrame)env.cancelAnimationFrame?.(nearFrame);
+      nearFrame=0;
+      drag=null;
+      observer?.disconnect();
+      observer=null;
+      dock=null;
+      items=[];
+    }
+    function sync(){
+      const next=container.querySelector('.rd-dock');
+      if(next!==dock){
+        detach();
+        dock=next;
+        tabId='';
+        if(dock){
+          for(const [name,fn] of Object.entries(listeners))dock.addEventListener(name,fn);
+          for(const [name,fn] of Object.entries(docListeners))container.addEventListener(name,fn,true);
+          env.addEventListener?.('resize',resize);
+          if(typeof env.ResizeObserver==='function'){
+            let last='';
+            observer=new env.ResizeObserver(entries=>{const size=entries.map(e=>e.contentRect?.width).join(',');if(size!==last){last=size;resize();}});
+            observer.observe(container);
+          }
+          layout();
+        }
+      }
+      if(!dock)return;
+      items=Array.from(dock.querySelectorAll('.rd-dock-it'));
+      const active=container.getRootNode?.()?.activeElement||env.document?.activeElement,chosen=items.find(el=>el.getAttribute('aria-pressed')==='true');
+      rove(items.includes(active)?active:items.find(el=>el.dataset.id===tabId)||chosen||items[0]);
+    }
+    function keydown(ev){
+      const it=(ev.composedPath?.()[0]||ev.target)?.closest?.('.rd-dock-it');
+      if(!items.includes(it)||ev.altKey||ev.ctrlKey||ev.metaKey)return false;
+      const key=ev.key;
+      if(['ArrowLeft','ArrowRight','Home','End'].includes(key)){
+        ev.preventDefault();
+        const index=items.indexOf(it),next=key==='Home'?0:key==='End'?items.length-1:(index+(key==='ArrowRight'?1:-1)+items.length)%items.length;
+        rove(items[next]);
+        items[next].focus({preventScroll:true});
+        items[next].scrollIntoView?.({block:'nearest',inline:'nearest',behavior:'instant'});
+        return true;
+      }
+      if(key==='Enter'||key===' '){ev.preventDefault();if(!ev.repeat)it.click();return true;}
+      return false;
+    }
     return {sync,keydown,destroy:detach};
   }
 
-  function mount(target,{snapshot,store,demo=false,personalVerified=true,onPlanner=()=>{},onNative=null,refresh=async()=>{},status='',initialState,materialClient,onAuthError=()=>{},onReady=()=>{},onRenderError=null}={}){
+  function mount(target,{
+    snapshot,
+    store,
+    demo=false,
+    personalVerified=true,
+    onPlanner=()=>{},
+    onNative=null,
+    refresh=async()=>{},
+    status='',
+    initialState,
+    materialClient,
+    onAuthError=()=>{},
+    onReady=()=>{},
+    onRenderError=null
+  }={}){
     if(!enabled('dashboard'))return null;
     if(!target||typeof target.append!=='function')throw Error('ReserveDashboard needs a shadow root or element target.');
     if(!snapshot||!Array.isArray(snapshot.courses)||!Array.isArray(snapshot.assignments))throw Error('ReserveDashboard needs a Canvas snapshot.');
@@ -189,6 +347,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     const container=document.createElement('section');
     container.className='rd';
+    // A write of an unchanged value still queues a MutationRecord, and every observer of the dashboard wakes for it (the
+    // pony re-measured the whole page after each render). A render writes only the values that change.
+    const setAttr=(el,name,value)=>{value=String(value);if(el&&el.getAttribute(name)!==value)el.setAttribute(name,value);};
+    const setData=(key,value)=>{value=String(value);if(container.dataset[key]!==value)container.dataset[key]=value;};
+    const setVar=(name,value)=>{value=String(value);if(container.style.getPropertyValue?.(name)!==value)container.style.setProperty(name,value);};
+    const setProp=(el,name,value)=>{if(el&&el[name]!==value)el[name]=value;};
     if(!personalVerified)container.dataset.chLinksPending='true';
     container.setAttribute('aria-label','Canvas Harness Canvas dashboard');
     // One short staggered entrance per mount. CSS skips it for reduced motion.
@@ -201,15 +365,26 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let transientStatus='';
     let refreshing=false;
     let destroyed=false,rendering=false,mounted=false,sourceFrame=0,pendingRender=null;
+    // When the last whole render read the clock, and the next moment the clock alone changes the page (updateFreshness).
+    let renderedAt=0,timeBoundary=null;
     const beforePaint=fn=>root.requestAnimationFrame?root.requestAnimationFrame(fn):root.setTimeout(fn,0);
     const cancelPaint=id=>root.requestAnimationFrame?root.cancelAnimationFrame?.(id):root.clearTimeout(id);
     function sourceChange(){scheduleRender();}
-    function scheduleRender(options=null){if(destroyed)return;if(options)pendingRender={...pendingRender,...options};if(!sourceFrame)sourceFrame=beforePaint(()=>{sourceFrame=0;try{render();}catch(error){if(!mounted&&onRenderError)onRenderError(error);else throw error;}});}
+    function scheduleRender(options=null){
+      if(destroyed)return;
+      if(options)pendingRender={...pendingRender,...options};
+      if(!sourceFrame)sourceFrame=beforePaint(()=>{sourceFrame=0;try{render();}catch(error){if(!mounted&&onRenderError)onRenderError(error);else throw error;}});
+    }
     function consumeSources(){if(sourceFrame)cancelPaint(sourceFrame);sourceFrame=0;}
     function render(options={}){
       if(destroyed)return;if(rendering){scheduleRender(options);return;}
       consumeSources();const next={...pendingRender,...options};pendingRender=null;rendering=true;
-      try{renderNow(next);}finally{rendering=false;}
+      // The clock is read before buildContext reads its own, so a moment that passes during the render is drawn
+      // again on the next minute tick, never skipped (updateFreshness). A render that throws leaves no time on record.
+      const started=Date.now();renderedAt=0;timeBoundary=null;
+      try{renderNow(next);renderedAt=started;}finally{rendering=false;}
+      // The page's answer to an input is drawn: drawings held for it go on once it has painted (motion.js busy).
+      motion?.answered?.();
       if(!mounted){mounted=true;onReady();}
     }
     let focusTimer=0,focusSettling=false,focusDoneUntil=0;// syncFocus
@@ -221,9 +396,21 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const courseMemory=Model.createCourseMemory(bootState.courseViews),restoredView=Model.cleanCourseView(bootState,state.courseId);
     let visibleLimit=state.limit;
     let personal=store.get()||{};
-    let normalizedCache=null,gradeVisibilityOverride=(initialState?.gradeVisibilityOverride??savedState?.gradeVisibilityOverride)===false?false:null,gradeSaveVersion=0;
+    let normalizedCache=null,
+      gradeVisibilityOverride=(initialState?.gradeVisibilityOverride??savedState?.gradeVisibilityOverride)===false?false:null,
+      gradeSaveVersion=0;
     let selectedId=restoredView.selectedId;
-    let readerTab=restoredView.readerTab,customizeTab='look',customizeOpen=false,canvasNav='drawn',customizeCourseId='all',customizeStatus='',customizeBusy=false,customizeDrafts={},readerOpen=restoredView.readerOpen,gradeQuery='',gradeLimit=40;
+    let readerTab=restoredView.readerTab,
+      customizeTab='look',
+      customizeOpen=false,
+      canvasNav='drawn',
+      customizeCourseId='all',
+      customizeStatus='',
+      customizeBusy=false,
+      customizeDrafts={},
+      readerOpen=restoredView.readerOpen,
+      gradeQuery='',
+      gradeLimit=40;
     let quickPackDraft='',quickPackFileName='',quickPackError='',quickPackLoading=false,quickPackRead=0;
     let pendingReaderScroll={courseId:state.courseId,id:selectedId,top:restoredView.readerScroll};
     const readerLayout=typeof root.ResizeObserver==='function'?new root.ResizeObserver(()=>{if(restoreReaderScroll())remember();}):null;
@@ -242,29 +429,86 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let draftTimer;
     const formatters=new Map();
     const resourceClient=materialClient||(!demo?root.ReserveAPI?.createClient():null);
-    const reviewDeck=root.ReserveFeatures?.enabled('review-deck')===true?root.ReserveReviewDeck?.create({container,store,getContext:()=>({...buildContext(),user:currentSnapshot.user,origin:currentSnapshot.origin}),onChange:sourceChange,isEnabled:()=>root.ReserveFeatures?.enabled('review-deck')===true,isSelected:()=>workspace==='review',onAuthError}):null;
-    const gradeImpact=root.ReserveFeatures?.enabled('grade-impact')===true?root.ReserveGradeImpact?.create({client:resourceClient,user:currentSnapshot.user,onChange:sourceChange,onAuthError}):null;
-    const materials=enabled('materials')?root.ReserveMaterialsUI?.create({store,user:snapshot.user,client:resourceClient,...selectionOptions,onChange:sourceChange,onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))}):null;
+    const reviewDeck=root.ReserveFeatures?.enabled('review-deck')===true?
+      root.ReserveReviewDeck?.create({
+        container,
+        store,
+        getContext:()=>({...buildContext(),user:currentSnapshot.user,origin:currentSnapshot.origin}),
+        onChange:sourceChange,
+        isEnabled:()=>root.ReserveFeatures?.enabled('review-deck')===true,
+        isSelected:()=>workspace==='review',
+        onAuthError
+      }):
+      null;
+    const gradeImpact=root.ReserveFeatures?.enabled('grade-impact')===true?
+      root.ReserveGradeImpact?.create({client:resourceClient,user:currentSnapshot.user,onChange:sourceChange,onAuthError}):
+      null;
+    const materials=enabled('materials')?
+      root.ReserveMaterialsUI?.create({
+        store,
+        user:snapshot.user,
+        client:resourceClient,
+        ...selectionOptions,
+        onChange:sourceChange,
+        onAuthError,
+        onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))
+      }):
+      null;
     const courseFiles=enabled('course-files')&&store.owner?root.ReserveCourseFiles?.create({store}):null;
     const courseFileOpen=courseFiles?root.ReserveCourseFileOpen?.create({store,files:courseFiles,container}):null;
-    const ownFiles=courseFiles?root.ReserveCourseLinksUI?.create({files:courseFiles,onChange:sourceChange,onOpen:(course,id)=>courseFileOpen?.open(course,id,container.querySelector(':focus'))}):null;
-    const hub=enabled('course-hub')?root.ReserveCourseHubUI?.create({store,user:snapshot.user,client:resourceClient,...selectionOptions,materials,ownFiles,onChange:sourceChange,onAuthError,onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))}):null;
+    const ownFiles=courseFiles?
+      root.ReserveCourseLinksUI?.create({files:courseFiles,onChange:sourceChange,onOpen:(course,id)=>courseFileOpen?.open(course,id,container.querySelector(':focus'))}):
+      null;
+    const hub=enabled('course-hub')?
+      root.ReserveCourseHubUI?.create({
+        store,
+        user:snapshot.user,
+        client:resourceClient,
+        ...selectionOptions,
+        materials,
+        ownFiles,
+        onChange:sourceChange,
+        onAuthError,
+        onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))
+      }):
+      null;
     const quickUpload=enabled('quick-pack')?root.CanvasHarnessQuickUpload?.create({store,getCourses:()=>normalizeData(settings()).allCourses,onChange:sourceChange}):null;
     // Deadline changes (PR #52): moved, added or removed due dates seen across refreshes; optional, Lite leaves it out.
     const deadlineChanges=enabled('deadline-changes')?root.ReserveDeadlineChanges?.create({container,store,onChange:sourceChange,getTimeZone:()=>settings().timeZone}):null;
     let customKits=[],kitName='',kitsLoaded=false,sceneActive=false,frameWrites=Promise.resolve();
     const mediaStore=store.owner&&enabled('customization')?root.ReserveMedia?.createStore(store.owner):null;
-    const mediaController=mediaStore?root.ReserveMedia?.createController(container,mediaStore,{motion:()=>enabled('motion')&&settings().motion==='gentle',onError:error=>{customizeStatus=error.message;sourceChange();}}):null;
-    const frameController=mediaStore?root.ReserveMediaFrame?.createController(container,mediaStore,{motion:()=>enabled('motion')&&settings().motion==='gentle',onError:error=>{customizeStatus=error.message;scheduleRender();}}):null;
-    const frameEditor=root.ReserveFrameEditor?.create(container,{read:(id,kind)=>{const pref=id==='theme'?settings().themeArt:id==='all'?settings().overviewArt:settings().coursePrefs?.[id];return pref?.[kind+'Art'];},save:(...args)=>{const task=frameWrites.catch(()=>{}).then(()=>saveFraming(...args));frameWrites=task;return task;},shape:frameShape,onError:error=>{customizeStatus=error.message;scheduleRender();}});
-    const makeOwn=enabled('customization')?root.ReserveMakeYourOwn?.create({store,quickPack:quickUpload?file=>{customizeTab='courses';return uploadQuickPack(file);}:null,kitImport:mediaStore&&root.ReserveCustomKits?file=>{customizeTab='courses';return runKit('kit-import',{dataset:{},files:[file]});}:null,onChange:sourceChange}):null;
-    const courseDock=createCourseDock(container,{save:patch=>savePersonal(data=>{Object.assign(data.settings,patch);}),menu:open=>{if(dockMenu===open)return;dockMenu=open;render();}});
+    const mediaController=mediaStore?root.ReserveMedia?.createController(container,mediaStore,{motion:()=>enabled('motion')&&settings().motion==='gentle',onError:error=>{
+      customizeStatus=error.message;
+      sourceChange();
+    }}):null;
+    const frameController=mediaStore?root.ReserveMediaFrame?.createController(container,mediaStore,{motion:()=>enabled('motion')&&settings().motion==='gentle',onError:error=>{
+      customizeStatus=error.message;
+      scheduleRender();
+    }}):null;
+    const frameEditor=root.ReserveFrameEditor?.create(container,{read:(id,kind)=>{
+      const pref=id==='theme'?settings().themeArt:id==='all'?settings().overviewArt:settings().coursePrefs?.[id];
+      return pref?.[kind+'Art'];
+    },save:(...args)=>{
+      const task=frameWrites.catch(()=>{}).then(()=>saveFraming(...args));
+      frameWrites=task;
+      return task;
+    },shape:frameShape,onError:error=>{customizeStatus=error.message;scheduleRender();}});
+    const makeOwn=enabled('customization')?root.ReserveMakeYourOwn?.create({store,quickPack:quickUpload?file=>{
+      customizeTab='courses';
+      return uploadQuickPack(file);
+    }:null,kitImport:mediaStore&&root.ReserveCustomKits?file=>{customizeTab='courses';return runKit('kit-import',{dataset:{},files:[file]});}:null,onChange:sourceChange}):null;
+    const courseDock=createCourseDock(container,{save:patch=>savePersonal(data=>{Object.assign(data.settings,patch);}),menu:open=>{
+      if(dockMenu===open)return;
+      dockMenu=open;
+      render();
+    }});
     const motion=enabled('motion')?root.ReserveMotion?.create(container):null;
     const settingsDock=enabled('customization')&&root.ReserveCustomizeUI?.render?root.ReserveSettingsDock?.createDock({container,
       onOpen:()=>{if(drawerOpen())setDrawer(false,{focus:false});toolbox?.close({restoreFocus:false});customizeCourseId=state.courseId;},
       onChange:open=>{customizeOpen=open;render();}
     }):null;
-    const arrange=enabled('arrange')&&(!root.ReserveFeatures||root.ReserveWorkspaceGestures?.create)?Arrange?.createController({container,getSettings:settings,getCourseIds:()=>normalizeData(settings()).allCourses.map(course=>String(course.id)),
+    const arrange=enabled('arrange')&&(!root.ReserveFeatures||root.ReserveWorkspaceGestures?.create)?
+      Arrange?.createController({container,getSettings:settings,getCourseIds:()=>normalizeData(settings()).allCourses.map(course=>String(course.id)),
       onChange:command=>savePersonal(data=>{Arrange.change(data.settings,command);}),
       onModeChange:open=>{
         if(open){settingsDock?.close({restoreFocus:false});toolbox?.close({restoreFocus:false});workspace='work';}
@@ -272,34 +516,81 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }
     }):null;
     // Added Home modules (today, week, timer, clock, notes...) and the companion: widgets.js draws and runs them.
-    const board=enabled('planner')?root.ReserveWidgets?.create({container,store,getCustomPet:()=>makeOwn?.state.pet,save:change=>savePersonal(change),rerender:()=>render(),getContext:()=>{const c=buildContext();return {...c,pageKind:readerOpen?'assignment':state.courseId!=='all'?'course':'dashboard',unreadAnnouncements:c.courses.reduce((n,course)=>n+(hub?.getCourse(course.id)?.announcements||[]).filter(x=>x.unread).length,0)};},
+    const board=enabled('planner')?
+      root.ReserveWidgets?.create({container,store,getCustomPet:()=>makeOwn?.state.pet,save:change=>savePersonal(change),rerender:()=>render(),getContext:()=>{
+      const c=buildContext();
+      return {
+        ...c,
+        pageKind:readerOpen?'assignment':state.courseId!=='all'?'course':'dashboard',
+        unreadAnnouncements:c.courses.reduce((n,course)=>n+(hub?.getCourse(course.id)?.announcements||[]).filter(x=>x.unread).length,0)
+      };
+    },
       helpers:()=>({E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete}),
-      appearance:({key,value})=>saveAppearance(key,value),layoutPreset:({preset})=>saveLayoutPreset(preset),navigate:request=>navigateBiscuit(request),bookmark:request=>bookmarkItem(request.itemId,true),
+      appearance:({key,value})=>saveAppearance(key,value),
+      layoutPreset:({preset})=>saveLayoutPreset(preset),
+      navigate:request=>navigateBiscuit(request),
+      bookmark:request=>bookmarkItem(request.itemId,true),
       preview:id=>{const undo=rememberBiscuitView();workspace='work';showPreview(String(id),{detail:0,target:container,preventDefault(){}});return {ok:true,undo};},
-      openSettings:tab=>{if(tab)customizeTab=tab;settingsDock?.open();},startTick:()=>syncFocus(),go:tab=>goWorkspace(tab),closeSettings:()=>settingsDock?.close({restoreFocus:false}),askAI:question=>toolbox?.askAI?.(question),announcements:()=>{const course=buildContext().courses.find(c=>(hub?.getCourse(c.id)?.announcements||[]).some(x=>x.unread));if(!course||!workspaceEnabled('hub'))return false;switchCourse(String(course.id));goWorkspace('hub');hub?.loadCourse(course.id);return true;}}):null;
+      openSettings:tab=>{
+        if(tab)customizeTab=tab;
+        settingsDock?.open();
+      },
+      startTick:()=>syncFocus(),
+      go:tab=>goWorkspace(tab),
+      closeSettings:()=>settingsDock?.close({restoreFocus:false}),
+      askAI:question=>toolbox?.askAI?.(question),
+      announcements:()=>{
+        const course=buildContext().courses.find(c=>(hub?.getCourse(c.id)?.announcements||[]).some(x=>x.unread));
+        if(!course||!workspaceEnabled('hub'))return false;
+        switchCourse(String(course.id));
+        goWorkspace('hub');
+        hub?.loadCourse(course.id);
+        return true;
+      }}):null;
     // The Planner is a workspace of its own; older entry points that asked for the week land there.
-    function goWorkspace(tab){if(!workspaceEnabled(tab))return;savedWorkspace=null;if(destroyed||workspace===tab&&(tab!=='work'||workPage==='home'))return;captureCourseView();workspace=tab;if(tab==='work')workPage='home';render({motionTarget:'.rd-workspace'});container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});}
+    function goWorkspace(tab){
+      if(!workspaceEnabled(tab))return;
+      savedWorkspace=null;
+      if(destroyed||workspace===tab&&(tab!=='work'||workPage==='home'))return;
+      captureCourseView();
+      workspace=tab;
+      if(tab==='work')workPage='home';
+      render({motionTarget:'.rd-workspace'});
+      container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});
+    }
     function selectWorkspace(action,button,event={},snapshot){
         const tabMotion=event.detail>0;
         const nextWorkspace=action==='open-materials'?'materials':action==='open-hub'?'hub':['plan','materials','hub','inbox','grades','review'].includes(button.dataset.tab)?button.dataset.tab:'work';
         const nextPage=action==='workspace'&&nextWorkspace==='work'?(button.dataset.tab==='assignments'?'assignments':'home'):workPage;
         if(action==='workspace'&&workspace===nextWorkspace&&workPage===nextPage)return;
-        const order=['home','work','assignments','plan','hub','materials','inbox','grades','review'],place=(w,p)=>order.indexOf(w==='work'&&p==='assignments'?'assignments':w),direction=place(nextWorkspace,nextPage)>=place(workspace,workPage)?1:-1;
+        const order=['home','work','assignments','plan','hub','materials','inbox','grades','review'],
+          place=(w,p)=>order.indexOf(w==='work'&&p==='assignments'?'assignments':w),
+          direction=place(nextWorkspace,nextPage)>=place(workspace,workPage)?1:-1;
         savedWorkspace=null;captureCourseView();workspace=nextWorkspace;workPage=nextPage;if(workPage==='assignments')board?.close();
         if(workspace==='inbox')hub?.setCourse?.('all');
         if(workspace==='materials'||workspace==='hub'){
           const ctx=buildContext();switchCourse(button.dataset.id||(state.courseId==='all'?String(ctx.selected?.courseId||ctx.courses[0]?.id||'all'):state.courseId));
-          materials?.activate(state.courseId);render({tabMotion,motionTarget:'.rd-workspace',direction,snapshot,resetWorkspaceScroll:true});if(workspace==='materials')materials?.load(state.courseId);else hub?.loadCourse(state.courseId);
+          materials?.activate(state.courseId);
+          render({tabMotion,motionTarget:'.rd-workspace',direction,snapshot,resetWorkspaceScroll:true});
+          if(workspace==='materials')materials?.load(state.courseId);else hub?.loadCourse(state.courseId);
         }else{render({tabMotion,motionTarget:'.rd-workspace',direction,snapshot,resetWorkspaceScroll:true});if(workspace==='inbox')hub?.loadInbox();}
-        if(action!=='workspace'||!button.classList?.contains('rd-workspace-tab')){container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});container.querySelector('.rd-workspace-heading')?.scrollIntoView({block:'nearest',behavior:'instant'});}
+        if(action!=='workspace'||!button.classList?.contains('rd-workspace-tab')){
+          container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});
+          container.querySelector('.rd-workspace-heading')?.scrollIntoView({block:'nearest',behavior:'instant'});
+        }
 
         return;
     }
     function selectDashboardCourse(id,event={},snapshot){
         // The snapshot only reads, so an early return needs no undo.
-        if(!switchCourse(id))return;if(state.courseId==='all'&&!['home','grades','inbox','review'].includes(workspace))workspace='work';if(workspace==='inbox')hub?.setCourse?.(state.courseId);materials?.activate(state.courseId);render({tabMotion:event.detail>0,motionTarget:'.rd-workspace',motionKind:'course',snapshot});
+        if(!switchCourse(id))return;
+        if(state.courseId==='all'&&!['home','grades','inbox','review'].includes(workspace))workspace='work';
+        if(workspace==='inbox')hub?.setCourse?.(state.courseId);
+        materials?.activate(state.courseId);
+        render({tabMotion:event.detail>0,motionTarget:'.rd-workspace',motionKind:'course',snapshot});
         // A switch from deep in a long list starts the new course at its heading.
-        const heading=container.querySelector('.rd-workspace-heading, .rd-page-heading, .rd-materials-header');if(heading&&above(heading.getBoundingClientRect()))heading.scrollIntoView({block:'start',behavior:'instant'});
+        const heading=container.querySelector('.rd-workspace-heading, .rd-page-heading, .rd-materials-header');
+        if(heading&&above(heading.getBoundingClientRect()))heading.scrollIntoView({block:'start',behavior:'instant'});
         if(workspace==='materials')materials?.load(state.courseId);if(workspace==='hub')hub?.loadCourse(state.courseId);return;
     }
     function bookmarkItem(id,on){
@@ -315,17 +606,57 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       return {ok:true,undo};
     }
     function rememberBiscuitView(){
-      const before={state:JSON.parse(JSON.stringify(state)),workspace,workPage,selectedId,readerTab,readerOpen,visibleLimit,savedWorkspace,pendingReaderScroll,top:container.querySelector('.rd-workspace')?.scrollTop||0};
-      return ()=>{state=before.state;workspace=before.workspace;workPage=before.workPage;selectedId=before.selectedId;readerTab=before.readerTab;readerOpen=before.readerOpen;visibleLimit=before.visibleLimit;savedWorkspace=before.savedWorkspace;pendingReaderScroll=before.pendingReaderScroll;if(workspace==='inbox')hub?.setCourse?.(state.courseId);materials?.activate(state.courseId);render();const node=container.querySelector('.rd-workspace');if(node)node.scrollTop=before.top;return true;};
+      const before={
+        state:JSON.parse(JSON.stringify(state)),
+        workspace,
+        workPage,
+        selectedId,
+        readerTab,
+        readerOpen,
+        visibleLimit,
+        savedWorkspace,
+        pendingReaderScroll,
+        top:container.querySelector('.rd-workspace')?.scrollTop||0
+      };
+      return ()=>{
+        state=before.state;
+        workspace=before.workspace;
+        workPage=before.workPage;
+        selectedId=before.selectedId;
+        readerTab=before.readerTab;
+        readerOpen=before.readerOpen;
+        visibleLimit=before.visibleLimit;
+        savedWorkspace=before.savedWorkspace;
+        pendingReaderScroll=before.pendingReaderScroll;
+        if(workspace==='inbox')hub?.setCourse?.(state.courseId);
+        materials?.activate(state.courseId);
+        render();
+        const node=container.querySelector('.rd-workspace');
+        if(node)node.scrollTop=before.top;
+        return true;
+      };
     }
 
-    function goWorkspace(tab){if(!workspaceEnabled(tab))return;savedWorkspace=null;if(destroyed||workspace===tab&&(tab!=='work'||workPage==='home'))return;captureCourseView();workspace=tab;if(tab==='work')workPage='home';render({motionTarget:'.rd-workspace'});container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});}
+    function goWorkspace(tab){
+      if(!workspaceEnabled(tab))return;
+      savedWorkspace=null;
+      if(destroyed||workspace===tab&&(tab!=='work'||workPage==='home'))return;
+      captureCourseView();
+      workspace=tab;
+      if(tab==='work')workPage='home';
+      render({motionTarget:'.rd-workspace'});
+      container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});
+    }
     const toolbox=enabled('tools')?root.ReserveToolbox?.create({container,store,materials,aiConfig:{client:resourceClient,user:snapshot.user,demo},getContext:()=>{
       const ctx=buildContext();return {...ctx,courseId:state.courseId,aiAssignmentId:workspace==='work'&&readerOpen?selectedId:null,aiSelectedIds:[...selectionIds],
         aiResources:ctx.courses.map(c=>materials?.getCourse(c.id)?.raw).filter(Boolean),
         aiUpdates:ctx.courses.map(c=>({courseId:c.id,announcements:hub?.getCourse(c.id)?.announcements||[]}))};
     },
-      onDockChange:({open,collapsed})=>{if(open)settingsDock?.close({restoreFocus:false});container.dataset.toolbox=open?(collapsed?'collapsed':'open'):'closed';container.getRootNode?.()?.host?.toggleAttribute('data-reserve-tools',open);},
+      onDockChange:({open,collapsed})=>{
+        if(open)settingsDock?.close({restoreFocus:false});
+        container.dataset.toolbox=open?(collapsed?'collapsed':'open'):'closed';
+        container.getRootNode?.()?.host?.toggleAttribute('data-reserve-tools',open);
+      },
       onNavigate:next=>{
         if(!workspaceEnabled(next))return;savedWorkspace=null;
         captureCourseView();workspace=next;
@@ -333,14 +664,25 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         materials?.activate(state.courseId);render();
         if(next==='materials')materials?.load(state.courseId);if(next==='hub')hub?.loadCourse(state.courseId);if(next==='inbox')hub?.loadInbox();
       },
-      onPreview:id=>{captureCourseView();workspace='work';const item=buildContext().items.find(x=>x.id===id);if(item&&state.courseId!=='all'&&state.courseId!==String(item.courseId))switchCourse('all');readerOpen=false;showPreview(id,{detail:0});},
+      onPreview:id=>{
+        captureCourseView();
+        workspace='work';
+        const item=buildContext().items.find(x=>x.id===id);
+        if(item&&state.courseId!=='all'&&state.courseId!==String(item.courseId))switchCourse('all');
+        readerOpen=false;
+        showPreview(id,{detail:0});
+      },
       onPlanner:options=>openPlanner(options),onRefresh:()=>runRefresh({reportError:true}),onCustomize:()=>settingsDock?.open()
     }):null;
 
 
     // A running focus session turns "your week" into Home, where its card lives,
     // for the toolbar button and the Tools dock (Quick open's Planner) alike.
-    function openPlanner(options){if(options?.page==='week'&&!enabled('planner')||options?.page==='grades'&&!enabled('grades')||options?.page==='settings'&&!enabled('customization'))return;if(options?.page==='week'&&root.ReservePlannerUI){goWorkspace('plan');return;}onPlanner({...options,...(options?.page==='week'&&personal.focus?.endsAt?{page:'home'}:{}),hideGrades:settings().showGrades!==true});}
+    function openPlanner(options){
+      if(options?.page==='week'&&!enabled('planner')||options?.page==='grades'&&!enabled('grades')||options?.page==='settings'&&!enabled('customization'))return;
+      if(options?.page==='week'&&root.ReservePlannerUI){goWorkspace('plan');return;}
+      onPlanner({...options,...(options?.page==='week'&&personal.focus?.endsAt?{page:'home'}:{}),hideGrades:settings().showGrades!==true});
+    }
 
     function settings(){
       return {...personal.settings,...(gradeVisibilityOverride===null?{}:{showGrades:gradeVisibilityOverride}),
@@ -358,10 +700,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // paper, dimmed (least at 100). Sets data-night and the numbers refresh.css reads; light mode carries none of it.
     function applyNight(value){
       const v=Math.max(0,Math.min(100,Math.round(Number(value)||0))),style=container.style;
-      if(container.dataset.theme!=='dark'){delete container.dataset.night;for(const name of ['--rd-chalk','--rd-night-wash','--rd-night-b'])style.removeProperty?.(name);return;}
+      if(container.dataset.theme!=='dark'){
+        delete container.dataset.night;
+        for(const name of ['--rd-chalk','--rd-night-wash','--rd-night-b'])if(style.getPropertyValue?.(name)!=='')style.removeProperty?.(name);
+        return;
+      }
       const mix=(a,b,k)=>'#'+[0,2,4].map(i=>Math.round(parseInt(a.slice(1+i,3+i),16)*(1-k)+parseInt(b.slice(1+i,3+i),16)*k).toString(16).padStart(2,'0')).join('');
-      if(v<50){const k=v/50;container.dataset.night='chalk';style.setProperty?.('--rd-chalk',mix('#D2C8B2','#8C8474',k));style.setProperty?.('--rd-night-wash',String(+(0.78-0.2*k).toFixed(3)));}
-      else{const k=(v-50)/50;const b=0.46+0.24*k;container.dataset.night='paper';style.setProperty?.('--rd-chalk','#A89F8C');style.setProperty?.('--rd-night-b',String(+b.toFixed(3)));}
+      if(v<50){const k=v/50;setData('night','chalk');setVar('--rd-chalk',mix('#D2C8B2','#8C8474',k));setVar('--rd-night-wash',String(+(0.78-0.2*k).toFixed(3)));}
+      else{const k=(v-50)/50;const b=0.46+0.24*k;setData('night','paper');setVar('--rd-chalk','#A89F8C');setVar('--rd-night-b',String(+b.toFixed(3)));}
     }
 
     function validColor(value,fallback){
@@ -380,10 +726,33 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // again whenever they or .rd resize: accordion frames, rewrapping, late fonts or
     // sheets, a revealed host. Always after the frame, so the write can never resize
     // an observed box inside its own callback.
-    const railLayout=typeof root.ResizeObserver==='function'?new root.ResizeObserver(entries=>{if(destroyed)return;let changed=false;for(const entry of entries){const box=entry.borderBoxSize?.[0]||entry.borderBoxSize,size=[box?.inlineSize??entry.contentRect?.width,box?.blockSize??entry.contentRect?.height].join(','),old=railSizes.get(entry.target);if(old!==size){railSizes.set(entry.target,size);changed=true;}}if(changed)queueRail();}):null;
-    function watchRail(){const nodes=[container.querySelector('.rd-course-rail'),container.querySelector('.rd-shell'),container.querySelector('.rd-shell > .rd-workspace')];if(nodes.some((node,i)=>node!==railNodes[i])){railNodes=nodes;railDirty=true;}if(!railLayout)return;const next=new Set([container,...container.querySelectorAll('.rd-toolbar,.rd-appearance,.rd-shell,.rd-workspace,.rd-course-rail,.rd-course-name,.rd-rail-text,.rd-status')]);for(let node=container.parentElement||container.getRootNode?.()?.host;node?.nodeType===1;node=node.parentElement||node.getRootNode?.()?.host)next.add(node);for(const node of railWatched)if(!next.has(node)){railLayout.unobserve?.(node);railWatched.delete(node);}for(const node of next)if(!railWatched.has(node)){railWatched.add(node);railLayout.observe(node);}}
-    const railAncestors=typeof root.MutationObserver==='function'?new root.MutationObserver(records=>{if(records.some(record=>record.attributeName!=='class'||(record.oldValue||'').replace(/\breserve-fit\b/g,'').trim()!==(record.target.getAttribute('class')||'').replace(/\breserve-fit\b/g,'').trim()))queueRail();}):null;
-    if(railAncestors)for(let node=container.parentElement||container.getRootNode?.()?.host;node?.nodeType===1;node=node.parentElement||node.getRootNode?.()?.host)railAncestors.observe(node,{attributes:true,attributeOldValue:true,childList:true,attributeFilter:['class','style','hidden']});
+    const railLayout=typeof root.ResizeObserver==='function'?new root.ResizeObserver(entries=>{
+      if(destroyed)return;
+      let changed=false;
+      for(const entry of entries){
+        const box=entry.borderBoxSize?.[0]||entry.borderBoxSize,
+          size=[box?.inlineSize??entry.contentRect?.width,box?.blockSize??entry.contentRect?.height].join(','),
+          old=railSizes.get(entry.target);
+        if(old!==size){railSizes.set(entry.target,size);changed=true;}
+      }
+      if(changed)queueRail();
+    }):null;
+    function watchRail(){
+      const nodes=[container.querySelector('.rd-course-rail'),container.querySelector('.rd-shell'),container.querySelector('.rd-shell > .rd-workspace')];
+      if(nodes.some((node,i)=>node!==railNodes[i])){railNodes=nodes;railDirty=true;}
+      if(!railLayout)return;
+      const next=new Set([container,...container.querySelectorAll('.rd-toolbar,.rd-appearance,.rd-shell,.rd-workspace,.rd-course-rail,.rd-course-name,.rd-rail-text,.rd-status')]);
+      for(let node=container.parentElement||container.getRootNode?.()?.host;node?.nodeType===1;node=node.parentElement||node.getRootNode?.()?.host)next.add(node);
+      for(const node of railWatched)if(!next.has(node)){railLayout.unobserve?.(node);railWatched.delete(node);}
+      for(const node of next)if(!railWatched.has(node)){railWatched.add(node);railLayout.observe(node);}
+    }
+    const railAncestors=typeof root.MutationObserver==='function'?new root.MutationObserver(records=>{
+      if(records.some(record=>record.attributeName!=='class'||(record.oldValue||'').replace(/\breserve-fit\b/g,'').trim()!==(record.target.getAttribute('class')||'').replace(/\breserve-fit\b/g,'').trim()))
+        queueRail();
+    }):null;
+    if(railAncestors)
+      for(let node=container.parentElement||container.getRootNode?.()?.host;node?.nodeType===1;node=node.parentElement||node.getRootNode?.()?.host)
+        railAncestors.observe(node,{attributes:true,attributeOldValue:true,childList:true,attributeFilter:['class','style','hidden']});
     root.addEventListener?.('resize',queueRail);document.fonts?.addEventListener?.('loadingdone',queueRail);
     // Phones: the open reader sheet (refresh.css section 16) covers the workspace below the command bar.
     // What it covers is inert, so Tab never lands behind it; the sheet stays non-modal (the bar above it,
@@ -394,9 +763,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const covered=!destroyed&&readerOpen&&workspace==='work'&&phone()&&!!workspaceNode.querySelector?.('.rd-information > .rd-reader'),nodes=[];
       for(const node of workspaceNode.children){
         if(!node.classList?.contains('rd-main')){nodes.push(node);continue;}
-        for(const part of node.children||[]){if(!part.classList?.contains('rd-information')){nodes.push(part);continue;}for(const piece of part.children||[])if(!piece.classList?.contains('rd-reader'))nodes.push(piece);}
+        for(const part of node.children||[]){
+          if(!part.classList?.contains('rd-information')){nodes.push(part);continue;}
+          for(const piece of part.children||[])if(!piece.classList?.contains('rd-reader'))nodes.push(piece);
+        }
       }
-      for(const node of nodes){if(covered)node.setAttribute?.('inert','');else node.removeAttribute?.('inert');}
+      for(const node of nodes){const has=node.hasAttribute?.('inert');if(covered){if(!has)node.setAttribute?.('inert','');}else if(has!==false)node.removeAttribute?.('inert');}
     }
     // Wide and narrow layouts each show their own copy of the course-information
     // header; when a resize or zoom hides the focused copy, focus follows to the shown one.
@@ -416,7 +788,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(normalizedCache)return normalizedCache;
       const order=Array.isArray(s.courseOrder)?s.courseOrder.map(String):[];
       const prefs=s.coursePrefs&&typeof s.coursePrefs==='object'?s.coursePrefs:{};
-      const normalized=(currentSnapshot.courses||[]).map((raw,index)=>({...C.normalizeCourse(raw),defaultView:raw.default_view||raw.defaultView||'',_index:index})).filter(course=>/^\d+$/.test(course.id));
+      const normalized=(currentSnapshot.courses||[]).map((raw,index)=>
+        ({...C.normalizeCourse(raw),defaultView:raw.default_view||raw.defaultView||'',_index:index})).filter(course=>
+        /^\d+$/.test(course.id));
       // Hidden by hand, or not a class (NameCoach, College Counseling) and never shown by hand (ReserveCore.hiddenCourseIds).
       const hidden=C.hiddenCourseIds(normalized,s);
       normalized.sort((a,b)=>{
@@ -431,7 +805,22 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         // A leading subject ("English: …") leads the line under the title ("Subject · Teacher").
         const label=C.courseLabel?.(course.name)||{title:course.name,teacher:'',sub:'',tag:'',subject:''},custom=pref.name||'';
         const extra=value=>custom&&value&&String(custom).toLowerCase().includes(value.toLowerCase())?'':value;
-        return {...course,name:custom||course.name,originalName:course.name,shortName:custom||label.title||course.name,subject:extra(label.subject||''),teacher:extra(label.teacher),sub:extra(label.sub),tag:label.tag,courseSearch:[course.name,course.code].filter(Boolean).join(' '),color,ownColor,image:safeCourseImage(pref.image)||safeCourseImage(course.image),artPrefs:{...s.themeArt,...pref},artMotion:enabled('motion')&&s.motion==='gentle'&&s.livingArt!=='off'};
+        return {
+          ...course,
+          name:custom||course.name,
+          originalName:course.name,
+          shortName:custom||label.title||course.name,
+          subject:extra(label.subject||''),
+          teacher:extra(label.teacher),
+          sub:extra(label.sub),
+          tag:label.tag,
+          courseSearch:[course.name,course.code].filter(Boolean).join(' '),
+          color,
+          ownColor,
+          image:safeCourseImage(pref.image)||safeCourseImage(course.image),
+          artPrefs:{...s.themeArt,...pref},
+          artMotion:enabled('motion')&&s.motion==='gentle'&&s.livingArt!=='off'
+        };
       });
       const courseMap=new Map(allCourses.map(course=>[course.id,course]));
       const courses=allCourses.filter(course=>!hidden.has(course.id));
@@ -442,14 +831,23 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         return {...C.normalizeAssignment(raw,course),courseSearch:course.courseSearch};
       }).filter(Boolean);
       // Search keeps the full Canvas name (teacher, cohort) even after a rename.
-      items.push(...(root.ReservePersonalWork?.normalize(personal,courses)||[]).map(item=>({...item,courseSearch:courseMap.get(String(item.courseId))?.courseSearch||''})));
+      items.push(...(root.ReservePersonalWork?.normalize(personal,courses)||[]).map(item=>
+        ({...item,courseSearch:courseMap.get(String(item.courseId))?.courseSearch||''})));
       return normalizedCache={courses,allCourses,courseMap,items};
     }
 
     // Canvas's menu bar choice (canvas-nav.js): shown in Make it yours, changed there or in the popup.
     const NAV_CHOICES=['drawn','shown','top','original'];
-    function navChanged(changes,area){const next=area==='local'?changes?.['reserve:canvasNav']?.newValue:undefined;if(next===undefined)return;const value=NAV_CHOICES.includes(next)?next:'drawn';if(value!==canvasNav){canvasNav=value;if(customizeOpen&&!destroyed)render();}}
-    try{root.chrome?.storage?.local?.get?.('reserve:canvasNav')?.then?.(saved=>navChanged({'reserve:canvasNav':{newValue:saved?.['reserve:canvasNav']??'drawn'}},'local'))?.catch?.(()=>{});root.chrome?.storage?.onChanged?.addListener?.(navChanged);}catch{}
+    function navChanged(changes,area){
+      const next=area==='local'?changes?.['reserve:canvasNav']?.newValue:undefined;
+      if(next===undefined)return;
+      const value=NAV_CHOICES.includes(next)?next:'drawn';
+      if(value!==canvasNav){canvasNav=value;if(customizeOpen&&!destroyed)render();}
+    }
+    try{
+      root.chrome?.storage?.local?.get?.('reserve:canvasNav')?.then?.(saved=>navChanged({'reserve:canvasNav':{newValue:saved?.['reserve:canvasNav']??'drawn'}},'local'))?.catch?.(()=>{});
+      root.chrome?.storage?.onChanged?.addListener?.(navChanged);
+    }catch{}
     function buildContext(){
       const s=settings();
       const {courses,allCourses,courseMap,items}=normalizeData(s);
@@ -480,8 +878,40 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const overviewItems=workspace==='home'?Model.filterAssignments(items,{mode:overviewMode,query:overviewQuery,courseId:'all',now,timeZone:s.timeZone,local}).items:[];
       const deckCourse=courses.find(course=>course.id===(state.courseId==='all'?String(selected?.courseId||''):state.courseId))||courses[0]||null;
       // Each view filter shows the count its list would show once chosen (the same rules, the same search).
-      const modeCounts=workspace==='work'?Object.fromEntries(['actionable','today','week','planned'].map(mode=>[mode,mode===state.mode&&!state.day?filtered.items.length:Model.filterAssignments(items,{...state,mode,day:'',now,timeZone:s.timeZone,local}).items.length])):{};
-      return {dockMenu,s,courses,allCourses,courseMap,items,filtered,now,accent,local,deadlineChanges:deadlineChanges?.summary(),resourcePins:personal.resourcePins||[],insights,courseLoad,glance,modeCounts,unread:hub?.unreadCount?.()||0,selected,deckCourse,overviewItems,overviewMode,overviewQuery,checkOffNotice,selectionIds,archiveUndo,archiving,theme:effectiveTheme(s),focusClock:C.focusClock?.(personal.focus,now)||''};
+      const modeCounts=workspace==='work'?
+        Object.fromEntries(['actionable','today','week','planned'].map(mode=>
+          [mode,mode===state.mode&&!state.day?filtered.items.length:Model.filterAssignments(items,{...state,mode,day:'',now,timeZone:s.timeZone,local}).items.length])):
+        {};
+      return {
+        dockMenu,
+        s,
+        courses,
+        allCourses,
+        courseMap,
+        items,
+        filtered,
+        now,
+        accent,
+        local,
+        deadlineChanges:deadlineChanges?.summary(),
+        resourcePins:personal.resourcePins||[],
+        insights,
+        courseLoad,
+        glance,
+        modeCounts,
+        unread:hub?.unreadCount?.()||0,
+        selected,
+        deckCourse,
+        overviewItems,
+        overviewMode,
+        overviewQuery,
+        checkOffNotice,
+        selectionIds,
+        archiveUndo,
+        archiving,
+        theme:effectiveTheme(s),
+        focusClock:C.focusClock?.(personal.focus,now)||''
+      };
     }
 
     // Every course row in the rail is as tall as the tallest one's content (refresh.css section 3:
@@ -497,7 +927,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const px=(style,...names)=>names.reduce((sum,name)=>sum+(parseFloat(style[name])||0),0);let tallest=0;
       // Both the button and its children may be static-positioned under the row; their offsetParent can
       // be the row instead of the button. Accumulate offsets to the layout root and subtract them.
-      const offsets=new Map(),layoutTop=node=>{if(offsets.has(node))return offsets.get(node);let top=0;for(let part=node;part;part=part.offsetParent){const y=part.offsetTop;if(!Number.isFinite(y))return null;top+=y;}offsets.set(node,top);return top;};
+      const offsets=new Map(),layoutTop=node=>{
+        if(offsets.has(node))return offsets.get(node);
+        let top=0;
+        for(let part=node;part;part=part.offsetParent){const y=part.offsetTop;if(!Number.isFinite(y))return null;top+=y;}
+        offsets.set(node,top);
+        return top;
+      };
       for(const row of rows){
         const button=row.querySelector('.rd-course-name');if(!button?.getClientRects?.().length)continue;
         const rs=css(row),bs=css(button),top=layoutTop(button);if(top===null)continue;let bottom=top;
@@ -512,7 +948,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // out of view. Only content heights, the window and the rail's other rows are read: never the rows'
       // own (grown) height, so the choice cannot feed back into itself.
       const railStyle=css(rail);let others=0,gaps=0;
-      for(const child of rail.children){if(child.matches?.('.rd-rail-course')){gaps+=px(css(child),'marginTop','marginBottom');continue;}if(child.getClientRects?.().length&&css(child).position!=='absolute')others+=child.offsetHeight||0;}
+      for(const child of rail.children){
+        if(child.matches?.('.rd-rail-course')){gaps+=px(css(child),'marginTop','marginBottom');continue;}
+        if(child.getClientRects?.().length&&css(child).position!=='absolute')others+=child.offsetHeight||0;
+      }
       const view=root.innerHeight||0,room=view-Math.min(parseFloat(top)||150,view*.45)-18-px(railStyle,'paddingTop','paddingBottom','borderTopWidth','borderBottomWidth')-others-12-gaps;
       return !view||Math.ceil(tallest)*rows.length<=room?Math.ceil(tallest)+'px':'auto';
     }
@@ -666,7 +1105,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const previous=courseMemory.recall(state.courseId),reader=container.querySelector('.rd-reader'),content=reader?.querySelector('.rd-reader-content');
       const same=container.dataset.courseId===state.courseId&&reader?.dataset.id===selectedId&&content?.getClientRects().length;
       const pending=pendingReaderScroll?.courseId===state.courseId&&pendingReaderScroll.id===selectedId?pendingReaderScroll:null;
-      courseMemory.remember(state.courseId,{...state,limit:visibleLimit,selectedId,readerTab,readerOpen,readerScroll:pending?pending.top:same?content.scrollTop:previous.selectedId===selectedId?previous.readerScroll:0});
+      courseMemory.remember(state.courseId,{
+        ...state,
+        limit:visibleLimit,
+        selectedId,
+        readerTab,
+        readerOpen,
+        readerScroll:pending?pending.top:same?content.scrollTop:previous.selectedId===selectedId?previous.readerScroll:0
+      });
     }
     function restoreReaderScroll(){
       if(destroyed||workspace!=='work'||!pendingReaderScroll)return false;
@@ -686,14 +1132,72 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       state=Model.cleanState(next);visibleLimit=next.limit;selectedId=next.selectedId;readerTab=next.readerTab;readerOpen=next.readerOpen;
       pendingReaderScroll={courseId:id,id:selectedId,top:next.readerScroll};return true;
     }
-    function navigationState(preserveDisabled=false){captureCourseView();return {...courseMemory.recall(state.courseId),workspace:preserveDisabled&&savedWorkspace?savedWorkspace:workspace==='work'&&workPage==='assignments'?'assignments':workspace,overviewVersion:1,courseViews:courseMemory.serialize(),gradeVisibilityOverride:gradeVisibilityOverride===false?false:undefined};}
+    function navigationState(preserveDisabled=false){
+      captureCourseView();
+      return {
+        ...courseMemory.recall(state.courseId),
+        workspace:preserveDisabled&&savedWorkspace?savedWorkspace:workspace==='work'&&workPage==='assignments'?'assignments':workspace,
+        overviewVersion:1,
+        courseViews:courseMemory.serialize(),
+        gradeVisibilityOverride:gradeVisibilityOverride===false?false:undefined
+      };
+    }
     function remember(){
       state=Model.cleanState({...state,limit:visibleLimit});
       try{if(stateKey)root.sessionStorage?.setItem(stateKey,JSON.stringify(navigationState(true)));}catch{}
     }
 
     // The view's arguments. The panel-only form (renderPanel) leaves out the page's own HTML parts, which it never shows.
-    function viewArgs(ctx,assignmentContent,panel=false){return {...ctx,state,workspace,workPage:workspace==='work'?workPage:'',gradeImpact,gradeImpactRevision:currentSnapshot.fetchedAt,reviewDeckHTML:!panel&&workspace==='review'?reviewDeck?.renderReviewDeck()||'':'',gradeQuery,gradeLimit,arrangeOpen:!!arrange?.active(),boardEditing:!!board?.editing(),planUI:board?.planUI()||{},customizeTab,canvasNav,personal:{focus:personal.focus,pet:personal.pet,toolbox:personal.toolbox},hasLayoutUndo:!!ctx.s.workspaceUndo,deckHeader:!panel&&workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:enabled('arrange')})||'':'',deckContent:!panel&&workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',hubContent:panel?'':workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId),{sharedHeading:true}):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',materialLibrary:!panel&&workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId),{sharedHeading:true}):'',relatedMaterials:panel?'':materials?.renderRelated(ctx.selected,assignmentContent.links)||'',readerTab,customizeOpen,customizeCourseId,customizeStatus,customizeBusy,customizeDrafts,customKits,kitName,makeOwn:makeOwn?.state,quickUpload:quickUpload?.state,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading,user:currentSnapshot.user,demo,nativeSwitch:typeof onNative==='function',refreshing,visibleLimit,noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',readerContent:assignmentContent,warning:panel?'':renderWarning(),status:statusLabel(currentSnapshot,externalStatus,transientStatus)};}
+    function viewArgs(ctx,assignmentContent,panel=false){
+      return {
+        ...ctx,
+        state,
+        workspace,
+        workPage:workspace==='work'?workPage:'',
+        gradeImpact,
+        gradeImpactRevision:currentSnapshot.fetchedAt,
+        reviewDeckHTML:!panel&&workspace==='review'?reviewDeck?.renderReviewDeck()||'':'',
+        gradeQuery,
+        gradeLimit,
+        arrangeOpen:!!arrange?.active(),
+        boardEditing:!!board?.editing(),
+        planUI:board?.planUI()||{},
+        customizeTab,
+        canvasNav,
+        personal:{focus:personal.focus,pet:personal.pet,toolbox:personal.toolbox},
+        hasLayoutUndo:!!ctx.s.workspaceUndo,
+        deckHeader:!panel&&workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:enabled('arrange')})||'':'',
+        deckContent:!panel&&workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',
+        hubContent:panel?'':workspace==='hub'?hub?.renderHub(ctx.courseMap.get(state.courseId),{sharedHeading:true}):workspace==='inbox'?hub?.renderInbox(ctx.courses):'',
+        materialLibrary:!panel&&workspace==='materials'?materials?.renderLibrary(ctx.courseMap.get(state.courseId),{sharedHeading:true}):'',
+        relatedMaterials:panel?'':materials?.renderRelated(ctx.selected,assignmentContent.links)||'',
+        readerTab,
+        customizeOpen,
+        customizeCourseId,
+        customizeStatus,
+        customizeBusy,
+        customizeDrafts,
+        customKits,
+        kitName,
+        makeOwn:makeOwn?.state,
+        quickUpload:quickUpload?.state,
+        quickPackDraft,
+        quickPackFileName,
+        quickPackError,
+        quickPackLoading,
+        user:currentSnapshot.user,
+        demo,
+        nativeSwitch:typeof onNative==='function',
+        refreshing,
+        visibleLimit,
+        noteStatus:drafts.has(`notes:${ctx.selected?.id}`)?
+          transientStatus.startsWith('Could not save:')?'Not saved. Retry above.':'Saving note…':
+          ctx.local[ctx.selected?.id]?.notes?'Note saved on this device.':'Notes save automatically.',
+        readerContent:assignmentContent,
+        warning:panel?'':renderWarning(),
+        status:statusLabel(currentSnapshot,externalStatus,transientStatus)
+      };
+    }
     // A Make it yours tab shows another page of the panel and changes nothing else on the page, so only the panel is
     // redrawn: a whole render patched and then measured about 3,000 nodes for it (0.2-0.3 s on a real Canvas page).
     // Anything else waiting to render, or a course that vanished (buildContext switches course), takes the whole render.
@@ -708,18 +1212,25 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // What a whole render does for the panel after its patch: media and frame previews, saved kits, the Features
       // mount, unsaved text and open sections.
       mediaController?.sync();frameController?.sync();frameEditor?.sync();
-      if(customizeOpen&&!kitsLoaded&&mediaStore){kitsLoaded=true;mediaStore.listKits().then(kits=>{if(!destroyed){customKits=kits;scheduleRender();}}).catch(error=>{if(!destroyed){customizeStatus=error.message;scheduleRender();}});}
+      // The saved kits are drawn only in the Make it yours panel: when they arrive, the panel alone is redrawn.
+      if(customizeOpen&&!kitsLoaded&&mediaStore){
+        kitsLoaded=true;
+        mediaStore.listKits().then(kits=>{if(!destroyed){customKits=kits;if(!renderPanel())scheduleRender();}}).catch(error=>{
+          if(!destroyed){customizeStatus=error.message;scheduleRender();}
+        });
+      }
       settingsDock?.sync();
       for(const draft of drafts.values()){const field=container.querySelector(`[data-rd-field="${draft.field}"][data-id="${draft.id}"]`);if(field)field.value=draft.value;}
       for(const [id,value] of stepDrafts){const field=container.querySelector(`[data-rd-field="new-step"][data-id="${id}"]`);if(field)field.value=value;}
-      for(const el of inner.querySelectorAll?.('details[data-rd-section]')||[])if(sections.has(el.dataset.rdSection))el.open=sections.get(el.dataset.rdSection);
+      for(const el of inner.querySelectorAll?.('details[data-rd-section]')||[])if(sections.has(el.dataset.rdSection))setProp(el,'open',sections.get(el.dataset.rdSection));
       return true;
     }
     function renderNow({preserveFocus=true,tabMotion=false,motionTarget='',motionKind='workspace',direction=1,snapshot=null,resetWorkspaceScroll=false}={}){
       if(destroyed)return;
       const oldReader=container.querySelector('.rd-reader-content'),previousCourse=container.dataset.courseId;
       const readerScroll=oldReader?.getClientRects().length?oldReader.scrollTop:courseMemory.recall(previousCourse).readerScroll;
-      const oldMaterialPage=container.querySelector('.rd-material-page');if(oldMaterialPage)materials?.rememberPageScroll(oldMaterialPage.dataset.materialCourse,oldMaterialPage.dataset.materialResource,oldMaterialPage.scrollTop);
+      const oldMaterialPage=container.querySelector('.rd-material-page');
+      if(oldMaterialPage)materials?.rememberPageScroll(oldMaterialPage.dataset.materialCourse,oldMaterialPage.dataset.materialResource,oldMaterialPage.scrollTop);
       const previousSelected=container.querySelector('.rd-reader')?.dataset?.id;
       const disclosures=new Map(Array.from(container.querySelectorAll?.('details[data-rd-section]')||[]).map(el=>[el.dataset.rdSection,el.open]));
       let focus=null;
@@ -727,8 +1238,38 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const active=container.querySelector(':focus');
         if(active?.id==='rd-material-title')focus={materialTitle:true};
         if(active?.tagName==='SUMMARY'&&active.parentElement?.dataset.rdSection)focus={section:active.parentElement.dataset.rdSection};
-        if(active?.dataset?.rdField){focus={course:active.dataset.course,place:active.dataset.place,file:active.dataset.file,field:active.dataset.rdField,id:active.dataset.id,step:active.dataset.step,setting:active.dataset.setting,message:active.dataset.message,value:active.value,start:active.selectionStart,end:active.selectionEnd};}
-        else if(active?.dataset?.rdAction){focus={place:active.dataset.place,file:active.dataset.file,action:active.dataset.rdAction,id:active.dataset.id,mode:active.dataset.mode,day:active.dataset.day,accent:active.dataset.accent,tab:active.dataset.tab,resource:active.dataset.resource,course:active.dataset.course,message:active.dataset.message,choice:active.dataset.value,entry:active.dataset.entry};}
+        if(active?.dataset?.rdField){
+          focus={
+            course:active.dataset.course,
+            place:active.dataset.place,
+            file:active.dataset.file,
+            field:active.dataset.rdField,
+            id:active.dataset.id,
+            step:active.dataset.step,
+            setting:active.dataset.setting,
+            message:active.dataset.message,
+            value:active.value,
+            start:active.selectionStart,
+            end:active.selectionEnd
+          };
+        }
+        else if(active?.dataset?.rdAction){
+          focus={
+            place:active.dataset.place,
+            file:active.dataset.file,
+            action:active.dataset.rdAction,
+            id:active.dataset.id,
+            mode:active.dataset.mode,
+            day:active.dataset.day,
+            accent:active.dataset.accent,
+            tab:active.dataset.tab,
+            resource:active.dataset.resource,
+            course:active.dataset.course,
+            message:active.dataset.message,
+            choice:active.dataset.value,
+            entry:active.dataset.entry
+          };
+        }
         // The control itself: patchUI keeps it, so when it is still the same control and still shown, focus stays on it
         // (siblings that differ only by data-value or data-entry, like All | Unread or two Read more buttons, never trade places).
         if(focus&&!focus.materialTitle&&!focus.section)focus.node=active;
@@ -739,36 +1280,45 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(deckId!==deckCourseRequested){deckCourseRequested=deckId;if(deckId)hub?.loadDeck?.(deckId);ctx.unread=hub?.unreadCount?.()||0;}
       consumeSources();
       // Later notifications (including any microtask chain) share one rAF after the task, before paint.
-      container.dataset.featureMotion=enabled('motion')?'on':'off';container.dataset.arrange=arrange?'on':'off';
+      setData('featureMotion',enabled('motion')?'on':'off');setData('arrange',arrange?'on':'off');
       const dataTheme=enabled('customization')&&!ctx.s.sceneTheme?makeOwn?.state.theme:null;
       const scene=!dataTheme&&enabled('scene-themes')&&root.ReserveSceneThemes&&['starry','sea','stars','blueprint'].includes(ctx.s.sceneTheme)?ctx.s.sceneTheme:'';
-      container.dataset.theme=scene?'light':ctx.theme;applyNight(ctx.s.nightArt);
-      container.dataset.density=ctx.s.density==='compact'?'compact':'comfortable';
-      container.dataset.font=['humanist','serif'].includes(ctx.s.font)?ctx.s.font:'system';
-      container.dataset.textSize=ctx.s.textSize||'standard';
-      container.dataset.layout=ctx.s.deskOrder==='stacked'?'list':'split';
-      container.dataset.workspaceMode=Arrange?.snapshot(ctx.s).mode||'side-by-side';
-      container.dataset.arranging=String(!!arrange?.active());
-      for(const [key,value] of Object.entries(root.ReserveCustomization?.defaults||{})){const shown=ctx.s[key]??value;if(shown===null||typeof shown!=='object')container.dataset[key]=String(shown);}
-      container.style.setProperty('--rd-dock-scale',String(Number(ctx.s.dockScale)||1));
-      container.dataset.boardEditing=String(!!board?.editing());
+      setData('theme',scene?'light':ctx.theme);applyNight(ctx.s.nightArt);
+      setData('density',ctx.s.density==='compact'?'compact':'comfortable');
+      setData('font',['humanist','serif'].includes(ctx.s.font)?ctx.s.font:'system');
+      setData('textSize',ctx.s.textSize||'standard');
+      setData('layout',ctx.s.deskOrder==='stacked'?'list':'split');
+      setData('workspaceMode',Arrange?.snapshot(ctx.s).mode||'side-by-side');
+      setData('arranging',String(!!arrange?.active()));
+      for(const [key,value] of Object.entries(root.ReserveCustomization?.defaults||{})){
+        const shown=ctx.s[key]??value;
+        if(shown===null||typeof shown!=='object')setData(key,String(shown));
+      }
+      setVar('--rd-dock-scale',String(Number(ctx.s.dockScale)||1));
+      setData('boardEditing',String(!!board?.editing()));
       // Gentle (default), Still or Off; motion.js also treats a reduced-motion device as Off.
-      container.dataset.motionStyle=MOTION_STYLES.includes(ctx.s.motion)?ctx.s.motion:'gentle';
+      setData('motionStyle',MOTION_STYLES.includes(ctx.s.motion)?ctx.s.motion:'gentle');
       // Living drawings (default On): the course drawings keep moving once drawn (Gentle only).
-      container.dataset.livingArt=ctx.s.livingArt==='off'?'off':'on';
+      setData('livingArt',ctx.s.livingArt==='off'?'off':'on');
       // Teacher text, announcements and messages: the book serif (default) or the interface sans.
-      container.dataset.readingFont=ctx.s.readingFont==='interface'?'interface':'book';
-      container.dataset.readerOpen=String(readerOpen);
-      container.dataset.courses=String(ctx.s.showCourseStrip!==false);
-      if(scene||dataTheme)container.style.removeProperty('--rd-accent');else container.style.setProperty('--rd-accent',ctx.accent);
+      setData('readingFont',ctx.s.readingFont==='interface'?'interface':'book');
+      setData('readerOpen',String(readerOpen));
+      setData('courses',String(ctx.s.showCourseStrip!==false));
+      if(scene||dataTheme){if(container.style.getPropertyValue?.('--rd-accent')!=='')container.style.removeProperty('--rd-accent');}else setVar('--rd-accent',ctx.accent);
       const assignmentContent=readingContent(ctx.selected);
-       const markup=View.render(viewArgs(ctx,assignmentContent), {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete}, {headingCache,reuseHeading:container.querySelector('.rd-workspace-heading')?.getAttribute('data-rd-key')===`heading-${headingCache.revision}`});
+       const markup=View.render(
+         viewArgs(ctx,assignmentContent),
+         {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete},
+         {headingCache,reuseHeading:container.querySelector('.rd-workspace-heading')?.getAttribute('data-rd-key')===`heading-${headingCache.revision}`});
       const toolbar=container.querySelector('.rd-toolbar'),appearance=container.querySelector('.rd-appearance');
       if(toolbar){
         // Keep the actual transitioning nodes connected through data renders.
         const template=document.createElement('template');template.innerHTML=markup;
         const nextToolbar=template.content.querySelector('.rd-toolbar'),nextAppearance=template.content.querySelector('.rd-appearance');
-        const shell=container.querySelector('.rd-shell'),nextShell=template.content.querySelector('.rd-shell'),footer=container.querySelector('.rd-status'),nextFooter=template.content.querySelector('.rd-status');
+        const shell=container.querySelector('.rd-shell'),
+          nextShell=template.content.querySelector('.rd-shell'),
+          footer=container.querySelector('.rd-status'),
+          nextFooter=template.content.querySelector('.rd-status');
         // The live region and its observed box stay connected across data renders too.
         if(footer&&nextFooter){patchUI(footer,nextFooter);nextFooter.remove();}
         if(shell&&nextShell){
@@ -788,7 +1338,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           else{rail?.remove();if(nextRail)shell.insertBefore(nextRail,workspaceNode);}
           // The dock's card (right-click the dock) sits beside the dock.
           const dockCard=shell.querySelector(':scope > .rd-dock-menu'),nextDockCard=nextShell.querySelector(':scope > .rd-dock-menu');
-          if(dockCard&&nextDockCard)patchUI(dockCard,nextDockCard);else{dockCard?.remove();if(nextDockCard)shell.insertBefore(nextDockCard,shell.querySelector(':scope > .rd-dock')||workspaceNode);}
+          if(dockCard&&nextDockCard)
+            patchUI(dockCard,nextDockCard);
+          else{dockCard?.remove();if(nextDockCard)shell.insertBefore(nextDockCard,shell.querySelector(':scope > .rd-dock')||workspaceNode);}
           nextShell.remove();
         }
         // Stable controls retain focus and let the grade switch finish its tween.
@@ -796,38 +1348,71 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const deadlineButton=tools.querySelector('[data-rd-action="deadline-changes"]'),nextDeadline=nextToolbar?.querySelector('[data-rd-action="deadline-changes"]');
         if(deadlineButton&&nextDeadline)patchUI(deadlineButton,nextDeadline);else if(nextDeadline)tools.prepend(nextDeadline);else deadlineButton?.remove();
         const gradeSwitch=tools.querySelector('[data-setting="showGrades"]');if(gradeSwitch)gradeSwitch.checked=ctx.s.showGrades===true;
-        tools.querySelector('[data-rd-action="settings"]')?.setAttribute('aria-expanded',String(customizeOpen));
+        setAttr(tools.querySelector('[data-rd-action="settings"]'),'aria-expanded',String(customizeOpen));
         // While syncing, the refresh glyph gives way to the dotted ring (CSS on aria-busy).
-        {const refreshButton=tools.querySelector('[data-rd-action="refresh"]');for(const name of ['aria-disabled','aria-busy'])if(refreshing)refreshButton.setAttribute(name,'true');else refreshButton.removeAttribute(name);}
+        {
+          const refreshButton=tools.querySelector('[data-rd-action="refresh"]');
+          for(const name of ['aria-disabled','aria-busy'])if(refreshing)setAttr(refreshButton,name,'true');else refreshButton.removeAttribute(name);
+        }
         // Messages carries a muted unread numeral; the phone drawer button mirrors the drawer.
-        {const unread=ctx.unread||0,badge=toolbar.querySelector('[data-rd-unread]'),said=toolbar.querySelector('[data-rd-unread-sr]');if(badge){badge.textContent=unread?String(unread):'';badge.hidden=!unread;}if(said)said.textContent=unread?`, ${unread} unread`:'';
-         toolbar.querySelector('.rd-drawer-button')?.setAttribute('aria-expanded',String(container.dataset.drawer==='open'));
+        {
+          const unread=ctx.unread||0,badge=toolbar.querySelector('[data-rd-unread]'),said=toolbar.querySelector('[data-rd-unread-sr]');
+          if(badge){setProp(badge,'textContent',unread?String(unread):'');setProp(badge,'hidden',!unread);}
+          if(said)setProp(said,'textContent',unread?`, ${unread} unread`:'');
+         setAttr(toolbar.querySelector('.rd-drawer-button'),'aria-expanded',String(container.dataset.drawer==='open'));
          // The command bar's search belongs to Assignments; it keeps the list's query (typed here or in the heading's copy).
-         {const bar=toolbar.querySelector('.rd-bar-search'),field=bar?.querySelector('input');if(bar)bar.hidden=workspace!=='work';if(field&&field.value!==state.query)field.value=state.query;}
+         {const bar=toolbar.querySelector('.rd-bar-search'),field=bar?.querySelector('input');if(bar)setProp(bar,'hidden',workspace!=='work');if(field&&field.value!==state.query)field.value=state.query;}
          // The phone reader sheet (refresh.css section 16) covers Canvas's chrome, as the dock does.
          container.getRootNode?.()?.host?.toggleAttribute?.('data-reserve-sheet',readerOpen&&workspace==='work');}
         nextToolbar.remove();
-        for(const tab of toolbar.querySelectorAll('.t-tab')){const active=tab.dataset.tab===(workspace==='work'&&workPage==='assignments'?'assignments':workspace);tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;}
+        for(const tab of toolbar.querySelectorAll('.t-tab')){
+          const active=tab.dataset.tab===(workspace==='work'&&workPage==='assignments'?'assignments':workspace);
+          setAttr(tab,'aria-selected',String(active));
+          setProp(tab,'tabIndex',active?0:-1);
+        }
         if(appearance&&nextAppearance){
         const inner=appearance.querySelector('.t-acc-panel-inner'),nextInner=nextAppearance.querySelector('.t-acc-panel-inner');
         // The closed shell leaves outgoing controls connected until its dock transition ends.
         if(!customizeOpen&&nextInner?.getAttribute('data-rd-key')==='customize-content')inner?.setAttribute('data-rd-key','customize-content');
         else patchUI(inner,nextInner);
-        appearance.dataset.open=String(customizeOpen);
-        const panel=appearance.querySelector('.t-acc-panel');panel.inert=!customizeOpen;
-        if(customizeOpen)panel.removeAttribute('aria-hidden');else panel.setAttribute('aria-hidden','true');
+        setAttr(appearance,'data-open',String(customizeOpen));
+        const panel=appearance.querySelector('.t-acc-panel');setProp(panel,'inert',!customizeOpen);
+        if(customizeOpen)panel.removeAttribute('aria-hidden');else setAttr(panel,'aria-hidden','true');
         nextAppearance.remove();}
-        for(const node of Array.from(container.childNodes)){if(node!==toolbar&&node!==appearance&&node!==shell&&node!==footer&&!node.classList?.contains('rd-utility-dialog')&&!node.classList?.contains('pet-layer')&&!node.hasAttribute?.('data-rd-keep'))node.remove();}
+        // The polite live region ("3 items shown.") stays connected and only its words follow the list: putting a new
+        // copy in each render was a change every observer of the page woke for. It is known by its own marker.
+        const isLive=node=>node?.nodeType===1&&node.hasAttribute?.('data-rd-list-live');
+        const liveNode=Array.from(container.childNodes).find(isLive),
+          nextLive=Array.from(template.content.childNodes).find(isLive),
+          keptLive=liveNode&&nextLive?liveNode:null;
+        if(keptLive){patchUI(keptLive,nextLive);nextLive.remove();}
+        for(const node of Array.from(container.childNodes)){
+          if(node!==toolbar&&
+            node!==appearance&&
+            node!==shell&&
+            node!==footer&&
+            node!==keptLive&&
+            !node.classList?.contains('rd-utility-dialog')&&
+            !node.classList?.contains('pet-layer')&&
+            !node.hasAttribute?.('data-rd-keep'))
+            node.remove();
+        }
         if(shell)for(const warning of Array.from(template.content.querySelectorAll('.rd-warning')))container.insertBefore(warning,shell);
         container.append(template.content);
       }else container.innerHTML=markup;
-      container.dataset.courseId=state.courseId;container.dataset.workspace=workspace;container.dataset.workPage=workspace==='work'?workPage:'';
+      setData('courseId',state.courseId);setData('workspace',workspace);setData('workPage',workspace==='work'?workPage:'');
       if(scene){root.ReserveSceneThemes.apply(container.getRootNode?.()||target,container,scene,{motionStyle:container.dataset.motionStyle});sceneActive=true;}
       else if(sceneActive){root.ReserveSceneThemes?.remove(container);sceneActive=false;}
       if(dataTheme)root.ReserveDataTheme?.apply(container.getRootNode?.()||target,container,dataTheme,{theme:ctx.theme,motionStyle:container.dataset.motionStyle});
       else root.ReserveDataTheme?.remove(container);
       mediaController?.sync();frameController?.sync();frameEditor?.sync();
-      if(customizeOpen&&!kitsLoaded&&mediaStore){kitsLoaded=true;mediaStore.listKits().then(kits=>{if(!destroyed){customKits=kits;scheduleRender();}}).catch(error=>{if(!destroyed){customizeStatus=error.message;scheduleRender();}});}
+      // The saved kits are drawn only in the Make it yours panel: when they arrive, the panel alone is redrawn.
+      if(customizeOpen&&!kitsLoaded&&mediaStore){
+        kitsLoaded=true;
+        mediaStore.listKits().then(kits=>{if(!destroyed){customKits=kits;if(!renderPanel())scheduleRender();}}).catch(error=>{
+          if(!destroyed){customizeStatus=error.message;scheduleRender();}
+        });
+      }
       settingsDock?.sync();
       if(ctx.s.courseNavigation==='dock'&&container.dataset.drawer==='open')setDrawer(false,{focus:false});
       courseDock.sync();
@@ -839,7 +1424,20 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(resetWorkspaceScroll){const column=container.querySelector('.rd-shell > .rd-workspace');if(column?.scrollTop)column.scrollTop=0;}
       // Arrange has now installed the final layout. Measure its layout before motion paints a drag spring
       // and before the next timer/frame, so course rows cannot linger at a compressed intermediate size.
-      const signature=JSON.stringify([ctx.courses,Array.from(ctx.courseLoad),ctx.s,workspace,workPage,readerOpen,customizeOpen,ctx.unread,container.dataset.arranging,container.dataset.boardEditing,container.dataset.drawer,renderWarning()]);
+      const signature=JSON.stringify([
+        ctx.courses,
+        Array.from(ctx.courseLoad),
+        ctx.s,
+        workspace,
+        workPage,
+        readerOpen,
+        customizeOpen,
+        ctx.unread,
+        container.dataset.arranging,
+        container.dataset.boardEditing,
+        container.dataset.drawer,
+        renderWarning()
+      ]);
       if(signature!==railSignature){railSignature=signature;railDirty=true;}
       watchRail();sheetCover();measureRail(0,false);
       updateStatus();toolbox?.update();syncFocus();
@@ -848,10 +1446,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(motionTarget)motion?.reveal(container.querySelector(motionTarget),{animate:tabMotion&&container.dataset.input==='pointer',kind:motionKind,direction,snapshot});
       for(const draft of drafts.values()){const field=container.querySelector(`[data-rd-field="${draft.field}"][data-id="${draft.id}"]`);if(field)field.value=draft.value;}
       for(const [id,value] of stepDrafts){const field=container.querySelector(`[data-rd-field="new-step"][data-id="${id}"]`);if(field)field.value=value;}
-      for(const el of container.querySelectorAll?.('details[data-rd-section]')||[]){if(disclosures.has(el.dataset.rdSection))el.open=disclosures.get(el.dataset.rdSection);}
+      for(const el of container.querySelectorAll?.('details[data-rd-section]')||[]){if(disclosures.has(el.dataset.rdSection))setProp(el,'open',disclosures.get(el.dataset.rdSection));}
       const reader=container.querySelector('.rd-reader-content'),remembered=courseMemory.recall(state.courseId);
       if(workspace==='work'){
-        const top=pendingReaderScroll?.courseId===state.courseId&&pendingReaderScroll.id===ctx.selected?.id?pendingReaderScroll.top:previousCourse===state.courseId&&previousSelected===ctx.selected?.id?readerScroll:remembered.selectedId===ctx.selected?.id?remembered.readerScroll:0;
+        const top=pendingReaderScroll?.courseId===state.courseId&&pendingReaderScroll.id===ctx.selected?.id?
+          pendingReaderScroll.top:
+          previousCourse===state.courseId&&previousSelected===ctx.selected?.id?readerScroll:remembered.selectedId===ctx.selected?.id?remembered.readerScroll:0;
         pendingReaderScroll=ctx.selected?{courseId:state.courseId,id:ctx.selected.id,top}:null;
         readerLayout?.disconnect();
         if(!restoreReaderScroll()&&reader&&pendingReaderScroll)readerLayout?.observe(reader);
@@ -860,39 +1460,107 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(focus?.section){Array.from(container.querySelectorAll?.('details[data-rd-section]')||[]).find(el=>el.dataset.rdSection===focus.section)?.querySelector('summary')?.focus({preventScroll:true});}
       if(focus&&!focus.materialTitle&&!focus.section){
         const selector=(focus.field?`[data-rd-field="${focus.field}"]`:`[data-rd-action="${focus.action}"]`)+`${focus.id?`[data-id="${focus.id}"]`:''}${focus.setting?`[data-setting="${focus.setting}"]`:''}${focus.mode?`[data-mode="${focus.mode}"]`:''}${focus.day?`[data-day="${focus.day}"]`:''}${focus.accent?`[data-accent="${focus.accent}"]`:''}${focus.tab?`[data-tab="${focus.tab}"]`:''}${focus.choice!=null?`[data-value=${JSON.stringify(String(focus.choice))}]`:''}${focus.entry!=null?`[data-entry=${JSON.stringify(String(focus.entry))}]`:''}`;
-        const ownFocus=String(focus.field||focus.action||'').startsWith('hub-own-'),ownSuffix=ownFocus?`[data-course="${focus.course}"][data-place="${focus.place}"]${focus.file?`[data-file="${focus.file}"]`:''}`:'';
-        const kept=focus.node,same=kept?.isConnected!==false&&!!kept?.getClientRects?.().length&&(focus.field?kept.dataset?.rdField===focus.field:kept.dataset?.rdAction===focus.action)&&[['id','id'],['setting','setting'],['mode','mode'],['day','day'],['accent','accent'],['tab','tab'],['value','choice'],['entry','entry'],['step','step'],['message','message'],['resource','resource'],['course','course'],['place','place'],['file','file']].every(([key,was])=>(kept.dataset?.[key]??null)===(focus[was]??null));
-        const active=same?kept:ownFocus?container.querySelector(selector+ownSuffix):focus.step||focus.resource||focus.message?Array.from(container.querySelectorAll?.(selector)||[]).find(el=>focus.message?el.dataset.message===focus.message:focus.step?el.dataset.step===focus.step:el.dataset.resource===focus.resource&&el.dataset.course===focus.course):(matches=>matches.find(el=>el.getClientRects?.().length)||container.querySelector(selector))(Array.from(container.querySelectorAll?.(selector)||[]));
-        if(active){if(focus.field==='new-step')active.value=focus.value;active.focus({preventScroll:true});if(typeof active.setSelectionRange==='function'&&focus.start!=null)active.setSelectionRange(focus.start,focus.end);}
+        const ownFocus=String(focus.field||focus.action||'').startsWith('hub-own-'),
+          ownSuffix=ownFocus?`[data-course="${focus.course}"][data-place="${focus.place}"]${focus.file?`[data-file="${focus.file}"]`:''}`:'';
+        const kept=focus.node,
+          same=kept?.isConnected!==false&&
+            !!kept?.getClientRects?.().length&&
+            (focus.field?kept.dataset?.rdField===focus.field:kept.dataset?.rdAction===focus.action)&&
+            [['id','id'],['setting','setting'],['mode','mode'],['day','day'],['accent','accent'],['tab','tab'],['value','choice'],['entry','entry'],['step','step'],['message','message'],['resource','resource'],['course','course'],['place','place'],['file','file']].every(([key,was])=>
+              (kept.dataset?.[key]??null)===(focus[was]??null));
+        const active=same?
+          kept:
+          ownFocus?
+            container.querySelector(selector+ownSuffix):
+            focus.step||focus.resource||focus.message?
+              Array.from(container.querySelectorAll?.(selector)||[]).find(el=>
+                focus.message?
+                  el.dataset.message===focus.message:
+                  focus.step?el.dataset.step===focus.step:el.dataset.resource===focus.resource&&el.dataset.course===focus.course):
+              (matches=>matches.find(el=>el.getClientRects?.().length)||container.querySelector(selector))(Array.from(container.querySelectorAll?.(selector)||[]));
+        if(active){
+          if(focus.field==='new-step')active.value=focus.value;
+          active.focus({preventScroll:true});
+          if(typeof active.setSelectionRange==='function'&&focus.start!=null)active.setSelectionRange(focus.start,focus.end);
+        }
         else if(focus.action==='arrange-menu')container.querySelector('.rd-toolbar [data-rd-action="arrange"]')?.focus({preventScroll:true});
       }
-      const materialPage=container.querySelector('.rd-material-page');if(materialPage)materialPage.scrollTop=materials?.pageScroll(materialPage.dataset.materialCourse,materialPage.dataset.materialResource)||0;
+      const materialPage=container.querySelector('.rd-material-page');
+      if(materialPage)materialPage.scrollTop=materials?.pageScroll(materialPage.dataset.materialCourse,materialPage.dataset.materialResource)||0;
       const requested=materials?.takeFocusRequest();let materialFocus;
       if(requested?.type==='title'||focus?.materialTitle)materialFocus=container.querySelector('#rd-material-title');
-      if(requested?.type==='resource')materialFocus=Array.from(container.querySelectorAll?.('[data-rd-action="material-read"]')||[]).find(el=>el.dataset.resource===requested.id&&el.dataset.course===requested.courseId)||container.querySelector('[data-rd-field="material-query"]');
+      if(requested?.type==='resource')
+        materialFocus=Array.from(container.querySelectorAll?.('[data-rd-action="material-read"]')||[]).find(el=>el.dataset.resource===requested.id&&el.dataset.course===requested.courseId)||
+          container.querySelector('[data-rd-field="material-query"]');
       // Teacher-material lists (Materials, the Course hub and its deck copy): a chapter link lands on its
       // chapter's head, "Show all" on the first item it revealed, "Show fewer" back on its own control.
       const hubRequest=hub?.takeFocusRequest?.(),list=['chapter','row','more'].includes(requested?.type)?requested:hubRequest;
       if(list?.type==='chapter')materialFocus=Array.from(container.querySelectorAll?.('.rd-chapter-head[data-chapter]')||[]).find(el=>el.dataset.chapter===list.id&&el.dataset.course===list.courseId);
       if(list?.type==='row')materialFocus=Array.from(container.querySelectorAll?.('[data-rd-row]')||[]).find(el=>el.dataset.rdRow===list.id)?.querySelector?.('.rd-row-open');
-      if(list?.type==='more')materialFocus=Array.from(container.querySelectorAll?.(`[data-rd-action="${list.action}"]`)||[]).find(el=>(el.dataset.resource??el.dataset.entry)===list.id&&el.dataset.course===list.courseId);
-      if(list?.type==='own')materialFocus=Array.from(container.querySelectorAll?.(list.field?`[data-rd-field="${list.field}"]`:`[data-rd-action="${list.action}"]`)||[]).find(el=>el.dataset.course===list.courseId&&el.dataset.place===list.place&&(!list.file||el.dataset.file===list.file));
+      if(list?.type==='more')
+        materialFocus=Array.from(container.querySelectorAll?.(`[data-rd-action="${list.action}"]`)||[]).find(el=>(el.dataset.resource??el.dataset.entry)===list.id&&el.dataset.course===list.courseId);
+      if(list?.type==='own')
+        materialFocus=Array.from(container.querySelectorAll?.(list.field?`[data-rd-field="${list.field}"]`:`[data-rd-action="${list.action}"]`)||[]).find(el=>
+          el.dataset.course===list.courseId&&el.dataset.place===list.place&&(!list.file||el.dataset.file===list.file));
       if(materialFocus){materialFocus.focus({preventScroll:true});if(requested?.type==='title'&&root.innerWidth<=1200)materialFocus.scrollIntoView({block:'start',behavior:'instant'});
         // The page glides to a chapter only for a pointer under Gentle motion; keyboard, Still, Off and reduced motion jump at once.
-        if(list?.type==='chapter')materialFocus.scrollIntoView({block:'start',behavior:container.dataset.input==='pointer'&&container.dataset.motionStyle==='gentle'&&!root.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'smooth':'instant'});
+        if(list?.type==='chapter')
+          materialFocus.scrollIntoView({
+            block:'start',
+            behavior:container.dataset.input==='pointer'&&container.dataset.motionStyle==='gentle'&&!root.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'smooth':'instant'
+          });
         if(list?.type==='more')materialFocus.scrollIntoView({block:'nearest',behavior:'instant'});}
     }
 
     function updateStatus(){
       const text=statusLabel(currentSnapshot,externalStatus,transientStatus),line=container.querySelector('.rd-status [role="status"]');
       if(line&&line.textContent!==text){line.textContent=text;if(railStatusInline)queueRail();}
-      const button=container.querySelector('[data-rd-action="refresh"]'),synced=/^Updated (.+)$/.exec(text),failed=/^Refresh failed/.test(text),title=refreshing?'Syncing with Canvas?':synced?'Synced with Canvas ? '+synced[1]:failed?text+' ? click to try again':text||'Refresh Canvas data';
-      if(button){if(button.getAttribute('title')!==title)button.setAttribute('title',title);if(failed&&!refreshing){if(button.getAttribute('data-tone')!=='danger')button.setAttribute('data-tone','danger');}else if(button.hasAttribute('data-tone'))button.removeAttribute('data-tone');}
+      const button=container.querySelector('[data-rd-action="refresh"]'),
+        synced=/^Updated (.+)$/.exec(text),
+        failed=/^Refresh failed/.test(text),
+        title=refreshing?'Syncing with Canvas?':synced?'Synced with Canvas ? '+synced[1]:failed?text+' ? click to try again':text||'Refresh Canvas data';
+      if(button){
+        if(button.getAttribute('title')!==title)button.setAttribute('title',title);
+        if(failed&&!refreshing){if(button.getAttribute('data-tone')!=='danger')button.setAttribute('data-tone','danger');}else if(button.hasAttribute('data-tone'))button.removeAttribute('data-tone');
+      }
     }
 
+    // On Home and the course pages the clock alone changes what is drawn only at known moments: an hour turning in the
+    // account's zone or this computer's (the greeting, and every calendar day: Today, Tomorrow, the week, plans), 24 hours
+    // before a due time (Due within 24 hours), just after it (Overdue, Up next, the clock's next due), 14 days after it
+    // (the work leaves the list) and a minute before an "Updated" date. Between those moments the minute tick only
+    // rewrites the status line: a whole render there froze the banner for a moment every minute on a slow computer. The
+    // clock's time and countdown keep their own 15 s tick (widgets.js) and the focus clock its 1 s tick (syncFocus). No
+    // page goes longer than FRESH_MS without a whole render, for anything these moments miss; the other workspaces
+    // (Materials' "Saved 5 min ago", the Planner's two-minute undo list) render every minute as before.
+    const FRESH_MS=600000;
+    // Zones sit whole minutes from UTC, so a local hour turns when the local minute count reaches 60. A minute that
+    // cannot be read counts as now: the next tick renders, as before.
+    function hourAfter(at,minute){return Number.isInteger(minute)&&minute>=0&&minute<60?Math.floor(at/60000)*60000+(60-minute)*60000:at+1;}
+    function timeBoundaryAfter(after){
+      const s=settings();let next=after+FRESH_MS;
+      const take=at=>{if(at>after&&at<next)next=at;};
+      take(hourAfter(after,Number(formatDate(after,s.timeZone,{minute:'numeric'}))));take(hourAfter(after,new Date(after).getMinutes()));
+      for(const item of normalizeData(s).items){
+        const due=dateMs(item.dueAt),updated=dateMs(item.updatedAt);
+        if(due!==null){take(due-DAY);take(due+1);take(due+14*DAY+1);}
+        if(updated!==null)take(updated-60000);
+      }
+      return next;
+    }
+    // True while a whole render would draw this Home or course page just as it stands.
+    function timeSettled(){
+      if(workspace!=='work'||!renderedAt||rendering||sourceFrame)return false;
+      const now=Date.now();
+      // A clock set back, or a page left this long, renders.
+      if(now<renderedAt||now-renderedAt>=FRESH_MS)return false;
+      if(timeBoundary===null)timeBoundary=timeBoundaryAfter(renderedAt);
+      return now<timeBoundary;
+    }
     function updateFreshness(){
       if(destroyed||document.visibilityState==='hidden'||!container.getClientRects?.().length)return;
       // Calendar boundaries and countdowns advance while the page stays open.
+      if(timeSettled()){updateStatus();return;}
       render();
     }
 
@@ -907,7 +1575,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(running&&now>=f.endsAt&&!focusSettling&&C.settleFocus){
         focusSettling=true;let settled=false;const ended=f.endsAt;
         // A session that ended long before this page opened is recorded quietly.
-        store.update(data=>{settled=C.settleFocus(data,Date.now());}).then(()=>{if(settled&&!destroyed&&Date.now()-ended<60000){board?.finished('focus');focusDoneUntil=Date.now()+8000;if(!transientStatus){transientStatus=note;render();}else syncFocus();}}).catch(()=>{}).finally(()=>{focusSettling=false;});
+        store.update(data=>{settled=C.settleFocus(data,Date.now());}).then(()=>{
+          if(settled&&!destroyed&&Date.now()-ended<60000){board?.finished('focus');focusDoneUntil=Date.now()+8000;if(!transientStatus){transientStatus=note;render();}else syncFocus();}
+        }).catch(()=>{}).finally(()=>{
+          focusSettling=false;
+        });
       }
       const ticking=running||!!focusDoneUntil;
       if(ticking&&!focusTimer)focusTimer=setInterval(syncFocus,1000);else if(!ticking&&focusTimer){clearInterval(focusTimer);focusTimer=0;}
@@ -936,7 +1608,21 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(field?.startsWith('hub-own-'))return !container.dataset.chLinksPending&&enabled('course-files')&&enabled('course-hub');
       if(field==='setting'){
         if(key==='showGrades')return enabled('grades');if(!enabled('customization'))return false;
-        const feature={sceneTheme:'scene-themes',dockSize:'arrange',motion:'motion',livingArt:'motion',nightArt:'course-art',bannerSize:'course-art',showCourseIcons:'course-art',courseCardStyle:'course-art',showCourseInformation:'course-hub',showRecentGrades:'grades',deskOrder:'arrange',dashboardLayout:'arrange',courseNavigation:'arrange'}[key];
+        const feature={
+          sceneTheme:'scene-themes',
+          dockSize:'arrange',
+          motion:'motion',
+          livingArt:'motion',
+          nightArt:'course-art',
+          bannerSize:'course-art',
+          showCourseIcons:'course-art',
+          courseCardStyle:'course-art',
+          showCourseInformation:'course-hub',
+          showRecentGrades:'grades',
+          deskOrder:'arrange',
+          dashboardLayout:'arrange',
+          courseNavigation:'arrange'
+        }[key];
         return (!feature||enabled(feature))&&(key!=='livingArt'||enabled('course-art'));
       }
       if(field?.startsWith('make-'))return enabled('customization');
@@ -953,7 +1639,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(field?.startsWith('plan-')||field==='widget-notes')return enabled('planner');
       return true;
     }
-    function onInput(event){if(!fieldEnabled(event.target))return;if(event.target?.dataset?.setting==='nightArt'){applyNight(event.target.value);const out=event.target.closest?.('.cz-night')?.querySelector('output');if(out)out.textContent=event.target.value+'%';return;}
+    function onInput(event){
+      if(!fieldEnabled(event.target))return;
+      if(event.target?.dataset?.setting==='nightArt'){
+        applyNight(event.target.value);
+        const out=event.target.closest?.('.cz-night')?.querySelector('output');
+        if(out)out.textContent=event.target.value+'%';
+        return;
+      }
       const field=event.target?.dataset?.rdField;
       if(field==='hub-own-files')return;
       if(board?.input(event))return;
@@ -961,19 +1654,29 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(field==='make-week'){makeOwn?.week(event.target.value);return;}
       if(field==='kit-name'){kitName=event.target.value.slice(0,40);return;}
       if(field==='quick-pack-source'){quickPackDraft=event.target.value.slice(0,3145728);quickPackFileName='';quickPackError='';return;}
-      if(field==='art-source'){const {course,kind}=event.target.dataset;if(validArtTarget(course)&&['banner','card','background','icon','border','title'].includes(kind))customizeDrafts[course+':'+kind]=event.target.value.slice(0,262144);return;}
+      if(field==='art-source'){
+        const {course,kind}=event.target.dataset;
+        if(validArtTarget(course)&&['banner','card','background','icon','border','title'].includes(kind))customizeDrafts[course+':'+kind]=event.target.value.slice(0,262144);
+        return;
+      }
       if(field?.startsWith('hub-')){hub?.input(field,field==='hub-unread'?event.target.checked:event.target.value,event.target.dataset);return;}
       if(field?.startsWith('material-')){materials?.input(field,event.target.value);return;}
       if(field==='new-step'&&/^(?:\d+|local-[\w-]+)$/.test(event.target.dataset.id||'')){stepDrafts.set(event.target.dataset.id,event.target.value.slice(0,300));return;}
-      if(field==='overview-query'){overviewQuery=event.target.value.slice(0,200);render();return;}
-      if(field==='grade-query'){gradeQuery=event.target.value.slice(0,200);gradeLimit=40;render();return;}
+      // A search keeps its query at once and draws the list before the next paint (focus and caret are restored then),
+      // so keys that queued behind a long render share one render instead of one each.
+      if(field==='overview-query'){overviewQuery=event.target.value.slice(0,200);scheduleRender();return;}
+      if(field==='grade-query'){gradeQuery=event.target.value.slice(0,200);gradeLimit=40;scheduleRender();return;}
       if(field!=='query'){
-        if(stageDraft(event.target)){if(field==='notes'){const label=container.querySelector('[data-rd-note-status]');if(label)label.textContent='Saving note…';}clearTimeout(draftTimer);draftTimer=setTimeout(flushDrafts,350);}
+        if(stageDraft(event.target)){
+          if(field==='notes'){const label=container.querySelector('[data-rd-note-status]');if(label)label.textContent='Saving note…';}
+          clearTimeout(draftTimer);
+          draftTimer=setTimeout(flushDrafts,350);
+        }
         return;
       }
       readerOpen=false;state.query=event.target.value.slice(0,200);
       visibleLimit=60;
-      render({preserveFocus:true});
+      scheduleRender({preserveFocus:true});
     }
 
     function onChange(event){
@@ -1003,20 +1706,57 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(['bannerFit','bannerPosition','titlePlacement'].includes(key)&&validArtTarget(id))savePersonal(data=>{appearanceFor(data,id)[key]=value;});return;
       }
       // Canvas's menu bar is stored where canvas-nav.js and the popup read it; every open Canvas page follows at once.
-      if(field==='canvas-nav'){const value=event.target.value;if(!NAV_CHOICES.includes(value))return;canvasNav=value;root.chrome?.storage?.local?.set?.({'reserve:canvasNav':value})?.catch?.(()=>{});return;}
+      if(field==='canvas-nav'){
+        const value=event.target.value;
+        if(!NAV_CHOICES.includes(value))return;
+        canvasNav=value;
+        root.chrome?.storage?.local?.set?.({'reserve:canvasNav':value})?.catch?.(()=>{});
+        return;
+      }
       if(field==='setting'){
         const key=event.target.dataset.setting;
-        if(!['theme','accent','motion','livingArt','readingFont','greeting','font','density','textSize','dashboardLayout','showCourseStrip','showGrades','showRecentGrades',...Object.keys(root.ReserveCustomization?.defaults||{})].includes(key))return;
-        const value=event.target.dataset.onoff==='true'?(event.target.checked?'on':'off'):event.target.type==='checkbox'?event.target.checked:key==='nightArt'?Math.max(0,Math.min(100,Math.round(Number(event.target.value)||0))):key==='dockScale'?Math.max(.7,Math.min(1.5,Math.round((Number(event.target.value)||1)*100)/100)):event.target.value;
+        if(![
+          'theme',
+          'accent',
+          'motion',
+          'livingArt',
+          'readingFont',
+          'greeting',
+          'font',
+          'density',
+          'textSize',
+          'dashboardLayout',
+          'showCourseStrip',
+          'showGrades',
+          'showRecentGrades',
+          ...Object.keys(root.ReserveCustomization?.defaults||{})
+        ].includes(key))
+          return;
+        const value=event.target.dataset.onoff==='true'?
+          (event.target.checked?'on':'off'):
+          event.target.type==='checkbox'?
+            event.target.checked:
+            key==='nightArt'?
+              Math.max(0,Math.min(100,Math.round(Number(event.target.value)||0))):
+              key==='dockScale'?Math.max(.7,Math.min(1.5,Math.round((Number(event.target.value)||1)*100)/100)):event.target.value;
         void saveAppearance(key,value);return;
       }
       if(/^(?:\d+|local-[\w-]+)$/.test(id||'')){
         if(['course-name','planned-date','estimate','notes','personal-name','personal-due'].includes(field)){const draft=stageDraft(event.target);if(draft)persistDraft(draft);return;}
-        if(field==='course-color'&&/^\d+$/.test(id)){const value=event.target.value;savePersonal(data=>{const prefs=data.settings.coursePrefs||(data.settings.coursePrefs={});prefs[id]={...prefs[id],color:value};});return;}
+        if(field==='course-color'&&/^\d+$/.test(id)){
+          const value=event.target.value;
+          savePersonal(data=>{const prefs=data.settings.coursePrefs||(data.settings.coursePrefs={});prefs[id]={...prefs[id],color:value};});
+          return;
+        }
         if(field==='course-visible'&&/^\d+$/.test(id)){const checked=event.target.checked;savePersonal(data=>{C.setCourseVisible(data.settings,id,checked);});return;}
         if(['progress','check-step'].includes(field)){
           const value=event.target.value,checked=event.target.checked,step=event.target.dataset.step;
-          savePersonal(data=>{const task=data.tasks[id]||(data.tasks[id]={});if(field==='progress'){task.progress=value;if(value!=='done')task.checkedOff=false;}if(field==='check-step'){const entry=task.checklist?.find(x=>x.id===step);if(entry)entry.done=checked;}});return;
+          savePersonal(data=>{
+            const task=data.tasks[id]||(data.tasks[id]={});
+            if(field==='progress'){task.progress=value;if(value!=='done')task.checkedOff=false;}
+            if(field==='check-step'){const entry=task.checklist?.find(x=>x.id===step);if(entry)entry.done=checked;}
+          });
+          return;
         }
       }
       // A pointer-chosen course (heading select, rail hidden) reads its snapshot before the switch.
@@ -1024,7 +1764,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(field==='course'){switchCourse(event.target.value);if(workspace==='inbox')hub?.setCourse?.(state.courseId);}
       if(field==='mode'){readerOpen=false;state.mode=event.target.value;state.day='';visibleLimit=60;}
       // Keyboard select changes stay immediate.
-      if(field==='course'||field==='mode'){render(snapshot?{tabMotion:true,motionTarget:'.rd-workspace',motionKind:'course',snapshot}:{});if(field==='course'){materials?.activate(state.courseId);if(workspace==='materials')materials?.load(state.courseId);if(workspace==='hub')hub?.loadCourse(state.courseId);}}
+      if(field==='course'||field==='mode'){
+        render(snapshot?{tabMotion:true,motionTarget:'.rd-workspace',motionKind:'course',snapshot}:{});
+        if(field==='course'){materials?.activate(state.courseId);if(workspace==='materials')materials?.load(state.courseId);if(workspace==='hub')hub?.loadCourse(state.courseId);}
+      }
     }
 
     let tabAt=0;   // when Tab was last pressed (onKeydown): a focus loss right after it is the student tabbing on
@@ -1035,11 +1778,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // Phones: Tab or Shift+Tab out of the open drawer closes it (it is non-modal), so focus never sits
       // under its scrim. Only a real destination counts: a lost window focus (no relatedTarget) keeps it open.
       const next=event.relatedTarget;
-      if(next&&drawerOpen()&&event.target?.closest?.('.rd-course-rail')&&!container.querySelector('.rd-shell .rd-course-rail')?.contains?.(next)&&!next.closest?.('.rd-drawer-button'))setDrawer(false,{focus:false});
+      if(next&&drawerOpen()&&event.target?.closest?.('.rd-course-rail')&&!container.querySelector('.rd-shell .rd-course-rail')?.contains?.(next)&&!next.closest?.('.rd-drawer-button'))
+        setDrawer(false,{focus:false});
       // The reader sheet makes the Canvas Harness parts it covers inert, but Tab past its last control leaves Canvas Harness for the
       // page around it (Canvas's own links, which the sheet may cover) or for the browser: that closes the sheet, and
       // focus stays where Tab put it. Without a destination only a Tab counts (a lost window focus keeps it open).
-      else if(readerOpen&&workspace==='work'&&phone()&&event.target?.closest?.('.rd-reader')&&(next?!container.contains?.(next):Date.now()-tabAt<400)){readerOpen=false;render({preserveFocus:false});}
+      else if(readerOpen&&workspace==='work'&&phone()&&event.target?.closest?.('.rd-reader')&&(next?!container.contains?.(next):Date.now()-tabAt<400)){
+        readerOpen=false;
+        render({preserveFocus:false});
+      }
     }
 
     function stageDraft(target){
@@ -1049,7 +1796,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(field.startsWith('personal-')&&!personal.customTasks?.some(x=>x.id===id))return null;
       const value=String(target.value||'').slice(0,field==='notes'?20000:field==='course-name'?100:field==='personal-name'?200:30),key=`${field}:${id}`,previous=drafts.get(key);
       if(previous?.value===value)return previous;
-      const task=personal.tasks?.[id]||{},reminder=personal.customTasks?.find(x=>x.id===id),current=field==='personal-name'?reminder?.name:field==='personal-due'?reminder?.dueAt:field==='course-name'?personal.settings?.coursePrefs?.[id]?.name:field==='planned-date'?task.plannedDate:field==='notes'?task.notes:task.estimate;
+      const task=personal.tasks?.[id]||{},
+        reminder=personal.customTasks?.find(x=>x.id===id),
+        current=field==='personal-name'?
+          reminder?.name:
+          field==='personal-due'?reminder?.dueAt:field==='course-name'?personal.settings?.coursePrefs?.[id]?.name:field==='planned-date'?task.plannedDate:field==='notes'?task.notes:task.estimate;
       let unchanged=field==='estimate'?(current||0)===Math.min(1440,Math.max(0,Number(value)||0)):(current||'')===value;
       if(field==='personal-due'){try{unchanged=(current||null)===(value?U.wallTimeToISO(value,settings().timeZone||'America/New_York'):null);}catch{unchanged=false;}}
       if(!previous&&unchanged)return null;
@@ -1060,7 +1811,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(draft.pending)return draft.pending;
       const {field,id,value}=draft;
       draft.pending=savePersonal(data=>{
-        if(field==='personal-name'||field==='personal-due'){const reminder=data.customTasks.find(x=>x.id===id);if(!reminder)throw Error('This reminder is no longer available.');if(field==='personal-name'){if(!value.trim())throw Error('Give the reminder a title.');reminder.name=value.trim();}else reminder.dueAt=value?U.wallTimeToISO(value,settings().timeZone||'America/New_York'):null;return;}
+        if(field==='personal-name'||field==='personal-due'){
+          const reminder=data.customTasks.find(x=>x.id===id);
+          if(!reminder)throw Error('This reminder is no longer available.');
+          if(field==='personal-name'){if(!value.trim())throw Error('Give the reminder a title.');reminder.name=value.trim();}
+          else reminder.dueAt=value?U.wallTimeToISO(value,settings().timeZone||'America/New_York'):null;
+          return;
+        }
         if(field==='course-name'){const prefs=data.settings.coursePrefs||(data.settings.coursePrefs={});prefs[id]={...prefs[id],name:value};return;}
         const task=data.tasks[id]||(data.tasks[id]={});
         if(field==='planned-date')task.plannedDate=value;
@@ -1083,7 +1840,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(!text)return;
       stepDrafts.set(id,input.value);
       if((personal.tasks?.[id]?.checklist?.length||0)>=100){transientStatus='This plan already has 100 steps.';render();return;}
-      const saved=await savePersonal(data=>{const task=data.tasks[id]||(data.tasks[id]={});const steps=task.checklist||(task.checklist=[]);steps.push({id:root.crypto?.randomUUID?.()||`step-${Date.now()}-${steps.length}`,text,done:false});});
+      const saved=await savePersonal(data=>{
+        const task=data.tasks[id]||(data.tasks[id]={});
+        const steps=task.checklist||(task.checklist=[]);
+        steps.push({id:root.crypto?.randomUUID?.()||`step-${Date.now()}-${steps.length}`,text,done:false});
+      });
       const next=container.querySelector(`[data-rd-field="new-step"][data-id="${id}"]`);if(saved){stepDrafts.delete(id);if(next){next.value='';next.focus();}}
     }
 
@@ -1091,7 +1852,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const ctx=buildContext(),item=ctx.items.find(x=>x.id===String(id));
       if(!item)return;
       if(selectedId===String(id)&&readerOpen&&container.dataset.workspace==='work')return;
-      if(!ctx.filtered.items.some(x=>x.id===item.id)){state.query='';state.day='';state.mode=C.isWorkComplete(item,personal.tasks?.[item.id])?'completed':item.personal&&personal.tasks?.[item.id]?.plannedDate===dayKey(Date.now(),settings().timeZone)?'planned':item.dueAt?'dated':'undated';}
+      if(!ctx.filtered.items.some(x=>x.id===item.id)){
+        state.query='';
+        state.day='';
+        state.mode=C.isWorkComplete(item,personal.tasks?.[item.id])?
+          'completed':
+          item.personal&&personal.tasks?.[item.id]?.plannedDate===dayKey(Date.now(),settings().timeZone)?'planned':item.dueAt?'dated':'undated';
+      }
       selectedId=String(id);readerOpen=true;readerTab=item.personal?'plan':'details';
       render({tabMotion:event.detail>0,motionTarget:'.rd-reader-content',motionKind:'reader',snapshot});
       const panel=container.querySelector('.rd-reader'),rect=panel?.getBoundingClientRect?.();
@@ -1111,7 +1878,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(archiving)return;const ctx=buildContext();
       const chosen=undo?archiveUndo:ctx.items.filter(x=>selectionIds.has('assignment:'+x.courseId+':'+x.id)).map(x=>({id:x.id,key:'assignment:'+x.courseId+':'+x.id,previous:undefined}));
       if(!chosen?.length)return;archiving=true;render();
-      const saved=await savePersonal(data=>{for(const x of chosen){const task={...data.tasks[x.id]};if(!undo)x.previous=task.checkedOff;if(undo&&x.previous===undefined)delete task.checkedOff;else task.checkedOff=undo?x.previous:true;data.tasks[x.id]=task;}});
+      const saved=await savePersonal(data=>{
+        for(const x of chosen){
+          const task={...data.tasks[x.id]};
+          if(!undo)x.previous=task.checkedOff;
+          if(undo&&x.previous===undefined)delete task.checkedOff;else task.checkedOff=undo?x.previous:true;
+          data.tasks[x.id]=task;
+        }
+      });
       archiving=false;if(!saved||destroyed){render();return;}
       if(undo)archiveUndo=null;else {archiveUndo=chosen;for(const x of chosen)selectionIds.delete(x.key);}
       render();toolbox?.update();
@@ -1123,7 +1897,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // A pointer check-off that removes the row plays its exit first, because
       // the store update re-renders the list synchronously.
       const ctx=buildContext();
-      const leaves=done&&!Model.filterAssignments(ctx.items,{...state,now:ctx.now,timeZone:ctx.s.timeZone,local:{...ctx.local,[id]:{...ctx.local[id],checkedOff:true}}}).items.some(x=>x.id===id);
+      const leaves=done&&
+        !Model.filterAssignments(ctx.items,{...state,now:ctx.now,timeZone:ctx.s.timeZone,local:{...ctx.local,[id]:{...ctx.local[id],checkedOff:true}}}).items.some(x=>
+          x.id===id);
       const exit=leaves&&event.detail>0&&container.dataset.input==='pointer'?motion?.leave?.(container.querySelector(`.rd-assignment[data-preview-id="${id}"]`)):null;
       // The row that slides up under a resting cursor must not show a hover tick it never earned.
       if(exit)container.dataset.hoverHold='true';
@@ -1158,12 +1934,47 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // Back to the list: on a phone this closes the reader sheet; focus returns to the row it came from.
     // Scrolled past: on desktop the workspace column scrolls by itself (the page does not: refresh.css), so a heading
     // is out of sight once it is above the column's top; on phones, above the window's.
-    function above(rect){const column=container.querySelector('.rd-shell > .rd-workspace'),scrolls=!!column&&column.scrollHeight>column.clientHeight+1;return rect.top<(scrolls?column.getBoundingClientRect().top:0)-1;}
-    function closePreview(){readerOpen=false;render();const previous=container.querySelector(`[data-rd-action="preview"][data-id="${selectedId}"]`);previous?.scrollIntoView({block:'nearest',behavior:'instant'});previous?.focus({preventScroll:true});}
+    function above(rect){
+      const column=container.querySelector('.rd-shell > .rd-workspace'),scrolls=!!column&&column.scrollHeight>column.clientHeight+1;
+      return rect.top<(scrolls?column.getBoundingClientRect().top:0)-1;
+    }
+    function closePreview(){
+      readerOpen=false;
+      render();
+      const previous=container.querySelector(`[data-rd-action="preview"][data-id="${selectedId}"]`);
+      previous?.scrollIntoView({block:'nearest',behavior:'instant'});
+      previous?.focus({preventScroll:true});
+    }
 
     function actionEnabled(action,button){
       if(action?.startsWith('hub-own-'))return !container.dataset.chLinksPending&&enabled('course-files')&&enabled('course-hub');
-      const feature={'deadline-changes':'deadline-changes',planner:'planner',grades:'grades','more-grades':'grades','grades-visibility':'grades',settings:'customization','settings-close':'customization','hidden-courses':'customization','customize-tab':'customization','advanced-settings':'customization','reset-appearance':'customization',accent:'customization',theme:'customization','course-up':'customization','course-down':'customization',toolbox:'tools',capture:'tools','selection-ai':'ai','select-source':'ai','open-hub':'course-hub','open-materials':'materials','timer-toggle':'planner','timer-reset':'planner','timer-minutes':'planner','timer-focus':'planner'}[action];
+      const feature={
+        'deadline-changes':'deadline-changes',
+        planner:'planner',
+        grades:'grades',
+        'more-grades':'grades',
+        'grades-visibility':'grades',
+        settings:'customization',
+        'settings-close':'customization',
+        'hidden-courses':'customization',
+        'customize-tab':'customization',
+        'advanced-settings':'customization',
+        'reset-appearance':'customization',
+        accent:'customization',
+        theme:'customization',
+        'course-up':'customization',
+        'course-down':'customization',
+        toolbox:'tools',
+        capture:'tools',
+        'selection-ai':'ai',
+        'select-source':'ai',
+        'open-hub':'course-hub',
+        'open-materials':'materials',
+        'timer-toggle':'planner',
+        'timer-reset':'planner',
+        'timer-minutes':'planner',
+        'timer-focus':'planner'
+      }[action];
       if(feature&&!enabled(feature))return false;
       if(action?.startsWith('make-'))return enabled('customization');
       if(action?.startsWith('kit-'))return enabled('customization')&&enabled('course-art');
@@ -1186,7 +1997,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function onClick(event){
       const candidate=event.target.closest?.('[data-rd-action]');
       if(candidate&&!actionEnabled(candidate.dataset.rdAction,candidate))return;
-      if(candidate?.dataset.rdAction==='customize-tab'){customizeTab=candidate.dataset.value||'look';if(!renderPanel())render();container.querySelector('.cz-tab[aria-selected="true"]')?.focus({preventScroll:true});return;}
+      if(candidate?.dataset.rdAction==='customize-tab'){
+        customizeTab=candidate.dataset.value||'look';
+        if(!renderPanel())render();
+        container.querySelector('.cz-tab[aria-selected="true"]')?.focus({preventScroll:true});
+        return;
+      }
       if(candidate?.dataset.rdAction==='hidden-courses')customizeTab='courses';
       if(arrange?.click(event))return;
       if(board?.click(event))return;
@@ -1199,11 +2015,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(drawerOpen()){
         const inside=event.target.closest?.('.rd-course-rail');
         if(!inside&&!event.target.closest?.('.rd-drawer-button')){setDrawer(false);return;}
-        if(inside&&['course','workspace','planner'].includes(button?.dataset?.rdAction)){setDrawer(false,{focus:false});Promise.resolve().then(()=>{if(!destroyed&&button.dataset.rdAction!=='planner')container.querySelector('.rd-drawer-button')?.focus({preventScroll:true});});}
+        if(inside&&['course','workspace','planner'].includes(button?.dataset?.rdAction)){
+          setDrawer(false,{focus:false});
+          Promise.resolve().then(()=>{if(!destroyed&&button.dataset.rdAction!=='planner')container.querySelector('.rd-drawer-button')?.focus({preventScroll:true});});
+        }
       }
       if(!button){
         const row=event.target.closest?.('[data-preview-id]');
-        if(row&&!event.target.closest?.('a,button,input,select,textarea,label,summary')&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey&&!(event.button>0)&&!root.getSelection?.()?.toString())showPreview(row.dataset.previewId,event,take());
+        if(row&&!event.target.closest?.('a,button,input,select,textarea,label,summary')&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey&&!(event.button>0)&&!root.getSelection?.()?.toString())
+          showPreview(row.dataset.previewId,event,take());
         return;
       }
       // Busy controls use aria-disabled so they keep keyboard focus while loading.
@@ -1213,7 +2033,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(action==='deadline-changes'){deadlineChanges?.open(button);return;}
       if(action==='drawer'){setDrawer(!button.dataset.close&&container.dataset.drawer!=='open');return;}
       // Grades' inline "Show grades" runs the same path as the toolbar switch.
-      if(action==='grades-visibility'){const value=settings().showGrades!==true,version=++gradeSaveVersion;gradeVisibilityOverride=value;motion?.cancel();render();savePersonal(data=>{data.settings.showGrades=value;}).then(saved=>{if(version===gradeSaveVersion){if(saved)gradeVisibilityOverride=null;render();}});return;}
+      if(action==='grades-visibility'){
+        const value=settings().showGrades!==true,version=++gradeSaveVersion;
+        gradeVisibilityOverride=value;
+        motion?.cancel();
+        render();
+        savePersonal(data=>{data.settings.showGrades=value;}).then(saved=>{if(version===gradeSaveVersion){if(saved)gradeVisibilityOverride=null;render();}});
+        return;
+      }
       if(handleCustomizeAction(action,button))return;
       if(action.startsWith('review-deck-')){void reviewDeck?.action(action,button.dataset);return;}
       if(action.startsWith('hub-')){hub?.handle(action,button.dataset);return;}
@@ -1224,8 +2051,22 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(action==='selection-ai'){toolbox?.open('ai',button);return;}
       if(action==='selection-archive'||action==='selection-undo'){void archiveSelection(action==='selection-undo');return;}
       if(action==='check-off'||action==='undo-check-off'){checkOff(String(button.dataset.id),action==='check-off',event,snapshot);return;}
-      if(action==='overview-view'){overviewMode=button.dataset.mode==='completed'?'completed':'actionable';render({tabMotion:event.detail>0,motionTarget:'.rd-overview-work',motionKind:'filter',snapshot});return;}
-      if(action==='overview-all'){captureCourseView();switchCourse('all');workspace='work';state.mode=overviewMode;state.query=overviewQuery;state.day='';readerOpen=false;render({tabMotion:event.detail>0,motionTarget:'.rd-workspace',snapshot});return;}
+      if(action==='overview-view'){
+        overviewMode=button.dataset.mode==='completed'?'completed':'actionable';
+        render({tabMotion:event.detail>0,motionTarget:'.rd-overview-work',motionKind:'filter',snapshot});
+        return;
+      }
+      if(action==='overview-all'){
+        captureCourseView();
+        switchCourse('all');
+        workspace='work';
+        state.mode=overviewMode;
+        state.query=overviewQuery;
+        state.day='';
+        readerOpen=false;
+        render({tabMotion:event.detail>0,motionTarget:'.rd-workspace',snapshot});
+        return;
+      }
       if(action==='course-section'){
         const id=String(button.dataset.id),next=button.dataset.tab;
         if(!normalizeData(settings()).courses.some(course=>course.id===id)||!['work','hub','materials','inbox'].includes(next))return;
@@ -1245,7 +2086,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(action==='native'){if(drawerOpen())setDrawer(false,{focus:false});onNative?.();return;}
       if(action==='retry-save'){flushDrafts();return;}
       if(action==='add-step'){addStep(button.dataset.id);return;}
-      if(action==='remove-step'){const id=button.dataset.id,step=button.dataset.step;if(/^(?:\d+|local-[\w-]+)$/.test(id||''))savePersonal(data=>{const task=data.tasks[id];if(task)task.checklist=(task.checklist||[]).filter(x=>x.id!==step);});return;}
+      if(action==='remove-step'){
+        const id=button.dataset.id,step=button.dataset.step;
+        if(/^(?:\d+|local-[\w-]+)$/.test(id||''))savePersonal(data=>{const task=data.tasks[id];if(task)task.checklist=(task.checklist||[]).filter(x=>x.id!==step);});
+        return;
+      }
       if(action==='planner'){openPlanner({page:'week'});return;}
       if(action==='settings'){settingsDock?.toggle(button);return;}
       if(action==='settings-close'){settingsDock?.close();return;}
@@ -1262,7 +2107,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(action==='grades'){workspace='grades';render({tabMotion:event.detail>0,motionTarget:'.rd-workspace',snapshot});return;}
       if(action==='more-grades'){gradeLimit+=40;render();return;}
       if(action==='course'){selectDashboardCourse(button.dataset.id,event,snapshot);return;}
-      if(action==='reader-tab'){const next=button.dataset.tab==='plan'?'plan':'details';if(readerTab===next)return;readerTab=next;render({tabMotion:event.detail>0,motionTarget:'.rd-reader-body',motionKind:'section',direction:next==='plan'?1:-1,snapshot});return;}
+      if(action==='reader-tab'){
+        const next=button.dataset.tab==='plan'?'plan':'details';
+        if(readerTab===next)return;
+        readerTab=next;
+        render({tabMotion:event.detail>0,motionTarget:'.rd-reader-body',motionKind:'section',direction:next==='plan'?1:-1,snapshot});
+        return;
+      }
       if(action==='preview'){
         if(workspace==='home'){captureCourseView();switchCourse('all');workspace='work';}showPreview(button.dataset.id,event,snapshot);return;
       }
@@ -1288,14 +2139,25 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(!/^(?:\d+|local-[\w-]+)$/.test(id))return;
         savePersonal(data=>{data.tasks[id]={...data.tasks[id],pinned:!data.tasks[id]?.pinned};});return;
       }
-      if(action==='reset'){captureCourseView();state=Model.cleanState({});selectedId=null;readerTab='details';readerOpen=false;pendingReaderScroll=null;visibleLimit=60;render();return;}
+      if(action==='reset'){
+        captureCourseView();
+        state=Model.cleanState({});
+        selectedId=null;
+        readerTab='details';
+        readerOpen=false;
+        pendingReaderScroll=null;
+        visibleLimit=60;
+        render();
+        return;
+      }
       if(action==='glance'){
         // A summary chip filters to its view; choosing it again returns to Up next.
         const mode=['overdue','today','tomorrow'].includes(button.dataset.mode)?button.dataset.mode:'actionable';
         const fromOtherWorkspace=workspace!=='work';
         if(fromOtherWorkspace){captureCourseView();workspace='work';workPage='assignments';board?.close();}
         readerOpen=false;state.mode=!fromOtherWorkspace&&state.mode===mode&&!state.day?'actionable':mode;state.day='';visibleLimit=60;
-        render({tabMotion:event.detail>0,motionTarget:fromOtherWorkspace?'.rd-workspace':'.rd-work',motionKind:fromOtherWorkspace?'workspace':'filter',snapshot,resetWorkspaceScroll:fromOtherWorkspace});return;
+        render({tabMotion:event.detail>0,motionTarget:fromOtherWorkspace?'.rd-workspace':'.rd-work',motionKind:fromOtherWorkspace?'workspace':'filter',snapshot,resetWorkspaceScroll:fromOtherWorkspace});
+        return;
       }
       if(action==='view'||action==='day'){readerOpen=false;
         if(action==='view'&&state.mode===button.dataset.mode&&!state.day)return;
@@ -1310,7 +2172,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // Personal appearance lives in the existing account-scoped store and shares
     // the private dock. Legacy course names, colors, images and art stay intact.
     function validArtTarget(id){return id==='all'||id==='theme'||/^\d+$/.test(id||'')&&normalizeData(settings()).allCourses.some(course=>course.id===id);}
-    function appearanceFor(data,id){return id==='theme'?(data.settings.themeArt||(data.settings.themeArt={})):id==='all'?(data.settings.overviewArt||(data.settings.overviewArt={})):((data.settings.coursePrefs||(data.settings.coursePrefs={}))[id]||(data.settings.coursePrefs[id]={}));}
+    function appearanceFor(data,id){
+      return id==='theme'?
+        (data.settings.themeArt||(data.settings.themeArt={})):
+        id==='all'?
+          (data.settings.overviewArt||(data.settings.overviewArt={})):
+          ((data.settings.coursePrefs||(data.settings.coursePrefs={}))[id]||(data.settings.coursePrefs[id]={}));
+    }
     async function uploadArtwork(input){
       const file=input.files?.[0],id=input.dataset.id,kind=input.dataset.kind;
       if(!enabled('customization')||!enabled('course-art')||!root.ReserveCustomArt||!file||customizeBusy||!validArtTarget(id)||!['banner','card','background','icon','border','title'].includes(kind))return;
@@ -1318,7 +2186,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       try{
         const svg=file.type==='image/svg+xml'||(!file.type&&/\.svg$/i.test(file.name));let asset,framing;
         if(svg){if(file.size>root.ReserveCustomArt.limits.fileBytes)throw Error('Choose an SVG smaller than 256 KiB.');asset=root.ReserveCustomArt.importSVG(await file.text(),file.name);}
-        else{if(!mediaStore)throw Error('Local media storage is unavailable.');const item=await root.ReserveMedia.prepare(file,kind,file.name);if(destroyed)return;hold=root.crypto.randomUUID();await mediaStore.putMany([item],{...mediaOptions(),hold});asset=item.asset;framing=item.framing;}
+        else{
+          if(!mediaStore)throw Error('Local media storage is unavailable.');
+          const item=await root.ReserveMedia.prepare(file,kind,file.name);
+          if(destroyed)return;
+          hold=root.crypto.randomUUID();
+          await mediaStore.putMany([item],{...mediaOptions(),hold});
+          asset=item.asset;
+          framing=item.framing;
+        }
         if(destroyed)return;
         if(['banner','card','background'].includes(kind)&&root.ReserveMediaFrame)asset={...root.ReserveMediaFrame.resolve(asset,{bannerFit:'cover',bannerPosition:'center'}),...framing};
         const saved=await savePersonal(data=>{appearanceFor(data,id)[kind+'Art']=asset;});
@@ -1327,7 +2203,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       finally{if(hold)await mediaStore.release(hold).catch(()=>{});customizeBusy=false;if(!destroyed)render();else mediaStore?.close();}
     }
     function frameShape(id,kind,view,frame){
-      const selector=kind==='banner'?'.rd-heading-art,.rd-banner-art':kind==='card'?'.rd-rail-art,.rd-dock-tile':'.rd-shell',target=Array.from(container.querySelectorAll(selector)).find(node=>(node.dataset.chArtId||node.closest?.('[data-ch-art-id]')?.dataset.chArtId)===id)||container.querySelector(kind==='background'?'.rd-shell':'.ch-art-preview'),box=target?.getBoundingClientRect?.();
+      const selector=kind==='banner'?'.rd-heading-art,.rd-banner-art':kind==='card'?'.rd-rail-art,.rd-dock-tile':'.rd-shell',
+        target=Array.from(container.querySelectorAll(selector)).find(node=>(node.dataset.chArtId||node.closest?.('[data-ch-art-id]')?.dataset.chArtId)===id)||
+          container.querySelector(kind==='background'?'.rd-shell':'.ch-art-preview'),
+        box=target?.getBoundingClientRect?.();
       if(!box?.width||!box?.height)return null;
       if(kind==='banner')return {width:view==='narrow'?Math.min(360,box.width):Math.max(960,box.width),height:({small:90,medium:140,tall:220})[frame.height]};
       if(kind==='card')return {width:box.width,height:box.height};
@@ -1338,24 +2217,53 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const pref=id==='theme'?settings().themeArt:id==='all'?settings().overviewArt:settings().coursePrefs?.[id],before=pref?.[kind+'Art'];if(!before)return;
       let frame=root.ReserveMediaFrame.clean(value),hold=null;customizeBusy=true;
       try{const old=root.ReserveMediaFrame.resolve(before,pref),changed=old.still!==frame.still||JSON.stringify(old.loop)!==JSON.stringify(frame.loop);
-        if(changed&&frame.asset.kind==='video'){const row=await mediaStore.get(frame.asset.mediaId);if(!row)throw Error('Saved media is missing.');const item=await root.ReserveMedia.prepare(row.blob,kind,row.asset.name,{loop:frame.loop,still:frame.still});if(destroyed)return;hold=root.crypto.randomUUID();await mediaStore.putMany([item],{...mediaOptions(),hold});frame={...frame,asset:item.asset,...item.framing};}
+        if(changed&&frame.asset.kind==='video'){
+          const row=await mediaStore.get(frame.asset.mediaId);
+          if(!row)throw Error('Saved media is missing.');
+          const item=await root.ReserveMedia.prepare(row.blob,kind,row.asset.name,{loop:frame.loop,still:frame.still});
+          if(destroyed)return;
+          hold=root.crypto.randomUUID();
+          await mediaStore.putMany([item],{...mediaOptions(),hold});
+          frame={...frame,asset:item.asset,...item.framing};
+        }
         if(destroyed)return;const saved=await savePersonal(data=>{appearanceFor(data,id)[kind+'Art']=frame;});customizeStatus=saved?'':transientStatus;
       }catch(error){customizeStatus=error.message;throw error;}finally{if(hold)await mediaStore.release(hold).catch(()=>{});customizeBusy=false;if(!destroyed)render();}
     }
     function artworkTarget(event){
       if(!enabled('customization')||!enabled('course-art')||customizeBusy)return null;
       const node=event.target?.closest?.('[data-ch-art-id],.ch-art-slot');
-      if(node){const id=node.dataset.chArtId||node.querySelector?.('[data-rd-field="art-upload"]')?.dataset.id,kind=node.dataset.chArtKind||node.dataset.kind;if(validArtTarget(id)&&['banner','card','background'].includes(kind))return {id,kind};}
+      if(node){
+        const id=node.dataset.chArtId||node.querySelector?.('[data-rd-field="art-upload"]')?.dataset.id,kind=node.dataset.chArtKind||node.dataset.kind;
+        if(validArtTarget(id)&&['banner','card','background'].includes(kind))return {id,kind};
+      }
       const banner=event.target?.closest?.('.rd-course-heading,.rd-course-banner,.rd-heading-art,.rd-banner-art');if(banner&&validArtTarget(state.courseId))return {id:state.courseId,kind:'banner'};
-      const card=event.target?.closest?.('.rd-rail-course,.rd-dock-it,.rd-rail-all');if(card){const id=card.dataset.arrangeCourse||card.dataset.id||(card.classList.contains('rd-rail-all')?'all':null);if(validArtTarget(id))return {id,kind:'card'};}
+      const card=event.target?.closest?.('.rd-rail-course,.rd-dock-it,.rd-rail-all');
+      if(card){const id=card.dataset.arrangeCourse||card.dataset.id||(card.classList.contains('rd-rail-all')?'all':null);if(validArtTarget(id))return {id,kind:'card'};}
       if(event.type==='paste'&&!event.target?.closest?.('input,textarea,[contenteditable="true"]')&&customizeOpen&&['art','courses'].includes(customizeTab))return {id:customizeCourseId,kind:'banner'};
       return null;
     }
-    function mediaFile(event){const transfer=event.clipboardData||event.dataTransfer,files=Array.from(transfer?.files||[]);if(files.length)return files;return Array.from(transfer?.items||[]).filter(item=>item.kind==='file').map(item=>item.getAsFile()).filter(Boolean);}
-    function onArtworkPaste(event){const target=artworkTarget(event),files=mediaFile(event);if(!target||!files.length)return;event.preventDefault();if(files.length!==1){customizeStatus='Choose one picture or video.';render();return;}void uploadArtwork({files,dataset:target});}
+    function mediaFile(event){
+      const transfer=event.clipboardData||event.dataTransfer,files=Array.from(transfer?.files||[]);
+      if(files.length)return files;
+      return Array.from(transfer?.items||[]).filter(item=>item.kind==='file').map(item=>item.getAsFile()).filter(Boolean);
+    }
+    function onArtworkPaste(event){
+      const target=artworkTarget(event),files=mediaFile(event);
+      if(!target||!files.length)return;
+      event.preventDefault();
+      if(files.length!==1){customizeStatus='Choose one picture or video.';render();return;}
+      void uploadArtwork({files,dataset:target});
+    }
     async function pasteArtwork(id,kind){
       if(customizeBusy||!validArtTarget(id)||!['banner','card','background'].includes(kind))return;
-      try{if(!root.navigator?.clipboard?.read)throw Error('Paste a picture with Ctrl+V.');const items=await root.navigator.clipboard.read(),files=[];for(const item of items){const type=item.types.find(type=>/^image\/(?:png|jpeg|webp|avif|gif|svg\+xml)$|^video\/(?:mp4|webm)$/.test(type));if(type)files.push(await item.getType(type));}if(destroyed)return;if(files.length!==1)throw Error('Copy one picture or video first.');await uploadArtwork({files,dataset:{id,kind}});}catch(error){if(!destroyed){customizeStatus=error.message||'Paste a picture with Ctrl+V.';render();}}
+      try{
+        if(!root.navigator?.clipboard?.read)throw Error('Paste a picture with Ctrl+V.');
+        const items=await root.navigator.clipboard.read(),files=[];
+        for(const item of items){const type=item.types.find(type=>/^image\/(?:png|jpeg|webp|avif|gif|svg\+xml)$|^video\/(?:mp4|webm)$/.test(type));if(type)files.push(await item.getType(type));}
+        if(destroyed)return;
+        if(files.length!==1)throw Error('Copy one picture or video first.');
+        await uploadArtwork({files,dataset:{id,kind}});
+      }catch(error){if(!destroyed){customizeStatus=error.message||'Paste a picture with Ctrl+V.';render();}}
     }
     function packBusy(){return makeOwn?.state.busy||quickPackLoading||['reviewing','applying','undoing'].includes(quickUpload?.state.phase);}
     async function reviewQuickPack(text){
@@ -1374,7 +2282,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }catch(error){if(!destroyed&&token===quickPackRead)quickPackError=error?.message||'The pack could not be read.';}
       finally{if(!destroyed){quickPackLoading=false;render();}}
     }
-    function packDropTarget(event){if(!enabled('customization'))return null;return event.target?.closest?.('[data-make-drop]')||(enabled('quick-pack')?event.target?.closest?.('[data-quick-pack-drop]'):null);}
+    function packDropTarget(event){
+      if(!enabled('customization'))return null;
+      return event.target?.closest?.('[data-make-drop]')||(enabled('quick-pack')?event.target?.closest?.('[data-quick-pack-drop]'):null);
+    }
     function onPackDragover(event){
       const art=artworkTarget(event);if(art&&Array.from(event.dataTransfer?.types||[]).includes('Files')){event.preventDefault();event.dataTransfer.dropEffect='copy';return;}
       const node=packDropTarget(event);if(!node||!Array.from(event.dataTransfer?.types||[]).includes('Files'))return;
@@ -1382,25 +2293,54 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     function onPackDragleave(event){const node=packDropTarget(event);if(node&&!node.contains(event.relatedTarget))delete node.dataset.over;}
     function onPackDrop(event){
-      const art=artworkTarget(event);if(art){event.preventDefault();const files=mediaFile(event);if(files.length!==1){customizeStatus='Choose one picture or video.';render();return;}void uploadArtwork({files,dataset:art});return;}
+      const art=artworkTarget(event);
+      if(art){event.preventDefault();const files=mediaFile(event);if(files.length!==1){customizeStatus='Choose one picture or video.';render();return;}void uploadArtwork({files,dataset:art});return;}
       const node=packDropTarget(event);if(!node)return;event.preventDefault();delete node.dataset.over;
       const files=Array.from(event.dataTransfer?.files||[]);if(files.length!==1){quickPackError='Choose one artwork pack at a time.';render();return;}
       if(node.hasAttribute('data-make-drop'))void makeOwn?.choose(files[0]);else void uploadQuickPack(files[0]);
     }
     function mediaOptions(){return {usedIds:()=>root.ReserveMedia.referenced(settings()),confirm:async()=>!destroyed&&root.confirm('Remove oldest unused media?')};}
-    function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+    function download(blob,name){
+      const url=URL.createObjectURL(blob),a=document.createElement('a');
+      a.href=url;
+      a.download=name;
+      a.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
     async function runKit(action,button){
       if(customizeBusy||!mediaStore||!root.ReserveCustomKits)return;
       const id=button.dataset.id||customizeCourseId,file=button.files?.[0];if(action==='kit-import'&&!file)return;
       if(['kit-save','kit-use'].includes(action)&&!validArtTarget(id))return;
       let hold=null;customizeBusy=true;customizeStatus='';render();
       try{
-        if(action==='kit-save'){const s=settings(),appearance=id==='theme'?s.themeArt:id==='all'?s.overviewArt:s.coursePrefs?.[id];const selected=Object.fromEntries([...root.ReserveCustomization.artKeys,'bannerFit','bannerPosition','titlePlacement'].filter(key=>appearance?.[key]!==undefined).map(key=>[key,appearance[key]])),kit=await root.ReserveCustomKits.capture(kitName,selected,{accent:s.accent,font:s.font,bannerSize:s.bannerSize},mediaStore);if(destroyed)return;await mediaStore.saveKit(kit,mediaOptions());kitName='';}
-        else if(action==='kit-import'){const imported=await root.ReserveCustomKits.importKit(file);if(destroyed)return;await mediaStore.putMany(imported.media,{...mediaOptions(),kit:imported.kit});}
+        if(action==='kit-save'){
+          const s=settings(),appearance=id==='theme'?s.themeArt:id==='all'?s.overviewArt:s.coursePrefs?.[id];
+          const selected=Object.fromEntries([...root.ReserveCustomization.artKeys,'bannerFit','bannerPosition','titlePlacement'].filter(key=>appearance?.[key]!==undefined).map(key=>[key,appearance[key]])),
+            kit=await root.ReserveCustomKits.capture(kitName,selected,{accent:s.accent,font:s.font,bannerSize:s.bannerSize},mediaStore);
+          if(destroyed)return;
+          await mediaStore.saveKit(kit,mediaOptions());
+          kitName='';
+        }
+        else if(action==='kit-import'){
+          const imported=await root.ReserveCustomKits.importKit(file);
+          if(destroyed)return;
+          await mediaStore.putMany(imported.media,{...mediaOptions(),kit:imported.kit});
+        }
         else{const kit=customKits.find(k=>k.id===button.dataset.kit);if(!kit)return;
           if(action==='kit-remove')await mediaStore.removeKit(kit.id);
           if(action==='kit-export'){const blob=await root.ReserveCustomKits.exportKit(kit,mediaStore);if(!destroyed)download(blob,kit.name.replace(/[^\w -]/g,'_')+'.chkit');}
-          if(action==='kit-use'){const refs=root.ReserveMedia.referenced({overviewArt:kit.appearance});if(refs.size){hold=root.crypto.randomUUID();await mediaStore.reserve(refs,hold);}if(destroyed)return;const saved=await savePersonal(data=>{const pref=appearanceFor(data,id);for(const key of [...root.ReserveCustomization.artKeys,'bannerFit','bannerPosition','titlePlacement'])delete pref[key];Object.assign(pref,structuredClone(kit.appearance));Object.assign(data.settings,{accent:kit.accent,font:kit.font,bannerSize:kit.bannerSize});});if(!saved)throw Error(transientStatus);}
+          if(action==='kit-use'){
+            const refs=root.ReserveMedia.referenced({overviewArt:kit.appearance});
+            if(refs.size){hold=root.crypto.randomUUID();await mediaStore.reserve(refs,hold);}
+            if(destroyed)return;
+            const saved=await savePersonal(data=>{
+              const pref=appearanceFor(data,id);
+              for(const key of [...root.ReserveCustomization.artKeys,'bannerFit','bannerPosition','titlePlacement'])delete pref[key];
+              Object.assign(pref,structuredClone(kit.appearance));
+              Object.assign(data.settings,{accent:kit.accent,font:kit.font,bannerSize:kit.bannerSize});
+            });
+            if(!saved)throw Error(transientStatus);
+          }
         }
         if(!destroyed)customKits=await mediaStore.listKits();
       }catch(error){customizeStatus=error?.message||'This kit could not be read.';}
@@ -1420,7 +2360,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(action==='art-paste'&&validArtTarget(id)&&['banner','card','background','icon','border','title'].includes(kind)){
         if(customizeBusy)return true;
         try{
-          let asset=root.ReserveCustomArt.importSVG(customizeDrafts[id+':'+kind]||'','Pasted '+kind+'.svg');if(['banner','card','background'].includes(kind)&&root.ReserveMediaFrame)asset=root.ReserveMediaFrame.resolve(asset);
+          let asset=root.ReserveCustomArt.importSVG(customizeDrafts[id+':'+kind]||'','Pasted '+kind+'.svg');
+          if(['banner','card','background'].includes(kind)&&root.ReserveMediaFrame)asset=root.ReserveMediaFrame.resolve(asset);
           customizeBusy=true;customizeStatus='Saving artwork…';render();
           savePersonal(data=>{appearanceFor(data,id)[kind+'Art']=asset;}).then(saved=>{
             customizeBusy=false;customizeStatus=saved?'Artwork saved. The page has updated.':transientStatus;
@@ -1456,11 +2397,19 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(!fieldEnabled({dataset:{rdField:'setting',setting:key}}))return Promise.resolve(false);
         if(key==='showGrades'){
           const version=++gradeSaveVersion;gradeVisibilityOverride=value===true;motion?.cancel();render();
-          return savePersonal(data=>{data.settings.showGrades=value===true;}).then(saved=>{if(version===gradeSaveVersion){if(saved)gradeVisibilityOverride=null;render();}return saved;});
+          return savePersonal(data=>{data.settings.showGrades=value===true;}).then(saved=>{
+            if(version===gradeSaveVersion){if(saved)gradeVisibilityOverride=null;render();}
+            return saved;
+          });
         }
         return savePersonal(data=>{
           if(key==='sceneTheme'&&value&&data.settings.makeYourOwn)delete data.settings.makeYourOwn.theme;
-          if(!Arrange){data.settings[key]=value;if(key==='deskOrder')data.settings.dashboardLayout=value==='stacked'?'list':'split';if(key==='dashboardLayout')data.settings.deskOrder=value==='list'?'stacked':'context-first';return;}
+          if(!Arrange){
+            data.settings[key]=value;
+            if(key==='deskOrder')data.settings.dashboardLayout=value==='stacked'?'list':'split';
+            if(key==='dashboardLayout')data.settings.deskOrder=value==='list'?'stacked':'context-first';
+            return;
+          }
           const before=Arrange.snapshot(data.settings);
           if(key==='courseNavigation'){Arrange.change(data.settings,{type:'navigation',value});return;}
           if(key==='showCourseInformation'){const command={type:value?'restore-context':'hide-context'};Arrange.change(data.settings,command);return;}
@@ -1492,7 +2441,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
 
     async function savePersonal(change){
-      try{await store.update(change);if(!drafts.size&&transientStatus.startsWith('Could not save:')){transientStatus='';render();}return true;}
+      // The store stays silent when a save leaves the data as it was (storage.js update), so a control the store
+      // cleaned back to the saved value still gets its redraw here: a fresh notify replaces `personal`.
+      const personalBefore=personal;
+      try{
+        await store.update(change);
+        if(personal===personalBefore&&typeof store.subscribe==='function')scheduleRender();
+        if(!drafts.size&&transientStatus.startsWith('Could not save:')){transientStatus='';render();}
+        return true;
+      }
       catch(error){transientStatus=`Could not save: ${error?.message||'Please try again.'}`;render();return false;}
     }
 
@@ -1508,7 +2465,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(settingsDock?.handleKeydown(event))return;
       // Esc closes the phone drawer, then the phone reader sheet (focus returns to its row).
       if(event.key==='Escape'&&drawerOpen()){event.preventDefault();setDrawer(false);return;}
-      if(event.key==='Escape'&&phone()&&readerOpen&&workspace==='work'&&(event.composedPath?.()[0]||event.target)?.dataset?.rdField!=='query'){event.preventDefault();closePreview();return;}
+      if(event.key==='Escape'&&phone()&&readerOpen&&workspace==='work'&&(event.composedPath?.()[0]||event.target)?.dataset?.rdField!=='query'){
+        event.preventDefault();
+        closePreview();
+        return;
+      }
       if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'&&toolbox){event.preventDefault();toolbox.open('quick',container.querySelector(':focus'));return;}
       // Workspace tabs only: the Tools dock's tabs share .t-tab but handle their own keys.
       // Alt/Ctrl/Cmd chords stay the browser's (Alt+Left is Back).
@@ -1523,13 +2484,19 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const typing=target?.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName||'');
       if((event.key==='/'&&!typing&&!event.ctrlKey&&!event.metaKey&&!event.altKey)||((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'&&!typing&&enabled('tools'))){
         // Assignments' search is rendered in the command bar and in the heading; the one on screen takes focus.
-        event.preventDefault();const selector=workspace==='home'?'[data-rd-field="overview-query"]':workspace==='grades'?'[data-rd-field="grade-query"]':workspace==='materials'?'[data-rd-field="material-query"]':workspace==='inbox'?'[data-rd-field="hub-query"]':'[data-rd-field="query"]';
-        const input=Array.from(container.querySelectorAll?.(selector)||[]).find(field=>field.getClientRects?.().length)||container.querySelector(selector);input?.focus();input?.select();
+        event.preventDefault();
+        const selector=workspace==='home'?'[data-rd-field="overview-query"]':workspace==='grades'?'[data-rd-field="grade-query"]':workspace==='materials'?'[data-rd-field="material-query"]':workspace==='inbox'?'[data-rd-field="hub-query"]':'[data-rd-field="query"]';
+        const input=Array.from(container.querySelectorAll?.(selector)||[]).find(field=>field.getClientRects?.().length)||container.querySelector(selector);
+        input?.focus();
+        input?.select();
       }else if(event.key==='Escape'&&target?.dataset?.rdField==='query'&&state.query){event.preventDefault();state.query='';visibleLimit=60;render();}
     }
 
     const unsubscribe=typeof store.subscribe==='function'?store.subscribe(data=>{personal=data||store.get()||{};normalizedCache=null;render();}):()=>{};
-    container.addEventListener('dragover',onPackDragover);container.addEventListener('dragleave',onPackDragleave);container.addEventListener('drop',onPackDrop);container.addEventListener('paste',onArtworkPaste);
+    container.addEventListener('dragover',onPackDragover);
+    container.addEventListener('dragleave',onPackDragleave);
+    container.addEventListener('drop',onPackDrop);
+    container.addEventListener('paste',onArtworkPaste);
     container.addEventListener('input',onInput);
     container.addEventListener('change',onChange);
     container.addEventListener('focusout',onFocusout);container.addEventListener('focusin',onHeaderFocusin);
@@ -1539,10 +2506,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // Pointer and key input also keep the living drawings going: after two minutes with none,
     // motion.js lets them rest where they stand until the next input (the idle rest).
     const onPointerdown=event=>{container.dataset.input='pointer';motion?.activity?.();motion?.busy?.();arrange?.pointerdown(event);};
-    // Scrolling holds the drawings briefly (motion.js ART_BUSY_MS).
-    const onWheel=()=>{motion?.busy?.();};
+    // Scrolling is input too, but it never holds the drawings: they keep playing while the page scrolls.
+    const onWheel=()=>{motion?.activity?.();};
     container.addEventListener('pointerdown',onPointerdown);container.addEventListener('wheel',onWheel,{passive:true});
-    const onArrangePointerUp=event=>arrange?.pointerup(event),onArrangePointerCancel=event=>arrange?.pointercancel(event),onArrangeContext=event=>arrange?.contextmenu(event);
+    const onArrangePointerUp=event=>arrange?.pointerup(event),
+      onArrangePointerCancel=event=>arrange?.pointercancel(event),
+      onArrangeContext=event=>arrange?.contextmenu(event);
     container.addEventListener('pointerup',onArrangePointerUp);
     container.addEventListener('pointercancel',onArrangePointerCancel);
     container.addEventListener('contextmenu',onArrangeContext);
@@ -1572,16 +2541,35 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         remember();
         flushDrafts();
         destroyed=true;consumeSources();pendingRender=null;root.chrome?.storage?.onChanged?.removeListener?.(navChanged);
-        readerLayout?.disconnect();railLayout?.disconnect();railAncestors?.disconnect();root.clearTimeout(railTimer);if(railSelectionFrame)cancelPaint(railSelectionFrame);
+        readerLayout?.disconnect();
+        railLayout?.disconnect();
+        railAncestors?.disconnect();
+        root.clearTimeout(railTimer);
+        if(railSelectionFrame)cancelPaint(railSelectionFrame);
         root.removeEventListener?.('resize',queueRail);document.fonts?.removeEventListener?.('loadingdone',queueRail);
         if(sceneActive){root.ReserveSceneThemes?.remove(container);sceneActive=false;}
         root.ReserveDataTheme?.remove(container);makeOwn?.destroy();frameEditor?.destroy();frameController?.destroy();mediaController?.destroy();courseDock.destroy();
         if(!customizeBusy)mediaStore?.close();
         reviewDeck?.destroy();gradeImpact?.destroy();
-        ++quickPackRead;deadlineChanges?.destroy();quickUpload?.destroy();arrange?.destroy();board?.destroy();settingsDock?.destroy();materials?.destroy();hub?.destroy();ownFiles?.destroy();courseFiles?.destroy();courseFileOpen?.destroy();motion?.destroy();toolbox?.destroy();
+        ++quickPackRead;
+        deadlineChanges?.destroy();
+        quickUpload?.destroy();
+        arrange?.destroy();
+        board?.destroy();
+        settingsDock?.destroy();
+        materials?.destroy();
+        hub?.destroy();
+        ownFiles?.destroy();
+        courseFiles?.destroy();
+        courseFileOpen?.destroy();
+        motion?.destroy();
+        toolbox?.destroy();
         clearInterval(freshnessTimer);clearInterval(focusTimer);clearTimeout(entranceTimer);
         unsubscribe?.();
-        container.removeEventListener('dragover',onPackDragover);container.removeEventListener('dragleave',onPackDragleave);container.removeEventListener('drop',onPackDrop);container.removeEventListener('paste',onArtworkPaste);
+        container.removeEventListener('dragover',onPackDragover);
+        container.removeEventListener('dragleave',onPackDragleave);
+        container.removeEventListener('drop',onPackDrop);
+        container.removeEventListener('paste',onArtworkPaste);
         container.removeEventListener('input',onInput);
         container.removeEventListener('change',onChange);
         container.removeEventListener('focusout',onFocusout);container.removeEventListener('focusin',onHeaderFocusin);
@@ -1594,12 +2582,27 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         container.remove();
       },
       updateSnapshot(next){
+        if(destroyed)return;
+        // The same snapshot again (a tab shown again) keeps its caches: only the clock can have moved, and the page is
+        // redrawn only when that changes what it shows (updateFreshness).
+        if(next&&next===currentSnapshot){if(!timeSettled())scheduleRender();return;}
         if(next&&Array.isArray(next.courses)&&Array.isArray(next.assignments)){currentSnapshot=next;normalizedCache=null;contentCache.clear();}
         scheduleRender();
       },
-      setStatus(text){const next=stringValue(text);if(destroyed||next===externalStatus)return;const warning=!refreshing&&transientStatus.startsWith('Could not save:');externalStatus=next;if(!refreshing)transientStatus='';updateStatus();if(warning)scheduleRender();},
+      setStatus(text){
+        const next=stringValue(text);
+        if(destroyed||next===externalStatus)return;
+        const warning=!refreshing&&transientStatus.startsWith('Could not save:');
+        externalStatus=next;
+        if(!refreshing)transientStatus='';
+        updateStatus();
+        if(warning)scheduleRender();
+      },
     };
   }
 
-  return {mount,helpers:{patchUI,createCourseDock,sameOriginLink,assignmentLink,gradePeriodLabel,filterAssignments:Model.filterAssignments,safeCourseImage,statusLabel,dateMs}};
+  return {
+    mount,
+    helpers:{patchUI,createCourseDock,sameOriginLink,assignmentLink,gradePeriodLabel,filterAssignments:Model.filterAssignments,safeCourseImage,statusLabel,dateMs}
+  };
 });

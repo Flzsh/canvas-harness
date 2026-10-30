@@ -111,3 +111,11 @@ test('an absent status chip still takes its normal row across responsive widths'
   assert.match(dock,/\.rd \.rd-appearance\.ch-settings-dock\[data-open="true"\]\s*\{\s*transform:none;transition:opacity/);
   assert.match(css('customize.css'),/\.rd \.rd-arrange-grip:focus-visible::after\s*\{content:"Move"/);
 });
+test('late content and the toast icon fade in once and then let go of the fade',()=>{
+ // rd-fade is only from{opacity:0}, so `backwards` paints the same frames as `both` without keeping a finished opacity
+ // animation (and its compositor layer) on every node for its whole life.
+ const main=css('refresh.css'),rule=selector=>{const at=main.indexOf(selector+' {');assert.ok(at>=0,selector);return main.slice(at,main.indexOf('}',at));};
+ assert.match(main,/@keyframes rd-fade \{ from \{ opacity: 0; \} \}/);
+ assert.match(rule('.rd .rd-deck-section, .rd .rd-announcement, .rd .rd-message, .rd .rd-home-body, .rd .rd-home-module, .rd .rd-chapter, .rd .rd-teacher-row, .rd .rd-document-link, .rd .rd-thread-message, .rd .rd-warning'),/animation: rd-fade 190ms var\(--rd-fade\) backwards;/);
+ assert.match(main,/\.rd \.rd-toast > \[role=status\] > \.rd-icon \{ animation: rd-fade 170ms var\(--rd-fade\) backwards; \}/);
+});

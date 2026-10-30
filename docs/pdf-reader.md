@@ -1,5 +1,5 @@
 <!-- PDF mark-up tools adapted from HarryX081125's work, issue #53. -->
-# PDF reading beside Canvas — 3.7.0
+# PDF reading beside Canvas — 3.8.0
 
 The workspace PDF reader opens identified PDFs from assignment and submission pages, the Course hub, My links & files, Files and module items. Feature switches still control loading. Quiz pages never activate the reader. Modified and middle clicks retain their normal browser behavior. Ordinary pages keep one click listener; only Files routes watch for address changes.
 

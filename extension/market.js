@@ -19,7 +19,11 @@
  async function open(url){
   let granted=false;try{granted=await root.chrome.permissions?.request(access());}catch{}
   if(granted)try{await sync();}catch{}
-  if(root.chrome.runtime.sendMessage){const reply=await root.chrome.runtime.sendMessage({type:'market-open',url});if(!reply?.ok)throw Error(reply?.reason||'Choose your Canvas school before opening Market.');return reply.tab;}
+  if(root.chrome.runtime.sendMessage){
+   const reply=await root.chrome.runtime.sendMessage({type:'market-open',url});
+   if(!reply?.ok)throw Error(reply?.reason||'Choose your Canvas school before opening Market.');
+   return reply.tab;
+  }
   return root.chrome.tabs.create({url});
  }
  root.ReserveMarket=Object.freeze({sync,open});

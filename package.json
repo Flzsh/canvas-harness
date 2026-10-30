@@ -1,9 +1,9 @@
 {
   "name": "canvas-harness",
-  "version": "3.7.0",
+  "version": "3.8.0",
   "license": "GPL-3.0-only",
   "private": true,
-  "description": "A Canvas workspace you build yourself: assignments beside their instructions, a weekly planner, study tools and a study companion.",
+  "description": "For students on Canvas LMS: your courses, assignments, planner and PDFs redrawn as one calm page you arrange yourself.",
   "author": "Flzsh",
   "engines": {
     "node": ">=22"

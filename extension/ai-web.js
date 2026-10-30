@@ -157,7 +157,8 @@
               args: [message.text, {id: provider.id, origin: target.saved.origin, expectedURL: target.tab.url, autoSend:message.autoSend===true}]
             });
             const result = results && results.length === 1 && results[0].frameId === 0 && results[0].result;
-            if (!result || !['injected', 'sent', 'send-uncertain', 'no-editor', 'error'].includes(result.status) || typeof result.message !== 'string') return reply('error', 'The provider page did not confirm insertion. Review the page before retrying.');
+            if (!result || !['injected', 'sent', 'send-uncertain', 'no-editor', 'error'].includes(result.status) || typeof result.message !== 'string')
+              return reply('error', 'The provider page did not confirm insertion. Review the page before retrying.');
             last = reply(result.status, result.message);
             if (result.status !== 'no-editor' || !result.retryable) return last;
           }

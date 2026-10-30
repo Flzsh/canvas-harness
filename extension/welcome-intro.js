@@ -346,8 +346,30 @@ let n=0;
 function mount(el){
  const k=++n;el.innerHTML=SVG.split('intro-wipe').join('intro-wipe-'+k).split('intro-tag').join('intro-tag-'+k);
  const q=s=>el.querySelector(s),qa=s=>[...el.querySelectorAll(s)];
- const world=q('.iw'),logo=q('.logo'),hammer=q('.hammer'),whole=q('.whole'),broke=q('.broke'),chunk=q('.chunk'),bits=q('.bits'),sparks=qa('.spark'),rings=qa('.ring'),objs=qa('.ob'),marks=qa('.mk'),wiper=q('.wiper'),brush=q('.brush'),letters=qa('.hl');
- const markTf=marks.map(m=>m.getAttribute('transform')),tagwipe=q('.tagwipe'),sewwipe=q('.sewwipe'),startb=q('.startb'),strap=q('.strap'),blabel=q('.blabel'),rivets=qa('.rivet'),nib=q('.nib'),tstars=qa('.tstar'),bshine=q('.bshine');
+ const world=q('.iw'),
+   logo=q('.logo'),
+   hammer=q('.hammer'),
+   whole=q('.whole'),
+   broke=q('.broke'),
+   chunk=q('.chunk'),
+   bits=q('.bits'),
+   sparks=qa('.spark'),
+   rings=qa('.ring'),
+   objs=qa('.ob'),
+   marks=qa('.mk'),
+   wiper=q('.wiper'),
+   brush=q('.brush'),
+   letters=qa('.hl');
+ const markTf=marks.map(m=>m.getAttribute('transform')),
+   tagwipe=q('.tagwipe'),
+   sewwipe=q('.sewwipe'),
+   startb=q('.startb'),
+   strap=q('.strap'),
+   blabel=q('.blabel'),
+   rivets=qa('.rivet'),
+   nib=q('.nib'),
+   tstars=qa('.tstar'),
+   bshine=q('.bshine');
  function setT(T){
   // the hammer: held back, pulled further, down fast, a small recoil
   const A0=-44;let ang=A0;
@@ -357,12 +379,30 @@ function mount(el){
   const e=eo(cl((T-D.HIT)/.45));
   chunk.setAttribute('transform','translate('+(D.th[0]*e).toFixed(2)+' '+(D.th[1]*e).toFixed(2)+') rotate('+(D.turn*e).toFixed(2)+' '+D.cc[0].toFixed(1)+' '+D.cc[1].toFixed(1)+')');
   bits.style.display=T>=D.HIT+.17?'':'none';
-  const g=T-D.HIT,sq=g>=0&&g<.36?1-.06*Math.sin(Math.PI*g/.12)*Math.exp(-g*9):1;logo.setAttribute('transform',sq===1?'':'translate('+D.CX+' '+D.CY+') scale('+(2-sq).toFixed(4)+' '+sq.toFixed(4)+') translate('+(-D.CX)+' '+(-D.CY)+')');
+  const g=T-D.HIT,sq=g>=0&&g<.36?1-.06*Math.sin(Math.PI*g/.12)*Math.exp(-g*9):1;
+  logo.setAttribute('transform',sq===1?'':'translate('+D.CX+' '+D.CY+') scale('+(2-sq).toFixed(4)+' '+sq.toFixed(4)+') translate('+(-D.CX)+' '+(-D.CY)+')');
   // the blow jolts the page for three frames
   const sh=[[9,-6],[-7,4],[4,-2]][Math.floor((T-D.HIT)*12+1e-6)];world.setAttribute('transform',T>=D.HIT&&sh?'translate('+sh[0]+' '+sh[1]+')':'');
-  const sp=cl((T-D.HIT)/.55);sparks.forEach((s,i)=>{const on=T>=D.HIT&&sp<1;s.style.display=on?'':'none';if(on){const a=[-.9,.2,2.2,1.2][i],d=48*eo(sp)*(1+i*.25);s.setAttribute('transform','translate('+(Math.cos(a)*d).toFixed(1)+' '+(Math.sin(a)*d-14*sp).toFixed(1)+') scale('+(.5+.9*eo(sp)).toFixed(2)+')');s.style.opacity=sp<.6?1:sp<.8?.6:.3;}});
+  const sp=cl((T-D.HIT)/.55);
+  sparks.forEach((s,i)=>{
+    const on=T>=D.HIT&&sp<1;
+    s.style.display=on?'':'none';
+    if(on){
+      const a=[-.9,.2,2.2,1.2][i],d=48*eo(sp)*(1+i*.25);
+      s.setAttribute('transform','translate('+(Math.cos(a)*d).toFixed(1)+' '+(Math.sin(a)*d-14*sp).toFixed(1)+') scale('+(.5+.9*eo(sp)).toFixed(2)+')');
+      s.style.opacity=sp<.6?1:sp<.8?.6:.3;
+    }
+  });
   // rings of the blow spread over the whole page, one after another, and fade
-  rings.forEach((r,i)=>{const p=cl((T-D.HIT-i*.12)/1.1);if(p<=0||p>=1){r.style.display='none';return;}r.style.display='';const s=1+eo(p)*(7.5+i*.6);r.setAttribute('transform','translate('+D.CX+' '+D.CY+') scale('+s.toFixed(3)+') translate('+(-D.CX)+' '+(-D.CY)+')');r.style.opacity=((1-p)*(.7-i*.12)).toFixed(3);r.style.strokeWidth=(5/s).toFixed(2);});
+  rings.forEach((r,i)=>{
+    const p=cl((T-D.HIT-i*.12)/1.1);
+    if(p<=0||p>=1){r.style.display='none';return;}
+    r.style.display='';
+    const s=1+eo(p)*(7.5+i*.6);
+    r.setAttribute('transform','translate('+D.CX+' '+D.CY+') scale('+s.toFixed(3)+') translate('+(-D.CX)+' '+(-D.CY)+')');
+    r.style.opacity=((1-p)*(.7-i*.12)).toFixed(3);
+    r.style.strokeWidth=(5/s).toFixed(2);
+  });
   // the subjects fly out of the gap and land where they lie, then soften into the background
   objs.forEach((o,i)=>{const f=D.fly[i],s0=D.FLY0+f.d*D.STEP,u=cl((T-s0)/D.FLYT);
    if(u<=0){o.style.display='none';return;}o.style.display='';
@@ -371,7 +411,13 @@ function mount(el){
    o.setAttribute('transform','translate('+pos[0].toFixed(1)+' '+(pos[1]+hop).toFixed(1)+') rotate('+rot.toFixed(1)+') scale('+sc.toFixed(3)+')');
    o.style.opacity=(after<=.25?1:lerp(1,f.fade,eio(cl((after-.25)/.6)))).toFixed(3);});
   // the marks twinkle in between them
-  marks.forEach((m,i)=>{const s0=D.MARK0+(i*37%D.nMarks)/D.nMarks*1.4,p=cl((T-s0)/.35);if(p<=0){m.style.display='none';return;}m.style.display='';m.style.opacity=(p*.62).toFixed(3);m.setAttribute('transform',markTf[i]+' scale('+(.3+.7*eo(p)).toFixed(3)+')');});
+  marks.forEach((m,i)=>{
+    const s0=D.MARK0+(i*37%D.nMarks)/D.nMarks*1.4,p=cl((T-s0)/.35);
+    if(p<=0){m.style.display='none';return;}
+    m.style.display='';
+    m.style.opacity=(p*.62).toFixed(3);
+    m.setAttribute('transform',markTf[i]+' scale('+(.3+.7*eo(p)).toFixed(3)+')');
+  });
   // a brush flies out of the gap and paints CANVAS in up and down strokes, then is laid down beside the word
   const pw=cl((T-D.PAINT0)/(D.PAINT1-D.PAINT0));wiper.setAttribute('width',(D.wipe*pw).toFixed(1));
   let bp=null,br=0;const front=[D.CAx-24+D.wipe*pw,D.CAy+D.cap*(.5+.46*Math.sin(pw*Math.PI*15))];
@@ -384,13 +430,24 @@ function mount(el){
   // the nib writes the tagline; two little stars pop at its ends
   const tp=cl((T-D.TAG0)/D.TAGT),tw=D.tagW*tp;tagwipe.setAttribute('width',tw.toFixed(1));
   nib.style.display=tp>0&&tp<1?'':'none';if(tp>0&&tp<1)nib.setAttribute('transform','translate('+(D.TX0+tw).toFixed(1)+' '+(D.TY+2-4*Math.abs(Math.sin(tp*40))).toFixed(1)+') rotate(28)');
-  tstars.forEach((st,i)=>{const p=cl((T-D.TAG0-D.TAGT+.1-i*.08)/.3),[x,y]=st.dataset.p.split(' ');st.setAttribute('opacity',p>0?1:0);st.setAttribute('transform','rotate('+(90*(1-eo(p))).toFixed(1)+' '+x+' '+y+') translate('+x+' '+y+') scale('+(eo(p)*(1+.35*Math.sin(Math.PI*p))).toFixed(3)+') translate('+(-x)+' '+(-y)+')');});
+  tstars.forEach((st,i)=>{
+    const p=cl((T-D.TAG0-D.TAGT+.1-i*.08)/.3),[x,y]=st.dataset.p.split(' ');
+    st.setAttribute('opacity',p>0?1:0);
+    st.setAttribute('transform','rotate('+(90*(1-eo(p))).toFixed(1)+' '+x+' '+y+') translate('+x+' '+y+') scale('+(eo(p)*(1+.35*Math.sin(Math.PI*p))).toFixed(3)+') translate('+(-x)+' '+(-y)+')');
+  });
   // the strap drops in like a HARNESS letter, is sewn round, riveted, then the word is stamped in
   const bt=T-D.BTN0;startb.style.display=bt>=0?'':'none';
   if(bt>=0){const d=cl(bt/.38),bounce=d<1?-46*(1-eo(d))+(d>.7?4*Math.sin(Math.PI*(d-.7)/.3):0):0;strap.setAttribute('transform','translate(0 '+bounce.toFixed(1)+')');
    sewwipe.setAttribute('width',((D.SW+8)*eio(cl((bt-.3)/.55))).toFixed(1));
-   rivets.forEach((r,i)=>{const p=cl((bt-.36-[0,.06,.5,.56][i])/.18),[x,y]=r.dataset.p.split(' ');r.style.display=p>0?'':'none';r.setAttribute('transform','translate('+x+' '+y+') scale('+(eo(p)*(1+.4*Math.sin(Math.PI*p))).toFixed(3)+') translate('+(-x)+' '+(-y)+')');});
-   const st=cl((bt-.62)/.22),sc=1.35-.35*eo(st),mx=(D.SX+D.SW/2).toFixed(1),my=(D.SY+D.SH/2).toFixed(1);blabel.setAttribute('opacity',st>0?Math.min(1,st*2.5).toFixed(2):0);blabel.setAttribute('transform','translate('+mx+' '+my+') scale('+sc.toFixed(3)+') translate(-'+mx+' -'+my+')');}
+   rivets.forEach((r,i)=>{
+     const p=cl((bt-.36-[0,.06,.5,.56][i])/.18),[x,y]=r.dataset.p.split(' ');
+     r.style.display=p>0?'':'none';
+     r.setAttribute('transform','translate('+x+' '+y+') scale('+(eo(p)*(1+.4*Math.sin(Math.PI*p))).toFixed(3)+') translate('+(-x)+' '+(-y)+')');
+   });
+   const st=cl((bt-.62)/.22),sc=1.35-.35*eo(st),mx=(D.SX+D.SW/2).toFixed(1),my=(D.SY+D.SH/2).toFixed(1);
+   blabel.setAttribute('opacity',st>0?Math.min(1,st*2.5).toFixed(2):0);
+   blabel.setAttribute('transform','translate('+mx+' '+my+') scale('+sc.toFixed(3)+') translate(-'+mx+' -'+my+')');
+  }
   letters.forEach((l,j)=>{const h0=D.STRAP0+j*.1,p=cl((T-h0)/.24);l.style.display=T>=h0?'':'none';if(T>=h0)l.setAttribute('transform','translate(0 '+(-34*(1-eo(p))).toFixed(1)+') '+l.dataset.tf);});
  }
  // after the opening: the marks keep twinkling, slowly (called a few times a second by the page)
@@ -400,7 +457,8 @@ function mount(el){
   objs.forEach((o,i)=>{const f=D.fly[i],dy=k*3.2*Math.sin(t*1.1+i*1.7),a=k*2.6*Math.sin(t*.8+i*2.3),h=i===(hopper*7)%D.fly.length&&hp<1?Math.sin(Math.PI*hp):0;
    o.setAttribute('transform','translate('+f.tx.toFixed(1)+' '+(f.ty+dy-12*h).toFixed(1)+') rotate('+(f.deg+a+10*h).toFixed(1)+') scale('+f.sc.toFixed(3)+')');});
   marks.forEach((m,i)=>{if(i%3)return;m.style.opacity=(.38+.24*(.5+.5*Math.sin(t*1.3+i))).toFixed(3);});
-  if(brush.style.display!=='none')brush.setAttribute('transform','translate('+D.brushEnd[0].toFixed(1)+' '+(D.brushEnd[1]-k*2*Math.abs(Math.sin(t*1.7))).toFixed(1)+') rotate('+(62+k*4*Math.sin(t*1.7)).toFixed(1)+') scale(1.6)');}
+  if(brush.style.display!=='none')
+    brush.setAttribute('transform','translate('+D.brushEnd[0].toFixed(1)+' '+(D.brushEnd[1]-k*2*Math.abs(Math.sin(t*1.7))).toFixed(1)+') rotate('+(62+k*4*Math.sin(t*1.7)).toFixed(1)+') scale(1.6)');}
  // the drawn Start button: the page lays its real, focusable button over this group (getBoundingClientRect) and calls
  // hover(on) so the drawing answers the pointer
  function hover(on){startb.setAttribute('transform',on?'translate(0 -3) rotate(-1 '+(D.SX+D.SW/2).toFixed(1)+' '+(D.SY+D.SH/2).toFixed(1)+')':'');bshine.setAttribute('opacity',on?1:0);}

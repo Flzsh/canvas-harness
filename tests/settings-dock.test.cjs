@@ -7,9 +7,11 @@ const path=require('node:path');
 const View=require('../extension/dashboard-view.js');
 const SettingsDock=require('../extension/settings-dock.js');
 const source=file=>fs.readFileSync(path.join(__dirname,'..','extension',file),'utf8');
+// scripts/readable-lines.cjs spreads dense code over several lines (whitespace only); match the code without them.
+const compact=text=>text.replace(/\n[ \t]*/g,'');
 
 function dashboard(customizeOpen=false,customizeTab='look'){
- const courses=[{id:'7',name:'CL Chemistry',color:'#367964'},{id:'8',name:'Latin',color:'#956821'}];
+ const courses=[{id:'7',name:'Honors Chemistry',color:'#367964'},{id:'8',name:'Latin',color:'#956821'}];
  const c={s:{theme:'dark',dashboardLayout:'split',density:'compact',accent:'forest',motion:'gentle',livingArt:'on',showCourseStrip:true,showRecentGrades:true,showGrades:false},
   state:{courseId:'all',query:'',mode:'actionable'},courses,allCourses:courses,courseMap:new Map(courses.map(course=>[course.id,course])),
   items:[],local:{},insights:{ready:[],recentGrades:[]},filtered:{items:[]},now:Date.parse('2026-10-09T16:00:00Z'),
@@ -57,7 +59,7 @@ test('every original personal customization field, course editor, and grade cont
  for(const field of ['course-visible','course-color','course-name']){
   assert.equal((html.match(new RegExp(`data-rd-field="${field}"`,'g'))||[]).length,2,`keep ${field} for both courses`);
  }
- for(const text of ['Accent color','Course list','Start over','Reset layout','Reset appearance','Living drawings','Iris accent','CL Chemistry','Latin']){
+ for(const text of ['Accent color','Course list','Start over','Reset layout','Reset appearance','Living drawings','Iris accent','Honors Chemistry','Latin']){
   if(text==='Course names, colors &amp; visibility'||text==='All settings &amp; backups'){
    assert.ok(html.includes(text.replace('&amp;','&'))||html.includes(text),`keep ${text}`);
   }else assert.ok(html.includes(text),`keep ${text}`);
@@ -65,7 +67,7 @@ test('every original personal customization field, course editor, and grade cont
  assert.match(html,/data-rd-action="accent"/);
  assert.doesNotMatch(html,/data-setting="accent"/,'one visible palette');
  // Dark mode (the user asked for it, 2026-10-15) is a choice in Look, light unless chosen; the night slider shows only in dark.
- {const ui=require('node:fs').readFileSync(require('node:path').join(__dirname,'..','extension','customize-ui.js'),'utf8');assert.match(ui,/choices\('theme','Theme',\[\['light','Light'[\s\S]*?\{value:s\.theme==='dark'\?'dark':'light',cols:2\}\)/);assert.match(ui,/\(s\.theme==='dark'\?group\('Artwork at night'/);}
+ {const ui=compact(require('node:fs').readFileSync(require('node:path').join(__dirname,'..','extension','customize-ui.js'),'utf8'));assert.match(ui,/choices\('theme','Theme',\[\['light','Light'[\s\S]*?\{value:s\.theme==='dark'\?'dark':'light',cols:2\}\)/);assert.match(ui,/\(s\.theme==='dark'\?group\('Artwork at night'/);}
  assert.equal((html.match(/class="rd-swatch ch-accent-choice"/g)||[]).length,6);
  assert.match(html,/data-rd-field="setting" data-setting="showGrades"/);
  const viewSource=source('dashboard-view.js');

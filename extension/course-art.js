@@ -72,24 +72,87 @@ const SCENES={"home":("<g class=\"art-ground\"><path fill=\"#EFEAE0\" d=\"M-4 20
 <path class=\"rd-frame-x\" data-accent vector-effect=\"non-scaling-stroke\" d=\"M300 36C300.5 54 299.6 70 300 86C300 95 295 100 286 100C252 100.5 206 99.7 160 100\" style=\"stroke-width:2.4px;stroke-linecap:round;\"/></svg><svg class=\"rd-frame-svg rd-frame-extra\" style=\"--at:0.56;translate:4.9px 4.9px\" viewBox=\"0 0 300 100\" preserveAspectRatio=\"none\" aria-hidden=\"true\" focusable=\"false\"><path class=\"rd-frame-x\" data-accent vector-effect=\"non-scaling-stroke\" d=\"M300 50C300.4 64 299.7 76 300 88C300 96 295.6 100 288 100C264 100.4 232 99.7 204 100\" style=\"stroke-width:1.8px;stroke-linecap:round;\"/></svg><svg class=\"rd-frame-svg rd-frame-extra\" style=\"--at:0.29\" viewBox=\"0 0 300 100\" preserveAspectRatio=\"none\" aria-hidden=\"true\" focusable=\"false\"><path class=\"rd-frame-x\" vector-effect=\"non-scaling-stroke\" d=\"M200 0.5Q231 0 262 0.8\" style=\"stroke-width:1.3px;stroke-linecap:round;\"/><path class=\"rd-frame-x\" vector-effect=\"non-scaling-stroke\" d=\"M299.5 30Q300 51 299.2 72\" style=\"stroke-width:1.3px;stroke-linecap:round;\"/></svg></span><svg class=\"rd-frame-orn\" data-o=\"0\" style=\"--at:0\" viewBox=\"-1 -7.5 44 10\" aria-hidden=\"true\" focusable=\"false\"><g class=\"o-move\" style=\"--h:translate(0,-1px);--o:21px 0px\"><path class=\"o-acc\" d=\"M4.4 1.2C6.6 1 6.2 -3.7 9.2 -3.8L34.2 -4C37.4 -4 37 1 39.2 1.2Z\"/><path d=\"M0 0L2.2 0C5.2 0 4.9 -4.9 8.2 -5L33.6 -5.2C37 -5.2 36.7 0 39.8 0L42 0\"/></g></svg><svg class=\"rd-frame-orn\" data-o=\"1\" style=\"--at:0.17\" viewBox=\"-15 -6.5 30 7.5\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M-14 0.3C-11.6 0.2 -12 -4.9 -9 -5L9.4 -5.2C12.4 -5.2 12 0.2 14.4 0.3\"/><path class=\"o-thin\" d=\"M-6 -2.4L6 -2.6\"/></svg>\
 <svg class=\"rd-frame-orn\" data-o=\"2\" style=\"--at:0.25\" viewBox=\"-13 -6 26 7\" aria-hidden=\"true\" focusable=\"false\"><path class=\"o-acc\" d=\"M-9.6 0.6C-8.4 0.4 -8.8 -3.6 -6.6 -3.6L7.4 -3.8C9.6 -3.8 9.2 0.4 10.4 0.6Z\"/><path d=\"M-12 0.3C-9.8 0.2 -10.2 -4.5 -7.4 -4.6L7.6 -4.8C10.4 -4.8 10 0.2 12.2 0.3\"/></svg><svg class=\"rd-frame-orn\" data-o=\"3\" style=\"--at:0.32\" viewBox=\"-4 -6.5 8 13.5\" aria-hidden=\"true\" focusable=\"false\"><g class=\"a-fin\"><path class=\"o-thin\" d=\"M1.2 -2.4L1.4 1.8C1.4 3.8 -2.2 3.8 -2.2 1.8L-2.6 -3C-2.6 -5.6 2.8 -5.6 2.8 -3L3 2.4\"/></g></svg><svg class=\"rd-frame-orn\" data-o=\"4\" style=\"--at:0.76\" viewBox=\"-4 -1 8.5 8\" aria-hidden=\"true\" focusable=\"false\"><g class=\"o-move\" style=\"--h:rotate(7deg);--o:0px 0px\"><path class=\"o-acc\" d=\"M-2 0.4L-2.1 5L0.4 3.4L2.9 5L2.6 0.4Z\"/><path class=\"o-thin\" d=\"M-2.2 0.4L-2.3 4.6L0 3.1L2.3 4.6L2.2 0.4\"/></g></svg></span>")];
 const subjects=root.ReserveSubjectArt||(typeof module==='object'&&module.exports?require('./subject-art.js'):null),presets=subjects?.data||{};
-const kinds=Object.freeze(['home','bookmarks',...(subjects?.kinds||[])]),safe=value=>String(value??'').replace(/[^\w-]/g,''),kind=course=>course?.id==='folio-bookmarks'?'bookmarks':subjects?.kind(course)||'home';
-const crop=k=>presets[k]?'1260 0 420 240':CROPS[k]||CROPS.home,width=k=>presets[k]?1680:WIDTHS[k]||WIDTHS.home,cycle=(k,part='scene')=>presets[k]?presets[k][part==='mini'?'mini':'scene'].cycle:(CYCLES[k]||CYCLES.home)[part==='mini'?'mini':'scene'];
+const kinds=Object.freeze(['home','bookmarks',...(subjects?.kinds||[])]),
+  safe=value=>String(value??'').replace(/[^\w-]/g,''),
+  kind=course=>course?.id==='folio-bookmarks'?'bookmarks':subjects?.kind(course)||'home';
+const crop=k=>presets[k]?'1260 0 420 240':CROPS[k]||CROPS.home,
+  width=k=>presets[k]?1680:WIDTHS[k]||WIDTHS.home,
+  cycle=(k,part='scene')=>presets[k]?presets[k][part==='mini'?'mini':'scene'].cycle:(CYCLES[k]||CYCLES.home)[part==='mini'?'mini':'scene'];
 const ART_CREDIT='<metadata>Canvas Harness artwork | original creator: Flzsh | org.flzsh.canvas-harness</metadata>';
 const hidden=' aria-hidden="true" focusable="false"';
-function scene(course,{crop:which='heading',place=''}={}){if(!course?.id)return '';const value=course.artPrefs?.bannerArt,framed=!!value&&typeof value==='object'&&Object.hasOwn(value,'asset'),asset=framed?value.asset:value;if(root.ReserveMediaFrame&&(framed||asset?.mediaId))return root.ReserveMediaFrame.render(value,{kind:'banner',className:'ch-custom-banner',appearance:course.artPrefs,playback:place!=='customize'});if(asset?.mediaId&&root.ReserveMedia)return root.ReserveMedia.render(asset,{kind:'banner',className:'ch-custom-banner',fit:framed?value.fit:course.artPrefs.bannerFit||'contain',position:course.artPrefs.bannerPosition||'right'});if(asset&&!asset.mediaId&&root.ReserveCustomArt)return root.ReserveCustomArt.render(asset,{kind:'banner',className:'ch-custom-banner',motion:course.artMotion!==false,fit:framed?value.fit:course.artPrefs.bannerFit||'contain',position:course.artPrefs.bannerPosition||'right'});const k=kind(course),wide=which==='wide',w=width(k);return '<svg class="rd-art" data-art="'+k+'" data-crop="'+(wide?'wide':'heading')+'" data-place="'+safe(place)+'" data-rd-key="art-'+safe(course.id)+'-'+(wide?'wide':'heading')+'" data-cycle="'+cycle(k)+'" viewBox="'+(wide?'0 0 '+w+' 240':crop(k))+'" preserveAspectRatio="'+(wide?'xMaxYMid slice':'xMidYMid meet')+'"'+hidden+(wide?' data-wide="true" style="--rd-art-w:'+w+'"':'')+'>'+ART_CREDIT+(presets[k]?.scene.inner||SCENES[k])+'</svg>';}
-function mini(course,{place='row'}={}){if(!course?.id)return '';if(course.artPrefs?.cardArt&&root.ReserveMediaFrame&&['rail','card','dock'].includes(place))return root.ReserveMediaFrame.render(course.artPrefs.cardArt,{kind:'card',className:'ch-frame-card',appearance:course.artPrefs});if(course.artPrefs?.iconArt&&root.ReserveCustomArt)return root.ReserveCustomArt.render(course.artPrefs.iconArt,{kind:'icon',className:'rd-mini ch-custom-icon',motion:course.artMotion!==false,fit:'contain'});const k=kind(course),m=presets[k]?{box:48,inner:presets[k].mini.inner}:MINIS[k];return '<svg class="rd-mini" data-art="'+k+'" data-place="'+safe(place)+'" data-cycle="'+cycle(k,'mini')+'" viewBox="0 0 '+m.box+' 48" preserveAspectRatio="xMidYMid meet"'+hidden+'>'+ART_CREDIT+m.inner+'</svg>';}
-function frame(_kind,id,course){if(course?.artPrefs?.borderArt&&root.ReserveCustomArt)return '<span class="rd-frame ch-custom-frame" aria-hidden="true">'+root.ReserveCustomArt.render(course.artPrefs.borderArt,{kind:'border',className:'ch-custom-border',motion:course.artMotion!==false,fit:'fill'})+'</span>';if(_kind==='home'&&String(id)!=='folio-home'&&generic)return generic.frame(id);let h=0;for(const ch of String(id??''))h=(h*31+ch.charCodeAt(0))>>>0;return (presets[_kind]?.frame||FRAMES[h%FRAMES.length]).replace(/<svg\b[^>]*>/,tag=>tag+ART_CREDIT);}
+function scene(course,{crop:which='heading',place=''}={}){
+  if(!course?.id)return '';
+  const value=course.artPrefs?.bannerArt,framed=!!value&&typeof value==='object'&&Object.hasOwn(value,'asset'),asset=framed?value.asset:value;
+  if(root.ReserveMediaFrame&&(framed||asset?.mediaId))return root.ReserveMediaFrame.render(value,{kind:'banner',className:'ch-custom-banner',appearance:course.artPrefs,playback:place!=='customize'});
+  if(asset?.mediaId&&root.ReserveMedia)
+    return root.ReserveMedia.render(asset,{kind:'banner',className:'ch-custom-banner',fit:framed?value.fit:course.artPrefs.bannerFit||'contain',position:course.artPrefs.bannerPosition||'right'});
+  if(asset&&!asset.mediaId&&root.ReserveCustomArt)
+    return root.ReserveCustomArt.render(asset,{
+      kind:'banner',
+      className:'ch-custom-banner',
+      motion:course.artMotion!==false,
+      fit:framed?value.fit:course.artPrefs.bannerFit||'contain',
+      position:course.artPrefs.bannerPosition||'right'
+    });
+  const k=kind(course),wide=which==='wide',w=width(k);
+  return '<svg class="rd-art" data-art="'+
+    k+
+    '" data-crop="'+
+    (wide?'wide':'heading')+
+    '" data-place="'+
+    safe(place)+
+    '" data-rd-key="art-'+
+    safe(course.id)+
+    '-'+
+    (wide?'wide':'heading')+
+    '" data-cycle="'+
+    cycle(k)+
+    '" viewBox="'+
+    (wide?'0 0 '+w+' 240':crop(k))+
+    '" preserveAspectRatio="'+
+    (wide?'xMaxYMid slice':'xMidYMid meet')+
+    '"'+
+    hidden+
+    (wide?' data-wide="true" style="--rd-art-w:'+w+'"':'')+
+    '>'+
+    ART_CREDIT+
+    (presets[k]?.scene.inner||SCENES[k])+
+    '</svg>';
+}
+function mini(course,{place='row'}={}){
+  if(!course?.id)return '';
+  if(course.artPrefs?.cardArt&&root.ReserveMediaFrame&&['rail','card','dock'].includes(place))
+    return root.ReserveMediaFrame.render(course.artPrefs.cardArt,{kind:'card',className:'ch-frame-card',appearance:course.artPrefs});
+  if(course.artPrefs?.iconArt&&root.ReserveCustomArt)
+    return root.ReserveCustomArt.render(course.artPrefs.iconArt,{kind:'icon',className:'rd-mini ch-custom-icon',motion:course.artMotion!==false,fit:'contain'});
+  const k=kind(course),m=presets[k]?{box:48,inner:presets[k].mini.inner}:MINIS[k];
+  return '<svg class="rd-mini" data-art="'+k+'" data-place="'+safe(place)+'" data-cycle="'+cycle(k,'mini')+'" viewBox="0 0 '+m.box+' 48" preserveAspectRatio="xMidYMid meet"'+hidden+'>'+ART_CREDIT+m.inner+'</svg>';
+}
+function frame(_kind,id,course){
+  if(course?.artPrefs?.borderArt&&root.ReserveCustomArt)
+    return '<span class="rd-frame ch-custom-frame" aria-hidden="true">'+
+      root.ReserveCustomArt.render(course.artPrefs.borderArt,{kind:'border',className:'ch-custom-border',motion:course.artMotion!==false,fit:'fill'})+
+      '</span>';
+  if(_kind==='home'&&String(id)!=='folio-home'&&generic)return generic.frame(id);
+  let h=0;
+  for(const ch of String(id??''))h=(h*31+ch.charCodeAt(0))>>>0;
+  return (presets[_kind]?.frame||FRAMES[h%FRAMES.length]).replace(/<svg\b[^>]*>/,tag=>tag+ART_CREDIT);
+}
 function titled(course){
  if(!course?.id)return null;
  if(course.artPrefs?.bannerArt&&course.artPrefs?.titlePlacement==='banner')return {kind:kind(course),name:course.shortName||course.name||'Course',width:0,embedded:true};
-    if(course.artPrefs?.titleArt?.mediaId&&root.ReserveMedia){const asset=course.artPrefs.titleArt;return {kind:kind(course),custom:true,width:Math.max(1,Math.round(asset.width/asset.height*240))};}
-     if(course.artPrefs?.titleArt&&!course.artPrefs.titleArt.mediaId&&root.ReserveCustomArt)return {kind:kind(course),custom:true,width:root.ReserveCustomArt.titleWidth(course.artPrefs.titleArt)};
+    if(course.artPrefs?.titleArt?.mediaId&&root.ReserveMedia){
+      const asset=course.artPrefs.titleArt;
+      return {kind:kind(course),custom:true,width:Math.max(1,Math.round(asset.width/asset.height*240))};
+    }
+     if(course.artPrefs?.titleArt&&!course.artPrefs.titleArt.mediaId&&root.ReserveCustomArt)
+       return {kind:kind(course),custom:true,width:root.ReserveCustomArt.titleWidth(course.artPrefs.titleArt)};
  const k=kind(course),piece=presets[k]?.title,shown=course.id==='folio-home'?'All courses':course.shortName||course.name||'Course';
  if(piece&&course.originalName===undefined||piece&&course.originalName===course.name){
   if(subjects.normalize(shown)===subjects.normalize(piece.name))return {kind:k,name:piece.name,width:Number(piece.box.split(' ')[2]),cycle:piece.cycle};
  }
  // A course with a subject theme wears that subject's drawn title, the one in the set with its banner and frame,
- // whatever its Canvas name or nickname ("CL Chemistry-Teacher" shows the Chemistry title; the h1 keeps the real
+ // whatever its Canvas name or nickname ("Honors Chemistry-Rivera" shows the Chemistry title; the h1 keeps the real
  // name for screen readers). The handwritten board is only for courses without a theme of their own, which wear
  // the generic All courses look (or a theme without a drawn title). An uploaded banner keeps its separate lettering.
  if(k!=='home'&&course.id!=='folio-home'&&!course.artPrefs?.bannerArt){
@@ -97,8 +160,37 @@ function titled(course){
  }
  return generic?{kind:k,name:shown,...generic.info(shown),generic:true}:null;
 }
-function title(course,{place='heading'}={}){const t=titled(course);if(t?.embedded)return '';if(t?.generic)return generic.title(t.name,{id:course.id,place,motion:course.artMotion!==false});if(t?.custom&&course.artPrefs.titleArt.mediaId&&root.ReserveMedia)return root.ReserveMedia.render(course.artPrefs.titleArt,{kind:'title',className:'rd-art ch-custom-title',fit:'contain',position:'left'});if(t?.custom)return root.ReserveCustomArt.render(course.artPrefs.titleArt,{kind:'title',className:'rd-art ch-custom-title',motion:course.artMotion!==false,fit:'contain',position:'left'});return t?'<svg class="rd-art" data-art="'+t.kind+'" data-crop="title" data-place="'+safe(place)+'" data-rd-key="art-'+safe(course.id)+'-title" data-cycle="'+t.cycle+'" viewBox="0 0 '+t.width+' 240" preserveAspectRatio="xMinYMax meet"'+hidden+'>'+ART_CREDIT+presets[t.kind].title.inner+'</svg>':'';}
-function titleFrame(course,{place='heading'}={}){const t=titled(course);if(t?.embedded)return '<span class="rd-title-art rd-title-embedded" data-rd-key="title-art" aria-hidden="true"></span>';return t?'<span class="rd-title-art" data-rd-key="title-art" aria-hidden="true" style="--rd-name-w:'+t.width+'">'+title(course,{place})+'</span>':'';}
+function title(course,{place='heading'}={}){
+  const t=titled(course);
+  if(t?.embedded)return '';
+  if(t?.generic)return generic.title(t.name,{id:course.id,place,motion:course.artMotion!==false});
+  if(t?.custom&&course.artPrefs.titleArt.mediaId&&root.ReserveMedia)
+    return root.ReserveMedia.render(course.artPrefs.titleArt,{kind:'title',className:'rd-art ch-custom-title',fit:'contain',position:'left'});
+  if(t?.custom)return root.ReserveCustomArt.render(course.artPrefs.titleArt,{kind:'title',className:'rd-art ch-custom-title',motion:course.artMotion!==false,fit:'contain',position:'left'});
+  return t?
+    '<svg class="rd-art" data-art="'+
+      t.kind+
+      '" data-crop="title" data-place="'+
+      safe(place)+
+      '" data-rd-key="art-'+
+      safe(course.id)+
+      '-title" data-cycle="'+
+      t.cycle+
+      '" viewBox="0 0 '+
+      t.width+
+      ' 240" preserveAspectRatio="xMinYMax meet"'+
+      hidden+
+      '>'+
+      ART_CREDIT+
+      presets[t.kind].title.inner+
+      '</svg>':
+    '';
+}
+function titleFrame(course,{place='heading'}={}){
+  const t=titled(course);
+  if(t?.embedded)return '<span class="rd-title-art rd-title-embedded" data-rd-key="title-art" aria-hidden="true"></span>';
+  return t?'<span class="rd-title-art" data-rd-key="title-art" aria-hidden="true" style="--rd-name-w:'+t.width+'">'+title(course,{place})+'</span>':'';
+}
 const titleStyle=course=>{const t=titled(course);return t?'--rd-name-w:'+t.width+';--rd-room-w:'+width(t.kind):'';};
 const api={kinds,kind,crop,width,cycle,scene,mini,frame,frameKind:k=>presets[k]?k:'home',mirrored:()=>false,titled,title,titleFrame,titleStyle};
 root.ReserveCourseArt=api;if(typeof module!=='undefined'&&module.exports)module.exports=api;

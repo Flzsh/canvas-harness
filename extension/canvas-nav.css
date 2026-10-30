@@ -283,6 +283,4 @@ html.chn-nav #header .rd-frame[data-kind=home] > .rd-frame-orn[data-o="2"] { lef
 html.chn-nav #header .rd-frame[data-kind=home] > .rd-frame-orn[data-o="3"] { left:calc(3px + (100% - 6px) * 0.86 + -4px);top:-3.5px; width:8px; height:13.5px; }
 html.chn-nav #header .rd-frame[data-kind=home] > .rd-frame-orn[data-o="4"] { left:calc(3px + (100% - 6px) * 0.3 + -4px);bottom:-4px; width:8.5px; height:8px; }
 html.chn-nav #header .rd-frame[data-kind=home] > .rd-frame-wash { border-top-left-radius:3.67% 12%; border-top-right-radius:3.67% 12%; border-bottom-right-radius:3.67% 12%; border-bottom-left-radius:3.67% 12%; }
-html.chn-nav:not([data-chn-motion=off]) #header .rd-frame[data-kind=home] > .rd-frame-orn[data-o="2"] { animation: rd-fl-home-2 15s linear calc(var(--i, 0) * -2.3s - 0s) infinite; }
-html.chn-nav:not([data-chn-motion=off]) #header .rd-frame[data-kind=home] > .rd-frame-orn[data-o="4"] { animation: rd-fl-home-4 15s linear calc(var(--i, 0) * -2.3s - 0s) infinite; }
 /* ---- end of copied frame rules ---- */

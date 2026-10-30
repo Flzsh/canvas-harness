@@ -1,130 +1,647 @@
 /* Scope verbs to their request clause before choosing a local action. */
 (function(root){
  'use strict';
- const verbs={plan:'plan|schedule|replan|reschedule|rebuild|organize|organise|fit|split|spread|allocate|block|reserve|protect',bookmark:'bookmark|bookmarked|pin|unpin|keep|save|retain|shelve',reminder:'remind|reminders?|ping|nudge|notify|notifications?|alerts?|warnings?|heads up|recuerdame|rappel|rappelle|avisame|\u63d0\u9192',note:'jot|note|write down|write in|record|apunta','focus-control':'pause|park|resume|stop|end|quit|continue|freeze|unfreeze|adjust|set|reset|restart|unpause|add|extend|shorten|reduce|subtract|break|breather',focus:'focus|concentrate|study|pomodoro|timer|count down|time me|sprint|break|breather',setting:'set|change|switch|turn|enable|disable|show|hide',feature:'enable|disable|turn|stop|start',module:'show|hide|move|make|widen',complete:'complete|check off|mark\\b.{0,80}\\b(?:done|complete)',ai:'explain|unpack|rewrite|rephrase|draft|compose|invent|generate|teach|translate|summarize|summarise|diagnose|interpret'},replace=v=>String(v).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[\u2018\u2019]/g,"'"),list=v=>Array.isArray(v)?v:[];
+ const verbs={
+  plan:'plan|schedule|replan|reschedule|rebuild|organize|organise|fit|split|spread|allocate|block|reserve|protect',
+  bookmark:'bookmark|bookmarked|pin|unpin|keep|save|retain|shelve',
+  reminder:'remind|reminders?|ping|nudge|notify|notifications?|alerts?|warnings?|heads up|recuerdame|rappel|rappelle|avisame|\u63d0\u9192',
+  note:'jot|note|write down|write in|record|apunta',
+  'focus-control':'pause|park|resume|stop|end|quit|continue|freeze|unfreeze|adjust|set|reset|restart|unpause|add|extend|shorten|reduce|subtract|break|breather',
+  focus:'focus|concentrate|study|pomodoro|timer|count down|time me|sprint|break|breather',
+  setting:'set|change|switch|turn|enable|disable|show|hide',
+  feature:'enable|disable|turn|stop|start',
+  module:'show|hide|move|make|widen',
+  complete:'complete|check off|mark\\b.{0,80}\\b(?:done|complete)',
+  ai:'explain|unpack|rewrite|rephrase|draft|compose|invent|generate|teach|translate|summarize|summarise|diagnose|interpret'
+ },
+  replace=v=>String(v).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[\u2018\u2019]/g,"'"),
+  list=v=>Array.isArray(v)?v:[];
  verbs.ai+='|compare|contrast|distinguish|walk (?:me|us) through|talk (?:me|us) through|help (?:me|us) understand';
  const assistanceCommands='explain|unpack|clarify|simplify|teach|hint|tell|guide|outline|structure|prepare|review|assess|evaluate|proofread|fix|correct|revise|repair|redo|convert|address|apply|improve|sequence|lay out|ask|quiz|test|drill|recap|summari[sz]e|sum (?:it|this|that) up|annotate|write|draft|compose|invent|generate|rephrase|rewrite|translate|brainstorm|coach|rehearse|walk|talk|compare|contrast|distinguish|take (?:(?:my|our|the|these) )?notes';
- const commandWords=[assistanceCommands,"recuerdame|rappel|rappelle|avisame|arrange|walk|talk|open|find|fetch|locate|retrieve|pull up|bring up|bring me to|take me to|show|display|read|inspect|list|count|check|compare|contrast|distinguish|write|draft|compose|invent|generate|rewrite|rephrase|revise|interpret|clarify|decode|analy[sz]e|critique|coach|rehearse|translate|brainstorm|teach|diagnose|unpack|explain|summari[sz]e|plan|schedule|replan|rebuild|organize|organise|split|spread|allocate|reserve|block|protect|put|place|give|make|build|create|help|save|keep|pin|bookmark|retain|shelve|remind|ping|nudge|notify|start|begin|run|study|focus|pause|resume|stop|end|quit|set|add|extend|hide|change|switch|turn|enable|disable|mark|jot|note",'remove|delete|cancel|undo|restore|adjust|resize|reset|restart|rename|retitle|edit|append|subtract|shorten|reduce|drop|pick|choose|use|move|shift|reschedule|book|fit|divide|preserve|copy|transcribe',...Object.values(verbs).flatMap(v=>v.split('|')).filter(v=>/^[a-z]+(?: [a-z]+)*$/.test(v))].join('|');
- const clauses=input=>lexicalView(workflowMask(input)).split(/[;!?]|\.(?=\s|$)|\b(?:but|instead|rather|also|plus)\b/i),duration=/\b(?:\d+(?:\.\d+)?\s*[- ]?\s*(?:minutes?|mins?|m|hours?|hrs?|h)|(?:half|quarter)\s+(?:an?\s+)?hour)\b/i,factTerms=/\b(?:due|deadline|closes?|when|where|who|grade|grades|score|total|weight|weighting|marks|feedback|comments?|points|attempts?|tries|time|minutes|hours|limit|length|count|number|post|replies|reply|word|scope|instructions|requirements|prerequisites|format|submit|submission|upload|late|available|locked|clash|overlap|teacher|contact|address|email|author|file|page|links?|notes|bookmark|reminder|timer|pet|plan|module|show|hide|status|date|room|venue|price|cost|extension|edition|reviewer|role|badge|attachments?|bring)\b/i;
+ const commandWords=[
+  assistanceCommands,
+  "recuerdame|rappel|rappelle|avisame|arrange|walk|talk|open|find|fetch|locate|retrieve|pull up|bring up|bring me to|take me to|show|display|read|inspect|list|count|check|compare|contrast|distinguish|write|draft|compose|invent|generate|rewrite|rephrase|revise|interpret|clarify|decode|analy[sz]e|critique|coach|rehearse|translate|brainstorm|teach|diagnose|unpack|explain|summari[sz]e|plan|schedule|replan|rebuild|organize|organise|split|spread|allocate|reserve|block|protect|put|place|give|make|build|create|help|save|keep|pin|bookmark|retain|shelve|remind|ping|nudge|notify|start|begin|run|study|focus|pause|resume|stop|end|quit|set|add|extend|hide|change|switch|turn|enable|disable|mark|jot|note",
+  'remove|delete|cancel|undo|restore|adjust|resize|reset|restart|rename|retitle|edit|append|subtract|shorten|reduce|drop|pick|choose|use|move|shift|reschedule|book|fit|divide|preserve|copy|transcribe',
+  ...Object.values(verbs).flatMap(v=>v.split('|')).filter(v=>/^[a-z]+(?: [a-z]+)*$/.test(v))
+ ].join('|');
+ const clauses=input=>lexicalView(workflowMask(input)).split(/[;!?]|\.(?=\s|$)|\b(?:but|instead|rather|also|plus)\b/i),
+  duration=/\b(?:\d+(?:\.\d+)?\s*[- ]?\s*(?:minutes?|mins?|m|hours?|hrs?|h)|(?:half|quarter)\s+(?:an?\s+)?hour)\b/i,
+  factTerms=/\b(?:due|deadline|closes?|when|where|who|grade|grades|score|total|weight|weighting|marks|feedback|comments?|points|attempts?|tries|time|minutes|hours|limit|length|count|number|post|replies|reply|word|scope|instructions|requirements|prerequisites|format|submit|submission|upload|late|available|locked|clash|overlap|teacher|contact|address|email|author|file|page|links?|notes|bookmark|reminder|timer|pet|plan|module|show|hide|status|date|room|venue|price|cost|extension|edition|reviewer|role|badge|attachments?|bring)\b/i;
  /* A negative object never cancels another positive occurrence of the same verb. */
- function blocked(clause,index){const before=clause.slice(0,index).split(/[,;]|\b(?:and|then|also)\b/i).at(-1);if(/\bnot\s+(?:only|just)\s*$/i.test(before))return false;return /\b(?:do not|don't|dont|never|not|cannot|can't|cant|without|no)\s+(?:(?:please|ever|actually|just|really|want|need|ask|asking|you|u|me|us|to|permission|ready|for|a|an|new|another|study)\s+)*$/i.test(before)||/\b(?:do not|don't|dont|never)\b[^,;]*\bor\s*$/i.test(before);}
- function hasVerb(input,pattern,negative=false){if(!pattern)return false;return clauses(input).some(clause=>[...clause.matchAll(new RegExp('(?:^|\\b)(?:'+pattern+')(?:\\b|$)','gi'))].some(m=>blocked(clause,m.index)===negative));}
+ function blocked(clause,index){
+  const before=clause.slice(0,index).split(/[,;]|\b(?:and|then|also)\b/i).at(-1);
+  if(/\bnot\s+(?:only|just)\s*$/i.test(before))return false;
+  return /\b(?:do not|don't|dont|never|not|cannot|can't|cant|without|no)\s+(?:(?:please|ever|actually|just|really|want|need|ask|asking|you|u|me|us|to|permission|ready|for|a|an|new|another|study)\s+)*$/i.test(before)||/\b(?:do not|don't|dont|never)\b[^,;]*\bor\s*$/i.test(before);
+ }
+ function hasVerb(input,pattern,negative=false){
+  if(!pattern)return false;
+  return clauses(input).some(clause=>[...clause.matchAll(new RegExp('(?:^|\\b)(?:'+pattern+')(?:\\b|$)','gi'))].some(m=>blocked(clause,m.index)===negative));
+ }
  /* Match a same-length lexical view; returned spans always use the original text. */
  function lexicalView(input){return String(input).replace(/[^\u0000-\u007f]/gu,c=>{const v=replace(c);return v.length===c.length?v:c;});}
  const reminderNumber='(?:[-+\\u2212]?\\d+(?:\\.\\d+)?|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|half|quarter|an?)(?:[ -]+(?:and|of|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|an?)){0,4})';
  const reminderTime='(?:(?:in|after)\\s*'+reminderNumber+'\\s*[- ]?\\s*(?:minutes?|mins?|m|hours?|hrs?|h|days?)\\b|(?:today|tomorrow|tonight)(?:\\s+at\\s+\\d{1,2}(?::\\d{2})?\\s*(?:[ap]\\.?m\\.?)?)?|at\\s+\\d{1,2}(?::\\d{2})?\\s*(?:[ap]\\.?m\\.?)?)',timedReminder=new RegExp('^'+reminderTime+'\\s*[, :]?\\s*(?=(?:please\\s+)?(?:remind|ping|nudge|notify)\\s+(?:me|us)\\b)','i');
  function reminderGoal(input){return lexicalView(workflowMask(input)).trim().replace(timedReminder,'').replace(/^please\s+/i,'');}
- function literalNoteForm(input){const c=lexicalView(workflowMask(input)).trim(),direct=/^(?:note\s*:|jot\b|write down\b|apunta\b|new personal note\s*:|(?:write|make|create|save)\s+(?:(?:a|an|new|another|separate|personal|my|own)\s+)*note\b)/i.test(c),destination=/^(?:preserve|copy|transcribe|record|put|keep|save|write)\b/i.test(c)&&/\b(?:in|into|as|to)\s+(?:(?:a|an|the|my|our|own|new|another|separate|personal|saved)\s+)*notes?\b/i.test(c),exactWrite=/^write\b.{0,55}\b(?:exact words|these words|verbatim)\b/i.test(c)&&/\bnotes?\b/i.test(c);if(!direct&&!destination&&!exactWrite)return false;return !(/^(?:write|make|create)\b.{0,35}\bnote\b/i.test(c)&&/\b(?:explain|explaining|summari[sz]e|summari[sz]ing|compare|comparing|teach|teaching|interpret|interpreting)\b/i.test(c)&&!/\b(?:verbatim|exact words|literal text|exactly)\b/i.test(c));}
+ function literalNoteForm(input){
+  const c=lexicalView(workflowMask(input)).trim(),
+   direct=/^(?:note\s*:|jot\b|write down\b|apunta\b|new personal note\s*:|(?:write|make|create|save)\s+(?:(?:a|an|new|another|separate|personal|my|own)\s+)*note\b)/i.test(c),
+   destination=/^(?:preserve|copy|transcribe|record|put|keep|save|write)\b/i.test(c)&&/\b(?:in|into|as|to)\s+(?:(?:a|an|the|my|our|own|new|another|separate|personal|saved)\s+)*notes?\b/i.test(c),
+   exactWrite=/^write\b.{0,55}\b(?:exact words|these words|verbatim)\b/i.test(c)&&/\bnotes?\b/i.test(c);
+  if(!direct&&!destination&&!exactWrite)return false;
+  return !(/^(?:write|make|create)\b.{0,35}\bnote\b/i.test(c)&&/\b(?:explain|explaining|summari[sz]e|summari[sz]ing|compare|comparing|teach|teaching|interpret|interpreting)\b/i.test(c)&&!/\b(?:verbatim|exact words|literal text|exactly)\b/i.test(c));
+ }
  /* The reminder must be the requested object, not an arbitrary later noun. */
- function reminderAct(input){const g=reminderGoal(input);if(/^(?:remind|ping|nudge|notify)\s+(?:me|us)\b|^(?:recuerdame|rappel|rappelle|avisame)\b|^\u63d0\u9192/i.test(g))return true;return /^(?:schedule|set|create|add|save|give|make|remove|delete|cancel|edit|move|change)\s+(?:(?:me|us)\s+)?(?:(?:a|an|the|my|our|this|that|these|those|one|of|first|second|third|last|next|old|new|another|personal|local|saved|selected|existing|current)\s+)*(?:reminders?|notifications?|alerts?|warnings?|heads up)\b/i.test(g)||/^i\s+(?:would like|want|need)\s+(?:a|an)\s+(?:reminder|notification|alert)\b/i.test(g);}
+ function reminderAct(input){
+  const g=reminderGoal(input);
+  if(/^(?:remind|ping|nudge|notify)\s+(?:me|us)\b|^(?:recuerdame|rappel|rappelle|avisame)\b|^\u63d0\u9192/i.test(g))return true;
+  return /^(?:schedule|set|create|add|save|give|make|remove|delete|cancel|edit|move|change)\s+(?:(?:me|us)\s+)?(?:(?:a|an|the|my|our|this|that|these|those|one|of|first|second|third|last|next|old|new|another|personal|local|saved|selected|existing|current)\s+)*(?:reminders?|notifications?|alerts?|warnings?|heads up)\b/i.test(g)||/^i\s+(?:would like|want|need)\s+(?:a|an)\s+(?:reminder|notification|alert)\b/i.test(g);
+ }
  function payloadHead(input){return literalNoteForm(input)||reminderAct(input);}
  /* A modal with an omitted recipient is a request only at a request boundary.
     A literal note or reminder owns what follows its colon, including command words. */
- function uncachedGoal(input){let value=String(input).trim(),first=new RegExp('^(?:first|next|finally|primero|luego|ensuite)\\s+(?=(?:'+commandWords+')\\b)','i').exec(lexicalView(value));if(first)value=value.slice(first[0].length);const polite=/^(?:(?:please|pls)\s+|(?:can|could|would|will)\s+(?:you|u)\s+(?:please\s+)?)/i,initial=value.replace(polite,'');if(payloadHead(initial))return initial;
+ function uncachedGoal(input){
+  let value=String(input).trim(),first=new RegExp('^(?:first|next|finally|primero|luego|ensuite)\\s+(?=(?:'+commandWords+')\\b)','i').exec(lexicalView(value));
+  if(first)value=value.slice(first[0].length);
+  const polite=/^(?:(?:please|pls)\s+|(?:can|could|would|will)\s+(?:you|u)\s+(?:please\s+)?)/i,initial=value.replace(polite,'');
+  if(payloadHead(initial))return initial;
   const view=lexicalView(workflowMask(value)),finite=new RegExp('\\b(?:(?:start|begin|run)\\s+(?:(?:a|an|the|my|our|this|that)\\s+)?(?:'+reminderNumber+'\\s*[- ]?\\s*(?:minutes?|mins?|hours?|hrs?)\\s+)?(?:focus|break|rest|countdown)(?:\\s+(?:timer|clock|session|round))?|(?:pause|park|resume|stop)\\s+(?:(?:the|my|our|this|that)\\s+)?(?:(?:focus|break)\\s+)?(?:timer|countdown|clock)|(?:scratch|unslot|remove|delete|drop|cancel)\\s+(?:(?:the|my|our|this|that|selected|saved|local|study|work)\\s+)*(?:block|slot|appointment)|take\\s+(?:(?:the|my|our|this|that|selected|saved|local|study|work)\\s+)*(?:block|slot)\\s+off)\\b','gi');
-  for(const m of view.matchAll(finite)){if(!m.index)break;const before=view.slice(0,m.index);if(/^(?:if|unless|suppose|what if|do not|don.t|dont|never)\b/i.test(view)||new RegExp('^(?:'+commandWords+')\\b','i').test(before.trim())||/\b(?:said|says|asked|asks|told|reads|quote|quoted|whether|suppose|if|unless)\b[^;.!?]*$/i.test(before)||/\b(?:i|we|you|u|he|she|they|it|to|not|never|without|instead of|rather than|can|could|would|should|might|may|must|will)\s*$/i.test(before))continue;value=value.slice(m.index);break;}
-  const activeView=lexicalView(workflowMask(value)),carrier=new RegExp('\\b(?:can|could|would|will)\\s+(?:(you|u|ai|the ai)\\s+)?(?:please\\s+)?(?=(?:'+commandWords+')\\b)','gi');let start=-1;
-  for(const m of activeView.matchAll(carrier)){const before=activeView.slice(0,m.index),boundary=/(?:^|[,;:.!?]\s*|\b(?:so|then)\s+)$/.test(before);if(!m[1]&&!boundary||/\b(?:i|we|he|she|they|it)\s*$/i.test(before)||/\b(?:said|says|asked|asks|whether)\s*$/i.test(before))continue;start=m.index+m[0].length;break;}
-  {const carrierStart=start,cue=new RegExp('(?:^|[,;:.!?]\\s*|\\b(?:please|pls|so|then)\\s+)(?:just\\s+)?('+reminderTime+'\\s*[, :]?\\s*(?=(?:please\\s+)?(?:remind|ping|nudge|notify)\\s+(?:me|us)\\b))?(?=(?:'+commandWords+')\\b)','gi');let protectedStart=false;
-   for(const m of activeView.matchAll(cue)){const at=m.index+m[0].length-(m[1]?.length||0),ownsPayload=payloadHead(value.slice(at));if(ownsPayload&&(start<0||at<start)){start=at;protectedStart=true;break;}if(carrierStart>=0)continue;const access=m[0].includes(':')&&!m[1]&&/^(?:open|find|fetch|locate|retrieve|show|display|read|inspect|list|count|check)\b/i.test(activeView.slice(at)),direct=new RegExp('^(?:'+assistanceCommands+'|set|change|switch|turn|enable|disable|hide|remove|delete|save|bookmark|start|stop|pause|resume|mark|move|resize|undo|reset)\\b','i').test(activeView.slice(0,m.index).trim());if(start<0||!protectedStart&&access&&!direct){start=at;protectedStart=ownsPayload;}if(protectedStart)break;}
+  for(const m of view.matchAll(finite)){
+   if(!m.index)break;
+   const before=view.slice(0,m.index);
+   if(/^(?:if|unless|suppose|what if|do not|don.t|dont|never)\b/i.test(view)||
+    new RegExp('^(?:'+commandWords+')\\b','i').test(before.trim())||
+    /\b(?:said|says|asked|asks|told|reads|quote|quoted|whether|suppose|if|unless)\b[^;.!?]*$/i.test(before)||
+    /\b(?:i|we|you|u|he|she|they|it|to|not|never|without|instead of|rather than|can|could|would|should|might|may|must|will)\s*$/i.test(before))
+    continue;
+   value=value.slice(m.index);
+   break;
   }
-  if(start>=0)value=value.slice(start);value=value.replace(polite,'').trim();if(payloadHead(value))return value;const future=/\b(?:so(?: that)?|in order that)\s+(?:i|we)\b|\band\s+(?:then\s+)?(?:i|we)\s+(?:will|can|could|shall|want|need)\b|\b(?:before|where)\s+(?:i|we)\s+(?:can|will|could|start|write|revise|touch|spend|decide)\b/i.exec(lexicalView(workflowMask(value)));return (future?value.slice(0,future.index):value).trim();}
+  const activeView=lexicalView(workflowMask(value)),carrier=new RegExp('\\b(?:can|could|would|will)\\s+(?:(you|u|ai|the ai)\\s+)?(?:please\\s+)?(?=(?:'+commandWords+')\\b)','gi');let start=-1;
+  for(const m of activeView.matchAll(carrier)){
+   const before=activeView.slice(0,m.index),boundary=/(?:^|[,;:.!?]\s*|\b(?:so|then)\s+)$/.test(before);
+   if(!m[1]&&!boundary||/\b(?:i|we|he|she|they|it)\s*$/i.test(before)||/\b(?:said|says|asked|asks|whether)\s*$/i.test(before))continue;
+   start=m.index+m[0].length;
+   break;
+  }
+  {
+   const carrierStart=start,cue=new RegExp('(?:^|[,;:.!?]\\s*|\\b(?:please|pls|so|then)\\s+)(?:just\\s+)?('+reminderTime+'\\s*[, :]?\\s*(?=(?:please\\s+)?(?:remind|ping|nudge|notify)\\s+(?:me|us)\\b))?(?=(?:'+commandWords+')\\b)','gi');
+   let protectedStart=false;
+   for(const m of activeView.matchAll(cue)){
+    const at=m.index+m[0].length-(m[1]?.length||0),ownsPayload=payloadHead(value.slice(at));
+    if(ownsPayload&&(start<0||at<start)){start=at;protectedStart=true;break;}
+    if(carrierStart>=0)continue;
+    const access=m[0].includes(':')&&!m[1]&&/^(?:open|find|fetch|locate|retrieve|show|display|read|inspect|list|count|check)\b/i.test(activeView.slice(at)),
+     direct=new RegExp('^(?:'+assistanceCommands+'|set|change|switch|turn|enable|disable|hide|remove|delete|save|bookmark|start|stop|pause|resume|mark|move|resize|undo|reset)\\b','i').test(activeView.slice(0,m.index).trim());
+    if(start<0||!protectedStart&&access&&!direct){start=at;protectedStart=ownsPayload;}
+    if(protectedStart)break;
+   }
+  }
+  if(start>=0)value=value.slice(start);
+  value=value.replace(polite,'').trim();
+  if(payloadHead(value))return value;
+  const future=/\b(?:so(?: that)?|in order that)\s+(?:i|we)\b|\band\s+(?:then\s+)?(?:i|we)\s+(?:will|can|could|shall|want|need)\b|\b(?:before|where)\s+(?:i|we)\s+(?:can|will|could|start|write|revise|touch|spend|decide)\b/i.exec(lexicalView(workflowMask(value)));
+  return (future?value.slice(0,future.index):value).trim();
+ }
  const goalCache=new Map();
- function requestGoal(input){const key=String(input);if(goalCache.has(key))return goalCache.get(key);const value=uncachedGoal(key);if(goalCache.size>=128)goalCache.delete(goalCache.keys().next().value);goalCache.set(key,value);return value;}
- function requestSpan(input){const goal=requestGoal(input);if(payloadHead(goal)||!new RegExp('^(?:'+assistanceCommands+'|open|find|fetch|locate|retrieve|pull|bring|take|show|display|inspect|list|count|read|check|get|prepare|write|draft|explain|make|create|give|help|plan|schedule|reserve|set)\\b','i').test(lexicalView(goal)))return goal;const future=/(?:[.;!?]\s*(?:(?:and|then|before|after|so)\s+)?(?:i|we)\s+(?:will|can|need|want|shall|am|are|would|should)\b|\b(?:so(?: that)?|before|after)\s+(?:i|we)\b|\b(?:i|we)\s+(?:will|shall)\b)/i.exec(lexicalView(workflowMask(goal)));return future&&future.index>0?goal.slice(0,future.index).trim():goal;}
- function withoutPrivateExclusions(input){return String(input).replace(/\b(?:no|without|excluding|except|not)\s+(?:(?:a|an|the|my|our|private|personal|hidden)\s+)*(?:grades?|scores?|marks?|feedback)(?:[ -]based)?\b/gi,' ').replace(/\b(?:don'?t|do not)\s+want\s+(?:(?:the|my|our|private|personal|hidden)\s+)*(?:grades?|scores?|marks?|feedback)\b/gi,' ');}
- function targetText(input){return requestSpan(input).replace(/\b(?:then|after that|first and)\b[\s\S]*$/i,'').replace(/^.*\bi mean\s+/i,'').replace(/\b(?:forget|ignore)\s+[^,;]+[,;]/gi,'').replace(/(?:[,;]\s*(?:not|never)\s+|\b(?:rather than|instead of|except)\s+)[^,;.!?]+/gi,'').trim();}
- function positive(input,action){if(action==='ai'&&questionRequest(requestSpan(input)))return true;if(action==='reminder'&&/\u63d0\u9192/u.test(input)&&!/[\u4e0d\u522b]/u.test(input))return true;if(action==='plan')return scheduleRequest(input);if(action==='focus-control'&&/\b(?:timer|clock|session)\s+(?:off|fully off)\b/i.test(input)&&!hasVerb(input,'off',true))return true;if(action==='focus-control'&&/\b(?:timer|clock|focus|countdown|session)\b/i.test(input)&&/[+\-\u2212]\s*\d/.test(input)&&!hasVerb(input,'add|extend|shorten|reduce|subtract|adjust',true))return true;if(hasVerb(input,verbs[action]))return true;if(action==='complete'&&hasVerb(input,'done'))return true;if(action==='bookmark'&&/[\u{1f516}\u{1f4cc}]/u.test(input)&&!hasVerb(input,'bookmark|pin|save|keep',true))return true;if(action==='note'&&literalNoteRequest(input))return true;if(action==='focus'&&/^(?:start|begin|run)\b/i.test(requestGoal(input))&&/\b(?:minutes?|mins?|m|hours?|hrs?)\b/i.test(input))return hasVerb(input,'start|begin|run');if(action==='focus-control'&&duration.test(input)&&/\b(?:countdown|remaining|more|extra|less|fewer)\b/i.test(input))return !hasVerb(input,'set|add|extend|shorten|reduce|subtract|adjust',true);return false;}
- function negated(input,action){const scope=requestSpan(input);if(action==='note'&&!literalNoteRequest(scope)){const prefix=/^(?:do not|don't|dont|never|not to)\s+(?:(?:please|ever|actually|just)\s+)*/i.exec(lexicalView(scope));if(prefix&&literalNoteForm(scope.slice(prefix[0].length)))return true;}return !positive(scope,action)&&hasVerb(scope,(verbs[action]||'')+(action==='ai'?'|ask|quiz|test|drill':''),true);}
+ function requestGoal(input){
+  const key=String(input);
+  if(goalCache.has(key))return goalCache.get(key);
+  const value=uncachedGoal(key);
+  if(goalCache.size>=128)goalCache.delete(goalCache.keys().next().value);
+  goalCache.set(key,value);
+  return value;
+ }
+ function requestSpan(input){
+  const goal=requestGoal(input);
+  if(payloadHead(goal)||!new RegExp('^(?:'+assistanceCommands+'|open|find|fetch|locate|retrieve|pull|bring|take|show|display|inspect|list|count|read|check|get|prepare|write|draft|explain|make|create|give|help|plan|schedule|reserve|set)\\b','i').test(lexicalView(goal)))
+   return goal;
+  const future=/(?:[.;!?]\s*(?:(?:and|then|before|after|so)\s+)?(?:i|we)\s+(?:will|can|need|want|shall|am|are|would|should)\b|\b(?:so(?: that)?|before|after)\s+(?:i|we)\b|\b(?:i|we)\s+(?:will|shall)\b)/i.exec(lexicalView(workflowMask(goal)));
+  return future&&future.index>0?goal.slice(0,future.index).trim():goal;
+ }
+ function withoutPrivateExclusions(input){
+  return String(input).replace(/\b(?:no|without|excluding|except|not)\s+(?:(?:a|an|the|my|our|private|personal|hidden)\s+)*(?:grades?|scores?|marks?|feedback)(?:[ -]based)?\b/gi,' ').replace(/\b(?:don'?t|do not)\s+want\s+(?:(?:the|my|our|private|personal|hidden)\s+)*(?:grades?|scores?|marks?|feedback)\b/gi,' ');
+ }
+ function targetText(input){
+  return requestSpan(input).replace(/\b(?:then|after that|first and)\b[\s\S]*$/i,'').replace(/^.*\bi mean\s+/i,'').replace(/\b(?:forget|ignore)\s+[^,;]+[,;]/gi,'').replace(/(?:[,;]\s*(?:not|never)\s+|\b(?:rather than|instead of|except)\s+)[^,;.!?]+/gi,'').trim();
+ }
+ function positive(input,action){
+  if(action==='ai'&&questionRequest(requestSpan(input)))return true;
+  if(action==='reminder'&&/\u63d0\u9192/u.test(input)&&!/[\u4e0d\u522b]/u.test(input))return true;
+  if(action==='plan')return scheduleRequest(input);
+  if(action==='focus-control'&&/\b(?:timer|clock|session)\s+(?:off|fully off)\b/i.test(input)&&!hasVerb(input,'off',true))return true;
+  if(action==='focus-control'&&/\b(?:timer|clock|focus|countdown|session)\b/i.test(input)&&/[+\-\u2212]\s*\d/.test(input)&&!hasVerb(input,'add|extend|shorten|reduce|subtract|adjust',true))return true;
+  if(hasVerb(input,verbs[action]))return true;
+  if(action==='complete'&&hasVerb(input,'done'))return true;
+  if(action==='bookmark'&&/[\u{1f516}\u{1f4cc}]/u.test(input)&&!hasVerb(input,'bookmark|pin|save|keep',true))return true;
+  if(action==='note'&&literalNoteRequest(input))return true;
+  if(action==='focus'&&/^(?:start|begin|run)\b/i.test(requestGoal(input))&&/\b(?:minutes?|mins?|m|hours?|hrs?)\b/i.test(input))return hasVerb(input,'start|begin|run');
+  if(action==='focus-control'&&duration.test(input)&&/\b(?:countdown|remaining|more|extra|less|fewer)\b/i.test(input))return !hasVerb(input,'set|add|extend|shorten|reduce|subtract|adjust',true);
+  return false;
+ }
+ function negated(input,action){
+  const scope=requestSpan(input);
+  if(action==='note'&&!literalNoteRequest(scope)){
+   const prefix=/^(?:do not|don't|dont|never|not to)\s+(?:(?:please|ever|actually|just)\s+)*/i.exec(lexicalView(scope));
+   if(prefix&&literalNoteForm(scope.slice(prefix[0].length)))return true;
+  }
+  return !positive(scope,action)&&hasVerb(scope,(verbs[action]||'')+(action==='ai'?'|ask|quiz|test|drill':''),true);
+ }
  function reminderRequest(raw){return clauses(raw).some(c=>hasVerb(c,verbs.reminder)&&reminderAct(requestGoal(c)));}
  function storedPlanView(raw){return /\b(?:show|inspect|read|view|open|display|see)\b.{0,65}\b(?:(?:saved|existing|current|already)\b.{0,25}\b(?:plan|planner|schedule|study block)|(?:plan|planner|schedule|study block)\b.{0,35}\b(?:saved|already|existing))\b|^\s*(?:my\s+)?(?:saved|existing|current)\s+(?:study\s+)?(?:plan|planner|schedule)\b/i.test(raw);}
- function scheduleRequest(raw){const V=root.ReserveBiscuitValues||(typeof module==='object'&&module.exports?require('./biscuit-values.js'):null),text=V?V.normalize(replace(raw)):replace(raw);return clauses(text).some(part=>{const c=requestGoal(part.replace(/^\s*(?:(?:and|then|also|plus)\s+)+/i,'')).replace(/^\s*(?:an?|the)\s+(?=\d+(?:\.\d+)?\s*[- ]?\s*(?:minutes?|mins?|hours?|hrs?)\b)/i,'');if(!c||storedPlanView(c)||reminderRequest(c)||/^\s*(?:if|unless|suppose|what if|how (?:do|can|could|would) i|can i|could i|should i)\b/i.test(c)||/\b(?:only|just)\s+(?:talking|venting|complaining)\b/i.test(c))return false;
-   const direct=/^(?:plan|schedule|replan|reschedule|rebuild|allocate)\b/i.test(c)&&hasVerb(c,'plan|schedule|replan|reschedule|rebuild|allocate')&&!/^(?:plan|schedule)\s+(?:page|tab|controls?|options?|settings?|reminders?|alerts?|notifications?)\b/i.test(c),make=/\b(?:make|create|build|give|need|want|redo|recalculate)\b.{0,45}\b(?:study plan|work plan|catch.?up (?:plan|evening)|remaining blocks|generated (?:blocks|portions)|plan for|plan my)\b/i.test(c),distribute=hasVerb(c,'split|spread|divide')&&/\b(?:split|spread|divide)\b.{0,65}\b(?:prep|preparation|study|work|tasks?|jobs?|blocks?|window|time)\b.{0,55}\b(?:over|across|between)\b/i.test(c),around=/\b(?:put|work|fit|arrange)\b.{0,50}\b(?:study|work|prep)\b.{0,25}\b(?:round|around)\b/i.test(c),priority=/\b(?:choose|pick|prioriti[sz]e)\s+(?:(?:which|one|of|these|those|two|a|an|the|my|our|next|first|unfinished|school|remaining|best|loaded|urgent|\d+)\s+)*(?:tasks?|assignments?|jobs?|work|prep)\b|\bwhich\b.{0,35}\bshould\s+i\s+(?:do|start)\s+first\b/i.test(c);
-   const reserve=/^(?:save|give|use|reserve|block|put|place|protect|write in|get|book)\b/i.test(c)&&duration.test(c)&&/\b(?:at|from|until|till|past)\s+(?:\d{1,2}|quarter|half)\b|\b\d{1,2}:\d{2}\b/i.test(c)&&/\b(?:study|work|class|course|coursework|subject|here|check|pass|block|slot)\b/i.test(c),slot=/^\s*\d+(?:\.\d+)?\s*(?:minutes?|mins?|hours?|hrs?)\s+(?:(?:slot|block|pass|session)\s+)?(?:on|for|of)\s+(?:this|that|the|my)\s+(?:course|class|subject)\b/i.test(c)&&/\b(?:at|from)\s+\d/i.test(c)||/^\s*\d+(?:\.\d+)?\s*[- ]?\s*(?:minutes?|mins?|hours?|hrs?)\s+(?:slot|block|pass|session)\s+here\b/i.test(c)&&/\b(?:at|from)\s+\d/i.test(c);
+ function scheduleRequest(raw){
+  const V=root.ReserveBiscuitValues||(typeof module==='object'&&module.exports?require('./biscuit-values.js'):null),text=V?V.normalize(replace(raw)):replace(raw);
+  return clauses(text).some(part=>{
+   const c=requestGoal(part.replace(/^\s*(?:(?:and|then|also|plus)\s+)+/i,'')).replace(/^\s*(?:an?|the)\s+(?=\d+(?:\.\d+)?\s*[- ]?\s*(?:minutes?|mins?|hours?|hrs?)\b)/i,'');
+   if(!c||storedPlanView(c)||reminderRequest(c)||/^\s*(?:if|unless|suppose|what if|how (?:do|can|could|would) i|can i|could i|should i)\b/i.test(c)||/\b(?:only|just)\s+(?:talking|venting|complaining)\b/i.test(c))return false;
+   const direct=/^(?:plan|schedule|replan|reschedule|rebuild|allocate)\b/i.test(c)&&hasVerb(c,'plan|schedule|replan|reschedule|rebuild|allocate')&&!/^(?:plan|schedule)\s+(?:page|tab|controls?|options?|settings?|reminders?|alerts?|notifications?)\b/i.test(c),
+    make=/\b(?:make|create|build|give|need|want|redo|recalculate)\b.{0,45}\b(?:study plan|work plan|catch.?up (?:plan|evening)|remaining blocks|generated (?:blocks|portions)|plan for|plan my)\b/i.test(c),
+    distribute=hasVerb(c,'split|spread|divide')&&/\b(?:split|spread|divide)\b.{0,65}\b(?:prep|preparation|study|work|tasks?|jobs?|blocks?|window|time)\b.{0,55}\b(?:over|across|between)\b/i.test(c),
+    around=/\b(?:put|work|fit|arrange)\b.{0,50}\b(?:study|work|prep)\b.{0,25}\b(?:round|around)\b/i.test(c),
+    priority=/\b(?:choose|pick|prioriti[sz]e)\s+(?:(?:which|one|of|these|those|two|a|an|the|my|our|next|first|unfinished|school|remaining|best|loaded|urgent|\d+)\s+)*(?:tasks?|assignments?|jobs?|work|prep)\b|\bwhich\b.{0,35}\bshould\s+i\s+(?:do|start)\s+first\b/i.test(c);
+   const reserve=/^(?:save|give|use|reserve|block|put|place|protect|write in|get|book)\b/i.test(c)&&duration.test(c)&&/\b(?:at|from|until|till|past)\s+(?:\d{1,2}|quarter|half)\b|\b\d{1,2}:\d{2}\b/i.test(c)&&/\b(?:study|work|class|course|coursework|subject|here|check|pass|block|slot)\b/i.test(c),
+    slot=/^\s*\d+(?:\.\d+)?\s*(?:minutes?|mins?|hours?|hrs?)\s+(?:(?:slot|block|pass|session)\s+)?(?:on|for|of)\s+(?:this|that|the|my)\s+(?:course|class|subject)\b/i.test(c)&&/\b(?:at|from)\s+\d/i.test(c)||/^\s*\d+(?:\.\d+)?\s*[- ]?\s*(?:minutes?|mins?|hours?|hrs?)\s+(?:slot|block|pass|session)\s+here\b/i.test(c)&&/\b(?:at|from)\s+\d/i.test(c);
    const blockChange=/^(?:remove|delete|drop|cancel|erase|scratch|unslot)\s+(?:(?:the|my|this|that|selected|saved|study|time)\s+)*(?:block|slot|appointment)\b/i.test(c)&&hasVerb(c,'remove|delete|drop|cancel|erase|scratch|unslot')||/^take\s+(?:(?:the|my|our|this|that|selected|saved|local|study|work)\s+)*(?:block|slot)\s+off\b/i.test(c)&&hasVerb(c,'take');
-   return (blockChange||direct||make&&hasVerb(c,'make|create|build|give|need|want|redo|recalculate')||distribute||around&&hasVerb(c,'put|work|fit|arrange')||priority&&hasVerb(c,'choose|pick|prioriti[sz]e|should')||reserve&&hasVerb(c,'save|give|use|reserve|block|put|place|protect|write in|get')||slot)&&!/\b(?:not asking|no permission|not permission|not ready)\b.{0,65}\b(?:plan|schedule|apply|rearrange)\b/i.test(c);
+   return (blockChange||
+    direct||
+    make&&hasVerb(c,'make|create|build|give|need|want|redo|recalculate')||
+    distribute||
+    around&&hasVerb(c,'put|work|fit|arrange')||
+    priority&&hasVerb(c,'choose|pick|prioriti[sz]e|should')||
+    reserve&&hasVerb(c,'save|give|use|reserve|block|put|place|protect|write in|get')||
+    slot)&&
+    !/\b(?:not asking|no permission|not permission|not ready)\b.{0,65}\b(?:plan|schedule|apply|rearrange)\b/i.test(c);
   });}
- function quietRequest(raw){const V=root.ReserveBiscuitValues||(typeof module==='object'&&module.exports?require('./biscuit-values.js'):null),text=V?V.normalize(raw):String(raw);return clauses(text).some(c=>!reminderRequest(c)&&!/^\s*(?:what|why|how|when|where|if|unless|can i|could i|should i)\b/i.test(c)&&/\b(?:reminders?|notifications?|alerts?|pings?|sounds?)\b/i.test(c)&&duration.test(c)&&(hasVerb(c,'mute|silence|quiet|snooze|hush')||/\u{1f515}/u.test(c)));}
+ function quietRequest(raw){
+  const V=root.ReserveBiscuitValues||(typeof module==='object'&&module.exports?require('./biscuit-values.js'):null),text=V?V.normalize(raw):String(raw);
+  return clauses(text).some(c=>
+   !reminderRequest(c)&&
+    !/^\s*(?:what|why|how|when|where|if|unless|can i|could i|should i)\b/i.test(c)&&
+    /\b(?:reminders?|notifications?|alerts?|pings?|sounds?)\b/i.test(c)&&
+    duration.test(c)&&
+    (hasVerb(c,'mute|silence|quiet|snooze|hush')||/\u{1f515}/u.test(c)));
+ }
  function literalNoteRequest(raw){return literalNoteForm(requestGoal(raw));}
  /* Asking the learner a fresh question is an act, not a request for its answer. */
- function questionRequest(goal){return /^(?:ask\s+(?:(?:me|us|what|which|how|why|whether)\b|(?:a|another|one|new)\s+question\b)|(?:quiz|test|drill)\s+(?:me|us)\b)/i.test(lexicalView(workflowMask(goal)).trim());}
- function inboxRequest(goal){const g=lexicalView(workflowMask(goal)).trim().replace(/[.!?]+$/,'').replace(/\s+(?:please|pls)$/i,'');if(/^(?:(?:open|show|view|list|abre)\s+(?:me\s+)?)?(?:(?:my|the|canvas|el|la)\s+)*(?:(?:unread\s+)?inbox|unread\s+(?:messages|conversations)|messages non lus)$/i.test(g))return 'shell';if(/\binbox\b/i.test(g)&&(retrievalRequest(g)||/^(?:sent|starred|drafts?|archived|unread filter)\b/i.test(g)))return 'target';return null;}
- function bookmarkRequest(raw,selected){return clauses(raw).some(c=>{const g=requestGoal(c);if(!hasVerb(c,verbs.bookmark)&&!/[\u{1f516}\u{1f4cc}]/u.test(c)||/^(?:show|find|open|read|inspect|display)\b/i.test(g))return false;if(/^(?:bookmark|pin|unpin)\b/i.test(g)||/[\u{1f516}\u{1f4cc}]/u.test(g)&&!hasVerb(g,'bookmark|pin|save|keep',true))return true;if(/^(?:keep|save|retain|put)\b/i.test(g)&&/\b(?:keep|save|retain|put)\b.{0,110}\b(?:bookmarks?|bookmarked|shortcuts?|saved (?:links|resources|stuff)|my (?:links|shortcuts))\b/i.test(g))return true;if(/^(?:save|keep)\b/i.test(g)&&! /\b(?:focus|studying|working|timer|session|plan|schedule|reminder|note|minutes?|hours?|settings?|changes|theme|pet)\b/i.test(g)&&(!/^keep\s+(?:this|that|it)\s+(?:short|brief|simple|concise|clear|running|counting|going|open|closed|quiet|visible|hidden)\b/i.test(g)&&(/^save\b/i.test(g)&&/\b(?:this|that|it|link|page|file|thread|reading|rubric|guide|source|index|resource|task|assignment|handout)\b|https?:/i.test(g)||/^keep\s+(?:(?:a|an|the|my)\s+)?(?:this|that|it|link|page|file|thread|reading|rubric|guide|source|index|resource)\b/i.test(g))))return true;return !!selected&&/^(?:keep|shelve)[.!\s]*$/i.test(g);});}
+ function questionRequest(goal){
+  return /^(?:ask\s+(?:(?:me|us|what|which|how|why|whether)\b|(?:a|another|one|new)\s+question\b)|(?:quiz|test|drill)\s+(?:me|us)\b)/i.test(lexicalView(workflowMask(goal)).trim());
+ }
+ function inboxRequest(goal){
+  const g=lexicalView(workflowMask(goal)).trim().replace(/[.!?]+$/,'').replace(/\s+(?:please|pls)$/i,'');
+  if(/^(?:(?:open|show|view|list|abre)\s+(?:me\s+)?)?(?:(?:my|the|canvas|el|la)\s+)*(?:(?:unread\s+)?inbox|unread\s+(?:messages|conversations)|messages non lus)$/i.test(g))return 'shell';
+  if(/\binbox\b/i.test(g)&&(retrievalRequest(g)||/^(?:sent|starred|drafts?|archived|unread filter)\b/i.test(g)))return 'target';
+  return null;
+ }
+ function bookmarkRequest(raw,selected){
+  return clauses(raw).some(c=>{
+   const g=requestGoal(c);
+   if(!hasVerb(c,verbs.bookmark)&&!/[\u{1f516}\u{1f4cc}]/u.test(c)||/^(?:show|find|open|read|inspect|display)\b/i.test(g))return false;
+   if(/^(?:bookmark|pin|unpin)\b/i.test(g)||/[\u{1f516}\u{1f4cc}]/u.test(g)&&!hasVerb(g,'bookmark|pin|save|keep',true))return true;
+   if(/^(?:keep|save|retain|put)\b/i.test(g)&&/\b(?:keep|save|retain|put)\b.{0,110}\b(?:bookmarks?|bookmarked|shortcuts?|saved (?:links|resources|stuff)|my (?:links|shortcuts))\b/i.test(g))return true;
+   if(/^(?:save|keep)\b/i.test(g)&&! /\b(?:focus|studying|working|timer|session|plan|schedule|reminder|note|minutes?|hours?|settings?|changes|theme|pet)\b/i.test(g)&&(!/^keep\s+(?:this|that|it)\s+(?:short|brief|simple|concise|clear|running|counting|going|open|closed|quiet|visible|hidden)\b/i.test(g)&&(/^save\b/i.test(g)&&/\b(?:this|that|it|link|page|file|thread|reading|rubric|guide|source|index|resource|task|assignment|handout)\b|https?:/i.test(g)||/^keep\s+(?:(?:a|an|the|my)\s+)?(?:this|that|it|link|page|file|thread|reading|rubric|guide|source|index|resource)\b/i.test(g))))return true;
+   return !!selected&&/^(?:keep|shelve)[.!\s]*$/i.test(g);
+  });
+ }
  /* Relational analysis asks for a new judgement, even when phrased as show/find. */
- function interpretationRequest(goal){if(/^(?:open|find|fetch|locate|retrieve|pull up|bring up|bring me to|take me to|display|inspect|list|count)\b/i.test(goal)&&! /^(?:find|locate)\s+(?:out\s+)?(?:how|why|where|which)\b/i.test(goal)||/\b(?:show|check|tell|read)\s+(?:me\s+)?(?:how (?:many|much)|when|who)\b/i.test(goal))return false;return /\b(?:where|which|how|what)\b.{0,100}\b(?:reasoning|logic|argument|inference|assum(?:e|es|ed|ption|ptions)|conclusion|warrant|uncertainty|confound|mistake|flaw|feasibility|distinction)\b/i.test(goal)&&! /\b(?:where|which|what)\b.{0,40}\b(?:page|file|assignment|task|chapter|source)\b.{0,45}\b(?:lists?|contains?|states?|asks?|requires?|covers?)\b/i.test(goal)||/\b(?:read|look|work|go)\b.{0,60}\b(?:with me|together)\b/i.test(goal)||/\b(?:and|then)\s+(?:suggest|explain|interpret|critique|diagnose|rephrase|rewrite)\b/i.test(goal);}
- function retrievalRequest(goal){return !interpretationRequest(goal)&&/^(?:open|find|fetch|locate|retrieve|pull up|bring up|bring me to|take me to|display|inspect|list|count|read|show|check|get me)\b/i.test(goal)&&! /^(?:find|locate|get me)\s+(?:a\s+)?(?:way|solution|reason|time)\b|^(?:show|explain)\s+(?:me\s+)?(?:how|why)\b(?!\s+(?:many|much))|^(?:check|read)\b.{0,25}\b(?:reasoning|logic|argument|proof|hierarchy|with me|together)\b/i.test(goal)&&! /\b(?:make|build|turn|create|generate)\b.{0,45}\b(?:checklist|notes outline|practice|guide|fix list)\b/i.test(goal);}
+ function interpretationRequest(goal){
+  if(/^(?:open|find|fetch|locate|retrieve|pull up|bring up|bring me to|take me to|display|inspect|list|count)\b/i.test(goal)&&! /^(?:find|locate)\s+(?:out\s+)?(?:how|why|where|which)\b/i.test(goal)||/\b(?:show|check|tell|read)\s+(?:me\s+)?(?:how (?:many|much)|when|who)\b/i.test(goal))return false;
+  return /\b(?:where|which|how|what)\b.{0,100}\b(?:reasoning|logic|argument|inference|assum(?:e|es|ed|ption|ptions)|conclusion|warrant|uncertainty|confound|mistake|flaw|feasibility|distinction)\b/i.test(goal)&&! /\b(?:where|which|what)\b.{0,40}\b(?:page|file|assignment|task|chapter|source)\b.{0,45}\b(?:lists?|contains?|states?|asks?|requires?|covers?)\b/i.test(goal)||/\b(?:read|look|work|go)\b.{0,60}\b(?:with me|together)\b/i.test(goal)||/\b(?:and|then)\s+(?:suggest|explain|interpret|critique|diagnose|rephrase|rewrite)\b/i.test(goal);
+ }
+ function retrievalRequest(goal){
+  return !interpretationRequest(goal)&&/^(?:open|find|fetch|locate|retrieve|pull up|bring up|bring me to|take me to|display|inspect|list|count|read|show|check|get me)\b/i.test(goal)&&! /^(?:find|locate|get me)\s+(?:a\s+)?(?:way|solution|reason|time)\b|^(?:show|explain)\s+(?:me\s+)?(?:how|why)\b(?!\s+(?:many|much))|^(?:check|read)\b.{0,25}\b(?:reasoning|logic|argument|proof|hierarchy|with me|together)\b/i.test(goal)&&! /\b(?:make|build|turn|create|generate)\b.{0,45}\b(?:checklist|notes outline|practice|guide|fix list)\b/i.test(goal);
+ }
  /* Comparing ideas or judging a design creates an explanation; comparing recorded fields does not. */
- function eventOverlapRequest(input,s={},rows=[],session={}){const raw=targetText(input),text=workflowMask(raw).trim(),events=()=>[...list(s.events),...list(s.calendarEvents),...list(rows).filter(row=>row.kind==='event')];if(/^(?:overlap|clash|conflict)[?!.\s]*$/i.test(text)){const selected=String(s.selectedItemId||s.itemId||s.page?.itemId||session.lastItemId||session.itemId||'');return !!selected&&events().some(row=>String(row.id)===selected);}if(!/^(?:compare|check|show|report|tell|do|does|is|are|which|what|when|whether)\b/i.test(text)||!/\b(?:overlap\w*|clash\w*|conflict\w*)\b/i.test(text)||/\b(?:why|ideas?|methods?|theor(?:y|ies)|hypothetical|possible|potential|imagined|invented|new)\b|\band\s+(?:explain|interpret|analy[sz]e|design|invent|generate)\b/i.test(text))return false;if(/\b(?:calendar|events?|sessions?|appointments?|meetings?|conferences?|seminars?|commitments?)\b/i.test(text))return true;const phrase=value=>' '+replace(value).toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim()+' ',query=phrase(raw);return events().some(row=>{const title=phrase(row.title||row.name||'');return title.length>5&&query.includes(title);});}
- function conceptualQuestion(goal){if(retrievalRequest(goal)||/^(?:what|which)\b.{0,40}\b(?:assignment|task|page|file|source|chapter|quiz|rubric)\b.{0,55}\b(?:asks?|requires?|says?|said|includes?|covers?|lists?|states?)\b/i.test(goal)||/\b(?:compare|contrast|differences? between)\s+(?:(?:the|these|those|two|current|recorded|saved|published|listed|actual|their|my|course)\s+)*(?:due dates?|dates?|deadlines?|times?|grades?|scores?|percentages?|counts?|totals?|points)\b/i.test(goal))return false;const why=/\bwhy\s+(?:is(?:n't|nt)?|are(?:n't|nt)?|was(?:n't|nt)?|were(?:n't|nt)?|do(?:n't|nt)?|does(?:n't|nt)?|did(?:n't|nt)?|can|could|would|should|will|has|have)\b/i.test(goal)&&! /\b(?:locked|unlock|unavailable|disabled|privacy|visibility|hidden|settings?|missing|late|posted|published|deadline|due date|start time|room|venue|submission status|attempts? left)\b/i.test(goal),comparison=/\b(?:compare|contrast|distinguish|difference|different|versus|vs|or)\b/i.test(goal)&&/\b(?:methods?|approaches?|theor(?:y|ies)|strategies|concepts?|ideas?|interpretations?|models?|arguments?|explanations?)\b/i.test(goal),quality=/\b(?:legibility|readability|readable|legible|clarity|clearer|hierarchy|persuasive|convincing|effective|appropriate|easier to read|quick reading)\b/i.test(goal),design=/\b(?:compare|contrast|versus|vs|or|which|better|best|should|would)\b/i.test(goal)&&quality&&/\b(?:font|typeface|typography|layout|label|poster|design|interface|screen|caption|reader|reading)\b/i.test(goal);return why||comparison||design;}
+ function eventOverlapRequest(input,s={},rows=[],session={}){
+  const raw=targetText(input),text=workflowMask(raw).trim(),events=()=>[...list(s.events),...list(s.calendarEvents),...list(rows).filter(row=>row.kind==='event')];
+  if(/^(?:overlap|clash|conflict)[?!.\s]*$/i.test(text)){
+   const selected=String(s.selectedItemId||s.itemId||s.page?.itemId||session.lastItemId||session.itemId||'');
+   return !!selected&&events().some(row=>String(row.id)===selected);
+  }
+  if(!/^(?:compare|check|show|report|tell|do|does|is|are|which|what|when|whether)\b/i.test(text)||!/\b(?:overlap\w*|clash\w*|conflict\w*)\b/i.test(text)||/\b(?:why|ideas?|methods?|theor(?:y|ies)|hypothetical|possible|potential|imagined|invented|new)\b|\band\s+(?:explain|interpret|analy[sz]e|design|invent|generate)\b/i.test(text))return false;
+  if(/\b(?:calendar|events?|sessions?|appointments?|meetings?|conferences?|seminars?|commitments?)\b/i.test(text))return true;
+  const phrase=value=>' '+replace(value).toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim()+' ',query=phrase(raw);
+  return events().some(row=>{const title=phrase(row.title||row.name||'');return title.length>5&&query.includes(title);});
+ }
+ function conceptualQuestion(goal){
+  if(retrievalRequest(goal)||/^(?:what|which)\b.{0,40}\b(?:assignment|task|page|file|source|chapter|quiz|rubric)\b.{0,55}\b(?:asks?|requires?|says?|said|includes?|covers?|lists?|states?)\b/i.test(goal)||/\b(?:compare|contrast|differences? between)\s+(?:(?:the|these|those|two|current|recorded|saved|published|listed|actual|their|my|course)\s+)*(?:due dates?|dates?|deadlines?|times?|grades?|scores?|percentages?|counts?|totals?|points)\b/i.test(goal))return false;
+  const why=/\bwhy\s+(?:is(?:n't|nt)?|are(?:n't|nt)?|was(?:n't|nt)?|were(?:n't|nt)?|do(?:n't|nt)?|does(?:n't|nt)?|did(?:n't|nt)?|can|could|would|should|will|has|have)\b/i.test(goal)&&! /\b(?:locked|unlock|unavailable|disabled|privacy|visibility|hidden|settings?|missing|late|posted|published|deadline|due date|start time|room|venue|submission status|attempts? left)\b/i.test(goal),
+   comparison=/\b(?:compare|contrast|distinguish|difference|different|versus|vs|or)\b/i.test(goal)&&/\b(?:methods?|approaches?|theor(?:y|ies)|strategies|concepts?|ideas?|interpretations?|models?|arguments?|explanations?)\b/i.test(goal),
+   quality=/\b(?:legibility|readability|readable|legible|clarity|clearer|hierarchy|persuasive|convincing|effective|appropriate|easier to read|quick reading)\b/i.test(goal),
+   design=/\b(?:compare|contrast|versus|vs|or|which|better|best|should|would)\b/i.test(goal)&&quality&&/\b(?:font|typeface|typography|layout|label|poster|design|interface|screen|caption|reader|reading)\b/i.test(goal);
+  return why||comparison||design;
+ }
  const nameText=v=>(String(v??'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().match(/[\p{L}\p{N}]+/gu)||[]).join(' ');
- function courseNavigation(goal,s,selected){if(selected&&/^(?:navigate|open|go|take|bring|switch)\b/i.test(goal)&&/\bcourse\b/i.test(goal)&&/\b(?:associated|belongs|selected item|current item|this item)\b/i.test(goal)&&list(s.courses).some(v=>String(v.id)===String(selected.courseId)))return true;if(/\b(?:due|deadline|grade|score|points|tasks?|assignments?|files?|people|roster|messages?|calendar|syllabus|rubric|requirements|teacher|contact|count|how many)\b/i.test(goal))return false;if(/^(?:this|that|selected|other)\s+(?:course|class)[.!\s]*$/i.test(goal))return !!selected&&list(s.courses).some(v=>String(v.id)===String(selected.id)||String(v.id)===String(selected.courseId));if(!/^(?:open|switch|take me (?:to|into)|bring me to|go to|move (?:me )?to)\b/i.test(goal))return false;const object=nameText(goal.replace(/(?:[,;]\s*not\b|\b(?:rather than|instead of)\b)[\s\S]*$/i,'').replace(/^(?:open|switch(?: the course view)?(?: to)?|take me (?:to|into)|bring me to|go to|move (?:me )?to)\s+/i,'').replace(/\s+(?:please|pls)$/i,'')).replace(/^(?:the|my)\s+/,'');return list(s.courses).some(v=>[v.name,v.title,v.shortName,v.nickname,v.code,v.course_code,...list(v.aliases)].some(label=>{const n=nameText(label);return n&&(object===n||object===n+' course'||object==='course '+n);}));}
+ function courseNavigation(goal,s,selected){
+  if(selected&&
+   /^(?:navigate|open|go|take|bring|switch)\b/i.test(goal)&&
+   /\bcourse\b/i.test(goal)&&
+   /\b(?:associated|belongs|selected item|current item|this item)\b/i.test(goal)&&
+   list(s.courses).some(v=>String(v.id)===String(selected.courseId)))
+   return true;
+  if(/\b(?:due|deadline|grade|score|points|tasks?|assignments?|files?|people|roster|messages?|calendar|syllabus|rubric|requirements|teacher|contact|count|how many)\b/i.test(goal))return false;
+  if(/^(?:this|that|selected|other)\s+(?:course|class)[.!\s]*$/i.test(goal))return !!selected&&list(s.courses).some(v=>String(v.id)===String(selected.id)||String(v.id)===String(selected.courseId));
+  if(!/^(?:open|switch|take me (?:to|into)|bring me to|go to|move (?:me )?to)\b/i.test(goal))return false;
+  const object=nameText(goal.replace(/(?:[,;]\s*not\b|\b(?:rather than|instead of)\b)[\s\S]*$/i,'').replace(/^(?:open|switch(?: the course view)?(?: to)?|take me (?:to|into)|bring me to|go to|move (?:me )?to)\s+/i,'').replace(/\s+(?:please|pls)$/i,'')).replace(/^(?:the|my)\s+/,'');
+  return list(s.courses).some(v=>[v.name,v.title,v.shortName,v.nickname,v.code,v.course_code,...list(v.aliases)].some(label=>{
+   const n=nameText(label);
+   return n&&(object===n||object===n+' course'||object==='course '+n);
+  }));
+ }
  /* Timer lifecycle needs a real current session; a work title is not a control verb. */
- function focusAction(raw,s,selected){const V=root.ReserveBiscuitValues||(typeof module==='object'&&module.exports?require('./biscuit-values.js'):null),g=requestGoal(V?V.normalize(raw):raw),focus=s.focus||s.pet?.focus||{},existing=!!(focus.running||focus.paused||(Number(focus.endsAt)>s.now)||Number(focus.pausedAt)>0&&Number(focus.remainingMinutes??focus.remaining)>0),clock=/\b(?:focus|timer|clock|countdown|session|sprint)\b/i.test(g);if(/^(?:what|which|when|where|why|how|if|unless|can i|could i)\b/i.test(g))return null;
+ function focusAction(raw,s,selected){
+  const V=root.ReserveBiscuitValues||(typeof module==='object'&&module.exports?require('./biscuit-values.js'):null),
+   g=requestGoal(V?V.normalize(raw):raw),
+   focus=s.focus||s.pet?.focus||{},
+   existing=!!(focus.running||focus.paused||(Number(focus.endsAt)>s.now)||Number(focus.pausedAt)>0&&Number(focus.remainingMinutes??focus.remaining)>0),
+   clock=/\b(?:focus|timer|clock|countdown|session|sprint)\b/i.test(g);
+  if(/^(?:what|which|when|where|why|how|if|unless|can i|could i)\b/i.test(g))return null;
   if(existing&&hasVerb(g,'pause|park|resume|stop|end|quit|continue|freeze|unfreeze')&&(/^(?:pause|park|resume|stop|end|quit|continue|freeze|unfreeze)\b/i.test(g)&&clock||/^(?:pause|resume|stop|continue)[.!\s]*$/i.test(g)))return 'focus-control';
   if(existing&&clock&&(/[+\-\u2212]\s*\d/.test(g)||hasVerb(g,'reset|restart')||/\b(?:timer|clock|session)\s+off\b/i.test(g)))return 'focus-control';
   if(existing&&clock&&duration.test(g)&&/\btime left\b.{0,20}\bto\b/i.test(g))return 'focus-control';
-  if(existing&&duration.test(g)&&(/\b(?:add|extend|shorten|reduce|subtract|adjust|set)\b/i.test(g)&&clock&&hasVerb(g,'add|extend|shorten|reduce|subtract|adjust|set')||clock&&/\b(?:more|extra|fewer|less)\b/i.test(g)||/\b(?:countdown|remaining)\b.{0,15}\bto\s+\d/i.test(g)))return 'focus-control';
-  if(/\b(?:break|breather|rest interval)\b/i.test(g)&&hasVerb(g,'break|breather|rest interval')&&(duration.test(g)||/^(?:start|begin|run|take)\b/i.test(g))&&(/^(?:start|begin|run|take)\b/i.test(g)||nTokens(g)<=6))return existing?'focus-control':'focus';
-  const target=!!selected&&[...list(s.assignments),...list(s.workItems),...list(s.personalTasks),...list(s.courses)].some(v=>String(v.id)===String(selected.id));if(duration.test(g)&&! /\b(?:at|from)\s+\d|\b(?:study|work)\s+blocks?\b/i.test(g)&&(/^focus\b|^concentrate\b|^study\b|^time me\b|^count down\b/i.test(g)||/^(?:start|begin|run|give|put)\b/i.test(g)&&(/\b(?:focus|timer|clock|sprint)\b/i.test(g)||target)&&hasVerb(g,'start|begin|run|give|put')))return 'focus';return null;
+  if(existing&&
+   duration.test(g)&&
+   (/\b(?:add|extend|shorten|reduce|subtract|adjust|set)\b/i.test(g)&&clock&&hasVerb(g,'add|extend|shorten|reduce|subtract|adjust|set')||clock&&/\b(?:more|extra|fewer|less)\b/i.test(g)||/\b(?:countdown|remaining)\b.{0,15}\bto\s+\d/i.test(g)))
+   return 'focus-control';
+  if(/\b(?:break|breather|rest interval)\b/i.test(g)&&
+   hasVerb(g,'break|breather|rest interval')&&
+   (duration.test(g)||/^(?:start|begin|run|take)\b/i.test(g))&&
+   (/^(?:start|begin|run|take)\b/i.test(g)||nTokens(g)<=6))
+   return existing?'focus-control':'focus';
+  const target=!!selected&&[...list(s.assignments),...list(s.workItems),...list(s.personalTasks),...list(s.courses)].some(v=>String(v.id)===String(selected.id));
+  if(duration.test(g)&&
+   ! /\b(?:at|from)\s+\d|\b(?:study|work)\s+blocks?\b/i.test(g)&&
+   (/^focus\b|^concentrate\b|^study\b|^time me\b|^count down\b/i.test(g)||/^(?:start|begin|run|give|put)\b/i.test(g)&&(/\b(?:focus|timer|clock|sprint)\b/i.test(g)||target)&&hasVerb(g,'start|begin|run|give|put')))
+   return 'focus';
+  return null;
  }
  const nTokens=v=>(String(v).match(/[\p{L}\p{N}]+/gu)||[]).length;
- function hypotheticalScope(raw,goal){if(!/^\s*(?:if|unless|suppose|what (?:if|happens))\b/i.test(raw))return false;const at=String(raw).lastIndexOf(goal);return at<=0||!/[.!?]\s*(?:(?:please|pls)\s+|(?:can|could|would|will)\s+(?:you|u)\s+(?:please\s+)?)*$/i.test(workflowMask(String(raw).slice(0,at)));}
- function choose(input,s={},session={},predicted,probability=0){const raw=String(input),goal=requestSpan(raw),head=lexicalView(goal),text=head.toLowerCase(),hypothetical=hypotheticalScope(raw,goal),ref=root.ReserveBiscuitSemantics||(typeof module==='object'&&module.exports?require('./biscuit-semantics.js'):null),selected=ref?.selected(s,session),tokens=raw.match(/[\p{L}\p{N}]+/gu)||[],literalNote=literalNoteRequest(raw);
+ function hypotheticalScope(raw,goal){
+  if(!/^\s*(?:if|unless|suppose|what (?:if|happens))\b/i.test(raw))return false;
+  const at=String(raw).lastIndexOf(goal);
+  return at<=0||!/[.!?]\s*(?:(?:please|pls)\s+|(?:can|could|would|will)\s+(?:you|u)\s+(?:please\s+)?)*$/i.test(workflowMask(String(raw).slice(0,at)));
+ }
+ const studyTask=/\b(?:flash ?cards?|tl ?;? ?dr|tldr|sum (?:it )?up|summar(?:y|ize|ise)|recap|annotate|annotations?|cornell notes|study notes|outline|break (?:it )?down|breakdown|explain|expl[ií]ca(?:me|r)?|explique[rz]?|pasos|steps (?:for|to)|practice (?:questions?|problems?|test|set for)|quiz practice|pr[aá]ctica|quiz me|drill me|test me|ask me (?:some )?(?:practice )?questions|step by step|(?:want|need) to understand|understand why|proofread|rewrite|reword|shorten|make it (?:shorter|longer|clearer|better|sound)|improve|fix (?:my |the )?(?:intro|introduction|thesis|conclusion|paragraph|draft|essay|sentence|grammar)|rubric check|check (?:my )?(?:draft|essay|work|answer)s?|grade (?:my )?(?:[\w&]+ ){0,3}(?:draft|essay|work)|feedback on (?:my|this)|design (?:an? |my |the )?(?:\w+ )?(?:experiment|investigation)|hypothes[ie]s|variables|brainstorm|ideas for|close read|i do ?n'?t (?:get|understand)|i dont (?:get|understand)|help me (?:read|understand|study|start|plan|write|outline|review)|reply to|respond to|write (?:\w+ )?(?:a )?(?:msg|message|email|reply|note to)|email (?:\w+ )?(?:about|for|re|asking)|draft (?:a |an )?(?:reply|email|message|msg)|msg my|message my)\b/i;
+ function choose(input,s={},session={},predicted,probability=0){
+  const raw=String(input),
+   goal=requestSpan(raw),
+   head=lexicalView(goal),
+   text=head.toLowerCase(),
+   hypothetical=hypotheticalScope(raw,goal),
+   ref=root.ReserveBiscuitSemantics||(typeof module==='object'&&module.exports?require('./biscuit-semantics.js'):null),
+   selected=ref?.selected(s,session),
+   tokens=raw.match(/[\p{L}\p{N}]+/gu)||[],
+   literalNote=literalNoteRequest(raw);
   if(hypothetical&&['plan','setting','feature','module','bookmark','note','complete','focus','focus-control','reminder'].includes(predicted))return 'none';if(hypothetical)return predicted;
-  if(literalNote)return 'note';const embedded=/\b(?:mark\s+(?=(?:my|our|the|this|that|selected|personal|local)\b).{0,100}\b(?:done|complete)|check off\s+(?=(?:my|our|the|this|that|selected|personal|local)\b))\b/i.exec(head),prefix=embedded&&head.slice(0,embedded.index),completionView=embedded&&/^(?:i|we)\s+(?:(?:have|had|just|already|finally)\s+)*(?:[a-z]+ed|read|wrote|sent|brought|done)\b/i.test(prefix)&&!/\b(?:said|says|asked|asks|told|reads|quote|quoted|if|unless|whether|would|will|can|could|should|may|might|plan|intend|want)\b|\b(?:to|not|never|without)\s*$/i.test(prefix)?head.slice(embedded.index):head;const work=[...list(s.assignments),...list(s.personalTasks),...list(s.workItems)],completion=/^(?:check off|mark\b.{0,100}\b(?:done|complete))\b/i.test(completionView)||/\bdone[.!]*$/i.test(completionView)&&work.some(v=>v.title&&nameText(completionView.replace(/\bdone[.!]*$/i,'').replace(/^(?:the|my)\s+/i,''))===nameText(v.title));if(completion&&positive(completionView,'complete'))return 'complete';if(quietRequest(raw))return 'setting';const planning=scheduleRequest(raw),bookmark=bookmarkRequest(raw,selected),reminder=reminderRequest(raw),focus=focusAction(raw,s,selected);if(planning)return 'plan';if(predicted==='bookmark'&&bookmark||predicted==='reminder'&&reminder||predicted===focus)return predicted;if(bookmark)return 'bookmark';if(reminder)return 'reminder';if(focus)return focus;
-  if(storedPlanView(raw)){const source=[...list(s.pages),...list(s.files),...list(s.materials)].find(v=>v===selected&&/\b(?:plan|planner|schedule)\b/i.test(String(v.title||v.name||'')));if(source)return 'open/find';if(list(s.planner).length)return 'navigate';return predicted;}
-  const inbox=inboxRequest(head);if(inbox==='target')return 'open/find';const collection=inbox==='shell'?'inbox':/\b(?:bookmark|saved link|saved resource)\b/i.test(head)&&/\b(?:organizing controls|organize|organise|folder|rename|label|group|sort)\b/i.test(head)?'bookmarks':/\b(?:class list|class people|people tab|roster page|names page|classmates list)\b/i.test(head)?'people':null,collectionSource=collection==='people'&&[...list(s.pages),...list(s.files),...list(s.materials)].some(v=>/classmates|roster|class list/i.test(v.title||v.name||''));if(collection&&!collectionSource)return 'navigate';
+  if(literalNote)return 'note';
+  const embedded=/\b(?:mark\s+(?=(?:my|our|the|this|that|selected|personal|local)\b).{0,100}\b(?:done|complete)|check off\s+(?=(?:my|our|the|this|that|selected|personal|local)\b))\b/i.exec(head),
+   prefix=embedded&&head.slice(0,embedded.index),
+   completionView=embedded&&/^(?:i|we)\s+(?:(?:have|had|just|already|finally)\s+)*(?:[a-z]+ed|read|wrote|sent|brought|done)\b/i.test(prefix)&&!/\b(?:said|says|asked|asks|told|reads|quote|quoted|if|unless|whether|would|will|can|could|should|may|might|plan|intend|want)\b|\b(?:to|not|never|without)\s*$/i.test(prefix)?
+    head.slice(embedded.index):
+    head;
+  const work=[...list(s.assignments),...list(s.personalTasks),...list(s.workItems)],
+   completion=/^(?:check off|mark\b.{0,100}\b(?:done|complete))\b/i.test(completionView)||
+    /\bdone[.!]*$/i.test(completionView)&&work.some(v=>v.title&&nameText(completionView.replace(/\bdone[.!]*$/i,'').replace(/^(?:the|my)\s+/i,''))===nameText(v.title));
+  if(completion&&positive(completionView,'complete'))return 'complete';
+  if(quietRequest(raw))return 'setting';
+  const planning=scheduleRequest(raw),bookmark=bookmarkRequest(raw,selected),reminder=reminderRequest(raw),focus=focusAction(raw,s,selected);
+  if(planning)return 'plan';
+  if(predicted==='bookmark'&&bookmark||predicted==='reminder'&&reminder||predicted===focus)return predicted;
+  if(bookmark)return 'bookmark';
+  if(reminder)return 'reminder';
+  if(focus)return focus;
+  if(storedPlanView(raw)){
+   const source=[...list(s.pages),...list(s.files),...list(s.materials)].find(v=>v===selected&&/\b(?:plan|planner|schedule)\b/i.test(String(v.title||v.name||'')));
+   if(source)return 'open/find';
+   if(list(s.planner).length)return 'navigate';
+   return predicted;
+  }
+  const inbox=inboxRequest(head);
+  if(inbox==='target')return 'open/find';
+  const collection=inbox==='shell'?'inbox':/\b(?:bookmark|saved link|saved resource)\b/i.test(head)&&/\b(?:organizing controls|organize|organise|folder|rename|label|group|sort)\b/i.test(head)?'bookmarks':/\b(?:class list|class people|people tab|roster page|names page|classmates list)\b/i.test(head)?'people':null,
+   collectionSource=collection==='people'&&[...list(s.pages),...list(s.files),...list(s.materials)].some(v=>/classmates|roster|class list/i.test(v.title||v.name||''));
+  if(collection&&!collectionSource)return 'navigate';
   if(courseNavigation(head,s,selected)||/\b(?:take me|bring me|switch|go|move me)\b.{0,60}\b(?:course (?:named|view|card)|selected (?:course|class)|current (?:course|class))\b/i.test(head))return 'navigate';
   if(/\b(?:composer|conversation|message)\b/i.test(head)&&/^(?:open|prepare|get|show|bring|take)\b/i.test(head)&&! /\b(?:draft|write|compose|rewrite|rephrase)\b/i.test(head))return 'open/find';
-  if(eventOverlapRequest(head,s,[],session))return 'open/find';if(questionRequest(head))return 'ai';const verbatim=/\b(?:original|verbatim|exact|unchanged)\b.{0,45}\b(?:teacher|feedback|comments?|wording|words|note)\b|\b(?:teacher|feedback|comments?)\b.{0,45}\b(?:original|verbatim|unchanged|exact (?:wording|words))\b/i.test(head);if(verbatim&&!hasVerb(head,verbs.ai))return 'open/find';
+  if(eventOverlapRequest(head,s,[],session))return 'open/find';
+  if(questionRequest(head))return 'ai';
+  const verbatim=/\b(?:original|verbatim|exact|unchanged)\b.{0,45}\b(?:teacher|feedback|comments?|wording|words|note)\b|\b(?:teacher|feedback|comments?)\b.{0,45}\b(?:original|verbatim|unchanged|exact (?:wording|words))\b/i.test(head);
+  if(verbatim&&!hasVerb(head,verbs.ai))return 'open/find';
   if(interpretationRequest(head)||conceptualQuestion(head))return 'ai';
-  const retrieve=retrievalRequest(head),generation=/\b(?:and|then)\s+(?:explain|rewrite|generate|invent|teach|interpret|summari[sz]e)\b/i.test(head),recordedFact=retrieve&&!generation&&/\b(?:how many|how much|when|where|who|due|deadline|closes?|points|attempts?|tries|earned|maximum|score|grade|submitted|submission|prerequisites|requirements|instructions|email|address|author|posted|room|venue|word count|availability)\b/i.test(head),explicitSource=retrieve&&!generation&&/^(?:open|pull up|bring up|bring me to|take me to|fetch|retrieve|inspect|display|list|count)\b/i.test(head);if(retrieve&&predicted==='open/find')return predicted;if(retrieve&&predicted!=='navigate'&&!(['setting','feature','module'].includes(predicted)&&/^show\b/i.test(head))&&(recordedFact||explicitSource))return 'open/find';
+  const retrieve=retrievalRequest(head),
+   generation=/\b(?:and|then)\s+(?:explain|rewrite|generate|invent|teach|interpret|summari[sz]e)\b/i.test(head),
+   recordedFact=retrieve&&!generation&&/\b(?:how many|how much|when|where|who|due|deadline|closes?|points|attempts?|tries|earned|maximum|score|grade|submitted|submission|prerequisites|requirements|instructions|email|address|author|posted|room|venue|word count|availability)\b/i.test(head),
+   explicitSource=retrieve&&!generation&&/^(?:open|pull up|bring up|bring me to|take me to|fetch|retrieve|inspect|display|list|count)\b/i.test(head);
+  if(retrieve&&predicted==='open/find')return predicted;
+  if(retrieve&&predicted!=='navigate'&&!(['setting','feature','module'].includes(predicted)&&/^show\b/i.test(head))&&(recordedFact||explicitSource))return 'open/find';
   if(!retrieve&&/\b(?:only|just)\s+(?:talking|venting|complaining)\b|\b(?:not asking|not permission|no permission)\b.{0,65}\b(?:plan|schedule|apply)\b|\b(?:venting|complaining|complaint)\b.{0,65}\b(?:not|don't|dont|do not)\b/i.test(raw)&&!planning)return predicted==='chat'&&!/\b(?:not asking|not permission|no permission)\b/i.test(raw)?'chat':'none';
-  const nominal=predicted==='open/find'&&/^(?:draft|critique|coach)\b/i.test(head)&&factTerms.test(head)&&nTokens(head)<=12&&!/^(?:draft|critique|coach)\s+(?:a|an|the|my|this|that|these|those|me|us)\b/i.test(head);if(!nominal&&/^(?:write|draft|compose|invent|generate|rewrite|rephrase|revise|interpret|clarify|decode|analy[sz]e|critique|coach|rehearse|translate|brainstorm|teach|diagnose|unpack|explain|summari[sz]e)\b/i.test(head)&&!/^write (?:down|in)|^draft.*(?:page|where)|^explain.*(?:says|said|asks|requires)|^coach\s+(?!me\b|us\b|my\b|this\b|that\b)/i.test(head))return 'ai';
-  if((probability<.8||['page','file','material','assignment','discussion','announcement','note'].includes(selected?.kind||selected?.type))&&tokens.length<=3&&/\?\s*$/.test(raw)&&selected&&String(selected.title||selected.name||'').toLowerCase()!==text.replace(/[?!.]+$/,'').trim()&&String(ref.text(selected)).length>60&&!factTerms.test(text))return 'ai';
-  const carrier=/\b(?:can|could|would|will)\s+(?:(?:you|u|ai|the ai)\s+)?(?:please\s+)?(?:explain|unpack|write|draft|compose|rewrite|rephrase|teach|translate|summari[sz]e|brainstorm|invent)\b/i.test(text),learningProduct=/\b(?:practice|quiz|questions?|examples?|hypothes[ie]s|alternatives?|scenario|case|clues|notes|outline|checklist|guide|wording|sentence|explanation|story|caption|comparison|poem|paragraph|summary)\b/i.test(text),createRequest=/^(?:give|make|build|create|turn|help)\b/i.test(text)&&learningProduct&&!/\b(?:home card|module|widget|setting|pet|companion|theme)\b/i.test(text),transform=/\b(?:turn|get|make)\s+(?:this|that|it|my|the)\b.{0,100}\b(?:into|as)\s+(?:notes|an? outline|an? checklist|practice)\b/i.test(text),confused=/\b(?:do(?:n't|nt| not) understand|can(?:not|'t|t) understand|help me understand|let me (?:try|practise|practice))\b/i.test(text)||/\bkeep mixing\b/i.test(text)&&!(/^[^;.!?]+[;.!?]\s*(?:i|we)\s+keep mixing\b/i.test(text)&&/\b(?:room|location|entrance|venue|start|deadline|due|posted|time|date|approval|policy)\b/i.test(text.split(/[;.!?]/)[0])&&!hasVerb(text.split(/[;.!?]/)[0],verbs.ai));if(!literalNote&&(carrier||createRequest||transform||confused)&&!/^\s*(?:what|which|where|when)\b.{0,80}\b(?:say|said|asked|asks|requires?|instructions|due|deadline)\b/i.test(text)&&!/\b(?:what.if|hypothetical grade)\b/i.test(text))return 'ai';
-  const recorded=/\b(?:which|what)\b.{0,30}\b(?:assignment|task|homework|quiz|test|chapter|lab|rubric)\b.{0,35}\b(?:asks?|requires?|instructions|includes?|covers?|topics|scope|due|worth)\b/i.test(text),why=/^\s*why\b/i.test(head)&&!/\b(?:locked|unlock|unavailable|disabled|privacy|setting|missing|late)\b/i.test(text),how=/\bhow (?:can|could|would|do) (?:i|we|you|u)\b/i.test(text)&&!/\b(?:submit|upload|resubmit|send|reply|post|join|book|reserve|change|set|enable|disable|hide|show|install|remove|delete|save|bookmark|download|open|start|pause|resume|check)\b/i.test(text),interpret=/\b(?:unpack|interpret|clarify|decode|analy[sz]e|critique|revise|rephrase|explain)\s+(?:this|that|it|my|the|these|those)\b|\b(?:talk|walk) (?:me|us) through\b|\bwhat\b.{0,45}\b(?:mean|means|imply)\b|\b(?:where|which|how)\b.{0,75}\b(?:go beyond|inference|reasoning|claim|warrant|conclusion|uncertainty|confound|mistake|flaw|feasibility|assumption|distinction)\b/i.test(text),aid=nTokens(raw)<=5&&/\b(?:coaching|wording|rehearsal|logic|deduction|explanation|read together|connect classes)\b/i.test(text);if(!recorded&&(why||how||interpret||aid||/^make up\b|^(?:make|build|create|give me)\b/i.test(head)&&learningProduct&&!literalNote&&!/\b(?:home card|module|widget|setting|pet|companion|theme)\b/i.test(text)))return 'ai';
-  if(['plan','focus','focus-control','reminder','complete','note','bookmark'].includes(predicted)&&/^(?:what(?:s|'s| is)?|where|when|who|which|how (?:many|much|long))\b/i.test(head)){const facts=root.ReserveBiscuitFacts||(typeof module==='object'&&module.exports?require('./biscuit-facts.js'):null);if(facts?.operators?.some(op=>op.re.test(head)))return 'open/find';}
+  const nominal=predicted==='open/find'&&
+   /^(?:draft|critique|coach)\b/i.test(head)&&
+   factTerms.test(head)&&
+   nTokens(head)<=12&&
+   !/^(?:draft|critique|coach)\s+(?:a|an|the|my|this|that|these|those|me|us)\b/i.test(head);
+  if(!nominal&&/^(?:write|draft|compose|invent|generate|rewrite|rephrase|revise|interpret|clarify|decode|analy[sz]e|critique|coach|rehearse|translate|brainstorm|teach|diagnose|unpack|explain|summari[sz]e)\b/i.test(head)&&!/^write (?:down|in)|^draft.*(?:page|where)|^explain.*(?:says|said|asks|requires)|^coach\s+(?!me\b|us\b|my\b|this\b|that\b)/i.test(head))return 'ai';
+  if((probability<.8||['page','file','material','assignment','discussion','announcement','note'].includes(selected?.kind||selected?.type))&&
+   tokens.length<=3&&
+   /\?\s*$/.test(raw)&&
+   selected&&
+   String(selected.title||selected.name||'').toLowerCase()!==text.replace(/[?!.]+$/,'').trim()&&
+   String(ref.text(selected)).length>60&&
+   !factTerms.test(text))
+   return 'ai';
+  const carrier=/\b(?:can|could|would|will)\s+(?:(?:you|u|ai|the ai)\s+)?(?:please\s+)?(?:explain|unpack|write|draft|compose|rewrite|rephrase|teach|translate|summari[sz]e|brainstorm|invent)\b/i.test(text),
+   learningProduct=/\b(?:practice|quiz|questions?|examples?|hypothes[ie]s|alternatives?|scenario|case|clues|notes|outline|checklist|guide|wording|sentence|explanation|story|caption|comparison|poem|paragraph|summary)\b/i.test(text),
+   createRequest=/^(?:give|make|build|create|turn|help)\b/i.test(text)&&learningProduct&&!/\b(?:home card|module|widget|setting|pet|companion|theme)\b/i.test(text),
+   transform=/\b(?:turn|get|make)\s+(?:this|that|it|my|the)\b.{0,100}\b(?:into|as)\s+(?:notes|an? outline|an? checklist|practice)\b/i.test(text),
+   confused=/\b(?:do(?:n't|nt| not) understand|can(?:not|'t|t) understand|help me understand|let me (?:try|practise|practice))\b/i.test(text)||
+    /\bkeep mixing\b/i.test(text)&&
+     !(/^[^;.!?]+[;.!?]\s*(?:i|we)\s+keep mixing\b/i.test(text)&&/\b(?:room|location|entrance|venue|start|deadline|due|posted|time|date|approval|policy)\b/i.test(text.split(/[;.!?]/)[0])&&!hasVerb(text.split(/[;.!?]/)[0],verbs.ai));
+  if(!literalNote&&
+   (carrier||createRequest||transform||confused)&&
+   !/^\s*(?:what|which|where|when)\b.{0,80}\b(?:say|said|asked|asks|requires?|instructions|due|deadline)\b/i.test(text)&&
+   !/\b(?:what.if|hypothetical grade)\b/i.test(text))
+   return 'ai';
+  const recorded=/\b(?:which|what)\b.{0,30}\b(?:assignment|task|homework|quiz|test|chapter|lab|rubric)\b.{0,35}\b(?:asks?|requires?|instructions|includes?|covers?|topics|scope|due|worth)\b/i.test(text),
+   why=/^\s*why\b/i.test(head)&&!/\b(?:locked|unlock|unavailable|disabled|privacy|setting|missing|late)\b/i.test(text),
+   how=/\bhow (?:can|could|would|do) (?:i|we|you|u)\b/i.test(text)&&!/\b(?:submit|upload|resubmit|send|reply|post|join|book|reserve|change|set|enable|disable|hide|show|install|remove|delete|save|bookmark|download|open|start|pause|resume|check)\b/i.test(text),
+   interpret=/\b(?:unpack|interpret|clarify|decode|analy[sz]e|critique|revise|rephrase|explain)\s+(?:this|that|it|my|the|these|those)\b|\b(?:talk|walk) (?:me|us) through\b|\bwhat\b.{0,45}\b(?:mean|means|imply)\b|\b(?:where|which|how)\b.{0,75}\b(?:go beyond|inference|reasoning|claim|warrant|conclusion|uncertainty|confound|mistake|flaw|feasibility|assumption|distinction)\b/i.test(text),
+   aid=nTokens(raw)<=5&&/\b(?:coaching|wording|rehearsal|logic|deduction|explanation|read together|connect classes)\b/i.test(text);
+  if(!recorded&&
+   (why||how||interpret||aid||/^make up\b|^(?:make|build|create|give me)\b/i.test(head)&&learningProduct&&!literalNote&&!/\b(?:home card|module|widget|setting|pet|companion|theme)\b/i.test(text)))
+   return 'ai';
+  if(['plan','focus','focus-control','reminder','complete','note','bookmark'].includes(predicted)&&/^(?:what(?:s|'s| is)?|where|when|who|which|how (?:many|much|long))\b/i.test(head)){
+   const facts=root.ReserveBiscuitFacts||(typeof module==='object'&&module.exports?require('./biscuit-facts.js'):null);
+   if(facts?.operators?.some(op=>op.re.test(head)))return 'open/find';
+  }
+  /* A short study request that names its material ("flashcards from the bio reading", "tldr chem annc", "outline geometry
+     project", "rubric check my draft", "reply to Ms Ortiz", "pasos para la tarea de pe") asks the AI for help with that
+     material; it is not a request to open it. Recorded facts (due, points, where, when) and explicit opening stay local. */
+  if(predicted!=='ai'&&
+   nTokens(raw)>=2&&
+   nTokens(raw)<=12&&
+   studyTask.test(text)&&
+   !/^(?:open|pull up|bring up|show|find|go to|take me|where|when|is|are|did|does|has)\b/i.test(text)&&
+   !/\b(?:due|deadline|points|pts|point value|room|posted|link|submitted|turned in|score|grade[sd]?)\b(?!\s+my\b)/i.test(text.replace(/\bgrade my\b/g,''))&&
+   !['setting','feature','module','plan','reminder','focus','focus-control','note','bookmark','complete'].includes(predicted))
+   return 'ai';
   if(probability>=.8)return predicted;
   if(/\bwhat\s+(?:can|could)\s+you\s+do\b|\b(?:pep talk|encouragement|high[ -]five)\b/i.test(text))return 'chat';if(nTokens(text)<=6&&/^(?:hi|hey+|hello|good (?:morning|afternoon|evening)|thanks?|thank you|tysm|goodbye|bye)\b/i.test(text)&&! /\b(?:what|which|when|where|why|how|open|find|show|help|plan|remind|set|save)\b/i.test(text))return 'chat';
-  if((/^(?:check off|mark\b.{0,80}\b(?:done|complete))\b/i.test(head)||/\bdone[.!]*$/i.test(text)&&[...list(s.assignments),...list(s.personalTasks),...list(s.workItems)].some(v=>v.title&&text.includes(v.title.toLowerCase())))&&positive(raw,'complete'))return 'complete';
+  if((/^(?:check off|mark\b.{0,80}\b(?:done|complete))\b/i.test(head)||
+   /\bdone[.!]*$/i.test(text)&&[...list(s.assignments),...list(s.personalTasks),...list(s.workItems)].some(v=>v.title&&text.includes(v.title.toLowerCase())))&&
+   positive(raw,'complete'))
+   return 'complete';
   if(/\b(?:jot|note:|write down|apunta|(?:plain |saved )note with just|saved note with.*words)\b|\u8bb0\u7b14\u8bb0/i.test(text)&&!negated(raw,'note'))return 'note';
   return predicted;
  }
 
- function workflowMask(input){const raw=String(input),out=raw.split('');let quote='',escaped=false;for(let i=0;i<raw.length;i++){const c=raw[i];if(quote){out[i]=' ';if(escaped){escaped=false;continue;}if(c==='\\'){escaped=true;continue;}if(c===quote&&!((quote==="'"||quote==='\u2019')&&/[\p{L}\p{N}]/u.test(raw[i-1]||'')&&/[\p{L}\p{N}]/u.test(raw[i+1]||'')))quote='';continue;}if(c==='"'||c==='\u201c'||c==='\u2018'||c==="'"&&!/[\p{L}\p{N}]/u.test(raw[i-1]||'')){quote=c==='\u201c'?'\u201d':c==='\u2018'?'\u2019':c;out[i]=' ';}}return out.join('');}
- function controlScope(input,context={}){const view=workflowMask(input),goal=requestGoal(view),explicit=/\b(?:controls?|settings?|preferences?|features?|modules?|widgets?|cards?)\b/i.test(view);if(literalNoteRequest(input)||!explicit&&/\b(?:blocks?|slots?|assignments?|tasks?|deadlines?|reminders?)\b/i.test(goal)||/^(?:remind|warn|plan|schedule|replan|reschedule|allocate)\b/i.test(goal)||/\b(?:remind\s+(?:me|us)|(?:plan|schedule|replan|reschedule|allocate)\s+(?:my|our|the|this|that|study|work))\b/i.test(view))return false;if(context.control||context.controlKey)return true;if(!/\b(?:show|hide|set|change|turn|switch|enable|disable|restore|bring|make|move|put|place|widen|wide|top)\b/i.test(goal))return false;if(explicit)return true;const C=root.ReserveBiscuitControls||(typeof module==='object'&&module.exports?require('./biscuit-controls.js'):null),text=' '+nameText(view)+' ',names=[...Object.keys(C?.DEFAULTS||{}),...Object.keys(C?.MODULES||{}),...Object.values(C?.MODULES||{}),...list(context.controls).flatMap(v=>[v.key,v.label])];return names.some(v=>{const name=nameText(String(v??'').replace(/([a-z])([A-Z])/g,'$1 $2'));return name&&text.includes(' '+name+' ');});}
- function controlFutureHead(input){const view=workflowMask(input).trim().replace(/^(?:(?:and|then|next|finally)\s+)+/i,'');return /^(?:later|tomorrow|tonight|afterwards?|when|once(?=\s+(?:i|we|you|it|the|my|this|that)\b)|after(?!\s+that\b)|on\s+(?:(?:its|their|the|my|this|that)\s+)?(?:later\s+)?return)\b/i.test(view)||/^(?:top|first|wide|full width)\b[\s\S]*\b(?:when|after|once|later)\b/i.test(view);}
- function conditionalControl(input,context={}){if(!controlFutureHead(input)||!controlScope(input,context))return false;const view=workflowMask(input),goal=requestGoal(view);return !/^(?:remind|warn|plan|schedule|replan|reschedule|allocate|focus|concentrate|study)\b/i.test(goal)&&/\b(?:restore|bring\b.{0,35}\bback|show|hide|enable|disable|turn|switch|set|make|move|put|place|widen|wide|top|first)\b/i.test(view);}
- function workflowAdjunct(input){const raw=String(input),goal=requestGoal(raw),view=workflowMask(goal);if(literalNoteRequest(raw)||/^\s*(?:if|unless|suppose|what if|do not|don.t|dont|never)\b/i.test(raw)||/^(?:if|unless|suppose|what|which|when|where|who|why|how|do not|don.t|dont|never)\b/i.test(view))return null;if(/^(?:(?:a|an)\s+)?(?:remind(?:er)?|warn(?:ing)?|alert|ping|rappel)\b/i.test(view))return 'reminder';const V=root.ReserveBiscuitValues||(typeof module==='object'&&module.exports?require('./biscuit-values.js'):null),text=V?V.normalize(view):view,q=V?.fieldQuantity?.(text,'focus');if(!q||!Number.isFinite(q.minutes)||q.minutes<=0||q.minutes>1440)return null;const prefix=text.slice(0,q.index);return /^(?:(?:(?:give|make)\s+(?:me|us)|start|begin|run|launch|put\s+(?:me|us)\s+(?:on|in))\s+)?(?:(?:a|an|the)\s+)?(?:(?:focus|concentration|concentrate)(?:\s+(?:timer|interval|session))?(?:\s+for)?\s*)?$/i.test(prefix)?'focus':null;}
- /* New clause evidence is a complete finite request, never a noun occurrence. */
- function workflowScalar(input,context={}){const raw=String(input).trim();if(!raw||workflowMask(raw)!==raw||/[?;\n]/.test(raw)||/(?:^|[\s:])[-+\u2212]\s*\d/.test(raw)||/^(?:do not|don.t|dont|never|not)\b/i.test(raw)||payloadHead(raw))return null;const text=lexicalView(raw).replace(/^(?:first|next|finally)\s+/i,'').replace(/^(?:(?:please|pls)\s+|(?:can|could|would|will)\s+(?:you|u)\s+(?:please\s+)?)/i,'').replace(/[.!]+\s*$/,'').trim(),timer=/^(?:(?:start|begin|run)\s+)?(focus|break)\s+(?:for\s+)?(\d+(?:\.\d+)?)\s*(minutes?|mins?|m|hours?|hrs?|h)?$/i.exec(text);if(timer){const minutes=Number(timer[2])*(/^h/i.test(timer[3]||'')?60:1);return Number.isFinite(minutes)&&minutes>0&&minutes<=1440?timer[1].toLowerCase():null;}
-  const cycle=/^(?:(?:start|begin|run)\s+)?focus\s+(?:for\s+)?(\d+(?:\.\d+)?)\s*(minutes?|mins?|m|hours?|hrs?|h)?\s+(?:(?:and|with)\s+)?break\s+(?:for\s+)?(\d+(?:\.\d+)?)\s*(minutes?|mins?|m|hours?|hrs?|h)?$/i.exec(text);if(cycle){const values=[Number(cycle[1])*(/^h/i.test(cycle[2]||'')?60:1),Number(cycle[3])*(/^h/i.test(cycle[4]||'')?60:1)];return values.every(value=>Number.isFinite(value)&&value>0&&value<=1440)?'focus-cycle':null;}
-  const C=root.ReserveBiscuitControls||(typeof module==='object'&&module.exports?require('./biscuit-controls.js'):null),proposal=C?.propose?.(text,context.state||{},context.session||{}),fields=proposal?.next?.fields;if(!proposal||proposal.clarify||proposal.ui||!fields||proposal.next?.action!==proposal.action||!['setting','feature','module'].includes(proposal.action))return null;if(proposal.action==='setting'&&C.ENUMS?.[fields.key]){const value=nameText(text.replace(/^(?:set|change|switch|make)\s+(?:(?:the|my)\s+)?/i,'')),choices=C.ENUMS[fields.key].map(v=>nameText(v===''?'none':v)),names=C.names(fields.key).map(nameText),complete=names.some(name=>choices.some(choice=>value===name+' '+choice||value===choice+' '+name||['to','as','is'].some(link=>value===name+' '+link+' '+choice)));if(!complete&&!(fields.key==='theme'&&/^(?:dark|light)(?: mode| theme)?$/i.test(text)))return null;}return proposal.action;
+ function workflowMask(input){
+  const raw=String(input),out=raw.split('');
+  let quote='',escaped=false;
+  for(let i=0;i<raw.length;i++){
+   const c=raw[i];
+   if(quote){
+    out[i]=' ';
+    if(escaped){escaped=false;continue;}
+    if(c==='\\'){escaped=true;continue;}
+    if(c===quote&&!((quote==="'"||quote==='\u2019')&&/[\p{L}\p{N}]/u.test(raw[i-1]||'')&&/[\p{L}\p{N}]/u.test(raw[i+1]||'')))quote='';
+    continue;
+   }
+   if(c==='"'||c==='\u201c'||c==='\u2018'||c==="'"&&!/[\p{L}\p{N}]/u.test(raw[i-1]||'')){quote=c==='\u201c'?'\u201d':c==='\u2018'?'\u2019':c;out[i]=' ';}
+  }
+  return out.join('');
  }
- function workflowParts(input,context={}){const raw=String(input);if(conditionalControl(raw,context)||/^(?:if|unless|suppose|what if|how do|how can|can i|could i|should i|do not|don.t|dont|never)\b/i.test(requestGoal(raw)))return [{text:raw,start:0,end:raw.length}];const view=workflowMask(raw),parts=[],command=new RegExp('^(?:(?:please|pls)\\s+)?(?:'+assistanceCommands+'|open|find|locate|retrieve|inspect|read|display|list|show|hide|set|turn|remind|warn|note|bookmark|plan|start|stop|move|shift|reschedule|save|make|create|widen|stretch|put|keep|enable|disable|apply|change|switch|clear|restore|bring|pause|resume|mark|replan|undo|subtract|add|reduce|check|leave|give|ouvre|montre|guarda|abre|preserve|copy|transcribe)\\b','i'),join=/(?:;\s*(?:(?:and|then|next|finally|after that|luego|despues|despu\u00e9s|puis|ensuite)\s+)*|,\s*(?:(?:and|then|next|finally|after that|afterward|luego)\s+)*|\s+(?:and after that|and then|after that|and finally|then|next|finally|afterward|and|luego|despues|despu\u00e9s|puis|ensuite)\s+)/gi,controlText=value=>' '+replace(value??'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim()+' ',controls=/^(?:what|which|when|where|who|why|how|open|find|show|read|inspect|display|list|compare|contrast)\b/i.test(requestGoal(raw))?[]:list(context.controls).filter(c=>c&&typeof c.key==='string'&&c.key),joins=[...view.matchAll(join)],finiteCache=new Map(),finite=(start,end)=>{const key=start+':'+end;if(!finiteCache.has(key))finiteCache.set(key,workflowScalar(raw.slice(start,end),context));return finiteCache.get(key);},finiteHead=i=>{const start=joins[i].index+joins[i][0].length;for(let j=i+1;j<=joins.length;j++){const value=finite(start,j<joins.length?joins[j].index:raw.length);if(value)return value;if(j<joins.length&&joins[j][0].includes(';'))break;}return null;},direct=value=>command.test(lexicalView(workflowMask(value)).trim().replace(/^(?:first|next|finally)\s+/i,'').replace(/^(?:can|could|would|will)\s+(?:you|u)\s+(?:please\s+)?/i,'')),safe=value=>!/[?]|\b(?:if|unless|suppose|whether|said|says|asked|asks|told|quoted|when|once|tomorrow|tonight|later|afterwards?|will|would|should|might|may)\b|\b(?:so(?: that)?|in order that)\s+(?:i|we)\b/i.test(workflowMask(value));let at=0;
-  for(let i=0;i<joins.length;i++){const m=joins[i];const left=raw.slice(at,m.index).trim(),right=view.slice(m.index+m[0].length).trimStart(),goal=requestGoal(left),literal=literalNoteRequest(left),quoted=literal&&!!literalNoteContent(left)?.quoted,prefix=parts.map(v=>v.text).join(' ')+' '+left,source=controlText(workflowMask(prefix)),scoped=controls.filter(c=>context.controlKey===c.key||[c.key.replace(/([a-z])([A-Z])/g,'$1 $2'),c.label].some(name=>name&&source.includes(controlText(name)))),genericActive=/\b(?:theme|motion|night art|nudges?|density|font|size|roam|timer|focus|countdown|pause|remaining)\b/i.test(prefix),active=scoped.length>0||genericActive,elliptical=genericActive&&/^(?:off|on|quiet|helpful|gentle|still|dark|light|system|\d+(?:\.\d+)?|zero|one|two|three|four|five|six|seven|eight|nine|ten)\b/i.test(right)||scoped.some(c=>[...list(c.availableValues),...(Object.hasOwn(c,'value')?[c.value]:[])].some(value=>['string','number','boolean'].includes(typeof value)&&(controlText(right).startsWith(controlText(value===''?'none':value))||typeof value==='boolean'&&(value?/^(?:on|true|show|visible|enable|enabled)\b/i:/^(?:off|false|hide|hidden|disable|disabled)\b/i).test(right))));if(!left||literal&&!quoted)continue;if(!/[;.!?]/.test(m[0])&&/\b(?:so(?: that)?|in order that)\s+(?:i|we)\s+(?:can|could|will|may|might)\b/i.test(left)&&/^(?:explain|ask|write|type|send|review|request)\b/i.test(right))continue;if(controlFutureHead(right)&&controlScope(prefix,context)&&conditionalControl(right,{...context,control:true})){parts.push({text:left,start:at,end:m.index});at=m.index+m[0].length;break;}const oldRight=command.test(right)||timedReminder.test(lexicalView(right))||elliptical,oldLeft=command.test(goal)||timedReminder.test(lexicalView(goal))||active||literal,scalable=!reminderAct(left),leftScalar=scalable&&(!oldRight||!oldLeft)?finite(at,m.index):null,eligible=scalable&&(!!leftScalar||safe(prefix)),explicit=/;|\b(?:then|next|finally|after that|afterward|luego|despues|despu\u00e9s|puis|ensuite)\b/i.test(m[0]),rightScalar=!oldRight&&eligible&&(leftScalar||explicit&&(parts.length||direct(left)))?finiteHead(i):null,newRight=!!rightScalar&&(explicit||!!leftScalar)&&!(leftScalar==='focus'&&rightScalar==='break'&&!explicit);if(!oldRight&&!newRight)continue;if(!parts.length&&!oldLeft&&!leftScalar)continue;parts.push({text:left,start:at,end:m.index});at=m.index+m[0].length;if(parts.length>=5)break;}
+ function controlScope(input,context={}){
+  const view=workflowMask(input),goal=requestGoal(view),explicit=/\b(?:controls?|settings?|preferences?|features?|modules?|widgets?|cards?)\b/i.test(view);
+  if(literalNoteRequest(input)||!explicit&&/\b(?:blocks?|slots?|assignments?|tasks?|deadlines?|reminders?)\b/i.test(goal)||/^(?:remind|warn|plan|schedule|replan|reschedule|allocate)\b/i.test(goal)||/\b(?:remind\s+(?:me|us)|(?:plan|schedule|replan|reschedule|allocate)\s+(?:my|our|the|this|that|study|work))\b/i.test(view))
+   return false;
+  if(context.control||context.controlKey)return true;
+  if(!/\b(?:show|hide|set|change|turn|switch|enable|disable|restore|bring|make|move|put|place|widen|wide|top)\b/i.test(goal))return false;
+  if(explicit)return true;
+  const C=root.ReserveBiscuitControls||(typeof module==='object'&&module.exports?require('./biscuit-controls.js'):null),
+   text=' '+nameText(view)+' ',
+   names=[...Object.keys(C?.DEFAULTS||{}),...Object.keys(C?.MODULES||{}),...Object.values(C?.MODULES||{}),...list(context.controls).flatMap(v=>[v.key,v.label])];
+  return names.some(v=>{const name=nameText(String(v??'').replace(/([a-z])([A-Z])/g,'$1 $2'));return name&&text.includes(' '+name+' ');});
+ }
+ function controlFutureHead(input){
+  const view=workflowMask(input).trim().replace(/^(?:(?:and|then|next|finally)\s+)+/i,'');
+  return /^(?:later|tomorrow|tonight|afterwards?|when|once(?=\s+(?:i|we|you|it|the|my|this|that)\b)|after(?!\s+that\b)|on\s+(?:(?:its|their|the|my|this|that)\s+)?(?:later\s+)?return)\b/i.test(view)||/^(?:top|first|wide|full width)\b[\s\S]*\b(?:when|after|once|later)\b/i.test(view);
+ }
+ function conditionalControl(input,context={}){
+  if(!controlFutureHead(input)||!controlScope(input,context))return false;
+  const view=workflowMask(input),goal=requestGoal(view);
+  return !/^(?:remind|warn|plan|schedule|replan|reschedule|allocate|focus|concentrate|study)\b/i.test(goal)&&/\b(?:restore|bring\b.{0,35}\bback|show|hide|enable|disable|turn|switch|set|make|move|put|place|widen|wide|top|first)\b/i.test(view);
+ }
+ function workflowAdjunct(input){
+  const raw=String(input),goal=requestGoal(raw),view=workflowMask(goal);
+  if(literalNoteRequest(raw)||/^\s*(?:if|unless|suppose|what if|do not|don.t|dont|never)\b/i.test(raw)||/^(?:if|unless|suppose|what|which|when|where|who|why|how|do not|don.t|dont|never)\b/i.test(view))return null;
+  if(/^(?:(?:a|an)\s+)?(?:remind(?:er)?|warn(?:ing)?|alert|ping|rappel)\b/i.test(view))return 'reminder';
+  const V=root.ReserveBiscuitValues||(typeof module==='object'&&module.exports?require('./biscuit-values.js'):null),text=V?V.normalize(view):view,q=V?.fieldQuantity?.(text,'focus');
+  if(!q||!Number.isFinite(q.minutes)||q.minutes<=0||q.minutes>1440)return null;
+  const prefix=text.slice(0,q.index);
+  return /^(?:(?:(?:give|make)\s+(?:me|us)|start|begin|run|launch|put\s+(?:me|us)\s+(?:on|in))\s+)?(?:(?:a|an|the)\s+)?(?:(?:focus|concentration|concentrate)(?:\s+(?:timer|interval|session))?(?:\s+for)?\s*)?$/i.test(prefix)?'focus':null;
+ }
+ /* New clause evidence is a complete finite request, never a noun occurrence. */
+ function workflowScalar(input,context={}){
+  const raw=String(input).trim();
+  if(!raw||workflowMask(raw)!==raw||/[?;\n]/.test(raw)||/(?:^|[\s:])[-+\u2212]\s*\d/.test(raw)||/^(?:do not|don.t|dont|never|not)\b/i.test(raw)||payloadHead(raw))return null;
+  const text=lexicalView(raw).replace(/^(?:first|next|finally)\s+/i,'').replace(/^(?:(?:please|pls)\s+|(?:can|could|would|will)\s+(?:you|u)\s+(?:please\s+)?)/i,'').replace(/[.!]+\s*$/,'').trim(),
+   timer=/^(?:(?:start|begin|run)\s+)?(focus|break)\s+(?:for\s+)?(\d+(?:\.\d+)?)\s*(minutes?|mins?|m|hours?|hrs?|h)?$/i.exec(text);
+  if(timer){const minutes=Number(timer[2])*(/^h/i.test(timer[3]||'')?60:1);return Number.isFinite(minutes)&&minutes>0&&minutes<=1440?timer[1].toLowerCase():null;}
+  const cycle=/^(?:(?:start|begin|run)\s+)?focus\s+(?:for\s+)?(\d+(?:\.\d+)?)\s*(minutes?|mins?|m|hours?|hrs?|h)?\s+(?:(?:and|with)\s+)?break\s+(?:for\s+)?(\d+(?:\.\d+)?)\s*(minutes?|mins?|m|hours?|hrs?|h)?$/i.exec(text);
+  if(cycle){
+   const values=[Number(cycle[1])*(/^h/i.test(cycle[2]||'')?60:1),Number(cycle[3])*(/^h/i.test(cycle[4]||'')?60:1)];
+   return values.every(value=>Number.isFinite(value)&&value>0&&value<=1440)?'focus-cycle':null;
+  }
+  const C=root.ReserveBiscuitControls||(typeof module==='object'&&module.exports?require('./biscuit-controls.js'):null),
+   proposal=C?.propose?.(text,context.state||{},context.session||{}),
+   fields=proposal?.next?.fields;
+  if(!proposal||proposal.clarify||proposal.ui||!fields||proposal.next?.action!==proposal.action||!['setting','feature','module'].includes(proposal.action))return null;
+  if(proposal.action==='setting'&&C.ENUMS?.[fields.key]){
+   const value=nameText(text.replace(/^(?:set|change|switch|make)\s+(?:(?:the|my)\s+)?/i,'')),
+    choices=C.ENUMS[fields.key].map(v=>nameText(v===''?'none':v)),
+    names=C.names(fields.key).map(nameText),
+    complete=names.some(name=>choices.some(choice=>value===name+' '+choice||value===choice+' '+name||['to','as','is'].some(link=>value===name+' '+link+' '+choice)));
+   if(!complete&&!(fields.key==='theme'&&/^(?:dark|light)(?: mode| theme)?$/i.test(text)))return null;
+  }
+  return proposal.action;
+ }
+ function workflowParts(input,context={}){
+  const raw=String(input);
+  if(conditionalControl(raw,context)||/^(?:if|unless|suppose|what if|how do|how can|can i|could i|should i|do not|don.t|dont|never)\b/i.test(requestGoal(raw)))return [{text:raw,start:0,end:raw.length}];
+  const view=workflowMask(raw),
+   parts=[],
+   command=new RegExp('^(?:(?:please|pls)\\s+)?(?:'+assistanceCommands+'|open|find|locate|retrieve|inspect|read|display|list|show|hide|set|turn|remind|warn|note|bookmark|plan|start|stop|move|shift|reschedule|save|make|create|widen|stretch|put|keep|enable|disable|apply|change|switch|clear|restore|bring|pause|resume|mark|replan|undo|subtract|add|reduce|check|leave|give|ouvre|montre|guarda|abre|preserve|copy|transcribe)\\b','i'),
+   join=/(?:;\s*(?:(?:and|then|next|finally|after that|luego|despues|despu\u00e9s|puis|ensuite)\s+)*|,\s*(?:(?:and|then|next|finally|after that|afterward|luego)\s+)*|\s+(?:and after that|and then|after that|and finally|then|next|finally|afterward|and|luego|despues|despu\u00e9s|puis|ensuite)\s+)/gi,
+   controlText=value=>' '+replace(value??'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim()+' ',
+   controls=/^(?:what|which|when|where|who|why|how|open|find|show|read|inspect|display|list|compare|contrast)\b/i.test(requestGoal(raw))?
+    []:
+    list(context.controls).filter(c=>c&&typeof c.key==='string'&&c.key),
+   joins=[...view.matchAll(join)],
+   finiteCache=new Map(),
+   finite=(start,end)=>{
+   const key=start+':'+end;
+   if(!finiteCache.has(key))finiteCache.set(key,workflowScalar(raw.slice(start,end),context));
+   return finiteCache.get(key);
+  },finiteHead=i=>{
+   const start=joins[i].index+joins[i][0].length;
+   for(let j=i+1;j<=joins.length;j++){
+    const value=finite(start,j<joins.length?joins[j].index:raw.length);
+    if(value)return value;
+    if(j<joins.length&&joins[j][0].includes(';'))break;
+   }
+   return null;
+  },
+  direct=value=>command.test(lexicalView(workflowMask(value)).trim().replace(/^(?:first|next|finally)\s+/i,'').replace(/^(?:can|could|would|will)\s+(?:you|u)\s+(?:please\s+)?/i,'')),
+  safe=value=>!/[?]|\b(?:if|unless|suppose|whether|said|says|asked|asks|told|quoted|when|once|tomorrow|tonight|later|afterwards?|will|would|should|might|may)\b|\b(?:so(?: that)?|in order that)\s+(?:i|we)\b/i.test(workflowMask(value));
+  let at=0;
+  for(let i=0;i<joins.length;i++){
+   const m=joins[i];
+   const left=raw.slice(at,m.index).trim(),
+    right=view.slice(m.index+m[0].length).trimStart(),
+    goal=requestGoal(left),
+    literal=literalNoteRequest(left),
+    quoted=literal&&!!literalNoteContent(left)?.quoted,
+    prefix=parts.map(v=>v.text).join(' ')+' '+left,
+    source=controlText(workflowMask(prefix)),
+    scoped=controls.filter(c=>context.controlKey===c.key||[c.key.replace(/([a-z])([A-Z])/g,'$1 $2'),c.label].some(name=>name&&source.includes(controlText(name)))),
+    genericActive=/\b(?:theme|motion|night art|nudges?|density|font|size|roam|timer|focus|countdown|pause|remaining)\b/i.test(prefix),
+    active=scoped.length>0||genericActive,
+    elliptical=genericActive&&/^(?:off|on|quiet|helpful|gentle|still|dark|light|system|\d+(?:\.\d+)?|zero|one|two|three|four|five|six|seven|eight|nine|ten)\b/i.test(right)||
+     scoped.some(c=>
+      [...list(c.availableValues),...(Object.hasOwn(c,'value')?[c.value]:[])].some(value=>
+       ['string','number','boolean'].includes(typeof value)&&
+        (controlText(right).startsWith(controlText(value===''?'none':value))||
+         typeof value==='boolean'&&(value?/^(?:on|true|show|visible|enable|enabled)\b/i:/^(?:off|false|hide|hidden|disable|disabled)\b/i).test(right))));
+   if(!left||literal&&!quoted)continue;
+   if(!/[;.!?]/.test(m[0])&&/\b(?:so(?: that)?|in order that)\s+(?:i|we)\s+(?:can|could|will|may|might)\b/i.test(left)&&/^(?:explain|ask|write|type|send|review|request)\b/i.test(right))continue;
+   if(controlFutureHead(right)&&controlScope(prefix,context)&&conditionalControl(right,{...context,control:true})){
+    parts.push({text:left,start:at,end:m.index});
+    at=m.index+m[0].length;
+    break;
+   }
+   const oldRight=command.test(right)||timedReminder.test(lexicalView(right))||elliptical,
+    oldLeft=command.test(goal)||timedReminder.test(lexicalView(goal))||active||literal,
+    scalable=!reminderAct(left),
+    leftScalar=scalable&&(!oldRight||!oldLeft)?finite(at,m.index):null,
+    eligible=scalable&&(!!leftScalar||safe(prefix)),
+    explicit=/;|\b(?:then|next|finally|after that|afterward|luego|despues|despu\u00e9s|puis|ensuite)\b/i.test(m[0]),
+    rightScalar=!oldRight&&eligible&&(leftScalar||explicit&&(parts.length||direct(left)))?finiteHead(i):null,
+    newRight=!!rightScalar&&(explicit||!!leftScalar)&&!(leftScalar==='focus'&&rightScalar==='break'&&!explicit);
+   if(!oldRight&&!newRight)continue;
+   if(!parts.length&&!oldLeft&&!leftScalar)continue;
+   parts.push({text:left,start:at,end:m.index});
+   at=m.index+m[0].length;
+   if(parts.length>=5)break;
+  }
   const tail=raw.slice(at).trim();if(tail)parts.push({text:tail,start:at,end:raw.length});return parts;
  }
  /* Quote offsets are raw UTF-16 offsets, as used by workflowMask and slice. */
- function literalQuotes(input){const spans=[];for(let start=0;start<input.length;start++){const c=input[start];if(!['"','\u201c',"'",'\u2018'].includes(c)||c==="'"&&/[\p{L}\p{N}]/u.test(input[start-1]||''))continue;const close=c==='\u201c'?'\u201d':c==='\u2018'?'\u2019':c;let escaped=false;for(let end=start+1;end<input.length;end++){if(escaped){escaped=false;continue;}if(input[end]==='\\'){escaped=true;continue;}if(input[end]===close&&!((close==="'"||close==='\u2019')&&/[\p{L}\p{N}]/u.test(input[end-1]||'')&&/[\p{L}\p{N}]/u.test(input[end+1]||''))){spans.push({start,end:end+1,text:input.slice(start+1,end)});start=end;break;}}}return spans;}
- function literalNoteContent(input){if(!literalNoteRequest(input)||negated(input,'note'))return null;const goal=requestGoal(input),view=lexicalView(workflowMask(goal));if(/^(?:if|unless|suppose|what|how|can i|could i)\b/i.test(view)||/^\s*(?:if|unless|suppose|what if)\b/i.test(String(input)))return null;const quotes=literalQuotes(goal),colonHead=/^(?:note|jot|write down|apunta|new personal note|(?:write|make|create|save)\s+(?:(?:a|an|new|another|separate|personal|my|own)\s+)*note)\s*:\s*/i.exec(goal),named=colonHead?null:/\bnotes?\s+(?:titled|called|named)\b/i.exec(view);let title,titleQuote,titleEnd=0;if(named){let at=named.index+named[0].length;while(/\s/.test(goal[at]||'')&&at<goal.length)at++;titleQuote=quotes.find(q=>q.start===at);if(titleQuote){title=titleQuote.text;titleEnd=titleQuote.end;}else{const end=/[:,.!?;\n]/.exec(goal.slice(at));titleEnd=end?at+end.index:goal.length;title=goal.slice(at,titleEnd).trim();}if(!title)return null;}
-  const direct=/^(?:note\s*:|jot\b|write down\b|apunta\b|new personal note\s*:|(?:write|make|create|save)\s+(?:(?:a|an|new|another|separate|personal|my|own)\s+)*note\b)/i.test(view),body=named?/^\s*(?::\s*|(?:containing(?:\s+exactly)?|saying|that\s+says|with(?:\s+(?:the|exact))?\s+words|verbatim)\s*:?\s*)([\s\S]+)$/i.exec(goal.slice(titleEnd)):/\b(?:notes?\s*(?::|\b)|write down|jot|apunta)\s*(?:(?:exactly|exact|verbatim|saying|that says|with|the|words|to self)(?:\s+|:\s*))*[:\s]*([\s\S]+)$/i.exec(goal),candidate=colonHead?goal.slice(colonHead[0].length):body&&(direct||!quotes.some(q=>q.end<=body.index))?body[1]:undefined;let quoted,text;if(candidate!==undefined){const start=goal.length-candidate.trimStart().length;quoted=quotes.find(q=>q!==titleQuote&&q.start===start&&/^\s*(?:(?:in|into|as|to)\s+(?:(?:a|an|the|my|our|own|new|another|separate|personal|saved)\s+)*notes?\s*)?[.!?\s]*$/i.test(goal.slice(q.end)));text=quoted?quoted.text:candidate.trim();}else{quoted=quotes.find(q=>q!==titleQuote);text=quoted?.text;}if(typeof text!=='string'||!text.trim()||text.length>30000)return null;return {text,...(title!==undefined?{title}:{}),quoted:!!quoted};
+ function literalQuotes(input){
+  const spans=[];
+  for(let start=0;start<input.length;start++){
+   const c=input[start];
+   if(!['"','\u201c',"'",'\u2018'].includes(c)||c==="'"&&/[\p{L}\p{N}]/u.test(input[start-1]||''))continue;
+   const close=c==='\u201c'?'\u201d':c==='\u2018'?'\u2019':c;
+   let escaped=false;
+   for(let end=start+1;end<input.length;end++){
+    if(escaped){escaped=false;continue;}
+    if(input[end]==='\\'){escaped=true;continue;}
+    if(input[end]===close&&!((close==="'"||close==='\u2019')&&/[\p{L}\p{N}]/u.test(input[end-1]||'')&&/[\p{L}\p{N}]/u.test(input[end+1]||''))){
+     spans.push({start,end:end+1,text:input.slice(start+1,end)});
+     start=end;
+     break;
+    }
+   }
+  }
+  return spans;
+ }
+ function literalNoteContent(input){
+  if(!literalNoteRequest(input)||negated(input,'note'))return null;
+  const goal=requestGoal(input),view=lexicalView(workflowMask(goal));
+  if(/^(?:if|unless|suppose|what|how|can i|could i)\b/i.test(view)||/^\s*(?:if|unless|suppose|what if)\b/i.test(String(input)))return null;
+  const quotes=literalQuotes(goal),
+   colonHead=/^(?:note|jot|write down|apunta|new personal note|(?:write|make|create|save)\s+(?:(?:a|an|new|another|separate|personal|my|own)\s+)*note)\s*:\s*/i.exec(goal),
+   named=colonHead?null:/\bnotes?\s+(?:titled|called|named)\b/i.exec(view);
+  let title,titleQuote,titleEnd=0;
+  if(named){
+   let at=named.index+named[0].length;
+   while(/\s/.test(goal[at]||'')&&at<goal.length)at++;
+   titleQuote=quotes.find(q=>q.start===at);
+   if(titleQuote){title=titleQuote.text;titleEnd=titleQuote.end;}
+   else{const end=/[:,.!?;\n]/.exec(goal.slice(at));titleEnd=end?at+end.index:goal.length;title=goal.slice(at,titleEnd).trim();}
+   if(!title)return null;
+  }
+  const direct=/^(?:note\s*:|jot\b|write down\b|apunta\b|new personal note\s*:|(?:write|make|create|save)\s+(?:(?:a|an|new|another|separate|personal|my|own)\s+)*note\b)/i.test(view),
+   body=named?/^\s*(?::\s*|(?:containing(?:\s+exactly)?|saying|that\s+says|with(?:\s+(?:the|exact))?\s+words|verbatim)\s*:?\s*)([\s\S]+)$/i.exec(goal.slice(titleEnd)):/\b(?:notes?\s*(?::|\b)|write down|jot|apunta)\s*(?:(?:exactly|exact|verbatim|saying|that says|with|the|words|to self)(?:\s+|:\s*))*[:\s]*([\s\S]+)$/i.exec(goal),
+   candidate=colonHead?goal.slice(colonHead[0].length):body&&(direct||!quotes.some(q=>q.end<=body.index))?body[1]:undefined;
+  let quoted,text;
+  if(candidate!==undefined){
+   const start=goal.length-candidate.trimStart().length;
+   quoted=quotes.find(q=>q!==titleQuote&&q.start===start&&/^\s*(?:(?:in|into|as|to)\s+(?:(?:a|an|the|my|our|own|new|another|separate|personal|saved)\s+)*notes?\s*)?[.!?\s]*$/i.test(goal.slice(q.end)));
+   text=quoted?quoted.text:candidate.trim();
+  }
+  else{quoted=quotes.find(q=>q!==titleQuote);text=quoted?.text;}
+  if(typeof text!=='string'||!text.trim()||text.length>30000)return null;
+  return {text,...(title!==undefined?{title}:{}),quoted:!!quoted};
  }
  function literalNotePayload(input,s={},session={}){const payload=literalNoteContent(input);if(!payload)return null;const {quoted,...value}=payload;return value;}
- function timerRequest(input,s={},session={}){const V=root.ReserveBiscuitValues||(typeof module==='object'&&module.exports?require('./biscuit-values.js'):null),text=(V?V.normalize(requestGoal(input)):requestGoal(input)).trim(),active=s.focus?.running||s.focus?.paused||s.focus?.endsAt>s.now||s.focus?.pausedAt||['focus','focus-control','focus-status'].includes(session.workflowAction?.action);if(/^\s*(?:if|unless|suppose|what if|do not|don.t|dont|never)\b/i.test(String(input))||/^(?:if|unless|suppose|what if|open|find|locate|where|how do|how can|can i|could i|should i|do not|don.t|dont|never)\b/i.test(text)||literalNoteRequest(input)||positive(workflowMask(text),'ai')||hasVerb(workflowMask(text),'write|brainstorm|critique')||negated(text,'focus-control'))return null;
-  const object='(?:(?:the|my|this|that|current|active|running|paused)\\s+)*(?:focus(?:\\s+(?:timer|clock|countdown|session))?|timer|clock|countdown)',tail='(?:\\s+(?:now|again|please|pls))*[.!?\\s]*$',status=new RegExp('^(?:(?:(?:show|check|tell|display)(?:\\s+me)?|what(?:\\x27s| is))\\s+)?(?:'+object+'\\s+(?:status|state|time left|remaining time)|(?:status|state|remaining time|time left)\\s+(?:of|on|for)\\s+'+object+')'+tail,'i'),remaining=new RegExp('^(?:what(?:\\x27s| is)(?:\\s+the\\s+time)?|how\\s+(?:much|long)(?:\\s+time)?(?:\\s+is)?)\\s+(?:left|remains|remaining)\\s+(?:on|in|for)\\s+'+object+tail,'i'),running=new RegExp('^is\\s+'+object+'\\s+(?:running|paused|stopped)(?:\\s+or\\s+(?:running|paused|stopped))?'+tail,'i'),ellipsis=/^(?:(?:show|check|tell|display)(?:\s+me)?\s+)?(?:status|state|time left|remaining time|how much(?: time)?(?: is)? (?:left|remaining)|what(?:'s| is) left|is it (?:running|paused|stopped)|running or paused)[.!?\s]*$/i;
-  if(status.test(text)||remaining.test(text)||running.test(text)||active&&ellipsis.test(text))return {action:'focus-control',text:'show focus timer status'};if(active){const left=/^(\d+(?:\.\d+)?)\s*[- ]?\s*(?:(?:minutes?|mins?)\s*)?(?:left|remaining)[.!\s]*$/i.exec(text);if(left)return {action:'focus-control',text:'set countdown to '+left[1]+' minutes remaining'};}return null;
+ function timerRequest(input,s={},session={}){
+  const V=root.ReserveBiscuitValues||(typeof module==='object'&&module.exports?require('./biscuit-values.js'):null),
+   text=(V?V.normalize(requestGoal(input)):requestGoal(input)).trim(),
+   active=s.focus?.running||s.focus?.paused||s.focus?.endsAt>s.now||s.focus?.pausedAt||['focus','focus-control','focus-status'].includes(session.workflowAction?.action);
+  if(/^\s*(?:if|unless|suppose|what if|do not|don.t|dont|never)\b/i.test(String(input))||
+   /^(?:if|unless|suppose|what if|open|find|locate|where|how do|how can|can i|could i|should i|do not|don.t|dont|never)\b/i.test(text)||
+   literalNoteRequest(input)||
+   positive(workflowMask(text),'ai')||
+   hasVerb(workflowMask(text),'write|brainstorm|critique')||
+   negated(text,'focus-control'))
+   return null;
+  const object='(?:(?:the|my|this|that|current|active|running|paused)\\s+)*(?:focus(?:\\s+(?:timer|clock|countdown|session))?|timer|clock|countdown)',
+   tail='(?:\\s+(?:now|again|please|pls))*[.!?\\s]*$',
+   status=new RegExp('^(?:(?:(?:show|check|tell|display)(?:\\s+me)?|what(?:\\x27s| is))\\s+)?(?:'+object+'\\s+(?:status|state|time left|remaining time)|(?:status|state|remaining time|time left)\\s+(?:of|on|for)\\s+'+object+')'+tail,'i'),
+   remaining=new RegExp('^(?:what(?:\\x27s| is)(?:\\s+the\\s+time)?|how\\s+(?:much|long)(?:\\s+time)?(?:\\s+is)?)\\s+(?:left|remains|remaining)\\s+(?:on|in|for)\\s+'+object+tail,'i'),
+   running=new RegExp('^is\\s+'+object+'\\s+(?:running|paused|stopped)(?:\\s+or\\s+(?:running|paused|stopped))?'+tail,'i'),
+   ellipsis=/^(?:(?:show|check|tell|display)(?:\s+me)?\s+)?(?:status|state|time left|remaining time|how much(?: time)?(?: is)? (?:left|remaining)|what(?:'s| is) left|is it (?:running|paused|stopped)|running or paused)[.!?\s]*$/i;
+  if(status.test(text)||remaining.test(text)||running.test(text)||active&&ellipsis.test(text))return {action:'focus-control',text:'show focus timer status'};
+  if(active){const left=/^(\d+(?:\.\d+)?)\s*[- ]?\s*(?:(?:minutes?|mins?)\s*)?(?:left|remaining)[.!\s]*$/i.exec(text);if(left)return {action:'focus-control',text:'set countdown to '+left[1]+' minutes remaining'};}
+  return null;
  }
  /* Action scope and source evidence have different jobs. An anaphoric source request
     may borrow the nearest stated source, while an explicit new object owns its scope. */
  function sourceSpan(input,projected){
-  const raw=String(input),goal=typeof projected==='string'?projected:requestSpan(raw),view=workflowMask(goal);if(literalNoteRequest(raw)||!(/\b(?:it|its|this|that|same|them|their)\b/i.test(view)))return goal;
+  const raw=String(input),goal=typeof projected==='string'?projected:requestSpan(raw),view=workflowMask(goal);
+  if(literalNoteRequest(raw)||!(/\b(?:it|its|this|that|same|them|their)\b/i.test(view)))return goal;
   const at=raw.toLowerCase().lastIndexOf(goal.toLowerCase());if(at<=0)return goal;
-  const families=[/\b(?:inbox|messages?|conversations?|threads?|chats?|approval|extension decision|mensajes?)\b/i,/\b(?:announcements?|notices?|avisos?|annonces?)\b/i,/\b(?:guides?|manuals?|documents?|files?|pages?|handouts?|packets?)\b/i,/\b(?:assignments?|quizzes|quiz|essays?|drafts?|reports?)\b/i,/\b(?:discussions?|groups?|rosters?|modules?|events?|calendars?|controls?|settings?|preferences?)\b/i],own=families.map(re=>re.test(view)),prefix=raw.slice(0,at),masked=workflowMask(prefix),parts=[...masked.matchAll(/[^;.!?]+/g)].reverse();
-  for(const part of parts){const text=prefix.slice(part.index,part.index+part[0].length).replace(/\b(?:can|could|would|will)\s+(?:(?:you|u|ai|the ai)\s+)?(?:please\s+)?$/i,'').trim();if(!text||!families.some(re=>re.test(replace(text))))continue;if(own.some(Boolean)&&!families.some((re,i)=>own[i]&&re.test(replace(text))))return goal;return text.slice(-512)+' '+goal;}
+  const families=[/\b(?:inbox|messages?|conversations?|threads?|chats?|approval|extension decision|mensajes?)\b/i,/\b(?:announcements?|notices?|avisos?|annonces?)\b/i,/\b(?:guides?|manuals?|documents?|files?|pages?|handouts?|packets?)\b/i,/\b(?:assignments?|quizzes|quiz|essays?|drafts?|reports?)\b/i,/\b(?:discussions?|groups?|rosters?|modules?|events?|calendars?|controls?|settings?|preferences?)\b/i],
+   own=families.map(re=>re.test(view)),
+   prefix=raw.slice(0,at),
+   masked=workflowMask(prefix),
+   parts=[...masked.matchAll(/[^;.!?]+/g)].reverse();
+  for(const part of parts){
+   const text=prefix.slice(part.index,part.index+part[0].length).replace(/\b(?:can|could|would|will)\s+(?:(?:you|u|ai|the ai)\s+)?(?:please\s+)?$/i,'').trim();
+   if(!text||!families.some(re=>re.test(replace(text))))continue;
+   if(own.some(Boolean)&&!families.some((re,i)=>own[i]&&re.test(replace(text))))return goal;
+   return text.slice(-512)+' '+goal;
+  }
   return goal;
  }
- const api={eventOverlapRequest,withoutPrivateExclusions,choose,positive,negated,scheduleRequest,requestGoal,requestSpan,sourceSpan,targetText,quietRequest,literalNoteRequest,literalNotePayload,workflowMask,workflowParts,timerRequest};root.ReserveBiscuitIntent=api;if(typeof module==='object'&&module.exports)module.exports=api;
+ const api={
+  eventOverlapRequest,
+  withoutPrivateExclusions,
+  choose,
+  positive,
+  negated,
+  scheduleRequest,
+  requestGoal,
+  requestSpan,
+  sourceSpan,
+  targetText,
+  quietRequest,
+  literalNoteRequest,
+  literalNotePayload,
+  workflowMask,
+  workflowParts,
+  timerRequest
+ };
+ root.ReserveBiscuitIntent=api;
+ if(typeof module==='object'&&module.exports)module.exports=api;
  Object.assign(api,{conditionalControl,workflowAdjunct});
 })(globalThis);

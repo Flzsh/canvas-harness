@@ -756,7 +756,12 @@ VYJiLPBZm4ABAwAwA8P1YubCw2nW5gfDcQDMFpIAACA2ABAwAAAAAACBgAAAAABAwAAAICAAQAAAAQMA
 <g transform=\"translate(60 230) rotate(20) scale(0.3810) translate(0.1 0.1)\"><path fill=\"none\" stroke=\"#8FB06A\" stroke-width=\"4.4\" stroke-linecap=\"round\" d=\"M4.9 -45.8L-4.9 -45.8\"/><path fill=\"none\" stroke=\"#E8B94A\" stroke-width=\"4.4\" stroke-linecap=\"round\" d=\"M11.4 -37.5L-11.4 -37.5\"/><path fill=\"none\" stroke=\"#5E7F45\" stroke-width=\"4.4\" stroke-linecap=\"round\" d=\"M10.4 -29.2L-10.4 -29.2\"/><path fill=\"none\" stroke=\"#E2463B\" stroke-width=\"4.4\" stroke-linecap=\"round\" d=\"M2.5 -20.8L-2.5 -20.8\"/><path fill=\"none\" stroke=\"#8FB06A\" stroke-width=\"4.4\" stroke-linecap=\"round\" d=\"M-7.1 -12.5L7.1 -12.5\"/><path fill=\"none\" stroke=\"#E8B94A\" stroke-width=\"4.4\" stroke-linecap=\"round\" d=\"M-11.9 -4.2L11.9 -4.2\"/><path fill=\"none\" stroke=\"#5E7F45\" stroke-width=\"4.4\" stroke-linecap=\"round\" d=\"M-8.9 4.2L8.9 4.2\"/><path fill=\"none\" stroke=\"#E2463B\" stroke-width=\"4.4\" stroke-linecap=\"round\" d=\"M0 12.5L0 12.5\"/><path fill=\"none\" stroke=\"#8FB06A\" stroke-width=\"4.4\" stroke-linecap=\"round\" d=\"M8.9 20.8L-8.9 20.8\"/><path fill=\"none\" stroke=\"#E8B94A\" stroke-width=\"4.4\" stroke-linecap=\"round\" d=\"M11.9 29.2L-11.9 29.2\"/><path fill=\"none\" stroke=\"#5E7F45\" stroke-width=\"4.4\" stroke-linecap=\"round\" d=\"M7.1 37.5L-7.1 37.5\"/><path fill=\"none\" stroke=\"#E2463B\" stroke-width=\"4.4\" stroke-linecap=\"round\" d=\"M-2.5 45.8L2.5 45.8\"/>\
 <path fill=\"none\" stroke=\"#141413\" stroke-width=\"7.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M.4-50.3c1.8 1.4 8.3 5.7 10.8 8.5c2.5 2.8 4.5 5.4 4.1 8.2c-.4 2.8-3.1 5.7-6.3 8.5c-3.1 2.8-8.7 5.5-12.4 8.3c-3.7 2.8-8 5.7-9.8 8.4c-1.8 2.7-2.3 5.3-1 8.1c1.2 2.8 5 5.7 8.4 8.6c3.4 2.9 8.7 6 12.1 8.7c3.3 2.8 6.7 5.2 7.8 7.9c1 2.7 .5 5.5-1.3 8.2c-1.8 2.8-6 5.5-9.6 8.3c-3.6 2.8-10.2 7.2-12.2 8.6\"/><path fill=\"none\" stroke=\"#141413\" stroke-width=\"7.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M.2-50.1c-1.9 1.3-8.7 5.2-11.2 8.1c-2.5 2.8-4.3 6.1-3.9 9c.4 2.9 3.2 5.6 6.3 8.4c3 2.7 8.1 5.4 11.8 8.1c3.7 2.7 8.4 5.4 10.2 8.1c1.8 2.8 1.8 5.7 .6 8.5c-1.2 2.8-4.6 5.5-7.9 8.2c-3.3 2.7-8.4 5.2-11.9 8c-3.4 2.8-7.5 6-8.7 8.7c-1.1 2.8 0 5.3 1.8 8c1.9 2.8 5.8 5.7 9.4 8.5c3.5 2.9 9.9 7 11.9 8.4\"/></g><g transform=\"translate(110 120) rotate(0) scale(0.5447) translate(0 -0.2)\"><path fill=\"#FBF6EA\" stroke=\"#141413\" stroke-width=\"2.2\" stroke-linejoin=\"round\" d=\"M1.8-10.5c.5 8.9 .5 8.9 7.3 12.1c-7.6 .5-7.6 .5-10.9 8.8c-.8-8.6-.8-8.6-6.5-11.9c6.6-.9 6.6-.9 10.1-9z\"/></g><g transform=\"translate(250 40) rotate(0) scale(0.7330) translate(-0.1 0)\"><path fill=\"none\" stroke=\"#141413\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M-6.8-.1c4.6-.2 9.2-.1 13.8-.3\"/><path fill=\"none\" stroke=\"#141413\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M-.1-7.2c.1 4.7 .2 9.4 .4 14.2\"/></g><g transform=\"translate(520 30) rotate(0) scale(0.5447) translate(0 -0.2)\"><path fill=\"#FBF6EA\" stroke=\"#141413\" stroke-width=\"2.2\" stroke-linejoin=\"round\" d=\"M2-11.5c.2 10 .2 10 6.9 13.1c-7.3 .8-7.3 .8-10.7 8.6c-.6-8.5-.6-8.5-7.1-11.8c6.9-1.2 6.9-1.2 10.9-9.9z\"/></g>\
 <g transform=\"translate(640 40) rotate(0) scale(0.7330) translate(-0.1 0)\"><path fill=\"none\" stroke=\"#141413\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M-7-.3c4.7 .1 9.3 .2 14 .2\"/><path fill=\"none\" stroke=\"#141413\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M-.4-7c.1 4.6 .2 9.3 .3 13.9\"/></g><g transform=\"translate(720 150) rotate(0) scale(0.5447) translate(0 -0.2)\"><path fill=\"#FBF6EA\" stroke=\"#141413\" stroke-width=\"2.2\" stroke-linejoin=\"round\" d=\"M1.8-10.2c.5 8.6 .5 8.6 7.7 11.9c-7.5 1.1-7.5 1.1-11.5 9.8c-.1-10-.1-10-6.7-13c6.9-1.1 6.9-1.1 10.5-8.7z\"/></g><g transform=\"translate(30 60) rotate(0) scale(0.7330) translate(-0.1 0)\"><path fill=\"none\" stroke=\"#141413\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M-7 0c4.8-.1 9.6-.2 14.3-.2\"/><path fill=\"none\" stroke=\"#141413\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M.2-6.7c0 4.6 .1 9.2 .1 13.8\"/></g></svg>")};
-const D={"ROOM":{"W":1600,"H":900,"winL":[150,130,300,340],"winR":[1150,130,300,340],"pc":[628,318,344,222],"screen":[646,334,308,182],"plateL":[210,520,180,46],"plateR":[1210,520,180,46],"slider":[1180,586,240,44]},"MEADOW":{"pony":[810,742],"ponyNight":[1046,768],"title":[800,92],"toggle":[1150,548,230,56],"finish":[1150,622,270,66],"bubble":[880,560]},"PC":{"address":[196,78,1120,36],"go":[1336,72,132,48],"content":[28,126,1544,746],"tab":[124,36,320,32]},"T":1100};
+const D={
+  "ROOM":{"W":1600,"H":900,"winL":[150,130,300,340],"winR":[1150,130,300,340],"pc":[628,318,344,222],"screen":[646,334,308,182],"plateL":[210,520,180,46],"plateR":[1210,520,180,46],"slider":[1180,586,240,44]},
+  "MEADOW":{"pony":[810,742],"ponyNight":[1046,768],"title":[800,92],"toggle":[1150,548,230,56],"finish":[1150,622,270,66],"bubble":[880,560]},
+  "PC":{"address":[196,78,1120,36],"go":[1336,72,132,48],"content":[28,126,1544,746],"tab":[124,36,320,32]},
+  "T":1100
+};
 const cl=(v,a=0,b=1)=>Math.max(a,Math.min(b,v)),eio=p=>p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2,esin=p=>-(Math.cos(Math.PI*p)-1)/2;
 function mount(stage,{theme='light',reduced=false}={}){
  stage.classList.add('wr-stage');
@@ -834,8 +839,16 @@ function mount(stage,{theme='light',reduced=false}={}){
  function paintNight(){
   if(cur==='dark'&&spread>=1){nightL.style.display='';nightL.style.webkitMaskImage=nightL.style.maskImage='';return;}
   if(cur==='light'&&spread>=1){nightL.style.display='none';nightL.style.webkitMaskImage=nightL.style.maskImage='';return;}
-  const m=map(),w=toPage(cur==='dark'?D.ROOM.winR:D.ROOM.winL,m),cx=w.x+w.w/2,cy=w.y+w.h/2,F=Math.max(m.W,m.H)*.55,R=Math.hypot(Math.max(cx,m.W-cx),Math.max(cy,m.H-cy))+F,r=esin(spread)*R;
-  const g=cur==='dark'?'radial-gradient(circle at '+cx.toFixed(0)+'px '+cy.toFixed(0)+'px,#000 '+Math.max(0,r-F).toFixed(0)+'px,transparent '+r.toFixed(0)+'px)':'radial-gradient(circle at '+cx.toFixed(0)+'px '+cy.toFixed(0)+'px,transparent '+Math.max(0,r-F).toFixed(0)+'px,#000 '+r.toFixed(0)+'px)';
+  const m=map(),
+    w=toPage(cur==='dark'?D.ROOM.winR:D.ROOM.winL,m),
+    cx=w.x+w.w/2,
+    cy=w.y+w.h/2,
+    F=Math.max(m.W,m.H)*.55,
+    R=Math.hypot(Math.max(cx,m.W-cx),Math.max(cy,m.H-cy))+F,
+    r=esin(spread)*R;
+  const g=cur==='dark'?
+    'radial-gradient(circle at '+cx.toFixed(0)+'px '+cy.toFixed(0)+'px,#000 '+Math.max(0,r-F).toFixed(0)+'px,transparent '+r.toFixed(0)+'px)':
+    'radial-gradient(circle at '+cx.toFixed(0)+'px '+cy.toFixed(0)+'px,transparent '+Math.max(0,r-F).toFixed(0)+'px,#000 '+r.toFixed(0)+'px)';
   nightL.style.display='';nightL.style.webkitMaskImage=nightL.style.maskImage=g;
  }
  function setTheme(t,{animate=true}={}){
@@ -843,10 +856,27 @@ function mount(stage,{theme='light',reduced=false}={}){
   if(t===cur&&spread>=1){paintNight();return Promise.resolve();}
   cur=t;spread=0;
   if(!animate||reduced){spread=1;paintNight();place(shot);return Promise.resolve();}
-  return new Promise(res=>{let t0=0;let last=0;const step=now=>{if(!t0)t0=now;spread=cl((now-t0)/750);if(spread<1&&now-last<15){spreadRaf=requestAnimationFrame(step);return;}last=now;paintNight();if(spread<1)spreadRaf=requestAnimationFrame(step);else{spreadRaf=0;res();}};spreadRaf=requestAnimationFrame(step);});
+  return new Promise(res=>{
+    let t0=0;
+    let last=0;
+    const step=now=>{
+      if(!t0)t0=now;
+      spread=cl((now-t0)/750);
+      if(spread<1&&now-last<15){spreadRaf=requestAnimationFrame(step);return;}
+      last=now;
+      paintNight();
+      if(spread<1)spreadRaf=requestAnimationFrame(step);else{spreadRaf=0;res();}
+    };
+    spreadRaf=requestAnimationFrame(step);
+  });
  }
  // a halo breathes round the window under the pointer: night-dark round the night, sun-warm round the day
- function layoutHalos(){for(const [el,r] of [[haloL,D.ROOM.winL],[haloR,D.ROOM.winR]]){const p=toPage(r),pad=p.w*.45;Object.assign(el.style,{left:(p.x-pad)+'px',top:(p.y-pad)+'px',width:(p.w+pad*2)+'px',height:(p.h+pad*2)+'px'});}}
+ function layoutHalos(){
+   for(const [el,r] of [[haloL,D.ROOM.winL],[haloR,D.ROOM.winR]]){
+     const p=toPage(r),pad=p.w*.45;
+     Object.assign(el.style,{left:(p.x-pad)+'px',top:(p.y-pad)+'px',width:(p.w+pad*2)+'px',height:(p.h+pad*2)+'px'});
+   }
+ }
  // how the light falls on Biscuit: by day plain; at night the lantern's warm pool (the page applies it as a filter)
  // lit=true: standing in the lantern's light; lit=false: out in the dark (walking in)
  function ponyLight(lit=true){return cur!=='dark'?'none':lit?'brightness(.74) saturate(.72) sepia(.16)':'brightness(.34) saturate(.35)';}
@@ -858,7 +888,11 @@ function mount(stage,{theme='light',reduced=false}={}){
   const groups=qa('.wr-plate-'+side),word=on?'Continue →':WORD[side];
   const swap=()=>groups.forEach(g=>{g.querySelector('.wr-plate-word').textContent=word;g.classList.toggle('is-continue',!!on);});
   if(reduced||!groups[0]?.animate){swap();return;}
-  groups.forEach(g=>{g.style.transformBox='fill-box';g.style.transformOrigin='50% 0';g.animate([{transform:'scaleY(1)'},{transform:'scaleY(0.04)',offset:.5},{transform:'scaleY(1)'}],{duration:420,easing:'cubic-bezier(.45,0,.55,1)'});});
+  groups.forEach(g=>{
+    g.style.transformBox='fill-box';
+    g.style.transformOrigin='50% 0';
+    g.animate([{transform:'scaleY(1)'},{transform:'scaleY(0.04)',offset:.5},{transform:'scaleY(1)'}],{duration:420,easing:'cubic-bezier(.45,0,.55,1)'});
+  });
   setTimeout(swap,210);
  }
  function hover(t){haloL.classList.toggle('is-on',t==='light');haloR.classList.toggle('is-on',t==='dark');}
@@ -905,15 +939,36 @@ function mount(stage,{theme='light',reduced=false}={}){
  const L={};
  const P=n=>(n.dataset.p||'0 0').split(' ').map(Number);
  function grab(){
-  for(const [k,el] of [['day',dayL],['night',nightL]])L[k]={hh:qa('.hand-h',el),hm:qa('.hand-m',el),steam:qa('.steam',el),cloud:qa('.cloud',el),bird:qa('.bird',el),sun:qa('.sun',el),curtain:qa('.curtain',el),wtree:qa('.wtree',el),fly:qa('.fly',el)};
-  for(const [k,el] of [['mday',mday],['mnight',mnight]])L[k]={sun:qa('.sun',el),cloud:qa('.cloud',el),balloon:qa('.balloon',el),bird:qa('.bird',el),blades:qa('.blades',el),tree:qa('.tree',el),flower:qa('.flower',el),tuft:qa('.tuft',el),fly:qa('.fly',el),ffly:qa('.ffly',el),ripple:qa('.ripple',el),smoke:qa('.smoke',el),duck:qa('.duck',el),star:qa('.mstar',el),shoot:qa('.shoot',el)};
+  for(const [k,el] of [['day',dayL],['night',nightL]])
+    L[k]={hh:qa('.hand-h',el),hm:qa('.hand-m',el),steam:qa('.steam',el),cloud:qa('.cloud',el),bird:qa('.bird',el),sun:qa('.sun',el),curtain:qa('.curtain',el),wtree:qa('.wtree',el),fly:qa('.fly',el)};
+  for(const [k,el] of [['mday',mday],['mnight',mnight]])
+    L[k]={
+      sun:qa('.sun',el),
+      cloud:qa('.cloud',el),
+      balloon:qa('.balloon',el),
+      bird:qa('.bird',el),
+      blades:qa('.blades',el),
+      tree:qa('.tree',el),
+      flower:qa('.flower',el),
+      tuft:qa('.tuft',el),
+      fly:qa('.fly',el),
+      ffly:qa('.ffly',el),
+      ripple:qa('.ripple',el),
+      smoke:qa('.smoke',el),
+      duck:qa('.duck',el),
+      star:qa('.mstar',el),
+      shoot:qa('.shoot',el)
+    };
  }
  const rot=(n,a,p=P(n))=>n.setAttribute('transform','rotate('+a.toFixed(2)+' '+p[0]+' '+p[1]+')');
  function idleRoom(o,t){
   o.hh.forEach(n=>n.setAttribute('transform','rotate('+(t*2%360).toFixed(1)+' 1080 236)'));o.hm.forEach(n=>n.setAttribute('transform','rotate('+(t*24%360).toFixed(1)+' 1080 236)'));
   o.steam.forEach((w,i)=>{const p=(t*.45+i/3)%1;w.setAttribute('transform','translate(0 '+(-16*p).toFixed(1)+')');w.style.opacity=(Math.sin(Math.PI*p)*.9).toFixed(2);});
   o.cloud.forEach((c,i)=>c.setAttribute('transform','translate('+(((t*(+c.dataset.v||4)+i*80)%260)-60).toFixed(1)+' 0)'));
-  o.bird.forEach(b=>{const p=(t*.07)%1,x=+b.dataset.x,y=+b.dataset.y,w=+b.dataset.w;b.setAttribute('transform','translate('+(x+p*w).toFixed(1)+' '+(y+8*Math.sin(p*9)).toFixed(1)+') scale(1 '+(.6+.4*Math.abs(Math.sin(t*7))).toFixed(2)+')');});
+  o.bird.forEach(b=>{
+    const p=(t*.07)%1,x=+b.dataset.x,y=+b.dataset.y,w=+b.dataset.w;
+    b.setAttribute('transform','translate('+(x+p*w).toFixed(1)+' '+(y+8*Math.sin(p*9)).toFixed(1)+') scale(1 '+(.6+.4*Math.abs(Math.sin(t*7))).toFixed(2)+')');
+  });
   o.sun.forEach(n=>rot(n,t*8%360));o.curtain.forEach((n,i)=>rot(n,.6*Math.sin(t*.8+i*2)));o.wtree.forEach((n,i)=>rot(n,1.4*Math.sin(t*1.1+i)));
   o.fly.forEach((f,i)=>{f.style.opacity=(.4+.6*Math.abs(Math.sin(t*1.7+i*1.3))).toFixed(2);});
  }
@@ -922,26 +977,57 @@ function mount(stage,{theme='light',reduced=false}={}){
   // that, so at night only the sky (stars, clouds, a shooting star) and the fireflies move
   if(cur==='dark'){
    o.cloud.forEach((c,i)=>c.setAttribute('transform','translate('+(((t*(+c.dataset.v||4)+i*400)%1900)-300).toFixed(1)+' 0)'));
-   o.ffly.forEach((f,i)=>{const b=Math.max(0,Math.sin(t*(.9+i%5*.17)+i*1.9));f.style.opacity=(b*b).toFixed(2);f.setAttribute('transform','translate('+(8*Math.sin(t*.7+i)).toFixed(1)+' '+(6*Math.sin(t*.9+i*1.7)).toFixed(1)+')');});
+   o.ffly.forEach((f,i)=>{
+     const b=Math.max(0,Math.sin(t*(.9+i%5*.17)+i*1.9));
+     f.style.opacity=(b*b).toFixed(2);
+     f.setAttribute('transform','translate('+(8*Math.sin(t*.7+i)).toFixed(1)+' '+(6*Math.sin(t*.9+i*1.7)).toFixed(1)+')');
+   });
    o.star.forEach((s,i)=>{if(i%4)return;s.style.opacity=(.45+.55*Math.abs(Math.sin(t*1.3+i))).toFixed(2);});
-   o.shoot.forEach(sh=>{const p=(t%11)/11;sh.setAttribute('opacity',p<.07?Math.sin(p/.07*Math.PI).toFixed(2):0);sh.setAttribute('transform','translate('+(1500-p*1400).toFixed(1)+' '+(60+p*300).toFixed(1)+')');});
+   o.shoot.forEach(sh=>{
+     const p=(t%11)/11;
+     sh.setAttribute('opacity',p<.07?Math.sin(p/.07*Math.PI).toFixed(2):0);
+     sh.setAttribute('transform','translate('+(1500-p*1400).toFixed(1)+' '+(60+p*300).toFixed(1)+')');
+   });
    return;
   }
   o.sun.forEach(n=>n.setAttribute('transform','translate(1340 150) rotate('+(t*6%360).toFixed(1)+')'));
   o.cloud.forEach((c,i)=>c.setAttribute('transform','translate('+(((t*(+c.dataset.v||4)+i*400)%1900)-300).toFixed(1)+' 0)'));
   o.balloon.forEach(b=>b.setAttribute('transform','translate('+(((t*9)%1900)-200).toFixed(1)+' '+(10*Math.sin(t*.6)).toFixed(1)+')'));
-  o.bird.forEach((b,i)=>{const p=((t*.05)+i*.01)%1;b.setAttribute('transform','translate('+(-700+p*2000).toFixed(1)+' '+(8*Math.sin(p*12+i)).toFixed(1)+')');b.firstChild.setAttribute('transform',b.firstChild.getAttribute('transform').replace(/ scale\([^)]*\)/,'')+' scale(1 '+(.6+.4*Math.abs(Math.sin(t*6+i))).toFixed(2)+')');});
+  o.bird.forEach((b,i)=>{
+    const p=((t*.05)+i*.01)%1;
+    b.setAttribute('transform','translate('+(-700+p*2000).toFixed(1)+' '+(8*Math.sin(p*12+i)).toFixed(1)+')');
+    b.firstChild.setAttribute('transform',b.firstChild.getAttribute('transform').replace(/ scale\([^)]*\)/,'')+' scale(1 '+(.6+.4*Math.abs(Math.sin(t*6+i))).toFixed(2)+')');
+  });
   o.blades.forEach(n=>n.setAttribute('transform','translate('+n.dataset.x+' '+n.dataset.y+') rotate('+(t*40%360).toFixed(1)+')'));
   o.tree.forEach((n,i)=>rot(n,1.2*Math.sin(t*1.1+i)));
   // a few flowers sway (each tick repaints what moves, so few and small)
   o.flower.forEach((n,i)=>{if(i%4)return;rot(n,4*Math.sin(t*1.6+i*.7));});
-  o.fly.forEach((f,i)=>{const a=t*(.5+i*.15)+i*3,x=(i?1080:330)+150*Math.sin(a),y=600+50*Math.sin(a*2.1)+i*30;f.setAttribute('transform','translate('+x.toFixed(1)+' '+y.toFixed(1)+')');f.firstChild.setAttribute('transform','scale('+(.3+.7*Math.abs(Math.sin(t*11+i))).toFixed(2)+' 1)');});
-  o.ffly.forEach((f,i)=>{const b=Math.max(0,Math.sin(t*(.9+i%5*.17)+i*1.9));f.style.opacity=(b*b).toFixed(2);f.setAttribute('transform','translate('+(8*Math.sin(t*.7+i)).toFixed(1)+' '+(6*Math.sin(t*.9+i*1.7)).toFixed(1)+')');});
-  o.ripple.forEach((r,i)=>{const p=(t*.35+i*.5)%1,s=.4+p*1.6;r.setAttribute('transform','translate(250 784) scale('+s.toFixed(3)+' '+(s*.8).toFixed(3)+') translate(-250 -784)');r.style.opacity=(1-p).toFixed(2);});
-  o.duck.forEach(d=>{const dx=40*Math.sin(t*.25);d.setAttribute('transform','translate('+(+d.dataset.x+dx).toFixed(1)+' '+(+d.dataset.y+1.4*Math.sin(t*2)).toFixed(1)+') scale('+(Math.cos(t*.25)>0?1:-1)+' 1)');});
+  o.fly.forEach((f,i)=>{
+    const a=t*(.5+i*.15)+i*3,x=(i?1080:330)+150*Math.sin(a),y=600+50*Math.sin(a*2.1)+i*30;
+    f.setAttribute('transform','translate('+x.toFixed(1)+' '+y.toFixed(1)+')');
+    f.firstChild.setAttribute('transform','scale('+(.3+.7*Math.abs(Math.sin(t*11+i))).toFixed(2)+' 1)');
+  });
+  o.ffly.forEach((f,i)=>{
+    const b=Math.max(0,Math.sin(t*(.9+i%5*.17)+i*1.9));
+    f.style.opacity=(b*b).toFixed(2);
+    f.setAttribute('transform','translate('+(8*Math.sin(t*.7+i)).toFixed(1)+' '+(6*Math.sin(t*.9+i*1.7)).toFixed(1)+')');
+  });
+  o.ripple.forEach((r,i)=>{
+    const p=(t*.35+i*.5)%1,s=.4+p*1.6;
+    r.setAttribute('transform','translate(250 784) scale('+s.toFixed(3)+' '+(s*.8).toFixed(3)+') translate(-250 -784)');
+    r.style.opacity=(1-p).toFixed(2);
+  });
+  o.duck.forEach(d=>{
+    const dx=40*Math.sin(t*.25);
+    d.setAttribute('transform','translate('+(+d.dataset.x+dx).toFixed(1)+' '+(+d.dataset.y+1.4*Math.sin(t*2)).toFixed(1)+') scale('+(Math.cos(t*.25)>0?1:-1)+' 1)');
+  });
   o.smoke.forEach((m,i)=>{const p=(t*.25+i*.37)%1;m.setAttribute('transform','translate('+(3*Math.sin(t*.8+i)).toFixed(1)+' '+(-6*p).toFixed(1)+')');m.style.opacity=(1-p*.6).toFixed(2);});
   o.star.forEach((s,i)=>{if(i%4)return;s.style.opacity=(.45+.55*Math.abs(Math.sin(t*1.3+i))).toFixed(2);});
-  o.shoot.forEach(sh=>{const p=(t%11)/11;sh.setAttribute('opacity',p<.07?Math.sin(p/.07*Math.PI).toFixed(2):0);sh.setAttribute('transform','translate('+(1500-p*1400).toFixed(1)+' '+(60+p*300).toFixed(1)+')');});
+  o.shoot.forEach(sh=>{
+    const p=(t%11)/11;
+    sh.setAttribute('opacity',p<.07?Math.sin(p/.07*Math.PI).toFixed(2):0);
+    sh.setAttribute('transform','translate('+(1500-p*1400).toFixed(1)+' '+(60+p*300).toFixed(1)+')');
+  });
  }
  // The meadow keeps its own clock, running only while it is on show: the room's windows show the same drawing, so
  // its clouds and fireflies wait there where they stopped and go on from that very place when the camera steps out.

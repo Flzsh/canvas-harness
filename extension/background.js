@@ -44,7 +44,10 @@ globalThis.ReservePagePreferences?.serve();
     featureTabs.set(key,prefs??null);
     if(chrome.storage.session?.set)await chrome.storage.session.set({[key]:prefs??null});
    }
-   await chrome.scripting.executeScript({target,world:'ISOLATED',injectImmediately:true,func:value=>{globalThis.ReserveFeatures.apply(value);globalThis.ReserveStartup?.setFeatures?.(value,true);},args:[prefs??null]});
+   await chrome.scripting.executeScript({target,world:'ISOLATED',injectImmediately:true,func:value=>{
+     globalThis.ReserveFeatures.apply(value);
+     globalThis.ReserveStartup?.setFeatures?.(value,true);
+   },args:[prefs??null]});
    // Prepaint JS/CSS already belongs to document_start; never evaluate it twice.
    const files=[...selection.startupJS,...selection.js].filter(file=>!ReserveFeatures.staticJS.includes(file));
    await chrome.scripting.executeScript({target,world:'ISOLATED',injectImmediately:true,files});
@@ -61,14 +64,32 @@ globalThis.ReservePagePreferences?.serve();
  const sourceFor=port=>channels.get(port.sender?.tab?.id);
  function canvasSender(sender){return sender?.id===chrome.runtime.id&&sender.frameId===0&&Number.isInteger(sender.tab?.id)&&ReserveSite.supported(sender.url);}
  // The panel frame may be served from the extension's per-session address (use_dynamic_url), so compare the page, not the host.
- function panelSender(sender){try{const u=new URL(sender.url);return sender.id===chrome.runtime.id&&Number.isInteger(sender.tab?.id)&&u.protocol==='chrome-extension:'&&u.pathname==='/ai-panel.html'&&!u.search&&!u.hash;}catch{return false;}}
+ function panelSender(sender){
+   try{
+     const u=new URL(sender.url);
+     return sender.id===chrome.runtime.id&&Number.isInteger(sender.tab?.id)&&u.protocol==='chrome-extension:'&&u.pathname==='/ai-panel.html'&&!u.search&&!u.hash;
+   }catch{return false;}
+ }
  // A Biscuit handoff is only a bounded composer draft in this exact source scope.
  // It never enters the provider or context-collection request paths.
  function validDraft(entry,draft){
-  if(!draft||typeof draft!=='object'||!validId(draft.id)||typeof draft.text!=='string'||!draft.text.trim()||draft.text.length>20000||draft.text.includes('\u0000')||typeof draft.scopeKey!=='string'||draft.scopeKey.length>8192||draft.scopeKey.includes('\u0000')||draft.scopeKey!==entry.catalog?.scopeKey)return false;
+  if(!draft||
+    typeof draft!=='object'||
+    !validId(draft.id)||
+    typeof draft.text!=='string'||
+    !draft.text.trim()||
+    draft.text.length>20000||
+    draft.text.includes('\u0000')||
+    typeof draft.scopeKey!=='string'||
+    draft.scopeKey.length>8192||
+    draft.scopeKey.includes('\u0000')||
+    draft.scopeKey!==entry.catalog?.scopeKey)
+    return false;
   const [origin,accountId]=draft.scopeKey.split('|');return origin===new URL(entry.port.sender.url).origin&&/^\d+$/.test(accountId||'');
  }
- function publishDraft(entry,panel){if(entry?.draft&&panels.has(panel)&&sourceFor(panel)===entry&&validDraft(entry,entry.draft))post(panel,{kind:'draft',draft:entry.draft});}
+ function publishDraft(entry,panel){
+   if(entry?.draft&&panels.has(panel)&&sourceFor(panel)===entry&&validDraft(entry,entry.draft))post(panel,{kind:'draft',draft:entry.draft});
+ }
  function setSourceCatalog(entry,data,tabId){
   const prior=entry.catalog?.scopeKey,owner=data.scopeKey.split('|').slice(0,2).join('|');
   if(prior!==data.scopeKey)entry.draft=null;
@@ -98,7 +119,9 @@ globalThis.ReservePagePreferences?.serve();
  async function pdf(base64){
   if(typeof base64!=='string'||base64.length>Math.ceil(2*1024*1024/3)*4||!/^[A-Za-z0-9+/]*={0,2}$/.test(base64))throw Error('Choose a PDF no larger than 2 MiB.');
   if(!await chrome.offscreen.hasDocument()){
-   offscreenPending??=chrome.offscreen.createDocument({url:'ai-offscreen.html',reasons:['WORKERS'],justification:'Read text from explicitly selected small PDFs locally.'}).finally(()=>{offscreenPending=null;});
+   offscreenPending??=chrome.offscreen.createDocument({url:'ai-offscreen.html',reasons:['WORKERS'],justification:'Read text from explicitly selected small PDFs locally.'}).finally(()=>{
+     offscreenPending=null;
+   });
    await offscreenPending;
   }
   const reply=await chrome.runtime.sendMessage({target:'ch-pdf',base64});if(!reply?.ok)throw Error(reply?.error||'PDF text could not be extracted.');return reply.result;
@@ -107,9 +130,21 @@ globalThis.ReservePagePreferences?.serve();
   if(!['catalog','load-course','collect','close','preference'].includes(message.action))throw Error('Unsupported Canvas context request.');
   if(message.action==='preference'&&typeof message.autoSend!=='boolean')throw Error('Invalid AI preference.');
   if(message.action==='collect'&&(!Array.isArray(message.ids)||message.ids.length>30||message.ids.some(x=>typeof x!=='string'||x.length>1000)))throw Error('Choose at most 30 sources.');
-  const id=crypto.randomUUID(),timer=setTimeout(()=>{const pending=requests.get(id);if(pending){requests.delete(id);fail(panel,message.id,'Context gathering took too long. Try fewer sources.');}},120000);
+  const id=crypto.randomUUID(),timer=setTimeout(()=>{
+    const pending=requests.get(id);
+    if(pending){requests.delete(id);fail(panel,message.id,'Context gathering took too long. Try fewer sources.');}
+  },120000);
   requests.set(id,{panel,originalId:message.id,source:entry.port,timer,scopeKey:entry.catalog.scopeKey});
-  post(entry.port,{kind:'source-request',id,action:message.action,courseId:message.courseId,ids:message.ids,all:message.all===true,includeAssignmentPdfs:message.includeAssignmentPdfs===true,autoSend:message.autoSend===true});
+  post(entry.port,{
+    kind:'source-request',
+    id,
+    action:message.action,
+    courseId:message.courseId,
+    ids:message.ids,
+    all:message.all===true,
+    includeAssignmentPdfs:message.includeAssignmentPdfs===true,
+    autoSend:message.autoSend===true
+  });
  }
  async function onPanel(panel,message){
   if(!validId(message?.id))return;
@@ -135,7 +170,13 @@ globalThis.ReservePagePreferences?.serve();
     if(!['status','open','inject'].includes(message.op))throw Error('Unsupported website action.');
     if(message.op==='inject'&&(typeof message.text!=='string'||!message.text.trim()||message.text.length>140000))throw Error('Choose some context to send, up to 140,000 characters.');
     if(message.op==='inject'){await verifyShare(panel,message,entry);if(handoffs.get(panel)!==message.id)throw Error('The AI panel closed or the request was replaced. Click Send again when ready.');}
-    let result;try{result=await CanvasHarnessWeb.handle({type:'ch-ai-web',action:message.op,provider:message.provider,text:message.text,autoSend:message.autoSend===true},{...entry.port.sender,tab:entry.port.sender.tab},{canShare:()=>handoffs.get(panel)===message.id&&panels.has(panel)&&sourceFor(panel)===entry&&message.scopeKey===entry.catalog?.scopeKey});}finally{if(handoffs.get(panel)===message.id)handoffs.delete(panel);}
+    let result;
+    try{
+      result=await CanvasHarnessWeb.handle(
+        {type:'ch-ai-web',action:message.op,provider:message.provider,text:message.text,autoSend:message.autoSend===true},
+        {...entry.port.sender,tab:entry.port.sender.tab},
+        {canShare:()=>handoffs.get(panel)===message.id&&panels.has(panel)&&sourceFor(panel)===entry&&message.scopeKey===entry.catalog?.scopeKey});
+    }finally{if(handoffs.get(panel)===message.id)handoffs.delete(panel);}
     post(panel,{id:message.id,ok:true,result});return;
    }
    if(message.action==='pdf'){post(panel,{id:message.id,ok:true,result:await pdf(message.base64)});return;}
@@ -146,7 +187,9 @@ globalThis.ReservePagePreferences?.serve();
  // access to that one site; the same scripts that run on instructure.com are then registered there.
  // Taking access away in the browser's extension settings removes them again.
  const SITES='reserve:sites',PENDING='reserve:pendingSite',PREFIX='ch-site-';
- function schoolSender(sender){return sender?.id===chrome.runtime.id&&(sender.frameId===undefined||sender.frameId===0)&&['welcome.html','popup.html'].some(page=>sender.url===chrome.runtime.getURL(page));}
+ function schoolSender(sender){
+   return sender?.id===chrome.runtime.id&&(sender.frameId===undefined||sender.frameId===0)&&['welcome.html','popup.html'].some(page=>sender.url===chrome.runtime.getURL(page));
+ }
  async function grantedSites(){
   const saved=(await chrome.storage.local.get(SITES))[SITES],out=[];
   for(const value of Array.isArray(saved)?saved:[]){
@@ -222,7 +265,10 @@ globalThis.ReservePagePreferences?.serve();
     }else if(validId(message?.id)){
      const pending=requests.get(message.id);if(!pending||pending.source!==port)return;
      clearTimeout(pending.timer);requests.delete(message.id);
-     if(message.ok&&message.result?.scopeKey&&pending.scopeKey!==entry.catalog?.scopeKey&&message.result.scopeKey!==entry.catalog?.scopeKey){fail(pending.panel,pending.originalId,'The Canvas view changed. Review the new sources.');return;}
+     if(message.ok&&message.result?.scopeKey&&pending.scopeKey!==entry.catalog?.scopeKey&&message.result.scopeKey!==entry.catalog?.scopeKey){
+       fail(pending.panel,pending.originalId,'The Canvas view changed. Review the new sources.');
+       return;
+     }
      if(message.ok&&message.result?.sources&&typeof message.result?.scopeKey==='string'&&!setSourceCatalog(entry,message.result,tabId))return;
      post(pending.panel,{...message,id:pending.originalId});
     }
@@ -268,7 +314,9 @@ globalThis.ReservePagePreferences?.serve();
   if(message?.type==='ch-school-ready'){
    const origin=ReserveSite.customSite(message.origin);
    if(!schoolSender(sender)||!origin||origin!==message.origin){reply({ok:false,error:'Invalid school registration request.'});return;}
-   resync().then(sites=>reply(sites.includes(origin)?{ok:true,origin}:{ok:false,error:'Allow access to your school’s Canvas site and try again.'}),error=>reply({ok:false,error:String(error?.message||error||'School registration failed. Try again.')}));
+   resync().then(
+     sites=>reply(sites.includes(origin)?{ok:true,origin}:{ok:false,error:'Allow access to your school’s Canvas site and try again.'}),
+     error=>reply({ok:false,error:String(error?.message||error||'School registration failed. Try again.')}));
    return true;
   }
   if(message?.type!=='ch-ai-pdf')return;
@@ -281,6 +329,11 @@ globalThis.ReservePagePreferences?.serve();
  chrome.tabs?.onRemoved?.addListener(tab=>{
   featureCurrent.delete(tab);const prefix='reserve:features:tab:'+tab+':';
   for(const map of [featureTabs,featureLoads])for(const key of map.keys())if(key.startsWith(prefix))map.delete(key);
-  void(async()=>{try{const saved=await chrome.storage.session?.get(null);if(saved)await chrome.storage.session.remove(Object.keys(saved).filter(key=>key.startsWith(prefix)));}catch{}})();
+  void(async()=>{
+    try{
+      const saved=await chrome.storage.session?.get(null);
+      if(saved)await chrome.storage.session.remove(Object.keys(saved).filter(key=>key.startsWith(prefix)));
+    }catch{}
+  })();
  });
 })();

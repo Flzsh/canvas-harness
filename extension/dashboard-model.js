@@ -64,11 +64,21 @@
     }
   }
 
+  // Bounded memo of zone|instant -> day key: a render asks for the same days many times (filters, buckets, planner).
+  var dayKeys = new Map();
   function localDayKey(value, timeZone) {
     var ms = dateMs(value);
     if (ms === null) return null;
     var zone = normalizeTimeZone(timeZone);
+    var memo = zone + '|' + ms;
+    if (dayKeys.has(memo)) return dayKeys.get(memo);
+    if (dayKeys.size >= 4096) dayKeys.clear();
+    var key = formatDayKey(ms, zone);
+    dayKeys.set(memo, key);
+    return key;
+  }
 
+  function formatDayKey(ms, zone) {
     if (!dayFormatters.has(zone)) {
       if (dayFormatters.size >= 12) dayFormatters.clear();
       dayFormatters.set(zone, new Intl.DateTimeFormat('en-US', {timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit'}));
@@ -179,7 +189,13 @@
       if (courseId !== 'all' && String(item.courseId) !== courseId) return false;
       if (!q) return true;
       // courseSearch carries the full Canvas name (teacher, cohort) after a rename.
-      var haystack = normalizedSearch(item.name) + '\n' + normalizedSearch(item.courseName) + '\n' + normalizedSearch(item.courseSearch) + '\n' + normalizedSearch(item.personal ? item.source?.title : '');
+      var haystack = normalizedSearch(item.name) +
+        '\n' +
+        normalizedSearch(item.courseName) +
+        '\n' +
+        normalizedSearch(item.courseSearch) +
+        '\n' +
+        normalizedSearch(item.personal ? item.source?.title : '');
       return haystack.indexOf(q) !== -1;
     });
 
@@ -199,7 +215,8 @@
       selected = scoped.filter(function (item) {
         var due = dateMs(item.dueAt);
         var isComplete = workComplete(item, local);
-        var difference = due === null ? null : dayDifference(due, now, timeZone);
+        // Only the day-window modes read the day difference; skipping it elsewhere saves two day keys per item.
+        var difference = due === null || (mode !== 'today' && mode !== 'tomorrow' && mode !== 'week') ? null : dayDifference(due, now, timeZone);
 
         if (mode === 'actionable') return !isComplete && ((due !== null && due >= cutoff) || (item.personal === true && localItem(local,item).plannedDate === localDayKey(now,timeZone)));
         if (mode === 'upcoming') return !isComplete && due !== null && due >= now;

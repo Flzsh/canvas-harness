@@ -100,7 +100,7 @@ test('All courses and courses without a theme of their own get their complete di
 
 test('a course with a subject theme always wears its subject’s drawn title, never the generic board or plain lettering',()=>{
  const art=runtime().ReserveCourseArt,original=chemistry();
- for(const course of [sample('Organic Chemistry Seminar'),sample('CL Chemistry-Rivera'),{...sample('My Lab'),originalName:'Chemistry'},{...original,originalName:'Chemistry Seminar'}]){
+ for(const course of [sample('Organic Chemistry Seminar'),sample('Honors Chemistry-Rivera'),{...sample('My Lab'),originalName:'Chemistry'},{...original,originalName:'Chemistry Seminar'}]){
   const piece=art.titled(course);assert.equal(piece.kind,'chemistry');assert.equal(piece.name,art.titled(original).name);assert.notEqual(piece.generic,true);
   assert.match(art.title(course),/^<svg class="rd-art" data-art="chemistry" data-crop="title"/);assert.doesNotMatch(art.titleFrame(course),/rd-generic-title/);
  }

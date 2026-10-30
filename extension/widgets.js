@@ -45,7 +45,8 @@
  function focusState(focus,now){
   if(root.ReserveCore?.focusState)return root.ReserveCore.focusState(focus,now);
   const f=focus||{},minutes=duration(f.minutes,25)||25,total=minutes*60,running=!!f.endsAt,remaining=Number.isFinite(f.remaining)?Math.max(0,f.remaining):total;
-  const left=running?Math.max(0,(f.endsAt-now)/1000):remaining,elapsed=(Number.isFinite(f.elapsed)?Math.max(0,f.elapsed):Math.max(0,total-remaining))+(running?Math.max(0,remaining-left):0);
+  const left=running?Math.max(0,(f.endsAt-now)/1000):remaining,
+    elapsed=(Number.isFinite(f.elapsed)?Math.max(0,f.elapsed):Math.max(0,total-remaining))+(running?Math.max(0,remaining-left):0);
   const paused=!running&&!f.stoppedAt&&!f.completedAt&&left>0&&(!!f.pausedAt||elapsed>0||left<total);
   return {minutes,total,running,paused,active:running||paused,left,elapsed,progress:Math.max(0,Math.min(1,1-left/total)),sessions:f.sessions||0,phase:f.phase==='break'?'break':'focus'};
  }
@@ -92,11 +93,20 @@ ${sign}
  function render(key,c,h){
   if(!available(key)||!Arrange())return '';
   if(['today','week'].includes(key)&&!Plan())return '';
-  const {E}=h,A=Arrange(),label=A.LABELS[key],action=(name,text,extra='',cls='rd-button')=>name==='pet-settings'&&!enabled('customization')?'':`<button type="button" class="${cls}" data-rd-action="${name}" ${extra}>${text}</button>`;
+  const {E}=h,
+    A=Arrange(),
+    label=A.LABELS[key],
+    action=(name,text,extra='',cls='rd-button')=>name==='pet-settings'&&!enabled('customization')?'':`<button type="button" class="${cls}" data-rd-action="${name}" ${extra}>${text}</button>`;
   const time=(value,options)=>h.formatDate(value,c.s.timeZone,options);
   const mine=c.personal||{};
   const todo=(e,{showDue=true}={})=>{
-   const canvasDone=e.done&&!(c.local[e.id]?.checkedOff),bits=[e.personal&&e.courseId==='personal'?'Mine':E(e.course||''),showDue&&e.dueAt?E(time(e.dueAt,{hour:'numeric',minute:'2-digit'})):'',e.estimate?E(Plan().minutes(e.estimate)):'',e.steps?`${e.stepsDone}/${e.steps} steps`:''].filter(Boolean);
+   const canvasDone=e.done&&!(c.local[e.id]?.checkedOff),
+     bits=[
+       e.personal&&e.courseId==='personal'?'Mine':E(e.course||''),
+       showDue&&e.dueAt?E(time(e.dueAt,{hour:'numeric',minute:'2-digit'})):'',
+       e.estimate?E(Plan().minutes(e.estimate)):'',
+       e.steps?`${e.stepsDone}/${e.steps} steps`:''
+     ].filter(Boolean);
    return `<li class="rd-todo" data-rd-key="todo-${E(e.id)}" data-done="${e.done}" style="--rd-course:${E(e.color||'#7c718d')}">${canvasDone?`<span class="rd-todo-check" data-done="true" title="Completed in Canvas" aria-label="Completed in Canvas"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M4.6 10.6l3.4 3.6 7.6-8.8"/></svg></span>`:action(e.done?'undo-check-off':'check-off','<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M4.6 10.6l3.4 3.6 7.6-8.8"/></svg>',`data-id="${E(e.id)}" aria-pressed="${e.done}" aria-label="${e.done?'Put back':'Mark done'}: ${E(e.title)}" title="${e.done?'Put back in the list':'Mark done'}"`,'rd-todo-check')}${action('preview',`<strong>${E(e.title)}</strong>${bits.length?`<small>${bits.join(' · ')}</small>`:''}`,`data-id="${E(e.id)}" aria-label="Open ${E(e.title)}"`,'rd-todo-open')}</li>`;
   };
   let body='',extra='';
@@ -113,7 +123,8 @@ ${total?`<ul class="rd-todo-list">${d.all.map(e=>todo(e)).join('')}</ul>`:`<p cl
   }else if(key==='week'){
    const {board,today}=plan(c,h);
    body=`<div class="rd-wk" role="group" aria-label="This week">${board.days.map(d=>{
-    const dt=new Date(d.key+'T12:00:00Z').getTime(),dots=d.all.slice(0,6).map(e=>`<i data-done="${e.done}" style="--rd-course:${E(e.color||'#7c718d')}"></i>`).join('')+(d.all.length>6?`<b>+${d.all.length-6}</b>`:'');
+    const dt=new Date(d.key+'T12:00:00Z').getTime(),
+      dots=d.all.slice(0,6).map(e=>`<i data-done="${e.done}" style="--rd-course:${E(e.color||'#7c718d')}"></i>`).join('')+(d.all.length>6?`<b>+${d.all.length-6}</b>`:'');
     return action('plan-open',`<span>${E(h.formatDate(dt,'UTC',{weekday:'short'}))}</span><strong>${new Date(dt).getUTCDate()}</strong><span class="rd-wk-dots">${dots}</span><small>${d.minutes?E(Plan().minutes(d.minutes)):d.open?`${d.open} to do`:d.done?'done':''}</small>`,`data-day="${d.key}" data-today="${d.key===today}" data-past="${d.key<today}" aria-label="${E(h.formatDate(dt,'UTC',{weekday:'long',month:'short',day:'numeric'}))}: ${d.open} to do, ${d.done} done${d.minutes?`, ${E(Plan().minutes(d.minutes))} planned`:''}"`,'rd-wk-day');}).join('')}</div>
 ${board.waiting.length||board.overdue.length?`<p class="rd-widget-note">${[board.overdue.length?`${board.overdue.length} still open from before`:'',board.waiting.length?`${board.waiting.length} due soon with no day yet`:''].filter(Boolean).join(' · ')}</p>`:''}`;
    extra=action('workspace','Planner','data-tab="plan"','rd-text-button rd-widget-link');
@@ -162,105 +173,410 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
 ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" aria-label="Module outline"><span>Outline</span>${FRAMES.map(([value,name,hint])=>`<button type="button" class="rd-frame-choice" role="radio" data-rd-action="board-frame" data-value="${value}" aria-checked="${frame===value}" title="${E(hint)}"><i data-frame="${value}"></i>${E(name)}</button>`).join('')}</div>`:''}</section>`;
  }
 
- function create({container,store,getCustomPet=null,save,rerender,getContext,helpers,preview=null,openSettings=null,startTick=()=>{},go=()=>{},selectCourse=null,closeSettings=()=>{},askAI=null,announcements=()=>false,appearance=null,layoutPreset=null,navigate=null,bookmark=null,openCourseFile=null}){
+ function create({
+   container,
+   store,
+   getCustomPet=null,
+   save,
+   rerender,
+   getContext,
+   helpers,
+   preview=null,
+   openSettings=null,
+   startTick=()=>{},
+   go=()=>{},
+   selectCourse=null,
+   closeSettings=()=>{},
+   askAI=null,
+   announcements=()=>false,
+   appearance=null,
+   layoutPreset=null,
+   navigate=null,
+   bookmark=null,
+   openCourseFile=null
+ }){
   if(!enabled('planner')||root.ReserveSite?.vanillaPage(root.location))return null;
    let dead=false,editing=false,settingsTab='look',clockTimer=0,timerTick=0,notesTimer=0,pets=null,lastDone=null,focusSettlement=null;
   const win=container.ownerDocument?.defaultView||root;
   const newId=()=>'local-'+(root.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const ctx=()=>getContext();
   const copy=value=>value===undefined?undefined:JSON.parse(JSON.stringify(value));
-  const persist=save,recordings=new WeakMap(),record=value=>value&&typeof value==='object'&&!Array.isArray(value),at=(data,path)=>path.reduce((value,key)=>value?.[key],data);
-  let requestedFeatures=null,playTray=null,playBox=null,pendingCommand=null,recording=null,measuring=null,executorBusy=false,executionValidation=null,localFiles=null,localFileOpen=null;
+  const persist=save,
+    recordings=new WeakMap(),
+    record=value=>value&&typeof value==='object'&&!Array.isArray(value),
+    at=(data,path)=>path.reduce((value,key)=>value?.[key],data);
+  let requestedFeatures=null,
+    playTray=null,
+    playBox=null,
+    pendingCommand=null,
+    recording=null,
+    measuring=null,
+    executorBusy=false,
+    executionValidation=null,
+    localFiles=null,
+    localFileOpen=null;
   save=change=>persist(recording?recordChange(change,recording):change);
   const on=id=>enabled(id)&&(!requestedFeatures||requestedFeatures.includes(id)),unavailable=name=>({ok:false,message:name+' is off. Turn it on in the Add-ons popup.'});
   function appearanceCommand(request={}){
    const {key,value}=request,C=root.ReserveBiscuitControls;
-   if(key==='pet.quietUntil'){if(!on('pony'))return unavailable('Pony companion');if(!Number.isFinite(value)||value<=Date.now()||value>Date.now()+86400000||request.until!==undefined&&request.until!==value)return clarify('Choose a future quiet period up to 1440 minutes.');return save(data=>{if(value<=Date.now()||value>Date.now()+86400000)throw Error('Choose a future quiet period up to 1440 minutes.');const p=Pets().clean(data.pet),brain=root.ReservePonyBrain?.cleanLearning(p.brain)||p.brain||{};data.pet={...p,brain:{...brain,quietUntil:value}};});}
-   if(key==='pet.nudges'||key==='pet.enabled'){if(!on('pony'))return unavailable('Pony companion');if(key==='pet.nudges'&&!['helpful','quiet'].includes(value)||key==='pet.enabled'&&typeof value!=='boolean')return clarify('Choose a valid companion setting.');return save(data=>{data.pet={...Pets().clean(data.pet),[key.slice(4)]:value};});}
+   if(key==='pet.quietUntil'){
+     if(!on('pony'))return unavailable('Pony companion');
+     if(!Number.isFinite(value)||value<=Date.now()||value>Date.now()+86400000||request.until!==undefined&&request.until!==value)return clarify('Choose a future quiet period up to 1440 minutes.');
+     return save(data=>{
+       if(value<=Date.now()||value>Date.now()+86400000)throw Error('Choose a future quiet period up to 1440 minutes.');
+       const p=Pets().clean(data.pet),brain=root.ReservePonyBrain?.cleanLearning(p.brain)||p.brain||{};
+       data.pet={...p,brain:{...brain,quietUntil:value}};
+     });
+   }
+   if(key==='pet.nudges'||key==='pet.enabled'){
+     if(!on('pony'))return unavailable('Pony companion');
+     if(key==='pet.nudges'&&!['helpful','quiet'].includes(value)||key==='pet.enabled'&&typeof value!=='boolean')return clarify('Choose a valid companion setting.');
+     return save(data=>{data.pet={...Pets().clean(data.pet),[key.slice(4)]:value};});
+   }
    const known=new Set('theme sceneTheme pageTint courseNavigation dockSize deskOrder surfaceStyle courseCardStyle bannerSize panelFrame density accent motion livingArt readingFont greeting quickOpen font textSize dashboardLayout nightArt showGrades showRecentGrades showBookmarks showCourseIcons showDeadlinePreview showCourseInformation showCourseStrip timeZone bedtime biscuitOffers dockShelf dockStyle dockNamesAlways dockCounts dockLively dockHide'.split(' '));if(!known.has(key))return clarify('That setting is unavailable in the public appearance controls.');
-   if(C?.ENUMS?.[key]&&!C.ENUMS[key].includes(value)&&!(key==='accent'&&typeof value==='string'&&/^#[\da-f]{6}$/i.test(value))||typeof C?.DEFAULTS?.[key]==='boolean'&&typeof value!=='boolean'||key==='nightArt'&&(!Number.isInteger(value)||value<0||value>100)||key==='bedtime'&&(typeof value!=='string'||value.length!==5||!/^([01]\d|2[0-3]):[0-5]\d$/.test(value))||key==='biscuitOffers'&&typeof value!=='boolean')return clarify('Choose a valid value for '+key+'.');if(key==='timeZone'){try{if(typeof value!=='string'||!value)throw Error();new Intl.DateTimeFormat('en-US',{timeZone:value});}catch{return clarify('Choose a valid timezone.');}}
+   if(C?.ENUMS?.[key]&&!C.ENUMS[key].includes(value)&&!(key==='accent'&&typeof value==='string'&&/^#[\da-f]{6}$/i.test(value))||
+     typeof C?.DEFAULTS?.[key]==='boolean'&&typeof value!=='boolean'||
+     key==='nightArt'&&(!Number.isInteger(value)||value<0||value>100)||
+     key==='bedtime'&&(typeof value!=='string'||value.length!==5||!/^([01]\d|2[0-3]):[0-5]\d$/.test(value))||
+     key==='biscuitOffers'&&typeof value!=='boolean')
+     return clarify('Choose a valid value for '+key+'.');
+   if(key==='timeZone'){try{if(typeof value!=='string'||!value)throw Error();new Intl.DateTimeFormat('en-US',{timeZone:value});}catch{return clarify('Choose a valid timezone.');}}
    // Companion schedule and offers require Pony as well as customization.
-   const feature={showGrades:'grades',sceneTheme:'scene-themes',motion:'motion',livingArt:'course-art',nightArt:'course-art',bannerSize:'course-art',showCourseIcons:'course-art',courseCardStyle:'course-art',showCourseInformation:'course-hub',showRecentGrades:'grades',deskOrder:'arrange',dashboardLayout:'arrange',courseNavigation:'arrange',dockSize:'arrange',dockShelf:'arrange',dockStyle:'arrange',dockNamesAlways:'arrange',dockCounts:'arrange',dockLively:'arrange',dockHide:'arrange',bedtime:'pony',biscuitOffers:'pony'}[key];if(key!=='showGrades'&&!on('customization'))return unavailable('Appearance editor');if(feature&&!on(feature)||key==='livingArt'&&!on('motion'))return unavailable(root.ReserveFeatures?.catalogue?.find(f=>f.id===feature)?.name||feature);return appearance?appearance(request):false;
+   const feature={
+     showGrades:'grades',
+     sceneTheme:'scene-themes',
+     motion:'motion',
+     livingArt:'course-art',
+     nightArt:'course-art',
+     bannerSize:'course-art',
+     showCourseIcons:'course-art',
+     courseCardStyle:'course-art',
+     showCourseInformation:'course-hub',
+     showRecentGrades:'grades',
+     deskOrder:'arrange',
+     dashboardLayout:'arrange',
+     courseNavigation:'arrange',
+     dockSize:'arrange',
+     dockShelf:'arrange',
+     dockStyle:'arrange',
+     dockNamesAlways:'arrange',
+     dockCounts:'arrange',
+     dockLively:'arrange',
+     dockHide:'arrange',
+     bedtime:'pony',
+     biscuitOffers:'pony'
+   }[key];
+   if(key!=='showGrades'&&!on('customization'))return unavailable('Appearance editor');
+   if(feature&&!on(feature)||key==='livingArt'&&!on('motion'))return unavailable(root.ReserveFeatures?.catalogue?.find(f=>f.id===feature)?.name||feature);
+   return appearance?appearance(request):false;
   }
   function opened(result){return typeof result?.then==='function'?Promise.resolve(result).then(opened):result===false||record(result)?result:true;}
-  function navigateCommand(request={}){const A=Arrange(),homeKey=A?.EXTRA?.includes(request.tab)&&!['grades','messages'].includes(request.tab)?request.tab:null;if(homeKey){if(Object.keys(request).some(key=>key!=='tab'))return clarify('Open this Home module without an additional course or destination.');return openHomeModule(homeKey);}if(request.tab!==undefined&&!['home','assignments','planner','messages','course-hub','materials','grades'].includes(request.tab)||request.tab===undefined&&!request.courseId||request.courseId!==undefined&&!(ctx().courses||[]).some(row=>String(row.id)===String(request.courseId)))return false;const feature={planner:'planner',messages:'course-hub','course-hub':'course-hub',materials:'materials',grades:'grades'}[request.tab]||'dashboard';return on(feature)?navigate?opened(navigate(request)):false:unavailable(root.ReserveFeatures?.catalogue?.find(f=>f.id===feature)?.name||feature);}
-  async function openHomeModule(key){const A=Arrange(),guidance='Open Home > '+(A?.LABELS?.[key]||key)+'.';if(!on('dashboard'))return unavailable('Dashboard');if(!on('planner')||!available(key))return unavailable('Planner');if(typeof navigate!=='function'||!A?.snapshot||!A?.isExtra(key))return clarify(guidance);const shown=A.snapshot(store.get().settings).order.includes(key);if(!shown&&!on('customization'))return unavailable('Appearance editor');if(!shown&&!on('arrange'))return unavailable('Arrange the workspace');let destination,restoreLayout=null;const undo=async()=>{if(restoreLayout){const restored=await restoreLayout();if(restored===false||restored?.ok===false)return restored;}return destination?.undo?destination.undo():true;};
-   try{destination=await navigate({tab:'home'});if(destination===false||destination?.ok===false)return destination?.ok===false?destination:clarify(guidance);if(!shown){const journal={changes:[]},saved=await capture(journal,()=>moduleCommand({key,action:'show'}));restoreLayout=changed(journal);if(saved===false||saved?.ok===false){await undo();return saved?.ok===false?saved:clarify('The Home module could not save. '+guidance);}}rerender();const node=container.querySelector('[data-rd-key="widget-'+key+'"]'),visible=on('planner')&&available(key)&&A.snapshot(store.get().settings).order.includes(key)&&node&&!node.hidden&&(!node.getClientRects||node.getClientRects().length>0);if(!visible){const restored=await undo();return clarify((restored===false||restored?.ok===false?'Newer layout changes were kept. ':'')+guidance+' The requested module was not visible.');}node.scrollIntoView?.({behavior:'auto',block:'nearest'});if(node.focus){if(!node.hasAttribute?.('tabindex'))node.setAttribute?.('tabindex','-1');node.focus({preventScroll:true});}return {ok:true,message:'Opened '+A.LABELS[key]+' on Home.',undo};}catch{try{await undo();}catch{}return clarify('The Home module could not open. '+guidance);}
+  // Biscuit names a course page ({tab:"course",courseId}), the calendar and the announcements; in this build they are that
+  // course, the Planner and the Course hub.
+  function navigationRequest(request){
+    if(request.tab==='course'&&request.courseId!=null){const {tab,...rest}=request;return rest;}
+    const tab={calendar:'planner',announcements:'course-hub'}[request.tab];
+    return tab?{...request,tab}:request;
   }
-  function checkpoint(intent){const begin=()=>pendingCommand={intent,changes:[]};return intent==='note'||intent==='batch'?flushNotes().then(ok=>{if(ok===false)throw Error('Notes could not save.');return begin();}):begin();}
+  function navigateCommand(request={}){
+    request=navigationRequest(request);
+    const A=Arrange(),homeKey=A?.EXTRA?.includes(request.tab)&&!['grades','messages'].includes(request.tab)?request.tab:null;
+    if(homeKey){if(Object.keys(request).some(key=>key!=='tab'))return clarify('Open this Home module without an additional course or destination.');return openHomeModule(homeKey);}
+    if(request.tab!==undefined&&!['home','assignments','planner','messages','course-hub','materials','grades'].includes(request.tab)||
+      request.tab===undefined&&!request.courseId||
+      request.courseId!==undefined&&!(ctx().courses||[]).some(row=>String(row.id)===String(request.courseId)))
+      return false;
+    const feature={planner:'planner',messages:'course-hub','course-hub':'course-hub',materials:'materials',grades:'grades'}[request.tab]||'dashboard';
+    return on(feature)?navigate?opened(navigate(request)):false:unavailable(root.ReserveFeatures?.catalogue?.find(f=>f.id===feature)?.name||feature);
+  }
+  async function openHomeModule(key){
+    const A=Arrange(),guidance='Open Home > '+(A?.LABELS?.[key]||key)+'.';
+    if(!on('dashboard'))return unavailable('Dashboard');
+    if(!on('planner')||!available(key))return unavailable('Planner');
+    if(typeof navigate!=='function'||!A?.snapshot||!A?.isExtra(key))return clarify(guidance);
+    const shown=A.snapshot(store.get().settings).order.includes(key);
+    if(!shown&&!on('customization'))return unavailable('Appearance editor');
+    if(!shown&&!on('arrange'))return unavailable('Arrange the workspace');
+    let destination,restoreLayout=null;
+    const undo=async()=>{
+      if(restoreLayout){const restored=await restoreLayout();if(restored===false||restored?.ok===false)return restored;}
+      return destination?.undo?destination.undo():true;
+    };
+   try{
+     destination=await navigate({tab:'home'});
+     if(destination===false||destination?.ok===false)return destination?.ok===false?destination:clarify(guidance);
+     if(!shown){
+       const journal={changes:[]},saved=await capture(journal,()=>moduleCommand({key,action:'show'}));
+       restoreLayout=changed(journal);
+       if(saved===false||saved?.ok===false){await undo();return saved?.ok===false?saved:clarify('The Home module could not save. '+guidance);}
+     }
+     rerender();
+     const node=container.querySelector('[data-rd-key="widget-'+key+'"]'),
+       visible=on('planner')&&available(key)&&A.snapshot(store.get().settings).order.includes(key)&&node&&!node.hidden&&(!node.getClientRects||node.getClientRects().length>0);
+     if(!visible){const restored=await undo();return clarify((restored===false||restored?.ok===false?'Newer layout changes were kept. ':'')+guidance+' The requested module was not visible.');}
+     node.scrollIntoView?.({behavior:'auto',block:'nearest'});
+     if(node.focus){if(!node.hasAttribute?.('tabindex'))node.setAttribute?.('tabindex','-1');node.focus({preventScroll:true});}
+     return {ok:true,message:'Opened '+A.LABELS[key]+' on Home.',undo};
+   }catch{try{await undo();}catch{}return clarify('The Home module could not open. '+guidance);}
+  }
+  function checkpoint(intent){
+    const begin=()=>pendingCommand={intent,changes:[]};
+    return intent==='note'||intent==='batch'?flushNotes().then(ok=>{if(ok===false)throw Error('Notes could not save.');return begin();}):begin();
+  }
   function recordChange(change,journal){
    if(recordings.get(change)?.journal===journal)return change;
-   const batches=[],wrapped=data=>{journal.validate?.();if(measuring===journal)return change(data);const before=copy(data),previous=measuring;let result;measuring=journal;try{result=change(data);}finally{measuring=previous;}const patches=[],created=[],derived=[],walk=(a,b,path=[])=>{if(JSON.stringify(a)===JSON.stringify(b))return;if(record(b)&&(record(a)||a===undefined)){if(a===undefined)created.push(path);for(const key of new Set([...Object.keys(a||{}),...Object.keys(b)]))walk(a?.[key],b[key],[...path,key]);}else patches.push({path,value:copy(a),after:copy(b)});};walk(before,data);for(const [key,alias] of [['dashboardLayout','deskOrder'],['deskOrder','dashboardLayout']])if(before.settings?.[key]!==data.settings?.[key]&&before.settings?.[alias]===data.settings?.[alias])derived.push({path:['settings',alias],value:copy(before.settings?.[alias])});const batch={patches,created,derived};batches.push(batch);journal.changes.push(batch);return result;};recordings.set(wrapped,{journal,batches});return wrapped;
+   const batches=[],wrapped=data=>{
+     journal.validate?.();
+     if(measuring===journal)return change(data);
+     const before=copy(data),previous=measuring;
+     let result;
+     measuring=journal;
+     try{result=change(data);}finally{measuring=previous;}
+     const patches=[],created=[],derived=[],walk=(a,b,path=[])=>{
+       if(JSON.stringify(a)===JSON.stringify(b))return;
+       if(record(b)&&(record(a)||a===undefined)){
+         if(a===undefined)created.push(path);
+         for(const key of new Set([...Object.keys(a||{}),...Object.keys(b)]))walk(a?.[key],b[key],[...path,key]);
+       }
+       else patches.push({path,value:copy(a),after:copy(b)});
+     };
+     walk(before,data);
+     for(const [key,alias] of [['dashboardLayout','deskOrder'],['deskOrder','dashboardLayout']])
+       if(before.settings?.[key]!==data.settings?.[key]&&before.settings?.[alias]===data.settings?.[alias])
+         derived.push({path:['settings',alias],value:copy(before.settings?.[alias])});
+     const batch={patches,created,derived};
+     batches.push(batch);
+     journal.changes.push(batch);
+     return result;
+   };
+   recordings.set(wrapped,{journal,batches});
+   return wrapped;
   }
   function committed(change,data){
    if(!record(data))return;
-   for(const batch of recordings.get(change)?.batches||[]){batch.patches.push(...batch.derived);batch.derived=[];for(const patch of batch.patches)patch.after=copy(at(data,patch.path));batch.patches=batch.patches.filter(({value,after})=>JSON.stringify(value)!==JSON.stringify(after));batch.created=batch.created.filter(path=>record(at(data,path)));}
+   for(const batch of recordings.get(change)?.batches||[]){
+     batch.patches.push(...batch.derived);
+     batch.derived=[];
+     for(const patch of batch.patches)patch.after=copy(at(data,patch.path));
+     batch.patches=batch.patches.filter(({value,after})=>JSON.stringify(value)!==JSON.stringify(after));
+     batch.created=batch.created.filter(path=>record(at(data,path)));
+   }
   }
   // Scope capture to synchronous command calls; queued mutators retain their own journal after the scope closes.
   function capture(journal,run){
    if(!journal||recording===journal)return run();const previous=recording,update=store.update;recording=journal;
-   if(typeof update==='function')store.update=(change,...args)=>{const wrapped=recordChange(change,journal);return Promise.resolve(update.call(store,wrapped,...args)).then(data=>{committed(wrapped,data);return data;});};
+   if(typeof update==='function')
+     store.update=(change,...args)=>{
+       const wrapped=recordChange(change,journal);
+       return Promise.resolve(update.call(store,wrapped,...args)).then(data=>{committed(wrapped,data);return data;});
+     };
    try{return run();}finally{recording=previous;if(typeof update==='function')store.update=update;}
   }
   function command(action){return(...args)=>{const journal=pendingCommand;pendingCommand=null;return capture(journal,()=>action(...args));};}
   function commandSave(){const journal=recording;return change=>capture(journal,()=>save(change));}
   function changed(journal){
    const batches=journal?.changes||[];
-   return batches.some(({patches,created})=>patches.length||created.length)?async()=>{let conflict=false;const ok=await save(data=>{const next=copy(data);for(const {patches,created} of [...batches].reverse()){if(patches.some(({path,after})=>JSON.stringify(at(next,path))!==JSON.stringify(after))){conflict=true;return;}for(const {path,value} of patches){let parent=next;for(const key of path.slice(0,-1))parent=parent[key]??={};if(value===undefined)delete parent[path.at(-1)];else parent[path.at(-1)]=copy(value);}for(const path of [...created].reverse()){const parent=at(next,path.slice(0,-1)),value=parent?.[path.at(-1)];if(record(value)&&!Object.keys(value).length)delete parent[path.at(-1)];}}for(const key of Object.keys(data))if(!Object.hasOwn(next,key))delete data[key];Object.assign(data,next);});if(conflict)return {ok:false,message:'That has changed since then. Your newer edits are kept.'};if(ok){startTick();sync();tick();rerender();}return ok;}:null;
+   return batches.some(({patches,created})=>patches.length||created.length)?async()=>{
+     let conflict=false;
+     const ok=await save(data=>{
+       const next=copy(data);
+       for(const {patches,created} of [...batches].reverse()){
+         if(patches.some(({path,after})=>JSON.stringify(at(next,path))!==JSON.stringify(after))){conflict=true;return;}
+         for(const {path,value} of patches){
+           let parent=next;
+           for(const key of path.slice(0,-1))parent=parent[key]??={};
+           if(value===undefined)delete parent[path.at(-1)];else parent[path.at(-1)]=copy(value);
+         }
+         for(const path of [...created].reverse()){
+           const parent=at(next,path.slice(0,-1)),value=parent?.[path.at(-1)];
+           if(record(value)&&!Object.keys(value).length)delete parent[path.at(-1)];
+         }
+       }
+       for(const key of Object.keys(data))if(!Object.hasOwn(next,key))delete data[key];
+       Object.assign(data,next);
+     });
+     if(conflict)return {ok:false,message:'That has changed since then. Your newer edits are kept.'};
+     if(ok){startTick();sync();tick();rerender();}
+     return ok;
+   }:null;
   }
   async function featureCommand(request){
    const F=root.ReserveFeatures;if(!F||!root.chrome?.storage?.local)return {ok:false,message:'Features are unavailable. Reload Canvas.'};
-   if(request.id==='ai')return clarify('That feature is unavailable in the public companion controls.');if(request.id&&typeof request.on!=='boolean')return clarify('Choose on or off for that feature.');if(request.id==='pony'&&!request.on)return {ok:false,message:'The Pony switch is in the extension popup → Pony.'};
+   if(request.id==='ai')return clarify('That feature is unavailable in the public companion controls.');
+   if(request.id&&typeof request.on!=='boolean')return clarify('Choose on or off for that feature.');
+   if(request.id==='pony'&&!request.on)return {ok:false,message:'The Pony switch is in the extension popup → Pony.'};
    if(request.id&&!F.catalogue.some(row=>row.id===request.id)||!request.id&&!['full','lite'].includes(request.preset))return false;
-   const validate=recording?.validate||executionValidation;let saved;try{validate?.();saved=await F.change(request.id?{id:request.id,on:request.on}:{preset:request.preset},{keepPony:true});}catch(error){return {ok:false,message:error.message};}
+   const validate=recording?.validate||executionValidation;
+   let saved;
+   try{
+     validate?.();
+     saved=await F.change(request.id?{id:request.id,on:request.on}:{preset:request.preset},{keepPony:true});
+   }catch(error){return {ok:false,message:error.message};}
    const {before,value:next}=saved;requestedFeatures=request.id?F.resolve(next).enabled:null;
-   return {ok:true,message:request.preset==='lite'?'Lite mode saved. Reload Canvas to apply.':'Saved. Reload Canvas to apply.',reload:true,undo:async()=>{try{await F.write(before,{expected:next});}catch(error){if(error.code==='feature-conflict')return {ok:false,message:error.message};throw error;}requestedFeatures=request.id?F.resolve(before).enabled:null;return {ok:true,message:'Undone. Reload Canvas to apply.',reload:true};}};
+   return {ok:true,message:request.preset==='lite'?'Lite mode saved. Reload Canvas to apply.':'Saved. Reload Canvas to apply.',reload:true,undo:async()=>{
+     try{await F.write(before,{expected:next});}catch(error){if(error.code==='feature-conflict')return {ok:false,message:error.message};throw error;}
+     requestedFeatures=request.id?F.resolve(before).enabled:null;
+     return {ok:true,message:'Undone. Reload Canvas to apply.',reload:true};
+   }};
   }
   function moduleCommand({action,key}){
-   const A=Arrange(),feature={context:'course-hub',messages:'course-hub',grades:'grades',pet:'pony'}[key]||'planner';if(!on('arrange'))return unavailable('Arrange the workspace');if(!on(feature)||!available(key)||!A?.ALL.includes(key))return unavailable(A?.LABELS[key]||'That module');
+   const A=Arrange(),feature={context:'course-hub',messages:'course-hub',grades:'grades',pet:'pony'}[key]||'planner';
+   if(!on('arrange'))return unavailable('Arrange the workspace');
+   if(!on(feature)||!available(key)||!A?.ALL.includes(key))return unavailable(A?.LABELS[key]||'That module');
    if(!['show','hide','top','wide'].includes(action)||action==='hide'&&!A.removable(key))return false;
-   return save(data=>{if(action==='hide')A.change(data.settings,key==='context'?{type:'hide-context'}:{type:'remove',key});else{if(key==='context')A.change(data.settings,{type:'restore-context'});else if(A.EXTRA.includes(key))A.change(data.settings,{type:'add',key});if(action==='top')A.change(data.settings,{type:'dock',key,target:A.ROOT,edge:'top'});if(action==='wide')data.settings.moduleSize={...data.settings.moduleSize,[key]:'l'};}});
+   return save(data=>{
+     if(action==='hide')
+       A.change(data.settings,key==='context'?{type:'hide-context'}:{type:'remove',key});
+     else{
+       if(key==='context')A.change(data.settings,{type:'restore-context'});else if(A.EXTRA.includes(key))A.change(data.settings,{type:'add',key});
+       if(action==='top')A.change(data.settings,{type:'dock',key,target:A.ROOT,edge:'top'});
+       if(action==='wide')data.settings.moduleSize={...data.settings.moduleSize,[key]:'l'};
+     }
+   });
   }
-  const mutationReceipts=[],mutationId=value=>(typeof value==='string'||typeof value==='number'&&Number.isFinite(value))&&String(value).trim()&&String(value).length<=256&&!/[\u0000-\u001f\u007f]/.test(String(value))&&!['__proto__','prototype','constructor'].includes(String(value))?String(value):'',clarify=message=>({ok:false,message}),sameMutation=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+  const mutationReceipts=[],
+    mutationId=value=>
+      (typeof value==='string'||typeof value==='number'&&Number.isFinite(value))&&
+        String(value).trim()&&
+        String(value).length<=256&&
+        !/[\u0000-\u001f\u007f]/.test(String(value))&&
+        !['__proto__','prototype','constructor'].includes(String(value))?
+        String(value):
+        '',
+    clarify=message=>({ok:false,message}),
+    sameMutation=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
   async function localMutation(kind,operation,change){
-   const journal={changes:[],validate:recording?.validate||executionValidation},rejected=Error('The local entry changed. Try again.');let result;try{result=change(copy(store.get()));}catch{return clarify('The local change could not be prepared. Your saved data is kept.');}if(result?.ok!==true)return result||clarify('Choose the local entry to change.');
-   try{const saved=await capture(journal,()=>save(data=>{const next=copy(data);result=change(next);if(result?.ok!==true){rejected.message=result?.message||'Choose the local entry to change.';throw rejected;}Object.assign(data,next);}));if(result?.ok!==true)return result||clarify(rejected.message);if(saved===false)return clarify('The local change could not save. Try again.');}catch(error){return error===rejected?result||clarify(rejected.message):clarify('The local change could not save. Your saved data is kept.');}
+   const journal={changes:[],validate:recording?.validate||executionValidation},rejected=Error('The local entry changed. Try again.');
+   let result;
+   try{result=change(copy(store.get()));}catch{return clarify('The local change could not be prepared. Your saved data is kept.');}
+   if(result?.ok!==true)return result||clarify('Choose the local entry to change.');
+   try{
+     const saved=await capture(journal,()=>save(data=>{
+       const next=copy(data);
+       result=change(next);
+       if(result?.ok!==true){rejected.message=result?.message||'Choose the local entry to change.';throw rejected;}
+       Object.assign(data,next);
+     }));
+     if(result?.ok!==true)return result||clarify(rejected.message);
+     if(saved===false)return clarify('The local change could not save. Try again.');
+   }catch(error){return error===rejected?result||clarify(rejected.message):clarify('The local change could not save. Your saved data is kept.');}
    if(result?.ok!==true)return result||clarify('Choose the local entry to change.');const revert=changed(journal);if(!revert)return result;
-   const receipt={kind,operation,targetId:result.targetId,courseId:result.courseId,before:copy(result.before??result.original),active:true},undo=async()=>{if(!receipt.active)return clarify('That change has already been undone.');let restored;try{restored=await revert();}catch{return clarify('Undo could not save. Try again.');}if(restored===false||restored?.ok===false)return restored||clarify('Undo could not save. Try again.');receipt.active=false;return {ok:true,message:'Undone.'};};receipt.undo=undo;mutationReceipts.push(receipt);return {...result,undo};
+   const receipt={kind,operation,targetId:result.targetId,courseId:result.courseId,before:copy(result.before??result.original),active:true},undo=async()=>{
+     if(!receipt.active)return clarify('That change has already been undone.');
+     let restored;
+     try{restored=await revert();}catch{return clarify('Undo could not save. Try again.');}
+     if(restored===false||restored?.ok===false)return restored||clarify('Undo could not save. Try again.');
+     receipt.active=false;
+     return {ok:true,message:'Undone.'};
+   };
+   receipt.undo=undo;
+   mutationReceipts.push(receipt);
+   return {...result,undo};
   }
   function undoMutation(kind,request,operations){
-   const targetId=mutationId(request.targetId??request.restore?.id??request.restore?.reminder?.id),courseId=request.courseId??request.restore?.courseId;if(!targetId)return clarify('Which local entry should I restore?');const matches=mutationReceipts.filter(r=>r.active&&r.kind===kind&&r.targetId===targetId&&operations.includes(r.operation)&&(courseId===undefined||r.courseId===String(courseId)));
-   if(new Set(matches.map(r=>r.courseId||'')).size>1)return clarify('Which course has the entry to restore?');return matches.at(-1)?.undo()||clarify('There is no saved Undo for that entry in this session.');
+   const targetId=mutationId(request.targetId??request.restore?.id??request.restore?.reminder?.id),courseId=request.courseId??request.restore?.courseId;
+   if(!targetId)return clarify('Which local entry should I restore?');
+   const matches=mutationReceipts.filter(r=>
+     r.active&&r.kind===kind&&r.targetId===targetId&&operations.includes(r.operation)&&(courseId===undefined||r.courseId===String(courseId)));
+   if(new Set(matches.map(r=>r.courseId||'')).size>1)return clarify('Which course has the entry to restore?');
+   return matches.at(-1)?.undo()||clarify('There is no saved Undo for that entry in this session.');
   }
   function localTask(data,id){if(!Object.hasOwn(data.tasks||{},id)){data.tasks||={};Plan().plan(id,'')(data);}return data.tasks[id];}
   function noteOperation(request){
-   const {operation}=request;if(!['create','edit','delete','undo-delete','undo-edit'].includes(operation))return clarify('Choose create, edit, delete, or Undo for Notes.');if(operation.startsWith('undo-'))return undoMutation('note',request,[operation.slice(5)]);
-   const targetId=mutationId(request.targetId??(operation==='create'?'scratchpad':''));if(!targetId)return clarify('Which note should I change?');if(request.title!==undefined)return clarify('Local notes have no separate title field. Choose the note ID and its text.');
+   const {operation}=request;
+   if(!['create','edit','delete','undo-delete','undo-edit'].includes(operation))return clarify('Choose create, edit, delete, or Undo for Notes.');
+   if(operation.startsWith('undo-'))return undoMutation('note',request,[operation.slice(5)]);
+   const targetId=mutationId(request.targetId??(operation==='create'?'scratchpad':''));
+   if(!targetId)return clarify('Which note should I change?');
+   if(request.title!==undefined)return clarify('Local notes have no separate title field. Choose the note ID and its text.');
    if(operation!=='delete'&&(typeof request.text!=='string'||!request.text.trim()))return clarify('What text should the note contain?');
-   return localMutation('note',operation,data=>{const scratch=targetId==='scratchpad',id=targetId.startsWith('note-')?targetId.slice(5):'',exists=id&&Object.hasOwn(data.tasks||{},id),sources=ctx().items.filter(row=>String(row.id)===id),known=sources.length===1;if(!scratch&&(!mutationId(id)||!exists&&!known||sources.length>1||operation!=='create'&&!data.tasks?.[id]?.notes))return clarify('Choose an existing local note ID.');if(request.courseId!==undefined&&(scratch||!known||String(sources[0].courseId)!==String(request.courseId)))return clarify('Choose the task note in that course. The scratchpad has no course.');const original=scratch?data.toolbox?.scratchpad||'':data.tasks?.[id]?.notes||'',text=operation==='delete'?'':operation==='create'?original+(original?'\n':'')+request.text:request.text;if(text.length>(scratch?30000:20000))return clarify(scratch?'Notes has a 30,000 character limit.':'A task note has a 20,000 character limit.');if(scratch){data.toolbox||={};data.toolbox.scratchpad=text;}else localTask(data,id).notes=text;return {ok:true,targetId,...(known?{courseId:String(sources[0].courseId)}:{}),original,before:{id:targetId,text:original,...(known?{courseId:String(sources[0].courseId)}:{})},after:{id:targetId,text,...(known?{courseId:String(sources[0].courseId)}:{})},message:operation==='delete'?'Deleted the selected local note.':'Saved the selected local note.'};});
+   return localMutation('note',operation,data=>{
+     const scratch=targetId==='scratchpad',
+       id=targetId.startsWith('note-')?targetId.slice(5):'',
+       exists=id&&Object.hasOwn(data.tasks||{},id),
+       sources=ctx().items.filter(row=>String(row.id)===id),
+       known=sources.length===1;
+     if(!scratch&&(!mutationId(id)||!exists&&!known||sources.length>1||operation!=='create'&&!data.tasks?.[id]?.notes))return clarify('Choose an existing local note ID.');
+     if(request.courseId!==undefined&&(scratch||!known||String(sources[0].courseId)!==String(request.courseId)))return clarify('Choose the task note in that course. The scratchpad has no course.');
+     const original=scratch?data.toolbox?.scratchpad||'':data.tasks?.[id]?.notes||'',text=operation==='delete'?'':operation==='create'?original+(original?'\n':'')+request.text:request.text;
+     if(text.length>(scratch?30000:20000))return clarify(scratch?'Notes has a 30,000 character limit.':'A task note has a 20,000 character limit.');
+     if(scratch){data.toolbox||={};data.toolbox.scratchpad=text;}else localTask(data,id).notes=text;
+     return {
+       ok:true,
+       targetId,
+       ...(known?{courseId:String(sources[0].courseId)}:{}),
+       original,
+       before:{id:targetId,text:original,...(known?{courseId:String(sources[0].courseId)}:{})},
+       after:{id:targetId,text,...(known?{courseId:String(sources[0].courseId)}:{})},
+       message:operation==='delete'?'Deleted the selected local note.':'Saved the selected local note.'
+     };
+   });
   }
   async function noteCommand(request={}){
-   if(request.operation!==undefined){if(!on('planner'))return unavailable('Notes');const journal=recording;let flushed;try{flushed=await flushNotes();}catch{return clarify('Notes could not save. Try again.');}if(flushed===false)return clarify('Notes could not save. Try again.');return capture(journal,()=>noteOperation(request));}let {text}=request;
+   if(request.operation!==undefined){
+     if(!on('planner'))return unavailable('Notes');
+     const journal=recording;
+     let flushed;
+     try{flushed=await flushNotes();}catch{return clarify('Notes could not save. Try again.');}
+     if(flushed===false)return clarify('Notes could not save. Try again.');
+     return capture(journal,()=>noteOperation(request));
+   }
+   let {text}=request;
    if(!on('planner'))return unavailable('Notes');text=String(text||'').trim();if(!text)return false;
    const write=commandSave();if(await Promise.resolve().then(flushNotes)===false)return false;
    const current=store.get().toolbox?.scratchpad||'';if(current.length+text.length+(current?1:0)>30000)return {ok:false,message:'Notes is full. Make room in Notes first.'};
-   return write(data=>{const value=data.toolbox?.scratchpad||'';if(value.length+text.length+(value?1:0)>30000)throw Error('Notes is full.');data.toolbox={...data.toolbox,scratchpad:value+(value?'\n':'')+text};});
+   return write(data=>{
+     const value=data.toolbox?.scratchpad||'';
+     if(value.length+text.length+(value?1:0)>30000)throw Error('Notes is full.');
+     data.toolbox={...data.toolbox,scratchpad:value+(value?'\n':'')+text};
+   });
   }
-  function skillCommand({skill,on:value}){const B=root.ReservePonyBrain;if(!on('pony'))return unavailable('Pony companion');if(!B||!Object.hasOwn(B.SKILLS,skill)||typeof value!=='boolean')return false;return saveSkill(skill,value);}
-  function saveSkill(key,value){return save(data=>{const B=root.ReservePonyBrain,p=Pets().clean(data.pet);data.pet={...p,skills:{...B.cleanSkills(p.skills),[key]:value}};});}
+  function skillCommand({skill,on:value}){
+    const B=root.ReservePonyBrain;
+    if(!on('pony'))return unavailable('Pony companion');
+    if(!B||!Object.hasOwn(B.SKILLS,skill)||typeof value!=='boolean')return false;
+    return saveSkill(skill,value);
+  }
+  function saveSkill(key,value){
+    return save(data=>{const B=root.ReservePonyBrain,p=Pets().clean(data.pet);data.pet={...p,skills:{...B.cleanSkills(p.skills),[key]:value}};});
+  }
   async function playCommand({tool}){
    const c=ctx(),blocked=()=>ctx().quizTaking===true||/\/quizzes\/[^/]+\/(?:take|resume)(?:\/|$)/.test(root.location?.pathname||c.pathname||'');
    if(blocked())return {ok:false,message:'Play tools are unavailable while taking a quiz.'};
    if(!on('play'))return {...unavailable('Play tools'),suggestions:['turn on play tools']};
-   if(!root.ReservePlay){const result=await root.chrome?.runtime?.sendMessage?.({target:'ch-play',op:'load'});if(!result?.ok)return {ok:false,message:'Play tools could not load. Reload Canvas and try again.',reload:true};}
+   if(!root.ReservePlay){
+     const result=await root.chrome?.runtime?.sendMessage?.({target:'ch-play',op:'load'});
+     if(!result?.ok)return {ok:false,message:'Play tools could not load. Reload Canvas and try again.',reload:true};
+   }
    if(dead||blocked())return {ok:false,message:'Play tools are unavailable while taking a quiz.'};
-   if(!playTray){playBox=container.ownerDocument.createElement('div');playBox.dataset.rdKeep='true';container.append(playBox);playTray=root.ReservePlay?.mount({box:playBox,all:true,root:()=>container.querySelector('.rd-workspace')||container,blocks:'.rd-main > *, .rd-workspace > *',ours:'.pet-layer,.chb-box',allowed:()=>!dead&&!blocked()&&on('play')});}
+   if(!playTray){
+     playBox=container.ownerDocument.createElement('div');
+     playBox.dataset.rdKeep='true';
+     container.append(playBox);
+     playTray=root.ReservePlay?.mount({
+       box:playBox,
+       all:true,
+       root:()=>container.querySelector('.rd-workspace')||container,
+       blocks:'.rd-main > *, .rd-workspace > *',
+       ours:'.pet-layer,.chb-box',
+       allowed:()=>!dead&&!blocked()&&on('play')
+     });
+   }
    if(!playTray?.TOOLS?.some(row=>row[0]===tool))return false;if(!container.contains(playBox))container.append(playBox);
    const previous=playTray.tool??null;if(previous!==tool)playTray.pick(tool);
    return {ok:true,undo:()=>{playTray.pick(null);if(previous)playTray.pick(previous);return true;}};
   }
-  const livePlan=(data=store.get())=>{const c=ctx(),custom=new Map((data.customTasks||[]).map(row=>[String(row.id),row])),items=new Map((c.items||[]).filter(row=>!row.personal||custom.has(String(row.id))).map(row=>[String(row.id),row]));for(const [id,row]of custom)items.set(id,{...items.get(id),...row,personal:true,courseName:(c.courses||[]).find(course=>String(course.id)===String(row.courseId))?.name||''});return plan({...c,items:[...items.values()],local:data.tasks||{},__plan:null},helpers()).list;};
-  const openWork=(request={},data=store.get())=>livePlan(data).filter(e=>!e.done&&(!request.itemId||e.id===String(request.itemId))&&(!request.courseId||e.courseId===String(request.courseId))).sort((a,b)=>(Date.parse(a.dueAt)||Infinity)-(Date.parse(b.dueAt)||Infinity));
+  const livePlan=(data=store.get())=>{
+    const c=ctx(),
+      custom=new Map((data.customTasks||[]).map(row=>[String(row.id),row])),
+      items=new Map((c.items||[]).filter(row=>!row.personal||custom.has(String(row.id))).map(row=>[String(row.id),row]));
+    for(const [id,row]of custom)
+      items.set(id,{...items.get(id),...row,personal:true,courseName:(c.courses||[]).find(course=>String(course.id)===String(row.courseId))?.name||''});
+    return plan({...c,items:[...items.values()],local:data.tasks||{},__plan:null},helpers()).list;
+  };
+  const openWork=(request={},data=store.get())=>
+    livePlan(data).filter(e=>!e.done&&(!request.itemId||e.id===String(request.itemId))&&(!request.courseId||e.courseId===String(request.courseId))).sort((a,b)=>
+      (Date.parse(a.dueAt)||Infinity)-(Date.parse(b.dueAt)||Infinity));
   const planner=root.ReservePlannerUI?.create({container,store,save,rerender,getContext,helpers,view:id=>preview(id)})||null;
   const room=enabled('focus-room')?root.ReserveFocusRoom?.create({container,store}):null;
   // Size and place: the menu behind a module's three dots. It is built on demand and floats over the page.
@@ -274,7 +590,11 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
    const A=Arrange(),size=ctx().s.moduleSize?.[key]||'m',E=helpers().E,label=A.LABELS[key];closeMenu();
    const box=(x,y,w,h)=>`<svg viewBox="0 0 34 24" aria-hidden="true"><rect x="1.5" y="1.5" width="31" height="21" rx="3.5"/><rect class="on" x="${x}" y="${y}" width="${w}" height="${h}" rx="2"/></svg>`;
    const pick=(action,value,label,art,on)=>`<button type="button" class="rd-mm-pick" role="menuitemradio" aria-checked="${!!on}" data-rd-action="${action}" data-widget="${key}" data-value="${value}">${art}<span>${label}</span></button>`;
-   menu=container.ownerDocument.createElement('div');menu.className='rd-module-menu';menu.dataset.rdKeep='true';menu.setAttribute('role','menu');menu.setAttribute('aria-label',`${label}: size and place`);
+   menu=container.ownerDocument.createElement('div');
+   menu.className='rd-module-menu';
+   menu.dataset.rdKeep='true';
+   menu.setAttribute('role','menu');
+   menu.setAttribute('aria-label',`${label}: size and place`);
    menu.innerHTML=`<h3>${E(label)}</h3><p>Width</p><div class="rd-mm-row">${pick('module-size','s','Narrow',box(12,5,10,14),size==='s')}${pick('module-size','m','Normal',box(9,5,16,14),size==='m')}${pick('module-size','l','Wide',box(5,5,24,14),size==='l')}</div>
 <p>Give it a whole row or column</p><div class="rd-mm-row" data-cols="4">${pick('module-dock','top','Top',box(4.5,4.5,25,5))}${pick('module-dock','bottom','Bottom',box(4.5,14.5,25,5))}${pick('module-dock','left','Left',box(4.5,4.5,7,15))}${pick('module-dock','right','Right',box(22.5,4.5,7,15))}</div>
 ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" data-rd-action="widget-remove" data-widget="${key}">Remove from Home</button>`:''}`;
@@ -285,13 +605,105 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
   }
   const outside=event=>{if(menu&&!event.composedPath().some(node=>node===menu||node?.classList?.contains?.('rd-arrange-more')))closeMenu();};
   container.ownerDocument.addEventListener('pointerdown',outside,true);win.addEventListener('resize',closeMenu);
-  function sanitizePet(value,visible,depth=0){if(depth>16)return undefined;if(Array.isArray(value))return value.map(v=>sanitizePet(v,visible,depth+1)).filter(v=>v!==undefined);if(!record(value))return value;if(!visible&&(value.gradeAccess===true||['grade','feedback','course-grade'].includes(value.kind)))return undefined;const clean={};for(const [key,v]of Object.entries(value)){if(['__proto__','prototype','constructor'].includes(key)||!visible&&/^(?:grades?|scores?|earnedGrade|earnedScore|currentPercent|percent|enteredScore|enteredGrade|currentScore|finalScore|feedback|teacherComments|comments|submission|submissionComments|rubricAssessment)$/i.test(key.replace(/[_ -]/g,'')))continue;const next=sanitizePet(v,visible,depth+1);if(next!==undefined)clean[key]=next;}return clean;}
+  function sanitizePet(value,visible,depth=0){
+    if(depth>16)return undefined;
+    if(Array.isArray(value))return value.map(v=>sanitizePet(v,visible,depth+1)).filter(v=>v!==undefined);
+    if(!record(value))return value;
+    if(!visible&&(value.gradeAccess===true||['grade','feedback','course-grade'].includes(value.kind)))return undefined;
+    const clean={};
+    for(const [key,v]of Object.entries(value)){
+      if(['__proto__','prototype','constructor'].includes(key)||!visible&&/^(?:grades?|scores?|earnedGrade|earnedScore|currentPercent|percent|enteredScore|enteredGrade|currentScore|finalScore|feedback|teacherComments|comments|submission|submissionComments|rubricAssessment)$/i.test(key.replace(/[_ -]/g,'')))continue;
+      const next=sanitizePet(v,visible,depth+1);
+      if(next!==undefined)clean[key]=next;
+    }
+    return clean;
+  }
   function petInfo(){
-   const c=ctx(),h=helpers(),data=store.get(),extra=c.biscuitData||c.biscuitContext||{},next=nextDue(c,h),{board,today}=plan(c,h),d=board.days.find(x=>x.key===today),source=new Map((c.items||[]).map(x=>[String(x.id),x])),visible=c.s.showGrades===true,sanitize=v=>root.ReserveBiscuitRegistry?.sanitize?root.ReserveBiscuitRegistry.sanitize(v,{showGrades:visible,settings:{showGrades:visible},teacherFeedback:visible}):sanitizePet(v,visible);
-   const entries=livePlan(data).map(e=>sanitize({...source.get(e.id),...e,description:source.get(e.id)?.description||'',course:source.get(e.id)?.courseName||(c.courses||[]).find(x=>String(x.id)===e.courseId)?.name||e.course||'',submissionTypes:source.get(e.id)?.submissionTypes||[]})).filter(Boolean),focus=data.focus||{},sources={};
-   for(const field of ['files','materials','pages','modules','courseModules','canvasModules','announcements','messages','teachers','links','submissions','rubrics','quizzes','discussions','calendarEvents','events','peerReviews','people','inbox','groups','syllabi','courseGrades','courseTotals','busy','calendar','controls'])if(extra[field]!==undefined||c[field]!==undefined)sources[field]=sanitize(extra[field]??c[field]);
-   const links=Object.entries(data.courseFiles||{}).flatMap(([courseId,v])=>(Array.isArray(v)?v:v.items||[]).map(x=>({...x,title:x.title||x.name||'Saved file',courseId,savedFile:x.kind==='file'}))),controls=Object.keys(root.ReserveBiscuitControls?.DEFAULTS||{}).map(key=>({key,label:key.replace(/([a-z])([A-Z])/g,'$1 $2'),value:c.s[key]??root.ReserveBiscuitControls.DEFAULTS[key],availableOperations:['set'],availableValues:root.ReserveBiscuitControls.ENUMS?.[key]||(typeof root.ReserveBiscuitControls.DEFAULTS[key]==='boolean'?[false,true]:[])}));
-   return {...sources,biscuitPlan:data.toolbox?.biscuitPlan,companion:{name:root.ReservePetArt?.identity?.(data,selectedPet())?.name||data.pet?.name||'Biscuit'},now:Date.now(),timeZone:c.s.timeZone,settings:{...c.s,showGrades:visible},showGrades:visible,teacherFeedback:visible,offerHistory:data.toolbox?.biscuitOffers,courses:(c.courses||[]).map(sanitize),local:data.tasks||{},pet:Pets()?.clean(data.pet)||data.pet,features:(root.ReserveFeatures?.catalogue||[]).filter(v=>v.id!=='ai').map(v=>({...v,on:on(v.id)})),homeModules:(Arrange()?.ALL||[]).filter(available).map(id=>({id,title:Arrange().LABELS[id],shows:INFO[id]?.hint||''})),tabs:['home','assignments',...(on('planner')?['planner']:[]),...(on('materials')?['materials']:[]),...(on('course-hub')?['messages','course-hub']:[]),...(on('grades')?['grades']:[])],controls:[...controls,...(Array.isArray(sources.controls)?sources.controls:[])],reminders:data.pet?.reminders||[],routines:data.pet?.routines||[],notes:[{id:'scratchpad',title:'Your notes',text:drafts.notes??data.toolbox?.scratchpad??''},...Object.entries(data.tasks||{}).filter(([,v])=>v.notes).map(([id,v])=>({id:'note-'+id,title:source.get(id)?.name||'Task notes',text:v.notes,itemId:id,...(source.has(id)?{courseId:String(source.get(id).courseId)}:{})}))],bookmarks:[...(data.resourcePins||[]),...entries.filter(e=>data.tasks?.[e.id]?.pinned)],links:[...(Array.isArray(sources.links)?sources.links:[]),...links],grades:visible?[...(extra.grades||c.grades||[]),...(c.courses||[]).filter(x=>x.score!=null).map(x=>({id:'course-grade-'+x.id,title:x.name,courseId:String(x.id),kind:'course-grade',value:x.score,currentPercent:x.score})),...entries.filter(e=>Number.isFinite(e.score)).map(e=>({id:'grade-'+e.id,title:e.title,courseId:e.courseId,value:e.score,score:e.score,points:e.points,feedback:e.feedback||e.teacherComments||''}))]:[],workItems:entries,assignments:entries,planner:entries,skills:data.pet?.skills,unreadAnnouncements:on('course-hub')?c.unreadAnnouncements||0:0,pageKind:c.pageKind||'dashboard',courseId:c.courseId||c.selected?.courseId||'all',selected:c.selected?sanitize(c.selected):null,quizTaking:c.quizTaking===true,pathname:root.location?.pathname||c.pathname||'',dark:c.theme==='dark',focus:{...focus,running:!!focus.endsAt},next:next?{id:next.id,title:next.title,course:next.course,when:`in ${howLong(next.ms)}`,urgent:next.ms<3*3600000}:null,todayOpen:d?.open||0,todayDone:d?.done||0};
+   const c=ctx(),
+     h=helpers(),
+     data=store.get(),
+     extra=c.biscuitData||c.biscuitContext||{},
+     next=nextDue(c,h),
+     {board,today}=plan(c,h),
+     d=board.days.find(x=>x.key===today),
+     source=new Map((c.items||[]).map(x=>[String(x.id),x])),
+     visible=c.s.showGrades===true,
+     sanitize=v=>
+       root.ReserveBiscuitRegistry?.sanitize?
+         root.ReserveBiscuitRegistry.sanitize(v,{showGrades:visible,settings:{showGrades:visible},teacherFeedback:visible}):
+         sanitizePet(v,visible);
+   const entries=livePlan(data).map(e=>
+     sanitize({
+       ...source.get(e.id),
+       ...e,
+       description:source.get(e.id)?.description||'',
+       course:source.get(e.id)?.courseName||(c.courses||[]).find(x=>String(x.id)===e.courseId)?.name||e.course||'',
+       submissionTypes:source.get(e.id)?.submissionTypes||[]
+     })).filter(Boolean),
+     focus=data.focus||{},
+     sources={};
+   for(const field of ['files','materials','pages','modules','courseModules','canvasModules','announcements','messages','teachers','links','submissions','rubrics','quizzes','discussions','calendarEvents','events','peerReviews','people','inbox','groups','syllabi','courseGrades','courseTotals','busy','calendar','controls'])
+     if(extra[field]!==undefined||c[field]!==undefined)sources[field]=sanitize(extra[field]??c[field]);
+   const links=Object.entries(data.courseFiles||{}).flatMap(([courseId,v])=>
+     (Array.isArray(v)?v:v.items||[]).map(x=>({...x,title:x.title||x.name||'Saved file',courseId,savedFile:x.kind==='file'}))),
+     controls=Object.keys(root.ReserveBiscuitControls?.DEFAULTS||{}).map(key=>
+       ({
+         key,
+         label:key.replace(/([a-z])([A-Z])/g,'$1 $2'),
+         value:c.s[key]??root.ReserveBiscuitControls.DEFAULTS[key],
+         availableOperations:['set'],
+         availableValues:root.ReserveBiscuitControls.ENUMS?.[key]||(typeof root.ReserveBiscuitControls.DEFAULTS[key]==='boolean'?[false,true]:[])
+       }));
+   return {
+     ...sources,
+     biscuitPlan:data.toolbox?.biscuitPlan,
+     companion:{name:root.ReservePetArt?.identity?.(data,selectedPet())?.name||data.pet?.name||'Biscuit'},
+     now:Date.now(),
+     timeZone:c.s.timeZone,
+     settings:{...c.s,showGrades:visible},
+     showGrades:visible,
+     teacherFeedback:visible,
+     offerHistory:data.toolbox?.biscuitOffers,
+     courses:(c.courses||[]).map(sanitize),
+     local:data.tasks||{},
+     pet:Pets()?.clean(data.pet)||data.pet,
+     features:(root.ReserveFeatures?.catalogue||[]).filter(v=>v.id!=='ai').map(v=>({...v,on:on(v.id)})),
+     homeModules:(Arrange()?.ALL||[]).filter(available).map(id=>({id,title:Arrange().LABELS[id],shows:INFO[id]?.hint||''})),
+     tabs:['home','assignments',...(on('planner')?['planner']:[]),...(on('materials')?['materials']:[]),...(on('course-hub')?['messages','course-hub']:[]),...(on('grades')?['grades']:[])],
+     controls:[...controls,...(Array.isArray(sources.controls)?sources.controls:[])],
+     reminders:data.pet?.reminders||[],
+     routines:data.pet?.routines||[],
+     notes:[
+       {id:'scratchpad',title:'Your notes',text:drafts.notes??data.toolbox?.scratchpad??''},
+       ...Object.entries(data.tasks||{}).filter(([,v])=>v.notes).map(([id,v])=>
+         ({id:'note-'+id,title:source.get(id)?.name||'Task notes',text:v.notes,itemId:id,...(source.has(id)?{courseId:String(source.get(id).courseId)}:{})}))
+     ],
+     bookmarks:[...(data.resourcePins||[]),...entries.filter(e=>data.tasks?.[e.id]?.pinned)],
+     links:[...(Array.isArray(sources.links)?sources.links:[]),...links],
+     grades:visible?
+       [
+         ...(extra.grades||c.grades||[]),
+         ...(c.courses||[]).filter(x=>x.score!=null).map(x=>({id:'course-grade-'+x.id,title:x.name,courseId:String(x.id),kind:'course-grade',value:x.score,currentPercent:x.score})),
+         ...entries.filter(e=>Number.isFinite(e.score)).map(e=>
+           ({id:'grade-'+e.id,title:e.title,courseId:e.courseId,value:e.score,score:e.score,points:e.points,feedback:e.feedback||e.teacherComments||''}))
+       ]:
+       [],
+     workItems:entries,
+     assignments:entries,
+     planner:entries,
+     skills:data.pet?.skills,
+     unreadAnnouncements:on('course-hub')?c.unreadAnnouncements||0:0,
+     pageKind:c.pageKind||'dashboard',
+     courseId:c.courseId||c.selected?.courseId||'all',
+     selected:c.selected?sanitize(c.selected):null,
+     quizTaking:c.quizTaking===true,
+     pathname:root.location?.pathname||c.pathname||'',
+     dark:c.theme==='dark',
+     focus:{...focus,running:!!focus.endsAt},
+     next:next?{id:next.id,title:next.title,course:next.course,when:`in ${howLong(next.ms)}`,urgent:next.ms<3*3600000}:null,
+     todayOpen:d?.open||0,
+     todayDone:d?.done||0
+   };
   }
   let customPet=null,customPetId='',customPetVersion=0;
   function hydratePet(){
@@ -300,205 +712,1083 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    if(id===customPetId)return;
    customPetId=id;customPet=null;const version=++customPetVersion;
    if(!id||!root.ReservePacks?.readLocal)return;
-   Promise.resolve(root.ReservePacks.readLocal(id,{store})).then(value=>{if(dead||version!==customPetVersion||store.get().settings?.makeYourOwn?.pet?.id!==id)return;customPet=value?.kind==='pet'?value.pack:null;pets?.sync();}).catch(()=>{});
+   Promise.resolve(root.ReservePacks.readLocal(id,{store})).then(value=>{
+     if(dead||version!==customPetVersion||store.get().settings?.makeYourOwn?.pet?.id!==id)return;
+     customPet=value?.kind==='pet'?value.pack:null;
+     pets?.sync();
+   }).catch(()=>{});
   }
   const selectedPet=()=>getCustomPet?getCustomPet():customPet;
   let planUndo=null;
-  function planReceipt(plan){if(plan?.source!=='biscuit'||!Number.isSafeInteger(plan.window?.start)||!Number.isSafeInteger(plan.window?.end)||plan.window.end<=plan.window.start)return null;const itemIds=[...new Set((plan.itemIds||plan.items?.map(v=>v.itemId)||[]).map(mutationId).filter(Boolean))];if(!itemIds.length)return null;const estimates=Object.fromEntries(itemIds.map(key=>[key,plan.records?.[key]?.after?.estimate]).filter(([,value])=>planMillis(value)!==null));return {window:{...plan.window},itemIds,excludeIntervals:copy(plan.excludeIntervals||[]),...(Object.keys(estimates).length?{estimates}:{})};}
-  async function writeLocalPlan(next){const P=root.ReserveBiscuitPlanner;if(!P)return {ok:false,message:'Reload Canvas Harness to use the local planner.'};let receipt,committed;const ok=await save(data=>{receipt=P.apply(data,next);if(receipt?.ok)committed=planReceipt(data.toolbox?.biscuitPlan);});if(receipt?.ok===false)return {ok:false,message:receipt.message};if(ok===false)return {ok:false,message:'The plan could not save. Try again.'};const previous=planUndo,undo=async()=>{let result,restored;const saved=await save(data=>{result=receipt.undo(data);if(result?.ok)restored=planReceipt(data.toolbox?.biscuitPlan);});if(saved===false||result===false||result?.ok===false)return {ok:false,message:result?.message||'The plan has changed. Your newer edits are kept.'};if(planUndo===undo)planUndo=previous;rerender();return {ok:true,message:'Undone.',plan:restored};};undo.targetId=next.id;planUndo=undo;rerender();return {ok:true,message:next.message||'Your plan is ready.',undo,plan:committed};}
-  const planTaskState=task=>({plannedDate:task?.plannedDate||'',plannedTime:task?.plannedTime||'',estimate:Number.isFinite(task?.estimate)?task.estimate:0}),ownedBlock=(plan,id,data)=>{const r=plan.records?.[id];return r?.after&&['plannedDate','plannedTime','estimate'].every(key=>typeof r.before?.[key]?.had==='boolean')&&sameMutation(planTaskState(data.tasks?.[id]),r.after);};
-  const planMillis=minutes=>{if(typeof minutes!=='number'||!Number.isFinite(minutes)||minutes<=0||minutes>1440)return null;const scaled=minutes*60000,milliseconds=Math.round(scaled);return milliseconds>0&&Number.isSafeInteger(milliseconds)&&Math.abs(scaled-milliseconds)<=Number.EPSILON*Math.max(1,Math.abs(scaled))?milliseconds:null;};
+  function planReceipt(plan){
+    if(plan?.source!=='biscuit'||!Number.isSafeInteger(plan.window?.start)||!Number.isSafeInteger(plan.window?.end)||plan.window.end<=plan.window.start)return null;
+    const itemIds=[...new Set((plan.itemIds||plan.items?.map(v=>v.itemId)||[]).map(mutationId).filter(Boolean))];
+    if(!itemIds.length)return null;
+    const estimates=Object.fromEntries(itemIds.map(key=>[key,plan.records?.[key]?.after?.estimate]).filter(([,value])=>planMillis(value)!==null));
+    return {window:{...plan.window},itemIds,excludeIntervals:copy(plan.excludeIntervals||[]),...(Object.keys(estimates).length?{estimates}:{})};
+  }
+  async function writeLocalPlan(next){
+    const P=root.ReserveBiscuitPlanner;
+    if(!P)return {ok:false,message:'Reload Canvas Harness to use the local planner.'};
+    let receipt,committed;
+    const ok=await save(data=>{receipt=P.apply(data,next);if(receipt?.ok)committed=planReceipt(data.toolbox?.biscuitPlan);});
+    if(receipt?.ok===false)return {ok:false,message:receipt.message};
+    if(ok===false)return {ok:false,message:'The plan could not save. Try again.'};
+    const previous=planUndo,undo=async()=>{
+      let result,restored;
+      const saved=await save(data=>{result=receipt.undo(data);if(result?.ok)restored=planReceipt(data.toolbox?.biscuitPlan);});
+      if(saved===false||result===false||result?.ok===false)return {ok:false,message:result?.message||'The plan has changed. Your newer edits are kept.'};
+      if(planUndo===undo)planUndo=previous;
+      rerender();
+      return {ok:true,message:'Undone.',plan:restored};
+    };
+    undo.targetId=next.id;
+    planUndo=undo;
+    rerender();
+    return {ok:true,message:next.message||'Your plan is ready.',undo,plan:committed};
+  }
+  const planTaskState=task=>({plannedDate:task?.plannedDate||'',plannedTime:task?.plannedTime||'',estimate:Number.isFinite(task?.estimate)?task.estimate:0}),
+    ownedBlock=(plan,id,data)=>{
+    const r=plan.records?.[id];
+    return r?.after&&['plannedDate','plannedTime','estimate'].every(key=>typeof r.before?.[key]?.had==='boolean')&&sameMutation(planTaskState(data.tasks?.[id]),r.after);
+  };
+  const planMillis=minutes=>{
+    if(typeof minutes!=='number'||!Number.isFinite(minutes)||minutes<=0||minutes>1440)return null;
+    const scaled=minutes*60000,milliseconds=Math.round(scaled);
+    return milliseconds>0&&Number.isSafeInteger(milliseconds)&&Math.abs(scaled-milliseconds)<=Number.EPSILON*Math.max(1,Math.abs(scaled))?milliseconds:null;
+  };
   function planRequest(request){
-   if(!request||typeof request!=='object'||Array.isArray(request))return clarify('Choose a supported local study plan request.');request={...request};if(Object.hasOwn(request,'mode')){if(!['tonight','tomorrow','week'].includes(request.mode))return clarify('Choose a supported legacy planning mode.');delete request.mode;}for(const key of ['text','line'])if(request[key]!==undefined&&(typeof request[key]!=='string'||request[key].length>4096||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(request[key])))return clarify('Use bounded planning text.');if(request.text!==undefined){if(!['build-plan','replan','schedule-study'].includes(request.operation))return clarify('Planning text belongs only to building or replanning a study plan.');if(request.line!==undefined&&request.line.trim()!==request.text.trim())return clarify('The planning text and line must agree.');request.line??=request.text;delete request.text;}const allowed=new Set('operation targetId blockId plannerId itemId courseId minutes date time startAt endAt start end local line preserveAssignmentDeadline preserveCanvasDeadline preserveAssignment preserveNotes respectExistingCommitments restoreStartAt restoreEndAt preserveManualIds reason window windowStart windowEnd itemIds excludeIntervals estimates estimateItemId'.split(' '));if(Object.keys(request).some(key=>!allowed.has(key)))return clarify('That plan field is not supported here. Use explicit work IDs, times, and per-item estimates.');const aliases={move:'move-block',resize:'resize-block',remove:'remove-block'},operation=Object.hasOwn(aliases,request.operation)?aliases[request.operation]:request.operation,keys=['targetId','blockId','plannerId'].filter(key=>request[key]!==undefined),ids=keys.map(key=>mutationId(request[key]));if(ids.some(id=>!id)||new Set(ids).size>1)return clarify('Choose one valid local target ID; targetId, blockId, and plannerId must agree.');
-   if(['blockId','plannerId'].some(key=>request[key]!==undefined)&&!['move-block','resize-block','remove-block','undo','replan'].includes(operation))return clarify('Block IDs need move, resize, remove, Undo, or an explicitly scoped replan.');for(const key of ['itemId','courseId'])if(request[key]!==undefined&&!mutationId(request[key]))return clarify('Choose valid existing work item and course IDs.');
-   const building=['build-plan','replan','schedule-study'].includes(operation),allocation=['window','windowStart','windowEnd','itemIds','excludeIntervals','estimates','estimateItemId'];if(!building&&allocation.some(key=>request[key]!==undefined)||operation!=='undo'&&['restoreStartAt','restoreEndAt'].some(key=>request[key]!==undefined))return clarify('Use allocation fields only for building a plan and restoration fields only for Undo.');if(request.local===false||request.preserveAssignmentDeadline===false||request.preserveCanvasDeadline===false||request.preserveNotes===false||request.respectExistingCommitments===false||operation==='remove-block'&&request.preserveAssignment===false)return clarify('Only local study blocks can change. Canvas assignments, notes, commitments, and deadlines are kept.');
-   const next={...request,operation,...(ids.length?{targetId:ids[0]}:{})};if(request.window!==undefined){const window=request.window;if(!window||typeof window!=='object'||Array.isArray(window)||Object.keys(window).length!==2||!Number.isSafeInteger(window.start)||!Number.isSafeInteger(window.end)||window.start<=0||window.end<=window.start)return clarify('Choose one numeric start and end for the planning window.');for(const [key,value]of [['startAt',window.start],['start',window.start],['windowStart',window.start],['endAt',window.end],['end',window.end],['windowEnd',window.end]])if(request[key]!==undefined&&reminderStamp(request[key])!==value)return clarify('The planning window and timestamps must agree.');Object.assign(next,{window:{...window},startAt:window.start,endAt:window.end});}else if(request.windowStart!==undefined||request.windowEnd!==undefined)return clarify('Use an explicit window with matching start and end timestamps.');
-   for(const [alias,key]of [['start','startAt'],['end','endAt']])if(next[alias]!==undefined&&(next[key]===undefined||reminderStamp(next[alias])===null||reminderStamp(next[alias])!==reminderStamp(next[key])))return clarify('Use matching startAt and endAt timestamps for this local block.');if(['remove-block','undo'].includes(operation)&&['startAt','endAt','minutes','date','time'].some(key=>next[key]!==undefined))return clarify('Remove and Undo do not accept new block times or durations.');return {ok:true,request:next};
+   if(!request||typeof request!=='object'||Array.isArray(request))return clarify('Choose a supported local study plan request.');
+   request={...request};
+   if(Object.hasOwn(request,'mode')){if(!['tonight','tomorrow','week'].includes(request.mode))return clarify('Choose a supported legacy planning mode.');delete request.mode;}
+   for(const key of ['text','line'])
+     if(request[key]!==undefined&&(typeof request[key]!=='string'||request[key].length>4096||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(request[key])))
+       return clarify('Use bounded planning text.');
+   if(request.text!==undefined){
+     if(!['build-plan','replan','schedule-study'].includes(request.operation))return clarify('Planning text belongs only to building or replanning a study plan.');
+     if(request.line!==undefined&&request.line.trim()!==request.text.trim())return clarify('The planning text and line must agree.');
+     request.line??=request.text;
+     delete request.text;
+   }
+   const allowed=new Set('operation targetId blockId plannerId itemId courseId minutes date time startAt endAt start end local line preserveAssignmentDeadline preserveCanvasDeadline preserveAssignment preserveNotes respectExistingCommitments restoreStartAt restoreEndAt preserveManualIds reason window windowStart windowEnd itemIds excludeIntervals estimates estimateItemId'.split(' '));
+   if(Object.keys(request).some(key=>!allowed.has(key)))return clarify('That plan field is not supported here. Use explicit work IDs, times, and per-item estimates.');
+   const aliases={move:'move-block',resize:'resize-block',remove:'remove-block'},
+     operation=Object.hasOwn(aliases,request.operation)?aliases[request.operation]:request.operation,
+     keys=['targetId','blockId','plannerId'].filter(key=>request[key]!==undefined),
+     ids=keys.map(key=>mutationId(request[key]));
+   if(ids.some(id=>!id)||new Set(ids).size>1)return clarify('Choose one valid local target ID; targetId, blockId, and plannerId must agree.');
+   if(['blockId','plannerId'].some(key=>request[key]!==undefined)&&!['move-block','resize-block','remove-block','undo','replan'].includes(operation))
+     return clarify('Block IDs need move, resize, remove, Undo, or an explicitly scoped replan.');
+   for(const key of ['itemId','courseId'])if(request[key]!==undefined&&!mutationId(request[key]))return clarify('Choose valid existing work item and course IDs.');
+   const building=['build-plan','replan','schedule-study'].includes(operation),allocation=['window','windowStart','windowEnd','itemIds','excludeIntervals','estimates','estimateItemId'];
+   if(!building&&allocation.some(key=>request[key]!==undefined)||operation!=='undo'&&['restoreStartAt','restoreEndAt'].some(key=>request[key]!==undefined))
+     return clarify('Use allocation fields only for building a plan and restoration fields only for Undo.');
+   if(request.local===false||
+     request.preserveAssignmentDeadline===false||
+     request.preserveCanvasDeadline===false||
+     request.preserveNotes===false||
+     request.respectExistingCommitments===false||
+     operation==='remove-block'&&request.preserveAssignment===false)
+     return clarify('Only local study blocks can change. Canvas assignments, notes, commitments, and deadlines are kept.');
+   const next={...request,operation,...(ids.length?{targetId:ids[0]}:{})};
+   if(request.window!==undefined){
+     const window=request.window;
+     if(!window||
+       typeof window!=='object'||
+       Array.isArray(window)||
+       Object.keys(window).length!==2||
+       !Number.isSafeInteger(window.start)||
+       !Number.isSafeInteger(window.end)||
+       window.start<=0||
+       window.end<=window.start)
+       return clarify('Choose one numeric start and end for the planning window.');
+     for(const [key,value]of [['startAt',window.start],['start',window.start],['windowStart',window.start],['endAt',window.end],['end',window.end],['windowEnd',window.end]])
+       if(request[key]!==undefined&&reminderStamp(request[key])!==value)return clarify('The planning window and timestamps must agree.');
+     Object.assign(next,{window:{...window},startAt:window.start,endAt:window.end});
+   }
+   else if(request.windowStart!==undefined||request.windowEnd!==undefined)return clarify('Use an explicit window with matching start and end timestamps.');
+   for(const [alias,key]of [['start','startAt'],['end','endAt']])
+     if(next[alias]!==undefined&&(next[key]===undefined||reminderStamp(next[alias])===null||reminderStamp(next[alias])!==reminderStamp(next[key])))
+       return clarify('Use matching startAt and endAt timestamps for this local block.');
+   if(['remove-block','undo'].includes(operation)&&['startAt','endAt','minutes','date','time'].some(key=>next[key]!==undefined))
+     return clarify('Remove and Undo do not accept new block times or durations.');
+   return {ok:true,request:next};
   }
   async function planOperation(request){
    const normalized=planRequest(request);if(!normalized.ok)return normalized;request=normalized.request;
-   if(!on('planner'))return unavailable('Planner');const P=root.ReserveBiscuitPlanner,C=root.CanvasHarnessAgentClock,{operation}=request;if(!P||!C)return clarify('Reload Canvas Harness to use the local planner.');if(!['schedule-study','build-plan','replan','move-block','resize-block','remove-block','undo'].includes(operation))return clarify('Choose a supported local study plan operation.');
-   if(request.preserveAssignmentDeadline===false)return clarify('Only local study blocks can change. Canvas deadlines are kept.');if(operation==='undo'){if(request.targetId!==undefined&&(!mutationId(request.targetId)||![planUndo?.targetId,planUndo?.itemId].includes(String(request.targetId)))||request.itemId!==undefined&&planUndo?.itemId!==String(request.itemId))return clarify('There is no saved Undo for that selected block or plan.');for(const key of ['restoreStartAt','restoreEndAt'])if(request[key]!==undefined&&(reminderStamp(request[key])===null||reminderStamp(request[key])!==planUndo?.[key]))return clarify('Those restoration times do not match the saved Undo receipt. Your current plan is kept.');try{return await undoLocalPlan();}catch{return clarify('The plan Undo could not save. Try again.');}}
-   const startAt=request.startAt===undefined?undefined:reminderStamp(request.startAt),endAt=request.endAt===undefined?undefined:reminderStamp(request.endAt);if(startAt===null||endAt===null||startAt!==undefined&&endAt!==undefined&&endAt<=startAt)return clarify('Choose valid numeric timestamps or dated times with a timezone offset.');
-   if(request.minutes!==undefined&&planMillis(request.minutes)===null)return clarify('Choose positive minutes up to 1440 that resolve to whole milliseconds.');if(request.date!==undefined&&!validDay(request.date)||request.time!==undefined&&(typeof request.time!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(request.time)))return clarify('What valid date and time should this local block use?');
-   if(['build-plan','replan','schedule-study'].includes(operation)){
-    if(request.minutes!==undefined&&!Number.isInteger(request.minutes)&&!request.window)return clarify('This legacy plan builder requires whole minutes. Use an explicit window and a per-item estimate for an exact fractional duration.');
-    const scoped=request.itemId??(operation==='schedule-study'?request.targetId:undefined),itemId=scoped===undefined?undefined:mutationId(scoped),snapshot=petInfo(),current=store.get().toolbox?.biscuitPlan;if(scoped!==undefined&&!itemId||operation==='schedule-study'&&!itemId)return clarify('Which existing work item should I schedule?');if(request.targetId!==undefined&&operation!=='schedule-study'&&!request.blockId&&!request.plannerId&&request.targetId!==current?.id)return clarify('Choose the current local Biscuit plan.');if(request.itemId!==undefined&&request.targetId!==undefined&&operation==='schedule-study'&&String(request.itemId)!==String(request.targetId))return clarify('Choose one work item ID to schedule.');
-    let blockScope=null;if(operation==='replan'&&(request.blockId!==undefined||request.plannerId!==undefined)){const matches=(current?.blocks||[]).filter(v=>String(v.id)===String(request.targetId)),block=matches[0],same=block&&(current.blocks||[]).filter(v=>v.itemId===block.itemId&&v.kind!=='break'),item=block&&(current.items||[]).find(v=>v.itemId===block.itemId);if(!request.window||matches.length!==1||!block.itemId||same.length!==1||!ownedBlock(current,block.itemId,store.get())||(current.remaining||[]).some(v=>v.itemId===block.itemId)||planMillis(item?.estimate)!==block.end-block.start)return clarify('Block-scoped replan needs one fully planned owned work block and an explicit window. Use a full replan for split or unfinished work.');if(request.minutes!==undefined||request.estimates!==undefined||request.estimateItemId!==undefined||request.itemId!==undefined&&String(request.itemId)!==block.itemId||request.itemIds!==undefined&&(!Array.isArray(request.itemIds)||request.itemIds.length!==1||String(request.itemIds[0])!==block.itemId))return clarify('Replanning this block preserves its work item and duration.');blockScope={id:block.itemId,milliseconds:block.end-block.start};}
-     if(request.courseId!==undefined&&!ctx().courses.some(row=>String(row.id)===String(request.courseId)))return clarify('Choose an existing course to plan.');if(itemId&&snapshot.assignments.filter(row=>row.id===itemId&&(request.courseId===undefined||row.courseId===String(request.courseId))&&!row.done).length!==1)return clarify('Choose one existing incomplete work item and its course.');if(operation==='schedule-study'&&current?.blocks?.some(block=>block.itemId&&block.itemId!==itemId))return clarify('Use replan to schedule another item alongside the existing local Biscuit plan.');
-    if(operation==='schedule-study'&&request.itemIds!==undefined&&(!Array.isArray(request.itemIds)||request.itemIds.length!==1||String(request.itemIds[0])!==itemId))return clarify('Schedule-study needs one work item. Use build-plan for several selected items.');const options={...(request.line!==undefined?{line:request.line}:{}),...(request.date!==undefined?{date:request.date}:{}),...(request.time!==undefined?{start:request.time}:{}),...(startAt!==undefined?{start:startAt}:{}),...(endAt!==undefined?{end:endAt}:{}),...(itemId?{itemId}:{}),...(request.courseId!==undefined?{courseId:request.courseId}:{}),...(request.minutes!==undefined?{[operation==='schedule-study'?'durationMinutes':'minutes']:request.minutes}:{}),...Object.fromEntries(['window','itemIds','excludeIntervals','estimates','estimateItemId'].filter(key=>request[key]!==undefined).map(key=>[key,request[key]]))};if(startAt!==undefined&&request.time!==undefined){const at=C.calendar(snapshot.timeZone)(startAt),want=request.time.split(':').map(Number);if(at.minute!==want[0]*60+want[1]||request.date!==undefined&&request.date!==at.day)return clarify('The date, time, and timestamp disagree. Which exact start should I use?');}if(operation==='schedule-study'&&request.minutes===undefined&&startAt!==undefined&&endAt!==undefined){const minutes=(endAt-startAt)/60000;if(!Number.isInteger(minutes)||minutes<=0||minutes>1440)return clarify('Choose a whole study duration from 1 to 1440 minutes.');options.durationMinutes=minutes;}if(blockScope){options.itemIds=[blockScope.id];delete options.itemId;}const normalized=P.normalizeRequest?.(snapshot,options);if(normalized?.ok===false)return clarify(normalized.message);if(!normalized&&['window','itemIds','estimates','excludeIntervals'].some(key=>request[key]!==undefined))return clarify('Reload Canvas Harness to use explicit planning windows and per-item estimates.');const next=P.build(snapshot,normalized?.request||options);if(next.window?.start===null||next.needsTime)return clarify(next.message||'Choose a valid local planning window.');if(request.window&&(next.window.start!==request.window.start||next.window.end!==request.window.end))return clarify('That exact planning window is unavailable. Choose another window.');if(startAt!==undefined&&(next.window.start!==startAt||operation==='schedule-study'&&next.blocks.find(block=>block.itemId===itemId)?.start!==startAt))return clarify('That exact start timestamp is unavailable. Choose another time.');
-    if(request.time!==undefined){const local=C.calendar(snapshot.timeZone),day=request.date||local(snapshot.now).day,parts=request.time.split(':').map(Number),expected=C.wall(day,parts[0]*60+parts[1],snapshot.timeZone,snapshot.now-1)??C.wall(day,parts[0]*60+parts[1],snapshot.timeZone);if(expected===null||next.window.start!==expected||operation==='schedule-study'&&next.blocks.find(block=>block.itemId===itemId)?.start!==expected)return clarify('That exact time is unavailable. Choose another start time.');}
-    if(blockScope&&(next.blocks.filter(v=>v.itemId===blockScope.id).reduce((n,v)=>n+v.end-v.start,0)!==blockScope.milliseconds||(next.remaining||[]).some(v=>v.itemId===blockScope.id)))return clarify('The complete selected block does not fit that window. Your saved plan is kept.');if(operation==='schedule-study'&&(!next.blocks.some(block=>block.itemId===itemId)||options.durationMinutes!==undefined&&next.blocks.filter(block=>block.itemId===itemId).reduce((n,block)=>n+block.minutes,0)!==options.durationMinutes||endAt!==undefined&&next.blocks.filter(block=>block.itemId===itemId).at(-1)?.end!==endAt))return clarify('That exact study duration does not fit. Choose another duration or time.');try{return await writeLocalPlan(next);}catch{return clarify('The local plan could not save. Your saved plan is kept.');}
+   if(!on('planner'))return unavailable('Planner');
+   const P=root.ReserveBiscuitPlanner,C=root.CanvasHarnessAgentClock,{operation}=request;
+   if(!P||!C)return clarify('Reload Canvas Harness to use the local planner.');
+   if(!['schedule-study','build-plan','replan','move-block','resize-block','remove-block','undo'].includes(operation))return clarify('Choose a supported local study plan operation.');
+   if(request.preserveAssignmentDeadline===false)return clarify('Only local study blocks can change. Canvas deadlines are kept.');
+   if(operation==='undo'){
+     if(request.targetId!==undefined&&(!mutationId(request.targetId)||![planUndo?.targetId,planUndo?.itemId].includes(String(request.targetId)))||
+       request.itemId!==undefined&&planUndo?.itemId!==String(request.itemId))
+       return clarify('There is no saved Undo for that selected block or plan.');
+     for(const key of ['restoreStartAt','restoreEndAt'])
+       if(request[key]!==undefined&&(reminderStamp(request[key])===null||reminderStamp(request[key])!==planUndo?.[key]))
+         return clarify('Those restoration times do not match the saved Undo receipt. Your current plan is kept.');
+     try{return await undoLocalPlan();}catch{return clarify('The plan Undo could not save. Try again.');}
    }
-   const targetId=request.targetId===undefined?'':mutationId(request.targetId),itemId=request.itemId===undefined?'':mutationId(request.itemId);if(!targetId&&!itemId||request.targetId!==undefined&&!targetId||request.itemId!==undefined&&!itemId)return clarify('Which local Biscuit block should I change?');if(operation==='move-block'&&request.date===undefined&&request.time===undefined&&startAt===undefined&&endAt===undefined)return clarify('What date or time should the selected block move to?');if(operation==='resize-block'&&request.minutes===undefined&&endAt===undefined)return clarify('How many minutes should the selected block last?');const previous=planUndo;
-   const result=await localMutation('plan',operation,data=>{const p=data.toolbox?.biscuitPlan;if(p?.source!=='biscuit'||p.version!==1||!Array.isArray(p.blocks))return clarify('Choose an existing local Biscuit study block.');let matches=p.blocks.filter(block=>(!targetId||String(block.id)===targetId)&&(!itemId||String(block.itemId)===itemId));if(!matches.length&&targetId&&(!itemId||itemId===targetId))matches=p.blocks.filter(block=>String(block.itemId)===targetId);if(matches.length!==1)return clarify('Choose one block ID; this item may have several study blocks.');const block=matches[0],id=block.itemId,original=copy(block);if(request.courseId!==undefined&&ctx().items.filter(row=>String(row.id)===String(id)&&String(row.courseId)===String(request.courseId)).length!==1)return clarify('Choose the study block in that work item course.');if(id&&!ownedBlock(p,id,data))return clarify('That block has a newer manual schedule. Your edits are kept.');if(id&&(data.tasks?.[id]?.checkedOff||data.tasks?.[id]?.progress==='done'))return clarify('That work is already complete. Choose an incomplete study block.');const local=C.calendar(p.timeZone||ctx().s.timeZone),oldSum=p.blocks.filter(v=>v.itemId===id&&id).reduce((n,v)=>n+v.end-v.start,0);
-    const originalMillis=block.end-block.start;if(!Number.isSafeInteger(originalMillis)||planMillis(block.minutes)!==originalMillis)return clarify('That block has inconsistent stored timing. Replan before changing it.');if(operation==='move-block'&&request.minutes!==undefined&&planMillis(request.minutes)!==originalMillis)return clarify('Moving a block keeps its duration. Use resize to change its length.');if(operation==='resize-block'&&(request.date!==undefined||request.time!==undefined)){const at=local(block.start),parts=request.time?.split(':').map(Number);if(request.date!==undefined&&request.date!==at.day||parts&&at.minute!==parts[0]*60+parts[1])return clarify('Resizing keeps the start time. Use move-block to change it.');}
-    if(operation==='move-block'&&startAt===undefined&&endAt===undefined){const current=local(block.start),day=request.date||current.day,time=request.time||String(Math.floor(current.minute/60)).padStart(2,'0')+':'+String(current.minute%60).padStart(2,'0'),parts=time.split(':').map(Number),remainder=request.time===undefined?(block.start%60000+60000)%60000:0,start=C.wall(day,parts[0]*60+parts[1],p.timeZone||ctx().s.timeZone,Date.now()-remainder-1)??C.wall(day,parts[0]*60+parts[1],p.timeZone||ctx().s.timeZone);if(start===null)return clarify('That local time does not exist. Choose another time.');block.start=start+remainder;block.end=block.start+originalMillis;}
-    if(operation==='move-block'&&(startAt!==undefined||endAt!==undefined)){const start=startAt??endAt-originalMillis,end=endAt??start+originalMillis;if(end-start!==originalMillis)return clarify('Moving a block keeps its duration. Use resize to change its length.');if(request.date!==undefined||request.time!==undefined){const at=local(start),parts=request.time?.split(':').map(Number);if(request.date!==undefined&&at.day!==request.date||parts&&at.minute!==parts[0]*60+parts[1])return clarify('The date, time, and timestamp disagree. Choose one exact start.');}block.start=start;block.end=end;}
-    if(operation==='resize-block'){if(startAt!==undefined&&startAt!==block.start)return clarify('Use move-block to change the block start time.');const milliseconds=request.minutes===undefined?endAt-block.start:planMillis(request.minutes),limit=planMillis(block.kind==='break'?15:p.focusMinutes||45);if(!Number.isSafeInteger(milliseconds)||milliseconds<=0||limit===null||milliseconds>limit||block.kind==='break'&&milliseconds<5*60000||endAt!==undefined&&endAt!==block.start+milliseconds)return clarify('That length needs a new plan with suitable focus breaks.');block.minutes=milliseconds/60000;block.end=block.start+milliseconds;}
-    if(operation==='remove-block')p.blocks=p.blocks.filter(v=>v!==block);p.blocks.sort((a,b)=>a.start-b.start||a.end-b.end);if(p.blocks[0]?.kind==='break'||p.blocks.at(-1)?.kind==='break')return clarify('Removing that block would leave an isolated break. Replan this local schedule.');
-    let effort=0,last=null;const focusLimit=planMillis(p.focusMinutes||45);if(focusLimit===null)return clarify('That plan has an invalid focus limit. Replan this local schedule.');for(const b of p.blocks){if(!Number.isSafeInteger(b.start)||!Number.isSafeInteger(b.end)||b.end<=b.start||planMillis(b.minutes)!==b.end-b.start||b===block&&operation!=='remove-block'&&b.start<Date.now()||b.start<p.window?.start||b.end>p.window?.end||last&&b.start<last.end)return clarify('That change falls outside the plan or overlaps another block. Choose another time.');if(last&&b.start-last.end>=5*60000||b.kind==='break')effort=0;if(b.kind!=='break'){effort+=b.end-b.start;if(effort>focusLimit)return clarify('That change removes a needed focus break. Replan this local schedule.');}last=b;}
-    const selected=operation==='remove-block'?[]:[block],overlap=(a,b)=>a.start<b.end&&b.start<a.end,busy=[...(p.busy||[])];for(const [key,task]of Object.entries(data.tasks||{})){if(!task.plannedDate||!task.plannedTime||ownedBlock(p,key,data))continue;const parts=task.plannedTime.split(':').map(Number),start=C.wall(task.plannedDate,parts[0]*60+parts[1],p.timeZone||ctx().s.timeZone);if(start!==null)busy.push({start,end:start+(task.estimate||25)*60000});}for(const row of data.pet?.reminders||[])busy.push({start:row.at,end:row.at+5*60000});if(data.focus?.endsAt>Date.now())busy.push({start:Date.now(),end:data.focus.endsAt});if(selected.some(b=>busy.some(other=>overlap(b,other))))return clarify('That time overlaps a saved task, reminder, or focus session. Choose another time.');const work=id&&ctx().items.find(row=>String(row.id)===id),due=work?.dueAt?Date.parse(work.dueAt):null;if(selected.some(b=>Number.isFinite(due)&&due>Date.now()&&b.end>due))return clarify('That block would end after the existing deadline. Choose an earlier time.');
-    if(id){const remaining=p.blocks.filter(v=>v.itemId===id),record=p.records[id],task=data.tasks[id],totalMillis=remaining.reduce((n,v)=>n+v.end-v.start,0),total=totalMillis/60000,item=(p.items||[]).find(v=>v.itemId===id);if(!remaining.length){for(const key of ['plannedDate','plannedTime','estimate'])if(record.before[key].had)task[key]=copy(record.before[key].value);else delete task[key];delete p.records[id];p.items=(p.items||[]).filter(v=>v.itemId!==id);p.remaining=(p.remaining||[]).filter(v=>v.itemId!==id);}else{const at=local(remaining[0].start),estimate=Math.max(total,((planMillis(item?.estimate??task.estimate)??(item?.estimate??task.estimate)*60000)+totalMillis-oldSum)/60000);if(estimate>1440)return clarify('That task would exceed the local duration limit.');Object.assign(task,{plannedDate:at.day,plannedTime:String(Math.floor(at.minute/60)).padStart(2,'0')+':'+String(at.minute%60).padStart(2,'0'),estimate});record.after=planTaskState(task);if(item){item.minutes=total;item.estimate=estimate;}}}
-    p.workMinutes=p.blocks.filter(v=>v.kind!=='break').reduce((n,v)=>n+v.end-v.start,0)/60000;p.breakMinutes=p.blocks.filter(v=>v.kind==='break').reduce((n,v)=>n+v.end-v.start,0)/60000;p.totalMinutes=p.blocks.reduce((n,v)=>n+v.end-v.start,0)/60000;p.remainingMinutes=(p.remaining||[]).reduce((n,v)=>n+v.minutes,0);p.overloaded=p.remainingMinutes>0;p.message=operation==='remove-block'?'Removed the selected local study block.':operation==='move-block'?'Moved the selected local study block.':'Resized the selected local study block.';return {ok:true,targetId:String(block.id),original,after:operation==='remove-block'?null:{...copy(block),startAt:block.start,endAt:block.end},message:p.message};});
-   if(result.ok&&result.undo){const revert=result.undo,undo=async()=>{const restored=await revert();if(restored?.ok){if(planUndo===undo)planUndo=previous;restored.plan=planReceipt(store.get().toolbox?.biscuitPlan);}return restored;};undo.targetId=result.targetId;undo.itemId=result.original?.itemId;undo.restoreStartAt=result.original?.start;undo.restoreEndAt=result.original?.end;result.before={...copy(result.original),startAt:result.original?.start,endAt:result.original?.end};result.undo=undo;planUndo=undo;rerender();}return result;
+   const startAt=request.startAt===undefined?undefined:reminderStamp(request.startAt),endAt=request.endAt===undefined?undefined:reminderStamp(request.endAt);
+   if(startAt===null||endAt===null||startAt!==undefined&&endAt!==undefined&&endAt<=startAt)return clarify('Choose valid numeric timestamps or dated times with a timezone offset.');
+   if(request.minutes!==undefined&&planMillis(request.minutes)===null)return clarify('Choose positive minutes up to 1440 that resolve to whole milliseconds.');
+   if(request.date!==undefined&&!validDay(request.date)||request.time!==undefined&&(typeof request.time!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(request.time)))
+     return clarify('What valid date and time should this local block use?');
+   if(['build-plan','replan','schedule-study'].includes(operation)){
+    if(request.minutes!==undefined&&!Number.isInteger(request.minutes)&&!request.window)
+      return clarify('This legacy plan builder requires whole minutes. Use an explicit window and a per-item estimate for an exact fractional duration.');
+    const scoped=request.itemId??(operation==='schedule-study'?request.targetId:undefined),
+      itemId=scoped===undefined?undefined:mutationId(scoped),
+      snapshot=petInfo(),
+      current=store.get().toolbox?.biscuitPlan;
+    if(scoped!==undefined&&!itemId||operation==='schedule-study'&&!itemId)return clarify('Which existing work item should I schedule?');
+    if(request.targetId!==undefined&&operation!=='schedule-study'&&!request.blockId&&!request.plannerId&&request.targetId!==current?.id)return clarify('Choose the current local Biscuit plan.');
+    if(request.itemId!==undefined&&request.targetId!==undefined&&operation==='schedule-study'&&String(request.itemId)!==String(request.targetId))return clarify('Choose one work item ID to schedule.');
+    let blockScope=null;
+    if(operation==='replan'&&(request.blockId!==undefined||request.plannerId!==undefined)){
+      const matches=(current?.blocks||[]).filter(v=>String(v.id)===String(request.targetId)),
+        block=matches[0],
+        same=block&&(current.blocks||[]).filter(v=>v.itemId===block.itemId&&v.kind!=='break'),
+        item=block&&(current.items||[]).find(v=>v.itemId===block.itemId);
+      if(!request.window||
+        matches.length!==1||
+        !block.itemId||
+        same.length!==1||
+        !ownedBlock(current,block.itemId,store.get())||
+        (current.remaining||[]).some(v=>v.itemId===block.itemId)||
+        planMillis(item?.estimate)!==block.end-block.start)
+        return clarify('Block-scoped replan needs one fully planned owned work block and an explicit window. Use a full replan for split or unfinished work.');
+      if(request.minutes!==undefined||
+        request.estimates!==undefined||
+        request.estimateItemId!==undefined||
+        request.itemId!==undefined&&String(request.itemId)!==block.itemId||
+        request.itemIds!==undefined&&(!Array.isArray(request.itemIds)||request.itemIds.length!==1||String(request.itemIds[0])!==block.itemId))
+        return clarify('Replanning this block preserves its work item and duration.');
+      blockScope={id:block.itemId,milliseconds:block.end-block.start};
+    }
+     if(request.courseId!==undefined&&!ctx().courses.some(row=>String(row.id)===String(request.courseId)))return clarify('Choose an existing course to plan.');
+     if(itemId&&snapshot.assignments.filter(row=>row.id===itemId&&(request.courseId===undefined||row.courseId===String(request.courseId))&&!row.done).length!==1)
+       return clarify('Choose one existing incomplete work item and its course.');
+     if(operation==='schedule-study'&&current?.blocks?.some(block=>block.itemId&&block.itemId!==itemId))return clarify('Use replan to schedule another item alongside the existing local Biscuit plan.');
+    if(operation==='schedule-study'&&request.itemIds!==undefined&&(!Array.isArray(request.itemIds)||request.itemIds.length!==1||String(request.itemIds[0])!==itemId))
+      return clarify('Schedule-study needs one work item. Use build-plan for several selected items.');
+    const options={
+      ...(request.line!==undefined?{line:request.line}:{}),
+      ...(request.date!==undefined?{date:request.date}:{}),
+      ...(request.time!==undefined?{start:request.time}:{}),
+      ...(startAt!==undefined?{start:startAt}:{}),
+      ...(endAt!==undefined?{end:endAt}:{}),
+      ...(itemId?{itemId}:{}),
+      ...(request.courseId!==undefined?{courseId:request.courseId}:{}),
+      ...(request.minutes!==undefined?{[operation==='schedule-study'?'durationMinutes':'minutes']:request.minutes}:{}),
+      ...Object.fromEntries(['window','itemIds','excludeIntervals','estimates','estimateItemId'].filter(key=>request[key]!==undefined).map(key=>[key,request[key]]))
+    };
+    if(startAt!==undefined&&request.time!==undefined){
+      const at=C.calendar(snapshot.timeZone)(startAt),want=request.time.split(':').map(Number);
+      if(at.minute!==want[0]*60+want[1]||request.date!==undefined&&request.date!==at.day)return clarify('The date, time, and timestamp disagree. Which exact start should I use?');
+    }
+    if(operation==='schedule-study'&&request.minutes===undefined&&startAt!==undefined&&endAt!==undefined){
+      const minutes=(endAt-startAt)/60000;
+      if(!Number.isInteger(minutes)||minutes<=0||minutes>1440)return clarify('Choose a whole study duration from 1 to 1440 minutes.');
+      options.durationMinutes=minutes;
+    }
+    if(blockScope){options.itemIds=[blockScope.id];delete options.itemId;}
+    const normalized=P.normalizeRequest?.(snapshot,options);
+    if(normalized?.ok===false)return clarify(normalized.message);
+    if(!normalized&&['window','itemIds','estimates','excludeIntervals'].some(key=>request[key]!==undefined))return clarify('Reload Canvas Harness to use explicit planning windows and per-item estimates.');
+    const next=P.build(snapshot,normalized?.request||options);
+    if(next.window?.start===null||next.needsTime)return clarify(next.message||'Choose a valid local planning window.');
+    if(request.window&&(next.window.start!==request.window.start||next.window.end!==request.window.end))return clarify('That exact planning window is unavailable. Choose another window.');
+    if(startAt!==undefined&&(next.window.start!==startAt||operation==='schedule-study'&&next.blocks.find(block=>block.itemId===itemId)?.start!==startAt))
+      return clarify('That exact start timestamp is unavailable. Choose another time.');
+    if(request.time!==undefined){
+      const local=C.calendar(snapshot.timeZone),
+        day=request.date||local(snapshot.now).day,
+        parts=request.time.split(':').map(Number),
+        expected=C.wall(day,parts[0]*60+parts[1],snapshot.timeZone,snapshot.now-1)??C.wall(day,parts[0]*60+parts[1],snapshot.timeZone);
+      if(expected===null||next.window.start!==expected||operation==='schedule-study'&&next.blocks.find(block=>block.itemId===itemId)?.start!==expected)
+        return clarify('That exact time is unavailable. Choose another start time.');
+    }
+    if(blockScope&&
+      (next.blocks.filter(v=>v.itemId===blockScope.id).reduce((n,v)=>n+v.end-v.start,0)!==blockScope.milliseconds||
+        (next.remaining||[]).some(v=>v.itemId===blockScope.id)))
+      return clarify('The complete selected block does not fit that window. Your saved plan is kept.');
+    if(operation==='schedule-study'&&
+      (!next.blocks.some(block=>block.itemId===itemId)||
+        options.durationMinutes!==undefined&&next.blocks.filter(block=>block.itemId===itemId).reduce((n,block)=>n+block.minutes,0)!==options.durationMinutes||
+        endAt!==undefined&&next.blocks.filter(block=>block.itemId===itemId).at(-1)?.end!==endAt))
+      return clarify('That exact study duration does not fit. Choose another duration or time.');
+    try{return await writeLocalPlan(next);}catch{return clarify('The local plan could not save. Your saved plan is kept.');}
+   }
+   const targetId=request.targetId===undefined?'':mutationId(request.targetId),itemId=request.itemId===undefined?'':mutationId(request.itemId);
+   if(!targetId&&!itemId||request.targetId!==undefined&&!targetId||request.itemId!==undefined&&!itemId)return clarify('Which local Biscuit block should I change?');
+   if(operation==='move-block'&&request.date===undefined&&request.time===undefined&&startAt===undefined&&endAt===undefined)return clarify('What date or time should the selected block move to?');
+   if(operation==='resize-block'&&request.minutes===undefined&&endAt===undefined)return clarify('How many minutes should the selected block last?');
+   const previous=planUndo;
+   const result=await localMutation('plan',operation,data=>{
+     const p=data.toolbox?.biscuitPlan;
+     if(p?.source!=='biscuit'||p.version!==1||!Array.isArray(p.blocks))return clarify('Choose an existing local Biscuit study block.');
+     let matches=p.blocks.filter(block=>(!targetId||String(block.id)===targetId)&&(!itemId||String(block.itemId)===itemId));
+     if(!matches.length&&targetId&&(!itemId||itemId===targetId))matches=p.blocks.filter(block=>String(block.itemId)===targetId);
+     if(matches.length!==1)return clarify('Choose one block ID; this item may have several study blocks.');
+     const block=matches[0],id=block.itemId,original=copy(block);
+     if(request.courseId!==undefined&&ctx().items.filter(row=>String(row.id)===String(id)&&String(row.courseId)===String(request.courseId)).length!==1)
+       return clarify('Choose the study block in that work item course.');
+     if(id&&!ownedBlock(p,id,data))return clarify('That block has a newer manual schedule. Your edits are kept.');
+     if(id&&(data.tasks?.[id]?.checkedOff||data.tasks?.[id]?.progress==='done'))return clarify('That work is already complete. Choose an incomplete study block.');
+     const local=C.calendar(p.timeZone||ctx().s.timeZone),oldSum=p.blocks.filter(v=>v.itemId===id&&id).reduce((n,v)=>n+v.end-v.start,0);
+    const originalMillis=block.end-block.start;
+    if(!Number.isSafeInteger(originalMillis)||planMillis(block.minutes)!==originalMillis)return clarify('That block has inconsistent stored timing. Replan before changing it.');
+    if(operation==='move-block'&&request.minutes!==undefined&&planMillis(request.minutes)!==originalMillis)return clarify('Moving a block keeps its duration. Use resize to change its length.');
+    if(operation==='resize-block'&&(request.date!==undefined||request.time!==undefined)){
+      const at=local(block.start),parts=request.time?.split(':').map(Number);
+      if(request.date!==undefined&&request.date!==at.day||parts&&at.minute!==parts[0]*60+parts[1])return clarify('Resizing keeps the start time. Use move-block to change it.');
+    }
+    if(operation==='move-block'&&startAt===undefined&&endAt===undefined){
+      const current=local(block.start),
+        day=request.date||current.day,
+        time=request.time||String(Math.floor(current.minute/60)).padStart(2,'0')+':'+String(current.minute%60).padStart(2,'0'),
+        parts=time.split(':').map(Number),
+        remainder=request.time===undefined?(block.start%60000+60000)%60000:0,
+        start=C.wall(day,parts[0]*60+parts[1],p.timeZone||ctx().s.timeZone,Date.now()-remainder-1)??C.wall(day,parts[0]*60+parts[1],p.timeZone||ctx().s.timeZone);
+      if(start===null)return clarify('That local time does not exist. Choose another time.');
+      block.start=start+remainder;
+      block.end=block.start+originalMillis;
+    }
+    if(operation==='move-block'&&(startAt!==undefined||endAt!==undefined)){
+      const start=startAt??endAt-originalMillis,end=endAt??start+originalMillis;
+      if(end-start!==originalMillis)return clarify('Moving a block keeps its duration. Use resize to change its length.');
+      if(request.date!==undefined||request.time!==undefined){
+        const at=local(start),parts=request.time?.split(':').map(Number);
+        if(request.date!==undefined&&at.day!==request.date||parts&&at.minute!==parts[0]*60+parts[1])return clarify('The date, time, and timestamp disagree. Choose one exact start.');
+      }
+      block.start=start;
+      block.end=end;
+    }
+    if(operation==='resize-block'){
+      if(startAt!==undefined&&startAt!==block.start)return clarify('Use move-block to change the block start time.');
+      const milliseconds=request.minutes===undefined?endAt-block.start:planMillis(request.minutes),limit=planMillis(block.kind==='break'?15:p.focusMinutes||45);
+      if(!Number.isSafeInteger(milliseconds)||
+        milliseconds<=0||
+        limit===null||
+        milliseconds>limit||
+        block.kind==='break'&&milliseconds<5*60000||
+        endAt!==undefined&&endAt!==block.start+milliseconds)
+        return clarify('That length needs a new plan with suitable focus breaks.');
+      block.minutes=milliseconds/60000;
+      block.end=block.start+milliseconds;
+    }
+    if(operation==='remove-block')p.blocks=p.blocks.filter(v=>v!==block);
+    p.blocks.sort((a,b)=>a.start-b.start||a.end-b.end);
+    if(p.blocks[0]?.kind==='break'||p.blocks.at(-1)?.kind==='break')return clarify('Removing that block would leave an isolated break. Replan this local schedule.');
+    let effort=0,last=null;
+    const focusLimit=planMillis(p.focusMinutes||45);
+    if(focusLimit===null)return clarify('That plan has an invalid focus limit. Replan this local schedule.');
+    for(const b of p.blocks){
+      if(!Number.isSafeInteger(b.start)||
+        !Number.isSafeInteger(b.end)||
+        b.end<=b.start||
+        planMillis(b.minutes)!==b.end-b.start||
+        b===block&&operation!=='remove-block'&&b.start<Date.now()||
+        b.start<p.window?.start||
+        b.end>p.window?.end||
+        last&&b.start<last.end)
+        return clarify('That change falls outside the plan or overlaps another block. Choose another time.');
+      if(last&&b.start-last.end>=5*60000||b.kind==='break')effort=0;
+      if(b.kind!=='break'){effort+=b.end-b.start;if(effort>focusLimit)return clarify('That change removes a needed focus break. Replan this local schedule.');}
+      last=b;
+    }
+    const selected=operation==='remove-block'?[]:[block],overlap=(a,b)=>a.start<b.end&&b.start<a.end,busy=[...(p.busy||[])];
+    for(const [key,task]of Object.entries(data.tasks||{})){
+      if(!task.plannedDate||!task.plannedTime||ownedBlock(p,key,data))continue;
+      const parts=task.plannedTime.split(':').map(Number),start=C.wall(task.plannedDate,parts[0]*60+parts[1],p.timeZone||ctx().s.timeZone);
+      if(start!==null)busy.push({start,end:start+(task.estimate||25)*60000});
+    }
+    for(const row of data.pet?.reminders||[])busy.push({start:row.at,end:row.at+5*60000});
+    if(data.focus?.endsAt>Date.now())busy.push({start:Date.now(),end:data.focus.endsAt});
+    if(selected.some(b=>busy.some(other=>overlap(b,other))))return clarify('That time overlaps a saved task, reminder, or focus session. Choose another time.');
+    const work=id&&ctx().items.find(row=>String(row.id)===id),due=work?.dueAt?Date.parse(work.dueAt):null;
+    if(selected.some(b=>Number.isFinite(due)&&due>Date.now()&&b.end>due))return clarify('That block would end after the existing deadline. Choose an earlier time.');
+    if(id){
+      const remaining=p.blocks.filter(v=>v.itemId===id),
+        record=p.records[id],
+        task=data.tasks[id],
+        totalMillis=remaining.reduce((n,v)=>n+v.end-v.start,0),
+        total=totalMillis/60000,
+        item=(p.items||[]).find(v=>v.itemId===id);
+      if(!remaining.length){
+        for(const key of ['plannedDate','plannedTime','estimate'])if(record.before[key].had)task[key]=copy(record.before[key].value);else delete task[key];
+        delete p.records[id];
+        p.items=(p.items||[]).filter(v=>v.itemId!==id);
+        p.remaining=(p.remaining||[]).filter(v=>v.itemId!==id);
+      }
+      else{
+        const at=local(remaining[0].start),estimate=Math.max(total,((planMillis(item?.estimate??task.estimate)??(item?.estimate??task.estimate)*60000)+totalMillis-oldSum)/60000);
+        if(estimate>1440)return clarify('That task would exceed the local duration limit.');
+        Object.assign(task,{plannedDate:at.day,plannedTime:String(Math.floor(at.minute/60)).padStart(2,'0')+':'+String(at.minute%60).padStart(2,'0'),estimate});
+        record.after=planTaskState(task);
+        if(item){item.minutes=total;item.estimate=estimate;}
+      }
+    }
+    p.workMinutes=p.blocks.filter(v=>v.kind!=='break').reduce((n,v)=>n+v.end-v.start,0)/60000;
+    p.breakMinutes=p.blocks.filter(v=>v.kind==='break').reduce((n,v)=>n+v.end-v.start,0)/60000;
+    p.totalMinutes=p.blocks.reduce((n,v)=>n+v.end-v.start,0)/60000;
+    p.remainingMinutes=(p.remaining||[]).reduce((n,v)=>n+v.minutes,0);
+    p.overloaded=p.remainingMinutes>0;
+    p.message=operation==='remove-block'?'Removed the selected local study block.':operation==='move-block'?'Moved the selected local study block.':'Resized the selected local study block.';
+    return {ok:true,targetId:String(block.id),original,after:operation==='remove-block'?null:{...copy(block),startAt:block.start,endAt:block.end},message:p.message};
+   });
+   if(result.ok&&result.undo){
+     const revert=result.undo,undo=async()=>{
+       const restored=await revert();
+       if(restored?.ok){if(planUndo===undo)planUndo=previous;restored.plan=planReceipt(store.get().toolbox?.biscuitPlan);}
+       return restored;
+     };
+     undo.targetId=result.targetId;
+     undo.itemId=result.original?.itemId;
+     undo.restoreStartAt=result.original?.start;
+     undo.restoreEndAt=result.original?.end;
+     result.before={...copy(result.original),startAt:result.original?.start,endAt:result.original?.end};
+     result.undo=undo;
+     planUndo=undo;
+     rerender();
+   }
+   return result;
   }
   function addStudyBlock(request={}){
    if(!on('planner')||!Plan()?.addTask)return unavailable('Planner');const c=ctx(),day=request.day??request.date,today=helpers().dayKey(Date.now(),c.s.timeZone),title=request.title;
-   if(typeof title!=='string'||!title.trim()||title.length>200||/[\u0000-\u001f\u007f]/.test(title)||!validDay(day)||day<today||!Number.isInteger(request.minutes)||request.minutes<1||request.minutes>1440||request.time!==undefined&&(typeof request.time!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(request.time)))return clarify('Choose a title, a current or future day, and 1 to 1440 whole minutes.');
+   if(typeof title!=='string'||
+     !title.trim()||
+     title.length>200||
+     /[\u0000-\u001f\u007f]/.test(title)||
+     !validDay(day)||
+     day<today||
+     !Number.isInteger(request.minutes)||
+     request.minutes<1||
+     request.minutes>1440||
+     request.time!==undefined&&(typeof request.time!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(request.time)))
+     return clarify('Choose a title, a current or future day, and 1 to 1440 whole minutes.');
    const targetId=newId();return localMutation('plan','add-block',data=>{
-    const latest=ctx(),matches=request.itemId===undefined?[]:latest.items.filter(row=>String(row.id)===String(request.itemId)&&(!request.courseId||String(row.courseId)===String(request.courseId))),linked=matches[0];
-    if(request.itemId!==undefined&&(matches.length!==1||helpers().complete?.(linked)||data.tasks?.[String(linked.id)]?.checkedOff)||request.courseId!==undefined&&!latest.courses.some(row=>String(row.id)===String(request.courseId)))return clarify('Choose one current work item and its course.');
+    const latest=ctx(),
+      matches=request.itemId===undefined?
+        []:
+        latest.items.filter(row=>String(row.id)===String(request.itemId)&&(!request.courseId||String(row.courseId)===String(request.courseId))),
+      linked=matches[0];
+    if(request.itemId!==undefined&&(matches.length!==1||helpers().complete?.(linked)||data.tasks?.[String(linked.id)]?.checkedOff)||
+      request.courseId!==undefined&&!latest.courses.some(row=>String(row.id)===String(request.courseId)))
+      return clarify('Choose one current work item and its course.');
     if((data.customTasks||[]).length>=1000)return clarify('The planner is full. Remove a personal task first.');
-    const courseId=linked?String(linked.courseId):request.courseId?String(request.courseId):'personal';data.customTasks||=[];data.tasks||={};Plan().addTask({name:title.trim(),day,estimate:request.minutes,...(request.time!==undefined?{at:request.time}:{})},{courseId,id:targetId,nowISO:new Date().toISOString()})(data);
-    if(linked){const task=data.customTasks.find(row=>row.id===targetId);task.sourceItemId=String(linked.id);const raw=linked.url||linked.html_url;if(raw)try{const url=new URL(raw,store.owner?.origin||root.location?.origin);if(['https:','http:'].includes(url.protocol)&&!url.username&&!url.password)task.source={kind:'link',url:url.href,title:linked.name||linked.title||title.trim()};}catch{}}
+    const courseId=linked?String(linked.courseId):request.courseId?String(request.courseId):'personal';
+    data.customTasks||=[];
+    data.tasks||={};
+    Plan().addTask(
+      {name:title.trim(),day,estimate:request.minutes,...(request.time!==undefined?{at:request.time}:{})},
+      {courseId,id:targetId,nowISO:new Date().toISOString()})(data);
+    if(linked){
+      const task=data.customTasks.find(row=>row.id===targetId);
+      task.sourceItemId=String(linked.id);
+      const raw=linked.url||linked.html_url;
+      if(raw)
+        try{
+          const url=new URL(raw,store.owner?.origin||root.location?.origin);
+          if(['https:','http:'].includes(url.protocol)&&!url.username&&!url.password)task.source={kind:'link',url:url.href,title:linked.name||linked.title||title.trim()};
+        }catch{}
+    }
     return {ok:true,targetId,courseId,after:{id:targetId,title:title.trim(),courseId,day,minutes:request.minutes},message:'Added the local study block.'};
    });
   }
-  function localPlan(request={}){if(request.operation==='add-block')return addStudyBlock(request);if(request.operation!==undefined)return planOperation(request);const P=root.ReserveBiscuitPlanner;return P?writeLocalPlan(P.build(petInfo(),request)):Promise.resolve({ok:false,message:'Reload Canvas Harness to use the local planner.'});}
+  function localPlan(request={}){
+    if(request.operation==='add-block')return addStudyBlock(request);
+    if(request.operation!==undefined)return planOperation(request);
+    const P=root.ReserveBiscuitPlanner;
+    return P?writeLocalPlan(P.build(petInfo(),request)):Promise.resolve({ok:false,message:'Reload Canvas Harness to use the local planner.'});
+  }
   async function undoLocalPlan(){return planUndo?planUndo():{ok:false,message:'There is no plan to undo.'};}
   async function savedFile(row){
-   if(!on('course-files'))return unavailable('My links & files');try{if(openCourseFile){const result=await openCourseFile(row.courseId,row.id);return result===false||result?.ok===false?result:{ok:true,message:'Opened '+row.title+'.'};}if(!localFileOpen){if(!root.ReserveCourseFiles?.create||!root.ReserveCourseFileOpen?.create||!store.owner)return clarify('Open this saved file in Course hub > My links & files.');localFiles=root.ReserveCourseFiles.create({store});localFileOpen=root.ReserveCourseFileOpen.create({store,files:localFiles,container});}await localFileOpen.open(row.courseId,row.id,container.querySelector(':focus'));return {ok:true,message:'Opened '+row.title+'.'};}catch(error){return clarify(error?.message||'The saved file could not open.');}
+   if(!on('course-files'))return unavailable('My links & files');
+   try{
+     if(openCourseFile){const result=await openCourseFile(row.courseId,row.id);return result===false||result?.ok===false?result:{ok:true,message:'Opened '+row.title+'.'};}
+     if(!localFileOpen){
+       if(!root.ReserveCourseFiles?.create||!root.ReserveCourseFileOpen?.create||!store.owner)return clarify('Open this saved file in Course hub > My links & files.');
+       localFiles=root.ReserveCourseFiles.create({store});
+       localFileOpen=root.ReserveCourseFileOpen.create({store,files:localFiles,container});
+     }
+     await localFileOpen.open(row.courseId,row.id,container.querySelector(':focus'));
+     return {ok:true,message:'Opened '+row.title+'.'};
+   }catch(error){return clarify(error?.message||'The saved file could not open.');}
   }
   function localEntry(request={}){
-   const rows=(root.ReserveBiscuitEngine?.prepare(petInfo())||[]).filter(v=>v.id===String(request.entryId)&&(!request.kind||v.kind===request.kind)&&(!request.courseId||v.courseId===String(request.courseId)));if(rows.length!==1)return clarify('Choose one currently loaded item and its course.');const row=rows[0];if(row.locked||row.locked_for_user||row.hidden_for_user||row.published===false)return clarify('This item is unavailable in the loaded course.');if(row.savedFile)return savedFile(row);if(row.kind==='note')return row.itemId&&row.id!=='scratchpad'?openItem({itemId:row.itemId,courseId:row.courseId}):navigateCommand({tab:'notes'});if(row.kind==='setting')return settingsCommand({key:row.key||row.id});if(row.kind==='feature')return clarify('Feature switches are in the extension popup > Add-ons.');if(['grade','course-grade'].includes(row.kind))return navigateCommand({tab:'grades',...(row.courseId?{courseId:row.courseId}:{})});if(row.kind==='course')return openItem({courseId:row.id});if(!row.url)return clarify('Open its course to view this loaded item.');try{const u=new URL(row.url,store.owner?.origin||root.location?.origin);if(!['https:','http:'].includes(u.protocol)||u.username||u.password||typeof root.location?.assign!=='function')return false;root.location.assign(u.href);return true;}catch{return false;}
+   const rows=(root.ReserveBiscuitEngine?.prepare(petInfo())||[]).filter(v=>
+     v.id===String(request.entryId)&&(!request.kind||v.kind===request.kind)&&(!request.courseId||v.courseId===String(request.courseId)));
+   if(rows.length!==1)return clarify('Choose one currently loaded item and its course.');
+   const row=rows[0];
+   if(row.locked||row.locked_for_user||row.hidden_for_user||row.published===false)return clarify('This item is unavailable in the loaded course.');
+   if(row.savedFile)return savedFile(row);
+   if(row.kind==='note')return row.itemId&&row.id!=='scratchpad'?openItem({itemId:row.itemId,courseId:row.courseId}):navigateCommand({tab:'notes'});
+   if(row.kind==='setting')return settingsCommand({key:row.key||row.id});
+   if(row.kind==='feature')return clarify('Feature switches are in the extension popup > Add-ons.');
+   if(['grade','course-grade'].includes(row.kind))return navigateCommand({tab:'grades',...(row.courseId?{courseId:row.courseId}:{})});
+   if(row.kind==='course')return openItem({courseId:row.id});
+   if(!row.url)return clarify('Open its course to view this loaded item.');
+   try{
+     const u=new URL(row.url,store.owner?.origin||root.location?.origin);
+     if(!['https:','http:'].includes(u.protocol)||u.username||u.password||typeof root.location?.assign!=='function')return false;
+     root.location.assign(u.href);
+     return true;
+   }catch{return false;}
   }
   function bookmarkOperation(request){
-   const {operation}=request;if(!['create','edit','delete','undo-delete','undo-edit'].includes(operation))return clarify('Choose create, edit, delete, or Undo for a bookmark.');if(operation.startsWith('undo-'))return undoMutation('bookmark',request,[operation.slice(5)]);
-   const targetId=mutationId(request.targetId??request.entryId??request.itemId);if(!targetId)return clarify('Which existing item or bookmark should I use?');if(request.text!==undefined)return clarify('A bookmark stores a local title and its existing link. Which title should I use?');if(request.title!==undefined&&(typeof request.title!=='string'||!request.title.trim()||request.title.length>300))return clarify('Choose a bookmark title of 1 to 300 characters.');
-   return localMutation('bookmark',operation,data=>{const course=request.courseId===undefined?null:mutationId(request.courseId),pins=(data.resourcePins||[]).map((row,index)=>({row,index})).filter(({row})=>String(row.id)===targetId&&(course===null||String(row.courseId)===course)),work=ctx().items.filter(row=>String(row.id)===targetId&&(course===null||String(row.courseId)===course)),tasks=work.filter(row=>data.tasks?.[String(row.id)]?.pinned);
-    if(pins.length+tasks.length>1||work.length>1)return clarify('Which course and bookmark ID should I change?');if(operation!=='create'&&!pins.length&&!tasks.length)return clarify('Choose an existing saved bookmark ID.');
-    if(pins.length){const {row,index}=pins[0];if(operation==='edit'){if(request.title===undefined)return clarify('What should the bookmark title be?');row.title=request.title;}else if(operation==='delete')data.resourcePins.splice(index,1);return {ok:true,targetId,courseId:String(row.courseId),message:operation==='delete'?'Removed the selected bookmark.':operation==='edit'?'Saved the local bookmark title.':'That item is already bookmarked.'};}
-    if(work.length&&!request.entryId){if(request.title!==undefined)return clarify('Assignment bookmark titles follow the assignment. Its Canvas title is kept.');const row=work[0],task=localTask(data,targetId),original=copy(task);if(operation==='edit')return clarify('Assignment bookmarks have no separate editable title.');task.pinned=operation!=='delete';return {ok:true,targetId,courseId:String(row.courseId),original,message:operation==='delete'?'Removed the selected bookmark.':'Bookmarked the selected item locally.'};}
-    if(operation!=='create')return clarify('Choose an existing saved bookmark ID.');const rows=(root.ReserveBiscuitEngine?.prepare(petInfo())||[]).filter(row=>row.id===targetId&&(course===null||row.courseId===course)&&(!request.kind||row.kind===request.kind)&&!['note','bookmark','action','setting','feature'].includes(row.kind));if(rows.length!==1)return clarify('Choose one loaded item and its course to bookmark.');const row=rows[0];if(row.savedFile)return clarify('That file is already saved in My links & files.');let url;try{url=new URL(row.url);}catch{return clarify('That loaded item has no valid link to bookmark.');}if(!['https:','http:'].includes(url.protocol)||url.username||url.password||!/^\d+$/.test(row.courseId)||row.id.length>180||(request.title??row.title).length>300)return clarify('Choose a loaded course item with a valid bookmark link and title.');if((data.resourcePins||[]).length>=300)return clarify('Bookmarks is full. Remove a shortcut first.');data.resourcePins||=[];data.resourcePins.push({id:row.id,courseId:row.courseId,title:request.title??row.title,url:url.href,category:row.kind,moduleName:row.moduleName||''});return {ok:true,targetId,courseId:row.courseId,message:'Bookmarked the selected item locally.'};
+   const {operation}=request;
+   if(!['create','edit','delete','undo-delete','undo-edit'].includes(operation))return clarify('Choose create, edit, delete, or Undo for a bookmark.');
+   if(operation.startsWith('undo-'))return undoMutation('bookmark',request,[operation.slice(5)]);
+   const targetId=mutationId(request.targetId??request.entryId??request.itemId);
+   if(!targetId)return clarify('Which existing item or bookmark should I use?');
+   if(request.text!==undefined)return clarify('A bookmark stores a local title and its existing link. Which title should I use?');
+   if(request.title!==undefined&&(typeof request.title!=='string'||!request.title.trim()||request.title.length>300))return clarify('Choose a bookmark title of 1 to 300 characters.');
+   return localMutation('bookmark',operation,data=>{
+     const course=request.courseId===undefined?null:mutationId(request.courseId),
+       pins=(data.resourcePins||[]).map((row,index)=>({row,index})).filter(({row})=>String(row.id)===targetId&&(course===null||String(row.courseId)===course)),
+       work=ctx().items.filter(row=>String(row.id)===targetId&&(course===null||String(row.courseId)===course)),
+       tasks=work.filter(row=>data.tasks?.[String(row.id)]?.pinned);
+    if(pins.length+tasks.length>1||work.length>1)return clarify('Which course and bookmark ID should I change?');
+    if(operation!=='create'&&!pins.length&&!tasks.length)return clarify('Choose an existing saved bookmark ID.');
+    if(pins.length){
+      const {row,index}=pins[0];
+      if(operation==='edit'){if(request.title===undefined)return clarify('What should the bookmark title be?');row.title=request.title;}else if(operation==='delete')data.resourcePins.splice(index,1);
+      return {
+        ok:true,
+        targetId,
+        courseId:String(row.courseId),
+        message:operation==='delete'?'Removed the selected bookmark.':operation==='edit'?'Saved the local bookmark title.':'That item is already bookmarked.'
+      };
+    }
+    if(work.length&&!request.entryId){
+      if(request.title!==undefined)return clarify('Assignment bookmark titles follow the assignment. Its Canvas title is kept.');
+      const row=work[0],task=localTask(data,targetId),original=copy(task);
+      if(operation==='edit')return clarify('Assignment bookmarks have no separate editable title.');
+      task.pinned=operation!=='delete';
+      return {ok:true,targetId,courseId:String(row.courseId),original,message:operation==='delete'?'Removed the selected bookmark.':'Bookmarked the selected item locally.'};
+    }
+    if(operation!=='create')return clarify('Choose an existing saved bookmark ID.');
+    const rows=(root.ReserveBiscuitEngine?.prepare(petInfo())||[]).filter(row=>
+      row.id===targetId&&(course===null||row.courseId===course)&&(!request.kind||row.kind===request.kind)&&!['note','bookmark','action','setting','feature'].includes(row.kind));
+    if(rows.length!==1)return clarify('Choose one loaded item and its course to bookmark.');
+    const row=rows[0];
+    if(row.savedFile)return clarify('That file is already saved in My links & files.');
+    let url;
+    try{url=new URL(row.url);}catch{return clarify('That loaded item has no valid link to bookmark.');}
+    if(!['https:','http:'].includes(url.protocol)||url.username||url.password||!/^\d+$/.test(row.courseId)||row.id.length>180||(request.title??row.title).length>300)
+      return clarify('Choose a loaded course item with a valid bookmark link and title.');
+    if((data.resourcePins||[]).length>=300)return clarify('Bookmarks is full. Remove a shortcut first.');
+    data.resourcePins||=[];
+    data.resourcePins.push({id:row.id,courseId:row.courseId,title:request.title??row.title,url:url.href,category:row.kind,moduleName:row.moduleName||''});
+    return {ok:true,targetId,courseId:row.courseId,message:'Bookmarked the selected item locally.'};
    });
   }
-  function bookmarkCommand(request={}){if(request.operation!==undefined)return on('planner')?bookmarkOperation(request):unavailable('Bookmarks');if(!request.entryId)return bookmark?bookmark(request):false;const rows=(root.ReserveBiscuitEngine?.prepare(petInfo())||[]).filter(v=>v.id===String(request.entryId)&&(!request.kind||v.kind===request.kind)&&(!request.courseId||v.courseId===String(request.courseId)));if(rows.length!==1)return false;const row=rows[0];if(row.savedFile)return {ok:true,message:'Already saved in My links & files.'};let url;try{url=new URL(row.url,store.owner?.origin||root.location?.origin);}catch{return false;}if(!['https:','http:'].includes(url.protocol)||url.username||url.password||!/^\d+$/.test(row.courseId))return false;return save(data=>{data.resourcePins||=[];if(data.resourcePins.some(v=>v.id===row.id&&v.courseId===row.courseId))return;if(data.resourcePins.length>=300)throw Error('Bookmarks is full. Remove a shortcut first.');data.resourcePins.push({id:row.id,courseId:row.courseId,title:row.title,url:url.href,category:row.kind,moduleName:row.moduleName||''});});}
-  async function changeLocalPlan(request,remove=false){const id=String(request.itemId),row=ctx().items.find(v=>String(v.id)===id);if(!row||!remove&&!validDay(request.date)||request.time!==undefined&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(request.time))return false;const ok=await save(data=>{data.tasks[id]||={};data.tasks[id].plannedDate=remove?'':request.date;if(remove)delete data.tasks[id].plannedTime;else if(request.time!==undefined)data.tasks[id].plannedTime=request.time;const plan=data.toolbox?.biscuitPlan;if(plan)plan.blocks=(plan.blocks||[]).filter(b=>String(b.itemId)!==id);});if(ok===false)return false;return {ok:true,message:remove?'Removed the local plan for '+(row.title||row.name)+'.':'Moved '+(row.title||row.name)+' to '+new Date(request.date+'T12:00Z').toLocaleDateString('en-US',{timeZone:'UTC',weekday:'short'})+(request.time?' '+new Date(request.date+'T'+request.time+':00Z').toLocaleTimeString('en-US',{timeZone:'UTC',hour:'numeric',minute:'2-digit'}):'')+'.'};}
-  async function completeLocal(request){const id=String(request.itemId),row=ctx().items.find(v=>String(v.id)===id);if(!row)return false;const ok=await save(data=>{data.tasks[id]||={};data.tasks[id].checkedOff=true;data.tasks[id].progress='done';});return ok===false?false:{ok:true,message:'Marked '+(row.title||row.name)+' done locally.'};}
+  function bookmarkCommand(request={}){
+    if(request.operation!==undefined)return on('planner')?bookmarkOperation(request):unavailable('Bookmarks');
+    if(!request.entryId)return bookmark?bookmark(request):false;
+    const rows=(root.ReserveBiscuitEngine?.prepare(petInfo())||[]).filter(v=>
+      v.id===String(request.entryId)&&(!request.kind||v.kind===request.kind)&&(!request.courseId||v.courseId===String(request.courseId)));
+    if(rows.length!==1)return false;
+    const row=rows[0];
+    if(row.savedFile)return {ok:true,message:'Already saved in My links & files.'};
+    let url;
+    try{url=new URL(row.url,store.owner?.origin||root.location?.origin);}catch{return false;}
+    if(!['https:','http:'].includes(url.protocol)||url.username||url.password||!/^\d+$/.test(row.courseId))return false;
+    return save(data=>{
+      data.resourcePins||=[];
+      if(data.resourcePins.some(v=>v.id===row.id&&v.courseId===row.courseId))return;
+      if(data.resourcePins.length>=300)throw Error('Bookmarks is full. Remove a shortcut first.');
+      data.resourcePins.push({id:row.id,courseId:row.courseId,title:row.title,url:url.href,category:row.kind,moduleName:row.moduleName||''});
+    });
+  }
+  async function changeLocalPlan(request,remove=false){
+    const id=String(request.itemId),row=ctx().items.find(v=>String(v.id)===id);
+    if(!row||!remove&&!validDay(request.date)||request.time!==undefined&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(request.time))return false;
+    const ok=await save(data=>{
+      data.tasks[id]||={};
+      data.tasks[id].plannedDate=remove?'':request.date;
+      if(remove)delete data.tasks[id].plannedTime;else if(request.time!==undefined)data.tasks[id].plannedTime=request.time;
+      const plan=data.toolbox?.biscuitPlan;
+      if(plan)plan.blocks=(plan.blocks||[]).filter(b=>String(b.itemId)!==id);
+    });
+    if(ok===false)return false;
+    return {
+      ok:true,
+      message:remove?
+        'Removed the local plan for '+(row.title||row.name)+'.':
+        'Moved '+
+          (row.title||row.name)+
+          ' to '+
+          new Date(request.date+'T12:00Z').toLocaleDateString('en-US',{timeZone:'UTC',weekday:'short'})+
+          (request.time?' '+new Date(request.date+'T'+request.time+':00Z').toLocaleTimeString('en-US',{timeZone:'UTC',hour:'numeric',minute:'2-digit'}):'')+
+          '.'
+    };
+  }
+  async function completeLocal(request){
+    const id=String(request.itemId),row=ctx().items.find(v=>String(v.id)===id);
+    if(!row)return false;
+    const ok=await save(data=>{data.tasks[id]||={};data.tasks[id].checkedOff=true;data.tasks[id].progress='done';});
+    return ok===false?false:{ok:true,message:'Marked '+(row.title||row.name)+' done locally.'};
+  }
 
-  function settingsCommand(request={}){if(!on('customization')||typeof openSettings!=='function')return false;const tab=request.tab||(request.key?root.ReserveCustomizeUI?.tabFor?.(request.key)||'look':'pet');if(!['look','layout','courses','pet','settings'].includes(tab)||tab==='pet'&&!on('pony'))return false;settingsTab=tab;openSettings(tab);rerender();return true;}
-  const actions={setting:appearanceCommand,preset:request=>on('customization')&&on('arrange')?layoutPreset?layoutPreset(request):false:unavailable('Appearance editor or arrangement'),feature:featureCommand,features:featureCommand,module:moduleCommand,navigate:navigateCommand,skill:skillCommand,note:noteCommand,bookmark:bookmarkCommand,play:playCommand,reload:()=>typeof root.location?.reload==='function'?(root.location.reload(),true):false,open:request=>request.entryId?localEntry(request):openItem(request),find:request=>request.entryId?localEntry(request):openItem(request),focus:item=>item.mode==='break'?startBreak(item):startPonyFocus(item),'focus-control':focusControl,'focus-status':focusStatus,reminder:addReminder,due:dueWork,plan:request=>request?.local||request?.operation!==undefined?localPlan(request):planTonight(request),move:request=>changeLocalPlan(request),remove:request=>changeLocalPlan(request,true),complete:completeLocal,chat:()=>true,none:()=>true,break:startBreak,stretch:()=>store.get().pet?.skills?.wellbeing!==false?startBreak({minutes:5,explicit:true,stretch:true}):false,inbox:()=>on('course-hub')&&root.ReservePonyBrain?.skillEnabled?.('inbox',store.get().pet?.skills)!==false?announcements():false,settings:settingsCommand};
-  actions.copy=async({text}={})=>{if(typeof text!=='string'||!text.trim()||text.length>12000||!root.navigator?.clipboard?.writeText)return clarify('Copy is unavailable. Select the text and copy it.');await root.navigator.clipboard.writeText(text);return {ok:true,message:'Copied.'};};
-    actions.batch=async({steps})=>{if(!Array.isArray(steps)||!steps.length||steps.length>32||steps.some(step=>!record(step)||typeof step.action!=='string'||step.fields!==undefined&&!record(step.fields)))return clarify('Choose 1 to 32 supported local steps.');const journal=recording,undos=[],messages=[],receipts=[];let completed=0,failure='';for(const step of steps||[]){if(step.manual===true||step.ui){failure=typeof step.message==='string'&&step.message?step.message:'Complete this step in '+(Array.isArray(step.ui?.path)?step.ui.path:['the requested controls']).join(' > ')+'.';break;}const action=Object.hasOwn(actions,step.action)?actions[step.action]:null;if(typeof action!=='function'||step.action==='batch'||['chat','none','reload'].includes(step.action)){failure='An action is unavailable.';break;}let result;const firstPatch=journal?.changes.length||0;try{result=await capture(journal,()=>action(step.fields||{}));}catch{failure='An action could not finish.';break;}if(result===false||result===undefined||result===null||result?.ok===false){failure=result?.message||'An action could not finish.';break;}completed++;messages.push(typeof result==='string'?result:result?.message||step.message||'Completed '+step.action+'.');if(['note','bookmark','reminder','plan'].includes(step.action)&&result?.ok===true)receipts.push({action:step.action,fields:Object.fromEntries(['operation','targetId','blockId','plannerId','itemId','courseId'].filter(key=>step.fields?.[key]!==undefined).map(key=>[key,step.fields[key]])),result:{ok:true,...Object.fromEntries(['before','after','targetId','plan'].filter(key=>Object.hasOwn(result,key)).map(key=>[key,copy(result[key])]))}});if(result?.undo){undos.push(result.undo);if(journal&&(step.action==='plan'||step.action==='navigate'||step.fields?.operation!==undefined&&['note','bookmark','reminder'].includes(step.action)))journal.changes.splice(firstPatch);}}const revert=changed(journal);return {ok:completed>0,complete:!failure,completed,total:(steps||[]).length,receipts,message:failure?(completed?'Completed '+completed+' step'+(completed===1?'':'s')+'. ':'')+failure:messages.join(' '),...(undos.length||revert?{undo:async()=>{for(const undo of [...undos].reverse()){const r=await undo();if(r===false||r?.ok===false)return r;}const restored=revert?await revert():true;return restored===false||restored?.ok===false?restored:receipts.some(v=>v.action==='plan')?{ok:true,message:'Undone.',plan:planReceipt(store.get().toolbox?.biscuitPlan)}:restored;}}:{})};};
+  function settingsCommand(request={}){
+    if(!on('customization')||typeof openSettings!=='function')return false;
+    const tab=request.tab||(request.key?root.ReserveCustomizeUI?.tabFor?.(request.key)||'look':'pet');
+    if(!['look','layout','courses','pet','settings'].includes(tab)||tab==='pet'&&!on('pony'))return false;
+    settingsTab=tab;
+    openSettings(tab);
+    rerender();
+    return true;
+  }
+  const actions={
+    setting:appearanceCommand,
+    preset:request=>on('customization')&&on('arrange')?layoutPreset?layoutPreset(request):false:unavailable('Appearance editor or arrangement'),
+    feature:featureCommand,
+    features:featureCommand,
+    module:moduleCommand,
+    navigate:navigateCommand,
+    skill:skillCommand,
+    note:noteCommand,
+    bookmark:bookmarkCommand,
+    play:playCommand,
+    reload:()=>typeof root.location?.reload==='function'?(root.location.reload(),true):false,
+    open:request=>request.entryId?localEntry(request):openItem(request),
+    find:request=>request.entryId?localEntry(request):openItem(request),
+    focus:item=>item.mode==='break'?startBreak(item):startPonyFocus(item),
+    'focus-control':focusControl,
+    'focus-status':focusStatus,
+    reminder:addReminder,
+    due:dueWork,
+    plan:request=>request?.local||request?.operation!==undefined?localPlan(request):planTonight(request),
+    move:request=>changeLocalPlan(request),
+    remove:request=>changeLocalPlan(request,true),
+    complete:completeLocal,
+    chat:()=>true,
+    none:()=>true,
+    break:startBreak,
+    stretch:()=>store.get().pet?.skills?.wellbeing!==false?startBreak({minutes:5,explicit:true,stretch:true}):false,
+    inbox:()=>on('course-hub')&&root.ReservePonyBrain?.skillEnabled?.('inbox',store.get().pet?.skills)!==false?announcements():false,
+    settings:settingsCommand
+  };
+  actions.copy=async({text}={})=>{
+    if(typeof text!=='string'||!text.trim()||text.length>12000||!root.navigator?.clipboard?.writeText)return clarify('Copy is unavailable. Select the text and copy it.');
+    await root.navigator.clipboard.writeText(text);
+    return {ok:true,message:'Copied.'};
+  };
+    actions.batch=async({steps})=>{
+      if(!Array.isArray(steps)||!steps.length||steps.length>32||steps.some(step=>!record(step)||typeof step.action!=='string'||step.fields!==undefined&&!record(step.fields)))
+        return clarify('Choose 1 to 32 supported local steps.');
+      const journal=recording,undos=[],messages=[],receipts=[];
+      let completed=0,failure='';
+      for(const step of steps||[]){
+        if(step.manual===true||step.ui){
+          failure=typeof step.message==='string'&&step.message?step.message:'Complete this step in '+(Array.isArray(step.ui?.path)?step.ui.path:['the requested controls']).join(' > ')+'.';
+          break;
+        }
+        const action=Object.hasOwn(actions,step.action)?actions[step.action]:null;
+        if(typeof action!=='function'||step.action==='batch'||['chat','none','reload'].includes(step.action)){failure='An action is unavailable.';break;}
+        let result;
+        const firstPatch=journal?.changes.length||0;
+        try{result=await capture(journal,()=>action(step.fields||{}));}catch{failure='An action could not finish.';break;}
+        if(result===false||result===undefined||result===null||result?.ok===false){failure=result?.message||'An action could not finish.';break;}
+        completed++;
+        messages.push(typeof result==='string'?result:result?.message||step.message||'Completed '+step.action+'.');
+        if(['note','bookmark','reminder','plan'].includes(step.action)&&result?.ok===true)
+          receipts.push({
+            action:step.action,
+            fields:Object.fromEntries(['operation','targetId','blockId','plannerId','itemId','courseId'].filter(key=>step.fields?.[key]!==undefined).map(key=>[key,step.fields[key]])),
+            result:{ok:true,...Object.fromEntries(['before','after','targetId','plan'].filter(key=>Object.hasOwn(result,key)).map(key=>[key,copy(result[key])]))}
+          });
+        if(result?.undo){
+          undos.push(result.undo);
+          if(journal&&(step.action==='plan'||step.action==='navigate'||step.fields?.operation!==undefined&&['note','bookmark','reminder'].includes(step.action)))journal.changes.splice(firstPatch);
+        }
+      }
+      const revert=changed(journal);
+      return {
+        ok:completed>0,
+        complete:!failure,
+        completed,
+        total:(steps||[]).length,
+        receipts,
+        message:failure?(completed?'Completed '+completed+' step'+(completed===1?'':'s')+'. ':'')+failure:messages.join(' '),
+        ...(undos.length||revert?{undo:async()=>{
+        for(const undo of [...undos].reverse()){const r=await undo();if(r===false||r?.ok===false)return r;}
+        const restored=revert?await revert():true;
+        return restored===false||restored?.ok===false?
+          restored:
+          receipts.some(v=>v.action==='plan')?{ok:true,message:'Undone.',plan:planReceipt(store.get().toolbox?.biscuitPlan)}:restored;
+      }}:{})};
+    };
    for(const key of Object.keys(actions))actions[key]=command(actions[key]);
   async function executeBiscuit(action,fields={},options={}){
    if(dead||executorBusy||typeof action!=='string'||!Object.hasOwn(actions,action)||!record(fields))return {ok:false,message:'That action is unavailable in this workspace.'};
    if(!on('planner')&&['focus','focus-control','focus-status','break','stretch','plan','move','remove','reminder','note','bookmark','module'].includes(action))return unavailable('Planner');
    executorBusy=true;let journal;
    try{
-    options.validate?.();const before=checkpoint(action);journal=before?.then?await before:before;options.validate?.();if(options.validate)journal.validate=options.validate;
+    options.validate?.();
+    const before=checkpoint(action);
+    journal=before?.then?await before:before;
+    options.validate?.();
+    if(options.validate)journal.validate=options.validate;
     const previousValidation=executionValidation;let pending;executionValidation=options.validate||null;
     try{pending=capture(journal,()=>actions[action](fields));}finally{executionValidation=previousValidation;}
-    const result=await pending;if(result===false||result===undefined||result===null||result?.ok===false)return typeof result==='object'&&result?result:{ok:false,message:'That action is unavailable in this workspace.'};
-    const undo=result?.undo||changed(journal);return {...(record(result)?result:{}),ok:true,message:typeof result?.message==='string'?result.message:typeof result==='string'?result:'Done.',...(undo?{undo}:{})};
+    const result=await pending;
+    if(result===false||result===undefined||result===null||result?.ok===false)return typeof result==='object'&&result?result:{ok:false,message:'That action is unavailable in this workspace.'};
+    const undo=result?.undo||changed(journal);
+    return {...(record(result)?result:{}),ok:true,message:typeof result?.message==='string'?result.message:typeof result==='string'?result:'Done.',...(undo?{undo}:{})};
    }catch(error){return {ok:false,message:String(error?.message||'The action could not finish.').slice(0,1000)};}
    finally{if(pendingCommand===journal)pendingCommand=null;executorBusy=false;}
   }
   function ensurePets(){
    const P=Pets();if(!enabled('pony')||!P||!root.ReservePetArt||pets||dead)return;
-   pets=P.create({container,getPet:()=>store.get().pet,getCustomPet:selectedPet,savePet:(pet,patch,mutate)=>{const write=()=>save(data=>{data.pet=mutate?mutate(P.clean(data.pet)):{...data.pet,...(patch||pet)};});return pendingCommand&&['pet','routine','quiet'].includes(pendingCommand.intent)?command(write)():write();},info:petInfo,
-    claimNudge:async(top,snapshot,state)=>{let claimed=null;const ok=await save(data=>{const B=root.ReservePonyBrain,p=P.clean(data.pet),snap={...snapshot,skills:p.skills,now:Date.now(),focus:{...snapshot.focus,running:!!data.focus?.endsAt}};if(!B||p.nudges!=='helpful'||!B.canNudge(top,snap,p.brain,state))return;claimed=B.markNudge(p.brain,top,snap);data.pet={...p,brain:claimed};});return ok?claimed:null;},
-    claimEngineOffer:async(offer,snapshot,state)=>{let claimed=null;const ok=await save(data=>{const E=root.ReserveBiscuitEngine,B=root.ReservePonyBrain,p=P.clean(data.pet);if(dead||!E?.offer||!B?.cleanLearning)return;const brain=B.cleanLearning(p.brain),snap={...snapshot,now:Date.now(),local:data.tasks,settings:{...ctx().s,showGrades:ctx().s.showGrades===true},pet:p,skills:p.skills,reminders:p.reminders,routines:p.routines,focus:{...data.focus,running:!!data.focus?.endsAt}},current=E.offer(snap,state,{...data.toolbox?.biscuitOffers,brain});if(!current||current.id!==offer.id||brain.nudges.items.includes('biscuit:'+offer.id))return;const day=helpers().dayKey(snap.now,snap.timeZone);if(brain.nudges.day!==day){brain.nudges.day=day;brain.nudges.count=0;}brain.nudges.count++;brain.nudges.items.push('biscuit:'+offer.id);data.toolbox||={};data.toolbox.biscuitOffers={lastOffer:snap.now};data.pet={...p,brain};claimed=data.pet;});return ok===false?null:claimed;},
-    claimOffer:async(offer,snapshot,state)=>{const A=root.ReservePonyAsk;if(!A||dead)return null;return A.claimOffer(store,offer,{...snapshot,now:Date.now()},state);},actions:{checkpoint,changed,...actions}});
+   pets=P.create({container,getPet:()=>store.get().pet,getCustomPet:selectedPet,savePet:(pet,patch,mutate)=>{
+     const write=()=>save(data=>{data.pet=mutate?mutate(P.clean(data.pet)):{...data.pet,...(patch||pet)};});
+     return pendingCommand&&['pet','routine','quiet'].includes(pendingCommand.intent)?command(write)():write();
+   },info:petInfo,
+    claimNudge:async(top,snapshot,state)=>{
+      let claimed=null;
+      const ok=await save(data=>{
+        const B=root.ReservePonyBrain,p=P.clean(data.pet),snap={...snapshot,skills:p.skills,now:Date.now(),focus:{...snapshot.focus,running:!!data.focus?.endsAt}};
+        if(!B||p.nudges!=='helpful'||!B.canNudge(top,snap,p.brain,state))return;
+        claimed=B.markNudge(p.brain,top,snap);
+        data.pet={...p,brain:claimed};
+      });
+      return ok?claimed:null;
+    },
+    claimEngineOffer:async(offer,snapshot,state)=>{
+      let claimed=null;
+      const ok=await save(data=>{
+        const E=root.ReserveBiscuitEngine,B=root.ReservePonyBrain,p=P.clean(data.pet);
+        if(dead||!E?.offer||!B?.cleanLearning)return;
+        const brain=B.cleanLearning(p.brain),
+          snap={
+            ...snapshot,
+            now:Date.now(),
+            local:data.tasks,
+            settings:{...ctx().s,showGrades:ctx().s.showGrades===true},
+            pet:p,
+            skills:p.skills,
+            reminders:p.reminders,
+            routines:p.routines,
+            focus:{...data.focus,running:!!data.focus?.endsAt}
+          },
+          current=E.offer(snap,state,{...data.toolbox?.biscuitOffers,brain});
+        if(!current||current.id!==offer.id||brain.nudges.items.includes('biscuit:'+offer.id))return;
+        const day=helpers().dayKey(snap.now,snap.timeZone);
+        if(brain.nudges.day!==day){brain.nudges.day=day;brain.nudges.count=0;}
+        brain.nudges.count++;
+        brain.nudges.items.push('biscuit:'+offer.id);
+        data.toolbox||={};
+        data.toolbox.biscuitOffers={lastOffer:snap.now};
+        data.pet={...p,brain};
+        claimed=data.pet;
+      });
+      return ok===false?null:claimed;
+    },
+    claimOffer:async(offer,snapshot,state)=>{
+      const A=root.ReservePonyAsk;
+      if(!A||dead)return null;
+      return A.claimOffer(store,offer,{...snapshot,now:Date.now()},state);
+    },actions:{checkpoint,changed,...actions}});
   }
   function openItem(request={}){
-   if(request.itemId){const items=(ctx().items||[]).filter(v=>String(v.id)===String(request.itemId)&&(!request.courseId||String(v.courseId)===String(request.courseId)));if(items.length!==1)return localEntry({...request,entryId:request.itemId});if(!request.note&&livePlan().find(v=>v.id===String(items[0].id))?.done||typeof preview!=='function')return false;return opened(preview(items[0].id));}
+   if(request.itemId){
+     const items=(ctx().items||[]).filter(v=>String(v.id)===String(request.itemId)&&(!request.courseId||String(v.courseId)===String(request.courseId)));
+     if(items.length!==1)return localEntry({...request,entryId:request.itemId});
+     if(!request.note&&livePlan().find(v=>v.id===String(items[0].id))?.done||typeof preview!=='function')return false;
+     return opened(preview(items[0].id));
+   }
    if(request.courseId&&navigate)return navigateCommand(request);
    const course=on('course-hub')&&(ctx().courses||[]).find(x=>String(x.id)===String(request.courseId));if(!course)return false;
-   const button=[...container.querySelectorAll('[data-rd-action="course"]')].find(x=>String(x.dataset.id)===String(course.id));if(!selectCourse&&!button)return false;go('hub');if(selectCourse)selectCourse(String(course.id));else button.click();return true;
+   const button=[...container.querySelectorAll('[data-rd-action="course"]')].find(x=>String(x.dataset.id)===String(course.id));
+   if(!selectCourse&&!button)return false;
+   go('hub');
+   if(selectCourse)selectCourse(String(course.id));else button.click();
+   return true;
   }
   function dueWork(request={}){
    const c=ctx(),from=request.date||helpers().dayKey(Date.now(),c.s.timeZone),to=request.endDate||from;if(!validDay(from)||!validDay(to)||to<from)return false;
-   const items=openWork(request).filter(e=>e.dueDay>=from&&e.dueDay<=to),label=items.length?`Due ${from}${to!==from?` to ${to}`:''}: ${items.slice(0,4).map(e=>`${e.title}${e.course?` (${e.course})`:''}`).join('; ')}${items.length>4?`; +${items.length-4} more`:''}.`:`Nothing due ${from}${to!==from?` to ${to}`:''}.`;
+   const items=openWork(request).filter(e=>e.dueDay>=from&&e.dueDay<=to),
+     label=items.length?`Due ${from}${to!==from?` to ${to}`:''}: ${items.slice(0,4).map(e=>`${e.title}${e.course?` (${e.course})`:''}`).join('; ')}${items.length>4?`; +${items.length-4} more`:''}.`:`Nothing due ${from}${to!==from?` to ${to}`:''}.`;
    pets?.say?.(label);planner?.goto(from);go('plan');return label;
   }
-  function reminderStamp(value){if(typeof value==='number')return Number.isFinite(value)&&value>0&&value<=8640000000000000?value:null;if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,3})?)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.test(value)||!validDay(value.slice(0,10)))return null;const at=Date.parse(value);return Number.isFinite(at)&&at>0&&at<=8640000000000000?at:null;}
+  function reminderStamp(value){
+    if(typeof value==='number')return Number.isFinite(value)&&value>0&&value<=8640000000000000?value:null;
+    if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,3})?)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.test(value)||!validDay(value.slice(0,10)))return null;
+    const at=Date.parse(value);
+    return Number.isFinite(at)&&at>0&&at<=8640000000000000?at:null;
+  }
   function reminderOperation(request){
-   const {operation}=request;if(!['create','edit','reschedule','delete','cancel','undo-cancel'].includes(operation))return clarify('Choose create, edit, reschedule, delete, cancel, or Undo for a reminder.');if(operation==='undo-cancel')return undoMutation('reminder',request,['cancel','delete']);const creating=operation==='create',targetId=creating?newId():mutationId(request.targetId);if(!targetId)return clarify('Which reminder should I change?');
-   const title=request.title,hasTitle=title!==undefined,hasAt=request.at!==undefined,at=hasAt?reminderStamp(request.at):null;if(creating&&!hasTitle||hasTitle&&(typeof title!=='string'||!title.trim()||title.length>200||/[\u0000-\u001f\u007f]/.test(title)))return clarify('Choose a reminder title of 1 to 200 characters.');if((creating||operation==='reschedule')&&!hasAt||hasAt&&(at===null||at<=Date.now()))return clarify('What future date and time should the reminder use?');if(operation==='edit'&&!hasTitle&&!hasAt)return clarify('What reminder title or time should change?');if(request.courseId!==undefined&&!ctx().courses.some(row=>String(row.id)===String(request.courseId)))return clarify('Choose an existing course for this reminder.');
-   return localMutation('reminder',operation,data=>{const rows=(data.pet?.reminders||[]).filter(row=>String(row.id)===targetId),tasks=(data.customTasks||[]).filter(row=>String(row.id)===targetId);if(!creating&&rows.length!==1||tasks.length>1)return clarify('Choose one existing reminder ID.');if(creating&&(rows.length||tasks.length))return clarify('That reminder ID is already in use. Try again.');if(hasAt&&at<=Date.now())return clarify('That reminder time has passed. Choose a future time.');
-    if(creating){if((data.pet?.reminders||[]).length>=20||(data.customTasks||[]).length>=1000)return clarify('Reminders is full. Remove a reminder first.');const now=Date.now(),day=helpers().dayKey(at,ctx().s.timeZone);data.customTasks||=[];data.tasks||={};Plan().addTask({name:title,day},{courseId:request.courseId===undefined?'personal':String(request.courseId),id:targetId,nowISO:new Date(now).toISOString()})(data);data.customTasks.find(row=>row.id===targetId).dueAt=new Date(at).toISOString();data.pet={...data.pet,reminders:[...(data.pet?.reminders||[]),{id:targetId,text:title,at,createdAt:now}]};return {ok:true,targetId,after:copy(data.pet.reminders.find(v=>String(v.id)===targetId)),message:'Created the local reminder.'};}
-    const row=rows[0],task=tasks[0],original={reminder:copy(row),task:copy(task),local:copy(data.tasks?.[targetId])};if(task&&Date.parse(task.createdAt)!==row.createdAt)return clarify('The linked personal task has changed. Open this reminder to review it first.');if(request.courseId!==undefined&&task&&String(task.courseId)!==String(request.courseId))return clarify('That reminder belongs to another course. Choose its current course.');
-    if(['delete','cancel'].includes(operation)){if(operation==='delete'&&data.toolbox?.biscuitPlan?.blocks?.some(block=>block.itemId===targetId))return clarify('Remove this reminder task from its local study plan before deleting it.');data.pet.reminders=data.pet.reminders.filter(item=>item!==row);if(operation==='delete'&&task){data.customTasks=data.customTasks.filter(item=>item!==task);delete data.tasks[targetId];}return {ok:true,targetId,original,before:copy(original.reminder),message:operation==='cancel'?'Cancelled reminder delivery. Its personal task is kept.':'Deleted the selected local reminder.'};}
-    if(hasTitle){row.text=title;if(task)task.name=title;}if(hasAt){row.at=at;delete row.delivered;if(task){task.dueAt=new Date(at).toISOString();const local=localTask(data,targetId);local.plannedDate=helpers().dayKey(at,ctx().s.timeZone);if(Object.hasOwn(local,'plannedTime')){const p=root.CanvasHarnessAgentClock?.calendar?.(ctx().s.timeZone)(at);if(!p)return clarify('The account clock is unavailable. Reload Canvas.');local.plannedTime=String(Math.floor(p.minute/60)).padStart(2,'0')+':'+String(p.minute%60).padStart(2,'0');}}}return {ok:true,targetId,original,before:copy(original.reminder),after:copy(row),message:operation==='reschedule'?'Rescheduled the selected reminder.':'Saved the selected reminder.'};
+   const {operation}=request;
+   if(!['create','edit','reschedule','delete','cancel','undo-cancel'].includes(operation))return clarify('Choose create, edit, reschedule, delete, cancel, or Undo for a reminder.');
+   if(operation==='undo-cancel')return undoMutation('reminder',request,['cancel','delete']);
+   const creating=operation==='create',targetId=creating?newId():mutationId(request.targetId);
+   if(!targetId)return clarify('Which reminder should I change?');
+   const title=request.title,hasTitle=title!==undefined,hasAt=request.at!==undefined,at=hasAt?reminderStamp(request.at):null;
+   if(creating&&!hasTitle||hasTitle&&(typeof title!=='string'||!title.trim()||title.length>200||/[\u0000-\u001f\u007f]/.test(title)))return clarify('Choose a reminder title of 1 to 200 characters.');
+   if((creating||operation==='reschedule')&&!hasAt||hasAt&&(at===null||at<=Date.now()))return clarify('What future date and time should the reminder use?');
+   if(operation==='edit'&&!hasTitle&&!hasAt)return clarify('What reminder title or time should change?');
+   if(request.courseId!==undefined&&!ctx().courses.some(row=>String(row.id)===String(request.courseId)))return clarify('Choose an existing course for this reminder.');
+   return localMutation('reminder',operation,data=>{
+     const rows=(data.pet?.reminders||[]).filter(row=>String(row.id)===targetId),tasks=(data.customTasks||[]).filter(row=>String(row.id)===targetId);
+     if(!creating&&rows.length!==1||tasks.length>1)return clarify('Choose one existing reminder ID.');
+     if(creating&&(rows.length||tasks.length))return clarify('That reminder ID is already in use. Try again.');
+     if(hasAt&&at<=Date.now())return clarify('That reminder time has passed. Choose a future time.');
+    if(creating){
+      if((data.pet?.reminders||[]).length>=20||(data.customTasks||[]).length>=1000)return clarify('Reminders is full. Remove a reminder first.');
+      const now=Date.now(),day=helpers().dayKey(at,ctx().s.timeZone);
+      data.customTasks||=[];
+      data.tasks||={};
+      Plan().addTask({name:title,day},{courseId:request.courseId===undefined?'personal':String(request.courseId),id:targetId,nowISO:new Date(now).toISOString()})(data);
+      data.customTasks.find(row=>row.id===targetId).dueAt=new Date(at).toISOString();
+      data.pet={...data.pet,reminders:[...(data.pet?.reminders||[]),{id:targetId,text:title,at,createdAt:now}]};
+      return {ok:true,targetId,after:copy(data.pet.reminders.find(v=>String(v.id)===targetId)),message:'Created the local reminder.'};
+    }
+    const row=rows[0],task=tasks[0],original={reminder:copy(row),task:copy(task),local:copy(data.tasks?.[targetId])};
+    if(task&&Date.parse(task.createdAt)!==row.createdAt)return clarify('The linked personal task has changed. Open this reminder to review it first.');
+    if(request.courseId!==undefined&&task&&String(task.courseId)!==String(request.courseId))return clarify('That reminder belongs to another course. Choose its current course.');
+    if(['delete','cancel'].includes(operation)){
+      if(operation==='delete'&&data.toolbox?.biscuitPlan?.blocks?.some(block=>block.itemId===targetId))return clarify('Remove this reminder task from its local study plan before deleting it.');
+      data.pet.reminders=data.pet.reminders.filter(item=>item!==row);
+      if(operation==='delete'&&task){data.customTasks=data.customTasks.filter(item=>item!==task);delete data.tasks[targetId];}
+      return {ok:true,targetId,original,before:copy(original.reminder),message:operation==='cancel'?'Cancelled reminder delivery. Its personal task is kept.':'Deleted the selected local reminder.'};
+    }
+    if(hasTitle){row.text=title;if(task)task.name=title;}
+    if(hasAt){
+      row.at=at;
+      delete row.delivered;
+      if(task){
+        task.dueAt=new Date(at).toISOString();
+        const local=localTask(data,targetId);
+        local.plannedDate=helpers().dayKey(at,ctx().s.timeZone);
+        if(Object.hasOwn(local,'plannedTime')){
+          const p=root.CanvasHarnessAgentClock?.calendar?.(ctx().s.timeZone)(at);
+          if(!p)return clarify('The account clock is unavailable. Reload Canvas.');
+          local.plannedTime=String(Math.floor(p.minute/60)).padStart(2,'0')+':'+String(p.minute%60).padStart(2,'0');
+        }
+      }
+    }
+    return {ok:true,targetId,original,before:copy(original.reminder),after:copy(row),message:operation==='reschedule'?'Rescheduled the selected reminder.':'Saved the selected reminder.'};
    });
   }
   function addReminder(request={}){
    if(request.operation!==undefined)return on('planner')?reminderOperation(request):unavailable('Reminders');
    const title=String(request.title||request.text||'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,200),c=ctx(),now=Date.now();let at=request.at;
-   if(at===undefined){const m=String(request.time||'').match(/^(\d{1,2}):(\d{2})$/);if(!validDay(request.date)||!m||Number(m[1])>23||Number(m[2])>59)return false;at=root.ReservePonyAsk?.wall(request.date,Number(m[1])*60+Number(m[2]),c.s.timeZone,now);}
+   if(at===undefined){
+     const m=String(request.time||'').match(/^(\d{1,2}):(\d{2})$/);
+     if(!validDay(request.date)||!m||Number(m[1])>23||Number(m[2])>59)return false;
+     at=root.ReservePonyAsk?.wall(request.date,Number(m[1])*60+Number(m[2]),c.s.timeZone,now);
+   }
    else if(typeof at==='string')at=reminderStamp(at);
    if(!title||!Number.isFinite(at)||at<=now||at>8640000000000000||request.courseId&&!c.courses.some(x=>String(x.id)===String(request.courseId)))return false;
    const id=newId(),day=helpers().dayKey(at,c.s.timeZone),dueAt=new Date(at).toISOString(),createdAt=new Date(now).toISOString();let added=false;
-   return save(data=>{if((data.pet?.reminders||[]).length>=20||at<=Date.now())return;data.customTasks=data.customTasks||[];data.tasks=data.tasks||{};Plan().addTask({name:title,day},{courseId:request.courseId?String(request.courseId):'personal',id,nowISO:createdAt})(data);data.customTasks.find(x=>x.id===id).dueAt=dueAt;data.pet={...data.pet,reminders:[...(data.pet?.reminders||[]),{id,text:title,at,createdAt:now}]};added=true;}).then(ok=>ok&&added);
+   return save(data=>{
+     if((data.pet?.reminders||[]).length>=20||at<=Date.now())return;
+     data.customTasks=data.customTasks||[];
+     data.tasks=data.tasks||{};
+     Plan().addTask({name:title,day},{courseId:request.courseId?String(request.courseId):'personal',id,nowISO:createdAt})(data);
+     data.customTasks.find(x=>x.id===id).dueAt=dueAt;
+     data.pet={...data.pet,reminders:[...(data.pet?.reminders||[]),{id,text:title,at,createdAt:now}]};
+     added=true;
+   }).then(ok=>ok&&added);
   }
-  const freshFocus=(focus,minutes,now)=>{if(root.ReserveCore?.resetFocus)return root.ReserveCore.resetFocus(focus,minutes,now);const next={...focus,minutes,remaining:minutes*60,elapsed:0,pausedAt:0,stoppedAt:0,endsAt:now+minutes*60000,completedAt:0,completedMinutes:0,breakUntil:0};for(const key of ['phase','focusMinutes','breakMinutes','cycles','cycle'])delete next[key];return next;};
+  const freshFocus=(focus,minutes,now)=>{
+    if(root.ReserveCore?.resetFocus)return root.ReserveCore.resetFocus(focus,minutes,now);
+    const next={...focus,minutes,remaining:minutes*60,elapsed:0,pausedAt:0,stoppedAt:0,endsAt:now+minutes*60000,completedAt:0,completedMinutes:0,breakUntil:0};
+    for(const key of ['phase','focusMinutes','breakMinutes','cycles','cycle'])delete next[key];
+    return next;
+  };
   function afterFocus(ok){if(ok){startTick();sync();tick();}return ok;}
   function settleTimer(){
-   if(focusSettlement)return focusSettlement;const f=store.get().focus,C=root.ReserveCore;if(!f?.endsAt||Date.now()<f.endsAt||!C?.settleFocus)return Promise.resolve(true);
-   const write=commandSave();let completed=false,ended=0;focusSettlement=Promise.resolve().then(()=>write(data=>{ended=data.focus?.endsAt||0;completed=C.settleFocus(data,Date.now());})).then(ok=>{if(ok&&completed&&Date.now()-ended<60000)finished('focus');if(ok&&!dead){sync();tick();}return ok;}).finally(()=>{focusSettlement=null;});return focusSettlement;
+   if(focusSettlement)return focusSettlement;
+   const f=store.get().focus,C=root.ReserveCore;
+   if(!f?.endsAt||Date.now()<f.endsAt||!C?.settleFocus)return Promise.resolve(true);
+   const write=commandSave();
+   let completed=false,ended=0;
+   focusSettlement=Promise.resolve().then(()=>write(data=>{ended=data.focus?.endsAt||0;completed=C.settleFocus(data,Date.now());})).then(ok=>{
+     if(ok&&completed&&Date.now()-ended<60000)finished('focus');
+     if(ok&&!dead){sync();tick();}
+     return ok;
+   }).finally(()=>{
+     focusSettlement=null;
+   });
+   return focusSettlement;
   }
-  function focusStatus(){return settleTimer().then(ok=>{if(!ok)return false;const f=focusState(store.get().focus,Date.now());return f.active?`${f.phase==='break'?'Break':'Focus'} timer${f.paused?' paused':''}: ${mmss(f.left)} remaining.`:'No active timer.';});}
-  function startFocus(){if(focusState(store.get().focus,Date.now()).paused)return focusControl({action:'resume'});let started=false;return save(data=>{const f=focusState(data.focus,Date.now());if(f.running)return;data.focus={...freshFocus(data.focus,data.focus?.focusMinutes||f.minutes,Date.now()),fromPony:false};started=true;}).then(ok=>afterFocus(ok&&started));}
+  function focusStatus(){
+    return settleTimer().then(ok=>{
+      if(!ok)return false;
+      const f=focusState(store.get().focus,Date.now());
+      return f.active?`${f.phase==='break'?'Break':'Focus'} timer${f.paused?' paused':''}: ${mmss(f.left)} remaining.`:'No active timer.';
+    });
+  }
+  function startFocus(){
+    if(focusState(store.get().focus,Date.now()).paused)return focusControl({action:'resume'});
+    let started=false;
+    return save(data=>{
+      const f=focusState(data.focus,Date.now());
+      if(f.running)return;
+      data.focus={...freshFocus(data.focus,data.focus?.focusMinutes||f.minutes,Date.now()),fromPony:false};
+      started=true;
+    }).then(ok=>afterFocus(ok&&started));
+  }
   function startPonyFocus(item={}){
-   const minutes=duration(item.minutes,25),cycles=item.cycles===undefined?1:item.cycles,breakMinutes=item.breakMinutes===undefined?0:item.breakMinutes,blocked=f=>f?.endsAt&&!(f.phase==='break'&&!f.cycles),span=(minutes+breakMinutes)*cycles*60000;
-   if(item.mode!==undefined&&!['focus','work'].includes(item.mode)||!minutes||!Number.isInteger(cycles)||cycles<1||cycles>1000||!Number.isFinite(breakMinutes)||breakMinutes<0||!Number.isFinite(span)||Date.now()+span>8640000000000000||blocked(store.get().focus))return false;let started=false;
-   return save(data=>{const now=Date.now(),course=item.courseId&&ctx().courses.find(x=>String(x.id)===String(item.courseId)),work=item.itemId||item.courseId?openWork(item,data)[0]:null;if(blocked(data.focus)||now+span>8640000000000000||item.courseId&&!course||!work&&!(course&&!item.itemId||item.explicit&&!item.itemId&&!item.courseId))return;started=true;data.focus={...freshFocus(data.focus,minutes,now),...(cycles>1||breakMinutes>0?{phase:'focus',focusMinutes:minutes,breakMinutes,cycles,cycle:1}:{}),itemId:work?.id||null,courseId:work?.courseId||(course?String(course.id):null),fromPony:true};}).then(ok=>afterFocus(ok&&started));
+   const minutes=duration(item.minutes,25),
+     cycles=item.cycles===undefined?1:item.cycles,
+     breakMinutes=item.breakMinutes===undefined?0:item.breakMinutes,
+     blocked=f=>f?.endsAt&&!(f.phase==='break'&&!f.cycles),
+     span=(minutes+breakMinutes)*cycles*60000;
+   if(item.mode!==undefined&&!['focus','work'].includes(item.mode)||
+     !minutes||
+     !Number.isInteger(cycles)||
+     cycles<1||
+     cycles>1000||
+     !Number.isFinite(breakMinutes)||
+     breakMinutes<0||
+     !Number.isFinite(span)||
+     Date.now()+span>8640000000000000||
+     blocked(store.get().focus))
+     return false;
+   let started=false;
+   return save(data=>{
+     const now=Date.now(),
+       course=item.courseId&&ctx().courses.find(x=>String(x.id)===String(item.courseId)),
+       work=item.itemId||item.courseId?openWork(item,data)[0]:null;
+     if(blocked(data.focus)||now+span>8640000000000000||item.courseId&&!course||!work&&!(course&&!item.itemId||item.explicit&&!item.itemId&&!item.courseId))return;
+     started=true;
+     data.focus={
+       ...freshFocus(data.focus,minutes,now),
+       ...(cycles>1||breakMinutes>0?{phase:'focus',focusMinutes:minutes,breakMinutes,cycles,cycle:1}:{}),
+       itemId:work?.id||null,
+       courseId:work?.courseId||(course?String(course.id):null),
+       fromPony:true
+     };
+   }).then(ok=>afterFocus(ok&&started));
   }
   async function focusOperation(request){
-   const {action}=request;if(request.mode!==undefined&&!['break','focus','work'].includes(request.mode))return clarify('Choose the focus timer or break timer.');if(request.autostart!==undefined&&request.autostart!==false)return clarify('Use pause or resume to start or pause an existing timer.');if(action==='set-remaining'&&!duration(request.minutes)||action==='reset'&&request.minutes!==undefined&&!duration(request.minutes))return clarify('How many positive minutes should the timer use?');let changed=false,failure='';
-   try{const saved=await save(data=>{const now=Date.now(),focus=data.focus||{},f=focusState(focus,now),phase=request.mode==='break'?'break':request.mode?'focus':f.phase;if(action==='set-remaining'&&f.active&&phase!==f.phase){failure='The active timer is '+(f.phase==='break'?'a break':'focus work')+'. Pause or stop it before changing phases.';return;}const minutes=action==='reset'?request.minutes??(phase==='break'?focus.breakMinutes||f.minutes:focus.focusMinutes||f.minutes):request.minutes,total=action==='reset'?minutes*60:(f.active?f.elapsed:0)+minutes*60;if(!Number.isFinite(total)||!Number.isFinite(now+total*1000)||now+total*1000>8640000000000000){failure='Choose a finite duration that the local timer can store.';return;}
-    let next;if(action==='reset'){next={...freshFocus(focus,minutes,now),endsAt:null,pausedAt:0,stoppedAt:now,completedAt:0,completedMinutes:0,breakUntil:0};if(phase==='break')next.phase='break';}else{const running=f.running&&request.autostart!==false,base=f.active?focus:freshFocus(focus,minutes,now);next={...base,minutes:total/60,remaining:minutes*60,elapsed:f.active?f.elapsed:0,endsAt:running?now+minutes*60000:null,pausedAt:running?0:now,stoppedAt:0,completedAt:0,completedMinutes:0,breakUntil:phase==='break'&&running?now+minutes*60000:0};if(phase==='break')next.phase='break';else if(focus.phase)next.phase='focus';}data.focus=next;changed=true;});if(saved===false)return clarify('The timer could not save. Try again.');}catch{return clarify('The timer could not save. Your saved timer is kept.');}if(!changed)return clarify(failure||'Choose an existing timer to change.');afterFocus(true);return {ok:true,message:action==='reset'?'Reset the timer. It is stopped and the work remains incomplete.':'Set the timer remaining time.'};
+   const {action}=request;
+   if(request.mode!==undefined&&!['break','focus','work'].includes(request.mode))return clarify('Choose the focus timer or break timer.');
+   if(request.autostart!==undefined&&request.autostart!==false)return clarify('Use pause or resume to start or pause an existing timer.');
+   if(action==='set-remaining'&&!duration(request.minutes)||action==='reset'&&request.minutes!==undefined&&!duration(request.minutes))return clarify('How many positive minutes should the timer use?');
+   let changed=false,failure='';
+   try{
+     const saved=await save(data=>{
+       const now=Date.now(),focus=data.focus||{},f=focusState(focus,now),phase=request.mode==='break'?'break':request.mode?'focus':f.phase;
+       if(action==='set-remaining'&&f.active&&phase!==f.phase){failure='The active timer is '+(f.phase==='break'?'a break':'focus work')+'. Pause or stop it before changing phases.';return;}
+       const minutes=action==='reset'?request.minutes??(phase==='break'?focus.breakMinutes||f.minutes:focus.focusMinutes||f.minutes):request.minutes,
+         total=action==='reset'?minutes*60:(f.active?f.elapsed:0)+minutes*60;
+       if(!Number.isFinite(total)||!Number.isFinite(now+total*1000)||now+total*1000>8640000000000000){failure='Choose a finite duration that the local timer can store.';return;}
+    let next;
+    if(action==='reset'){next={...freshFocus(focus,minutes,now),endsAt:null,pausedAt:0,stoppedAt:now,completedAt:0,completedMinutes:0,breakUntil:0};if(phase==='break')next.phase='break';}
+    else{
+      const running=f.running&&request.autostart!==false,base=f.active?focus:freshFocus(focus,minutes,now);
+      next={
+        ...base,
+        minutes:total/60,
+        remaining:minutes*60,
+        elapsed:f.active?f.elapsed:0,
+        endsAt:running?now+minutes*60000:null,
+        pausedAt:running?0:now,
+        stoppedAt:0,
+        completedAt:0,
+        completedMinutes:0,
+        breakUntil:phase==='break'&&running?now+minutes*60000:0
+      };
+      if(phase==='break')next.phase='break';else if(focus.phase)next.phase='focus';
+    }
+    data.focus=next;
+    changed=true;
+     });
+    if(saved===false)return clarify('The timer could not save. Try again.');
+   }catch{return clarify('The timer could not save. Your saved timer is kept.');}
+    if(!changed)return clarify(failure||'Choose an existing timer to change.');
+    afterFocus(true);
+    return {ok:true,message:action==='reset'?'Reset the timer. It is stopped and the work remains incomplete.':'Set the timer remaining time.'};
   }
   function focusControl(request={}){
    if(['set-remaining','reset'].includes(request.action))return focusOperation(request);
    if(!['pause','resume','stop','adjust'].includes(request.action)||request.action==='adjust'&&!Number.isFinite(request.minutes))return false;let changed=false,completed=false,ended=0;
-   return save(data=>{const now=Date.now();ended=data.focus?.endsAt||0;completed=root.ReserveCore?.settleFocus?.(data,now)===true;const f=focusState(data.focus,now);if(!f.active||f.left<=0||request.action==='pause'&&!f.running||request.action==='resume'&&!f.paused)return;
+   return save(data=>{
+     const now=Date.now();
+     ended=data.focus?.endsAt||0;
+     completed=root.ReserveCore?.settleFocus?.(data,now)===true;
+     const f=focusState(data.focus,now);
+     if(!f.active||f.left<=0||request.action==='pause'&&!f.running||request.action==='resume'&&!f.paused)return;
     const next={...data.focus,remaining:f.left,elapsed:f.elapsed};
     if(request.action==='pause'){next.endsAt=null;next.pausedAt=now;}
     if(request.action==='resume'){next.endsAt=now+f.left*1000;next.pausedAt=0;}
     if(request.action==='stop')Object.assign(next,{endsAt:null,pausedAt:0,stoppedAt:now,completedAt:0,completedMinutes:0,breakUntil:0});
-    if(request.action==='adjust'){const left=Math.max(60,f.left+request.minutes*60);if(!Number.isFinite(left)||now+left*1000>8640000000000000)return;Object.assign(next,{remaining:left,minutes:(f.elapsed+left)/60,endsAt:f.running?now+left*1000:null});}
+    if(request.action==='adjust'){
+      const left=Math.max(60,f.left+request.minutes*60);
+      if(!Number.isFinite(left)||now+left*1000>8640000000000000)return;
+      Object.assign(next,{remaining:left,minutes:(f.elapsed+left)/60,endsAt:f.running?now+left*1000:null});
+    }
     if(next.phase==='break')next.breakUntil=next.endsAt||0;
     data.focus=next;changed=true;
    }).then(ok=>{if(ok&&completed&&Date.now()-ended<60000)finished('focus');afterFocus(ok&&(changed||completed));return ok&&changed;});
   }
-  function startBreak(request={}){let started=false;const minutes=duration(request.minutes,5);if(request.mode!==undefined&&request.mode!=='break'||!minutes||Date.now()+minutes*60000>8640000000000000)return false;return save(data=>{const f=data.focus||{},now=Date.now(),completed=f.completedAt;if(focusState(f,now).active||f.breakUntil>now||request.stretch&&data.pet?.skills?.wellbeing===false||!request.explicit&&(request.sessionId!==completed||!Number.isFinite(completed)||completed<=0||completed>now||now-completed>3600000||(f.completedMinutes??f.minutes)<25))return;started=true;data.focus={...freshFocus(f,minutes,now),phase:'break',breakUntil:now+minutes*60000,fromPony:true};}).then(ok=>afterFocus(ok&&started));}
+  function startBreak(request={}){
+    let started=false;
+    const minutes=duration(request.minutes,5);
+    if(request.mode!==undefined&&request.mode!=='break'||!minutes||Date.now()+minutes*60000>8640000000000000)return false;
+    return save(data=>{
+      const f=data.focus||{},now=Date.now(),completed=f.completedAt;
+      if(focusState(f,now).active||
+        f.breakUntil>now||
+        request.stretch&&data.pet?.skills?.wellbeing===false||
+        !request.explicit&&(request.sessionId!==completed||!Number.isFinite(completed)||completed<=0||completed>now||now-completed>3600000||(f.completedMinutes??f.minutes)<25))
+        return;
+      started=true;
+      data.focus={...freshFocus(f,minutes,now),phase:'break',breakUntil:now+minutes*60000,fromPony:true};
+    }).then(ok=>afterFocus(ok&&started));
+  }
   function planRange(request,data){
-   const start=request.date,end=request.endDate||start,count=Math.round((Date.parse(end+'T00:00:00Z')-Date.parse(start+'T00:00:00Z'))/86400000)+1,days=Array.from({length:count},(_,i)=>Plan().addDays(start,i)),entries=livePlan(data),loads=new Map(days.map(day=>[day,entries.filter(e=>!e.done&&e.planned===day).reduce((n,e)=>n+(e.estimate||25),0)])),chosen=request.items?new Set(request.items.map(e=>String(e.id))):null,items=[];
-   for(const e of entries.filter(e=>!e.done&&!e.planned&&(!request.courseId||e.courseId===String(request.courseId))&&(!request.itemId||e.id===String(request.itemId))&&(!chosen||chosen.has(e.id))&&(!e.dueDay||e.dueDay>=start)).sort((a,b)=>(Date.parse(a.dueAt)||Infinity)-(Date.parse(b.dueAt)||Infinity))){const eligible=days.filter(day=>!e.dueDay||day<=e.dueDay).sort((a,b)=>loads.get(a)-loads.get(b)||a.localeCompare(b));if(!eligible.length)continue;const day=eligible[0],estimate=request.minutes??(e.estimate||25);items.push({id:e.id,day,estimate});loads.set(day,loads.get(day)+estimate);}
+   const start=request.date,
+     end=request.endDate||start,
+     count=Math.round((Date.parse(end+'T00:00:00Z')-Date.parse(start+'T00:00:00Z'))/86400000)+1,
+     days=Array.from({length:count},(_,i)=>Plan().addDays(start,i)),
+     entries=livePlan(data),
+     loads=new Map(days.map(day=>[day,entries.filter(e=>!e.done&&e.planned===day).reduce((n,e)=>n+(e.estimate||25),0)])),
+     chosen=request.items?new Set(request.items.map(e=>String(e.id))):null,
+     items=[];
+   for(const e of entries.filter(e=>
+     !e.done&&
+       !e.planned&&
+       (!request.courseId||e.courseId===String(request.courseId))&&
+       (!request.itemId||e.id===String(request.itemId))&&
+       (!chosen||chosen.has(e.id))&&
+       (!e.dueDay||e.dueDay>=start)).sort((a,b)=>
+     (Date.parse(a.dueAt)||Infinity)-(Date.parse(b.dueAt)||Infinity))){
+     const eligible=days.filter(day=>!e.dueDay||day<=e.dueDay).sort((a,b)=>loads.get(a)-loads.get(b)||a.localeCompare(b));
+     if(!eligible.length)continue;
+     const day=eligible[0],estimate=request.minutes??(e.estimate||25);
+     items.push({id:e.id,day,estimate});
+     loads.set(day,loads.get(day)+estimate);
+   }
    return {day:start,items};
   }
   function planTonight(request={}){
-   const c=ctx(),h=helpers(),{list,today}=plan(c,h),A=root.ReservePonyAsk,range=request.date!==undefined||request.endDate!==undefined,scoped=!!(request.courseId||request.itemId),mode=request.mode||(!request.day&&(scoped||request.minutes!==undefined)?'tonight':'');
-   if(request.minutes!==undefined&&(!duration(request.minutes)||request.minutes>1440)||request.courseId&&!c.courses.some(x=>String(x.id)===String(request.courseId))||range&&(!validDay(request.date)||!validDay(request.endDate||request.date)||(request.endDate||request.date)<request.date||Date.parse(request.endDate||request.date)-Date.parse(request.date)>365*86400000)||!range&&(!mode&&request.day!==today||mode&&!['tonight','tomorrow','week'].includes(mode)))return false;
+   const c=ctx(),
+     h=helpers(),
+     {list,today}=plan(c,h),
+     A=root.ReservePonyAsk,
+     range=request.date!==undefined||request.endDate!==undefined,
+     scoped=!!(request.courseId||request.itemId),
+     mode=request.mode||(!request.day&&(scoped||request.minutes!==undefined)?'tonight':'');
+   if(request.minutes!==undefined&&(!duration(request.minutes)||request.minutes>1440)||
+     request.courseId&&!c.courses.some(x=>String(x.id)===String(request.courseId))||
+     range&&
+       (!validDay(request.date)||
+         !validDay(request.endDate||request.date)||
+         (request.endDate||request.date)<request.date||
+         Date.parse(request.endDate||request.date)-Date.parse(request.date)>365*86400000)||
+     !range&&(!mode&&request.day!==today||mode&&!['tonight','tomorrow','week'].includes(mode)))
+     return false;
    if(request.at!==undefined&&(typeof request.at!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(request.at)))return false;
    const title=typeof request.title==='string'?request.title.replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,200):'';
    if(!scoped&&title){
     const day=request.date||(mode==='tomorrow'?Plan().addDays(today,1):today),id=newId();let added=false;
-    return save(data=>{if((data.customTasks||[]).length>=1000)return;data.customTasks??=[];data.tasks??={};Plan().addTask({name:title,day,estimate:request.minutes??25,...(request.at?{at:request.at}:{})},{id,nowISO:new Date().toISOString()})(data);added=true;}).then(ok=>{if(ok&&added){planner?.goto(day);go('plan');}return ok&&added;});
+    return save(data=>{
+      if((data.customTasks||[]).length>=1000)return;
+      data.customTasks??=[];
+      data.tasks??={};
+      Plan().addTask({name:title,day,estimate:request.minutes??25,...(request.at?{at:request.at}:{})},{id,nowISO:new Date().toISOString()})(data);
+      added=true;
+    }).then(ok=>{
+      if(ok&&added){planner?.goto(day);go('plan');}
+      return ok&&added;
+    });
    }
-   const matches=e=>(!request.courseId||e.courseId===String(request.courseId))&&(!request.itemId||e.id===String(request.itemId)),available=new Map(list.filter(e=>!e.done&&!e.planned&&matches(e)).map(e=>[e.id,e])),items=(request.items||[]).filter(e=>available.has(String(e.id)));if(!range&&!mode&&!items.length||scoped&&!available.size)return false;let planned=false,day=request.date||request.day;
-   return save(data=>{const entries=livePlan(data),start=mode==='tomorrow'?Plan().addDays(today,1):today,fresh=range?planRange(request,data):mode&&scoped?planRange({...request,date:start,endDate:mode==='week'?Plan().addDays(start,6):start},data):mode&&A?A.buildPlan(mode,{now:Date.now(),timeZone:c.s.timeZone,assignments:entries.filter(matches).map(e=>request.minutes===undefined?e:{...e,estimate:request.minutes})}):{day:today,items};day=fresh.day;for(const item of fresh.items){const id=String(item.id);if(data.tasks[id]?.checkedOff||data.tasks[id]?.plannedDate||!entries.some(e=>e.id===id&&!e.done&&!e.planned&&matches(e)))continue;Plan().plan(id,item.day||day)(data);if(request.at)data.tasks[id].plannedTime=request.at;if(request.minutes!==undefined)data.tasks[id].estimate=request.minutes;else if(!data.tasks[id].estimate&&Number.isFinite(item.estimate))Plan().estimate(id,item.estimate)(data);planned=true;}}).then(ok=>{if(ok){planner?.goto(day);go('plan');}return ok&&(planned||!scoped&&(!!mode||range));});
+   const matches=e=>(!request.courseId||e.courseId===String(request.courseId))&&(!request.itemId||e.id===String(request.itemId)),
+     available=new Map(list.filter(e=>!e.done&&!e.planned&&matches(e)).map(e=>[e.id,e])),
+     items=(request.items||[]).filter(e=>available.has(String(e.id)));
+   if(!range&&!mode&&!items.length||scoped&&!available.size)return false;
+   let planned=false,day=request.date||request.day;
+   return save(data=>{
+     const entries=livePlan(data),
+       start=mode==='tomorrow'?Plan().addDays(today,1):today,
+       fresh=range?
+         planRange(request,data):
+         mode&&scoped?
+           planRange({...request,date:start,endDate:mode==='week'?Plan().addDays(start,6):start},data):
+           mode&&A?
+             A.buildPlan(mode,{
+               now:Date.now(),
+               timeZone:c.s.timeZone,
+               assignments:entries.filter(matches).map(e=>request.minutes===undefined?e:{...e,estimate:request.minutes})
+             }):
+             {day:today,items};
+     day=fresh.day;
+     for(const item of fresh.items){
+       const id=String(item.id);
+       if(data.tasks[id]?.checkedOff||data.tasks[id]?.plannedDate||!entries.some(e=>e.id===id&&!e.done&&!e.planned&&matches(e)))continue;
+       Plan().plan(id,item.day||day)(data);
+       if(request.at)data.tasks[id].plannedTime=request.at;
+       if(request.minutes!==undefined)
+         data.tasks[id].estimate=request.minutes;
+       else if(!data.tasks[id].estimate&&Number.isFinite(item.estimate))Plan().estimate(id,item.estimate)(data);
+       planned=true;
+     }
+   }).then(ok=>{
+     if(ok){planner?.goto(day);go('plan');}
+     return ok&&(planned||!scoped&&(!!mode||range));
+   });
   }
   function focusControls(){
    const f=focusState(store.get().focus,Date.now()),doc=container.ownerDocument;
    for(let node of container.querySelectorAll('[data-rd-focus-clock]')){
-    if(node.tagName!=='BUTTON'&&doc?.createElement&&node.replaceWith){const button=doc.createElement('button');button.className='rd-focus-clock rd-text-button';button.type='button';button.dataset.rdFocusClock='';button.textContent=node.textContent;button.hidden=node.hidden;node.replaceWith(button);node=button;}
+    if(node.tagName!=='BUTTON'&&doc?.createElement&&node.replaceWith){
+      const button=doc.createElement('button');
+      button.className='rd-focus-clock rd-text-button';
+      button.type='button';
+      button.dataset.rdFocusClock='';
+      button.textContent=node.textContent;
+      button.hidden=node.hidden;
+      node.replaceWith(button);
+      node=button;
+    }
     const label=f.phase==='break'?'break':'focus';node.disabled=!f.active;node.setAttribute?.('aria-label',f.running?`Pause ${label} timer`:f.paused?`Resume ${label} timer`:'Focus timer');
     if(f.active){node.textContent=mmss(f.left);node.hidden=false;}else if(node.textContent!=='Done')node.hidden=true;
     node.parentElement?.setAttribute?.('aria-label',f.running?`Planner, ${label} session running`:f.paused?`Planner, ${label} session paused`:'Planner');
     let controls=node.parentElement?.querySelector?.('[data-rd-focus-controls]');
-    if(!controls&&doc?.createElement&&node.after){controls=doc.createElement('small');controls.className='biscuit-focus-controls';controls.dataset.rdFocusControls='';for(const [action,text,minutes] of [['pause','Pause'],['stop','Stop'],['adjust','-5',-5],['adjust','+5',5]]){const button=doc.createElement('button');button.type='button';button.className='rd-text-button biscuit-focus-control';button.dataset.rdAction='focus-control';button.dataset.focusAction=action;if(minutes!==undefined)button.dataset.minutes=String(minutes);button.textContent=text;controls.append(button);}node.after(controls);}
-    if(controls){controls.hidden=!f.active;for(const button of controls.querySelectorAll('[data-rd-action="focus-control"]')){if(['pause','resume'].includes(button.dataset.focusAction)){button.dataset.focusAction=f.running?'pause':'resume';button.textContent=f.running?'Pause':'Resume';}button.disabled=!f.active;button.setAttribute('aria-label',button.dataset.focusAction==='adjust'?`${Number(button.dataset.minutes)<0?'Remove':'Add'} 5 minutes`:`${button.textContent} ${label} timer`);}}
+    if(!controls&&doc?.createElement&&node.after){
+      controls=doc.createElement('small');
+      controls.className='biscuit-focus-controls';
+      controls.dataset.rdFocusControls='';
+      for(const [action,text,minutes] of [['pause','Pause'],['stop','Stop'],['adjust','-5',-5],['adjust','+5',5]]){
+        const button=doc.createElement('button');
+        button.type='button';
+        button.className='rd-text-button biscuit-focus-control';
+        button.dataset.rdAction='focus-control';
+        button.dataset.focusAction=action;
+        if(minutes!==undefined)button.dataset.minutes=String(minutes);
+        button.textContent=text;
+        controls.append(button);
+      }
+      node.after(controls);
+    }
+    if(controls){
+      controls.hidden=!f.active;
+      for(const button of controls.querySelectorAll('[data-rd-action="focus-control"]')){
+        if(['pause','resume'].includes(button.dataset.focusAction)){button.dataset.focusAction=f.running?'pause':'resume';button.textContent=f.running?'Pause':'Resume';}
+        button.disabled=!f.active;
+        button.setAttribute('aria-label',button.dataset.focusAction==='adjust'?`${Number(button.dataset.minutes)<0?'Remove':'Add'} 5 minutes`:`${button.textContent} ${label} timer`);
+      }
+    }
    }
   }
   function focusClick(event){
    const target=event.composedPath?.()[0]||event.target,clock=target?.closest?.('[data-rd-focus-clock]'),button=target?.closest?.('[data-rd-action]');
    if(clock?.dataset?.rdFocusClock===undefined&&button?.dataset?.rdAction!=='focus-control')return false;
    event.preventDefault?.();event.stopPropagation?.();if(dead||clock?.disabled||button?.disabled)return true;
-   const request=clock?.dataset?.rdFocusClock!==undefined?{action:focusState(store.get().focus,Date.now()).running?'pause':'resume'}:{action:button.dataset.focusAction,minutes:Number(button.dataset.minutes)};focusControl(request);return true;
+   const request=clock?.dataset?.rdFocusClock!==undefined?
+     {action:focusState(store.get().focus,Date.now()).running?'pause':'resume'}:
+     {action:button.dataset.focusAction,minutes:Number(button.dataset.minutes)};
+   focusControl(request);
+   return true;
   }
   // The dial and the clock move between renders without one.
   function tick(){
@@ -520,7 +1810,8 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    if(dead)return;
    const data=store.get(),running=!!data.focus?.endsAt;
    if(running&&!timerTick)timerTick=setInterval(tick,1000);
-   if(container.querySelector('[data-rd-clock]')){if(!clockTimer)clockTimer=setInterval(clock,15000);}else if(clockTimer){clearInterval(clockTimer);clockTimer=0;}
+   // The countdown ticks here too: the dashboard no longer redraws Home every minute (dashboard.js updateFreshness).
+   if(container.querySelector('[data-rd-clock],[data-rd-countdown]')){if(!clockTimer)clockTimer=setInterval(clock,15000);}else if(clockTimer){clearInterval(clockTimer);clockTimer=0;}
    room?.sync();hydratePet();ensurePets();pets?.sync();pets?.setFocus(running,data.focus);focusControls();
    if(data.focus?.phase&&running&&Date.now()>=data.focus.endsAt)void settleTimer().catch(()=>{});
    // Dashboard syncFocus follows sync in the same render. Restore a paused clock after its running-only update.
@@ -533,7 +1824,10 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    const course=Plan().matchCourse(parsed.course,c.courses);
    input.value='';
    const ok=await save(Plan().addTask(parsed,{courseId:course?course.id:'personal',id:newId(),nowISO:new Date().toISOString()}));
-   if(ok){pets?.celebrate&&store.get().pet&&save(data=>{data.pet=Pets().reward(Pets().clean(data.pet),'plan').pet;});container.querySelector(`[data-rd-field="plan-quick"][data-day="${input.dataset.day||''}"]`)?.focus({preventScroll:true});}
+   if(ok){
+     pets?.celebrate&&store.get().pet&&save(data=>{data.pet=Pets().reward(Pets().clean(data.pet),'plan').pet;});
+     container.querySelector(`[data-rd-field="plan-quick"][data-day="${input.dataset.day||''}"]`)?.focus({preventScroll:true});
+   }
    else input.value=text;
   }
   function click(event){
@@ -541,13 +1835,23 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    if(room?.click(event))return true;
    if(focusClick(event))return true;
    const candidate=event.target.closest?.('[data-rd-action]'),name=candidate?.dataset.rdAction;
-   if(name?.startsWith('pet-')&&(!enabled('pony')||!Pets())||['customize-tab','pet-settings','board-frame'].includes(name)&&!enabled('customization')||['module-menu','module-size','module-dock'].includes(name)&&!enabled('arrange')||candidate?.dataset.widget&&!available(candidate.dataset.widget))return true;
+   if(name?.startsWith('pet-')&&(!enabled('pony')||!Pets())||
+     ['customize-tab','pet-settings','board-frame'].includes(name)&&!enabled('customization')||
+     ['module-menu','module-size','module-dock'].includes(name)&&!enabled('arrange')||
+     candidate?.dataset.widget&&!available(candidate.dataset.widget))
+     return true;
    if(planner?.click(event))return true;
    const button=event.target.closest?.('[data-rd-action]');if(!button||dead)return false;
    const action=button.dataset.rdAction,key=button.dataset.widget,A=Arrange();
    if(action==='hidden-courses'){settingsTab='courses';return false;}
    if(action==='plan-open'){planner?.goto(button.dataset.day);go('plan');return true;}
-    if(action==='customize-tab'){settingsTab=button.dataset.value==='art'?'courses':button.dataset.value==='all'?'look':button.dataset.value||'look';if(settingsTab==='pet'&&!enabled('pony'))settingsTab='look';rerender();container.querySelector('.cz-tab[aria-selected="true"]')?.focus({preventScroll:true});return true;}
+    if(action==='customize-tab'){
+      settingsTab=button.dataset.value==='art'?'courses':button.dataset.value==='all'?'look':button.dataset.value||'look';
+      if(settingsTab==='pet'&&!enabled('pony'))settingsTab='look';
+      rerender();
+      container.querySelector('.cz-tab[aria-selected="true"]')?.focus({preventScroll:true});
+      return true;
+    }
    if(action==='board-edit'&&button.dataset.from==='settings'){editing=true;closeSettings();go('work');rerender();container.querySelector('.rd-gallery')?.scrollIntoView({block:'nearest'});return true;}
    if(action==='board-edit'){editing=!editing;rerender();if(!editing)container.querySelector('[data-rd-action="board-edit"]')?.focus({preventScroll:true});return true;}
    if(action==='board-frame'){save(data=>{data.settings.panelFrame=button.dataset.value;});return true;}
@@ -556,11 +1860,18 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
     const size=button.dataset.value;closeMenu(true);
     save(data=>{const sizes={...(data.settings.moduleSize||{})};if(size==='m')delete sizes[key];else sizes[key]=size;data.settings.moduleSize=sizes;});return true;
    }
-   if(action==='module-dock'&&A.ALL.includes(key)&&['top','bottom','left','right'].includes(button.dataset.value)){const edge=button.dataset.value;closeMenu(true);save(data=>{A.change(data.settings,{type:'dock',key,target:A.ROOT,edge});});return true;}
+   if(action==='module-dock'&&A.ALL.includes(key)&&['top','bottom','left','right'].includes(button.dataset.value)){
+     const edge=button.dataset.value;
+     closeMenu(true);
+     save(data=>{A.change(data.settings,{type:'dock',key,target:A.ROOT,edge});});
+     return true;
+   }
    if(action==='widget-remove')closeMenu();
    if(action==='handin-dismiss'||action==='handin-undo'){
     const id=String(button.dataset.id),why=root.ReserveHandIn?.cleanReason(button.dataset.value);
-    if(/^\d+$/.test(id)&&ctx().items.some(item=>String(item.id)===id)&&(action==='handin-undo'||why))save(data=>{data.tasks[id]={...data.tasks[id],checkedOff:action==='handin-dismiss'};if(action==='handin-dismiss')data.tasks[id].doneReason=why;else delete data.tasks[id].doneReason;});return true;
+    if(/^\d+$/.test(id)&&ctx().items.some(item=>String(item.id)===id)&&(action==='handin-undo'||why))
+      save(data=>{data.tasks[id]={...data.tasks[id],checkedOff:action==='handin-dismiss'};if(action==='handin-dismiss')data.tasks[id].doneReason=why;else delete data.tasks[id].doneReason;});
+    return true;
    }
    if(action==='widget-add'&&(A.EXTRA.includes(key)||key==='context')){save(data=>{A.change(data.settings,key==='context'?{type:'restore-context'}:{type:'add',key});});return true;}
    if(action==='widget-remove'&&A.removable(key)){save(data=>{A.change(data.settings,key==='context'?{type:'hide-context'}:{type:'remove',key});});return true;}
@@ -569,11 +1880,24 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
     if(f.running)focusControl({action:'pause'});else startFocus();
     return true;
    }
-   if(action==='timer-reset'){save(data=>{const g=focusState(data.focus,Date.now());data.focus={...freshFocus(data.focus,data.focus?.focusMinutes||g.minutes,Date.now()),endsAt:null};}).then(ok=>afterFocus(ok));return true;}
-   if(action==='timer-minutes'){const n=duration(Number(button.dataset.minutes));if(n)save(data=>{if(data.focus?.endsAt)return;data.focus={...freshFocus(data.focus,n,Date.now()),endsAt:null};}).then(ok=>afterFocus(ok));return true;}
+   if(action==='timer-reset'){
+     save(data=>{
+       const g=focusState(data.focus,Date.now());
+       data.focus={...freshFocus(data.focus,data.focus?.focusMinutes||g.minutes,Date.now()),endsAt:null};
+     }).then(ok=>afterFocus(ok));
+     return true;
+   }
+   if(action==='timer-minutes'){
+     const n=duration(Number(button.dataset.minutes));
+     if(n)save(data=>{if(data.focus?.endsAt)return;data.focus={...freshFocus(data.focus,n,Date.now()),endsAt:null};}).then(ok=>afterFocus(ok));
+     return true;
+   }
    if(action==='plan-quick-add'){quickAdd(button.closest('form')?.querySelector('[data-rd-field="plan-quick"]'));return true;}
    if(action==='plan-carry'){const c=ctx(),h=helpers(),{board,today}=plan(c,h);save(data=>{for(const e of board.overdue)Plan().plan(e.id,today)(data);});return true;}
-   if(action==='pet-reset-learning'){if(enabled('pony'))save(data=>{const B=root.ReservePonyBrain,p=Pets().clean(data.pet);if(B)data.pet={...p,brain:{...B.cleanLearning(p.brain),kinds:{}}};});return true;}
+   if(action==='pet-reset-learning'){
+     if(enabled('pony'))save(data=>{const B=root.ReservePonyBrain,p=Pets().clean(data.pet);if(B)data.pet={...p,brain:{...B.cleanLearning(p.brain),kinds:{}}};});
+     return true;
+   }
    if(action==='pet-routine-remove'){if(enabled('pony'))save(data=>{const p=Pets().clean(data.pet);data.pet={...p,routines:p.routines.filter(r=>r.id!==button.dataset.id)};});return true;}
    if(action==='pet-feed'){pets?.treat();return true;}
    if(action==='pet-roam'){save(data=>{const pet=Pets().clean(data.pet);data.pet={...pet,enabled:true,roam:pet.roam==='home'?'page':'home'};});return true;}
@@ -613,13 +1937,23 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
     if((key==='coat'||key==='harness')&&!Pets().unlocked(key,value,Pets().clean(store.get().pet).xp))return true;
     save(data=>{if(key==='enabled')data.pet.enabled=value;else data.pet={...Pets().clean(data.pet),[key]:value};});return true;
    }
-   if(field==='setting'&&target.dataset.onoff==='true'){const key=target.dataset.setting;if(enabled('customization')&&(key!=='livingArt'||enabled('course-art')&&enabled('motion'))&&['greeting','livingArt','quickOpen'].includes(key))save(data=>{data.settings[key]=target.checked?'on':'off';});return true;}
+   if(field==='setting'&&target.dataset.onoff==='true'){
+     const key=target.dataset.setting;
+     if(enabled('customization')&&(key!=='livingArt'||enabled('course-art')&&enabled('motion'))&&['greeting','livingArt','quickOpen'].includes(key))
+       save(data=>{data.settings[key]=target.checked?'on':'off';});
+     return true;
+   }
    return false;
   }
   function flushNotes(){
    clearTimeout(notesTimer);if(drafts.notes===undefined)return Promise.resolve();
    const value=drafts.notes;
-   return save(data=>{data.toolbox={...data.toolbox,scratchpad:value};}).then(ok=>{if(ok&&drafts.notes===value)delete drafts.notes;const status=container.querySelector('[data-rd-notes-status]');if(status)status.textContent=ok?'Saved on this device.':'Not saved yet.';return ok;});
+   return save(data=>{data.toolbox={...data.toolbox,scratchpad:value};}).then(ok=>{
+     if(ok&&drafts.notes===value)delete drafts.notes;
+     const status=container.querySelector('[data-rd-notes-status]');
+     if(status)status.textContent=ok?'Saved on this device.':'Not saved yet.';
+     return ok;
+   });
   }
   // Told by the workspace when a piece of work is ticked off or a focus session ends.
   function finished(kind,id){
@@ -628,8 +1962,26 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    ensurePets();const c=ctx(),h=helpers(),{board,today}=plan(c,h),d=board.days.find(x=>x.key===today);
    pets?.celebrate?.(kind,{today,left:d?d.open:undefined});const f=store.get().focus;if(kind==='focus'&&f?.phase)pets?.setFocus(!!f.endsAt,f);
   }
-  function destroy(){dead=true;localFileOpen?.destroy();localFiles?.destroy();customPetVersion++;room?.destroy();playTray?.destroy?.();playBox?.remove();closeMenu();container.ownerDocument.removeEventListener('pointerdown',outside,true);win.removeEventListener('resize',closeMenu);clearInterval(clockTimer);clearInterval(timerTick);flushNotes();pets?.destroy();planner?.destroy();}
-  return {click,keydown,input,change,sync,finished,destroy,executeBiscuit,settingsTab:()=>settingsTab,planUI:()=>planner?.ui||{},editing:()=>editing,close(){if(editing){editing=false;rerender();}}};
+  function destroy(){
+    dead=true;
+    localFileOpen?.destroy();
+    localFiles?.destroy();
+    customPetVersion++;
+    room?.destroy();
+    playTray?.destroy?.();
+    playBox?.remove();
+    closeMenu();
+    container.ownerDocument.removeEventListener('pointerdown',outside,true);
+    win.removeEventListener('resize',closeMenu);
+    clearInterval(clockTimer);
+    clearInterval(timerTick);
+    flushNotes();
+    pets?.destroy();
+    planner?.destroy();
+  }
+  return {click,keydown,input,change,sync,finished,destroy,executeBiscuit,settingsTab:()=>settingsTab,planUI:()=>planner?.ui||{},editing:()=>editing,close(){
+    if(editing){editing=false;rerender();}
+  }};
  }
  const api={INFO,FRAMES,glyph,render,gallery,create,focusState,howLong,nextDue,plan};
  root.ReserveWidgets=api;if(typeof module==='object'&&module.exports)module.exports=api;

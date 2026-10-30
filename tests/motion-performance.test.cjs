@@ -3,8 +3,10 @@
 // Synthetic DOM/WAAPI in a VM: no browser, account, dependencies, real timers or production test hooks.
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'../extension/motion.js'),'utf8'),plain=value=>JSON.parse(JSON.stringify(value));
-function fixture({motion='gentle',vars=false}={}){
- const events=[],animations=[],microtasks=[],ceilings=[],intervals=new Map(),media={matches:false};let clock=100,serial=0;
+// timers: setTimeout/clearTimeout/requestAnimationFrame for the VM (a press's hold, motion.js busy/answered); io: an
+// IntersectionObserver class (the rail seen or not). Without them motion.js runs as it does with neither.
+function fixture({motion='gentle',vars=false,timers=null,io=null}={}){
+ const events=[],animations=[],microtasks=[],ceilings=[],intervals=new Map(),rates=new Map(),media={matches:false};let clock=100,serial=0;
  const math=Object.create(Math);math.ceil=value=>{ceilings.push(value);return Math.ceil(value);};
  const log=(kind,type,node,extra={})=>events.push({kind,type,node:node?.name,...extra});
  const split=(s,separator)=>{let depth=0,start=0;const out=[];for(let i=0;i<s.length;i++){if('(['.includes(s[i]))depth++;if(')]'.includes(s[i]))depth--;if(!depth&&separator(s[i])){if(s.slice(start,i).trim())out.push(s.slice(start,i).trim());start=i+1;}}if(s.slice(start).trim())out.push(s.slice(start).trim());return out;};
@@ -52,9 +54,9 @@ function fixture({motion='gentle',vars=false}={}){
  class SVGNode extends Node{}
  const make=(parent,tag,name,attrs={})=>{const n=new (['svg','path','g'].includes(tag)?SVGNode:Node)(tag,name,attrs);parent?.append(n);return n;};
  const container=make(null,'div','root',{class:'rd','data-input':'pointer','data-motion-style':motion}),shell=make(container,'div','shell',{class:'rd-shell'});
- const env=vm.createContext({module:{exports:{}},Math:math,performance:{now:()=>clock},innerHeight:1000,document:{visibilityState:'visible',addEventListener(){},removeEventListener(){}},addEventListener(){},removeEventListener(){},queueMicrotask:fn=>microtasks.push(fn),SVGElement:SVGNode,...(vars?{CSS:{registerProperty(){}}}:{}),
+ const env=vm.createContext({module:{exports:{}},Math:math,performance:{now:()=>clock},innerHeight:1000,document:{visibilityState:'visible',addEventListener(){},removeEventListener(){}},addEventListener(){},removeEventListener(){},queueMicrotask:fn=>microtasks.push(fn),SVGElement:SVGNode,...(timers?{setTimeout:timers.setTimeout,clearTimeout:timers.clearTimeout,requestAnimationFrame:timers.requestAnimationFrame,cancelAnimationFrame:timers.cancelAnimationFrame}:{}),...(vars?{CSS:{registerProperty(){}}}:{}),
   getComputedStyle(node,pseudo){log('read','style',node,{pseudo});return {...{opacity:'1',transform:'none',visibility:'hidden',stroke:'black',strokeWidth:'1',strokeDasharray:'none',strokeDashoffset:'0',fill:'none',display:'inline',pointerEvents:'none'},...node.computed,getPropertyValue:k=>node.computed[k]||''};}});
- vm.runInContext(source,env,{filename:'extension/motion.js'});const Motion=env.module.exports,controller=Motion.create(container,{media,ResizeObserverImpl:null,IntersectionObserverImpl:null,setIntervalImpl:fn=>{const id=++serial;intervals.set(id,fn);return id;},clearIntervalImpl:id=>{intervals.delete(id);log('write','park',container);}});
+ vm.runInContext(source,env,{filename:'extension/motion.js'});const Motion=env.module.exports,controller=Motion.create(container,{media,ResizeObserverImpl:null,IntersectionObserverImpl:io,setIntervalImpl:(fn,ms)=>{const id=++serial;intervals.set(id,fn);rates.set(id,ms);return id;},clearIntervalImpl:id=>{intervals.delete(id);log('write','park',container);}});
  function row(name,selected=false){
   const rail=container.querySelector('.rd-course-rail')||make(shell,'div','rail',{class:'rd-course-rail'}),row=make(rail,'button',name,{class:'rd-rail-course','data-selected':String(selected)}),frame=make(row,'span',name+'.frame',{class:'rd-frame'});
   frame.computed={'--f-guide':'#bbc','--f-ink':'#335',color:'#335'};
@@ -74,7 +76,7 @@ function fixture({motion='gentle',vars=false}={}){
   if(loop)make(svg,'g','loop',{class:'art-loop','data-loop':'bob','data-period':'3'});
   container.dataset.entrance='';return {svg,parts};
  }
- return {Motion,controller,container,shell,make,row,select,art,events,animations,microtasks,ceilings,intervals,media,flush(){while(microtasks.length)microtasks.shift()();},tick(ms){clock+=ms;for(const fn of [...intervals.values()])fn();},reset(){events.length=ceilings.length=0;},finish(){for(const a of animations)a.finish();},advance(ms){clock+=ms;}};
+ return {Motion,controller,container,shell,make,row,select,art,events,animations,microtasks,ceilings,intervals,rates,media,rate:()=>[...intervals.keys()].map(id=>rates.get(id)),flush(){while(microtasks.length)microtasks.shift()();},tick(ms){clock+=ms;for(const fn of [...intervals.values()])fn();},reset(){events.length=ceilings.length=0;},finish(){for(const a of animations)a.finish();},advance(ms){clock+=ms;}};
 }
 const geometry=e=>e.kind==='read'&&['rect','bbox','length','point','style','offsetParent','offsetLeft','offsetTop','offsetWidth','offsetHeight'].includes(e.type);
 function readsBeforeAnimation(events){const first=events.findIndex(e=>e.kind==='write'&&(e.type==='animate'||e.type==='style'));assert.ok(first>=0,'the pass actually starts animations');assert.deepEqual([...new Set(events.slice(first).filter(geometry).map(e=>e.type+':'+e.node))],[],'all style, bbox and length reads precede animation/style writes');}
@@ -160,4 +162,106 @@ for(const setting of ['living','still','off','reduced','css'])test('CSS rail twi
  const f=fixture({vars:true}),row=f.row('row',true),target=row.move,rail=row.row.parentNode,name='rd-fl-sway';target.style.setProperty('transform','translate(3px)');target.style.setProperty('opacity','.6');target.computed.animationName=name;const css=target.animate([{transform:'rotate(0deg)',opacity:1},{transform:'rotate(4deg)',opacity:.8}],{duration:3000,iterations:Infinity,easing:'linear',fill:'none'});css.animationName=name;rail.getAnimations=()=>f.animations.filter(a=>rail.contains(a.node)&&a.playState!=='idle');f.art({loop:true});f.controller.syncTabs();f.flush();f.tick(2000);const twin=f.animations.find(a=>a.node===target&&a!==css);assert.ok(twin,'the native CSS loop was taken over');assert.equal(css.playState,'idle');assert.equal(target.style.transform,'var(--rd-tf)');assert.ok(f.intervals.size);f.reset();
  if(setting==='living')f.container.dataset.livingArt='off';else if(setting==='reduced')f.media.matches=true;else if(setting!=='css')f.container.dataset.motionStyle=setting;target.computed.animationName='none';
  f.controller.syncTabs();f.flush();assert.equal(twin.playState,'idle','the CSS twin is cancelled in this render');assert.equal(target.style.transform,'translate(3px)');assert.equal(target.style.opacity,'.6');assert.equal(target.style.getPropertyValue('--rd-tf'),'');assert.equal(target.style.getPropertyValue('--rd-op'),'');if(setting!=='css'){assert.equal(f.intervals.size,0,'no clock remains after loops stop');assert.ok(f.events.findIndex(e=>e.type==='cancel'&&e.node===target.name)<f.events.findIndex(e=>e.type==='park'),'the twin releases its pose before the last scene parks');}f.controller.destroy();assert.equal(f.intervals.size,0);
+});
+
+// 3.8 motion clock: a scene on screen plays at 24 a second all the time it is seen (no drop to twos a few seconds after
+// the last input), the minis stay on twos, and the idle rest comes after two minutes without input.
+function fakeTimers(){
+ const queue=new Map(),frames=new Map();let serial=0;
+ return {queue,frames,setTimeout:(fn,ms=0)=>{const id=++serial;queue.set(id,{fn,ms});return id;},clearTimeout:id=>{queue.delete(id);},requestAnimationFrame:fn=>{const id=++serial;frames.set(id,fn);return id;},cancelAnimationFrame:id=>{frames.delete(id);},
+  run(upTo=Infinity){for(const [id,t] of [...queue])if(t.ms<=upTo){queue.delete(id);t.fn();}},paint(){for(const [id,fn] of [...frames]){frames.delete(id);fn();}}};
+}
+test('a scene on screen plays at 24 a second with or without recent input and rests only after two minutes without any',()=>{
+ const f=fixture({vars:true}),{svg}=f.art({loop:true});f.controller.syncTabs();f.flush();f.tick(4000);
+ assert.equal(f.Motion.art.filmFps.scene,24);assert.equal(f.Motion.art.filmFps.mini,12);assert.equal(f.Motion.art.idleMs,120000);assert.equal(f.Motion.art.busyMs,300);assert.equal(f.Motion.art.briskMs,undefined,'no brisk window');
+ assert.deepEqual(f.rate(),[1000/24]);
+ for(let i=0;i<11;i++)f.tick(10000);
+ assert.deepEqual(f.rate(),[1000/24],'still 24 a second 114 s after the last input');
+ const loop=played(f,'rd-art-loop')[0];f.reset();f.tick(1000/24);assert.ok(f.events.some(e=>e.kind==='write'&&e.type==='time'&&e.node===loop.node.name),'and still drawing');
+ f.tick(6000);assert.equal(f.intervals.size,0,'two minutes without input: the idle rest stops the clock');
+ const held=loop.currentTime;f.controller.activity();f.flush();assert.deepEqual(f.rate(),[1000/24],'the next input lets it go on at 24');
+ f.tick(1000/24);assert.ok(loop.currentTime>=held,'from the frame it held');assert.ok(svg);f.controller.destroy();
+});
+test('a press holds the drawings until the frame showing its answer has painted, and 300 ms at most',()=>{
+ const timers=fakeTimers(),f=fixture({vars:true,timers}),{svg}=f.art({loop:true});f.controller.syncTabs();f.flush();f.tick(4000);
+ const loop=played(f,'rd-art-loop')[0],writes=()=>f.events.filter(e=>e.kind==='write'&&e.type==='time'&&e.node===loop.node.name).length;
+ f.controller.busy();f.reset();f.tick(100);assert.equal(writes(),0,'held while the page answers the press');
+ assert.deepEqual([...timers.queue.values()].map(t=>t.ms),[300],'with a 300 ms cap, never a fixed 700 ms');
+ f.controller.answered();f.tick(42);assert.equal(writes(),0,'still held until the answer has painted');
+ timers.paint();timers.run(0);assert.equal(timers.queue.size,0,'the cap is cleared');f.reset();f.tick(1000/24);assert.ok(writes()>0,'going on once the answer has painted');
+ f.controller.busy();f.reset();f.tick(100);assert.equal(writes(),0);
+ timers.run(300);f.reset();f.tick(1000/24);assert.ok(writes()>0,'a press that changes nothing holds them 300 ms at most');
+ f.controller.answered();assert.equal(timers.frames.size,0,'an answer with nothing held waits for nothing');assert.ok(svg);f.controller.destroy();
+});
+test('the dashboard holds the drawings for a press or a key, never for a wheel turn or a scroll',()=>{
+ const dash=fs.readFileSync(path.join(__dirname,'../extension/dashboard.js'),'utf8').replace(/\n[ \t]*/g,'');
+ assert.match(dash,/const onWheel=\(\)=>\{motion\?\.activity\?\.\(\);\};/,'a wheel turn is input (it ends an idle rest) and holds nothing');
+ assert.match(dash,/const onPointerdown=event=>\{[^}]*motion\?\.busy\?\.\(\);/);
+ assert.match(dash,/try\{renderNow\(next\);renderedAt=started;\}finally\{rendering=false;\}(?:\/\/.{0,200}?)?motion\?\.answered\?\.\(\);/,'every render tells motion.js its answer is drawn');
+});
+
+// The rail's frame ornaments move as drawn (3.8). A render keeps the custom properties a twin moves its
+// part by (dashboard.js patchUI), so the twin plays on the film clock whatever the render timing; it pauses with the rail
+// off screen and goes on from where it stood.
+function railTwin(f){
+ const row=f.row('row',true),target=row.move,rail=row.row.parentNode,name='rd-fl-sway';target.style.setProperty('transform','translate(3px)');target.style.setProperty('opacity','.6');target.computed.animationName=name;
+ const css=target.animate([{transform:'rotate(0deg)',opacity:1},{transform:'rotate(4deg)',opacity:.8}],{duration:3000,iterations:Infinity,easing:'linear',fill:'none'});css.animationName=name;rail.getAnimations=()=>f.animations.filter(a=>rail.contains(a.node)&&a.playState!=='idle');
+ const {svg}=f.art({loop:true});f.controller.syncTabs();f.flush();f.tick(2000);const twin=f.animations.find(a=>a.node===target&&a!==css);assert.ok(twin,'the CSS loop was taken over');assert.equal(css.playState,'idle');return {target,rail,svg,twin};
+}
+const twinWrites=(f,target)=>f.events.filter(e=>e.kind==='write'&&e.type==='time'&&e.node===target.name).length;
+test('a rail ornament twin keeps stepping on the film clock across renders that keep its custom properties',()=>{
+ const f=fixture({vars:true}),{target,twin}=railTwin(f);assert.equal(target.style.transform,'var(--rd-tf)');
+ for(let i=0;i<3;i++){f.controller.syncTabs();f.flush();f.reset();f.tick(1000/12);f.tick(1000/12);assert.notEqual(twin.playState,'idle','still on the clock after render '+(i+1));assert.ok(twinWrites(f,target)>0,'and still stepping');}
+ f.controller.destroy();
+});
+test('a rail ornament twin whose part lost its custom properties is kept but not written, then plays once they are back',()=>{
+ const f=fixture({vars:true}),{target,twin}=railTwin(f);for(const k of ['transform','opacity','--rd-tf','--rd-op'])target.style.removeProperty(k);
+ f.controller.syncTabs();f.flush();f.reset();f.tick(2100);f.tick(1000/12);
+ assert.notEqual(twin.playState,'idle','not let go: whether it moves never depends on render timing');assert.equal(twinWrites(f,target),0,'its frames reach nothing on screen, so none is written');
+ target.style.setProperty('transform','var(--rd-tf)');f.reset();f.tick(1000/12);assert.ok(twinWrites(f,target)>0,'written again as soon as it reads them');f.controller.destroy();
+});
+test('the rail ornaments write nothing while the rail is off screen and go on from where they stood when it is seen again',()=>{
+ let seen=null;const observed=new Set();
+ class IO{constructor(fn){seen=fn;}observe(node){observed.add(node);}unobserve(node){observed.delete(node);}disconnect(){observed.clear();}}
+ const f=fixture({vars:true,io:IO}),{target,rail,twin}=railTwin(f);f.tick(2100);assert.ok(observed.has(rail),'the rail is watched');
+ seen([{target:rail,isIntersecting:false}]);f.reset();for(let i=0;i<6;i++)f.tick(1000/12);assert.equal(twinWrites(f,target),0,'nothing written off screen');
+ const at=twin.currentTime;seen([{target:rail,isIntersecting:true}]);f.reset();f.tick(1000/12);assert.ok(twinWrites(f,target)>0,'seen again, it steps');assert.ok(twin.currentTime-at<400,'from where it stood, not the time it was away');f.controller.destroy();
+});
+// A scroll holds the frame beads (they doubled a scroll's slow frames at 4x CPU), never the drawings; 200 ms after the
+// last scroll the beads go on from where they stood.
+test('a scroll holds the rail ornaments but not the drawings, and they go on from where they stood once it stops',()=>{
+ const f=fixture({vars:true}),{target,twin}=railTwin(f),loop=played(f,'rd-art-loop')[0];assert.equal(f.Motion.art.scrollMs,200);
+ f.tick(1000/12);f.reset();for(let i=0;i<8;i++){f.controller.scrolling();f.tick(1000/24);}
+ assert.equal(twinWrites(f,target),0,'the beads stand still while the page scrolls');
+ assert.ok(f.events.some(e=>e.kind==='write'&&e.type==='time'&&e.node===loop.node.name),'the drawings keep playing');
+ const at=twin.currentTime;f.tick(250);f.reset();f.tick(1000/12);
+ assert.ok(twinWrites(f,target)>0,'they step again once the scroll has stopped');assert.ok(twin.currentTime-at<=2*1000/12+1,'from where they stood, not the time the scroll took');f.controller.destroy();
+});
+// A rail drawn anew while the old one was off screen (a phone's closed drawer: the dock and back swaps the <aside>) is a
+// node the observer never saw and that never reports. Its CSS loops are still taken over, not left running as plain CSS.
+test('a rail replaced while off screen is watched and its frame loops are taken over by the film clock',()=>{
+ let seen=null;const observed=new Set();
+ class IO{constructor(fn){seen=fn;}observe(node){observed.add(node);}unobserve(node){observed.delete(node);}disconnect(){observed.clear();}}
+ const f=fixture({vars:true,io:IO}),{rail,twin}=railTwin(f);f.tick(2100);assert.ok(observed.has(rail),'the rail is watched');
+ seen([{target:rail,isIntersecting:false}]);for(let i=0;i<3;i++)f.tick(1000/12);
+ const gone=n=>{n.isConnected=false;for(const c of n.children)gone(c);};f.shell.children=f.shell.children.filter(n=>n!==rail);rail.parentNode=null;gone(rail);
+ const row=f.row('next',true),fresh=row.row.parentNode,target=row.move,name='rd-fl-sway';assert.notEqual(fresh,rail,'a new rail node');
+ target.style.setProperty('transform','translate(3px)');target.computed.animationName=name;
+ const css=target.animate([{transform:'rotate(0deg)'},{transform:'rotate(4deg)'}],{duration:3000,iterations:Infinity,easing:'linear',fill:'none'});css.animationName=name;
+ fresh.getAnimations=()=>f.animations.filter(a=>fresh.contains(a.node)&&a.playState!=='idle');
+ for(let i=0;i<30;i++)f.tick(1000/12);
+ assert.ok(observed.has(fresh),'the new rail is watched');assert.ok(!observed.has(rail),'the old one is let go');
+ assert.equal(css.playState,'idle','its CSS loop no longer runs on its own');assert.equal(twin.playState,'idle','the old rail\'s twin is cancelled');
+ const next=f.animations.find(a=>a.node===target&&a!==css);assert.ok(next,'taken over by a twin');assert.equal(next.playState,'paused');
+ seen([{target:fresh,isIntersecting:false}]);f.reset();for(let i=0;i<6;i++)f.tick(1000/12);assert.equal(twinWrites(f,target),0,'off screen it writes nothing');
+ seen([{target:fresh,isIntersecting:true}]);f.reset();f.tick(1000/12);assert.ok(twinWrites(f,target)>0,'seen, it steps');f.controller.destroy();
+});
+// A loop part whose style other code rewrote (losing what useVars wrote) shows nothing of its frames: it is not written
+// until it reads them again, then it takes the film time at once.
+test('a loop part that lost its custom properties is not written until it reads them again, then at the film time',()=>{
+ const f=fixture({vars:true}),{svg}=f.art({loop:true});f.controller.syncTabs();f.flush();const loop=played(f,'rd-art-loop')[0],part=loop.node;
+ f.tick(4000);const t0=loop.currentTime;assert.ok(t0>0);assert.equal(part.style.transform,'var(--rd-tf)');
+ for(const k of ['transform','opacity','--rd-tf','--rd-op'])part.style.removeProperty(k);f.reset();for(let i=0;i<6;i++)f.tick(250);
+ assert.equal(f.events.filter(e=>e.kind==='write'&&e.type==='time'&&e.node===part.name).length,0,'none is written');assert.equal(loop.currentTime,t0);
+ part.style.setProperty('transform','var(--rd-tf)');f.tick(250);assert.equal(loop.currentTime,t0+1750,'reading them again, it takes the film time at once');assert.ok(svg);f.controller.destroy();
 });

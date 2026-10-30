@@ -3,10 +3,11 @@
 // Optional: --source <checkout> --package <archive-name> --output <summary.json>
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),zlib=require('node:zlib'),vm=require('node:vm');
 const {spawnSync}=require('node:child_process');
+const readability=require('./readability-rules.cjs');
 const ROOT=path.resolve(__dirname,'..'),LIMIT=3500,TEXT=/\.(?:[cm]?js|css|html?|json|svg|md|txt|map|xml|webmanifest)$/i;
 const PINS=new Map([
- ['vendor/pdfjs/pdf.mjs','bc51f4874a66e3853189cb5d50aba4b3096afa83ed433b885d293a3d94583cdc'],
- ['vendor/pdfjs/pdf.worker.mjs','bb422f60804477de4a0b09091d8347a916a387755ed1cbad24ccaec1d09c78bf']
+ ['vendor/pdfjs/pdf.mjs','dd13af821c9c3e1778653340d6539a1ba07bc56cba40073a4c727864cf0c232a'],
+ ['vendor/pdfjs/pdf.worker.mjs','07ceb740d746e5d9012fcf9f27d5c7dea09f7d2f5e74f5c8109e5787551a2333']
 ]);
 const sha=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 const escapeRE=value=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
@@ -193,7 +194,7 @@ function auditRelease({unpackedDir,manifestPath=path.join(ROOT,'dist/release-man
  const errors=[],attempt=(label,fn)=>{try{return fn();}catch(error){errors.push(label+': '+error.message);return null;}},check=(value,message)=>{if(!value)errors.push(message);};
  const summary={schemaVersion:1,ok:false,checkedAt:new Date().toISOString(),version:null,inputs:{unpackedDir,manifestPath,sourceRoot},zip:null,
   counts:{manifestEntries:0,unpackedFiles:0,sourceExtensionFiles:0,uncompressedBytes:0,sourceBytes:0,jsAttempted:0,jsChecked:0,textFiles:0,manifestReferences:0,htmlReferences:0,cssReferences:0,featureAssets:0},
-  maximumAuthoredLine:{bytes:0,path:null,line:null,limit:LIMIT},forbiddenTokenCount:0,forbiddenMatches:[],vendor:[],errors};
+  maximumAuthoredLine:{bytes:0,path:null,line:null,limit:LIMIT},forbiddenTokenCount:0,forbiddenMatches:[],readabilityFindingCount:0,readabilityFindings:[],vendor:[],errors};
  const release=attempt('release manifest',()=>JSON.parse(fs.readFileSync(manifestPath,'utf8'))),selected=release&&attempt('release schema',()=>packageRecord(release,packageName));
  if(selected){
   summary.version=release.version;const {record,entries}=selected,sourceExtension=path.join(sourceRoot,'extension');summary.counts.manifestEntries=entries.size;
@@ -232,8 +233,12 @@ function auditRelease({unpackedDir,manifestPath=path.join(ROOT,'dist/release-man
     if(authored&&decoded!==null){let line=0;for(const value of text.split('\n')){line++;const bytes=Buffer.byteLength(value.endsWith('\r')?value.slice(0,-1):value);if(bytes>summary.maximumAuthoredLine.bytes)Object.assign(summary.maximumAuthoredLine,{bytes,path:name,line});check(bytes<=LIMIT,'authored line exceeds '+LIMIT+' bytes: '+name+':'+line+' ('+bytes+')');}}
    }
    summary.forbiddenMatches.push(...scanTokens(name,text,authored));
+   // Store readability: no code-from-text patterns, invisible characters, stray base64 or dense code lines.
+   if(text){const found=readability.findings(name,text,authored);summary.readabilityFindingCount+=found.length;for(const item of found)if(summary.readabilityFindings.length<200)summary.readabilityFindings.push({path:name,...item});}
   }
   summary.forbiddenTokenCount=summary.forbiddenMatches.length;check(summary.forbiddenTokenCount===0,'removed content token matches: '+summary.forbiddenTokenCount);
+  for(const item of summary.readabilityFindings.slice(0,20))errors.push('readability: '+item.rule+' in '+item.path+(item.line?':'+item.line:'')+' ('+item.detail+')');
+  check(summary.readabilityFindingCount<=20,'readability findings: '+summary.readabilityFindingCount+' (first 20 listed)');
   for(const [name,pinned] of PINS){const body=bodies.get(name),actual=body?sha(body):null;summary.vendor.push({path:name,sha256:actual,expectedSha256:pinned,ok:actual===pinned});check(actual===pinned,'pinned vendor SHA-256 differs: '+name);}
   const requireAsset=(from,ref,kind,glob=false)=>attempt(kind+' reference '+from+' -> '+ref,()=>{
    const name=localReference(from,ref,glob);if(name===null){ensure(kind!=='manifest','manifest resource must be local');return;}
@@ -270,7 +275,7 @@ function auditRelease({unpackedDir,manifestPath=path.join(ROOT,'dist/release-man
    if(result.status===0)summary.counts.jsChecked++;else errors.push('node --check failed for '+name+': '+(result.stderr||result.stdout||'exit '+result.status).trim().slice(0,4000));
   }
  }
- summary.ok=errors.length===0;const version=summary.version||'3.7.0',destination=path.resolve(outputPath||path.join(path.dirname(manifestPath),'audit-'+version+'.json'));
+ summary.ok=errors.length===0;const version=summary.version||'3.8.0',destination=path.resolve(outputPath||path.join(path.dirname(manifestPath),'audit-'+version+'.json'));
  const same=(a,b)=>process.platform==='win32'?a.toLowerCase()===b.toLowerCase():a===b,outputRelative=path.relative(unpackedDir,destination);
  ensure(!same(destination,manifestPath),'summary output must not overwrite the release manifest');
  if(summary.inputs.archive)ensure(!same(destination,summary.inputs.archive),'summary output must not overwrite the archive');

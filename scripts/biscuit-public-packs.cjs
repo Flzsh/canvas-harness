@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-/* Reproducible projection of disclosed R6 packs. This script never trains or reads datasets. */
+/* Reproducible projection of the disclosed Biscuit packs (round 6 and later). This script never trains or reads datasets. */
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict'),I=require('./biscuit-control-inventory.cjs'),Public=require('./biscuit-public-filter.cjs');
 const ROOT=path.resolve(__dirname,'..'),TIERS=['basic','more','most'],sha=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 // The packs must carry no school identity. The names are checked by hash so this public file does not spell them:
@@ -47,17 +47,35 @@ function validateProjection(source,pack,caps){
  }
  assert.ok(!pack.models.kind);assert.ok(!pack.models.action.labels.includes('ai'));assert.ok(!forbidden.test(JSON.stringify(pack)),'School-specific pack content');assert.ok(!/(?:\bask ai\b|ai-engine)/i.test(JSON.stringify(pack)),'Unsupported handoff feature');return true;
 }
+// Release audit: shipped JSON keeps every line short. The packs are written as compact JSON broken after commas outside
+// strings (continuation lines start with two spaces); the data is unchanged. A check compares the parsed data and line lengths.
+const LINE_BYTES=2400,MAX_LINE_BYTES=3000,charBytes=code=>code<0x80?1:code<0x800||code>=0xD800&&code<=0xDFFF?2:3;
+function wrapJSON(value){
+ const text=JSON.stringify(value),lines=[];let start=0,bytes=0,comma=-1,commaBytes=0,quoted=false,escaped=false;
+ for(let i=0;i<text.length;i++){const c=text[i];bytes+=charBytes(text.charCodeAt(i));
+  if(quoted){if(escaped)escaped=false;else if(c==='\\')escaped=true;else if(c==='"')quoted=false;continue;}
+  if(c==='"'){quoted=true;continue;}if(c!==',')continue;
+  if(bytes>LINE_BYTES-2&&comma>=start){lines.push(text.slice(start,comma+1));start=comma+1;bytes-=commaBytes;}comma=i;commaBytes=bytes;
+ }
+ lines.push(text.slice(start));const output=lines.join('\n  ')+'\n';
+ assert.ok(output.split('\n').every(line=>Buffer.byteLength(line)<=MAX_LINE_BYTES),'A generated line is too long');assert.equal(JSON.stringify(JSON.parse(output)),text);return Buffer.from(output);
+}
+function sameData(file,value){
+ if(!fs.existsSync(file))return false;const text=fs.readFileSync(file,'utf8');
+ return text.split('\n').every(line=>Buffer.byteLength(line)<=MAX_LINE_BYTES)&&JSON.stringify(JSON.parse(text))===JSON.stringify(value);
+}
 function run({referenceRoot,write=false}={}){
  if(!referenceRoot)throw Error('--reference-root is required; only the four disclosed extension/biscuit-rules JSON files are read.');
  const ref=fs.realpathSync(path.resolve(referenceRoot)),caps=Public.capabilities(),destination=path.join(ROOT,'extension/biscuit-rules'),report={schemaVersion:1,retrained:false,files:{}};
  if(write)fs.mkdirSync(destination,{recursive:true});const packs=[];
  for(const tier of TIERS){const file=path.join(ref,'extension/biscuit-rules',tier+'.json'),bytes=fs.readFileSync(file),source=JSON.parse(bytes),pack=projectPack(source,caps,sha(bytes));validateProjection(source,pack,caps);packs.push(pack);
-  const output=Buffer.from(JSON.stringify(pack)+'\n'),target=path.join(destination,tier+'.json');if(write)fs.writeFileSync(target,output);else assert.deepEqual(fs.readFileSync(target),output,'Public pack is stale: '+tier);
-  report.files[tier]={sourceSha256:sha(bytes),publicSha256:sha(output),bytes:output.length,...pack.publicPort};
+  const target=path.join(destination,tier+'.json');if(write)fs.writeFileSync(target,wrapJSON(pack));else assert.ok(sameData(target,pack),'Public pack is stale: '+tier);
+  const output=fs.readFileSync(target);report.files[tier]={sourceSha256:sha(bytes),publicSha256:sha(output),bytes:output.length,...pack.publicPort};
  }
  for(let index=1;index<packs.length;index++)for(const [name,model]of Object.entries(packs[index].models))if(model.delta){const previous=packs[index-1].models[name];assert.ok(previous);assert.deepEqual(model.labels,previous.labels);assert.equal(model.scale,previous.scale);}
  const vocabularyBytes=fs.readFileSync(path.join(ref,'extension/biscuit-rules/school-language.json')),vocabulary=JSON.parse(vocabularyBytes);report.vocabulary={...auditVocabulary(vocabulary),sha256:sha(vocabularyBytes),bytes:vocabularyBytes.length};
- const target=path.join(destination,'school-language.json');if(write)fs.writeFileSync(target,vocabularyBytes);else assert.deepEqual(fs.readFileSync(target),vocabularyBytes,'Vocabulary changed');return report;
+ // the public vocabulary keeps its readable layout while its data matches the reference
+ const target=path.join(destination,'school-language.json');if(!sameData(target,vocabulary)){assert.ok(write,'Vocabulary changed');fs.writeFileSync(target,wrapJSON(vocabulary));}return report;
 }
 function parseArgs(argv){const options={};for(let i=0;i<argv.length;i++){const arg=argv[i];if(arg==='--write'){options.write=true;continue;}if(arg==='--check')continue;if(arg==='--reference-root'&&!options.referenceRoot&&argv[i+1]){options.referenceRoot=argv[++i];continue;}throw Error('Use --reference-root PATH [--write|--check].');}return options;}
 module.exports={auditVocabulary,labelReasons,projectModel,projectPack,validateProjection,run,parseArgs};

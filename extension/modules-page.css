@@ -70,4 +70,4 @@ html.reserve-modules :is(.header-bar,.header-bar-right) :is(.btn,button.btn,a.bt
 html.reserve-modules[data-md-motion=off] #context_modules .md-icon svg *{animation:none!important}
 @media (prefers-reduced-motion:reduce){html.reserve-modules #context_modules .md-icon svg *{animation:none!important}}
 
-html.reserve-modules #context_modules .ig-details .due_date_display.md-empty{display:none}
+html.reserve-modules #context_modules .ig-details .due_date_display.md-empty,html.reserve-modules #context_modules .ig-details .due_date_display[hidden]{display:none}

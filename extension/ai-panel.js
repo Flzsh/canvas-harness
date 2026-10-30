@@ -12,13 +12,34 @@
   'use strict';
   const CONTEXT_LIMIT = 100000, PROMPT_LIMIT = 20000, PDF_LIMIT = 2 * 1024 * 1024;
   const PROVIDERS = [['chatgpt', 'ChatGPT'], ['claude', 'Claude'], ['gemini', 'Gemini'], ['grok', 'Grok'], ['deepseek', 'DeepSeek'], ['kimi', 'Kimi'], ['qwen', 'Qwen'], ['zai', 'Z.ai (GLM)']];
-  const PROVIDER_ORIGINS = Object.freeze({chatgpt:['https://chatgpt.com/*'],claude:['https://claude.ai/*'],gemini:['https://gemini.google.com/*'],grok:['https://grok.com/*'],deepseek:['https://chat.deepseek.com/*'],kimi:['https://www.kimi.com/*'],qwen:['https://chat.qwen.ai/*'],zai:['https://chat.z.ai/*']});
+  const PROVIDER_ORIGINS = Object.freeze({
+    chatgpt:['https://chatgpt.com/*'],
+    claude:['https://claude.ai/*'],
+    gemini:['https://gemini.google.com/*'],
+    grok:['https://grok.com/*'],
+    deepseek:['https://chat.deepseek.com/*'],
+    kimi:['https://www.kimi.com/*'],
+    qwen:['https://chat.qwen.ai/*'],
+    zai:['https://chat.z.ai/*']
+  });
   const string = value => typeof value === 'string' ? value : '';
   const array = value => Array.isArray(value) ? value : [];
   const errorText = error => string(error?.message) || string(error) || 'The request could not be completed.';
   const compose = (prompt, context) => [prompt.trim(), context].filter(Boolean).join('\n\n---\n\n');
   const shouldSendKey = event => event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== 229 && !event.repeat;
-  const draftMessage = value => value && typeof value === 'object' && typeof value.id === 'string' && /^[\w-]{1,100}$/.test(value.id) && typeof value.scopeKey === 'string' && value.scopeKey.length > 0 && value.scopeKey.length <= 8192 && !value.scopeKey.includes('\u0000') && typeof value.text === 'string' && value.text.trim() && value.text.length <= PROMPT_LIMIT && !value.text.includes('\u0000');
+  const draftMessage = value =>
+    value &&
+      typeof value === 'object' &&
+      typeof value.id === 'string' &&
+      /^[\w-]{1,100}$/.test(value.id) &&
+      typeof value.scopeKey === 'string' &&
+      value.scopeKey.length > 0 &&
+      value.scopeKey.length <= 8192 &&
+      !value.scopeKey.includes('\u0000') &&
+      typeof value.text === 'string' &&
+      value.text.trim() &&
+      value.text.length <= PROMPT_LIMIT &&
+      !value.text.includes('\u0000');
 
   // Only the extension runtime port carries production prompts. The alternate
   // transport is restricted to the same-origin, direct parent on local previews.
@@ -147,7 +168,11 @@
         for (const id of [...pending.keys()]) settle(id, new Error('The panel closed.'));
         closed = true; available = false; queuedDraft = null; appliedDrafts.clear(); catalogScope = '';
         if (reconnectTimer !== null) env.clearTimeout(reconnectTimer);
-        if (production && port) { port.onMessage.removeListener?.(portListeners?.onMessage); port.onDisconnect.removeListener?.(portListeners?.onDisconnect); try { port.disconnect(); } catch {} }
+        if (production && port) {
+          port.onMessage.removeListener?.(portListeners?.onMessage);
+          port.onDisconnect.removeListener?.(portListeners?.onDisconnect);
+          try { port.disconnect(); } catch {}
+        }
         if (preview) env.removeEventListener('message', onWindowMessage);
       }
     };
@@ -157,7 +182,8 @@
     let result = value;
     for (let n = 0; n < 3; n++) {
       if (!result || typeof result !== 'object') break;
-      if (result.ok === false || result.type === 'error' || result.kind === 'error' || result.error) throw new Error(errorText(result.error) === 'The request could not be completed.' ? string(result.message) || 'The request failed.' : errorText(result.error));
+      if (result.ok === false || result.type === 'error' || result.kind === 'error' || result.error)
+        throw new Error(errorText(result.error) === 'The request could not be completed.' ? string(result.message) || 'The request failed.' : errorText(result.error));
       if (result.result && typeof result.result === 'object') result = result.result;
       else if (result.data && typeof result.data === 'object' && !('connected' in result) && !('models' in result) && !('text' in result)) result = result.data;
       else break;
@@ -190,7 +216,11 @@
     }
     function setCatalog(catalog) {
       if (!catalog || typeof catalog.scopeKey !== 'string' || !catalog.scopeKey) { state.error = 'Canvas returned an invalid source catalog. Reload Canvas Harness.'; changed(); return; }
-      const previous = state.catalog, switched = previous?.scopeKey !== catalog.scopeKey || previous?.active?.id !== catalog.active?.id || previous?.courseId !== catalog.courseId || Boolean(previous?.demo) !== Boolean(catalog.demo);
+      const previous = state.catalog,
+        switched = previous?.scopeKey !== catalog.scopeKey ||
+          previous?.active?.id !== catalog.active?.id ||
+          previous?.courseId !== catalog.courseId ||
+          Boolean(previous?.demo) !== Boolean(catalog.demo);
       const priorSelection = JSON.stringify([...state.selected].sort());
       if (!preferenceLoaded && typeof catalog.autoSend === 'boolean') { state.autoSend = catalog.autoSend; preferenceLoaded = true; }
       if (!state.online && transport.available) { state.online = true; state.error = ''; state.notice = 'Reconnected. Your question is ready; click Send when you want to continue.'; }
@@ -216,13 +246,20 @@
       if (!state.catalog) fail('Wait for the Canvas source list, then try again.');
       const revision = state.revision, scopeKey = state.catalog.scopeKey, ids = selectedIds();
       const raw = await transport.request('collect', {ids, all: state.all && Boolean(state.catalog.active), includeAssignmentPdfs: state.includeAssignmentPdfs});
-      if (dead || revision !== state.revision || scopeKey !== state.catalog?.scopeKey || raw?.scopeKey !== scopeKey) fail('The Canvas view or selected context changed. Review the current scope and try again.');
+      if (dead || revision !== state.revision || scopeKey !== state.catalog?.scopeKey || raw?.scopeKey !== scopeKey)
+        fail('The Canvas view or selected context changed. Review the current scope and try again.');
       const included = array(raw.included).map(source => ({...source}));
       const allowedAttachment = source => {
         const parent = state.knownSources.get(source.attachmentOf);
-        return state.includeAssignmentPdfs && ids.includes(source.attachmentOf) && parent?.kind === 'assignment' && parent.courseId === source.courseId && source.kind === 'file' && source.mime === 'application/pdf';
+        return state.includeAssignmentPdfs &&
+          ids.includes(source.attachmentOf) &&
+          parent?.kind === 'assignment' &&
+          parent.courseId === source.courseId &&
+          source.kind === 'file' &&
+          source.mime === 'application/pdf';
       };
-      if (!state.all && (included.some(source => !ids.includes(source.id) && !allowedAttachment(source)) || (!ids.length && string(raw.text).trim()))) fail('Unexpected or unselected context was returned. Nothing was shared. Refresh the selected sources and try again.');
+      if (!state.all && (included.some(source => !ids.includes(source.id) && !allowedAttachment(source)) || (!ids.length && string(raw.text).trim())))
+        fail('Unexpected or unselected context was returned. Nothing was shared. Refresh the selected sources and try again.');
       const issues = array(raw.omitted).map(item => ({title: string(item?.title) || 'Source', reason: string(item?.reason) || 'Source unavailable'}));
       const addIssue = (title, reason) => { if (!issues.some(item => item.title === title && item.reason === reason)) issues.push({title, reason}); };
       for (const source of included) {
@@ -333,7 +370,13 @@
       state, setCatalog, inject, openWebsite, copy, attach,
       initialize: async () => { await run('Loading sources', async alive => { const catalog = await transport.request('catalog'); if (alive()) setCatalog(catalog); }); },
       preview: () => run('Reading selected context', async () => { await collect(); state.notice = 'Preview ready. Nothing has been sent to a provider.'; return true; }),
-      setSelection(id, checked) { if (state.busy || state.all) return; if (!state.knownSources.has(id) && !state.selected.has(id)) return; if (checked) state.selected.add(id); else state.selected.delete(id); invalidate(); changed(); },
+      setSelection(id, checked) {
+        if (state.busy || state.all) return;
+        if (!state.knownSources.has(id) && !state.selected.has(id)) return;
+        if (checked) state.selected.add(id); else state.selected.delete(id);
+        invalidate();
+        changed();
+      },
       setAll(checked) { if (state.busy) return; state.all = checked === true && Boolean(state.catalog?.active); invalidate(); changed(); },
       setAssignmentPdfs(checked) { if (state.busy) return; state.includeAssignmentPdfs = checked === true; invalidate(); changed(); },
       setDraft(text) { state.draft = string(text); state.fallback = ''; state.manualCopy = false; changed('composer'); },
@@ -348,11 +391,24 @@
         state.autoSend = value === true; preferenceLoaded = true; changed();
         if (state.online) void transport.request('preference',{autoSend:state.autoSend}).catch(()=>{state.notice='This choice applies to the open panel, but could not be saved.';changed();});
       } },
-      setProvider(provider) { if (state.busy || !PROVIDERS.some(p => p[0] === provider)) return; state.provider = provider; state.fallback = ''; state.webStatus = ''; state.notice = ''; state.error = ''; changed(); void checkWebsite(); },
+      setProvider(provider) {
+        if (state.busy || !PROVIDERS.some(p => p[0] === provider)) return;
+        state.provider = provider;
+        state.fallback = '';
+        state.webStatus = '';
+        state.notice = '';
+        state.error = '';
+        changed();
+        void checkWebsite();
+      },
       setCourse(courseId) { if (!state.busy && (!courseId || state.catalog?.courses.some(course => String(course.id) === courseId))) { state.courseFilter = courseId; changed(); } },
       acceptIssues(value) { if (!state.busy) { state.reviewAccepted = value && state.context ? state.context.fingerprint : null; changed(); } },
       removePDF(id) { if (state.busy) return; state.pdfs = state.pdfs.filter(pdf => pdf.id !== id); invalidate(); changed(); },
-      loadCourse: () => run('Loading course materials', async alive => { if (!state.courseFilter) fail('Choose a course first.'); const catalog = await transport.request('load-course', {courseId: state.courseFilter}); if (alive()) setCatalog(catalog); }),
+      loadCourse: () => run('Loading course materials', async alive => {
+        if (!state.courseFilter) fail('Choose a course first.');
+        const catalog = await transport.request('load-course', {courseId: state.courseFilter});
+        if (alive()) setCatalog(catalog);
+      }),
       clear() { if (state.busy) return; state.history = []; state.messages = []; state.notice = 'Conversation cleared from this panel.'; changed(); },
       async close() { operation++; state.busy=''; changed(); try { await transport.request('close'); return true; } catch(error) {state.error=errorText(error);changed();return false;} },
       disconnected(reason) {operation++;state.online=false;state.busy='';state.error=reason;changed();},
@@ -366,7 +422,10 @@
     const invoke = (method, value) => new Promise((resolve, reject) => {
       if (!env.chrome?.permissions?.[method]) { if (method === 'contains') resolve(false); else reject(new Error('Website permission is unavailable in this preview.')); return; }
       try {
-        const task = env.chrome.permissions[method](value, allowed => { const error = env.chrome.runtime?.lastError; if (error) reject(new Error(error.message)); else resolve(allowed); });
+        const task = env.chrome.permissions[method](value, allowed => {
+          const error = env.chrome.runtime?.lastError;
+          if (error) reject(new Error(error.message)); else resolve(allowed);
+        });
         if (task?.then) task.then(resolve, reject);
       } catch (error) { reject(error); }
     });
@@ -383,8 +442,19 @@
     let controller,pdfButtons=[];
     const rendered=new Map();
     // Store rendered primitive fields so in-place source edits invalidate the right list.
-    const renderChanged=(key,inputs,draw)=>{const previous=rendered.get(key);if(previous&&previous.length===inputs.length&&inputs.every((value,i)=>Object.is(value,previous[i])))return;draw();rendered.set(key,inputs);};
-    const transport=createTransport(env,{catalog:data=>controller?.setCatalog(data),draft:data=>controller?.receiveDraft(data)===true,disconnect:reason=>controller?.disconnected(reason),connect:()=>{ if(controller)void controller.initialize(); }});
+    const renderChanged=(key,inputs,draw)=>{
+      const previous=rendered.get(key);
+      if(previous&&previous.length===inputs.length&&inputs.every((value,i)=>Object.is(value,previous[i])))return;
+      draw();
+      rendered.set(key,inputs);
+    };
+    const transport=createTransport(env,{
+      catalog:data=>controller?.setCatalog(data),
+      draft:data=>controller?.receiveDraft(data)===true,
+      disconnect:reason=>controller?.disconnected(reason),
+      connect:()=>{
+      if(controller)void controller.initialize();
+    }});
     function renderComposer(state){
       const busy=Boolean(state.busy);
       byId('fallback').hidden=!state.fallback;if(byId('fallback-text').value!==state.fallback)byId('fallback-text').value=state.fallback;
@@ -408,20 +478,42 @@
       const fromPdf=chosen.length>0&&chosen.every(source=>String(source.id).startsWith('pdf-page:'));
       byId('prompt').placeholder=fromPdf?'Ask about these pages…':'What would you like help with?';
       byId('selection-summary').textContent=fromPdf?'From your PDF':chosen.length?chosen.length+' selected on Canvas':catalog?.active?'Opened assignment':'No Canvas items selected';
-      renderChanged('selected',chosen.flatMap(source=>[source.id,source.title,fromPdf?'every word on these pages':source.courseName||source.kind]),()=>{byId('selected-items').replaceChildren(...chosen.map(source=>{const li=make('li');li.append(make('strong',source.title),make('small',fromPdf?'every word on these pages':source.courseName||source.kind));return li;}));});
+      renderChanged('selected',chosen.flatMap(source=>[source.id,source.title,fromPdf?'every word on these pages':source.courseName||source.kind]),()=>{
+        byId('selected-items').replaceChildren(...chosen.map(source=>{
+          const li=make('li');
+          li.append(make('strong',source.title),make('small',fromPdf?'every word on these pages':source.courseName||source.kind));
+          return li;
+        }));
+      });
       byId('scope-hint').textContent=fromPdf?'These words go to the AI site with your question.':chosen.length?'Change your selection using the circles on Canvas.':'Use the circles on Canvas to choose assignments or material. You can also ask a question without context.';
       byId('all-row').hidden=!catalog?.active||chosen.length!==1||chosen[0]?.id!==catalog.active.id;
       byId('all-linked').checked=state.all;byId('all-linked').disabled=busy;
       byId('assignment-pdfs-row').hidden=!chosen.some(source=>source.kind==='assignment');
       byId('assignment-pdfs').checked=state.includeAssignmentPdfs;byId('assignment-pdfs').disabled=busy;
       renderChanged('pdfs',state.pdfs.flatMap(pdf=>[pdf.id,pdf.title]),()=>{
-        pdfButtons=[];byId('pdf-list').replaceChildren(...state.pdfs.map(pdf=>{const li=make('div',undefined,'pdf-item');li.append(make('span',pdf.title));const remove=make('button','Remove','quiet-button');remove.type='button';remove.addEventListener('click',()=>controller.removePDF(pdf.id));li.append(remove);pdfButtons.push(remove);return li;}));
+        pdfButtons=[];
+        byId('pdf-list').replaceChildren(...state.pdfs.map(pdf=>{
+          const li=make('div',undefined,'pdf-item');
+          li.append(make('span',pdf.title));
+          const remove=make('button','Remove','quiet-button');
+          remove.type='button';
+          remove.addEventListener('click',()=>controller.removePDF(pdf.id));
+          li.append(remove);
+          pdfButtons.push(remove);
+          return li;
+        }));
       });
       for(const button of pdfButtons)button.disabled=busy;
       const context=state.context;
       renderChanged('context',[Boolean(context),context?.text,context?.characters,...array(context?.issues).flatMap(issue=>[issue.title,issue.reason])],()=>{
         if(!context)byId('context-count').textContent='';byId('context-preview').hidden=!context;
-        if(context){byId('context-text').textContent=context.text;byId('context-count').textContent=context.characters.toLocaleString()+' characters';byId('issue-list').replaceChildren(...context.issues.map(x=>make('li',x.title+': '+x.reason)));byId('context-issues').hidden=!context.issues.length;if(context.issues.length)byId('context-details').open=true;}
+        if(context){
+          byId('context-text').textContent=context.text;
+          byId('context-count').textContent=context.characters.toLocaleString()+' characters';
+          byId('issue-list').replaceChildren(...context.issues.map(x=>make('li',x.title+': '+x.reason)));
+          byId('context-issues').hidden=!context.issues.length;
+          if(context.issues.length)byId('context-details').open=true;
+        }
       });
       byId('accept-issues').checked=Boolean(context&&state.reviewAccepted===context.fingerprint);byId('accept-issues').disabled=busy;
       byId('notice').textContent=state.busy||state.notice;byId('notice').hidden=!(state.busy||state.notice);
@@ -447,7 +539,9 @@
     click('close',()=>controller.close());
     byId('prompt').addEventListener('input',e=>{controller.setDraft(e.target.value);transport.flushDraft();});
     byId('composer').addEventListener('submit',e=>{e.preventDefault();if(!byId('send').disabled)void controller.inject();});
-    byId('prompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();if(shouldSendKey(e)&&!byId('send').disabled)void controller.inject();}});
+    byId('prompt').addEventListener('keydown',e=>{
+      if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();if(shouldSendKey(e)&&!byId('send').disabled)void controller.inject();}
+    });
     env.addEventListener('pagehide',()=>{controller.dispose();transport.dispose();},{once:true});
     render(controller.state);void controller.initialize();transport.flushDraft();return controller;
   }

@@ -55,8 +55,19 @@
  function entries(items,local={},{dayOf,isDone=()=>false}={}){
   return items.map(item=>{
    const mine=local[item.id]||{},steps=Array.isArray(mine.checklist)?mine.checklist:[];
-   return {id:String(item.id),title:item.name,courseId:String(item.courseId),course:item.courseName||'',color:item.courseColor||item.color||'',personal:!!item.personal,url:item.url||'',
-    dueAt:item.dueAt||null,dueDay:item.dueAt&&dayOf?dayOf(item.dueAt):'',planned:DAY.test(mine.plannedDate||'')?mine.plannedDate:'',estimate:Number.isFinite(mine.estimate)?mine.estimate:0,...(DAY.test(mine.plannedDate||'')&&typeof mine.plannedTime==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(mine.plannedTime)?{plannedTime:mine.plannedTime}:{}),
+   return {
+    id:String(item.id),
+    title:item.name,
+    courseId:String(item.courseId),
+    course:item.courseName||'',
+    color:item.courseColor||item.color||'',
+    personal:!!item.personal,
+    url:item.url||'',
+    dueAt:item.dueAt||null,
+    dueDay:item.dueAt&&dayOf?dayOf(item.dueAt):'',
+    planned:DAY.test(mine.plannedDate||'')?mine.plannedDate:'',
+    estimate:Number.isFinite(mine.estimate)?mine.estimate:0,
+    ...(DAY.test(mine.plannedDate||'')&&typeof mine.plannedTime==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(mine.plannedTime)?{plannedTime:mine.plannedTime}:{}),
     done:!!isDone(item,mine),steps:steps.length,stepsDone:steps.filter(s=>s.done).length,pinned:mine.pinned===true,missing:!!item.missing,points:item.points??null};
   });
  }
@@ -80,7 +91,9 @@
  const record=(tasks,id)=>tasks[id]||(tasks[id]={pinned:false,checkedOff:false,progress:'not-started',notes:'',estimate:0,plannedDate:'',checklist:[]});
  const plan=(id,dayKey)=>data=>{if(dayKey&&!DAY.test(dayKey))return;record(data.tasks,id).plannedDate=dayKey||'';};
  const estimate=(id,n)=>data=>{record(data.tasks,id).estimate=Math.max(0,Math.min(1440,Math.round(n)||0));};
- const carryOver=(today,ids)=>data=>{for(const id of ids){const r=data.tasks[id];if(r&&r.plannedDate&&r.plannedDate<today&&r.progress!=='done'&&!r.checkedOff)r.plannedDate=today;}};
+ const carryOver=(today,ids)=>data=>{
+  for(const id of ids){const r=data.tasks[id];if(r&&r.plannedDate&&r.plannedDate<today&&r.progress!=='done'&&!r.checkedOff)r.plannedDate=today;}
+ };
  function addTask(parsed,{courseId='personal',id,nowISO}){
   if(parsed.at!==undefined&&(typeof parsed.at!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(parsed.at)))throw Error('Invalid planned time.');
   return data=>{

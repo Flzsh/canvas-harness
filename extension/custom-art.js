@@ -22,7 +22,21 @@
  const limits=Object.freeze({fileBytes:256*1024,totalBytes:2*1024*1024});
  function memo(maxBytes,maxEntries){
   const entries=new Map();let used=0;
-  return {get(key){const hit=entries.get(key);if(!hit)return undefined;entries.delete(key);entries.set(key,hit);return hit.value;},set(key,value){const bytes=(key.length+value.length)*2;if(bytes>maxBytes)return;const old=entries.get(key);if(old){used-=old.bytes;entries.delete(key);}while(entries.size>=maxEntries||used+bytes>maxBytes){const first=entries.keys().next().value;used-=entries.get(first).bytes;entries.delete(first);}entries.set(key,{value,bytes});used+=bytes;}};
+  return {get(key){
+    const hit=entries.get(key);
+    if(!hit)return undefined;
+    entries.delete(key);
+    entries.set(key,hit);
+    return hit.value;
+  },set(key,value){
+    const bytes=(key.length+value.length)*2;
+    if(bytes>maxBytes)return;
+    const old=entries.get(key);
+    if(old){used-=old.bytes;entries.delete(key);}
+    while(entries.size>=maxEntries||used+bytes>maxBytes){const first=entries.keys().next().value;used-=entries.get(first).bytes;entries.delete(first);}
+    entries.set(key,{value,bytes});
+    used+=bytes;
+  }};
  }
  const normalizedMemo=memo(4*1024*1024,40),renderMemo=memo(16*1024*1024,40);
  const SVG_NS='http://www.w3.org/2000/svg', XLINK_NS='http://www.w3.org/1999/xlink';
@@ -132,7 +146,8 @@
  }
  function assertFiniteNumbers(value,context,count){
   const bits=value.trim().split(/[\s,]+/);
-  if((count!==undefined&&bits.length!==count)||!bits.length||bits.some(s=>!numberRe.test(s)||!Number.isFinite(Number(s))||Math.abs(Number(s))>1e7))error('Invalid or out-of-range '+context+' numeric values.');
+  if((count!==undefined&&bits.length!==count)||!bits.length||bits.some(s=>!numberRe.test(s)||!Number.isFinite(Number(s))||Math.abs(Number(s))>1e7))
+    error('Invalid or out-of-range '+context+' numeric values.');
   return bits.map(Number);
  }
  function checkPath(value){

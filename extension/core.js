@@ -150,7 +150,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       url: '/courses/' + encodeURIComponent(id),
       image: image,
       // The enrollment term (Canvas sends enrollment_term_id; the term's name only with include[]=term).
-      termId: stringValue(raw.enrollment_term_id !== undefined && raw.enrollment_term_id !== null ? raw.enrollment_term_id : raw.term && raw.term.id !== undefined ? raw.term.id : raw.termId),
+      termId: stringValue(raw.enrollment_term_id !== undefined && raw.enrollment_term_id !== null ?
+        raw.enrollment_term_id :
+        raw.term && raw.term.id !== undefined ? raw.term.id : raw.termId),
       termName: stringValue(raw.term && raw.term.name !== undefined ? raw.term.name : raw.termName),
     };
   }
@@ -317,16 +319,29 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     };
   }
 
+  // One formatter per time zone, and the answer per instant: a new Intl.DateTimeFormat on every call cost ~50-70 us,
+  // and a render asks for every assignment's day (work-model insights, the planner, the toolbox).
+  // Both caches are bounded; a bad zone still throws RangeError because a formatter is only cached once it is built.
+  var dayKeyFormatters = new Map();
+  var dayKeyMemo = new Map();
   function dayKey(value, timeZone) {
     var date = validDate(value);
     if (!date) return null;
 
-    var formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timeZone || DEFAULT_TIME_ZONE,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
+    var zone = timeZone || DEFAULT_TIME_ZONE;
+    var memo = zone + '|' + date.getTime();
+    if (dayKeyMemo.has(memo)) return dayKeyMemo.get(memo);
+    var formatter = dayKeyFormatters.get(zone);
+    if (!formatter) {
+      formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: zone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      if (dayKeyFormatters.size >= 12) dayKeyFormatters.clear();
+      dayKeyFormatters.set(zone, formatter);
+    }
     var parts = formatter.formatToParts(date);
     var values = {};
 
@@ -337,8 +352,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }
     }
 
-    if (!values.year || !values.month || !values.day) return null;
-    return values.year + '-' + values.month + '-' + values.day;
+    var key = !values.year || !values.month || !values.day ? null : values.year + '-' + values.month + '-' + values.day;
+    if (dayKeyMemo.size >= 4096) dayKeyMemo.clear();
+    dayKeyMemo.set(memo, key);
+    return key;
   }
 
   function dayOrdinal(key) {
@@ -660,13 +677,34 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // elapsed stores time in this phase before the current run; remaining anchors that run.
     var elapsed = (Number.isFinite(f.elapsed) ? Math.max(0, f.elapsed) : Math.max(0, total - remaining)) + (running ? Math.max(0, remaining - left) : 0);
     var paused = !running && !f.stoppedAt && !f.completedAt && left > 0 && (!!f.pausedAt || elapsed > 0 || left < total);
-    return {minutes:minutes,total:total,running:running,paused:paused,active:running||paused,left:left,elapsed:elapsed,progress:Math.max(0,Math.min(1,1-left/total)),sessions:f.sessions||0,phase:f.phase==='break'?'break':'focus'};
+    return {
+      minutes:minutes,
+      total:total,
+      running:running,
+      paused:paused,
+      active:running||paused,
+      left:left,
+      elapsed:elapsed,
+      progress:Math.max(0,Math.min(1,1-left/total)),
+      sessions:f.sessions||0,
+      phase:f.phase==='break'?'break':'focus'
+    };
   }
 
   function resetFocus(focus, minutes, now) {
     var at = typeof now === 'number' ? now : Date.now();
     if (!Number.isFinite(minutes) || minutes <= 0 || !Number.isFinite(at + minutes * 60000) || at + minutes * 60000 > 8640000000000000) return null;
-    var next = Object.assign({}, focus, {minutes:minutes,remaining:minutes*60,elapsed:0,pausedAt:0,stoppedAt:0,endsAt:at+minutes*60000,completedAt:0,completedMinutes:0,breakUntil:0});
+    var next = Object.assign({}, focus, {
+      minutes:minutes,
+      remaining:minutes*60,
+      elapsed:0,
+      pausedAt:0,
+      stoppedAt:0,
+      endsAt:at+minutes*60000,
+      completedAt:0,
+      completedMinutes:0,
+      breakUntil:0
+    });
     ['phase','focusMinutes','breakMinutes','cycles','cycle'].forEach(function (key) { delete next[key]; });
     return next;
   }
@@ -678,7 +716,17 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     var at = typeof now === 'number' ? now : Date.now();
     if (!focus || !Number.isFinite(focus.endsAt) || !focus.endsAt || focus.stoppedAt || at < focus.endsAt) return false;
     var completed = false;
-    var sequence = (focus.phase==='focus'||focus.phase==='break') && Number.isInteger(focus.cycles) && focus.cycles>0 && focus.cycles<=1000 && Number.isInteger(focus.cycle) && focus.cycle>0 && focus.cycle<=focus.cycles && Number.isFinite(focus.focusMinutes) && focus.focusMinutes>0 && Number.isFinite(focus.breakMinutes) && focus.breakMinutes>=0;
+    var sequence = (focus.phase==='focus'||focus.phase==='break') &&
+      Number.isInteger(focus.cycles) &&
+      focus.cycles>0 &&
+      focus.cycles<=1000 &&
+      Number.isInteger(focus.cycle) &&
+      focus.cycle>0 &&
+      focus.cycle<=focus.cycles &&
+      Number.isFinite(focus.focusMinutes) &&
+      focus.focusMinutes>0 &&
+      Number.isFinite(focus.breakMinutes) &&
+      focus.breakMinutes>=0;
     while (focus.endsAt && at>=focus.endsAt) {
       var ended = focus.endsAt, rest = focus.phase==='break';
       focus.elapsed = focusState(focus, ended).elapsed;

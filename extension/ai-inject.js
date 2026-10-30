@@ -95,7 +95,8 @@
         qwen: 'button[aria-label="Send message"], button#send-message-button', zai: 'button[aria-label="Send message"], button#send-message-button'
       };
       const attempt = n => {
-        if (!correctDocument() || authenticationForm() || !usable(editor) || normalize(read()) !== normalize(block)) return reply('injected', 'Draft inserted. The page changed before sending; review the chat and send manually.');
+        if (!correctDocument() || authenticationForm() || !usable(editor) || normalize(read()) !== normalize(block))
+          return reply('injected', 'Draft inserted. The page changed before sending; review the chat and send manually.');
         if (editor.getAttribute('data-canvas-harness-send') === marker) return reply('send-uncertain', 'Send was already clicked for this draft. Check the chat; Canvas Harness will not click it again.');
         const buttons = Array.from(new Set(document.querySelectorAll(selectors[id]))).filter(node => visible(node) && !node.disabled && node.getAttribute('aria-disabled') !== 'true');
         if (buttons.length === 1) {
@@ -144,7 +145,8 @@
         const selection = view.getSelection(), range = document.createRange();
         range.selectNodeContents(editor); range.collapse(false);
         selection.removeAllRanges(); selection.addRange(range);
-        if (typeof document.execCommand !== 'function' || !document.execCommand('insertText', false, addition)) return reply('no-editor', 'This editor declined insertion. Copy the prepared draft and paste it into the chat.');
+        if (typeof document.execCommand !== 'function' || !document.execCommand('insertText', false, addition))
+          return reply('no-editor', 'This editor declined insertion. Copy the prepared draft and paste it into the chat.');
       }
       editor.setAttribute('data-canvas-harness-context', marker);
       editor.dispatchEvent(new view.InputEvent('input', options));
@@ -152,7 +154,10 @@
         if (!correctDocument() || !usable(editor) || !normalize(read()).includes(normalize(block))) {
           // Retry only a proven framework reset to the exact original draft.
           // Partial edits, navigation and an uncertain Send are never replayed.
-          return {...reply('no-editor', 'The editor did not keep the inserted text. Your draft is still available in Canvas Harness to copy.'), retryable:correctDocument() && usable(editor) && !authenticationForm() && read() === current};
+          return {
+            ...reply('no-editor', 'The editor did not keep the inserted text. Your draft is still available in Canvas Harness to copy.'),
+            retryable:correctDocument() && usable(editor) && !authenticationForm() && read() === current
+          };
         }
         return finish();
       };

@@ -37,10 +37,20 @@
  function mergeAnnotations(saved,before,after){
   const current=new Map(createAnnotations(saved).annotations.map(a=>[a.id,a])),erased=new Map();
   for(const [previousValue,nextValue]of after===undefined?before:[[before,after]]){
-  const previous=new Map(createAnnotations(previousValue).annotations.map(a=>[a.id,a])),next=createAnnotations(nextValue).annotations,nextIds=new Set(next.map(a=>a.id));
+  const previous=new Map(createAnnotations(previousValue).annotations.map(a=>[a.id,a])),
+    next=createAnnotations(nextValue).annotations,
+    nextIds=new Set(next.map(a=>a.id));
   // Keep the merged version so a queued erase/undo cannot restore stale fields.
   for(const id of previous.keys())if(!nextIds.has(id)){if(current.has(id))erased.set(id,current.get(id));current.delete(id);}
-  for(const record of next){const old=previous.get(record.id);if(!old){if(!current.has(record.id))current.set(record.id,erased.get(record.id)||record);continue;}const present=current.get(record.id);if(!present)continue;const keys=new Set([...Object.keys(old),...Object.keys(record)]),patch=Object.fromEntries([...keys].filter(k=>JSON.stringify(record[k])!==JSON.stringify(old[k])).map(k=>[k,record[k]]));current.set(record.id,{...present,...patch});}
+  for(const record of next){
+    const old=previous.get(record.id);
+    if(!old){if(!current.has(record.id))current.set(record.id,erased.get(record.id)||record);continue;}
+    const present=current.get(record.id);
+    if(!present)continue;
+    const keys=new Set([...Object.keys(old),...Object.keys(record)]),
+      patch=Object.fromEntries([...keys].filter(k=>JSON.stringify(record[k])!==JSON.stringify(old[k])).map(k=>[k,record[k]]));
+    current.set(record.id,{...present,...patch});
+  }
   }
   return createAnnotations({version:1,annotations:[...current.values()]}).serialise();
  }
@@ -86,7 +96,8 @@
  }
  function checkSize(annotations){
   const value={version:1,annotations};
-  if(new TextEncoder().encode(JSON.stringify(value)).length>MAX_SAVED_BYTES)throw Object.assign(Error('PDF annotations exceed the 1 MiB storage quota. Erase some notes or pen strokes before saving.'),{code:'pdf-quota'});
+  if(new TextEncoder().encode(JSON.stringify(value)).length>MAX_SAVED_BYTES)
+    throw Object.assign(Error('PDF annotations exceed the 1 MiB storage quota. Erase some notes or pen strokes before saving.'),{code:'pdf-quota'});
   return value;
  }
  function createAnnotations(saved){
@@ -144,7 +155,14 @@
    from.pop();to.push(inverse);if(to.length>UNDO_LIMIT)to.shift();return true;
   }
   const undo=()=>replay(undoStack,redoStack),redo=()=>replay(redoStack,undoStack);
-  return {add,erase,eraseMany,update,undo,redo,get canUndo(){return undoStack.length>0;},get canRedo(){return redoStack.length>0;},replace:saved=>{const next=createAnnotations(saved).annotations;annotations.splice(0,annotations.length,...next);},serialise:()=>clone(checkSize(annotations)),get annotations(){return clone(annotations);}};
+  return {add,erase,eraseMany,update,undo,redo,get canUndo(){
+    return undoStack.length>0;
+  },get canRedo(){
+    return redoStack.length>0;
+  },replace:saved=>{
+    const next=createAnnotations(saved).annotations;
+    annotations.splice(0,annotations.length,...next);
+  },serialise:()=>clone(checkSize(annotations)),get annotations(){return clone(annotations);}};
  }
  const api=Object.freeze({clampWidth,renderWindow,storageKey,legacyStorageKey,mergeAnnotations,createAnnotations,viewportToPdf,pdfToViewport,rectToPdf,theme});
  root.ReservePdfModel=api;

@@ -7,6 +7,7 @@ const vm = require('node:vm');
 const {createHash} = require('node:crypto');
 const {pathToFileURL} = require('node:url');
 const {deflateSync} = require('node:zlib');
+require('./pdfjs-node-fixture.cjs');
 const modulePath = path.resolve(__dirname, '../extension/pdf-context.js');
 
 test('exposes the opt-in PDF context extraction entry point', () => {
@@ -366,13 +367,30 @@ test('the three vendor artifacts match the recorded official package hashes', ()
   const {vendor} = require(modulePath);
   const vendorPath = path.resolve(__dirname, '../extension/vendor/pdfjs');
   assert.deepEqual(fs.readdirSync(vendorPath).sort(), ['LICENSE', 'README.md', 'pdf.mjs', 'pdf.worker.mjs']);
-  assert.equal(vendor.sha256['pdf.mjs'], 'bc51f4874a66e3853189cb5d50aba4b3096afa83ed433b885d293a3d94583cdc');
-  assert.equal(vendor.sha256['pdf.worker.mjs'], 'bb422f60804477de4a0b09091d8347a916a387755ed1cbad24ccaec1d09c78bf');
-  assert.equal(fs.statSync(path.join(vendorPath, 'pdf.mjs')).size, 1069549);
-  assert.equal(fs.statSync(path.join(vendorPath, 'pdf.worker.mjs')).size, 2418244);
+  assert.equal(vendor.sha256['pdf.mjs'], 'dd13af821c9c3e1778653340d6539a1ba07bc56cba40073a4c727864cf0c232a');
+  assert.equal(vendor.sha256['pdf.worker.mjs'], '07ceb740d746e5d9012fcf9f27d5c7dea09f7d2f5e74f5c8109e5787551a2333');
+  assert.equal(fs.statSync(path.join(vendorPath, 'pdf.mjs')).size, 860818);
+  assert.equal(fs.statSync(path.join(vendorPath, 'pdf.worker.mjs')).size, 2229713);
   const source = fs.readFileSync(modulePath, 'utf8');
-  assert.match(source, /legacy\/build\/pdf\.mjs -> vendor\/pdfjs\/pdf\.mjs/);
-  assert.match(source, /legacy\/build\/pdf\.worker\.mjs -> vendor\/pdfjs\/pdf\.worker\.mjs/);
-  assert.doesNotMatch(source, /legacy\/build\/pdf(?:\.worker)?\.min\.mjs/);
+  assert.match(source, /(?<!legacy\/)build\/pdf\.mjs -> vendor\/pdfjs\/pdf\.mjs/);
+  assert.match(source, /(?<!legacy\/)build\/pdf\.worker\.mjs -> vendor\/pdfjs\/pdf\.worker\.mjs/);
+  assert.doesNotMatch(source, /legacy\/build|build\/pdf(?:\.worker)?\.min\.mjs/);
   for (const [name, hash] of Object.entries(vendor.sha256)) assert.equal(createHash('sha256').update(fs.readFileSync(path.join(vendorPath, name))).digest('hex'), hash);
+});
+test('the vendored PDF.js is the modern build without core-js polyfills or string-built code', () => {
+  const vendorPath = path.resolve(__dirname, '../extension/vendor/pdfjs');
+  const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../extension/manifest.json'), 'utf8'));
+  // The modern build calls a few built-ins newer than Chrome 126 directly (Math.sumPrecise, Map.prototype.getOrInsertComputed,
+  // ...); the extension loads it only after pdf-polyfills.js, and still needs URL.parse (Chrome 126) from the browser.
+  // tests/pdf-polyfills.test.cjs checks that list.
+  assert.equal(manifest.minimum_chrome_version, '126', 'minimum_chrome_version must cover the modern PDF.js build with its polyfills');
+  const source = fs.readFileSync(modulePath, 'utf8');
+  assert.match(source, /import\(packagedURL\('pdf-library\.mjs'\)\)/);
+  assert.match(source, /new root\.Worker\(packagedURL\('pdf-worker\.mjs'\), \{type: 'module'\}\)/);
+  assert.doesNotMatch(source, /packagedURL\('vendor\/pdfjs\//, 'the text reader never loads PDF.js without its polyfills');
+  for (const name of ['pdf.mjs', 'pdf.worker.mjs']) {
+    const text = fs.readFileSync(path.join(vendorPath, name), 'utf8');
+    for (const pattern of [/core-js/, /['"]java['"]\s*\+/, /javascript:/i, /document\.write/, /iframe/i, /\beval\s*\(/, /new\s+Function\s*\(/, /(?<![\w.$])Function\s*\(/])
+      assert.doesNotMatch(text, pattern, name + ' must not contain ' + pattern);
+  }
 });

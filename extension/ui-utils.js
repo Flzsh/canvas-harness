@@ -3,7 +3,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 (function(root){
  'use strict';
  const escapeHTML=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
- function safeURL(value){try{const url=new URL(value,(globalThis.ReserveSite.origin()));return ['https:','http:'].includes(url.protocol)&&!url.username&&!url.password?url.href:'#';}catch{return '#';}}
+ function safeURL(value){
+   try{const url=new URL(value,(globalThis.ReserveSite.origin()));return ['https:','http:'].includes(url.protocol)&&!url.username&&!url.password?url.href:'#';}catch{return '#';}
+ }
  function color(value,fallback='#286452'){return /^#[0-9a-f]{6}$/i.test(value||'')?value:fallback;}
  function safeRichHTML(html){
   const template=document.createElement('template');template.innerHTML=String(html||'');
@@ -14,7 +16,21 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // teacher's HTML passes through math.js's own whitelist. Nothing inside code or pre is interpreted. Elements of
   // other namespaces report lower-case names, so the block list is checked without case (an svg never leaks its text).
   const M=root.ReserveMath,budget={left:M?.limits?.count??0};
-  function visit(node,raw){if(node.nodeType===3){const text=node.textContent;return M&&!raw&&M.hasMath(text)?M.renderText(text,budget):escapeHTML(text);}if(node.nodeType!==1)return '';const name=String(node.tagName).toUpperCase();if(name==='MATH'&&M)return M.cleanMathML(node);if(name==='IMG'&&M){const tex=M.imageTeX(node);return tex&&budget.left-->0?M.html(tex,{source:tex}):'';}if(blocked.has(name))return '';const inside=Array.from(node.childNodes).map(child=>visit(child,raw||name==='CODE'||name==='PRE')).join('');if(!tags.has(node.tagName))return inside;const tag=node.tagName.toLowerCase();if(tag==='a'){const url=safeURL(node.getAttribute('href'));return url==='#'?inside:`<a href="${escapeHTML(url)}" target="_blank" rel="noopener noreferrer">${inside}</a>`;}let attributes='';if(tag==='td'||tag==='th')for(const name of ['colspan','rowspan']){const value=node.getAttribute(name);if(/^[1-9]\d?$/.test(value||''))attributes+=` ${name}="${value}"`;}return `<${tag}${attributes}>${inside}${['br','hr'].includes(tag)?'':`</${tag}>`}`;}
+  function visit(node,raw){
+    if(node.nodeType===3){const text=node.textContent;return M&&!raw&&M.hasMath(text)?M.renderText(text,budget):escapeHTML(text);}
+    if(node.nodeType!==1)return '';
+    const name=String(node.tagName).toUpperCase();
+    if(name==='MATH'&&M)return M.cleanMathML(node);
+    if(name==='IMG'&&M){const tex=M.imageTeX(node);return tex&&budget.left-->0?M.html(tex,{source:tex}):'';}
+    if(blocked.has(name))return '';
+    const inside=Array.from(node.childNodes).map(child=>visit(child,raw||name==='CODE'||name==='PRE')).join('');
+    if(!tags.has(node.tagName))return inside;
+    const tag=node.tagName.toLowerCase();
+    if(tag==='a'){const url=safeURL(node.getAttribute('href'));return url==='#'?inside:`<a href="${escapeHTML(url)}" target="_blank" rel="noopener noreferrer">${inside}</a>`;}
+    let attributes='';
+    if(tag==='td'||tag==='th')for(const name of ['colspan','rowspan']){const value=node.getAttribute(name);if(/^[1-9]\d?$/.test(value||''))attributes+=` ${name}="${value}"`;}
+    return `<${tag}${attributes}>${inside}${['br','hr'].includes(tag)?'':`</${tag}>`}`;
+  }
   return Array.from(template.content.childNodes).map(child=>visit(child,false)).join('');
  }
  function wallTimeToISO(value,timeZone){

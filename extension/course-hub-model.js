@@ -40,7 +40,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }catch(_error){return '';}
   }
   function announcementVisible(value){
-    return !!value&&value.published!==false&&value.workflow_state!=='deleted'&&!value.deleted_at&&value.locked!==true&&value.locked_for_user!==true&&value.user_can_see_posts!==false;
+    return !!value&&
+      value.published!==false&&
+      value.workflow_state!=='deleted'&&
+      !value.deleted_at&&
+      value.locked!==true&&
+      value.locked_for_user!==true&&
+      value.user_can_see_posts!==false;
   }
   function authorName(value){
     if(typeof value?.user_name==='string')return value.user_name;
@@ -71,7 +77,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       return visibility!=='admins'&&visibility!=='none';
     }).map(function(tab,index){
       var url=courseId?courseURL(tab.html_url,courseId):'';
-      return {id:text(tab.id),label:text(tab.label),url,type:text(tab.type),position:Number.isFinite(Number(tab.position))?Number(tab.position):Number.MAX_SAFE_INTEGER,index};
+      return {
+        id:text(tab.id),
+        label:text(tab.label),
+        url,
+        type:text(tab.type),
+        position:Number.isFinite(Number(tab.position))?Number(tab.position):Number.MAX_SAFE_INTEGER,
+        index
+      };
     }).filter(function(tab){
       if(!tab.id||!tab.label||!tab.url||seen.has(tab.id))return false;
       seen.add(tab.id);return true;

@@ -368,3 +368,8 @@ test('local appearance changes update motion; other areas and keys are ignored',
  await f.changeAppearance(undefined);assert.equal(f.html.dataset.mdMotion,'on','removing the preference restores default motion');
  assert.deepEqual(f.storageWrites,[]);
 });
+
+test('an Up next slip the progress tracker hides is not shown by the slip style',()=>{
+ const css=read('modules-page.css'),rule=css.split('}').find(r=>/\.due_date_display\[hidden\]/.test(r));
+ assert.ok(rule,'the hidden slip has its own rule');assert.match(rule,/\{display:none$/);
+});

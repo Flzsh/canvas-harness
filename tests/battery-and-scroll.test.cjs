@@ -1,5 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const read=f=>fs.readFileSync(path.join(__dirname,'..','extension',f),'utf8');
+// scripts/readable-lines.cjs spreads dense code over several lines (whitespace only); match the code without them.
+const compact=text=>text.replace(/\n[ \t]*/g,'');
 
 // The user (2026-10-15) runs a laptop on battery at school: smooth, and as little work as possible while nothing moves.
 test('the film clock reads every loop state before it writes any frame (one restyle a tick, not one a loop)',()=>{
@@ -52,7 +54,7 @@ test('the pony stands only on free spots, steps off when something appears under
 });
 test('the pony\u2019s menu fades in where it is: the pony stops at once and the bubble does not grow',()=>{
  assert.match(read('pet.css'),/animation:pet-fade \.2s ease-out\}/);assert.match(read('pet.css'),/@keyframes pet-fade\{from\{opacity:0\}\}/);
- assert.match(read('pets.js'),/menuOpen=true;[\s\S]*?goal=null;speed=0;\s*stop\(\);cancelPlaces\(\);/);
+ assert.match(compact(read('pets.js')),/menuOpen=true;[\s\S]*?goal=null;speed=0;\s*stop\(\);cancelPlaces\(\);/);
 });
 
 test('the column is not scrolled by the browser while the workspace lays itself out (scroll anchoring off)',()=>{

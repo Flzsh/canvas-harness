@@ -12,15 +12,17 @@ function setup({paint=true}={}){
  }});
  state.paint=()=>{const jobs=[...state.frames.values()];state.frames.clear();jobs.forEach(fn=>fn(100));};if(paint)state.paint();return state;
 }
+// A click's pointerdown holds the drawings until the frame after the click's render (motion.js busy/answered). That
+// frame releases the drawings and renders nothing, so these tests paint and count renders, not queued frames.
 test('materials changes during markup never render nested and share one pre-paint follow-up',async()=>{
  const s=setup();await Promise.resolve();s.paint();const before=s.renders;s.armed=true;s.f.click('course',{id:'20'});assert.equal(s.renders,before+1);assert.equal(s.max,1);
- await Promise.resolve();s.notify.forEach(fn=>fn());await Promise.resolve().then(()=>s.notify[0]());assert.equal(s.renders,before+1);assert.equal(s.frames.size,1);s.paint();assert.equal(s.renders,before+2);assert.equal(s.max,1);s.f.dashboard.destroy();
+ await Promise.resolve();s.notify.forEach(fn=>fn());await Promise.resolve().then(()=>s.notify[0]());assert.equal(s.renders,before+1);s.paint();assert.equal(s.renders,before+2,'one shared follow-up render');assert.equal(s.max,1);s.paint();assert.equal(s.renders,before+2);s.f.dashboard.destroy();
 });
 test('available synchronous deck state is read by the click render without a follow-up',async()=>{
- const s=setup();await Promise.resolve();s.paint();const before=s.renders;s.f.click('course',{id:'20'});assert.equal(s.renders,before+1);assert.equal(s.ready,'20');assert.ok(s.f.container.querySelector('[data-ready="20"]'));await Promise.resolve();assert.equal(s.frames.size,0);assert.deepEqual(s.deck,['10','20']);s.f.dashboard.destroy();
+ const s=setup();await Promise.resolve();s.paint();const before=s.renders;s.f.click('course',{id:'20'});assert.equal(s.renders,before+1);assert.equal(s.ready,'20');assert.ok(s.f.container.querySelector('[data-ready="20"]'));await Promise.resolve();s.paint();assert.equal(s.renders,before+1,'no follow-up render');assert.deepEqual(s.deck,['10','20']);s.f.dashboard.destroy();
 });
 test('an explicit render consumes queued source notifications and retains click focus',async()=>{
- const s=setup();await Promise.resolve();s.paint();const before=s.renders;s.notify[0]();const target=s.f.click('course',{id:'20'});assert.equal(s.renders,before+1);assert.equal(s.frames.size,0);assert.equal(s.f.document.activeElement,target);s.f.dashboard.destroy();
+ const s=setup();await Promise.resolve();s.paint();const before=s.renders;s.notify[0]();const target=s.f.click('course',{id:'20'});assert.equal(s.renders,before+1);s.paint();assert.equal(s.renders,before+1,'the queued notification was consumed');assert.equal(s.f.document.activeElement,target);s.f.dashboard.destroy();
 });
 test('notifications spanning later microtasks still flush exactly once before paint',async()=>{
  const s=setup();await Promise.resolve();s.paint();const before=s.renders;s.notify[0]();await Promise.resolve().then(()=>s.notify[1]()).then(()=>s.notify[2]()).then(()=>{s.ready='cache-final';s.notify[0]();});assert.equal(s.renders,before);assert.equal(s.frames.size,1);s.paint();assert.equal(s.renders,before+1);assert.ok(s.f.container.querySelector('[data-ready="cache-final"]'));s.f.dashboard.destroy();

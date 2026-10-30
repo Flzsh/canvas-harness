@@ -142,7 +142,10 @@
  }
  function drawPen(node,duration=500,scope=current(),delay=0){
   node?.setAttribute('pathLength','1');
-  return play(node,[{strokeDasharray:'1',strokeDashoffset:1,opacity:0},{strokeDasharray:'1',strokeDashoffset:.98,opacity:1,offset:.02},{strokeDasharray:'1',strokeDashoffset:0,opacity:1}],{duration,delay,easing:PEN,scope,id:'tour-pen'});
+  return play(
+    node,
+    [{strokeDasharray:'1',strokeDashoffset:1,opacity:0},{strokeDasharray:'1',strokeDashoffset:.98,opacity:1,offset:.02},{strokeDasharray:'1',strokeDashoffset:0,opacity:1}],
+    {duration,delay,easing:PEN,scope,id:'tour-pen'});
  }
  function selectedTick(button,selected){
   if(selected&&!button.classList.contains('is-selected'))drawPen(button.querySelector('.choice-tick path'),350);
@@ -208,7 +211,16 @@
  function startOpening(){
   tour.dataset.opening='true';
   try{intro=ReserveWelcomeIntro.mount(introLayer);resizeIntro();}
-  catch{intro=null;tour.dataset.opening='false';introLayer.hidden=true;introStart.classList.add('is-fallback');syncButtons();introStart.focus({preventScroll:true});notice('The welcome drawing could not load. You can still continue.',true);return;}
+  catch{
+    intro=null;
+    tour.dataset.opening='false';
+    introLayer.hidden=true;
+    introStart.classList.add('is-fallback');
+    syncButtons();
+    introStart.focus({preventScroll:true});
+    notice('The welcome drawing could not load. You can still continue.',true);
+    return;
+  }
   if(reduced()){skipOpening();return;}
   intro.setT(0);placeIntroStart();openingDraw=clockNow();wakeOpening();
  }
@@ -628,7 +640,13 @@
    const after=node.getBoundingClientRect();
    if(!after.width||!after.height)continue;
    // FLIP reads both layouts once; the in-betweens only composite transforms.
-   play(node,[{transformOrigin:'0 0',transform:'translate('+(rect.left-after.left)+'px,'+(rect.top-after.top)+'px) scale('+(rect.width/after.width)+','+(rect.height/after.height)+')'},{transformOrigin:'0 0',transform:'none'}],{duration:520,id:'tour-menu-layout'});
+   play(
+     node,
+     [
+       {transformOrigin:'0 0',transform:'translate('+(rect.left-after.left)+'px,'+(rect.top-after.top)+'px) scale('+(rect.width/after.width)+','+(rect.height/after.height)+')'},
+       {transformOrigin:'0 0',transform:'none'}
+     ],
+     {duration:520,id:'tour-menu-layout'});
   }
  }
  function renderMenuArt(){
@@ -642,7 +660,17 @@
   // Offsets are real timeline beats, shared with the icons' delayed actions.
   play(pointer,frames,{duration:7000,easing:'linear',id:'tour-menu-pointer'});
   if(nav==='drawn'){
-   play(bar,[{transform:'translateX(-110%)'},{transform:'translateX(-110%)',offset:.1,easing:SETTLE},{transform:'none',offset:.2},{transform:'none',offset:.8,easing:SETTLE},{transform:'translateX(-110%)',offset:.95},{transform:'translateX(-110%)'}],{duration:7000,easing:'linear',id:'tour-menu-drawer'});
+   play(
+     bar,
+     [
+       {transform:'translateX(-110%)'},
+       {transform:'translateX(-110%)',offset:.1,easing:SETTLE},
+       {transform:'none',offset:.2},
+       {transform:'none',offset:.8,easing:SETTLE},
+       {transform:'translateX(-110%)',offset:.95},
+       {transform:'translateX(-110%)'}
+     ],
+     {duration:7000,easing:'linear',id:'tour-menu-drawer'});
   }
   const actions={
    // The x-* rig actions and pivots are the ones in canvas-nav.css. The SVG
@@ -655,7 +683,12 @@
    '.x-flag':[{transform:'rotate(80deg)'},{transform:'rotate(-8deg)',offset:.55},{transform:'none'}],
    '.x-wave':[{transform:'rotate(0deg)'},{transform:'rotate(-14deg)',offset:.3},{transform:'rotate(10deg)',offset:.65},{transform:'rotate(0deg)'}]
   };
-  icons.forEach((icon,i)=>{for(const [selector,keys] of Object.entries(actions)){const part=icon.querySelector(selector);if(part)play(part,keys,{duration:selector==='.x-rings'?520:900,delay:(.2+i*.115)*7000,easing:'ease-in-out',id:'tour-nav-hover'});}});
+  icons.forEach((icon,i)=>{
+    for(const [selector,keys] of Object.entries(actions)){
+      const part=icon.querySelector(selector);
+      if(part)play(part,keys,{duration:selector==='.x-rings'?520:900,delay:(.2+i*.115)*7000,easing:'ease-in-out',id:'tour-nav-hover'});
+    }
+  });
   cue('menu-repeat',10000,renderMenuArt);
  }
  async function saveNav(value){

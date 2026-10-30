@@ -190,6 +190,6 @@ test('both repositories receive byte-identical standalone modules and focused te
 
 test('the board breaks a long name after a hyphen, not inside a word',()=>{
  const G=require('../extension/generic-art.js'),lines=name=>[...G.title(name).matchAll(/data-label="([^"]*)" data-join="([^"]*)"/g)].map(m=>m[2]+m[1]);
- assert.deepEqual(lines('CL Engineering-Lindqvist'),['CL Engineering-','Lindqvist']);
- for(const name of ['CL Engineering-Lindqvist','Mathematics-Physics-Engineering-Seminar','Independent Research Seminar','Self-Directed Study'])assert.equal(lines(name).join(''),name,'the lines spell the whole name');
+ assert.deepEqual(lines('Honors Engineering-Workshop'),['Honors Engineering-','Workshop']);
+ for(const name of ['Honors Engineering-Workshop','Mathematics-Physics-Engineering-Seminar','Independent Research Seminar','Self-Directed Study'])assert.equal(lines(name).join(''),name,'the lines spell the whole name');
 });

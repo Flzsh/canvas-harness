@@ -111,7 +111,7 @@
     const fail = (code, message) => { out.errors.push({ code, message }); return out; };
     if (typeof input !== 'string') return fail('not-text', 'A pack is text.');
     if (bytes(input) > MAX_PACK_BYTES) return fail('too-large', 'This pack is larger than 3 MiB. Send it as several smaller packs.');
-    const text = input.replace(/^﻿/, ''), found = readDirectives(text);
+    const text = input.replace(/^\uFEFF/, ''), found = readDirectives(text);
     const head = found.findIndex(d => d.kind === 'pack');
     if (head < 0) return fail('not-a-pack', 'This is not a Canvas Harness pack: it has no <?ch-pack ...?> line.');
     if (found.slice(0, head).length) out.warnings.push({ code: 'before-header', message: 'Pieces listed before the <?ch-pack ...?> line were ignored.' });

@@ -3,8 +3,10 @@
 .rd[data-theme-kit] :is(.rd-workspace-tab[aria-selected=true],.rd-filter[aria-pressed=true],.rd-day-filter[aria-pressed=true],.rd-reader-tab[aria-pressed=true],.rd-reader-tab[aria-selected=true]) .rd-n,
 .rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-rail-count { color:inherit;opacity:.82; }
 .rd[data-theme-kit] > .tk-sky { pointer-events:none; }
-/* The idle rest (no input for a while, motion.js): the scene rests with the drawings; the sky pauses too (scene-themes.js). */
-.rd[data-theme-kit][data-art-rest] *,.rd[data-theme-kit][data-art-rest] *::before,.rd[data-theme-kit][data-art-rest] *::after { animation-play-state:paused!important; }
+/* The idle rest (no input for a while, motion.js): the scene rests with the drawings; the sky pauses too (scene-themes.js).
+   Keyed on data-kit-rest, which only an applied scene writes (mirroring data-art-rest): a rule on data-art-rest itself
+   would restyle the whole dashboard each time the rest starts or ends, with or without a scene. */
+.rd[data-theme-kit][data-kit-rest] *,.rd[data-theme-kit][data-kit-rest] *::before,.rd[data-theme-kit][data-kit-rest] *::after { animation-play-state:paused!important; }
 .rd[data-theme-kit][data-scene-paused] *,.rd[data-theme-kit][data-scene-paused] *::before,.rd[data-theme-kit][data-scene-paused] *::after { animation-play-state:paused!important; }
 /* The rail's footer sits on the scene like the rail itself (its paper colour is not part of any scene). */
 .rd[data-theme-kit] .rd-rail-foot { background:transparent!important; }

@@ -20,9 +20,14 @@
   if(record.type==='note')return coordinates(record.point,2)&&typeof record.text==='string'&&record.text.trim().length>0&&record.text.length<=10000;
   if(!color(record.color))return false;
   if(record.type==='text')return coordinates(record.point,2)&&typeof record.text==='string'&&record.text.trim().length>0&&record.text.length<=10000;
-  if(record.type==='shape')return Array.isArray(record.points)&&record.points.length===2&&Array.from(record.points).every(p=>coordinates(p,2))&&['rect','ellipse','arrow','line'].includes(record.shape);
+  if(record.type==='shape')
+    return Array.isArray(record.points)&&record.points.length===2&&Array.from(record.points).every(p=>coordinates(p,2))&&['rect','ellipse','arrow','line'].includes(record.shape);
   if(record.type==='pen')return Array.isArray(record.points)&&record.points.length>=2&&record.points.length<=20000&&Array.from(record.points).every(p=>coordinates(p,2));
-  return (record.type==='highlight'||record.type==='underline'||record.type==='strike')&&Array.isArray(record.rects)&&record.rects.length>0&&record.rects.length<=10000&&Array.from(record.rects).every(r=>coordinates(r,4)&&r[0]<r[2]&&r[1]<r[3]);
+  return (record.type==='highlight'||record.type==='underline'||record.type==='strike')&&
+    Array.isArray(record.rects)&&
+    record.rects.length>0&&
+    record.rects.length<=10000&&
+    Array.from(record.rects).every(r=>coordinates(r,4)&&r[0]<r[2]&&r[1]<r[3]);
  }
  function bounds(points,padding=0){
   const rect=[Infinity,Infinity,-Infinity,-Infinity];

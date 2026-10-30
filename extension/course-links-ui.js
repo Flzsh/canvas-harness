@@ -10,7 +10,12 @@
   }
   function kind(item){
     if(item.kind==='link'){
-      try{const url=new URL(item.url);if(url.hostname==='docs.google.com')return /\/spreadsheets\//.test(url.pathname)?'Google Sheet':/\/presentation\//.test(url.pathname)?'Google Slides':/\/forms\//.test(url.pathname)?'Google Form':'Google Doc';if(url.hostname==='drive.google.com')return 'Google Drive';}catch{}
+      try{
+        const url=new URL(item.url);
+        if(url.hostname==='docs.google.com')
+          return /\/spreadsheets\//.test(url.pathname)?'Google Sheet':/\/presentation\//.test(url.pathname)?'Google Slides':/\/forms\//.test(url.pathname)?'Google Form':'Google Doc';
+        if(url.hostname==='drive.google.com')return 'Google Drive';
+      }catch{}
       return 'Link';
     }
     const ext=(String(item.name||'').match(/\.([a-z0-9]+)$/i)?.[1]||'').toLowerCase(),type=String(item.type||'').toLowerCase();
@@ -28,7 +33,11 @@
   function create({files,onChange=()=>{},onOpen=()=>{}}={}){
     const views=new Map();let dead=false,focusRequest=null;
     const key=(id,place)=>id+':'+place;
-    const view=(id,place)=>{const k=key(id,place);if(!views.has(k))views.set(k,{add:false,url:'',title:'',editing:'',name:'',removing:'',error:'',busy:false});return views.get(k);};
+    const view=(id,place)=>{
+      const k=key(id,place);
+      if(!views.has(k))views.set(k,{add:false,url:'',title:'',editing:'',name:'',removing:'',error:'',busy:false});
+      return views.get(k);
+    };
     const changed=()=>{if(!dead)onChange();};
     const dataOf=data=>({id:courseId(data?.course),place:placeId(data?.place)});
     const listed=id=>(files?.list(id)||[]).filter(item=>item&&typeof item.id==='string'&&['link','file'].includes(item.kind)&&(item.kind!=='link'||webURL(item.url)));
@@ -50,8 +59,12 @@
         let body;
         if(state.editing===file)body=`<div class="ch-links-rename" role="group" aria-label="Rename"><label class="ch-links-field"><span class="rd-sr-only">Name</span><input type="text" data-rd-field="hub-own-name" ${attrs(id,place,file)} value="${E(state.name)}" maxlength="120" aria-label="Name"${disabled}></label><span class="ch-links-actions">${button('save-name','Save',id,place,{file,disabled:state.busy})}${button('cancel-row','Cancel',id,place,{file,disabled:state.busy})}</span></div>`;
         else{
-          const open=item.kind==='link'?`<a class="rd-row-open ch-links-open" href="${E(webURL(item.url))}" target="_blank" rel="noopener noreferrer">${E(name)}</a>`:button('open',name,id,place,{file,disabled:state.busy}).replace('rd-text-button ch-links-action','rd-row-open ch-links-open');
-          const actions=state.removing===file?`<span class="ch-links-remove-label">Remove?</span>${button('confirm-remove','Remove',id,place,{file,disabled:state.busy})}${button('cancel-row','Cancel',id,place,{file,disabled:state.busy})}`:button('rename','Rename',id,place,{file,disabled:state.busy})+button('remove','Remove',id,place,{file,disabled:state.busy});
+          const open=item.kind==='link'?
+            `<a class="rd-row-open ch-links-open" href="${E(webURL(item.url))}" target="_blank" rel="noopener noreferrer">${E(name)}</a>`:
+            button('open',name,id,place,{file,disabled:state.busy}).replace('rd-text-button ch-links-action','rd-row-open ch-links-open');
+          const actions=state.removing===file?
+            `<span class="ch-links-remove-label">Remove?</span>${button('confirm-remove','Remove',id,place,{file,disabled:state.busy})}${button('cancel-row','Cancel',id,place,{file,disabled:state.busy})}`:
+            button('rename','Rename',id,place,{file,disabled:state.busy})+button('remove','Remove',id,place,{file,disabled:state.busy});
           body=`${open}<span class="rd-row-kind ch-links-kind">${E(kind(item))}</span><span class="ch-links-actions">${actions}</span>`;
         }
         return `<li class="rd-teacher-row ch-links-row" data-rd-key="${E(section+'-'+file)}">${body}</li>`;
@@ -66,14 +79,17 @@
       const item=listed(id).find(entry=>entry.id===data.file);
       if(action==='hub-own-add'){state.add=true;state.error='';request(id,place,'hub-own-url');changed();return;}
       if(action==='hub-own-cancel'){state.add=false;state.url='';state.title='';state.error='';request(id,place,null,'hub-own-add');changed();return;}
-      if(action==='hub-own-save-link'&&state.add)return run(id,place,state,()=>files.addLink(id,state.url,state.title),()=>{state.url='';state.title='';request(id,place,'hub-own-url');},'The link could not be saved.');
+      if(action==='hub-own-save-link'&&state.add)
+        return run(id,place,state,()=>files.addLink(id,state.url,state.title),()=>{state.url='';state.title='';request(id,place,'hub-own-url');},'The link could not be saved.');
       if(!item)return;
       if(action==='hub-own-open'&&item.kind==='file')return run(id,place,state,()=>onOpen(id,item.id),null,'The file could not be opened.');
       if(action==='hub-own-rename'){state.editing=item.id;state.name=String(item.title||item.name||'');state.removing='';state.error='';request(id,place,'hub-own-name',null,item.id);changed();return;}
       if(action==='hub-own-remove'){state.removing=item.id;state.editing='';state.name='';state.error='';request(id,place,null,'hub-own-confirm-remove',item.id);changed();return;}
       if(action==='hub-own-cancel-row'){state.editing='';state.name='';state.removing='';state.error='';request(id,place,null,'hub-own-rename',item.id);changed();return;}
-      if(action==='hub-own-save-name'&&state.editing===item.id)return run(id,place,state,()=>files.rename(id,item.id,state.name),()=>{state.editing='';state.name='';request(id,place,null,'hub-own-rename',item.id);},'The name could not be saved.');
-      if(action==='hub-own-confirm-remove'&&state.removing===item.id)return run(id,place,state,()=>files.remove(id,item.id),()=>{state.removing='';request(id,place,null,'hub-own-add');},'The item could not be removed.');
+      if(action==='hub-own-save-name'&&state.editing===item.id)
+        return run(id,place,state,()=>files.rename(id,item.id,state.name),()=>{state.editing='';state.name='';request(id,place,null,'hub-own-rename',item.id);},'The name could not be saved.');
+      if(action==='hub-own-confirm-remove'&&state.removing===item.id)
+        return run(id,place,state,()=>files.remove(id,item.id),()=>{state.removing='';request(id,place,null,'hub-own-add');},'The item could not be removed.');
     }
     function input(field,value,data={}){
       if(dead||!String(field).startsWith('hub-own-'))return;
@@ -92,7 +108,11 @@
       if(event.key==='Escape'){event.preventDefault();handle(field==='hub-own-name'?'hub-own-cancel-row':'hub-own-cancel',data);return true;}
       return false;
     }
-    return {render,handle,input,keydown,takeFocusRequest(){const request=focusRequest;focusRequest=null;return request;},destroy(){dead=true;views.clear();focusRequest=null;}};
+    return {render,handle,input,keydown,takeFocusRequest(){
+      const request=focusRequest;
+      focusRequest=null;
+      return request;
+    },destroy(){dead=true;views.clear();focusRequest=null;}};
   }
   const api={create};root.ReserveCourseLinksUI=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

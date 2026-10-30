@@ -4,7 +4,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 (function(){
   'use strict';
   const dashboardPath=()=>location.pathname==='/'||location.pathname==='/dashboard'||location.pathname==='/dashboard/';
-  if(window.top!==window||!globalThis.ReserveSite.supported(location.href)||globalThis.ReserveSite.vanillaPage(location)||!dashboardPath()||globalThis.ReserveStartup)return;
+  if(window.top!==window||
+    !globalThis.ReserveSite.supported(location.href)||
+    globalThis.ReserveSite.vanillaPage(location)||
+    !dashboardPath()||
+    globalThis.ReserveStartup)
+    return;
   // Preferences alone decide whether to cover Canvas. The controller performs
   // the one fresh account check before opening any owner's saved workspace.
   // The cover waits up to 8s for Canvas (a slow school network often needs more than 2-3s); only then does Canvas show.
@@ -12,7 +17,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // origin's localStorage and read at once; the saved setting then confirms or corrects it (and refreshes the hint).
   const HINT='reserve:startup-theme',darkClass=on=>document.documentElement?.classList.toggle('reserve-startup-dark',on);
   try{if(localStorage.getItem(HINT)==='dark')darkClass(true);}catch{}
-  try{globalThis.chrome?.storage?.local?.get('reserve:appearance').then(saved=>{const dark=saved?.['reserve:appearance']?.theme==='dark';darkClass(dark);try{if(dark)localStorage.setItem(HINT,'dark');else localStorage.removeItem(HINT);}catch{}}).catch(()=>{});}catch{}
+  try{
+    globalThis.chrome?.storage?.local?.get('reserve:appearance').then(saved=>{
+      const dark=saved?.['reserve:appearance']?.theme==='dark';
+      darkClass(dark);
+      try{if(dark)localStorage.setItem(HINT,'dark');else localStorage.removeItem(HINT);}catch{}
+    }).catch(()=>{});
+  }catch{}
   const startedAt=performance.now(),subscribers=new Set();let deadline=startedAt+8000;
   // The eight seconds count only while the page can be seen. A tab opened in the background waits, unseen,
   // for its student; when it is shown it gets its eight seconds again (the CSS release switches restart too).
@@ -25,9 +36,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     globalThis.ReserveFeatures?.apply(prefs);
     sheets=globalThis.ReserveFeatures?.filterFiles(allSheets)||allSheets;
     if(globalThis.ReserveFeatures&&!globalThis.ReserveFeatures.enabled('dashboard'))release();
-    for(const link of [...preloadLinks])if(!sheets.some(file=>link.href===chrome.runtime.getURL(file))){link.remove();preloadLinks.splice(preloadLinks.indexOf(link),1);}
+    for(const link of [...preloadLinks])
+      if(!sheets.some(file=>link.href===chrome.runtime.getURL(file))){link.remove();preloadLinks.splice(preloadLinks.indexOf(link),1);}
   }
-  function refreshArt(){if(artNode){artNode.innerHTML=globalThis.ReserveFeatures?.enabled('motion')===false?'':globalThis.ReserveStartupArt||'';artNode.hidden=!artNode.innerHTML;}}
+  function refreshArt(){
+    if(artNode){artNode.innerHTML=globalThis.ReserveFeatures?.enabled('motion')===false?'':globalThis.ReserveStartupArt||'';artNode.hidden=!artNode.innerHTML;}
+  }
   const preloadLinks=[];
   const loginPage=()=>!!document.querySelector('#login_form, #new_login, .ic-Login');
   // Once the page body has its main content (or finished parsing) without a Canvas layout, it is not Canvas.
@@ -64,7 +78,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(document.visibilityState==='hidden'||(state!=='pending'&&state!=='active'))return;
     deadline=performance.now()+8000;clearTimeout(timer);timer=setTimeout(expire,8000);
     const html=document.documentElement;
-    if(state==='active'&&html?.classList.contains('reserve-startup-active')){html.classList.remove('reserve-startup-active');globalThis.getComputedStyle?.(shell)?.animationName;html.classList.add('reserve-startup-active');}
+    if(state==='active'&&html?.classList.contains('reserve-startup-active')){
+      html.classList.remove('reserve-startup-active');
+      globalThis.getComputedStyle?.(shell)?.animationName;
+      html.classList.add('reserve-startup-active');
+    }
   }
   function complete(){
     if(!canReveal())return false;

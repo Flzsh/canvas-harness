@@ -1,7 +1,7 @@
 'use strict';
 // A small DOM/WAAPI fixture for the real dashboard and film controller. No browser.
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
-function fixture({courseId='10',assignments=[],setup=()=>{}}={}){
+function fixture({courseId='10',assignments=[],initialState={},setup=()=>{}}={}){
  let clock=100,sequence=0;const timers=new Map(),animations=[],observers=[],events=new Map();
  const counts={scenes:0,titles:0,timers:0};
  const epoch=Date.UTC(2026,9,17,10);
@@ -72,7 +72,7 @@ function fixture({courseId='10',assignments=[],setup=()=>{}}={}){
  const store={get:()=>personal,subscribe:fn=>{subscriptions.add(fn);return()=>subscriptions.delete(fn);},update:async fn=>{fn(personal);for(const callback of subscriptions)callback(personal);}};
  const snapshot={user:{id:'1',short_name:'Student'},courses:[{id:'10',name:'Chemistry'},{id:'20',name:'History'}],assignments};
  setup({env,store,snapshot});
- const dashboard=env.ReserveDashboard.mount(document.body,{snapshot,store,demo:true,initialState:{courseId,workspace:'work'}}),container=document.body.querySelector('.rd');
+ const dashboard=env.ReserveDashboard.mount(document.body,{snapshot,store,demo:true,initialState:{courseId,workspace:'work',...initialState}}),container=document.body.querySelector('.rd');
  const tick=ms=>{clock+=ms;for(const [id,t]of [...timers])if(t.at<=clock){if(t.repeat)t.at=clock+t.delay;else timers.delete(id);t.fn();}};
  const click=(action,data={},{pointer=true}={})=>{const target=container.querySelector(`[data-rd-action="${action}"]${data.tab?`[data-tab="${data.tab}"]`:''}${data.id?`[data-id="${data.id}"]`:''}`);if(!target)throw Error('No action '+action+JSON.stringify(data));if(pointer)container.events.get('pointerdown')?.({target});target.focus({preventScroll:true});container.events.get('click')({detail:pointer?1:0,target,preventDefault(){}});return target;};
  return {env,document,container,dashboard,store,snapshot,animations,observers,timers,counts,tick,click,events};

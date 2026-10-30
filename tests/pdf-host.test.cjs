@@ -815,6 +815,22 @@ test('saved local PDFs and readers awaiting readiness cannot switch to the nativ
  const f=fixture();f.emit('click',click(anchor()));await tick();f.message('reserve-pdf-canvas');assert.ok(f.host.active());assert.equal(f.sessionValues.has('reserve:pdf-viewer'),false);f.host.destroy();
  const local=fixture();local.root.URL={createObjectURL:()=> 'blob:'+canvas+'/native-test',revokeObjectURL(){}};await local.host.openLocal({blob:new Blob(['%PDF-1.7']),id:'cf-native-notes',owner:{origin:canvas,accountId:'7'}});await tick();local.ready();const state=local.host.active();local.message('reserve-pdf-canvas');assert.equal(local.host.active(),state);assert.equal(local.body.querySelector('.reserve-pdf-switch'),null);assert.equal(local.sessionValues.has('reserve:pdf-viewer'),false);local.host.destroy();
 });
+
+test('a module PDF read in the Harness reader is recorded as opened once it loads, never when it fails',async()=>{
+ const run=async(link,outcome)=>{
+  const f=fixture({href:canvas+'/courses/7/modules'}),opened=[];await tick();f.root.ReserveModulesPage={progress:{opened:async id=>{opened.push(id);}}};
+  const fetching=f.root.fetch;f.root.fetch=async(url,options)=>url.includes('/modules/items/')?{ok:true,url:canvas+'/courses/7/files/42?module_item_id=123'}:fetching(url,options);
+  const e=click(link);f.emit('click',e);await tick();await tick();f.ready();await tick();
+  assert.equal(e.stopped,true);assert.deepEqual(opened,[],'nothing is recorded before the document loads');
+  f.message(outcome,{message:'Broken PDF'});await tick();f.host.destroy();return opened;
+ };
+ const row={id:'context_module_item_13',className:'context_module_item attachment',getAttribute:()=>null};
+ const file=()=>{const link=anchor({href:canvas+'/courses/7/files/42'});link.closest=selector=>selector.includes('a[')?link:selector.includes('.context_module_item')?row:null;return link;};
+ assert.deepEqual(await run(file(),'reserve-pdf-opened'),['13']);
+ assert.deepEqual(await run(file(),'reserve-pdf-error'),[]);
+ // a module item address (the progress bar's Continue link) names its item itself
+ assert.deepEqual(await run(anchor({href:canvas+'/courses/7/modules/items/123'}),'reserve-pdf-opened'),['123']);
+});
 test('a reader frame loaded from the dynamic URL is trusted by the extension\'s real origin, not the dynamic one',async()=>{
  const real='abcdefghijklmnopabcdefghijklmnop',dynamic='ponmlkjihgfedcbaponmlkjihgfedcba',f=fixture();
  f.root.chrome.runtime={...f.root.chrome.runtime,id:real,getURL:file=>'chrome-extension://'+dynamic+'/'+file};

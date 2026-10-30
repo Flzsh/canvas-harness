@@ -705,3 +705,63 @@ test('study-sheet download rechecks the account and cannot release the previous 
  await h.initialise();await h.settle();const checks=h.sent.filter(x=>x.message.type==='reserve-pdf-account').length;h.env.accountId='8';await h.get('marks-download').fire('click');
  assert.equal(h.sent.filter(x=>x.message.type==='reserve-pdf-account').length,checks+1);assert.equal(downloads,0);assert.match(h.get('status').textContent,/account could not be confirmed/);assert.equal(h.storage[key].annotations[0].text,'Private account seven note');
 });
+
+async function typeTextBox(h,text){
+ await toolButton(h,'Text box').fire('click');const slot=h.reader.state.slots[0];
+ await h.get('pages').fire('pointerdown',{target:slot.node,button:0,clientX:40,clientY:slot.node.getBoundingClientRect().top+60});
+ const area=slot.node.querySelector('.text-editor');area.value=text;return {slot,area};
+}
+test('a text box the annotation quota refuses stays open with its draft and close waits until it is saved or cleared',async t=>{
+ const M=require('../extension/pdf-model.js'),key=M.storageKey('https://school.instructure.com','7','42'),h=fixture();t.after(()=>h.reader.destroy());
+ h.storage[key]=M.createAnnotations(crowdedAnnotations()).serialise();await h.initialise();await h.settle();
+ const draft='UNSAVED DRAFT: '+'y'.repeat(9985),{slot,area}=await typeTextBox(h,draft);await area.fire('blur');
+ assert.match(h.get('status').textContent,/1 MiB/);assert.equal(slot.node.querySelector('.text-editor'),area,'the refused draft stays open');assert.equal(area.value,draft);
+ assert.equal(h.reader.state.annotations.annotations.some(a=>a.type==='text'),false);
+ assert.equal(await h.reader.close(),false,'closing does not treat the draft as saved');assert.equal(h.workers[0].terminated,undefined);assert.equal(slot.node.querySelector('.text-editor'),area);
+ // a zoom keeps the open draft on its spot on the page
+ const before={zoom:h.reader.state.zoom,left:parseFloat(area.style.left),top:parseFloat(area.style.top)};
+ await h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Zoom in (+)').fire('click');await h.settle();const k=h.reader.state.zoom/before.zoom;
+ assert.ok(k>1);assert.equal(slot.node.querySelector('.text-editor'),area);assert.ok(Math.abs(parseFloat(area.style.left)-before.left*k)<.01&&Math.abs(parseFloat(area.style.top)-before.top*k)<.01);assert.equal(area.style.fontSize,12*h.reader.state.zoom+'px');
+ area.value='';await area.fire('blur');assert.equal(slot.node.querySelector('.text-editor'),null,'clearing the box discards it deliberately');
+ assert.equal(await h.reader.close(),true);
+});
+
+test('text size and colour chosen while typing apply to the open text box and keep it open',async t=>{
+ const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
+ const {slot,area}=await typeTextBox(h,'Resize this text');
+ // As in a browser, pressing a dock button moves focus to it (blurring the box) unless its mousedown is prevented.
+ const press=async label=>{const button=optionButton(h,label);let kept=false;await button.fire('mousedown',{button:0,preventDefault(){kept=true;}});if(!kept)await area.fire('blur');await button.fire('click');};
+ await press('Large text');await press('red');assert.equal(slot.node.querySelector('.text-editor'),area,'the box stays open for more typing');
+ await area.fire('blur');let marks=h.reader.state.annotations.annotations.filter(a=>a.type==='text');
+ assert.equal(marks.length,1);assert.equal(marks[0].text,'Resize this text');assert.equal(marks[0].size,18);assert.equal(marks[0].color,'#C8372D');
+ // the same for a saved box reopened from the keyboard
+ await slot.node.querySelector('.text-box').fire('keydown',{key:'Enter'});const again=slot.node.querySelector('.text-editor');
+ const small=optionButton(h,'Small text');let kept=false;await small.fire('mousedown',{button:0,preventDefault(){kept=true;}});if(!kept)await again.fire('blur');await small.fire('click');await again.fire('blur');
+ marks=h.reader.state.annotations.annotations.filter(a=>a.type==='text');assert.equal(marks.length,1);assert.equal(marks[0].size,9);
+ // another tool's options leave focus to move as before: they never apply to the text box
+ await toolButton(h,'Pen').fire('click');await slot.node.querySelector('.text-box').fire('keydown',{key:'Enter'});assert.ok(slot.node.querySelector('.text-editor'));
+ kept=false;await optionButton(h,'blue').fire('mousedown',{button:0,preventDefault(){kept=true;}});assert.equal(kept,false);await slot.node.querySelector('.text-editor').fire('blur');
+});
+
+test('a marked copy that finishes after the reader is hidden or closed is never downloaded',async t=>{
+ for(const ending of ['open','hidden','closed']){
+  const h=fixture();t.after(()=>h.reader.destroy());const started=deferred(),finish=deferred();let downloads=0;
+  h.env.Blob=Blob;h.env.URL={createObjectURL(){downloads++;return 'blob:marked';},revokeObjectURL(){}};
+  h.env.ReservePdfExport={withMarks:async()=>{started.resolve();return finish.promise;}};
+  await h.initialise();await h.settle();
+  await h.get('heading-actions').children.find(n=>n.attrs['aria-label']==='Save a copy with my marks').fire('click');await started.promise;
+  if(ending!=='open'){h.doc.hidden=true;h.listeners.get('visibilitychange')();h.env.accountId='8';}
+  if(ending==='hidden'){h.doc.hidden=false;h.listeners.get('visibilitychange')();await h.settle();}
+  if(ending==='closed')assert.equal(await h.reader.close(),true);
+  finish.resolve({bytes:new Uint8Array([37,80,68,70]),name:'old.pdf'});await new Promise(resolve=>setImmediate(resolve));await h.settle();
+  assert.equal(downloads,ending==='open'?1:0,ending);
+ }
+});
+
+test('the reader tells the host only once a document has actually loaded',async t=>{
+ const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
+ assert.equal(h.sent.filter(x=>x.message.type==='reserve-pdf-opened').length,1);
+ const refused=fixture();t.after(()=>refused.reader.destroy());refused.env.accountId='8';
+ await refused.initialise({local:true,accountId:'7',fileId:'cf-private-notes',url:'blob:https://school.instructure.com/local-pdf'});await refused.settle();
+ assert.equal(refused.sent.filter(x=>x.message.type==='reserve-pdf-opened').length,0);
+});

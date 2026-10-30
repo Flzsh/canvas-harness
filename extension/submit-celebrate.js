@@ -8,13 +8,28 @@
  const identity=(path=location.pathname)=>typeof path==='string'?path.match(/^\/courses\/\d+\/assignments\/\d+(?=\/|$)/)?.[0]:null;
  let reduced,observer,timer,box,scene,play,inFlight,lastScene,motion='gentle',dead=false;
  let featureEnabled=globalThis.ReserveFeatures?.enabled('play')!==false;
- let featureReady=!globalThis.ReserveFeatures?.early,featureRevision=0,globalEnabled=false,globalReady=false,globalRevision=0,epoch=0,domReady=document.readyState!=='loading';
+ let featureReady=!globalThis.ReserveFeatures?.early,
+  featureRevision=0,
+  globalEnabled=false,
+  globalReady=false,
+  globalRevision=0,
+  epoch=0,
+  domReady=document.readyState!=='loading';
  const enabled=()=>!dead&&domReady&&globalReady&&globalEnabled&&featureReady&&featureEnabled;
  const disposers=[];
  function listen(target,type,fn,options){target?.addEventListener?.(type,fn,options);disposers.push(()=>target?.removeEventListener?.(type,fn,options));}
  function record(){
   try{const value=JSON.parse(sessionStorage.getItem(KEY)),age=Date.now()-value?.t;
-   return !!identity()&&typeof value?.path==='string'&&identity(value.path)===identity()&&Array.isArray(value.before)&&value.before.every(x=>typeof x==='string')&&typeof value.t==='number'&&age>=0&&age<180000?value:null;
+   return !!identity()&&
+    typeof value?.path==='string'&&
+    identity(value.path)===identity()&&
+    Array.isArray(value.before)&&
+    value.before.every(x=>typeof x==='string')&&
+    typeof value.t==='number'&&
+    age>=0&&
+    age<180000?
+    value:
+    null;
   }catch{return null;}
  }
  function submitted(){
@@ -102,7 +117,12 @@
  listen(globalThis,'pagehide',destroy);
  globalThis.ReserveSubmitCelebrate={destroy};
  if(!domReady)listen(document,'DOMContentLoaded',()=>{domReady=true;reconcile();},{once:true});
- if(globalThis.ReserveFeatures?.early)globalThis.ReserveFeatures.early('play',()=>{if(!featureRevision)featureEnabled=true;featureReady=true;reconcile();},()=>{if(!featureRevision)featureEnabled=false;featureReady=true;reconcile();});
+ if(globalThis.ReserveFeatures?.early)
+  globalThis.ReserveFeatures.early('play',()=>{
+   if(!featureRevision)featureEnabled=true;
+   featureReady=true;
+   reconcile();
+  },()=>{if(!featureRevision)featureEnabled=false;featureReady=true;reconcile();});
  const reading=globalRevision;
  Promise.resolve().then(()=>chrome.storage.local.get('reserve:enabled')).then(saved=>{
   if(dead||reading!==globalRevision)return;globalReady=true;globalEnabled=saved?.['reserve:enabled']!==false;reconcile();

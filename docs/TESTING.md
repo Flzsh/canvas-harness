@@ -1,10 +1,10 @@
-# Release checks — Canvas Harness 3.7.0
+# Release checks — Canvas Harness 3.8.0
 
-## 3.7.0 Chrome Web Store submission scope
+## 3.8.0 Chrome Web Store submission scope
 
-This Chrome Web Store submission adds a movable, resizable course dock, Cards look and shelf, motion and name choices that Biscuit can change. It includes the 3.6.0 Make it yours and top-bar redraws, Biscuit settings fixes and Canvas Harness button recovery after leaving a loading tab. It retains the 3.5.0 contributions: #47 My links & files, #51 PDF study-sheet export, #52 deadline changes, and issue #53 PDF tools and icons. Existing public feature choices and handoff modules remain; no new AI runtime modules are included.
+This Chrome Web Store submission takes the place of 3.7.0, which the store did not publish. The PDF reader loads PDF.js 6.4.299's unmodified modern build through `pdf-library.mjs` and `pdf-worker.mjs`, which first load the readable `pdf-polyfills.js`; `minimum_chrome_version` is 126. `tests/store-readability.test.cjs` keeps the packaged source readable. It also carries Biscuit's round-8 language rules, PDF reader fixes for issues #58, #59, #60 and #61, the reader-frame origin fix from 3.7.0 on GitHub and the speed work described in [perf-3.8.md](perf-3.8.md). Everything in 3.7.0 stays: the course dock and Cards look, the 3.6.0 Make it yours and top-bar redraws, and the 3.5.0 contributions: #47 My links & files, #51 PDF study-sheet export, #52 deadline changes, and issue #53 PDF tools and icons. Existing public feature choices and handoff modules remain; no new AI runtime modules are included.
 
-Run `npm.cmd run check`, `node scripts/test.cjs` and `npm.cmd run build` one at a time. Extract with `Expand-Archive -LiteralPath dist/Canvas-Harness-3.7.0.zip -DestinationPath dist/unpacked-3.7.0`, then run `node scripts/release-audit.cjs dist/unpacked-3.7.0`. The build writes entry sizes and SHA-256 hashes to `dist/release-manifest.json`; the audit writes `dist/audit-3.7.0.json`. Nothing is pushed or submitted by these local checks.
+Run `npm.cmd run check`, `node scripts/test.cjs` and `npm.cmd run build` one at a time. Extract with `Expand-Archive -LiteralPath dist/Canvas-Harness-3.8.0.zip -DestinationPath dist/unpacked-3.8.0`, then run `node scripts/release-audit.cjs dist/unpacked-3.8.0`. The build writes entry sizes and SHA-256 hashes to `dist/release-manifest.json`; the audit writes `dist/audit-3.8.0.json`. Nothing is pushed or submitted by these local checks.
 
 The suite covers account and site isolation, local course-file backup/restore and limits, literal-safe study sheets, account changes before download, deadline retention/partial refreshes/storage failures, PDF tools, settings routing and selection motion. Full includes Deadline changes and My links & files; Lite leaves them out. Focus room, Review deck and Grade impact remain opt-in Custom features.
 

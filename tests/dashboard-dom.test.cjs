@@ -40,3 +40,31 @@ test('a re-rendered selection surface keeps the geometry motion.js wrote on it, 
  patchUI(current,next);assert.deepEqual(next.style.props,{'--rd-sel-pick-y':'42px','--rd-echo-pick-h':'90px'});
  const old=el('div');old.style=style({'--rd-sel-pick-y':'10px'});const fresh=el('div');fresh.style=style({'--rd-sel-pick-y':'99px'});patchUI(old,fresh);assert.equal(fresh.style.props['--rd-sel-pick-y'],'99px','a value the new render sets wins');
 });
+// A drawing that already equals the wanted one is not walked at all; any difference, including one other code wrote on
+// a part, still takes the full patch and keeps the nodes.
+test('an unchanged SVG drawing is skipped whole while a changed one is still patched in place',()=>{
+ const NS='http://www.w3.org/2000/svg';
+ class Svg extends Element{
+  constructor(tag,attrs,children){super(tag,attrs,children);this.localName=tag;this.namespaceURI=NS;this.walked=0;}
+  get attributes(){this.walked++;return super.attributes;}
+  isEqualNode(other){const sorted=node=>JSON.stringify(Object.entries(node.attrs).sort());return !!other&&other.localName===this.localName&&other.namespaceURI===this.namespaceURI&&sorted(this)===sorted(other)&&this.childNodes.length===other.childNodes.length&&this.childNodes.every((child,i)=>child.isEqualNode(other.childNodes[i]));}
+ }
+ const svg=(attrs,children)=>new Svg('svg',attrs,children),g=attrs=>new Svg('g',attrs),wanted=()=>svg({class:'rd-frame-orn',style:'--at:0'},[g({class:'a-fin'})]);
+ const part=g({class:'a-fin'}),drawing=svg({style:'--at:0',class:'rd-frame-orn'},[part]);
+ patchUI(drawing,wanted());assert.equal(drawing.walked+part.walked,0,'attribute order aside, nothing in it is walked');assert.equal(drawing.firstChild,part);
+ part.setAttribute('data-x','other code');
+ patchUI(drawing,wanted());assert.equal(part.hasAttribute('data-x'),false,'a part other code wrote on takes the full patch');assert.equal(drawing.firstChild,part,'and keeps its node');
+ const box=el('div',{},[drawing]);patchUI(box,el('div',{},[svg({class:'rd-frame-orn',style:'--at:0.5'},[g({class:'a-fin'})])]));assert.equal(box.firstChild,drawing);assert.equal(drawing.getAttribute('style'),'--at:0.5','a changed drawing is patched where it stands');
+});
+// A living part (a drawing's loop, a frame ornament's loop on the film clock) shows its frames through --rd-tf/--rd-op,
+// which motion.js writes on it inline. A render keeps them, so whether the part moves never depends on when the last
+// render happened; a value the markup sets still wins, and a part motion.js has let go of keeps nothing.
+test('a re-rendered living part keeps the custom properties motion.js moves it by, and nothing else of its old style',()=>{
+ const style=props=>{const p={...props};return {get length(){return Object.keys(p).length;},get cssText(){return Object.entries(p).map(([k,v])=>k+': '+v).join('; ');},[Symbol.iterator]:function*(){yield* Object.keys(p);},getPropertyValue:k=>p[k]??'',setProperty:(k,v)=>{p[k]=v;},props:p};};
+ const current=el('svg',{class:'rd-frame-orn'}),next=el('svg',{class:'rd-frame-orn'});
+ current.style=style({'--rd-tf':'translate(3px, -2px)','--rd-op':'0.6',transform:'var(--rd-tf)',opacity:'var(--rd-op)',color:'red'});next.style=style({});
+ patchUI(current,next);assert.deepEqual(next.style.props,{'--rd-tf':'translate(3px, -2px)','--rd-op':'0.6',transform:'var(--rd-tf)',opacity:'var(--rd-op)'});
+ const own=el('svg');own.style=style({'--rd-tf':'rotate(2deg)',transform:'var(--rd-tf)'});const drawn=el('svg');drawn.style=style({transform:'translate(9px)'});patchUI(own,drawn);
+ assert.equal(drawn.style.props.transform,'translate(9px)','a transform the markup sets wins');assert.equal(drawn.style.props['--rd-tf'],'rotate(2deg)');
+ const freed=el('svg');freed.style=style({transform:'translate(1px)'});const plain=el('svg');plain.style=style({});patchUI(freed,plain);assert.deepEqual(plain.style.props,{},'a part not moved by the film keeps nothing');
+});

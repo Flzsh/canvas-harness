@@ -24,7 +24,10 @@
   const ctor=Object.getOwnPropertyDescriptor(proto,'constructor');
   if(!ctor||!own(ctor,'value')||typeof ctor.value!=='function')return false;
   const original=Object.getOwnPropertyDescriptor(ctor.value,'prototype');
-  return !!original&&original.value===proto&&Function.prototype.toString.call(ctor.value)===(array?nativeArray:nativeObject)&&(!array?Object.getPrototypeOf(proto)===null:true);
+  return !!original&&
+    original.value===proto&&
+    Function.prototype.toString.call(ctor.value)===(array?nativeArray:nativeObject)&&
+    (!array?Object.getPrototypeOf(proto)===null:true);
  }
  function record(value,allowed,label,required=[]){
   if(!plain(value))fail(label+' must be a plain object, without a custom prototype or arrays.');
@@ -53,23 +56,55 @@
   if(typeof accent!=='string'||!(['clay','forest','indigo','rose','ocean','amber'].includes(accent)||color.test(accent)))fail('Invalid accent setting.');
   return {accent:accent.toLowerCase(),font:choice(value.font,['system','humanist','serif'],'system','font'),bannerSize:choice(value.bannerSize,['compact','standard','large'],'standard','bannerSize')};
  }
- function placement(value){return {bannerFit:choice(value.bannerFit,['contain','cover'],'contain','bannerFit'),bannerPosition:choice(value.bannerPosition,['left','center','right'],'right','bannerPosition'),titlePlacement:choice(value.titlePlacement,['separate','banner'],'separate','titlePlacement')};}
+ function placement(value){
+   return {
+     bannerFit:choice(value.bannerFit,['contain','cover'],'contain','bannerFit'),
+     bannerPosition:choice(value.bannerPosition,['left','center','right'],'right','bannerPosition'),
+     titlePlacement:choice(value.titlePlacement,['separate','banner'],'separate','titlePlacement')
+   };
+ }
  function artwork(){
   const art=root.ReserveCustomArt||(typeof module==='object'&&module.exports?require('./custom-art.js'):null);
-  if(!art||typeof art.importSVG!=='function'||typeof art.cleanAsset!=='function'||!Number.isSafeInteger(art.limits?.fileBytes)||art.limits.fileBytes<1||!Number.isSafeInteger(art.limits?.totalBytes)||art.limits.totalBytes<1)fail('SVG artwork support is unavailable.');return art;
+  if(!art||
+    typeof art.importSVG!=='function'||
+    typeof art.cleanAsset!=='function'||
+    !Number.isSafeInteger(art.limits?.fileBytes)||
+    art.limits.fileBytes<1||
+    !Number.isSafeInteger(art.limits?.totalBytes)||
+    art.limits.totalBytes<1)
+    fail('SVG artwork support is unavailable.');
+  return art;
  }
  function mediaCodec(deps){
   const media=deps.media||root.ReserveMedia||(typeof module==='object'&&module.exports?require('./media-store.js'):null);
   if(!media||typeof media.prepare!=='function')fail('Media import support is unavailable.');return media;
  }
- function references(){const api=root.ReserveMediaReference||(typeof module==='object'&&module.exports?require('./media-reference.js'):null);if(!api?.cleanFrame||!api.cleanReference)fail('Saved media validation is unavailable.');return api;}
- const wrapped=value=>plain(value)&&own(value,'asset'),unwrapped=value=>wrapped(value)?references().asset(value):value,slotFor=key=>['bannerArt','cardArt','backgroundArt','titleArt'].includes(key)?key.slice(0,-3):key;
+ function references(){
+   const api=root.ReserveMediaReference||(typeof module==='object'&&module.exports?require('./media-reference.js'):null);
+   if(!api?.cleanFrame||!api.cleanReference)fail('Saved media validation is unavailable.');
+   return api;
+ }
+ const wrapped=value=>plain(value)&&own(value,'asset'),
+   unwrapped=value=>wrapped(value)?references().asset(value):value,
+   slotFor=key=>['bannerArt','cardArt','backgroundArt','titleArt'].includes(key)?key.slice(0,-3):key;
  function cleanFrame(value,cleanAsset,provisional=false){
   const input=record(value,['asset',...frameKeys],'media framing',['asset']);
   if(own(input,'focus'))input.focus=record(input.focus,['x','y'],'focus',['x','y']);if(own(input,'loop'))input.loop=record(input.loop,['start','end'],'loop',['start','end']);
-  const out=references().cleanFrame(input,cleanAsset);if(out.asset.kind==='video'&&(out.loop?out.loop.end-out.loop.start:provisional?0:out.asset.duration)>references().limits.duration)fail('Video loop must be at most 60 s.');return out;
+  const out=references().cleanFrame(input,cleanAsset);
+  if(out.asset.kind==='video'&&(out.loop?out.loop.end-out.loop.start:provisional?0:out.asset.duration)>references().limits.duration)fail('Video loop must be at most 60 s.');
+  return out;
  }
- function frameData(value,type){const input=record(value,frameKeys,'encoded framing'),{asset,...frame}=cleanFrame({asset:{type,kind:videoTypes.includes(type)?'video':'image',...(videoTypes.includes(type)?{duration:references().limits.sourceDuration}:{})},...input},v=>v,true);return frame;}
+ function frameData(value,type){
+   const input=record(value,frameKeys,'encoded framing'),
+     {
+       asset,
+       ...frame
+     }=cleanFrame(
+       {asset:{type,kind:videoTypes.includes(type)?'video':'image',...(videoTypes.includes(type)?{duration:references().limits.sourceDuration}:{})},...input},
+       v=>v,
+       true);
+   return frame;
+ }
  function dependencies(value){return record(value===undefined?{}:value,['media'],'codec dependencies');}
  function cryptography(){
   const crypto=root.crypto||(typeof module==='object'&&module.exports?require('node:crypto').webcrypto:null);
@@ -103,15 +138,26 @@
   if(own(input,'createdAt')&&(!Number.isSafeInteger(input.createdAt)||input.createdAt<0))fail('Invalid media record timestamp.');
   for(const key of ['owner','key'])if(own(input,key))nameOf(input[key],2048);
   if(own(input,'framing')){const frame=record(input.framing,['loop','still'],'prepared framing');cleanFrame({asset,...frame},v=>v);}
-  let poster;if(input.poster!==undefined){if(asset.kind!=='video'&&!asset.animated||!imageTypes.includes(input.poster?.type))fail('Invalid media poster type.');poster=blobOf(input.poster,input.poster.type,budget.imageBytes);}
+  let poster;
+  if(input.poster!==undefined){
+    if(asset.kind!=='video'&&!asset.animated||!imageTypes.includes(input.poster?.type))fail('Invalid media poster type.');
+    poster=blobOf(input.poster,input.poster.type,budget.imageBytes);
+  }
   return {asset,blob,...(poster?{poster}:{})};
  }
  function cleanAppearance(value){
   const input=record(value,appearanceKeys,'appearance'),out={};let total=0;
   for(const key of slots){
    if(input[key]==null)continue;
-   const cleanAsset=part=>{if(plain(part)&&own(part,'mediaId'))return cleanReference(part,slotFor(key));const asset=cleanSVG(part);total+=bytes(asset.svg).length;svgBudget(total);return asset;};
-   if(wrapped(input[key])&&!['banner','card','background'].includes(slotFor(key)))fail('Framing is only supported in banner, card or background slots.');out[key]=wrapped(input[key])?cleanFrame(input[key],cleanAsset):cleanAsset(input[key]);
+   const cleanAsset=part=>{
+     if(plain(part)&&own(part,'mediaId'))return cleanReference(part,slotFor(key));
+     const asset=cleanSVG(part);
+     total+=bytes(asset.svg).length;
+     svgBudget(total);
+     return asset;
+   };
+   if(wrapped(input[key])&&!['banner','card','background'].includes(slotFor(key)))fail('Framing is only supported in banner, card or background slots.');
+   out[key]=wrapped(input[key])?cleanFrame(input[key],cleanAsset):cleanAsset(input[key]);
   }return Object.assign(out,placement(input));
  }
  async function verifiedMedia(appearance,store){
@@ -166,7 +212,11 @@
    const target=doc.assets[key]={name:part.name,type:saved[key]?part.type:'image/svg+xml',data:'',sha256:'0'.repeat(64)};
    if(wrapped(value)){const {asset,...frame}=value;target.frame=frame;}
    encodedBytes+=Math.ceil(length/3)*4;sources.push({target,...source,length});
-   if(saved[key]?.poster){const blob=saved[key].poster,poster=target.poster={type:blob.type,data:'',sha256:'0'.repeat(64)};encodedBytes+=Math.ceil(blob.size/3)*4;sources.push({target:poster,blob,length:blob.size});}
+   if(saved[key]?.poster){
+     const blob=saved[key].poster,poster=target.poster={type:blob.type,data:'',sha256:'0'.repeat(64)};
+     encodedBytes+=Math.ceil(blob.size/3)*4;
+     sources.push({target:poster,blob,length:blob.size});
+   }
   }
   if(bytes(JSON.stringify(doc)).length+encodedBytes>limits.fileBytes)fail('Encoded kit JSON exceeds the 40 MB file byte limit.');
   return {doc,sources};
@@ -185,13 +235,19 @@
   for(const key of slots){
    if(!own(assets,key))continue;
    const part=record(assets[key],['name','type','data','sha256','frame','poster'],'encoded asset',['name','type','data','sha256']),name=nameOf(part.name,160),type=part.type;
-   if(typeof type!=='string'||!(type==='image/svg+xml'||(['banner','card','background'].includes(slotFor(key))?bannerTypes:key==='titleArt'?imageTypes:[]).includes(type)))fail('Unsupported asset type for '+key+' slot.');
+   if(typeof type!=='string'||!(type==='image/svg+xml'||(['banner','card','background'].includes(slotFor(key))?bannerTypes:key==='titleArt'?imageTypes:[]).includes(type)))
+     fail('Unsupported asset type for '+key+' slot.');
    if(typeof part.sha256!=='string'||!/^[a-f0-9]{64}$/.test(part.sha256))fail('Invalid SHA-256 asset hash.');
    const size=base64Size(part.data);
    if(type==='image/svg+xml'){const art=artwork();if(size>art.limits.fileBytes)fail('SVG file exceeds the artwork byte limit.');total+=size;svgBudget(total);}
    else if(size>references().limits.inputBytes)fail('Media data exceeds the input byte limit.');
-   let frame,poster;if(own(part,'frame')){if(!['banner','card','background'].includes(slotFor(key)))fail('Framing is only supported in banner, card or background slots.');frame=frameData(part.frame,type);}
-   if(own(part,'poster')){poster=record(part.poster,['type','data','sha256'],'encoded poster',['type','data','sha256']);if(type==='image/svg+xml'||!imageTypes.includes(poster.type)||typeof poster.sha256!=='string'||!/^[a-f0-9]{64}$/.test(poster.sha256)||base64Size(poster.data)>references().limits.imageBytes)fail('Invalid encoded poster type, hash or byte limit.');}
+   let frame,poster;
+   if(own(part,'frame')){if(!['banner','card','background'].includes(slotFor(key)))fail('Framing is only supported in banner, card or background slots.');frame=frameData(part.frame,type);}
+   if(own(part,'poster')){
+     poster=record(part.poster,['type','data','sha256'],'encoded poster',['type','data','sha256']);
+     if(type==='image/svg+xml'||!imageTypes.includes(poster.type)||typeof poster.sha256!=='string'||!/^[a-f0-9]{64}$/.test(poster.sha256)||base64Size(poster.data)>references().limits.imageBytes)
+       fail('Invalid encoded poster type, hash or byte limit.');
+   }
    result.assets.push({key,name,type,data:part.data,sha256:part.sha256,...(frame?{frame}:{}),...(poster?{poster}:{})});
   }return result;
  }
@@ -200,27 +256,61 @@
   if(!file||typeof file!=='object'||Array.isArray(file)||typeof file.text!=='function')fail('Provide a local .chkit file.');
   if(file.name!==undefined&&(typeof file.name!=='string'||file.name.length>1024||!file.name.toLowerCase().endsWith('.chkit')))fail('File extension must be .chkit.');
   if(!Number.isSafeInteger(file.size)||file.size<1||file.size>limits.fileBytes)fail('Kit file must be nonempty and at most 40 MB in byte size.');
-  let source;try{source=typeof file.arrayBuffer==='function'?new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer()):await file.text();}catch{fail('Kit file must use valid UTF-8.');}if(typeof source!=='string')fail('Kit file must contain JSON text.');
+  let source;
+  try{source=typeof file.arrayBuffer==='function'?new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer()):await file.text();}catch{fail('Kit file must use valid UTF-8.');}
+  if(typeof source!=='string')fail('Kit file must contain JSON text.');
   if(source.length>limits.fileBytes||bytes(source).length>limits.fileBytes)fail('Kit JSON exceeds the 40 MB file byte limit.');
   let parsed;try{parsed=JSON.parse(source);}catch{fail('Malformed kit JSON.');}
   const doc=cleanDocument(parsed),decoded=[];
   // Decode only the already bounded base64 here; do not decode *media* or parse
   // SVG until every entry's hash of its original bytes has been verified.
-  for(const part of doc.assets){const original=decode64(part.data);if(await sha256(original)!==part.sha256)fail('SHA-256 hash mismatch for '+part.key+'.');let poster;if(part.poster){poster=decode64(part.poster.data);if(await sha256(poster)!==part.poster.sha256)fail('SHA-256 poster hash mismatch for '+part.key+'.');}decoded.push({...part,bytes:original,...(poster?{posterBytes:poster}:{})});}
+  for(const part of doc.assets){
+    const original=decode64(part.data);
+    if(await sha256(original)!==part.sha256)fail('SHA-256 hash mismatch for '+part.key+'.');
+    let poster;
+    if(part.poster){poster=decode64(part.poster.data);if(await sha256(poster)!==part.poster.sha256)fail('SHA-256 poster hash mismatch for '+part.key+'.');}
+    decoded.push({...part,bytes:original,...(poster?{posterBytes:poster}:{})});
+  }
   const appearance={},media=[],saved=Object.create(null);let total=0;
   for(const part of decoded)if(part.type==='image/svg+xml'){
    let source;try{source=new TextDecoder('utf-8',{fatal:true}).decode(part.bytes);}catch{fail('SVG bytes must use valid UTF-8 encoding.');}
-   const asset=cleanSVG(artwork().importSVG(source,part.name));appearance[part.key]=part.frame?cleanFrame({asset,...part.frame},v=>v):asset;total+=bytes(asset.svg).length;svgBudget(total);
+   const asset=cleanSVG(artwork().importSVG(source,part.name));
+   appearance[part.key]=part.frame?cleanFrame({asset,...part.frame},v=>v):asset;
+   total+=bytes(asset.svg).length;
+   svgBudget(total);
   }
   for(const part of decoded)if(part.type!=='image/svg+xml'){
-   const slot=slotFor(part.key),blob=new Blob([part.bytes],{type:part.type}),options=part.frame?{...(part.frame.loop?{loop:part.frame.loop}:{}),...(part.frame.still!==undefined?{still:part.frame.still}:{})}:{};
-   let info,poster;if(part.frame||part.poster){const inspector=root.ReserveMedia||(typeof module==='object'&&module.exports?require('./media-store.js'):null);if(!inspector?.inspectPortable)fail('Portable media validation is unavailable.');info=inspector.inspectPortable(part.bytes,part.type,options);if(part.frame)cleanFrame({asset:info,...part.frame},v=>v);if(part.poster){const still=inspector.inspectPortable(part.posterBytes,part.poster.type);if(still.animated||still.kind!=='image'||still.width>references().limits.imageWidth)fail('Poster must be a static image within the media limits.');poster=new Blob([part.posterBytes],{type:part.poster.type});}}
+   const slot=slotFor(part.key),
+     blob=new Blob([part.bytes],{type:part.type}),
+     options=part.frame?{...(part.frame.loop?{loop:part.frame.loop}:{}),...(part.frame.still!==undefined?{still:part.frame.still}:{})}:{};
+   let info,poster;
+   if(part.frame||part.poster){
+     const inspector=root.ReserveMedia||(typeof module==='object'&&module.exports?require('./media-store.js'):null);
+     if(!inspector?.inspectPortable)fail('Portable media validation is unavailable.');
+     info=inspector.inspectPortable(part.bytes,part.type,options);
+     if(part.frame)cleanFrame({asset:info,...part.frame},v=>v);
+     if(part.poster){
+       const still=inspector.inspectPortable(part.posterBytes,part.poster.type);
+       if(still.animated||still.kind!=='image'||still.width>references().limits.imageWidth)fail('Poster must be a static image within the media limits.');
+       poster=new Blob([part.posterBytes],{type:part.poster.type});
+     }
+   }
    const prepared=mediaRecord(await mediaCodec(support).prepare(blob,slot,part.name,options),slot);
-   if(part.frame){const {animated,...metadata}=info;prepared.asset=cleanReference({...prepared.asset,...metadata,...(animated&&info.kind==='image'?{animated:true}:{})},slot);prepared.blob=blob;}
-   if(poster)prepared.poster=poster;prepared.asset.mediaId=newId();const checked=mediaRecord(prepared,slot);if(part.frame&&(checked.asset.kind==='video'||checked.asset.animated)&&!checked.poster)fail('Media still is missing.');
+   if(part.frame){
+     const {animated,...metadata}=info;
+     prepared.asset=cleanReference({...prepared.asset,...metadata,...(animated&&info.kind==='image'?{animated:true}:{})},slot);
+     prepared.blob=blob;
+   }
+   if(poster)prepared.poster=poster;
+   prepared.asset.mediaId=newId();
+   const checked=mediaRecord(prepared,slot);
+   if(part.frame&&(checked.asset.kind==='video'||checked.asset.animated)&&!checked.poster)fail('Media still is missing.');
    appearance[part.key]=part.frame?cleanFrame({asset:checked.asset,...part.frame},v=>v):checked.asset;saved[part.key]=checked;media.push(checked);
   }
-  Object.assign(appearance,placement(doc));const kit={id:newId(),name:doc.name,appearance,accent:doc.accent,font:doc.font,bannerSize:doc.bannerSize};preflight(kit,saved);return {kit,media};
+  Object.assign(appearance,placement(doc));
+  const kit={id:newId(),name:doc.name,appearance,accent:doc.accent,font:doc.font,bannerSize:doc.bannerSize};
+  preflight(kit,saved);
+  return {kit,media};
  }
  const helpers=Object.freeze({plain,record,encode64,decode64,base64Size,sha256});
  const api=Object.freeze({limits,capture,exportKit,importKit,helpers});root.ReserveCustomKits=api;

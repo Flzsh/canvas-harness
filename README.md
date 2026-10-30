@@ -40,14 +40,14 @@
 
 <p align="center"><sub>Every demo is Canvas with Canvas Harness switched on, using made-up courses and assignments.</sub></p>
 
-## New in 3.7
+## New in 3.8
 
-- **A course dock you can move**: drag the shelf to move it, drag its top edge to resize it, right-click a course for its card.
-- **Cards look**: each course on a small card with its name and what is due next.
-- **Shelf, motion and name choices**, which Biscuit can change for you too.
-- **The PDF reader opens again** in current Chrome and Edge (3.5 and 3.6 waited and fell back to Canvas's viewer).
+- **Biscuit understands short lines far better**, still on your computer with no AI.
+- **PDF reader fixes**: a text box keeps its words when a file is full of marks, text size and colour apply to the box you are typing in, and a module PDF you read counts as opened.
+- **Lighter when idle**: the page restyles half as often while nothing changes, and drawings keep moving while you scroll.
+- **Mozilla's standard PDF.js build**, so it now needs Chrome or Edge 126 or newer.
 
-Thanks to @garywu000 and @HarryX081125 for their contributions. [Every change](CHANGELOG.md)
+Also in 3.7: a course dock you can move and resize, and a Cards look. Thanks to @garywu000 and @HarryX081125 for their contributions. [Every change](CHANGELOG.md)
 
 ## Install
 
@@ -55,7 +55,7 @@ Thanks to @garywu000 and @HarryX081125 for their contributions. [Every change](C
 
 **From GitHub:** download the ZIP from the [latest release](https://github.com/Flzsh/canvas-harness/releases/latest), open `chrome://extensions`, turn on Developer mode and choose **Load unpacked**.
 
-Works on `*.instructure.com` and on your school's own Canvas address once you add it in the popup. [Help](INSTALL.md)
+Works on `*.instructure.com` and on your school's own Canvas address once you add it in the popup. Needs Chrome or Edge 126 or newer. [Help](INSTALL.md)
 
 ## Privacy
 

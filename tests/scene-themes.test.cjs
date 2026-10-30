@@ -82,3 +82,18 @@ test('Starfield pointer reach stays small and its optional document shares the l
  assert.match(read('themes/stars/sky.html'),/<title>Starfield<\/title>/);assert.match(read('themes/stars/sky.html'),/src="\.\.\/\.\.\/scene-themes\.js"/);
  assert.match(read('themes/stars/sky.js'),/ReserveSceneThemes\?\.createStarSky/);assert.doesNotMatch(read('themes/stars/sky.js'),/fetch\(|https?:\/\//);
 });
+test('the idle rest pauses a scene through its own data-kit-rest, so the rest never restyles a dashboard without a scene',()=>{
+ // A whole-subtree rule keyed on data-art-rest gives that attribute a whole-subtree invalidation set: each rest start
+ // or end restyled every element of the dashboard, with or without a scene.
+ const fs=require('node:fs'),path=require('node:path'),dir=path.join(__dirname,'../extension');
+ for(const file of fs.readdirSync(dir,{recursive:true}).filter(f=>String(f).endsWith('.css')))assert.doesNotMatch(read(String(file)),/\[data-art-rest\](\s+|\s*>\s*)\*/,file+' keys a whole-subtree rule on data-art-rest');
+ assert.match(read('scene-themes.css'),/\.rd\[data-theme-kit\]\[data-kit-rest\] \*,\.rd\[data-theme-kit\]\[data-kit-rest\] \*::before,\.rd\[data-theme-kit\]\[data-kit-rest\] \*::after \{ animation-play-state:paused!important; \}/);
+ const h=fixture(),before=h.shadow.innerHTML;h.apply('sea');assert.equal(h.rd.hasAttribute('data-kit-rest'),false);
+ h.rd.setAttribute('data-art-rest','');h.mutate();assert.equal(h.rd.hasAttribute('data-kit-rest'),true,'the observer mirrors the rest at once, not after the 60 ms sync');
+ h.settle();assert.equal(h.rd.hasAttribute('data-scene-paused'),true,'the scene rests too');
+ h.rd.removeAttribute('data-art-rest');h.mutate();assert.equal(h.rd.hasAttribute('data-kit-rest'),false);
+ h.rd.setAttribute('data-art-rest','');h.apply('stars');assert.equal(h.rd.hasAttribute('data-kit-rest'),true,'a scene applied while the page rests rests with it');
+ h.api.remove();assert.equal(h.rd.hasAttribute('data-kit-rest'),false,'removing the scene takes its rest attribute away');
+ h.rd.removeAttribute('data-art-rest');assert.equal(h.shadow.innerHTML,before);
+ h.rd.setAttribute('data-art-rest','');h.mutate();assert.equal(h.rd.hasAttribute('data-kit-rest'),false,'without a scene nothing mirrors the rest');
+});

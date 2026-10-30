@@ -1,14 +1,121 @@
 /* Local control proposals only. The caller owns confirmation, execution and account/feature gates. */
 (function(root){
  'use strict';
- const normalized=new Map(),list=v=>Array.isArray(v)?v:[],own=(o,k)=>Object.prototype.hasOwnProperty.call(o||{},k),norm=v=>{const input=String(v??'');if(normalized.has(input))return normalized.get(input);const out=input.normalize('NFKC').toLowerCase().replace(/[\u2018\u2019]/g,"'").replace(/&/g,' and ').replace(/[_-]+/g,' ').replace(/[^\p{L}\p{N}'%:#]+/gu,' ').trim();if(normalized.size<4096&&input.length<300)normalized.set(input,out);return out;},words=v=>String(v).replace(/([a-z])([A-Z])/g,'$1 $2').replace(/[-_]/g,' ').toLowerCase(),escape=v=>v.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
- const ENUMS={"accent":["clay","forest","indigo","rose","ocean","amber"],"bannerSize":["compact","standard","large"],"courseCardStyle":["sketch","rounded","minimal"],"courseNavigation":["sidebar","topbar","dock"],"density":["comfortable","compact"],"deskOrder":["context-first","work-first","stacked"],"dockShelf":["kraft","paper","none"],"dockStyle":["tiles","cards"],"font":["system","humanist","serif"],"greeting":["on","off"],"livingArt":["on","off"],"motion":["gentle","still","off"],"pageTint":["paper","accent","sky","sage","lilac","blush","sand","snow"],"panelFrame":["pen","stitch","card","line","none"],"quickOpen":["on","off"],"readingFont":["book","interface"],"sceneTheme":["","starry","sea","stars","blueprint"],"surfaceStyle":["paper","clean","contrast"],"textSize":["standard","large"],"theme":["light","dark"]};
- const DEFAULTS={"accent":"clay","bannerSize":"standard","bedtime":"22:30","biscuitOffers":true,"courseCardStyle":"sketch","courseNavigation":"sidebar","density":"comfortable","deskOrder":"context-first","dockCounts":true,"dockHide":false,"dockLively":true,"dockNamesAlways":false,"dockShelf":"kraft","dockStyle":"tiles","font":"system","greeting":"on","livingArt":"on","motion":"gentle","nightArt":0,"pageTint":"paper","panelFrame":"pen","quickOpen":"off","readingFont":"book","sceneTheme":"","showBookmarks":true,"showCourseIcons":true,"showCourseInformation":true,"showCourseStrip":true,"showDeadlinePreview":true,"showGrades":false,"showRecentGrades":false,"surfaceStyle":"paper","textSize":"standard","theme":"light"};
- const ALIASES={"density":["density","row spacing","row density","layout spacing"],"showGrades":["grades","grade","my grades","scores","score","my scores","marks","my marks","grade visibility"],"showRecentGrades":["recent grades","recent scores"],"showBookmarks":["bookmarks"],"showCourseIcons":["course icons"],"showDeadlinePreview":["deadline previews","deadline preview"],"showCourseInformation":["course information","course info"],"showCourseStrip":["course strip"],"sceneTheme":["scene","scene theme"],"pageTint":["page tint","page color","background color"],"courseNavigation":["course navigation","course menu position"],"deskOrder":["desk order","panel order"],"surfaceStyle":["surface style","page style"],"courseCardStyle":["course card style","course cards","course frames"],"panelFrame":["panel frame","module outline","module frames","frames"],"nightArt":["night art","artwork at night"],"readingFont":["reading font","reading text"],"textSize":["text size"],"quickOpen":["quick open preference","open at once"],"livingArt":["living art","living drawings"]};
- const VALUES={"sceneTheme":{"none":"","off":"","default":"","starfield":"stars","ocean":"sea"},"courseNavigation":{"left":"sidebar","side":"sidebar","top":"topbar","bottom":"dock"},"panelFrame":{"stitched":"stitch","off":"none"},"surfaceStyle":{},"courseCardStyle":{"sketched":"sketch"},"font":{"modern":"system","bookish":"serif"},"textSize":{"larger":"large"},"motion":{"on":"gentle","none":"off"},"greeting":{"yes":"on","no":"off"},"livingArt":{"yes":"on","no":"off"},"quickOpen":{"yes":"on","no":"off"}};
+ const normalized=new Map(),list=v=>Array.isArray(v)?v:[],own=(o,k)=>Object.prototype.hasOwnProperty.call(o||{},k),norm=v=>{
+   const input=String(v??'');
+   if(normalized.has(input))return normalized.get(input);
+   const out=input.normalize('NFKC').toLowerCase().replace(/[\u2018\u2019]/g,"'").replace(/&/g,' and ').replace(/[_-]+/g,' ').replace(/[^\p{L}\p{N}'%:#]+/gu,' ').trim();
+   if(normalized.size<4096&&input.length<300)normalized.set(input,out);
+   return out;
+ },words=v=>String(v).replace(/([a-z])([A-Z])/g,'$1 $2').replace(/[-_]/g,' ').toLowerCase(),escape=v=>v.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+ const ENUMS={
+   "accent":["clay","forest","indigo","rose","ocean","amber"],
+   "bannerSize":["compact","standard","large"],
+   "courseCardStyle":["sketch","rounded","minimal"],
+   "courseNavigation":["sidebar","topbar","dock"],
+   "density":["comfortable","compact"],
+   "deskOrder":["context-first","work-first","stacked"],
+   "dockShelf":["kraft","paper","none"],
+   "dockStyle":["tiles","cards"],
+   "font":["system","humanist","serif"],
+   "greeting":["on","off"],
+   "livingArt":["on","off"],
+   "motion":["gentle","still","off"],
+   "pageTint":["paper","accent","sky","sage","lilac","blush","sand","snow"],
+   "panelFrame":["pen","stitch","card","line","none"],
+   "quickOpen":["on","off"],
+   "readingFont":["book","interface"],
+   "sceneTheme":["","starry","sea","stars","blueprint"],
+   "surfaceStyle":["paper","clean","contrast"],
+   "textSize":["standard","large"],
+   "theme":["light","dark"]
+ };
+ const DEFAULTS={
+   "accent":"clay",
+   "bannerSize":"standard",
+   "bedtime":"22:30",
+   "biscuitOffers":true,
+   "courseCardStyle":"sketch",
+   "courseNavigation":"sidebar",
+   "density":"comfortable",
+   "deskOrder":"context-first",
+   "dockCounts":true,
+   "dockHide":false,
+   "dockLively":true,
+   "dockNamesAlways":false,
+   "dockShelf":"kraft",
+   "dockStyle":"tiles",
+   "font":"system",
+   "greeting":"on",
+   "livingArt":"on",
+   "motion":"gentle",
+   "nightArt":0,
+   "pageTint":"paper",
+   "panelFrame":"pen",
+   "quickOpen":"off",
+   "readingFont":"book",
+   "sceneTheme":"",
+   "showBookmarks":true,
+   "showCourseIcons":true,
+   "showCourseInformation":true,
+   "showCourseStrip":true,
+   "showDeadlinePreview":true,
+   "showGrades":false,
+   "showRecentGrades":false,
+   "surfaceStyle":"paper",
+   "textSize":"standard",
+   "theme":"light"
+ };
+ const ALIASES={
+   "density":["density","row spacing","row density","layout spacing"],
+   "showGrades":["grades","grade","my grades","scores","score","my scores","marks","my marks","grade visibility"],
+   "showRecentGrades":["recent grades","recent scores"],
+   "showBookmarks":["bookmarks"],
+   "showCourseIcons":["course icons"],
+   "showDeadlinePreview":["deadline previews","deadline preview"],
+   "showCourseInformation":["course information","course info"],
+   "showCourseStrip":["course strip"],
+   "sceneTheme":["scene","scene theme"],
+   "pageTint":["page tint","page color","background color"],
+   "courseNavigation":["course navigation","course menu position"],
+   "deskOrder":["desk order","panel order"],
+   "surfaceStyle":["surface style","page style"],
+   "courseCardStyle":["course card style","course cards","course frames"],
+   "panelFrame":["panel frame","module outline","module frames","frames"],
+   "nightArt":["night art","artwork at night"],
+   "readingFont":["reading font","reading text"],
+   "textSize":["text size"],
+   "quickOpen":["quick open preference","open at once"],
+   "livingArt":["living art","living drawings"]
+ };
+ const VALUES={
+   "sceneTheme":{"none":"","off":"","default":"","starfield":"stars","ocean":"sea"},
+   "courseNavigation":{"left":"sidebar","side":"sidebar","top":"topbar","bottom":"dock"},
+   "panelFrame":{"stitched":"stitch","off":"none"},
+   "surfaceStyle":{},
+   "courseCardStyle":{"sketched":"sketch"},
+   "font":{"modern":"system","bookish":"serif"},
+   "textSize":{"larger":"large"},
+   "motion":{"on":"gentle","none":"off"},
+   "greeting":{"yes":"on","no":"off"},
+   "livingArt":{"yes":"on","no":"off"},
+   "quickOpen":{"yes":"on","no":"off"}
+ };
  const FEATURES={"arrange":"Arrange the workspace","biscuit-more-rules":"Biscuit: more rules","canvas-nav":"Drawn Canvas navigation","course-art":"Course artwork","course-files":"My links & files","course-hub":"Course hub & inbox","course-nav":"Drawn course menu & modules","customization":"Appearance editor","dashboard":"Dashboard & assignments","deadline-changes":"Deadline changes","focus-room":"Focus room","gpa":"GPA calculator","grade-impact":"Grade impact","grades":"Grades","materials":"Materials library","math":"Math tools","motion":"Living drawings & motion","native-appearance":"Native page appearance","pdf":"PDF reader","planner":"Planner & home widgets","play":"Play & submission celebrations","pony":"Pony companion","quick-pack":"Local artwork packs","review-deck":"Review deck","scene-themes":"Scene themes","tools":"Quick open & study tools"};
  const MODULES={"bookmarks":"Bookmarks","clock":"Clock","context":"Course information","grades":"Grades","handin":"To hand in","messages":"Messages","notes":"Notes","pet":"Paddock","reader":"Assignment details","timer":"Focus timer","today":"Today","week":"This week","work":"Up next"};
- const TABS={home:'home',dashboard:'home',assignments:'assignments',planner:'planner',plan:'planner',messages:'messages',inbox:'messages','course hub':'course-hub',hub:'course-hub',materials:'materials',grades:'grades'};
+ const TABS={
+   home:'home',
+   dashboard:'home',
+   assignments:'assignments',
+   planner:'planner',
+   plan:'planner',
+   messages:'messages',
+   inbox:'messages',
+   'course hub':'course-hub',
+   hub:'course-hub',
+   materials:'materials',
+   grades:'grades'
+ };
  const SKILLS={"deadline":"Deadline watch","focus":"Focus buddy","inbox":"Inbox watch","night":"Night owl guard","planner":"Planner help","reminders":"Reminders","wellbeing":"Wellbeing"};
  const PET_VALUES={"coat":["oat","chestnut","dapple","ink","sage","rose"],"gear":["full","collar","none"],"harness":["red","clay","gold","forest","ocean","iris"],"knowledge":["basic","more","most"],"nudges":["helpful","quiet","off"],"roam":["page","home","off"],"size":["small","medium","large"]};
  /* BEGIN BISCUIT CONTROL UI */
@@ -499,56 +606,307 @@
  ];
  /* END BISCUIT CONTROL UI */
  let uiCatalogue,uiMoreCatalogue;
- function uiControl(text,options){const source=options.controls||options.inventory?.controls,rows=source?list(source):uiCatalogue??=UI.map(([family,key,label,path,value,operation])=>({family,key,label,ui:{path},value,operation,n: norm(label),keyWords:words(key),prefixNorm:norm(path.slice(0,-1).join(' > '))}));if(!source&&!/^(?:where|help|find|show|open|go|choose|switch|use|apply|turn|stop|reset|restore|remove|uninstall|replace|clear|upload|set|change|hide|enable|disable|unhide|start|no|without|artwork)\b/.test(text))return null;for(const c of rows){if(!c.ui?.path)continue;const n=c.n??norm(c.label),key=c.keyWords??words(c.key),prefix=c.prefixNorm??norm(c.ui.path.slice(0,-1).join(' > ')),phrases=list(c.wordings).map(norm);if(phrases.includes(text)||text==='where is '+n+' in '+prefix||text==='help me use '+n+' in '+prefix||text==='find the '+n+' button in '+prefix)return ui(c.ui.path);if(c.family==='setting'&&(text==='where can i change '+n||text==='show me the '+n+' setting'))return ui(c.ui.path);if(c.family==='pet'&&(text==='where is '+n||text==='show my '+n+' in companion settings'))return ui(c.ui.path);if(c.family==='toolbox'&&(text==='open '+n||text==='where is '+n+' in tools'))return ui(c.ui.path);if(c.family==='workspace'&&(text==='open '+n+' workspace'||text==='go to '+n+' tab'))return ui(c.ui.path);if(c.family==='settings-tab'&&(text==='open make it yours '+n||text==='show the '+n+' settings tab'))return ui(c.ui.path);if(c.family==='feature-preset'&&(text==='choose '+n+' feature preset'||text==='switch features to '+n))return ui(c.ui.path);if(c.family==='layout-preset'&&(text==='use the '+n||text==='choose '+n+' in layout'))return ui(c.ui.path);if(c.family==='market'){const item='installed '+norm(key),op=c.operation,match=op==='use'?(text==='use the '+item||text==='apply my '+item):op==='off'?(text==='turn off my '+item||text==='stop using the '+item):op==='reset'?(text==='reset my '+item||text==='restore the '+item+' to how it came'):(text==='remove the '+item||text==='uninstall my '+item);if(match)return ui(c.ui.path);}if(c.family==='pet-pose'){const on=toggle(text,[key+' pose for my installed companion',key+' companion pose']);if(on!==undefined)return ui(c.ui.path,c.key==='stand'?'Stand is required. Open Make it yours > Pony > Poses to review the installed companion.':undefined);}if(c.family==='art-slot'){const match=c.operation==='remove'?(text==='remove this course '+key||text==='clear the uploaded '+key):(text==='replace the '+key+' for this course'||text==='upload a new '+key+' in artwork');if(match)return ui(c.ui.path);}if(c.family==='appearance-value'){const v=norm(c.value);if(text==='set artwork '+key+' to '+v||text==='choose '+v+' for artwork '+key)return ui(c.ui.path);}if(c.family==='setting-value'){const name=norm(ALIASES[c.key]?.[0]||key),v=norm(c.value===''?'none':String(c.value));if(text==='set '+name+' to '+v||text==='change '+name+' to '+v)return ui(c.ui.path);}if(c.family==='appearance'||c.family==='pane-field'){if(text==='where can i change '+n||text==='help me find '+n+' in '+prefix)return ui(c.ui.path);}}
+ function uiControl(text,options){
+   const source=options.controls||options.inventory?.controls,
+     rows=source?
+       list(source):
+       uiCatalogue??=UI.map(([family,key,label,path,value,operation])=>
+         ({family,key,label,ui:{path},value,operation,n: norm(label),keyWords:words(key),prefixNorm:norm(path.slice(0,-1).join(' > '))}));
+   if(!source&&!/^(?:where|help|find|show|open|go|choose|switch|use|apply|turn|stop|reset|restore|remove|uninstall|replace|clear|upload|set|change|hide|enable|disable|unhide|start|no|without|artwork)\b/.test(text))return null;
+   for(const c of rows){
+     if(!c.ui?.path)continue;
+     const n=c.n??norm(c.label),key=c.keyWords??words(c.key),prefix=c.prefixNorm??norm(c.ui.path.slice(0,-1).join(' > ')),phrases=list(c.wordings).map(norm);
+     if(phrases.includes(text)||text==='where is '+n+' in '+prefix||text==='help me use '+n+' in '+prefix||text==='find the '+n+' button in '+prefix)return ui(c.ui.path);
+     if(c.family==='setting'&&(text==='where can i change '+n||text==='show me the '+n+' setting'))return ui(c.ui.path);
+     if(c.family==='pet'&&(text==='where is '+n||text==='show my '+n+' in companion settings'))return ui(c.ui.path);
+     if(c.family==='toolbox'&&(text==='open '+n||text==='where is '+n+' in tools'))return ui(c.ui.path);
+     if(c.family==='workspace'&&(text==='open '+n+' workspace'||text==='go to '+n+' tab'))return ui(c.ui.path);
+     if(c.family==='settings-tab'&&(text==='open make it yours '+n||text==='show the '+n+' settings tab'))return ui(c.ui.path);
+     if(c.family==='feature-preset'&&(text==='choose '+n+' feature preset'||text==='switch features to '+n))return ui(c.ui.path);
+     if(c.family==='layout-preset'&&(text==='use the '+n||text==='choose '+n+' in layout'))return ui(c.ui.path);
+     if(c.family==='market'){
+       const item='installed '+norm(key),
+         op=c.operation,
+         match=op==='use'?
+           (text==='use the '+item||text==='apply my '+item):
+           op==='off'?
+             (text==='turn off my '+item||text==='stop using the '+item):
+             op==='reset'?(text==='reset my '+item||text==='restore the '+item+' to how it came'):(text==='remove the '+item||text==='uninstall my '+item);
+       if(match)return ui(c.ui.path);
+     }
+     if(c.family==='pet-pose'){
+       const on=toggle(text,[key+' pose for my installed companion',key+' companion pose']);
+       if(on!==undefined)return ui(c.ui.path,c.key==='stand'?'Stand is required. Open Make it yours > Pony > Poses to review the installed companion.':undefined);
+     }
+     if(c.family==='art-slot'){
+       const match=c.operation==='remove'?(text==='remove this course '+key||text==='clear the uploaded '+key):(text==='replace the '+key+' for this course'||text==='upload a new '+key+' in artwork');
+       if(match)return ui(c.ui.path);
+     }
+     if(c.family==='appearance-value'){const v=norm(c.value);if(text==='set artwork '+key+' to '+v||text==='choose '+v+' for artwork '+key)return ui(c.ui.path);}
+     if(c.family==='setting-value'){
+       const name=norm(ALIASES[c.key]?.[0]||key),v=norm(c.value===''?'none':String(c.value));
+       if(text==='set '+name+' to '+v||text==='change '+name+' to '+v)return ui(c.ui.path);
+     }
+     if(c.family==='appearance'||c.family==='pane-field'){if(text==='where can i change '+n||text==='help me find '+n+' in '+prefix)return ui(c.ui.path);}
+   }
   return terseUI(text,rows,!!source);
  }
- const names=key=>[key,words(key),...(ALIASES[key]||[])].map(norm),label=key=>(ALIASES[key]?.[0]||words(key)),card=(action,fields,message,extra={})=>({action,items:[],message,next:{action,fields:fields||{},label:action==='none'?'Review choices':'Continue'},route:'local',routing:{route:'local',reason:'control-proposal'},understanding:{step:'understanding',reason:'control-proposal'},...extra});
- const ui=(path,message,extra={})=>card('none',{},message||'Open '+path.join(' > ')+'.',{ui:{path},...extra}),clarify=message=>card('none',{},message||'What would you like to change or find?',{clarify:true});
- function setting(key,value){if(key==='theme'&&value==='system')return ui(['Make it yours','Look','Light or dark'],'Choose Light or Dark in Make it yours > Look > Light or dark. System is a legacy saved value.');if(own(ENUMS,key)&&!ENUMS[key].includes(value)||typeof DEFAULTS[key]==='boolean'&&typeof value!=='boolean'||key==='nightArt'&&(!Number.isInteger(value)||value<0||value>100)||key==='bedtime'&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(value))return clarify('Choose a valid value for '+label(key)+'.');if(!own(DEFAULTS,key))return null;return card('setting',{key,value},(key==='showGrades'?(value?'Show grades.':'Hide grades.'):'Set '+label(key)+' to '+(value===''?'None':String(value))+'.'));}
- function picker(s,session){const p=session.picker||session.activePicker||s.picker||s.activePicker;if(!p||p.open===false)return null;const key=typeof p==='string'?p:p.key||p.kind||p.type;if(!['scene','sceneTheme','theme'].includes(key))return null;const rows=list(p.choices).filter(v=>v&&typeof v.label==='string'&&typeof v.value==='string'),scene=key!=='theme',choices=rows.length?rows.map(v=>({label:v.label,action:scene?'setting':'none',fields:scene&&ENUMS.sceneTheme.includes(v.value)?{key:'sceneTheme',value:v.value}:{}})):scene?[['None',''],['Starry Night','starry'],['Under the Sea','sea'],['Starfield','stars'],['Blueprint','blueprint']].map(([label,value])=>({label,action:'setting',fields:{key:'sceneTheme',value}})):[{label:'Default theme',action:'none',fields:{}}];return ui(['Make it yours','Look',scene?'Scene':'Theme'],'Which '+(scene?'scene':'theme')+' would you like? Choose None or another choice.',{clarify:true,choices});}
- function valueFor(key,text){const v=norm(text).replace(/^(?:to|as|be)\s+/,''),exact=own(VALUES[key],v)?VALUES[key][v]:(ENUMS[key]||[]).find(x=>norm(x)===v);if(exact!==undefined)return exact;if(/\b(?:installed|market)\b/.test(v))return undefined;const choices=Object.entries(VALUES[key]||{}).concat((ENUMS[key]||[]).map(x=>[norm(x),x])),hits=[...new Set(choices.filter(([name])=>name&&(' '+v+' ').includes(' '+name+' ')).map(([,value])=>value))];return hits.length===1?hits[0]:undefined;}
- function toggle(text,aliases){if(!/^(?:show|unhide|hide|enable|disable|stop showing|start showing|turn|switch|no|without)\b/.test(text)&&!/(?:on|off|visible|hidden)$/.test(text))return undefined;for(const name of [...aliases].sort((a,b)=>b.length-a.length)){const n=escape(norm(name));let m;if((m=new RegExp('^(show|unhide|hide|enable|disable|stop showing|start showing|turn on|turn off|switch on|switch off) (?:the |my )?'+n+'(?: again)?$').exec(text)))return !/^(?:hide|disable|stop showing|turn off|switch off)$/.test(m[1]);if((m=new RegExp('^(?:turn |switch )?(?:the |my )?'+n+' (?:back )?(on|off|visible|hidden)$').exec(text)))return /^(?:on|visible)$/.test(m[1]);if(new RegExp('^(?:no|without) (?:the |my )?'+n+'$').test(text))return false;}return undefined;}
+ const names=key=>[key,words(key),...(ALIASES[key]||[])].map(norm),
+   label=key=>(ALIASES[key]?.[0]||words(key)),
+   card=(action,fields,message,extra={})=>
+     ({
+       action,
+       items:[],
+       message,
+       next:{action,fields:fields||{},label:action==='none'?'Review choices':'Continue'},
+       route:'local',
+       routing:{route:'local',reason:'control-proposal'},
+       understanding:{step:'understanding',reason:'control-proposal'},
+       ...extra
+     });
+ const ui=(path,message,extra={})=>card('none',{},message||'Open '+path.join(' > ')+'.',{ui:{path},...extra}),
+   clarify=message=>card('none',{},message||'What would you like to change or find?',{clarify:true});
+ function setting(key,value){
+   if(key==='theme'&&value==='system')return ui(['Make it yours','Look','Light or dark'],'Choose Light or Dark in Make it yours > Look > Light or dark. System is a legacy saved value.');
+   if(own(ENUMS,key)&&!ENUMS[key].includes(value)||
+     typeof DEFAULTS[key]==='boolean'&&typeof value!=='boolean'||
+     key==='nightArt'&&(!Number.isInteger(value)||value<0||value>100)||
+     key==='bedtime'&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(value))
+     return clarify('Choose a valid value for '+label(key)+'.');
+   if(!own(DEFAULTS,key))return null;
+   return card('setting',{key,value},(key==='showGrades'?(value?'Show grades.':'Hide grades.'):'Set '+label(key)+' to '+(value===''?'None':String(value))+'.'));
+ }
+ function picker(s,session){
+   const p=session.picker||session.activePicker||s.picker||s.activePicker;
+   if(!p||p.open===false)return null;
+   const key=typeof p==='string'?p:p.key||p.kind||p.type;
+   if(!['scene','sceneTheme','theme'].includes(key))return null;
+   const rows=list(p.choices).filter(v=>v&&typeof v.label==='string'&&typeof v.value==='string'),
+     scene=key!=='theme',
+     choices=rows.length?
+       rows.map(v=>({label:v.label,action:scene?'setting':'none',fields:scene&&ENUMS.sceneTheme.includes(v.value)?{key:'sceneTheme',value:v.value}:{}})):
+       scene?
+         [['None',''],['Starry Night','starry'],['Under the Sea','sea'],['Starfield','stars'],['Blueprint','blueprint']].map(([label,value])=>({label,action:'setting',fields:{key:'sceneTheme',value}})):
+         [{label:'Default theme',action:'none',fields:{}}];
+   return ui(['Make it yours','Look',scene?'Scene':'Theme'],'Which '+(scene?'scene':'theme')+' would you like? Choose None or another choice.',{clarify:true,choices});
+ }
+ function valueFor(key,text){
+   const v=norm(text).replace(/^(?:to|as|be)\s+/,''),exact=own(VALUES[key],v)?VALUES[key][v]:(ENUMS[key]||[]).find(x=>norm(x)===v);
+   if(exact!==undefined)return exact;
+   if(/\b(?:installed|market)\b/.test(v))return undefined;
+   const choices=Object.entries(VALUES[key]||{}).concat((ENUMS[key]||[]).map(x=>[norm(x),x])),
+     hits=[...new Set(choices.filter(([name])=>name&&(' '+v+' ').includes(' '+name+' ')).map(([,value])=>value))];
+   return hits.length===1?hits[0]:undefined;
+ }
+ function toggle(text,aliases){
+   if(!/^(?:show|unhide|hide|enable|disable|stop showing|start showing|turn|switch|no|without)\b/.test(text)&&!/(?:on|off|visible|hidden)$/.test(text))return undefined;
+   for(const name of [...aliases].sort((a,b)=>b.length-a.length)){
+     const n=escape(norm(name));
+     let m;
+     if((m=new RegExp('^(show|unhide|hide|enable|disable|stop showing|start showing|turn on|turn off|switch on|switch off) (?:the |my )?'+n+'(?: again)?$').exec(text)))return !/^(?:hide|disable|stop showing|turn off|switch off)$/.test(m[1]);
+     if((m=new RegExp('^(?:turn |switch )?(?:the |my )?'+n+' (?:back )?(on|off|visible|hidden)$').exec(text)))return /^(?:on|visible)$/.test(m[1]);
+     if(new RegExp('^(?:no|without) (?:the |my )?'+n+'$').test(text))return false;
+   }
+   return undefined;
+ }
  /* Terse spellings preserve complete public label/path slots; they do not
     search Canvas content or execute a control. Custom inventories stay live. */
  function terseUI(text,rows,custom){
-  const terse=value=>norm(value).replace(/\b(?:the|my|your|to|for|companion)\b/g,' ').replace(/\s+/g,' ').trim(),query=terse(text),location=/^(?:where is|help me use|find .+ button)\b.*\bin(?: |$)/.test(query),art=/^(?:(?:set )?artwork|choose|replace|upload|remove this course|clear uploaded)\b/.test(query);if(!location&&!art)return null;
+  const terse=value=>norm(value).replace(/\b(?:the|my|your|to|for|companion)\b/g,' ').replace(/\s+/g,' ').trim(),
+    query=terse(text),
+    location=/^(?:where is|help me use|find .+ button)\b.*\bin(?: |$)/.test(query),
+    art=/^(?:(?:set )?artwork|choose|replace|upload|remove this course|clear uploaded)\b/.test(query);
+  if(!location&&!art)return null;
   const matches=new Map(),put=(phrase,path)=>{if(terse(phrase)===query)matches.set(JSON.stringify(path),path);};
-  for(const c of rows){if(!c.ui?.path||!c.label)continue;const n=c.n??norm(c.label),key=c.keyWords??words(c.key);if(location){const prefix=c.prefixNorm??norm(c.ui.path.slice(0,-1).join(' > '));const tail=terse(prefix);if(!query.endsWith(' in'+(tail?' '+tail:'')))continue;for(const phrase of ['where is '+n+' in '+prefix,'help me use '+n+' in '+prefix,'find the '+n+' button in '+prefix])put(phrase,c.ui.path);}else if(c.family==='appearance-value'){const value=norm(c.value);for(const name of new Set([key,n.replace(/\s*=.*$/,'')]))for(const phrase of ['set artwork '+name+' to '+value,'artwork '+name+' '+value,'choose '+value+' for artwork '+name])put(phrase,c.ui.path);}else if(c.family==='art-slot')for(const name of new Set([key,n]))for(const phrase of c.operation==='remove'?['remove this course '+name,'clear the uploaded '+name]:['replace the '+name+' for this course','upload a new '+name+' in artwork'])put(phrase,c.ui.path);}
+  for(const c of rows){
+    if(!c.ui?.path||!c.label)continue;
+    const n=c.n??norm(c.label),key=c.keyWords??words(c.key);
+    if(location){
+      const prefix=c.prefixNorm??norm(c.ui.path.slice(0,-1).join(' > '));
+      const tail=terse(prefix);
+      if(!query.endsWith(' in'+(tail?' '+tail:'')))continue;
+      for(const phrase of ['where is '+n+' in '+prefix,'help me use '+n+' in '+prefix,'find the '+n+' button in '+prefix])put(phrase,c.ui.path);
+    }
+    else if(c.family==='appearance-value'){
+      const value=norm(c.value);
+      for(const name of new Set([key,n.replace(/\s*=.*$/,'')]))for(const phrase of ['set artwork '+name+' to '+value,'artwork '+name+' '+value,'choose '+value+' for artwork '+name])put(phrase,c.ui.path);
+    }
+    else if(c.family==='art-slot')
+      for(const name of new Set([key,n]))
+        for(const phrase of c.operation==='remove'?['remove this course '+name,'clear the uploaded '+name]:['replace the '+name+' for this course','upload a new '+name+' in artwork'])put(phrase,c.ui.path);
+  }
   if(!matches.size)return null;if(matches.size>1)return clarify('Which control and panel do you mean?');return ui(matches.values().next().value);
  }
  function propose(input,s={},session={},options={}){
   let text=norm(input);if(!text||text.length>4096)return null;
   text=text.replace(/^(?:hey biscuit |please )/,'').replace(/^(?:can|could|would|will) you (?:please )?/,'').replace(/^i (?:want|need) you to /,'').replace(/ (?:please|pls)$/,'');
   if(/^(?:if|unless|suppose|what|when|who|which|why|how many|how much|how do|how can|can i|could i|should i|is|are|does|did)\b/.test(text))return null;
-  if(/\b(?:don't|do not|never)\b/.test(text)){if(/^(?:don't|do not) (?:show|display) (?:the |my )?(?:grades?|scores?|marks?)$/.test(text))return setting('showGrades',false);const negative=/^(?:don't|do not|never) (?:hide|show|enable|disable|turn|switch|set|change|reset|remove)\s+(.+)$/.exec(text),target=negative?.[1]?.replace(/^(?:on|off)\s+/,'').replace(/^(?:the|my)\s+/,'');const scope=target&&(/\b(?:feature|module|widget|companion|pet|scene|theme)\b/.test(target)||Object.keys(DEFAULTS).some(key=>names(key).some(name=>target===name||target.startsWith(name+' ')))||Object.entries(FEATURES).some(([key,name])=>target===norm(key)||target===norm(name)));return scope?clarify('Your preferences are unchanged. What would you like to change?'):null;}
+  if(/\b(?:don't|do not|never)\b/.test(text)){
+    if(/^(?:don't|do not) (?:show|display) (?:the |my )?(?:grades?|scores?|marks?)$/.test(text))return setting('showGrades',false);
+    const negative=/^(?:don't|do not|never) (?:hide|show|enable|disable|turn|switch|set|change|reset|remove)\s+(.+)$/.exec(text),target=negative?.[1]?.replace(/^(?:on|off)\s+/,'').replace(/^(?:the|my)\s+/,'');
+    const scope=target&&
+      (/\b(?:feature|module|widget|companion|pet|scene|theme)\b/.test(target)||
+        Object.keys(DEFAULTS).some(key=>names(key).some(name=>target===name||target.startsWith(name+' ')))||
+        Object.entries(FEATURES).some(([key,name])=>target===norm(key)||target===norm(name)));
+    return scope?clarify('Your preferences are unchanged. What would you like to change?'):null;
+  }
   if(text==='none')return picker(s,session)||clarify('None of which choices?');
   const visibility=toggle(text,ALIASES.showGrades);if(visibility!==undefined)return setting('showGrades',visibility);
-  for(const key of Object.keys(DEFAULTS).filter(k=>typeof DEFAULTS[k]==='boolean')){if(names(key).some(n=>text==='reset '+n||text==='restore default '+n))return setting(key,DEFAULTS[key]);for(const name of names(key)){const m=new RegExp('^(?:set|change) (?:the |my )?'+escape(name)+'(?: to)? (true|false|on|off|yes|no)$').exec(text);if(m)return setting(key,/^(?:true|on|yes)$/.test(m[1]));}if(key==='showGrades')continue;const on=toggle(text,names(key));if(on!==undefined)return setting(key,on);}
+  for(const key of Object.keys(DEFAULTS).filter(k=>typeof DEFAULTS[k]==='boolean')){
+    if(names(key).some(n=>text==='reset '+n||text==='restore default '+n))return setting(key,DEFAULTS[key]);
+    for(const name of names(key)){
+      const m=new RegExp('^(?:set|change) (?:the |my )?'+escape(name)+'(?: to)? (true|false|on|off|yes|no)$').exec(text);
+      if(m)return setting(key,/^(?:true|on|yes)$/.test(m[1]));
+    }
+    if(key==='showGrades')continue;
+    const on=toggle(text,names(key));
+    if(on!==undefined)return setting(key,on);
+  }
   if(/^(?:show|unhide|bring back|hide|turn on|turn off) (?:my |the )?(?:pet|biscuit|companion)$/.test(text))return settingPetEnabled(!/^(?:hide|turn off)\b/.test(text));
-  const view=/^(?:show|open|go to|take me to) (?:the |my )?(.+)$/.exec(text),viewName=view?.[1],viewTab=TABS[viewName]||({'materials library':'materials','course files':'materials','my links and files':'materials'})[viewName];if(viewTab&&viewName!=='grades')return card('navigate',{tab:viewTab},'Open '+viewName+'.');
-  const allFeatures=new Map(Object.entries(FEATURES));for(const row of list(s.features).concat(list(root.ReserveFeatures?.catalogue)))if(row&&own(FEATURES,row.id)&&typeof row.id==='string'&&typeof row.name==='string')allFeatures.set(row.id,row.name);
+  const view=/^(?:show|open|go to|take me to) (?:the |my )?(.+)$/.exec(text),
+    viewName=view?.[1],
+    viewTab=TABS[viewName]||({'materials library':'materials','course files':'materials','my links and files':'materials'})[viewName];
+  if(viewTab&&viewName!=='grades')return card('navigate',{tab:viewTab},'Open '+viewName+'.');
+  const allFeatures=new Map(Object.entries(FEATURES));
+  for(const row of list(s.features).concat(list(root.ReserveFeatures?.catalogue)))
+    if(row&&own(FEATURES,row.id)&&typeof row.id==='string'&&typeof row.name==='string')allFeatures.set(row.id,row.name);
   const explicitModule=/\b(?:home module|home widget|module|widget|panel)\b/.test(text)||/\bon home\b/.test(text);
-  if(explicitModule){const body=text.replace(/\b(?:home module|home widget|module|widget|panel)\b/g,'').replace(/\b(?:on|from|to) home\b/g,'').replace(/\s+/g,' ').trim();for(const [key,name]of Object.entries(MODULES)){const aliases=[name,key,...(key==='week'?['planner']:[])],on=toggle(body,aliases),tail=aliases.map(norm).find(n=>body===n+' wide'||body==='make '+n+' wide'||body==='widen '+n),top=aliases.map(norm).find(n=>body==='move '+n+' to the top'||body==='put '+n+' first'),remove=aliases.map(norm).find(n=>body==='remove '+n||body==='add '+n),reset=aliases.map(norm).find(n=>body==='reset '+n+' size'||body==='restore '+n+' to medium size');let action=on!==undefined?on?'show':'hide':tail?'wide':top?'top':remove?body.startsWith('add ')?'show':'hide':null;if(key==='help'&&(reset||tail||top))return ui(['Home','Help'],'Help stays above the Home modules; use its switch in Edit Home.');if(reset)return ui(['Home',name,'Size and place','Medium']);if(!action)continue;if(['work','reader'].includes(key))return ui(['Home',name,'Size and place'],name+' is a required Home panel. Use its Size and place menu to arrange it.');return card('module',{key,action},action[0].toUpperCase()+action.slice(1)+' '+name+' on Home.');}}
-  for(const [id,name]of allFeatures){const aliases=[id,name,words(id)],explicit=aliases.map(n=>norm(n)+' feature'),on=toggle(text,explicit.concat(id==='grades'?[]:aliases));if(on===undefined)continue;if(['pony','dashboard','planner'].includes(id)&&!on)return ui(id==='pony'?['Canvas Harness extension popup','Companion']:['Make it yours','Features',name],id==='pony'?'Open the extension popup > Companion to turn the companion off.':'Open Make it yours > Features > '+name+' to review dependent features before turning it off.');return card('feature',{id,on},(on?'Enable ':'Disable ')+name+'. Reload Canvas after saving.');}
+  if(explicitModule){
+    const body=text.replace(/\b(?:home module|home widget|module|widget|panel)\b/g,'').replace(/\b(?:on|from|to) home\b/g,'').replace(/\s+/g,' ').trim();
+    for(const [key,name]of Object.entries(MODULES)){
+      const aliases=[name,key,...(key==='week'?['planner']:[])],
+        on=toggle(body,aliases),
+        tail=aliases.map(norm).find(n=>body===n+' wide'||body==='make '+n+' wide'||body==='widen '+n),
+        top=aliases.map(norm).find(n=>body==='move '+n+' to the top'||body==='put '+n+' first'),
+        remove=aliases.map(norm).find(n=>body==='remove '+n||body==='add '+n),
+        reset=aliases.map(norm).find(n=>body==='reset '+n+' size'||body==='restore '+n+' to medium size');
+      let action=on!==undefined?on?'show':'hide':tail?'wide':top?'top':remove?body.startsWith('add ')?'show':'hide':null;
+      if(key==='help'&&(reset||tail||top))return ui(['Home','Help'],'Help stays above the Home modules; use its switch in Edit Home.');
+      if(reset)return ui(['Home',name,'Size and place','Medium']);
+      if(!action)continue;
+      if(['work','reader'].includes(key))return ui(['Home',name,'Size and place'],name+' is a required Home panel. Use its Size and place menu to arrange it.');
+      return card('module',{key,action},action[0].toUpperCase()+action.slice(1)+' '+name+' on Home.');
+    }
+  }
+  for(const [id,name]of allFeatures){
+    const aliases=[id,name,words(id)],explicit=aliases.map(n=>norm(n)+' feature'),on=toggle(text,explicit.concat(id==='grades'?[]:aliases));
+    if(on===undefined)continue;
+    if(['pony','dashboard','planner'].includes(id)&&!on)return ui(id==='pony'?['Canvas Harness extension popup','Companion']:['Make it yours','Features',name],id==='pony'?'Open the extension popup > Companion to turn the companion off.':'Open Make it yours > Features > '+name+' to review dependent features before turning it off.');
+    return card('feature',{id,on},(on?'Enable ':'Disable ')+name+'. Reload Canvas after saving.');
+  }
   for(const [id,name]of Object.entries(SKILLS)){const on=toggle(text,[name+' skill',id+' skill']);if(on!==undefined)return card('skill',{skill:id,on},(on?'Enable ':'Disable ')+name+'.');}
-  for(const [key,values]of Object.entries(ENUMS)){const ns=names(key);for(const n of ns){const atom=escape(n),m=new RegExp('^(?:(?:set|change|switch|make) (?:the |my )?)?'+atom+'(?: to| as| is)? (.+)$').exec(text)||new RegExp('^(.+) '+atom+'$').exec(text);if(!m)continue;const value=valueFor(key,m[1]);if(value!==undefined)return setting(key,value);if(/^(?:set|change|switch|make)\b/.test(text))return clarify('Choose '+values.map(v=>v===''?'None':v).join(', ')+' for '+label(key)+'.');}if(ns.some(n=>text==='reset '+n||text==='restore default '+n))return setting(key,DEFAULTS[key]);}
+  for(const [key,values]of Object.entries(ENUMS)){
+    const ns=names(key);
+    for(const n of ns){
+      const atom=escape(n),m=new RegExp('^(?:(?:set|change|switch|make) (?:the |my )?)?'+atom+'(?: to| as| is)? (.+)$').exec(text)||new RegExp('^(.+) '+atom+'$').exec(text);
+      if(!m)continue;
+      const value=valueFor(key,m[1]);
+      if(value!==undefined)return setting(key,value);
+      if(/^(?:set|change|switch|make)\b/.test(text))return clarify('Choose '+values.map(v=>v===''?'None':v).join(', ')+' for '+label(key)+'.');
+    }
+    if(ns.some(n=>text==='reset '+n||text==='restore default '+n))return setting(key,DEFAULTS[key]);
+  }
   if(/^(?:no|remove|clear|turn off) (?:the |my )?scene(?: theme)?$/.test(text))return setting('sceneTheme','');
   if(/^(?:dark|light)(?: mode| theme)?$/.test(text))return setting('theme',text.split(' ')[0]);
   if(/^(?:no|remove|clear) (?:the )?(?:module )?frames?$/.test(text))return setting('panelFrame','none');
   if(/^(?:reset|restore default) night art$/.test(text))return setting('nightArt',0);
   const night=/^(?:set |change )?(?:night art|artwork at night)(?: to)? (\d+(?:\.\d+)?)%?$/.exec(text);if(night)return setting('nightArt',Math.round(Number(night[1])));
   if(/^(?:reset|restore default) bedtime$/.test(text))return setting('bedtime','22:30');
-  const bed=/^(?:set |change )?bedtime(?: to)? (\d{1,2}):(\d{2})(?: (am|pm))?$/.exec(text);if(bed){let h=Number(bed[1]);if(bed[3]&&(h<1||h>12))return clarify('Choose a valid bedtime.');if(bed[3])h=h%12+(bed[3]==='pm'?12:0);return setting('bedtime',String(h).padStart(2,'0')+':'+bed[2]);}
+  const bed=/^(?:set |change )?bedtime(?: to)? (\d{1,2}):(\d{2})(?: (am|pm))?$/.exec(text);
+  if(bed){let h=Number(bed[1]);if(bed[3]&&(h<1||h>12))return clarify('Choose a valid bedtime.');if(bed[3])h=h%12+(bed[3]==='pm'?12:0);return setting('bedtime',String(h).padStart(2,'0')+':'+bed[2]);}
   const sourceUI=uiControlMore(text,options);if(sourceUI)return sourceUI;
-  const navigation=/^(?:open|go to|show me|take me to) (?:the |my )?(.+?)(?: workspace| tab)?$/.exec(text);if(navigation){const tab=TABS[navigation[1]];if(tab)return card('navigate',{tab},'Open '+navigation[1]+'.');if(navigation[1]==='review')return ui(['Workspace','Review']);if(/^(?:market|add ons)$/.test(navigation[1]))return ui(['Canvas Harness extension popup','Add-ons','Open the market']);if(/^(?:tools|calculator|quick open|gpa)$/.test(navigation[1]))return ui(['Tools',navigation[1]==='tools'?'Quick open':navigation[1]]);}
-  const pet=/^(?:set |change |make )?(?:my |the )?(?:pet|biscuit|companion) (enabled|name|knowledge|roam|size|nudges|gear|coat|harness)(?: to)? (.+)$/.exec(text);if(pet){const [,key,value]=pet;if(key==='enabled'&&/^(?:true|false|on|off)$/.test(value))return settingPetEnabled(/^(?:true|on)$/.test(value));if(key==='nudges'&&['helpful','quiet'].includes(value))return card('setting',{key:'pet.nudges',value},'Set companion reminders to '+value+'.');if(key==='name')return ui(['Make it yours','Pony','Name'],'Open Make it yours > Pony > Name and enter the name (up to 24 characters).');if(!PET_VALUES[key]?.includes(value))return clarify('Choose '+(PET_VALUES[key]||[]).join(', ')+' for companion '+key+'.');return ui(['Make it yours','Pony',({roam:'Where it goes',nudges:'Reminders',knowledge:'How much Biscuit knows',gear:'Tack',harness:'Harness',coat:'Coat',size:'Size'})[key],value]);}
-  const controls=list(options.controls||options.inventory?.controls);for(const c of controls){if(!c.ui?.path)continue;const phrases=list(c.wordings).concat(c.label?[c.label]:[]).map(norm),where='where is '+norm(c.label)+' in '+norm(c.ui.path.slice(0,-1).join(' > ')),help='help me use '+norm(c.label)+' in '+norm(c.ui.path.slice(0,-1).join(' > '));if(phrases.includes(text)||text===where||text===help)return ui(c.ui.path);}
-  if(/^(?:use|apply|turn off|reset|remove|uninstall|delete)\b/.test(text)&&/\b(?:market|installed|theme|scene|pet pack|companion pack|preset|artwork pack|kit|media)\b/.test(text)){const section=/\b(?:pet|companion)\b/.test(text)?'Companion':/\b(?:artwork|art|kit|media)\b/.test(text)?'Artwork':/\bfeature\b/.test(text)?'Features':'Look',op=/\breset\b/.test(text)?'Reset to how it came':/\b(?:remove|uninstall|delete)\b/.test(text)?'Remove':/\b(?:turn off|stop using)\b/.test(text)?section==='Companion'?'Built-in companion':'Use default theme':'Select the installed item';return ui(['Make it yours',section,'Installed items',op],'Open Make it yours > '+section+' and choose the named installed item, then '+op+'.');}
-  if(!text.includes(' ')){const known=knownWord(text,s,options)||list(s.catalogue).some(v=>[v?.name,v?.title,...list(v?.aliases)].some(n=>typeof n==='string'&&norm(n)===text))||[s.companion?.name,s.pet?.name,...Object.keys(TABS),'grade','score','scores','marks','note','notes','focus','timer','help','hi','hello','thanks','undo','stop','pause','resume','yes','no','ok','okay','biscuit','pet','companion',...list(options.knownCommands),...allFeatures.keys(),...allFeatures.values(),...Object.values(MODULES),...Object.values(ENUMS).flat()].some(n=>n&&norm(n)===text),selected=!!(s.selectedItemId||s.itemId||s.page?.itemId||s.selected?.id||session.itemId||session.lastItemId||list(session.items||session.lastItems).some(v=>['assignment','file','page','course','note','grade'].includes(v?.kind)));if(!known&&!selected)return clarify();}
+  const navigation=/^(?:open|go to|show me|take me to) (?:the |my )?(.+?)(?: workspace| tab)?$/.exec(text);
+  if(navigation){
+    const tab=TABS[navigation[1]];
+    if(tab)return card('navigate',{tab},'Open '+navigation[1]+'.');
+    if(navigation[1]==='review')return ui(['Workspace','Review']);
+    if(/^(?:market|add ons)$/.test(navigation[1]))return ui(['Canvas Harness extension popup','Add-ons','Open the market']);
+    if(/^(?:tools|calculator|quick open|gpa)$/.test(navigation[1]))return ui(['Tools',navigation[1]==='tools'?'Quick open':navigation[1]]);
+  }
+  const pet=/^(?:set |change |make )?(?:my |the )?(?:pet|biscuit|companion) (enabled|name|knowledge|roam|size|nudges|gear|coat|harness)(?: to)? (.+)$/.exec(text);
+  if(pet){
+    const [,key,value]=pet;
+    if(key==='enabled'&&/^(?:true|false|on|off)$/.test(value))return settingPetEnabled(/^(?:true|on)$/.test(value));
+    if(key==='nudges'&&['helpful','quiet'].includes(value))return card('setting',{key:'pet.nudges',value},'Set companion reminders to '+value+'.');
+    if(key==='name')return ui(['Make it yours','Pony','Name'],'Open Make it yours > Pony > Name and enter the name (up to 24 characters).');
+    if(!PET_VALUES[key]?.includes(value))return clarify('Choose '+(PET_VALUES[key]||[]).join(', ')+' for companion '+key+'.');
+    return ui(['Make it yours','Pony',({roam:'Where it goes',nudges:'Reminders',knowledge:'How much Biscuit knows',gear:'Tack',harness:'Harness',coat:'Coat',size:'Size'})[key],value]);
+  }
+  const controls=list(options.controls||options.inventory?.controls);
+  for(const c of controls){
+    if(!c.ui?.path)continue;
+    const phrases=list(c.wordings).concat(c.label?[c.label]:[]).map(norm),
+      where='where is '+norm(c.label)+' in '+norm(c.ui.path.slice(0,-1).join(' > ')),
+      help='help me use '+norm(c.label)+' in '+norm(c.ui.path.slice(0,-1).join(' > '));
+    if(phrases.includes(text)||text===where||text===help)return ui(c.ui.path);
+  }
+  if(/^(?:use|apply|turn off|reset|remove|uninstall|delete)\b/.test(text)&&/\b(?:market|installed|theme|scene|pet pack|companion pack|preset|artwork pack|kit|media)\b/.test(text)){
+    const section=/\b(?:pet|companion)\b/.test(text)?'Companion':/\b(?:artwork|art|kit|media)\b/.test(text)?'Artwork':/\bfeature\b/.test(text)?'Features':'Look',
+      op=/\breset\b/.test(text)?'Reset to how it came':/\b(?:remove|uninstall|delete)\b/.test(text)?'Remove':/\b(?:turn off|stop using)\b/.test(text)?section==='Companion'?'Built-in companion':'Use default theme':'Select the installed item';
+    return ui(['Make it yours',section,'Installed items',op],'Open Make it yours > '+section+' and choose the named installed item, then '+op+'.');
+  }
+  if(!text.includes(' ')){
+    const known=knownWord(text,s,options)||
+      list(s.catalogue).some(v=>[v?.name,v?.title,...list(v?.aliases)].some(n=>typeof n==='string'&&norm(n)===text))||
+      [
+        s.companion?.name,
+        s.pet?.name,
+        ...Object.keys(TABS),
+        'grade',
+        'score',
+        'scores',
+        'marks',
+        'note',
+        'notes',
+        'focus',
+        'timer',
+        'help',
+        'hi',
+        'hello',
+        'thanks',
+        'undo',
+        'stop',
+        'pause',
+        'resume',
+        'yes',
+        'no',
+        'ok',
+        'okay',
+        'biscuit',
+        'pet',
+        'companion',
+        ...list(options.knownCommands),
+        ...allFeatures.keys(),
+        ...allFeatures.values(),
+        ...Object.values(MODULES),
+        ...Object.values(ENUMS).flat()
+      ].some(n=>
+        n&&norm(n)===text),
+      selected=!!(s.selectedItemId||
+        s.itemId||
+        s.page?.itemId||
+        s.selected?.id||
+        session.itemId||
+        session.lastItemId||
+        list(session.items||session.lastItems).some(v=>['assignment','file','page','course','note','grade'].includes(v?.kind)));
+    if(!known&&!selected)return clarify();
+  }
   return null;
  }
  function settingPetEnabled(value){return card('setting',{key:'pet.enabled',value},value?'Show the companion.':'Hide the companion. Treats and level are kept.');}
- function knownWord(text,s,options){if(list(options.knownNames||s.knownNames).some(v=>norm(v)===text))return true;const subjects=['math','science','history','english','ela','languages','arts','technology','tech','humanities'];if(subjects.includes(text))return true;return list(s.courses).concat(list(s.workItems),list(s.assignments),list(s.files),list(s.notes)).some(row=>[row?.name,row?.title,row?.shortName,row?.course_code,...list(row?.aliases)].some(value=>{if(typeof value!=='string')return false;const tokens=norm(value).split(' ');return norm(value)===text||text.length>=3&&tokens.some(w=>w.startsWith(text))||tokens.length>1&&(tokens.map(w=>w[0]).join('')===text||tokens.map(w=>w==='ap'||w==='ib'?w:w[0]).join('')===text);}));}
+ function knownWord(text,s,options){
+   if(list(options.knownNames||s.knownNames).some(v=>norm(v)===text))return true;
+   const subjects=['math','science','history','english','ela','languages','arts','technology','tech','humanities'];
+   if(subjects.includes(text))return true;
+   return list(s.courses).concat(list(s.workItems),list(s.assignments),list(s.files),list(s.notes)).some(row=>
+     [row?.name,row?.title,row?.shortName,row?.course_code,...list(row?.aliases)].some(value=>{
+     if(typeof value!=='string')return false;
+     const tokens=norm(value).split(' ');
+     return norm(value)===text||
+       text.length>=3&&tokens.some(w=>w.startsWith(text))||
+       tokens.length>1&&(tokens.map(w=>w[0]).join('')===text||tokens.map(w=>w==='ap'||w==='ib'?w:w[0]).join('')===text);
+   }));
+ }
  function uiControlMore(text,options){
   const result=uiControl(text,options);if(result)return result;
   const source=options.controls||options.inventory?.controls;

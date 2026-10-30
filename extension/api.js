@@ -44,7 +44,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const url = new URL(path, base);
       if (url.origin !== base.origin) throw new CanvasError('Canvas returned a page outside the allowed origin.', 'origin');
       if (!allowed.some(pattern=>pattern.test(url.pathname)) || url.username || url.password) throw new CanvasError('Unsupported Canvas endpoint path.', 'endpoint');
-      if(/^\/api\/v1\/conversations\/\d+\/?$/.test(url.pathname)&&(url.searchParams.getAll('auto_mark_as_read').length!==1||url.searchParams.get('auto_mark_as_read')!=='false'))throw new CanvasError('Message previews must preserve read status.', 'endpoint');
+      if(/^\/api\/v1\/conversations\/\d+\/?$/.test(url.pathname)&&(url.searchParams.getAll('auto_mark_as_read').length!==1||url.searchParams.get('auto_mark_as_read')!=='false'))
+        throw new CanvasError('Message previews must preserve read status.', 'endpoint');
       return url;
     }
     async function throttled(response) {
@@ -85,7 +86,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if (signal?.aborted) throw new CanvasError('Refresh cancelled.', 'cancelled');
         if (response.status === 401) throw new CanvasError('Sign in to Canvas, then refresh Canvas Harness.', 'auth');
         if (await throttled(response)) throw Object.assign(new CanvasError('Canvas is receiving too many requests. Wait a minute, then refresh.', 'rate'), {retryAfter: retryAfter(response)});
-        if (!response.ok) throw new CanvasError(response.status === 403 ? 'Canvas did not allow this course to be read.' : `Canvas could not load this information (${response.status}).`, String(response.status));
+        if (!response.ok)
+          throw new CanvasError(response.status === 403 ? 'Canvas did not allow this course to be read.' : `Canvas could not load this information (${response.status}).`, String(response.status));
         if (!(response.headers.get('content-type') || '').includes('json')) throw new CanvasError('Your Canvas session needs attention. Open Canvas and sign in again.', 'auth');
         let data;
         try { data = await response.json(); } catch (error) { if(controller.signal.aborted) throw error; throw new CanvasError('Canvas returned unreadable data. Try refreshing.', 'data'); }
@@ -114,7 +116,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     async function profile(options) {
       const {data} = await request('/api/v1/users/self/profile', options);
       if (!data || data.id == null) throw new CanvasError('Could not identify the signed-in Canvas account.', 'auth');
-      return data;
+      // Only the account ID and the name for the greeting are kept. Email, login and SIS IDs, the picture and the
+      // private calendar feed address are dropped here, so they never reach a saved snapshot.
+      const user = {id:data.id};
+      for (const key of ['name','short_name']) if (typeof data[key] === 'string') user[key] = data[key];
+      return user;
     }
     function courseId(value) {
       const id=String(value == null ? '' : value);
@@ -193,7 +199,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         ()=>source('pages',async()=>{pages=await list(`/api/v1/courses/${id}/pages?per_page=100`,{signal});}),
         ()=>source('files',async()=>{files=await list(`/api/v1/courses/${id}/files?per_page=100`,{signal});}),
         ()=>source('frontPage',async()=>{const result=await request(`/api/v1/courses/${id}/front_page`,{signal});frontPage=result.data&&typeof result.data==='object'?result.data:null;},{ignore404:true}),
-        ()=>source('syllabus',async()=>{const result=await request(`/api/v1/courses/${id}?include[]=syllabus_body`,{signal});syllabusBody=typeof result.data?.syllabus_body==='string'?result.data.syllabus_body:'';}),
+        ()=>source('syllabus',async()=>{
+          const result=await request(`/api/v1/courses/${id}?include[]=syllabus_body`,{signal});
+          syllabusBody=typeof result.data?.syllabus_body==='string'?result.data.syllabus_body:'';
+        }),
       ];
       await runLimited(tasks,3);
       await verifyExpectedUser(accountId,signal,initialUser.id);
@@ -212,7 +221,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const id=courseId(courseValue),assignmentId=courseId(assignmentValue),accountId=expectedUser(user);
       await verifyExpectedUser(accountId,signal);
       const {data}=await request(`/api/v1/courses/${id}/assignments/${assignmentId}`,{signal});
-      if(!data||String(data.id)!==assignmentId||data.course_id!=null&&String(data.course_id)!==id||data.locked_for_user||data.published===false)throw new CanvasError('This assignment is not available.','403');
+      if(!data||String(data.id)!==assignmentId||data.course_id!=null&&String(data.course_id)!==id||data.locked_for_user||data.published===false)
+        throw new CanvasError('This assignment is not available.','403');
       await verifyExpectedUser(accountId,signal);
       return data;
     }
@@ -220,9 +230,17 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const id=courseId(value),accountId=expectedUser(user);
       const initialUser=await verifyExpectedUser(accountId,signal);
       const {data:course}=await request(`/api/v1/courses/${id}?include[]=total_scores&include[]=current_grading_period_scores`,{signal});
-      if(!course||typeof course!=='object'||Array.isArray(course)||String(course.id)!==id||course.access_restricted_by_date||course.workflow_state==='deleted')throw new CanvasError('Canvas returned incomplete course grading information.','data');
+      if(!course||typeof course!=='object'||Array.isArray(course)||String(course.id)!==id||course.access_restricted_by_date||course.workflow_state==='deleted')
+        throw new CanvasError('Canvas returned incomplete course grading information.','data');
       const enrollments=Array.isArray(course.enrollments)?course.enrollments:[];
-      const periods=course.multiple_grading_periods_enabled!==false||course.current_grading_period_id!=null||course.grading_period_set_id!=null||course.grading_periods_enabled===true||course.has_grading_periods===true||course.grading_periods_weighted===true||Array.isArray(course.grading_periods)&&course.grading_periods.length>0||enrollments.some(row=>row?.current_grading_period_id!=null||row?.grading_period_id!=null||row?.multiple_grading_periods_enabled===true);
+      const periods=course.multiple_grading_periods_enabled!==false||
+        course.current_grading_period_id!=null||
+        course.grading_period_set_id!=null||
+        course.grading_periods_enabled===true||
+        course.has_grading_periods===true||
+        course.grading_periods_weighted===true||
+        Array.isArray(course.grading_periods)&&course.grading_periods.length>0||
+        enrollments.some(row=>row?.current_grading_period_id!=null||row?.grading_period_id!=null||row?.multiple_grading_periods_enabled===true);
       let groups=[],assignments=[];
       if(course.hide_final_grades===false&&!course.restrict_quantitative_data&&!periods&&typeof course.apply_assignment_group_weights==='boolean'){
         groups=await list(`/api/v1/courses/${id}/assignment_groups?per_page=100`,{signal});
@@ -328,7 +346,20 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(String(finalUser.id)!==String(user.id)) throw new CanvasError('Your Canvas account changed during refresh. Reopen Canvas Harness.', 'auth');
       return {origin:base.origin,user,courses,assignments,errors,partial:errors.length>0,fetchedAt:new Date().toISOString()};
     }
-    return {origin:base.origin,list,profile,loadSnapshot,loadCourseResources,readCoursePage,readAssignment,loadGradeImpact,readFile,loadCourseUpdates,listInbox,readConversation};
+    return {
+      origin:base.origin,
+      list,
+      profile,
+      loadSnapshot,
+      loadCourseResources,
+      readCoursePage,
+      readAssignment,
+      loadGradeImpact,
+      readFile,
+      loadCourseUpdates,
+      listInbox,
+      readConversation
+    };
   }
   const api = { CanvasError, createClient };
   root.ReserveAPI = api;

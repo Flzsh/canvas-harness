@@ -17,7 +17,10 @@
  listen(document,'visibilitychange',sync);
  if(reduced.addEventListener)listen(reduced,'change',sync);
  listen(globalThis,'resize',()=>animator?.resize(),{passive:true});
- listen(globalThis,'pointermove',event=>{const box=canvas.getBoundingClientRect();if(box.width&&box.height)aim((event.clientX-box.left)/box.width,(event.clientY-box.top)/box.height,true);},{passive:true});
+ listen(globalThis,'pointermove',event=>{
+  const box=canvas.getBoundingClientRect();
+  if(box.width&&box.height)aim((event.clientX-box.left)/box.width,(event.clientY-box.top)/box.height,true);
+ },{passive:true});
  listen(document.documentElement,'pointerleave',()=>aim(0,0,false));
  listen(globalThis,'message',event=>{
   if(event.source!==parent||parent===globalThis||!event.data||typeof event.data!=='object')return;

@@ -1,7 +1,7 @@
 // Adapted from Gary Wu's pull request #47 to Canvas Harness.
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 function fixture(pathname='/',search='',{deferDashboard=false,lateSite=false}={}){
- const nodes=new Map(),events={},winEvents={};
+ const nodes=new Map(),events={},winEvents={};let lastSnapshot=null;
  class El{
   constructor(tag='div'){this.tagName=tag;this.children=[];this.hidden=false;this.style={};this.events={};this.dataset={};this._query={};}
   set id(v){this._id=v;nodes.set(v,this);}get id(){return this._id;}
@@ -17,11 +17,11 @@ function fixture(pathname='/',search='',{deferDashboard=false,lateSite=false}={}
  }
  const body=new El('body'),head=new El('head'),html=new El('html'),classes=new Set();html.classList={add:(...names)=>names.forEach(name=>classes.add(name)),remove:(...names)=>names.forEach(name=>classes.delete(name)),contains:name=>classes.has(name)};
  const content=new El();content.id='content';const native=new El();native.id='dashboard';const sidebar=new El();sidebar.id='right-side';content.append(native);const application=new El();application.id='application';application.append(content,sidebar);body.append(application);
- const document={body,head,documentElement:html,visibilityState:'visible',getElementById:id=>nodes.get(id),createElement:tag=>new El(tag),addEventListener:(key,fn)=>events[key]=fn};
- let callbacks,started=0,dashboardOptions,plannerOptions,scrollRestored,nativeToolsCreated=0,mounts=0,painted=!deferDashboard;const statuses=[];
+ const document={body,head,documentElement:html,visibilityState:'visible',getElementById:id=>nodes.get(id),querySelector:()=>null,createElement:tag=>new El(tag),addEventListener:(key,fn)=>events[key]=fn};
+ let callbacks,started=0,dashboardOptions,plannerOptions,scrollRestored,nativeToolsCreated=0,mounts=0,dashboardDestroys=0,painted=!deferDashboard;const statuses=[],trail=[];
  const window={scrollY:460,scrollTo:(options)=>scrollRestored=options.top,addEventListener:(key,fn)=>winEvents[key]=fn};window.top=window;
- const session={start(){started++;},refresh:async()=>null,verify:async()=>true,destroy(){}};
- const mockView=()=>({destroy(){},setStatus:message=>statuses.push(message),updateSnapshot(){},getState:()=>({query:'gas',mode:'tomorrow',courseId:'7',day:'',limit:60})});
+ const session={start(){started++;},refresh:async()=>null,verify:async()=>true,suspend(){},destroy(){}};
+ const mockView=()=>({destroy(){dashboardDestroys++;},closePersonalFiles(){trail.push('close');},resumePersonalFiles(){trail.push('files');},setStatus:message=>statuses.push(message),updateSnapshot(next){trail.push(next===lastSnapshot?'same snapshot':'new snapshot');},getState:()=>({query:'gas',mode:'tomorrow',courseId:'7',day:'',limit:60})});
  const context={document,window,requestAnimationFrame:fn=>fn(),setTimeout,location:{origin:'https://school.instructure.com',pathname,search},URL,URLSearchParams,Date,
   sessionStorage:{setItem(){},removeItem(){},getItem:()=>null},
   // This fixture isolates controller behavior; startup.test.cjs runs the real guard.
@@ -34,7 +34,7 @@ function fixture(pathname='/',search='',{deferDashboard=false,lateSite=false}={}
  if(!lateSite)vm.runInNewContext(fs.readFileSync(require.resolve('../extension/site.js'),'utf8'),context);
  vm.runInNewContext(fs.readFileSync(require.resolve('../extension/content.js'),'utf8'),context);
  if(lateSite)vm.runInNewContext(fs.readFileSync(require.resolve('../extension/site.js'),'utf8'),context);
- return {nodes,body,head,native,sidebar,events,statuses,classes,get mounts(){return mounts;},get nativeToolsCreated(){return nativeToolsCreated;},get dashboardOptions(){return dashboardOptions;},get plannerOptions(){return plannerOptions;},get scrollRestored(){return scrollRestored;},get started(){return started;},get callbacks(){return callbacks;},paintDashboard(){painted=true;dashboardOptions.onReady();},deliver(){callbacks.onSnapshot({courses:[],assignments:[]},{get:()=>({settings:{showGrades:false}})},{stale:false});},loadStyles(){for(const el of nodes.get('reserve-companion-host').shadowRoot.children)el.onload?.();}};
+ return {nodes,body,head,native,sidebar,events,winEvents,statuses,classes,trail,document,session,get dashboardDestroys(){return dashboardDestroys;},get mounts(){return mounts;},get nativeToolsCreated(){return nativeToolsCreated;},get dashboardOptions(){return dashboardOptions;},get plannerOptions(){return plannerOptions;},get scrollRestored(){return scrollRestored;},get started(){return started;},get callbacks(){return callbacks;},paintDashboard(){painted=true;dashboardOptions.onReady();},deliver(){lastSnapshot={courses:[],assignments:[]};callbacks.onSnapshot(lastSnapshot,{get:()=>({settings:{showGrades:false}})},{stale:false});},loadStyles(){for(const el of nodes.get('reserve-companion-host').shadowRoot.children)el.onload?.();}};
 }
 test('controller preloads hidden styles and waits for verified data before replacing Canvas',async()=>{
  const f=fixture();await new Promise(setImmediate);assert.equal(f.started,1);assert.equal(f.native.hidden,false);assert.equal(f.sidebar.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
@@ -139,4 +139,40 @@ for(const reason of ['native','account error','stylesheet error'])test('restorin
  else f.nodes.get('reserve-companion-host').shadowRoot.children.find(node=>node.tagName==='link').onerror();
  assert.equal(f.classes.has('reserve-inline-active'),false);assert.equal(f.classes.has('reserve-fit'),false);
  assert.equal(f.native.hidden,false);assert.equal(f.sidebar.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
+});
+
+// Leaving the dashboard for another Canvas page: the page is thrown away, so the cover is not drawn over it (drawing it
+// restyled the whole workspace on the next page's critical path). A page kept for Back still covers.
+const parts=f=>{const host=f.nodes.get('reserve-companion-host'),root=host.shadowRoot;return {host,area:root.children.find(el=>el.className==='reserve-workspace'),cover:root.children.find(el=>el.className==='reserve-resume')};};
+test('leaving the dashboard for another page takes it down without covering the discarded page',async()=>{
+ const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();const {host,area,cover}=parts(f);
+ assert.equal(area.hidden,false);assert.equal(cover.hidden,true);
+ f.winEvents.pagehide({persisted:false});
+ assert.equal(area.hidden,false);assert.notEqual(area.inert,true);assert.equal(cover.hidden,true);assert.notEqual(host['data-reserve-verifying'],'true');
+ assert.equal(f.dashboardDestroys,1,'the dashboard is still taken down');
+ // The browser hides the page right after its last pagehide: nothing is paused or covered a second time.
+ const closes=f.trail.filter(x=>x==='close').length;f.document.visibilityState='hidden';f.events.visibilitychange();
+ assert.equal(area.hidden,false);assert.equal(cover.hidden,true);assert.equal(f.trail.filter(x=>x==='close').length,closes);assert.equal(f.dashboardDestroys,1);
+});
+test('a page kept for Back still covers its workspace on pagehide and reopens after the account check',async()=>{
+ const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();const {host,area,cover}=parts(f);
+ f.winEvents.pagehide({persisted:true});
+ assert.equal(area.hidden,true);assert.equal(area.inert,true);assert.equal(cover.hidden,false);assert.equal(host['data-reserve-verifying'],'true');assert.equal(f.dashboardDestroys,0);
+ f.document.visibilityState='visible';f.winEvents.pageshow({persisted:true});await new Promise(setImmediate);
+ assert.equal(area.hidden,false);assert.equal(area.inert,false);assert.equal(cover.hidden,true);assert.equal(f.mounts,1);assert.equal(f.dashboardDestroys,0);
+});
+// A returning tab hands the dashboard the snapshot it already has, once, after the first frame: the dashboard keeps its
+// caches and redraws only when the clock changed what it shows (dashboard-freshness.test.cjs), so a return is one redraw
+// at most.
+test('a returning tab hands the same snapshot back once and keeps its dashboard',async()=>{
+ const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();const {area,cover}=parts(f);
+ f.document.visibilityState='hidden';f.events.visibilitychange();assert.equal(cover.hidden,false,'the place is kept under the cover while hidden');
+ const before=f.trail.length;f.document.visibilityState='visible';f.events.visibilitychange();await new Promise(setImmediate);await new Promise(done=>setTimeout(done,20));
+ assert.deepEqual(f.trail.slice(before),['files','same snapshot']);assert.equal(cover.hidden,true);assert.equal(area.hidden,false);assert.equal(f.mounts,1);
+});
+test('a tab hidden again before its check finishes hands nothing over and stays covered',async()=>{
+ const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();let release;f.session.verify=()=>new Promise(done=>release=done);const {cover}=parts(f);
+ f.document.visibilityState='hidden';f.events.visibilitychange();const before=f.trail.length;f.document.visibilityState='visible';f.events.visibilitychange();
+ f.document.visibilityState='hidden';f.events.visibilitychange();release(true);await new Promise(setImmediate);await new Promise(done=>setTimeout(done,20));
+ assert.deepEqual(f.trail.slice(before).filter(x=>x!=='close'),[]);assert.equal(cover.hidden,false);
 });

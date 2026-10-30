@@ -34,7 +34,116 @@
   feature('ai','AI context & handoff','Extras',['ai-context.js','ai-source.js'],[],['tools']),
  ];
  // Retained public modules keep their relative order; new helpers precede their consumers.
- const order=["site.js","core.js","api.js","personal-work.js","custom-art.js","workspace-arrange.js","workspace-gestures.js","media-reference.js","customization-model.js","backup-media.js","gpa-model.js","page-preferences.js","storage.js","quick-pack.js","quick-upload.js","quick-upload-ui.js","math.js","ui-utils.js","icons.js","subject-art-data.js","subject-art.js","generic-art.js","course-art.js","views.js","app.js","deadline-model.js","deadline-changes.js","session.js","dashboard-model.js","work-model.js","material-model.js","materials-ui.js","course-hub-model.js","course-files.js","course-file-open.js","course-links-ui.js","course-hub-ui.js","grade-impact.js","review-deck-model.js","review-deck.js","grades-view.js","market-site.js","media-store.js","media-frame.js","frame-editor.js","agent-clock.js","pony-ask.js","custom-kits.js","pack-common.js","theme-pack.js","pet-pack.js","preset-pack.js","data-theme.js","packs.js","make-your-own.js","customize-ui.js","dashboard-view.js","motion.js","quick-open.js","toolbox-resize.js","ai-context.js","ai-source.js","gpa-ui.js","toolbox.js","toolbox-session.js","native-appearance.js","native-page.js","native-tools.js","planner-model.js","pet-art.js","biscuit-registry.js","biscuit-workflow.js","biscuit-parse.js","biscuit-language.js","biscuit-semantics.js","biscuit-controls.js","biscuit-control-request.js","biscuit-replies.js","biscuit-details.js","biscuit-trees.js","biscuit-learn.js","biscuit-values.js","biscuit-rules.js","biscuit-intent.js","biscuit-selection.js","biscuit-context-selector.js","biscuit-inference.js","biscuit-facts.js","biscuit-engine.js","biscuit-planner.js","pony-brain.js","pets.js","planner-ui.js","hand-in.js","focus-room.js","widgets.js","settings-dock.js","scene-themes.js","dashboard.js","canvas-nav.js","course-nav-art.js","course-nav.js","modules-page.js","pdf-art.js","pdf-model.js","pdf-host.js","submit-celebrate.js","content.js"];
+ const order=[
+   "site.js",
+   "core.js",
+   "api.js",
+   "personal-work.js",
+   "custom-art.js",
+   "workspace-arrange.js",
+   "workspace-gestures.js",
+   "media-reference.js",
+   "customization-model.js",
+   "backup-media.js",
+   "gpa-model.js",
+   "page-preferences.js",
+   "storage.js",
+   "quick-pack.js",
+   "quick-upload.js",
+   "quick-upload-ui.js",
+   "math.js",
+   "ui-utils.js",
+   "icons.js",
+   "subject-art-data.js",
+   "subject-art.js",
+   "generic-art.js",
+   "course-art.js",
+   "views.js",
+   "app.js",
+   "deadline-model.js",
+   "deadline-changes.js",
+   "session.js",
+   "dashboard-model.js",
+   "work-model.js",
+   "material-model.js",
+   "materials-ui.js",
+   "course-hub-model.js",
+   "course-files.js",
+   "course-file-open.js",
+   "course-links-ui.js",
+   "course-hub-ui.js",
+   "grade-impact.js",
+   "review-deck-model.js",
+   "review-deck.js",
+   "grades-view.js",
+   "market-site.js",
+   "media-store.js",
+   "media-frame.js",
+   "frame-editor.js",
+   "agent-clock.js",
+   "pony-ask.js",
+   "custom-kits.js",
+   "pack-common.js",
+   "theme-pack.js",
+   "pet-pack.js",
+   "preset-pack.js",
+   "data-theme.js",
+   "packs.js",
+   "make-your-own.js",
+   "customize-ui.js",
+   "dashboard-view.js",
+   "motion.js",
+   "quick-open.js",
+   "toolbox-resize.js",
+   "ai-context.js",
+   "ai-source.js",
+   "gpa-ui.js",
+   "toolbox.js",
+   "toolbox-session.js",
+   "native-appearance.js",
+   "native-page.js",
+   "native-tools.js",
+   "planner-model.js",
+   "pet-art.js",
+   "biscuit-registry.js",
+   "biscuit-workflow.js",
+   "biscuit-parse.js",
+   "biscuit-language.js",
+   "biscuit-semantics.js",
+   "biscuit-controls.js",
+   "biscuit-control-request.js",
+   "biscuit-replies.js",
+   "biscuit-details.js",
+   "biscuit-trees.js",
+   "biscuit-learn.js",
+   "biscuit-values.js",
+   "biscuit-rules.js",
+   "biscuit-intent.js",
+   "biscuit-selection.js",
+   "biscuit-context-selector.js",
+   "biscuit-inference.js",
+   "biscuit-facts.js",
+   "biscuit-engine.js",
+   "biscuit-planner.js",
+   "pony-brain.js",
+   "pets.js",
+   "planner-ui.js",
+   "hand-in.js",
+   "focus-room.js",
+   "widgets.js",
+   "settings-dock.js",
+   "scene-themes.js",
+   "dashboard.js",
+   "canvas-nav.js",
+   "course-nav-art.js",
+   "course-nav.js",
+   "modules-page.js",
+   "pdf-art.js",
+   "pdf-model.js",
+   "pdf-host.js",
+   "submit-celebrate.js",
+   "content.js"
+ ];
  const dashboardCSS=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','course-links.css'];
  const startupCSS=['startup.css','startup-art.css','canvas-nav.css','course-nav.css'];
  const nativeCSS=['app.css','dashboard.css','workspace.css','refresh.css','gpa.css'];
@@ -45,10 +154,62 @@
  // interleaved with optional files in the original main declaration's order.
  const staticJS=['startup-art.js','site.js','core.js','api.js','personal-work.js','custom-art.js','workspace-arrange.js','canvas-nav.js','course-nav-art.js','course-nav.js'];
  core.assets=['background.js','popup.html','icon.svg','account-writes.js','market.js','market-bridge.js','market-worker.js','market-holds.js','market-media.js'];
- catalogue.find(f=>f.id==='pdf').files.assets=['pdf-reader.html','pdf-reader.js','pdf-reader.css','pdf-art.css','vendor/pdfjs/pdf.mjs','vendor/pdfjs/pdf.worker.mjs'];
+ catalogue.find(f=>f.id==='pdf').files.assets=['pdf-reader.html','pdf-reader.js','pdf-reader.css','pdf-art.css','pdf-library.mjs','pdf-worker.mjs','pdf-polyfills.js','vendor/pdfjs/pdf.mjs','vendor/pdfjs/pdf.worker.mjs'];
  catalogue.find(f=>f.id==='ai').files.assets=['ai-panel.html','ai-panel.js','ai-panel.css'];
  catalogue.find(f=>f.id==='play').files.assets=['submit-scenes.js','play-art.js','play-space.js','play-physics.js','play-tools.js','play-tools.css'];
- catalogue.find(f=>f.id==='scene-themes').files.assets=["themes/blueprint/blueprint-card.png","themes/blueprint/blueprint-panel.png","themes/blueprint/icon-bulb.png","themes/blueprint/icon-divider.png","themes/blueprint/icon-gear.png","themes/blueprint/icon-orbit.png","themes/blueprint/icon-pendulum.png","themes/blueprint/icon-rocket.png","themes/blueprint/poster.jpg","themes/blueprint/sky.mp4","themes/blueprint/theme.css","themes/sea/icon-coral.png","themes/sea/icon-fish.png","themes/sea/icon-jelly.png","themes/sea/icon-ray.png","themes/sea/icon-shell.png","themes/sea/icon-turtle.png","themes/sea/poster.jpg","themes/sea/sea-card.png","themes/sea/sea-panel.png","themes/sea/sky.mp4","themes/sea/theme.css","themes/starry/button.png","themes/starry/divider.png","themes/starry/frame-card.png","themes/starry/frame-panel.png","themes/starry/ground.png","themes/starry/icon-cottage.png","themes/starry/icon-cypress.png","themes/starry/icon-moon.png","themes/starry/icon-star.png","themes/starry/icon-sunflower.png","themes/starry/icon-swirl.png","themes/starry/pill-on.png","themes/starry/pill.png","themes/starry/poster.jpg","themes/starry/sheet.png","themes/starry/sky.mp4","themes/starry/theme.css","themes/stars/icon-binary.png","themes/stars/icon-cluster.png","themes/stars/icon-galaxy.png","themes/stars/icon-giant.png","themes/stars/icon-nebula.png","themes/stars/icon-redgiant.png","themes/stars/poster.jpg","themes/stars/sky.html","themes/stars/sky.js","themes/stars/stars-card.png","themes/stars/stars-panel.png","themes/stars/theme.css"];
+ catalogue.find(f=>f.id==='scene-themes').files.assets=[
+   "themes/blueprint/blueprint-card.png",
+   "themes/blueprint/blueprint-panel.png",
+   "themes/blueprint/icon-bulb.png",
+   "themes/blueprint/icon-divider.png",
+   "themes/blueprint/icon-gear.png",
+   "themes/blueprint/icon-orbit.png",
+   "themes/blueprint/icon-pendulum.png",
+   "themes/blueprint/icon-rocket.png",
+   "themes/blueprint/poster.jpg",
+   "themes/blueprint/sky.mp4",
+   "themes/blueprint/theme.css",
+   "themes/sea/icon-coral.png",
+   "themes/sea/icon-fish.png",
+   "themes/sea/icon-jelly.png",
+   "themes/sea/icon-ray.png",
+   "themes/sea/icon-shell.png",
+   "themes/sea/icon-turtle.png",
+   "themes/sea/poster.jpg",
+   "themes/sea/sea-card.png",
+   "themes/sea/sea-panel.png",
+   "themes/sea/sky.mp4",
+   "themes/sea/theme.css",
+   "themes/starry/button.png",
+   "themes/starry/divider.png",
+   "themes/starry/frame-card.png",
+   "themes/starry/frame-panel.png",
+   "themes/starry/ground.png",
+   "themes/starry/icon-cottage.png",
+   "themes/starry/icon-cypress.png",
+   "themes/starry/icon-moon.png",
+   "themes/starry/icon-star.png",
+   "themes/starry/icon-sunflower.png",
+   "themes/starry/icon-swirl.png",
+   "themes/starry/pill-on.png",
+   "themes/starry/pill.png",
+   "themes/starry/poster.jpg",
+   "themes/starry/sheet.png",
+   "themes/starry/sky.mp4",
+   "themes/starry/theme.css",
+   "themes/stars/icon-binary.png",
+   "themes/stars/icon-cluster.png",
+   "themes/stars/icon-galaxy.png",
+   "themes/stars/icon-giant.png",
+   "themes/stars/icon-nebula.png",
+   "themes/stars/icon-redgiant.png",
+   "themes/stars/poster.jpg",
+   "themes/stars/sky.html",
+   "themes/stars/sky.js",
+   "themes/stars/stars-card.png",
+   "themes/stars/stars-panel.png",
+   "themes/stars/theme.css"
+ ];
  const ids=catalogue.map(f=>f.id),known=new Set(ids);
  catalogue.find(f=>f.id==='pony').files.assets=['biscuit-rules/basic.json','biscuit-rules/more.json','biscuit-rules/most.json','biscuit-rules/school-language.json'];
  const optIn=new Set(['biscuit-more-rules','focus-room','review-deck','grade-impact']);
@@ -118,7 +279,9 @@
    earlySelection=Promise.resolve().then(()=>root.chrome.storage.local.get(KEY)).then(saved=>{
     const selection=revision===reading?apply(saved?.[KEY]):current;
     // An onChanged listener may already have mirrored a newer preference.
-    try{if(root.localStorage.getItem(HINT)===previousHint)root.localStorage.setItem(HINT,JSON.stringify({preset:selection.preset,enabled:selection.enabled}));}catch{}
+    try{
+      if(root.localStorage.getItem(HINT)===previousHint)root.localStorage.setItem(HINT,JSON.stringify({preset:selection.preset,enabled:selection.enabled}));
+    }catch{}
     return selection;
    },()=>current);
   }
@@ -152,12 +315,20 @@
  const conflict=()=>Object.assign(Error('Features have changed since then. Your newer choices are kept.'),{code:'feature-conflict'});
  function command(before,request,keepPony){
   if(!request||typeof request!=='object'||Array.isArray(request)||Object.keys(request).some(k=>!['id','on','preset'].includes(k)))throw Error('Invalid feature choice.');
-  if(request.id?!known.has(request.id)||typeof request.on!=='boolean'||request.preset!==undefined:!['full','lite'].includes(request.preset)||request.on!==undefined)throw Error('Invalid feature choice.');
+  if(request.id?!known.has(request.id)||typeof request.on!=='boolean'||request.preset!==undefined:!['full','lite'].includes(request.preset)||request.on!==undefined)
+    throw Error('Invalid feature choice.');
   let next;
   if(request.id){
    if(keepPony&&request.id==='pony'&&!request.on)throw Error('The Pony switch is in the extension popup → Pony.');
    const selected=new Set(before.preset==='custom'?before.custom:resolve(before).enabled);
-   if(request.on)selected.add(request.id);else{const removed=new Set([request.id]);let size;do{size=removed.size;for(const row of catalogue)if(row.needs.some(id=>removed.has(id)))removed.add(row.id);}while(size!==removed.size);for(const id of removed)selected.delete(id);}
+   if(request.on)
+     selected.add(request.id);
+   else{
+     const removed=new Set([request.id]);
+     let size;
+     do{size=removed.size;for(const row of catalogue)if(row.needs.some(id=>removed.has(id)))removed.add(row.id);}while(size!==removed.size);
+     for(const id of removed)selected.delete(id);
+   }
    next=normalize({preset:'custom',custom:[...selected]});
   }else next=normalize({...before,preset:request.preset});
   if(keepPony&&request.id&&!resolve(next).enabled.includes('pony'))throw Error('That also turns Biscuit off. Use Make it yours Features for that switch.');
@@ -187,12 +358,39 @@
      try{const url=new URL(sender.url);trusted=url.protocol==='https:'&&!url.username&&!url.password&&root.ReserveSite?.supported(url.origin)===true;}catch{}
     }
     if(!trusted)throw Error('Invalid feature writer.');
-    if(!['set','change'].includes(message.op)||Object.keys(message).some(k=>!['type','op','value','expected','request','keepPony'].includes(k))||message.op==='set'&&(!message.value||typeof message.value!=='object'||Array.isArray(message.value)))throw Error('Invalid feature choice.');
+    if(!['set','change'].includes(message.op)||
+      Object.keys(message).some(k=>!['type','op','value','expected','request','keepPony'].includes(k))||
+      message.op==='set'&&(!message.value||typeof message.value!=='object'||Array.isArray(message.value)))
+      throw Error('Invalid feature choice.');
     return {ok:true,...await mutate(message)};
    })().then(reply,error=>reply({ok:false,error:String(error?.message||'Features could not be saved.'),...(error?.code?{code:error.code}:{})}));return true;
   });
  }
- const api={KEY,HINT,catalogue,presets,core,order,staticJS,dashboardCSS,startupCSS,nativeCSS,normalize,resolve,apply,enabled,early,filterFiles,workspace,run,write,change,serveWrites,get earlyReady(){return earlySelection;},get current(){return current;}};
+ const api={
+   KEY,
+   HINT,
+   catalogue,
+   presets,
+   core,
+   order,
+   staticJS,
+   dashboardCSS,
+   startupCSS,
+   nativeCSS,
+   normalize,
+   resolve,
+   apply,
+   enabled,
+   early,
+   filterFiles,
+   workspace,
+   run,
+   write,
+   change,
+   serveWrites,
+   get earlyReady(){
+   return earlySelection;
+ },get current(){return current;}};
  if(typeof module==='object'&&module.exports)module.exports=api;
  else root.ReserveFeatures=api;
 })(globalThis);

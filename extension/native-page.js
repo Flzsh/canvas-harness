@@ -13,7 +13,11 @@
    return step.value;
   },
   write:value=>root.chrome.storage.local.set({[KEY]:value}),
-  subscribe:fn=>{const listener=(changes,area)=>{if(area==='local'&&Object.hasOwn(changes,KEY))fn(changes[KEY].newValue??null);};root.chrome.storage.onChanged.addListener(listener);return()=>root.chrome.storage.onChanged.removeListener(listener);}
+  subscribe:fn=>{
+    const listener=(changes,area)=>{if(area==='local'&&Object.hasOwn(changes,KEY))fn(changes[KEY].newValue??null);};
+    root.chrome.storage.onChanged.addListener(listener);
+    return()=>root.chrome.storage.onChanged.removeListener(listener);
+  }
  };}
  function create({document:doc=root.document,adapter,media,styleURL,onError=()=>{}}={}){
   if(root.ReserveSite?.vanillaPage(root.location))return null;
@@ -35,9 +39,29 @@
    if(root.ReserveFeatures&&!root.ReserveFeatures.enabled('native-appearance')){revision++;restore();return;}
    if(root.ReserveSite?.vanillaPage(root.location)){revision++;restore();link?.remove();return;}
    const version=++revision;if(theme==='original'){restore();return;}
-   styles().then(()=>{if(dead||version!==revision)return;if(root.ReserveSite?.vanillaPage(root.location)){restore();link?.remove();link=null;loading=null;return;}html.setAttribute(attributes[0],theme);html.setAttribute(attributes[1],prefs.readingWidth);html.setAttribute(attributes[2],prefs.textSize);html.setAttribute(attributes[3],prefs.accent);html.classList.add('reserve-native-enabled');}).catch(error=>{if(dead||version!==revision)return;restore();onError(error);});
+   styles().then(()=>{
+     if(dead||version!==revision)return;
+     if(root.ReserveSite?.vanillaPage(root.location)){restore();link?.remove();link=null;loading=null;return;}
+     html.setAttribute(attributes[0],theme);
+     html.setAttribute(attributes[1],prefs.readingWidth);
+     html.setAttribute(attributes[2],prefs.textSize);
+     html.setAttribute(attributes[3],prefs.accent);
+     html.classList.add('reserve-native-enabled');
+   }).catch(error=>{
+     if(dead||version!==revision)return;
+     restore();
+     onError(error);
+   });
   }});
-  return {start:()=>controller.start(),get:()=>controller.get(),set:value=>controller.set(value),subscribe:fn=>controller.subscribe(fn),destroy(){if(dead)return;dead=true;revision++;controller.destroy();restore();cancelLoad?.();link?.remove();}};
+  return {start:()=>controller.start(),get:()=>controller.get(),set:value=>controller.set(value),subscribe:fn=>controller.subscribe(fn),destroy(){
+    if(dead)return;
+    dead=true;
+    revision++;
+    controller.destroy();
+    restore();
+    cancelLoad?.();
+    link?.remove();
+  }};
  }
  root.ReserveNativePage={create,browserAdapter,KEY,VERSION_KEY};if(typeof module==='object'&&module.exports)module.exports=root.ReserveNativePage;
 })(globalThis);

@@ -146,7 +146,7 @@ function engineering(){
  const raw={origin:'https://school.instructure.com',accountId:'5',courseId:'7',modules:[
   {id:'1',name:'Magic 8-Ball',items:[page('11','Magic 8-Ball')]},
   {id:'2',name:'Final Project',items:[page('21','Final Project 2026')]},
-  {id:'3',name:'Course Description and Syllabus',items:[file('31','CL Engineering Syllabus.pdf'),{id:'32',type:'ExternalUrl',title:'2026 Daily Syllabus',external_url:'https://docs.google.com/document/d/x/edit'}]}
+  {id:'3',name:'Course Description and Syllabus',items:[file('31','Engineering Syllabus.pdf'),{id:'32',type:'ExternalUrl',title:'2026 Daily Syllabus',external_url:'https://docs.google.com/document/d/x/edit'}]}
  ],pages:[],files:Array.from({length:12},(_,i)=>({id:String(500+i),display_name:i===0?'Truss WS.pdf':i===1?'Truss WS-ANSWER KEY.pdf':`Handout ${i}.pdf`,url:'/files/'+(500+i)})),fetchedAt:new Date().toISOString(),errors:[]};
  return setup({loadCourseResources:async()=>structuredClone(raw)});
 }
@@ -156,7 +156,7 @@ test('Materials chapters: Canvas-order numerals, a one-item chapter of its own n
  assert.match(html,/<span class="rd-chapter-no" aria-hidden="true">2<\/span><span class="rd-chapter-name">Final Project<\/span> <span class="rd-chapter-count">1 item<\/span>/);
  assert.match(html,/<section class="rd-material-group rd-chapter rd-chapter--single" data-rd-key="chapter-7-module-1" aria-labelledby="rd-chapter-7-module-1"><div class="rd-teacher-row rd-chapter-row" data-rd-key="material-row-7-module:1:11" data-rd-row="module:1:11"><h3 class="rd-chapter-head" id="rd-chapter-7-module-1" tabindex="-1" data-chapter="module-1" data-course="7"><span class="rd-chapter-no" aria-hidden="true">1<\/span><button type="button" class="rd-row-open" data-rd-action="material-read" data-resource="module:1:11" data-course="7" aria-label="Read Magic 8-Ball" data-read-row="true">Magic 8-Ball<\/button><\/h3><span class="rd-material-actions">/,'Magic 8-Ball › Magic 8-Ball is one chapter row whose head reads the page');
  assert.doesNotMatch(html,/rd-chapter-name">Magic 8-Ball/,'no duplicate line under it');
-  assert.match(html,/title="CL Engineering Syllabus\.pdf"(?: data-pdf-[\w-]+="[^"]*")*>CL Engineering Syllabus&nbsp;<span aria-hidden="true">↗<\/span><\/a>[\s\S]*?<span class="rd-row-kind">Syllabus<\/span><span class="rd-row-format"><span>PDF<\/span><\/span>/);
+  assert.match(html,/title="Engineering Syllabus\.pdf"(?: data-pdf-[\w-]+="[^"]*")*>Engineering Syllabus&nbsp;<span aria-hidden="true">↗<\/span><\/a>[\s\S]*?<span class="rd-row-kind">Syllabus<\/span><span class="rd-row-format"><span>PDF<\/span><\/span>/);
  assert.match(html,/>2026 Daily Syllabus&nbsp;<span aria-hidden="true">↗<\/span><\/a>[\s\S]*?<span class="rd-row-kind">Schedule<\/span><span class="rd-row-format"><span>Doc<\/span><\/span>/,'a Google Doc link says Doc, not Link');
   assert.match(html,/title="Truss WS\.pdf"(?: data-pdf-[\w-]+="[^"]*")*>Truss WS&nbsp;<span aria-hidden="true">↗<\/span><\/a>[\s\S]*?<span class="rd-row-kind"><a class="rd-row-key" href="https:\/\/school\.instructure\.com\/files\/501" target="_blank" rel="noopener noreferrer" title="Truss WS-ANSWER KEY\.pdf"(?: data-pdf-[\w-]+="[^"]*")* aria-label="Answer key for Truss WS">Answer key <span aria-hidden="true">↗<\/span><\/a><\/span>/,'the matching key joins its worksheet as a secondary link');
  assert.doesNotMatch(html,/>Truss WS — Answer key</,'and is not a row of its own');

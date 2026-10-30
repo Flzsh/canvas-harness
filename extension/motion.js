@@ -33,8 +33,8 @@
   // the drawing repeats exactly every cycle. A drawing that appears without a
   // reveal (keyboard, a background render, a banner seen before) is simply drawn
   // and lives from rest. The loops advance on a film clock, never on every display
-  // frame: scenes at 24 frames a second while the page has had input in the last
-  // 20 seconds, and on twos (12) otherwise, as the minis always are. Loops hold while the drawing is off screen or the page
+  // frame: scenes at 24 frames a second while they are on screen, and the minis on
+  // twos (12). Loops hold while the drawing is off screen or the page
   // is hidden or has had no input for two minutes (the idle rest), go on from that frame when it is
   // seen or touched again, stop when it leaves, and never run under Still, Off, reduced
   // motion or Living drawings: Off. Every other mini (rows, reader, deck,
@@ -87,7 +87,13 @@
   // A surface's geometry is not inherited: written on the list's box, an inherited variable restyled every row under it
   // at each snap (about 340 elements, every frame while Make it yours slides open). The pseudo that draws the surface
   // takes the values explicitly (refresh.css). Registration is per page and may already exist; without it nothing changes.
-  try{const register=root.CSS?.registerProperty;if(register)for(const {key} of SURFACES)for(const [name,syntax,initialValue] of [['x','<length>','0px'],['y','<length>','0px'],['w','<length>','0px'],['h','<length>','0px'],['o','<number>','0'],['dur','<time>','0ms']])try{register.call(root.CSS,{name:`--rd-sel-${key}-${name}`,syntax,inherits:false,initialValue});}catch{}}catch{}
+  try{
+    const register=root.CSS?.registerProperty;
+    if(register)
+      for(const {key} of SURFACES)
+        for(const [name,syntax,initialValue] of [['x','<length>','0px'],['y','<length>','0px'],['w','<length>','0px'],['h','<length>','0px'],['o','<number>','0'],['dur','<time>','0ms']])
+          try{register.call(root.CSS,{name:`--rd-sel-${key}-${name}`,syntax,inherits:false,initialValue});}catch{}
+  }catch{}
   const TITLES=[['heading','.rd-workspace-heading h1'],['page',':is(.rd-page-heading,.rd-course-banner) h1'],['materials','.rd-materials-header h2'],['reader','#rd-reader-title'],['work','.rd-work-heading h2']];
   // .rd-n is the plain numeral in segmented controls, tabs and group heads.
   const COUNTS='.rd-work-heading>div>span,.rd-group-count,.rd-rail-count,.rd-n';
@@ -131,8 +137,14 @@
   // like the art film and never holds up data-motion=settled. The times mirror art/borders.json "transitions"
   // (a test compares them).
   const FRAME_ID='rd-frame';
-  const FRAME_T={draw:{duration:520,guideIn:90,touchDown:120,inkTake:160,settleInk:140,settle:320,settleStagger:40,settleEasing:'cubic-bezier(.2,.7,.2,1)'},wash:{in:300,delay:60},relax:{ink:320,interrupted:160,from:.35},
-    arrive:{hide:70,ornament:240,stagger:40,bloomDelay:90,bloom:260,finAt:560,fin:320,bloomEasing:'cubic-bezier(.2,.7,.2,1)',finEasing:'cubic-bezier(.3,1.5,.5,1)'},exit:{unwind:280,unwindEasing:'cubic-bezier(.5,0,.8,.4)',settle:240},still:{fade:160,from:.4}};
+  const FRAME_T={
+    draw:{duration:520,guideIn:90,touchDown:120,inkTake:160,settleInk:140,settle:320,settleStagger:40,settleEasing:'cubic-bezier(.2,.7,.2,1)'},
+    wash:{in:300,delay:60},
+    relax:{ink:320,interrupted:160,from:.35},
+    arrive:{hide:70,ornament:240,stagger:40,bloomDelay:90,bloom:260,finAt:560,fin:320,bloomEasing:'cubic-bezier(.2,.7,.2,1)',finEasing:'cubic-bezier(.3,1.5,.5,1)'},
+    exit:{unwind:280,unwindEasing:'cubic-bezier(.5,0,.8,.4)',settle:240},
+    still:{fade:160,from:.4}
+  };
   // The frame's stretched svg is 300 x 100 units whatever the row's size.
   const FRAME_BOX=[300,100],FRAME_SAMPLES=160;
 
@@ -190,7 +202,14 @@
     stroke:70*ART_SPEED,                                                            // the shortest stroke, 93ms
     scene:{ground:{step:slow(12),steps:4,dur:slow(280)},key:{at:slow(60),step:60,max:300,dur:slow(420)},wash:{at:slow(120),step:slow(14),max:slow(200),dur:slow(360)},
       pen:slow(160),head:{fallback:slow(140),dur:slow(200)},dots:{before:slow(160),step:slow(60),steps:6,dur:slow(260)},solid:{before:slow(60),dur:slow(200)},grain:slow(300),still:slow(240)},
-    mini:{color:{step:slow(10),max:slow(60),dur:slow(220)},pen:slow(60),head:{fallback:slow(40),latest:slow(280),dur:slow(200)},dots:{at:slow(340),dur:slow(140)},solid:{at:slow(380),dur:slow(100)},end:slow(480)},
+    mini:{
+      color:{step:slow(10),max:slow(60),dur:slow(220)},
+      pen:slow(60),
+      head:{fallback:slow(40),latest:slow(280),dur:slow(200)},
+      dots:{at:slow(340),dur:slow(140)},
+      solid:{at:slow(380),dur:slow(100)},
+      end:slow(480)
+    },
     // When a reveal starts: the first paint (scenes; rail rows 67ms apart), a course switch, a workspace, an empty state.
     entrance:slow(100),rail:slow(120),step:slow(50),course:slow(60),workspace:slow(40),empty:slow(60)
   };
@@ -233,11 +252,16 @@
   const cycleOf=svg=>{const c=parseFloat(svg?.getAttribute?.('data-cycle'));return Number.isFinite(c)&&c>0?c:0;};
   // Easing names a rig may use (data-ease, or the last word of a key).
   const LOOP_EASES={soft:LOOP_EASE,lin:'linear',linear:'linear',hold:'steps(1, end)',in:'cubic-bezier(.5,0,.85,.55)',out:'cubic-bezier(.15,.45,.5,1)'};
-  const easeOf=(token,fallback=LOOP_EASE)=>!token?fallback:LOOP_EASES[token]||(/^(steps|cubic-bezier|linear)\(/.test(token)||/^(ease|ease-in|ease-out|ease-in-out|step-start|step-end)$/.test(token)?token.replace(/^steps\((\d+)\)$/,'steps($1, end)'):fallback);
+  const easeOf=(token,fallback=LOOP_EASE)=>
+    !token?
+      fallback:
+      LOOP_EASES[token]||(/^(steps|cubic-bezier|linear)\(/.test(token)||/^(ease|ease-in|ease-out|ease-in-out|step-start|step-end)$/.test(token)?token.replace(/^steps\((\d+)\)$/,'steps($1, end)'):fallback);
   const pathLength=node=>{try{const L=node?.getTotalLength?.();return Number.isFinite(L)?L:0;}catch{return 0;}};
   // Every part that names its rig (data-rig), by name: the first in document order wins.
   function rigsOf(svg){
-    const map=new Map(),walk=node=>{for(const child of Array.from(node?.children||[])){const name=child.getAttribute?.('data-rig');if(name!=null&&!map.has(name))map.set(name,child);walk(child);}};
+    const map=new Map(),walk=node=>{
+      for(const child of Array.from(node?.children||[])){const name=child.getAttribute?.('data-rig');if(name!=null&&!map.has(name))map.set(name,child);walk(child);}
+    };
     walk(svg);return map;
   }
   // One .art-loop part. Its period is snapped to C/n (n = 1-24), so the whole drawing repeats exactly every
@@ -246,24 +270,50 @@
     const own=name=>group?.getAttribute?.(name)??null,like=own('data-like'),rig=like!=null?rigs?.get?.(like)||null:null;
     const get=name=>own(name)??(rig?rig.getAttribute?.(name)??null:null),type=get('data-loop'),raw=parseFloat(get('data-period'));
     const n=Math.min(LOOP_MAX_N,Math.max(1,Math.round(C/(Number.isFinite(raw)&&raw>0?raw:C)))),amp=parseFloat(get('data-amp'));
-    return {type,period:C/n,n,phase:Math.min(.999,Math.max(0,parseFloat(get('data-phase'))||0)),amp:Number.isFinite(amp)?amp:LOOP_AMP[type]??0,origin:pairOf(get('data-origin')),to:pairOf(get('data-to')),keys:get('data-keys')||'',ease:get('data-ease')||'',shapes:get('data-shapes')||''};
+    return {
+      type,
+      period:C/n,
+      n,
+      phase:Math.min(.999,Math.max(0,parseFloat(get('data-phase'))||0)),
+      amp:Number.isFinite(amp)?amp:LOOP_AMP[type]??0,
+      origin:pairOf(get('data-origin')),
+      to:pairOf(get('data-to')),
+      keys:get('data-keys')||'',
+      ease:get('data-ease')||'',
+      shapes:get('data-shapes')||''
+    };
   }
   // "t:a b c word; t:..." -> [{t, text}], sorted, t from 0 to 1.
   function keyList(text){
-    return String(text||'').split(';').map(s=>{const i=s.indexOf(':');if(i<0)return null;const t=parseFloat(s.slice(0,i));return Number.isFinite(t)&&t>=0&&t<=1?{t,text:s.slice(i+1).trim()}:null;}).filter(Boolean).sort((a,b)=>a.t-b.t);
+    return String(text||'').split(';').map(s=>{
+      const i=s.indexOf(':');
+      if(i<0)return null;
+      const t=parseFloat(s.slice(0,i));
+      return Number.isFinite(t)&&t>=0&&t<=1?{t,text:s.slice(i+1).trim()}:null;
+    }).filter(Boolean).sort((a,b)=>a.t-b.t);
   }
   const wordsOf=text=>{const words=text.split(/\s+/).filter(Boolean),last=words[words.length-1],ease=last&&!/^[-+.\d]/.test(last)?words.pop():'';return {words,ease};};
   // keys: the first and the last frame are the rest pose whatever the rig says (a last key that turns a whole
   // number of times is rest). A scale never mirrors: it is kept positive.
   function keysFrames(spec,rest){
     const [ox,oy]=spec.origin,O=`${r3(ox)}px ${r3(oy)}px`,fallback=easeOf(spec.ease),pos=v=>Number.isFinite(v)?Math.max(.05,v):1;
-    const list=keyList(spec.keys).map(k=>{const {words,ease}=wordsOf(k.text),s=String(words[3]??'1').split(',').map(Number);return {t:k.t,tx:+words[0]||0,ty:+words[1]||0,r:+words[2]||0,sx:pos(s[0]),sy:pos(Number.isFinite(s[1])?s[1]:s[0]),o:words[4]==null?1:+words[4],ease};});
+    const list=keyList(spec.keys).map(k=>{
+      const {words,ease}=wordsOf(k.text),s=String(words[3]??'1').split(',').map(Number);
+      return {t:k.t,tx:+words[0]||0,ty:+words[1]||0,r:+words[2]||0,sx:pos(s[0]),sy:pos(Number.isFinite(s[1])?s[1]:s[0]),o:words[4]==null?1:+words[4],ease};
+    });
     const REST={tx:0,ty:0,r:0,sx:1,sy:1,o:1,ease:''},restful=k=>!k.tx&&!k.ty&&k.r%360===0&&k.sx===1&&k.sy===1&&k.o===1;
     if(!list.length||list[0].t>0)list.unshift({t:0,...REST});else Object.assign(list[0],REST,{ease:list[0].ease});
     const end=list[list.length-1];
     if(end.t<1)list.push({t:1,...REST});else if(!restful(end))Object.assign(end,REST);
     const fades=list.some(k=>k.o!==1);
-    return list.map((k,i)=>({offset:r3(k.t),transform:`translate(${r3(k.tx)}px, ${r3(k.ty)}px) rotate(${r3(k.r)}deg) scale(${r3(k.sx)}, ${r3(k.sy)})`,transformOrigin:O,...(fades?{opacity:r3(rest*k.o)}:{}),...(i<list.length-1?{easing:easeOf(k.ease,fallback)}:{})}));
+    return list.map((k,i)=>
+      ({
+        offset:r3(k.t),
+        transform:`translate(${r3(k.tx)}px, ${r3(k.ty)}px) rotate(${r3(k.r)}deg) scale(${r3(k.sx)}, ${r3(k.sy)})`,
+        transformOrigin:O,
+        ...(fades?{opacity:r3(rest*k.o)}:{}),
+        ...(i<list.length-1?{easing:easeOf(k.ease,fallback)}:{})
+      }));
   }
   // morph: every key's path data has the rest d's commands in the same order and case (Chromium then
   // interpolates d: path()); "=" (or nothing) keeps the rest shape; a name takes a shape from data-shapes.
@@ -277,16 +327,23 @@
       return out;
     });
     const fills=list.some(k=>k.fill)&&fill0,fades=list.some(k=>k.o!=null);
-    const frame=(t,k,last)=>({offset:r3(t),d:`path("${k?k.d:d0}")`,...(fills?{fill:k?.fill||fill0}:{}),...(fades?{opacity:r3(rest*(k?.o??1))}:{}),...(last?{}:{easing:easeOf(k?.ease,fallback)})});
+    const frame=(t,k,last)=>
+      ({offset:r3(t),d:`path("${k?k.d:d0}")`,...(fills?{fill:k?.fill||fill0}:{}),...(fades?{opacity:r3(rest*(k?.o??1))}:{}),...(last?{}:{easing:easeOf(k?.ease,fallback)})});
     return [frame(0,null),...list.map(k=>frame(k.t,k)),frame(1,null,true)];
   }
   // draw: the stretch of a stroke that shows, by dashes in the keyframes only. "drawn" is b (shown from the start
   // to b) or a,b (shown from a to b: liquid running through a tube; player 2.2). Rest is the whole stroke.
   function drawFrames(spec,node,rest){
     const L=Math.ceil(pathLength(node)+1),fallback=easeOf(spec.ease),unit=v=>Math.min(1,Math.max(0,v));
-    const list=keyList(spec.keys).filter(k=>k.t>0&&k.t<1).map(k=>{const {words,ease}=wordsOf(k.text),v=String(words[0]??'1').split(',').map(Number);return {t:k.t,a:v.length>1?unit(v[0]):0,b:unit(v.length>1?v[1]:v[0]),o:words[1]==null?1:+words[1],ease};});
+    const list=keyList(spec.keys).filter(k=>k.t>0&&k.t<1).map(k=>{
+      const {words,ease}=wordsOf(k.text),v=String(words[0]??'1').split(',').map(Number);
+      return {t:k.t,a:v.length>1?unit(v[0]):0,b:unit(v.length>1?v[1]:v[0]),o:words[1]==null?1:+words[1],ease};
+    });
     const fades=list.some(k=>k.o!==1),REST={a:0,b:1,o:1};
-    const frame=(t,k,last)=>{const q=k||REST;return {offset:r3(t),strokeDasharray:`${r3((q.b-q.a)*L)} ${L}`,strokeDashoffset:`${r3(-q.a*L)}`,...(fades?{opacity:r3(rest*q.o)}:{}),...(last?{}:{easing:easeOf(k?.ease,fallback)})};};
+    const frame=(t,k,last)=>{
+      const q=k||REST;
+      return {offset:r3(t),strokeDasharray:`${r3((q.b-q.a)*L)} ${L}`,strokeDashoffset:`${r3(-q.a*L)}`,...(fades?{opacity:r3(rest*q.o)}:{}),...(last?{}:{easing:easeOf(k?.ease,fallback)})};
+    };
     return [frame(0,null),...list.map(k=>frame(k.t,k)),frame(1,null,true)];
   }
   // Keyframes for one period of a part: the first frame and the last are the
@@ -309,7 +366,12 @@
       // Moves and fades over 70% of the period, is set back unseen, and fades in where it rests.
       case 'drift':return K([[0,{...T(0,0),opacity:rest}],[.7,{...T(dx,dy),opacity:0}],[.7,{...T(0,0),opacity:0}],[1,{...T(0,0),opacity:rest}]]);
       // Once round an ellipse (A across, A/2 deep) whose lowest point is the rest pose, the angle eased.
-      case 'orbit':{const ease=curve(LOOP_EASE),N=32,out=[];for(let i=0;i<=N;i++){const u=i/N,th=2*Math.PI*ease(u);out.push({offset:r3(u),...T(i===N?0:A*Math.sin(th),i===N?0:(Math.abs(A)/2)*(Math.cos(th)-1))});}return out;}
+      case 'orbit':
+        {
+          const ease=curve(LOOP_EASE),N=32,out=[];
+          for(let i=0;i<=N;i++){const u=i/N,th=2*Math.PI*ease(u);out.push({offset:r3(u),...T(i===N?0:A*Math.sin(th),i===N?0:(Math.abs(A)/2)*(Math.cos(th)-1))});}
+          return out;
+        }
       case 'keys':return keysFrames(spec,rest);
       // A morph and a draw belong to a path (`node`): its d, its fill and its length are the rest pose.
       case 'morph':return String(node?.tagName||'').toLowerCase()==='path'?morphFrames(spec,node,rest):[];
@@ -332,20 +394,37 @@
   //   12, 8.6-9.0% at 24; today's 480-unit scene (19 + 55 parts): 3.9-4.0% at 12, 6.5% at 24; Living
   //   drawings Off: 0.2%.
   // So 24 costs about two thirds more than 12, nearly all of it the page's own style and layout pass per
-  // frame. That is worth paying while someone is at the page, not while it is merely open: scenes play at
-  // 24 for ART_BRISK_MS after the last pointer or key input on the page (dashboard.js tells us: activity()),
-  // and on twos, like the minis, after that, until the idle rest stops everything.
+  // frame. A scene on screen plays at 24 all the time it is seen (a drawing that dropped to twos a few seconds
+  // after the last input read as a stutter); the minis stay on twos, as drawn. What stops the clock is the
+  // drawing leaving the screen, a hidden tab, Still, Off, reduced motion and the idle rest.
   const FILM_FPS={scene:24,mini:12};
-  const ART_BRISK_MS=6000;
-  // A PRESS HOLDS THE DRAWINGS: from a press, a key or a wheel turn until this long after the last one, every drawing holds
-  // its frame, so the page's answer to the input has the main thread to itself; then they go on from the frame they held.
-  const ART_BUSY_MS=700;
-  // THE IDLE REST: a page nobody has touched for 25 seconds (no pointer or key input on it) holds every
+  // THE FILM'S TICKS, SHARED. The pony (pets.js) keeps its own 24/12/6 clock, and on a clock of its own each of its frames
+  // is a whole-page frame of its own (measured, Home idle: 47-48 main frames a second, 11-14 of them the pony's alone). So
+  // it may draw on the film's ticks (onFilmTick): what falls due before the next tick is drawn on this one, and the page
+  // draws one frame for both. Only one clock hands its ticks on, the fastest running, so a second view's clock can never
+  // double the pony's frames.
+  const FILM_TICKS=new Set(),filmBus={owner:null,fps:0};
+  // A PRESS OR A KEY HOLDS THE DRAWINGS until the page's answer to it has painted: the render it starts (answered(),
+  // dashboard.js) and the frame that shows it, so that answer has the main thread to itself; ART_BUSY_MS at most, for a
+  // press that changes nothing. Then they go on from the frame they held. A wheel turn or a scroll never holds them:
+  // the drawings keep playing while the page scrolls.
+  const ART_BUSY_MS=300;
+  // A SCROLL HOLDS THE FRAME BEADS, not the drawings: the course-row frames' loops stand where they are while the page
+  // scrolls and go on from there ART_SCROLL_MS after the last scroll. Measured at 4x CPU, their frames doubled a
+  // scroll's slow frames (5.6% -> 13.8%); the scenes and minis keep playing.
+  const ART_SCROLL_MS=200;
+  // THE IDLE REST: a page nobody has touched for two minutes (no pointer, wheel or key input on it) holds every
   // living drawing where it stands, so a dashboard left open on a screen costs nothing at all; the next
   // input (or the tab shown again) lets them go on from that very frame. The clock checks it as it ticks.
-  const ART_IDLE_MS=25000;
+  const ART_IDLE_MS=120000;
 
-  function create(container,{media=root.matchMedia?.('(prefers-reduced-motion: reduce)'),ResizeObserverImpl=root.ResizeObserver,IntersectionObserverImpl=root.IntersectionObserver,setIntervalImpl=root.setInterval?.bind(root),clearIntervalImpl=root.clearInterval?.bind(root)}={}){
+  function create(container,{
+    media=root.matchMedia?.('(prefers-reduced-motion: reduce)'),
+    ResizeObserverImpl=root.ResizeObserver,
+    IntersectionObserverImpl=root.IntersectionObserver,
+    setIntervalImpl=root.setInterval?.bind(root),
+    clearIntervalImpl=root.clearInterval?.bind(root)
+  }={}){
     let geometry=null,dead=false,layer=null,first=true,geo={},watched=[],bar=null;
     const active=new Map(),ghosts=new Set();
     const observer=ResizeObserverImpl?new ResizeObserverImpl(()=>syncTabs(false)):null;
@@ -365,21 +444,43 @@
     // (154 layers -> 9). The part's resting pose is the property's base value, so before and after its animation it stands
     // exactly as drawn; the inline styles go when the last animation on the part ends.
     const VARS=(()=>{try{const reg=root.CSS?.registerProperty;if(!reg)return false;
-      for(const [name,syntax,initialValue] of [['--rd-tf','<transform-list>','translate(0px)'],['--rd-op','<number>','1']])try{reg({name,syntax,inherits:false,initialValue});}catch(error){if(error?.name!=='InvalidModificationError')throw error;}
+      for(const [name,syntax,initialValue] of [['--rd-tf','<transform-list>','translate(0px)'],['--rd-op','<number>','1']])
+        try{reg({name,syntax,inherits:false,initialValue});}catch(error){if(error?.name!=='InvalidModificationError')throw error;}
       return true;}catch{return false;}})();
     const varUse=new WeakMap();
     // the pose a part is drawn in, read from its transform attribute (the SVG DOM, no style read: reading computed style here
     // would restyle the page once per part a click starts)
-    const restingTransform=node=>{try{const list=node.transform?.baseVal;let m=null;for(let i=0;i<(list?.numberOfItems||0);i++){const t=list.getItem(i).matrix;m=m?m.multiply(t):t;}return m?`matrix(${m.a},${m.b},${m.c},${m.d},${m.e},${m.f})`:'translate(0px)';}catch{return 'translate(0px)';}};
+    const restingTransform=node=>{
+      try{
+        const list=node.transform?.baseVal;
+        let m=null;
+        for(let i=0;i<(list?.numberOfItems||0);i++){const t=list.getItem(i).matrix;m=m?m.multiply(t):t;}
+        return m?`matrix(${m.a},${m.b},${m.c},${m.d},${m.e},${m.f})`:'translate(0px)';
+      }catch{return 'translate(0px)';}
+    };
     // 'none' has no place in a transform list: use each function's identity, preserving angle and length units.
-    const identityOf=list=>String(list).replace(/([a-zA-Z0-9]+)\(([^)]*)\)/g,(m,name,args)=>name+'('+(/^matrix$/i.test(name)?'1,0,0,1,0,0':/^matrix3d$/i.test(name)?'1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1':args.trim().split(/[,\s]+/).map(arg=>/^scale/i.test(name)?'1':'0'+(arg.trim().match(/[a-z%]+$/i)?.[0]||'')).join(','))+')');
+    const identityOf=list=>
+      String(list).replace(
+        /([a-zA-Z0-9]+)\(([^)]*)\)/g,
+        (m,name,args)=>
+          name+
+            '('+
+            (/^matrix$/i.test(name)?
+              '1,0,0,1,0,0':
+              /^matrix3d$/i.test(name)?'1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1':args.trim().split(/[,\s]+/).map(arg=>/^scale/i.test(name)?'1':'0'+(arg.trim().match(/[a-z%]+$/i)?.[0]||'')).join(','))+
+            ')');
     function varFrames(frames){
       const list=Array.isArray(frames)?frames:null,keys=list?new Set(list.flatMap(f=>Object.keys(f))):new Set(Object.keys(frames||{}));
       const tf=keys.has('transform'),op=keys.has('opacity');if(!tf&&!op)return null;
       const values=list?list.map(f=>f.transform).filter(v=>v!=null):[].concat(frames.transform??[]);
       const model=values.find(v=>v&&v!=='none'),none=model?identityOf(model):'translate(0px)';
       const t=v=>v==null?v:(v==='none'?none:String(v)),o=v=>v==null?v:String(v);
-      const move=f=>{const g={...f};if('transform' in g){g['--rd-tf']=Array.isArray(g.transform)?g.transform.map(t):t(g.transform);delete g.transform;}if('opacity' in g){g['--rd-op']=Array.isArray(g.opacity)?g.opacity.map(o):o(g.opacity);delete g.opacity;}return g;};
+      const move=f=>{
+        const g={...f};
+        if('transform' in g){g['--rd-tf']=Array.isArray(g.transform)?g.transform.map(t):t(g.transform);delete g.transform;}
+        if('opacity' in g){g['--rd-op']=Array.isArray(g.opacity)?g.opacity.map(o):o(g.opacity);delete g.opacity;}
+        return g;
+      };
       return {frames:list?list.map(move):move(frames),tf,op};
     }
     function useVars(node,tf,op){
@@ -391,6 +492,19 @@
         for(const k of ['transform','opacity'])if(use[k])node.style.setProperty(k,use[k]);else node.style.removeProperty(k);
         node.style.removeProperty('--rd-tf');node.style.removeProperty('--rd-op');};
     }
+    // A PART THAT NO LONGER READS ITS CUSTOM PROPERTIES. A dashboard render keeps them on a part (dashboard.js patchUI), but
+    // anything else that rewrites a part's style attribute takes away what useVars wrote: the part then stands as drawn,
+    // and an animation that only moves --rd-tf/--rd-op reaches nothing on screen. Such frames are not written (stepped
+    // and restyled on every tick for nothing). The reads are inline (no restyle).
+    const readsVars=node=>{
+      const s=node?.style;
+      if(typeof s?.getPropertyValue!=='function')return true;
+      return String(s.getPropertyValue('transform')||'').includes('var(--rd-tf)')||String(s.getPropertyValue('opacity')||'').includes('var(--rd-op)');
+    };
+    const VAR_ONLY=new Set(['offset','computedOffset','easing','composite','--rd-tf','--rd-op']);
+    const varsOnly=x=>{
+      try{const frames=x.effect?.getKeyframes?.();return !!frames?.length&&frames.every(f=>Object.keys(f).every(k=>VAR_ONLY.has(k)));}catch{return false;}
+    };
     // an animation whose part shows its frames through the custom properties; it lets go of them when it ends for good
     function varAnimate(node,frames,options){
       const v=VARS&&root.SVGElement&&node instanceof root.SVGElement?varFrames(frames):null;
@@ -409,7 +523,12 @@
     }
     // A synchronous pass gathers layout-dependent frames first; only its flush starts animations, in order.
     // Cancellation and live animation-state reads stay at their call sites; play() itself is always immediate.
-    function animationPass(){const queue=[];return {play(node,frames,options){queue.push([node,frames,options]);},flush(list=[]){for(const [node,frames,options] of queue)play(node,frames,options,list);queue.length=0;return list;}};}
+    function animationPass(){
+      const queue=[];
+      return {play(node,frames,options){
+        queue.push([node,frames,options]);
+      },flush(list=[]){for(const [node,frames,options] of queue)play(node,frames,options,list);queue.length=0;return list;}};
+    }
     function watch(nodes){
       if(!observer)return;
       const next=nodes.filter(Boolean);
@@ -439,10 +558,21 @@
       // Keep four recent paths' samples in their own units; every SVG size scales the exact same points.
       function inkLength(svg,path,r=svg.getBoundingClientRect()){
         const key=path.getAttribute?.('d')??'',cached=lengths.get(path);let points=cached?.get(key);
-        if(!points){const total=path.getTotalLength(),first=path.getPointAtLength(0);points=[{x:first.x,y:first.y}];for(let i=1;i<=FRAME_SAMPLES;i++){const p=path.getPointAtLength(total*i/FRAME_SAMPLES);points.push({x:p.x,y:p.y});}}
+        if(!points){
+          const total=path.getTotalLength(),first=path.getPointAtLength(0);
+          points=[{x:first.x,y:first.y}];
+          for(let i=1;i<=FRAME_SAMPLES;i++){const p=path.getPointAtLength(total*i/FRAME_SAMPLES);points.push({x:p.x,y:p.y});}
+        }
         const sx=r.width/FRAME_BOX[0],sy=r.height/FRAME_BOX[1];let length=0,a=points[0];
         for(let i=1;i<=FRAME_SAMPLES;i++){const b=points[i];length+=Math.hypot((b.x-a.x)*sx,(b.y-a.y)*sy);a=b;}
-        if(Number.isFinite(length)){const cache=cached||new Map();if(!cached)lengths.set(path,cache);cache.delete(key);cache.set(key,points);if(cache.size>4)cache.delete(cache.keys().next().value);}return length;
+        if(Number.isFinite(length)){
+          const cache=cached||new Map();
+          if(!cached)lengths.set(path,cache);
+          cache.delete(key);
+          cache.set(key,points);
+          if(cache.size>4)cache.delete(cache.keys().next().value);
+        }
+        return length;
       }
       // FIRST (in snapshot(), before the render): what the two frames look like now. It only reads.
       function before(target){
@@ -463,20 +593,36 @@
       // where it was; one that those loops had moved settles (an ornament whose own loop goes on is left alone).
       function relax(row,memo,run){
         const frame=frameOf(row);if(!frame)return;
-        const main=frame.querySelector('.rd-frame-main'),ink=frame.querySelector('.rd-frame-ink'),cs=css(ink),half=cs?.visibility==='visible'?{strokeDasharray:cs.strokeDasharray,strokeDashoffset:cs.strokeDashoffset}:null;
+        const main=frame.querySelector('.rd-frame-main'),
+          ink=frame.querySelector('.rd-frame-ink'),
+          cs=css(ink),
+          half=cs?.visibility==='visible'?{strokeDasharray:cs.strokeDasharray,strokeDashoffset:cs.strokeDashoffset}:null;
         const drawing=running.some(a=>frame.contains?.(a.effect?.target??a.target));
         clear(frame);
         if(half)run(ink,[{visibility:'visible',opacity:1,...half},{visibility:'visible',opacity:0,...half}],{duration:T.relax.interrupted,easing:RELEASE});
         else if(main&&ink){
           let length=0;try{length=inkLength(main,ink);}catch{}
-          if(length>0&&Number.isFinite(length)){const L=Math.ceil(length)+2,dash=`${L} ${L}`;run(ink,[{visibility:'visible',strokeDasharray:dash,strokeDashoffset:0,easing:T.exit.unwindEasing},{visibility:'visible',strokeDasharray:dash,strokeDashoffset:-L}],{duration:T.exit.unwind});}
+          if(length>0&&Number.isFinite(length)){
+            const L=Math.ceil(length)+2,dash=`${L} ${L}`;
+            run(
+              ink,
+              [{visibility:'visible',strokeDasharray:dash,strokeDashoffset:0,easing:T.exit.unwindEasing},{visibility:'visible',strokeDasharray:dash,strokeDashoffset:-L}],
+              {duration:T.exit.unwind});
+          }
         }
-        if(drawing){for(const el of frame.querySelectorAll(':scope>.rd-frame-orn'))if(!el.querySelector?.('.a-ghost'))run(el,[{opacity:T.relax.from},{opacity:css(el)?.opacity||1}],{duration:T.relax.interrupted,easing:'ease-out'});return;}
+        if(drawing){
+          for(const el of frame.querySelectorAll(':scope>.rd-frame-orn'))
+            if(!el.querySelector?.('.a-ghost'))run(el,[{opacity:T.relax.from},{opacity:css(el)?.opacity||1}],{duration:T.relax.interrupted,easing:'ease-out'});
+          return;
+        }
         for(const [el,was] of memo?.oldOrns||[]){
           if(!frame.contains?.(el)||looping(el))continue;
           const now=css(el);if(!now||(was.opacity===now.opacity&&was.transform===now.transform))continue;
           const gone=now.opacity==='0';// an actor of the chosen row's loops: it fades where it is, it does not fly home
-          run(el,[{opacity:was.opacity,transform:was.transform},{opacity:now.opacity,transform:gone?was.transform:now.transform}],{duration:T.exit.settle,easing:RELEASE});
+          run(
+            el,
+            [{opacity:was.opacity,transform:was.transform},{opacity:now.opacity,transform:gone?was.transform:now.transform}],
+            {duration:T.exit.settle,easing:RELEASE});
         }
       }
       // Motion Still: the arrival is a quick fade of the whole frame (no pen, no building).
@@ -494,26 +640,52 @@
         // 1. The resting line drops back to a pencil guide while the ink runs over it, and is full ink once the pen has passed.
         run(main,[{color:from,offset:0},{color:guide,offset:T.draw.guideIn/END},{color:guide,offset:D/END},{color:full,offset:1}],{duration:END,easing:'linear'});
         // 2. The pen.
-        run(ink,[{visibility:'visible',strokeDasharray:dash,strokeDashoffset:L,offset:0,easing:PEN},{visibility:'visible',strokeDasharray:dash,strokeDashoffset:0,offset:D/END},{visibility:'visible',strokeDasharray:dash,strokeDashoffset:0,offset:1}],{duration:END});
+        run(
+          ink,
+          [
+            {visibility:'visible',strokeDasharray:dash,strokeDashoffset:L,offset:0,easing:PEN},
+            {visibility:'visible',strokeDasharray:dash,strokeDashoffset:0,offset:D/END},
+            {visibility:'visible',strokeDasharray:dash,strokeDashoffset:0,offset:1}
+          ],
+          {duration:END});
         // One stroke: it shows as it was, is gone at A.hide, and is drawn from t0 over dur (len in the units its
         // dashes are measured in: an ornament's own units, a stretched stroke's screen px).
         const pen=(path,len,t0,dur)=>{
           if(!(len>0)||!Number.isFinite(len))return;
           const l=Math.ceil(len)+2,all=t0+dur,d=`${l} ${l}`,h=Math.min(A.hide,t0);
           if(t0<=1)run(path,[{strokeDasharray:d,strokeDashoffset:l,easing:PEN},{strokeDasharray:d,strokeDashoffset:0}],{duration:dur});
-          else run(path,[{strokeDasharray:d,strokeDashoffset:0,offset:0,easing:'steps(1, end)'},{strokeDasharray:d,strokeDashoffset:l,offset:h/all},{strokeDasharray:d,strokeDashoffset:l,offset:t0/all,easing:PEN},{strokeDasharray:d,strokeDashoffset:0,offset:1}],{duration:all});
+          else run(
+            path,
+            [
+              {strokeDasharray:d,strokeDashoffset:0,offset:0,easing:'steps(1, end)'},
+              {strokeDasharray:d,strokeDashoffset:l,offset:h/all},
+              {strokeDasharray:d,strokeDashoffset:l,offset:t0/all,easing:PEN},
+              {strokeDasharray:d,strokeDashoffset:0,offset:1}
+            ],
+            {duration:all});
         };
         // One fill (paint or solid ink): gone at A.hide, then it blooms from its own middle.
         const bloom=(el,to,t0,dur,easing,small)=>{
           const all=t0+dur,h=Math.min(A.hide,t0)/all;
-          run(el,[{opacity:to,transform:'scale(1)',offset:0,easing:'steps(1, end)'},{opacity:0,transform:`scale(${small})`,offset:h},{opacity:0,transform:`scale(${small})`,offset:t0/all,easing},{opacity:to,transform:'scale(1)',offset:1}],{duration:all});
+          run(
+            el,
+            [
+              {opacity:to,transform:'scale(1)',offset:0,easing:'steps(1, end)'},
+              {opacity:0,transform:`scale(${small})`,offset:h},
+              {opacity:0,transform:`scale(${small})`,offset:t0/all,easing},
+              {opacity:to,transform:'scale(1)',offset:1}
+            ],
+            {duration:all});
         };
         // 3. The stretched extras: a stroke is drawn when the pen reaches it; a dashed one (ticks, stitches) fades in.
         for(const svg of frame.querySelectorAll('.rd-frame-extra')){
           const t0=at(svg)*D;
           for(const p of svg.querySelectorAll('path')){
             const pc=css(p);if(!pc||pc.display==='none')continue;
-            if(dashed(pc)){const all=t0+A.ornament;run(p,[{opacity:pc.opacity,offset:0,easing:'steps(1, end)'},{opacity:0,offset:Math.min(A.hide,t0)/all},{opacity:0,offset:t0/all},{opacity:pc.opacity,offset:1}],{duration:all});}
+            if(dashed(pc)){
+              const all=t0+A.ornament;
+              run(p,[{opacity:pc.opacity,offset:0,easing:'steps(1, end)'},{opacity:0,offset:Math.min(A.hide,t0)/all},{opacity:0,offset:t0/all},{opacity:pc.opacity,offset:1}],{duration:all});
+            }
             else{let len=0;try{len=lengthOf(svg,p);}catch{}pen(p,len,Math.max(t0,1.5),A.ornament+80);}
           }
         }
@@ -529,7 +701,10 @@
           }
         }
         // 5. A part caught in its hover one-shot settles.
-        Array.from(frame.querySelectorAll('.o-move')).forEach((el,i)=>{const pose=memo.poses?.[i]||'none';if(pose!=='none')run(el,[{transform:pose},{transform:'none'}],{duration:T.draw.settle,easing:T.draw.settleEasing});});
+        Array.from(frame.querySelectorAll('.o-move')).forEach((el,i)=>{
+          const pose=memo.poses?.[i]||'none';
+          if(pose!=='none')run(el,[{transform:pose},{transform:'none'}],{duration:T.draw.settle,easing:T.draw.settleEasing});
+        });
         // 6. The wash rises underneath.
         if(wash)run(wash,[{opacity:memo.washFrom??'0'},{opacity:1}],{duration:T.wash.in,delay:T.wash.delay,easing:FADE});
       }
@@ -585,7 +760,13 @@
       for(const [surface,g] of items)if(g.box)try{void root.getComputedStyle?.(g.box,surface.pseudo)?.translate;}catch{}
       delete shell.dataset.selSnap;
     }
-    function measureSurfaces(){const shell=shellOf();if(!shell||dead)return null;const next={};for(const surface of SURFACES)next[surface.key]=measure(shell,surface);return {shell,next};}
+    function measureSurfaces(){
+      const shell=shellOf();
+      if(!shell||dead)return null;
+      const next={};
+      for(const surface of SURFACES)next[surface.key]=measure(shell,surface);
+      return {shell,next};
+    }
     function place(animate=false,snap=null,layout=measureSurfaces()){
       if(!layout||dead)return;const {shell,next}=layout;
       watch([bar,shell,...SURFACES.map(s=>next[s.key].box)]);
@@ -659,10 +840,18 @@
     function ink(svg,{delay=0,budget=400}={}){
       if(!svg||dead||reduced())return [];
       const strokes=[];
-      for(const node of svg.querySelectorAll?.('path,circle,line,polyline')||[]){let length=0;try{length=Math.ceil(node.getTotalLength()+1);}catch{}if(length>0&&Number.isFinite(length))strokes.push({node,length});}
+      for(const node of svg.querySelectorAll?.('path,circle,line,polyline')||[]){
+        let length=0;
+        try{length=Math.ceil(node.getTotalLength()+1);}catch{}
+        if(length>0&&Number.isFinite(length))strokes.push({node,length});
+      }
       const plan=penPlan(strokes.map(s=>s.length),{start:delay,budget}),list=[];
       strokes.forEach((s,i)=>{if(!plan[i])return;const dash=`${s.length} ${s.length}`;
-        play(s.node,[{strokeDasharray:dash,strokeDashoffset:`${s.length}`,opacity:0},{opacity:1,offset:.08},{strokeDasharray:dash,strokeDashoffset:'0'}],{duration:plan[i].duration,delay:plan[i].start,easing:PEN,fill:'backwards'},list);});
+        play(
+          s.node,
+          [{strokeDasharray:dash,strokeDashoffset:`${s.length}`,opacity:0},{opacity:1,offset:.08},{strokeDasharray:dash,strokeDashoffset:'0'}],
+          {duration:plan[i].duration,delay:plan[i].start,easing:PEN,fill:'backwards'},
+          list);});
       return list;
     }
 
@@ -747,7 +936,22 @@
       const sceneKey=svg=>{const key=attr(svg,'data-rd-key');return key?`${key}@${attr(svg,'data-place')||''}`:null;};
       function filmOf(svg){
         let f=films.get(svg);
-        if(!f){f={reveal:[],loops:[],until:0,began:0,scene:isScene(svg),title:isTitle(svg),fps:isScene(svg)?FILM_FPS.scene:FILM_FPS.mini,shown:-Infinity,held:false,offscreen:false};films.set(svg,f);observe(svg);}
+        if(!f){
+          f={
+            reveal:[],
+            loops:[],
+            until:0,
+            began:0,
+            scene:isScene(svg),
+            title:isTitle(svg),
+            fps:isScene(svg)?FILM_FPS.scene:FILM_FPS.mini,
+            shown:-Infinity,
+            held:false,
+            offscreen:false
+          };
+          films.set(svg,f);
+          observe(svg);
+        }
         return f;
       }
       function endReveal(f){for(const x of f.reveal)x?.cancel?.();f.reveal=[];f.until=0;}
@@ -756,10 +960,21 @@
       function stop(svg){const f=films.get(svg);if(!f)return;films.delete(svg);io?.unobserve?.(svg);endReveal(f);endLoops(f);}
       // Off screen, or while the page is hidden, a loop holds where it is and
       // resumes from there. A reveal (a few seconds at most) simply finishes.
-      function observe(svg){
-        if(!io&&IntersectionObserverImpl)try{io=new IntersectionObserverImpl(entries=>{for(const e of entries){const f=films.get(e.target);if(!f)continue;f.offscreen=!e.isIntersecting;if(f.offscreen)hold(f);else release(f);}});}catch{io=null;}
-        io?.observe?.(svg);
+      function ensureIO(){
+        if(!io&&IntersectionObserverImpl)
+          try{
+            io=new IntersectionObserverImpl(entries=>{
+              for(const e of entries){
+                if(e.target===railSeen){railOff=!e.isIntersecting;continue;}
+                const f=films.get(e.target);
+                if(!f)continue;
+                f.offscreen=!e.isIntersecting;
+                if(f.offscreen)hold(f);else release(f);
+              }
+            });
+          }catch{io=null;}
       }
+      function observe(svg){ensureIO();io?.observe?.(svg);}
       // THE FILM CLOCK. Every loop part is a paused animation whose time this clock sets FILM_FPS times a
       // second (24 for a scene, 12 for a mini), like the frames of a hand-drawn film. A running animation on
       // an SVG part is restyled and laid out on every display frame (60-144 a second, the main-thread cost of
@@ -768,10 +983,10 @@
       // is going needs (`clock`), and is set again when that changes. A run: {f, origin (film time 0), at
       // (when it was held), then ([end, next]: a first swing hands over to its steady swing when its time
       // passes end)}.
-      // A scene's rate is spent only while the page has had input lately (ART_BRISK_MS); otherwise it plays on twos.
+      // The rate of the fastest drawing that is going: 24 while a scene plays, 12 where only minis do.
       function rate(){
-        const brisk=now()-lastInput<ART_BRISK_MS;let fps=0;
-        for(const r of runs.values())if(r.at==null&&!r.unseen)fps=Math.max(fps,brisk?r.f.fps:Math.min(r.f.fps,FILM_FPS.mini));
+        let fps=0;
+        for(const r of runs.values())if(r.at==null&&!r.unseen)fps=Math.max(fps,r.f.fps);
         return fps;
       }
       function wake(){
@@ -779,7 +994,14 @@
         const fps=rate();if(!fps){park();return;}if(timer&&clock===fps)return;
         park();clock=fps;timer=setIntervalImpl(tick,1000/fps);timer?.unref?.();
       }
-      function park(){if(timer){clearIntervalImpl?.(timer);timer=0;}clock=0;}
+      function park(){if(timer){clearIntervalImpl?.(timer);timer=0;}clock=0;if(filmBus.owner===films){filmBus.owner=null;filmBus.fps=0;}}
+      // The film's ticks handed on (FILM_TICKS) by this clock while it is the fastest running. They go first in a tick: what they
+      // read (the pony's loop states) is read before the film writes anything, and every write of the tick shares one restyle.
+      function handOn(t){
+        if(filmBus.owner&&filmBus.owner!==films&&clock<=filmBus.fps)return;
+        filmBus.owner=films;filmBus.fps=clock;
+        for(const fn of [...FILM_TICKS])try{fn(t,clock);}catch{}
+      }
       // A PART AT REST NEEDS NO FRAME. A part acts for a moment of its cycle and rests for most of it: between two
       // keyframes that say the same thing nothing changes. Seeking an animation restyles its part even when nothing
       // moved (measured: 1 to 1.5% of a main thread for a living heading). So a tick whose film time lies in the same rest as the
@@ -788,7 +1010,15 @@
       function restsOf(x){
         try{
           const effect=x.effect,timing=effect?.getTiming?.(),frames=effect?.getKeyframes?.();
-          if(!timing||!frames||frames.length<2||!(timing.duration>0)||timing.iterations!==Infinity||(timing.direction&&timing.direction!=='normal')||timing.iterationStart||(timing.easing&&timing.easing!=='linear'))return null;
+          if(!timing||
+            !frames||
+            frames.length<2||
+            !(timing.duration>0)||
+            timing.iterations!==Infinity||
+            (timing.direction&&timing.direction!=='normal')||
+            timing.iterationStart||
+            (timing.easing&&timing.easing!=='linear'))
+            return null;
           const skip=k=>k==='offset'||k==='computedOffset'||k==='easing'||k==='composite';
           const same=(a,b)=>{for(const k of new Set([...Object.keys(a),...Object.keys(b)]))if(!skip(k)&&a[k]!==b[k])return false;return true;};
           const list=[];
@@ -802,9 +1032,16 @@
       function frame(x,r,t){
         const time=Math.max(0,t-r.origin);let rest=-1;
         if(r.rests){const local=time-r.rests.delay;if(local>=0){const p=(local/r.rests.duration)%1;rest=r.rests.list.findIndex(h=>p>=h[0]&&p<h[1]);}}
-        if(rest<0||rest!==r.rest){try{x.currentTime=time;}catch{}}
+        // A part that no longer reads the properties its loop moves is not written, and nothing is remembered as shown
+        // (rest -1), so the tick it reads them again writes the film's time at once. A first swing (then) is always
+        // written: its hand-over makes the steady swing.
+        if(rest<0||rest!==r.rest){if(!r.then&&unread(x,r))rest=-1;else try{x.currentTime=time;}catch{}}
         r.rest=rest;
         if(r.then&&t-r.origin>=r.then[0]){const next=r.then[1];r.then=null;next(r,t);}
+      }
+      function unread(x,r){
+        const node=x.effect?.target;if(!node||readsVars(node))return false;
+        if(r.varsOnly===undefined)r.varsOnly=varsOnly(x);return r.varsOnly;
       }
       // THE COURSE-ROW FRAMES' LOOPS ON THE FILM CLOCK. They are CSS animations (the generated block of refresh.css),
       // and CSS alone decides which exist (Motion Gentle, Living drawings on, the chosen row's extra ones). Left to
@@ -816,27 +1053,60 @@
       // row chosen, Living drawings back on) is taken over at the next look, twice a second; one CSS has ended is
       // forgotten and never written again. While the clock is stopped (the idle rest, a hidden tab) they hold where
       // they stand and go on from there; with no clock at all they run as plain CSS. Nothing is written on a node.
-      const loops=new Map();let loopsAt=0,loopsSeen=0;
+      const loops=new Map();let loopsAt=0,loopsSeen=0,railSeen=null,railOff=false,railPeek=0,loopsHeld=false,scrollUntil=0;
+      // The rail's frame loops pause with the rail: while it is off screen (scrolled away, a phone's closed drawer, the
+      // dock in its place) they write nothing and go on from where they stood when it is seen again. A rail drawn anew
+      // meanwhile (the dock and back with a phone's drawer closed) is a node the observer never saw and that never
+      // reports, so it is looked for at the same pace as the look below and taken over as soon as it is there.
+      function watchRail(rail){
+        if(rail===railSeen)return;if(railSeen)io?.unobserve?.(railSeen);railSeen=rail;railOff=false;
+        if(rail){ensureIO();io?.observe?.(rail);}
+      }
       // A CSS loop on an SVG part is replaced by its twin: the same keyframes and timing on the custom properties (see play()),
       // taken over by the clock like the rest. Its CSS original is cancelled; CSS starts it again only if it changes the loop.
       function cssTwin(a){
         try{const effect=a.effect,target=effect?.target;if(!VARS||!root.SVGElement||!(target instanceof root.SVGElement))return null;
           const frames=effect.getKeyframes().map(({computedOffset,...f})=>f),timing=effect.getTiming();if(!varFrames(frames))return null;
-          const at=+a.currentTime||0;a.cancel();const twin=varAnimate(target,frames,{duration:timing.duration,delay:timing.delay,iterations:timing.iterations,direction:timing.direction,easing:timing.easing,fill:timing.fill,iterationStart:timing.iterationStart});
+          const at=+a.currentTime||0;
+          a.cancel();
+          const twin=varAnimate(target,frames,{
+            duration:timing.duration,
+            delay:timing.delay,
+            iterations:timing.iterations,
+            direction:timing.direction,
+            easing:timing.easing,
+            fill:timing.fill,
+            iterationStart:timing.iterationStart
+          });
           twin.pause();twin.currentTime=at;return twin;}catch{return null;}
       }
       function reconcileTwins(){
         const allowed=!reduced()&&style()==='gentle'&&living();
-        for(const [a,r] of [...loops])if(r.css&&(!allowed||r.target?.isConnected===false||!String(root.getComputedStyle?.(r.target)?.animationName||'').split(',').map(n=>n.trim()).includes(r.css))){try{a.cancel();}catch{}loops.delete(a);}
+        for(const [a,r] of [...loops])
+          if(r.css&&(!allowed||r.target?.isConnected===false||!String(root.getComputedStyle?.(r.target)?.animationName||'').split(',').map(n=>n.trim()).includes(r.css))){
+            try{a.cancel();}catch{}
+            loops.delete(a);
+          }
       }
       function frameLoops(t){
+        if(railOff){
+          if(t-railPeek<2000)return;
+          railPeek=t;const rail=container.querySelector?.('.rd-course-rail')||null;
+          if(rail===railSeen)return;
+          watchRail(rail);loopsSeen=-Infinity;
+        }
         const step=1000/FILM_FPS.mini,gap=t-loopsAt;if(gap<step-4)return;loopsAt=t;
         try{
           if(t-loopsSeen>=2000){
-            loopsSeen=t;const live=new Set();
-            for(const a of container.querySelector?.('.rd-course-rail')?.getAnimations?.({subtree:true})||[]){
+            loopsSeen=t;const live=new Set(),rail=container.querySelector?.('.rd-course-rail');watchRail(rail||null);
+            for(const a of rail?.getAnimations?.({subtree:true})||[]){
               if(!String(a.animationName||'').startsWith('rd-fl-')||a.playState==='idle')continue;live.add(a);
-              if(!loops.has(a)){const twin=cssTwin(a);if(twin){loops.set(twin,{origin:t-(+twin.currentTime||0),rests:restsOf(twin),rest:-1,css:a.animationName,target:a.effect?.target});continue;}a.pause();loops.set(a,{origin:t-(+a.currentTime||0),rests:restsOf(a),rest:-1});}
+              if(!loops.has(a)){
+                const twin=cssTwin(a);
+                if(twin){loops.set(twin,{origin:t-(+twin.currentTime||0),rests:restsOf(twin),rest:-1,css:a.animationName,target:a.effect?.target});continue;}
+                a.pause();
+                loops.set(a,{origin:t-(+a.currentTime||0),rests:restsOf(a),rest:-1});
+              }
             }
             // a twin lives while CSS still names its loop on the part (Living drawings off, Motion off or another row chosen ends it)
             reconcileTwins();for(const [a,r] of [...loops])if(!r.css&&!live.has(a))loops.delete(a);
@@ -845,37 +1115,54 @@
           // time makes Chrome restyle the page then and there, once per loop (measured: ~300 restyles a second, not 12).
           const live=[...loops].filter(([a])=>{if(a.playState!=='idle')return true;loops.delete(a);return false;});
           for(const [a,r] of live){
-            if(gap>400)r.origin+=gap-step;// the clock had stopped: they go on from where they stood
+            if(gap>400||loopsHeld)r.origin+=gap-step;// the clock had stopped, or they were held: they go on from where they stood
             frame(a,r,t);
           }
+          loopsHeld=false;
         }catch{}
       }
       // The view is destroyed: the loops are CSS's again.
       function freeLoops(){for(const [a,r] of loops){try{if(r.css)a.cancel();else if(a.playState!=='idle')a.play();}catch{}}loops.clear();}
-      // 25 seconds without input: every drawing holds where it stands (the idle rest) and the clock stops.
+      // Two minutes without input: every drawing holds where it stands (the idle rest) and the clock stops.
       function tick(at){
         if(dead){park();return;}const t=Number.isFinite(at)?at:now(),turns=new Map();
+        if(FILM_TICKS.size&&clock)handOn(t);
         // A drawing slower than the clock (a mini while a scene lives) takes every second tick: its turn comes
         // when its own frame time has passed (less half a tick, for a timer that fires a little early).
         const turn=f=>{let ok=turns.get(f);if(ok===undefined){ok=!clock||f.fps>=clock||t-f.shown>=1000/f.fps-500/clock;if(ok)f.shown=t;turns.set(f,ok);}return ok;};
         for(const [x,r] of [...runs])if(r.at==null&&!r.unseen&&turn(r.f))frame(x,r,t);
         // This frame is the one they hold, so the next input goes on from exactly here.
-        if(!busyHeld)frameLoops(t);
+        if(!busyHeld&&t>=scrollUntil)frameLoops(t);else loopsHeld=true;
         if(t-lastInput>=ART_IDLE_MS){idle=true;rest(true);for(const f of films.values())hold(f,t);}
         wake();
       }
-      // Any input on the page (dashboard.js: pointer moves and presses, keys) or the tab shown again: after an idle
-      // rest every drawing that may move goes on from the frame it held.
-      // It also brings the scenes back to their film rate (a clock running on twos is set again at 24).
+      // Any input on the page (dashboard.js: pointer moves and presses, wheel turns, keys) or the tab shown again: after
+      // an idle rest every drawing that may move goes on from the frame it held.
       function activity(){
-        lastInput=now();if(clock&&clock<FILM_FPS.scene)wake();
+        lastInput=now();
         if(!idle)return;idle=false;rest(hidden());for(const f of films.values())release(f);
       }
-      let busyUntil=0,busyTimer=0,busyHeld=false;
+      // A scroll anywhere on the page (ART_SCROLL_MS): the frame beads hold until it has stopped.
+      function scrolling(){scrollUntil=now()+ART_SCROLL_MS;}
+      // A press or a key (ART_BUSY_MS): held from the input until the frame after the render that answers it, or the cap.
+      let busyTimer=0,busyFrame=0,busyHeld=false;
+      const later=(fn,ms)=>root.setTimeout?root.setTimeout(fn,ms):0,unlater=id=>{if(id)root.clearTimeout?.(id);};
+      function unbusy(){
+        unlater(busyTimer);busyTimer=0;if(busyFrame&&root.cancelAnimationFrame)root.cancelAnimationFrame(busyFrame);busyFrame=0;
+        if(!busyHeld)return;busyHeld=false;if(!dead)for(const f of films.values())release(f);
+      }
       function busy(){
-        if(dead)return;busyUntil=now()+ART_BUSY_MS;
+        if(dead)return;
         if(!busyHeld){busyHeld=true;for(const f of films.values())hold(f);}
-        if(!busyTimer&&setIntervalImpl)busyTimer=setIntervalImpl(()=>{if(now()<busyUntil)return;clearIntervalImpl?.(busyTimer);busyTimer=0;busyHeld=false;if(!dead)for(const f of films.values())release(f);},120);
+        unlater(busyTimer);busyTimer=later(unbusy,ART_BUSY_MS);busyTimer?.unref?.();
+        if(!busyTimer)unbusy();
+      }
+      // The render that answers the input has run: they go on once the frame that shows it has painted (a frame, then the
+      // task after it).
+      function answered(){
+        if(dead||!busyHeld||busyFrame)return;
+        const after=()=>{busyFrame=0;later(unbusy,0);};
+        busyFrame=root.requestAnimationFrame?root.requestAnimationFrame(after):(later(after,16),0);
       }
       // A new part joins the clock paused, at its first frame (a part of a held drawing joins held).
       function run(f,x,{origin=now(),then=null,part=null,span}={}){
@@ -955,7 +1242,11 @@
       function pen(list,strokes,start,budget){
         const plan=penPlan(strokes.map(s=>s.length),{start,budget,min:ART_T.stroke});
         strokes.forEach((s,i)=>{const L=Math.ceil(s.length+1),dash=`${L} ${L}`,o=base(s.node);
-          a(list,s.node,[{strokeDasharray:dash,strokeDashoffset:`${L}`,opacity:0},{opacity:o,offset:.08},{strokeDasharray:dash,strokeDashoffset:'0',opacity:o}],{duration:plan[i].duration,delay:plan[i].start,easing:PEN});});
+          a(
+            list,
+            s.node,
+            [{strokeDasharray:dash,strokeDashoffset:`${L}`,opacity:0},{opacity:o,offset:.08},{strokeDasharray:dash,strokeDashoffset:'0',opacity:o}],
+            {duration:plan[i].duration,delay:plan[i].start,easing:PEN});});
         return plan;
       }
       // A head fills as the pen draws its outline (the stroke that best overlaps
@@ -964,7 +1255,16 @@
         const boxes=strokes.map(s=>bbox(s.node));
         for(const item of items){
           const h=bbox(item.node);let best=-1,score=0;
-          if(h)boxes.forEach((b,i)=>{if(!b)return;const ix=Math.max(0,Math.min(h.x+h.width,b.x+b.width)-Math.max(h.x,b.x)),iy=Math.max(0,Math.min(h.y+h.height,b.y+b.height)-Math.max(h.y,b.y)),inter=ix*iy,union=h.width*h.height+b.width*b.height-inter,iou=union>0?inter/union:0;if(iou>score){score=iou;best=i;}});
+          if(h)
+            boxes.forEach((b,i)=>{
+              if(!b)return;
+              const ix=Math.max(0,Math.min(h.x+h.width,b.x+b.width)-Math.max(h.x,b.x)),
+                iy=Math.max(0,Math.min(h.y+h.height,b.y+b.height)-Math.max(h.y,b.y)),
+                inter=ix*iy,
+                union=h.width*h.height+b.width*b.height-inter,
+                iou=union>0?inter/union:0;
+              if(iou>score){score=iou;best=i;}
+            });
           fade(list,item.node,Math.min(latest,best>=0&&score>=.35?plan[best].start+Math.round(plan[best].duration*.3):fallback),dur);
         }
       }
@@ -981,7 +1281,10 @@
       function panel(list,v,L,t0,budget){
         const T=ART_T.scene;
         const size=node=>{const b=bbox(node),w=b?b.width/(v.h*2||v.w):0;return w>.5?1:w>.25?.985:.97;};// against the hero's width, so a panorama blooms like a 480-unit scene
-        const bloom=(node,delay,duration)=>{const s=classes(node).includes('art-loop')?1:size(node);a(list,node,s<1?[{opacity:0,transform:`scale(${s})`},{opacity:base(node),transform:'scale(1)'}]:[{opacity:0},{opacity:base(node)}],{duration,delay,easing:BLOOM});};
+        const bloom=(node,delay,duration)=>{
+          const s=classes(node).includes('art-loop')?1:size(node);
+          a(list,node,s<1?[{opacity:0,transform:`scale(${s})`},{opacity:base(node),transform:'scale(1)'}]:[{opacity:0},{opacity:base(node)}],{duration,delay,easing:BLOOM});
+        };
         L.ground.forEach((item,i)=>fade(list,item.node,t0+T.ground.step*Math.min(i,T.ground.steps),T.ground.dur));
         // The course-colour shapes (one, or a small family in a panorama) bloom in turn, 60ms apart.
         L.key.forEach((item,i)=>bloom(item.node,t0+T.key.at+Math.min(i*T.key.step,T.key.max),T.key.dur));
@@ -1122,17 +1425,25 @@
         const t=now();
         for(const [svg,f] of [...films]){if(dead)stop(svg);else if(f.until>t){endReveal(f);endLoops(f);}}
         for(const svg of waiting)see(svg);waiting=[];
-        if(dead){io?.disconnect?.();io=null;pending=[];runs.clear();park();rest(false);freeLoops();return;}
+        if(dead){unbusy();io?.disconnect?.();io=null;railSeen=null;pending=[];runs.clear();park();rest(false);freeLoops();return;}
         for(const [svg,f] of films)gate(svg,f);// a resize may have brought more of a panorama into view, or cut more away
         ensure();
       }
-      return {sync,claim,cancel,visibility,activity,busy,snapshot(){
+      return {sync,claim,cancel,visibility,activity,busy,answered,scrolling,snapshot(){
         const out={};
         for(const [role,selector] of ART_ROLES){
           const svg=container.querySelector?.(selector),rect=svg?.getBoundingClientRect?.();if(!svg||!inView(rect))continue;
           // Where each living part stands right now, so the ghost lets go from that pose, not from rest.
           const poses=Array.from(svg.querySelectorAll?.('.art-loop')||[]).map(g=>{const cs=root.getComputedStyle?.(g);return cs?[cs.transform,cs.transformOrigin,cs.opacity]:null;});
-          out[role]={html:svg.outerHTML,key:attr(svg,'data-rd-key'),rect,poses,wide:wide(svg),cover:covered(svg,rect),course:root.getComputedStyle?.(svg.parentNode)?.getPropertyValue?.('--rd-course')?.trim()||''};
+          out[role]={
+            html:svg.outerHTML,
+            key:attr(svg,'data-rd-key'),
+            rect,
+            poses,
+            wide:wide(svg),
+            cover:covered(svg,rect),
+            course:root.getComputedStyle?.(svg.parentNode)?.getPropertyValue?.('--rd-course')?.trim()||''
+          };
         }
         return out;
       }};
@@ -1167,18 +1478,53 @@
     function anchors(){
       const reader=container.querySelector('.rd-reader'),sticky=!!reader&&root.getComputedStyle?.(reader)?.position==='sticky',boxes=new Map();
       const anchor=node=>node.closest?.('.rd-course-rail')||(sticky&&node.closest?.('.rd-reader'))||node.closest?.('.rd-workspace')||null;
-      return (node,rect)=>{const a=anchor(node);if(a&&!boxes.has(a))boxes.set(a,a.getBoundingClientRect());const b=a?boxes.get(a):{top:0,left:0};return {top:rect.top-b.top,left:rect.left-b.left};};
+      return (node,rect)=>{
+        const a=anchor(node);
+        if(a&&!boxes.has(a))boxes.set(a,a.getBoundingClientRect());
+        const b=a?boxes.get(a):{top:0,left:0};
+        return {top:rect.top-b.top,left:rect.left-b.left};
+      };
     }
     function snapshot(target){
       if(dead||reduced()||!pointer())return null;
       const shell=shellOf();if(!shell)return null;
-      const snap={at:now(),target:keyOf(target),geo:{...geo},titles:new Map(),counts:new Map(),rows:new Map(),units:new Map(),art:{},toast:null,course:container.dataset?.courseId,heading:container.querySelector('.rd-workspace-heading'),readerId:container.querySelector('.rd-reader')?.dataset?.id};
+      const snap={
+        at:now(),
+        target:keyOf(target),
+        geo:{...geo},
+        titles:new Map(),
+        counts:new Map(),
+        rows:new Map(),
+        units:new Map(),
+        art:{},
+        toast:null,
+        course:container.dataset?.courseId,
+        heading:container.querySelector('.rd-workspace-heading'),
+        readerId:container.querySelector('.rd-reader')?.dataset?.id
+      };
       // A rail row under the pointer: how its frame (and the chosen row's) looks now, for the pen's draw-in.
       try{snap.frame=frames.before(target);}catch{snap.frame=null;}
       for(const [role,selector] of TITLES){
         const node=container.querySelector(selector),rect=node?.getBoundingClientRect();if(!inView(rect)||clipped(rect))continue;
         const cs=root.getComputedStyle?.(node)||{};
-        snap.titles.set(role,{text:node.textContent,html:node.innerHTML,rect,style:{fontFamily:cs.fontFamily,fontSize:cs.fontSize,fontWeight:cs.fontWeight,fontStyle:cs.fontStyle,lineHeight:cs.lineHeight,letterSpacing:cs.letterSpacing,color:cs.color,textTransform:cs.textTransform,display:cs.display==='flex'?'flex':'block',alignItems:cs.alignItems,gap:cs.gap}});
+        snap.titles.set(role,{
+          text:node.textContent,
+          html:node.innerHTML,
+          rect,
+          style:{
+            fontFamily:cs.fontFamily,
+            fontSize:cs.fontSize,
+            fontWeight:cs.fontWeight,
+            fontStyle:cs.fontStyle,
+            lineHeight:cs.lineHeight,
+            letterSpacing:cs.letterSpacing,
+            color:cs.color,
+            textTransform:cs.textTransform,
+            display:cs.display==='flex'?'flex':'block',
+            alignItems:cs.alignItems,
+            gap:cs.gap
+          }
+        });
       }
       for(const node of container.querySelectorAll(COUNTS))if(inView(node.getBoundingClientRect()))snap.counts.set(node,node.textContent);
       for(const selector of ['.rd-course-rail','.rd-assignment-list']){
@@ -1186,7 +1532,10 @@
         for(const child of box.children){const rect=child.getBoundingClientRect();if(selector==='.rd-course-rail'||inView(rect))snap.rows.set(child,rect.top-top);}
       }
       const rel=anchors();
-      for(const node of container.querySelectorAll(WATCH)){const rect=node.getBoundingClientRect();if(inView(rect))snap.units.set(node,{text:node.textContent,html:node.innerHTML,...rel(node,rect)});}
+      for(const node of container.querySelectorAll(WATCH)){
+        const rect=node.getBoundingClientRect();
+        if(inView(rect))snap.units.set(node,{text:node.textContent,html:node.innerHTML,...rel(node,rect)});
+      }
       // The course art in view (heading, banner): its ghost lets go when the course changes.
       snap.art=art.snapshot();
       const toast=container.querySelector('.rd-toast'),toastRect=toast?.getBoundingClientRect();
@@ -1257,11 +1606,23 @@
         const next=scope.querySelector?.(selector)||container.querySelector?.(selector);
         if(next&&next.getAttribute?.('data-rd-key')===old.key)continue;
         // The ghost is a copy in the settle layer (never a live art node), so it may carry the pose inline.
-        const pose=g=>{const parts=g.querySelectorAll?.('.art-loop')||[];(old.poses||[]).forEach((p,i)=>{const n=parts[i];if(!p||!n?.style)return;if(p[0]&&p[0]!=='none'){n.style.transform=p[0];n.style.transformOrigin=p[1];}if(p[2]&&p[2]!=='1')n.style.opacity=p[2];});};
+        const pose=g=>{
+          const parts=g.querySelectorAll?.('.art-loop')||[];
+          (old.poses||[]).forEach((p,i)=>{
+            const n=parts[i];
+            if(!p||!n?.style)return;
+            if(p[0]&&p[0]!=='none'){n.style.transform=p[0];n.style.transformOrigin=p[1];}
+            if(p[2]&&p[2]!=='1')n.style.opacity=p[2];
+          });
+        };
         // It keeps the band's own box (a wide scene is not 2:1). A wide scene's ghost also keeps a soft left end,
         // and where the title block's scrim hid that end it stays hidden: the settle layer is above the page, and
         // the old drawing must not cross the title.
-        const band=g=>{if(!g.style)return;g.style.height=`${Math.ceil(old.rect.height)}px`;if(old.wide){const cover=Math.round(old.cover||0);g.style.maskImage=`linear-gradient(to right, transparent ${cover}px, #000 ${cover+ART_GHOST_FADE}px)`;}};
+        const band=g=>{
+          if(!g.style)return;
+          g.style.height=`${Math.ceil(old.rect.height)}px`;
+          if(old.wide){const cover=Math.round(old.cover||0);g.style.maskImage=`linear-gradient(to right, transparent ${cover}px, #000 ${cover+ART_GHOST_FADE}px)`;}
+        };
         ghost(old.rect,g=>{g.innerHTML=old.html;g.classList.add('rd-art-ghost');if(old.course)g.style.setProperty?.('--rd-course',old.course);band(g);pose(g);},{duration:next?90:120});
       }
     }
@@ -1276,7 +1637,11 @@
     // Workspace tab: the pill leads; new page regions fade simultaneously in place.
     function workspace(element,snap,list){
       const regions=[];
-      for(const node of element.querySelectorAll?.(REGIONS)||[]){if(node===snap?.heading||snap?.heading?.contains(node)||regions.some(r=>r.node.contains(node)))continue;const rect=node.getBoundingClientRect();if(inView(rect))regions.push({node,rect});}
+      for(const node of element.querySelectorAll?.(REGIONS)||[]){
+        if(node===snap?.heading||snap?.heading?.contains(node)||regions.some(r=>r.node.contains(node)))continue;
+        const rect=node.getBoundingClientRect();
+        if(inView(rect))regions.push({node,rect});
+      }
       regions.forEach(({node})=>{const head=HEADINGS.test(node.className||'');enter(node,{kind:head?'region':'content',list});quiet(node);});
     }
     // A new view of the list; the reader follows only if its assignment changed.
@@ -1367,7 +1732,11 @@
       const title=element.querySelector?.('.rd-assignment-title');
       if(title)play(title,[{backgroundSize:'0% 1.5px'},{backgroundSize:'100% 1.5px'}],{duration:260,delay:60,easing:PEN,fill:'both'},list);
       const fade=play(element,[{opacity:1},{opacity:0}],{duration:170,delay:140,easing:RELEASE,fill:'forwards'},list);
-      const close=play(element,[{height:`${height}px`},{height:'0px',paddingTop:'0px',paddingBottom:'0px',marginTop:'0px',marginBottom:'0px',borderBottomWidth:'0px'}],{duration:300,delay:170,easing:SETTLE,fill:'forwards'},list);
+      const close=play(
+        element,
+        [{height:`${height}px`},{height:'0px',paddingTop:'0px',paddingBottom:'0px',marginTop:'0px',marginBottom:'0px',borderBottomWidth:'0px'}],
+        {duration:300,delay:170,easing:SETTLE,fill:'forwards'},
+        list);
       // The group's only row takes its head along (the same let-go and close), and a head below that becomes
       // the list's first eases to the first head's top padding, so the re-render that follows moves nothing.
       const head=element.previousElementSibling,after=element.nextElementSibling;
@@ -1375,7 +1744,8 @@
         const tall=head.getBoundingClientRect?.().height||head.offsetHeight||0;
         play(head,[{opacity:1},{opacity:0}],{duration:170,delay:140,easing:RELEASE,fill:'forwards'},list);
         play(head,[{height:`${tall}px`},{height:'0px',paddingTop:'0px',paddingBottom:'0px',marginTop:'0px',marginBottom:'0px'}],{duration:300,delay:170,easing:SETTLE,fill:'forwards'},list);
-        const first=root.getComputedStyle?.(head)?.paddingTop,next=after?.classList?.contains('rd-date-group')&&!head.previousElementSibling?root.getComputedStyle?.(after)?.paddingTop:null;
+        const first=root.getComputedStyle?.(head)?.paddingTop,
+          next=after?.classList?.contains('rd-date-group')&&!head.previousElementSibling?root.getComputedStyle?.(after)?.paddingTop:null;
         if(first&&next&&first!==next)play(after,[{paddingTop:next},{paddingTop:first}],{duration:300,delay:170,easing:SETTLE,fill:'forwards'},list);
       }
       // scopes: cancelAll() (keyboard entry, resize, destroy) settles every active group's scopes.
@@ -1389,16 +1759,65 @@
     const reduce=()=>{syncTabs(false,true);if(media?.matches)cancelAll();};
     // A hidden page holds every loop where it is; shown again, they go on.
     const onVisibility=()=>art.visibility();
+    // Scrolls neither bubble nor leave a shadow root: caught on the way down, on the window (the page) and on the view
+    // itself (the workspace column and anything else inside it).
+    const onScroll=()=>{if(!dead)art.scrolling();};
     media?.addEventListener?.('change',reduce);
     root.addEventListener?.('resize',cancelAll);
+    root.addEventListener?.('scroll',onScroll,{passive:true,capture:true});
+    container.addEventListener?.('scroll',onScroll,{passive:true,capture:true});
     root.document?.addEventListener?.('visibilitychange',onVisibility);
-    return {syncTabs,snapshot,reveal,leave,place,ink,clearGhosts,cancel:cancelAll,activity:()=>{if(!dead)art.activity();},busy:()=>{if(!dead)art.busy?.();},
-      destroy(){dead=true;cancelAll();layer?.remove?.();layer=null;observer?.disconnect();media?.removeEventListener?.('change',reduce);root.removeEventListener?.('resize',cancelAll);root.document?.removeEventListener?.('visibilitychange',onVisibility);}};
+    return {syncTabs,snapshot,reveal,leave,place,ink,clearGhosts,cancel:cancelAll,activity:()=>{
+      if(!dead)art.activity();
+    },busy:()=>{if(!dead)art.busy?.();},answered:()=>{if(!dead)art.answered?.();},scrolling:onScroll,
+      destroy(){
+        dead=true;
+        cancelAll();
+        layer?.remove?.();
+        layer=null;
+        observer?.disconnect();
+        media?.removeEventListener?.('change',reduce);
+        root.removeEventListener?.('resize',cancelAll);
+        root.removeEventListener?.('scroll',onScroll,{passive:true,capture:true});
+        container.removeEventListener?.('scroll',onScroll,{passive:true,capture:true});
+        root.document?.removeEventListener?.('visibilitychange',onVisibility);
+      }};
   }
   // limits: the budgets the tests pin (every UI duration 420ms or less; the art film is decorative and tracked apart).
-  root.ReserveMotion={create,springLinear,penPlan,loopSpec,loopFrames,rigsOf,cycleOf,easings:{glide:GLIDE,settle:SETTLE,fade:FADE,letgo:LETGO,release:RELEASE,pen:PEN,bloom:BLOOM,loop:LOOP_EASE,sine:SINE},
+  root.ReserveMotion={create,onFilmTick:fn=>{
+    if(typeof fn!=='function')return ()=>{};
+    FILM_TICKS.add(fn);
+    return ()=>{FILM_TICKS.delete(fn);};
+  },
+  springLinear,
+  penPlan,
+  loopSpec,
+  loopFrames,
+  rigsOf,
+  cycleOf,
+  easings:{glide:GLIDE,settle:SETTLE,fade:FADE,letgo:LETGO,release:RELEASE,pen:PEN,bloom:BLOOM,loop:LOOP_EASE,sine:SINE},
     limits:{fadeMs:UI_FADE_MS,stale:STALE,glidePx:GLIDE_PX,glideRows:GLIDE_ROWS,maxUiMs:420},surfaces:SURFACES.map(({key,host,pseudo})=>({key,host,pseudo})),
     frames:{id:FRAME_ID,timing:FRAME_T,box:FRAME_BOX},
-    art:{id:ART_ID,loopId:ART_LOOP_ID,filmFps:FILM_FPS,briskMs:ART_BRISK_MS,idleMs:ART_IDLE_MS,maxN:LOOP_MAX_N,eases:LOOP_EASES,frames:ART_FRAMES,living:ART_LIVING,speed:ART_SPEED,pen:ART_PEN,slice:ART_SLICE,sliceBudget,seenMargin:ART_SEEN_MARGIN,timing:ART_T,scenes:ART_SCENES,railSpread:ART_RAIL_SPREAD,types:LOOP_TYPES}};
+    art:{
+      id:ART_ID,
+      loopId:ART_LOOP_ID,
+      filmFps:FILM_FPS,
+      busyMs:ART_BUSY_MS,
+      scrollMs:ART_SCROLL_MS,
+      idleMs:ART_IDLE_MS,
+      maxN:LOOP_MAX_N,
+      eases:LOOP_EASES,
+      frames:ART_FRAMES,
+      living:ART_LIVING,
+      speed:ART_SPEED,
+      pen:ART_PEN,
+      slice:ART_SLICE,
+      sliceBudget,
+      seenMargin:ART_SEEN_MARGIN,
+      timing:ART_T,
+      scenes:ART_SCENES,
+      railSpread:ART_RAIL_SPREAD,
+      types:LOOP_TYPES
+    }};
   if(typeof module!=='undefined'&&module.exports)module.exports=root.ReserveMotion;
 })(globalThis);

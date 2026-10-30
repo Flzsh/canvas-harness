@@ -5,7 +5,8 @@
  let stop=()=>{};
  function load(){
  const Art=root.ReserveCourseNavArt,KEY='reserve:appearance';
- const eligible=()=>root.top===root&&root.ReserveSite?.supported(root.location?.href)&&!root.ReserveSite.vanillaPage(root.location)&&/^\/courses\/[^/]+(?:\/|$)/.test(root.location.pathname);
+ const eligible=()=>
+   root.top===root&&root.ReserveSite?.supported(root.location?.href)&&!root.ReserveSite.vanillaPage(root.location)&&/^\/courses\/[^/]+(?:\/|$)/.test(root.location.pathname);
  if(!Art||!eligible())return;
  // At once, before Canvas paints its menu: the drawn layout from the first frame (course-nav.css comes with the page).
  root.document.documentElement.classList.add('reserve-course-nav');

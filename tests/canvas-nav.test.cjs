@@ -2,6 +2,8 @@
 // Canvas's own menu bar drawn in the workspace's style (extension/canvas-nav.js and canvas-nav.css).
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const ext=path.join(__dirname,'../extension'),read=f=>fs.readFileSync(path.join(ext,f),'utf8');
+// scripts/readable-lines.cjs spreads dense code over several lines (whitespace only); match the code without them.
+const compact=text=>text.replace(/\n[ \t]*/g,'');
 const Nav=require('../extension/canvas-nav.js'),manifest=JSON.parse(read('manifest.json'));
 
 test('Canvas items are known by their link ids, Studio by its label; anything else keeps Canvas’s icon',()=>{
@@ -86,7 +88,7 @@ test('the layouts: drawer by default (it moves the page aside), full height, or 
 // The user (2026-10-15) could not find the choice in the toolbar popup: it is in Make it yours too, and any change
 // applies to every open Canvas page at once, with no motion while it switches.
 test('Make it yours offers the four menu bar choices, stored where the popup keeps it, and open pages switch at once',()=>{
- const ui=read('customize-ui.js'),dash=read('dashboard.js'),js=read('canvas-nav.js'),css=read('canvas-nav.css');
+ const ui=compact(read('customize-ui.js')),dash=compact(read('dashboard.js')),js=compact(read('canvas-nav.js')),css=read('canvas-nav.css');
  assert.match(ui,/choices\('canvasNav','Canvas menu bar',\[\['drawn','From the left edge'[\s\S]*?\['shown','Full height'[\s\S]*?\['top','Across the top'[\s\S]*?\['original','Canvas\u2019s own'[\s\S]*?\{value:c\.canvasNav\|\|'drawn',cols:2,field:'canvas-nav'\}\)/);
  assert.match(dash,/if\(field==='canvas-nav'\)\{const value=event\.target\.value;if\(!NAV_CHOICES\.includes\(value\)\)return;canvasNav=value;root\.chrome\?\.storage\?\.local\?\.set\?\.\(\{'reserve:canvasNav':value\}\)/);
  assert.match(dash,/root\.chrome\?\.storage\?\.onChanged\?\.addListener\?\.\(navChanged\)/);assert.match(dash,/removeListener\?\.\(navChanged\)/);
@@ -126,4 +128,51 @@ test('available storage listeners still switch the open page and ignore unrelate
  f.change({'reserve:canvasNav':{newValue:'shown'}});assert.equal(f.classes.has('chn-nav'),true);assert.equal(f.html.dataset.chnLayout,'column');
  f.change({'reserve:canvasNav':{newValue:'top'}});assert.equal(f.html.dataset.chnLayout,'top');
  f.change({'reserve:canvasNav':{newValue:'original'}});assert.equal(f.classes.has('chn-nav'),false);assert.equal(f.html.dataset.chnLayout,undefined);
+});
+
+test('on the dashboard the bar’s two edges are both read before either is written, so the page restyles once, not twice',()=>{
+ const src=read('canvas-nav.js'),from=src.indexOf('const sync=()=>{',src.indexOf('function followWorkspace'));
+ assert.ok(from>0,'followWorkspace has its sync step');
+ const body=src.slice(from,src.indexOf('const later=',from));
+ const make=new Function('rd','root','html','stopped','readPalette','applyPalette','store','saved','PALETTE','lastPalette',body+'return sync;');
+ const run=({top=62,bottom=786,scrollY=0,innerHeight=800,shown=true}={})=>{
+  const log=[],box=(name,rect)=>({getClientRects:()=>{log.push('read '+name);return shown?[rect]:[];},getBoundingClientRect:()=>{log.push('read '+name);return rect;}});
+  const parts={'.rd-toolbar':box('bar',{top,bottom:top+40}),'.rd-course-rail':box('rail',{top:120,bottom})};
+  const html={style:{setProperty:(k,v)=>log.push('write '+k+' '+v)}};
+  make({querySelector:q=>parts[q]||null},{scrollY,innerHeight},html,false,()=>({}),()=>{},{set:()=>Promise.resolve()},{},'p','{}')();
+  return log;
+ };
+ const log=run(),firstWrite=log.findIndex(l=>l.startsWith('write'));
+ assert.deepEqual(log.slice(firstWrite),['write --chn-top 62px','write --chn-bottom 14px'],'the same two values as before');
+ assert.ok(log.slice(0,firstWrite).filter(l=>l.startsWith('read')).length>=4&&!log.slice(firstWrite).some(l=>l.startsWith('read')),'every layout read comes before the first write');
+ assert.deepEqual(run({top:200,bottom:700}),['read bar','read bar','read rail','read rail'],'out-of-range edges are left alone');
+ assert.deepEqual(run({scrollY:40}),[],'a scrolled page is not measured');
+ assert.deepEqual(run({shown:false}),['read bar','read rail'],'a hidden bar is not measured');
+});
+
+// The dashboard now writes only attributes that changed, so its old same-value writes no longer re-sync the bar
+// after every render. The bar must still follow a new font, surface, scene or kit, and a host shown late or a box replaced.
+test('on the dashboard the bar follows the workspace’s font, surface, scene and kit, and measures again when its boxes show or change',()=>{
+ const src=read('canvas-nav.js'),from=src.indexOf('function followWorkspace(){'),to=src.indexOf('\n  }\n',from)+4;
+ assert.ok(from>0&&to>from,'followWorkspace is found');
+ const timers=[],intervals=[],observers=[],sizes=[],events={},writes=[],applied=[];let font='Segoe UI',shown=false;
+ const box=(rect)=>({getClientRects:()=>shown?[rect]:[],getBoundingClientRect:()=>rect});
+ const parts={'.rd-toolbar':box({top:62,bottom:102}),'.rd-course-rail':box({top:120,bottom:786})};
+ const rd={dataset:{},querySelector:q=>parts[q]||null};
+ const root={scrollY:0,innerHeight:800,setInterval:fn=>{intervals.push(fn);return intervals.length;},clearInterval(){},setTimeout:fn=>{timers.push(fn);return timers.length;},
+  ResizeObserver:class{constructor(fn){this.fn=fn;this.els=[];sizes.push(this);}observe(el){this.els.push(el);}disconnect(){this.els=[];this.off=true;}}};
+ class MO{constructor(fn){this.fn=fn;observers.push(this);}observe(el,options){this.el=el;this.options=options;}disconnect(){}}
+ const make=new Function('root','workspace','MutationObserver','listen','readPalette','applyPalette','store','saved','PALETTE','html',
+  'let stopped=false,lastPalette="",workspaceTimer,workspaceObserver,workspaceSizes=null,workspaceQueued=0;'+src.slice(from,to)+'return followWorkspace;');
+ make(root,()=>rd,MO,(target,type,fn)=>{events[type]=fn;},()=>({font}),p=>applied.push(p.font),{set:()=>Promise.resolve()},{},'p',{style:{setProperty:(k,v)=>writes.push(k+' '+v)}})();
+ const flush=()=>{while(timers.length)timers.shift()();};
+ intervals[0]();assert.deepEqual(applied,['Segoe UI']);assert.deepEqual(writes,[],'a hidden host has nothing to measure yet');
+ const filter=observers[0].options.attributeFilter;
+ for(const name of ['data-font','data-surface-style','data-scene-theme','data-theme-kit','data-page-tint','data-theme'])assert.ok(filter.includes(name),name+' is followed');
+ const watcher=sizes.at(-1);assert.deepEqual(watcher.els,[parts['.rd-toolbar'],parts['.rd-course-rail']],'both measured boxes are watched for size');
+ shown=true;watcher.fn([]);flush();assert.deepEqual(writes,['--chn-top 62px','--chn-bottom 14px'],'shown later, the edges are measured then');
+ font='Calibri';observers[0].fn([{attributeName:'data-font'}]);flush();assert.deepEqual(applied,['Segoe UI','Calibri'],'a new interface font reaches the bar');
+ const rail=box({top:120,bottom:780});parts['.rd-course-rail']=rail;watcher.fn([]);flush();
+ assert.ok(watcher.off&&sizes.at(-1).els.includes(rail),'a replaced rail is watched instead of the old one');assert.equal(writes.at(-1),'--chn-bottom 20px');
+ root.scrollY=300;events.scroll();assert.equal(timers.length,0,'scrolling down does nothing');root.scrollY=0;events.scroll();assert.equal(timers.length,1,'back at the top it measures again');
 });

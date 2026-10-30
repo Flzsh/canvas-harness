@@ -8,15 +8,30 @@
  const defaults=()=>({theme:'light',motion:'gentle',nightArt:0,pet:true,sceneTheme:''});
  let pending=Promise.resolve();
  function queue(fn){const next=pending.catch(()=>{}).then(fn);pending=next;return next;}
- const valid=(key,item)=>key==='theme'?['light','dark'].includes(item):key==='motion'?['gentle','still','off'].includes(item):key==='nightArt'?Number.isInteger(item)&&item>=0&&item<=100:key==='sceneTheme'?SCENES.includes(item):key==='pet'&&typeof item==='boolean';
+ const valid=(key,item)=>
+  key==='theme'?
+   ['light','dark'].includes(item):
+   key==='motion'?['gentle','still','off'].includes(item):key==='nightArt'?Number.isInteger(item)&&item>=0&&item<=100:key==='sceneTheme'?SCENES.includes(item):key==='pet'&&typeof item==='boolean';
  function patch(value){
   if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Choose a valid preference.');
   const out={};
   for(const [key,item]of Object.entries(value)){if(!valid(key,item))throw Error('Invalid '+key+' preference.');out[key]=item;}
   return out;
  }
- function fromData(data){return {theme:data.settings?.theme==='dark'?'dark':'light',motion:data.settings?.motion||'gentle',nightArt:data.settings?.nightArt??0,pet:data.pet?.enabled!==false,sceneTheme:SCENES.includes(data.settings?.sceneTheme)?data.settings.sceneTheme:''};}
- function apply(data,value){Object.assign(data.settings,{theme:value.theme,motion:value.motion,nightArt:value.nightArt,sceneTheme:value.sceneTheme});data.pet.enabled=value.pet;return data;}
+ function fromData(data){
+  return {
+   theme:data.settings?.theme==='dark'?'dark':'light',
+   motion:data.settings?.motion||'gentle',
+   nightArt:data.settings?.nightArt??0,
+   pet:data.pet?.enabled!==false,
+   sceneTheme:SCENES.includes(data.settings?.sceneTheme)?data.settings.sceneTheme:''
+  };
+ }
+ function apply(data,value){
+  Object.assign(data.settings,{theme:value.theme,motion:value.motion,nightArt:value.nightArt,sceneTheme:value.sceneTheme});
+  data.pet.enabled=value.pet;
+  return data;
+ }
  function personal(data){const out=clone(data);for(const key of ['theme','motion','nightArt','sceneTheme'])delete out.settings[key];delete out.pet.enabled;return out;}
  // Stored values: keep each valid field, fall back to the default for anything damaged.
  function clean(value){const out=defaults();if(value&&typeof value==='object')for(const key of FIELDS)if(valid(key,value[key]))out[key]=value[key];return out;}
@@ -84,7 +99,10 @@
   async function set(value){await write(adapter,value);return load();}
   const changed=(changes,area)=>{if(area==='local'&&changes[KEY])load().catch(()=>{});};
   events?.addListener(changed);
-  return {load,set,get:()=>clone(current),subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn);},destroy(){dead=true;revision++;listeners.clear();events?.removeListener(changed);}};
+  return {load,set,get:()=>clone(current),subscribe:fn=>{
+   listeners.add(fn);
+   return()=>listeners.delete(fn);
+  },destroy(){dead=true;revision++;listeners.clear();events?.removeListener(changed);}};
  }
  const api={KEY,run:queue,create,patch,fromData,apply,personal,read,write,serve,messenger};root.ReservePagePreferences=api;
  if(typeof module==='object'&&module.exports)module.exports=api;

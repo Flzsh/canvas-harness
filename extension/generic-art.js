@@ -110,7 +110,7 @@
  const advance=ch=>GLYPHS[ch]?GLYPHS[ch][0]:/[\u2E80-\u9FFF\uAC00-\uD7AF\u3040-\u30FF]/u.test(ch)||ch.codePointAt(0)>=0x1F000?25:15;
  const measure=text=>letters(text).reduce((sum,ch)=>sum+advance(ch),0);
  function wordLines(label,count){
-  // Lines break at spaces and after a hyphen ("CL Engineering-" / "Lindqvist"), never inside a word here.
+  // Lines break at spaces and after a hyphen ("Honors Engineering-" / "Workshop"), never inside a word here.
   const words=[];
   for(const [i,word] of label.split(' ').entries())word.split(/(?<=-)(?=[^-])/).forEach((part,j)=>words.push({text:part,gap:j?0:i?8:0}));
   if(words.length<count||words.length>192)return null;
@@ -184,10 +184,33 @@
  function info(label){const drawing=layout(label);return {width:drawing.width,cycle:drawing.cycle};}
  function lettering(line,fontSize){
   const chars=letters(line.label),scale=fontSize/24;
-  const opening='<g class="rd-generic-line" data-label="'+escape(line.label)+'" data-join="'+escape(line.join)+'" data-font-size="'+n(fontSize)+'" data-line-width="'+n(line.width)+'" transform="translate('+n(line.x)+' '+n(line.y)+')">';
+  const opening='<g class="rd-generic-line" data-label="'+
+    escape(line.label)+
+    '" data-join="'+
+    escape(line.join)+
+    '" data-font-size="'+
+    n(fontSize)+
+    '" data-line-width="'+
+    n(line.width)+
+    '" transform="translate('+
+    n(line.x)+
+    ' '+
+    n(line.y)+
+    ')">';
   if(chars.some(ch=>!GLYPHS[ch])){
    // Native font fallback handles every other alphabet without an asset request or lost spelling.
-   return opening+'<text x="0" y="'+n(fontSize*.89)+'" fill="'+INK+'" font-family="ui-rounded, &apos;Segoe Print&apos;, &apos;Comic Sans MS&apos;, cursive, sans-serif" font-weight="600" font-size="'+n(fontSize)+'" textLength="'+n(line.width)+'" lengthAdjust="spacingAndGlyphs">'+escape(line.label)+'</text></g>';
+   return opening+
+     '<text x="0" y="'+
+     n(fontSize*.89)+
+     '" fill="'+
+     INK+
+     '" font-family="ui-rounded, &apos;Segoe Print&apos;, &apos;Comic Sans MS&apos;, cursive, sans-serif" font-weight="600" font-size="'+
+     n(fontSize)+
+     '" textLength="'+
+     n(line.width)+
+     '" lengthAdjust="spacingAndGlyphs">'+
+     escape(line.label)+
+     '</text></g>';
   }
   let x=0,paths='';
   for(const ch of chars){
@@ -199,14 +222,163 @@
  }
  function title(label,{id='generic',place='heading',motion=true}={}){
   const d=layout(label),w=d.width,t=d.top,px=w-111;
-  const panel='M25 '+n(t+2)+'Q'+n(w*.47)+' '+n(t-1)+' '+n(w-39)+' '+n(t+1)+'Q'+n(w-24)+' '+n(t+2)+' '+n(w-24)+' '+n(t+16)+'L'+n(w-25)+' 189Q'+n(w-25)+' 203 '+n(w-39)+' 204Q'+n(w*.45)+' 207 27 205Q13 204 14 190L15 '+n(t+17)+'Q15 '+n(t+3)+' 25 '+n(t+2)+'Z';
+  const panel='M25 '+
+    n(t+2)+
+    'Q'+
+    n(w*.47)+
+    ' '+
+    n(t-1)+
+    ' '+
+    n(w-39)+
+    ' '+
+    n(t+1)+
+    'Q'+
+    n(w-24)+
+    ' '+
+    n(t+2)+
+    ' '+
+    n(w-24)+
+    ' '+
+    n(t+16)+
+    'L'+
+    n(w-25)+
+    ' 189Q'+
+    n(w-25)+
+    ' 203 '+
+    n(w-39)+
+    ' 204Q'+
+    n(w*.45)+
+    ' 207 27 205Q13 204 14 190L15 '+
+    n(t+17)+
+    'Q15 '+
+    n(t+3)+
+    ' 25 '+
+    n(t+2)+
+    'Z';
   const ground='<g class="art-ground" data-ground="214"><path fill="'+SAGE+'" opacity=".17" d="M9 211Q'+n(w*.42)+' 207 '+n(w-15)+' 212L'+n(w-9)+' 219Q'+n(w*.52)+' 220 8 217Z"/><path fill="none" stroke="'+INK+'" stroke-width=".85" opacity=".19" d="M7 214Q'+n(w*.52)+' 214.8 '+n(w-8)+' 214"/></g>';
   const paper='<g class="art-head"><path fill="'+PAPER+'" d="'+panel+'"/></g>';
-  const wash='<g class="art-wash"><path fill="'+SAGE+'" opacity=".5" d="M27 '+n(t+21)+'L34 '+n(t+20)+'L33 177L26 178Z"/><path fill="'+OCHRE+'" opacity=".4" d="M'+n(w-48)+' '+n(t+2)+'L'+n(w-26)+' '+n(t+22)+'L'+n(w-25)+' '+n(t+16)+'Q'+n(w-24)+' '+n(t+3)+' '+n(w-39)+' '+n(t+1)+'Z"/></g>';
-  const outline='<g class="art-ink" fill="none" stroke="'+INK+'" stroke-linecap="round" stroke-linejoin="round"><path stroke-width="1.5" opacity=".78" d="'+panel+'"/><path stroke-width=".85" opacity=".33" d="M34 201Q'+n(w*.46)+' 203 '+n(w-53)+' 201M'+n(w-48)+' '+n(t+3)+'L'+n(w-46)+' '+n(t+20)+'L'+n(w-27)+' '+n(t+22)+'"/><path stroke-width="1.1" opacity=".55" d="M22 '+n(t+15)+'L25 '+n(t+11)+'M22 '+n(t+23)+'L25 '+n(t+19)+'"/></g>';
+  const wash='<g class="art-wash"><path fill="'+
+    SAGE+
+    '" opacity=".5" d="M27 '+
+    n(t+21)+
+    'L34 '+
+    n(t+20)+
+    'L33 177L26 178Z"/><path fill="'+
+    OCHRE+
+    '" opacity=".4" d="M'+
+    n(w-48)+
+    ' '+
+    n(t+2)+
+    'L'+
+    n(w-26)+
+    ' '+
+    n(t+22)+
+    'L'+
+    n(w-25)+
+    ' '+
+    n(t+16)+
+    'Q'+
+    n(w-24)+
+    ' '+
+    n(t+3)+
+    ' '+
+    n(w-39)+
+    ' '+
+    n(t+1)+
+    'Z"/></g>';
+  const outline='<g class="art-ink" fill="none" stroke="'+
+    INK+
+    '" stroke-linecap="round" stroke-linejoin="round"><path stroke-width="1.5" opacity=".78" d="'+
+    panel+
+    '"/><path stroke-width=".85" opacity=".33" d="M34 201Q'+
+    n(w*.46)+
+    ' 203 '+
+    n(w-53)+
+    ' 201M'+
+    n(w-48)+
+    ' '+
+    n(t+3)+
+    'L'+
+    n(w-46)+
+    ' '+
+    n(t+20)+
+    'L'+
+    n(w-27)+
+    ' '+
+    n(t+22)+
+    '"/><path stroke-width="1.1" opacity=".55" d="M22 '+
+    n(t+15)+
+    'L25 '+
+    n(t+11)+
+    'M22 '+
+    n(t+23)+
+    'L25 '+
+    n(t+19)+
+    '"/></g>';
   const rig=motion===false?'':' class="art-loop" data-loop="keys" data-period="12" data-phase=".14" data-origin="'+n(px+32)+' 206" data-ease="soft" data-keys="0.18:0 -0.4 -0.65 1 1 soft;0.46:0 0.25 0.4 1 1 soft;0.76:;0.9:;"';
-  const pencil='<g'+rig+'><g class="art-wash"><path fill="'+CLAY+'" opacity=".85" d="M'+px+' 204L'+n(px+53)+' 203L'+n(px+53)+' 208L'+n(px+1)+' 209Z"/><path fill="'+OCHRE+'" d="M'+n(px+53)+' 203L'+n(px+63)+' 205.6L'+n(px+53)+' 208Z"/></g><g class="art-ink" fill="none" stroke="'+INK+'" stroke-width=".95" stroke-linecap="round" opacity=".72"><path d="M'+px+' 204L'+n(px+53)+' 203L'+n(px+63)+' 205.6L'+n(px+53)+' 208L'+n(px+1)+' 209M'+n(px+53)+' 203L'+n(px+53)+' 208M'+n(px+60)+' 205L'+n(px+63)+' 205.6M'+n(px+6)+' 207L'+n(px+47)+' 206"/></g></g>';
-  return '<svg class="rd-art rd-generic-title" data-crop="title" data-place="'+token(place,'heading')+'" data-rd-key="art-'+token(id,'generic')+'-generic-title" data-cycle="'+(motion===false?0:CYCLE)+'" viewBox="0 0 '+w+' 240" preserveAspectRatio="xMinYMax meet" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><title>'+escape(d.label)+'</title><metadata>Original creator: Flzsh. SPDX-License-Identifier: GPL-3.0-only.</metadata>'+ground+paper+wash+outline+d.lines.map(line=>lettering(line,d.fontSize)).join('')+pencil+'</svg>';
+  const pencil='<g'+
+    rig+
+    '><g class="art-wash"><path fill="'+
+    CLAY+
+    '" opacity=".85" d="M'+
+    px+
+    ' 204L'+
+    n(px+53)+
+    ' 203L'+
+    n(px+53)+
+    ' 208L'+
+    n(px+1)+
+    ' 209Z"/><path fill="'+
+    OCHRE+
+    '" d="M'+
+    n(px+53)+
+    ' 203L'+
+    n(px+63)+
+    ' 205.6L'+
+    n(px+53)+
+    ' 208Z"/></g><g class="art-ink" fill="none" stroke="'+
+    INK+
+    '" stroke-width=".95" stroke-linecap="round" opacity=".72"><path d="M'+
+    px+
+    ' 204L'+
+    n(px+53)+
+    ' 203L'+
+    n(px+63)+
+    ' 205.6L'+
+    n(px+53)+
+    ' 208L'+
+    n(px+1)+
+    ' 209M'+
+    n(px+53)+
+    ' 203L'+
+    n(px+53)+
+    ' 208M'+
+    n(px+60)+
+    ' 205L'+
+    n(px+63)+
+    ' 205.6M'+
+    n(px+6)+
+    ' 207L'+
+    n(px+47)+
+    ' 206"/></g></g>';
+  return '<svg class="rd-art rd-generic-title" data-crop="title" data-place="'+
+    token(place,'heading')+
+    '" data-rd-key="art-'+
+    token(id,'generic')+
+    '-generic-title" data-cycle="'+
+    (motion===false?0:CYCLE)+
+    '" viewBox="0 0 '+
+    w+
+    ' 240" preserveAspectRatio="xMinYMax meet" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><title>'+
+    escape(d.label)+
+    '</title><metadata>Original creator: Flzsh. SPDX-License-Identifier: GPL-3.0-only.</metadata>'+
+    ground+
+    paper+
+    wash+
+    outline+
+    d.lines.map(line=>lettering(line,d.fontSize)).join('')+
+    pencil+
+    '</svg>';
  }
  function frame(id){
   // One inset sketch. The duplicate ink path is hidden by the existing reveal CSS, not a second frame.

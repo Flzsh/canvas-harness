@@ -93,3 +93,20 @@ test('AI file reads use the course endpoint and never return locked or hidden fi
  record={id:5,display_name:'Study notes.pdf'};assert.deepEqual(await client.readFile('7','5',{user:{id:9}}),record);
  assert.ok(calls.filter(x=>!x.includes('/profile')).every(x=>x.endsWith('/api/v1/courses/7/files/5')));
 });
+test('the saved snapshot keeps only the account ID and name from the Canvas profile',async()=>{
+ const full={
+  id:9,name:'Test Student',short_name:'Test',sortable_name:'Student, Test',
+  primary_email:'student@example.edu',login_id:'tstudent',sis_user_id:'S123',avatar_url:'https://example.edu/a.png',
+  calendar:{ics:'https://school.instructure.com/feeds/calendars/user_secret.ics'},time_zone:'America/New_York',locale:'en'
+ };
+ const client=createClient({origin:'https://school.instructure.com',fetchImpl:async url=>{
+  if(url.includes('/profile'))return response(full);
+  return response([]);
+ }});
+ assert.deepEqual(await client.profile(),{id:9,name:'Test Student',short_name:'Test'});
+ const snapshot=await client.loadSnapshot();
+ assert.deepEqual(snapshot.user,{id:9,name:'Test Student',short_name:'Test'});
+ assert.doesNotMatch(JSON.stringify(snapshot),/student@example|tstudent|S123|avatar|feeds\/calendars/);
+ const bare=createClient({origin:'https://school.instructure.com',fetchImpl:async()=>response({id:'4',name:null})});
+ assert.deepEqual(await bare.profile(),{id:'4'});
+});

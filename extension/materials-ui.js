@@ -21,13 +21,20 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const courses=new Map(),pages=new Map(),pending=new Map(),versions=new Map(),controller=new AbortController();
     let dead=false,activeCourse='',focusRequest=null;
     const views=new Map();
-    function view(id=activeCourse){const key=String(id);if(!views.has(key))views.set(key,{query:'',category:'all',selected:null,message:'',custom:{title:'',url:''},pageScroll:0,open:new Set()});return views.get(key);}
+    function view(id=activeCourse){
+      const key=String(id);
+      if(!views.has(key))views.set(key,{query:'',category:'all',selected:null,message:'',custom:{title:'',url:''},pageScroll:0,open:new Set()});
+      return views.get(key);
+    }
     function activate(id){id=String(id||'');if(!/^\d+$/.test(id)&&id!=='all')return;if(id!==activeCourse){activeCourse=id;focusRequest=null;}}
     function clearViews(){views.clear();activeCourse='';focusRequest=null;}
     function invalidate(error){dead=true;controller.abort();courses.clear();pages.clear();versions.clear();clearViews();onAuthError(error);}
     const change=()=>{if(!dead)onChange();};
     const safe=value=>{try{const u=new URL(value,(globalThis.ReserveSite.origin()));return ['https:','http:'].includes(u.protocol)&&!u.username&&!u.password?u.href:'';}catch{return '';}};
-    const pinURL=item=>{const match=String(item.id).match(/^module:\d+:(\d+)$/);return match&&store.owner.origin===(globalThis.ReserveSite.origin())?(globalThis.ReserveSite.origin()+"/courses/")+item.courseId+'/modules/items/'+match[1]:safe(item.url);};
+    const pinURL=item=>{
+      const match=String(item.id).match(/^module:\d+:(\d+)$/);
+      return match&&store.owner.origin===(globalThis.ReserveSite.origin())?(globalThis.ReserveSite.origin()+"/courses/")+item.courseId+'/modules/items/'+match[1]:safe(item.url);
+    };
     const pins=id=>(store.get().resourcePins||[]).filter(p=>p.courseId===String(id)).map(p=>({...p,url:pinURL(p)}));
     const button=(name,label,id='',courseId='',extra='')=>name==='capture'&&!enabled('tools')?'':`<button type="button" class="rd-text-button" data-rd-action="material-${name}" data-resource="${E(id)}" data-course="${E(courseId)}" ${extra}>${label}</button>`;
     function pdfAttributes(item,courseId){
@@ -39,10 +46,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(!/\.pdf$/i.test(name.trim())&&!/^application\/pdf(?:\s*;|$)/i.test(String(file?.['content-type']||file?.content_type||'')))return '';
       return ` data-pdf-file-id="${E(fileId)}" data-pdf-course-id="${E(course)}" data-pdf-name="${E(name)}" data-pdf-mime="application/pdf"`;
     }
-    const links=(items)=>items.map(p=>{const title=M.displayTitle(p.title);return `<a href="${E(safe(p.url))}" target="_blank" rel="noopener noreferrer"${title!==String(p.title||'').trim()?` title="${E(p.title)}"`:''}><span>${E(title)}</span><small>${E(p.category||'Saved link')}</small></a>`;}).join('');
+    const links=(items)=>items.map(p=>{
+      const title=M.displayTitle(p.title);
+      return `<a href="${E(safe(p.url))}" target="_blank" rel="noopener noreferrer"${title!==String(p.title||'').trim()?` title="${E(p.title)}"`:''}><span>${E(title)}</span><small>${E(p.category||'Saved link')}</small></a>`;
+    }).join('');
     function normalize(raw){const result=M.normalizeCatalog(raw);return Array.isArray(result)?result:result.items||[];}
     function accept(raw,id){
-      if(raw.origin!==store.owner.origin||String(raw.accountId)!==String(store.owner.accountId)||String(raw.courseId)!==String(id))throw Object.assign(Error('Your Canvas account changed. Reload Canvas.'),{code:'auth'});
+      if(raw.origin!==store.owner.origin||String(raw.accountId)!==String(store.owner.accountId)||String(raw.courseId)!==String(id))
+        throw Object.assign(Error('Your Canvas account changed. Reload Canvas.'),{code:'auth'});
       versions.set(String(id),(versions.get(String(id))||0)+1);
       for(const key of pages.keys())if(key.startsWith(String(id)+':'))pages.delete(key);
       const current=view(id),items=normalize(raw);current.selected=null;current.pageScroll=0;
@@ -55,7 +66,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const op=(async()=>{
         let entry=courses.get(id)||{items:[],raw:null};courses.set(id,{...entry,loading:true,error:''});change();
         try{
-          if(!force&&store.readResourceCache){const cached=await store.readResourceCache(id);if(dead)return;if(cached){accept(cached,id);const age=Date.now()-Date.parse(cached.fetchedAt);if(age>=0&&age<900000&&!cached.errors?.length){change();return;}entry=courses.get(id);courses.set(id,{...entry,loading:true});change();}}
+          if(!force&&store.readResourceCache){
+            const cached=await store.readResourceCache(id);
+            if(dead)return;
+            if(cached){
+              accept(cached,id);
+              const age=Date.now()-Date.parse(cached.fetchedAt);
+              if(age>=0&&age<900000&&!cached.errors?.length){change();return;}
+              entry=courses.get(id);
+              courses.set(id,{...entry,loading:true});
+              change();
+            }
+          }
           if(!client?.loadCourseResources)throw Error('Open Canvas and refresh to load course materials.');
           const raw=await client.loadCourseResources(id,{user,signal:controller.signal});if(dead)return;accept(raw,id);
           try{await store.writeResourceCache?.(raw);}catch{if(!dead)view(id).message='Materials loaded. They could not be saved for a later visit.';}
@@ -65,10 +87,23 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       })();pending.set(id,op);op.finally(()=>pending.delete(id));return op;
     }
     function find(id,courseId){return courses.get(String(courseId))?.items.find(x=>x.id===id)||pins(courseId).find(x=>x.id===id);}
-    async function save(changeData,courseId=activeCourse){if(dead)return false;const target=view(courseId);try{await store.update(changeData);if(dead||views.get(String(courseId))!==target)return false;target.message='';change();return true;}catch(e){if(dead||views.get(String(courseId))!==target)return false;target.message=e.message||'The shortcut could not be saved.';change();return false;}}
+    async function save(changeData,courseId=activeCourse){
+      if(dead)return false;
+      const target=view(courseId);
+      try{
+        await store.update(changeData);
+        if(dead||views.get(String(courseId))!==target)return false;
+        target.message='';
+        change();
+        return true;
+      }catch(e){if(dead||views.get(String(courseId))!==target)return false;target.message=e.message||'The shortcut could not be saved.';change();return false;}
+    }
     async function openPage(item){
       if(dead||!item||item.locked)return;
-      const target=view(item.courseId);if(target.selected?.id!==item.id)target.pageScroll=0;target.selected={courseId:String(item.courseId),id:item.id};const key=item.courseId+':'+item.id;
+      const target=view(item.courseId);
+      if(target.selected?.id!==item.id)target.pageScroll=0;
+      target.selected={courseId:String(item.courseId),id:item.id};
+      const key=item.courseId+':'+item.id;
       if(String(item.courseId)===activeCourse)focusRequest={type:'title'};
       const version=versions.get(String(item.courseId));
       if(pages.has(key)){change();return;}
@@ -84,7 +119,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const template=document.createElement('template');template.innerHTML=body;
         const embeds=Array.from(template.content.querySelectorAll('iframe[src]')).map(e=>({url:safe(e.getAttribute('src')),title:e.getAttribute('title')||'Embedded document'})).filter(x=>x.url);
         pages.set(key,{title:page?.title||item.title,html:U.safeRichHTML(body),embeds,loading:false,url:safe(item.url)});
-      }catch(error){if(dead||versions.get(String(item.courseId))!==version)return;if(error.code==='auth'){invalidate(error);}else pages.set(key,{title:item.title,error:error.message||'This page could not load.'});}
+      }catch(error){
+        if(dead||versions.get(String(item.courseId))!==version)return;
+        if(error.code==='auth'){invalidate(error);}else pages.set(key,{title:item.title,error:error.message||'This page could not load.'});
+      }
       change();
     }
     function pagePanel(courseId){
@@ -101,7 +139,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const open=readable?`<button type="button" class="rd-row-open" data-rd-action="material-read" data-resource="${E(item.id)}" data-course="${E(courseId)}" aria-label="Read ${E(entry.title)}" data-read-row="true"${reading?' aria-current="true"':''}${tip(entry)}>${E(entry.title)}</button>`:`<a class="rd-row-open" href="${E(safe(item.url))}" target="_blank" rel="noopener noreferrer"${tip(entry)}${pdfAttributes(item,courseId)}>${E(entry.title)}&nbsp;<span aria-hidden="true">↗</span></a>`;
       const actions=`<span class="rd-material-actions">${root.CanvasHarnessContext?.selectButton(item,courseId,isSelected)||''}${readable?`<a class="rd-text-button" href="${E(safe(item.url))}" target="_blank" rel="noopener noreferrer" aria-label="Open ${E(entry.title)} in Canvas">Canvas <span aria-hidden="true">↗</span></a>`:''}${!item.locked?button('capture','Plan',item.id,courseId,`aria-label="Plan work from ${E(entry.title)}"`):''}${button('pin',saved?'Bookmarked':'Bookmark',item.id,courseId,`aria-label="${saved?'Remove bookmark:':'Bookmark'} ${E(entry.title)}" aria-pressed="${saved}"`)}</span>`;
       // The page open in the reader beside the list keeps its row on the tint.
-      return teacherRow(entry,{open:head?head(open):open,actions,tag,rowClass:[head?'rd-chapter-row':'',reading?'rd-teacher-row--open':''].filter(Boolean).join(' '),key:`material-row-${courseId}-${item.id}`,pdfAttrs:item=>pdfAttributes(item,courseId)});
+      return teacherRow(entry,{
+        open:head?head(open):open,
+        actions,
+        tag,
+        rowClass:[head?'rd-chapter-row':'',reading?'rd-teacher-row--open':''].filter(Boolean).join(' '),
+        key:`material-row-${courseId}-${item.id}`,
+        pdfAttrs:item=>pdfAttributes(item,courseId)
+      });
     }
     // Teacher materials read as the chapters of a book: the course's modules in Canvas order (numbered
     // unless the teacher's names already are), then its loose pages and files. Long chapters open on
@@ -125,7 +170,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       return `<section class="rd-material-group rd-chapter" data-rd-key="${E(key)}" aria-labelledby="${E(id)}"><h3 ${head}>${no}<span class="rd-chapter-name">${E(ch.name)}</span> <span class="rd-chapter-count">${count} ${count===1?'item':'items'}</span></h3><ul class="rd-chapter-items" id="${E(id)}-items">${rows.map(row=>materialRow(row,courseId)).join('')}</ul>${more}</section>`;
     }
     // "Saved just now", "Saved 5 min ago", then a date.
-    function savedAt(value){const ms=Date.parse(value||'');if(!Number.isFinite(ms))return '';const diff=Math.max(0,Date.now()-ms);return diff<60000?'Saved just now':diff<3600000?`Saved ${Math.floor(diff/60000)} min ago`:`Saved ${new Date(ms).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}`;}
+    function savedAt(value){
+      const ms=Date.parse(value||'');
+      if(!Number.isFinite(ms))return '';
+      const diff=Math.max(0,Date.now()-ms);
+      return diff<60000?'Saved just now':diff<3600000?`Saved ${Math.floor(diff/60000)} min ago`:`Saved ${new Date(ms).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}`;
+    }
     function renderLibrary(course,{sharedHeading=false}={}){
       if(dead)return '';
       if(!course)return '<section class="rd-work"><div class="rd-empty"><h2>Choose a course</h2><p>Select a course to see its worksheets, pages and schedules.</p></div></section>';
@@ -156,12 +206,19 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(dead||action==='material-capture'&&!enabled('tools'))return;
       const id=data.resource,courseId=data.course,item=find(id,courseId);
       if(action==='material-refresh'){load(courseId,{force:true});return;}
-      if(action==='material-capture'&&item&&!item.locked){onCapture({name:M.displayTitle(item.title),courseId:String(courseId),source:{kind:'material',title:item.title,url:pinURL(item)}});return;}
+      if(action==='material-capture'&&item&&!item.locked){
+        onCapture({name:M.displayTitle(item.title),courseId:String(courseId),source:{kind:'material',title:item.title,url:pinURL(item)}});
+        return;
+      }
       // "Show all 45" / "Show fewer": opening moves focus to the first item it revealed; closing keeps it on the control.
       if(action==='material-more'&&/^\d+$/.test(courseId||'')){
         const current=view(courseId),key=String(id||''),course=String(courseId);
         if(current.open.has(key)){current.open.delete(key);focusRequest={type:'more',action,courseId:course,id:key};}
-        else{current.open.add(key);const first=listing(course).chapters.find(ch=>ch.key===key)?.rows[PREVIEW]?.item.id;focusRequest=first?{type:'row',courseId:course,id:first}:null;}
+        else{
+          current.open.add(key);
+          const first=listing(course).chapters.find(ch=>ch.key===key)?.rows[PREVIEW]?.item.id;
+          focusRequest=first?{type:'row',courseId:course,id:first}:null;
+        }
         change();return;
       }
       // A chapter link moves focus to its chapter's head (dashboard.js scrolls it into view).
@@ -169,13 +226,51 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(action==='material-read'){openPage(item);return;}
       if(action==='material-close'){const current=view();focusRequest={type:'resource',...current.selected};current.selected=null;current.pageScroll=0;change();return;}
       if(action==='material-retry-page'){pages.delete(courseId+':'+id);openPage(item);return;}
-      if(action==='material-pin'&&item){save(d=>{const list=d.resourcePins||(d.resourcePins=[]),index=list.findIndex(p=>p.courseId===String(courseId)&&p.id===id);if(index>=0)list.splice(index,1);else list.push({id:item.id,courseId:String(courseId),title:item.title,url:pinURL(item),category:item.category,moduleName:item.moduleName});},courseId);return;}
+      if(action==='material-pin'&&item){
+        save(d=>{
+          const list=d.resourcePins||(d.resourcePins=[]),index=list.findIndex(p=>p.courseId===String(courseId)&&p.id===id);
+          if(index>=0)
+            list.splice(index,1);
+          else list.push({id:item.id,courseId:String(courseId),title:item.title,url:pinURL(item),category:item.category,moduleName:item.moduleName});
+        },courseId);
+        return;
+      }
       if(action==='material-add'&&/^\d+$/.test(courseId||'')){
         const current=view(courseId),draft={...current.custom},url=safe(draft.url.trim()),title=draft.title.trim();if(!url||!title){current.message='Enter a name and a valid web link.';change();return;}
-        save(d=>{const list=d.resourcePins||(d.resourcePins=[]);if(!list.some(p=>p.courseId===courseId&&p.url===url))list.push({id:'custom-'+(root.crypto?.randomUUID?.()||Date.now()),courseId,title,url,category:'My shortcut',moduleName:''});},courseId).then(ok=>{if(ok&&views.get(String(courseId))===current&&current.custom.title===draft.title&&current.custom.url===draft.url){current.custom={title:'',url:''};change();}});
+        save(d=>{
+          const list=d.resourcePins||(d.resourcePins=[]);
+          if(!list.some(p=>p.courseId===courseId&&p.url===url))list.push({id:'custom-'+(root.crypto?.randomUUID?.()||Date.now()),courseId,title,url,category:'My shortcut',moduleName:''});
+        },courseId).then(ok=>{
+          if(ok&&views.get(String(courseId))===current&&current.custom.title===draft.title&&current.custom.url===draft.url){current.custom={title:'',url:''};change();}
+        });
       }
     }
-    return {load,renderLibrary,renderRelated,handle,getCourse:id=>courses.get(String(id)),takeFocusRequest(){const value=focusRequest;focusRequest=null;return value;},input(field,value){if(dead)return;const current=view();if(field==='material-query')current.query=String(value).slice(0,200);if(field==='material-category')current.category=value;if(field==='material-title'){current.custom.title=String(value).slice(0,300);return;}if(field==='material-url'){current.custom.url=String(value).slice(0,2000);return;}change();},activate,rememberPageScroll(courseId,id,top){const current=view(courseId);if(current.selected?.id===id)current.pageScroll=Number.isFinite(top)?Math.max(0,Math.min(1000000,top)):0;},pageScroll(courseId,id){const current=view(courseId);return current.selected?.id===id?current.pageScroll:0;},reset(){const current=view();current.query='';current.category='all';current.selected=null;current.pageScroll=0;focusRequest=null;},destroy(){dead=true;controller.abort();courses.clear();pages.clear();clearViews();},getItems:id=>courses.get(String(id))?.items||[]};
+    return {load,renderLibrary,renderRelated,handle,getCourse:id=>courses.get(String(id)),takeFocusRequest(){
+      const value=focusRequest;
+      focusRequest=null;
+      return value;
+    },input(field,value){
+      if(dead)return;
+      const current=view();
+      if(field==='material-query')current.query=String(value).slice(0,200);
+      if(field==='material-category')current.category=value;
+      if(field==='material-title'){current.custom.title=String(value).slice(0,300);return;}
+      if(field==='material-url'){current.custom.url=String(value).slice(0,2000);return;}
+      change();
+    },activate,rememberPageScroll(courseId,id,top){
+      const current=view(courseId);
+      if(current.selected?.id===id)current.pageScroll=Number.isFinite(top)?Math.max(0,Math.min(1000000,top)):0;
+    },pageScroll(courseId,id){
+      const current=view(courseId);
+      return current.selected?.id===id?current.pageScroll:0;
+    },reset(){
+      const current=view();
+      current.query='';
+      current.category='all';
+      current.selected=null;
+      current.pageScroll=0;
+      focusRequest=null;
+    },destroy(){dead=true;controller.abort();courses.clear();pages.clear();clearViews();},getItems:id=>courses.get(String(id))?.items||[]};
   }
   root.ReserveMaterialsUI={create,row:teacherRow,tip};if(typeof module!=='undefined'&&module.exports)module.exports=root.ReserveMaterialsUI;
 })(globalThis);

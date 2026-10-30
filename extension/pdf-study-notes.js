@@ -6,7 +6,7 @@
  if(typeof module==='object'&&module.exports)module.exports=api;else root.ReservePdfStudyNotes=api;
 })(globalThis,function(model){
  'use strict';
- const clean=value=>String(value??'').replace(/\r\n?/g,'\n').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f‪-‮⁦-⁩]/g,'').trim();
+ const clean=value=>String(value??'').replace(/\r\n?/g,'\n').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g,'').trim();
  // Document text is literal, including text that looks like HTML, links or Markdown images.
  const markdown=value=>clean(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\\`*_{}\[\]()#+.!|~$-]/g,'\\$&');
  const LABELS={highlight:'Highlight',underline:'Underline',strike:'Strikethrough',note:'Note',text:'Text'};
@@ -25,7 +25,12 @@
   if(omitted)lines.push(`${omitted} drawing${omitted===1?'':'s'} or mark${omitted===1?'':'s'} without text omitted.`);
   if(!entries.length)lines.push('','No text highlights, underlines or margin notes to export.');
   let page=-1;
-  for(const {record:r}of entries){if(r.page!==page){page=r.page;lines.push('',(md?'## ':'')+'Page '+(page+1));}const label=LABELS[r.type];lines.push('',md?'**'+label+'**':label+':');for(const line of escape(r.text).split('\n'))lines.push(md?'> '+line:line);}
+  for(const {record:r}of entries){
+   if(r.page!==page){page=r.page;lines.push('',(md?'## ':'')+'Page '+(page+1));}
+   const label=LABELS[r.type];
+   lines.push('',md?'**'+label+'**':label+':');
+   for(const line of escape(r.text).split('\n'))lines.push(md?'> '+line:line);
+  }
   const stem=title.replace(/\.[^.]*$/,'').replace(/[<>:"/\\|?*]/g,'_').replace(/[. ]+$/g,'').slice(0,110)||'Document';
   return {body:lines.join('\n')+'\n',name:stem+'-study-notes.'+(md?'md':'txt'),mime:(md?'text/markdown':'text/plain')+';charset=utf-8',count:entries.length,omitted};
  }

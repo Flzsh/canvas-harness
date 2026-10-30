@@ -6,10 +6,13 @@
  *
  * Vendored unchanged from the official npm pdfjs-dist 6.4.299 package (Mozilla
  * PDF.js build d0991a0d5), verified against its registry SHA-512 integrity.
- * legacy/build/pdf.mjs -> vendor/pdfjs/pdf.mjs
- * legacy/build/pdf.worker.mjs -> vendor/pdfjs/pdf.worker.mjs
+ * build/pdf.mjs -> vendor/pdfjs/pdf.mjs
+ * build/pdf.worker.mjs -> vendor/pdfjs/pdf.worker.mjs
  * LICENSE -> vendor/pdfjs/LICENSE (Apache-2.0)
- * The readable legacy ESM build, not minified, includes compatibility polyfills for Chrome 120.
+ * The readable modern ESM build, not minified and without bundled polyfills. It is loaded through
+ * pdf-library.mjs and pdf-worker.mjs, which first add the few newer built-ins it calls
+ * (pdf-polyfills.js), so it runs from Chrome 126 (manifest minimum_chrome_version). See
+ * vendor/pdfjs/README.md.
  * Source/version/integrity and SHA-256 file hashes are exposed as `vendor` below.
  * API references: https://mozilla.github.io/pdf.js/examples/
  * https://mozilla.github.io/pdf.js/api/draft/api.js.html
@@ -48,8 +51,8 @@
     source: 'https://registry.npmjs.org/pdfjs-dist/-/pdfjs-dist-6.4.299.tgz',
     integrity: 'sha512-AVl138zALtfaAPvADulE0PZThbYzCBS79nL4pOSL/6Sm/4AH5A21BD9VHt97OlCuzJuCpmeZtAtkinisF4Vb1g==',
     sha256: Object.freeze({
-      'pdf.mjs': 'bc51f4874a66e3853189cb5d50aba4b3096afa83ed433b885d293a3d94583cdc',
-      'pdf.worker.mjs': 'bb422f60804477de4a0b09091d8347a916a387755ed1cbad24ccaec1d09c78bf',
+      'pdf.mjs': 'dd13af821c9c3e1778653340d6539a1ba07bc56cba40073a4c727864cf0c232a',
+      'pdf.worker.mjs': '07ceb740d746e5d9012fcf9f27d5c7dea09f7d2f5e74f5c8109e5787551a2333',
       LICENSE: '0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594'
     })
   });
@@ -189,9 +192,9 @@
   }
   function loadPackagedLibrary() {
     if (!libraryPromise) {
-      libraryPromise = import(packagedURL('vendor/pdfjs/pdf.mjs')).then(library => {
+      libraryPromise = import(packagedURL('pdf-library.mjs')).then(library => {
         if (library.version !== vendor.version) throw error('The packaged PDF library version is incorrect.', 'unavailable');
-        library.GlobalWorkerOptions.workerSrc = packagedURL('vendor/pdfjs/pdf.worker.mjs');
+        library.GlobalWorkerOptions.workerSrc = packagedURL('pdf-worker.mjs');
         return library;
       }).catch(() => {
         libraryPromise = undefined;
@@ -202,7 +205,7 @@
   }
   function createPackagedWorker(library) {
     if (typeof root.Worker !== 'function') throw error('A dedicated PDF worker is required.', 'unavailable');
-    const port = new root.Worker(packagedURL('vendor/pdfjs/pdf.worker.mjs'), {type: 'module'});
+    const port = new root.Worker(packagedURL('pdf-worker.mjs'), {type: 'module'});
     let worker;
     try { worker = library.PDFWorker.create({port, verbosity: 0}); }
     catch (_) { port.terminate(); throw error('The PDF worker could not be created.', 'unavailable'); }
@@ -215,7 +218,8 @@
       if (!options || typeof options !== 'object') throw error('Invalid PDF extraction options.', 'options');
       const {signal} = options;
       const maxPages = limit(options.maxPages, MAX_PAGES), maxChars = limit(options.maxChars, MAX_CHARS), timeoutMs = limit(options.timeoutMs, MAX_TIMEOUT);
-      if (signal && (typeof signal.addEventListener !== 'function' || typeof signal.removeEventListener !== 'function' || typeof signal.aborted !== 'boolean')) throw error('Invalid PDF abort signal.', 'options');
+      if (signal && (typeof signal.addEventListener !== 'function' || typeof signal.removeEventListener !== 'function' || typeof signal.aborted !== 'boolean'))
+       throw error('Invalid PDF abort signal.', 'options');
       if (signal?.aborted) throw error('PDF extraction cancelled.', 'aborted', 'AbortError');
       inputSize(data); // Reject oversize input before copying bytes or importing.
 

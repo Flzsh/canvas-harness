@@ -27,12 +27,17 @@
 ${e.personal?action('plan-delete','Delete this task',`role="menuitem" data-id="${E(e.id)}"`,'rd-plan-menu-item rd-plan-menu-danger'):''}</div>`;
   };
   const card=(e,dayKey)=>{
-   const canvasDone=e.done&&!(c.local[e.id]?.checkedOff),late=!e.done&&e.dueDay&&e.dueDay<today,bits=[e.personal&&e.courseId==='personal'?'Mine':E(e.course),E(dueLabel(e,dayKey)),e.estimate?E(P.minutes(e.estimate)):'',e.steps?`${e.stepsDone}/${e.steps} steps`:''].filter(Boolean),open=ui.menu===e.id;
+   const canvasDone=e.done&&!(c.local[e.id]?.checkedOff),
+     late=!e.done&&e.dueDay&&e.dueDay<today,
+     bits=[e.personal&&e.courseId==='personal'?'Mine':E(e.course),E(dueLabel(e,dayKey)),e.estimate?E(P.minutes(e.estimate)):'',e.steps?`${e.stepsDone}/${e.steps} steps`:''].filter(Boolean),
+     open=ui.menu===e.id;
    return `<article class="rd-plan-card" data-rd-key="pc-${E(e.id)}" data-plan-id="${E(e.id)}" data-done="${e.done}" data-late="${!!late}" data-menu="${open}" style="--rd-course:${E(e.color||'#7c718d')}">${canvasDone?`<span class="rd-todo-check" data-done="true" title="Completed in Canvas" aria-label="Completed in Canvas">${TICK}</span>`:action(e.done?'undo-check-off':'check-off',TICK,`data-id="${E(e.id)}" aria-pressed="${e.done}" aria-label="${e.done?'Put back':'Mark done'}: ${E(e.title)}"`,'rd-todo-check')}${action('plan-view',`<strong>${E(e.title)}</strong><small>${bits.join(' · ')}</small>`,`data-id="${E(e.id)}" aria-label="Open ${E(e.title)}"`,'rd-plan-open')}${action('plan-menu',DOTS,`data-id="${E(e.id)}" aria-haspopup="menu" aria-expanded="${open}" aria-label="Plan ${E(e.title)}: choose a day or a length" title="Choose a day or a length"`,'rd-plan-more')}${open?menu(e):''}</article>`;
   };
   // Finished work (ticked off, archived, or completed in Canvas) is kept out of the week unless asked for. What was
   // ticked in the last two minutes stays, so a slip can be undone.
-  const fresh=e=>(ui.recent?.get(e.id)||0)>Date.now()-120000,shown=e=>!e.done||ui.showDone||fresh(e),hiddenDone=board.days.reduce((n,d)=>n+d.all.filter(e=>e.done&&!fresh(e)).length,0);
+  const fresh=e=>(ui.recent?.get(e.id)||0)>Date.now()-120000,
+    shown=e=>!e.done||ui.showDone||fresh(e),
+    hiddenDone=board.days.reduce((n,d)=>n+d.all.filter(e=>e.done&&!fresh(e)).length,0);
   const column=d=>{
    const dt=utc(d.key),isToday=d.key===today,summary=[d.open?`${d.open} to do`:d.done?'all done':'',d.minutes?P.minutes(d.minutes):''].filter(Boolean).join(' · ');
    return `<section class="rd-plan-day" data-rd-key="pd-${d.key}" data-plan-drop="${d.key}" data-today="${isToday}" data-past="${d.key<today}" aria-label="${E(h.formatDate(dt,'UTC',{weekday:'long',month:'long',day:'numeric'}))}${summary?': '+E(summary):''}"><header><span>${E(h.formatDate(dt,'UTC',{weekday:'short'}))}</span><strong>${new Date(dt).getUTCDate()}</strong>${isToday?'<em>Today</em>':''}<small>${E(summary)}</small></header>
@@ -55,7 +60,16 @@ ${e.personal?action('plan-delete','Delete this task',`role="menuitem" data-id="$
   if(!enabled('planner')||!Plan())return null;
   const ui={offset:0,menu:null,more:false,showDone:false,recent:new Map()};let dead=false,drag=null;
   const doc=container.ownerDocument||root.document,scope=()=>container.getRootNode?.()||doc;
-  const closeMenu=()=>{if(ui.menu){const id=ui.menu;ui.menu=null;rerender();container.querySelector(`[data-rd-action="plan-menu"][data-id="${root.CSS?.escape?root.CSS.escape(id):id}"]`)?.focus({preventScroll:true});return true;}return false;};
+  const closeMenu=()=>{
+    if(ui.menu){
+      const id=ui.menu;
+      ui.menu=null;
+      rerender();
+      container.querySelector(`[data-rd-action="plan-menu"][data-id="${root.CSS?.escape?root.CSS.escape(id):id}"]`)?.focus({preventScroll:true});
+      return true;
+    }
+    return false;
+  };
   function click(event){
    const button=event.target.closest?.('[data-rd-action]');
    if(ui.menu&&!event.target.closest?.('.rd-plan-menu')&&button?.dataset.rdAction!=='plan-menu'){ui.menu=null;rerender();}
@@ -66,7 +80,12 @@ ${e.personal?action('plan-delete','Delete this task',`role="menuitem" data-id="$
    if(action==='plan-more'){ui.more=true;rerender();return true;}
    if(action==='plan-done'){ui.showDone=!ui.showDone;rerender();return true;}
    if(action==='check-off'||action==='undo-check-off'){const card=button.closest('[data-plan-id]');if(card)ui.recent.set(card.dataset.planId,Date.now());return false;}
-   if(action==='plan-menu'){ui.menu=ui.menu===id?null:id;rerender();if(ui.menu)container.querySelector('.rd-plan-menu [aria-checked="true"],.rd-plan-menu button')?.focus({preventScroll:true});return true;}
+   if(action==='plan-menu'){
+     ui.menu=ui.menu===id?null:id;
+     rerender();
+     if(ui.menu)container.querySelector('.rd-plan-menu [aria-checked="true"],.rd-plan-menu button')?.focus({preventScroll:true});
+     return true;
+   }
    if(action==='plan-move'){ui.menu=null;save(P.plan(id,button.dataset.day||''));return true;}
    if(action==='plan-estimate'){save(P.estimate(id,Number(button.dataset.minutes)||0));return true;}
    if(action==='plan-delete'&&/^local-[\w-]+$/.test(id||'')){ui.menu=null;save(data=>{data.customTasks=data.customTasks.filter(task=>task.id!==id);delete data.tasks[id];});return true;}
@@ -89,7 +108,19 @@ ${e.personal?action('plan-delete','Delete this task',`role="menuitem" data-id="$
    const card=event.target.closest?.('.rd-plan-card');
    if(!card||!container.contains(card)||event.target.closest('button:not(.rd-plan-open),input,a,.rd-plan-menu'))return;
    const rect=card.getBoundingClientRect();
-   drag={id:card.dataset.planId,card,x:event.clientX,y:event.clientY,dx:event.clientX-rect.left,dy:event.clientY-rect.top,w:rect.width,pointer:event.pointerId,moved:false,ghost:null,over:null};
+   drag={
+     id:card.dataset.planId,
+     card,
+     x:event.clientX,
+     y:event.clientY,
+     dx:event.clientX-rect.left,
+     dy:event.clientY-rect.top,
+     w:rect.width,
+     pointer:event.pointerId,
+     moved:false,
+     ghost:null,
+     over:null
+   };
    doc.addEventListener('pointermove',move,true);doc.addEventListener('pointerup',up,true);doc.addEventListener('pointercancel',cancel,true);
   }
   function move(event){
@@ -97,7 +128,12 @@ ${e.personal?action('plan-delete','Delete this task',`role="menuitem" data-id="$
    if(!drag.moved){
     if(Math.hypot(event.clientX-drag.x,event.clientY-drag.y)<7)return;
     drag.moved=true;ui.menu=null;
-    const ghost=drag.card.cloneNode(true);ghost.classList.add('rd-plan-ghost');ghost.setAttribute('data-rd-keep','');ghost.setAttribute('aria-hidden','true');ghost.removeAttribute('data-rd-key');ghost.style.width=drag.w+'px';
+    const ghost=drag.card.cloneNode(true);
+    ghost.classList.add('rd-plan-ghost');
+    ghost.setAttribute('data-rd-keep','');
+    ghost.setAttribute('aria-hidden','true');
+    ghost.removeAttribute('data-rd-key');
+    ghost.style.width=drag.w+'px';
     container.append(ghost);drag.ghost=ghost;drag.card.dataset.dragging='true';container.dataset.planDragging='true';
    }
    event.preventDefault();
@@ -116,12 +152,17 @@ ${e.personal?action('plan-delete','Delete this task',`role="menuitem" data-id="$
    const over=drag.moved?dropAt(event.clientX,event.clientY):null,d=finish();
    if(!d.moved)return;
    // The click that follows a drag must not open the card.
-   const swallow=e=>{e.stopPropagation();e.preventDefault();};container.addEventListener('click',swallow,{capture:true,once:true});setTimeout(()=>container.removeEventListener('click',swallow,{capture:true}),60);
+   const swallow=e=>{e.stopPropagation();e.preventDefault();};
+   container.addEventListener('click',swallow,{capture:true,once:true});
+   setTimeout(()=>container.removeEventListener('click',swallow,{capture:true}),60);
    if(over)save(Plan().plan(d.id,over.dataset.planDrop||''));
   }
   function cancel(event){if(drag&&event.pointerId===drag.pointer)finish();}
   container.addEventListener('pointerdown',down);
-  return {ui,click,keydown,goto(day){const c=getContext(),h=helpers(),today=h.dayKey(c.now,c.s.timeZone),P=Plan();if(day){ui.offset=Math.round((Date.parse(P.mondayOf(day)+'T12:00:00Z')-Date.parse(P.mondayOf(today)+'T12:00:00Z'))/604800000);}else ui.offset=0;},
+  return {ui,click,keydown,goto(day){
+    const c=getContext(),h=helpers(),today=h.dayKey(c.now,c.s.timeZone),P=Plan();
+    if(day){ui.offset=Math.round((Date.parse(P.mondayOf(day)+'T12:00:00Z')-Date.parse(P.mondayOf(today)+'T12:00:00Z'))/604800000);}else ui.offset=0;
+  },
    destroy(){dead=true;finish();container.removeEventListener('pointerdown',down);}};
  }
  const api={render,create,LENGTHS};

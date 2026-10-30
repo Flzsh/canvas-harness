@@ -15,7 +15,8 @@
 
   function create({container, store, getContext, onRefresh}) {
     const G = root.CanvasHarnessGPA || (typeof module === 'object' && module.exports ? require('./gpa-model.js') : null);
-    if (!G || !container?.ownerDocument || !store?.get || !store?.update || typeof getContext !== 'function') throw Error('The GPA calculator needs its model, container, account store, and Canvas context.');
+    if (!G || !container?.ownerDocument || !store?.get || !store?.update || typeof getContext !== 'function')
+      throw Error('The GPA calculator needs its model, container, account store, and Canvas context.');
     const doc = container.ownerDocument, prefix = 'ch-gpa-' + (++sequence) + '-';
     const controls = new Map(), actions = new Map(), details = new Map(), openDetails = new Map(), edits = new Map();
     let prefs = G.defaults(), context = {}, panel, statusNode, bodyNode, draftNode, unsubscribe;
@@ -175,7 +176,12 @@
         [['', 'Use Canvas grade'], ...G.LETTERS.map(value => [value, value + ' · what-if'])], row.reason === 'hidden')));
       if (prefs.weighted) {
         fields.append(field('Course level', select('course:' + row.id + ':level', row.name + ' course level', row.level,
-          [['regular', 'Regular (+' + amount(prefs.presets.regular) + ')'], ['honors', 'Honors (+' + amount(prefs.presets.honors) + ')'], ['ap', 'AP / IB (+' + amount(prefs.presets.ap) + ')'], ['custom', 'Custom bonus']])));
+          [
+            ['regular', 'Regular (+' + amount(prefs.presets.regular) + ')'],
+            ['honors', 'Honors (+' + amount(prefs.presets.honors) + ')'],
+            ['ap', 'AP / IB (+' + amount(prefs.presets.ap) + ')'],
+            ['custom', 'Custom bonus']
+          ])));
         if (row.level === 'custom') fields.append(field('Custom bonus', numeric('course:' + row.id + ':bonus', row.name + ' custom level bonus', savedCourse?.bonus ?? 0, 0, 5)));
       }
       editor.append(fields);
