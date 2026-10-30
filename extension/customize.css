@@ -95,8 +95,10 @@
   width: min(100%,calc(140px * var(--rd-name-w,480) / 240)); height: 140px; max-width: 100%; align-self: flex-start; margin: 0;
  }
 }
-.rd[data-banner-size=compact] { --ch-banner-h: 80px; --rd-band-h: clamp(90px,7cqi,120px); }
-.rd[data-banner-size=large] { --ch-banner-h: 220px; --rd-band-h: clamp(230px,17cqi,320px); }
+/* Banner sizes: each grows with the page and is capped by the window height too (owner, 2026-10-27). */
+.rd:not([data-banner-size=compact],[data-banner-size=large]) { --ch-banner-h: min(140px, 12vh); }
+.rd[data-banner-size=compact] { --ch-banner-h: min(80px, 8vh); --rd-band-h: clamp(72px,min(7cqi,8vh),110px); }
+.rd[data-banner-size=large] { --ch-banner-h: min(220px, 20vh); --rd-band-h: clamp(130px,min(17cqi,20vh),300px); }
 /* as specific as refresh.css's rail-art rule, which otherwise keeps the icons showing */
 .rd[data-show-course-icons=false] .rd-course-rail .rd-rail-art,
 .rd[data-show-course-icons=false] .rd-course-rail :is(.rd-rail-title .rd-course-name, .rd-rail-all) > .rd-rail-art { display: none; }
@@ -439,16 +441,6 @@
  .rd[data-course-navigation=dock][data-drawer=open] .rd-shell::after {display:none;}
 }
 
-/* Local kit artwork uses the existing isolated media renderer. */
-.rd .ch-media {display:block;width:100%;height:100%;pointer-events:none;}
-.rd .ch-art-preview > .ch-media {max-width:100%;max-height:100%;object-fit:contain;}
-.rd .ch-art-controls[aria-busy=true] {cursor:progress;}
-.rd .ch-kit-list .cz-row {justify-content:flex-start;gap:8px;flex-wrap:wrap;}
-.rd .ch-kit-list .cz-row > span {flex:1;overflow-wrap:anywhere;}
-
-.rd[data-course-navigation=dock][data-courses=true] .rd-shell {grid-template-columns:minmax(0,1fr);gap:22px;}
-@media (max-width:800px) {.rd[data-course-navigation=dock][data-courses=true] .rd-shell {display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:14px!important;}}
-
 /* <x:generated> Course dock 3.7 (gen-dock-css.cjs, owner 2026-10-27): shelves, size and place, motion, cards, its card. */
 /* Size: the tile follows the size slider (or the shelf's top edge); the drawings grow with it. Place: the middle of the
    workspace plus the shift the dock was dragged to. */
@@ -456,9 +448,16 @@
 .rd .rd-dock{left:calc(var(--rd-dock-center,50%) + var(--rd-dock-shift,0px))}
 .rd .rd-dock-tile .rd-mini{height:calc(var(--rd-dock-t) - 8px);max-width:calc(var(--rd-dock-t) - 2px)}
 .rd .rd-dock-tile>:is(.ch-custom-icon,.tk-icon.tk-mini){width:calc(var(--rd-dock-t) - 8px);height:calc(var(--rd-dock-t) - 8px)}
-/* Shelves: kraft (the default), paper, or none at all. */
-.rd[data-dock-shelf=kraft] .rd-dock{--rd-dock-shelf:color-mix(in srgb,#D4A27F 40%,#FFFDF8);--rd-dock-paper:#FFFDF8}
-.rd[data-theme=dark][data-dock-shelf=kraft] .rd-dock{--rd-dock-shelf:color-mix(in srgb,#D4A27F 22%,var(--rd-surface))}
+/* Shelves: kraft (the default), paper, or none at all. Kraft is a real shelf with paper labels in every theme: its
+   labels stay paper with dark ink, and the light shelf keeps dark ink too (owner, 2026-10-27: a dark or scene theme
+   wrote its pale text onto the white labels). Only a dark page darkens the shelf itself. */
+.rd[data-dock-shelf=kraft] .rd-dock{--rd-dock-shelf:color-mix(in srgb,#D4A27F 40%,#FFFDF8);--rd-dock-paper:#FFFDF8;--rd-dock-ink:#2B2A27;--rd-dock-shelf-ink:#141413;--rd-dock-label-ink:#141413;--rd-dock-label-muted:#5E5D59;--rd-dock-label-late:#B5452E}
+.rd[data-theme=dark][data-dock-shelf=kraft] .rd-dock{--rd-dock-shelf:color-mix(in srgb,#D4A27F 22%,var(--rd-surface));--rd-dock-ink:var(--rd-ink-2);--rd-dock-shelf-ink:var(--rd-ink)}
+/* A theme kit draws its own cards: they take its page colour and its ink, on any shelf. */
+.rd[data-theme-kit][data-dock-shelf] .rd-dock{--rd-dock-paper:var(--rd-bg);--rd-dock-label-ink:var(--rd-ink);--rd-dock-label-muted:var(--rd-muted);--rd-dock-label-late:var(--rd-danger,#B5452E)}
+/* ...and the course drawing (ink lines) sits on its own small paper patch there, so a dark theme card keeps it visible. */
+.rd[data-theme-kit] .rd-dock-card .rd-dock-tile::before{display:block;background:color-mix(in srgb,var(--rd-course,#9A8F7A) 16%,#FFFDF8)}
+.rd .rd-dock-it .rd-dock-name{color:var(--rd-dock-shelf-ink,var(--rd-ink,#141413))}
 .rd[data-dock-shelf=none] .rd-dock::before,.rd[data-dock-shelf=none] .rd-dock::after,.rd[data-dock-shelf=none] .rd-dock-ink{opacity:0}
 .rd[data-dock-shelf=none] .rd-dock-ink::before{opacity:1}
 /* The open course: a line drawn under it in the accent instead of a dot. */
@@ -521,10 +520,14 @@
 .rd .rd-dock-card .rd-dock-tile{width:calc(var(--rd-dock-t) - 10px);height:calc(var(--rd-dock-t) - 10px)}
 .rd .rd-dock-card .rd-dock-tile::before,.rd .rd-dock-card .rd-dock-tile::after{display:none}
 .rd .rd-dock-card .rd-dock-tile .rd-mini{height:calc(var(--rd-dock-t) - 14px)}
-.rd .rd-dock-words{display:grid;min-width:0;text-align:left;color:var(--rd-ink)}
+.rd .rd-dock-words{display:grid;min-width:0;text-align:left;color:var(--rd-dock-label-ink,var(--rd-ink))}
+/* A theme sets its text to inherit (.rd[data-theme-kit] :is(span,b,small...)); the label keeps its own ink. */
+.rd .rd-dock-it .rd-dock-words{color:var(--rd-dock-label-ink,var(--rd-ink))}
+.rd .rd-dock-it .rd-dock-words small{color:var(--rd-dock-label-muted,var(--rd-muted))}
+.rd .rd-dock-it .rd-dock-words small[data-late]{color:var(--rd-dock-label-late,var(--rd-danger,#B5452E))}
 .rd .rd-dock-words b{font:650 12.5px/1.2 var(--rd-ui-font,"Segoe UI",system-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rd .rd-dock-words small{font:500 11.5px/1.3 var(--rd-ui-font,"Segoe UI",system-ui);color:var(--rd-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rd .rd-dock-words small[data-late]{color:var(--rd-danger,#B5452E);font-weight:650}
+.rd .rd-dock-words small{font:500 11.5px/1.3 var(--rd-ui-font,"Segoe UI",system-ui);color:var(--rd-dock-label-muted,var(--rd-muted));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rd .rd-dock-words small[data-late]{color:var(--rd-dock-label-late,var(--rd-danger,#B5452E));font-weight:650}
 .rd .rd-dock-card .rd-dock-seal{top:5px;right:5px}
 .rd[data-dock-lively=true] .rd-dock-it:is(:hover,:focus-visible) .rd-dock-card{translate:0 -5px;rotate:-1.6deg;transition:translate .26s cubic-bezier(.3,1.7,.5,1),rotate .26s}
 .rd[data-dock-lively=true] .rd-dock-it:is(:hover,:focus-visible) .rd-dock-card .rd-dock-tile{translate:none;rotate:none}

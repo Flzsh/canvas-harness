@@ -1,13 +1,6 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 const UI=require('../extension/ui-utils.js'),Materials=require('../extension/material-model.js');
-test('topbar puts the shared banner and title before the course strip; sidebar keeps it in the workspace',async t=>{
- const {fixture}=require('./dashboard-heading-fixture.cjs'),f=fixture();t.after(()=>f.dashboard.destroy());
- await f.store.update(data=>{data.settings.courseNavigation='topbar';});
- const shell=f.container.querySelector('.rd-shell'),heading=f.container.querySelector('.rd-workspace-heading'),workspace=f.container.querySelector('.rd-workspace');
- assert.ok(shell.firstElementChild===heading);assert.ok(heading.querySelector('h1'));assert.notEqual(shell.children[1],workspace);
- await f.store.update(data=>{data.settings.courseNavigation='sidebar';});
- assert.ok(f.container.querySelector('.rd-workspace').firstElementChild===f.container.querySelector('.rd-workspace-heading'));
-});
+// 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
 const attrs=tag=>Object.fromEntries([...tag.matchAll(/([\w-]+)="([^"]*)"/g)].map(m=>[m[1],m[2]]));
 const decode=value=>String(value).replace(/&(?:amp|quot|lt|gt|#39);/g,entity=>({'&amp;':'&','&quot;':'"','&lt;':'<','&gt;':'>','&#39;':"'"}[entity]));
 const anchors=html=>[...html.matchAll(/<a\b[^>]*>/g)].map(m=>attrs(m[0]));

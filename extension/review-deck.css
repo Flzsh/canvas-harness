@@ -1,0 +1,593 @@
+/* Canvas Harness Plus: the Review deck. The reading room (full page) and the Home module.
+   1 colours for each theme  2 the drawings' colour classes  3 the room and what moves in it  4 the page
+   5 controls  6 the card  7 the module  8 thrown cards  9 motion settings. Creator: Flzsh. */
+
+/* ---------- 1 colours: light is morning paper; night is firelit, with no white anywhere ---------- */
+.rv{
+ --rv-wall:#F4EEE2;--rv-wall2:#ECE2D0;--rv-panel:#EFE6D6;--rv-trim:#E8DAC3;--rv-trim2:#DDCBAE;--rv-floor:#E9E0CE;--rv-rug:#E6D5C6;--rv-rug2:#DCC3B1;
+ --rv-wd:#E6D2B3;--rv-wd2:#EEDDC2;--rv-wd3:#D8BE98;--rv-wd4:#E3CFB0;--rv-top:#EEDDC2;
+ --rv-sky:#EEF2EC;--rv-sky2:#E7EEE4;--rv-sky3:#E0E9DD;--rv-sun:#F6E2A2;--rv-moon:#F1E6C4;--rv-star:#F2E7C2;
+ --rv-mt:#D9DED6;--rv-mt2:#F6F5EF;--rv-mt3:#C9B49A;--rv-hl1:#DFE6D4;--rv-hl2:#D2DEC8;--rv-pn1:#C8D5BD;--rv-pn2:#BACBB0;--rv-lk:#DAE9EB;--rv-lk2:#CBE0E3;--rv-glint:#FFFFFF;
+ --rv-lf:#C6D7B6;--rv-lf2:#B2C8A0;--rv-fl1:#E6B5C4;--rv-cb:#E4CFB2;--rv-rf:#CDA28B;--rv-wn:#F1E1B4;--rv-bt:#CDAA8B;--rv-pt:#DFB79C;--rv-pt2:#D4A88A;--rv-gl2:#E4EEF0;
+ --rv-br:#E3CD98;--rv-br2:#D5BA7E;--rv-cu:#EBDACA;--rv-cu2:#E0CAB6;--rv-tie:#D8B79E;--rv-pp:#FBF7EE;
+ --rv-b1:#E2C3B4;--rv-b2:#C9D8C6;--rv-b3:#D3CEE2;--rv-b4:#E8D9AE;--rv-b5:#C9D6E2;--rv-b6:#E3CCBA;--rv-b7:#D5DCC5;--rv-b8:#E7D4CA;
+ --rv-yl:#EFD9A0;--rv-cp:#EFE5D4;--rv-tea:#D9B98A;--rv-gs:#B9CBB4;--rv-lt:#FFF4D2;--rv-lt2:#F6D68C;--rv-sd:#7C6A52;
+ --rv-cl:#FBFBF7;--rv-cl2:#E8ECE5;--rv-smk:#E2E1DC;--rv-stm:#CDC6BA;--rv-hr:#ECEAE4;--rv-hr2:#D8D4CB;--rv-mote:#E9D49E;--rv-sand:#E8D3A0;--rv-rd2:#D98C7C;--rv-kd:#6E6252;
+ --rv-sea:#BFE3EE;--rv-cor:#E9A48C;--rv-fish1:#F0B65A;--rv-fish2:#E98C6C;--rv-swd:#7FB59E;--rv-cau:#F2FBFD;--rv-sw:#D7DDEB;--rv-cyp:#53705A;--rv-pl:#D2B37A;--rv-pl2:#B39066;--rv-rgk:#D9C38E;--rv-bpg:#D9D2C4;
+ --rv-rk:#BBAE98;--rv-rkf:#CDC1AB;--rv-rkh:#FFFBF2;--rv-rkg:#DCCBAF;--rv-rkp:#AE9F88;--rv-rkr:#DA9283;--rv-rkb:#B79E66;--rv-rkt:#D3C7B2;--rv-rkc:#CDAD8E;--rv-rkd2:#BBAD95;
+ --rv-ink:#141413;--rv-ink2:#3D3D3A;--rv-muted:#6B6A64;--rv-paper:#FFFDF6;--rv-paper2:#F6EFE0;--rv-rule:#D9897A;--rv-blue:#C5D4E6;
+ --rv-kraft:#D4A27F;--rv-kraft2:#B9875F;--rv-kraft3:#E3BE9C;--rv-clay:#A9522F;--rv-clay-ink:#FFFDF6;--rv-brass:#CDA650;--rv-brass2:#A9853A;--rv-gold:#E8B94A;--rv-red:#DD5446;
+ --rv-again:#F6D6CE;--rv-good:#DCE9D4;--rv-easy:#D5E3EE;--rv-shadow:#3A2C1E;--rv-tab-ink:#FFFDF6;--rv-course-ink:#FFFDF6;
+ color:var(--rv-ink);
+}
+.rd[data-theme=dark] .rv{
+ --rv-wall:#2E2924;--rv-wall2:#342E28;--rv-panel:#312B25;--rv-trim:#3B332B;--rv-trim2:#40372E;--rv-floor:#241F1B;--rv-rug:#3A2C26;--rv-rug2:#45342C;
+ --rv-wd:#3F352C;--rv-wd2:#463B31;--rv-wd3:#352C24;--rv-wd4:#3A3129;--rv-top:#463B31;
+ --rv-sky:#1A2033;--rv-sky2:#1D2438;--rv-sky3:#212A40;--rv-sun:#3A3A40;--rv-moon:#E3D3A8;--rv-star:#D9C79A;
+ --rv-mt:#2A3044;--rv-mt2:#3A4054;--rv-mt3:#6A5A48;--rv-hl1:#262E3E;--rv-hl2:#222A38;--rv-pn1:#24302E;--rv-pn2:#1F2A28;--rv-lk:#1E2A3E;--rv-lk2:#23324A;--rv-glint:#C9A86A;
+ --rv-lf:#3C4A36;--rv-lf2:#34422F;--rv-fl1:#8A5A5E;--rv-cb:#3A322B;--rv-rf:#5A3F33;--rv-wn:#E0B061;--rv-bt:#4A3A2E;--rv-pt:#5A4034;--rv-pt2:#4E372D;--rv-gl2:#3A4246;
+ --rv-br:#8C7444;--rv-br2:#7A633A;--rv-cu:#4A3A31;--rv-cu2:#42332B;--rv-tie:#5A4436;--rv-pp:#4A4238;
+ --rv-b1:#5A4038;--rv-b2:#3E5243;--rv-b3:#4A4660;--rv-b4:#5E5436;--rv-b5:#3C4E5E;--rv-b6:#5A4A3E;--rv-b7:#48503C;--rv-b8:#5A4646;
+ --rv-yl:#7A6A3E;--rv-cp:#4A4036;--rv-tea:#6A4A2E;--rv-gs:#3F6A52;--rv-lt:#F2C97A;--rv-lt2:#F2C97A;--rv-sd:#0E0B08;
+ --rv-cl:#3A3F52;--rv-cl2:#33384A;--rv-smk:#5A5650;--rv-stm:#6A5E50;--rv-hr:#8A8478;--rv-hr2:#6E685E;--rv-mote:#C9A86A;--rv-sand:#8A7650;--rv-rd2:#B5654A;--rv-kd:#C9B28A;--rv-bpg:#3A332B;
+ --rv-rk:#6E5A43;--rv-rkf:#5E4D3A;--rv-rkh:#4E4236;--rv-rkg:#4A3E33;--rv-rkp:#7A6650;--rv-rkr:#A0583F;--rv-rkb:#9C7C3A;--rv-rkt:#574A3B;--rv-rkc:#6A5040;--rv-rkd2:#6A5A48;
+ --rv-ink:#E9DCC2;--rv-ink2:#D8C8AA;--rv-muted:#A89A82;--rv-paper:#3B352F;--rv-paper2:#332E29;--rv-rule:#B5654A;--rv-blue:#4E5560;
+ --rv-kraft:#8A6446;--rv-kraft2:#6E4F38;--rv-kraft3:#9A7454;--rv-clay:#C0623A;--rv-clay-ink:#F3E3C6;--rv-brass:#9C7C3A;--rv-brass2:#7E6230;--rv-gold:#C9963A;--rv-red:#B4473A;
+ --rv-again:#5A3A33;--rv-good:#3A4A36;--rv-easy:#34434F;--rv-shadow:#000000;--rv-tab-ink:#F3E3C6;--rv-course-ink:#F3E3C6;
+}
+.rd[data-theme-kit=starry] .rv{
+ --rv-wall:#2B3A78;--rv-wall2:#33458A;--rv-panel:#304286;--rv-trim:#3C4888;--rv-trim2:#44519A;--rv-floor:#232D5E;--rv-rug:#3A3F7A;--rv-rug2:#4A4A86;
+ --rv-wd:#3E3A5C;--rv-wd2:#474368;--rv-wd3:#353150;--rv-wd4:#3A3758;--rv-top:#474368;
+ --rv-sky:#24357A;--rv-sky2:#2A3D84;--rv-sky3:#30458C;--rv-moon:#F6D36A;--rv-star:#F6D36A;--rv-mt:#2A3C6E;--rv-mt2:#3A4C82;--rv-hl1:#2A3C6E;--rv-hl2:#22305E;--rv-pn1:#25385E;--rv-pn2:#1E3054;
+ --rv-lk:#2B4C8C;--rv-lk2:#33589A;--rv-glint:#F6D36A;--rv-lf:#3E6A5A;--rv-lf2:#355C4E;--rv-fl1:#E8B04A;--rv-cb:#3A3F6E;--rv-rf:#5A4A6E;--rv-wn:#F6D36A;--rv-bt:#3E3A5C;--rv-pt:#5A4A6E;--rv-pt2:#4E4062;--rv-gl2:#3C4A7E;
+ --rv-br:#B8964A;--rv-br2:#9A7C3E;--rv-cu:#3E4A8A;--rv-cu2:#36428A;--rv-tie:#5A5480;--rv-pp:#4A5486;
+ --rv-b1:#5A5480;--rv-b2:#3F5E7E;--rv-b3:#6A5A3A;--rv-b4:#4C6A8A;--rv-b5:#7A6A40;--rv-b6:#5E4E7A;--rv-b7:#3E6A6A;--rv-b8:#6E5A70;
+ --rv-yl:#C9A440;--rv-cp:#4A5486;--rv-tea:#8A6A3E;--rv-gs:#3E6A8A;--rv-lt:#F6D36A;--rv-lt2:#F6D36A;--rv-sd:#0E1430;
+ --rv-cl:#4A5CA0;--rv-cl2:#40529A;--rv-smk:#6A78B0;--rv-stm:#8A92C0;--rv-hr:#9AA4D0;--rv-hr2:#7A84B8;--rv-mote:#F6D36A;--rv-sand:#C9A440;--rv-rd2:#C9704A;--rv-kd:#F6D36A;--rv-sw:#7F95D8;--rv-cyp:#1E3A30;--rv-bpg:#2B3A78;
+ --rv-rk:#5466AE;--rv-rkf:#4A5CA0;--rv-rkh:#4A5C9E;--rv-rkg:#3E4E92;--rv-rkp:#7486C4;--rv-rkr:#C9704A;--rv-rkb:#B8964A;--rv-rkt:#4A5CA0;--rv-rkc:#6A78B0;--rv-rkd2:#5A6AAA;
+ --rv-ink:#1F2A55;--rv-ink2:#2C3A6E;--rv-muted:#53609A;--rv-paper:#F1E8C8;--rv-paper2:#E6DCB6;--rv-rule:#C9704A;--rv-blue:#AFB8D8;
+ --rv-kraft:#C99A4A;--rv-kraft2:#A47A36;--rv-kraft3:#D8B064;--rv-clay:#C9893A;--rv-clay-ink:#1F2A55;--rv-brass:#D8B04A;--rv-brass2:#B08A36;--rv-red:#C9583E;
+ --rv-again:#F2D2BE;--rv-good:#D6E2C4;--rv-easy:#CFD8EE;--rv-shadow:#0B1230;--rv-tab-ink:#1F2A55;--rv-course-ink:#1F2A55;
+}
+.rd[data-theme-kit=sea] .rv{
+ --rv-wall:#0F5D87;--rv-wall2:#13698F;--rv-panel:#126590;--rv-trim:#2A7898;--rv-trim2:#2F82A2;--rv-floor:#0B4C6E;--rv-rug:#1A6A80;--rv-rug2:#22788C;
+ --rv-wd:#1F5E73;--rv-wd2:#246A80;--rv-wd3:#1A5263;--rv-wd4:#1D586C;--rv-top:#246A80;--rv-sea:#1C7FAB;--rv-lt:#BFEFFF;--rv-lt2:#BFEFFF;--rv-sd:#032A40;
+ --rv-lf:#3E9A7A;--rv-lf2:#358A6C;--rv-fl1:#F0A07A;--rv-pt:#2A7A86;--rv-pt2:#24707C;--rv-gl2:#2E86A4;--rv-br:#C9A050;--rv-br2:#A88238;--rv-pp:#3E8EA8;--rv-cu:#1A6A84;--rv-cu2:#16627C;--rv-tie:#2F7F8F;
+ --rv-b1:#2F7F8F;--rv-b2:#3E8F7A;--rv-b3:#5A7FA0;--rv-b4:#7FA0A8;--rv-b5:#3B6E8E;--rv-b6:#4A8A96;--rv-b7:#3A7A6E;--rv-b8:#6A90A8;
+ --rv-yl:#E0C060;--rv-cp:#2A7A92;--rv-tea:#8A6A3E;--rv-gs:#2E8AA0;--rv-cl:#5FB0D0;--rv-cl2:#4CA2C4;--rv-smk:#8AC4DA;--rv-stm:#9AD0E2;--rv-mote:#CFF2FF;--rv-sand:#E6D29A;--rv-rd2:#F0907A;--rv-kd:#E6F4F8;--rv-bpg:#0F5D87;
+ --rv-cor:#F08C6E;--rv-fish1:#F6C25A;--rv-fish2:#F0906A;--rv-swd:#4FC09A;--rv-cau:#BFEFFF;--rv-glint:#CFF2FF;
+ --rv-rk:#3F8EB3;--rv-rkf:#3786AC;--rv-rkh:#4FA0C2;--rv-rkg:#2C7AA0;--rv-rkp:#6AAAC8;--rv-rkr:#F0907A;--rv-rkb:#C9A050;--rv-rkt:#3786AC;--rv-rkc:#4F9AB8;--rv-rkd2:#3F8EB3;
+ --rv-ink:#0B3550;--rv-ink2:#134A6A;--rv-muted:#3A6E8A;--rv-paper:#E8F5F8;--rv-paper2:#D6ECF2;--rv-rule:#E07A64;--rv-blue:#A9D2E0;
+ --rv-kraft:#E0B98A;--rv-kraft2:#C0956A;--rv-kraft3:#EBCBA2;--rv-clay:#D9774A;--rv-clay-ink:#FFF8EE;--rv-brass:#D8B060;--rv-brass2:#B08A40;--rv-red:#E0604E;
+ --rv-again:#F6D8CE;--rv-good:#D2EEDC;--rv-easy:#CFE6F2;--rv-shadow:#032A40;--rv-tab-ink:#FFF8EE;--rv-course-ink:#FFF8EE;
+}
+.rd[data-theme-kit=stars] .rv{
+ --rv-wall:#0C1020;--rv-wall2:#11162A;--rv-panel:#0F1426;--rv-trim:#1F2640;--rv-trim2:#232C48;--rv-floor:#090C18;--rv-rug:#151A30;--rv-rug2:#1C2240;
+ --rv-wd:#191E30;--rv-wd2:#1E2438;--rv-wd3:#151A2A;--rv-wd4:#171C2E;--rv-top:#1E2438;--rv-sky:#070A16;--rv-sky2:#080B18;--rv-sky3:#0A0E1C;--rv-star:#DCE6FF;--rv-moon:#C9CFE0;
+ --rv-pl:#B07A5A;--rv-pl2:#8A5A44;--rv-rgk:#C9B08A;--rv-lt:#DCE6FF;--rv-lt2:#F2C97A;--rv-sd:#000000;--rv-sw:#3A4A7A;
+ --rv-lf:#22382E;--rv-lf2:#1D3028;--rv-fl1:#6A4A6E;--rv-pt:#2A2438;--rv-pt2:#241F30;--rv-gl2:#1C2438;--rv-br:#6A5A3A;--rv-br2:#5A4A30;--rv-pp:#20263C;--rv-cu:#1A1F34;--rv-cu2:#161B2E;--rv-tie:#2A3050;
+ --rv-b1:#2A3050;--rv-b2:#243A48;--rv-b3:#3A2E48;--rv-b4:#2E3A30;--rv-b5:#3A3A28;--rv-b6:#2C2A44;--rv-b7:#233434;--rv-b8:#36283A;
+ --rv-yl:#5A5030;--rv-cp:#1C2236;--rv-tea:#4A3A26;--rv-gs:#2A3A50;--rv-cl:#1A2036;--rv-cl2:#161B2E;--rv-smk:#2A3048;--rv-stm:#3A4058;--rv-mote:#7A88B0;--rv-sand:#5A5030;--rv-rd2:#8A4A4A;--rv-kd:#C9CFE0;--rv-bpg:#0C1020;
+ --rv-rk:#2C3450;--rv-rkf:#252C46;--rv-rkh:#232A42;--rv-rkg:#1E243A;--rv-rkp:#3A4466;--rv-rkr:#6A3A40;--rv-rkb:#6A5A3A;--rv-rkt:#252C46;--rv-rkc:#2C3450;--rv-rkd2:#2C3450;--rv-glint:#7A88B0;
+ --rv-ink:#DCE3F5;--rv-ink2:#C2CBE4;--rv-muted:#8A94B8;--rv-paper:#1C2238;--rv-paper2:#171C30;--rv-rule:#9A6A8A;--rv-blue:#2C3656;
+ --rv-kraft:#3E3A5E;--rv-kraft2:#302C4C;--rv-kraft3:#4A466C;--rv-clay:#C27A4A;--rv-clay-ink:#F2E6D6;--rv-brass:#8A7A4A;--rv-brass2:#6A5A3A;--rv-gold:#D8B04A;--rv-red:#B04A4A;
+ --rv-again:#3E2A36;--rv-good:#26362E;--rv-easy:#242E46;--rv-shadow:#000000;--rv-tab-ink:#F2E6D6;--rv-course-ink:#F2E6D6;
+}
+.rd[data-theme-kit=blueprint] .rv{
+ --rv-wall:#1F5AA0;--rv-wall2:#1F5AA0;--rv-panel:#1F5AA0;--rv-trim:#1F5AA0;--rv-trim2:#1F5AA0;--rv-floor:#1F5AA0;--rv-rug:#1F5AA0;--rv-rug2:#2462A8;
+ --rv-wd:#1F5AA0;--rv-wd2:#1F5AA0;--rv-wd3:#1F5AA0;--rv-wd4:#1F5AA0;--rv-top:#1F5AA0;--rv-sky:#1F5AA0;--rv-sky2:#1F5AA0;--rv-sky3:#1F5AA0;--rv-sun:#1F5AA0;--rv-moon:#1F5AA0;--rv-star:#B9D3F2;
+ --rv-mt:#1F5AA0;--rv-mt2:#1F5AA0;--rv-mt3:#1F5AA0;--rv-hl1:#1F5AA0;--rv-hl2:#1F5AA0;--rv-pn1:#1F5AA0;--rv-pn2:#1F5AA0;--rv-lk:#1F5AA0;--rv-lk2:#2462A8;--rv-glint:#B9D3F2;
+ --rv-lf:#1F5AA0;--rv-lf2:#1F5AA0;--rv-fl1:#1F5AA0;--rv-cb:#1F5AA0;--rv-rf:#1F5AA0;--rv-wn:#1F5AA0;--rv-bt:#1F5AA0;--rv-pt:#1F5AA0;--rv-pt2:#1F5AA0;--rv-gl2:#1F5AA0;
+ --rv-br:#1F5AA0;--rv-br2:#1F5AA0;--rv-cu:#1F5AA0;--rv-cu2:#1F5AA0;--rv-tie:#1F5AA0;--rv-pp:#1F5AA0;
+ --rv-b1:#1F5AA0;--rv-b2:#1F5AA0;--rv-b3:#1F5AA0;--rv-b4:#1F5AA0;--rv-b5:#1F5AA0;--rv-b6:#1F5AA0;--rv-b7:#1F5AA0;--rv-b8:#1F5AA0;
+ --rv-yl:#1F5AA0;--rv-cp:#1F5AA0;--rv-tea:#1F5AA0;--rv-gs:#1F5AA0;--rv-lt:#1F5AA0;--rv-lt2:#2462A8;--rv-sd:#174A86;--rv-cl:#1F5AA0;--rv-cl2:#1F5AA0;--rv-smk:#2462A8;--rv-stm:#B9D3F2;--rv-hr:#1F5AA0;--rv-hr2:#1F5AA0;--rv-mote:#B9D3F2;--rv-sand:#1F5AA0;--rv-rd2:#1F5AA0;--rv-kd:#B9D3F2;--rv-bpg:#3D72B4;
+ --rv-rk:#B9D3F2;--rv-rkf:#8FB4E0;--rv-rkh:#3D72B4;--rv-rkg:#4F80BE;--rv-rkp:#8FB4E0;--rv-rkr:#B9D3F2;--rv-rkb:#B9D3F2;--rv-rkt:#8FB4E0;--rv-rkc:#8FB4E0;--rv-rkd2:#8FB4E0;
+ --rv-ink:#EAF2FC;--rv-ink2:#D6E6F8;--rv-muted:#A9C6EA;--rv-paper:#2A66AE;--rv-paper2:#245FA6;--rv-rule:#F2C6B4;--rv-blue:#5C8CC8;
+ --rv-kraft:#3570B4;--rv-kraft2:#2D66AA;--rv-kraft3:#3D7ABE;--rv-clay:#EAF2FC;--rv-clay-ink:#1F5AA0;--rv-brass:#5C8CC8;--rv-brass2:#4F80BE;--rv-gold:#EAF2FC;--rv-red:#F2C6B4;
+ --rv-again:#2F68AE;--rv-good:#2F68AE;--rv-easy:#2F68AE;--rv-shadow:#0E3A70;--rv-tab-ink:#1F5AA0;--rv-course-ink:#1F5AA0;
+}
+/* A Market theme kit (data-theme.js marks the dashboard with data-rd-data-theme) lends the room its own paper, ink and
+   accent: the wall, the curtains and the floor are its paper with a little of its ink, the wood and the kraft a fixed kraft
+   on its paper, and its accent stays in the small marks (the rug's hint, two book spines, the buttons, the card's rule). */
+.rd[data-rd-data-theme] .rv{
+ --rv-wall:color-mix(in srgb,var(--rd-bg,#F4EEE2) 90%,var(--rd-ink,#141413));--rv-wall2:color-mix(in srgb,var(--rd-bg,#F4EEE2) 84%,var(--rd-ink,#141413));
+ --rv-panel:color-mix(in srgb,var(--rd-bg,#F4EEE2) 87%,var(--rd-ink,#141413));--rv-trim:color-mix(in srgb,#C9A27A 34%,var(--rd-bg,#F4EEE2));
+ --rv-trim2:color-mix(in srgb,#B08A62 42%,var(--rd-bg,#F4EEE2));--rv-floor:color-mix(in srgb,var(--rd-bg,#F4EEE2) 80%,var(--rd-ink,#141413));
+ --rv-wd:color-mix(in srgb,#C9A27A 38%,var(--rd-bg,#F4EEE2));--rv-wd2:color-mix(in srgb,#C9A27A 30%,var(--rd-bg,#F4EEE2));
+ --rv-wd3:color-mix(in srgb,#B08A62 46%,var(--rd-bg,#F4EEE2));--rv-wd4:color-mix(in srgb,#C9A27A 34%,var(--rd-bg,#F4EEE2));
+ --rv-top:color-mix(in srgb,#C9A27A 28%,var(--rd-bg,#F4EEE2));--rv-cu:color-mix(in srgb,var(--rd-muted,#6B6A64) 20%,var(--rd-bg,#F4EEE2));
+ --rv-cu2:color-mix(in srgb,var(--rd-muted,#6B6A64) 30%,var(--rd-bg,#F4EEE2));--rv-tie:color-mix(in srgb,var(--rd-accent,#A9522F) 45%,var(--rd-bg,#F4EEE2));
+ --rv-rug:color-mix(in srgb,var(--rd-accent,#A9522F) 6%,color-mix(in srgb,var(--rd-ink,#141413) 9%,var(--rd-bg,#F4EEE2)));--rv-rug2:color-mix(in srgb,var(--rd-accent,#A9522F) 8%,color-mix(in srgb,var(--rd-ink,#141413) 15%,var(--rd-bg,#F4EEE2)));
+ --rv-pp:color-mix(in srgb,var(--rd-surface,#FFFDF6) 80%,var(--rd-bg,#F4EEE2));--rv-cp:color-mix(in srgb,var(--rd-surface,#FFFDF6) 70%,var(--rd-bg,#F4EEE2));
+ --rv-cb:color-mix(in srgb,#C9A27A 36%,var(--rd-bg,#F4EEE2));--rv-b1:color-mix(in srgb,var(--rd-accent,#A9522F) 38%,var(--rd-bg,#F4EEE2));
+ --rv-b2:color-mix(in srgb,var(--rd-ink,#141413) 22%,var(--rd-bg,#F4EEE2));--rv-b3:color-mix(in srgb,var(--rd-muted,#6B6A64) 40%,var(--rd-bg,#F4EEE2));
+ --rv-b4:color-mix(in srgb,#C9A27A 40%,var(--rd-bg,#F4EEE2));--rv-b5:color-mix(in srgb,var(--rd-ink,#141413) 34%,var(--rd-bg,#F4EEE2));
+ --rv-b6:color-mix(in srgb,var(--rd-accent,#A9522F) 54%,var(--rd-bg,#F4EEE2));--rv-b7:color-mix(in srgb,var(--rd-muted,#6B6A64) 26%,var(--rd-bg,#F4EEE2));
+ --rv-b8:color-mix(in srgb,color-mix(in srgb,var(--rd-accent,#A9522F) 50%,var(--rd-ink,#141413)) 30%,var(--rd-bg,#F4EEE2));--rv-rk:color-mix(in srgb,var(--rd-bg,#F4EEE2) 62%,var(--rd-ink,#141413));
+ --rv-rkf:color-mix(in srgb,var(--rd-bg,#F4EEE2) 72%,var(--rd-ink,#141413));--rv-rkg:color-mix(in srgb,var(--rd-bg,#F4EEE2) 80%,var(--rd-ink,#141413));
+ --rv-rkh:color-mix(in srgb,var(--rd-surface,#FFFDF6) 72%,var(--rd-bg,#F4EEE2));--rv-rkp:color-mix(in srgb,var(--rd-bg,#F4EEE2) 55%,var(--rd-ink,#141413));
+ --rv-rkt:color-mix(in srgb,var(--rd-bg,#F4EEE2) 70%,var(--rd-ink,#141413));--rv-rkr:color-mix(in srgb,var(--rd-accent,#A9522F) 60%,var(--rd-bg,#F4EEE2));
+ --rv-rkb:color-mix(in srgb,var(--rd-accent,#A9522F) 60%,var(--rd-ink,#141413));--rv-rkc:color-mix(in srgb,#C9A27A 40%,var(--rd-bg,#F4EEE2));
+ --rv-rkd2:color-mix(in srgb,var(--rd-bg,#F4EEE2) 62%,var(--rd-ink,#141413));--rv-sd:color-mix(in srgb,var(--rd-ink,#141413) 70%,var(--rd-bg,#F4EEE2));--rv-ink:var(--rd-ink,#141413);
+ --rv-ink2:color-mix(in srgb,var(--rd-ink,#141413) 82%,var(--rd-bg,#F4EEE2));--rv-muted:var(--rd-muted,#6B6A64);--rv-paper:var(--rd-surface,#FFFDF6);
+ --rv-paper2:color-mix(in srgb,var(--rd-surface,#FFFDF6) 92%,var(--rd-ink,#141413));--rv-clay:var(--rd-accent,#A9522F);--rv-clay-ink:var(--rd-surface,#FFFDF6);
+ --rv-rule:color-mix(in srgb,var(--rd-accent,#A9522F) 70%,var(--rd-surface,#FFFDF6));--rv-blue:color-mix(in srgb,var(--rd-ink,#141413) 16%,var(--rd-surface,#FFFDF6));
+ --rv-kraft:color-mix(in srgb,#C9A27A 58%,var(--rd-bg,#F4EEE2));--rv-kraft2:color-mix(in srgb,#B08A62 64%,var(--rd-bg,#F4EEE2));
+ --rv-kraft3:color-mix(in srgb,#C9A27A 42%,var(--rd-bg,#F4EEE2));--rv-shadow:var(--rd-ink,#141413);--rv-tab-ink:var(--rd-surface,#FFFDF6);--rv-course-ink:var(--rd-surface,#FFFDF6);
+ --rv-again:color-mix(in srgb,#D9897A 30%,var(--rd-surface,#FFFDF6));--rv-good:color-mix(in srgb,#8FB98A 30%,var(--rd-surface,#FFFDF6));--rv-easy:color-mix(in srgb,#8AA8CF 30%,var(--rd-surface,#FFFDF6));
+}
+
+/* Words written straight on the room's wall and table (the head's line, the pile counts, the pencil's name) and on the
+   module (it stands on the dashboard's own panel) take the ink of what is behind them; the cards and tags keep theirs. */
+.rv{--rv-wall-ink:var(--rv-ink);--rv-wall-muted:var(--rv-muted)}
+.rd .rv-mod{--rv-wall-ink:var(--rd-ink,#141413);--rv-wall-muted:var(--rd-muted,#6B6A64)}
+.rd[data-theme-kit=starry] .rv{--rv-wall-ink:#F3EEDA;--rv-wall-muted:#C3C9E6}
+.rd[data-theme-kit=sea] .rv{--rv-wall-ink:#ECFBFF;--rv-wall-muted:#B2DCEB}
+.rd[data-rd-data-theme] .rv{--rv-wall-ink:var(--rd-ink,#141413);--rv-wall-muted:var(--rd-muted,#6B6A64)}
+/* Scene themes colour every teacher's rich text in the page's own ink and every small in a pale muted tone, with strong
+   rules: on the deck's cards, tags and plates that is pale on pale. The deck's words keep the colours of their paper. */
+.rd.rd.rd.rd.rd .rv-face :is(.rv-q,.rv-a),.rd.rd.rd.rd.rd .rv-face :is(.rv-q,.rv-a) :is(p,li,ol,ul,span,em,strong,b,td,th,h4,h5,h6){color:var(--rv-ink)!important}
+.rd.rd.rd.rd.rd .rv-face .rv-q2,.rd.rd.rd.rd.rd .rv-face .rv-q2 :is(p,li,ol,ul,span,em,strong,b){color:var(--rv-muted)!important}
+.rd.rd.rd.rd.rd .rv-face mark{color:var(--rv-clay)!important}
+/* the card files drawer: each row's question and answer are rich text too, and keep the ink of the row's paper */
+.rd.rd.rd.rd.rd .rv .rv-row-f,.rd.rd.rd.rd.rd .rv .rv-row-f :is(p,li,ol,ul,span,em,strong,b,sup,sub,td,th){color:var(--rv-ink)!important}
+.rd.rd.rd.rd.rd .rv .rv-row-b,.rd.rd.rd.rd.rd .rv .rv-row-b :is(p,li,ol,ul,span,em,strong,b,sup,sub,td,th){color:var(--rv-ink2)!important}
+.rd.rd.rd.rd.rd .rv .rv-row-f mark,.rd.rd.rd.rd.rd .rv .rv-row-b mark{color:var(--rv-clay)!important}
+/* the drawer's fields (search, the card editor) write in the paper's ink, their hints in its muted ink */
+.rd.rd.rd.rd.rd .rv :is(input,textarea,select){color:var(--rv-ink)!important}
+.rd.rd.rd.rd.rd .rv :is(input,textarea)::placeholder{color:var(--rv-muted)!important;opacity:1}
+.rd.rd.rd.rd.rd .rv-face .rv-side,.rd.rd.rd.rd.rd .rv-ef>span{color:var(--rv-muted)!important}
+.rd.rd.rd.rd.rd .rv :is(.rv-box-name,.rv-drawer-label,.rv-doneface strong,.rv-tab,.rv-row-f,.rv-ctab,.rv-rowtag,.rv-searchgo,.rv-search input){color:var(--rv-ink)!important}
+.rd.rd.rd.rd.rd .rv :is(.rv-doneface span,.rv-row-meta,.rv-cabtag small){color:var(--rv-muted)!important}
+.rd.rd.rd.rd.rd .rv :is(.rv-badge b,.rv-testtag span,.rv-btn-clay,.rv-btn-clay span,.rv-btn-clay .rv-n){color:var(--rv-clay-ink)!important}
+.rd.rd.rd.rd.rd .rv :is(.rv-btn:not(.rv-btn-clay),.rv-btn:not(.rv-btn-clay) span,.rv-cabtag,.rv-cabtag span){color:var(--rv-ink)!important}
+.rd.rd.rd.rd.rd .rv :is(.rv-sub,.rv-pile-n,.rv-newcard,.rv-empty,.rv-count span,.rv-mod-title span){color:var(--rv-wall-muted)!important}
+.rd.rd.rd.rd.rd .rv :is(.rv-sub strong,.rv-pencil,.rv-pencil span,.rv-count strong,.rv-mod-title strong){color:var(--rv-wall-ink)!important}
+.rd.rd.rd.rd.rd .rv-mod{color:var(--rv-wall-ink)}
+.rd.rd.rd.rd.rd .rv-mod .rv-status:not([role=alert]){color:var(--rv-wall-ink)!important}
+
+/* ---------- 2 the drawings: fills, then lines; the room's line is pale, the deck's own things keep full ink ---------- */
+.rv-art,.rv-boxart,.rv-paper,.rv-pileart,.rv-sealart,.rv-starart,.rv-frame,.rv-keyart,.rv-pencilart,.rv-arrows,.rv-dotart,.rv-sheetart,.rv-drawerart,.rv-drawerfront,.rv-newart,.rv-shadowart,.rv-sweepart,.rv-riserart{display:block;overflow:visible}
+:is(.rv,.rv-world) svg path{fill:none;stroke:none;stroke-linecap:round;stroke-linejoin:round}
+.rv-world .wl{fill:var(--rv-wall)}.rv-world .ww{fill:var(--rv-wall2)}.rv-world .pn{fill:var(--rv-panel)}.rv-world .tr{fill:var(--rv-trim)}.rv-world .tr2{fill:var(--rv-trim2)}
+.rv-world .fl{fill:var(--rv-floor)}.rv-world .rg{fill:var(--rv-rug)}.rv-world .rg2{fill:var(--rv-rug2)}
+.rv-world .wd{fill:var(--rv-wd)}.rv-world .wd2{fill:var(--rv-wd2)}.rv-world .wd3{fill:var(--rv-wd3)}.rv-world .wd4{fill:var(--rv-wd4)}.rv-world .tp{fill:var(--rv-top)}
+.rv-world .sk{fill:var(--rv-sky)}.rv-world .sk2{fill:var(--rv-sky2)}.rv-world .sk3{fill:var(--rv-sky3)}.rv-world .sun{fill:var(--rv-sun)}.rv-world .mn{fill:var(--rv-moon)}.rv-world .st{fill:var(--rv-star)}
+.rv-world .mt{fill:var(--rv-mt)}.rv-world .mt2{fill:var(--rv-mt2)}.rv-world .mt3{fill:var(--rv-mt3)}.rv-world .hl1{fill:var(--rv-hl1)}.rv-world .hl2{fill:var(--rv-hl2)}.rv-world .pn1{fill:var(--rv-pn1)}.rv-world .pn2{fill:var(--rv-pn2)}
+.rv-world .lk{fill:var(--rv-lk)}.rv-world .lk2{fill:var(--rv-lk2)}.rv-world .lf{fill:var(--rv-lf)}.rv-world .lf2{fill:var(--rv-lf2)}.rv-world .fl1{fill:var(--rv-fl1)}
+.rv-world .cb{fill:var(--rv-cb)}.rv-world .rf{fill:var(--rv-rf)}.rv-world .wn{fill:var(--rv-wn)}.rv-world .bt{fill:var(--rv-bt)}.rv-world .pt{fill:var(--rv-pt)}.rv-world .pt2{fill:var(--rv-pt2)}.rv-world .gl2{fill:var(--rv-gl2)}
+.rv-world .br{fill:var(--rv-br)}.rv-world .br2{fill:var(--rv-br2)}.rv-world .cu{fill:var(--rv-cu)}.rv-world .cu2{fill:var(--rv-cu2)}.rv-world .tie{fill:var(--rv-tie)}.rv-world .pp{fill:var(--rv-pp)}
+.rv-world .b1{fill:var(--rv-b1)}.rv-world .b2{fill:var(--rv-b2)}.rv-world .b3{fill:var(--rv-b3)}.rv-world .b4{fill:var(--rv-b4)}.rv-world .b5{fill:var(--rv-b5)}.rv-world .b6{fill:var(--rv-b6)}.rv-world .b7{fill:var(--rv-b7)}.rv-world .b8{fill:var(--rv-b8)}
+.rv-world .yl{fill:var(--rv-yl)}.rv-world .cp{fill:var(--rv-cp)}.rv-world .tea{fill:var(--rv-tea)}.rv-world .gs{fill:var(--rv-gs)}.rv-world .gs2{fill:var(--rv-lt2)}.rv-world .lt{fill:var(--rv-lt)}.rv-world .lt2{fill:var(--rv-lt2)}
+.rv-world .sd{fill:var(--rv-sd)}.rv-world .cl{fill:var(--rv-cl)}.rv-world .cl2{fill:var(--rv-cl2)}.rv-world .smk{fill:var(--rv-smk)}.rv-world .hr{fill:var(--rv-hr)}.rv-world .hr2{fill:var(--rv-hr2)}
+.rv-world .mote{fill:var(--rv-mote)}.rv-world .sand{fill:var(--rv-sand)}.rv-world .rd2{fill:var(--rv-rd2)}.rv-world .kd{fill:var(--rv-kd)}.rv-world .ink{fill:var(--rv-rk)}
+.rv-world .sea{fill:var(--rv-sea)}.rv-world .cor{fill:var(--rv-cor)}.rv-world .fish1{fill:var(--rv-fish1)}.rv-world .fish2{fill:var(--rv-fish2)}.rv-world .cyp{fill:var(--rv-cyp)}.rv-world .pl{fill:var(--rv-pl)}.rv-world .pl2{fill:var(--rv-pl2)}
+.rv-world .k{stroke:var(--rv-rk);stroke-width:1.3}.rv-world .kf{stroke:var(--rv-rkf);stroke-width:.85}.rv-world .kh{stroke:var(--rv-rkh);stroke-width:1.1}.rv-world .kg{stroke:var(--rv-rkg);stroke-width:.8}
+.rv-world .kp{stroke:var(--rv-rkp);stroke-width:.9}.rv-world .kr{stroke:var(--rv-rkr);stroke-width:1}.rv-world .kb{stroke:var(--rv-rkb);stroke-width:1.3}.rv-world .kt{stroke:var(--rv-rkt);stroke-width:.9}.rv-world .kc{stroke:var(--rv-rkc);stroke-width:1.2}.rv-world .kd2{stroke:var(--rv-rkd2);stroke-width:1.4}
+.rv-world .gl{stroke:var(--rv-glint);stroke-width:1.3}.rv-world .lk2s{stroke:var(--rv-lk2);stroke-width:1.4}.rv-world .sw{stroke:var(--rv-sw);stroke-width:2.2}.rv-world .swd{stroke:var(--rv-swd);stroke-width:3}.rv-world .cau{stroke:var(--rv-cau);stroke-width:1.6}
+.rv-world .rgk{stroke:var(--rv-rgk);stroke-width:1.6}.rv-world .stm{stroke:var(--rv-stm);stroke-width:1.8}.rv-world .bpg{stroke:var(--rv-bpg);stroke-width:.6}.rv-world :is(.K,.Kf){stroke:var(--rv-rk);stroke-width:1.2}
+.rv-world .o2{opacity:.2}.rv-world .o3{opacity:.3}.rv-world .o4{opacity:.4}.rv-world .o5{opacity:.5}.rv-world .o6{opacity:.6}.rv-world .sd.o3{opacity:.12}.rv-world .sd.o4{opacity:.16}.rv-world .lt.o2{opacity:.38}.rv-world .lt.o3{opacity:.5}
+.rv-world .sw-wash{fill:var(--rv-wall)}.rv-world .sw-edge{stroke:var(--rv-rk);stroke-width:1.4}
+/* the deck's own things */
+.rv .K,.rv-fly .K{stroke:var(--rv-ink);stroke-width:1.6}.rv .Kf,.rv-fly .Kf{stroke:var(--rv-ink);stroke-width:1;opacity:.5}.rv .Kl{stroke:var(--rv-ink);stroke-width:1.8}.rv .kh2{stroke:var(--rv-paper);stroke-width:1.4}
+.rv .bx-sd{fill:var(--rv-shadow);opacity:.16}.rv .bx-kr{fill:var(--rv-kraft)}.rv .bx-kr2{fill:var(--rv-kraft2)}.rv .bx-div{fill:var(--rv-paper2)}.rv .bx-tab{fill:var(--rv-course,var(--rv-clay))}
+.rv .bx-card{fill:var(--rv-paper)}.rv .bx-rule{stroke:var(--rv-rule);stroke-width:.8}.rv .bx-gr{stroke:var(--rv-kraft2);stroke-width:1.1;opacity:.7}.rv .bx-br{fill:var(--rv-brass)}.rv .bx-br2{fill:var(--rv-brass2)}.rv .bx-pp{fill:var(--rv-paper)}.rv .bx-gold{fill:var(--rv-gold)}
+.rv .bx-step{font:800 7.5px/1 system-ui,sans-serif;fill:var(--rv-course-ink);opacity:0;transition:opacity .2s ease}
+:is(.rv,.rv-fly) .cd-paper{fill:var(--rv-paper)}:is(.rv,.rv-fly) .cd-rule{stroke:var(--rv-rule);stroke-width:1.3}:is(.rv,.rv-fly) .cd-blue{stroke:var(--rv-blue);stroke-width:1}:is(.rv,.rv-fly) .cd-shadow{fill:var(--rv-shadow)}
+/* index cards up close: the fold of a dog-ear or a curl, the paper's tooth, a pencil dot, a faint tea ring, the
+   ruling showing through on the back */
+:is(.rv,.rv-fly) .cd-paper2{fill:var(--rv-paper2)}:is(.rv,.rv-fly) .cd-sh{fill:var(--rv-shadow);opacity:.13}
+:is(.rv,.rv-fly) .cd-tooth{stroke:var(--rv-ink);stroke-width:.8;opacity:.16}:is(.rv,.rv-fly) .cd-lead{stroke:var(--rv-muted);stroke-width:1.3;opacity:.75}
+:is(.rv,.rv-fly) .cd-ring{stroke:var(--rv-kraft2);stroke-width:2.6;opacity:.2}:is(.rv,.rv-fly) .cd-show{opacity:.2}
+/* the card box's own wood: the bevel on the front wall, the dark inside, end grain at the joints, worn corners */
+.rv .bx-in{fill:color-mix(in srgb,var(--rv-kraft2) 78%,var(--rv-ink))}.rv .bx-bev{fill:var(--rv-kraft3)}.rv .bx-wear{fill:var(--rv-kraft2);opacity:.75}
+.rv .bx-hat{stroke:var(--rv-ink);stroke-width:.8;opacity:.22}.rv .bx-blue{stroke:var(--rv-blue);stroke-width:.7}.rv .bx-ink{fill:var(--rv-ink)}.rv .bx-era{fill:var(--rv-rule)}/* the riser the back row stands on is room furniture: the table's wood and the room's pale line */
+.rv-riserart .wd{fill:var(--rv-wd)}.rv-riserart .wd2{fill:var(--rv-wd2)}.rv-riserart .wd3{fill:var(--rv-wd3)}.rv-riserart .sd{fill:var(--rv-sd);opacity:.16}.rv-riserart .br{fill:var(--rv-brass)}
+.rv-riserart .k{stroke:var(--rv-rk);stroke-width:1.3}.rv-riserart .kf{stroke:var(--rv-rkf);stroke-width:.85}.rv-riserart .kh{stroke:var(--rv-rkh);stroke-width:1.1}.rv-riserart .kg{stroke:var(--rv-rkg);stroke-width:.8}
+.rv-riserart path{vector-effect:non-scaling-stroke}
+.rv .fr-fill{fill:var(--rv-paper)}.rv .fr-h{stroke:var(--rv-ink);stroke-width:1;opacity:.45}.rv .sl{fill:var(--rv-clay)}.rv .sl2{stroke:var(--rv-clay-ink);stroke-width:1;opacity:.55}
+.rv .ky{fill:var(--rv-paper2)}.rv .dt{fill:var(--rv-paper2)}.rv .rv-pencilart .yl{fill:var(--rv-gold)}.rv .rv-pencilart .pp{fill:var(--rv-paper)}.rv .rv-pencilart .ink{fill:var(--rv-ink)}.rv .rv-pencilart .rd2{fill:var(--rv-rule)}.rv .rv-pencilart .br{fill:var(--rv-brass)}
+:is(.rv-frame,.rv-paper,.rv-sheetart,.rv-drawerart,.rv-newart,.rv-shadowart,.rv-keyart) path{vector-effect:non-scaling-stroke}
+/* scenes show their own parts of the drawing */
+.rv-world :is(.t-night,.t-starry,.t-space,.t-bp){display:none}.rv-world :is(.rv-port,.rv-caustics).t-sea,.rv-world g.t-sea{display:none}
+.rd[data-theme=dark] .rv-world :is(.t-day,.t-sun){display:none}.rd[data-theme=dark] .rv-world .t-night{display:inline}
+.rd[data-theme-kit=starry] .rv-world :is(.t-day,.t-night,.t-sun){display:none}.rd[data-theme-kit=starry] .rv-world .t-starry{display:inline}
+.rd[data-theme-kit=sea] .rv-world :is(.t-arch,.t-curtain,.t-sun,.t-day,.t-night){display:none}.rd[data-theme-kit=sea] .rv-world :is(.rv-port,.rv-caustics).t-sea{display:block}.rd[data-theme-kit=sea] .rv-world g.t-sea{display:inline}
+.rd[data-theme-kit=stars] .rv-world :is(.t-day,.t-land,.t-sun,.t-night){display:none}.rd[data-theme-kit=stars] .rv-world .t-space{display:inline}
+.rd[data-theme-kit=blueprint] .rv-world .t-bp{display:inline}.rd[data-theme-kit=blueprint] .rv-world :is(.t-sun,.rv-motes){display:none}
+.rd[data-theme-kit=blueprint] .rv-world :is(.sd,.lt,.lt2){opacity:0}
+
+/* ---------- 3 the room ---------- */
+.rd[data-workspace=review] .rd-workspace-heading{display:none}
+/* The world is 1600 x 1000, anchored bottom right. A tall room crops the left; a wide room never crops more than
+   40 units of the ceiling (the arch, the sun and the cabinet's top stay in), it shows more wall and table on the left. */
+.rv-room{--u:min(max(calc(100cqw / 1600),calc(100cqh / 1000)),calc(100cqh / 960));--x0:calc(100cqw - 1600 * var(--u));--cw:min(calc(540 * var(--u)),calc(100cqw - 36px));--cl:clamp(18px,calc(var(--x0) + 1010 * var(--u) - var(--cw) / 2),calc(100cqw - 18px - var(--cw)));
+ position:relative;box-sizing:border-box;height:var(--rv-h,calc(100dvh - 120px));min-height:560px;container-type:size;overflow:hidden;isolation:isolate;border-radius:10px;background:var(--rv-wall);font-family:var(--rd-ui-font,system-ui,sans-serif)}
+.rv-stage{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.rv-world{position:absolute;right:0;bottom:0;width:calc(var(--u) * 1600);height:calc(var(--u) * 1000);contain:layout}
+.rv-world .rv-l{position:absolute;inset:0;width:100%;height:100%}
+.rv-world :is(.rv-bit,.rv-view,.rv-port){position:absolute}
+.rv-world .rv-bit>svg,.rv-world .rv-view>svg,.rv-world .rv-port>svg{position:absolute;inset:0;width:100%;height:100%}
+.rv-world .rv-view{overflow:hidden;border-radius:50% 50% 0 0 / 30.4% 30.4% 0 0}
+.rv-world .rv-port{overflow:hidden;border-radius:50%}
+.rv-world .rv-cloud{position:absolute;left:-58%;--rv-far:330%}.rv-world .rv-cloud-1{--rv-far:440%}.rv-world .rv-cloud-2{--rv-far:385%}
+.rv-world .rv-cloud>svg,.rv-world .rv-glints>svg{width:100%;height:100%}
+.rv-world :is(.rv-glints,.rv-smoke,.rv-heron){position:absolute}
+.rv-world .rv-puff{position:absolute;left:18%;bottom:0;width:64%;aspect-ratio:1;display:block;opacity:0}
+.rv-world .rv-puff>svg,.rv-world .rv-wisp>svg,.rv-world .rv-heron>svg{width:100%;height:100%}
+.rv-world .rv-wisp{position:absolute;bottom:0;width:34%;height:100%;display:block;opacity:0}.rv-world .rv-wisp-0{left:6%}.rv-world .rv-wisp-1{left:34%}.rv-world .rv-wisp-2{left:60%}
+.rv-world .rv-heron .K{stroke:var(--rv-rk);stroke-width:1.2}.rv-world .rv-h-up,.rv-world .rv-h-down{opacity:0}
+.rv-world .rv-glow{opacity:0}.rd[data-theme=dark] .rv-world .rv-glow,.rd[data-theme-kit=stars] .rv-world .rv-glow{opacity:1}
+.rv-world .rv-chain,.rv-world .rv-leaf{transform-origin:50% 0}.rv-world .rv-leaf{transform-origin:0 100%}
+.rv-world .rv-sweep{position:absolute;inset:-2% -8% -2% -104%;transform:translateX(112%);pointer-events:none}.rv-world:not([data-rv-enter]) .rv-sweep{display:none}.rv-world .rv-sweep>svg{width:100%;height:100%}
+/* things that never stop: clouds drift, chimney smoke and tea steam rise, the lake glints, the sea's light moves.
+   Like every loop on the dashboard they begin .rd[data-motion-style=gentle]:not([data-living-art=off]) (refresh.css). */
+.rd[data-motion-style=gentle]:not([data-living-art=off]) .rv-world .rv-cloud{animation:rv-drift 150s linear infinite}
+.rd[data-motion-style=gentle]:not([data-living-art=off]) .rv-world .rv-cloud-0{animation-delay:-62s}.rd[data-motion-style=gentle]:not([data-living-art=off]) .rv-world .rv-cloud-1{animation-duration:190s;animation-delay:-140s}.rd[data-motion-style=gentle]:not([data-living-art=off]) .rv-world .rv-cloud-2{animation-duration:170s;animation-delay:-20s}
+.rd[data-motion-style=gentle]:not([data-living-art=off]) .rv-world .rv-puff{animation:rv-puff 7.5s linear infinite}.rd[data-motion-style=gentle]:not([data-living-art=off]) .rv-world .rv-puff-1{animation-delay:-2.5s}.rd[data-motion-style=gentle]:not([data-living-art=off]) .rv-world .rv-puff-2{animation-delay:-5s}
+.rd[data-motion-style=gentle]:not([data-living-art=off]) .rv-world .rv-wisp{animation:rv-steam 5.6s ease-in-out infinite}.rd[data-motion-style=gentle]:not([data-living-art=off]) .rv-world .rv-wisp-1{animation-delay:-1.9s}.rd[data-motion-style=gentle]:not([data-living-art=off]) .rv-world .rv-wisp-2{animation-delay:-3.8s}
+.rd[data-motion-style=gentle]:not([data-living-art=off]) .rv-world .rv-glints>svg{animation:rv-glint 6s ease-in-out infinite alternate}
+.rd[data-motion-style=gentle]:not([data-living-art=off]) .rv-world .rv-caustics>svg{animation:rv-caustic 11s ease-in-out infinite alternate}
+.rv-world .rv-wisp,.rv-world .rv-puff{will-change:transform,opacity}
+@keyframes rv-drift{from{transform:translateX(0)}to{transform:translateX(var(--rv-far))}}
+@keyframes rv-puff{0%{transform:translate(0,0) scale(.35);opacity:0}12%{opacity:.75}100%{transform:translate(70%,-360%) scale(1.7);opacity:0}}
+@keyframes rv-steam{0%{transform:translateY(34%) scaleY(.55);opacity:0}30%{opacity:.6}70%{opacity:.35}100%{transform:translateY(-42%) scaleY(1.08) skewX(9deg);opacity:0}}
+@keyframes rv-glint{0%{transform:translateX(-1.5%);opacity:.45}50%{opacity:1}100%{transform:translateX(1.5%);opacity:.6}}
+@keyframes rv-caustic{0%{transform:translate(-1.2%,0);opacity:.55}100%{transform:translate(1.4%,.6%);opacity:1}}
+/* life tied to what happened: the room washes in, the lamp clicks on at night, a page lifts when a card is filed,
+   dust stirs in the light when a box is opened, and at the end the heron lifts off the shore */
+/* --rv-enter-at holds the room's entrance back while the sheet it comes in on is still growing out of the module */
+.rv-world[data-rv-enter] .rv-sweep{animation:rv-sweep 1.2s var(--rv-enter-at,0s) var(--rd-pen,cubic-bezier(.55,0,.3,1)) both}
+.rv-world[data-rv-enter] .rv-l-wall{animation:rv-fade .5s var(--rv-enter-at,0s) ease-out both}
+.rv-world[data-rv-enter] .rv-view{animation:rv-fade .7s calc(.15s + var(--rv-enter-at,0s)) ease-out both}
+/* (the two grounds rise from their own depths by keyframes of their own: a custom property set on a ground for it is
+   inherited by every shape in it, and restyled them all as the entrance began) */
+.rv-world[data-rv-enter] .rv-l-mid{animation:rv-layer-mid 1s calc(.1s + var(--rv-enter-at,0s)) var(--rd-settle,cubic-bezier(.2,.8,.25,1)) both}
+.rv-world[data-rv-enter] .rv-l-near{animation:rv-layer-near 1.1s calc(.2s + var(--rv-enter-at,0s)) var(--rd-settle,cubic-bezier(.2,.8,.25,1)) both}
+/* opening: a sheet of the wall grows out of the module's frame; the page shows nothing outside it until it lands */
+.rv-growsheet{position:absolute;inset:0;z-index:0;border-radius:10px;background:var(--rv-wall);transform-origin:0 0;pointer-events:none;will-change:transform}
+.rv-room:has(>.rv-stage>.rv-growsheet){background:transparent}
+@keyframes rv-sweep{0%{transform:translateX(0)}14%{transform:translateX(-3%)}100%{transform:translateX(112%)}}
+@keyframes rv-fade{from{opacity:0}to{opacity:1}}
+@keyframes rv-layer-mid{0%{transform:translateY(16px);opacity:0}60%{transform:translateY(-2px);opacity:1}100%{transform:none;opacity:1}}
+@keyframes rv-layer-near{0%{transform:translateY(30px);opacity:0}60%{transform:translateY(-2px);opacity:1}100%{transform:none;opacity:1}}
+.rv-world[data-rv-lamp] .rv-glow{animation:rv-lamp 1.25s .6s both}
+.rv-world[data-rv-lamp] .rv-chain{animation:rv-chain .75s .25s var(--rd-settle,cubic-bezier(.3,.7,.3,1)) both}
+@keyframes rv-lamp{0%{opacity:0}28%{opacity:.9}36%{opacity:.25}52%{opacity:1}64%{opacity:.82}100%{opacity:1}}
+@keyframes rv-chain{0%{transform:none}30%{transform:translateY(16%) scaleY(1.04)}62%{transform:translateY(-5%)}82%{transform:translateY(2%)}100%{transform:none}}
+.rv-world[data-rv-leaf] .rv-leaf{animation:rv-leaf 1.5s var(--rd-pen,cubic-bezier(.4,0,.3,1)) both}
+@keyframes rv-leaf{0%{transform:none}12%{transform:rotate(1.5deg) translateY(4%)}46%{transform:rotate(-9deg) translateY(-34%) skewX(-8deg)}74%{transform:rotate(1.2deg) translateY(3%)}88%{transform:rotate(-.4deg)}100%{transform:none}}
+.rv-world[data-rv-dust] .rv-motes>svg{animation:rv-dust 3.4s var(--rd-settle,cubic-bezier(.3,.6,.3,1)) both}
+@keyframes rv-dust{0%{transform:none;opacity:1}18%{transform:translate(-.8%,-5%) rotate(-.6deg);opacity:1}55%{transform:translate(1.2%,-2.6%) rotate(.4deg);opacity:.85}100%{transform:none;opacity:1}}
+.rv-world[data-rv-heron] .rv-heron{animation:rv-heron 3.6s var(--rd-pen,cubic-bezier(.45,0,.4,1)) both}
+.rv-world[data-rv-heron] .rv-h-stand{animation:rv-h-stand 3.6s both}
+.rv-world[data-rv-heron] .rv-h-up{animation:rv-wing-a .34s .5s steps(1,end) 9 both}
+.rv-world[data-rv-heron] .rv-h-down{animation:rv-wing-b .34s .5s steps(1,end) 9 both}
+@keyframes rv-heron{0%{transform:none}9%{transform:translateY(7%) scaleY(.92)}16%{transform:translate(6%,-22%)}55%{transform:translate(170%,-250%) scale(.82)}100%{transform:translate(430%,-560%) scale(.55);opacity:0}}
+@keyframes rv-h-stand{0%,13%{opacity:1}14%,100%{opacity:0}}
+@keyframes rv-wing-a{0%,49%{opacity:1}50%,100%{opacity:0}}
+@keyframes rv-wing-b{0%,49%{opacity:0}50%,100%{opacity:1}}
+
+/* ---------- 4 the page: what stands where on the table ---------- */
+.rv-room>:not(.rv-stage){z-index:2}
+.rv-room .rv-head{position:absolute;left:clamp(18px,2.2cqw,34px);top:clamp(12px,2.2cqh,24px);display:flex;flex-wrap:wrap;align-items:baseline;column-gap:14px;row-gap:4px;max-width:min(560px,60cqw)}
+.rv .rv-title{margin:0;font:600 clamp(26px,4.4cqh,40px)/1.05 var(--rd-display,Literata,Georgia,serif);letter-spacing:-.4px;color:var(--rv-ink)}
+.rv .rv-sub{margin:0;font:500 13px/1.3 var(--rd-ui-font,system-ui,sans-serif);color:var(--rv-muted)}.rv .rv-sub strong{color:var(--rv-ink);font-weight:700}
+.rv-room .rv-head .rv-dots{flex-basis:100%}
+.rv-room .rv-corner{position:absolute;right:clamp(14px,1.6cqw,26px);top:clamp(12px,2cqh,22px);display:flex;align-items:center;gap:12px}
+.rv .rv-dots{display:inline-flex;align-items:center;gap:9px;min-height:20px}
+.rv .rv-dot{position:relative;display:block;width:calc(var(--rv-r) * 2.2px);height:calc(var(--rv-r) * 2.2px);font-style:normal}
+.rv .rv-dot>svg{position:absolute;inset:0;width:100%;height:100%}.rv .rv-dot[data-today=true] .dt{fill:var(--rv-clay)}.rv .rv-dot[data-none=true]{opacity:.55}
+/* the cabinet's catalogue tag: hangs off a drawer knob, swings when touched */
+.rv-room .rv-cabtag{position:absolute;left:max(14px,calc(var(--x0) + 96 * var(--u)));top:calc(100cqh - 704 * var(--u));width:clamp(104px,calc(132 * var(--u)),136px);height:42px;display:flex;align-items:center;gap:8px;padding:0 12px 0 26px;border:0;background:none;color:var(--rv-ink);font:700 14px/1 var(--rd-ui-font,system-ui);cursor:pointer;transform:rotate(-5deg);transform-origin:8px 50%;isolation:isolate}
+.rv-room .rv-cabtag>.rv-frame{position:absolute;inset:0;width:100%;height:100%;z-index:-1}.rv-room .rv-cabtag .fr-fill{fill:var(--rv-kraft3)}
+.rv-room .rv-cabtag small{font:700 11px/1 system-ui;color:var(--rv-muted)}
+.rv-room .rv-cabtag:is(:hover,:focus-visible){animation:rv-swing .24s var(--rd-settle,cubic-bezier(.3,.6,.3,1))}
+@keyframes rv-swing{0%{transform:rotate(-5deg)}35%{transform:rotate(-8deg)}70%{transform:rotate(-4deg)}100%{transform:rotate(-5deg)}}
+/* the boxes stand on the table, the new-card stack at the row's end; more courses stand behind, on a low step
+   (riser) that stands on the table's back edge, a little smaller because they are further away */
+.rv-room .rv-boxes{position:absolute;left:max(16px,calc(var(--x0) + 330 * var(--u)));right:max(16px,calc(220 * var(--u)));bottom:calc(292 * var(--u))}
+.rv-room .rv-tier{display:flex;justify-content:center;align-items:flex-end;column-gap:clamp(10px,calc(22 * var(--u)),28px)}
+.rv-room .rv-tier-front{position:relative;z-index:2}
+.rv-room .rv-tier-back{position:absolute;z-index:1;left:0;right:0;bottom:calc(98 * var(--u));width:fit-content;max-width:100%;margin:0 auto}
+.rv-room .rv-box{flex:0 1 auto;min-width:0;width:clamp(140px,calc(204 * var(--u)),236px)}
+.rv-room .rv-tier-back .rv-box{width:calc(.86 * clamp(140px,calc(204 * var(--u)),236px))}
+.rv-room .rv-newcard{flex:0 1 auto;min-width:0;width:clamp(96px,calc(140 * var(--u)),164px)}
+.rv-room .rv-riser{position:absolute;z-index:0;left:calc(-16 * var(--u));right:calc(-16 * var(--u));bottom:calc(-34 * var(--u));height:calc(44 * var(--u));pointer-events:none}
+.rv-riser>svg{display:block;width:100%;height:100%}
+.rd[data-motion-style=gentle] .rv-room .rv-tier>:is(.rv-box,.rv-newcard){animation:rv-set .3s calc(var(--i,4) * 40ms + 120ms) var(--rd-settle,cubic-bezier(.3,.7,.3,1)) both}
+.rd[data-motion-style=gentle] .rv-room .rv-riser{animation:rv-set .3s 100ms var(--rd-settle,cubic-bezier(.3,.7,.3,1)) both}
+@keyframes rv-set{0%{transform:translateY(-14px) rotate(-1.5deg);opacity:0}60%{transform:translateY(1.5px) scaleY(.985);opacity:1}100%{transform:none;opacity:1}}
+/* studying: the box slides to the table's left end, the card is held up in the window's light, the done pile grows */
+.rv-room :is(.rv-study,.rv-done){position:absolute;inset:0;pointer-events:none}
+.rv-room :is(.rv-study,.rv-done)>*{pointer-events:auto}
+/* the box you study stands at the table's left end, just past the potted fern (its pot ends at 418, its fronds near 470) */
+.rv-room .rv-sidebox{position:absolute;left:max(16px,calc(var(--x0) + 478 * var(--u)));bottom:calc(292 * var(--u));width:clamp(124px,calc(178 * var(--u)),206px);transform-origin:50% 100%}
+.rd[data-motion-style=gentle] .rv-room .rv-study .rv-sidebox{animation:rv-slide .32s var(--rd-settle,cubic-bezier(.3,.7,.25,1)) both}
+@keyframes rv-slide{0%{transform:translateX(150%)}100%{transform:none}}
+.rv-room .rv-cardwrap{position:absolute;left:var(--cl);width:var(--cw);bottom:calc(424 * var(--u))}
+/* the row under the card is a little wider than the card (up to 660 px), so Again/Good/Easy, Edit and Big card share one line */
+.rv-room .rv-under{--uw:max(var(--cw),min(660px,calc(100cqw - 36px)));position:absolute;left:clamp(18px,calc(var(--cl) + var(--cw) / 2 - var(--uw) / 2),calc(100cqw - 18px - var(--uw)));width:var(--uw);top:calc(100cqh - 262 * var(--u));display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap}
+/* the done pile grows where the new-card pile stood, clear of the open book (the book starts at 1246) */
+.rv-room .rv-pile-done{position:absolute;left:min(calc(100cqw - 150px),calc(var(--x0) + 1090 * var(--u)));bottom:calc(292 * var(--u));width:clamp(96px,calc(150 * var(--u)),172px)}
+.rv-room .rv-cardzone{position:absolute;left:var(--cl);width:var(--cw);bottom:calc(470 * var(--u));display:grid;justify-items:center;gap:12px;font:500 15px/1.3 var(--rd-ui-font,system-ui)}
+/* the end: the pile squares up, a star drops on the box */
+.rv-room .rv-donecard{position:absolute;--dw:min(calc(400 * var(--u)),calc(100cqw - 40px));left:clamp(18px,calc(var(--x0) + 1010 * var(--u) - var(--dw) / 2),calc(100cqw - 18px - var(--dw)));width:var(--dw);bottom:calc(296 * var(--u))}
+.rv-room .rv-done .rv-under{top:calc(100cqh - 270 * var(--u))}
+/* Big card: the card comes to the middle and takes most of the room (5:3, at most 1180 px wide), Again/Good/Easy just
+   under it. The room fades back behind a wash of its own wall; the title and the fold stay on top. */
+/* (the big card's measures go on the two things placed by them: set on the room, an inherited custom property restyled
+   all of its 3,700 elements, the drawing's shapes included, at each press of Big card) */
+.rv-room[data-rv-big=true] :is(.rv-cardwrap,.rv-study .rv-under){--bw:min(calc(100cqw - 96px),calc((100cqh - 206px) / .6),1180px);--bt:max(70px,calc((100cqh - var(--bw) * .6 - 66px) / 2))}
+.rv-room .rv-veil{position:absolute;inset:0;z-index:1;background:var(--rv-wall);opacity:0;pointer-events:none;transition:opacity .32s ease}
+.rd:not([data-motion-style=gentle]) .rv-room .rv-veil{transition:none}
+.rv-room[data-rv-big=true] .rv-veil{opacity:.9;pointer-events:auto}
+.rv-room[data-rv-big=true] :is(.rv-head,.rv-corner){z-index:3}
+.rv-room[data-rv-big=true] :is(.rv-sidebox,.rv-pile-done){z-index:0}
+.rv-room[data-rv-big=true] .rv-cardwrap{left:calc(50cqw - var(--bw) / 2);width:var(--bw);bottom:auto;top:var(--bt);z-index:2}
+.rv-room[data-rv-big=true] .rv-study .rv-under{left:calc(50cqw - var(--bw) / 2);width:var(--bw);top:calc(var(--bt) + var(--bw) * .6 + 22px);z-index:2}
+.rv-room[data-rv-big=true] .rv-card{transform:rotate(calc(var(--rv-tilt) * .3))}
+.rv-room[data-rv-big=true] .rv-card-shadow{transform:rotate(calc(var(--rv-tilt) * .3)) translate(1.2cqw,2.6cqh);opacity:.16}
+.rv-room[data-rv-big=true] .rv-face .rv-q{font-size:clamp(18px,6cqw,66px)}.rv-room[data-rv-big=true] .rv-face .rv-q[data-len=m]{font-size:clamp(15px,4.3cqw,46px)}
+.rv-room[data-rv-big=true] .rv-face .rv-a{font-size:clamp(16px,5cqw,54px)}.rv-room[data-rv-big=true] .rv-face .rv-a[data-len=m]{font-size:clamp(14px,3.8cqw,40px)}
+.rv-room[data-rv-big=true] .rv-face :is(.rv-q,.rv-a)[data-len=l]{font-size:clamp(14px,2.7cqw,29px)}
+.rv-room[data-rv-big=true] .rv-face .rv-q2{font-size:clamp(12px,3cqw,30px)}.rv-room[data-rv-big=true] .rv-side{font-size:clamp(10px,1.5cqw,16px)}
+.rv .rv-big-art{display:block;width:30px;height:24px;transition:transform .24s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}.rv .rv-big-art>svg{display:block;width:100%;height:100%;overflow:visible}
+.rv .rv-bigart .pp{fill:var(--rv-paper)}
+.rv .rv-bigbtn:hover .rv-big-art{transform:scale(1.08)}.rv .rv-bigbtn:active .rv-big-art{transform:scale(.92);transition-duration:.07s}
+
+/* ---------- 5 controls: a drawn frame and a name ---------- */
+.rv :is(.rv-btn,.rv-box,.rv-newcard,.rv-sidebox,.rv-card,.rv-pencil,.rv-fold,.rv-tab,.rv-cabtag),.rv-grow{-webkit-tap-highlight-color:transparent}
+.rv .rv-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:40px;padding:0 18px;border:0;margin:0;background:none;color:var(--rv-ink);font:650 14px/1 var(--rd-ui-font,system-ui,sans-serif);cursor:pointer;isolation:isolate;white-space:nowrap;transition:transform .22s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}
+.rv .rv-btn>.rv-frame{position:absolute;inset:0;width:100%;height:100%;z-index:-1;transition:transform .22s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}
+.rv .rv-n{font:inherit;color:inherit}
+.rv .rv-btn:hover>.rv-frame{transform:translate(-1px,-1.5px)}
+.rv .rv-btn:active{transform:translateY(2px) scale(.97);transition-duration:.07s}
+.rv .rv-btn:disabled{cursor:default;opacity:.6}
+.rv .rv-btn:focus-visible,.rv .rv-box:focus-visible,.rv .rv-newcard:focus-visible,.rv .rv-sidebox:focus-visible,.rv .rv-pencil:focus-visible,.rv .rv-fold:focus-visible,.rv .rv-tab:focus-visible,.rv .rv-cabtag:focus-visible,.rv .rv-ctab:focus-visible,.rv .rv-rowpencil:focus-visible,.rv .rv-rowtag:focus-visible,.rv .rv-searchgo:focus-visible,.rv-grow:focus-visible{outline:2px dashed var(--rv-clay);outline-offset:4px;border-radius:4px}
+.rv .rv-btn-clay{color:var(--rv-clay-ink);font-weight:700;min-height:44px;padding:0 22px}.rv .rv-btn-clay .fr-fill{fill:var(--rv-clay)}.rv .rv-btn-clay .K{stroke:var(--rv-ink)}
+.rv .rv-btn-paper .fr-fill{fill:var(--rv-paper)}.rv .rv-btn-slip{min-height:32px;padding:0 12px;font-size:12.5px}.rv .rv-btn-slip .fr-fill{fill:var(--rv-paper2)}
+.rv .rv-btn-again .fr-fill{fill:var(--rv-again)}.rv .rv-btn-good .fr-fill{fill:var(--rv-good)}.rv .rv-btn-easy .fr-fill{fill:var(--rv-easy)}
+.rv .rv-key{position:relative;display:inline-grid;place-items:center;width:20px;height:19px;font:800 11px/1 system-ui,sans-serif;color:var(--rv-ink2)}
+.rv .rv-key>svg{position:absolute;inset:0;width:100%;height:100%}.rv .rv-key>span{position:relative;top:-1px}
+.rv .rv-fold,.rv-grow{position:relative;display:inline-grid;place-items:center;width:38px;height:38px;padding:0;border:0;background:none;color:var(--rv-ink);cursor:pointer;isolation:isolate;transition:transform .22s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}
+.rv .rv-fold>.rv-frame{position:absolute;inset:0;width:100%;height:100%;z-index:-1}.rv .rv-fold>.rv-arrows,.rv-grow>.rv-arrows{width:20px;height:20px}
+.rv .rv-fold:hover,.rv-grow:hover{transform:scale(1.06)}.rv .rv-fold:active,.rv-grow:active{transform:scale(.92);transition-duration:.07s}
+.rv-grow{width:30px;height:30px;margin-left:auto;color:var(--rd-muted,#5E5D59)}.rv-grow:hover{color:var(--rd-ink,#141413)}.rv-grow path{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.rv .rv-field{display:grid;gap:5px;font:600 12.5px/1.2 var(--rd-ui-font,system-ui);color:var(--rv-ink2)}
+.rv .rv-slip{position:relative;display:block;isolation:isolate;color:var(--rv-ink)}.rv .rv-slip>.rv-frame{position:absolute;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none}.rv .rv-slip .fr-fill{fill:var(--rv-paper)}
+.rv .rv-field :is(input,select,textarea){box-sizing:border-box;width:100%;min-height:38px;padding:8px calc(3.4% + 10px);border:0;border-radius:0;background:none;color:var(--rv-ink);font:500 14px/1.4 var(--rd-ui-font,system-ui);appearance:none;-webkit-appearance:none}
+.rv .rv-slip-choice select{padding-right:calc(3.4% + 30px);cursor:pointer}.rv .rv-slip .rv-caret{position:absolute;right:calc(3.4% + 10px);top:50%;width:14px;height:10px;margin-top:-5px;pointer-events:none;color:var(--rv-ink)}
+.rv .rv-field select option{background:var(--rv-paper);color:var(--rv-ink)}
+.rv .rv-field input[type=file]{padding-block:5px;font-size:13px;color:var(--rv-ink2)}.rv .rv-field input[type=file]::file-selector-button{margin-right:12px;padding:5px 14px 5px 12px;border:0;border-radius:2px 6px 3px 5px;background:var(--rv-kraft3);color:var(--rv-ink);font:650 13px/1.2 var(--rd-ui-font,system-ui);rotate:-1deg;cursor:pointer}
+.rv .rv-field textarea{resize:vertical;font-family:var(--rd-display,Literata,Georgia,serif);font-size:15px}
+.rv .rv-field :is(input,select,textarea):focus-visible{outline:2px dashed var(--rv-clay);outline-offset:2px}
+.rv .rv-check{display:inline-flex;align-items:center;gap:8px;font:600 13px/1 var(--rd-ui-font,system-ui)}.rv .rv-check input{width:18px;height:18px;accent-color:var(--rv-clay)}
+.rv .rv-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.rv .rv-empty{margin:8px 0;color:var(--rv-muted);font:500 14px/1.4 var(--rd-ui-font,system-ui)}
+/* a box: the drawn box, its course on the brass holder, the due seal, a red test tab; step labels show on hover */
+.rv .rv-box{position:relative}.rv .rv-box,.rv .rv-sidebox{display:block;aspect-ratio:220/140;padding:0;border:0;background:none;color:var(--rv-ink);cursor:pointer;container-type:inline-size;z-index:calc(40 - var(--i,0))}
+.rv .rv-box-art,.rv .rv-box-art>svg{position:absolute;inset:0;width:100%;height:100%}
+.rv .rv-box-art{transition:transform .24s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}
+.rv .rv-box-name{position:absolute;left:23.6%;right:23.6%;top:65.2%;height:15.4%;display:grid;place-items:center;overflow:hidden;font:600 7.4cqw/1 var(--rd-display,Literata,Georgia,serif);text-align:center;color:var(--rv-ink);white-space:nowrap}.rv .rv-box-name[data-len=m]{font-size:6.6cqw}.rv .rv-box-name[data-len=l]{font-size:5.4cqw}
+/* a long name takes two lines on the plate rather than losing its end */
+.rv .rv-box-name[data-len=xl]{font-size:4.7cqw;line-height:1.02;white-space:normal;text-wrap:balance;overflow-wrap:anywhere}
+.rv .rv-badge{position:absolute;right:-1%;top:50%;width:17%;aspect-ratio:1;display:grid;place-items:center}.rv .rv-badge>svg{position:absolute;inset:0;width:100%;height:100%}
+.rv .rv-badge b{position:relative;font:800 6.4cqw/1 system-ui,sans-serif;color:var(--rv-clay-ink)}
+.rv .rv-testtag{position:absolute;left:1%;top:-15%;width:auto;min-width:40%;height:21%;padding-right:9cqw;box-sizing:border-box;display:grid;place-items:center;transform:rotate(-7deg);transform-origin:10% 100%}
+:is(.rv-room .rv-boxes,.rv-sink) .rv-testtag{left:2%;top:-22%;width:auto;min-width:36%;height:19%;transform:rotate(-7deg);transform-origin:10% 100%}
+.rv-room .rv-boxes[data-rows="2"] .rv-tier-front .rv-testtag{left:-15%;top:50%;width:auto;min-width:26%;padding-right:7cqw;height:17%;transform:rotate(-12deg);transform-origin:100% 20%}
+.rv-room .rv-boxes[data-rows="2"] .rv-tier-front .rv-testtag span{font-size:4.4cqw;padding-left:3.4cqw}
+.rv .rv-testtag>svg{position:absolute;inset:0;width:100%;height:100%}.rv .rv-testtag .fr-fill{fill:var(--rv-red)}/* the tag is as long as its words ("Test tomorrow" too): the paper stretches (its drawn end is at 82% of the frame, so the
+   right padding keeps the last letter on the paper), the words never lose their end */
+.rv .rv-testtag span{position:relative;padding-left:6cqw;font:800 5.4cqw/1 system-ui,sans-serif;color:var(--rv-clay-ink);white-space:nowrap}
+.rv .bx-divider{transition:transform .3s var(--rd-glide,cubic-bezier(.2,.8,.2,1));transition-delay:calc(var(--i) * 18ms)}
+.rv :is(.rv-box,.rv-sidebox):is(:hover,:focus-visible) .bx-divider{transform:translateY(-3.5px)}
+.rv :is(.rv-box,.rv-sidebox):is(:hover,:focus-visible) .bx-step{opacity:1}
+.rv :is(.rv-box,.rv-sidebox):active .rv-box-art{transform:translateY(3px) scaleY(.97);transition-duration:.07s}
+.rv .rv-box:hover .rv-testtag{animation:rv-flick .24s var(--rd-settle,cubic-bezier(.3,.6,.3,1))}
+@keyframes rv-flick{0%{transform:rotate(-7deg)}20%{transform:rotate(-10deg)}50%{transform:rotate(-3deg)}75%{transform:rotate(-8deg)}100%{transform:rotate(-7deg)}}
+.rv-room .rv-box:hover .rv-testtag{animation-name:rv-flick-hang}
+@keyframes rv-flick-hang{0%{transform:rotate(-11deg)}20%{transform:rotate(-15deg)}50%{transform:rotate(-5deg)}75%{transform:rotate(-12.5deg)}100%{transform:rotate(-11deg)}}
+.rv .rv-box:disabled{cursor:default}
+.rv .rv-sticker{position:absolute;left:79%;top:57%;width:18%;aspect-ratio:1}.rv .rv-sticker>svg{width:100%;height:100%}
+.rd[data-motion-style=gentle] .rv .rv-sticker{animation:rv-drop .32s .24s var(--rd-settle,cubic-bezier(.3,.7,.3,1)) both}
+@keyframes rv-drop{0%{transform:translate(-40%,-420%) rotate(-70deg) scale(1.4);opacity:0}12%{opacity:1}58%{transform:translate(0,6%) rotate(10deg) scale(.94)}78%{transform:translate(0,-4%) rotate(-4deg) scale(1.03)}100%{transform:none;opacity:1}}
+.rv .rv-newcard{position:relative;display:grid;justify-items:center;gap:4px;padding:0;border:0;background:none;color:var(--rv-muted);font:600 12px/1 var(--rd-ui-font,system-ui);cursor:pointer}
+.rv .rv-newcard-art{display:block;width:100%;aspect-ratio:200/130;transition:transform .24s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}.rv .rv-newcard-art>svg{width:100%;height:100%}
+.rv .rv-newcard:hover .rv-newcard-art{transform:translateY(-4px) rotate(-1.5deg)}.rv .rv-newcard:active .rv-newcard-art{transform:translateY(1px);transition-duration:.07s}
+.rv .rv-newart .cd-paper{fill:var(--rv-paper)}
+/* piles */
+.rv .rv-pile{display:grid;justify-items:center;gap:2px;transform-origin:50% 100%}
+.rv .rv-pile-art{display:block;width:100%;aspect-ratio:140/112}.rv .rv-pile-art>svg{width:100%;height:100%}
+.rv .rv-pile-n{font:600 12px/1.2 var(--rd-ui-font,system-ui);color:var(--rv-muted)}
+.rv .rv-pile[data-n="0"] .rv-pile-art{opacity:.5}
+/* the pencil: edit the card in front of you */
+.rv .rv-pencil{display:inline-flex;align-items:center;gap:6px;padding:4px 6px;border:0;background:none;color:var(--rv-ink2);font:650 13px/1 var(--rd-ui-font,system-ui);cursor:pointer}
+.rv .rv-pencil-art{display:block;width:52px;height:17px;transition:transform .24s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}.rv .rv-pencil-art>svg{width:100%;height:100%}
+.rv .rv-pencil:hover .rv-pencil-art{transform:translateX(-4px) rotate(-8deg)}.rv .rv-pencil:active .rv-pencil-art{transform:translateX(2px) rotate(-14deg);transition-duration:.07s}
+/* grades come up after the turn, one after another */
+.rv .rv-grades{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;transition:opacity .2s ease,transform .2s ease}
+.rv .rv-grades[data-up=false]{opacity:0;transform:translateY(14px);pointer-events:none}
+.rv .rv-grade{min-width:clamp(92px,11cqw,128px)}.rv-room .rv-grade{min-width:clamp(84px,calc(120 * var(--u)),128px)}
+.rd[data-motion-style=gentle] .rv .rv-grades[data-up=true] .rv-grade{animation:rv-rise .16s calc(var(--k,0) * 30ms + 60ms) var(--rd-settle,cubic-bezier(.2,.8,.3,1)) both}
+@keyframes rv-rise{0%{transform:translateY(10px);opacity:0}100%{transform:none;opacity:1}}
+/* the status slip */
+.rv .rv-status{margin:0;font:600 13px/1.35 var(--rd-ui-font,system-ui);color:var(--rv-ink)}
+.rv .rv-status:empty{display:none}
+.rv .rv-status[data-quiet]{position:absolute!important;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.rv-room>.rv-status{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);max-width:min(560px,86cqw);padding:7px 16px;background:var(--rv-paper);border:1.5px solid var(--rv-ink);border-radius:3px 8px 4px 7px;z-index:7}
+.rv-room>.rv-status[role=alert]{color:var(--rv-red)}
+/* the drawer: pulled out of the cabinet; tabs are index dividers */
+.rv-room .rv-drawer{position:absolute;z-index:6;left:max(10px,calc(var(--x0) + 40 * var(--u)));top:clamp(64px,10cqh,104px);bottom:clamp(10px,2cqh,22px);width:min(800px,calc(100cqw - 20px));transform-origin:0 50%}
+.rd[data-motion-style=gentle] .rv-room .rv-drawer{animation:rv-pull .32s var(--rd-settle,cubic-bezier(.3,.7,.25,1)) both}
+@keyframes rv-pull{0%{transform:translateX(-36%) scaleX(.86);opacity:0}30%{opacity:1}100%{transform:none;opacity:1}}
+:is(.rv-room,.rv-fly) .rv-drawer-art{position:absolute;inset:0}:is(.rv-room,.rv-fly) .rv-drawer-art>svg{width:100%;height:100%}
+/* the drawer's front: a brass label holder written 'Cards' and a pull ring, drawn to its own shape (never stretched) */
+:is(.rv-room,.rv-fly) .rv-drawer-front{position:absolute;left:50%;bottom:.4%;width:clamp(116px,21%,164px);aspect-ratio:160/70;transform:translateX(-50%);container-type:inline-size;pointer-events:none}
+:is(.rv-room,.rv-fly) .rv-drawer-front>svg{position:absolute;inset:0;width:100%;height:100%}
+:is(.rv-room,.rv-fly) .rv-drawer-label{position:absolute;left:12.5%;right:12.5%;top:16.5%;height:33%;display:grid;place-items:center;font:600 10.5cqw/1 var(--rd-display,Literata,Georgia,serif);letter-spacing:.02em;color:var(--rv-ink)}
+:is(.rv-room,.rv-fly) .rv-drawer-in{position:absolute;left:5.5%;right:5.5%;top:9.5%;bottom:15.5%;display:flex;flex-direction:column;gap:10px;min-height:0}
+:is(.rv-room,.rv-fly) .rv-drawer-top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}:is(.rv-room,.rv-fly) .rv-drawer-top .rv-field{min-width:200px}
+.rv .rv-tabs{display:flex;gap:4px;align-items:flex-end;border-bottom:1.5px solid var(--rv-ink);padding-left:6px}
+.rv .rv-tab{position:relative;display:inline-grid;place-items:center;min-width:94px;height:34px;padding:0 16px;margin-bottom:-1.5px;border:0;background:none;color:var(--rv-ink2);font:650 13px/1 var(--rd-ui-font,system-ui);cursor:pointer;isolation:isolate;transition:transform .3s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}
+.rv .rv-tab>svg{position:absolute;inset:0;width:100%;height:100%;z-index:-1}.rv .rv-tab .fr-fill{fill:var(--rv-paper2)}
+.rv .rv-tab[aria-selected=true]{transform:translateY(-4px);color:var(--rv-ink)}.rv .rv-tab[aria-selected=true] .fr-fill{fill:var(--rv-kraft3)}
+.rv .rv-tab:hover{transform:translateY(-2px)}
+:is(.rv-room,.rv-fly) .rv-panel{flex:1;min-height:0;overflow:auto;padding:4px 4px 12px;scrollbar-width:thin}
+.rv .rv-listbar{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:8px}.rv .rv-listbar .rv-field{flex:1 1 180px}
+.rv .rv-list{list-style:none;margin:0;padding:0}
+.rv .rv-row{position:relative;display:grid;grid-template-columns:1fr auto;gap:2px 14px;padding:10px 6px 9px 18px;border-bottom:1px solid var(--rv-blue)}
+.rv .rv-row::before{content:'';position:absolute;left:5px;top:12px;bottom:12px;width:3px;border-radius:2px 1px 3px 1px;background:var(--rv-course,var(--rv-clay))}
+.rv .rv-row-f{font:600 15px/1.3 var(--rd-display,Literata,Georgia,serif)}.rv .rv-row-b{grid-column:1;font:400 13.5px/1.35 var(--rd-ui-font,system-ui);color:var(--rv-ink2)}
+.rv .rv-row-meta{grid-column:1;margin:2px 0 0;font:600 11.5px/1.2 var(--rd-ui-font,system-ui);color:var(--rv-muted)}
+.rv .rv-row-act{grid-column:2;grid-row:1 / span 3;display:flex;gap:6px;align-items:center}
+/* The card files (no form boxes): the courses as kraft tabs, the search as a paper slip with its magnifier, each card a
+   small index card with a pencil to edit it and a tag that opens Pause and Delete. */
+.rv .rv-ctabs{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:flex-end;flex:1;min-width:0}
+.rv .rv-ctab{position:relative;display:inline-grid;place-items:center;height:30px;padding:0 13px 0 18px;border:0;background:none;color:var(--rv-ink2);font:650 12.5px/1 var(--rd-ui-font,system-ui);white-space:nowrap;cursor:pointer;isolation:isolate;transition:transform .2s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}
+.rv .rv-ctab>svg,.rv .rv-rowtag>svg,.rv .rv-search-art>svg,.rv .rv-row-card>svg{position:absolute;inset:0;width:100%;height:100%;z-index:-1}
+.rv .rv-ctab .fr-fill{fill:var(--rv-paper2)}.rv .rv-ctab[aria-pressed=true]{transform:translateY(-3px);color:var(--rv-ink)}.rv .rv-ctab[aria-pressed=true] .fr-fill{fill:var(--rv-kraft3)}.rv .rv-ctab:hover{transform:translateY(-2px)}
+.rv .rv-search{position:relative;flex:1 1 220px;display:flex;align-items:center;min-width:0;isolation:isolate}.rv .rv-search input{flex:1;min-width:0}.rv .rv-search .rv-searchgo{flex:none;margin-right:calc(3.4% + 2px)}
+/* the magnifier and the caret are inked lines (the room's rule above leaves every path unstroked unless its class strokes it) */
+.rv .rv-searchgo svg path,.rv .rv-slip .rv-caret path{stroke:currentColor;stroke-width:1.9}.rv .rv-search-art{position:absolute;inset:0;z-index:-1}.rv .rv-search-art .fr-fill,.rv .rv-row-card .fr-fill{fill:var(--rv-paper)}
+.rv .rv-search input{box-sizing:border-box;width:100%;min-height:38px;padding:8px calc(3.4% + 10px);border:0;background:none;color:var(--rv-ink);font:500 14px/1.4 var(--rd-ui-font,system-ui)}.rv .rv-search input:focus-visible{outline:2px dashed var(--rv-clay);outline-offset:2px}
+.rv .rv-searchgo{display:inline-grid;place-items:center;width:38px;height:38px;padding:0;border:0;background:none;color:var(--rv-ink);cursor:pointer;transition:transform .2s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}.rv .rv-searchgo:hover{transform:rotate(-8deg)}
+.rv .rv-listbar{align-items:center}
+.rv .rv-list .rv-row{isolation:isolate;margin:0 4px 9px 0;padding:12px calc(3% + 12px) 11px calc(3% + 22px);border-bottom:0}.rv .rv-list .rv-row::before{left:calc(3% + 9px)}.rv .rv-row-card{position:absolute;inset:0;z-index:-1;pointer-events:none}
+.rv .rv-row::before{left:9px}
+.rv .rv-rowpencil{display:inline-grid;place-items:center;width:46px;height:30px;padding:0;border:0;background:none;cursor:pointer;transition:transform .2s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}.rv .rv-rowpencil .rv-pencilart{width:42px;height:auto}.rv .rv-rowpencil:hover{transform:rotate(-6deg) translateY(-1px)}
+.rv .rv-rowtag{position:relative;display:inline-grid;place-items:center;width:40px;height:28px;padding:0 0 0 9px;border:0;background:none;color:var(--rv-ink);font:800 13px/1 system-ui;letter-spacing:.08em;cursor:pointer;isolation:isolate}.rv .rv-rowtag .fr-fill{fill:var(--rv-paper2)}.rv .rv-rowtag[aria-expanded=true] .fr-fill{fill:var(--rv-kraft3)}
+.rv .rv-rowmenu{display:flex;gap:6px}
+.rv .rv-export{margin-top:6px;padding-top:12px;border-top:1px dashed var(--rv-blue)}
+.rv .rv-editor{display:grid;gap:12px;max-width:640px}.rv .rv-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rv .rv-preview{font:500 13px/1.4 var(--rd-ui-font,system-ui)}.rv .rv-preview ul{margin:4px 0;padding-left:18px}
+
+/* ---------- 6 the card: a lined index card, turned over for real ---------- */
+.rv .rv-cardwrap,.rv-fly .rv-cardwrap{aspect-ratio:5/3;container-type:size;perspective:1700px;--rv-tilt:0deg}
+.rv-card-shadow{position:absolute;inset:0;transform:rotate(var(--rv-tilt)) translate(1.8cqw,3.4cqh);opacity:.2;pointer-events:none}
+.rv-card-shadow>svg{width:100%;height:100%}
+.rv-card{position:absolute;inset:0;display:block;margin:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:center;cursor:pointer;transform:rotate(var(--rv-tilt));transform-style:preserve-3d}
+.rv-card:disabled{cursor:default}
+.rv .rv-card:focus-visible{outline:none}
+.rv-card-in{position:absolute;inset:0;transform-style:preserve-3d}
+.rv-face{position:absolute;inset:0;box-sizing:border-box;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.6cqh;padding:25cqh 8cqw 11cqh;color:var(--rv-ink);overflow:hidden}
+.rv-face>.rv-paper{position:absolute;inset:0;width:100%;height:100%}
+.rv-face>:not(svg){position:relative}
+.rv-back{transform:rotateY(180deg);padding-top:8cqh}
+.rv-face .rv-q{font:500 clamp(15px,6.6cqw,42px)/1.18 var(--rd-display,Literata,Georgia,serif);text-wrap:balance;max-width:100%;overflow-wrap:anywhere}
+.rv-face .rv-q2{font:500 clamp(11px,3.5cqw,19px)/1.25 var(--rd-display,Literata,Georgia,serif);color:var(--rv-muted);text-wrap:balance;max-width:100%}
+.rv-face .rv-a{font:500 clamp(14px,5.6cqw,34px)/1.22 var(--rd-display,Literata,Georgia,serif);text-wrap:balance;max-width:100%;overflow-wrap:anywhere;padding-top:2.4cqh;border-top:1.5px solid var(--rv-rule)}
+.rv-face .rv-q[data-len=m]{font-size:clamp(13px,4.4cqw,28px)}.rv-face .rv-a[data-len=m]{font-size:clamp(13px,4cqw,24px)}
+.rv-face :is(.rv-q,.rv-a)[data-len=l]{font-size:clamp(12px,3.1cqw,19px);line-height:1.35;max-height:52cqh;overflow:auto;scrollbar-width:thin;text-wrap:pretty}
+.rv-side{font:700 clamp(9px,2.4cqw,12.5px)/1 var(--rd-ui-font,system-ui);letter-spacing:.08em;color:var(--rv-muted);text-transform:lowercase}
+.rv-face mark{background:none;color:var(--rv-clay);font-weight:700;text-decoration:underline 2px var(--rv-clay);text-underline-offset:3px}
+.rv-blank{display:inline-block;min-width:3.4em;border-bottom:2px solid var(--rv-ink);color:transparent;line-height:.9}
+.rv-cardwrap[data-side=back] .rv-card-in{transform:rotateY(180deg)}
+.rd[data-motion-style=gentle] .rv-cardwrap[data-side=back] .rv-card-in{animation:rv-flip .38s var(--rd-pen,cubic-bezier(.35,.1,.25,1)) both}
+.rd[data-motion-style=gentle] .rv-cardwrap[data-peek=true] .rv-card-in{animation:rv-unflip .36s var(--rd-pen,cubic-bezier(.35,.1,.25,1)) both}
+.rd[data-motion-style=gentle] .rv-cardwrap[data-side=back] .rv-card-shadow{animation:rv-flipshade .38s var(--rd-pen,cubic-bezier(.35,.1,.25,1)) both}
+@keyframes rv-flip{0%{transform:none}12%{transform:translateY(3px) rotateY(-6deg) scale(.99)}62%{transform:translateY(-12px) rotateY(186deg) scale(1.03)}82%{transform:translateY(-2px) rotateY(178deg) scale(1.004)}100%{transform:rotateY(180deg)}}
+@keyframes rv-unflip{0%{transform:rotateY(180deg)}12%{transform:translateY(3px) rotateY(186deg) scale(.99)}62%{transform:translateY(-12px) rotateY(-6deg) scale(1.03)}82%{transform:translateY(-2px) rotateY(2deg)}100%{transform:none}}
+@keyframes rv-flipshade{0%{transform:rotate(var(--rv-tilt)) translate(1.8cqw,3.4cqh)}14%{transform:rotate(var(--rv-tilt)) translate(1.2cqw,2.4cqh)}50%{transform:rotate(var(--rv-tilt)) translate(4cqw,9cqh) scaleX(.18);opacity:.1}100%{transform:rotate(var(--rv-tilt)) translate(1.8cqw,3.4cqh)}}
+.rd[data-motion-style=gentle] .rv-cardwrap[data-arrive=deal]{animation:rv-deal .3s var(--rd-settle,cubic-bezier(.22,.75,.25,1)) both}
+@keyframes rv-deal{0%{transform:translate(-60%,12%) rotate(-8deg) scale(.6);opacity:0}20%{opacity:1}100%{transform:none;opacity:1}}
+.rv-cardwrap:has(.rv-card:focus-visible)::after{content:'';position:absolute;inset:-8px;border:2px dashed var(--rv-clay);border-radius:6px 9px 5px 8px;pointer-events:none}
+/* editing: the card lifts toward you and the pencil comes down onto it */
+.rv-card-edit{cursor:default;transform:rotate(calc(var(--rv-tilt) * .3))}
+.rd[data-motion-style=gentle] .rv-cardwrap[data-side=edit] .rv-card-edit{animation:rv-lift .26s var(--rd-settle,cubic-bezier(.3,.7,.3,1)) both}
+@keyframes rv-lift{0%{transform:rotate(var(--rv-tilt))}22%{transform:translateY(4px) rotate(var(--rv-tilt)) scale(.99)}64%{transform:translateY(-10px) rotate(-1deg) scale(1.025)}100%{transform:translateY(-4px) rotate(calc(var(--rv-tilt) * .3)) scale(1.01)}}
+.rv-editface{justify-content:flex-start;gap:2.6cqh;padding:7cqh 6cqw 6cqh;align-items:stretch;text-align:left}
+.rv-ef{display:grid;gap:3px;font:700 clamp(10px,2.4cqw,12px)/1 var(--rd-ui-font,system-ui);color:var(--rv-muted);letter-spacing:.06em}
+.rv .rv-ef textarea{box-sizing:border-box;width:100%;min-height:15cqh;padding:4px 2px;border:0;border-bottom:1.5px solid var(--rv-blue);background:transparent;color:var(--rv-ink);font:500 clamp(13px,3.8cqw,22px)/1.3 var(--rd-display,Literata,Georgia,serif);resize:none}
+.rv .rv-ef textarea:focus-visible{outline:none;border-bottom-color:var(--rv-clay)}
+.rv-editpencil,.rv-pencil-lift{position:absolute!important;right:-7cqw;top:-11cqh;width:30cqw;height:10cqh;transform:rotate(-24deg);pointer-events:none}:is(.rv-editpencil,.rv-pencil-lift)>svg{width:100%;height:100%}
+/* the pencil taken away after an edit is only ever seen moving; with no motion it is simply gone */
+.rv-pencil-lift{opacity:0;z-index:3}
+.rd[data-motion-style=gentle] .rv-editpencil{animation:rv-pencil .3s .06s var(--rd-settle,cubic-bezier(.3,.7,.3,1)) both}
+@keyframes rv-pencil{0%{transform:translate(40%,-90%) rotate(30deg);opacity:0}16%{opacity:1}60%{transform:translate(-3%,4%) rotate(-28deg)}82%{transform:translate(1%,-1%) rotate(-22deg)}100%{transform:rotate(-24deg)}}
+.rv .rv-editbar{display:flex;gap:10px;justify-content:center}
+.rv-room .rv-editbar{position:absolute;left:var(--cl);width:var(--cw);top:calc(100cqh - 262 * var(--u))}
+/* done */
+.rv .rv-donecard{display:block;aspect-ratio:5/3.4;container-type:size}
+.rv .rv-donestack{position:absolute;left:-4%;right:-4%;bottom:-10%;height:46%}.rv .rv-donestack>svg{width:100%;height:100%}
+.rv .rv-doneface{position:absolute;inset:0 0 12% 0;display:grid;place-content:center;justify-items:center;gap:4cqh;text-align:center}
+.rv .rv-doneface>svg{position:absolute;inset:0;width:100%;height:100%}.rv .rv-doneface>:not(svg){position:relative}
+.rv .rv-doneface strong{font:600 clamp(20px,11cqw,44px)/1 var(--rd-display,Literata,Georgia,serif)}
+.rv .rv-doneface span{font:600 clamp(11px,4.2cqw,16px)/1.2 var(--rd-ui-font,system-ui);color:var(--rv-muted)}
+.rd[data-motion-style=gentle] .rv .rv-donestack{animation:rv-square .36s .08s var(--rd-settle,cubic-bezier(.3,.7,.3,1)) both}
+.rd[data-motion-style=gentle] .rv .rv-doneface{animation:rv-settle .3s .2s var(--rd-settle,cubic-bezier(.3,.7,.3,1)) both}
+@keyframes rv-square{0%{transform:rotate(-7deg) translateX(-6%)}48%{transform:rotate(2.5deg) translateX(1%)}74%{transform:rotate(-1deg)}100%{transform:none}}
+@keyframes rv-settle{0%{transform:translateY(-30%) rotate(-4deg);opacity:0}50%{transform:translateY(3%) rotate(1deg);opacity:1}76%{transform:translateY(-1%)}100%{transform:none;opacity:1}}
+.rv .rv-gone{margin:0;color:var(--rv-muted)}
+
+/* ---------- 7 the Home module: no room, the same boxes and card ---------- */
+.rv-mod{position:relative;container-type:inline-size;display:grid;gap:10px;color:var(--rv-ink);font-family:var(--rd-ui-font,system-ui,sans-serif)}
+.rv-mod .rv-count{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center;margin:0}
+.rv-mod .rv-count strong{grid-row:1 / span 2;font:600 clamp(40px,17cqw,58px)/.9 var(--rd-display,Literata,Georgia,serif);color:var(--rv-ink)}
+.rv-mod .rv-count span{font:500 13px/1.25 var(--rd-ui-font,system-ui);color:var(--rv-muted)}
+.rv-mod .rv-mod-s{display:grid;gap:12px}
+.rv-mod .rv-mod-row{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.rv-mod .rv-mod-row .rv-box{flex:0 1 62%;max-width:220px;margin-top:14px}
+.rv-mod .rv-mod-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.rv-mod .rv-mod-boxes{display:flex;justify-content:center;align-items:flex-end;gap:clamp(8px,3cqw,22px);padding-top:16px}
+/* room above the boxes for a test tag, so it never covers the line of counts */
+.rv-mod .rv-mod-boxes:has(.rv-testtag){padding-top:clamp(18px,4.6cqw,34px)}
+.rv-mod .rv-mod-boxes .rv-box{flex:1 1 0;max-width:210px;min-width:0}
+/* a module's words never go below a readable size, whatever the box's scale: the name on its plate and the red test tag */
+.rv-mod .rv-box-name{font-size:max(11px,7.4cqw)}.rv-mod .rv-box-name[data-len=m]{font-size:max(11px,6.6cqw)}.rv-mod .rv-box-name[data-len=l]{font-size:max(10.5px,5.4cqw)}.rv-mod .rv-box-name[data-len=xl]{font-size:max(10px,4.7cqw)}
+.rv-mod .rv-testtag span{font-size:max(11px,5.4cqw);padding-left:max(10px,6cqw)}
+/* a narrow medium module (under about 460 px) shows two boxes, larger, and the rest behind a "+1" plate */
+.rv-mod .rv-more{display:none}
+@container (max-width:460px){
+ .rv-mod-m .rv-mod-boxes>.rv-box:nth-of-type(n+3){display:none}
+ .rv-mod-m .rv-mod-boxes .rv-more{position:relative;display:grid;place-items:center;flex:none;align-self:center;width:48px;height:30px;padding-left:9px;box-sizing:border-box;font:700 13px/1 var(--rd-display,Literata,Georgia,serif);color:var(--rv-ink);transform:rotate(-4deg)}
+ .rv-mod-m .rv-more>svg{position:absolute;inset:0;width:100%;height:100%}.rv-mod-m .rv-more span{position:relative}.rv-mod-m .rv-more .fr-fill{fill:var(--rv-kraft3)}
+}
+.rv-mod[data-rv-size=l] .rv-mod-boxes .rv-box{max-width:230px}
+.rv-mod .rv-mod-foot{display:flex;justify-content:center}.rv-mod .rv-mod-foot:empty{display:none}
+.rd[data-motion-style=gentle] .rv-mod .rv-mod-boxes .rv-box{animation:rv-set .3s calc(var(--i,0) * 40ms + 60ms) var(--rd-settle,cubic-bezier(.3,.7,.3,1)) both}
+.rv-mod .rv-mod-l{display:grid;gap:10px}
+.rv-mod .rv-mod-title{display:flex;align-items:baseline;gap:10px;margin:0;flex-wrap:wrap}
+.rv-mod .rv-mod-title strong{font:600 18px/1.2 var(--rd-display,Literata,Georgia,serif)}.rv-mod .rv-mod-title span{font:500 12.5px/1.2 var(--rd-ui-font,system-ui);color:var(--rv-muted);flex:1}
+.rv-mod .rv-desk{display:grid;grid-template-columns:minmax(64px,15%) minmax(0,1fr) minmax(64px,15%);align-items:center;gap:clamp(8px,2.4cqw,22px)}
+.rv-mod .rv-deskcard{display:grid;gap:12px;justify-items:center;min-width:0}
+.rv-mod .rv-cardwrap{position:relative;width:100%;max-width:470px}
+.rv-mod .rv-under{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap}
+.rv-mod .rv-grade{min-width:0;padding:0 14px}
+.rv-mod .rv-pile{align-self:end;padding-bottom:42px}
+.rv-mod .rv-cardzone{display:grid;justify-items:center;gap:10px;padding:24px 0}
+.rv-mod .rv-mod-done{justify-items:center}.rv-mod .rv-mod-done .rv-donecard{position:relative;width:min(340px,80%)}
+.rv-mod .rv-status{text-align:center}
+.rv-mod .rv-status[role=alert]{color:var(--rv-red)}
+@container (max-width:420px){.rv-mod .rv-desk{grid-template-columns:1fr}.rv-mod .rv-desk .rv-pile{display:none}}
+
+/* ---------- 8 a thrown card in flight ---------- */
+.rv-fly{position:fixed;inset:0;pointer-events:none;z-index:80;overflow:hidden}
+.rv-fly .rv-ghost{position:fixed;margin:0;transform-origin:50% 50%;will-change:transform}
+.rv-fly .rv-ghost,.rv-fly .rv-ghost *{animation:none!important;transition:none!important}
+.rv-fly .rv-ghost .rv-card-shadow{opacity:.14}
+/* boxes lowered behind the table's front edge when one is opened: each rides in a frame cut at that edge */
+.rv-fly .rv-sink{position:fixed;overflow:hidden;pointer-events:none}
+.rv-fly .rv-drawer-ghost{z-index:1}
+
+/* ---------- narrow pages: the room is cut from the left, the card comes to the middle ---------- */
+@container (max-width:860px){
+ .rv-room .rv-sidebox{left:12px;width:110px;bottom:12px}
+ .rv-room .rv-pile-done{left:auto;right:12px;width:90px;bottom:12px}
+ .rv-room .rv-boxes{left:12px;right:12px}
+ .rv-room .rv-head{max-width:calc(100cqw - 150px)}
+}
+@container (max-height:640px){.rv-room .rv-head .rv-dots{display:none}}
+
+/* the sheet of the room's wall that grows over Home and folds back into the module (review-deck.js growSheet) */
+.rv-fly .rv-flysheet{position:fixed;transform-origin:0 0;background:var(--rv-wall);border-radius:10px;will-change:transform,opacity}
+.rv-fly .rv-flysheet>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.rv-fly .rv-sheet-edge{fill:none;stroke:var(--rv-rk);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- 9 motion: Still keeps fades only; Motion off and reduced motion keep everything still ---------- */
+.rv-world[data-paused] *,.rd[data-art-rest] .rv-world *{animation-play-state:paused!important}
+.rd[data-motion-style=still] :is(.rv,.rv-world) :is(.rv-cardwrap,.rv-box,.rv-riser,.rv-sidebox,.rv-sticker,.rv-donestack,.rv-doneface,.rv-drawer,.rv-grade,.rv-editpencil,.rv-card-edit){animation:rv-fade .22s ease-out both!important}
+.rd[data-motion-style=still] .rv-world :is(.rv-heron,.rv-h-stand,.rv-h-up,.rv-h-down,.rv-leaf,.rv-motes>svg,.rv-chain,.rv-sweep,.rv-l-mid,.rv-l-near){animation:none!important}
+.rd[data-motion-style=off] :is(.rv,.rv-fly) *,.rd[data-motion-style=off] :is(.rv,.rv-fly,.rv-grow),.rd[data-feature-motion=off] :is(.rv,.rv-fly) *,.rd[data-feature-motion=off] :is(.rv,.rv-fly,.rv-grow){animation:none!important;transition:none!important}
+@media (prefers-reduced-motion:reduce){:is(.rv,.rv-fly) *,:is(.rv,.rv-fly,.rv-grow){animation:none!important;transition:none!important}}

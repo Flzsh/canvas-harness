@@ -111,7 +111,7 @@ test('pause and delete do not claim success after storage failures',async()=>{
 });
 
 test('exports remain local and scoped by course, and all authored markup is escaped',async()=>{
- const f=fixture([card('<img src=x onerror=bad()>','<script>bad()</script>'),card('Latin','meaning',{course:'9'})]);const html=f.ui.renderReviewDeck();assert.doesNotMatch(html,/<img|<script>/);assert.match(html,/&lt;img/);f.input('course','9');await f.action('export');assert.equal(f.exports.length,1);assert.equal(M.parseList(f.exports[0].text,{format:'tsv'}).cards[0].front,'Latin');f.ui.destroy();
+ const f=fixture([card('<img src=x onerror=bad()>','<script>bad()</script>'),card('Latin','meaning',{course:'9'})]);await f.action('tab',{tab:'cards'});const html=f.ui.renderReviewDeck();assert.doesNotMatch(html,/<img|<script>/);assert.match(html,/&lt;img/);f.input('course','9');await f.action('export');assert.equal(f.exports.length,1);assert.equal(M.parseList(f.exports[0].text,{format:'tsv'}).cards[0].front,'Latin');f.ui.destroy();
 });
 
 test('event hooks and key handling stay scoped to the active deck and suppress repeated grades',async()=>{

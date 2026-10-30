@@ -16,6 +16,8 @@
   const raf=cb=>(win.requestAnimationFrame||((f)=>setTimeout(f,16)))(cb),caf=id=>(win.cancelAnimationFrame||clearTimeout)(id);
   let pending=null,drag=null,live=null,hud=null,ghost=null,slot=null,dead=false,saving=false,frame=0,revision=0,suppressUntil=0,observed=null,observedWidth=0;
   const animations=new Map(),panelSizes=new WeakMap();let layoutMemo=null;
+  // The last desk's width and each module's last height, by its key: a desk drawn again starts from them (applyLayout).
+  const keySizes=new Map();let lastWidth=0;
   const reduced=()=>['off','still'].includes(container.dataset.motionStyle)||win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const all=sel=>Array.from(container.querySelectorAll(sel));
   const main=()=>container.querySelector('.rd-main.rd-desk');
@@ -45,13 +47,26 @@
    const desk=main();if(!desk)return;
    // The Assignments tab is the list beside the reader, whatever Home looks like.
    const fixed=container.dataset.workPage==='assignments';if(fixed)layout={axis:'x',children:['work','reader']};
-   if(getSettings().showCourseInformation===false&&!drag)layout=M.prune(layout,'context');
-   if(desk!==observed){observed=desk;observedWidth=0;layoutMemo=null;}
-   const width=observedWidth||desk.clientWidth||desk.getBoundingClientRect().width,list=panels(),heights={};let measured=false;
+   // While dragging, a hidden course-information panel keeps its place only if it is actually drawn (Lite never draws it).
+   if(getSettings().showCourseInformation===false&&(!drag||!panels().some(node=>node.dataset.arrangeKey==='context')))layout=M.prune(layout,'context');
+   // Home drawn again (a room folded back into its module, a page swapped for Home): the new desk and its modules have
+   // no sizes yet, and reading them here laid the whole new page out inside the render, before the frame laid it out
+   // again. They start from the sizes the last desk had (the same window, the same modules), so the writes below go in
+   // before the first layout; the observer reports the real sizes after the frame's own layout and lays out again, in
+   // that frame, only what differs. The first desk of all is still measured here.
+   if(desk!==observed){const was=observed;observed=desk;observedWidth=was&&lastWidth?lastWidth:0;layoutMemo=null;}
+   const width=observedWidth||desk.clientWidth||desk.getBoundingClientRect().width,list=panels(),heights={};let measured=false;lastWidth=width;
    // Observer sizes are border-box heights, like offsetHeight. Unknown sizes are read before any style write.
-   for(const node of list){const h=panelSizes.get(node)??(Number(node.offsetHeight)||0);heights[node.dataset.arrangeKey]=h;if(h>0)measured=true;}
-   const fits=container.dataset.courseNavigation==='topbar',
-     sizes=fixed?{reader:'l'}:getSettings().moduleSize||{},
+   for(const node of list){
+     const key=node.dataset.arrangeKey,h=panelSizes.get(node)??keySizes.get(key)??(Number(node.offsetHeight)||0);
+     heights[key]=h;
+     if(h>0){measured=true;keySizes.set(key,h);}
+   }
+   // a width chosen a moment ago (previewSize) is laid out at once, before its save comes back
+   const saved=getSettings().moduleSize||{};
+   if(sizeOverride){for(const [k,v] of Object.entries(sizeOverride))if((saved[k]||'m')===v)delete sizeOverride[k];if(!Object.keys(sizeOverride).length)sizeOverride=null;}
+   const fits=['dock','topbar'].includes(container.dataset.courseNavigation),
+     sizes=fixed?{reader:'l'}:sizeOverride?Object.fromEntries(Object.entries({...saved,...sizeOverride}).filter(([,v])=>v!=='m')):saved,
      signature=JSON.stringify([layout,width,sizes,heights,fits,drag?.key||'']);
    if(layoutMemo?.desk===desk&&layoutMemo.signature===signature&&list.length===layoutMemo.list.length&&list.every((node,i)=>node===layoutMemo.list[i]))return;
    const spec=M.grid(layout,width,sizes);layoutMemo={desk,signature,list};
@@ -91,7 +106,7 @@
     }
     else if(watched.has(node)){
       const height=Math.round(box?.blockSize??((entry.contentRect?.height||0)+px('paddingTop','paddingBottom','borderTopWidth','borderBottomWidth')));
-      if(panelSizes.get(node)!==height){panelSizes.set(node,height);changed=true;}
+      if(panelSizes.get(node)!==height){panelSizes.set(node,height);if(height>0&&node.dataset?.arrangeKey)keySizes.set(node.dataset.arrangeKey,height);changed=true;}
     }
    }
    if(changed){if(drag&&!widthChanged)return;if(drag)cancel();applyLayout();}
@@ -429,6 +444,16 @@
    if(!type)return false;cancel({quiet:true});void commit({type},type==='undo'?'Previous arrangement restored.':'Arrangement saved.');return true;
   }
   function contextmenu(event){if(!drag)return false;event.preventDefault();return true;}
+  // A module's width (Narrow, Normal, Wide) is laid out the moment it is chosen: the press glides the modules at once
+  // instead of waiting for the save and a whole render (widgets.js reflow). The save's settings take over when they
+  // come; a save that never comes lets the override go after 3 s.
+  let sizeOverride=null,overrideTimer=0;
+  function previewSize(key,size){
+   if(dead||!Object.hasOwn(M.SIZES||{},size)||M.isKey&&!M.isKey(key))return false;
+   sizeOverride={...(sizeOverride||{}),[key]:size};layoutMemo=null;if(!drag)applyLayout();
+   clearTimeout(overrideTimer);overrideTimer=setTimeout(()=>{if(dead||!sizeOverride)return;sizeOverride=null;layoutMemo=null;if(!drag)applyLayout();},3000);
+   return true;
+  }
   function sync(){
    if(drag&&!drag.node.isConnected)cancel({quiet:true});
    if(!drag)applyLayout();
@@ -452,7 +477,7 @@
     win.removeEventListener?.('blur',blur);
     live?.remove();
   }
-  return {active:()=>!!drag,dragging:()=>!!drag,pointerdown,pointermove,pointerup,pointercancel,click,contextmenu,action,keydown,sync,destroy};
+  return {active:()=>!!drag,dragging:()=>!!drag,pointerdown,pointermove,pointerup,pointercancel,click,contextmenu,action,keydown,sync,previewSize,destroy};
  }
  const api={HOLD_MS,HOLD_DELAY_MS,SLOP,create};root.ReserveWorkspaceGestures=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

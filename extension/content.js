@@ -1,42 +1,58 @@
-// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 /*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. Third-party components retain their respective attribution. */
 if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./site.js');
+// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 (function(){
   'use strict';
-  if(window.top!==window)return;
   const feature=id=>!globalThis.ReserveFeatures||globalThis.ReserveFeatures.enabled(id);
+  if(window.top!==window)return;
+  // Edge runs the scripts the worker registers (this one) and the manifest's own (site.js, startup.js, feature-loader.js)
+  // in no fixed order: after a browser restart this file can run first. Wait a task for them instead of failing.
   let tries=0;
   (function boot(){
-  if(!globalThis.ReserveSite||(globalThis.ReserveFeatures&&!globalThis.ReserveFeatureLoad)){
-    if(++tries<=80)setTimeout(boot,tries<4?0:25);else console.warn('Canvas Harness page scripts did not load; reload Canvas.');
-    return;
-  }
-  if(!globalThis.ReserveSite.supported(location.href)||globalThis.ReserveSite.vanillaPage(location)||globalThis.ReserveContentStarted||document.getElementById('reserve-companion-dock'))
-    return;
+  if(!globalThis.ReserveSite){if(++tries<=80)setTimeout(boot,tries<4?0:25);else console.warn('Canvas Harness: its page scripts did not load; reload Canvas.');return;}
+  if(globalThis.ReserveSite.vanillaPage(location)||globalThis.ReserveContentStarted||document.getElementById('reserve-companion-dock'))return;
   globalThis.ReserveContentStarted=true;
   const isDashboard=location.pathname==='/'||/^\/dashboard\/?$/.test(location.pathname);
   const params=new URLSearchParams(location.search);
   const startup=globalThis.ReserveStartup;
-  const build='3.8.1';
+  const build='3.99.1';
+  // Local timings contain only milliseconds, never account or course data.
+  // They make real startup measurable without delaying or storing the page.
   const stamp=()=>Math.round(globalThis.performance?.now?.()||0);
-  let host,root,area,toolbar,resumeCover,statusLabel,dashboard,planner,session,snapshot,store,ready=false,wanted=true;
-  let authorized=false,personalVerified=false,suspended=false,resumeGeneration=0,resumePending,verifiedAt=-Infinity,verifiedWall=-Infinity;
+  const timing={bootstrap:Math.round(startup?.startedAt||0),controller:stamp()};
+  let host,root,area,resumeCover,dashboard,session,snapshot,store,ready=false,wanted=true;
+  let authorized=false,personalVerified=false,pendingDashboard=null,suspended=false,resumeGeneration=0,resumePending,verifiedAt=-Infinity,verifiedWall=-Infinity;
   let launchObserver,launchAttempt,bootStopped=false,pageLeft=false;
   // "Open at once" (off unless the owner turns it on) remembers which account to open: an id, nothing else.
   const HINT_KEY='reserve:lastAccount:'+location.origin;let ownerHint=null;
   const quickOpen=settings=>settings?.quickOpen==='on';
   if(isDashboard)
     try{Promise.resolve(chrome.storage.local.get(HINT_KEY)).then(found=>{const id=String(found?.[HINT_KEY]??'');if(/^\d+$/.test(id))ownerHint={id};}).catch(()=>{});}catch{}
-  function stopWaiting(){launchObserver?.disconnect();launchObserver=null;if(launchAttempt)document.removeEventListener?.('DOMContentLoaded',launchAttempt);launchAttempt=null;}
-  let manualOpen=false;
-  let dashboardState,dashboardScroll=0,restoreScroll=false,nativeTools,pageAppearance,launchPending=true,launchAppearance=params.get('appearance')==='true';
-  if(params.get('reserve')==='open'){
-    const requested=params.get('workspace'),workspace=globalThis.ReserveFeatures?globalThis.ReserveFeatures.workspace(requested):requested,courseId=params.get('course');
-    if(['work','hub','materials','inbox','grades'].includes(workspace)||/^\d+$/.test(courseId||''))dashboardState={workspace,courseId};
+  function mark(phase){
+    if(timing[phase]===undefined)timing[phase]=stamp();
+    // Network milestones distinguish time spent waiting for Canvas from local
+    // rendering. Only numeric, page-local timing values are exposed.
+    try{
+      const navigation=globalThis.performance?.getEntriesByType?.('navigation')?.[0];
+      for(const key of ['requestStart','responseStart','responseEnd'])if(navigation?.[key]>0)timing['navigation'+key[0].toUpperCase()+key.slice(1)]=Math.round(navigation[key]);
+      if(phase==='profileEnd'){
+        const profile=globalThis.performance?.getEntriesByName?.(location.origin+'/api/v1/users/self/profile','resource')?.find(entry=>entry.startTime>=timing.profileStart);
+        for(const key of ['startTime','requestStart','responseStart','responseEnd'])if(profile?.[key]>0)timing['profile'+key[0].toUpperCase()+key.slice(1)]=Math.round(profile[key]);
+      }
+    }catch{} // Missing resource timings must never affect account verification.
+    host?.setAttribute('data-reserve-startup-timing',JSON.stringify(timing));
   }
+  function stopWaiting(){launchObserver?.disconnect();launchObserver=null;if(launchAttempt)document.removeEventListener?.('DOMContentLoaded',launchAttempt);launchAttempt=null;}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>mark('parsed'),{once:true});
+  else mark('parsed');
+  let manualOpen=false;
+  // canvasChoice: the student chose or started using Canvas's page. noRetry: Canvas refused the account, or the
+  // workspace could not draw; a fresh start would end the same way.
+  let canvasChoice=false,noRetry=false,startWatch=0;
+  let dashboardState,dashboardScroll=0,restoreScroll=false,nativeTools,pageAppearance,featureSettings,launchAppearance=params.get('appearance')==='true',launchItem=null;
   const hidden=new Map();
   const pageStyle=document.createElement('style');
-  pageStyle.textContent='html.reserve-inline-active{scrollbar-width:none}html.reserve-inline-active::-webkit-scrollbar{display:none}html.reserve-inline-active :is(body,#application,#wrapper,#main,#not_right_side,#content-wrapper){scrollbar-width:none}html.reserve-inline-active :is(body,#application,#wrapper,#main,#not_right_side,#content-wrapper)::-webkit-scrollbar{display:none}html.reserve-inline-active :is(#footer,.ic-app-footer,footer[role=contentinfo]){display:none!important}html.reserve-inline-active.reserve-fit,html.reserve-inline-active.reserve-fit body{overflow-y:hidden!important}html.reserve-inline-active body{margin:0!important}html.reserve-inline-active #content-wrapper{max-width:none!important;width:100%!important}html.reserve-inline-active #content{width:100%!important;max-width:none!important;padding:0!important;box-sizing:border-box!important}html.reserve-inline-active #content-wrapper{flex:1 1 auto!important;min-width:0!important}html.reserve-inline-active #main{width:100%!important;min-width:0!important}html.reserve-inline-active #not_right_side{width:100%!important;min-width:0!important}html.reserve-inline-active #wrapper{max-width:none!important}html.reserve-inline-active #not_right_side{margin-right:0!important;padding-right:0!important}html.reserve-inline-active #right-side-wrapper,html.reserve-inline-active #right-side,html.reserve-inline-active #content>:not(#reserve-companion-host){display:none!important}#reserve-companion-host{min-width:0;width:100%}';
+  pageStyle.textContent='html.reserve-inline-active #content-wrapper{max-width:none!important;width:100%!important}html.reserve-inline-active,html.reserve-inline-active :is(body,#application,#wrapper,#main,#not_right_side,#content-wrapper){scrollbar-width:none}html.reserve-inline-active::-webkit-scrollbar,html.reserve-inline-active :is(body,#application,#wrapper,#main,#not_right_side,#content-wrapper)::-webkit-scrollbar{display:none}html.reserve-inline-active body{margin:0!important}html.reserve-inline-active :is(#footer,.ic-app-footer,footer[role=contentinfo]){display:none!important}html.reserve-inline-active #content{width:100%!important;max-width:none!important;padding:0!important;box-sizing:border-box!important}html.reserve-inline-active #content-wrapper{flex:1 1 auto!important;min-width:0!important}html.reserve-inline-active #main{width:100%!important;min-width:0!important}html.reserve-inline-active #not_right_side{width:100%!important;min-width:0!important}html.reserve-inline-active #wrapper{max-width:none!important}html.reserve-inline-active #not_right_side{margin-right:0!important;padding-right:0!important}html.reserve-inline-active #right-side-wrapper,html.reserve-inline-active #right-side,html.reserve-inline-active #content>:not(#reserve-companion-host){display:none!important}#reserve-companion-host{min-width:0;width:100%}';
   const dock=document.createElement('div');dock.id='reserve-companion-dock';
   dock.style.cssText='position:fixed;bottom:16px;right:16px;z-index:1000';
   const dockRoot=dock.attachShadow({mode:'open'});
@@ -60,7 +76,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   }
   function restoreNative(){
     for(const [el,previous] of hidden)el.hidden=previous;
-    hidden.clear();document.documentElement.classList.remove('reserve-inline-active','reserve-fit');
+    hidden.clear();document.documentElement.classList.remove('reserve-inline-active');
   }
   function coverWorkspace(checking){
     // Keep the enhanced page's place while its account is revalidated. Only a
@@ -71,17 +87,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     host?.setAttribute('data-reserve-verifying',String(checking));
   }
   function reveal(){
-    if(!ready||
-      !wanted||
-      !authorized||
-      suspended||
-      bootStopped||
-      !host||
-      !snapshot||
-      (!dashboard&&!planner)||
-      (!planner&&dashboard?.isReady?.()===false)||
-      document.visibilityState==='hidden')
-      return;
+    if(!ready||!wanted||!authorized||suspended||bootStopped||!host||!snapshot||!dashboard||dashboard?.isReady?.()===false||document.visibilityState==='hidden')return;
     if(startup){if(manualOpen)startup.dismiss?.();else if(!startup.complete())return;}
     const content=host.parentElement;
     for(const el of [...content.children,document.getElementById('right-side')]){
@@ -90,41 +96,44 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     document.documentElement.classList.add('reserve-inline-active');
     coverWorkspace(false);
-    host.hidden=false;dock.hidden=true;
+    host.hidden=false;dock.hidden=true;mark('visible');
   }
   function showCanvas(remember=true){
-    authorized=false;personalVerified=false;resumeGeneration++;
+    globalThis.ReserveStartupNote?.('showCanvas');
+    authorized=false;personalVerified=false;pendingDashboard=null;resumeGeneration++;
     dashboard?.closePersonalFiles?.();
-    wanted=false;planner?.destroy();planner=null;
+    wanted=false;
     if(host)host.hidden=true;coverWorkspace(false);restoreNative();dock.hidden=false;
     startup?.release();
     session?.destroy();session=null;
   }
-  function setStatus(message){if(statusLabel)statusLabel.textContent=dashboard?'Canvas Harness '+build:message||'Canvas Harness '+build;dashboard?.setStatus(message);}
-  function openAppearance(){if(!launchAppearance||!feature('customization'))return;const button=area?.querySelector('[data-rd-action="settings"]');if(button){launchAppearance=false;button.click();}}
-  function resumePersonalFiles(){personalVerified=true;dashboard?.resumePersonalFiles?.();}
+  function setStatus(message){dashboard?.setStatus(message);}
+  function resumePersonalFiles(){
+    personalVerified=true;
+    dashboard?.resumePersonalFiles?.();
+    const requested=pendingDashboard;
+    pendingDashboard=null;
+    if(requested)openDashboard(requested);else openAppearance();
+  }
+  function openAppearance(){if(!launchAppearance||!personalVerified)return;const button=area?.querySelector('[data-rd-action="settings"]');if(button){launchAppearance=false;button.click();}}
   function drawDashboard(){
     if(!area||!snapshot||!feature('dashboard'))return;
     if(dashboard)dashboardState=dashboard.getState();
-    planner?.destroy();planner=null;dashboard?.destroy();
-    // The dashboard's own command bar carries the Canvas dashboard switch (onNative) and its footer
-    // the status (setStatus below), so this row folds away while the dashboard shows.
-    toolbar.querySelector('[data-dashboard]').hidden=true;toolbar.hidden=true;
-    dashboard=ReserveDashboard.mount(area,{
-      snapshot,
-      store,
-      personalVerified,
-      initialState:dashboardState,
-      onPlanner:openPlanner,
-      onNative:()=>showCanvas(),
-      refresh:()=>session.refresh(),
-      onAuthError:()=>{
+    if(launchItem){dashboardState=assignmentDestination(dashboardState,launchItem);launchItem=null;}
+    dashboard?.destroy();
+    dashboard=ReserveDashboard.mount(area,{snapshot,store,personalVerified,initialState:dashboardState,onPlanner:openDashboard,onNative:()=>{
+      canvasChoice=true;
       showCanvas();
-      session?.verify();
+    },refresh:()=>session.refresh(),onAuthError:()=>{
+      noRetry=true;
+      dashboard?.destroy();
+      dashboard=null;
+      showCanvas();
     },onReady:()=>{
       openAppearance();
       reveal();
     },onRenderError:error=>{
+      noRetry=true;
       dashboard?.destroy();
       dashboard=null;
       showCanvas(false);
@@ -132,88 +141,76 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       dockBusy(false);
       dockRoot.querySelector('button').title=error.message+' Click to retry.';
     }});
-
-    if(personalVerified)dashboard?.resumePersonalFiles?.();else dashboard?.closePersonalFiles?.();
+    mark('mounted');
     reveal();
     if(restoreScroll){restoreScroll=false;requestAnimationFrame(()=>window.scrollTo({top:dashboardScroll,behavior:'instant'}));}
   }
-  function openPlanner(options={page:'week'}){
-    if(!snapshot||!area||!feature('dashboard')||options.page==='settings'&&!feature('customization')||options.page!=='settings'&&!feature(options.page==='grades'?'grades':'planner'))return;
-    dashboardState=dashboard?.getState()||dashboardState;dashboardScroll=window.scrollY;restoreScroll=true;
-    dashboard?.destroy();dashboard=null;planner?.destroy();
-    toolbar.hidden=false;toolbar.querySelector('[data-dashboard]').hidden=false;
-    planner=ReserveApp.mount(area,{
-      snapshot,
-      store,
-      embedded:true,
-      hideGrades:options.hideGrades,
-      initialPage:options.page||'week',
-      initialId:options.id||null,
-      onExit:drawDashboard,
-      onAuthError:()=>{
-      showCanvas();
-      setStatus('Your session changed. Reload Canvas.');
-    },refresh:()=>session.refresh()});
-    reveal();host.scrollIntoView({block:'start',behavior:'instant'});
+  const validItem=id=>/^(?:\d{1,30}|local-[\w-]{1,100})$/.test(id||'');
+  function dashboardDestination(page){
+    const workspace={week:'plan',assignments:'assignments',grades:'grades'}[page]||'work';
+    return globalThis.ReserveFeatures?globalThis.ReserveFeatures.workspace(workspace):workspace;
+  }
+  function assignmentDestination(previous,id){
+    const raw=snapshot?.assignments?.find(item=>String(item.id)===id),due=raw?.due_at||store?.get().customTasks?.find(item=>item.id===id)?.dueAt;
+    return {...previous,courseId:'all',query:'',day:'',mode:due&&Number.isFinite(Date.parse(due))?'dated':'undated',selectedId:id,readerTab:'plan',readerOpen:true};
+  }
+  function openDashboard(options={}){
+    if(!snapshot||!area||!feature('dashboard'))return;
+    if(!personalVerified){pendingDashboard={...options};return;}
+    const previous=dashboard?.getState()||dashboardState||{};
+    dashboardState={...previous,workspace:dashboardDestination(options.page)};
+    if(options.page==='assignments'&&validItem(options.id))dashboardState=assignmentDestination(dashboardState,options.id);
+    if(options.hideGrades)dashboardState.gradeVisibilityOverride=false;
+    dashboardScroll=window.scrollY;restoreScroll=true;
+    if(options.page==='settings')launchAppearance=true;
+    dashboard?.destroy();dashboard=null;drawDashboard();
   }
   function makeHost(){
     if(host)return;
     const content=document.getElementById('content');if(!content)return;
     host=document.createElement('div');host.id='reserve-companion-host';host.hidden=true;
     host.setAttribute('data-reserve-build',build);
-
+    mark('containers');
     root=host.attachShadow({mode:'open'});
     const loadingHost=host;let loaded=0;
-    const allSheets=startup?.styleFiles||['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','course-links.css'];
+    const allSheets=startup?.styleFiles||['app.css','dashboard.css','workspace.css','refresh.css','customize.css','media-frame.css','frame-editor.css','addons-panel.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','agent.css','study-band.css','course-links.css','focus-room.css','review-deck.css','grade-impact.css'];
     const sheets=globalThis.ReserveFeatures?.filterFiles(allSheets)||allSheets;
-    if(!sheets.length)ready=true;
+    if(!sheets.length){ready=true;mark('styles');}
     for(const file of sheets){
       const link=document.createElement('link');link.rel='stylesheet';link.href=chrome.runtime.getURL(file);
-      link.onload=()=>{if(host===loadingHost&&++loaded===sheets.length){ready=true;reveal();}};
+      link.onload=()=>{if(host===loadingHost&&++loaded===sheets.length){ready=true;mark('styles');reveal();}};
       link.onerror=()=>{if(host===loadingHost)showCanvas(false);};root.append(link);
     }
-    const css=document.createElement('style');css.textContent=':host([hidden]){display:none!important}.reserve-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font:12px/1.5 system-ui;color:#5E5D59;padding:4px 0 12px}.reserve-toolbar div{display:flex;gap:8px}.reserve-toolbar button{font:600 12px system-ui;border:1px solid #D9D6CA;background:#fff;color:#3D3D3A;border-radius:999px;padding:8px 12px;cursor:pointer}.reserve-toolbar button:focus-visible{outline:2px solid #C96442;outline-offset:2px}.reserve-toolbar button[hidden],.reserve-toolbar[hidden]{display:none}'+
-      ':host([data-reserve-verifying="true"]) .reserve-toolbar,.reserve-resume[hidden]{display:none!important}.reserve-workspace[hidden]{display:block!important;content-visibility:hidden!important}.reserve-resume{box-sizing:border-box;min-height:calc(100dvh - 90px);padding:20px clamp(16px,2vw,32px);background:#FAF9F5;color:#3D3D3A;font:14px/1.5 system-ui;color-scheme:light}.reserve-resume header{display:flex;align-items:center;gap:12px;padding-bottom:20px;border-bottom:1px solid #E8E6DC}.reserve-resume img{width:36px;height:36px;object-fit:contain}.reserve-resume strong{font-size:19px;font-weight:600}.reserve-resume button{margin-left:auto;padding:8px 12px;border:1px solid #D9D6CA;border-radius:8px;background:#fff;color:#5E5D59;font:inherit;cursor:pointer}.reserve-resume button:focus-visible{outline:2px solid #C96442;outline-offset:3px}.reserve-resume p{margin:20px 0;color:#78766F}.reserve-resume-grid{display:grid;grid-template-columns:minmax(120px,.7fr) repeat(3,minmax(0,1fr));gap:20px}.reserve-resume-grid>div{min-height:260px;border:1px solid #E8E6DC;border-radius:12px;padding:20px}.reserve-resume-grid i{display:block;max-width:75%;height:9px;margin:12px 0 30px;border-radius:4px;background:#E8E6DC}.reserve-resume-grid i:nth-child(even){max-width:50%}@media(max-width:900px){.reserve-resume-grid{grid-template-columns:140px 1fr}.reserve-resume-grid>div:nth-child(n+3){display:none}}@media(max-width:600px){.reserve-resume-grid{grid-template-columns:1fr}.reserve-resume-grid>div:first-child{display:none}}';root.append(css);
-    toolbar=document.createElement('div');toolbar.className='reserve-toolbar';
-    toolbar.innerHTML='<span role="status" aria-live="polite">Canvas Harness</span><div><button data-dashboard hidden>Back to dashboard</button><button data-native>Canvas dashboard</button></div>';
-    statusLabel=toolbar.querySelector('span');
-    toolbar.querySelector('[data-dashboard]').addEventListener('click',drawDashboard);
-    toolbar.querySelector('[data-native]').addEventListener('click',()=>showCanvas());
+    const css=document.createElement('style');css.textContent=':host([hidden]){display:none!important}.reserve-resume[hidden]{display:none!important}.reserve-workspace[hidden]{display:block!important;content-visibility:hidden!important}.reserve-resume{box-sizing:border-box;min-height:calc(100dvh - 90px);padding:20px clamp(16px,2vw,32px);background:#FAF9F5;color:#3D3D3A;font:14px/1.5 system-ui;color-scheme:light}.reserve-resume header{display:flex;align-items:center;gap:12px;padding-bottom:20px;border-bottom:1px solid #E8E6DC}.reserve-resume img{width:36px;height:36px;object-fit:contain}.reserve-resume strong{font-size:19px;font-weight:600}.reserve-resume button{margin-left:auto;padding:8px 12px;border:1px solid #D9D6CA;border-radius:8px;background:#fff;color:#5E5D59;font:inherit;cursor:pointer}.reserve-resume button:focus-visible{outline:2px solid #C96442;outline-offset:3px}.reserve-resume p{margin:20px 0;color:#78766F}.reserve-resume-grid{display:grid;grid-template-columns:minmax(120px,.7fr) repeat(3,minmax(0,1fr));gap:20px}.reserve-resume-grid>div{min-height:260px;border:1px solid #E8E6DC;border-radius:12px;padding:20px}.reserve-resume-grid i{display:block;max-width:75%;height:9px;margin:12px 0 30px;border-radius:4px;background:#E8E6DC}.reserve-resume-grid i:nth-child(even){max-width:50%}@media(max-width:900px){.reserve-resume-grid{grid-template-columns:140px 1fr}.reserve-resume-grid>div:nth-child(n+3){display:none}}@media(max-width:600px){.reserve-resume-grid{grid-template-columns:1fr}.reserve-resume-grid>div:first-child{display:none}}';root.append(css);
     area=document.createElement('div');area.className='reserve-workspace';
     resumeCover=document.createElement('div');resumeCover.className='reserve-resume';resumeCover.hidden=true;
     resumeCover.innerHTML='<header><img src="'+chrome.runtime.getURL('icon.svg')+'" alt=""><strong>Canvas Harness</strong><button type="button" data-native>Canvas dashboard</button></header><p role="status" aria-live="polite">Checking your Canvas session…</p><div class="reserve-resume-grid" aria-hidden="true"><div><i></i><i></i><i></i></div><div><i></i><i></i><i></i></div><div><i></i><i></i><i></i></div><div><i></i><i></i><i></i></div></div>';
-    resumeCover.querySelector('[data-native]').addEventListener('click',()=>showCanvas());
-    root.append(toolbar,area,resumeCover);content.append(host);
+    resumeCover.querySelector('[data-native]').addEventListener('click',()=>{canvasChoice=true;showCanvas();});
+    root.append(area,resumeCover);content.append(host);
     document.head.append(pageStyle);
   }
   function receive(next,verifiedStore,meta){
-    if(!wanted||suspended||bootStopped||(!manualOpen&&startup&&!startup.canReveal()))return;
+    if(!wanted||suspended||bootStopped||(!manualOpen&&startup&&!startup.canReveal())){
+      globalThis.ReserveStartupNote?.('receive dropped'+(wanted?'':' unwanted')+(suspended?' suspended':'')+(bootStopped?' stopped':'')+(manualOpen?'':' cover'));
+      return;
+    }
+    globalThis.ReserveStartupNote?.('receive');
     if(store&&store!==verifiedStore){
       const sameOwner=String(snapshot?.user?.id)===String(next.user?.id);
       if(sameOwner&&dashboard)dashboardState=dashboard.getState();
-      else if(!sameOwner){dashboardState=undefined;dashboardScroll=0;restoreScroll=false;}
-      dashboard?.destroy();dashboard=null;planner?.destroy();planner=null;
+      else if(!sameOwner){dashboardState=undefined;dashboardScroll=0;restoreScroll=false;pendingDashboard=null;}
+      dashboard?.destroy();dashboard=null;
     }
     snapshot=next;store=verifiedStore;
-    authorized=true;personalVerified=!meta?.unverified;if(!meta?.unverified){verifiedAt=stamp();verifiedWall=Date.now();}
+    authorized=true;personalVerified=!meta?.unverified;if(personalVerified){verifiedAt=stamp();verifiedWall=Date.now();}
     if(!meta?.unverified)try{
       const id=String(next.user?.id??''),on=quickOpen(verifiedStore.get().settings);
       if(on&&/^\d+$/.test(id)&&ownerHint?.id!==id){ownerHint={id};Promise.resolve(chrome.storage.local.set({[HINT_KEY]:id})).catch(()=>{});}
       else if(!on&&ownerHint){ownerHint=null;Promise.resolve(chrome.storage.local.remove(HINT_KEY)).catch(()=>{});}
     }catch{}
-    makeHost();if(!host)return;
-    if(planner)planner.updateSnapshot(next);
-    else if(dashboard)dashboard.updateSnapshot(next);
-    else{
-      drawDashboard();
-      if(launchPending){
-        launchPending=false;
-        const page=params.get('plan'),id=params.get('item');
-        if(['week','assignments'].includes(page))
-          openPlanner({page,id:/^(\d+|local-[\w-]+)$/.test(id||'')?id:null,hideGrades:store.get().settings.showGrades!==true});
-        else if(dashboard?.isReady?.()!==false)openAppearance();
-      }
-    }
+    makeHost();if(!host)return;mark('verifiedData');
+    if(dashboard)dashboard.updateSnapshot(next);
+    else{drawDashboard();if(dashboard?.isReady?.()!==false)openAppearance();}
     if(personalVerified)resumePersonalFiles();else dashboard?.closePersonalFiles?.();
     if(meta.stale)setStatus('Saved view · Updating in the background…');
     reveal();
@@ -225,8 +222,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       client:ReserveAPI.createClient(),
       createStore:ReserveStorage.createStore,
       ...(ownerHint?{prefetchedProfile:ownerHint,quickOpen}:{}),
-      onSnapshot:receive,onStatus:setStatus,onError:(error,{clear})=>{
+      onSnapshot:receive,onStatus:setStatus,onTiming:mark,onError:(error,{clear})=>{
       if(clear){
+        noRetry=true;
         if(ownerHint){ownerHint=null;try{Promise.resolve(chrome.storage.local.remove(HINT_KEY)).catch(()=>{});}catch{}}
         dashboard?.destroy();
         dashboard=null;
@@ -237,43 +235,54 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         dashboardScroll=0;
         restoreScroll=false;
       }
-      else if(!dashboard&&!planner)showCanvas(false);
+      else if(!dashboard)showCanvas(false);
       dockBusy(false);dockRoot.querySelector('button').title=error.message+' Click to retry.';
     }});
     return session.start();
   }
   dockRoot.querySelector('button').addEventListener('click',()=>{
-    // An old page context needs a reload to load the updated extension.
+    // A copy left running after the extension reloaded has lost the extension: only a page reload starts the new one.
     if(chrome.runtime&&!chrome.runtime.id){location.reload();return;}
     dockBusy(true);
-    if(!isDashboard||!feature('dashboard')){
-      if(!feature('tools'))return;location.assign(globalThis.ReserveSite.origin()+'/?reserve=open');return;}
-    // A manual open resets a hidden-tab pause and any host Canvas detached.
+    if(!isDashboard){location.assign(globalThis.ReserveSite.origin()+'/?reserve=open');return;}
+    globalThis.clearTimeout?.(startWatch);canvasChoice=false;noRetry=false;openAfresh();
+    // Still not shown 15 s after the click, with the tab in view: reload the page once.
+    const attempt=session;
+    setTimeout(()=>{if(attempt&&session===attempt&&wanted&&!suspended&&!bootStopped&&host?.hidden&&document.visibilityState!=='hidden')location.reload();},15000);
+  });
+  // Opening afresh (owner, 2026-10-27: Canvas's page showed and the Canvas Harness button did nothing until a reload). A pause
+  // left from the tab being hidden while Canvas Harness loaded blocked every later start, and a host Canvas had taken out of the
+  // page was reused. The new start runs its own account check.
+  function openAfresh(){
     startup?.release();manualOpen=true;wanted=true;suspended=false;
     if(host&&(!ready||host.isConnected===false)){dashboard?.destroy();dashboard=null;host.remove();host=null;ready=false;}
     makeHost();
     authorized=false;resumeGeneration++;
     session?.destroy();session=null;start();
-    // A stalled, visible manual launch gets one fresh page load after 15 seconds.
-    const attempt=session;
-    setTimeout(()=>{if(attempt&&session===attempt&&wanted&&!suspended&&!bootStopped&&host?.hidden&&document.visibilityState!=='hidden')location.reload();},15000);
-  });
-  document.addEventListener('pointerdown',event=>{
-    // Do not move a Canvas control out from under a student who has started using it.
-    if((!ready||!snapshot)&&wanted&&!startup?.active&&!event.composedPath().includes(dock))showCanvas(false);
-  },{passive:true});
+  }
+  // Do not move a Canvas control out from under a student who has started using it: a click on Canvas's page, or
+  // typing into one of its fields, before Canvas Harness shows.
+  function useCanvas(event){
+    if(!wanted||startup?.active||(ready&&snapshot)||event.composedPath().includes(dock))return;
+    if(event.type==='keydown'){const t=event.target;if(!(t?.isContentEditable||/^(input|textarea|select)$/i.test(t?.tagName||'')))return;}
+    canvasChoice=true;showCanvas(false);
+  }
+  document.addEventListener('pointerdown',useCanvas,{passive:true});
+  document.addEventListener('keydown',useCanvas,true);
   // leaving: the page is being thrown away (pagehide, not kept for Back). Nobody sees it again, so the cover is not
   // drawn: drawing it restyled the whole workspace before the next Canvas page could start (58-76 ms, 4x CPU 316-337 ms).
   function pauseWorkspace(leaving=false){
-    const keepPlace=wanted&&host&&!host.hidden&&ready&&snapshot&&(dashboard||planner);
+    globalThis.ReserveStartupNote?.('pause');
+    const keepPlace=wanted&&host&&!host.hidden&&ready&&snapshot&&dashboard;
     dashboard?.closePersonalFiles?.();
-    suspended=true;authorized=false;personalVerified=false;resumeGeneration++;resumePending=null;
+    suspended=true;authorized=false;personalVerified=false;pendingDashboard=null;resumeGeneration++;resumePending=null;
     if(keepPlace){if(!leaving)coverWorkspace(true);dock.hidden=true;}
     else{if(host)host.hidden=true;coverWorkspace(false);restoreNative();dock.hidden=false;}
     if(snapshot)session?.suspend();else{session?.destroy();session=null;}
     startup?.release();
   }
   function resumeWorkspace(){
+    globalThis.ReserveStartupNote?.('resume'+(suspended?' suspended':'')+(host?'':' nohost')+(wanted?'':' unwanted'));
     if(resumePending)return resumePending;
     if(!isDashboard||!wanted||!host||bootStopped||document.visibilityState==='hidden')return;
     if(!!document.querySelector('#login_form, #new_login, .ic-Login')||!(location.pathname==='/'||/^\/dashboard\/?$/.test(location.pathname))){showCanvas(false);return;}
@@ -281,7 +290,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // and a first load still running carries on (it reveals itself). Only an older or interrupted check rechecks.
     // Both clocks must agree the check is recent: performance.now() stands still while the computer sleeps.
     if(!suspended){
-      if(authorized&&snapshot&&(dashboard||planner)&&stamp()-verifiedAt<30000&&Math.abs(Date.now()-verifiedWall)<30000){reveal();return;}
+      if(authorized&&snapshot&&dashboard&&stamp()-verifiedAt<30000&&Math.abs(Date.now()-verifiedWall)<30000){reveal();return;}
       if(session&&verifiedAt===-Infinity){if(snapshot)reveal();return;}
     }
     suspended=false;manualOpen=true;const epoch=resumeGeneration;
@@ -292,12 +301,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const verified=await session.verify();
       if(epoch!==resumeGeneration||!wanted||suspended||bootStopped||document.visibilityState==='hidden')return;
       if(!verified){showCanvas(false);return;}
-      // Lift the cover first; the refresh of what it shows (times, anything saved meanwhile) follows the first frame.
-      // It hands the dashboard the same snapshot, which redraws only when the clock changed what Home shows
-      // (dashboard.js updateSnapshot): a tab return is one redraw at most, not a whole render every time.
-      authorized=true;resumePersonalFiles();reveal();
-      const refresh=()=>{if(epoch===resumeGeneration&&!suspended&&wanted&&snapshot)dashboard?.updateSnapshot(snapshot);};
-      if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(refresh,0));else refresh();
+      // The reopened files' render is the one redraw a return needs: it draws the current time, and the check above
+      // already reloaded the account record (a change there renders through the store) and fetches newer Canvas data
+      // when the saved copy is old (that arrives through receive). Handing the dashboard the same snapshot again only
+      // threw away its caches and ran a second AI visit (perf leaks-3: one extra 300-680 ms redraw per tab return).
+      authorized=true;resumePersonalFiles();
+      reveal();
     })().catch(()=>{if(epoch===resumeGeneration)showCanvas(false);});
     resumePending=operation;operation.finally(()=>{if(resumePending===operation)resumePending=null;});return operation;
   }
@@ -311,17 +320,38 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     bootStopped=true;
     stopWaiting();
     pauseWorkspace(!event.persisted);
-    if(!event.persisted){pageLeft=true;planner?.destroy();dashboard?.destroy();session?.destroy();nativeTools?.destroy();pageAppearance?.destroy();}
+    globalThis.CanvasHarnessAgentClient?.stopAll();
+    if(!event.persisted){pageLeft=true;dashboard?.destroy();session?.destroy();nativeTools?.destroy();pageAppearance?.destroy();featureSettings?.destroy();}
   });
   window.addEventListener('pageshow',event=>{if(event.persisted){bootStopped=false;resumeWorkspace();}});
-  startup?.onNative(()=>{if(!suspended)showCanvas(false);});
+  // The cover's eight seconds ran out (or it could not cover Canvas) with the start still under way: Canvas shows
+  // meanwhile and Canvas Harness still opens when its checked data arrives, unless the student starts using Canvas's page first
+  // (owner, 2026-10-27: Canvas's own dashboard stayed, with Canvas Harness's menu bar and button working).
+  startup?.onNative(reason=>{
+    if(suspended)return;
+    if(reason==='student')canvasChoice=true;
+    if((reason==='deadline'||reason==='no-cover')&&wanted&&!canvasChoice&&!bootStopped){
+      globalThis.ReserveStartupNote?.('late start continues');manualOpen=true;Promise.resolve().then(reveal);return;
+    }
+    showCanvas(false);
+  });
   function initialize(){
     if(globalThis.ReserveSite.vanillaPage(location))return;
+    if(params.get('reserve')==='open'||params.has('plan')){
+      const requested=params.get('workspace'),
+        page=params.get('plan'),
+        workspace=requested?(globalThis.ReserveFeatures?globalThis.ReserveFeatures.workspace(requested):requested):dashboardDestination(page),
+        courseId=params.get('course'),
+        id=params.get('item');
+      if(['work','assignments','plan','hub','materials','inbox','grades','review'].includes(workspace)||/^\d+$/.test(courseId||''))dashboardState={workspace,courseId};
+      if(!requested&&page==='assignments'&&validItem(id)&&dashboardState)launchItem=id;
+    }
     registerFont();
     pageAppearance=feature('native-appearance')?globalThis.ReserveNativePage?.create():null;
     if(pageAppearance){globalThis.ReservePageAppearance=pageAppearance;pageAppearance.start().catch(()=>{});}
     dockButton.hidden=!feature('dashboard');
     document.body.append(dock);
+    if(isDashboard&&!feature('dashboard'))featureSettings=globalThis.ReserveSettingsDock?.mountLauncher(dockRoot);
     if(!isDashboard||!feature('dashboard')){
       if(!feature('tools'))return;
       const button=document.createElement('button');
@@ -331,14 +361,41 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       button.setAttribute('aria-label','Open Canvas Harness tools');
       dockRoot.append(button);
       const css=document.createElement('style');css.textContent='.rd-native-tools{position:fixed;inset:0 auto auto 0;width:0;min-height:0;padding:0;background:none}.reserve-tool-status{display:block;position:absolute;bottom:48px;right:0;width:260px;max-width:calc(100vw - 40px);padding:10px 13px;border:1px solid #dfe3e8;border-radius:9px;box-shadow:0 3px 15px #17212c10;background:#fff;color:#425062;font:12px/1.5 system-ui}.reserve-tool-status[hidden]{display:none}.reserve-dock-button+.reserve-dock-button{margin-left:6px}';dockRoot.append(css);
-      nativeTools=globalThis.ReserveNativeTools?.create({button,dockRoot});return;
+      nativeTools=globalThis.ReserveNativeTools?.create({button,dockRoot});
+      if(feature('ai')&&globalThis.CanvasHarnessAgentClient&&!/\/quizzes\/[^/?#]+\/(?:take|resume)(?:[/?#]|$)/i.test(location.href)){
+        const visitSession=globalThis.ReserveToolboxSession?.create({client:ReserveAPI.createClient(),createStore:ReserveStorage.createStore,origin:location.origin});
+        visitSession?.open().catch(()=>{}).finally(()=>visitSession.destroy());
+      }
+      return;
     }
-    try{wanted=wanted&&params.get('reserve')!=='native'&&!!startup?.canReveal();}catch{wanted=false;startup?.release();}
+    try{
+      const late=['deadline','no-cover'].includes(startup?.releasedBy);
+      wanted=wanted&&params.get('reserve')!=='native'&&(!!startup?.canReveal()||(late&&!canvasChoice));
+      if(wanted&&late)manualOpen=true;
+    }catch{wanted=false;startup?.release();}
     // Styles preload while the session verifies identity; no account data bypasses it.
-    if(wanted)start();
+    if(wanted){start();watchStart();}
+  }
+  // An automatic start that has not shown Canvas Harness after twenty seconds in view (longer than Canvas's fifteen-second answer
+  // limit) gets one fresh start, then one page reload per visit: never a loop, never after the student chose or used
+  // Canvas's page, nor after Canvas refused the account. Each start runs its own account check.
+  const RELOADED='reserve:start-reload';
+  function watchStart(tries=0){
+    globalThis.clearTimeout?.(startWatch);
+    startWatch=setTimeout(()=>{
+      if(canvasChoice||noRetry||bootStopped||!isDashboard||params.get('reserve')==='native')return;
+      if(host&&!host.hidden){try{sessionStorage.removeItem(RELOADED);}catch{}return;}
+      if(document.visibilityState==='hidden'){const shown=()=>{document.removeEventListener('visibilitychange',shown);watchStart(tries);};document.addEventListener('visibilitychange',shown);return;}
+      if(document.querySelector('#login_form, #new_login, .ic-Login'))return;
+      globalThis.ReserveStartupNote?.('start watch '+tries);
+      if(tries===0){openAfresh();watchStart(1);return;}
+      // A page that still cannot start stays on Canvas, with the Canvas Harness button to try again.
+      try{if(sessionStorage.getItem(RELOADED))return;sessionStorage.setItem(RELOADED,'1');}catch{return;}
+      location.reload();
+    },20000);
   }
   Promise.all([startup?.preferences||chrome.storage.local.get('reserve:enabled'),globalThis.ReserveFeatureLoad]).then(([saved,loaded])=>{
-
+    mark('enabledPreference');
     if(saved['reserve:enabled']===false||loaded?.ok===false||bootStopped)return;
     // Canvas's remaining scripts and markup do not need to block a verified
     // dashboard. Native course tools still initialize after parsing completes.
@@ -346,8 +403,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(bootStopped)return;
       if(!document.head||!document.body||(isDashboard&&!document.getElementById('content'))||(!isDashboard&&document.readyState==='loading'))return;
       stopWaiting();
-      // A page on the domain without a Canvas layout (an Instructure website) is left untouched.
-      if(!globalThis.ReserveSite.canvasPage(document)){startup?.release();return;}
+      // A page on the domain without a Canvas layout (an Instructure website, a school page on its own address) is left untouched.
+      if(!globalThis.ReserveSite.canvasPage?.(document)){startup?.release();return;}
       try{initialize();}catch{showCanvas(false);}
     };
     document.addEventListener('DOMContentLoaded',launchAttempt,{once:true});

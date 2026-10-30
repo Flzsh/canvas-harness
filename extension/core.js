@@ -112,6 +112,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     var id = String(raw.id);
     var enrollments = Array.isArray(raw.enrollments) ? raw.enrollments : [];
     var enrollment = selectCourseEnrollment(enrollments);
+    var liveEnrollments = enrollments.filter(function(e){return (isStudentEnrollment(e)||isUntypedEnrollment(e))&&(!e.enrollment_state||e.enrollment_state==='active');});
+    var courseEnrollment = liveEnrollments[0] || enrollment;
     var hideFinalGrades = raw.hide_final_grades === true;
     var periodId = enrollment ? nullableString(enrollment.current_grading_period_id) : null;
     var periodTitle = enrollment ? nullableString(enrollment.current_grading_period_title) : null;
@@ -147,18 +149,33 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       gradingPeriodId: periodId,
       gradingPeriodTitle: periodTitle,
       hideFinalGrades: hideFinalGrades,
+      nickname:stringValue(raw.nickname),
+      myGroups:Array.isArray(raw.myGroups)?raw.myGroups:[],
+      timeZone:stringValue(raw.time_zone||raw.timeZone),
+      termStartAt:normalizedDateString(raw.term&&raw.term.start_at||raw.termStartAt),
+      termEndAt:normalizedDateString(raw.term&&raw.term.end_at||raw.termEndAt),
+      workflowState:stringValue(raw.workflow_state||raw.workflowState),
+      enrollmentState:stringValue(courseEnrollment&&courseEnrollment.enrollment_state),
+      courseSectionId:courseEnrollment&&courseEnrollment.course_section_id!=null?String(courseEnrollment.course_section_id):null,
+      courseSectionIds:liveEnrollments.filter(function(e){return e.course_section_id!=null;}).map(function(e){
+        return String(e.course_section_id);
+      }).filter(function(v,i,a){
+        return a.indexOf(v)===i;
+      }),
       url: '/courses/' + encodeURIComponent(id),
       image: image,
       // The enrollment term (Canvas sends enrollment_term_id; the term's name only with include[]=term).
       termId: stringValue(raw.enrollment_term_id !== undefined && raw.enrollment_term_id !== null ?
         raw.enrollment_term_id :
         raw.term && raw.term.id !== undefined ? raw.term.id : raw.termId),
+      applyAssignmentGroupWeights:raw.apply_assignment_group_weights===true,
+      latePolicy:raw.late_policy||null,
       termName: stringValue(raw.term && raw.term.name !== undefined ? raw.term.name : raw.termName),
     };
   }
 
-  // Courses that are not classes (2.17). Canvas lists school resources (NameCoach,
-  // College Counseling) beside the real courses. A course is non-academic when
+  // Courses that are not classes (2.17). Canvas lists school resources (a name-pronunciation tool,
+  // a counseling group) beside the real courses. A course is non-academic when
   //   - its drawing is the pronunciation or the counseling one (course-art.js
   //     decides by the Canvas name and code; the same words are kept here for
   //     pages and tests that run without the art), or
@@ -168,7 +185,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // Such courses start hidden. settings.shownCourses holds the ones the student
   // chose to show again and settings.hiddenCourses the ones hidden by hand, so
   // an explicit choice always wins.
-  var NON_ACADEMIC_NAME = /namecoach|name coach|pronunc|counsel|advis|college office/;
+  var NON_ACADEMIC_NAME = /name ?coach|pronunc|counsel|advis|college office/;
   function nonAcademicKind(course) {
     var art = typeof globalThis !== 'undefined' ? globalThis.ReserveCourseArt : null;
     if (art && typeof art.kind === 'function') {
@@ -291,16 +308,21 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       : [];
     var rubric = Array.isArray(raw.rubric) ? raw.rubric.slice() : [];
     var submission = raw.submission && typeof raw.submission === 'object' ? raw.submission : null;
+    var quiz=raw.quiz&&typeof raw.quiz==='object'?raw.quiz:null;
+    // Canvas repeats discussion requirements on topics, assignments and checkpoints.
+    var topic=raw.discussion_topic&&typeof raw.discussion_topic==='object'?raw.discussion_topic:raw;
+    var replyCount=raw.reply_to_entry_required_count??topic.reply_to_entry_required_count;
+    var count=function(value){return Number.isInteger(value)&&value>=0?value:null;};
 
     return {
       id: id,
       courseId: courseId,
       courseName: stringValue(course.name),
       name: stringValue(raw.name),
-      description: typeof raw.description === 'string' ? raw.description : '',
-      dueAt: normalizedDateString(raw.due_at),
-      unlockAt: normalizedDateString(raw.unlock_at),
-      lockAt: normalizedDateString(raw.lock_at),
+      description: typeof raw.description === 'string' && raw.description.trim() ? raw.description : typeof topic.message==='string'?topic.message:'',
+      dueAt: normalizedDateString(raw.due_at!==undefined?raw.due_at:quiz&&quiz.due_at),
+      unlockAt: normalizedDateString(raw.unlock_at!==undefined?raw.unlock_at:quiz&&quiz.unlock_at),
+      lockAt: normalizedDateString(raw.lock_at!==undefined?raw.lock_at:quiz&&quiz.lock_at),
       url: safeCanvasAssignmentUrl(raw.html_url, courseId, id),
       points: finiteNumber(raw.points_possible),
       score: submission && !(Object.prototype.hasOwnProperty.call(submission,'posted_at') && !submission.posted_at) ? finiteNumber(submission.score) : null,
@@ -315,8 +337,107 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       locked: raw.locked_for_user === true || raw.locked === true,
       submissionTypes: submissionTypes,
       rubric: rubric,
+      gradingType:stringValue(raw.grading_type),
+      assignmentGroupId:nullableString(raw.assignment_group_id),
+      assignmentGroup:raw.assignment_group?
+        {
+          id:stringValue(raw.assignment_group.id),
+          name:stringValue(raw.assignment_group.name),
+          weight:finiteNumber(raw.assignment_group.group_weight),
+          groupWeight:finiteNumber(raw.assignment_group.group_weight),
+          weighted:course.applyAssignmentGroupWeights===true||course.apply_assignment_group_weights===true
+        }:
+        null,
+      extraCredit:raw.is_extra_credit===true,
+      optionalForGrade:raw.omit_from_final_grade===true||
+        raw.is_extra_credit===true||
+        !!(raw.assignment_group&&(course.applyAssignmentGroupWeights===true||course.apply_assignment_group_weights===true)&&raw.assignment_group.group_weight===0),
+      hasSubAssignments:raw.has_sub_assignments===true,
+      replyToEntryRequiredCount:count(replyCount),
+      requireInitialPost:typeof raw.require_initial_post==='boolean'?raw.require_initial_post:typeof topic.require_initial_post==='boolean'?topic.require_initial_post:null,
+      userCanSeePosts:typeof raw.user_can_see_posts==='boolean'?raw.user_can_see_posts:typeof topic.user_can_see_posts==='boolean'?topic.user_can_see_posts:null,
+      checkpoints:(Array.isArray(raw.sub_assignments)?
+        raw.sub_assignments:
+        Array.isArray(raw.checkpoints)?raw.checkpoints:Array.isArray(topic.checkpoints)?topic.checkpoints:[]).map(function(c){
+        return {
+          id:stringValue(c.id),
+          tag:stringValue(c.sub_assignment_tag||c.tag),
+          name:stringValue(c.name),
+          requiredCount:count(c.required_count??((c.sub_assignment_tag||c.tag)==='reply_to_entry'?replyCount:null)),
+          dueAt:normalizedDateString(c.due_at),
+          unlockAt:normalizedDateString(c.unlock_at),
+          lockAt:normalizedDateString(c.lock_at),
+          points:finiteNumber(c.points_possible),
+          done:!!(c.submission&&/^(submitted|graded)$/.test(c.submission.workflow_state))
+        };
+      }),
+      quizId:nullableString(raw.quiz_id||quiz&&quiz.id),
+      quiz: quiz ?
+        {
+          quizId:String(quiz.id),
+          quizType:stringValue(quiz.quiz_type),
+          timeLimit:finiteNumber(quiz.time_limit),
+          allowedAttempts:Number.isInteger(quiz.allowed_attempts)?quiz.allowed_attempts:null,
+          scoringPolicy:stringValue(quiz.scoring_policy),
+          oneQuestionAtATime:quiz.one_question_at_a_time===true,
+          cantGoBack:quiz.cant_go_back===true,
+          requireLockdownBrowser:quiz.require_lockdown_browser===true,
+          unlockAt:normalizedDateString(quiz.unlock_at),
+          lockAt:normalizedDateString(quiz.lock_at),
+          dueAt:normalizedDateString(quiz.due_at)
+        } :
+        null,
       updatedAt: normalizedDateString(raw.updated_at),
+      // how the work is handed in, for preparing it: attempts, group, peer review, file types, the outside tool, the
+      // document to annotate
+      allowedAttempts: Number.isInteger(raw.allowed_attempts) && (raw.allowed_attempts > 0 || raw.allowed_attempts === -1) ? raw.allowed_attempts : null,
+      attemptsUsed: submission && Number.isInteger(submission.attempt) ? submission.attempt : null,
+      groupWork: raw.group_category_id != null,
+      groupCategoryId:nullableString(raw.group_category_id),
+      individuallyGraded:raw.grade_group_students_individually===true,
+      gradeGroupStudentsIndividually:raw.grade_group_students_individually===true,
+      myGroup:(course.myGroups||[]).find(function(g){return String(g.groupCategoryId)===String(raw.group_category_id);})||null,
+      peerReviews: raw.peer_reviews === true,
+      peerReviewsAt: normalizedDateString(raw.peer_reviews_assign_at),
+      allowedExtensions: Array.isArray(raw.allowed_extensions) ? raw.allowed_extensions.slice(0, 20).map(function (value) { return String(value).slice(0, 12); }) : [],
+      externalTool: toolHost(raw.external_tool_tag_attributes && raw.external_tool_tag_attributes.url),
+      annotatableAttachmentId: raw.annotatable_attachment_id != null && /^\d+$/.test(String(raw.annotatable_attachment_id)) ? String(raw.annotatable_attachment_id) : null,
+      lockExplanation: typeof raw.lock_explanation === 'string' ? raw.lock_explanation.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300) : '',
+      optional: raw.omit_from_final_grade === true,
     };
+  }
+  function toolHost(value) {
+    try { var url = new URL(String(value || '')); return url.protocol === 'https:' ? url.hostname.replace(/^(?:www|api)\./, '').slice(0, 80) : ''; } catch (error) { return ''; }
+  }
+  function latePolicyText(p){
+    if(!p||typeof p!=='object')return '';
+    var parts=[];
+    if(p.late_submission_deduction_enabled===true&&Number.isFinite(p.late_submission_deduction))
+      parts.push('Late work loses '+p.late_submission_deduction+'% per '+stringValue(p.late_submission_interval||'interval'));
+    if(p.late_submission_deduction_enabled===false)parts.push('No automatic late deduction');
+    if(p.late_submission_minimum_percent_enabled===true&&Number.isFinite(p.late_submission_minimum_percent))parts.push('late deductions stop at '+p.late_submission_minimum_percent+'%');
+    if(p.missing_submission_deduction_enabled===true&&Number.isFinite(p.missing_submission_deduction))parts.push('missing-work deduction '+p.missing_submission_deduction+'%');
+    return parts.length?'Course late policy: '+parts.join(', '):'';
+  }
+  // Prefer distinct requirements over repeated background, while preserving their source order.
+  function smartCut(text,max){
+    text=String(text||'');if(text.length<=max)return text;max=Math.max(0,Math.floor(max));if(max<40)return text.slice(0,max);
+    var rows=text.split(/\n+|(?<=[.!?;])\s+/).flatMap(function(t){var out=[];for(var i=0;i<t.length;i+=1500)out.push(t.slice(i,i+1500));return out;}),seen=new Set(),parts=[],used=0,room=max-32;
+    rows.forEach(function(t,i){
+      if(!t.trim()||max<=40000&&seen.has(t))return;
+      seen.add(t);
+      var score=(/\b(?:must|required?|deadline|due|rubric|criteria|submit|bring|keep|return|before|after|policy|late|makeup|retake|calibration)\b/i.test(t)?8:0)+(/\d/.test(t)?5:0)+(i===0||i===rows.length-1?4:0);
+      parts.push({i:i,text:t,score:score});
+    });
+    var selected=[];
+    parts.sort(function(a,b){return b.score-a.score||a.i-b.i;}).forEach(function(p){
+      var available=room-used;
+      if(available<24)return;
+      var body=p.text.length>available?p.text.slice(0,available-4)+' ...':p.text;
+      selected.push({i:p.i,text:body});
+      used+=body.length+2;
+    });
+    return ('[Excerpts; source shortened]\n'+selected.sort(function(a,b){return a.i-b.i;}).map(function(p){return p.text;}).join('\n\n')).slice(0,max);
   }
 
   // One formatter per time zone, and the answer per instant: a new Intl.DateTimeFormat on every call cost ~50-70 us,
@@ -821,6 +942,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     hiddenCourseIds: hiddenCourseIds,
     setCourseVisible: setCourseVisible,
     normalizeAssignment: normalizeAssignment,
+    latePolicyText:latePolicyText,
+    smartCut:smartCut,
     courseLabel: courseLabel,
     settleFocus: settleFocus,
     focusClock: focusClock,

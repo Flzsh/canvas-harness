@@ -232,7 +232,7 @@
    }).filter(Boolean).sort((a,b)=>b.score-a.score||a.id.localeCompare(b.id)).filter(v=>v.score>=1.5).slice(0,3).map(({_title,_body,_aliases,_phrase,...v})=>v);
   }
   function card(action,items,fields,message,extra={}){
-    return {action,items:items.slice(0,3),message,next:{action,fields:fields||{},label:action==='plan'?'Plan today':action==='find'?'Open':'Continue'},...extra};
+    return {action,items:items.slice(0,3),message,next:{action,fields:fields||{},label:action==='plan'?'Plan today':action==='ai'?'Ask AI':action==='find'?'Open':'Continue'},...extra};
   }
   function reference(line,s,session={},options={}){
    const Selection=load('ReserveBiscuitSelection','./biscuit-selection.js'),rows=prepareLearned(s);
@@ -287,6 +287,21 @@
       /\b(?:half\s+on|two\s+(?:goes|small\s+study\s+slots)|both\s+need\s+time|make.*manageable)\b/i.test(line)||
       /\bbreak\b.*\binto\b|\bsqueeze\b.*\bin\b|\b(?:study|edit)\b.*\b(?:bump|block)\b|\b(?:move|bump|shift|slide|push)\b.*\b(?:study|work|reading|edit)\b|\b(?:tonight|evening)\b.*\bsort\b/i.test(line);
   }
+  function helpKinds(line,target){
+    if(/\b(?:quiz|test)\s+me\b|\bask\s+me\s+(?:some\s+)?questions\b|\b(?:practice\s+(?:questions?|problems?|quiz))\b/i.test(line))return ['practice'];
+    if(/\b(?:reading\s+guide|summari[sz]e\s+(?:this|the|my)\s+(?:reading|chapter|text))\b/i.test(line))return ['reading'];
+    if(/\b(?:lab|experiment)\s+checklist\b/i.test(line))return ['lab'];
+    if(/\b(?:rubric|criteria)\s+(?:checklist|check)|\bcheck\b.*\brubric\b/i.test(line))return ['rubric'];
+    if(/\b(?:fix\s+list|teacher.s?\s+(?:feedback|comments?).*(?:apply|improve)|(?:apply|use|act\s+on).*feedback)\b/i.test(line))return ['fixes'];
+    if(/\bnotes?\s+(?:outline|structure)\b/i.test(line))return ['notes'];
+    if(!/\b(?:help\s+me\s+(?:with|study|understand|prepare)|help\s+(?:with|on)|study\s+help)\b/i.test(line))return [];
+    if(target?.kind==='grade')return ['fixes','practice'];
+    const kind=target?.workKind||target?.workType||target?.type||'',title=target?.title||'';
+    if(/lab|experiment/i.test(kind+' '+title))return ['lab','practice'];
+    if(/essay|project|poster|report/i.test(kind+' '+title))return ['rubric','practice'];
+    if(/reading|chapter|text/i.test(kind+' '+title))return ['reading','practice'];
+    return ['practice','reading'];
+  }
   function aiIntent(line){
     const local=/\b(?:what|where|which|when|does|did|do|is|are|can)\b.*\b(?:say|said|asks?|requires?|instructions?|directions?|due|worth|points|teaches|office\s+hours|assigned|allowed|supposed)\b|\b(?:pull\s+up|open|find|show)\b.*\b(?:my|the|saved|marked|feedback|instructions?|files?)\b/i.test(line),novel=/\b(?:invent|made[ -]up|make\s+up|rewrite|rephrase|translate|compose|brainstorm|write|generate|summari[sz]e)\b|\b(?:test|quiz)\s+me\b|\b(?:walk\s+me\s+(?:through|thru)|fresh\s+ideas|new\s+(?:example|question)|explain|why\s+(?:isn.?t|would|can|does|do)|how\s+(?:can|could|would|do)\s+(?:i|we|u|you))\b/i.test(line),explicit=/^\s*(?:\?|ask\s+(?:the\s+)?ai\b)/i.test(line);
     return /^(?:critique|review\s+my\s+draft)\b/i.test(line)||
@@ -296,6 +311,88 @@
       novel&&!local||
       /^(?:draft|compose)\b/i.test(line)||
       /\b(?:give\s+me|make)\b.*\bpractice\s+(?:paragraph|chat|question|problem)\b|\b(?:how\s+(?:would|could)\s+(?:i|u|you)|como\s+digo)\b|\b(?:help\s+me\s+(?:invent|understand)|tell\s+me\s+how\s+to\s+fix)\b|\bmake\s+(?:this|my)\b.*\b(?:clearer|shorter|less\s+rude|more\s+polite|better)\b/i.test(line);
+  }
+  function handoff(line,s,session={},suggested,forced,forcedKinds){
+    const rows=prepare(s),
+      ownText=/\b(?:rewrite|rephrase|translate|make)\s+(?:this|my)\s+(?:caption|sentence|paragraph|counterargument)\b/i.test(line),
+      owned=ownText?null:reference(line,s,session),
+      anchor=owned?.row,
+      canInfer=!ownText&&!owned?.explicit,
+      explicit=canInfer?named(line,s,['assignment','file','page','grade','note']):null,
+      dataRef=/\b(?:my|our)\s+(?:assignment|lab|trial|draft|reading|feedback|rubric|notes)|\b(?:this|that|open|loaded|assigned)\s+(?:assignment|lab|reading|file|feedback|rubric|material)|\b(?:based\s+on|from\s+(?:the|my))\b/i.test(line),
+      novel=/\b(?:new|invent|invented|made[ -]up|fresh|write|draft|compose|rewrite|translate)\b|\bmake\s+up\b|\b(?:like|as\s+if|using)\b|\bgive\s+me\b.*\b(?:possible|ideas|hypotheses|examples|alternatives)\b|\bpractice\s+(?:paragraph|chat)\b|\b\d+\s*(?:percent|%)\b/i.test(line),
+      ongoing=/\b(?:my|our|still|keeps|drifts|changed|isn['?]?t\s+working|doesn['?]?t\s+work)\b/i.test(line),
+      sources=[];
+    let target=forced||(owned?.owner!=='named'||!novel||dataRef?anchor:null)||(canInfer&&(!novel||dataRef)?explicit:null),kinds=helpKinds(line,target||suggested);
+   if(!target&&canInfer&&ongoing){
+     const q=content(line).filter(w=>w.length>=4&&!['help','explain','understand','example','practice','question','write','simple','tiny','sense','still','zero','makes','there','their'].includes(w)),
+       courseId=String(s.activeCourseId||s.courseId||session.lastCourseId||''),
+       choices=rows.filter(v=>['assignment','file','page','grade'].includes(v.kind)&&(!courseId||v.courseId===courseId)).map(v=>({row:v,hits:v._title.filter(w=>q.includes(w)).length})).filter(v=>
+         v.hits).sort((a,b)=>
+         b.hits-a.hits);
+     if(choices.length&&(choices.length===1||choices[0].hits>choices[1].hits))target=choices[0].row;
+   }
+   if(!target&&canInfer&&kinds.includes('fixes')){
+     const last=String(session.itemId||session.lastItemId||session.lastResult?.next?.fields?.itemId||''),
+       previous=rows.find(v=>v.id===last),
+       feedback=previous?.kind==='grade'?previous:rows.find(v=>v.kind==='grade'&&String(v.assignmentId||'')===last);
+     if(feedback)
+       target=feedback;
+     else if(/\b(?:latest|last|returned|came\s+back|just\s+got)\b/i.test(line))
+       target=rows.filter(v=>v.kind==='grade'&&(!s.activeCourseId||v.courseId===String(s.activeCourseId))).sort((a,b)=>(stamp(b.gradedAt)||0)-(stamp(a.gradedAt)||0))[0];
+   }
+   if(!target&&canInfer&&kinds.length&&(s.selectedItemId||s.itemId))target=rows.find(v=>v.id===String(s.selectedItemId||s.itemId));
+   kinds=Array.isArray(forcedKinds)?forcedKinds:helpKinds(line,target||suggested);
+   if(!target&&canInfer&&kinds.length&&/\b(?:course|class|assigned)\b.*\breading\b|\breading\b.*\b(?:course|class)\b/i.test(line)){
+     const course=named(line,s,['course']),courseId=course?.id||s.activeCourseId;
+     const readings=rows.filter(v=>v.kind==='assignment'&&v.courseId===String(courseId)&&/reading/.test(v.workKind||v.type||'')&&!v.done);
+     if(readings.length===1)target=readings[0];
+   }
+   if(target){
+     let chosen=target;
+     if(kinds.includes('fixes')&&target.kind!=='grade'){const feedback=rows.find(v=>v.kind==='grade'&&(v.itemId===target.id||v.assignmentId===target.id));if(feedback)chosen=feedback;}
+     const text=chosen.kind==='grade'?
+       load('CanvasHarnessContext','./ai-context.js').withoutScores(String(chosen.feedback||chosen.teacherComments||chosen.comments||'')):
+       String(chosen.aiText??chosen.text??'');
+     sources.push({id:chosen.id,label:chosen.title,text,kind:chosen.kind,courseId:chosen.courseId});
+     if(kinds.includes('rubric'))
+       for(const v of rows)
+         if(v.id!==chosen.id&&String(v.assignmentId||v.parentId||'')===target.id&&/rubric|criteria/i.test(v.title+' '+v.kind))
+           sources.push({id:v.id,label:v.title,text:String(v.aiText??v.text??''),kind:v.kind,courseId:v.courseId});
+   }
+   const Study=load('CanvasHarnessStudy','./study-prompts.js');
+   let left=kinds.length?Study.LIMITS.material:100000;
+   for(let i=0;i<sources.length;i++){
+     const budget=Math.ceil(left/(sources.length-i));
+     if(sources[i].text.length>budget){sources[i].text=sources[i].text.slice(0,budget);sources[i].truncated=true;}
+     left-=sources[i].text.length;
+   }
+   const course=list(s.courses).find(v=>String(v.id)===target?.courseId),
+     ctx={
+       ...(s.now!=null?{now:s.now}:{}),
+       ...(s.timeZone?{timeZone:s.timeZone}:{}),
+       level:s.level||s.settings?.aiLevel||'high school',
+       course:course?.name||'',
+       item:target?.title||'',
+       wishes:String(line),
+       sources
+     },
+     kind=kinds.length===1?kinds[0]:kinds.length?null:'ask',
+     mode=kinds.length===1?'build':kinds.length?'choice':'ask',
+     prompt=mode==='build'?Study.build(kind,ctx):mode==='choice'?Study.buildChoice(kinds,ctx):[String(line),...sources.map(v=>'<<<SOURCE: '+v.label+'>>>\n'+v.text+'\n<<<END SOURCE>>>')].join('\n\n');
+   return {
+     contextIds:sources.map(v=>v.id),
+     sources,
+     kind,
+     kinds,
+     mode,
+     wishes:String(line),
+     prompt,
+     course:ctx.course,
+     item:ctx.item,
+     itemId:target?.assignmentId||target?.id||'',
+     courseId:target?.courseId||''
+   };
   }
   function understand(input,s,session){
     if(/^(?:open|find|show|set|turn|start|stop|move|bookmark|save|pin|focus|remind)\b/i.test(language(input))&&
@@ -394,12 +491,13 @@
    if(/^(?:do not|don't|never)\s+(?:invent|write|generate|draft|make|explain)\b/i.test(line))return card('none',[],{},'I will leave that alone.');
    if((s.teacherFeedback===false||s.privacy?.teacherFeedback===false)&&
      (/\b(?:fix\s+list|teacher.s?\s+(?:feedback|comments?))\b/i.test(line)||anchor?.kind==='grade'&&/\b(?:feedback|comments?|fix|improve|explain)\b/i.test(line)))
-     return card('none',[],{},'Teacher feedback is unavailable in this local view.');
+     return card('none',[],{},'Teacher feedback sharing is off. Turn it on in the AI panel to use those comments.');
    if(aiIntent(line)||/\b(?:apply|use|act\s+on|turn)\b.*\b(?:teacher.s?\s+)?(?:feedback|comments?)\b.*\b(?:fix|steps|improve|change)\b|\b(?:check|review|compare)\b.*\b(?:my|this)\s+draft\b.*\b(?:rubric|criteria)\b/i.test(line)){
      const relevant=search(line,s,session),navigation=relevant.filter(v=>['feature','setting'].includes(v.kind));
-     if(navigation.length&&/\b(?:how|what)\b/i.test(line))return card('find',navigation,navigation[0].fields,'Here is '+navigation[0].title+'.',{});
+     if(navigation.length&&/\b(?:how|what)\b/i.test(line))return card('find',navigation,navigation[0].fields,'Here is '+navigation[0].title+'.',{ai:s.ai===false?null:{action:'ai',fields:{text:raw}}});
      if(/^explain\s+/i.test(line)&&!/\b(?:why|how|difference|versus|using|like|example|invent|simple)\b/i.test(line)&&relevant[0]?.coverage>=.65)
-       return card('find',relevant,relevant[0].fields,'These local sources may help.',{});
+       return card('find',relevant,relevant[0].fields,'These local sources may help.',{ai:s.ai===false?null:{action:'ai',fields:{text:raw}}});
+     if(s.ai===false)return card('none',[],{},'Your AI is off.');
      return card('ai',[],{text:raw},'This needs explanation, feedback or new practice.',{understanding:{step:'routing',reason:'generative-help'}});
    }
    const help=/\b(?:help\s+(?:me\s+)?(?:with|understand)|study\s+help)\b/i.test(line);
@@ -411,27 +509,26 @@
    if(!request&&/^(?:yo\b|buenas\b|kia\s+ora\b|morning+\b|merci\b|aight\b|ngl\b|lol\b|ok\s+legend\b|just\s+needed\s+to\s+complain\b)|\b(?:tiny\s+homework\s+dog|thank\s+you|thanks|cheers|running\s+on.*vibes)\b/i.test(raw))return card('chat',[],{},/\b(?:complain|vibes|tired|toast)\b/i.test(raw)?'That sounds like a long day. I am here when you need a hand.':/\b(?:merci|thanks|legend)\b/i.test(raw)?'You are welcome.':'Hi. I am here.');
    return null;
   }
-  const SUGGESTIONS=['Dark mode','Open planner','Focus 25','Note: bring goggles','Help'];
-  function fallback(input,s,session){
-    const rows=search(String(input),s,session).filter(v=>v.coverage>=.65&&!['feature','setting','tab','home-module','action'].includes(v.kind));
-    return rows.length?card('find',rows,rows[0].fields,'These local sources may help.'):card('none',[],{},'Try a line: dark mode, open planner, focus 25, or help.',{suggestions:SUGGESTIONS});
-  }
-  function localOnly(result,input,s,session){
-    if(!result)return fallback(input,s,session);
-    if(['ai','study','practice','reading','lab','rubric','fixes','ready'].includes(result.action)||['ai','study'].includes(result.next?.action))result=fallback(input,s,session);
-    delete result.ai;
-    delete result.handoff;
-    delete result.helpWith;
-    if(result.requests){
-      result.requests=result.requests.map(v=>localOnly(v,input,s,session));
-      result.next.fields.steps=result.requests.map(v=>
-        ({...v.next,message:v.message,...(v.ui||v.clarify||v.next?.action==='none'?{manual:true,...(v.ui?{ui:v.ui}:{})}:{})}));
+  function routed(result,input,s,session){
+    const route=result.action==='ai'?'ai':'local';
+    result.route=route;
+    result.routing={
+      route,
+      score:result.understanding?.reason==='generative-help'?.98:result.action==='none'?.5:.95,
+      reason:result.understanding?.reason||(route==='ai'?'generative-help':'workspace-action')
+    };
+    if(route==='ai'){
+      const named=result.understanding?.reason==='named-source',
+        data=handoff(String(input),s,session,result.items[0],named?result.items[0]:null,named?result.understanding.helpKinds:null);
+      result.handoff=data;
+      result.next.fields={...result.next.fields,text:data.prompt,handoff:data};
+      result.message=(data.sources.length?data.sources.map(v=>v.label).join(' and ')+': ':'')+
+        (data.mode==='build'?'Prepare '+data.kind+' help.':data.mode==='choice'?'Choose between '+data.kinds.join(' and ')+'.':'Ask your question with the selected material.')+
+        ' Review what is sent in the AI panel.';
     }
-    result.route='local';
-    result.routing={...result.routing,route:'local',reason:result.routing?.reason||result.understanding?.reason||'workspace-action'};
+    else if(result.ai){const data=handoff(String(input),s,session,result.items[0]);result.ai.fields={text:data.prompt,handoff:data};}
     return result;
   }
-  function routed(result,input,s,session){return localOnly(result,input,s,session);}
   function evaluateRules(input,s={},session={}){
     const r=understand(input,s,session)||judge(input,s,session);
     if(r.requests)return routed(r,input,s,session);
@@ -596,11 +693,11 @@
        /^\d+\s*(?:min|minute|minutes|m|hour|h)\b/i.test(line),
      fast=precise&&
        !['ai','open','due','plan'].includes(precise.intent)&&
-       (!['focus','reminder','focus-control','focus-status','bookmark'].includes(precise.intent)||preciseHead&&!pronoun||has('timer')&&has('left'));
+       (!['focus','reminder','focus-control','focus-status','bookmark'].includes(precise.intent)||preciseHead&&!pronoun||has('timer')&&has('left')); 
    if(precise?.intent==='reminder'&&slots.invalid)return card('none',[],{},'Choose a valid reminder time.');
    if(preciseHead&&slots.invalid||preciseHead&&slots.minutes!==undefined&&slots.minutes<=0)return card('none',[],{},'Choose a positive duration and a valid time.');
    if(first==='every'){const routine=load('ReservePonyAsk','./pony-ask.js')?.parse(line,s);if(routine?.action==='routine')return card('routine',[],routine.data,routine.label);}
-   if(preciseHead&&!precise&&!['move','bookmark'].includes(first)&&!(first==='start'&&named(line,s,['assignment'])))return card('none',[],{},'Choose a valid duration or reminder time.');
+   if(preciseHead&&!precise&&!['move','bookmark'].includes(first))return card('none',[],{},'Choose a valid duration or reminder time.');
    if(fast&&
      !(readOnly&&MUTATE.has(precise.intent))&&
      !(precise.intent==='focus-control'&&
@@ -765,8 +862,8 @@
        needsAI?(s.ai===false?'none':'ai'):'find',
        needsAI?items:relevant,
        needsAI?{text:line}:relevant[0]?.fields,
-       needsAI?(s.ai===false?'Try a line: dark mode, open planner, focus 25, or help.':'This needs writing or explaining.'):'These local sources may help.',
-       {ai:s.ai!==false?{action:'ai',fields:{text:line},label:'Continue'}:null});
+       needsAI?(s.ai===false?'Your AI is off.':'This needs writing or explaining.'):'These local sources may help.',
+       {ai:s.ai!==false?{action:'ai',fields:{text:line},label:'Ask AI'}:null});
    }
    if(has('on','off')&&!preciseHead&&items[0]?.kind==='course')return card('none',[],{},'Name the feature or setting to change.');
    if(items.length){
@@ -1013,7 +1110,7 @@
          {id:'module:notes:show',title:'Show the Notes module',kind:'home-module',action:'module',fields:{key:'notes',action:'show'}}
        ]
      };
-   if(!steps)return null;
+   if(s.ai===false||!steps)return null;
    const Selection=load('ReserveBiscuitSelection','./biscuit-selection.js'),scope=Selection?.reference?.(raw,rows,s,session,{actor:'open/find'});let source=scope?.row;
    if(scope?.explicit&&scope.owner==='named')return null;
    if(!source){
@@ -1023,7 +1120,7 @@
        candidates=course?.courseId?Language.courseAliasCandidates(course,rows):[];
      if(candidates.length===1)source=candidates[0];
    }
-   if(source&&typeof source.instructions==='string'&&source.instructions.trim())return ask('Which posted instructions should I open?');return null;
+   if(source&&typeof source.instructions==='string'&&source.instructions.trim())return ask('Read the posted instructions or get help working through the steps?');return null;
   }
   function dispatch(input,s={},session={},original=input){
     const Intent=load('ReserveBiscuitIntent','./biscuit-intent.js'),
@@ -1071,13 +1168,7 @@
      const reminder=Details?.resolve?.('reminder',original,s,session,prepareLearned(s));
      return routed(reminder||card('none',[],{},'What should I remind you about, and when?',{clarify:true}),input,s,session);
    }
-   const prefix=Workflow.controlPrefix(original,s,session,guarded);
-   if(prefix)return prefix;
-   const goal=Intent?.requestGoal?.(original)||String(original);
-   if(!guarded&&
-     !Intent?.literalNoteRequest?.(original)&&
-     (aiIntent(goal)||/\bhelp\s+(?:me\s+)?(?:with|understand|study|on)\b/i.test(goal)||/^(?:quiz(?:\s+me)?|test\s+me|practice|lab\s*checklist|reading\s*guide|rubric(?:\s+checklist)?|fix\s*list|notes?\s+outline|flashcards?)\b/i.test(goal)))
-     return routed(fallback(goal,s,session),input,s,session);
+   const prefix=Workflow.controlPrefix(original,s,session,guarded);if(prefix)return prefix;const goal=Intent?.requestGoal?.(original)||String(original);
  const knownWord=/^[\p{L}\p{N}-]+[?!.]?$/u.test(String(original).trim())&&prepareLearned(s).some(v=>{
    const words=tokens(v.title+' '+v.text+' '+v.aliases),query=tokens(input);
    return query.length&&query.every(w=>words.includes(w));
@@ -1124,9 +1215,9 @@
   // "focus 25", "timer 25", "pomodoro 25": a bare count after a timer word is always minutes, never a search for "25".
   const BARE_TIMER=/^\s*(start\s+(?:a\s+)?)?(?:focus|timer|pomodoro|countdown)\s+(?:for\s+)?(\d{1,4})\s*[.!?]*$/i,FOCUS_ON=/^\s*(start\s+(?:a\s+)?)?focus\s+(?:for\s+)?(\d{1,3})\s+(?!(?:min|mins|minutes?|m|h|hr|hrs|hours?|sec|secs|seconds?|x|times|cycles?|rounds?|pomodoros?|blocks?|sessions?|pm|am|percent)\b|[%:.])(\S.*)$/i;
   // "tmrw", "whats due tomorrow", "tmrw hw", "hw due tmrw" all mean the list "due tmrw" gives (they picked one
-  // unrelated item before). With no Help band here, a bare "today" asks what is due today too.
+  // unrelated item before). Bare "today" keeps its own meaning; only "due today" phrasings join it.
   const DUE_TOMORROW=/^\s*(?:(?:what(?:'?s|\s+is)|anything|any)\s+)?(?:(?:hw|homework|assignments?|work)\s+)?(?:due\s+)?(?:for\s+)?(?:tomorrow|tmrw|tmr|tmw|2moro|2morrow)(?:'?s)?(?:\s+(?:hw|homework|assignments?|work))?(?:\s+due)?\s*[.!?]*$/i;
-  const FOCUS_WORK=/^\s*(?:(?:i\s+(?:want|need)\s+to|let\s+me|lets|let's)\s+)?(?:start\s+(?:a\s+)?)?focus(?:ing)?\s+(?:on\s+|time\s+(?:for\s+|on\s+)?)?(?:the\s+|my\s+)?((?:[a-z&]+\s+){1,3}(?:hw|homework|lab|essay|quiz|test|exam|project|reading|paper|worksheet|report))(?:\s+(?:now|pls|please|rn))?\s*[.!]*$/i,DUE_TODAY=/^\s*(?:(?:what(?:'?s|\s+is)|anything|any)\s+)?(?:(?:hw|homework|assignments?|work)\s+)?(?:due\s+)?(?:for\s+)?(?:today|tdy|tonight)(?:'?s)?(?:\s+(?:hw|homework|assignments?|work))?\s*[.!?]*$/i;
+  const FOCUS_WORK=/^\s*(?:(?:i\s+(?:want|need)\s+to|let\s+me|lets|let's)\s+)?(?:start\s+(?:a\s+)?)?focus(?:ing)?\s+(?:on\s+|time\s+(?:for\s+|on\s+)?)?(?:the\s+|my\s+)?((?:[a-z&]+\s+){1,3}(?:hw|homework|lab|essay|quiz|test|exam|project|reading|paper|worksheet|report))(?:\s+(?:now|pls|please|rn))?\s*[.!]*$/i,DUE_TODAY=/^\s*(?:(?:what(?:'?s|\s+is)|anything|any)\s+)?(?:(?:hw|homework|assignments?|work)\s+)?due\s+(?:for\s+)?(?:today|tdy|tonight)\s*[.!?]*$/i;
   function everyday(input){
     if(BARE_TIMER.test(String(input)))return String(input).replace(BARE_TIMER,(m,start,n)=>(start||'')+'focus '+n+' min');
     {/* "focus 25 anatomy hw": a bare number right after focus is minutes */const m=FOCUS_ON.exec(String(input));if(m&&Number(m[2])>=5&&Number(m[2])<=180)input=(m[1]||'')+'focus '+m[2]+' min '+m[3];}
@@ -1559,18 +1650,147 @@
          [target,...items.filter(v=>v.id!==target.id)],
          {...(target.fields||{}),itemId:target.id,...(target.courseId?{courseId:target.courseId}:{})},
          'These local sources may help.',
-         {understanding:{step:'understanding',reason:'concept-grounded'}}),
+         {ai:s.ai===false?null:{action:'ai',fields:{text:String(line)}},understanding:{step:'understanding',reason:'concept-grounded'}}),
        input,
        s,
        session);
-   // This build has no AI: help and feelings grounded on an item keep the local reply.
-   return null;
+   return routed(
+     card('ai',[target],{itemId:target.id,...(target.courseId?{courseId:target.courseId}:{})},'',{understanding:{step:'understanding',reason:affect?'feeling-grounded':'help-grounded'}}),
+     input,
+     s,
+     session);
   }
 
-  /* Kinds of work a line can name ("the chem lab", "calc packet", "my draft"), used to pick the work a focus timer is for. */
-  const SOURCE_CUES=[['extension',/\b(?:extension|extra time|more time)\b/],['draft',/\b(?:(?:my|the|this|that|our|rough|first)\s+(?:[\w&]+\s+){0,3}draft|draft\s+(?:vs|versus|against|with)|rubric\s+check|check\b.*\b(?:against|with|vs|versus)\b.*\brubric|grade\s+my|lose\s+points|rubric\s+level)\b/],['message',/\b(?:reply|respond|msg|message|email|e mail|dm)\b/],['announcement',/\b(?:annc|anncs|announcement|announcements)\b/],['feedback',/\b(?:comment|comments|feedback|check in|checkin)\b/],['quiz',/\b(?:quiz|quizzes|test|exam)\b/],['homework',/\b(?:hw|homework|tarea|worksheet|problem set)\b/],['major',/\b(?:project|proj|essay|lab|presentation|performance|portfolio|experiment|hypothesis|variables|report|paper|speech|oral|recital)\b/],['reading',/\b(?:reading|readings|rdg|packet|chapter|handout|article|notes|pdf|lectura|anthology)\b/]];
-  /* Going somewhere: a course named alone after a "take me to" verb (or "the <course> course page") opens that course; the
-     calendar, announcements, planner and home are tabs. This build has no People tab: a list of students keeps its local answer. */
+  /* An AI request that names a kind of work ("the chem lab", "calc packet", "the spanish quiz", "reply to <teacher>", "my draft")
+     is sent with that course's item of that kind; with no course named, a follow-up uses the item the student is on. A plain
+     concept question ("what is molar mass", "i dont get the narrator") goes to AI as well, with the loaded item whose title holds
+     the topic when there is one. The learned source picker often lands on a neighbour (the draft or the group page). */
+  const SOURCE_CUES=[['extension',/\b(?:extension|extra time|more time)\b/],['draft',/\b(?:(?:my|the|this|that|our|rough|first)\s+(?:[\w&]+\s+){0,3}draft|draft\s+(?:vs|versus|against|with)|rubric\s+check|check\b.*\b(?:against|with|vs|versus)\b.*\brubric|grade\s+my|lose\s+points|rubric\s+level)\b/],['message',/\b(?:reply|respond|msg|message|email|e mail|dm)\b/],['announcement',/\b(?:annc|anncs|announcement|announcements)\b/],['feedback',/\b(?:comment|comments|feedback|check in|checkin)\b/],['quiz',/\b(?:quiz|quizzes|test|exam)\b/],['homework',/\b(?:hw|homework|tarea|worksheet|problem set)\b/],['major',/\b(?:project|proj|essay|lab|presentation|performance|portfolio|experiment|hypothesis|variables|report|paper|speech|oral|recital)\b/],['reading',/\b(?:reading|readings|rdg|packet|chapter|handout|article|notes|pdf|lectura|anthology)\b/]],
+   CONCEPT_LOCAL=/\b(?:day|days|date|announce|announced|said|latest|newest|recent|update|updates|news|post|posted|office|hours|hrs|email|emails|contact|group|groups|partners?|teammates?|members|slides|files?|guide|link|website|due|deadline|grade[sd]?|score|points|room|time|when|where|link|submit|submitted|turned|my|mine|i|me|password|settings?|tab|button|biscuit|pet|theme|focus|timer|reminders?|notifications?|account|profile|canvas|app|panel|page|zoom|meeting|schedule|today|tonight|tomorrow|tmrw|week|calendar|inbox|left|next|up|new|happening|plan|wrong|this|that|it|you|your|we|us|our)\b/,
+   CONCEPT_WORK=/\b(?:hw|homework|quiz|test|exam|lab|project|essay|reading|assignment|class|course|teacher|announcement|message|grade|rubric|draft|syllabus|policy|policies|late|rules?|instructions|requirements?|format|length|word count|allowed|submission|attempts?)\b/,
+   SOURCE_FILLER=new Set([
+     'important',
+     'matter',
+     'matters',
+     'work',
+     'works',
+     'mean',
+     'means',
+     'meaning',
+     'used',
+     'use',
+     'happen',
+     'happens',
+     'exist',
+     'exists',
+     'called',
+     'difference',
+     'between',
+     'example',
+     'examples',
+     'simple',
+     'simply',
+     'basically',
+     'really',
+     'even',
+     'again',
+     'thing',
+     'things',
+     'stuff',
+     'part',
+     'parts',
+     'idea',
+     'ideas',
+     'concept',
+     'hard',
+     'confusing',
+     'key',
+     'terms',
+     'term',
+     'organized',
+     'organised',
+     'structured',
+     'cornell',
+     'sentences',
+     'sentence',
+     'few',
+     'short',
+     'summary',
+     'summarize',
+     'summarise',
+     'tldr',
+     'sum',
+     'recap',
+     'notes',
+     'study',
+     'flashcards',
+     'flashcard',
+     'cards',
+     'annotate',
+     'close',
+     'read',
+     'reading',
+     'guide',
+     'produce',
+     'turn',
+     'into',
+     'from',
+     'make',
+     'give',
+     'help',
+     'explain',
+     'explicame',
+     'explica',
+     'understand',
+     'get',
+     'dont',
+     'still',
+     'why',
+     'how',
+     'what',
+     'whats',
+     'is',
+     'are',
+     'was',
+     'does',
+     'do',
+     'quiz',
+     'questions',
+     'question',
+     'practice',
+     'steps',
+     'outline',
+     'break',
+     'down',
+     'start',
+     'write',
+     'paragraph',
+     'line',
+     'through',
+     'go',
+     'walk',
+     'tell',
+     'show',
+     'with',
+     'me',
+     'please',
+     'pls',
+     'could',
+     'can',
+     'you',
+     'would'
+   ]);
+  function conceptTopic(line){
+   const t=String(line).trim().replace(/[?.!]+$/,'').replace(/^(?:(?:pls|please|ok|okay|so|hey|um|wait)\s+)+/i,'').replace(/(?:\s+(?:pls|please|plz|to\s+me|for\s+me|exactly|again|actually|though|anyway|simply|in\s+simple\s+(?:words|terms)))+$/i,'');
+   const ask=/^(?:(?:can|could|would)\s+you\s+)?(?:explain|explicame|explícame|explica|define|teach\s+me(?:\s+about)?)(?:\s+to\s+me)?\s+(?:what\s+)?(?:(?:is|are)\s+)?(.+)$/i.exec(t)||/^(?:i\s+)?(?:still\s+)?(?:dont|don't|do\s+not|cant|can't|cannot)\s+(?:get|understand)\s+(?:what\s+)?(.+)$/i.exec(t)||/^confused\s+(?:about|by|on)\s+(.+)$/i.exec(t)||/^(.+?)\s+explained$/i.exec(t)||/^(?:the\s+)?meaning\s+of\s+(.+)$/i.exec(t)||/^(.+?)\s+meaning$/i.exec(t),
+    what=!ask&&(/^what\s+(?:does|do)\s+(.+?)\s+(?:even\s+)?mean(?:\s+(?:for|in)\s+.+)?$/i.exec(t)||/^(?:what|whats|what's)\s+(?:exactly\s+)?(?:(?:is|are)\s+)?(?:exactly\s+)?(.+)$/i.exec(t)||/^why\s+(?:is|are|do|does|did)\s+(.+)$/i.exec(t)||/^how\s+(?:do|does)\s+(.+?)\s+work$/i.exec(t)),m=ask||what;
+   if(!m)return null;
+   const topic=norm(m[1]).replace(/^(?:the|a|an)\s+/,'');
+   if(what&&/^(?:did|does|do|was|were|will|would|should|can|could|has|have|had)\b/.test(topic)&&!/\bmean\b/.test(topic))return null;
+   return !topic||CONCEPT_LOCAL.test(topic)||what&&CONCEPT_WORK.test(topic)?null:topic;}
+  /* Going somewhere: a course named alone after a "take me to" verb (or "the <course> course page") opens that course; a list of
+     students opens People for the named course; the calendar, announcements, planner and home are tabs. A loaded entry that is
+     itself the page asked for (a People help card) keeps its answer. */
   const NAV_VERB='(?:(?:i (?:want|need) to|i wanna|lets|let s) (?:go|head|get|jump) (?:back )?(?:over )?to|take me (?:back )?to|go (?:back )?to|switch (?:over |back )?to|switch the workspace to|jump to|head to|bring me (?:back )?to|back to|open|show me|pull up|i want (?:to )?see|let me see)',
    NAV_TABS={
      home:'home',
@@ -1612,6 +1832,12 @@
      inside=new RegExp('\\b'+NAV_VERB+'\\s+(?:the\\s+|my\\s+)?([a-z0-9& ]{2,30}?)\\s+(?:course|class)\\s+(?:page|home ?page|home)\\b').exec(lower);
    const bare=/^(?:the\s+|my\s+)?([a-z0-9& ]{2,30}?)\s+(?:course|class)\s+(?:page|home ?page|homepage|site)$/.exec(lower);
    for(const m of [whole,inside,bare]){const id=m&&course(m[1]);if(id)return go({tab:'course',courseId:id},'Open the course.');}
+   if(/\b(?:list of (?:the )?(?:students|classmates|people)|class ?list|who is in|whos in|people (?:tab|page|list))\b/.test(lower)&&!/\b(?:who is in|whos in)\b.*\b(?:group|team|crew|squad|pod)\b/.test(lower)){
+     const top=result.items?.[0];
+     if(top&&/people|roster|class list/i.test(String(top.title||'')+' '+String(top.id||'')))return null;
+     const said=Language?.resolveCourses?.(line,s,session,rows);
+     if(said?.recognized&&said.courseId&&!said.ambiguous)return go({tab:'people',courseId:String(said.courseId)},'Open People.');
+   }
    return null;}
   /* A short detail question right after looking at something ("due when?", "and the due date", "room?") is about that item. */
   const FOLLOW_UP=/^(?:(?:and|so|ok|okay|um|wait|what about)\s+)*(?:the\s+|its\s+|it'?s\s+|whats\s+the\s+|what'?s\s+the\s+|what\s+is\s+the\s+)?(?:new\s+)?(?:due(?:\s+date)?|deadline|due\s+when|when(?:'?s|\s+is)?(?:\s+(?:it|that))?(?:\s+due)?|room|which\s+room|what\s+room|where(?:'?s|\s+is)?(?:\s+(?:it|that))?|link|points?|how\s+many\s+points|attempts?|what\s+time(?:\s+is\s+(?:it|that))?(?:\s+due)?|location|time)(?:\s+(?:pls|please|again|now))?\s*[?.!]*$/i;
@@ -1747,6 +1973,140 @@
      s,
      session);
   }
+  function aiSource(line,input,s,session,result){
+   if(!result||result.requests||result.clarify||s.ai===false||result.understanding?.reason==='named-source')return null;
+   const lower=norm(line),isAI=result.action==='ai',local=['find','open','none'].includes(result.action);let cue=SOURCE_CUES.find(([,re])=>re.test(lower))?.[0]||null;
+   /* besides AI answers: a concept question, a request to grade or check a draft, a message to a teacher, and help planning a lab's procedure */
+   let topic=isAI||!local?null:conceptTopic(line);
+   const review=local&&cue==='draft'&&/\b(?:grade|check|review|score|mark|look at|proofread|rubric level|lose points)\b/.test(lower),
+     compose=local&&/^(?:(?:pls|please|can you|could you|help me)\s+)?(?:email|e mail|msg|message|dm|write(?:\s+to)?|reply\s+to|respond\s+to)\s+(?!from\b|me\b)/.test(lower),
+     planned=result.action==='plan'&&cue==='major'&&/^(?:(?:pls|please|can you|could you)\s+)?(?:help\s+(?:me\s+)?plan|plan(?:\s+out)?\s+(?:my|the))\s+/.test(lower)&&!/\b(?:tonight|today|tomorrow|tmrw|tmr|week|weekend|time|hours?|hrs?|minutes?|mins?|blocks?|schedule|calendar|when|monday|tuesday|wednesday|thursday|friday|saturday|sunday|morning|afternoon|evening|night|\d+)\b/.test(lower);
+   if(!isAI&&!topic&&!review&&!compose&&!planned)return null;
+   const words=lower.split(' ').filter(Boolean),
+     rows=prepare(s).filter(r=>r.kind!=='assignment'||r.itemId==null||String(r.itemId)===String(r.id)),
+     byId=id=>rows.find(r=>String(r.id)===String(id));
+   if(cue==='message'&&/\b(?:group|groupmates?|team|teammates?|partners?|peers?|classmates?)\b/.test(lower))cue='peer';
+   /* the course: one the line names (the course resolver, then a teacher's surname), else the item the student is on */
+   const Language=load('ReserveBiscuitLanguage','./biscuit-language.js'),
+     said=Language?.resolveCourses?.(line,s,session,rows),
+     chosen=list(said?.matches).find(m=>String(m.id??m.courseId)===String(said?.courseId));
+   const surname=r=>norm(r.title||r.name||'').split(' ').pop()||'';
+   const taught=[
+     ...new Set(rows.filter(r=>r.kind==='teacher'&&r.courseId!=null&&surname(r).length>2&&words.some(w=>w===surname(r)||w===surname(r)+'s')).map(r=>String(r.courseId)))
+   ];
+   let courseId=taught.length===1?
+     taught[0]:
+     said?.recognized&&said.courseId&&!said.ambiguous&&chosen&&(chosen.nameExact||chosen.nameMatch>=.5||chosen.abbreviation||chosen.subject||chosen.topic)?
+       String(said.courseId):
+       '';
+   if(compose&&!isAI&&!taught.length&&!/\bteacher\b/.test(lower))return null;
+   if(!courseId){const m=mentionedCourses(words,s);if(m.size===1)courseId=String([...m.keys()][0]);}
+   /* "what are the office hours for soc": a plain what-question naming a course or its teacher asks about that course's items */
+   /* (named by its name, nickname or teacher: a course found only through the topic's own words, "what is memory retrieval", is still a concept question) */
+   if(topic&&
+     (taught.length||chosen&&!chosen.topic&&(chosen.nameExact||chosen.abbreviation||chosen.nameMatch>=.5&&!chosen.subject))&&
+     /^\s*(?:(?:pls|please|ok|okay|so|hey|um|wait)\s+)*(?:what|whats|what's)\b/i.test(line)&&
+     !/\bmean\b/i.test(line)){
+     topic=null;
+     if(!isAI&&!review&&!compose&&!planned)return null;
+   }
+   const last=session?.lastItemId!=null?byId(session.lastItemId):null,
+     pronoun=/\b(?:it|this|that|these|those|them|its)\b/.test(lower),
+     pageRef=/\b(?:on|in)\s+(?:this|the)\s+(?:page|screen|tab)\b|\bthis\s+(?:page|screen)\b/.test(lower)&&s.selectedItemId!=null,
+     onLast=!courseId&&!!last&&!pageRef&&(!!cue||pronoun);
+   if(onLast)courseId=String(last.courseId??'');
+   const work=r=>norm(r.workKind||r.genre||r.title||''),dueOf=r=>stamp(r.dueAt??r.due_at)??Infinity,said2=new Set(words.filter(w=>!STOP.has(w)).flatMap(w=>tokens(w)));
+   const overlap=r=>[...titleWords(r)].filter(w=>said2.has(w)).length,best=list=>list.slice().sort((a,b)=>overlap(b)-overlap(a)||dueOf(a)-dueOf(b))[0]||null;
+   const teacherWord=id=>{
+     const t=rows.find(r=>r.kind==='teacher'&&String(r.courseId)===String(id));
+     return t?surname(t):'';
+   },fromTeacher=r=>{const name=teacherWord(r.courseId);return !!name&&norm(String(r.text||r.description||r.body||'')).split(' ').slice(0,5).includes(name);};
+   const homework=r=>r.kind==='assignment'&&/homework|\bhw\b|worksheet|problem|exercises/.test(work(r)),
+     quiz=r=>r.kind==='quiz'||r.kind==='assignment'&&/quiz|test|exam/.test(work(r)),
+     readingWork=r=>r.kind==='assignment'&&/reading/.test(norm(r.workKind||'')),
+     otherFile=r=>r.kind==='file'&&!/rubric/.test(norm(r.title)),
+     readingFile=r=>otherFile(r)&&/\b(?:reading|readings|packet|notes|chapter|handout|article|anthology|reader)\b/.test(norm(r.title)),
+     reading=r=>readingWork(r)||otherFile(r),
+     major=r=>r.kind==='assignment'&&!homework(r)&&!quiz(r)&&!/reading|discussion/.test(work(r));
+   const mine=courseId?rows.filter(r=>String(r.courseId)===courseId):[];
+   const pick={
+     homework:()=>best(mine.filter(homework)),
+     quiz:()=>best(mine.filter(quiz)),
+     reading:()=>best(mine.filter(readingWork))||best(mine.filter(readingFile))||best(mine.filter(otherFile)),
+     draft:()=>best(mine.filter(r=>r.kind==='submission')),
+     announcement:()=>mine.filter(r=>r.kind==='announcement').sort((a,b)=>(stamp(b.postedAt??b.posted_at)||0)-(stamp(a.postedAt??a.posted_at)||0))[0]||null,
+     feedback:()=>best(mine.filter(r=>r.kind==='grade'&&!/current grade/.test(norm(r.title)))),
+    major:()=>{
+      const all=mine.filter(major),
+        want=/\b(?:lab|experiment|hypothesis|variables)\b/.test(lower)?/lab|experiment/:/\b(?:essay|paper)\b/.test(lower)?/essay|paper/:/\b(?:presentation|speech|oral)\b/.test(lower)?/oral|presentation|speech/:/\b(?:performance|recital)\b/.test(lower)?/performance|recital|concert/:/\bportfolio\b/.test(lower)?/portfolio/:null,
+        typed=want?all.filter(r=>want.test(work(r)+' '+norm(r.title))):[];
+      return best(typed.length?typed:all);
+    },
+    message:()=>
+      best(mine.filter(r=>r.kind==='message'&&fromTeacher(r)&&!/\bextension\b/.test(norm(r.title))))||best(mine.filter(r=>r.kind==='message'&&fromTeacher(r)))||best(mine.filter(r=>r.kind==='message')),
+    peer:()=>best(mine.filter(r=>r.kind==='message'&&!fromTeacher(r)))||best(mine.filter(r=>r.kind==='group'))};
+   pick.extension=pick.major;
+   const fits=(r,c)=>
+     c==='homework'?
+       homework(r):
+       c==='quiz'?
+         quiz(r):
+         c==='major'||c==='extension'?
+           major(r):
+           c==='reading'?
+             reading(r):
+             c==='draft'?
+               r.kind==='submission':
+               c==='message'?r.kind==='message'&&fromTeacher(r):c==='peer'?r.kind==='message'&&!fromTeacher(r):c==='announcement'?r.kind==='announcement':c==='feedback'?r.kind==='grade':false;
+   const top=result.items?.[0],
+     phrases=m=>new Set(list(m?.evidence).filter(v=>v.phrase).map(v=>norm(v.phrase))),
+     topMatch=top&&list(said?.matches).find(m=>String(m.id??m.courseId)===String(top.courseId));
+   /* an AI answer already on the kind asked for stays when the course it chose is named as well as the resolver's (the same word, no weaker) */
+   if(isAI&&
+     cue&&
+     top&&
+     fits(top,cue)&&
+     (!courseId||
+       String(top.courseId)===courseId||
+       topMatch&&chosen&&(topMatch.nameMatch||0)>=(chosen.nameMatch||0)&&[...phrases(chosen)].every(v=>phrases(topMatch).has(v))))
+     return null;
+   /* a message cue names a thread only with a teacher, a reply, the group or the item the student is on */
+   if(cue==='message'&&!onLast&&!taught.length&&!/\b(?:teacher|reply|respond)\b/.test(lower))return null;
+   let target=null;
+   const cueAt=cue?SOURCE_CUES.find(([name])=>name===(cue==='peer'?'message':cue))[1].exec(lower):null,
+     determined=cue==='draft'||!!cueAt&&/\b(?:my|the|our|this|that|his|her|their)\s+(?:[\w&]+\s+){0,2}$/.test(lower.slice(0,cueAt.index));
+   if(onLast)target=!cue||fits(last,cue)||!determined?last:pick[cue]();
+   else if(courseId&&cue)target=last&&String(last.courseId)===courseId&&fits(last,cue)?last:pick[cue]();
+   else if(!cue){/* no kind named: the one loaded item whose title holds every topic word */
+    const courseWords=new Set(courseId?
+      norm([list(s.courses).find(c=>String(c.id)===courseId)?.name,...(said?.matches||[]).map(m=>m.shortName||m.name)].filter(Boolean).join(' ')).split(' '):
+      []),
+      topicWords=[...new Set((topic?norm(topic).split(' '):words).filter(w=>w.length>2&&!STOP.has(w)&&!SOURCE_FILLER.has(w)&&!courseWords.has(w)))];
+    if(topicWords.length&&topicWords.length<=4){
+      const pool=rows.filter(r=>['file','assignment','page','announcement'].includes(r.kind)&&!/rubric/.test(norm(r.title))&&(!courseId||String(r.courseId)===courseId)),
+        hits=pool.filter(r=>topicWords.every(w=>tokens(w).every(x=>titleWords(r).has(x))));
+     const order=/\b(?:flash ?cards?|quiz me|practice)\b/.test(lower)?
+       [quiz,readingWork,readingFile,otherFile,homework,major]:
+       /\b(?:outline|steps|break|plan|start)\b/.test(lower)?[major,homework,readingWork,readingFile]:[readingWork,readingFile,otherFile,homework,quiz,major,r=>r.kind==='page',r=>r.kind==='announcement'];
+     for(const test of order){const found=hits.filter(test);if(found.length===1){target=found[0];break;}if(found.length>1)break;}}}
+   /* R6 puts a loaded source first: a concept question whose local search already found a source about the topic (in its
+      text, not only its title) hands that source to the AI */
+   if(!target&&topic&&!cue&&top&&['file','assignment','page'].includes(top.kind)){
+     const text=' '+norm([top.title,top.text,top.description,top.body,top.instructions].filter(v=>typeof v==='string').join(' '))+' ',
+       need=norm(topic).split(' ').filter(w=>w.length>2&&!STOP.has(w)&&!SOURCE_FILLER.has(w));
+     if(need.length&&need.every(w=>text.includes(' '+w)))target=top;
+   }
+   if(isAI){if(!target||String(target.id)===String(result.items?.[0]?.id))return null;}
+   else if(!target&&(cue||!topic))return null;
+   const raw=String(line);if(!target)return routed(card('ai',[],{text:raw},'This needs explanation.',{understanding:{step:'understanding',reason:'concept-question'}}),input,s,session);
+   const was=result.next?.fields?.handoff,helpKinds=isAI&&was?(was.mode==='choice'&&Array.isArray(was.kinds)?was.kinds:was.mode==='build'&&was.kind?[was.kind]:[]):undefined;
+   return routed(
+     card('ai',[target],{itemId:target.id,...(target.courseId!=null?{courseId:target.courseId}:{})},'',{understanding:{step:'understanding',reason:'named-source',...(helpKinds?{helpKinds}:{})}}),
+     input,
+     s,
+     session);
+  }
+
   // A plain request for study time that came back as a lookup or nothing goes to the planner.
   function planCue(line,input,s,session,result){
    if(!result||result.clarify||!['find','open','none','chat','ai'].includes(result.action)||!planAsk(line))return null;
@@ -1768,7 +2128,7 @@
   function evaluate(input,s={},session={}){let original=input;input=everyday(input);
    // A date question rewritten to "due tmrw"/"due today" is routed as that line, not by its original words.
    if(input!==original&&(input==='due tmrw'||input==='due today'||FOCUS_ON.test(String(original))))original=input;
-   let result=localOnly(dispatch(input,s,session,original),input,s,session);
+   let result=dispatch(input,s,session,original);
    if(!result?.requests){
      const grounded=aiGround(original,input,s,session,result)||
        kindCue(original,input,s,session,result)||
@@ -1812,34 +2172,34 @@
        if(matched&&!matched.ambiguous&&(matched.names>=2||matched.strong||matched.full)&&!titledItem(original,s))result=matched.result;
      }
    }
-  if(Array.isArray(result?.ui?.path)&&!result.requests){/* a UI place named by any step opens the loaded handoff page that lists it */
-    const page=handoffPage(result.ui.path,s);
-    if(page)result=handoffCard(page,original,s,session);
-  }
-  if(!result?.requests){const found=lookup(original,input,s,session,result);if(found)result=found;}
-  {const page=uiHandoff(original,s,result);if(page)result=handoffCard(page,original,s,session);}
-  {const nav=navCue(original,s,session,result);if(nav)result=nav;}
-  {const next=followUp(original,s,session,result)||kindLookup(original,s,session,result)||focusItem(original,s,session,result);if(next)result=next;}
-  if(['find','open'].includes(result.action)&&result.items?.[0]){
-    const fact=load('ReserveBiscuitFacts','./biscuit-facts.js')?.resolve(input,s,session,[result.items[0]]);
-    if(fact?.action==='find'&&fact.items?.[0]?.id===result.items[0].id&&!result.answerKind){
-      result.message=fact.message;
-      result.answer=fact.answer;
-      result.next.fields={...result.next.fields,...fact.next.fields};
-    }
-  }
-  if(!result.requests&&
-    result.action!=='chat'&&
-    FEELING.test(String(original))&&
-    !FEELING_ASK.test(String(original))&&
-    !mentionedCourses(norm(original).split(' ').filter(Boolean),s).size&&
-    !namedCourse(original,s,session))
-    result=routed(card('chat',[],{},'That sounds like a lot. I am here. If it helps, I can show what is due next or start a short break.',{understanding:{step:'understanding',reason:'feeling'}}),input,s,session);
+   if(Array.isArray(result?.ui?.path)&&!result.requests){/* a UI place named by any step opens the loaded handoff page that lists it */
+     const page=handoffPage(result.ui.path,s);
+     if(page)result=handoffCard(page,original,s,session);
+   }
+   if(!result?.requests){const found=lookup(original,input,s,session,result);if(found)result=found;}
+   {const page=uiHandoff(original,s,result);if(page)result=handoffCard(page,original,s,session);}
+   {const nav=navCue(original,s,session,result);if(nav)result=nav;}
+   {const next=followUp(original,s,session,result)||kindLookup(original,s,session,result)||focusItem(original,s,session,result);if(next)result=next;}
+   {const sourced=aiSource(original,input,s,session,result);if(sourced)result=sourced;}
+   if(['find','open'].includes(result.action)&&result.items?.[0]){
+     const fact=load('ReserveBiscuitFacts','./biscuit-facts.js')?.resolve(input,s,session,[result.items[0]]);
+     if(fact?.action==='find'&&fact.items?.[0]?.id===result.items[0].id&&!result.answerKind){
+       result.message=fact.message;
+       result.answer=fact.answer;
+       result.next.fields={...result.next.fields,...fact.next.fields};
+     }
+   }
+   if(!result.requests&&
+     result.action!=='chat'&&
+     FEELING.test(String(original))&&
+     !FEELING_ASK.test(String(original))&&
+     !mentionedCourses(norm(original).split(' ').filter(Boolean),s).size&&
+     !namedCourse(original,s,session))
+     result=routed(card('chat',[],{},'That sounds like a lot. I am here. If it helps, I can show what is due next or start a short break.',{understanding:{step:'understanding',reason:'feeling'}}),input,s,session);
   {const timed=timerCue(original,s,result);if(timed)result=timed;}
   if(!result.requests&&NEVER_MIND.test(String(original)))result=routed(card('none',[],{},'Okay, nothing changed.',{understanding:{step:'understanding',reason:'never-mind'}}),input,s,session);
   if(!result.requests&&answerAsk(String(original)))
     result=routed(card('none',[],{},'I can\u2019t give you the answer, but I can help you understand the question or practise one like it.',{understanding:{step:'understanding',reason:'answer-request'}}),input,s,session);
-  result=localOnly(result,input,s,session);
   const stage=result.understanding?.learned?'learned':['negation','privacy','invalid-command'].includes(result.routing?.reason)?'guard':'rules';
   result.execution={
     stage,
@@ -1932,6 +2292,9 @@
      return result('after-focus-'+s.focus?.completedAt,'break','Want a short break?','break',{minutes:5,explicit:true},95);
    if(!night&&can('stretch')&&state.stretchDue&&(s.activity?.active||0)>=45*MIN)return result('stretch-'+local.day,'stretch','Want to stretch for a few minutes?','break',{minutes:5,explicit:true},90);
    if(!night&&urgent&&can('next'))return result('next-'+urgent.id,'next','Want to open '+urgent.title+'?','open',{itemId:urgent.id,courseId:urgent.courseId},90);
+   const ready=Object.entries(s.studyAids||{}).find(([key,v])=>
+     v&&can(v.kind)&&v.overnight&&!v.gradeAccess&&v.savedAt<=now&&now-v.savedAt<DAY&&!list(ledger.items).includes('biscuit:ready-'+key));
+   if(!night&&ready&&s.ai!==false)return result('ready-'+ready[0],'ready','Your saved study aid is ready.','ready',{aidKey:ready[0],itemId:ready[1].itemId},88);
    if(night)return null;
    if(can('plan')&&(s.lastAction?.type==='submission'||s.lastAction==='submission'))return result('after-submission','plan','Submitted. Want to see what fits next?','plan',{local:true},85);
    if(can('plan')&&page==='assignment'&&soon.some(v=>v.id===current)){
@@ -1940,7 +2303,7 @@
    }
    if(can('plan')&&['dashboard','home'].includes(page)&&evening>=1020&&evening<bedEnd&&soon.length)
      return result('plan-evening-'+local.day,'plan','Want a plan for the time before bed?','plan',{local:true},80);
-   // Offer announcements after more pressing work, with the same delivery limit.
+   // The announcement handoff already exists; include it in the active offer path.
    const unread=s.unreadAnnouncements,id='inbox-'+local.day+'-'+unread;
    if(can('inbox')&&Number.isInteger(unread)&&unread>0&&!list(ledger.items).includes('biscuit:'+id))
      return result(id,'inbox',unread+' new announcement'+(unread===1?'':'s')+'. Want to read?','inbox',{count:unread},70);

@@ -10,7 +10,7 @@
 .rd[data-theme-kit] :is(small,p,.rd-heading-date,.rd-rail-next){color:var(--rd-muted)!important}
 .rd[data-theme-kit] .rd-heading-date,.rd[data-theme-kit] .rd-bookmarks :is(p,small){color:#E4F8FF!important}
 .rd[data-theme-kit] :is(.rd-text-button,.rd-grade-switch,.rd-board-edit,.rd-toolbox-trigger){color:var(--rd-ink)!important}
-.rd[data-theme-kit] :is(.rd-rail-next b,.rd-reader-facts span:first-child,[class*=due],[class*=time]){color:#FFC49A!important}
+.rd[data-theme-kit] :is(.rd-rail-next b,.rd-reader-facts span:first-child,[class*=due]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-]),[class*=time]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-])){color:#FFC49A!important}
 .rd[data-theme-kit] .rd-reader-facts span:not(:first-child){color:var(--rd-muted)!important}
 .rd[data-theme-kit] .rd-rich-text,.rd[data-theme-kit] .rd-rich-text :is(p,li,ol,ul,span,em,strong,b,td,th,h4,h5,h6){color:var(--rd-ink)!important}
 /* the scene: the whole picture across the top, sinking into the deep */
@@ -37,9 +37,9 @@
 .rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::before,.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::after,.rd[data-theme-kit] .rd-rail-art::after{display:none!important}
 .rd[data-theme-kit] .rd-rail-art > svg{display:none!important}
 .rd[data-theme-kit] .tk-icon{width:116%;height:116%;margin:-8%;object-fit:contain}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information){background:rgba(3,40,74,.87)!important;border-radius:18px!important;backdrop-filter:none}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{-webkit-mask-box-image:none!important;mask:none!important;background:none!important;border:0!important;border-radius:18px!important;inset:0!important;box-shadow:inset 0 0 0 1px rgba(150,235,255,.26),inset 0 2px 0 rgba(210,250,255,.4),0 18px 40px rgba(0,20,40,.4)!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::before{display:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget){background:rgba(3,40,74,.87)!important;border-radius:18px!important;backdrop-filter:none}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{-webkit-mask-box-image:none!important;mask:none!important;background:none!important;border:0!important;border-radius:18px!important;inset:0!important;box-shadow:inset 0 0 0 1px rgba(150,235,255,.26),inset 0 2px 0 rgba(210,250,255,.4),0 18px 40px rgba(0,20,40,.4)!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::before{display:none!important}
 .rd[data-theme-kit] :is(.rd-announcement,.rd-reader,.rd-work-item,.rd-deck-section){background:transparent!important}
 .rd[data-theme-kit] .rd-bookmarks{border-bottom:1px solid rgba(150,235,255,.2)!important}
 .rd[data-theme-kit] .rd-assignment-list::before,.rd[data-theme-kit] .rd-assignment-list::after{background:rgba(127,230,242,.12)!important;box-shadow:inset 0 0 0 1px rgba(150,235,255,.45)!important}
@@ -66,24 +66,24 @@
 .rd[data-theme-kit] .rd-frame{border:20px solid transparent!important;border-image:url(sea-card.png) 50 round!important;background-clip:padding-box!important;box-shadow:none!important;border-radius:0!important}
 .rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame{box-shadow:none!important}
 .rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame::after,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame::after{inset:-14px!important;border-radius:16px!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{box-shadow:none!important;border-radius:0!important;border:36px solid transparent!important;border-image:url(sea-panel.png) 90 round!important;inset:-20px!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{box-shadow:none!important;border-radius:0!important;border:36px solid transparent!important;border-image:url(sea-panel.png) 90 round!important;inset:-20px!important}
 .rd[data-theme-kit] .rd-course-rail{box-shadow:none!important}
 .rd[data-theme-kit] .rd-course-rail::after{content:"";position:absolute;inset:-20px;border:36px solid transparent;border-image:url(sea-panel.png) 90 round;pointer-events:none}
 /* the frame carries the pane: no rectangle of background inside or outside the drawn line */
 .rd[data-theme-kit] .rd-frame{border-width:18px!important;border-image:url(sea-card.png) 50 fill round!important;background:none!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail){background:transparent!important;backdrop-filter:none!important;isolation:isolate}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::after{display:none!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::before{display:block!important;content:""!important;position:absolute!important;inset:-20px!important;z-index:-1!important;border:36px solid transparent!important;border-image:url(sea-panel.png) 90 fill round!important;background:none!important;pointer-events:none!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::before{-webkit-mask-box-image:none!important;-webkit-mask:none!important;mask:none!important;opacity:1!important;filter:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail){background:transparent!important;backdrop-filter:none!important;isolation:isolate}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail)::after{display:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail)::before{display:block!important;content:""!important;position:absolute!important;inset:-20px!important;z-index:-1!important;border:36px solid transparent!important;border-image:url(sea-panel.png) 90 fill round!important;background:none!important;pointer-events:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail)::before{-webkit-mask-box-image:none!important;-webkit-mask:none!important;mask:none!important;opacity:1!important;filter:none!important}
 .rd[data-theme-kit] .rd-course-rail::before{inset:0!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-reader,.rd-work,.rd-course-deck,.rd-course-rail){border-color:transparent!important;box-shadow:none!important;outline:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-reader,.rd-work,.rd-course-deck,.rd-course-rail){border-color:transparent!important;box-shadow:none!important;outline:none!important}
 /* each theme its own frame (sea: a glass rim with reef life; stars: open brackets of light) */
 .rd[data-theme-kit] .rd-frame{border-width:24px!important;border-image:url(sea-card.png) 56 fill round!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::before{border-width:40px!important;border-image:url(sea-panel.png) 100 fill round!important;inset:-18px!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail)::before{border-width:40px!important;border-image:url(sea-panel.png) 100 fill round!important;inset:-18px!important}
 .rd[data-theme-kit] .rd-course-rail::before{inset:0!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::before{box-shadow:none!important;outline:none!important;border-radius:0!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail)::before{box-shadow:none!important;outline:none!important;border-radius:0!important}
 /* the frames are alive: bubbles stream up the sides of every glass rim, the two sides out of step */
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{display:block!important;content:""!important;position:absolute!important;inset:-14px!important;border:0!important;box-shadow:none!important;border-radius:0!important;pointer-events:none!important;z-index:2!important;
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{display:block!important;content:""!important;position:absolute!important;inset:-14px!important;border:0!important;box-shadow:none!important;border-radius:0!important;pointer-events:none!important;z-index:2!important;
   background:radial-gradient(circle at 50% 50%,transparent 0 2.6px,rgba(225,252,255,.85) 3.1px 3.8px,transparent 4.3px) 0 0/14px 46px repeat-y,radial-gradient(circle at 50% 50%,transparent 0 1.6px,rgba(225,252,255,.8) 2px 2.6px,transparent 3px) 6px 22px/14px 46px repeat-y,
              radial-gradient(circle at 50% 50%,transparent 0 2.6px,rgba(225,252,255,.85) 3.1px 3.8px,transparent 4.3px) 100% 10px/14px 52px repeat-y,radial-gradient(circle at 50% 50%,transparent 0 1.6px,rgba(225,252,255,.8) 2px 2.6px,transparent 3px) calc(100% - 6px) 34px/14px 52px repeat-y!important;
   -webkit-mask-image:linear-gradient(180deg,transparent,#000 18%,#000 82%,transparent);mask-image:linear-gradient(180deg,transparent,#000 18%,#000 82%,transparent);
@@ -102,10 +102,13 @@
 /* room for the frames: the workspace clips what spills past its sides, so widen its box without moving anything in it */
 .rd[data-theme-kit] .rd-workspace{padding-inline:26px!important;margin-inline:-26px!important}
 /* bubbles inside the glass rim: a few at a time, unevenly spaced, rising through it (not a dotted second line) */
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{inset:-14px!important;
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{inset:-14px!important;
   background:radial-gradient(circle at 50% 50%,transparent 0 2px,rgba(235,253,255,.9) 2.5px 3.2px,transparent 3.6px) 0 0/14px 190px repeat-y,radial-gradient(circle at 50% 50%,transparent 0 1.2px,rgba(235,253,255,.85) 1.6px 2.1px,transparent 2.5px) 0 70px/14px 260px repeat-y,
              radial-gradient(circle at 50% 50%,transparent 0 2px,rgba(235,253,255,.9) 2.5px 3.2px,transparent 3.6px) 100% 40px/14px 230px repeat-y,radial-gradient(circle at 50% 50%,transparent 0 1.2px,rgba(235,253,255,.85) 1.6px 2.1px,transparent 2.5px) 100% 150px/14px 170px repeat-y!important}
 @keyframes tk-rise{from{background-position:0 0,0 70px,100% 40px,100% 150px}to{background-position:0 -760px,0 -970px,100% -880px,100% -700px}}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{animation:tk-rise 20s linear infinite!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{animation:tk-rise 20s linear infinite!important}
 /* every colour the interface uses, so nothing falls back to paper (beats page tint and page style) */
 .rd.rd.rd.rd[data-theme-kit]{--rd-control:#7FB4CC;--rd-control-line:rgba(150,235,255,.32);--rd-line-strong:rgba(150,235,255,.36);--rd-tint:rgba(150,235,255,.12);--rd-row-hover:rgba(150,235,255,.09);--rd-sidebar:#083A66;--rd-sidebar-hover:#0C4677;--rd-sidebar-sel:#105387;--rd-surface-3:#11558F;--rd-mark:#FFB08A;--rd-deadline-soon:#FFC59E;--rd-danger-soft:rgb(255 176 138/.16);--rd-info:#9FE3FF;--rd-info-soft:rgb(159 227 255/.15);--rd-success:#8FE3B4;--rd-success-soft:rgb(143 227 180/.15);--rd-warn:#FFD98A;--rd-warn-soft:rgb(255 217 138/.15);--rd-switch-on:#3CC9DB}
+/* A Home module shorter than its row is drawn down to the row's foot like every other panel (the dashboard extends a
+   panel's frame by --rd-panel-grow), so a row of modules reads as one row of panels */
+.rd[data-theme-kit] .rd-main.rd-desk > .rd-widget::before{bottom:calc(-18px - var(--rd-panel-grow,0px))!important}

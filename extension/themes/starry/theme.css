@@ -27,9 +27,9 @@
 .rd[data-theme-kit] .rd-rail-art > svg{display:none!important}
 .rd[data-theme-kit] .tk-icon{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 1px 1px rgba(5,8,30,.6))}
 /* the three panels: the big painted frame, the painted ground inside */
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information){background:url(sheet.png)!important;border-radius:4px!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{-webkit-mask-box-image:none!important;mask:none!important;background:none!important;border:26px solid transparent!important;border-image:url(frame-panel.png) 48 round!important;inset:-12px!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::before{display:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget){background:url(sheet.png)!important;border-radius:4px!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{-webkit-mask-box-image:none!important;mask:none!important;background:none!important;border:26px solid transparent!important;border-image:url(frame-panel.png) 48 round!important;inset:-12px!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::before{display:none!important}
 .rd[data-theme-kit] :is(.rd-announcement,.rd-reader,.rd-work-item,.rd-deck-section){background:transparent!important}
 .rd[data-theme-kit] .rd-bookmarks{border-bottom:0!important;background:url(divider.png) bottom/600px 12px repeat-x;padding-bottom:16px}
 /* buttons */
@@ -39,7 +39,7 @@
 /* text the dashboard colours by hand (warm greys, clay) follows the night's ink and gold here */
 .rd[data-theme-kit] :is(button,label,span,b,strong,small,em,time,li,td,th,dt,dd){color:inherit}
 .rd[data-theme-kit] :is(.rd-text-button,.rd-grade-switch,.rd-board-edit,.rd-toolbox-trigger){color:var(--rd-ink)!important}
-.rd[data-theme-kit] :is(.rd-rail-next b,.rd-reader-facts span:first-child,[class*=due],[class*=time]){color:#FFB08A!important}
+.rd[data-theme-kit] :is(.rd-rail-next b,.rd-reader-facts span:first-child,[class*=due]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-]),[class*=time]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-])){color:#FFB08A!important}
 .rd[data-theme-kit] .rd-reader-facts span:not(:first-child){color:var(--rd-muted)!important}
 .rd.rd.rd.rd[data-theme-kit]{--rd-muted:#C3C9E6}
 /* the chosen assignment: a gold glaze, not a white card */
@@ -51,8 +51,8 @@
 /* calm where you read: flat night blue inside every card and panel, thinner frames, full-contrast text */
 .rd.rd.rd.rd[data-theme-kit]{--rd-ink:#F3EEDA;--rd-muted:#C9CFEA}
 .rd[data-theme-kit] .rd-frame{border-width:9px;border-image:url(frame-card.png) 30 round;background:#1A2350 padding-box}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information){background:#19224D!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{border-width:16px!important;border-image:url(frame-panel.png) 48 round!important;inset:-8px!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget){background:#19224D!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{border-width:16px!important;border-image:url(frame-panel.png) 48 round!important;inset:-8px!important}
 .rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week){background:rgba(26,35,80,.92)!important;box-shadow:inset 0 0 0 1px rgba(143,182,238,.22)!important}
 .rd[data-theme-kit] h1{text-shadow:0 2px 6px rgba(8,12,40,.9)}
 .rd[data-theme-kit] .rd-bookmarks{background-size:600px 10px}
@@ -158,3 +158,7 @@
 .rd[data-theme-kit] .rd-rail-heading{text-shadow:0 2px 6px rgba(8,12,40,.95)!important}
 /* every colour the interface uses, so nothing falls back to paper (beats page tint and page style) */
 .rd.rd.rd.rd[data-theme-kit]{--rd-control:#8F98C4;--rd-control-line:rgba(143,182,238,.38);--rd-line-strong:rgba(143,182,238,.42);--rd-tint:rgba(143,182,238,.13);--rd-row-hover:rgba(143,182,238,.10);--rd-sidebar:#182150;--rd-sidebar-hover:#202B62;--rd-sidebar-sel:#273472;--rd-surface-3:#26336E;--rd-mark:#F2C94C;--rd-deadline-soon:#FFB38A;--rd-danger-soft:rgb(255 156 122/.16);--rd-info:#9CC3FF;--rd-info-soft:rgb(156 195 255/.16);--rd-success:#9EDB9A;--rd-success-soft:rgb(158 219 154/.16);--rd-warn:#F2C94C;--rd-warn-soft:rgb(242 201 76/.16);--rd-switch-on:#E0B53C}
+/* A Home module shorter than its row is drawn down to the row's foot like every other panel (the dashboard extends a
+   panel's frame by --rd-panel-grow), so a row of modules reads as one row of panels */
+.rd[data-theme-kit] .rd-main.rd-desk > .rd-widget{background:transparent!important}
+.rd[data-theme-kit] .rd-main.rd-desk > .rd-widget::after{bottom:calc(-8px - var(--rd-panel-grow,0px))!important;background:linear-gradient(#19224D,#19224D) center/calc(100% - 16px) calc(100% - 16px) no-repeat border-box border-box!important}

@@ -8,6 +8,40 @@
   const provider = root.CanvasHarnessProviders.get(params.get('provider'));
   let busy = false;
   close.addEventListener('click', () => { window.close(); });
+  // ?source=google-docs: the same page asks for docs.google.com, so Help can read the Google Docs assignments link.
+  // Store installs (they carry an update_url) never ask; the student pastes a Doc on its card instead.
+  if (params.get('source') === 'google-docs' && Array.from(params.keys()).length === 1) {
+    const origins = ['https://docs.google.com/*'], words = (allowed, text) => {
+      busy = false;
+      grant.hidden = grant.disabled = allowed;
+      revoke.hidden = revoke.disabled = !allowed;
+      status.textContent = text;
+    };
+    document.title = 'Google Docs access';
+    document.getElementById('permission-title').textContent = 'Read the Google Docs your assignments link';
+    for (const node of document.querySelectorAll('.intro, ul, .access-note, .return-note')) node.hidden = true;
+    grant.textContent = 'Allow'; revoke.textContent = 'Remove access'; close.textContent = 'Close';
+    let store = true; try { store = !!chrome.runtime.getManifest().update_url; } catch (_) {}
+    if (store) { grant.hidden = true; revoke.hidden = true; status.textContent = 'Paste the Doc on its card instead.'; return; }
+    grant.addEventListener('click', async () => {
+      if (busy || grant.disabled) return;
+      busy = true; grant.disabled = true;
+      // Requested inside the click, before anything awaits, so the browser keeps the gesture.
+      try {
+        const allowed = await chrome.permissions.request({origins});
+        words(allowed, allowed ? 'Allowed. Go back to Canvas and press Read on the card again.' : 'Not allowed. You can paste the Doc on its card instead.');
+      }
+      catch (_) { words(false, 'The browser could not ask. You can paste the Doc on its card instead.'); }
+    });
+    revoke.addEventListener('click', async () => {
+      if (busy || revoke.disabled) return;
+      busy = true; revoke.disabled = true;
+      try { const removed = await chrome.permissions.remove({origins}); words(!removed, removed ? 'Removed.' : 'The browser kept access. Check the extension’s site access in browser settings.'); }
+      catch (_) { words(true, 'Access could not be removed here.'); }
+    });
+    chrome.permissions.contains({origins}).then(allowed => { if (!busy) words(allowed, allowed ? 'Allowed.' : 'Not allowed yet.'); }, () => { if (!busy) words(false, 'Not allowed yet.'); });
+    return;
+  }
   if (!provider || params.getAll('provider').length !== 1 || Array.from(params.keys()).some(key => key !== 'provider')) {
     grant.disabled = true; revoke.hidden = true;
     status.textContent = 'Unsupported provider. Close this page and choose a provider in Canvas.';

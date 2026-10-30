@@ -4,11 +4,11 @@
  const arrange=root.ReserveWorkspaceArrange||(typeof module==='object'&&module.exports?require('./workspace-arrange.js'):null);
  const enums={
    sceneTheme:['','starry','sea','stars','blueprint'],
+   pageTint:['paper','accent','sky','sage','lilac','blush','sand','snow'],
+   courseNavigation:['sidebar','topbar','dock'],
    dockSize:['small','medium','large'],
    dockShelf:['kraft','paper','none'],
    dockStyle:['tiles','cards'],
-   pageTint:['paper','accent','sky','sage','lilac','blush','sand','snow'],
-   courseNavigation:['sidebar','topbar','dock'],
    deskOrder:['context-first','work-first','stacked'],
    surfaceStyle:['paper','clean','contrast'],
    courseCardStyle:['sketch','rounded','minimal'],
@@ -17,6 +17,9 @@
  };
  const defaults={
    sceneTheme:'',
+   nightArt:0,
+   pageTint:'paper',
+   courseNavigation:'sidebar',
    dockSize:'medium',
    dockShelf:'kraft',
    dockStyle:'tiles',
@@ -26,9 +29,6 @@
    dockHide:false,
    dockScale:1,
    dockShift:0,
-   nightArt:0,
-   pageTint:'paper',
-   courseNavigation:'sidebar',
    deskOrder:'context-first',
    surfaceStyle:'paper',
    courseCardStyle:'sketch',
@@ -38,6 +38,7 @@
    showBookmarks:true,
    showCourseInformation:true,
    showCourseStrip:true,
+   showHelp:true,
    showRecentGrades:false,
    bedtime:'22:30',
    biscuitOffers:true,
@@ -62,6 +63,9 @@
    if(value[key]!==undefined&&!allowed.includes(value[key]))throw Error(`Invalid ${key} setting in backup.`);
    if(value[key])out[key]=value[key];
   }
+  // The drawing a student chose for a course (course-art.js choices): kept as a plain name; a name this build does not
+  // draw is ignored there, never an error here.
+  if(typeof value.subjectArt==='string'&&/^[a-z][a-z-]{1,30}[a-z]$/.test(value.subjectArt))out.subjectArt=value.subjectArt;
   for(const key of artKeys)if(value[key]!=null){
    const art=root.ReserveCustomArt||(typeof module==='object'&&module.exports?require('./custom-art.js'):null);
    if(!art)throw Error('Artwork support is unavailable. Reload Canvas Harness and try again.');
@@ -92,6 +96,7 @@
   }
   if(settings.bedtime!==undefined&&(typeof settings.bedtime!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(settings.bedtime)))throw Error('Choose a bedtime as HH:MM.');
   out.bedtime=settings.bedtime||'22:30';
+  if(settings.biscuitOffers!==undefined&&typeof settings.biscuitOffers!=='boolean')throw Error('Choose whether Biscuit may offer help.');out.biscuitOffers=settings.biscuitOffers!==false;
   // The dock's size (a factor of its tile) and its place (-1 at the left edge, 0 in the middle, 1 at the right).
   for(const [key,min,max] of [['dockScale',.7,1.5],['dockShift',-1,1]])
     if(settings[key]!==undefined){const n=Number(settings[key]);if(!Number.isFinite(n)||n<min||n>max)throw Error(`Invalid ${key} setting in backup.`);out[key]=Math.round(n*100)/100;}
@@ -111,3 +116,12 @@
  root.ReserveCustomization=api;
  if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);
+
+(function(R){
+  if(!R)return;
+  R.register(
+    'settings',
+    s=>
+      Object.entries(s.settings||{}).filter(([,v])=>typeof v!=='object').map(([key,value])=>
+        ({id:key,title:key.replace(/([a-z])([A-Z])/g,'$1 $2'),kind:'setting',key,value,values:globalThis.ReserveCustomization?.enums[key],text:String(value),action:'settings',fields:{key}})));
+})(globalThis.ReserveBiscuitRegistry);

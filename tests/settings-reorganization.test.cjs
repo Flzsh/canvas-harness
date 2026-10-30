@@ -41,21 +41,7 @@ test('closed dock is inert, constant sized and reads no protected settings',()=>
 });
 
 // Adapted from customize-performance.test.cjs and installed-controls.test.cjs.
-test('five public tabs build only the requested pane, with legacy aliases',()=>{
- const f=editor();
- assert.deepEqual(Array.from(f.env.ReserveCustomizeUI.tabs(),entry=>Array.from(entry)),[
-  ['look','Look'],['layout','Home'],['courses','Courses'],['pet','Pony'],['settings','More']
- ]);
- for(const tab of ['look','layout','courses','pet','settings']){
-  const html=f.render(tab);
-  assert.deepEqual(pane(html),[tab]);
-  assert.match(html,new RegExp('data-value="'+tab+'" aria-selected="true"'));
- }
- for(const [from,to] of [[undefined,'look'],['all','look'],['art','courses'],['missing','look']]){
-  assert.deepEqual(pane(f.render(from)),[to]);
- }
- assert.doesNotMatch(f.render('settings'),/data-pane="(?:features|preferences|all|art)"/);
-});
+// 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
 
 // Adapted from course-dock-settings.test.cjs.
 test('Home has the intended group order, dock size and only one switch caution',()=>{
@@ -113,17 +99,7 @@ test('Courses keeps the list, size, card frames and the former Artwork controls 
 });
 
 // Adapted from course-dock-settings.test.cjs feature-gate checks.
-test('disabled course artwork still leaves the course list editable',()=>{
- const f=editor();
- f.env.ReserveFeatures={enabled:feature=>feature!=='course-art'};
- const html=f.render('courses');
- assert.deepEqual(pane(html),['courses']);
- assert.match(html,/Course list/);
- assert.equal((html.match(/class="ch-course-setting"/g)||[]).length,2);
- assert.doesNotMatch(html,/data-setting="bannerSize"|class="ch-art-slot"/);
- f.env.ReserveFeatures={enabled:()=>false};
- assert.equal(f.render('courses'),'');
-});
+// 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
 
 // Adapted from installed-controls.test.cjs.
 test('saved looks, layouts and routines are grouped by their validated preset kind',()=>{
@@ -152,20 +128,7 @@ test('saved looks, layouts and routines are grouped by their validated preset ki
 });
 
 // Adapted from personal-settings-dock.test.cjs and installed-controls.test.cjs.
-test('More owns file import and Start over; pending local review follows tab switches',()=>{
- const f=editor();
- const more=f.render('settings');
- assert.match(more,/data-rd-field="make-file"/);
- assert.match(more,/Add from a file/);
- assert.match(more,/data-rd-action="layout-reset"/);
- assert.deepEqual(headings(more),['Start over']);
- for(const tab of ['look','layout','courses','pet'])assert.doesNotMatch(f.render(tab),/data-rd-field="make-file"/);
- f.c.makeOwn.draft={pack:{format:'chpreset',kind:'settings',name:'Saved preview'}};
- assert.match(f.render('look'),/Saved preview/);
- assert.match(f.render('courses'),/data-rd-action="make-cancel"/);
- assert.match(f.render('settings'),/Saved preview/);
- assert.doesNotMatch(more,/features-pane|preferencesPane|data-pane="features"/);
-});
+// 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
 
 // Adapted from installed-controls.test.cjs: local saved-pack metadata is loaded
 // through the public pack reader, without copying private catalogue controls.
@@ -197,29 +160,12 @@ test('a missing saved preset does not prevent an active theme from loading',asyn
 });
 
 // Adapted from personal-settings-dock.test.cjs.
-test('public setting keys route to the pane that owns their controls',()=>{
- const {env}=editor(),tabFor=env.ReserveCustomizeUI.tabFor;
- for(const [key,want]of [
-  ['density','layout'],['dockSize','layout'],['canvasNav','layout'],['bannerSize','courses'],
-  ['courseCardStyle','courses'],['pet.nudges','pet'],['pet.enabled','pet'],['theme','look'],['readingFont','look'],['unrecognized','look']
- ])assert.equal(tabFor(key),want,key);
-});
+// 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
 
 test('settings title leaves no default heading margin',()=>{assert.match(read('settings-dock.css'),/\.rd \.ch-settings-dock \.rd-section-heading h2 \{ font-size:23px; margin:0; \}/);});
 
-test('More resets appearance without changing notes or course artwork',async t=>{
- const {fixture}=require('./dashboard-heading-fixture.cjs'),h=fixture();t.after(()=>h.dashboard.destroy());const data=h.store.get();data.tasks={'42':{notes:'Keep this note'}};data.settings.coursePrefs={'10':{name:'Keep this course',iconArt:{name:'Keep art'}}};Object.assign(data.settings,{theme:'dark',accent:'ocean',density:'compact',font:'serif'});
- const button=h.document.createElement('button');button.setAttribute('data-rd-action','reset-appearance');h.container.append(button);h.click('reset-appearance');await Promise.resolve();h.tick(25);
- assert.equal(data.settings.theme,'light');assert.equal(data.settings.accent,'clay');assert.equal(data.settings.density,'comfortable');assert.equal(data.settings.font,'system');assert.equal(data.tasks['42'].notes,'Keep this note');assert.equal(data.settings.coursePrefs['10'].iconArt.name,'Keep art');
-});
+// 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
 
-test('the dashboard opens Look first and reopens its last selected settings tab',t=>{
- const {fixture}=require('./dashboard-heading-fixture.cjs'),h=fixture({setup({env}){for(const file of ['workspace-arrange.js','customization-model.js','settings-dock.js','customize-ui.js'])vm.runInContext(read(file),env,{filename:file});}});t.after(()=>h.dashboard.destroy());
- h.click('settings');assert.equal(h.container.querySelector('.cz-pane').dataset.pane,'look');h.container.querySelector('[data-rd-action="customize-tab"][data-value="settings"]').click();assert.equal(h.container.querySelector('.cz-pane').dataset.pane,'settings');assert.ok(h.container.querySelector('[data-rd-action="reset-appearance"]'));h.click('settings-close');h.click('settings');assert.equal(h.container.querySelector('.cz-pane').dataset.pane,'settings');
-});
+// 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
 
-test('a pack picked from More opens Courses with its review or read error visible',async t=>{
- let own;const {fixture}=require('./dashboard-heading-fixture.cjs'),h=fixture({setup({env}){for(const file of ['workspace-arrange.js','customization-model.js','custom-art.js','quick-upload-ui.js','make-your-own.js','settings-dock.js','customize-ui.js'])vm.runInContext(read(file),env,{filename:file});env.CanvasHarnessQuickUpload={create:()=>({state:{},destroy(){}})};const create=env.ReserveMakeYourOwn.create;env.ReserveMakeYourOwn.create=options=>(own=create(options));}});t.after(()=>h.dashboard.destroy());
- h.click('settings');h.container.querySelector('[data-rd-action="customize-tab"][data-value="settings"]').click();await own.choose({name:'Picked.chpack',size:10,text:async()=>{throw Error('Unreadable picked pack');}});
- assert.equal(h.container.querySelector('.cz-pane').dataset.pane,'courses');assert.match(h.container.textContent,/Picked.chpack/);assert.match(h.container.textContent,/Unreadable picked pack/);
-});
+// 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).

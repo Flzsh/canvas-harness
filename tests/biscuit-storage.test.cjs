@@ -16,10 +16,7 @@ test('Biscuit schedules skills and learning stay in their own account and site t
  for(const identity of [{...owner,accountId:'72'},{...owner,origin:'https://other.instructure.com'}]){const other=S.createStore({...identity,adapter});t.after(()=>other.destroy());const data=await other.load();assert.deepEqual(data.pet.reminders,[]);assert.deepEqual(data.pet.routines,[]);assert.equal(data.tasks['7'],undefined);assert.throws(()=>S.validateBackup(store.exportBackup(),identity),/different Canvas account or site/);}
 });
 
-test('public Biscuit data drops study helpers and agent metadata while retaining local reminders',()=>{
- const now=Date.now(),data=S.validateBackup(backup({pet:{skills:{quiz:false,labprep:false,reading:false,rubric:false,feedback:false,deadline:false},reminders:[{id:'a',text:'Bring notes',at:now+60000,createdAt:now,agent:true}],routines:[{id:'b',name:'unsupported',days:[1],minute:960,action:'study',data:{kind:'quiz'},createdAt:now}]}}));
- assert.deepEqual(Object.keys(data.pet.skills),Object.keys(B.SKILLS));assert.equal(data.pet.skills.deadline,false);for(const key of ['quiz','labprep','reading','rubric','feedback'])assert.equal(data.pet.skills[key],undefined);assert.equal(data.pet.reminders[0].agent,undefined);assert.deepEqual(data.pet.routines,[]);
-});
+// 4.0: 4.0 keeps the study skills; agent metadata stays out (storage).
 
 test('Biscuit cleaners bound collections and counters and reject impossible planned time and cycle metadata',()=>{
  const now=Date.now(),reminders=Array.from({length:30},(_,i)=>({id:'r'+i,text:'  Bring\n bag  ',at:now+60000,createdAt:now})),data=S.validateBackup(backup({pet:{brain:{kinds:{focus:{shown:Infinity,used:-1}},nudges:{items:Array.from({length:1000},(_,i)=>String(i))},quietUntil:Infinity},reminders}}));

@@ -6,7 +6,25 @@
 <meta name="referrer" content="no-referrer">
 <title>Canvas Harness · Ask AI</title>
 <link rel="stylesheet" href="ai-panel.css">
+<link rel="stylesheet" href="overnight.css">
+<link rel="stylesheet" href="study-band.css">
 <script src="ai-providers.js" defer>
+</script>
+<script src="ai-context.js" defer>
+</script>
+<script src="study-kind.js" defer>
+</script>
+<script src="study-tools.js" defer>
+</script>
+<script src="study-prompts.js" defer>
+</script>
+<script src="study-writes.js" defer>
+</script>
+<script src="math-render.js" defer>
+</script>
+<script src="study-ui.js" defer>
+</script>
+<script src="study-band.js" defer>
 </script>
 <script src="ai-panel.js" defer>
 </script>
@@ -86,9 +104,34 @@
 </label>
 </div>
 </header>
+<section id="ch-study-viewer" class="ch-study-viewer" hidden aria-label="Study aid">
+</section>
 <div id="scrollbox" class="panel-body" tabindex="-1">
-
-<section class="selected-context" aria-labelledby="selection-summary">
+<section id="ch-agent-view" class="ch-agent-view" hidden>
+<div class="ch-agent-status-row">
+<p id="ch-agent-status" class="ch-agent-status" role="status" aria-live="polite">
+</p>
+<button id="ch-agent-stop" class="ch-agent-button" type="button">Stop</button>
+</div>
+<details id="ch-agent-snapshot" class="ch-agent-snapshot">
+<summary>Snapshot</summary>
+<pre id="ch-agent-snapshot-text" class="ch-agent-snapshot-text" tabindex="0">
+</pre>
+</details>
+<section class="ch-agent-history" aria-labelledby="ch-agent-history-title">
+<h2 id="ch-agent-history-title">What your AI did</h2>
+<ol id="ch-agent-runs" class="ch-agent-runs">
+</ol>
+</section>
+<section class="ch-agent-memory" aria-labelledby="ch-agent-memory-title">
+<h2 id="ch-agent-memory-title">Memory</h2>
+<ul id="ch-agent-memory-list" class="ch-agent-memory-list">
+</ul>
+</section>
+<section id="ch-agent-questions" class="ch-agent-questions" aria-label="Questions">
+</section>
+</section>
+<section id="ch-agent-context" class="selected-context" aria-labelledby="selection-summary">
 <h2 id="selection-summary">No Canvas items selected</h2>
 <label id="all-row" class="check-row" hidden>
 <input id="all-linked" type="checkbox">
@@ -99,7 +142,11 @@
 <span>Include attached assignment PDFs <small class="hint">Read text locally · up to 2 MiB per PDF</small>
 </span>
 </label>
+<div id="teacher-feedback-list" hidden>
+</div>
 <div id="pdf-list" class="pdf-list">
+</div>
+<div id="photo-list" class="pdf-list">
 </div>
 </section>
 <details id="context-details" class="context-details">
@@ -130,31 +177,152 @@
 <button id="open-fallback" type="button" class="quiet-button">Open website ↗</button>
 </div>
 </section>
+<section id="ch-study-paste" class="ch-study-paste" hidden>
+<div id="ch-study-wait" class="ch-study-wait" hidden>
+<span>Waiting for the answer</span>
+<button id="ch-study-stop" type="button" class="quiet-button">Stop</button>
+</div>
+<label for="ch-study-answer">Paste the answer</label>
+<textarea id="ch-study-answer" rows="6">
+</textarea>
+<button id="ch-study-read" type="button" class="quiet-button">Read it</button>
+<button id="ch-study-bring" type="button" class="quiet-button" hidden>Bring it in</button>
+<ul id="ch-study-errors" class="ch-study-errors" aria-live="polite" hidden>
+</ul>
+</section>
+<section id="ch-api-answer" class="ch-api-answer" hidden>
+<pre id="ch-api-answer-text" class="ch-api-answer-text" tabindex="0">
+</pre>
+<button id="ch-api-copy" class="ch-api-button" type="button">Copy</button>
+</section>
+
+<ul id="ch-overnight-errors" class="ch-overnight-errors" aria-live="polite" hidden>
+</ul>
+<details class="ch-study-saved">
+<summary>Saved</summary>
+<ul id="ch-study-saved-list" class="ch-study-saved-list">
+</ul>
+</details>
 </div>
 <footer class="composer-footer">
 <p id="notice" class="notice" role="status" aria-live="polite" hidden>
 </p>
 <p id="error" class="error" role="alert" hidden>
 </p>
+<div id="ch-study-wishes" hidden>
+<label for="ch-study-wishes-text">Your instructions</label>
+<textarea id="ch-study-wishes-text" rows="2" maxlength="600">
+</textarea>
+<button id="ch-study-wishes-clear" type="button" class="quiet-button">Clear</button>
+</div>
 
+<div id="ch-api-progress" class="ch-api-progress" role="status" hidden>
+<span id="ch-api-progress-text" class="ch-api-progress-text">
+</span>
+<button id="ch-api-stop" class="ch-api-button" type="button">Stop</button>
+</div>
 <form id="composer" class="composer">
 <div class="clips">
 <ul id="selected-items" class="selected-items">
 </ul>
 <p id="scope-hint" class="hint">Select items using the circles on Canvas.</p>
 </div>
-<label for="prompt" class="sr-only">Your question</label>
+<label id="prompt-label" for="prompt" class="sr-only">Your question</label>
 <textarea id="prompt" rows="4" maxlength="20000" placeholder="What would you like help with?" aria-describedby="composer-help" autocomplete="off">
 </textarea>
+<pre id="ch-study-preview" class="ch-study-preview" tabindex="0" aria-label="Study message to send" hidden>
+</pre>
+<section id="ch-api-preview" class="ch-api-preview" hidden>
+<pre id="ch-api-message" class="ch-api-message" tabindex="0" aria-label="Message to send">
+</pre>
+<span id="ch-api-tokens" class="ch-api-tokens">
+</span>
+<button id="ch-api-estimate" class="ch-api-button" type="button">Estimate</button>
+<button id="ch-api-photo" class="ch-api-button" type="button">Add a photo</button>
+<input id="ch-api-photo-input" class="ch-api-photo-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+</section>
 <div class="composer-toolbar">
 <details class="more-menu">
 <summary aria-label="More options">···</summary>
-<div class="more-pop">
+<div class="more-pop ch-api-menu">
+<label class="ch-api-way" for="ch-api-way">Way <select id="ch-api-way" class="ch-api-select">
+<option class="ch-api-option" value="web">Web AI</option>
+<option class="ch-api-option" value="api">API</option>
+<option class="ch-overnight-option" value="overnight">Overnight</option>
+</select>
+</label>
+<section id="ch-agent-settings" class="ch-agent-settings" hidden>
+<label class="ch-agent-field">
+<input id="ch-agent-on" class="ch-agent-input" type="checkbox" checked>Your AI</label>
+<label class="ch-agent-field">
+<input id="ch-agent-everyday" class="ch-agent-input" type="checkbox">Prepare every day</label>
+<label class="ch-agent-field">
+<input id="ch-agent-grades" class="ch-agent-input" type="checkbox">Let the AI see my grades</label>
+<label class="ch-agent-field" for="ch-agent-cap">Daily cap <input id="ch-agent-cap" class="ch-agent-input" type="number" min="0" step="1" value="3">
+</label>
+<label class="ch-agent-field" for="ch-agent-wishes">Your instructions for Prepare</label>
+<textarea id="ch-agent-wishes" class="ch-agent-input" rows="3" maxlength="600">
+</textarea>
+</section>
+<section id="ch-overnight-settings" class="ch-overnight-settings" hidden>
+<label class="ch-overnight-field">Folder <button id="ch-overnight-folder" class="ch-overnight-button" type="button">Choose folder</button>
+</label>
+<button id="ch-overnight-prepare" class="ch-overnight-button" type="button">Prepare now</button>
+<button id="ch-overnight-allow" class="ch-overnight-button" type="button" hidden>Allow the prep folder</button>
+<div id="ch-overnight-task" class="ch-overnight-task" hidden>
+<pre id="ch-overnight-schedule" class="ch-overnight-schedule">
+</pre>
+<button id="ch-overnight-copy" class="ch-overnight-button" type="button">Copy</button>
+</div>
+</section>
+<section id="ch-api-settings" class="ch-api-settings" hidden>
+<label class="ch-api-field" for="ch-api-provider">Provider <select id="ch-api-provider" class="ch-api-select">
+<option class="ch-api-option" value="anthropic">Anthropic</option>
+<option class="ch-api-option" value="openai">OpenAI</option>
+<option class="ch-api-option" value="google">Google</option>
+<option class="ch-api-option" value="compatible">OpenAI-compatible</option>
+</select>
+</label>
+<label id="ch-api-base-row" class="ch-api-field" for="ch-api-base" hidden>HTTPS base address <input id="ch-api-base" class="ch-api-input" type="url" autocomplete="off">
+</label>
+<label class="ch-api-field" for="ch-api-model">Model <select id="ch-api-model" class="ch-api-select">
+</select>
+</label>
+<button id="ch-api-models" class="ch-api-button" type="button">Models</button>
+<label class="ch-api-field" for="ch-api-key">Key <input id="ch-api-key" class="ch-api-input" type="password" autocomplete="off" spellcheck="false">
+</label>
+<span id="ch-api-key-mask" class="ch-api-key-mask">
+</span>
+<label class="ch-api-field" for="ch-api-limit">Daily limit <input id="ch-api-limit" class="ch-api-input" type="number" min="0" max="100000" step="1" value="20">
+</label>
+<button id="ch-api-save" class="ch-api-button" type="button">Save</button>
+<button id="ch-api-remove" class="ch-api-button" type="button">Remove key</button>
+<p id="ch-api-privacy" class="ch-api-privacy">Only what you pick goes to Anthropic, with your key. Grades never.</p>
+</section>
 <label class="check-row send-option">
 <input id="auto-send" type="checkbox">
 <span>Send automatically</span>
 </label>
+<label class="check-row send-option">
+<input id="bring-answers" type="checkbox" checked>
+<span>Bring answers back</span>
+</label>
+<label class="check-row send-option ch-study-level" for="ch-study-level">Level <select id="ch-study-level" class="ch-study-level-select">
+<option class="ch-study-level-option" value="middle school">Middle school</option>
+<option class="ch-study-level-option" value="high school" selected>High school</option>
+<option class="ch-study-level-option" value="college">College</option>
+</select>
+</label>
+<label class="check-row send-option">
+<input id="teacher-feedback" type="checkbox">
+<span>Teacher feedback</span>
+</label>
 <button id="composer-attach" type="button" class="quiet-button" title="Attach a PDF up to 2 MiB">Add a PDF</button>
+<div class="photo-add">
+<label for="photo-description">Add a photo</label>
+<input id="photo-description" type="text" maxlength="80" placeholder="What is in it?">
+<button id="photo-add" type="button" class="quiet-button">Add</button>
+</div>
 <button id="copy" type="button" class="quiet-button">Copy</button>
 <button id="open-website" type="button" class="quiet-button">Open website / sign in ↗</button>
 <button id="preview" type="button" class="quiet-button">Review text to share</button>
@@ -167,7 +335,7 @@
 <input id="pdf-input" type="file" accept="application/pdf,.pdf" class="sr-only" aria-label="Attach a PDF up to 2 MiB">
 </form>
 <p id="composer-help" class="composer-help sr-only">Enter to send · Shift + Enter for a new line</p>
-<p class="privacy-note">Only what you picked is shared. Grades never are.</p>
+<p id="ch-agent-privacy" class="privacy-note">Only what you picked is shared. Grades never are.</p>
 </footer>
 </main>
 </body>

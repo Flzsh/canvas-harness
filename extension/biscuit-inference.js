@@ -4,6 +4,8 @@
  const load=(name,file)=>root[name]||(typeof module==='object'&&module.exports?require(file):null),
    L=()=>load('ReserveBiscuitLearn','./biscuit-learn.js'),
    P=()=>load('ReserveBiscuitParse','./biscuit-parse.js'),
+   Study=()=>load('CanvasHarnessStudy','./study-prompts.js'),
+   Ctx=()=>load('CanvasHarnessContext','./ai-context.js'),
    list=v=>Array.isArray(v)?v:[],
    mutate=new Set(['complete','setting','feature','module','focus','focus-control','reminder','plan','note','bookmark']),
    canon=a=>
@@ -22,7 +24,7 @@
        help:'chat'
      })[a]||
        a;
- const card=(action,items,fields,message,extra={})=>({action,items:items.slice(0,3),message,next:{action,fields:fields||{},label:'Continue'},...extra}),
+ const card=(action,items,fields,message,extra={})=>({action,items:items.slice(0,3),message,next:{action,fields:fields||{},label:action==='ai'?'Ask AI':'Continue'},...extra}),
    time=(n,s)=>new Date(n).toLocaleString('en-US',{timeZone:s.timeZone||'America/New_York'}),
    grades=s=>s.showGrades!==false&&s.settings?.showGrades!==false&&s.privacy?.grades!==false&&(s.showGrades===true||s.settings?.showGrades===true);
  const vocabularyCache=new WeakMap();
@@ -104,10 +106,176 @@
     hits=query.filter(word=>words.has(word)).length;
   return hits>=2?row:null;
  }
+ function learnedHandoff(input,s,session,pack,rows,features,ranked,owned,onUIReference){
+  const Lrn=L(),
+    choices=Lrn?.classify?.(pack.models?.kind,Lrn.kindFeatures?.(input,s,session,pack.features,features)||features,true)||[],
+    winner=choices[0],
+    literalKind=!winner?.label?.includes('|')&&
+      /\bflash[ -]?cards?\b/i.test(load('ReserveBiscuitIntent','./biscuit-intent.js')?.targetText?.(input)||input)&&
+      !/\b(?:no|not|without|don.t|do not)\b[^,;.!?]{0,35}\bflash[ -]?cards?\b/i.test(input)?
+      'flashcards':
+      null,
+    kind=literalKind||winner?.label||'ask',
+    kinds=kind==='ask'?[]:kind.includes('|')?kind.split('|'):[kind],
+    Selector=load('ReserveBiscuitContextSelector','./biscuit-context-selector.js'),
+    selection=Selector?.scoreAndSelect(input,s,session,{
+      rows,
+      kind,
+      model:pack.models?.context,
+      thresholds:pack.thresholds,
+      Learn:Lrn,
+      owned,
+      ranked,
+      features:pack.features,
+      uiReferenceModel:pack.models.item,
+      onUIReference
+    })||
+      {selected:[],featureRows:[]},
+    selected=selection.selected,
+    sources=selected.map(({row})=>
+      ({
+        id:row.id,
+        label:['grade','feedback','course-grade'].includes(row.kind)?row.kind==='course-grade'?'Course total':'Returned feedback':row.title,
+        kind:row.kind,
+        courseId:row.courseId,
+        text:Selector.materialText(row)
+      }));
+  const featureInput=selection.featureInput??input,
+    targets=selected.map(value=>value.row),
+    primary=targets.length?
+      (owned?
+        owned.rank(pack.models.item,featureInput,targets,s,session,'ai',selection.featureRows):
+        Lrn.rank(pack.models.item,featureInput,targets,s,session,'ai',selection.featureRows))[0]:
+      null;
+  const study=Study();
+  let left=study.LIMITS.material;
+  for(let i=0;i<sources.length;i++){
+    const budget=Math.floor(left/(sources.length-i));
+    if(sources[i].text.length>budget){sources[i].text=sources[i].text.slice(0,budget);sources[i].truncated=true;}
+    left-=sources[i].text.length;
+  }
+  const target=primary||selected[0]?.row,
+    course=list(s.courses).find(v=>String(v.id)===String(target?.courseId)),
+    ctx={
+      ...(s.now!=null?{now:s.now}:{}),
+      ...(s.timeZone?{timeZone:s.timeZone}:{}),
+      level:s.level||s.settings?.aiLevel||'high school',
+      course:Ctx().withoutScores(course?.name||''),
+      item:['grade','feedback','course-grade'].includes(target?.kind)?
+        rows.find(v=>v.kind==='assignment'&&String(v.id)===String(target?.assignmentId)&&String(v.courseId||'')===String(target?.courseId||''))?.title||'Returned material':
+        target?.title||'',
+      wishes:String(input),
+      sources
+    },
+    mode=kinds.length===1?'build':kinds.length?'choice':'ask',
+    prompt=mode==='build'?study.build(kind,ctx):mode==='choice'?study.buildChoice(kinds,ctx):[String(input),...sources.map(v=>'<<<SOURCE: '+v.label+'>>>\n'+v.text+'\n<<<END SOURCE>>>')].join('\n\n'),
+    result={
+      contextIds:sources.map(v=>v.id),
+      sources,
+      kind:mode==='choice'?null:kind,
+      kinds,
+      mode,
+      wishes:String(input),
+      prompt,
+      course:ctx.course,
+      item:ctx.item,
+      itemId:target?.assignmentId||target?.id||'',
+      courseId:target?.courseId||''
+    };
+  Object.defineProperty(result,'contextPrimary',{value:primary});
+  return result;
+ }
+ function handoff(input,s,session,pack,rows,features,ranked=[],owned,onUIReference){
+  uiSourceReference(pack);if(learnedContext(pack))return learnedHandoff(input,s,session,pack,rows,features,ranked,owned,onUIReference);
+  rows=rows.filter(v=>!['feedback','grade'].includes(v.kind)||s.teacherFeedback!==false&&s.privacy?.teacherFeedback!==false&&s.privacy?.feedback!==false);
+  const sourceRanks=pack.training?.rankingActors?.includes('ai')&&ranked.length?new Map(ranked.map((row,i)=>[String(row.id),i])):null,
+    Lrn=L(),
+    featureInput=pack.features?.conversationEvidence===true?Lrn.sourceInput(input,s,session,rows,pack.features):input,
+    choices=Lrn.classify(pack.models.kind,Lrn.kindFeatures?.(input,s,session,pack.features,features)||features,true),
+    winner=choices[0],
+    literalKind=!winner?.label?.includes('|')&&
+      /\bflash[ -]?cards?\b/i.test(load('ReserveBiscuitIntent','./biscuit-intent.js')?.targetText?.(input)||input)&&
+      !/\b(?:no|not|without|don.t|do not)\b[^,;.!?]{0,35}\bflash[ -]?cards?\b/i.test(input)?
+      'flashcards':
+      null,
+    kind=literalKind||winner?.label||'ask',
+    kinds=kind==='ask'?[]:kind.includes('|')?kind.split('|'):[kind],
+    reused=owned?owned.reuse(ranked,featureInput,s,session,rows,'ai'):Lrn.reuseRank?.(ranked,featureInput,s,session,rows,'ai'),
+    c=reused?.prepared||Object.assign(Lrn.prepareContext?.(featureInput,s,session,rows)||Lrn.context(featureInput,s,session,rows),{action:'ai'}),
+    page=rows.find(v=>
+      String(v.id)===String(s.selectedItemId||s.itemId||s.page?.itemId||session.lastItemId||'')&&!['course','setting','feature','tab','home-module','action','plan-block'].includes(v.kind)),
+    scored=(page?.courseId?
+      rows.filter(row=>row.courseId===page.courseId||Lrn.words(row.title).length>=2&&Lrn.words(input).join(' ').includes(Lrn.words(row.title).join(' '))):
+      rows).map(row=>{
+    const x=reused?.features(row)||Lrn.itemFeatures(featureInput,row,s,session,reused?.rows||rows,c,true);
+    x['help:'+kind]=1;
+    x['help:'+kind+'|'+row.kind]=1;
+    return {row,score:Lrn.score(pack.models.context,x,true)};
+  }).sort((a,b)=>
+    (sourceRanks?(sourceRanks.get(String(a.row.id))??Infinity)-(sourceRanks.get(String(b.row.id))??Infinity):0)||b.score-a.score||a.row.id.localeCompare(b.row.id)),
+  pageWords=page?new Set(Lrn.content(page.text||page.description||page.body||'')):null,
+  queryWords=Lrn.content(input).filter(w=>w.length>=4&&!/^(?:example|original|question|practice|explain|simple|different|answer|understand|please|could|would|using|think|there|these|those|something|makes|means)$/.test(w)),
+  pageHits=pageWords?queryWords.filter(w=>pageWords.has(w)).length:0,
+  pageGrounded=page&&(/\b(?:this|that|these|those|loaded|selected|notice|announcement|message|reply|draft|feedback|rubric|handout|packet|chapter|reading)\b/i.test(input)||pageHits>=2||queryWords.length<=3&&pageHits>=1),
+  anchor=(pageGrounded?page:null)||scored.find(v=>1/(1+Math.exp(-v.score))>=(pack.thresholds?.context??.45))?.row,
+  selected=anchor?
+    [
+      {row:anchor,score:Infinity},
+      ...scored.filter(v=>
+        v.row.id!==anchor.id&&
+          (!anchor.courseId||v.row.courseId===anchor.courseId)&&
+          1/(1+Math.exp(-v.score))>=(pack.thresholds?.context??.45)&&
+          ((kind==='rubric'&&v.row.kind==='rubric')||
+            (kind==='fixes'&&['feedback','grade'].includes(v.row.kind))||
+            Lrn.words(v.row.title).length>=2&&Lrn.words(input).join(' ').includes(Lrn.words(v.row.title).join(' ')))).slice(
+        0,
+        3)
+    ]:
+    [],
+  sources=selected.map(({row})=>
+    ({
+      id:row.id,
+      label:['grade','feedback','course-grade'].includes(row.kind)?row.kind==='course-grade'?'Course total':'Returned feedback':row.title,
+      kind:row.kind,
+      courseId:row.courseId,
+      text:['feedback','grade'].includes(row.kind)?Ctx().withoutScores(String(row.feedback||row.teacherComments||row.text||'')):String(row.aiText??row.text??'')
+    }));
+  const study=Study();
+  let left=study.LIMITS.material;
+  for(let i=0;i<sources.length;i++){
+    const budget=Math.floor(left/(sources.length-i));
+    if(sources[i].text.length>budget){sources[i].text=sources[i].text.slice(0,budget);sources[i].truncated=true;}
+    left-=sources[i].text.length;
+  }
+  const target=selected.find(v=>v.row.kind==='assignment')?.row||selected[0]?.row,
+    course=list(s.courses).find(v=>String(v.id)===String(target?.courseId)),
+    ctx={
+      level:s.level||s.settings?.aiLevel||'high school',
+      course:Ctx().withoutScores(course?.name||''),
+      item:['grade','feedback','course-grade'].includes(target?.kind)?rows.find(v=>v.kind==='assignment'&&String(v.id)===String(target?.assignmentId))?.title||'Returned material':target?.title||'',
+      wishes:String(input),
+      sources
+    },
+    mode=kinds.length===1?'build':kinds.length?'choice':'ask',
+    prompt=mode==='build'?study.build(kind,ctx):mode==='choice'?study.buildChoice(kinds,ctx):[String(input),...sources.map(v=>'<<<SOURCE: '+v.label+'>>>\n'+v.text+'\n<<<END SOURCE>>>')].join('\n\n');
+  return {
+    contextIds:sources.map(v=>v.id),
+    sources,
+    kind:mode==='choice'?null:kind,
+    kinds,
+    mode,
+    wishes:String(input),
+    prompt,
+    course:ctx.course,
+    item:ctx.item,
+    itemId:target?.assignmentId||target?.id||'',
+    courseId:target?.courseId||''
+  };
+ }
  function answer(input,row,s,rows){
   if(!row)return 'No matching item is loaded in this workspace.';const text=String(input),name=row.title,at=n=>Number.isFinite(Number(n))?time(Number(n),s):String(n),facts=[];
-  if(/\b(?:attempts?|tries|retry|try again)\b/i.test(text))
-    for(const key of ['attemptsLeft','attemptsRemaining','attemptsAllowed','attemptsUsed'])if(row[key]!==undefined)facts.push(key.replace(/([a-z])([A-Z])/g,'$1 $2')+': '+row[key]);
+  if(/\b(?:attempt|tries|retry|try again)\b/i.test(text))
+    for(const key of ['attemptsRemaining','attemptsAllowed','attemptsUsed'])if(row[key]!==undefined)facts.push(key.replace(/([a-z])([A-Z])/g,'$1 $2')+': '+row[key]);
   if(/\b(?:points|worth|maximum|possible)\b/i.test(text)&&row.pointsPossible!==undefined)facts.push(row.pointsPossible+' points possible');
   if(/\b(?:reply|response)\b/i.test(text)&&row.replyDueAt)
     facts.push('Reply deadline: '+at(row.replyDueAt));
@@ -265,13 +433,43 @@
     }
   }
   const controlValue=load('ReserveBiscuitControlRequest','./biscuit-control-request.js')?.resolve(action,raw,s,session,detail);if(controlValue)return wrap(controlValue);
-  if(action==='ai')return legacy(raw,s,session);
+  if(action==='ai'){
+    if((s.teacherFeedback===false||s.privacy?.teacherFeedback===false||s.privacy?.feedback===false)&&/\b(?:teacher.s?\s+(?:feedback|comments?)|returned\s+(?:feedback|comments?))\b/i.test(raw))
+      return wrap(card('none',[],{},'Teacher feedback sharing is off.'));
+    if(s.ai===false)return wrap(card('none',[],{},'Your AI is off.'));
+    let uiReference=null;
+    const h=handoff(raw,s,session,pack,rows,features,sorted,owned,row=>{
+      uiReference=row;
+    }),
+    page=rows.find(v=>v.id===String(s.selectedItemId||s.itemId||s.page?.itemId||'')&&!['course','setting','feature','tab'].includes(v.kind)),
+    named=items.find(v=>!['course','setting','feature','tab','home-module'].includes(v.kind)&&Lrn.words(v.title).length>=2&&Lrn.words(raw).join(' ').includes(Lrn.words(v.title).join(' '))),
+    contextMode=learnedContext(pack),
+    sourceRows=contextMode?
+      h.sources.map(source=>
+        rows.find(v=>String(v.id)===String(source.id)&&String(v.kind)===String(source.kind)&&String(v.courseId||'')===String(source.courseId||''))).filter(Boolean):
+      h.contextIds.map(id=>rows.find(v=>v.id===id)).filter(Boolean),
+    primary=contextMode?
+      (!h.contextIds.length&&uiSourceReference(pack)?
+        uiReference:
+        ((!h.contextIds.length||h.contextIds.includes(page?.id)?referencedPage(raw,page):null)||h.contextPrimary)):
+      page||sourceRows[0]||named||top,
+    alternatives=sourceRows.length?sourceRows:items,
+    aiItems=contextMode?
+      (primary?[primary,...sourceRows.filter(v=>String(v.id)!==String(primary.id))]:[]):
+      primary?[primary,...alternatives.filter(v=>v.id!==primary.id)]:alternatives;
+    return wrap(card(
+      'ai',
+      aiItems,
+      {text:h.prompt,handoff:h,...(primary?{itemId:primary.id}:{})},
+      (h.sources.length?h.sources.map(v=>v.label).join(' and ')+': ':'')+(h.mode==='ask'?'Ask your question.':'Prepare '+(h.kind||h.kinds.join(' or '))+' help.')+' Review what is sent in the AI panel.',
+      {handoff:h}));
+  }
   const exactValues=load('ReserveBiscuitDetails','./biscuit-details.js')?.resolve(action,raw,s,session,rows,sorted,detail);if(exactValues)return wrap(exactValues);
   if(action==='open/find'){
     if(!top)return wrap(card('none',[],{},'No matching item is loaded. Open Canvas to load your course data.'));
     if(['feature','setting','tab','home-module','action'].includes(top.kind)&&!controlValue)return wrap(card('none',[],{},'No matching course item is loaded. Name a loaded item or open Canvas.'));
     const values={...top.fields,itemId:top.id,...detail};
-    for(const key of ['dueAt','replyDueAt','availableUntil','pointsPossible','attemptsLeft','attemptsRemaining','currentPercent','submissionTypes','allowedExtensions','approvedDueAt','notesAllowed','calculatorAllowed','formulaSheetAllowed','scoringPolicy'])if(top[key]!==undefined)values[key]=top[key];
+    for(const key of ['dueAt','replyDueAt','availableUntil','pointsPossible','attemptsRemaining','currentPercent','submissionTypes','allowedExtensions','approvedDueAt','notesAllowed','calculatorAllowed','formulaSheetAllowed','scoringPolicy'])if(top[key]!==undefined)values[key]=top[key];
     return wrap(card('find',items,values,answer(raw,top,s,rows)));
   }
   if(action==='none')return wrap(card('none',[],{},/\b(?:grades?|scores?|feedback|average)\b/i.test(raw)&&!grades(s)?'Grade access is disabled. Open your private visibility settings to review it.':'I cannot safely choose that from the loaded workspace. Open Canvas or name the item and the change you want.'));
@@ -455,7 +653,7 @@
   }
   return null;
  }
- const api={evaluate,answer,safeRows};
+ const api={evaluate,handoff,answer,safeRows};
  Object.defineProperty(api,'contextCalibrationPolicy',{enumerable:true,get(){return load('ReserveBiscuitContextSelector','./biscuit-context-selector.js')?.policy;}});
  root.ReserveBiscuitInference=api;
  if(typeof module==='object'&&module.exports)module.exports=api;

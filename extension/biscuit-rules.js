@@ -1,7 +1,6 @@
 /* JSON packs contain bounded tokens and numeric coefficients, never executable text. */
 (function(root){
  'use strict';
- const assetURL=file=>root.chrome?.runtime?.getURL?root.chrome.runtime.getURL(file):new URL('../extension/'+file,root.location.href).href;
  const TIERS=['basic','more','most'],bad=new Set(['__proto__','prototype','constructor']),plain=v=>v&&typeof v==='object'&&!Array.isArray(v),own=(v,k)=>Object.hasOwn(v,k);
  /* The full hostile-key walk stays independent of model validation, including unknown metadata. No trusted-object cache. */
  function safe(value){
@@ -106,9 +105,7 @@
        if(!/^[\p{L}]+$/u.test(word)||word.length>30||!Number.isFinite(value)||value<0||value>10000)throw Error('Invalid number word');
      }
   }
-  const localPack=data.publicPort?.method==='public-control-label-projection-v1';
-  if(localPack&&(data.models.kind||data.models.action?.labels?.includes('ai')))throw Error('Generative output in local pack');
-  for(const name of localPack?['action','item','context']:['action','item','kind','context'])if(!data.models[name])throw Error('Missing model');
+  for(const name of ['action','item','kind','context'])if(!data.models[name])throw Error('Missing model');
   for(const pattern of data.patterns)compilePattern(pattern);
   for(const key in data.models)if(own(data.models,key)){
    const m=data.models[key];
@@ -165,7 +162,7 @@
   let active=null;
   const node=typeof module==='object'&&module.exports,
     readSync=tier=>JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname,'biscuit-rules',tier+'.json'),'utf8')),
-    reader=read||((tier)=>node?readSync(tier):fetch(assetURL('biscuit-rules/'+tier+'.json')).then(r=>{
+    reader=read||((tier)=>node?readSync(tier):fetch(root.chrome.runtime.getURL('biscuit-rules/'+tier+'.json')).then(r=>{
     if(!r.ok)throw Error('Pack read failed');
     return r.json();
   }));

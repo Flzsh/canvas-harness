@@ -40,7 +40,7 @@ test('patching preserves controller-owned grid placement alongside changed view 
 test('status changes patch only the existing live region and refresh metadata, retaining focus and scroll',()=>{
  const s=setup(),f=s.f,line=f.container.querySelector('.rd-status [role="status"]'),footer=line.parentElement,button=f.container.querySelector('[data-rd-action="refresh"]'),column=f.container.querySelector('.rd-workspace'),heading=f.container.querySelector('.rd-workspace-heading');button.focus();column.scrollTop=173;const before=s.renders;
  f.dashboard.setStatus('Saved view ? Updating in the background?');assert.equal(s.renders,before);assert.equal(s.frames.size,0);assert.strictEqual(f.container.querySelector('.rd-status [role="status"]'),line);assert.strictEqual(line.parentElement,footer);assert.equal(line.textContent,'Saved view ? Updating in the background?');assert.equal(line.getAttribute('role'),'status');assert.equal(f.container.querySelectorAll('.rd-status [role="status"]').length,1);assert.equal(f.document.activeElement,button);assert.equal(column.scrollTop,173);assert.strictEqual(f.container.querySelector('.rd-workspace-heading'),heading);
- f.dashboard.setStatus('Refresh failed: offline');assert.equal(button.getAttribute('data-tone'),'danger');assert.equal(button.getAttribute('title'),'Refresh failed: offline ? click to try again');f.dashboard.setStatus('');assert.equal(line.textContent,'Update time unavailable');assert.equal(button.hasAttribute('data-tone'),false);assert.equal(s.renders,before);f.dashboard.destroy();
+ f.dashboard.setStatus('Refresh failed: offline');assert.equal(button.getAttribute('data-tone'),'danger');assert.equal(button.getAttribute('title'),'Refresh failed: offline · click to try again');f.dashboard.setStatus('');assert.equal(line.textContent,'Update time unavailable');assert.equal(button.hasAttribute('data-tone'),false);assert.equal(s.renders,before);f.dashboard.destroy();
 });
 
 test('unchanged status is a complete no-op, including text nodes and scheduling',()=>{
@@ -57,4 +57,21 @@ test('initial verified/cache snapshots, status and source microtasks produce one
 
 test('destroy before the first paint cancels startup markup as well as later sources',()=>{
  const s=setup({paint:false});s.f.dashboard.updateSnapshot(s.f.snapshot);s.f.dashboard.destroy();s.paint();assert.equal(s.renders,0);assert.equal(s.frames.size,0);
+});
+
+test('Canvas Harness scene settings and pack notifications share one pre-paint render across store microtasks',async()=>{
+ const s=setup(),f=s.f,scenes=[];f.env.ReserveSceneThemes={apply(_root,_container,id){scenes.push(id);},remove(){scenes.push('removed');}};const before=s.renders;
+ await f.store.update(data=>{data.settings.sceneTheme='sea';});s.notify[2]();await Promise.resolve().then(()=>f.store.update(data=>{data.settings.sceneTheme='stars';})).then(()=>s.notify[2]());
+ assert.equal(s.renders,before);assert.equal(s.frames.size,1);s.paint();assert.equal(s.renders,before+1);assert.deepEqual(scenes,['stars']);assert.equal(f.container.dataset.theme,'light');assert.equal(s.max,1);
+ await f.store.update(data=>{data.settings.sceneTheme='';});s.notify[2]();f.dashboard.destroy();s.paint();assert.equal(s.renders,before+1);assert.deepEqual(scenes,['stars','removed']);
+});
+
+// Perf (startup-4): reopened personal files and a snapshot refresh asked for in the same turn (content.js receive
+// hands a verified snapshot over and reopens the files together) share the first frame instead of a second full
+// redraw one frame later. A tab return no longer hands the same snapshot over again (leaks-3).
+test('a returning tab reopening its files and snapshot refresh share one render with fresh caches',async()=>{
+ const s=setup(),f=s.f;await Promise.resolve();s.paint();f.dashboard.closePersonalFiles();s.paint();await Promise.resolve();s.paint();const before=s.renders;
+ f.dashboard.resumePersonalFiles();f.dashboard.updateSnapshot({...f.snapshot,courses:[{id:'10',name:'Returned title'}]});
+ assert.equal(s.renders,before);assert.equal(s.frames.size,1);s.paint();assert.equal(s.renders,before+1);assert.match(f.container.querySelector('h1').textContent,/Returned title/);
+ await Promise.resolve();s.paint();assert.equal(s.renders,before+1);assert.equal(s.max,1);f.dashboard.destroy();
 });

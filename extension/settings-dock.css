@@ -165,6 +165,32 @@
  .rd .rd-appearance.ch-settings-dock { transition:none!important; transform:none!important; }
 }
 
+/* Features uses the editor's picture cards and page palette in every preset. */
+.rd .ch-settings-dock .rd .cz-tabs {display:flex;flex-wrap:wrap;overflow:visible}
+.rd .cz-tabs .cz-tab {flex:1 1 auto}
+.rd label.rd-button {position:relative;overflow:hidden}
+.rd label.rd-button input[type=file] {position:absolute;inset:0;width:100%;opacity:0;cursor:pointer}
+.rd .cz .rd-text-button + .rd-text-button {margin-left:16px}
+.rd .ch-settings-dock [data-pane="features"][hidden] {display:none;}
+.rd .ch-settings-dock .ap {--ap-ink:var(--rd-ink);--ap-card:var(--rd-surface);--ap-line:var(--rd-line);--ap-dash:var(--rd-line);--ap-muted:var(--rd-muted);--ap-clay:var(--rd-accent);--ap-on:var(--rd-soft);--ap-hover:var(--rd-surface-2);--ap-track:var(--rd-line);--ap-track-edge:var(--rd-muted);--ap-knob:var(--rd-surface);--ap-note:var(--rd-soft);}
+.rd .ch-settings-dock .ap-presets {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.rd .ch-settings-dock .ap-preset {gap:5px;padding:9px 10px 10px;border-width:1.5px;border-radius:13px;text-align:left;align-items:stretch;}
+.rd .ch-settings-dock .ap-pot {display:grid;place-items:center;width:100%;min-height:64px;border-radius:9px;background:var(--rd-surface-2);}
+.rd .ch-settings-dock .ap-pot svg {width:48px;}
+.rd .ch-settings-dock .ap-preset.is-on {box-shadow:0 0 0 1px var(--rd-accent);}
+.rd .ch-settings-dock .ap-row {padding:7px 10px;gap:9px;}
+.rd .ch-settings-dock .ap-toggle[aria-checked=true] .ap-track {background:var(--rd-accent);box-shadow:inset 0 0 0 1px var(--rd-accent);}
+.rd .ch-settings-dock #features-reload {margin-top:12px;}
+
+.rd.ch-features-only {min-height:0;width:auto;padding:0;background:none;}
+.rd.ch-features-only .rd-toolbar {padding:0;margin:0;border:0;background:none;}
+.rd.ch-features-only[data-settings="open"] {padding:0;}
+.rd.ch-features-only .ch-features-icon {display:block;width:24px;height:28px;}
+.rd.ch-features-only .ch-features-icon svg {width:100%;height:100%;}
+
+.rd .ch-settings-dock [hidden] {display:none!important;}
+.rd[data-theme=dark] .ch-settings-dock .ap-ic,.rd[data-theme=dark] .ch-settings-dock .ap-pot svg {border-radius:8px;background:#E9E3D4;box-shadow:0 0 0 2px #E9E3D4;}
+
 /* <x:generated> Make it yours v2: written by gen-settings-v2.cjs (owner approved the v2 rough, 2026-10-27). Sections are
    drawn cards with their own drawing; picture choices sit on paper with a wash spot and a clay tick when picked; word
    choices are paper tags; switches, tick boxes and the slider are drawn; the tabs are words, the open one underlined. */
@@ -296,7 +322,9 @@
 .rd .ch-settings-dock .cz-group :is(select,input[type=time],input[type=text]:not(.cz-pet-hero input)){border:0;border-bottom:1.6px dashed color-mix(in srgb,var(--rd-ink) 60%,transparent);border-radius:0;background:transparent;box-shadow:none}
 .rd .ch-settings-dock .cz-group :is(select,input[type=time],input[type=text]):focus-visible{outline:none;border-bottom:1.8px solid var(--rd-mark,var(--rd-accent))}
 .rd .ch-settings-dock .cz-group input[type=range]{appearance:none;-webkit-appearance:none;height:16px;background:none;cursor:pointer}
-.rd .ch-settings-dock .cz-group input[type=range]::-webkit-slider-runnable-track{height:15px;background:var(--rd-ink);-webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%2015'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M5%204.2C30%203.4%2070%204.8%2095%204C97.6%204.4%2098%209.8%2095.4%2010.6C70%2011.4%2030%2010.2%205.2%2011C2.4%2010.8%202.2%204.8%205.6%204.2'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.6'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") center/100% 100% no-repeat}
+.rd .ch-settings-dock .cz-group input[type=range]::-webkit-slider-runnable-track{height:15px;background:none}
+.rd .ch-settings-dock .cz-slider>input[type=range],.rd .ch-settings-dock .cz-night>input[type=range]{grid-area:1/2;position:relative;z-index:1}
+.rd .ch-settings-dock .cz-slider::before,.rd .ch-settings-dock .cz-night::before{content:"";grid-area:1/2;align-self:center;height:15px;background:var(--rd-ink);-webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%2015'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M5%204.2C30%203.4%2070%204.8%2095%204C97.6%204.4%2098%209.8%2095.4%2010.6C70%2011.4%2030%2010.2%205.2%2011C2.4%2010.8%202.2%204.8%205.6%204.2'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.6'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") center/100% 100% no-repeat;mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%2015'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M5%204.2C30%203.4%2070%204.8%2095%204C97.6%204.4%2098%209.8%2095.4%2010.6C70%2011.4%2030%2010.2%205.2%2011C2.4%2010.8%202.2%204.8%205.6%204.2'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.6'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") center/100% 100% no-repeat;pointer-events:none}
 .rd .ch-settings-dock .cz-group input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-2.5px;border:0;background:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2020%2020'%3E%3Cpath%20d%3D'M10%202.6c4.2-.2%207.6%203.2%207.4%207.4-.1%204.2-3.4%207.6-7.6%207.4C5.6%2017.2%202.4%2014%202.6%209.8%202.8%205.8%205.8%202.8%2010%202.6z'%20fill%3D'%23FFFDF6'%20stroke%3D'%232B2A27'%20stroke-width%3D'1.6'%2F%3E%3C%2Fsvg%3E") center/20px no-repeat;cursor:grab}
 .rd .ch-settings-dock kbd{display:inline-block;min-width:20px;margin:0 2px;padding:1px 6px 3px;border:1.3px solid var(--rd-ink);border-radius:5px 7px 4px 6px;background:var(--rd-surface);box-shadow:0 2.5px 0 color-mix(in srgb,var(--rd-ink) 50%,transparent);font:600 11px/16px var(--rd-ui-font,system-ui);text-align:center}
 @media (prefers-reduced-motion:reduce){.rd .ch-settings-dock :is(.cz-choice,.cz-choice-art,.cz-group .rd-button,.cz-toggle i::after){transition:none!important;translate:none}}
@@ -313,6 +341,34 @@
 .rd .ch-settings-dock .cz-accents .ch-accent-choice[aria-pressed=true]{border:0;background:none;position:relative}
 .rd .ch-settings-dock .cz-accents .ch-accent-choice[aria-pressed=true]::after{content:"";position:absolute;top:0;right:2px;width:16px;height:16px;background:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2020%2020'%3E%3Cpath%20d%3D'M10%202.4c4.4-.2%207.6%203.2%207.6%207.6s-3.4%207.8-7.8%207.6C5.6%2017.4%202.4%2014%202.4%209.8%202.6%205.6%205.8%202.6%2010%202.4z'%20fill%3D'%23A9522F'%2F%3E%3Cpath%20d%3D'M6.2%2010.4l2.6%202.6%205-5.8'%20fill%3D'none'%20stroke%3D'%23FFF8EC'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") center/16px no-repeat}
 .rd .ch-settings-dock .cz-slider{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:12px;margin:0 0 12px;font-weight:600}
+.rd .ch-settings-dock .ch-make-list .cz-choice{position:relative;isolation:isolate;display:flex;flex-wrap:wrap;justify-content:center;align-content:start;gap:2px 10px;min-width:0;padding:8px 4px 7px;border-radius:10px;background:none}
+.rd .ch-settings-dock .ch-make-list [data-rd-action=make-select]{position:relative;isolation:isolate;display:grid;justify-items:center;align-content:start;gap:3px;flex:1 0 100%;min-width:0;padding:0;border:0;background:none;color:var(--rd-ink);text-decoration:none;text-align:center;cursor:pointer}
+.rd .ch-settings-dock .ch-make-list .cz-choice:hover{background:color-mix(in srgb,var(--rd-ink) 5%,transparent)}
+.rd .ch-settings-dock .ch-make-list .cz-choice-art{display:grid;place-items:center;max-width:100%;min-height:64px;margin:0;background:none}
+.rd .ch-settings-dock .ch-make-list .cz-choice-art img{display:block;width:auto;max-width:100%;height:auto;max-height:90px;object-fit:contain}
+.rd .ch-settings-dock .ch-make-list .cz-choice-art:has(.ch-make-preview){width:100%}
+.rd .ch-settings-dock .ch-make-list .ch-make-preview{position:relative;width:100%;aspect-ratio:16/9;border-radius:6px;overflow:hidden}
+.rd .ch-settings-dock .ch-make-list .ch-make-preview img{width:100%;height:100%;max-height:none;object-fit:cover}
+.rd .ch-settings-dock .ch-make-list .ch-make-preview>span{position:absolute;left:7px;bottom:4px;font:700 15px/1 var(--rd-display,Georgia,serif)}
+.rd .ch-settings-dock .ch-make-list strong{position:relative;z-index:1;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:550;font-size:12.5px}
+.rd .ch-settings-dock .ch-make-list [data-rd-action=make-select]:not([data-kind=course-art]) small{display:none}
+.rd .ch-settings-dock .ch-make-list .cz-choice>[data-rd-action]:not([data-rd-action=make-select]){position:relative;z-index:1;margin:0;font-size:11px;white-space:nowrap}
+.rd .ch-settings-dock .ch-make-list .cz-choice[data-current=true]::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--rd-surface);border-radius:10px;box-shadow:0 0 0 1.4px var(--rd-ink),2.5px 3px 0 color-mix(in srgb,var(--rd-ink) 14%,transparent)}
+.rd .ch-settings-dock .ch-make-list .cz-choice[data-current=true]::after{content:"";position:absolute;top:2px;right:4px;width:18px;height:18px;background:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2020%2020'%3E%3Cpath%20d%3D'M10%202.4c4.4-.2%207.6%203.2%207.6%207.6s-3.4%207.8-7.8%207.6C5.6%2017.4%202.4%2014%202.4%209.8%202.6%205.6%205.8%202.6%2010%202.4z'%20fill%3D'%23A9522F'%2F%3E%3Cpath%20d%3D'M6.2%2010.4l2.6%202.6%205-5.8'%20fill%3D'none'%20stroke%3D'%23FFF8EC'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") center/18px no-repeat;z-index:2}
+.rd .ch-settings-dock .ch-make-list .cz-choice[data-current=true] strong{font-weight:700;padding-bottom:3px;background:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%208'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M1%205c3-3%206-3%209%200s6%203%209%200%206-3%209%200%206%203%209%200%206-3%209%200%206%203%209%200%206-3%209%200%206%203%209%200%206-3%209%200%206%203%209%200'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.4'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") center bottom/100% 4px no-repeat}
+.rd .ch-settings-dock .cz-group[data-art^="Companion"]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 6px;align-items:start}
+.rd .ch-settings-dock .cz-group[data-art^="Companion"]>h3{grid-column:1/-1}
+.rd .ch-settings-dock .cz-group[data-art^="Companion"]>.ch-make-list{display:contents}
+.rd .ch-settings-dock .cz-group[data-art^="Companion"]>[data-rd-action=make-get-more]{grid-column:1/-1;justify-self:start;margin-top:4px}
+.rd .ch-settings-dock .cz-group[data-art^="Companion"]>[data-rd-action=make-clear]{position:relative;isolation:isolate;display:grid;justify-items:center;align-content:start;gap:3px;min-width:0;padding:8px 4px 7px;border:0;border-radius:10px;background:none;color:var(--rd-ink);text-decoration:none;text-align:center;cursor:pointer}
+.rd .ch-settings-dock .cz-group[data-art^="Companion"]>[data-rd-action=make-clear]:hover{background:color-mix(in srgb,var(--rd-ink) 5%,transparent)}
+.rd .ch-settings-dock .cz-group[data-art^="Companion"] .cz-choice-art{height:64px;min-height:0}
+.rd .ch-settings-dock .cz-group[data-art^="Companion"] .cz-choice-art img{height:64px;max-height:none}
+.rd .ch-settings-dock .cz-group[data-art^="Companion"]>[data-rd-action=make-clear] strong{position:relative;z-index:1;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:550;font-size:12.5px}
+.rd .ch-settings-dock .cz-group[data-art^="Companion"]>[data-rd-action=make-clear] small{display:none}
+.rd .ch-settings-dock .cz-group[data-art^="Companion"]>[data-rd-action=make-clear][aria-pressed=true]::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--rd-surface);border-radius:10px;box-shadow:0 0 0 1.4px var(--rd-ink),2.5px 3px 0 color-mix(in srgb,var(--rd-ink) 14%,transparent)}
+.rd .ch-settings-dock .cz-group[data-art^="Companion"]>[data-rd-action=make-clear][aria-pressed=true]::after{content:"";position:absolute;top:2px;right:4px;width:18px;height:18px;background:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2020%2020'%3E%3Cpath%20d%3D'M10%202.4c4.4-.2%207.6%203.2%207.6%207.6s-3.4%207.8-7.8%207.6C5.6%2017.4%202.4%2014%202.4%209.8%202.6%205.6%205.8%202.6%2010%202.4z'%20fill%3D'%23A9522F'%2F%3E%3Cpath%20d%3D'M6.2%2010.4l2.6%202.6%205-5.8'%20fill%3D'none'%20stroke%3D'%23FFF8EC'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") center/18px no-repeat;z-index:2}
+.rd .ch-settings-dock .cz-group[data-art^="Companion"]>[data-rd-action=make-clear][aria-pressed=true] strong{font-weight:700;padding-bottom:3px;background:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%208'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M1%205c3-3%206-3%209%200s6%203%209%200%206-3%209%200%206%203%209%200%206-3%209%200%206%203%209%200%206-3%209%200%206%203%209%200%206-3%209%200%206%203%209%200'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.4'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") center bottom/100% 4px no-repeat}
 .rd .ch-settings-dock .cz-group[data-art^="Course dock"]{--cz-wash:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2022%2022'%3E%3Cpath%20d%3D'M2.8%208h16.4v6H2.8z'%20fill%3D'%23B7CBA5'%20transform%3D'translate(1%201.2)'%2F%3E%3C%2Fsvg%3E");--cz-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2022%2022'%3E%3Cpath%20d%3D'M2.6%207.8c5.6-.3%2011.2-.3%2016.8%200%20.2%202%20.2%204.2%200%206.3-5.6.3-11.2.3-16.8%200-.2-2.1-.2-4.3%200-6.3zM5.8%208v2.6M9%208v1.6M12.2%208v2.6M15.4%208v1.6'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.35'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E")}
 /* Outline round modules: its small drawn swatches sit in the same grid; the picked one on the paper card. */
 .rd .ch-settings-dock .cz-frames{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 6px}
@@ -324,6 +380,8 @@
 /* Text actions (Get more, Reset layout, Use default) read as one kind of drawn link everywhere in the panel. */
 .rd .ch-settings-dock .cz-group .rd-text-button{padding:2px 0;border:0;background:none;font-size:12px;font-weight:600;color:var(--rd-accent);text-decoration:underline dotted 1px;text-underline-offset:3px}
 .rd .ch-settings-dock .cz-group .rd-text-button:hover{text-decoration-style:solid}
+.rd .ch-settings-dock .ap-row .ap-open{padding:2px 0;border:0;background:none;font-size:12px;font-weight:600;color:var(--rd-accent);text-decoration:underline dotted 1px;text-underline-offset:3px}
+.rd .ch-settings-dock .ap-row .ap-open:hover{text-decoration-style:solid}
 .rd .ch-settings-dock .cz-group .cz-row:has(>.rd-text-button+.rd-text-button){gap:6px 16px}
 /* The artwork area's own fields and its reset read like the sections' fields and links. */
 .rd .ch-settings-dock .cz-art select{border:0;border-bottom:1.6px dashed color-mix(in srgb,var(--rd-ink) 60%,transparent);border-radius:0;background:transparent;box-shadow:none}

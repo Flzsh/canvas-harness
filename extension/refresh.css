@@ -787,6 +787,35 @@
 
 
 .rd .rd-glance { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Saved study aids on the page: punched paper tags (drawn by hand: ink outline and a wash that misses the line a little). */
+.rd .rd-study-tags { display: inline-flex; flex-wrap: wrap; gap: 5px 6px; align-items: center; }
+.rd .rd-study-tags[hidden] { display: none; }
+.rd .rd-study-tag, .rd .rd-help-tag { --tag-wash: #F6DE9A; position: relative; isolation: isolate; display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 9px 0 15px; border: 0; background: none; color: var(--rd-ink); font: 600 11.5px/1 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; white-space: nowrap; rotate: -1.2deg; cursor: pointer; }
+.rd .rd-study-tag:nth-child(2n) { rotate: .9deg; }
+.rd .rd-study-tag[data-kind=reading] { --tag-wash: #CFE4EE; }
+.rd .rd-study-tag[data-kind=lab] { --tag-wash: #CFE5C4; }
+.rd .rd-study-tag[data-kind=rubric] { --tag-wash: #F7D6CF; }
+.rd .rd-study-tag[data-kind=fixes] { --tag-wash: #E6DDF0; }
+.rd .rd-study-tag[data-kind=notes] { --tag-wash: #EBD5B3; }
+.rd .rd-study-tag::before, .rd .rd-study-tag::after, .rd .rd-help-tag::before, .rd .rd-help-tag::after { content: ""; position: absolute; inset: 0; z-index: -1; box-sizing: border-box; border: solid transparent; border-width: 11px 8px 11px 12px; pointer-events: none; }
+.rd .rd-study-tag::before, .rd .rd-help-tag::before { background: var(--tag-wash); translate: 1.1px 1.3px; -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2760%27%20height%3D%2722%27%20viewBox%3D%270%200%2060%2022%27%3E%3Cpath%20d%3D%27M1.7%2011.1%20L7.7%202.4%20Q30%201.6%2054.5%202.2%20Q58.2%202.4%2058.4%205.7%20L58.5%2016.5%20Q58.2%2019.7%2054.7%2019.9%20Q30%2020.5%207.8%2019.7%20Z%20M9.4%2011%20a2%202%200%201%200%20-4%200%20a2%202%200%201%200%204%200%20Z%27%20fill%3D%27%23000%27%20fill-rule%3D%27evenodd%27%2F%3E%3C%2Fsvg%3E") 11 8 11 12 stretch; mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2760%27%20height%3D%2722%27%20viewBox%3D%270%200%2060%2022%27%3E%3Cpath%20d%3D%27M1.7%2011.1%20L7.7%202.4%20Q30%201.6%2054.5%202.2%20Q58.2%202.4%2058.4%205.7%20L58.5%2016.5%20Q58.2%2019.7%2054.7%2019.9%20Q30%2020.5%207.8%2019.7%20Z%20M9.4%2011%20a2%202%200%201%200%20-4%200%20a2%202%200%201%200%204%200%20Z%27%20fill%3D%27%23000%27%20fill-rule%3D%27evenodd%27%2F%3E%3C%2Fsvg%3E") 11 8 11 12 stretch; }
+.rd .rd-study-tag::after, .rd .rd-help-tag::after { background: var(--rd-ink); -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2760%27%20height%3D%2722%27%20viewBox%3D%270%200%2060%2022%27%3E%3Cpath%20d%3D%27M1.7%2011.1%20L7.7%202.4%20Q30%201.6%2054.5%202.2%20Q58.2%202.4%2058.4%205.7%20L58.5%2016.5%20Q58.2%2019.7%2054.7%2019.9%20Q30%2020.5%207.8%2019.7%20Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.4%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cpath%20d%3D%27M9.4%2011%20a2%202%200%201%200%20-4%200%20a2%202%200%201%200%204%200%20Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.2%27%2F%3E%3Cpath%20d%3D%27M52.6%2017.6%20L54.4%2015.2%20M54.6%2017.8%20L56.4%2015.4%20M56.5%2017.9%20L57.6%2016.4%27%20stroke%3D%27%23000%27%20stroke-opacity%3D%27.45%27%20stroke-width%3D%27.8%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E") 11 8 11 12 stretch; mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2760%27%20height%3D%2722%27%20viewBox%3D%270%200%2060%2022%27%3E%3Cpath%20d%3D%27M1.7%2011.1%20L7.7%202.4%20Q30%201.6%2054.5%202.2%20Q58.2%202.4%2058.4%205.7%20L58.5%2016.5%20Q58.2%2019.7%2054.7%2019.9%20Q30%2020.5%207.8%2019.7%20Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.4%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cpath%20d%3D%27M9.4%2011%20a2%202%200%201%200%20-4%200%20a2%202%200%201%200%204%200%20Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.2%27%2F%3E%3Cpath%20d%3D%27M52.6%2017.6%20L54.4%2015.2%20M54.6%2017.8%20L56.4%2015.4%20M56.5%2017.9%20L57.6%2016.4%27%20stroke%3D%27%23000%27%20stroke-opacity%3D%27.45%27%20stroke-width%3D%27.8%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E") 11 8 11 12 stretch; }
+.rd .rd-study-glyph { width: 12px; height: 12px; flex: none; background: currentColor; -webkit-mask: var(--glyph) center / 12px no-repeat; mask: var(--glyph) center / 12px no-repeat; }
+.rd .rd-study-tag[data-kind=practice] .rd-study-glyph { --glyph: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2712%27%20height%3D%2712%27%20viewBox%3D%270%200%2012%2012%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.25%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M2.2%209.8%20L8.6%203.4%20L10.1%204.9%20L3.7%2011.3%20L1.7%2011.8%20Z%27%2F%3E%3Cpath%20d%3D%27M7.5%204.5%20L9%206%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"); }
+.rd .rd-study-tag[data-kind=reading] .rd-study-glyph { --glyph: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2712%27%20height%3D%2712%27%20viewBox%3D%270%200%2012%2012%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.25%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M1.4%203.1%20Q3.9%202.3%206%203.6%20Q8.1%202.3%2010.6%203.1%20V10%20Q8.1%209.3%206%2010.5%20Q3.9%209.3%201.4%2010%20Z%27%2F%3E%3Cpath%20d%3D%27M6%203.7%20V10.3%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"); }
+.rd .rd-study-tag[data-kind=lab] .rd-study-glyph { --glyph: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2712%27%20height%3D%2712%27%20viewBox%3D%270%200%2012%2012%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.25%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M4.4%201.6%20H7.6%20M5%201.7%20V4.9%20L2%2010.1%20Q1.6%2011%202.7%2011%20H9.3%20Q10.4%2011%2010%2010.1%20L7%204.9%20V1.7%27%2F%3E%3Cpath%20d%3D%27M3.3%208.3%20H8.7%27%20stroke-width%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"); }
+.rd .rd-study-tag[data-kind=rubric] .rd-study-glyph { --glyph: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2712%27%20height%3D%2712%27%20viewBox%3D%270%200%2012%2012%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.25%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M2.6%202.6%20H9.4%20Q10.2%202.6%2010.2%203.4%20V10.6%20Q10.2%2011.4%209.4%2011.4%20H2.6%20Q1.8%2011.4%201.8%2010.6%20V3.4%20Q1.8%202.6%202.6%202.6%20Z%27%2F%3E%3Cpath%20d%3D%27M4.4%201.4%20H7.6%20V3.4%20H4.4%20Z%27%2F%3E%3Cpath%20d%3D%27M3.5%206.3%20L4.3%207.1%20L5.6%205.6%20M3.5%209.2%20L4.3%2010%20L5.6%208.5%20M6.9%206.5%20H8.6%20M6.9%209.4%20H8.6%27%20stroke-width%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"); }
+.rd .rd-study-tag[data-kind=fixes] .rd-study-glyph { --glyph: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2712%27%20height%3D%2712%27%20viewBox%3D%270%200%2012%2012%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.25%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M8.9%201.6%20A2.9%202.9%200%200%200%206.4%205.6%20L1.9%2010.1%20Q1.5%2010.9%202.2%2011.4%20Q2.8%2011.9%203.5%2011.3%20L8%206.8%20A2.9%202.9%200%200%200%2011.9%204.3%20L10.2%205.1%20L8.9%204.6%20L8.5%203.2%20Z%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"); }
+.rd .rd-study-tag[data-kind=notes] .rd-study-glyph { --glyph: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2712%27%20height%3D%2712%27%20viewBox%3D%270%200%2012%2012%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.25%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M2.6%202.9%20H9.6%20Q10.4%202.9%2010.4%203.7%20V10.6%20Q10.4%2011.4%209.6%2011.4%20H2.6%20Q1.8%2011.4%201.8%2010.6%20V3.7%20Q1.8%202.9%202.6%202.9%20Z%27%2F%3E%3Cpath%20d%3D%27M4%201.2%20V4.4%20M6.1%201.2%20V4.4%20M8.2%201.2%20V4.4%27%20stroke-width%3D%271.1%27%2F%3E%3Cpath%20d%3D%27M3.6%206.5%20H8.6%20M3.6%208.4%20H8.6%20M3.6%2010.1%20H6.4%27%20stroke-width%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"); }
+.rd[data-input=pointer] .rd-study-tag:hover::before, .rd[data-input=pointer] .rd-help-tag:hover::before { translate: 0 0; }
+.rd[data-input=pointer] .rd-study-tag:active, .rd[data-input=pointer] .rd-help-tag:active { scale: .97; }
+.rd[data-theme=dark] .rd-study-tag { --tag-wash: #5A4E2C; }
+.rd[data-theme=dark] .rd-study-tag[data-kind=reading] { --tag-wash: #2F4A57; }
+.rd[data-theme=dark] .rd-study-tag[data-kind=lab] { --tag-wash: #36503A; }
+.rd[data-theme=dark] .rd-study-tag[data-kind=rubric] { --tag-wash: #5C3A35; }
+.rd[data-theme=dark] .rd-study-tag[data-kind=fixes] { --tag-wash: #463D57; }
+.rd[data-theme=dark] .rd-study-tag[data-kind=notes] { --tag-wash: #574631; }
+.rd[data-theme=dark] .rd-study-tag::after, .rd[data-theme=dark] .rd-help-tag::after { background: #D2C8B2; }
 .rd .rd-glance-chip {
   display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px;
   border: 0; border-radius: 999px; background: var(--tone-soft); color: var(--tone);
@@ -1416,6 +1445,14 @@
 .rd .rd-grade-table tbody th a > .rd-mini { margin-block: -4px; }
 .rd .rd-grade-table tbody th a > .rd-icon { opacity: 0; transition: opacity 140ms var(--rd-fade); }
 .rd .rd-grade-table tbody tr:is(:hover, :focus-within) th a > .rd-icon { opacity: 1; }
+/* With Grade impact on, a course name is a button that opens its weighing room, and the Canvas arrow sits beside it. */
+.rd .rd-grade-table th .rd-grade-course { display: flex; align-items: center; gap: 6px; }
+.rd .rd-grade-table th .rd-grade-open { display: flex; flex: 1; min-width: 0; align-items: center; gap: 10px; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-size: 14px; font-weight: var(--rd-bold); line-height: 1.5; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+.rd .rd-grade-table th .rd-grade-open > .rd-mini { margin-block: -4px; }
+.rd .rd-grade-table th .rd-grade-open:hover > span { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.rd .rd-grade-table th .rd-grade-out { display: inline-grid; place-items: center; padding: 4px; color: var(--rd-muted); opacity: 0; transition: opacity 140ms var(--rd-fade); }
+.rd .rd-grade-table tbody tr:is(:hover, :focus-within) th .rd-grade-out { opacity: 1; }
+.rd .rd-grade-table th .rd-grade-out > .rd-icon { width: 13px; height: 13px; }
 .rd .rd-grade-value { font-family: var(--rd-display); font-size: 17px; font-weight: var(--rd-num-w) !important; letter-spacing: -.005em; color: var(--rd-ink); font-variant-numeric: lining-nums tabular-nums; }
 .rd .rd-grade-value.rd-grade-unavailable { font-family: inherit; font-size: 13px; font-weight: 450 !important; color: var(--rd-faint); }
 .rd .rd-grade-period { font-size: 12.5px; color: var(--rd-muted); }
@@ -1775,11 +1812,12 @@
   transition: translate var(--rd-sel-rtab-dur, 0ms) var(--rd-glide), width var(--rd-sel-rtab-dur, 0ms) var(--rd-glide);
 }
 .rd[data-theme=dark] .rd-filter-group::before, .rd[data-theme=dark] .rd-reader-tabs::before { background: var(--rd-surface-3); }
-
 /* The geometry variables are not inherited (motion.js registers them), so each surface's pseudo takes them from its box. */
 .rd .rd-filter-group::before { --rd-sel-flt-x: inherit; --rd-sel-flt-y: inherit; --rd-sel-flt-w: inherit; --rd-sel-flt-h: inherit; --rd-sel-flt-o: inherit; --rd-sel-flt-dur: inherit; }
 .rd .rd-assignment-list::before { --rd-sel-pick-x: inherit; --rd-sel-pick-y: inherit; --rd-sel-pick-w: inherit; --rd-sel-pick-h: inherit; --rd-sel-pick-o: inherit; --rd-sel-pick-dur: inherit; }
 .rd .rd-reader-tabs::before { --rd-sel-rtab-x: inherit; --rd-sel-rtab-y: inherit; --rd-sel-rtab-w: inherit; --rd-sel-rtab-h: inherit; --rd-sel-rtab-o: inherit; --rd-sel-rtab-dur: inherit; }
+/* Snaps (keyboard, background renders, resize, every surface but the lead):
+   motion.js writes the variables under data-sel-snap, one surface at a time. */
 .rd .rd-shell[data-sel-snap~=flt] .rd-filter-group::before, .rd .rd-shell[data-sel-snap~=pick] .rd-assignment-list::before, .rd .rd-shell[data-sel-snap~=rtab] .rd-reader-tabs::before, .rd:is([data-input=keyboard], [data-motion-style=still]) .rd-assignment-list::before, .rd:is([data-input=keyboard], [data-motion-style=still]) .rd-filter-group::before, .rd:is([data-input=keyboard], [data-motion-style=still]) .rd-reader-tabs::before { transition: none !important; }
 
 
@@ -1793,7 +1831,7 @@
 .rd .rd-toast-ghost > .rd-toast { position: static; }
 .rd[data-input=keyboard] .rd-settle-layer { display: none; }
 
-
+/* 11.3 Late content fades in place once, when its keyed node is created ------ */
 /* backwards, not both: rd-fade is only from{opacity:0}, so the end frame is the
    element's own opacity. A `both` fill keeps a finished opacity animation (and a
    composited layer) on every node for its whole life. */
@@ -1806,7 +1844,6 @@
 
 .rd .rd-toast { animation: rd-enter var(--rd-enter-dur) var(--rd-fade) both; }
 .rd .rd-toast > [role=status] > .rd-icon { animation: rd-fade 170ms var(--rd-fade) backwards; }
-
 
 .rd .rd-utility-dialog[open],
 .rd .rd-utility-dialog[data-docked=true][open] { animation: rd-enter var(--rd-enter-dur) var(--rd-fade) both; }
@@ -2049,13 +2086,17 @@
 .reserve-shell .scratchpad-archive .backup-actions { margin: 12px 0 0; }
 
 
+/* 14. Course labels ---------------------------------------------------------
+   Short titles (ReserveCore.courseLabel) with the teacher or cohort beneath,
+   where a table row has room for it. */
 
-.rd .rd-grade-table th a > span small { display: block; margin-top: 1px; font-size: 11.5px; font-weight: 450; line-height: 1.4; color: var(--rd-muted); }
+.rd .rd-grade-table th :is(a, .rd-grade-open) > span small { display: block; margin-top: 1px; font-size: 11.5px; font-weight: 450; line-height: 1.4; color: var(--rd-muted); }
 .rd .rd-reader-course small { font-size: inherit; font-weight: 450; color: var(--rd-muted); }
 
 
 
 [data-reserve-embedded] .sidebar .nav-item[data-page=home] { display: flex; }
+/* 15. Dashboard focus controls ---------------------------------------------- */
 
 
 .rd .rd-tools .rd-focus-clock { margin-left: 2px; padding: 1px 7px; border-radius: 999px; background: var(--rd-soft); color: color-mix(in srgb, var(--rd-accent) 88%, var(--rd-ink)); font-size: 11px; font-weight: 600; line-height: 1.5; font-variant-numeric: tabular-nums; }
@@ -2164,6 +2205,12 @@
 }
 
 
+/* 16. Phone (600px and below) -------------------------------------------------
+   A floating header (a drawer circle, the tools as quiet circles), the course
+   rail as a left drawer (Esc, the scrim, × or any pick closes it), filters as
+   one scrolling row of pills, rows as white cards, a bottom "Add a reminder…"
+   bar, and the reader as a bottom sheet. Every toolbar feature stays reachable.
+   Drawer and sheet motion is immediate for keyboard input, Off and reduced motion. */
 @media (max-width: 600px) {
   
   .rd .rd-toolbar { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
@@ -2300,6 +2347,52 @@
 .rd .rd-tool-panel:is([data-tool-panel=ai],[data-tool-panel=gpa]) { height:100%; min-height:0; overflow:hidden; }
 .rd .rd-ai-frame { display:block; border:0; width:100%; height:100%; min-height:240px; background:var(--rd-surface,#FAF9F5); color-scheme:light; }
 .rd[data-theme=dark] .rd-ai-frame { color-scheme:dark; }
+
+/* The Motion add-on owns moving selection geometry. Without its script the
+   actual selected controls provide their own static, accessible feedback. */
+.rd[data-feature-motion=off] .t-tabs-pill,
+.rd[data-feature-motion=off] .rd-assignment-list::before,
+.rd[data-feature-motion=off] .rd-assignment-list::after,
+.rd[data-feature-motion=off] .rd-filter-group::before,
+.rd[data-feature-motion=off] .rd-reader-tabs::before { display: none; }
+.rd[data-feature-motion=off] .t-tab[aria-selected=true],
+.rd[data-feature-motion=off] .rd-reader-tab[aria-selected=true],
+.rd[data-feature-motion=off] .rd-filter-group [aria-pressed=true] { background: var(--rd-surface); box-shadow: var(--rd-chip); }
+.rd[data-feature-motion=off] .rd-assignment--selected,
+.rd[data-feature-motion=off] .rd-rail-course[data-selected=true] { background: var(--rd-tint); outline: 1px solid var(--rd-accent); outline-offset: -1px; }
+
+
+/* THE COLUMN STAYS WHERE THE STUDENT PUT IT. Right after a course opens the workspace lays its parts out again (the
+   desk toolbar, the arrange guide, the desk are removed and added back), and the browser's scroll anchoring took that
+   for content moving above what was in view: it scrolled the column to "follow" it, often to the very bottom.
+   Measured on a real Canvas: a course scrolled to 700px moved to 1092px, then 2062px (the bottom) within 4 seconds;
+   with anchoring off it stayed at 700px on five courses, also on the first load after a refresh. */
+.rd .rd-workspace, .rd .rd-workspace * { overflow-anchor: none; }
+
+/* Help tags for tests, worked examples and translations get their drawings. Help with this on a row is an empty tag
+   that waits beside them: it shows on the row's hover or focus (always on touch), and the help it makes hangs there. */
+.rd .rd-study-tag[data-kind=test] .rd-study-glyph { --glyph: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'12'%20height%3D'12'%20viewBox%3D'0%200%2012%2012'%3E%3Cg%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.25'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M2.6%201.6%20Q6%201.3%209.4%201.6%20Q9.7%206%209.4%2010.4%20Q6%2010.7%202.6%2010.4%20Q2.3%206%202.6%201.6%20Z'%2F%3E%3Cpath%20d%3D'M4.2%206.3%20L5.5%207.6%20L8%204.6'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"); }
+.rd .rd-study-tag[data-kind=examples] .rd-study-glyph { --glyph: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'12'%20height%3D'12'%20viewBox%3D'0%200%2012%2012'%3E%3Cg%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.25'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M1.6%2010.3%20H4.3%20V7.5%20H7.1%20V4.7%20H9.9%20V1.9'%2F%3E%3Cpath%20d%3D'M8.4%201.9%20H9.9%20V3.4'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"); }
+.rd .rd-study-tag[data-kind=translate] .rd-study-glyph { --glyph: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'12'%20height%3D'12'%20viewBox%3D'0%200%2012%2012'%3E%3Cg%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.25'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M1.8%203.9%20H9.4%20M7.6%202.1%20L9.6%203.9%20L7.6%205.7'%2F%3E%3Cpath%20d%3D'M10.2%208.1%20H2.6%20M4.4%206.3%20L2.4%208.1%20L4.4%209.9'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"); }
+.rd .rd-study-tag[data-kind=test] { --tag-wash: #F7D6CF; }
+.rd .rd-study-tag[data-kind=translate] { --tag-wash: #E6DDF0; }
+.rd[data-theme=dark] .rd-study-tag[data-kind=test] { --tag-wash: #5C3A35; }
+.rd[data-theme=dark] .rd-study-tag[data-kind=translate] { --tag-wash: #463D57; }
+.rd .rd-help-slot { display: inline-flex; align-items: center; }
+.rd .rd-help-tag { --tag-wash: transparent; color: var(--rd-muted); transition: color 140ms ease; }
+.rd .rd-help-tag::after { opacity: .6; }
+.rd .rd-help-tag .rd-study-glyph { transition: transform 260ms cubic-bezier(.3,1.6,.5,1); --glyph: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'12'%20height%3D'12'%20viewBox%3D'0%200%2012%2012'%3E%3Cg%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.25'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M6%201.3%20Q6.5%205.5%2010.7%206%20Q6.5%206.5%206%2010.7%20Q5.5%206.5%201.3%206%20Q5.5%205.5%206%201.3%20Z'%2F%3E%3Cpath%20d%3D'M10%201.6%20V3.2%20M9.2%202.4%20H10.8'%20stroke-width%3D'1'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"); transform-origin: 50% 50%; }
+.rd .rd-help-tag:is(:hover, :focus-visible) { --tag-wash: #F6DE9A; color: var(--rd-ink); }
+.rd .rd-help-tag:is(:hover, :focus-visible)::after { opacity: 1; }
+.rd[data-theme=dark] .rd-help-tag:is(:hover, :focus-visible) { --tag-wash: #5A4E2C; }
+.rd .rd-help-tag:is(:hover, :focus-visible) .rd-study-glyph { transform: rotate(-18deg) scale(1.25); }
+@media (hover: hover) and (pointer: fine) {
+  .rd[data-workspace=work] .rd-assignment .rd-help-slot { opacity: 0; pointer-events: none; transition: opacity 140ms ease; }
+  .rd[data-workspace=work] .rd-assignment:is(:hover, :focus-within) .rd-help-slot { opacity: 1; pointer-events: auto; }
+}
+.rd:is([data-motion-style=off], [data-motion-style=still]) .rd-help-tag .rd-study-glyph { transition: none; transform: none; }
+@media (prefers-reduced-motion: reduce) { .rd .rd-help-tag .rd-study-glyph { transition: none; transform: none; } }
+
 /* Top bar (owner, 2026-10-27). The tabs are words, the open
    one underlined by hand; the search sits on a dashed line. */
 .rd .rd-toolbar { padding: 6px 14px; border-radius: 16px; background: var(--rd-toolbar-plate, var(--rd-surface)); isolation: isolate; }
@@ -2315,3 +2408,84 @@
 .rd .rd-toolbar > .rd-bar-search input { border-radius: 0; background: transparent; box-shadow: none; }
 .rd .rd-toolbar > .rd-bar-search:focus-within { border-bottom: 1.6px solid var(--rd-mark); }
 .rd .rd-toolbar > .rd-bar-search input:focus-visible { box-shadow: none; }
+
+/* Drawn top bar (owner, 2026-10-27, direction A). Every control is a drawing: a tab is a small drawing in the drawn
+   Canvas menu bar's hand beside its word; the open tab is bold and its clay hand underline is drawn on when it opens;
+   a count is a tilted clay tag; the search is a drawn magnifier on a pen line with a drawn key; Show grades is a drawn
+   switch; Focus room, Tools, the settings and refresh drawings and Canvas dashboard are a drawing and a word, no box.
+   One 46 px row. Nothing idles: a drawing acts once on hover; Motion off, Still and reduced motion keep everything still.
+   (The row is 46 px on every page: the earlier .rd[data-workspace] .rd-toolbar rule outranked it, so the bar was 44 px on Home,
+   where the search stands in it, and 38 px everywhere else: every page change moved the whole page 6 px, and a room's
+   grow or fold restyled the whole dashboard for the rail's new top.) */
+.rd .rd-toolbar, .rd[data-workspace] .rd-toolbar { min-height: 46px; }
+.rd .rd-toolbar .rd-tb-ic { width: 20px; height: 20px; flex: none; overflow: visible; }
+.rd .rd-toolbar .rd-tb-ic .k { fill: none; stroke: var(--rd-ink); stroke-width: 1.35; stroke-linecap: round; stroke-linejoin: round; }
+.rd .rd-toolbar .rd-tb-ic .h { fill: none; stroke: var(--rd-ink); stroke-width: .8; stroke-linecap: round; opacity: .7; }
+.rd .rd-toolbar .rd-tb-ic .d { fill: var(--rd-ink); }
+.rd[data-theme=dark] .rd-toolbar .rd-tb-ic .w { opacity: .82; }
+.rd .rd-workspace-tabs .t-tab { display: inline-flex; align-items: center; gap: 6px; padding-inline: 8px 11px; }
+.rd .rd-workspace-tabs .t-tab[aria-selected=true] { font-weight: 600; }
+.rd .rd-workspace-tabs .t-tab[aria-selected=true]::after { left: 8px; right: 9px; bottom: 1px; animation: rd-tb-draw 300ms cubic-bezier(.3, 0, .2, 1) both; }
+@keyframes rd-tb-draw { 0% { clip-path: inset(0 100% 0 0); } 78% { clip-path: inset(0 -3px 0 0); } 100% { clip-path: inset(0 0 0 0); } }
+.rd .rd-workspace-tabs .rd-workspace-tab .rd-n:not([hidden]) { display: inline-grid; place-items: center; min-width: 16px; height: 16px; margin-left: 1px; padding: 0 4px; background: #C96442; color: #FFF8EC; font-size: 10.5px; font-weight: 700; line-height: 1; rotate: -6deg; clip-path: polygon(0 12%, 100% 0, 96% 100%, 4% 90%); }
+/* A theme kit paints the open tab in its accent; here its accent is the underline and the tab stays on the paper. */
+.rd.rd.rd.rd.rd.rd[data-theme-kit] .rd-toolbar .rd-workspace-tabs .rd-workspace-tab[aria-selected=true] { background: transparent !important; color: var(--rd-ink) !important; box-shadow: none !important; }
+.rd .rd-toolbar .rd-tools .rd-tb-tool, .rd .rd-toolbar .rd-tools .rd-toolbox-trigger, .rd .rd-toolbar .rd-tools .rd-button.rd-native-switch { display: inline-flex; align-items: center; gap: 6px; height: 32px; min-height: 32px; margin-left: 0; padding: 0 7px; border: 0; border-radius: 6px 9px 5px 8px; background: none; box-shadow: none; color: var(--rd-ink); font-size: 13px; font-weight: 450; text-decoration: none; }
+.rd .rd-toolbar .rd-tools .rd-icon-button { border: 0; border-radius: 6px 9px 5px 8px; background: none; box-shadow: none; }
+.rd .rd-toolbar .rd-tools .rd-tb-tool:hover, .rd .rd-toolbar .rd-tools .rd-toolbox-trigger:hover, .rd .rd-toolbar .rd-tools .rd-button.rd-native-switch:hover, .rd .rd-toolbar .rd-tools .rd-icon-button:hover { background: color-mix(in srgb, #F6DE9A 38%, transparent); box-shadow: none; }
+.rd[data-theme=dark] .rd-toolbar .rd-tools .rd-tb-tool:hover, .rd[data-theme=dark] .rd-toolbar .rd-tools .rd-toolbox-trigger:hover, .rd[data-theme=dark] .rd-toolbar .rd-tools .rd-button.rd-native-switch:hover, .rd[data-theme=dark] .rd-toolbar .rd-tools .rd-icon-button:hover { background: color-mix(in srgb, #F6DE9A 14%, transparent); }
+.rd .rd-toolbar .rd-tools .rd-icon-button .rd-tb-ic { width: 19px; height: 19px; }
+.rd .rd-toolbar kbd { isolation: isolate; display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border: 0; border-radius: 0; background: none; box-shadow: none; font: 600 10.5px/1 var(--rd-ui-font, "Segoe UI", system-ui); color: var(--rd-ink); }
+.rd .rd-toolbar .rd-toolbox-trigger kbd { position: relative; }
+.rd .rd-toolbar kbd > .rd-tb-key { position: absolute; left: -1px; top: -1px; z-index: -1; width: calc(100% + 3px); height: calc(100% + 4px); overflow: visible; }
+.rd .rd-toolbar .rd-tb-key .s { fill: var(--rd-ink); opacity: .16; }
+.rd .rd-toolbar .rd-tb-key .f { fill: var(--rd-surface); stroke: var(--rd-ink); stroke-width: 1.1; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.rd .rd-toolbar > .rd-bar-search { position: relative; border-bottom: 0; }
+.rd .rd-toolbar > .rd-bar-search:focus-within { border-bottom: 0; }
+.rd .rd-toolbar > .rd-bar-search > .rd-tb-mag { width: 18px; height: 18px; }
+.rd .rd-toolbar > .rd-bar-search > .rd-tb-line { position: absolute; left: 26px; bottom: 0; width: calc(100% - 26px); height: 5px; overflow: visible; pointer-events: none; }
+.rd .rd-toolbar .rd-tb-line path { fill: none; stroke: var(--rd-ink); stroke-width: 1.1; stroke-linecap: round; opacity: .55; vector-effect: non-scaling-stroke; }
+.rd .rd-toolbar > .rd-bar-search:focus-within > .rd-tb-line path { stroke: var(--rd-mark, var(--rd-accent)); stroke-width: 1.6; opacity: 1; }
+.rd .rd-toolbar .rd-grade-switch .rd-switch-track.rd-tb-switch { width: 38px; height: 22px; border-radius: 12px; background: none; box-shadow: none; }
+.rd .rd-toolbar .rd-grade-switch .rd-switch-track.rd-tb-switch::after { content: none; }
+.rd .rd-toolbar .rd-tb-switch svg { display: block; width: 38px; height: 22px; overflow: visible; }
+.rd .rd-toolbar .rd-tb-switch .wash { fill: color-mix(in srgb, var(--rd-ink) 12%, var(--rd-surface)); transition: fill 180ms ease; }
+.rd .rd-toolbar .rd-tb-switch .line { fill: none; stroke: var(--rd-ink); stroke-width: 1.3; stroke-linejoin: round; }
+.rd .rd-toolbar .rd-tb-switch .knob { transition: transform 220ms cubic-bezier(.3, 1.5, .5, 1); }
+.rd .rd-toolbar .rd-tb-switch .knob path { fill: var(--rd-surface); stroke: var(--rd-ink); stroke-width: 1.3; }
+.rd .rd-toolbar .rd-tb-switch .knob .glint { fill: none; stroke-width: .8; opacity: .6; }
+.rd .rd-toolbar .rd-grade-switch input:checked + .rd-tb-switch .wash { fill: var(--rd-switch-on, #C96442); }
+.rd .rd-toolbar .rd-grade-switch input:checked + .rd-tb-switch .knob { transform: translateX(17px); }
+.rd .rd-toolbar .rd-grade-switch input:checked + .rd-switch-track.rd-tb-switch { background: none; }
+.rd .rd-toolbar .rd-tb-ic .x-needle { transform-box: view-box; transform-origin: 20px 27px; }
+.rd .rd-toolbar .rd-tb-ic .x-rings { transform-box: fill-box; transform-origin: 50% 100%; }
+.rd .rd-toolbar .rd-tb-ic .x-flag { transform-box: view-box; transform-origin: 33px 21.6px; }
+.rd .rd-toolbar .rd-tb-ic .x-lean { transform-box: fill-box; transform-origin: 0% 100%; }
+.rd .rd-workspace-tabs .t-tab:hover .x-needle { animation: rd-tb-needle 1s ease-in-out; }
+.rd .rd-workspace-tabs .t-tab:hover .x-rings { animation: rd-tb-rings 520ms ease-out; }
+.rd .rd-workspace-tabs .t-tab:hover .x-flag { animation: rd-tb-flag 900ms ease-in-out; }
+.rd .rd-workspace-tabs .t-tab:hover .x-lean { animation: rd-tb-lean 900ms ease-in-out; }
+@keyframes rd-tb-needle { 30% { transform: rotate(-46deg); } 65% { transform: rotate(16deg); } }
+@keyframes rd-tb-rings { 40% { transform: translateY(-2px); } 70% { transform: translateY(.5px); } }
+@keyframes rd-tb-flag { 0% { transform: rotate(80deg); } 55% { transform: rotate(-8deg); } 100% { transform: none; } }
+@keyframes rd-tb-lean { 40% { transform: rotate(-7deg); } 72% { transform: rotate(2deg); } }
+.rd[data-motion-style=off] .rd-workspace-tabs .t-tab[aria-selected=true]::after, .rd[data-motion-style=still] .rd-workspace-tabs .t-tab[aria-selected=true]::after, .rd[data-feature-motion=off] .rd-workspace-tabs .t-tab[aria-selected=true]::after { animation: none; }
+.rd[data-motion-style=off] .rd-toolbar .rd-tb-ic *, .rd[data-motion-style=still] .rd-toolbar .rd-tb-ic *, .rd[data-feature-motion=off] .rd-toolbar .rd-tb-ic * { animation: none !important; }
+.rd[data-motion-style=off] .rd-toolbar .rd-tb-switch *, .rd[data-motion-style=still] .rd-toolbar .rd-tb-switch *, .rd[data-feature-motion=off] .rd-toolbar .rd-tb-switch * { transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .rd .rd-workspace-tabs .t-tab[aria-selected=true]::after { animation: none; }
+  .rd .rd-toolbar .rd-tb-ic *, .rd .rd-toolbar .rd-tb-switch * { animation: none !important; transition: none !important; }
+}
+
+/* The rooms over the page (dashboard.js): the Review deck's reading room and Grade impact's weighing room are a layer
+   of their own in the workspace column's place, over the page, which keeps its layout and its paint under them. The
+   layer's box is the column's (its host takes the column's grid area and the shell's height; it has the column's
+   scrollbar gutter), so a room stands exactly where it stood as a page. A room built ahead of time, and one that has
+   folded away, stand behind the page, see-through, until they are shown or let go. The host is no stacking context and
+   lets presses through, so the layers stack with the page itself. No containment on a layer: a part of a room may be
+   lifted out of it over the whole window (a card brought to the middle), as a layer of its own. A layer is composited
+   in every state, so showing it, hiding it and its moves never change what is painted. */
+.rd .rd-shell > .rd-roomhost { position: absolute; grid-column: -2 / -1; inset: 0; min-width: 0; pointer-events: none; }
+.rd .rd-roomhost > .rd-roomlayer { position: absolute; inset: 0; z-index: 3; pointer-events: auto; will-change: opacity; box-sizing: border-box; min-width: 0; overflow-x: clip; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-gutter: stable; }
+.rd .rd-roomhost > .rd-roomlayer[data-state=leaving] { z-index: 2; }
+.rd .rd-roomhost > .rd-roomlayer:is([data-state=spare], [data-state=gone]) { z-index: -1; opacity: 0; }

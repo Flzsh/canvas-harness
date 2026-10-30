@@ -13,15 +13,13 @@ const sha=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 const escapeRE=value=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 const term=parts=>escapeRE(parts.join(''));
 // Keep policy strings assembled so this tool can pass the same content scan.
+// 4.0 ships Your AI (agent-*, study-*, ai-api*, overnight*), so the 3.x rules that kept those runtime modules out of the
+// package are retired; private names, development switches and debugging hooks stay barred.
 const RULES=[
- ['R01','\\b'+term(['agent-'])+'(?!clock\\b)[a-z0-9_.-]+\\.(?:[cm]?js|css|html?)\\b'],
- ['R02','(?<![\\w-])(?:'+term(['study-'])+'[a-z0-9_.-]+|'+term(['ai-api'])+'[a-z0-9_.-]*|'+term(['overnight'])+'[a-z0-9_.-]*)\\.(?:[cm]?js|css|html?)\\b'],
- ['R03','\\b(?:'+term(['pony-study-'])+'[a-z0-9_.-]+|'+term(['pony-review-'])+'[a-z0-9_.-]+)\\b'],
  ['R04',term(['reserve:','de','v'])+'[a-z0-9:_-]*'],
  ['R05','\\b'+term(['w','ra','.instructure','.com'])+'\\b'],
  ['R06','(?<![A-Za-z0-9+/])'+term(['C','H','+'])+'(?![A-Za-z0-9+/=])'],
  ['R07','\\b'+term(['As','tra'])+'\\b'],
- ['R08','\\b'+term(['canvas-harness-study-','prep'])+'\\b'],
  ['R09','\\b(?:__|Reserve|CanvasHarness|CH[_$])[\\w$]*(?:Ti'+'ming|De'+'bug|Tr'+'ace|Pe'+'rf)[\\w$]*','authored'],
  ['R10','\\bconsole\\s*\\.\\s*(?:time(?:End|Log)?|profile(?:End)?)\\s*\\(','authored'],
  ['R11','\\bperformance\\s*\\.\\s*(?:mark|measure|clearMarks|clearMeasures)\\s*\\(','authored']
@@ -275,7 +273,7 @@ function auditRelease({unpackedDir,manifestPath=path.join(ROOT,'dist/release-man
    if(result.status===0)summary.counts.jsChecked++;else errors.push('node --check failed for '+name+': '+(result.stderr||result.stdout||'exit '+result.status).trim().slice(0,4000));
   }
  }
- summary.ok=errors.length===0;const version=summary.version||'3.8.0',destination=path.resolve(outputPath||path.join(path.dirname(manifestPath),'audit-'+version+'.json'));
+ summary.ok=errors.length===0;const version=summary.version||'3.99.1',destination=path.resolve(outputPath||path.join(path.dirname(manifestPath),'audit-'+version+'.json'));
  const same=(a,b)=>process.platform==='win32'?a.toLowerCase()===b.toLowerCase():a===b,outputRelative=path.relative(unpackedDir,destination);
  ensure(!same(destination,manifestPath),'summary output must not overwrite the release manifest');
  if(summary.inputs.archive)ensure(!same(destination,summary.inputs.archive),'summary output must not overwrite the archive');

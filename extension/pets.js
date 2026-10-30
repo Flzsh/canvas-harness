@@ -28,8 +28,8 @@
  };
  const Brain=()=>root.ReservePonyBrain,Ask=()=>root.ReservePonyAsk,Parse=()=>root.ReserveBiscuitParse;
  const SIZES={small:46,medium:58,large:74};
- const ROAM=['page','home','off'],NUDGES=['helpful','quiet','off'],GEAR=['full','collar','none'],KNOWLEDGE=['basic','more','most'];
  // What a level needs, and what it opens. Levels only go up.
+ const ROAM=['page','home','off'],NUDGES=['helpful','quiet','off'],GEAR=['full','collar','none'],KNOWLEDGE=['basic','more','most'];
  const LEVEL_XP=[0,30,80,150,250,380,540,740,980,1260];
  const UNLOCKS={coat:{oat:1,chestnut:1,dapple:2,sage:4,rose:6,ink:8},harness:{red:1,clay:1,gold:3,forest:3,ocean:5,iris:7}};
  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -42,6 +42,7 @@
   if(typeof v.enabled==='boolean')out.enabled=v.enabled;
   if(Object.hasOwn(v,'knowledge')&&KNOWLEDGE.includes(v.knowledge))out.knowledge=v.knowledge;
   if(typeof v.name==='string'&&v.name.trim())out.name=v.name.trim().slice(0,24);
+  if(Object.hasOwn(v,'knowledge')&&KNOWLEDGE.includes(v.knowledge))out.knowledge=v.knowledge;
   if(art?.COATS[v.coat])out.coat=v.coat;if(art?.HARNESS[v.harness])out.harness=v.harness;
   if(GEAR.includes(v.gear))out.gear=v.gear;
   if(ROAM.includes(v.roam))out.roam=v.roam;
@@ -136,30 +137,57 @@
    read:{down:11.5,neck:29,head:14},
    eat:{down:0,neck:60,head:22}
  };
- const CUSTOM_FALLBACK={trot:'walk',lie:'sleep'},customMedia=new WeakMap();
- function customPose(pack,value='stand'){return Object.hasOwn(pack.poses,value)?value:Object.hasOwn(CUSTOM_FALLBACK,value)?CUSTOM_FALLBACK[value]:'stand';}
- function customDrawing(pack,value='stand',face='right',still=false){
-  if(!pack)return null;
-  let pose=customPose(pack,value),selected=pack.assets[pack.poses[pose]];
-  if(still&&selected.animated&&!selected.svg)pose='stand';
-  const asset=root.ReservePetPack?.pose?root.ReservePetPack.pose(pack,pose,still):pack.assets[pack.poses[pose]];
-  let urls=customMedia.get(asset);
-  if(!urls){
-    const moving=asset.svg?'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(asset.svg):'data:'+asset.type+';base64,'+asset.data;
-    urls={moving,still:asset.svg?'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(asset.still):asset.firstFrame||moving};
-    customMedia.set(asset,urls);
-  }
-  return {pose,src:still?urls.still:urls.moving,width:pack.size[0],height:pack.size[1],ground:pack.ground,mirror:face!==pack.faces};
- }
- function create({container,getPet,getCustomPet=()=>null,savePet,claimNudge,claimOffer,claimEngineOffer,info=()=>({}),actions={},now=()=>Date.now()}){
+ const PetArt=()=>root.ReservePetArt||(typeof module==='object'&&module.exports?require('./pet-art.js'):null),
+   customPose=(...args)=>PetArt().customPose(...args),
+   customDrawing=(...args)=>PetArt().customDrawing(...args);
+ function create({
+   container,
+   getPet,
+   getCustomPet=()=>null,
+   getData=()=>null,
+   store=null,
+   savePet,
+   claimNudge,
+   claimOffer,
+   claimEngineOffer,
+   info=()=>({}),
+   actions={},
+   now=()=>Date.now()
+ }){
   if(root.ReserveSite?.vanillaPage(root.location))return null;
   const doc=container.ownerDocument||root.document,
     win=doc.defaultView||root,
     art=root.ReservePetArt,
     E=value=>root.ReserveUI?.escapeHTML?root.ReserveUI.escapeHTML(value):String(value).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
   let pet=clean(getPet()),layer=null,node=null,bubble=null,dead=false,film=0,timer=0,last=0,next=0,debt=0,stepping=false,pose='stand',face='right';
-  let custom=null,drawingNode=null,customImage=null,customSource='';
-  let spot={ledge:null,u:160},grab=null,releaseGrab=null,menuOpen=false,focusing=false,quietUntil=pet.brain?.quietUntil||0,lastInput=now(),sayTimer=0,unseen=0;
+  let custom=null,
+    customMotion='gentle',
+    drawingNode=null,
+    customImage=null,
+    customSource='',
+    personal=getData(),
+    hydratedPet=null,
+    hydrationKey='',
+    hydrationPending='',
+    hydrationAt=-Infinity,
+    hydrationRevision=0;
+  const companion=()=>art.identity(personal||pet,custom),companionName=()=>companion().name;
+  function hydrateCustom(){
+   const selected=art.identity(personal),key=selected.id?selected.id+'|'+selected.sourceName:'';
+   if(key!==hydrationKey){hydrationRevision++;hydrationKey=key;hydrationPending='';hydratedPet=null;hydrationAt=-Infinity;if(!key)art.clearHydration(store);}
+   if(!key||art.identity(personal,getCustomPet()).pack||hydratedPet||hydrationPending===key||now()-hydrationAt<5000||!store?.owner)return;
+   const turn=++hydrationRevision;
+   hydrationPending=key;
+   hydrationAt=now();
+   Promise.resolve(art.hydrate(personal,{store})).then(pack=>{
+     if(dead||turn!==hydrationRevision)return;
+     hydratedPet=pack;
+     if(node){dress();invalidate();}
+   }).catch(()=>{}).finally(()=>{
+     if(turn===hydrationRevision)hydrationPending='';
+   });
+  }
+  let spot={ledge:null,u:160},grab=null,releaseGrab=null,menuOpen=false,focusing=false,quietUntil=0,lastInput=now(),sayTimer=0,unseen=0;
   let thought={mood:'calm',dueToday:0,suggestions:[]},
     snapshot={},
     thoughtKey='',
@@ -248,10 +276,8 @@
     if(knowledgeLoad)await knowledgeLoad;
     if(dead||turn!==submitTurn||version!==bubbleVersion||knowledgeChoice()!==tier||!menuOpen||!input||input.value.trim()!==text)return;
     if(text!==askText||!askChoices.length)previewAsk({target:input,flush:true});
-    if(askChoices[askSelected])void useCandidate(askChoices[askSelected]);else if(text&&!engine)afterSlip('Try a line:',{suggestions:['Dark mode','Open planner','Focus 25','Note: bring goggles','Help']});
+    if(askChoices[askSelected])void useCandidate(askChoices[askSelected]);
   }
-  const companionName=()=>pet.name;
-  const engineRows=c=>c?.items?.length?c.items:(Array.isArray(c?.choices)?c.choices.slice(0,3):[]);
   const activeUse=createActivity({now,storage:()=>win.sessionStorage,hidden:()=>doc.hidden});
   // what it is doing: null (resting), a walk, or a jump; and the eased numbers
   let goal=null,rest='stand',speed=0,phase=0,follow=0,reel=0,reelDue=0,reelEvery=0,offFilm=null,filmAt=-Infinity,filmTick=0;const ch={leg:0,down:0,neck:9,head:0,alpha:1};
@@ -268,8 +294,10 @@
     layoutAnimations=new WeakSet(),
     bubbleBox={w:250,h:120};
   const filmNow=()=>win.performance?.now?.()??now(),motionMedia=win.matchMedia?.('(prefers-reduced-motion: reduce)');let motionChange=null;
-  const reduced=()=>menuOpen||['off','still'].includes(container.dataset.motionStyle)||!!motionMedia?.matches;
-  const size=()=>custom?custom.size[0]:SIZES[pet.size]||SIZES.medium,height=()=>custom?custom.size[1]:size()*64/72,ground=()=>custom?custom.ground:height()*60/64;
+  const reduced=()=>menuOpen||['off','still'].includes(container.dataset.motionStyle)||customMotion!=='gentle'||!!motionMedia?.matches;
+  const size=()=>custom?custom.size[0]*(SIZES[pet.size]||SIZES.medium)/SIZES.medium:SIZES[pet.size]||SIZES.medium,
+    height=()=>custom?size()*custom.size[1]/custom.size[0]:size()*64/72,
+    ground=()=>custom?height()*custom.ground/custom.size[1]:height()*60/64;
   const visible=()=>pet.enabled&&pet.roam!=='off'&&!(pet.brain?.hiddenUntil>now());
   function mount(){
    if(layer||dead)return;
@@ -279,11 +307,13 @@
    node.addEventListener('pointerdown',down);node.addEventListener('click',click);node.addEventListener('keydown',key);
     for(const type of ['animationstart','animationend','animationcancel'])node.addEventListener(type,resetReels);
    win.addEventListener('scroll',invalidate,{passive:true,capture:true});win.addEventListener('resize',invalidate,{passive:true});
-   container.addEventListener('scroll',invalidate,{passive:true,capture:true});   // the workspace column scrolls inside the workspace
+   // the workspace column scrolls inside the workspace
+   container.addEventListener('scroll',invalidate,{passive:true,capture:true});
    for(const type of ['load','transitionrun','transitionend','transitioncancel','animationend','animationcancel'])container.addEventListener(type,invalidate,{passive:true,capture:true});
    doc.fonts?.addEventListener?.('loadingdone',invalidate);
    const mounted=++life;offFilm=root.ReserveMotion?.onFilmTick?.(onFilm)||null;
    motionChange=()=>{if(mounted!==life)return;dress();resetReels();invalidate();};motionMedia?.addEventListener?.('change',motionChange);
+   // a bubble that grows (a preview line appears) keeps its bottom above the pet instead of growing down over it
    if(win.ResizeObserver)
      resizeWatch=new win.ResizeObserver(entries=>{
        if(mounted!==life)return;
@@ -309,9 +339,9 @@
    doc.addEventListener('pointermove',seen,{passive:true});doc.addEventListener('keydown',seen,{passive:true});
    for(const type of ['input','beforeinput','compositionstart','compositionend','pointerdown','pointerup','pointercancel','dragstart','dragend'])
      doc.addEventListener(type,activity,{passive:true,capture:true});
-   doc.addEventListener('visibilitychange',wake);win.addEventListener('pagehide',saveActivity);
    // Geometry events follow modules immediately; input also checks for an unobserved position change.
-   dress();home();place();paint();plan(1400);resetReels();
+   doc.addEventListener('visibilitychange',wake);win.addEventListener('pagehide',saveActivity);
+   dress();home();place();paint();plan(1400);roll();
     if(Brain()){refreshBrain();checkSchedule();startBrain();}
   }
   function unmount(){
@@ -379,6 +409,9 @@
   // and set to the film's time instead: 24 frames a second while someone uses the page, 12 after, none while the tab is
   // hidden. A loop between two keyframes that say the same thing (a blink's long open stretch) is not written at all.
   // Only endless loops: a short one (a hop, the book appearing) plays as written. Reduced motion has none.
+  // An answer's rows: its items, or for a clarifying question that picks nothing (several homeworks match) the choices
+  // it offers to tap.
+  const engineRows=c=>c?.items?.length?c.items:(Array.isArray(c?.choices)?c.choices.slice(0,3):[]);
   const reels=new Map();let reelsDirty=true,reelStarted=false;
   // The first reel waits until the page has drawn: reading every animation forces a full restyle, which on a slow
   // laptop cost a quarter second of the dashboard's start. The drawing simply plays as written until then.
@@ -408,11 +441,11 @@
    }catch{return null;}
   }
   function roll(){
-   clearTimeout(reel);reel=0;if(!node||dead||doc.hidden||menuOpen)return;
+   clearTimeout(reel);reel=0;if(!node||dead||doc.hidden||menuOpen)return;if(roomBusy()){scheduleReel(1200);return;}
    if(custom||reduced()){reels.clear();reelsDirty=true;return;}
    reelStarted=true;
+    // every state is read before any time is written, so Chrome restyles once a frame, not once a loop
     const t=now();
-   // every state is read before any time is written, so Chrome restyles once a frame, not once a loop
     if(reelsDirty){
      reelsDirty=false;let list=[];try{list=node.getAnimations?.({subtree:true})||[];}catch{reelsDirty=true;}
      const live=new Set();
@@ -451,7 +484,12 @@
    if(film&&at>=next-Math.min(tick,FILM)+4){clearTimeout(film);film=0;next=at;frame();}
   }
   function refreshDrawing(){
-   const value=getCustomPet()||null;if(value===custom&&drawingNode===node)return;custom=value;customSource='';rig=null;
+   const selected=art.identity(personal||pet,getCustomPet()||hydratedPet),value=selected.pack;
+   customMotion=selected.motion;
+   if(value===custom&&drawingNode===node)return;
+   custom=value;
+   customSource='';
+   rig=null;
    if(custom){
     ch.leg=ch.down=0;ch.neck=9;ch.head=0;
     if(!customImage||drawingNode!==node){
@@ -464,7 +502,7 @@
       node.replaceChildren(customImage);
     }
     customImage.width=custom.size[0];customImage.height=custom.size[1];
-   }else{customImage=null;node.innerHTML=art.svg({title:pet.name});}
+   }else{customImage=null;node.innerHTML=art.svg({title:companionName()});}
    drawingNode=node;resetReels();
   }
   function drawCustom(){
@@ -477,7 +515,18 @@
    node.style.setProperty('--pet-coat',c.coat);node.style.setProperty('--pet-shade',c.shade);node.style.setProperty('--pet-mane',c.mane);node.style.setProperty('--pet-muzzle',c.muzzle);
    node.style.setProperty('--pet-harness',art.HARNESS[pet.harness]||art.HARNESS.red);node.style.setProperty('--pet-size',size()+'px');
    node.style.width=custom?size()+'px':'';node.style.height=custom?height()+'px':'';node.style.aspectRatio=custom?`${size()} / ${height()}`:'';
-    if(node.dataset.gear!==pet.gear){node.dataset.gear=pet.gear;resetReels();}node.setAttribute('aria-label',`${pet.name}, your ${custom?'companion':'pony'}. Open ${pet.name}'s menu`);
+    if(node.dataset.gear!==pet.gear){node.dataset.gear=pet.gear;resetReels();}
+    const name=companionName();
+    node.setAttribute('aria-label',`${name}, your companion. Open ${name}'s menu`);
+    node.querySelector('svg')?.setAttribute('aria-label',name);
+    const question=bubble?.querySelector('[data-pet-question]');
+    if(question)question.setAttribute('aria-label','Ask '+name);
+   if(bubble){
+     bubble.setAttribute('aria-label',name);
+     for(const label of bubble.querySelectorAll('[data-companion-ask]'))label.textContent='Ask '+name;
+     const avatar=bubble.querySelector('[data-companion-art]');
+     if(avatar){const markup=companionDrawing();if(avatar._drawing!==markup){avatar._drawing=markup;avatar.innerHTML=markup;}}
+   }
     const still=String(reduced());
     if(node.dataset.still!==still){
       node.dataset.still=still;
@@ -500,8 +549,8 @@
   // A snapshot is measured on external changes and before decisions, never by a movement/easing frame. Keep the same drawn
   // outlines and hit tests; caching the rectangles must not turn words, controls, or unruled modules into ground.
   let sides=new WeakMap();const drawn=color=>!!color&&color!=='transparent'&&!/,\s*0\)$/.test(color);
-  const framed=()=>container.dataset.panelFrame!=='none';
   // These metadata writes cannot move a ledge. Other ARIA states can change CSS layout (or hit tests).
+  const framed=()=>container.dataset.panelFrame!=='none';
   const cosmeticAttributes=new Set(['aria-label','aria-labelledby','aria-describedby','aria-controls','aria-activedescendant','aria-live','aria-atomic','aria-busy','title','tabindex']);
   function clockTick(r){
    const el=r.type==='characterData'?r.target.parentElement:r.target;if(!el?.closest?.('[data-rd-focus-clock]'))return false;
@@ -530,7 +579,7 @@
    const rect=el=>{if(!rects.has(el))rects.set(el,el.getBoundingClientRect());return rects.get(el);};
    const floor={el:null,y:height-5,x0:14,x1:width-14,floor:true,shown:true};
    const read=el=>{
-    if(!el)return floor;if(places.has(el))return places.get(el);if(!el.isConnected)return null;
+    if(!el)return floor;if(places.has(el))return places.get(el);if(!el.isConnected||underRoom(el))return null;
     const r=rect(el),side=sides.get(el);if(r.width<120||!side&&r.height<30){places.set(el,null);return null;}
     const inside=el.dataset.petLedge==='inside',y=inside?r.bottom-9:side==='bottom'?r.bottom:r.top+1;
     const l={el,inside,paddock:inside,y,x0:r.left+(inside?26:18),x1:r.right-(inside?26:18),shown:y>96&&y<height-6&&r.right>60&&r.left<width-60};places.set(el,l);return l;
@@ -574,7 +623,10 @@
    }
    measureBubble();
   }
-  function ledgeFor(el){return el?(el.isConnected?geometry?.places.get(el)||null:null):geometry?.floor||null;}
+  // A room over the page (dashboard.js: the Review deck's, Grade impact's) hides the page under it: a ledge on that page
+  // is no ledge while it is hidden (the companion stands on the floor, as when the room was a page of its own).
+  const underRoom=el=>!!el?.closest?.('.rd-shell > .rd-workspace[aria-hidden="true"]');
+  function ledgeFor(el){return el?(el.isConnected&&!underRoom(el)?geometry?.places.get(el)||null:null):geometry?.floor||null;}
   function ledges(){if(!geometry)measurePlaces();else if(dirty)invalidate();return geometry.all;}
   function cancelPlaces(){
     decisionPending=false;
@@ -600,10 +652,29 @@
     };
     layoutFrame=win.requestAnimationFrame?win.requestAnimationFrame(afterFrame):setTimeout(afterFrame,16);
   }
+  // While a room covers the page (the Focus room) or one of the rooms' moves is playing (they stamp data-ch-moving with
+  // when it ends), the companion keeps still: its measuring, deciding and reel reading took the frames the move needed.
+  // It catches up once the move is over, when the browser is idle.
+  // (the Review deck's and Grade impact's full pages count as rooms too: the pony keeps still over them and while they fold)
+  const roomBusy=()=>{
+    try{
+      return !!container.hasAttribute?.('data-ch-room')||Number(container.dataset?.chMoving||0)>Date.now()||!!container.querySelector?.('.gi-room:not([data-gi-away]), [data-review-deck]');
+    }catch{return false;}
+  };
+  let placesLater=0;
+  function refreshLater(){
+    if(placesLater||dead)return;
+    placesLater=setTimeout(()=>{
+      const run=()=>{placesLater=0;if(!dead)refreshPlaces();};
+      if(win.requestIdleCallback)win.requestIdleCallback(run,{timeout:1000});else run();
+    },450);
+    placesLater?.unref?.();
+  }
   function refreshPlaces(){
     clearTimeout(layoutTimer);
     layoutTimer=0;
     if(!node||dead||doc.hidden)return;
+    if(roomBusy()){if(spot.ledge&&underRoom(spot.ledge)&&!grab&&!goal)place();refreshLater();return;}
     measurePlaces();
     if(menuOpen){place();placeBubble();return;}
     if(decisionPending){decisionPending=false;decide(true);}
@@ -620,8 +691,8 @@
     if(!node||grab||doc.hidden||layoutFrame||layoutTimer)return;if(!resizeWatch||!layoutWatch){invalidate();return;}if(film||!spot.ledge)return;
    const r=spot.ledge.getBoundingClientRect(),old=geometry?.rects.get(spot.ledge);if(!spot.ledge.isConnected||!old||['left','top','right','bottom'].some(k=>r[k]!==old[k]))invalidate();
   }
-  const current=()=>ledgeFor(spot.ledge)||ledgeFor(null);
   // A SPOT IS FREE when nothing the student reads or uses is under the pony's body there: no words, no button, link or
+  const current=()=>ledgeFor(spot.ledge)||ledgeFor(null);
   // field, no drawing. (It stood on top of an assignment's title, in the user's screenshot, 2026-10-15.) Asked only when
   // it chooses where to go, a handful of points under its outline, never on a frame.
   const USED='a,button,input,select,textarea,summary,label,[role=button],[role=link],[role=tab],svg,img,canvas,video';
@@ -705,8 +776,8 @@
    if(!node)return;
    if(custom){const opacity=ch.alpha<.995?ch.alpha.toFixed(2):'';if(node.style.opacity!==opacity)node.style.opacity=opacity;return;}
    const p=parts(),leg=Math.sin(phase)*ch.leg,down=ch.down,bob=-Math.abs(Math.sin(phase))*ch.leg*.055;
-   const neck=ch.neck+(pose==='eat'?Math.sin(phase*2.4)*2.5:leg*.12),fold=(1-down/14.6).toFixed(3);
    // in the air, held, or cheering, the stylesheet poses the legs and shadow itself
+   const neck=ch.neck+(pose==='eat'?Math.sin(phase*2.4)*2.5:leg*.12),fold=(1-down/14.6).toFixed(3);
    const free=pose==='fall'||pose==='held'||pose==='cheer';
    put(p.up,'transform',`translateY(${(down+bob).toFixed(2)}px)`);
    put(p.neck,'transform',`rotate(${neck.toFixed(2)}deg)`);put(p.head,'transform',`rotate(${ch.head.toFixed(2)}deg)`);
@@ -725,7 +796,7 @@
   function settle(as,ms){goal=null;rest=as;setPose(as);run();plan(ms);}
   function decide(measured=false){
    timer=0;if(!node||dead)return;
-   if(doc.hidden)return;
+   if(doc.hidden)return;if(roomBusy()){plan(1500);return;}
    if(menuOpen||grab||goal){plan(2500);return;}
     if(dirty){decisionPending=true;invalidate();return;}if(!measured)measurePlaces();const data=Brain()?snapshot:info(),idle=now()-lastInput,here=current();
    if(focusing){settle('read',20000);return;}
@@ -736,7 +807,8 @@
     const all=ledges(),to=pet.roam==='home'?all.find(l=>l.paddock):all.filter(l=>!l.paddock&&!l.floor)[0]||all[all.length-1];
     if(to&&(to.el!==here.el)){if(here.shown)jumpTo(to);else appear(to);return;}
    }
-   if(idle>25000){settle('sleep',30000);return;}   // the same idle rest as the drawings (motion.js)
+   // the same idle rest as the drawings (motion.js)
+   if(idle>25000){settle('sleep',30000);return;}
    // standing on something the student reads or uses (a list refreshed under it): step off it first
    if(!free(here,spot.u)){moveOff(here);return;}
    // while someone is scrolling or typing, it keeps still: a walk then only draws the eye
@@ -778,8 +850,8 @@
   }
   const ease=(key,to,rate,dt)=>{const d=to-ch[key];if(Math.abs(d)<.02){ch[key]=to;return false;}ch[key]+=d*Math.min(1,rate*dt);return true;};
   function frame(){
-   film=0;if(!node||dead||doc.hidden||menuOpen)return;const t=filmNow();debt+=Math.max(0,(t-last)/1000);last=t;let busy=!!goal;
    // Retain the 60 Hz integrator in memory, including acceleration, braking and easing, but commit only one drawing
+   film=0;if(!node||dead||doc.hidden||menuOpen)return;const t=filmNow();debt+=Math.max(0,(t-last)/1000);last=t;let busy=!!goal;
    // per film tick. Elapsed time survives a late callback; missed drawings are skipped, never replayed in a burst.
    stepping=true;try{while(debt+1e-9>=STEP){busy=step(STEP);debt=Math.max(0,debt-STEP);if(!busy){debt=0;break;}}}finally{stepping=false;}
    setPose(pose,face);if(!grab&&goal?.type!=='jump')place();else if(!grab)moveTo(node._x,node._y);paint();
@@ -789,14 +861,16 @@
    let busy=false;
    const want=POSE[goal?'stand':rest]||POSE.stand;
    if(goal?.type==='walk'){
-    if(ch.down>.6){busy=true;}            // get up first
+    // get up first
+    if(ch.down>.6){busy=true;}
     else{
      const dist=goal.to-spot.u,dir=dist>=0?1:-1,brake=Math.sqrt(2*90*Math.abs(dist))+2,target=Math.min(goal.max,brake);
-     if(Math.sign(speed)!==dir&&Math.abs(speed)>4)speed+=dir*220*dt;   // turning: slow to a stop before setting off the other way
+     // turning: slow to a stop before setting off the other way
+     if(Math.sign(speed)!==dir&&Math.abs(speed)>4)speed+=dir*220*dt;
      else speed=dir*Math.min(target,Math.abs(speed)+70*dt);
      const trot=Math.abs(speed)>40;
-     if(Math.abs(speed)>3)setPose(trot?'trot':'walk',speed>0?'right':'left');
      // the legs turn over as fast as the ground passes under them, so the feet do not slide
+     if(Math.abs(speed)>3)setPose(trot?'trot':'walk',speed>0?'right':'left');
      spot.u+=speed*dt;phase+=Math.abs(speed)*dt*(trot?15.5:21.9)/size();
      if(Math.abs(dist)<1.2||dir*(goal.to-spot.u)<=0){
        spot.u=goal.to;
@@ -821,7 +895,8 @@
      }
      g.t+=dt/(g.t<0?1:g.dur);
      const l=ledgeFor(g.target.el)||g.target,end={x:l.x0+g.u,y:l.y};
-     if(g.t<0){ch.down=3.2*(1-Math.abs(g.t)/.16);}                    // a short crouch before it goes
+     // a short crouch before it goes
+     if(g.t<0){ch.down=3.2*(1-Math.abs(g.t)/.16);}
      else{
       const p=clamp(g.t,0,1),e=g.drop?p*p:p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2,lift=g.drop?0:clamp(Math.abs(end.x-g.from.x)*.22+Math.max(0,g.from.y-end.y)*.25+26,30,90);
       if(pose!=='fall')setPose('fall');ch.down=0;
@@ -847,7 +922,8 @@
   // ---- picking it up
   function down(event){
    if(!node||dead||doc.hidden||event.button!==undefined&&event.button!==0)return;releaseGrab?.();const held=node;
-   const start={x:event.clientX,y:event.clientY,id:event.pointerId,moved:false};try{node.setPointerCapture?.(start.id);}catch{}   // held from the first press, so a quick pull cannot slip off
+   // held from the first press, so a quick pull cannot slip off
+   const start={x:event.clientX,y:event.clientY,id:event.pointerId,moved:false};try{node.setPointerCapture?.(start.id);}catch{}
    const move=e=>{
     if(node!==held||dead||doc.hidden||e.pointerId!==start.id)return;
     if(!start.moved&&Math.hypot(e.clientX-start.x,e.clientY-start.y)<7)return;
@@ -870,8 +946,8 @@
    const up=e=>{
     if(e.pointerId!==start.id)return;
     release();if(node!==held||dead||doc.hidden||!start.moved)return;
-    node.dataset.grabbed='false';node._suppress=now()+350;grab=null;
     // set down on the nearest place at or below the feet
+    node.dataset.grabbed='false';node._suppress=now()+350;grab=null;
     const x=node._x,y=node._y,under=ledges().filter(l=>x>=l.x0-10&&x<=l.x1+10&&l.y>=y-14).sort((a,b)=>a.y-b.y)[0]||ledgeFor(null);
     goal={type:'jump',target:under,u:clamp(x-under.x0,10,Math.max(10,under.x1-under.x0-10)),t:0,drop:true,from:{x,y},dur:clamp(Math.sqrt(Math.max(0,under.y-y))/38,.14,.6)};
     rest='stand';
@@ -892,6 +968,15 @@
     if(node._suppress&&now()<node._suppress){event.preventDefault();return;}
     if(nudgeOpen){snooze();return;}
     if(menuOpen)closeBubble();else openMenu();
+  }
+  function ask(){
+    if(dead||!node)return false;
+    if(nudgeOpen)closeBubble();
+    if(node.dataset.pose==='sleep')setPose('stand');
+    if(!menuOpen)openMenu();
+    const input=bubble?.querySelector('[data-pet-question]');
+    input?.focus();
+    return !!input;
   }
   function key(event){if(event.key==='Escape'&&menuOpen){event.preventDefault();closeBubble();node.focus();}}
   // ---- what it says
@@ -930,9 +1015,9 @@
   function show(html,{menu=false,ms=0}={}){
    closeBubble();if(!layer)return;
    bubble=doc.createElement('div');bubble.className='pet-bubble';bubble.innerHTML=html;
+   bubble.setAttribute('aria-label',companionName());
    if(menu){
-     bubble.setAttribute('role',Brain()||Parse()?'dialog':'menu');
-     bubble.setAttribute('aria-label',pet.name);
+     bubble.setAttribute('role','dialog');
      menuOpen=true;
      node.setAttribute('aria-expanded','true');
      goal=null;
@@ -972,6 +1057,7 @@
        ...data,
        biscuitMoreRules:moreRules(data),
        ...(catalogueRows?{catalogue:catalogueRows}:{}),
+       ...(personal?{settings:personal.settings}:{}),
        companion:{name:companionName()},
        now:now(),
        pet:{name:companionName(),knowledge:pet.knowledge,treats:pet.treats,roam:pet.roam,nudges:pet.nudges},
@@ -1090,7 +1176,7 @@
        pet=clean(claimed);
        engineMemory.lastOffer=now();
        if(manners().typing||manners().dragging||manners().hidden||focusing)return;
-       show(`<p class="pet-say">${E(offer.label)}</p><div class="pet-items">${suggestionItems([offer],false)}</div>`,{ms:11000});
+       show(`<div class="pet-items">${suggestionItems([offer],false)}</div>`,{ms:11000});
        expose([offer]);
      };
      if(claimEngineOffer){claiming=true;Promise.resolve(claimEngineOffer(offer,snapshot,state)).then(display).catch(()=>{}).finally(()=>{claiming=false;});}
@@ -1113,17 +1199,22 @@
      if(!input||dead)return;
      refreshBrain();
      askText=input.value.trim();
-     engineCard=engine.evaluate(askText,{...snapshot,now:now()},engineSession);
+     const world={...snapshot,now:now()};
+     engineCard=(askText&&root.ReserveBiscuitControls?.featureControl?.(askText,world))||engine.evaluate(askText,world,engineSession);
      askChoices=askText?[{intent:engineCard.next.action,fields:engineCard.next.fields,preview:engineCard.message,engine:engineCard,line:askText}]:[];
      askSelected=0;
      updatePreview();
      const rows=bubble?.querySelector('[data-biscuit-rows]');
      if(rows){
-       rows.innerHTML=engineRows(engineCard).map((v,i)=>`<button type="button" class="pet-item biscuit-row" data-pet-action="engine-row" data-pet-choice="${i}">${E(v.title)}${v.subtitle?`<small>${E(v.subtitle)}</small>`:''}</button>`).join('');
+       rows.innerHTML=engineRows(engineCard).map((v,i)=>`<button type="button" class="pet-item biscuit-row" data-pet-action="engine-row" data-pet-choice="${i}">${E(v.title)}${v.subtitle?`<small>${E(v.subtitle)}</small>`:''}</button>`).join('')+(engineCard.ai?`<button type="button" class="pet-item" data-pet-action="engine-ai">Ask AI</button>`:'');
        rows.hidden=!askText;
      }
    }
-   function askForm(value=''){const label='Ask '+companionName();return `<form class="biscuit-ask" data-pet-ask><label class="rd-field"><span>${E(label)}</span><input type="text" maxlength="240" data-pet-question aria-label="${E(label)}" value="${E(value)}" autocomplete="off" aria-controls="biscuit-preview"></label></form>`;}
+   function companionDrawing(){
+     const markup=art.drawing(personal||pet,custom);
+     return markup.startsWith('<svg ')?`<img class="pet-svg" src="${E('data:image/svg+xml;charset=utf-8,'+encodeURIComponent(markup.replace(/class="[^"]*"/g,'').replace(/^<svg (?![^>]*xmlns=)/,'<svg xmlns="http://www.w3.org/2000/svg" ')))}" alt="" draggable="false">`:markup;
+   }
+   function askForm(value=''){const label='Ask '+companionName();return `<form class="biscuit-ask" data-pet-ask><label class="rd-field"><span style="display:flex;align-items:center;gap:8px"><span class="biscuit-ask-art" data-companion-art aria-hidden="true">${companionDrawing()}</span><span data-companion-ask>${E(label)}</span></span><input type="text" maxlength="240" data-pet-question aria-label="${E(label)}" value="${E(value)}" autocomplete="off" aria-controls="biscuit-preview"></label></form>`;}
    function updatePreview(){
      const line=bubble?.querySelector('[data-pet-preview]'),choice=askChoices[askSelected];
      if(line){
@@ -1228,18 +1319,15 @@
       const result=await entry();
       if(result===false||result?.ok===false){afterSlip(result?.message||'Could not undo. Try again.',{undo:true});return;}
       undoChanges.pop();
+      if(Object.hasOwn(result||{},'plan'))rememberAction(engineSession,'plan',{operation:'undo'},result);
       afterSlip(result?.message||'Undone.',{undo:!!undoChanges.length,reload:result?.reload});
     }catch{afterSlip('Could not undo. Try again.',{undo:true});}finally{commandBusy=false;}
    }
-   async function useCandidate(choice){
+   function rememberLocalAction(intent,fields,result){if(!dead)rememberAction(engineSession,intent,fields,result);}
+    async function useCandidate(choice){
     if(commandBusy)return;
     const fields=choice.fields||{};
-    if(['ai','study','practice','reading','lab','rubric','fixes','ready'].includes(choice.intent)){afterSlip('Try a line:',{suggestions:['Dark mode','Open planner','Focus 25','Help']});return;}
-    if(['none','chat'].includes(choice.intent)){
-      if(choice.engine)engineCard=choice.engine;
-      afterSlip(choice.preview,{choices:engineRows(choice.engine),suggestions:choice.engine?.suggestions||[]});
-      return;
-    }
+    if(['none','chat'].includes(choice.intent)){if(choice.engine)engineCard=choice.engine;afterSlip(choice.preview,{choices:engineRows(choice.engine)});return;}
     if(choice.engine){
       engineSession.items=choice.engine.items;
       engineSession.query=choice.line;
@@ -1247,13 +1335,17 @@
       engineSession.courseId=fields.courseId||choice.engine.items[0]?.courseId;
     }
     if(choice.intent==='undo'){closeBubble();await undoChange();return;}
-    if(choice.intent==='help'||choice.intent==='navigate'&&fields.tab==='help'&&Object.keys(fields).every(key=>key==='tab')){
+    if(choice.intent==='help'||
+      choice.intent==='navigate'&&['today','tdy','help'].includes(fields.tab)&&Object.keys(fields).every(key=>key==='tab')||
+      choice.intent==='module'&&fields.key==='today'&&fields.action==='show'&&Object.keys(fields).every(key=>['key','action'].includes(key))){
       afterSlip('Try a line:',{suggestions:['Dark mode','Hide the clock','Go to the planner','Note: bring goggles','25 minute focus','Undo']});
       return;
     }
-    const kind=choice.intent==='pet'?
-      fields.action:
-      choice.intent==='open'?(exposed.find(s=>s.action==='open'&&(!fields.itemId||s.data?.itemId===fields.itemId))?.kind||'next'):choice.intent==='focus-control'?'focus':choice.intent;
+    const kind=choice.intent==='study'?
+      ({quiz:'practice',fix:'fixes'}[fields.action]||fields.action):
+      choice.intent==='pet'?
+        fields.action:
+        choice.intent==='open'?(exposed.find(s=>s.action==='open'&&(!fields.itemId||s.data?.itemId===fields.itemId))?.kind||'next'):choice.intent==='focus-control'?'focus':choice.intent;
     exposed=exposed.filter(s=>s.kind!==kind);
     closeBubble();
     const version=bubbleVersion,previous=clean(getPet());
@@ -1280,9 +1372,11 @@
      else{
       const action=actions[choice.intent]||
         (root.ReserveBiscuitRegistry?.execute?data=>root.ReserveBiscuitRegistry.execute(choice.intent,data,{snapshot,actions,now:now()}):null),
-        data=choice.intent==='focus'||choice.intent==='break'?
-          {...fields,explicit:true}:
-          choice.intent==='plan'?{...fields,mode:fields.endDate?'week':fields.date&&fields.date!==Ask()?.calendar(snapshot.timeZone)(now()).day?'tomorrow':'tonight'}:fields;
+        data=choice.intent==='ai'?
+          {question:fields.handoff?.wishes||fields.text,handoff:fields.handoff}:
+          choice.intent==='focus'||choice.intent==='break'?
+            {...fields,explicit:true}:
+            choice.intent==='plan'?{...fields,mode:fields.endDate?'week':fields.date&&fields.date!==Ask()?.calendar(snapshot.timeZone)(now()).day?'tomorrow':'tonight'}:fields;
       result=action?await action(data):false;ok=!!action&&result!==false&&result?.ok!==false;
      }
      if(ok){
@@ -1292,7 +1386,8 @@
         if(keys.length)
           undo=()=>save({...pet,...Object.fromEntries(keys.map(key=>[key,previous[key]]))},value=>({...value,...Object.fromEntries(keys.map(key=>[key,previous[key]]))}));
       }
-      if(undo){undoChanges.push(undo);if(undoChanges.length>20)undoChanges.shift();}rememberAction(engineSession,choice.intent,fields,result);
+      if(undo){undoChanges.push(undo);if(undoChanges.length>20)undoChanges.shift();}
+       rememberLocalAction(choice.intent,fields,result);
      }
     }catch{ok=false;}finally{commandBusy=false;}
     if(!dead)learn([[kind,ok?'used':'ignored']]);
@@ -1300,14 +1395,15 @@
     if(choice.intent==='focus-status'&&ok&&typeof result==='string'){say(result);return;}
     if(ok&&undo)afterSlip(result?.message||choice.preview,{undo:true,reload:result?.reload});
     else if(result?.message)afterSlip(result.message,{reload:result.reload,suggestions:result.suggestions});
-    else if(!ok)afterSlip(['setting','preset','navigate','bookmark'].includes(choice.intent)?'That feature is off or unavailable. Check Make it yours → Features.':'Unavailable');
+    else if(!ok&&choice.intent!=='ai')
+      afterSlip(['setting','preset','navigate','bookmark','study','installed'].includes(choice.intent)?'That feature is off or unavailable. Check Make it yours \u2192 Features.':choice.intent==='break'?'No break started: a break comes after a focus session ends.':'Unavailable');
    }
    async function runPet(fields){
      if(fields.action==='treat')return treat();
      if(fields.action==='home'){const ok=await save({...pet,roam:'home'},current=>({...current,roam:'home'}));if(ok!==false)plan(300);return ok!==false;}
      if(fields.action==='hide'){snooze(fields.minutes);return true;}
      if(fields.action==='quiet'){return (await save({...pet,nudges:'quiet'},current=>({...current,nudges:'quiet'})))!==false;}
-     if(fields.action==='off'){afterSlip('The Pony switch is in the extension popup → Pony.');return false;}
+     if(fields.action==='off'){afterSlip('The Companion switch is in the extension popup \u2192 Companion.');return false;}
      if(fields.action==='settings'){if(!actions.settings)return false;return (await actions.settings())!==false;}
      return false;
    }
@@ -1355,10 +1451,12 @@
    bubble.querySelector('.pet-item:not([disabled])')?.focus({preventScroll:true});
   }
   function openMenu(){
-   if(!Brain()&&!Parse()){legacyMenu();return;}
-   void loadKnowledge();refreshBrain();const list=thought.suggestions.slice(0,2);
+   void loadKnowledge();
+   refreshBrain();
+   const offer=engine?.offer({...snapshot,now:now()},{},{brain:pet.brain}),list=engine?(offer&&offer.kind!=='reminder'?[offer]:[]):thought.suggestions.slice(0,2);
     show(`${askForm()}<button type="button" id="biscuit-preview" class="biscuit-preview" data-pet-preview data-pet-action="ask-choice" data-pet-choice="0" aria-live="polite" style="display:none" hidden></button>${engine?'<div class="biscuit-rows" data-biscuit-rows hidden></div>':''}<div class="pet-items biscuit-suggestions" data-pet-suggestions>${suggestionItems(list)}</div>`,{menu:true});expose(list);
-   (bubble.querySelector('[data-pet-question]')||bubble.querySelector('.pet-item:not([disabled])'))?.focus({preventScroll:true});void loadCatalogue(true);
+   (bubble.querySelector('[data-pet-question]')||bubble.querySelector('.pet-item:not([disabled])'))?.focus({preventScroll:true});
+   void loadCatalogue(true);
   }
   function treat(){
    if(!pet.treats||!node)return false;
@@ -1381,7 +1479,12 @@
   function onBubble(event){
    const b=event.target.closest?.('[data-pet-action]');if(!b||b.disabled)return;
    const what=b.dataset.petAction;
-   if(what==='open'||what==='focus'){const data=info();if(data.next){closeBubble();actions[what]?.({itemId:data.next.id,...(what==='focus'?{minutes:25}:{})});}return;}
+   if(what==='engine-row'){
+     const list=engineRows(engineCard),row=list[Number(b.dataset.petChoice)];
+     if(row)void useCandidate({intent:row.action||'open',fields:row.fields,preview:'Open '+row.title,engine:{...engineCard,items:[row,...list.filter(v=>v!==row)]},line:askText});
+     return;
+   }
+   if(what==='engine-ai'){if(engineCard?.ai)void useCandidate({intent:'ai',fields:engineCard.ai.fields,preview:'Ask AI'});return;}
    if(what==='undo'){void undoChange();return;}
    if(what==='reload'){actions.reload?.();return;}
    if(what==='ask'){openMenu();return;}
@@ -1425,13 +1528,26 @@
     return savePet?.(pet,patch,mutate);
   }
   // ---- called by the workspace
-  function sync(){const outer=syncInfo;syncInfo={data:null};try{syncNow();}finally{syncInfo=outer;}}
+  // While a room's move plays (data-ch-moving), the companion's upkeep in a render (its brain, offers, nudges: the
+  // Biscuit engine's offer among them) waits until the move has landed and the browser is idle. In the render that swaps
+  // a room's page for Home it was an eighth of the fold's long task at 4x CPU, for a companion that keeps still then.
+  let syncWait=0;
+  function sync(){
+   const until=layer&&!dead?Number(container.dataset?.chMoving||0)-Date.now():0;
+   if(until>0){
+     if(!syncWait)
+       syncWait=setTimeout(()=>{const go=()=>{syncWait=0;if(!dead)sync();};if(win.requestIdleCallback)win.requestIdleCallback(go,{timeout:1000});else go();},until+40);
+     return;
+   }
+   const outer=syncInfo;syncInfo={data:null};try{syncNow();}finally{syncInfo=outer;}
+  }
   function syncNow(){
    if(dead)return;
    const before=pet.knowledge,roam=pet.roam,more=snapshot.biscuitMoreRules;
    pet=clean(getPet());
+   personal=getData();
+   hydrateCustom();
    void loadKnowledge();
-   quietUntil=pet.brain?.quietUntil||0;
    if(!visible()){unmount();scheduleReturn();return;}
     if(!layer)mount();else{dress();if(!container.contains(layer)){container.append(layer);rig=null;resetReels();}if(!moveForRoam(roam))invalidate();}
    refreshBrain();
@@ -1459,9 +1575,9 @@
     }
     if(was!==focusing&&layer&&!grab){if(focusing){goal=null;speed=0;if(!menuOpen){closeBubble();settle('read',20000);}}else if(!menuOpen)plan(400);}
   }
-  function destroy(){dead=true;catalogueTurn++;submitTurn++;knowledgeTurn++;clearTimeout(previewTimer);clearTimeout(hideTimer);unmount();}
-  void loadKnowledge();if(visible())mount();else scheduleReturn();
-  return {sync,celebrate,setFocus,say,treat,destroy,get pet(){return pet;}};
+  function destroy(){dead=true;clearTimeout(syncWait);hydrationRevision++;catalogueTurn++;submitTurn++;knowledgeTurn++;clearTimeout(hideTimer);unmount();}
+  hydrateCustom();void loadKnowledge();if(visible())mount();else scheduleReturn();
+  return {sync,celebrate,setFocus,say,treat,ask,destroy,get pet(){return pet;}};
  }
  function rememberAction(session,intent,fields={},result={},depth=0){
    if(!session||typeof session!=='object'||result?.ok!==true||depth>1)return false;
@@ -1549,26 +1665,26 @@
   if(after?.courseId||before?.courseId)session.lastCourseId=after?.courseId||before.courseId;
   return true;
  }
-  const api={
-    DEFAULTS,
-    SIZES,
-    ROAM,
-    NUDGES,
-    GEAR,
-    KNOWLEDGE,
-    LEVEL_XP,
-    UNLOCKS,
-    level,
-    levelProgress,
-    unlocked,
-    clean,
-    reward,
-    feed,
-    createActivity,
-    customPose,
-    customDrawing,
-    rememberAction,
-    create
-  };
+ const api={
+   DEFAULTS,
+   SIZES,
+   ROAM,
+   NUDGES,
+   GEAR,
+   KNOWLEDGE,
+   LEVEL_XP,
+   UNLOCKS,
+   level,
+   levelProgress,
+   unlocked,
+   clean,
+   reward,
+   feed,
+   createActivity,
+   customPose,
+   customDrawing,
+   rememberAction,
+   create
+ };
  root.ReservePets=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

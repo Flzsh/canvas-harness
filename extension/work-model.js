@@ -34,10 +34,15 @@
     return parsed === null ? Date.now() : parsed;
   }
 
+  // A zone is checked once: building a date formatter on every call was a real share of each render.
+  var safeZones = new Map();
   function safeTimeZone(value) {
     var timeZone = typeof value === 'string' && value ? value : DEFAULT_TIME_ZONE;
+    if (safeZones.has(timeZone)) return safeZones.get(timeZone);
     try {
       new Intl.DateTimeFormat('en-US', { timeZone: timeZone }).format(new Date(0));
+      if (safeZones.size >= 12) safeZones.clear();
+      safeZones.set(timeZone, timeZone);
       return timeZone;
     } catch (_error) {
       return DEFAULT_TIME_ZONE;

@@ -487,22 +487,47 @@
    }
   }
   const unsubscribe=store.subscribe(data=>{personal=data;poolCache=null;if(dialog?.open&&tool==='quick')renderResults();});
-  return {open:(next,source)=>open(next,source),askAI,capture,collapse,expand,close,isOpen:()=>!dead&&!!dialog?.open,update(){
-    if(!dead){poolCache=null;aiPanel?.update();gpaPanel?.update();}
-  },destroy(){
-    if(dead)return;
-    rememberCapture();
-    dead=true;
-    if(leaving)root.clearTimeout(leaving);
-    dockResize?.destroy();
-    aiPanel?.destroy();
-    gpaPanel?.destroy();
-    toolMotion?.destroy();
-    unsubscribe?.();
-    dialog?.remove();
-    panels.clear();
-    notifyDock();
-  }};
+   return {open:(next,source)=>open(next,source),helpWith(context={}){
+     if(dead||!toolEnabled('ai'))return false;
+     open('ai');
+     if(context.itemId&&context.page==='assignment'&&!String(context.selectedText||'').trim()&&aiPanel?.helpItem)return aiPanel.helpItem(context)===true;
+     return aiPanel?.helpWith?.(context)===true;
+   },askAI(question,handoff){
+     if(dead||!toolEnabled('ai'))return false;
+     open('ai');
+     return aiPanel?.setQuestion?.(question,handoff)===true;
+   },openPrepareReply(run){
+     if(dead||!toolEnabled('ai'))return false;
+     open('ai');
+     return aiPanel?.openPrepareReply?.(run)??false;
+   },openAgentLog(){
+     if(dead||!toolEnabled('ai'))return false;
+     open('ai');
+     return aiPanel?.openAgentLog?.()===true;
+   },studyAI(kind,itemId){
+     if(dead||!toolEnabled('ai')||!['practice','reading','lab','rubric','fixes','notes','steps','outline','message','summary','flashcards'].includes(kind))return false;
+     open('ai');
+     return aiPanel?.setStudy?.({kind,itemId})===true;
+   },openAid(key,options){
+     if(dead||!toolEnabled('ai'))return false;
+     open('ai');
+     return aiPanel?.openAid?.(key,options)===true;
+   },capture,collapse,expand,close,isOpen:()=>!dead&&!!dialog?.open,update(){
+     if(!dead){poolCache=null;aiPanel?.update();gpaPanel?.update();}
+   },destroy(){
+     if(dead)return;
+     rememberCapture();
+     dead=true;
+     if(leaving)root.clearTimeout(leaving);
+     dockResize?.destroy();
+     aiPanel?.destroy();
+     gpaPanel?.destroy();
+     toolMotion?.destroy();
+     unsubscribe?.();
+     dialog?.remove();
+     panels.clear();
+     notifyDock();
+   }};
  }
  root.ReserveToolbox={create,sections};if(typeof module!=='undefined'&&module.exports)module.exports=root.ReserveToolbox;
 })(globalThis);

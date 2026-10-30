@@ -49,7 +49,7 @@ test('a display:none rail does not retry until an external invalidation reveals 
 });
 
 test('rail input changes still invalidate without ResizeObserver',async t=>{
- const s=setup({observers:false});t.after(()=>s.f.dashboard.destroy());s.clear();await s.f.store.update(data=>{data.settings.font='serif';});assert.ok(s.events.includes('read:height'));s.clear();await s.f.store.update(()=>{});assert.deepEqual(s.events,[]);
+ const s=setup({observers:false});t.after(()=>s.f.dashboard.destroy());s.clear();await s.f.store.update(data=>{data.settings.font='serif';});s.f.tick(0);assert.ok(s.events.includes('read:height'));s.clear();await s.f.store.update(()=>{});s.f.tick(0);assert.deepEqual(s.events,[]);
 });
 
 test('changing the visually hidden status or the owned html class does not invalidate rail geometry',t=>{

@@ -105,3 +105,5 @@
  const api={addDays,weekdayOf,mondayOf,week,minutes,parseQuick,matchCourse,entries,day,board,plan,estimate,carryOver,addTask};
  root.ReservePlanner=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);
+
+(function(R){if(!R)return;R.source('planner','planner','planner');R.source('reminders','reminders','reminder');})(globalThis.ReserveBiscuitRegistry);

@@ -60,17 +60,134 @@
   for(let i=1;i<points.length-1;i++)path+=` Q ${points[i][0]} ${points[i][1]} ${(points[i][0]+points[i+1][0])/2} ${(points[i][1]+points[i+1][1])/2}`;
   const last=points.at(-1);return path+` L ${last[0]} ${last[1]}`;
  }
+ function resolveQuotedMark(slot,mark,{document:doc,model,cache}={}){
+  if(!mark.quote||mark.rects?.length)return mark;
+  const key=JSON.stringify([mark.page,mark.quote]),cached=cache?.get(key);
+  if(cached?.length)return {...mark,rects:cached.map(rect=>rect.slice())};
+  if(!doc?.createTreeWalker||!doc.createRange||!slot?.textLayer||!slot.node||!slot.viewport||!model?.locateQuote)return mark;
+  const walker=doc.createTreeWalker(slot.textLayer,4),nodes=[],parts=[];
+  let node,previous=null;
+  while((node=walker.nextNode())){
+    if(!node.textContent)continue;
+    const group=node.parentElement?.closest?.('span:not(.markedContent)')||null;
+    nodes.push(node);
+    parts.push({text:node.textContent,join:!!group&&group===previous});
+    previous=group;
+  }
+  const found=model.locateQuote(parts,mark.quote);
+  if(!found)return mark;
+  let range;
+  try{
+    range=doc.createRange();
+    range.setStart(nodes[found.start.index],found.start.offset);
+    range.setEnd(nodes[found.end.index],found.end.offset);
+    const bounds=slot.node.getBoundingClientRect(),
+      rects=Array.from(range.getClientRects()).filter(r=>r.width>0&&r.height>0).map(r=>
+        model.rectToPdf(slot.viewport,[r.left-bounds.left,r.top-bounds.top,r.right-bounds.left,r.bottom-bounds.top])).filter(r=>
+        r.every(Number.isFinite)&&r[0]<r[2]&&r[1]<r[3]);
+    if(!rects.length)return mark;
+    if(cache){cache.set(key,rects.map(rect=>rect.slice()));while(cache.size>512)cache.delete(cache.keys().next().value);}
+    return {...mark,rects};
+  }catch{return mark;}finally{range?.detach?.();}
+ }
+ async function prepareExportAnnotations({
+   pdf,
+   library,
+   document:doc,
+   model,
+   annotations,
+   slots=[],
+   cache=new Map(),
+   readText=page=>page.getTextContent(),
+   active=()=>true,
+   signal,
+   onStatus=()=>{}
+ }={}){
+  const ensure=()=>{if(signal?.aborted||!active())throw Object.assign(Error('PDF export cancelled: the reader or Canvas account changed.'),{name:'AbortException'});};
+  ensure();
+  if(!pdf||!Number.isSafeInteger(pdf.numPages)||typeof pdf.getPage!=='function')throw Error('This PDF is not available for export.');
+  const marks=model.createAnnotations({version:1,annotations}).annotations,groups=new Map();
+  let cancelCurrent=null;
+  const cancel=()=>{try{cancelCurrent?.();}catch{}};
+  signal?.addEventListener('abort',cancel,{once:true});
+  try{
+    for(let index=0;index<marks.length;index++){
+      ensure();
+      const mark=marks[index];
+      if(!mark.quote)continue;
+      if(mark.page>=pdf.numPages)throw Error('A highlighted quote refers to missing page '+(mark.page+1)+'.');
+      marks[index]=resolveQuotedMark(slots[mark.page],mark,{document:doc,model,cache});
+      if(marks[index].rects.length)continue;
+      if(!groups.has(mark.page))groups.set(mark.page,[]);
+      groups.get(mark.page).push(index);
+    }
+   for(const [pageIndex,indices]of groups){
+     ensure();
+     onStatus(pageIndex+1);
+     let page,shell,task;
+     try{
+       page=await pdf.getPage(pageIndex+1);
+       ensure();
+       const viewport=page.getViewport({scale:1}),content=await readText(page,fn=>{cancelCurrent=fn;if(signal?.aborted)cancel();});
+       ensure();
+       if(typeof library?.TextLayer!=='function'||!doc?.body)throw Error('PDF text layout is unavailable for highlighted quotes.');
+       shell=doc.createElement('section');
+       shell.className='pdf-page';
+       shell.setAttribute('aria-hidden','true');
+       shell.setAttribute('inert','');
+       Object.assign(shell.style,{position:'fixed',left:'-100000px',top:'0px',width:viewport.width+'px',height:viewport.height+'px',visibility:'hidden',pointerEvents:'none'});
+       shell.style.setProperty('--total-scale-factor',viewport.scale*(viewport.userUnit||1));
+       shell.style.setProperty('--scale-round-x','1px');
+       shell.style.setProperty('--scale-round-y','1px');
+       const layer=doc.createElement('div');
+       layer.className='textLayer';
+       shell.append(layer);
+       doc.body.append(shell);
+       task=new library.TextLayer({textContentSource:content,container:layer,viewport});
+       cancelCurrent=()=>task.cancel();
+       await task.render();
+       ensure();
+       const slot={index:pageIndex,node:shell,textLayer:layer,viewport};
+       for(const index of indices){
+         marks[index]=resolveQuotedMark(slot,marks[index],{document:doc,model,cache});
+         if(!marks[index].rects.length)throw Error('The highlighted quote on page '+(pageIndex+1)+' could not be located. No marked copy was saved.');
+       }
+     }
+    finally{cancelCurrent=null;try{task?.cancel();}catch{}shell?.remove();if(page&&!slots.some(slot=>slot?.page===page))try{page.cleanup?.();}catch{}}
+   }
+   ensure();
+   const notes=marks.filter(mark=>mark.quote&&mark.text?.trim()).map((mark,index)=>
+     ({id:('export-note-'+index+'-'+mark.id).slice(0,100),type:'note',page:mark.page,color:mark.color,point:[mark.rects[0][2],mark.rects[0][3]],text:mark.text}));
+   return [...marks,...notes];
+  }finally{signal?.removeEventListener('abort',cancel);}
+ }
+ function appendHighlightNote(menu,mark,doc){
+   if(!mark.quote||typeof mark.text!=='string'||!mark.text.trim())return null;
+   const note=doc.createElement('div'),label=doc.createElement('div'),text=doc.createElement('p');
+   note.className='mark-note';
+   note.setAttribute('role','note');
+   note.setAttribute('aria-label','Highlight note');
+   Object.assign(note.style,{flexBasis:'100%',width:'100%',maxWidth:'min(360px, calc(100vw - 32px))'});
+   label.textContent='Note';
+   Object.assign(label.style,{fontSize:'12px',fontWeight:'600',margin:'0 2px 3px'});
+   text.textContent=mark.text;
+   Object.assign(text.style,{whiteSpace:'pre-wrap',overflowWrap:'anywhere',fontSize:'12px',lineHeight:'1.45',margin:'0 2px 6px'});
+   note.append(label,text);
+   menu.append(note);
+   return note;
+ }
  function createReader(env=root,{library=null,model=env.ReservePdfModel}={}){
+  const featureEnabled=id=>!env.ReserveFeatures||env.ReserveFeatures.enabled(id);
   let aiEnabled=false,selectionAI=null;
-  const canAI=()=>aiEnabled;
+  const canAI=()=>aiEnabled&&featureEnabled('ai');
   const doc=env.document,$=id=>doc.getElementById(id),scroll=$('page-scroll');
   const query=new URLSearchParams(env.location.search),parentOrigin=query.get('parentOrigin'),token=query.get('token');
   let alive=true,initialised=false,loading=null,pdf=null,lib=library,worker=null,pdfWorker=null,meta=null,storageWritable=false,teardown=Promise.resolve();
   let originalBytes=null,spread=false,maximised=false,accountTurn=0,accountWait=null,session=null;const sessions=new Map();
-  let exportJob=null;
+  const quoteCache=new Map();let exportJob=null;
   let slots=[],visible=new Set(),currentPage=0,zoom=1,fit=true,tool='',colour='#F6DE7A',annotations=model.createAnnotations();
   let saveTimer=0,searchTimer=0,searchRevision=0,searchCursor=0,searchBusy=false;
-  let matches=[],matchIndex=-1,searchQuery='',searchComplete=false,selection=null,noteDraft=null,stroke=null;
+  let matches=[],matchIndex=-1,searchQuery='',searching=false,searchComplete=false,selection=null,noteDraft=null,stroke=null;
   let idleId=0,idleFallback=false,thumbReady=false,sideOpen=false,sideTab='thumbnails',thumbObserver=null;
   const thumbVisible=new Set(),thumbButtons=[],buttons={},off=new AbortController(),signal=off.signal;
   const textReaders=new Set(),cancelledReaders=new WeakSet();let textGeneration=0;
@@ -205,8 +322,7 @@
    buttons.zoomIn=makeButton('zoomIn','Zoom in (+)',()=>setZoom(zoom*1.2));
    buttons.fit=makeButton('fit','Fit page width',()=>{fit=true;fitWidth();});buttons.fit.setAttribute('aria-pressed','true');
    buttons.spread=makeButton('spread','Two pages side by side',toggleSpread);buttons.spread.setAttribute('aria-pressed','false');
-   buttons.search=makeButton('search','Find in document (Ctrl or Command F)',()=>toggleSearch());
-   buttons.ai=makeButton('ai','Ask AI about pages of this PDF',()=>openAskRange());buttons.ai.setAttribute('aria-haspopup','dialog');
+   buttons.ai=makeButton('ai','Help with this',()=>openAskRange());buttons.ai.setAttribute('aria-haspopup','dialog');
    buttons.save=makeButton('save','Save a copy with my marks',()=>void saveWithMarks(),$('heading-actions'));
    // Canvas's own viewer for this file; a button there ("Open in Harness reader") switches back
    buttons.canvasView=makeButton('canvasView',"Open in Canvas's own viewer",()=>toCanvasViewer(),$('heading-actions'));
@@ -221,10 +337,9 @@
    buttons.download=download;
    buttons.fullscreen=makeButton('fullscreen','Fill the window',()=>send('reserve-pdf-fullscreen'),$('heading-actions'));
    buttons.close=makeButton('close','Close PDF reader (Escape)',close,$('heading-actions'));
-   makeButton('prev','Previous search match',()=>findNext(-1),$('find-actions'));
-   makeButton('next','Next search match',()=>findNext(1),$('find-actions'));
-   makeButton('close','Close search',()=>toggleSearch(false),$('find-actions'));
-   // Use only the search icon's magnifier inside the drawn find field.
+   makeButton('prev','Previous search match',()=>findNext(-1),$('find-actions'));makeButton('next','Next search match',()=>findNext(1),$('find-actions'));
+   // The find field's magnifier: the search icon's glass alone (no page behind it), framed tightly so the pill's
+   // rounded edge never crosses it. pdf-art.js is generated, so the glass is cut out here.
    $('find-icon').innerHTML=String(env.ReservePdfArt.icons.search||'').replace(/<path fill="#FFFFFF" d="M2\.9[\s\S]*?<g class="pa-text">[\s\S]*?<\/g>/,'').replace('viewBox="0 0 32 32"','viewBox="5.5 5.5 25 25"');
    for(const name of TOOLS)buttons[name]=makeButton(name,LABELS[name],()=>{
     setTool(name);if(!tool)return;
@@ -240,7 +355,11 @@
     const b=doc.createElement('button');b.type='button';b.className='swatch';b.title=name+' highlight';b.setAttribute('aria-label',name+' highlight');b.style.setProperty('--swatch',value);menu.append(b);
     listen(b,'click',()=>{prefs.highlight.color=value;savePrefs();paintToolColours();annotateSelection('highlight');});
    }
-   for(const [name,label,action]of [['underline','Underline',()=>annotateSelection('underline')],['strike','Strike',()=>annotateSelection('strike')],['note','Note',noteSelection],['ai','Ask AI',()=>{
+   for(const [name,label,action]of [
+     ['underline','Underline',()=>annotateSelection('underline')],
+     ['strike','Strike',()=>annotateSelection('strike')],
+     ['note','Note',noteSelection],
+     ['ai','Help with this',()=>{
      if(selection)ask(selection.text,selection.parts[0]?.page||0);
    }],['','Copy',()=>void copySelection()]]){
     const b=doc.createElement('button');
@@ -492,6 +611,9 @@
    return `M${(x-h*.18).toFixed(1)} ${(bm-h*.1).toFixed(1)}`+top+`L${(x+w+h*.16).toFixed(1)} ${(t+h*.12).toFixed(1)}`+bot+'Z';
   }
   // The highlight, underline or ink stroke under a point on a page (the topmost first); notes are buttons of their own.
+  function quotedMark(slot,mark){
+   return resolveQuotedMark(slot,mark,{document:doc,model,cache:quoteCache});
+  }
   function markAt(slot,clientX,clientY,list=annotations.annotations){
    if(!slot?.viewport)return null;
    const bounds=slot.node.getBoundingClientRect(),x=clientX-bounds.left,y=clientY-bounds.top,reach=Math.max(6,zoom*4);
@@ -499,7 +621,7 @@
      const dx=b[0]-a[0],dy=b[1]-a[1],t=clamp(((x-a[0])*dx+(y-a[1])*dy)/Math.max(1e-6,dx*dx+dy*dy),0,1);
      return Math.hypot(x-a[0]-t*dx,y-a[1]-t*dy)<=radius;
    };
-   const marks=list.filter(a=>a.page===slot.index&&a.type!=='note'&&a.type!=='text');
+   const marks=list.filter(a=>a.page===slot.index&&a.type!=='note'&&a.type!=='text').map(a=>quotedMark(slot,a));
    for(let i=marks.length-1;i>=0;i--){
     const a=marks[i];
     if(a.type==='pen'){
@@ -538,6 +660,7 @@
      listen(markMenu,'pointerdown',e=>e.preventDefault());
    }
    markMenu.replaceChildren();markOpen={id:mark.id,page:slot.index};
+   appendHighlightNote(markMenu,mark,doc);
    const markerLike=mark.type==='highlight'||(mark.type==='pen'&&mark.opacity<1);
    if(mark.type==='text'){
      const edit=doc.createElement('button');
@@ -640,8 +763,9 @@
    slot.overlay?.remove();slot.overlay=null;if(!slot.viewport||!storageWritable)return;
    const overlay=doc.createElement('div');overlay.className='annotation-layer';slot.overlay=overlay;
    const svg=svgElement('svg',{viewBox:`0 0 ${slot.viewport.width} ${slot.viewport.height}`,'aria-hidden':'true'});overlay.append(svg);slot.node.append(overlay);
-   for(const annotation of annotations.annotations.filter(a=>a.page===slot.index)){
+   for(const annotation of annotations.annotations.filter(a=>a.page===slot.index).map(a=>quotedMark(slot,a))){
     const flash=annotation.id===flashId;
+
     if(annotation.type==='note'){
      const [x,y]=model.pdfToViewport(slot.viewport,annotation.point),b=doc.createElement('button');
      b.type='button';
@@ -829,14 +953,26 @@
    if(!annotationAccess())return;commitText();
    if(exportJob)return;
    if(!pdf||!originalBytes||!env.ReservePdfExport){notice('Saving with marks is not available for this file.');return;}
-   // The copy is released only to the same open, visible and verified reader session that asked for it.
-   const job={pdf,session,turn:accountTurn};
+   const job={controller:new AbortController(),pdf,session,turn:accountTurn};
    exportJob=job;
    const current=()=>exportJob===job&&alive&&!doc.hidden&&storageWritable&&pdf===job.pdf&&session===job.session&&accountTurn===job.turn;
    buttons.save.disabled=true;notice('Writing your marks into a copy…');
    try{
-    const {bytes,name}=await env.ReservePdfExport.withMarks({lib,data:originalBytes.slice(0),annotations:annotations.annotations,name:meta?.name});
+    const ready=await prepareExportAnnotations({
+      pdf,
+      library:lib,
+      document:doc,
+      model,
+      annotations:annotations.annotations,
+      slots,
+      cache:quoteCache,
+      readText,
+      active:current,
+      signal:job.controller.signal,
+      onStatus:page=>notice('Locating highlights on page '+page+'…')
+    });
     if(!current())throw Error('PDF export cancelled.');
+    const {bytes,name}=await env.ReservePdfExport.withMarks({lib,data:originalBytes.slice(0),annotations:ready,name:meta?.name});if(!current())throw Error('PDF export cancelled.');
     const url=env.URL.createObjectURL(new env.Blob([bytes],{type:'application/pdf'})),a=doc.createElement('a');
     a.href=url;a.download=name;doc.body.append(a);a.click();a.remove();env.setTimeout(()=>env.URL.revokeObjectURL(url),60000);
     notice('Saved “'+name+'”.');env.setTimeout(()=>{if($('status').textContent.startsWith('Saved “'))notice('');},4000);
@@ -866,13 +1002,15 @@
   }
   function rememberPlace(){if(!placeReady||!storageWritable||doc.hidden)return;env.clearTimeout(placeTimer);placeTimer=env.setTimeout(()=>void savePlace(),900);}
   function suspendAnnotations(){
+   exportJob?.controller.abort();
    commitText(true);
    env.clearTimeout(placeTimer);
    placeTimer=0;
    storageWritable=false;
    accountTurn++;
    if(accountWait){env.clearTimeout(accountWait.timer);accountWait.reject(Error('Account check cancelled.'));accountWait=null;}
-   if(meta?.local){$('pages').hidden=true;$('reader-layout').hidden=true;buttons.download.hidden=true;}
+   if(meta?.local){$('pages').hidden=true;$('reader-layout').hidden=true;}
+   if(stroke||erasing)endPen({pointerId:(stroke||erasing).id},true);
    if(tool)setTool(tool);
    selection=null;
    noteDraft=null;
@@ -895,6 +1033,44 @@
    target.baseline=value;
    if(target===session){annotations=target.model;if(storageWritable){slots.filter(s=>s.rendered).forEach(drawAnnotations);renderMarks();syncHistory();}}
   }
+  async function migrateLegacy(accountId,current){
+   const local=env.chrome.storage.local,prefix=model.legacyStorageKey(meta.origin,'0').slice(0,-1),migrationKey='reserve:pdf-migration:'+new URL(meta.origin).origin;
+   await env.navigator.locks.request(migrationKey,async()=>{
+    if(!current())return;let claim=(await local.get([migrationKey]))[migrationKey];
+    if(claim!=null&&(claim.version!==1||!/^\d+$/.test(claim.accountId)||!Array.isArray(claim.files)||!claim.files.every(key=>typeof key==='string')||typeof claim.complete!=='boolean'))
+      throw Error('Unsupported PDF migration record.');
+    if(!current()||claim&&(claim.accountId!==accountId||claim.complete))return;
+    const stored=await local.get(null),files=Object.keys(stored).filter(key=>key.startsWith(prefix)&&/^\d+$/.test(key.slice(prefix.length))).sort();
+    for(const key of files)if(!claim?.files.includes(key))model.createAnnotations(stored[key]);
+    const same=(a,b)=>
+      a?.version===b?.version&&
+        a?.accountId===b?.accountId&&
+        a?.complete===b?.complete&&
+        Array.isArray(a?.files)&&
+        Array.isArray(b?.files)&&
+        a.files.length===b.files.length&&
+        a.files.every((key,i)=>key===b.files[i]);
+    // storage hands objects back with their keys sorted, so the read-back is compared field by field, not as text
+    const saveClaim=async next=>{
+      await local.set({[migrationKey]:next});
+      if(!same((await local.get([migrationKey]))[migrationKey],next))throw Error('The PDF migration owner could not be verified.');
+      claim=next;
+    };
+    if(!claim){if(!current())return;await saveClaim({version:1,accountId,files:[],complete:false});}
+    // Claim the whole site's legacy collection once. Originals are never written or removed.
+    // Each destination shares its save lock; only a verified read-back completes that file.
+    for(const legacy of files){
+     if(claim.files.includes(legacy))continue;const key=model.storageKey(meta.origin,accountId,legacy.slice(prefix.length));
+     await env.navigator.locks.request(key,async()=>{
+      const latest=await local.get([key,legacy]),value=model.migrateAnnotations(latest[key],latest[legacy]);await local.set({[key]:value});
+      const checked=(await local.get([key]))[key];
+      if(checked===undefined||JSON.stringify(model.createAnnotations(checked).serialise())!==JSON.stringify(value))throw Error('The migrated PDF annotations could not be verified.');
+      await saveClaim({...claim,files:[...claim.files,legacy]});
+     });
+    }
+    await saveClaim({...claim,complete:true});
+   });
+  }
   async function verifyAnnotations(){
    suspendAnnotations();if(!meta||doc.hidden||!alive)return;const turn=accountTurn;
    let ownerVerified=false;
@@ -907,18 +1083,11 @@
     if(!alive||doc.hidden||turn!==accountTurn)return;
     if(meta.local&&accountId!==meta.accountId)throw Error('Your Canvas account changed. Reopen the saved file from its own account.');
     ownerVerified=true;
-    const key=model.storageKey(meta.origin,accountId,meta.fileId),
-      legacy=meta.local||meta.remote?null:model.legacyStorageKey(meta.origin,meta.fileId),
-      target=sessions.get(key);
+    const key=model.storageKey(meta.origin,accountId,meta.fileId),target=sessions.get(key),current=()=>alive&&!doc.hidden&&turn===accountTurn;
     if(target)await flush(target);
-    const restore=()=>env.navigator.locks.request(key,async()=>{
-     const stored=await env.chrome.storage.local.get([key,...(legacy?[legacy]:[]),'reserve:appearance']);let value=model.createAnnotations(stored[key]).serialise();
-     if(legacy&&stored[legacy]&&!stored[legacy].migratedTo){
-       const old=model.createAnnotations(stored[legacy]).serialise(),ids=new Set(value.annotations.map(a=>a.id));
-       value=model.createAnnotations({version:1,annotations:[...value.annotations,...old.annotations.filter(a=>!ids.has(a.id))]}).serialise();
-       await env.chrome.storage.local.set({[key]:value,[legacy]:{migratedTo:key}});
-     }
-     if(legacy&&stored[legacy])await env.chrome.storage.local.remove(legacy);
+    if(!meta.local&&!meta.remote)await migrateLegacy(accountId,current);if(!current())return;
+    await env.navigator.locks.request(key,async()=>{
+     const stored=await env.chrome.storage.local.get([key,'reserve:appearance']),value=model.createAnnotations(stored[key]).serialise();
      if(alive&&!doc.hidden&&turn===accountTurn){
        applyTheme(stored['reserve:appearance']||messageAppearance);
        session=target||{key,model:model.createAnnotations(value),baseline:value,pending:[],chain:Promise.resolve()};
@@ -927,19 +1096,18 @@
      }
      return value;
     });
-    await (legacy?env.navigator.locks.request(legacy,restore):restore());
     if(!alive||doc.hidden||turn!==accountTurn)return;
     storageWritable=true;
     annotations=session.model;
     syncAnnotationAccess();
     if(session.conflict)notice(session.conflict);else if($('status').textContent.startsWith('Saved annotations could not be restored.'))notice('');
-    if(meta.local){$('pages').hidden=false;$('reader-layout').hidden=false;buttons.download.hidden=false;}return true;
+    if(meta.local){$('pages').hidden=false;$('reader-layout').hidden=false;}return true;
    }catch(error){
      if(alive&&!doc.hidden&&turn===accountTurn){
        storageWritable=false;
        syncAnnotationAccess();
        notice('Saved annotations could not be restored. Editing is disabled to protect the existing record. '+error.message);
-       if(meta.local){if(ownerVerified){$('pages').hidden=false;$('reader-layout').hidden=false;buttons.download.hidden=false;}else send('reserve-pdf-error',{message:error.message});}
+       if(meta.local){if(ownerVerified){$('pages').hidden=false;$('reader-layout').hidden=false;}else send('reserve-pdf-error',{message:error.message});}
        return ownerVerified;
      }
    }
@@ -960,13 +1128,13 @@
    env.clearTimeout(saveTimer);saveTimer=0;if(!target)return Promise.resolve();
    target.chain=target.chain.then(async()=>{
     if(!target.pending.length)return;const changes=target.pending.slice();
-    const value=await env.navigator.locks.request(target.key,async()=>{
-      const stored=await env.chrome.storage.local.get([target.key]);
-      const value=model.mergeAnnotations(stored[target.key],changes);
+     await env.navigator.locks.request(target.key,async()=>{
+      const stored=await env.chrome.storage.local.get([target.key]),value=model.mergeAnnotations(stored[target.key],changes);
       await env.chrome.storage.local.set({[target.key]:value});
-      return value;
-    });
-    target.pending.splice(0,changes.length);reconcileAnnotations(target,value);
+      const checked=(await env.chrome.storage.local.get([target.key]))[target.key];
+      if(checked===undefined||JSON.stringify(model.createAnnotations(checked).serialise())!==JSON.stringify(value))throw Error('The saved PDF annotations could not be verified.');
+      target.pending.splice(0,changes.length);reconcileAnnotations(target,value);
+     });
    }).catch(error=>{if(target===session)notice('Annotation storage is full or unavailable. Your new marks are still open here. Remove some marks or free storage before closing. '+error.message);});
    return target.chain;
   }
@@ -1026,10 +1194,10 @@
     $('note-text').focus();
   }
   async function copySelection(){if(!selection)return;if(await copyText(selection.text))$('selection-menu').hidden=true;else notice('Copy was unavailable. Use Ctrl or Command C on the selection.');}
-  function ask(text,page,endPage=page){
+  function ask(text,page,endPage=page,intent){
     if(!canAI())return;
     if(!text?.trim()){notice('There is no selectable text on this page. Image-only PDFs need OCR in another tool.');return;}
-    send('reserve-pdf-ai',{text:text.slice(0,AI_LIMIT),page,endPage,name:meta?.name});
+    send('reserve-pdf-ai',{text:text.slice(0,AI_LIMIT),page,endPage,name:meta?.name,...(intent==='practice'||intent==='reading'?{intent}:{})});
     $('selection-menu').hidden=true;
   }
   // Ask AI about pages: this page, a range, or the whole document. Every word of the chosen pages is sent (up to what
@@ -1044,10 +1212,10 @@
       for(const kid of kids)node.append(typeof kid==='string'?doc.createTextNode(kid):kid);
       return node;
     };
-    const radio=value=>{const input=el('input',{type:'radio',name:'ai-range',value});input.checked=value==='page';return input;};
+    const radio=(value,name='ai-range',checked=value==='page')=>{const input=el('input',{type:'radio',name,value});input.checked=checked;return input;};
     range={page:radio('page'),range:radio('range'),all:radio('all'),pageLabel:el('small'),allLabel:el('small'),
      from:el('input',{type:'number',min:'1',step:'1','aria-label':'From page'}),to:el('input',{type:'number',min:'1',step:'1','aria-label':'To page'}),
-     note:el('p',{class:'ai-range-note',role:'status','aria-live':'polite'}),cancel:el('button',{type:'button',text:'Cancel'}),go:el('button',{type:'submit',class:'ai-range-go',text:'Ask AI'})};
+     note:el('p',{class:'ai-range-note',role:'status','aria-live':'polite'}),cancel:el('button',{type:'button',text:'Cancel'}),go:el('button',{type:'submit',class:'ai-range-go',text:'Help with this'})};
     rangeMenu=el('form',{id:'ai-range',class:'paper-popover ai-range',role:'dialog','aria-label':'Ask AI about which pages'},
      el('p',{class:'ai-range-title',text:'Ask AI about'}),
      el('label',{},range.page,el('span',{},'This page ',range.pageLabel)),
@@ -1188,7 +1356,7 @@
    }catch(error){done.path.remove();notice(error.message);}
   }
   function toggleSearch(value){
-   const open=value===undefined?$('find-bar').hidden:value;$('find-bar').hidden=!open;buttons.search.classList.toggle('is-active',open);buttons.search.setAttribute('aria-expanded',String(open));
+   const open=value===undefined?!searching:value;searching=open;$('find-bar').classList.toggle('is-searching',open);
    // Closing the bar clears its marks from the pages (the typed words stay for next time); reopening searches again.
    if(open){$('find-input').focus();$('find-input').select();if($('find-input').value.trim()&&!searchQuery)resetSearch();}
    else{
@@ -1281,7 +1449,7 @@
     if(rangeMenu&&!rangeMenu.hidden){closeAskRange();return;}
     if(markMenu&&!markMenu.hidden){closeMarkMenu();return;}
     if(!$('selection-menu').hidden){$('selection-menu').hidden=true;return;}
-    if(!$('find-bar').hidden){toggleSearch(false);buttons.search?.focus();return;}
+    if(searching){toggleSearch(false);return;}
     if(tool){setTool(tool);return;}
     if(maximised){send('reserve-pdf-fullscreen');return;}
     void close();return;
@@ -1323,7 +1491,7 @@
      message.origin!==parentOrigin||
      !(local?/^cf-[\w-]{4,60}$/.test(String(message.fileId))&&/^\d+$/.test(String(message.accountId)):remote?/^remote-[a-f0-9]{64}$/.test(String(message.fileId)):/^\d+$/.test(String(message.fileId))))
      return;
-   aiEnabled=!local&&!remote&&message.aiEnabled!==false;syncAI();
+   aiEnabled=!local&&!remote&&message.aiEnabled!==false&&featureEnabled('ai');syncAI();
    initialised=true;
    meta={
      origin:message.origin,
@@ -1342,9 +1510,7 @@
    $('file-name').textContent=meta.name;
    doc.title=meta.name+' · PDF reader';
    applyTheme(message.appearance);
-   messageAppearance=message.appearance;
-   const verified=await verifyAnnotations();
-   if(local&&verified!==true){if(verified===undefined&&alive)send('reserve-pdf-error',{message:'Canvas sign-in could not be verified. Reopen the saved file from its own account.'});return;}
+   messageAppearance=message.appearance;const verified=await verifyAnnotations();if(local&&verified===false)return;
    if(!alive)return;
    if(remote)await remoteAccess(remote);if(!alive)return;
    lib=lib||await import('./pdf-library.mjs');if(!alive)return;
@@ -1517,6 +1683,7 @@
    if(!alive)return teardown;
    alive=false;
    suspendAnnotations();
+   quoteCache.clear();
    off.abort();
    queue.pause(true);
    cancelText();
@@ -1569,7 +1736,9 @@
   listen(doc,'pointerdown',event=>{if(!event.target.closest('#mark-menu'))closeMarkMenu();});
   listen($('pages'),'click',onMarkClick);listen(doc,'selectionchange',selectionMoved);listen(scroll,'scroll',closeMarkMenu,{passive:true});
   listen($('selection-menu'),'pointerdown',event=>event.preventDefault());
-  listen($('find-input'),'input',resetSearch);listen($('find-input'),'keydown',event=>{if(event.key==='Enter'){event.preventDefault();findNext(event.shiftKey?-1:1);}});
+  listen($('find-input'),'focus',()=>{if(!searching)toggleSearch(true);});
+  listen($('find-input'),'input',()=>{if(!searching)toggleSearch(true);resetSearch();});
+  listen($('find-input'),'keydown',event=>{if(event.key==='Enter'){event.preventDefault();findNext(event.shiftKey?-1:1);}});
   for(const name of ['thumbnails','outline','marks']){
     listen($(name+'-tab'),'click',()=>switchSide(name));
     listen($(name+'-tab'),'keydown',event=>{
@@ -1658,5 +1827,5 @@
   if(root.parent===root||!/^https:\/\//.test(params.get('parentOrigin')||'')||!params.get('token'))return;
   createReader(root);
  }
- return {RenderQueue,occurrences,searchText,smoothPath,createReader,start};
+ return {RenderQueue,occurrences,searchText,smoothPath,resolveQuotedMark,prepareExportAnnotations,appendHighlightNote,createReader,start};
 });

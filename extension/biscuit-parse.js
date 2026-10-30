@@ -486,7 +486,7 @@
  },
  timeLabel=minute=>(Math.floor(minute/60)%12||12)+':'+pad(minute%60)+' '+(minute>=720?'PM':'AM'),
  candidate=(intent,fields,preview)=>({intent,fields,preview:short(clean(preview))}),
- ai=()=>[],
+ ai=text=>text?[candidate('ai',{text},'Ask AI · '+text)]:[],
  rangeFields=t=>({...t.date?{date:t.date}:{},...t.endDate?{endDate:t.endDate}:{}}),
  rangeLabel=t=>t.date?' · '+dateLabel(t.date)+(t.endDate?' – '+dateLabel(t.endDate):''):'';
  function reminder(input,n,t,explicit){
@@ -549,7 +549,7 @@
   ['scene-themes','scene-themes|scene themes'],
   ['arrange','arrange|workspace arrangement|arrange the workspace'],
   ['course-art','course-art|course art|course artwork'],
-  ['quick-pack','quick-pack|quick upload|local artwork packs|artwork packs|artwork packs and quick upload'],
+  ['quick-pack','quick-pack|quick pack|local artwork packs|quick upload|artwork packs|artwork packs and quick upload'],
   ['pony','pony|biscuit|pet|pony companion|companion'],
   ['biscuit-more-rules','biscuit-more-rules|biscuit more rules|more rules'],
   ['motion','motion|animations|living drawings|living drawings and motion'],
@@ -557,6 +557,7 @@
   ['course-nav','course-nav|course menu|course navigation|drawn course menu|drawn course menu and modules'],
   ['native-appearance','native-appearance|native appearance|native page appearance'],
   ['pdf','pdf|pdf reader'],
+  ['ai','ai|ai tools|study aids|ai and study aids|your ai and study aids'],
   ['play','play|play tools|celebrations|submission celebrations|play and submission celebrations'],
   ['focus-room','focus-room|focus room'],
   ['review-deck','review-deck|review deck'],
@@ -567,7 +568,7 @@
   ['deadline','deadline|deadline watch|deadline reminders'],['focus','focus buddy|focus help'],['planner','planner help|planner helper'],['quiz','quiz prep|quiz preparation'],['wellbeing','wellbeing|well-being|well being|wellness|stretch reminders'],['labprep','labprep|lab prep|lab preparation'],['reading','reading helper|reading help'],['rubric','rubric helper|rubric help'],['feedback','feedback helper|feedback help'],['inbox','inbox watch'],['reminders','reminders|reminder skill'],['night','night|night owl|night owl guard']
  ]);
  const MODULE_NAMES=names([
-  ['context','context|course information|course info'],['work','work|up next|upcoming work|assignment list'],['reader','reader|assignment details'],['today','today'],['handin','handin|to hand in|hand in'],['week','week|this week|planner'],['timer','timer|focus timer'],['clock','clock'],['notes','notes|note|quick notes'],['bookmarks','bookmarks|saved items'],['grades','grades|recent grades'],['messages','messages|inbox'],['pet','pet|paddock|pony|biscuit']
+  ['context','context|course information|course info'],['work','work|up next|upcoming work|assignment list'],['reader','reader|assignment details'],['help','help|help band'],['handin','handin|to hand in|hand in'],['week','week|this week|planner'],['timer','timer|focus timer'],['clock','clock'],['notes','notes|note|quick notes'],['bookmarks','bookmarks|saved items'],['grades','grades|recent grades'],['impact','impact|grade impact|what if grades|what-if grades'],['messages','messages|inbox'],['pet','pet|paddock|pony|biscuit'],['review','review|review deck|flashcards|flash cards']
  ]),
  MODULE_LABELS={
    context:'Course information',
@@ -581,8 +582,10 @@
    notes:'Notes',
    bookmarks:'Bookmarks',
    grades:'Grades',
+   impact:'Grade impact',
    messages:'Messages',
-   pet:'Paddock'
+   pet:'Paddock',
+   review:'Review'
  };
  const TAB_NAMES=names([['home','home|dashboard'],['planner','planner|plan'],['messages','messages|inbox'],['assignments','assignments|assignment list'],['course-hub','course-hub|course hub|hub'],['materials','materials|materials library'],['grades','grades']]);
  const PLAY_NAMES=names([
@@ -616,7 +619,7 @@
    panelFrame:['pen','stitch','card','line','none'],
    density:['comfortable','compact']
  };
- const VISIBILITY_NAMES=names([['showGrades','grades'],['showBookmarks','bookmarks'],['showCourseIcons','course icons'],['showDeadlinePreview','deadline preview|deadline previews'],['showCourseInformation','course information|course info'],['showCourseStrip','course strip|courses'],['showRecentGrades','recent grades']]),
+ const VISIBILITY_NAMES=names([['showGrades','grades'],['showBookmarks','bookmarks'],['showCourseIcons','course icons'],['showDeadlinePreview','deadline preview|deadline previews'],['showCourseInformation','course information|course info'],['showCourseStrip','course strip|courses'],['showRecentGrades','recent grades'],['showHelp','help|help band']]),
    BOOLEAN_KEYS=new Set([...VISIBILITY_NAMES.values(),'biscuitOffers','dockNamesAlways','dockCounts','dockLively','dockHide']);
  const SETTING_NAMES=names([...Object.keys(SETTING_ENUMS),...BOOLEAN_KEYS,'nightArt'].map(key=>[key,key.toLowerCase()+'|'+key.replace(/[A-Z]/g,w=>' '+w.toLowerCase()).toLowerCase()])),
    SETTING_RE=new RegExp('^('+[...SETTING_NAMES.keys()].sort((a,b)=>b.length-a.length).join('|')+')(?:\\s+(?:to\\s+)?|\\s*[:=]\\s*)(.+)$');
@@ -629,6 +632,17 @@
    MODULE_QUALIFIER=/\b(?:module|widget|panel)\b/,
    moduleName=text=>bare(bare(text.replace(HOME_AT,'')).replace(/^(?:home\s+)?(?:module|widget|panel)\s+(?:for\s+)?|\s+(?:module|widget|panel)$/g,'').replace(/^home\s+/,'')),
    tabName=text=>bare(bare(text).replace(/\s+(?:page|screen|tab|view)$/,''));
+ const helpDestination=value=>
+   /^(?:today|tdy|help)$/.test(moduleName(clean(value).toLowerCase().replace(/[.!?]+$/,'').replace(/^(?:open|reopen|find|show(?:\s+me)?|go\s+to|navigate\s+to|take\s+me\s+to|bring\s+up|pull\s+up|unhide|add|bring\s+back|enable|start(?:\s+showing)?|(?:turn|switch)(?:\s+on)?)\s+/,'').replace(
+     /(?:\s+(?:again|on|visible))+$/,
+     '')).replace(
+     /\s+(?:band|page|screen|tab|view)$/,
+     ''));
+ // "show Help", "turn Help on": the Help band's on switch, unless the line names the retired Today module.
+ const helpSwitch=value=>{
+   const text=clean(value).toLowerCase().replace(/[.!?]+$/,'');
+   return helpDestination(text)&&!/\b(?:today|tdy)\b/.test(text)&&/^(?:show|unhide|enable|start\s+showing|(?:turn|switch)\s+on)\b|^(?:turn|switch)\s+(?:the\s+|my\s+)?help(?:\s+band)?\s+on$/.test(text);
+ };
  const APPEARANCE_NAMES=names([['sceneTheme','scene'],['dockSize','course dock|dock'],['bannerSize','course banner|banner'],['surfaceStyle','surface|look|style'],['pageTint','page tint|background|page|tint'],['courseCardStyle','course cards|course card|cards|card'],['panelFrame','panel frames|panel frame|frames|frame'],['density','density|spacing'],['deskOrder','desk|desk layout']]);
  const KEY_WORDS=[
    ...new Set([
@@ -707,7 +721,7 @@
   }
   const style=bare(text.replace(/^(?:(?:switch|change)\s+(?:to\s+)?|(?:use|apply|set|make|move|put|bring)\s+|turn\s+on\s+)/,'').replace(/^it\s+/,''));
   if((m=/^(dark|light)(?:\s+(?:mode|theme))?$/.exec(style)))return setting('theme',m[1],m[1]==='dark'?'Dark mode':'Light mode');
-  if(/^(?:system(?:\s+(?:mode|theme))?|match\s+(?:(?:my|the)\s+)?(?:computer|system|device))$/.test(style))return setting('theme','system');
+  if(/^(?:system(?:\s+(?:mode|theme))?|match\s+(?:(?:my|the)\s+)?(?:computer|system|device))$/.test(style))return [];
   if(/^(?:no\s+scene(?:\s+theme)?|(?:remove|clear)\s+(?:the\s+)?scene(?:\s+theme)?)$/.test(style))return setting('sceneTheme','','No scene theme');
   if((m=/^(starfield|stars|starry(?:\s+night)?|(?:under\s+(?:the\s+)?)?sea|blueprint)(?:\s+(?:scene(?:\s+theme)?|theme))?$/.exec(style)))return setting('sceneTheme',settingValue('sceneTheme',m[1]),'Scene · '+m[1]);
   if((m=/^(?:courses?|course\s+(?:navigation|menu|bar|strip|dock))\s+(?:(?:along|across|on|at|to)\s+)?(?:the\s+)?(bottom|top|side|left)(?:\s+of\s+(?:the\s+)?(?:page|screen))?$/.exec(style)))return setting('courseNavigation',settingValue('courseNavigation',m[1]),'Courses · '+m[1]);
@@ -740,6 +754,7 @@
     return [candidate('pet',{action:'home'},'Send home')];
   if(/^(?:help|what\s+can\s+you\s+do|show\s+(?:me\s+)?(?:your\s+)?commands)$/.test(text))return [candidate('help',{},'What '+companionName(s)+' can do')];
   // Today is retired from Home; its lines, and lines that name Help as a place, open the Help band.
+  if(helpDestination(text))return [helpSwitch(text)?candidate('setting',{key:'showHelp',value:true},'Show Help'):candidate('module',{key:'help',action:'show'},'Open Help')];
   if(/^(?:be\s+)?quiet\s+(?:for|until|till)\b/.test(text)){
     let minutes;
     if(/\b(?:until|till)\b/.test(text)){
@@ -1037,10 +1052,9 @@
   if(!text||readOnly(input)||/^(?:ask\s+ai\b|\?)/.test(text)||local(input,context)!==null)return false;
   return /\b(?:plan|replan|rebuild|schedule|reschedule)\b|\b(?:fit|split|spread|divide|allocate|organise|organize|map\s+out|line\s+up|work\s+backwards)\b.*\b(?:work|study|homework|prep|tonight|evening|week|weekend|slot|block|time)\b|\b(?:study|prep|work|reading)\s+(?:slots?|blocks?|order)\b|\b(?:study|work)\b.*\b(?:order|gap)\b|\b(?:gap|free|available)\b.*\b(?:fit|plan|study|work)\b/.test(text);
  }
- const generativeProduct=input=>/^(?:quiz(?:\s+me)?|test\s+me|practice|lab\s*checklist|reading\s*guide|rubric(?:\s+checklist)?|fix\s*list|notes?\s+outline|flashcards?)\b/i.test(clean(input).replace(/^(?:(?:please|pls|plz|hey(?:\s+biscuit)?)\b[\s,:!]*|(?:can|could|would|will)\s+(?:you|u)\s+(?:please\s+)?)+/i,''));
  function parse(input,context={}){
   const value=clean(input).slice(0,4096);
-  if(!value||generativeProduct(value))return [];
+  if(!value)return [];
   const explicitAI=/^(?:ask\s+ai\b\s*|\?\s*)/i.exec(value);
   if(explicitAI)return ai(value.slice(explicitAI[0].length));
   const s=object(context),catalogue=installed(value,s),petCommand=namedPet(value,s);
@@ -1084,6 +1098,13 @@
     return [
       candidate('pet',{action:pet,...(pet==='hide'?{minutes}:{})},{treat:'Treat '+companionName(s),home:'Send home',hide:'Hide · '+minutes+' min',settings:'Companion settings',quiet:'Quiet mode'}[pet])
     ];
+  }
+  const study=has('quiz','practice','lab','checklist','labchecklist','reading','guide','readingguide','rubric','fix','fixlist')&&/^(?:(quiz)(?:\s+me)?|(practice)|lab\s*checklist|reading\s*guide|(rubric)(?:\s+checklist)?|fix\s*list)\b/.exec(text);
+  if(study){
+    const action=study[1]||study[2]?'quiz':/^lab/.test(study[0])?'lab':/^reading/.test(study[0])?'reading':study[3]?'rubric':'fix',
+      labels={quiz:'Quiz',lab:'Lab checklist',reading:'Reading guide',rubric:'Rubric',fix:'Fix list'},
+      query=queryOf(text,new RegExp('^'+study[0]),empty);
+    return entities(query,s,action).map(e=>candidate('study',{action,...e.fields},labels[action]+(e.label?' · '+e.label:'')));
   }
   const open=has('open','find','show','go')&&/^(?:open|find|show|go\s+to)\b/.exec(text);
   if(open)return entities(queryOf(text,new RegExp('^'+open[0]),empty),s).map(e=>candidate('open',e.fields,'Open'+(e.label?' · '+e.label:'')));
@@ -1243,7 +1264,24 @@
  };
  /* canonicalWord(input) canonicalizes one command/calendar word, including shorthand; retain original input for payloads. */
  const canonicalWord=input=>{const value=clean(input).toLowerCase();return /^[a-z]+$/.test(value)?keyWord(canonical(value)):value;};
- const api={parse,slots,commands,local,planIntent,readOnly,localFocus,localReminder,localBookmark,looseKeys,canonicalWord,installed,companionName,namedPet};
+ const api={
+   parse,
+   slots,
+   commands,
+   helpDestination,
+   helpSwitch,
+   local,
+   planIntent,
+   readOnly,
+   localFocus,
+   localReminder,
+   localBookmark,
+   looseKeys,
+   canonicalWord,
+   installed,
+   companionName,
+   namedPet
+ };
  root.ReserveBiscuitParse=api;
  if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

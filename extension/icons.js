@@ -33,7 +33,6 @@
   folder:'M3 6V4h6l2 3h10v13H3V6Z',
   note:'M5 3h14v18H5zM8 7h8M8 11h8M8 15h5',
   upload:'M12 16V4M7 9l5-5 5 5M4 17v4h16v-4',
-  trash:'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7',
   warning:'m12 3 10 18H2L12 3ZM12 9v5M12 17h.01',
   copy:'M8 8h13v13H8zM16 8V3H3v13h5',
   grid:'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'

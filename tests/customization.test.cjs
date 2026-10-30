@@ -37,13 +37,72 @@ test('layout presets and course appearance resets leave task records available',
  assert.equal(store.get().settings.courseNavigation,'sidebar');assert.equal(store.get().tasks['401'].pinned,true);assert.equal(store.get().tasks['401'].notes,'Keep this');
  assert.equal(store.get().settings.density,'comfortable');assert.equal(store.get().settings.showCourseStrip,true);assert.equal(store.get().settings.showRecentGrades,false);
 });
+test('the private Canvas Harness defaults and explicit layout choices survive loading older backups',async()=>{
+ const store=make();await store.load();
+ const base=store.get().settings;
+ assert.equal(base.theme,'light');assert.equal(base.accent,'clay');assert.equal(base.motion,'gentle');
+ assert.equal(base.readingFont,'book');assert.equal(base.showGrades,false);
+ assert.equal(base.courseNavigation,'sidebar');assert.equal(base.deskOrder,'context-first');
+ assert.equal(base.courseCardStyle,'sketch');assert.equal(base.bannerSize,'standard');
+ const backup=store.exportBackup();delete backup.data.settings.deskOrder;backup.data.settings.dashboardLayout='list';
+ assert.equal(storage.validateBackup(backup,store.owner).settings.deskOrder,'stacked');
+ backup.data.settings.deskOrder='context-first';
+ const restored=storage.validateBackup(backup,store.owner).settings;
+ assert.equal(restored.deskOrder,'context-first');assert.equal(restored.dashboardLayout,'split');
+});
+test('title, banner, icon, and frame artwork roundtrip with course names, colors and images',async()=>{
+ const art=require('../extension/custom-art.js'),courseArt=require('../extension/course-art.js'),store=make();await store.load();
+ const banner=art.importSVG(art.template('banner'),'banner.svg');
+ const icon=art.importSVG(art.template('icon'),'icon.svg');
+ const border=art.importSVG(art.template('border'),'frame.svg');
+ const title=art.importSVG(art.template('title'),'title.svg');
+ const image='data:image/png;base64,AAAA';
+ await store.update(data=>{
+  data.settings.coursePrefs['101']={name:'My own biology',color:'#123456',image,bannerArt:banner,iconArt:icon,borderArt:border,titleArt:title,bannerFit:'cover',bannerPosition:'left'};
+  data.settings.overviewArt={titleArt:title};
+  data.tasks['88']={notes:'Do not lose this'};
+ });
+ const prefs=(await store.load()).settings.coursePrefs['101'];
+ for(const key of ['bannerArt','iconArt','borderArt','titleArt'])assert.equal(prefs[key].svg,{bannerArt:banner,iconArt:icon,borderArt:border,titleArt:title}[key].svg);
+ assert.equal(prefs.name,'My own biology');assert.equal(prefs.color,'#123456');assert.equal(prefs.image,image);
+ assert.deepEqual(storage.validateBackup(store.exportBackup(),store.owner),store.get());
+ const decorated={id:'101',name:prefs.name,originalName:'CL Synthetic Biology',shortName:prefs.name,artPrefs:prefs,artMotion:true};
+ assert.match(courseArt.scene(decorated),/ch-custom-banner/);
+ assert.match(courseArt.mini(decorated),/ch-custom-icon/);
+ assert.match(courseArt.frame('biology','101',decorated),/ch-custom-border/);
+ assert.match(courseArt.titleFrame(decorated),/ch-custom-title/);
+ assert.match(courseArt.titleStyle(decorated),/--rd-name-w:560/);
+ const existingTitle={id:'102',name:'CL Physics-Novak-Ortiz',originalName:'CL Physics-Novak-Ortiz',shortName:'Physics',artPrefs:{bannerArt:banner},artMotion:true};
+ assert.match(courseArt.titleFrame(existingTitle),/data-crop="title"/,'uploading a banner preserves the original illustrated course title');
+ await store.update(data=>{const pref=data.settings.coursePrefs['101'];for(const key of [...require('../extension/customization-model.js').artKeys,'bannerFit','bannerPosition'])delete pref[key];});
+ const cleared=store.get();assert.equal(cleared.settings.coursePrefs['101'].name,'My own biology');
+ assert.equal(cleared.settings.coursePrefs['101'].color,'#123456');assert.equal(cleared.settings.coursePrefs['101'].image,image);
+ assert.equal(cleared.tasks['88'].notes,'Do not lose this');assert.equal(cleared.settings.overviewArt.titleArt.svg,title.svg);
+ const fallback={...decorated,artPrefs:cleared.settings.coursePrefs['101']};
+ // A renamed biology course has a theme, so clearing the upload restores its subject’s drawn title (2.23.1).
+ assert.equal(courseArt.titled(fallback).kind,'biology');assert.notEqual(courseArt.titled(fallback).generic,true);assert.match(courseArt.titleFrame(fallback),/data-art="biology" data-crop="title"/);
+ assert.doesNotMatch(courseArt.titleFrame(fallback),/ch-custom-title/,'clearing the upload restores the themed title for the retained display name');
+});
+test('malformed or unsafe title artwork rejects imported backups and does not change saved data',async()=>{
+ const art=require('../extension/custom-art.js'),store=make();await store.load();
+ await store.update(data=>{data.settings.coursePrefs['101']={titleArt:art.importSVG(art.template('title'),'safe.svg'),name:'Personal name'};});
+ const before=store.get(),backup=store.exportBackup();
+ backup.data.settings.coursePrefs['101'].titleArt={name:'bad.svg',svg:'<svg><foreignObject><iframe/></foreignObject></svg>'};
+ assert.throws(()=>storage.validateBackup(backup,store.owner),/SVG|unsafe/i);
+ assert.deepEqual(store.get(),before);
+ await assert.rejects(store.update(data=>{data.settings.coursePrefs['101'].titleArt={name:'bad.svg',svg:'<svg><image href="https://example.org/secret"/></svg>'};}));
+ assert.deepEqual(await store.load(),before);
+});
 test('editor exposes archived artwork removal and templates alongside existing uploads',async()=>{
  const art=require('../extension/custom-art.js'),ui=require('../extension/customize-ui.js'),store=make();await store.load();
  const icon=art.importSVG(art.template('icon'),'icon.svg');
  await store.update(d=>{d.settings.coursePrefs['101']={iconArt:icon};d.settings.coursePrefs['999']={name:'Archived <course>',iconArt:icon,color:'#123456'};});
  const course={id:'101',name:'Current course',color:'#123456'},html=ui.render({s:store.get().settings,allCourses:[course],courses:[course],customizeCourseId:'101',customizeOpen:true,customizeTab:'courses'});
+ assert.match(html,/data-pane="courses"/);assert.doesNotMatch(html,/data-pane="look"/);assert.match(html,/data-setting="bannerSize"/);assert.match(html,/data-setting="courseCardStyle"/);
  assert.match(html,/Artwork from other courses \(1\)/);assert.match(html,/Archived &lt;course&gt;/);
  assert.match(html,/data-rd-action="art-remove" data-id="999" data-kind="icon"/);
  assert.equal((html.match(/data-rd-action="art-template"/g)||[]).length,4);
- assert.match(html,/Remove custom icon/);assert.doesNotMatch(html,/These courses are not in the current list/);
+ assert.match(html,/data-kind="title"/);
+ assert.match(html,/data-rd-field="art-upload" data-kind="title"/);
+ assert.match(html,/Remove custom icon/);
 });

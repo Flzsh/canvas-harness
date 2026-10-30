@@ -399,10 +399,10 @@
   // drawing leaving the screen, a hidden tab, Still, Off, reduced motion and the idle rest.
   const FILM_FPS={scene:24,mini:12};
   // THE FILM'S TICKS, SHARED. The pony (pets.js) keeps its own 24/12/6 clock, and on a clock of its own each of its frames
-  // is a whole-page frame of its own (measured, Home idle: 47-48 main frames a second, 11-14 of them the pony's alone). So
-  // it may draw on the film's ticks (onFilmTick): what falls due before the next tick is drawn on this one, and the page
-  // draws one frame for both. Only one clock hands its ticks on, the fastest running, so a second view's clock can never
-  // double the pony's frames.
+  // is a whole-page frame of its own (measured, Home idle: 47-48 main frames a second, 11-14 of them the pony's alone, each
+  // 2.4-2.8 ms of layering, hit testing and commit). So it may draw on the film's ticks (onFilmTick): what falls due before
+  // the next tick is drawn on this one, and the page draws one frame for both (31-35 a second). Only one clock hands its
+  // ticks on, the fastest running, so a second view's clock (the toolbox has one) can never double the pony's frames.
   const FILM_TICKS=new Set(),filmBus={owner:null,fps:0};
   // A PRESS OR A KEY HOLDS THE DRAWINGS until the page's answer to it has painted: the render it starts (answered(),
   // dashboard.js) and the frame that shows it, so that answer has the main thread to itself; ART_BUSY_MS at most, for a
@@ -410,7 +410,7 @@
   // the drawings keep playing while the page scrolls.
   const ART_BUSY_MS=300;
   // A SCROLL HOLDS THE FRAME BEADS, not the drawings: the course-row frames' loops stand where they are while the page
-  // scrolls and go on from there ART_SCROLL_MS after the last scroll. Measured at 4x CPU, their frames doubled a
+  // scrolls and go on from there ART_SCROLL_MS after the last scroll. Measured at 4x CPU (3.8), their frames doubled a
   // scroll's slow frames (5.6% -> 13.8%); the scenes and minis keep playing.
   const ART_SCROLL_MS=200;
   // THE IDLE REST: a page nobody has touched for two minutes (no pointer, wheel or key input on it) holds every
@@ -427,8 +427,24 @@
   }={}){
     let geometry=null,dead=false,layer=null,first=true,geo={},watched=[],bar=null;
     const active=new Map(),ghosts=new Set();
-    const observer=ResizeObserverImpl?new ResizeObserverImpl(()=>syncTabs(false)):null;
     const host=()=>container.closest?.('.rd')||container;
+    // A resize while a room's move plays (data-ch-moving on the dashboard: Home drawn again under a fold, a room swapped
+    // in): the surfaces are measured, and the art film books its drawings, once the move has landed and the browser is
+    // idle. Measured in the frame the page was swapped, their offsets laid out the whole new page a second time.
+    let resizeWait=0;
+    const resized=()=>{
+      if(dead)return;const until=Number(host().dataset?.chMoving||0)-Date.now();
+      if(until>0&&root.setTimeout){
+        if(!resizeWait)
+          resizeWait=root.setTimeout(()=>{
+            const go=()=>{resizeWait=0;if(!dead)syncTabs(false);};
+            if(typeof root.requestIdleCallback==='function')root.requestIdleCallback(go,{timeout:800});else go();
+          },until+30)||0;
+        return;
+      }
+      syncTabs(false);
+    };
+    const observer=ResizeObserverImpl?new ResizeObserverImpl(resized):null;
     const style=()=>{const value=container.dataset?.motionStyle||host().dataset?.motionStyle;return value==='still'||value==='off'?value:'gentle';};
     const reduced=()=>!!media?.matches||style()==='off';
     const pointer=()=>(container.dataset?.input||host().dataset?.input)==='pointer';
@@ -960,6 +976,7 @@
       function stop(svg){const f=films.get(svg);if(!f)return;films.delete(svg);io?.unobserve?.(svg);endReveal(f);endLoops(f);}
       // Off screen, or while the page is hidden, a loop holds where it is and
       // resumes from there. A reveal (a few seconds at most) simply finishes.
+      // One observer for the drawings and the rail (railOff: the frame beads pause with it, frameLoops).
       function ensureIO(){
         if(!io&&IntersectionObserverImpl)
           try{
@@ -1058,10 +1075,7 @@
       // dock in its place) they write nothing and go on from where they stood when it is seen again. A rail drawn anew
       // meanwhile (the dock and back with a phone's drawer closed) is a node the observer never saw and that never
       // reports, so it is looked for at the same pace as the look below and taken over as soon as it is there.
-      function watchRail(rail){
-        if(rail===railSeen)return;if(railSeen)io?.unobserve?.(railSeen);railSeen=rail;railOff=false;
-        if(rail){ensureIO();io?.observe?.(rail);}
-      }
+      function watchRail(rail){if(rail===railSeen)return;if(railSeen)io?.unobserve?.(railSeen);railSeen=rail;railOff=false;if(rail){ensureIO();io?.observe?.(rail);}}
       // A CSS loop on an SVG part is replaced by its twin: the same keyframes and timing on the custom properties (see play()),
       // taken over by the clock like the rest. Its CSS original is cancelled; CSS starts it again only if it changes the loop.
       function cssTwin(a){
@@ -1080,6 +1094,9 @@
           });
           twin.pause();twin.currentTime=at;return twin;}catch{return null;}
       }
+      // A twin lives while CSS still names its loop on its part. A render keeps the part on the custom properties
+      // (dashboard.js patchUI), so a twin is never let go for a render; one whose part something else took off them only
+      // writes nothing (frame(): unread).
       function reconcileTwins(){
         const allowed=!reduced()&&style()==='gentle'&&living();
         for(const [a,r] of [...loops])
@@ -1089,12 +1106,7 @@
           }
       }
       function frameLoops(t){
-        if(railOff){
-          if(t-railPeek<2000)return;
-          railPeek=t;const rail=container.querySelector?.('.rd-course-rail')||null;
-          if(rail===railSeen)return;
-          watchRail(rail);loopsSeen=-Infinity;
-        }
+        if(railOff){if(t-railPeek<2000)return;railPeek=t;const rail=container.querySelector?.('.rd-course-rail')||null;if(rail===railSeen)return;watchRail(rail);loopsSeen=-Infinity;}
         const step=1000/FILM_FPS.mini,gap=t-loopsAt;if(gap<step-4)return;loopsAt=t;
         try{
           if(t-loopsSeen>=2000){
@@ -1764,8 +1776,7 @@
     const onScroll=()=>{if(!dead)art.scrolling();};
     media?.addEventListener?.('change',reduce);
     root.addEventListener?.('resize',cancelAll);
-    root.addEventListener?.('scroll',onScroll,{passive:true,capture:true});
-    container.addEventListener?.('scroll',onScroll,{passive:true,capture:true});
+    root.addEventListener?.('scroll',onScroll,{passive:true,capture:true});container.addEventListener?.('scroll',onScroll,{passive:true,capture:true});
     root.document?.addEventListener?.('visibilitychange',onVisibility);
     return {syncTabs,snapshot,reveal,leave,place,ink,clearGhosts,cancel:cancelAll,activity:()=>{
       if(!dead)art.activity();

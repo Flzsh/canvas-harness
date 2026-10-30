@@ -1,0 +1,774 @@
+.ch-prepare-status { display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0; font-size: 0.875rem; }
+.ch-prepare-status[hidden], .ch-prepare-action[hidden] { display: none; }
+/* Geometry and accessible structure only; visual treatment belongs to Claude. */
+.ch-help-band{--ch-band-height:330px;--ch-band-toolbar-height:36px;--ch-band-nav-height:24px;--ch-band-padding:12px;--ch-band-gap:12px;--ch-band-card-padding:12px;--ch-band-font-size:14px;--ch-band-line-height:20px;display:block;width:100%;min-width:0;flex:none;color:var(--ink);font-size:var(--ch-band-font-size);line-height:var(--ch-band-line-height)}
+.ch-help-band *{box-sizing:border-box}
+.ch-band-panel{height:var(--ch-band-height);padding:var(--ch-band-padding);display:grid;grid-template-rows:var(--ch-band-toolbar-height) minmax(0,1fr) var(--ch-band-nav-height);gap:var(--ch-band-gap);overflow:hidden}
+.ch-band-toolbar,.ch-band-dots,.ch-band-tools{display:flex;align-items:center;gap:8px;min-width:0}
+.ch-band-title{margin-inline-end:auto}
+.ch-band-page{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--ch-band-gap);min-height:0;overflow:hidden}
+.ch-band-card{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;border:1px solid var(--line);padding:var(--ch-band-card-padding)}
+.ch-band-page>[data-size="s"]{grid-column:span 1}.ch-band-page>[data-size="m"]{grid-column:span 2}.ch-band-page>[data-size="l"]{grid-column:span 3}.ch-band-page>[data-size="xl"]{grid-column:span 4}
+.ch-band-scroll{flex:1;min-height:0;min-width:0;overflow:auto;overscroll-behavior:contain;overflow-wrap:anywhere}
+.ch-band-tools{flex:none;flex-wrap:wrap;margin-block-start:8px;max-height:64px;overflow:auto}
+.ch-help-band button{font:inherit;min-height:24px;max-width:100%;white-space:normal}
+.ch-band-tab{display:block;margin-inline:auto}
+.ai-panel>.ch-study-viewer:not([hidden]){flex:none;overflow:hidden;padding:0;width:100%}
+.ch-band-panel[hidden]{display:none}
+.ch-band-dots{justify-content:center}
+.ch-band-card .ch-study-aid{padding:0;margin:0;max-width:none;display:block;font:inherit}
+.ch-band-card .ch-study-aid h2,.ch-band-card .ch-study-aid h3,.ch-band-card .ch-study-aid h4,.ch-band-card .ch-study-aid p{margin:0 0 8px;font:inherit}
+.ch-band-card .ch-study-aid h2,.ch-band-card .ch-study-aid h3{font-weight:600}
+.ch-band-key{display:block;font-size:1.5em;line-height:1.2;margin-block-end:8px}
+.ch-band-columns,.ch-band-timeline,.ch-band-flashcards{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:12px;align-items:start}
+.ch-band-flashcards{grid-auto-columns:minmax(120px,1fr);overflow-x:auto}
+.ch-band-card .ch-study-content{min-width:0;margin:0;padding:0}
+.ch-band-card .ch-study-message-body{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}
+.ch-band-tool-status:empty{display:none}
+.ch-help-band :focus-visible{outline:2px solid currentColor;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.ch-help-band,.ch-help-band *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+.ch-help-band[data-reduced-motion="true"],.ch-help-band[data-reduced-motion="true"] *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+/* grow on tap */
+.ch-band-body{position:relative;flex:1;min-height:0;min-width:0;display:flex;flex-direction:column}
+.ch-band-more{position:absolute;left:50%;bottom:2px;translate:-50% 0;z-index:1}
+.ch-band-more[hidden]{display:none}
+.ch-band-card[data-overflow="true"]:not([data-open="true"]) .ch-band-scroll{-webkit-mask-image:linear-gradient(#000 calc(100% - 36px),transparent);mask-image:linear-gradient(#000 calc(100% - 36px),transparent)}
+.ch-help-band[data-grown="true"] .ch-band-panel{height:auto;min-height:var(--ch-band-height)}
+.ch-help-band[data-grown="true"] .ch-band-page{overflow:visible}
+.ch-band-card[data-open="true"]{overflow:visible}
+.ch-band-card[data-open="true"] .ch-band-scroll{overflow:visible;flex:none;padding-bottom:32px}
+/* Empty Help strip: keep the theme host outline and only the title/status row. */
+.ch-help-band[data-empty="true"] .ch-band-panel{height:auto;min-height:0;padding:0;display:block}
+.ch-help-band[data-empty="true"] .ch-band-toolbar{min-height:var(--ch-band-toolbar-height)}
+.ch-help-band [hidden]{display:none!important}
+/* Ask controls share the existing toolbar row without changing card geometry. */
+.ch-help-band .ch-band-toolbar{height:var(--ch-band-toolbar-height);flex-wrap:nowrap}
+.ch-help-band .ch-band-toolbar:has(.ch-band-ask) .ch-band-title{margin-inline-end:0;flex:none}
+.ch-help-band .ch-band-ask{flex:1 1 160px;min-width:min(160px,25%);max-width:520px;height:28px;padding:2px 6px;font:inherit;line-height:normal;color:inherit;border:1px solid var(--line);background:transparent}
+.ch-help-band .ch-band-send{position:relative;flex:none;width:28px;height:28px;min-height:0;padding:0;color:inherit}
+.ch-band-send::before{content:'';position:absolute;width:10px;height:10px;left:7px;top:8px;border-top:2px solid currentColor;border-right:2px solid currentColor;transform:rotate(45deg)}
+.ch-band-send::after{content:'';position:absolute;width:13px;left:6px;top:13px;border-top:2px solid currentColor}
+.ch-band-send-label{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.ch-help-band .ch-band-status{margin-inline-start:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ---- Help band look (make-band-look.cjs) ---- */
+/* On Home the theme's module outline is drawn round .ch-band-host (widgets.css). Inside it each answer is a widget:
+   a surface tile with a lighter, thinner copy of the same outline. Geometry stays in the base rules above. */
+.rd .ch-band-host{position:relative;isolation:isolate;margin-block-end:18px}
+.rd .ch-band-host:has(.ch-band-panel[hidden]){padding:0!important}
+.rd .ch-band-host:has(.ch-band-panel[hidden])::after{display:none!important}
+.rd .ch-help-band{--ch-band-line:color-mix(in srgb,var(--rd-accent) 70%,var(--rd-ink));--ch-band-widget-line:color-mix(in srgb,var(--ch-band-line) 52%,var(--rd-surface));color:var(--rd-ink)}
+.rd .ch-band-title{font-family:var(--rd-heading-font,Literata,Georgia,serif);font-size:19px;line-height:1.3;letter-spacing:-.35px;font-weight:680}
+.rd .ch-band-status{font-size:12px;color:var(--rd-muted);min-width:44px;text-align:center}
+.rd :is(.ch-band-prev,.ch-band-next){position:relative;width:30px;height:30px;padding:0;border:1px solid var(--rd-control-line,var(--rd-line));border-radius:8px;background:var(--rd-surface);color:transparent;font-size:0;cursor:pointer}
+.rd :is(.ch-band-prev,.ch-band-next)::after{content:"";position:absolute;inset:6px;background:var(--rd-ink);-webkit-mask:var(--ch-band-ink) center/contain no-repeat}
+.rd .ch-band-prev{--ch-band-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M11%204.6%206.6%209.1l4.5%204.3%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-band-next{--ch-band-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M7%204.6l4.4%204.5-4.5%204.3%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")}
+.rd :is(.ch-band-prev,.ch-band-next):disabled{opacity:.4;cursor:default}
+.rd .ch-band-dots{gap:2px}
+.rd .ch-band-dot{position:relative;width:16px;height:16px;min-height:16px;padding:0;border:0;background:none;color:transparent;font-size:0;cursor:pointer}
+.rd .ch-band-dot::after{content:"";position:absolute;inset:5px;border-radius:50%;background:var(--rd-line)}
+.rd .ch-band-dot[aria-current=page]::after{background:var(--rd-ink)}
+.rd .ch-band-card{position:relative;isolation:isolate;border-color:transparent;background:none}
+.rd .ch-band-card::before,.rd .ch-band-card::after{content:"";position:absolute;z-index:-1;pointer-events:none}
+.rd .ch-band-card::before{inset:3px;border-radius:9px;background:var(--rd-surface)}
+.rd .ch-band-card::after{inset:0;border:14px solid transparent;background:var(--ch-band-widget-line);-webkit-mask-box-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E") 30 30 30 30 stretch}
+.rd[data-panel-frame=stitch] .ch-band-card::after{-webkit-mask-box-image:none;background:none;border:1.5px dashed color-mix(in srgb,var(--rd-accent) 36%,#C9A58A);border-radius:12px}
+.rd[data-panel-frame=card] .ch-band-card::after{-webkit-mask-box-image:none;background:none;border:1px solid var(--rd-line);border-radius:12px;box-shadow:0 1px 2px #3028190a}
+.rd:is([data-panel-frame=line],[data-panel-frame=none]) .ch-band-card::after{-webkit-mask-box-image:none;background:none;border:1px solid color-mix(in srgb,var(--rd-accent) 24%,var(--rd-line));border-radius:12px}
+.rd:is([data-panel-frame=stitch],[data-panel-frame=card],[data-panel-frame=line],[data-panel-frame=none]) .ch-band-card::before{inset:0;border-radius:12px}
+.rd .ch-band-card .ch-study-aid{background:none;box-shadow:none}
+.rd .ch-band-card .ch-study-aid::after{display:none}
+.rd .ch-band-card .ch-study-gaps{box-shadow:none;margin:8px 0 0}
+.rd .ch-band-card .ch-study-gaps:empty{display:none}
+.rd[data-theme=dark] .ch-band-card .ch-study-step .ch-study-points{color:var(--rd-ink)}
+.rd .ch-band-card .ch-band-headline{font-family:var(--rd-heading-font,Literata,Georgia,serif);font-size:16px;line-height:20px;font-weight:650;letter-spacing:-.2px;color:var(--rd-ink)}
+.rd .ch-band-card .ch-band-key{font-family:var(--rd-heading-font,Literata,Georgia,serif);font-size:26px;line-height:30px;font-weight:650;letter-spacing:-.4px}
+.rd .ch-band-card:has(>.ch-band-when) .ch-band-headline{padding-inline-end:88px}
+.rd .ch-band-when{position:absolute;top:11px;inset-inline-end:24px;z-index:1;padding:1px 8px;border-radius:999px;font-size:11px;line-height:16px;white-space:nowrap}
+.rd .ch-band-card[data-importance="1"] .ch-band-when{background:color-mix(in srgb,var(--rd-danger) 15%,var(--rd-surface));color:var(--rd-danger)}
+.rd .ch-band-card[data-importance="2"] .ch-band-when{border:1px solid var(--rd-line);color:var(--rd-muted)}
+.rd .ch-band-tools{gap:6px}
+.rd .ch-band-tool{--ch-band-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M3.8%209.2c3.1-.2%206.3-.2%209.5.1M10.4%206.1l3.1%203.1-3.1%203%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");--ch-band-wash:none;position:relative;display:inline-flex;align-items:center;min-height:28px;padding:5px 11px 5px 30px;border:1px solid var(--rd-control-line,var(--rd-line));border-radius:8px;background:var(--rd-surface);color:var(--rd-ink);font-size:12px;line-height:16px;cursor:pointer}
+.rd .ch-band-tool:hover:not(:disabled){border-color:color-mix(in srgb,var(--rd-accent) 45%,var(--rd-line))}
+.rd .ch-band-tool:first-child{background:var(--rd-accent);border-color:var(--rd-accent);color:var(--rd-surface);font-weight:600}
+.rd .ch-band-tool::before,.rd .ch-band-tool::after{content:"";position:absolute;left:9px;top:50%;width:16px;height:16px;margin-top:-8px;pointer-events:none}
+.rd .ch-band-tool::before{background:var(--ch-band-wash) center/contain no-repeat;translate:.8px .9px}
+.rd .ch-band-tool::after{background:currentColor;-webkit-mask:var(--ch-band-ink) center/contain no-repeat}
+.rd .ch-band-tool:first-child::before{display:none}
+.rd .ch-band-tool:disabled{opacity:.6;cursor:progress}
+.rd .ch-band-tool-status{font-size:12px;color:var(--rd-muted)}
+.rd .ch-band-tab{min-height:28px;padding:4px 12px;border:1px solid var(--rd-control-line,var(--rd-line));border-radius:8px;background:var(--rd-surface);color:var(--rd-ink);font-size:12px;cursor:pointer}
+.rd .ch-band-more{--ch-band-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M4.6%207l4.5%204.4%204.3-4.5%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");min-height:26px;padding:3px 12px 3px 28px;border:1px solid var(--rd-control-line,var(--rd-line));border-radius:999px;background:var(--rd-surface);color:var(--rd-ink);font-size:12px;line-height:18px;cursor:pointer}
+.rd .ch-band-more[aria-expanded="true"]{--ch-band-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M4.6%2011.2%209.1%206.8l4.3%204.5%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-band-more::after{content:"";position:absolute;left:9px;top:50%;width:14px;height:14px;margin-top:-7px;background:currentColor;-webkit-mask:var(--ch-band-ink) center/contain no-repeat}
+.rd .ch-band-ask{height:30px;padding:4px 14px;border:1px solid var(--rd-control-line,var(--rd-line));border-radius:999px;background:var(--rd-surface);color:var(--rd-ink);font-size:13px}
+.rd .ch-band-ask::placeholder{color:var(--rd-muted)}
+.rd .ch-band-ask:focus-visible{outline:2px solid color-mix(in srgb,var(--rd-accent) 50%,transparent);outline-offset:1px}
+.rd .ch-band-send{--ch-band-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M3.6%209.2c3.3-.1%206.6-.1%209.9.1M10.1%205.6l3.6%203.6-3.6%203.5%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");width:30px;height:30px;border:0;border-radius:50%;background:var(--rd-accent);color:var(--rd-surface);cursor:pointer}
+.rd .ch-band-send:disabled{opacity:.5;cursor:default}
+.rd .ch-band-send::before{display:none}
+.rd .ch-band-send::after{left:7px;top:7px;right:7px;bottom:7px;width:auto;height:auto;border:0;background:currentColor;-webkit-mask:var(--ch-band-ink) center/contain no-repeat}
+.rd .ch-band-tool:is([data-control-id*="timer-toggle"],[data-control-id*="focus-control"],[data-control-id*="timer-reset"]){--ch-band-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M9.1%204.4c2.8%200%204.9%202.2%204.8%205-.1%202.7-2.3%204.7-5%204.6-2.7-.1-4.7-2.3-4.6-5%20.1-2.7%202.2-4.7%205.1-4.5.3%200%20.5%200%20.7.1M9%209.4l.1-2.6M9%209.4l1.9%201.1M7.6%202.4h3%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");--ch-band-wash:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M9.1%204.4c2.8%200%204.9%202.2%204.8%205-.1%202.7-2.3%204.7-5%204.6-2.7-.1-4.7-2.3-4.6-5%20.1-2.7%202.2-4.7%204.8-4.6z%22%20fill%3D%22%23E3DACC%22%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-band-tool:is([data-control-id*="dashboard-view.js:capture"]){--ch-band-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M9%203.2c2.6%200%204%201.9%204%204.4%200%202.3.5%203.6%201.5%204.6-3.6.3-7.4.3-11%200%201-1%201.5-2.3%201.5-4.6%200-2.5%201.4-4.4%204.3-4.4M7.6%2014.1c.4.9%202.4.9%202.8%200M9%202.2v1%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");--ch-band-wash:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M9%203.2c2.6%200%204%201.9%204%204.4%200%202.3.5%203.6%201.5%204.6-3.6.3-7.4.3-11%200%201-1%201.5-2.3%201.5-4.6%200-2.5%201.4-4.4%204-4.4z%22%20fill%3D%22%23E2B865%22%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-band-tool:is([data-control-id*="toolbox.js:button"],[data-control-id*="agent-plan"],[data-control-id*="workspace:plan"]){--ch-band-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M3.9%204.6c3.4-.2%206.8-.2%2010.2%200%20.2%203.2.2%206.4%200%209.6-3.4.2-6.8.2-10.2%200-.1-3.2-.1-6.4%200-9.6.3%200%20.6%200%20.9%200M4%207.4c3.3-.1%206.7-.1%2010%20.1M6.6%203v2.9M11.4%203v2.9%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");--ch-band-wash:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M3.9%204.6c3.4-.2%206.8-.2%2010.2%200%20.2%203.2.2%206.4%200%209.6-3.4.2-6.8.2-10.2%200-.1-3.2-.1-6.4%200-9.6z%22%20fill%3D%22%23E3DACC%22%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-band-tool:is([data-control-id*="dashboard-view.js:schedule"]){--ch-band-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M3.9%204.6c3.4-.2%206.8-.2%2010.2%200%20.2%203.2.2%206.4%200%209.6-3.4.2-6.8.2-10.2%200-.1-3.2-.1-6.4%200-9.6.3%200%20.6%200%20.9%200M4%207.4c3.3-.1%206.7-.1%2010%20.1M6.6%203v2.9M11.4%203v2.9M6.6%2010.9c1.4-.1%202.8-.1%204.3%200M9.4%209.4l1.6%201.5-1.6%201.6%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");--ch-band-wash:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M3.9%204.6c3.4-.2%206.8-.2%2010.2%200%20.2%203.2.2%206.4%200%209.6-3.4.2-6.8.2-10.2%200-.1-3.2-.1-6.4%200-9.6z%22%20fill%3D%22%23C9D6DF%22%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-band-tool:is([data-control-id*="pets.js:suggestion"]){--ch-band-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M6.1%203.4c2.6-.1%205.1-.1%207.7.1.1%202.9.1%205.8-.1%208.6M3.8%205.9c2.6-.2%205.2-.2%207.8%200%20.1%202.9.1%205.8%200%208.7-2.6.2-5.2.2-7.8%200-.2-2.9-.2-5.8%200-8.7.3%200%20.5%200%20.8%200%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");--ch-band-wash:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M3.8%205.9c2.6-.2%205.2-.2%207.8%200%20.1%202.9.1%205.8%200%208.7-2.6.2-5.2.2-7.8%200-.2-2.9-.2-5.8%200-8.7z%22%20fill%3D%22%23EBDBBC%22%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-band-tool:is([data-control-id*="material-read"]){--ch-band-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M4.4%203.6c2.9-.2%206-.1%208.9.1.2%203.6.1%207.3-.1%2010.8-3%20.2-6%20.1-8.9-.1-.1-3.6%200-7.2.2-10.9.3%200%20.6%200%20.9%200M6.4%207.1h5M6.3%209.4h5.2M6.4%2011.7h3.3%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");--ch-band-wash:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M4.4%203.6c2.9-.2%206-.1%208.9.1.2%203.6.1%207.3-.1%2010.8-3%20.2-6%20.1-8.9-.1-.1-3.6%200-7.2.2-10.9z%22%20fill%3D%22%23EBDBBC%22%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-band-tool:is([data-control-id*="widgets.js:preview"]){--ch-band-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M10.6%203.8c-2.2-.1-4.4-.1-6.6%200-.1%203.5-.1%207%20.1%2010.5%203%20.2%206%20.2%209%200%20.1-1.8.1-3.6%200-5.4M10.4%207.6l4.1-4.1M11.6%203.3h2.9v2.9%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");--ch-band-wash:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M4%203.8c2.2-.1%204.4-.1%206.6%200l3.4%204.6c.1%201.9.1%203.9%200%205.9-3%20.2-6%20.2-9%200-.1-3.5-.1-7%200-10.5z%22%20fill%3D%22%23C9D6DF%22%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-band-tool:is([data-control-id*="copy-message"]){--ch-band-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M6.4%203.3c2.4-.1%204.8-.1%207.2.1.1%202.7.1%205.4-.1%208.1M3.9%205.8c2.4-.2%204.9-.2%207.3%200%20.1%202.8.1%205.6%200%208.4-2.4.2-4.9.2-7.3%200-.2-2.8-.2-5.6%200-8.4.3%200%20.6%200%20.9%200%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");--ch-band-wash:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M3.9%205.8c2.4-.2%204.9-.2%207.3%200%20.1%202.8.1%205.6%200%208.4-2.4.2-4.9.2-7.3%200-.2-2.8-.2-5.6%200-8.4z%22%20fill%3D%22%23E3DACC%22%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-band-tool:is([data-control-id*="workspace:inbox"]){--ch-band-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M3.3%205.3c3.8-.2%207.6-.2%2011.4%200%20.2%202.6.2%205.2%200%207.8-3.8.2-7.6.2-11.4%200-.2-2.6-.2-5.2%200-7.8.3%200%20.6%200%20.9%200M3.5%205.6c1.8%201.5%203.7%202.9%205.6%204.3%201.8-1.4%203.6-2.9%205.4-4.4%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");--ch-band-wash:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M3.3%205.3c3.8-.2%207.6-.2%2011.4%200%20.2%202.6.2%205.2%200%207.8-3.8.2-7.6.2-11.4%200-.2-2.6-.2-5.2%200-7.8z%22%20fill%3D%22%23EBDBBC%22%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-band-tool[data-control-id^="feature:"]{--ch-band-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M5.6%206.1c2.3-.2%204.6-.2%206.9%200%201.7.2%202.9%201.4%202.9%202.9%200%201.6-1.3%202.8-2.9%202.9-2.3.2-4.6.2-6.9%200-1.6-.2-2.9-1.4-2.9-2.9%200-1.6%201.2-2.8%203.1-2.9M11.9%207.4c.9%200%201.6.7%201.6%201.6s-.7%201.6-1.6%201.6-1.6-.7-1.6-1.6.7-1.7%201.8-1.6%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");--ch-band-wash:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M5.6%206.1c2.3-.2%204.6-.2%206.9%200%201.7.2%202.9%201.4%202.9%202.9%200%201.6-1.3%202.8-2.9%202.9-2.3.2-4.6.2-6.9%200-1.6-.2-2.9-1.4-2.9-2.9%200-1.6%201.2-2.8%202.9-2.9z%22%20fill%3D%22%23B7C0A0%22%2F%3E%3C%2Fsvg%3E")}
+/* ---- end Help band look ---- */
+/* ---- Help widgets: tick, follow-up, stacks (make-band-widgets-css.cjs) ---- */
+.rd .ch-band-marks{position:absolute;top:7px;right:8px;z-index:2;display:flex;gap:2px}
+.rd .ch-band-card .ch-band-headline,.rd .ch-band-card:has(>.ch-band-when) .ch-band-headline{padding-inline-end:58px}
+/* The marks own the top corner, so "Now" / "This week" sits above the headline as a small tag. */
+.rd .ch-band-card>.ch-band-when{position:relative;top:auto;inset-inline-end:auto;align-self:flex-start;display:inline-block;width:max-content;margin:0 0 5px;rotate:-1deg}
+.rd :is(.ch-band-tick,.ch-band-follow,.ch-band-stack-prev,.ch-band-stack-next,.ch-band-about-clear){position:relative;width:26px;height:26px;min-height:26px;padding:0;border:0;border-radius:50%;background:none;color:transparent;font-size:0;cursor:pointer}
+.rd :is(.ch-band-tick,.ch-band-follow,.ch-band-stack-prev,.ch-band-stack-next,.ch-band-about-clear)::before,.rd .ch-band-tick::after{content:"";position:absolute;inset:4px;background:var(--rd-ink);-webkit-mask:var(--ch-widget-ink) center/contain no-repeat;mask:var(--ch-widget-ink) center/contain no-repeat;opacity:.55;transition:opacity .15s,transform .15s}
+.rd .ch-band-tick{--ch-widget-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M9.1%202.7c3.6-.1%206.4%202.8%206.3%206.4-.1%203.5-2.9%206.3-6.5%206.2-3.5-.1-6.3-3-6.2-6.5.1-3.4%202.9-6.1%206.2-6.1%20.4%200%20.8%200%201.2.1%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-band-tick::after{--ch-widget-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M5.6%209.4l2.3%202.4%204.7-5.5%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");background:var(--rd-accent);opacity:0;transform:scale(.7)}
+.rd .ch-band-tick:is(:hover,:focus-visible)::before{opacity:.9}
+.rd .ch-band-tick:is(:hover,:focus-visible)::after{opacity:1;transform:none}
+.rd .ch-band-follow{--ch-widget-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M3.4%204.6c3.7-.5%207.6-.5%2011.2%200%20.5%202.3.5%204.5%200%206.9-2.5.4-4.3.4-6.1.3L5.7%2014.4l.4-2.6c-.9%200-1.8-.1-2.7-.3-.5-2.3-.5-4.5%200-6.9z%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M6.4%208.1h5.2%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-band-follow:is(:hover,:focus-visible)::before{opacity:.95}
+.rd .ch-band-follow[aria-pressed=true]::before{background:var(--rd-accent);opacity:1}
+.rd :is(.ch-band-tick,.ch-band-follow,.ch-band-stack-prev,.ch-band-stack-next,.ch-band-about-clear):focus-visible{outline:2px solid color-mix(in srgb,var(--rd-accent) 60%,transparent);outline-offset:1px}
+.ch-band-page>[data-fill="2"]{grid-column:span 2}.ch-band-page>[data-fill="3"]{grid-column:span 3}.ch-band-page>[data-fill="4"]{grid-column:span 4}
+/* The run status takes its own slim row while it shows, so the cards keep the rest of the band. */
+.ch-band-panel:has(>.ch-prepare-status:not([hidden])){grid-template-rows:var(--ch-band-toolbar-height) auto minmax(0,1fr) var(--ch-band-nav-height)}
+.rd .ch-prepare-status{min-height:0;padding:0 2px;font-size:12px;line-height:18px;color:var(--rd-muted)}
+/* The one-time Every day / Only when I ask choice takes the same slim line under the toolbar, with the bar's drawn buttons. */
+.ch-band-choice{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;padding:2px 2px 4px;font-size:12px;line-height:18px;color:var(--rd-muted,#73726C)}
+.ch-band-choice[hidden]{display:none}
+.rd .ch-prepare-action{height:22px;padding:0 8px;border:1px solid color-mix(in srgb,var(--rd-accent) 45%,var(--rd-line));border-radius:999px;background:color-mix(in srgb,var(--rd-accent) 8%,var(--rd-surface));color:var(--rd-accent);font:inherit;font-size:12px;cursor:pointer}
+.rd .ch-prepare-action:is(:hover,:focus-visible){background:color-mix(in srgb,var(--rd-accent) 16%,var(--rd-surface))}
+/* The picked card wears the accent: its drawn frame takes the theme accent instead of the widget line. */
+.rd .ch-band-card[data-follow=true]::after{background:var(--rd-accent)}
+.rd:is([data-panel-frame=stitch],[data-panel-frame=card],[data-panel-frame=line],[data-panel-frame=none]) .ch-band-card[data-follow=true]::after{border-color:var(--rd-accent)}
+/* A stack shows the cards underneath as paper edges offset like a hand-held deck (drawn offsets, no blur). */
+.rd .ch-band-card[data-stacked]::before{box-shadow:4px 4px 0 -1px var(--rd-surface),4px 4px 0 0 color-mix(in srgb,var(--rd-ink) 16%,transparent)}
+.rd .ch-band-card[data-stacked="3"]::before{box-shadow:4px 4px 0 -1px var(--rd-surface),4px 4px 0 0 color-mix(in srgb,var(--rd-ink) 16%,transparent),8px 8px 0 -1px var(--rd-surface),8px 8px 0 0 color-mix(in srgb,var(--rd-ink) 12%,transparent)}
+.rd .ch-band-stack{position:absolute;right:8px;bottom:4px;z-index:2;display:flex;align-items:center;gap:1px;font-size:11px;color:var(--rd-muted);font-variant-numeric:tabular-nums}
+.rd .ch-band-stack-prev{--ch-widget-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M11%204.6%206.6%209.1l4.5%204.3%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-band-stack-next{--ch-widget-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M7%204.6l4.4%204.5-4.5%204.3%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")}
+.rd :is(.ch-band-stack-prev,.ch-band-stack-next){width:22px;height:22px;min-height:22px}
+.rd :is(.ch-band-stack-prev,.ch-band-stack-next):hover::before{opacity:.95}
+/* The card a question is about rides in the toolbar as a paper tag. */
+.rd .ch-band-about{display:inline-flex;align-items:center;gap:2px;max-width:min(280px,32vw);height:26px;padding:0 2px 0 10px;border:1px dashed color-mix(in srgb,var(--rd-accent) 55%,var(--rd-line));border-radius:6px;background:color-mix(in srgb,var(--rd-accent) 9%,var(--rd-surface));color:var(--rd-ink);font-size:12px;rotate:-1deg}
+.rd .ch-band-about[hidden]{display:none}
+.rd .ch-band-about-text{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.rd .ch-band-about-text::before{content:"↳ ";color:var(--rd-accent)}
+.rd .ch-band-about-clear{--ch-widget-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M5.6%205.5l6.9%207M12.4%205.6l-6.8%206.9%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");width:22px;height:22px;min-height:22px;flex:none}
+.rd .ch-band-undo{height:26px;padding:0 6px;border:0;background:none;color:var(--rd-accent);font:inherit;font-size:12px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.rd .ch-band-undo[hidden]{display:none}
+@media (prefers-reduced-motion:reduce){.rd :is(.ch-band-tick,.ch-band-follow)::before,.rd .ch-band-tick::after{transition:none}}
+.rd[data-motion=reduced] :is(.ch-band-tick,.ch-band-follow)::before,.rd[data-motion=reduced] .ch-band-tick::after{transition:none}
+/* ---- end Help widgets ---- */
+/* Study card, layout B: the sheet in columns across the card, practice as a row of drawn slips under it. */
+.ch-study-meta{display:flex;flex-wrap:wrap;gap:2px 14px;margin:-2px 0 10px;color:var(--rd-muted,#716b5f);font-size:12.5px;line-height:1.45}
+.ch-band-card .ch-study-gap-note,.ch-study-gap-note{margin:0;color:var(--rd-muted,#716b5f);font-size:12.5px}
+.ch-study-sheet{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:6px 30px;align-items:start}
+.ch-band-card .ch-study-sheet h3,.ch-study-sheet h3{margin:0 0 8px;font:650 15px/1.3 var(--rd-heading-font,Literata,Georgia,serif);color:var(--rd-ink)}
+.ch-study-fact{margin:0 0 9px}
+.ch-study-fact-label{display:block;margin-bottom:1px;color:var(--rd-accent,#A9522F);font-size:11.5px;font-weight:650;letter-spacing:.02em;text-transform:uppercase}
+/* The formula or rule itself on a wash set a little off its place, like paint missing the line. */
+.ch-study-fact-text{position:relative;z-index:0;padding:0 3px;font:500 14.5px/1.6 "Cambria Math",Cambria,Georgia,serif;color:var(--rd-ink);-webkit-box-decoration-break:clone;box-decoration-break:clone;background:linear-gradient(color-mix(in srgb,#EBDBBC 72%,transparent),color-mix(in srgb,#EBDBBC 72%,transparent)) 1.2px 3px/100% calc(100% - 3px) no-repeat}
+.ch-study-fact-note{display:block;margin-top:1px;color:var(--rd-muted,#716b5f);font-size:12.5px;line-height:1.45}
+.ch-band-card .ch-study-tip,.ch-study-tip{position:relative;z-index:0;margin:6px 0 0;padding:9px 12px 10px;font-size:13px;line-height:1.45;color:var(--rd-ink);rotate:-.6deg}
+.ch-study-tip::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:2px 5px 3px 6px;background:color-mix(in srgb,#F6DE9A 70%,var(--rd-surface,#fff));translate:1.3px 1.6px}
+.ch-study-tip-label{display:block;color:color-mix(in srgb,#7a5a12 80%,var(--rd-ink));font-size:11.5px;font-weight:650;letter-spacing:.02em;text-transform:uppercase}
+.rd .ch-study-aid ol.ch-study-quiz,.ch-study-quiz,.ch-band-card .ch-study-aid ol.ch-study-quiz{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:14px 0 2px;padding:0;list-style:none;counter-reset:ch-slip}
+.rd .ch-study-aid ol.ch-study-quiz>li.ch-study-slip,.ch-study-slip,.ch-band-card .ch-study-aid ol.ch-study-quiz>li.ch-study-slip{position:relative;z-index:0;margin:0;display:flex;flex-direction:column;gap:8px;min-height:112px;padding:14px 18px 16px;counter-increment:ch-slip;font-size:13.5px;line-height:1.45}
+.rd .ch-study-aid ol.ch-study-quiz>li.ch-study-slip::before,.ch-study-slip::before,.ch-band-card .ch-study-aid ol.ch-study-quiz>li.ch-study-slip::before{content:counter(ch-slip);position:static;inset:auto;width:auto;height:auto;background:none;text-align:left;align-self:flex-start;font:650 14px var(--rd-heading-font,Literata,Georgia,serif);color:var(--rd-accent,#A9522F)}
+/* The slip: paper (the theme surface) under a hand-drawn ink outline. */
+.ch-study-slip::after{content:"";position:absolute;inset:0;z-index:-1;background:var(--rd-ink,#141413);-webkit-mask:var(--ch-slip-line) 0 0/100% 100% no-repeat;mask:var(--ch-slip-line) 0 0/100% 100% no-repeat}
+.ch-study-slip{--ch-slip-line:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M3.4%202.6Q50%201.2%2097.1%202.9Q98.4%2050%2097.4%2097.3Q50%2098.6%202.7%2097.6Q1.5%2050%203.1%201.9%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20vector-effect%3D%22non-scaling-stroke%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E")}
+.ch-study-slip>*{position:relative}
+.ch-band-card .ch-study-quiz-q,.ch-study-quiz-q{flex:1;margin:0;color:var(--rd-ink)}
+.ch-band-card .ch-study-quiz-answer,.ch-study-quiz-answer{margin:0;padding:6px 9px 7px;border-radius:3px 6px 4px 7px;background:color-mix(in srgb,#CFE4EE 55%,var(--rd-surface,#fff));color:var(--rd-ink)}
+.ch-study-quiz-answer strong{display:block}
+.ch-study-quiz-why{display:block;margin-top:2px;color:var(--rd-muted,#716b5f);font-size:12.5px}
+/* "Answer": a kraft paper tag with a punched hole, tilted a little. */
+.rd .ch-band-card .ch-study-answer-tag,.ch-study-answer-tag{position:relative;z-index:0;align-self:flex-start;min-height:0;height:auto;padding:3px 11px 3px 17px;border:0;border-radius:0;background:none;color:#5b3a1c;font:600 12px/1.3 inherit;font-family:inherit;rotate:-1.2deg;cursor:pointer;box-shadow:none}
+.ch-study-answer-tag::before{content:"";position:absolute;inset:0;z-index:-1;background:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%2030%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M9%202.2L97.6%201.6Q98.6%2015%2097.9%2028.4L9.4%2028.9L1.8%2015.6L9.3%201.4%22%20fill%3D%22%23EBDBBC%22%20stroke%3D%22%23141413%22%20stroke-width%3D%221.5%22%20vector-effect%3D%22non-scaling-stroke%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%229.8%22%20cy%3D%2215.4%22%20r%3D%222.2%22%20fill%3D%22%23fff%22%20stroke%3D%22%23141413%22%20stroke-width%3D%221.1%22%20vector-effect%3D%22non-scaling-stroke%22%2F%3E%3C%2Fsvg%3E") 0 0/100% 100% no-repeat}
+.ch-study-answer-tag:hover::before,.ch-study-answer-tag:focus-visible::before{translate:0 -1px}
+.ch-study-answer-tag:focus-visible{outline:2px solid var(--rd-accent,#A9522F);outline-offset:3px}
+.ch-study-answer-tag[hidden]{display:none}
+.ch-study-example{margin:0 0 8px;padding:7px 11px;border-radius:10px;background:color-mix(in srgb,#e8b931 16%,var(--rd-surface,#fff))}
+.ch-band-card .ch-study-example p,.ch-study-example p{margin:2px 0 0}
+.ch-study-example-steps{display:grid;gap:3px;margin:0 0 6px;padding-left:1.4em;font-size:.95em}
+.ch-band-card .ch-study-example-answer,.ch-study-example-answer{margin:0 0 4px}
+.ch-band-card .ch-study-example-yours,.ch-study-example-yours{margin:0;color:var(--rd-muted,#716b5f)}
+/* "Show all" sits under the card's text, never on it; a folded card has no scrollbar of its own. */
+.ch-band-card:not([data-open="true"]) .ch-band-scroll{overflow:hidden}
+.ch-band-more{position:relative;inset:auto;translate:none;align-self:center;flex:none;margin-top:6px}
+.ch-band-card[data-open="true"] .ch-band-scroll{padding-bottom:0}
+/* A ticked step is quietly done, not crossed out. */
+.rd .ch-band-card .ch-study-tick input:checked+span{text-decoration:none}
+/* In the narrow Ask your AI panel the band holds one answer: no pager, dots or push button, columns stacked. */
+.ch-study-viewer .ch-band-dots,.ch-study-viewer .ch-band-prev,.ch-study-viewer .ch-band-next,.ch-study-viewer .ch-band-tab,.ch-study-viewer .ch-band-status{display:none}
+.ch-study-viewer .ch-band-columns,.ch-study-viewer .ch-band-timeline{grid-auto-flow:row}
+
+/* Daily AI help: Prepare now, from the band top row (drawing + name). */
+.rd .ch-band-daily{display:inline-flex;align-items:center;gap:6px;flex:none;height:30px;min-height:0;padding:0 13px 0 10px;border:1px solid var(--rd-control-line,var(--rd-line));border-radius:999px;background:var(--rd-surface);color:var(--rd-ink);font:inherit;font-size:13px;cursor:pointer}
+.rd .ch-band-daily::before{content:"";width:16px;height:16px;background:var(--rd-accent,#A9522F);-webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cpath%20d%3D%22M8.1%205.1c1.7%200%202.9%201.3%202.9%202.9S9.7%2010.9%208%2010.9%205.1%209.6%205.1%208s1.3-3%203.1-2.8M8%201.5v1.7M8.1%2012.8v1.7M1.5%208.1h1.7M12.8%208h1.7M3.4%203.4l1.2%201.2M11.4%2011.4l1.2%201.2M3.5%2012.6l1.1-1.1M11.4%204.6l1.2-1.2%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cpath%20d%3D%22M8.1%205.1c1.7%200%202.9%201.3%202.9%202.9S9.7%2010.9%208%2010.9%205.1%209.6%205.1%208s1.3-3%203.1-2.8M8%201.5v1.7M8.1%2012.8v1.7M1.5%208.1h1.7M12.8%208h1.7M3.4%203.4l1.2%201.2M11.4%2011.4l1.2%201.2M3.5%2012.6l1.1-1.1M11.4%204.6l1.2-1.2%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E") center/contain no-repeat}
+.rd .ch-band-daily:hover:not(:disabled)::before{rotate:20deg;transition:rotate .25s}
+.rd .ch-band-daily:disabled{opacity:.55;cursor:default}
+.ch-study-viewer .ch-band-daily{display:none}
+@media (prefers-reduced-motion:reduce){.rd .ch-band-daily::before{transition:none!important;rotate:none!important}}
+/* Daily help deliverables: a practice test (slips, answer and solution on tap), worked examples in full, line-by-line
+   translation help, and the reading breakdown's thesis and quotes. */
+.rd .ch-study-aid ol.ch-study-test,.ch-study-test,.ch-band-card .ch-study-aid ol.ch-study-test{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.ch-study-test .ch-study-slip{min-height:0}
+.rd .ch-study-aid ol.ch-study-choices,.ch-study-choices,.ch-band-card .ch-study-aid ol.ch-study-choices{display:grid;gap:7px;margin:0;padding:0 0 0 1.5em;list-style:upper-alpha;counter-reset:none;font-size:13px}
+.rd .ch-study-aid ol.ch-study-choices>li,.ch-study-choices>li,.ch-band-card .ch-study-aid ol.ch-study-choices>li{margin:0;padding:0 0 0 2px;font:inherit;line-height:1.45}
+/* Choices set their maths at full size (a fraction as tall as in a worked step); the Answer tag stands clear of the last one.
+   Inline maths in a question, its choices and its answer never widens the card: one wider than its line scrolls sideways
+   inside itself (its baseline stays on the text's). */
+.ch-study-aid ol.ch-study-choices math.ch-math:not([display=block]){math-style:normal}
+.ch-study-aid ol.ch-study-choices>li{min-width:0}
+.ch-study-aid :is(.ch-study-choices,.ch-study-quiz-q,.ch-study-quiz-answer) math.ch-math:not([display=block]){max-width:100%;overflow-x:auto;overflow-y:hidden;padding-block:1px;scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--rd-ink,#141413) 22%,transparent) transparent}
+.rd .ch-band-card .ch-study-choices+.ch-study-answer-tag,.ch-study-choices+.ch-study-answer-tag{margin-top:11px}
+.rd .ch-study-aid ol.ch-study-choices>li::before,.ch-band-card .ch-study-aid ol.ch-study-choices>li::before{content:none}
+.rd .ch-study-aid ol.ch-study-solution,.ch-study-solution,.ch-band-card .ch-study-aid ol.ch-study-solution{display:grid;gap:3px;margin:5px 0 0;padding:0 0 0 1.3em;list-style:decimal;counter-reset:none;font-size:12.5px;color:var(--rd-ink)}
+.rd .ch-study-aid ol.ch-study-solution>li,.ch-study-solution>li,.ch-band-card .ch-study-aid ol.ch-study-solution>li{margin:0;padding:0;font:inherit}
+.rd .ch-study-aid ol.ch-study-solution>li::before,.ch-band-card .ch-study-aid ol.ch-study-solution>li::before{content:none}
+.ch-study-examples{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px 26px;align-items:start}
+.ch-study-examples .ch-study-example{margin:0}
+.rd .ch-study-aid ol.ch-study-lines,.ch-study-lines,.ch-band-card .ch-study-aid ol.ch-study-lines{display:grid;gap:12px;margin:0;padding:0;list-style:none}
+.rd .ch-study-aid ol.ch-study-lines>li,.ch-study-line,.ch-band-card .ch-study-aid ol.ch-study-lines>li{position:relative;margin:0;padding:0 0 12px;border-bottom:1px dashed color-mix(in srgb,var(--rd-line,#c9beab) 80%,transparent);font-size:13.5px}
+.rd .ch-study-aid ol.ch-study-lines>li::before,.ch-band-card .ch-study-aid ol.ch-study-lines>li::before{content:none}
+.ch-study-line:last-child{border-bottom:0;padding-bottom:0}
+.rd .ch-band-card .ch-study-line-text,.ch-study-line-text{margin:0 0 6px;font:500 16px/1.5 var(--rd-heading-font,Literata,Georgia,serif);color:var(--rd-ink)}
+/* A line's words: one two-column list. The word column is as wide as the line's longest word, up to a cap, and a word
+   (a CJK one too) breaks only when it is longer than the cap; the glosses wrap in their own column, the meaning in ink
+   and its form quieter after it. Each word takes its own direction (dir=auto), so right-to-left words read right. */
+.rd .ch-study-aid dl.ch-study-words,.ch-study-words{display:grid;grid-template-columns:fit-content(min(10.5em,40%)) minmax(0,1fr);gap:5px 14px;align-items:baseline;margin:0 0 8px}
+.ch-study-word{display:contents}
+.rd .ch-study-aid .ch-study-word dt,.ch-study-word dt{margin:0;font-family:inherit;font-size:13.5px;font-style:normal;font-weight:650;line-height:1.35;color:var(--rd-accent,#A9522F);text-decoration:none;min-width:0;overflow-wrap:break-word;word-break:keep-all;white-space:normal}
+.rd .ch-study-aid .ch-study-word dd,.ch-study-word dd{min-width:0;margin:0;font-family:inherit;font-size:12.5px;font-style:normal;font-weight:400;line-height:1.4;color:var(--rd-ink,#141413);white-space:normal;overflow-wrap:break-word}
+.ch-study-word .ch-study-form{color:var(--rd-muted,#716b5f)}
+/* A scanned line: its syllables in small type under drawn marks (long, short, either), feet parted by thin ink rules and
+   the main caesura by a double rule in the accent. It sits first under the line, quiet, and wraps only after a rule. */
+.rd .ch-band-card .ch-study-scan,.rd .ch-study-aid .ch-study-scan,.ch-study-scan{display:flex;flex-wrap:wrap;align-items:stretch;row-gap:6px;margin:0 0 9px;padding:0 0 8px;border-bottom:1px dashed color-mix(in srgb,var(--rd-line,#c9beab) 70%,transparent);font:400 12.5px/1.2 var(--rd-heading-font,Literata,Georgia,serif);color:color-mix(in srgb,var(--rd-ink,#141413) 72%,transparent);white-space:normal}
+.ch-scan-foot{display:inline-flex;flex-wrap:wrap;align-items:stretch;max-width:100%;row-gap:6px;white-space:nowrap}
+/* A right-to-left line (it takes its direction from its own text) starts at the right, over its scansion and words. */
+.ch-study-aid .ch-study-line .ch-study-line-text{text-align:start}
+.ch-scan-syl{display:inline-flex;flex-direction:column;align-items:center;gap:3px;padding:0 1.5px}
+.ch-scan-q{display:block;width:14px;height:8px;overflow:hidden;color:transparent;font-size:0;background:var(--rd-accent,#A9522F);-webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2014%208%22%3E%3Cpath%20d%3D%22M1.7%204.5c3.1-.6%207.3-.7%2010.7-.1%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2014%208%22%3E%3Cpath%20d%3D%22M1.7%204.5c3.1-.6%207.3-.7%2010.7-.1%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E") center/contain no-repeat}
+.ch-scan-syl[data-q=short] .ch-scan-q{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2014%208%22%3E%3Cpath%20d%3D%22M3.1%201.3c.2%203.2%201.9%204.9%203.9%204.9s3.8-1.7%204-4.9%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.45%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2014%208%22%3E%3Cpath%20d%3D%22M3.1%201.3c.2%203.2%201.9%204.9%203.9%204.9s3.8-1.7%204-4.9%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.45%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")}
+.ch-scan-syl[data-q=either] .ch-scan-q{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2014%208%22%3E%3Cpath%20d%3D%22M4.2%201.4l5.8%205.2M10.1%201.3L4%206.7%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.3%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2014%208%22%3E%3Cpath%20d%3D%22M4.2%201.4l5.8%205.2M10.1%201.3L4%206.7%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.3%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")}
+.ch-scan-syl[data-q=none] .ch-scan-q{background:none}
+.ch-scan-syl[data-q=none] .ch-scan-t{opacity:.6;font-style:italic}
+.ch-scan-bar{flex:none;align-self:stretch;width:4px;margin:0 4px;overflow:hidden;color:transparent;font-size:0;background:color-mix(in srgb,var(--rd-ink,#141413) 40%,transparent);-webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%204%2020%22%3E%3Cpath%20d%3D%22M2.2.9c-.5%206-.2%2012.2.1%2018.3%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.2%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E") center/100% 100% no-repeat;mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%204%2020%22%3E%3Cpath%20d%3D%22M2.2.9c-.5%206-.2%2012.2.1%2018.3%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.2%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E") center/100% 100% no-repeat}
+.ch-scan-bar[data-bar=cut]{width:8px;margin:0 3px;background:var(--rd-accent,#A9522F);-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%208%2020%22%3E%3Cpath%20d%3D%22M2.5.8c-.4%206-.1%2012.2.2%2018.4M5.7%201.3c-.3%205.9%200%2012%20.2%2017.9%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%208%2020%22%3E%3Cpath%20d%3D%22M2.5.8c-.4%206-.1%2012.2.2%2018.4M5.7%201.3c-.3%205.9%200%2012%20.2%2017.9%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-band-card .ch-study-line-note,.ch-study-line-note{margin:0 0 6px;color:var(--rd-ink);font-size:13px}
+.rd .ch-band-card .ch-study-line-check,.ch-study-line-check{margin:6px 0 0;padding:6px 9px 7px;border-radius:3px 6px 4px 7px;background:color-mix(in srgb,#CFE4EE 55%,var(--rd-surface,#fff));color:var(--rd-ink)}
+.rd .ch-band-card .ch-study-thesis,.ch-study-thesis{position:relative;z-index:0;margin:0 0 12px;padding:10px 14px 11px;font:500 16px/1.55 var(--rd-heading-font,Literata,Georgia,serif);color:var(--rd-ink)}
+.ch-study-thesis::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:3px 7px 4px 8px;background:color-mix(in srgb,#EBDBBC 60%,var(--rd-surface,#fff));translate:1.2px 1.5px}
+.ch-study-quote{display:block;margin:3px 0 0;color:var(--rd-muted,#716b5f);font-style:italic;font-size:12.5px}
+.ch-band-card .ch-study-aid::after{display:none}
+.ch-band-card .ch-study-aid ol.ch-study-quiz>li.ch-study-slip::before{border:0;border-radius:0;transform:none;line-height:inherit}
+/* Folded help rows: one per line, question, problem, point or term; the head shows and the rest opens on tap. */
+.ch-study-aid button.ch-study-row,.ch-study-aid button.ch-study-row:hover{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 10px;column-gap:8px;align-items:baseline;width:100%;min-height:0;height:auto;max-width:none;margin:0;padding:0;border:0;border-radius:4px;background:none;box-shadow:none;color:inherit;font:inherit;text-align:left;white-space:normal;cursor:pointer}
+.ch-study-aid button.ch-study-row::after{content:"\203A";position:static;grid-column:-2/-1;justify-self:center;color:var(--rd-accent,#A9522F);font-weight:700;line-height:1;opacity:.5;transition:rotate .24s var(--ch-help-ease,ease),opacity .16s ease}
+.ch-study-aid [data-open="true"]>button.ch-study-row::after{rotate:90deg}
+.ch-study-aid button.ch-study-row:focus-visible{outline:2px solid color-mix(in srgb,var(--rd-accent,#A9522F) 55%,transparent);outline-offset:2px;border-radius:3px}
+.ch-study-row>span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.ch-study-slip .ch-study-row>span{-webkit-line-clamp:3}
+.ch-study-aid [data-open="true"]>.ch-study-row>span{display:block;-webkit-line-clamp:unset;overflow:visible}
+.ch-study-row-body{padding-top:6px}
+.ch-study-row-body[hidden]{display:none}
+.ch-study-row .ch-study-up-label{display:block}
+.rd .ch-study-aid ol.ch-study-lines,.ch-band-card .ch-study-aid ol.ch-study-lines{grid-template-columns:minmax(0,1fr);gap:0 28px}
+.rd .ch-study-aid ol.ch-study-lines>li.ch-study-line,.ch-band-card .ch-study-aid ol.ch-study-lines>li.ch-study-line{padding:5px 0 6px}
+.ch-study-line .ch-study-row .ch-study-line-text{margin:0}
+.ch-study-terms{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:4px 22px;margin:0 0 10px}
+.ch-study-term>.ch-study-row>span{font-weight:600}
+.ch-study-term .ch-study-row-body p{margin:0}
+.rd .ch-study-aid ol.ch-study-test>li.ch-study-slip,.ch-band-card .ch-study-aid ol.ch-study-test>li.ch-study-slip{min-height:0;padding:10px 14px 11px 34px}
+.rd .ch-study-aid ol.ch-study-test>li.ch-study-slip::before,.ch-band-card .ch-study-aid ol.ch-study-test>li.ch-study-slip::before{position:absolute;left:14px;top:10px;line-height:1.45}
+.ch-study-example .ch-study-row>span{display:block;overflow:visible}
+.ch-study-example-problem{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.ch-study-aid [data-open="true"]>.ch-study-row .ch-study-example-problem{display:block;-webkit-line-clamp:unset;overflow:visible}
+.rd .ch-study-aid ol.ch-study-argument,.ch-band-card .ch-study-aid ol.ch-study-argument{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:2px 26px}
+.ch-study-argument>li[data-open="true"]{grid-column:1/-1}
+.rd .ch-study-aid ol.ch-study-test,.ch-band-card .ch-study-aid ol.ch-study-test{align-items:start}
+/* Compact band: dots, page count and the Push up handle share the toolbar; the band is as tall as its card, up to the folded height; the Now / This week tag sits on the title line. */
+.ch-band-panel{height:auto;display:flex;flex-direction:column}
+.ch-help-band[data-grown="true"] .ch-band-panel{min-height:0}
+.ch-band-card:not([data-open="true"]){max-height:var(--ch-band-card-max,240px)}
+.ch-band-toolbar .ch-band-dots{flex:none;justify-content:flex-start}
+.ch-band-toolbar .ch-band-tab{flex:none;margin:0}
+.rd .ch-band-toolbar .ch-band-tab{min-height:26px;padding:2px 10px}
+.ch-band-page>.ch-band-card{position:relative}
+.ch-band-page>.ch-band-card>.ch-band-when,.rd .ch-band-page>.ch-band-card>.ch-band-when{position:absolute;top:var(--ch-band-card-padding);inset-inline-start:var(--ch-band-card-padding);margin:0;z-index:1}
+.ch-band-card[data-importance="1"]:has(>.ch-band-when) .ch-band-headline{padding-inline-start:44px}
+.ch-band-card[data-importance="2"]:has(>.ch-band-when) .ch-band-headline{padding-inline-start:78px}
+/* Card organization: what the card holds, numbered lines and problems, a rule under the title, and notecard unfolding. */
+.ch-study-count{font:700 11px/1.6 system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--rd-accent,#A9522F)}
+.ch-band-card .ch-band-headline{padding-bottom:6px;margin-bottom:8px;border-bottom:1px dashed color-mix(in srgb,var(--rd-line,#d8cfbf) 85%,transparent)}
+.ch-study-aid ol.ch-study-lines{counter-reset:ch-line}
+.ch-study-aid ol.ch-study-lines>li.ch-study-line{counter-increment:ch-line}
+/* The line number has its own column, as wide as the longest number (a range like 112-113 too), on the line's baseline. */
+.ch-study-aid .ch-study-line>button.ch-study-row,.ch-study-aid .ch-study-line>button.ch-study-row:hover{grid-template-columns:minmax(calc(var(--ch-num-ch,2) * .5em + 4px),max-content) minmax(0,1fr) 10px;column-gap:9px}
+.ch-study-aid .ch-study-line>button.ch-study-row::before{content:attr(data-n);position:static;justify-self:end;font:700 .8em/1 system-ui,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap;color:color-mix(in srgb,var(--rd-ink,#141413) 66%,var(--rd-surface,#FFFDF8))}
+.ch-study-examples{counter-reset:ch-problem}
+.ch-study-examples>.ch-study-example{counter-increment:ch-problem}
+.ch-study-example .ch-study-row .ch-study-up-label::before{content:counter(ch-problem) " · "}
+@keyframes ch-unfold{from{opacity:0;transform:perspective(700px) rotateX(-18deg) translateY(-6px)}to{opacity:1;transform:none}}
+.ch-study-aid .ch-study-row-body[data-opening]:not([hidden]){transform-origin:top center;animation:ch-unfold .26s cubic-bezier(.2,.8,.3,1)}
+.ch-study-aid .ch-study-row-fold{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--ch-help-dur,280ms) var(--ch-help-ease-out,cubic-bezier(.22,1,.36,1))}
+.ch-study-aid .ch-study-row-fold[data-open=true]{grid-template-rows:1fr}
+.ch-study-aid .ch-study-row-fold>.ch-study-row-body{min-height:0;overflow:hidden}
+.ch-study-aid .ch-study-row-fold[data-open=true][data-still]>.ch-study-row-body{overflow:visible}
+.ch-study-aid .ch-study-line[data-open="true"],.ch-study-aid .ch-study-argument>li[data-open="true"],.ch-study-aid .ch-study-term[data-open="true"]{background:var(--rd-surface,#fffdf8);border-radius:3px 7px 4px 6px;box-shadow:3px 4px 0 rgb(20 20 19 / .11);padding:8px 12px 10px;rotate:-.25deg}
+.rd .ch-study-aid ol.ch-study-lines>li.ch-study-line[data-open="true"],.ch-band-card .ch-study-aid ol.ch-study-lines>li.ch-study-line[data-open="true"]{padding:8px 12px 10px;margin:4px 0 6px;border-bottom:0}
+.ch-study-aid .ch-study-slip[data-open="true"],.ch-study-aid .ch-study-example[data-open="true"]{box-shadow:4px 5px 0 rgb(20 20 19 / .12);translate:0 -1px}
+/* Narrow bands (small laptops, zoomed pages, a Home column): the toolbar wraps instead of overflowing and the page dots give way to the page count. */
+.ch-help-band{container-type:inline-size}
+@container (max-width:720px){.ch-help-band .ch-band-toolbar{height:auto;min-height:var(--ch-band-toolbar-height);flex-wrap:wrap;row-gap:6px}.ch-band-toolbar .ch-band-dots{display:none}.ch-help-band .ch-band-ask{min-width:120px}}
+/* Daily AI help progress: a compact ink track; the stage drawings sit on it, short labels under it. */
+.ch-prepare-status{flex-wrap:wrap;row-gap:2px}
+.ch-progress{display:block;flex:1 1 100%;width:100%;max-width:640px;height:auto;overflow:visible;color:var(--rd-ink,#141413)}
+.ch-progress[hidden]{display:none}
+.ch-sr-only{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important}
+.ch-progress-rail{fill:var(--rd-surface,#FFFDF8);stroke:var(--rd-ink,#141413);stroke-width:1.8;stroke-linejoin:round}
+.ch-progress-fill{fill:#DE9A7C;transform-box:fill-box;transform-origin:left center;transform:scaleX(0);transition:transform 1.2s cubic-bezier(.3,.7,.3,1)}
+.ch-progress-disc{fill:var(--rd-surface,#FFFDF8);stroke:var(--rd-ink,#141413);stroke-width:1.5}
+.ch-progress-ink{stroke:var(--rd-ink,#141413)}
+.ch-progress-step{transition:opacity .35s}
+.ch-progress-step[data-state="wait"]{opacity:.38}
+.ch-progress-step .wash{opacity:0;transition:opacity .45s;transform-box:fill-box;transform-origin:center}
+.ch-progress-step:not([data-state="wait"]) .wash{opacity:1}
+.ch-progress-step .mv{transform-box:fill-box;transform-origin:center}
+.ch-progress-step[data-step="0"][data-state="on"] .mv{animation:ch-scan 1.6s ease-in-out infinite}
+@keyframes ch-scan{0%,100%{transform:translateX(-2.4px) rotate(-9deg)}50%{transform:translateX(2.4px) rotate(9deg)}}
+.ch-progress-step .dot{opacity:0;transition:opacity .3s}
+.ch-progress-step[data-state="done"] .dot{opacity:1}
+.ch-progress-step[data-step="1"][data-state="on"] .dot{animation:ch-type 1.2s ease-in-out infinite}
+.ch-progress-step[data-step="1"][data-state="on"] .d2{animation-delay:.2s}
+.ch-progress-step[data-step="1"][data-state="on"] .d3{animation-delay:.4s}
+@keyframes ch-type{0%,100%{opacity:.15}40%{opacity:1}}
+.ch-progress-step[data-step="2"] .mv{transform-origin:15% 85%}
+.ch-progress-step[data-step="2"][data-state="on"] .mv{animation:ch-write .9s ease-in-out infinite}
+@keyframes ch-write{0%,100%{transform:rotate(-9deg) translateX(-1.4px)}50%{transform:rotate(7deg) translateX(1.4px)}}
+.ch-progress-step .trail{stroke:#A9522F;stroke-dasharray:22;stroke-dashoffset:0;opacity:0;transition:opacity .3s}
+.ch-progress-step[data-step="2"]:not([data-state="wait"]) .trail{opacity:1}
+.ch-progress-step[data-step="2"][data-state="on"] .trail{animation:ch-trail .9s linear infinite}
+@keyframes ch-trail{from{stroke-dashoffset:22}to{stroke-dashoffset:0}}
+.ch-progress-step .tick{stroke:var(--rd-ink,#141413);stroke-dasharray:24;stroke-dashoffset:0}
+.ch-progress-step[data-step="3"][data-state="done"] .tick{stroke:#3E8E5A;animation:ch-tick .55s ease-out .15s backwards}
+.ch-progress-step[data-step="3"][data-state="done"] .wash{animation:ch-pop .45s cubic-bezier(.3,1.6,.5,1)}
+@keyframes ch-tick{from{stroke-dashoffset:24}to{stroke-dashoffset:0}}
+@keyframes ch-pop{from{transform:scale(.4)}to{transform:none}}
+.ch-progress-label{font:11.5px/1 system-ui,sans-serif;fill:var(--rd-muted,#73726C);transition:fill .3s}
+.ch-progress-label[data-state="on"]{fill:var(--rd-accent,#A9522F);font-weight:600}
+.ch-progress-label[data-state="done"]{fill:var(--rd-ink,#141413)}
+/* An opened card stays within reach of the rest of Home: past this height it scrolls inside the band. */
+.ch-help-band .ch-band-card[data-open="true"]{max-height:min(64vh,600px);overflow:hidden}
+.ch-help-band .ch-band-card[data-open="true"] .ch-band-scroll{overflow:auto;flex:1 1 auto;min-height:0;overscroll-behavior:contain}
+.ch-study-viewer .ch-band-card[data-open="true"]{max-height:none;overflow:visible}
+.ch-study-viewer .ch-band-card[data-open="true"] .ch-band-scroll{overflow:visible;flex:none}
+
+/* Questions asked on a card sit at its top, folded like its rows (owner, 2026-10-26: ask about the card). */
+.ch-band-answers{margin:0 0 8px;padding:4px 10px 6px;border-radius:9px;background:color-mix(in srgb,var(--rd-accent,#A9522F) 6%,var(--rd-surface,#FFFDF8));animation:ch-unfold .32s cubic-bezier(.2,.8,.2,1) both}
+.ch-band-answers .ch-study-meta{margin:2px 0 2px}
+.ch-band-answer{border-bottom:1px dashed var(--rd-line,#E2DED3)}.ch-band-answer:last-child{border-bottom:0}
+.ch-band-answer-q{font-weight:600}
+.ch-band-answer>.ch-study-row-body{padding:2px 0 8px}
+.ch-band-answer>.ch-study-row-body[data-opening]{animation:ch-unfold .28s cubic-bezier(.2,.8,.2,1) both}
+@media (prefers-reduced-motion:reduce){.ch-band-answers,.ch-band-answer>.ch-study-row-body{animation:none}}
+
+/* ---- Card actions (owner, 2026-10-26): each control is its drawing and its name; drawers unfold inside the card ---- */
+.ch-help-band .ch-band-ico{width:20px;height:20px;flex:none;overflow:visible;transition:transform .22s cubic-bezier(.3,1.6,.5,1)}
+.ch-help-band .ch-band-ico :is(.ink,.dot){stroke:var(--rd-ink,#141413)}
+.ch-help-band .ch-band-ico .faint{opacity:.45}
+.ch-help-band .ch-band-ico .acc.green{stroke:#2F6B43}.ch-help-band .ch-band-ico .acc.blue{stroke:#2F6F8F}
+.ch-help-band .ch-band-ico :is(.wash,.back,.head,.tick){transform-box:fill-box;transform-origin:center}
+.ch-help-band .ch-band-ico .wash{transition:transform .25s ease}
+.ch-help-band .ch-band-ico .tick{stroke-dasharray:24;stroke-dashoffset:0}
+:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]) .ch-band-ico .wash{opacity:.5}
+:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]) .ch-band-ico .acc.green{stroke:#8FD0A2}:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]) .ch-band-ico .acc.blue{stroke:#8CC6E4}
+.ch-help-band .ch-band-acts{display:flex;flex-wrap:wrap;align-items:center;gap:5px 6px;margin-top:6px;padding-top:7px;border-top:1.5px solid color-mix(in srgb,var(--rd-ink,#141413) 72%,transparent)}
+.ch-help-band .ch-band-act{display:inline-flex;align-items:center;gap:5px;min-height:28px;padding:2px 10px 2px 6px;border:1.4px solid var(--rd-ink,#141413);border-radius:9px 11px 8px 10px;background:var(--rd-surface,#FFFDF8);color:var(--rd-ink,#141413);font:600 12.5px/1 system-ui,"Segoe UI",sans-serif;cursor:pointer;box-shadow:1px 1.5px 0 color-mix(in srgb,var(--rd-ink,#141413) 14%,transparent);transition:transform .16s ease,box-shadow .16s ease,background-color .16s ease}
+.ch-help-band .ch-band-act:hover{transform:translateY(-1px);box-shadow:1.5px 2.5px 0 color-mix(in srgb,var(--rd-ink,#141413) 18%,transparent);background:color-mix(in srgb,var(--rd-accent,#A9522F) 6%,var(--rd-surface,#FFFDF8))}
+.ch-help-band .ch-band-act:active{transform:translateY(1px) scale(.97);box-shadow:none}
+.ch-help-band .ch-band-act:focus-visible{outline:2px solid var(--rd-accent,#A9522F);outline-offset:2px}
+.ch-help-band .ch-band-act:is(:hover,:focus-visible) .ch-band-ico{transform:translateY(-1px) rotate(-6deg)}
+.ch-help-band .ch-band-act:is(:hover,:focus-visible) .wash{transform:translate(1.6px,1.6px)}
+.ch-help-band .ch-band-done{margin-left:auto}
+.ch-help-band .ch-band-act:is(:hover,:focus-visible) .ch-band-ico-ask .dot{animation:ch-type 1s ease-in-out infinite}
+.ch-help-band .ch-band-act:is(:hover,:focus-visible) .ch-band-ico-ask .d2{animation-delay:.15s}.ch-help-band .ch-band-act:is(:hover,:focus-visible) .ch-band-ico-ask .d3{animation-delay:.3s}
+.ch-help-band .ch-band-act:is(:hover,:focus-visible) .ch-band-ico-more .back{animation:ch-act-fan .7s ease}
+.ch-help-band .ch-band-act:is(:hover,:focus-visible) .tick{animation:ch-tick .45s ease both}
+.ch-help-band .ch-band-act:is(:hover,:focus-visible) .ch-band-ico-pin .head{animation:ch-act-poke .5s ease}
+.ch-help-band .ch-band-acts[data-busy] .ch-band-act[data-act=more] .ch-band-ico{animation:ch-act-spin 1.1s linear infinite}
+.ch-help-band .ch-band-bar-act{min-height:26px;padding:1px 9px 1px 5px;font-size:12px}
+.ch-help-band .ch-band-bar-act[aria-expanded=true]{background:color-mix(in srgb,#E8B931 16%,var(--rd-surface,#FFFDF8))}
+.ch-help-band .ch-band-bar-act.is-new .ch-band-ico{animation:ch-act-bob .8s ease 2}
+@keyframes ch-act-fan{0%,100%{transform:none}50%{transform:rotate(-9deg) translate(-1px,1px)}}
+@keyframes ch-act-poke{0%,100%{transform:none}45%{transform:translate(1.6px,-1.6px)}}
+@keyframes ch-act-bob{0%,100%{transform:none}30%{transform:translateY(-3px) rotate(-8deg)}60%{transform:translateY(1px)}}
+@keyframes ch-act-spin{to{transform:rotate(360deg)}}
+/* Drawers: one per card, unfolding like a notecard; each kind its own tint. */
+.ch-help-band .ch-band-drawer{display:grid;gap:6px;margin:6px 0 0;padding:8px 10px;border:1.2px solid color-mix(in srgb,#C9A040 55%,transparent);border-radius:10px 12px 9px 11px;background:color-mix(in srgb,#E8B931 11%,var(--rd-surface,#FFFDF8));transform-origin:top center;animation:ch-unfold .3s cubic-bezier(.2,.8,.2,1) both}
+.ch-help-band .ch-band-drawer[data-kind=check]{border-color:color-mix(in srgb,#5E8F5A 50%,transparent);background:color-mix(in srgb,#7FB069 12%,var(--rd-surface,#FFFDF8))}
+.ch-help-band .ch-band-drawer[data-kind=remember]{border-color:color-mix(in srgb,#C47A62 50%,transparent);background:color-mix(in srgb,#E8B4A0 18%,var(--rd-surface,#FFFDF8))}
+.ch-help-band .ch-band-drawer-row{display:flex;align-items:center;gap:8px;min-width:0}
+.ch-help-band .ch-band-drawer-input{flex:1;min-width:0;min-height:30px;padding:5px 10px;border:1.4px solid var(--rd-ink,#141413);border-radius:8px 10px 8px 9px;background:var(--rd-surface,#FFFDF8);color:var(--rd-ink,#141413);font:13px/1.35 system-ui,"Segoe UI",sans-serif}
+.ch-help-band .ch-band-drawer-input:focus{outline:2px solid color-mix(in srgb,var(--rd-accent,#A9522F) 55%,transparent);outline-offset:1px}
+.ch-help-band textarea.ch-band-drawer-input{min-height:96px;resize:vertical}
+.ch-help-band .ch-band-go{flex:none;display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:var(--rd-accent,#A9522F);cursor:pointer;transition:transform .15s ease,opacity .15s ease}
+.ch-help-band .ch-band-go .ch-band-ico :is(.ink,.dot){stroke:#fff}
+.ch-help-band .ch-band-go:is(:hover,:focus-visible):not(:disabled){transform:translateX(2px)}
+.ch-help-band .ch-band-go:disabled{opacity:.4;cursor:default}
+.ch-help-band .ch-band-drawer-status{font-size:12px;color:var(--rd-muted,#73726C)}.ch-help-band .ch-band-drawer-status:empty{display:none}
+.ch-help-band .ch-band-chips{display:flex;flex-wrap:wrap;gap:5px}
+.ch-help-band .ch-band-chip{min-height:24px;padding:1px 10px;border:1.2px solid var(--rd-ink,#141413);border-radius:14px;background:var(--rd-surface,#FFFDF8);color:var(--rd-ink,#141413);font:600 12px/1.2 system-ui,"Segoe UI",sans-serif;cursor:pointer;transition:background-color .15s ease,color .15s ease,transform .15s ease}
+.ch-help-band .ch-band-chip:hover{transform:translateY(-1px)}
+.ch-help-band .ch-band-chip[aria-pressed=true]{background:var(--rd-ink,#141413);color:var(--rd-surface,#FFFDF8)}
+.ch-help-band .ch-band-numbers .ch-band-chip{min-width:26px;padding:1px 6px}
+.ch-help-band .ch-band-redo{justify-self:start}
+.ch-help-band .ch-band-act.ch-band-chip{min-height:24px;padding:1px 9px 1px 5px;border-radius:14px;box-shadow:none}
+/* A Doc the item links that CH could not read. */
+.ch-help-band .ch-band-unread{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 6px;padding:5px 8px;border-radius:8px;background:color-mix(in srgb,#E8B931 14%,var(--rd-surface,#FFFDF8));font-size:12.5px}
+.ch-help-band .ch-band-unread-text{flex:1;min-width:0}
+/* Sheets under the bar: Help with… and Remembered. */
+.ch-help-band .ch-band-sheet{display:grid;grid-template-columns:1.2fr 1fr;gap:18px;margin:6px 0 8px;padding:10px 14px 12px;border:1.5px solid var(--rd-ink,#141413);border-radius:12px 14px 11px 13px;background:var(--rd-surface,#FFFDF8);box-shadow:2px 3px 0 color-mix(in srgb,var(--rd-ink,#141413) 12%,transparent);transform-origin:top center;animation:ch-unfold .3s cubic-bezier(.2,.8,.2,1) both}
+.ch-help-band .ch-band-sheet[hidden]{display:none}
+.ch-help-band .ch-band-sheet[data-kind=notes]{grid-template-columns:1fr}
+.ch-help-band .ch-band-sheet-col{display:grid;align-content:start;gap:4px;min-width:0}
+.ch-help-band .ch-band-sheet-title{margin:0 0 4px;font:700 13.5px/1.3 var(--rd-heading-font,Georgia,serif);color:var(--rd-ink,#141413)}
+.ch-help-band .ch-band-sheet-empty{margin:0;color:var(--rd-muted,#73726C);font-size:12.5px}
+.ch-help-band .ch-band-pick{display:flex;align-items:center;gap:8px;width:100%;min-height:28px;padding:3px 2px;border:0;border-bottom:1px dashed var(--rd-line,#E2DED3);background:none;color:var(--rd-ink,#141413);font:13px/1.3 system-ui,"Segoe UI",sans-serif;text-align:left;cursor:pointer}
+.ch-help-band .ch-band-box{position:relative;flex:none;width:15px;height:15px;border:1.5px solid var(--rd-ink,#141413);border-radius:3px 4px 3px 4px}
+.ch-help-band .ch-band-pick[aria-pressed=true] .ch-band-box{background:color-mix(in srgb,#E8B931 30%,var(--rd-surface,#FFFDF8))}
+.ch-help-band .ch-band-pick[aria-pressed=true] .ch-band-box::after{content:"";position:absolute;left:3px;top:2px;width:7px;height:4px;border:solid #2F6B43;border-width:0 0 2px 2px;transform:rotate(-45deg);animation:ch-pop .2s ease both}
+.ch-help-band .ch-band-pick-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch-help-band .ch-band-pick-when{flex:none;color:var(--rd-muted,#73726C);font-size:12px}
+.ch-help-band .ch-band-note{display:flex;align-items:baseline;gap:10px;padding:5px 0;border-bottom:1px dashed var(--rd-line,#E2DED3);font-size:13px}
+.ch-help-band .ch-band-note-where{flex:none;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:1px 7px;border-radius:8px;background:color-mix(in srgb,var(--rd-ink,#141413) 7%,var(--rd-surface,#FFFDF8));color:var(--rd-muted,#73726C);font:700 10.5px/1.5 system-ui,sans-serif}
+.ch-help-band .ch-band-note-text{flex:1;min-width:0}
+.ch-help-band .ch-band-note-remove{flex:none;border:0;background:none;color:var(--rd-accent,#A9522F);font:700 12px system-ui,sans-serif;cursor:pointer}
+@container (max-width:720px){.ch-help-band .ch-band-sheet{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.ch-help-band :is(.ch-band-drawer,.ch-band-sheet,.ch-band-ico,.ch-band-ico *,.ch-band-act){animation:none!important;transition:none!important}}
+.ch-help-band[data-reduced-motion=true] :is(.ch-band-drawer,.ch-band-sheet,.ch-band-ico,.ch-band-ico *,.ch-band-act){animation:none!important;transition:none!important}
+/* The bar without the old Ask box: Help, then its actions, then the page controls on the right. */
+.ch-help-band .ch-band-toolbar:has(.ch-band-bar-act) .ch-band-title{margin-inline-end:4px;flex:none}
+
+/* Layout B (owner, 2026-10-26): the card's actions sit in its title line and wrap under the title on a narrow card. */
+.ch-help-band .ch-band-head{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin:0 0 4px}
+.ch-help-band .ch-band-head>.ch-band-when{position:static;inset:auto;flex:none}
+.ch-help-band .ch-band-head>.ch-band-headline{flex:1 1 200px;min-width:0;margin:0;padding:0!important}
+.ch-help-band .ch-band-head>.ch-band-acts{flex:0 1 auto;margin:0 0 0 auto;padding:0;border:0;gap:4px;justify-content:flex-end}
+.ch-help-band .ch-band-head .ch-band-act{min-height:24px;padding:1px 8px 1px 4px;font-size:12px;border-width:1.2px;box-shadow:none}
+.ch-help-band .ch-band-head .ch-band-act:hover{box-shadow:1px 1.5px 0 color-mix(in srgb,var(--rd-ink,#141413) 16%,transparent)}
+.ch-help-band .ch-band-head .ch-band-ico{width:17px;height:17px}
+.ch-help-band .ch-band-head .ch-band-done{margin-left:0}
+.ch-help-band .ch-band-slot:empty{display:none}
+.ch-help-band .ch-band-slot>.ch-band-drawer{margin:0 0 6px}
+/* An opened card scrolls up and down only: a 1px-wide row must not add a sideways scrollbar. */
+.ch-help-band .ch-band-card[data-open="true"] .ch-band-scroll{overflow-x:hidden;overflow-y:auto}
+
+/* One title line and one outline (owner picked A, 2026-10-27): the line under a card's title (its count, minutes and
+   what is missing) sits in the title line, between the title and the actions; the count stands by the actions. The Help
+   frame is the only outline: a card has no frame of its own, and cards side by side are parted by a dashed rule. */
+.ch-help-band .ch-band-head>.ch-band-headline{flex:1 1 auto;max-width:none;border-bottom:0;text-wrap:balance}
+.ch-help-band .ch-band-head>.ch-study-meta:not(:has(.ch-study-gap-note,.ch-study-total)){flex:0 0 auto}
+@container (min-width:721px){.ch-help-band .ch-band-card .ch-band-head{flex-wrap:wrap;row-gap:4px}.ch-help-band .ch-band-card .ch-band-head>.ch-band-acts{flex:0 0 auto;flex-wrap:nowrap;margin-inline-start:auto}}
+.ch-help-band .ch-band-head>.ch-study-meta{flex:1 1 160px;min-width:0;display:flex;flex-wrap:nowrap;align-items:baseline;gap:0 14px;margin:0;padding-inline-start:12px;border-inline-start:1px dashed color-mix(in srgb,var(--rd-line,#d8cfbf) 95%,transparent)}
+.ch-help-band .ch-band-head>.ch-study-meta>.ch-study-gap-note{order:0;flex:1 1 auto;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:16px}
+.ch-help-band .ch-band-head>.ch-study-meta>.ch-study-total{order:1;flex:none;white-space:nowrap}
+.ch-help-band .ch-band-head>.ch-study-meta>.ch-study-count{order:2;flex:none;margin-inline-start:auto;white-space:nowrap}
+.ch-help-band .ch-band-head>.ch-band-acts{margin-inline-start:0}
+.ch-help-band .ch-band-head:not(:has(>.ch-study-meta))>.ch-band-acts{margin-inline-start:auto}
+.ch-help-band .ch-band-card,.rd .ch-help-band .ch-band-card{padding:0;border:0}
+.rd .ch-help-band .ch-band-card::before,.rd .ch-help-band .ch-band-card::after{display:none}
+.ch-help-band .ch-band-page>:is(.ch-band-card,.ch-band-lap)+:is(.ch-band-card,.ch-band-lap){padding-inline-start:var(--ch-band-gap);border-inline-start:1px dashed color-mix(in srgb,var(--rd-line,#d8cfbf) 95%,transparent)}
+@container (max-width:720px){.ch-help-band .ch-band-head>.ch-band-headline{max-width:none;flex:1 1 0;min-width:9ch}.ch-help-band .ch-band-head>.ch-study-meta{flex:0 1 auto;order:0;padding-inline-start:0;border:0}.ch-help-band .ch-band-head>.ch-study-meta:has(.ch-study-gap-note,.ch-study-total){flex-basis:100%;order:3}}
+
+/* Help on a dark theme (owner, 2026-10-27: "the grayish yellow make the text inside it hard to see"): the paper washes
+   mixed most of a light colour into the surface, which on a dark surface came out a mid grey-yellow under light text.
+   On dark they keep their hue but stay dark, so the theme's light ink reads on them. */
+:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-study-thesis::before{background:color-mix(in srgb,#EBDBBC 16%,var(--rd-surface))}
+:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-study-tip::before{background:color-mix(in srgb,#F6DE9A 15%,var(--rd-surface))}
+:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-study-tip-label{color:color-mix(in srgb,#E8C26A 85%,var(--rd-ink))}
+:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) :is(.ch-study-quiz-answer,.ch-study-line-check){background:color-mix(in srgb,#CFE4EE 14%,var(--rd-surface))}
+:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-study-fact-text{background:linear-gradient(color-mix(in srgb,#EBDBBC 20%,transparent),color-mix(in srgb,#EBDBBC 20%,transparent)) 1.2px 3px/100% calc(100% - 3px) no-repeat}
+:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]) .ch-band-pick[aria-pressed=true] .ch-band-box{background:color-mix(in srgb,#E8B931 24%,var(--rd-surface))}
+:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-study-example{background:color-mix(in srgb,#e8b931 8%,var(--rd-surface))}
+
+/* Title line B (owner, 2026-10-27): one paper strip with a drawn border. The title, the note and the actions are parted
+   by dotted rules. A card too narrow for one line puts the actions, then the note, under the title. */
+.ch-help-band .ch-band-card{container-type:inline-size}
+.ch-help-band .ch-band-head{flex-wrap:nowrap;align-items:center;gap:0 10px;margin:0 0 8px;padding:3px 4px 3px 8px;border:1.4px solid var(--rd-ink,#141413);border-radius:12px 9px 13px 10px/10px 13px 9px 12px;background:color-mix(in srgb,#E9D3A8 20%,var(--rd-surface,#FFFDF8));box-shadow:3px 3px 0 -.5px color-mix(in srgb,#E6C478 50%,var(--rd-surface,#FFFDF8))}
+:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]) .ch-band-head{background:color-mix(in srgb,#E9D3A8 9%,var(--rd-surface));box-shadow:3px 3px 0 -.5px color-mix(in srgb,#E6C478 28%,var(--rd-surface))}
+.ch-help-band .ch-band-head>:is(.ch-study-meta,.ch-band-acts){align-self:stretch;display:flex;align-items:center;padding-inline-start:12px;border:0;border-inline-start:2px dotted color-mix(in srgb,var(--rd-ink,#141413) 30%,transparent)}
+.ch-help-band .ch-band-head>.ch-study-meta>.ch-study-gap-note{font-style:italic}
+.ch-help-band .ch-band-head>.ch-study-meta>.ch-study-count{border:1.2px solid currentColor;border-radius:999px;padding:0 8px;line-height:17px;font-size:10px}
+.ch-help-band .ch-band-card .ch-band-head>.ch-band-when{border:1.3px solid currentColor;border-radius:4px 6px 4px 5px;padding:0 6px;background:none;font:700 10px/16px system-ui,"Segoe UI",sans-serif;letter-spacing:.08em;text-transform:uppercase;rotate:-4deg}
+.ch-help-band .ch-band-head .ch-band-act{border-color:transparent;background:none;box-shadow:none}
+.ch-help-band .ch-band-head .ch-band-act:is(:hover,:focus-visible){border-color:transparent;background:color-mix(in srgb,#F6DE9A 32%,transparent);box-shadow:none;transform:none}
+@container (max-width:720px){.ch-help-band .ch-band-head{flex-wrap:wrap;row-gap:4px}.ch-help-band .ch-band-head>:is(.ch-study-meta,.ch-band-acts){border:0;padding-inline-start:0}.ch-help-band .ch-band-head>.ch-band-acts{flex-basis:100%;justify-content:flex-start;gap:2px 4px}}
+
+/* Daily AI help (owner picked B): the band's one clay button, with a drawn sun whose rays turn on hover and keep turning
+   while help is being made. */
+.rd .ch-help-band .ch-band-daily{height:30px;gap:6px;padding:0 13px 0 7px;border:1.4px solid var(--rd-ink,#141413);border-radius:9px 12px 8px 11px/11px 8px 12px 9px;background:var(--rd-accent,#A9522F);color:#FFF8EC;font-weight:650;box-shadow:2px 2.5px 0 color-mix(in srgb,var(--rd-ink,#141413) 28%,transparent);transition:transform .15s,box-shadow .15s}
+.rd .ch-help-band .ch-band-daily::before{display:none}
+.ch-help-band .ch-band-daily .ch-band-ico{width:19px;height:19px;flex:none}
+.ch-help-band .ch-band-daily .ch-band-ico .ink{stroke:#FFF8EC}
+.ch-help-band .ch-band-daily .rays{transform-origin:11px 11px;transition:transform .45s cubic-bezier(.3,1.5,.5,1)}
+.rd .ch-help-band .ch-band-daily:hover:not(:disabled){transform:translateY(-1px);box-shadow:2.5px 3.5px 0 color-mix(in srgb,var(--rd-ink,#141413) 30%,transparent)}
+.ch-help-band .ch-band-daily:is(:hover,:focus-visible):not(:disabled) .rays{transform:rotate(45deg)}
+.rd .ch-help-band .ch-band-daily:disabled{opacity:.8}
+.ch-help-band .ch-band-daily:disabled .rays{animation:ch-act-spin 4s linear infinite}
+.ch-help-band[data-reduced-motion=true] .ch-band-daily .rays{transition:none;animation:none}
+@media (prefers-reduced-motion:reduce){.ch-help-band .ch-band-daily .rays{transition:none;animation:none}}
+/* On dark the clay is lighter, so its words and the sun's lines are dark ink (6.6:1 instead of 2.5:1). */
+:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]) .ch-band-daily{color:#1D1A16}
+:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]) .ch-band-daily .ch-band-ico .ink{stroke:#1D1A16}
+
+/* ---- Help card text (owner, 2026-10-28: "extremely text heavy", equations "not in LaTeX form", "a better UI display
+   for clearer sentence, like outlines, notation signals"). study-ui.js presents the AI's markup (MARKUP.md): maths as
+   MathML, steps as an outline (number, drawn mark, lead in the title ink, detail lighter under it), key terms on a
+   drawn wash, the answer first and set apart. Motion: one easing with a little anticipation and settle; reduced motion
+   and Motion off make every change instant (the band's own rules above). ---- */
+.ch-study-aid{--ch-help-ease:cubic-bezier(.34,-.08,.22,1.14);--ch-help-ease-out:cubic-bezier(.22,1,.36,1);--ch-help-dur:280ms;--ch-term-wash:color-mix(in srgb,#F2DC8E 88%,var(--rd-surface,#FFFDF8));--ch-result-wash:color-mix(in srgb,#B7CBA5 58%,var(--rd-surface,#FFFDF8))}
+:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-study-aid{--ch-term-wash:color-mix(in srgb,#E6C478 30%,var(--rd-surface,#242622));--ch-result-wash:color-mix(in srgb,#B7CBA5 22%,var(--rd-surface,#242622))}
+/* Maths: the math font, the card's ink; a formula on its own line is centred with room around it and scrolls inside
+   itself when it is wider than the card (a matrix, a long fraction), never the card. */
+:is(.ch-study-aid,.ch-help-band) math.ch-math{font-family:"Cambria Math","STIX Two Math","Latin Modern Math","Noto Sans Math",math;font-size:1.07em;color:inherit;font-weight:400}
+.ch-study-aid .ch-math-block{display:block;max-width:100%;margin:7px 0 5px;padding:2px 2px 5px;overflow-x:auto;overflow-y:hidden;text-align:center;text-indent:0;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--rd-ink,#141413) 22%,transparent) transparent}
+.ch-study-aid .ch-math-block>math.ch-math{display:inline math;math-style:normal;font-size:1.12em}
+.ch-study-aid math.ch-math mtd.ch-mr{text-align:right}.ch-study-aid math.ch-math mtd.ch-ml{text-align:left}
+.ch-study-aid math.ch-math .ch-mbox{padding:2px 5px;border:1.3px solid currentColor;border-radius:3px 5px 4px 5px}
+.ch-study-aid math.ch-math .ch-mb{font-weight:700}.ch-study-aid math.ch-math .ch-mit{font-style:italic}
+.ch-study-aid :is(code.ch-math-raw,code.ch-code){padding:0 4px;border-radius:4px;background:color-mix(in srgb,var(--rd-ink,#141413) 6%,transparent);color:var(--rd-ink,#141413);font:.86em/1.4 ui-monospace,Consolas,"Cascadia Mono",monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+.ch-study-aid code.ch-math-raw{color:var(--rd-muted,#5E5D59)}
+/* A fenced code block (a step's or a problem's program): its own lines and indentation on a slip of tinted paper with a
+   drawn offset edge; a line wider than the card scrolls inside the slip, never the card. */
+.ch-study-aid pre.ch-code-block{position:relative;display:block;width:fit-content;min-width:min(16em,100%);max-width:100%;box-sizing:border-box;margin:5px 0 4px;padding:6px 11px 7px 10px;overflow-x:auto;overflow-y:hidden;border:0;border-radius:4px 7px 5px 6px/6px 4px 7px 5px;background:color-mix(in srgb,var(--rd-ink,#141413) 5%,var(--rd-surface,#FFFDF8));box-shadow:1.3px 1.7px 0 color-mix(in srgb,var(--rd-ink,#141413) 11%,transparent),inset 2px 0 0 color-mix(in srgb,var(--rd-accent,#A9522F) 42%,transparent);color:var(--rd-ink,#141413);font:400 12px/1.5 ui-monospace,Consolas,"Cascadia Mono",monospace;text-align:left;text-indent:0;white-space:pre;tab-size:4;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--rd-ink,#141413) 22%,transparent) transparent}
+.ch-study-aid pre.ch-code-block>code{display:block;padding:0;border:0;background:none;color:inherit;font:inherit;white-space:inherit}
+:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-study-aid pre.ch-code-block{background:color-mix(in srgb,var(--rd-ink,#F4F1EA) 7%,var(--rd-surface,#242622))}
+.ch-study-aid .ch-math-plain{font-family:"Cambria Math",Cambria,Georgia,serif}.ch-study-aid .ch-math-plain-block{display:block;margin:6px 0;text-align:center}
+/* A bold start is the line's lead (title ink); later bold words are key terms on a highlighter wash set a little off
+   the words, like paint missing the line. */
+.ch-study-aid strong.ch-lead{font-weight:640;color:var(--rd-ink,#141413)}
+.ch-study-aid strong.ch-term{padding:0 2px;margin:0 -1px;font-weight:600;color:inherit;-webkit-box-decoration-break:clone;box-decoration-break:clone;background:linear-gradient(178deg,transparent 0 50%,var(--ch-term-wash) 50% 90%,transparent 90%) 1.4px 1px/calc(100% - 1px) 100% no-repeat}
+/* Drawn marks: Rule (a key), Check (a looking glass), Watch out (a warning triangle), Tip (a bulb), Answer (an arrow). Ink over an offset
+   wash; each has a name for screen readers and no words on the page. */
+.ch-mark{position:relative;display:inline-block;flex:none;width:15px;height:15px;margin-inline-end:5px;vertical-align:-2.5px;text-indent:0}
+.ch-mark::before,.ch-mark::after{content:"";position:absolute;inset:0;-webkit-mask:var(--ch-mask) center/contain no-repeat;mask:var(--ch-mask) center/contain no-repeat}
+.ch-mark::before{--ch-mask:var(--ch-mark-wash);background:var(--ch-mark-tint,#F2DC8E);translate:.9px 1.1px}
+.ch-mark::after{--ch-mask:var(--ch-mark-ink);background:var(--rd-ink,#2B2A27)}
+:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-mark::before{opacity:.6}
+/* Steps: an outline the eye can scan. Number, mark, lead; the detail lighter and smaller under it. */
+.ch-study-aid .ch-study-content ol.ch-steps{display:grid;gap:7px;margin:8px 0 2px;padding:0;list-style:none;counter-reset:ch-step;font-size:13.5px;color:var(--rd-ink,#141413)}
+.ch-study-aid .ch-study-content ol.ch-steps.ch-steps-rest-list{counter-reset:ch-step 3;margin:7px 0 0}
+.ch-study-aid .ch-study-content ol.ch-steps>li.ch-step{position:relative;display:grid;grid-template-columns:1.25em 15px minmax(0,1fr);column-gap:6px;align-items:baseline;margin:0;padding:0;counter-increment:ch-step;font:13.5px/1.42 var(--rd-ui-font,system-ui,"Segoe UI",sans-serif);color:var(--rd-ink,#141413)}
+.ch-study-aid .ch-study-content ol.ch-steps>li.ch-step::before{content:counter(ch-step);position:static;inset:auto;width:auto;height:auto;margin:0;border:0;border-radius:0;transform:none;rotate:none;background:none;text-align:end;font:650 12.5px/1 var(--rd-heading-font,Literata,Georgia,serif);font-variant-numeric:tabular-nums;color:color-mix(in srgb,var(--rd-ink,#141413) 66%,var(--rd-surface,#FFFDF8))}
+.ch-step-body{grid-column:3;min-width:0}
+.ch-study-aid ol.ch-steps>li.ch-step>:is(.ch-mark,.ch-mark-slot){grid-column:2;margin:0;position:relative;top:2.5px}
+.ch-mark-slot{display:block;width:15px}
+.ch-step-head{display:block}
+.ch-study-aid strong.ch-step-lead{font-weight:640;color:var(--rd-ink,#141413);letter-spacing:-.005em}
+.ch-step-detail{display:block;margin-top:1px;color:var(--rd-muted,#5E5D59);font-size:12.75px;line-height:1.45}
+.ch-step[data-lead=none] .ch-step-detail{display:inline;margin:0;color:var(--rd-ink,#141413);font-size:13.5px}
+.ch-step[data-mark=watch] .ch-step-detail{color:color-mix(in srgb,var(--rd-ink,#141413) 78%,var(--rd-muted,#5E5D59))}
+/* The steps after the third: they open in place (grid rows 0fr to 1fr, so nothing jumps) and close the same way. */
+.ch-steps-rest{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--ch-help-dur) var(--ch-help-ease)}
+.ch-steps-rest[data-open=true]{grid-template-rows:1fr}
+.ch-steps-rest-inner{min-height:0;overflow:hidden;visibility:hidden;opacity:0;translate:0 -5px;transition:opacity .16s ease,translate var(--ch-help-dur) var(--ch-help-ease),visibility 0s linear var(--ch-help-dur)}
+.ch-steps-rest[data-open=true]>.ch-steps-rest-inner{visibility:visible;opacity:1;translate:none;transition:opacity .22s var(--ch-help-ease-out) .05s,translate var(--ch-help-dur) var(--ch-help-ease),visibility 0s}
+.ch-study-aid button.ch-steps-more,.rd .ch-study-aid button.ch-steps-more{position:relative;display:inline-flex;align-items:center;gap:5px;min-height:24px;height:auto;margin:5px 0 2px 45px;padding:2px 3px 5px 1px;border:0!important;border-radius:4px;background:none!important;box-shadow:none;color:var(--rd-accent,#A9522F);font:600 12px/1.2 var(--rd-ui-font,system-ui,"Segoe UI",sans-serif);cursor:pointer;transition:transform .16s var(--ch-help-ease)}
+.ch-steps-more::before{content:"";flex:none;width:11px;height:11px;background:currentColor;-webkit-mask:var(--ch-more-chev) center/contain no-repeat;mask:var(--ch-more-chev) center/contain no-repeat;transition:rotate var(--ch-help-dur) var(--ch-help-ease)}
+.ch-steps-more[aria-expanded=true]::before{rotate:180deg}
+.ch-steps-more::after{content:"";position:absolute;left:16px;right:2px;bottom:0;height:4px;background:currentColor;opacity:.45;-webkit-mask:var(--ch-more-line) 0 0/100% 100% no-repeat;mask:var(--ch-more-line) 0 0/100% 100% no-repeat;transform-origin:left center;transition:transform .22s var(--ch-help-ease),opacity .16s ease}
+.ch-steps-more:is(:hover,:focus-visible)::after{opacity:.95;transform:scaleX(1.06)}
+.ch-steps-more:active{transform:translateY(1px) scale(.98)}
+/* The result: the drawn arrow hangs in the margin, the answer sits on a wash under its lower half, at reading weight. */
+.ch-study-aid .ch-result{display:block;margin:2px 0 9px;padding-inline-start:20px;text-indent:-20px;font:550 14px/1.55 var(--rd-ui-font,system-ui,"Segoe UI",sans-serif);color:var(--rd-ink,#141413)}
+.ch-study-aid .ch-result>.ch-mark{margin-inline-end:5px}
+.ch-study-aid .ch-result-text math.ch-math{math-style:normal}
+.ch-study-aid .ch-result-text{position:relative;isolation:isolate;display:inline-block;max-width:calc(100% - 20px);vertical-align:top;padding:0 3px;text-indent:0;background:none}
+.ch-study-aid .ch-result-text::before{content:"";position:absolute;inset:1px -5px -1px -4px;z-index:-1;background:var(--ch-result-wash);border-radius:5px 8px 6px 7px/7px 5px 8px 6px;translate:1.1px 1.3px;pointer-events:none}
+.ch-study-aid .ch-result-text .ch-math-block{background:none}
+.ch-band-card .ch-study-aid strong{font-weight:640}
+/* A revealed answer in a practice slip: the result, then the solution as the same outline; no tinted box around it. */
+.rd .ch-band-card .ch-study-test .ch-study-quiz-answer,.ch-band-card .ch-study-test .ch-study-quiz-answer{padding:7px 0 0;border-radius:0;background:none;border-top:1px dashed color-mix(in srgb,var(--rd-line,#C9C5BA) 90%,transparent)}
+.ch-study-quiz-answer>.ch-result{margin-bottom:4px}
+/* The choice the answer names, once the answer opens: the letter and text on the result wash, laid a little off like a
+   brush stroke, with the drawn answer mark after it. The stroke sweeps in only when the student opens the answer. */
+.ch-study-aid ol.ch-study-choices>li[data-right=true]{position:relative;isolation:isolate;justify-self:start;width:fit-content;max-width:calc(100% - 8px);font-weight:560;color:var(--rd-ink,#141413)}
+.ch-study-aid ol.ch-study-choices>li[data-right=true]::marker{font-weight:700;color:var(--rd-ink,#141413)}
+.ch-study-aid ol.ch-study-choices>li[data-right=true]::after{content:"";position:absolute;inset:-1px -7px -1px -1.55em;z-index:-1;background:var(--ch-result-wash);border-radius:5px 8px 6px 7px/7px 5px 8px 6px;translate:1.1px 1.3px;pointer-events:none}
+.ch-study-aid ol.ch-study-choices>li[data-right=true]>.ch-mark{margin:0 0 0 6px}
+@media (prefers-reduced-motion:no-preference){.ch-study-aid ol.ch-study-choices>li[data-right=true][data-drawn=now]::after{animation:ch-right-sweep .42s var(--ch-help-ease-out) both}.ch-study-aid ol.ch-study-choices>li[data-right=true][data-drawn=now]>.ch-mark{animation:ch-right-mark .3s var(--ch-help-ease) .2s both}}
+@keyframes ch-right-sweep{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes ch-right-mark{from{opacity:0;scale:.6}to{opacity:1;scale:1}}
+.ch-study-quiz-answer .ch-study-quiz-why{display:block;margin-top:2px}
+/* Lines with a drawn mark: the study sheet's common mistake, a translate line's note. */
+.ch-band-card .ch-study-tip,.ch-study-tip{padding-inline-start:30px;text-indent:-20px}
+.ch-study-line-note>.ch-mark{margin-inline-end:6px}
+/* Problems and questions: the label, then the problem; one alone on a card (a lapped stack's front card) shows in full. */
+.ch-study-aid [data-solo=true]>.ch-study-row-head{display:block}
+.ch-study-aid [data-solo=true] .ch-study-example-problem,.ch-study-aid [data-solo=true] .ch-study-quiz-q{display:block;-webkit-line-clamp:unset;overflow:visible}
+.ch-study-aid .ch-study-example[data-solo=true],.ch-study-aid .ch-study-slip[data-solo=true]{box-shadow:none;translate:none}
+.ch-study-example .ch-study-row .ch-study-up-label,.ch-study-slip .ch-study-row .ch-study-up-label,.ch-study-aid [data-solo=true] .ch-study-up-label{margin-bottom:3px}
+.ch-study-example-problem{line-height:1.45}
+/* Folded rows: the chevron sits in its own narrow column and wakes on hover or focus; open, it turns down. */
+.ch-study-aid button.ch-study-row:is(:hover,:focus-visible)::after{opacity:1}
+/* Passage lines read down each column in order (1, 2, 3 … then the next column), never across. The passage's own line
+   numbers are small muted marks, CH's counting numbers are the accent; either way a number never touches the text. */
+@container (min-width:640px){.ch-band-card .ch-study-aid ol.ch-study-lines{display:block;columns:2;column-gap:28px}.ch-band-card .ch-study-aid ol.ch-study-lines>li.ch-study-line{break-inside:avoid}.ch-band-card .ch-study-aid ol.ch-study-lines>li.ch-study-line[data-col-start~="2"]{break-before:column}}
+@container (min-width:1000px){.ch-band-card .ch-study-aid ol.ch-study-lines{columns:3}.ch-band-card .ch-study-aid ol.ch-study-lines>li.ch-study-line[data-col-start~="2"]{break-before:auto}.ch-band-card .ch-study-aid ol.ch-study-lines>li.ch-study-line[data-col-start~="3"]{break-before:column}}
+.ch-study-aid ol.ch-study-lines[data-numbers=source]>li>button.ch-study-row::before{font-weight:500;font-size:.74em;letter-spacing:.01em;color:var(--rd-muted,#73726C)}
+.ch-study-aid ol.ch-study-lines>li.ch-study-line:last-child{border-bottom:1px dashed color-mix(in srgb,var(--rd-line,#c9beab) 80%,transparent)}
+@media (prefers-reduced-motion:reduce){.ch-study-aid :is(.ch-steps-rest,.ch-steps-rest-inner,.ch-steps-more,.ch-steps-more::before,.ch-steps-more::after,.ch-study-row-fold){transition:none!important}}
+:is(.rd[data-motion=reduced],[data-reduced-motion=true]) .ch-study-aid :is(.ch-steps-rest,.ch-steps-rest-inner,.ch-steps-more,.ch-steps-more::before,.ch-steps-more::after,.ch-study-row-fold){transition:none!important}
+/* The marks and the More steps drawings (generated, hand-drawn style). */
+.ch-mark[data-mark=rule]{--ch-mark-tint:#E6C478;--ch-mark-wash:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M6.2%205.3a3.6%203.6%200%201%201-.1%207.2%203.6%203.6%200%200%201%20.1-7.2z%22%20fill%3D%22%23000%22%2F%3E%3C%2Fsvg%3E");--ch-mark-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M6.3%205c2.2-.1%204%201.8%203.9%204-.1%202.2-1.9%203.9-4.1%203.8-2.1-.1-3.8-1.9-3.7-4.1.1-2%201.8-3.7%203.9-3.7.4%200%20.8.1%201.1.2M10.2%209c2.1-.1%204.2-.1%206.2.1M13.6%209.1v2.6M15.9%209.2v2%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M5.5%208.9h.3%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.9%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")}
+.ch-mark[data-mark=check]{--ch-mark-tint:#B7CBA5;--ch-mark-wash:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M7.6%202.8c2.6%200%204.6%202%204.6%204.6s-2%204.7-4.6%204.7S3%209.9%203%207.4s2-4.6%204.6-4.6z%22%20fill%3D%22%23000%22%2F%3E%3C%2Fsvg%3E");--ch-mark-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M7.3%202.7c2.7-.2%204.9%201.9%205%204.5.1%202.7-2%204.9-4.7%205-2.6.1-4.8-2-4.9-4.6-.1-2.6%201.9-4.8%204.5-4.9.4%200%20.8%200%201.1.1%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M11%2011.1c1.3%201.3%202.6%202.6%204%204.1%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")}
+.ch-mark[data-mark=watch]{--ch-mark-tint:#DE9A7C;--ch-mark-wash:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M9.1%203.2c1.8%203.2%203.7%206.6%205.8%2010.4-3.9.4-7.8.4-11.7.1C5%2010.2%207%206.6%209.1%203.2z%22%20fill%3D%22%23000%22%2F%3E%3C%2Fsvg%3E");--ch-mark-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M8.7%202.9c2.1%203.7%204.3%207.5%206.6%2011.3-4.3.4-8.6.4-12.8.1%201.9-3.8%204-7.6%206.4-11.4.2-.3.6-.3.8.1%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M9%206.9c.1%201.3.1%202.5%200%203.7M9%2012.5v.05%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")}
+.ch-mark[data-mark=tip]{--ch-mark-tint:#F2DC8E;--ch-mark-wash:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M9%202.6c2.6%200%204.5%201.9%204.4%204.4%200%201.6-.9%202.7-1.8%203.6-.6.6-.8%201.3-.8%202H7.2c0-.7-.3-1.4-.9-2-1-1-1.8-2-1.7-3.6.1-2.5%201.9-4.4%204.4-4.4z%22%20fill%3D%22%23000%22%2F%3E%3C%2Fsvg%3E");--ch-mark-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M9%202.4c2.7%200%204.7%202%204.6%204.6%200%201.7-.9%202.8-1.9%203.8-.6.6-.8%201.3-.8%202.1H7.1c0-.8-.3-1.5-.9-2.1-1-1-1.9-2.1-1.8-3.8.1-2.6%202-4.6%204.7-4.6M7.2%2014.6c1.2.1%202.4.1%203.6%200M7.8%2016.4c.8.1%201.6.1%202.4%200%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M7.2%205.5c-.7.4-1.1%201-1.2%201.8%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")}
+.ch-mark[data-mark=answer]{--ch-mark-tint:#B9CCDB;--ch-mark-wash:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M3.6%206.3c3.4-.6%207.8-.6%2010.6.2.8%201.5.8%203.3%200%204.8-3.2.6-7.4.6-10.6%200-.8-1.6-.8-3.4%200-5z%22%20fill%3D%22%23000%22%2F%3E%3C%2Fsvg%3E");--ch-mark-ink:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M2.7%209.4c3.6-.4%207.4-.4%2011%20.1M10.3%205.4l3.9%204-3.9%203.6%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")}
+.ch-steps-more{--ch-more-chev:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%3E%3Cpath%20d%3D%22M4.4%206.8l4.6%204.5%204.5-4.6%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.9%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");--ch-more-line:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2060%204%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M1%202.4C8%201.2%2013%203.2%2020%202.1S33%201.4%2040%202.6%2052%201.6%2059%202.2%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20vector-effect%3D%22non-scaling-stroke%22%2F%3E%3C%2Fsvg%3E")}
+/* Titles keep the AI's own case (pH, Kc, mL, mRNA): no forced capitals; a label still reads as a label by its colour. */
+.ch-help-band .ch-band-card :is(.ch-study-up-label,.ch-study-fact-label,.ch-study-tip-label){text-transform:none;letter-spacing:.005em;font:650 12px/1.3 var(--rd-ui-font,system-ui,"Segoe UI",sans-serif);color:color-mix(in srgb,var(--rd-accent,#A9522F) 70%,var(--rd-ink,#141413));text-wrap:balance}
+/* A fraction in a line of text keeps full-size digits (like \dfrac): numbers are what the student checks. */
+.ch-study-aid :is(.ch-step,.ch-study-example-problem,.ch-study-quiz-q,.ch-study-quiz-answer,.ch-study-line-note,.ch-study-fact-text) math.ch-math:not([display=block]):has(mfrac){math-style:normal}
+.ch-study-aid :is(.ch-step-detail,.ch-study-example-problem,.ch-study-quiz-q):has(mfrac){line-height:1.75}
+/* A formula on its own line inside a step or the result starts at the text's edge, with the step rhythm around it;
+   a result that is one formula keeps its drawn arrow on the same line. */
+.ch-study-aid :is(.ch-step,.ch-result) .ch-math-block{text-align:start;margin:3px 0 1px;padding:1px 0 3px}
+.ch-study-aid .ch-result:has(>.ch-result-text>.ch-math-block:only-child) .ch-math-block{display:inline-block;vertical-align:middle;max-width:100%;margin:0}
+/* ---- end Help card text ---- */
+/* ---- Help days and ranking (owner, 2026-10-28: "I should be able to know each day's AI content, the cards are also
+   ranked in importance order"). The day sits beside the title on a paper tag between two drawn arrows; the most
+   important card carries a small drawn pennant; ticked cards wait, washed green, in the day's done pile. Motion is the
+   band's easing on transform and opacity only; reduced motion and Motion off make every change instant (rules above). ---- */
+.ch-help-band{--ch-day-ease:cubic-bezier(.34,-.08,.22,1.14)}
+.ch-help-band .ch-band-day{display:inline-flex;align-items:center;gap:0;flex:none;margin-inline:2px 8px}
+.ch-help-band .ch-band-day[hidden],.ch-help-band .ch-band-day [hidden]{display:none}
+.ch-help-band .ch-band-day-label{display:inline-block;min-width:4.9em;padding:1px 9px 2px;border:1.3px solid var(--rd-ink,#141413);border-radius:5px 8px 6px 7px/7px 5px 8px 6px;background:color-mix(in srgb,#F6DE9A 42%,var(--rd-surface,#FFFDF8));box-shadow:1.5px 2px 0 color-mix(in srgb,var(--rd-ink,#141413) 16%,transparent);color:var(--rd-ink,#141413);font:650 12px/17px system-ui,"Segoe UI",sans-serif;letter-spacing:.01em;font-variant-numeric:tabular-nums;text-align:center;white-space:nowrap;rotate:-1.5deg}
+.ch-help-band[data-day=earlier] .ch-band-day-label{background:color-mix(in srgb,#E9D3A8 34%,var(--rd-surface,#FFFDF8));rotate:1deg}
+.ch-help-band :is(.ch-band-day-prev,.ch-band-day-next){display:grid;place-items:center;width:26px;height:26px;min-height:0;padding:0;border:0;border-radius:50%;background:none;color:var(--rd-ink,#141413);cursor:pointer}
+.ch-help-band :is(.ch-band-day-prev,.ch-band-day-next) .ch-band-ico{width:21px;height:21px}
+.ch-help-band :is(.ch-band-day-prev,.ch-band-day-next) .wash{opacity:0;scale:.55;transition:opacity .16s ease,scale .26s var(--ch-day-ease),transform .26s var(--ch-day-ease)}
+.ch-help-band :is(.ch-band-day-prev,.ch-band-day-next) .ink{transition:translate .26s var(--ch-day-ease)}
+.ch-help-band :is(.ch-band-day-prev,.ch-band-day-next):is(:hover,:focus-visible):not(:disabled) .wash{opacity:1;scale:1}
+.ch-help-band .ch-band-day-prev:is(:hover,:focus-visible):not(:disabled) .ink{translate:-1.5px 0}
+.ch-help-band .ch-band-day-next:is(:hover,:focus-visible):not(:disabled) .ink{translate:1.5px 0}
+.ch-help-band :is(.ch-band-day-prev,.ch-band-day-next):active:not(:disabled) .ch-band-ico{transform:scale(.88)}
+.ch-help-band :is(.ch-band-day-prev,.ch-band-day-next):focus-visible{outline:2px solid var(--rd-accent,#A9522F);outline-offset:1px}
+.ch-help-band :is(.ch-band-day-prev,.ch-band-day-next):disabled{opacity:.28;cursor:default}
+:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]) .ch-band-day-label{background:color-mix(in srgb,#F6DE9A 16%,var(--rd-surface));box-shadow:1.5px 2px 0 color-mix(in srgb,#000 40%,transparent)}
+:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light])[data-day=earlier] .ch-band-day-label{background:color-mix(in srgb,#E9D3A8 12%,var(--rd-surface))}
+:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]) :is(.ch-band-day-prev,.ch-band-day-next) .wash{opacity:0}
+:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]) :is(.ch-band-day-prev,.ch-band-day-next):is(:hover,:focus-visible):not(:disabled) .wash{opacity:.45}
+.ch-study-viewer .ch-band-day{display:none}
+/* The day joins a full bar: no control squeezes or breaks its name onto two lines; a band too narrow for one row puts the
+   page controls on a second row (render 2026-10-28: at 820px Help with… and Remembered broke in two). */
+.ch-help-band .ch-band-toolbar>:is(.ch-band-day,.ch-band-daily,.ch-band-bar-act,.ch-band-prev,.ch-band-next,.ch-band-tab,.ch-band-undo){flex:none;white-space:nowrap}
+@container (max-width:900px){.ch-help-band .ch-band-toolbar{height:auto;min-height:var(--ch-band-toolbar-height);flex-wrap:wrap;row-gap:6px}.ch-help-band .ch-band-toolbar .ch-band-dots{display:none}}
+/* The most important card: a pennant on its pole, in the title strip before the title. */
+.ch-help-band .ch-band-top{display:inline-flex;flex:none;align-self:center;width:18px;height:20px;margin-inline-end:-3px;rotate:-5deg}
+.ch-help-band .ch-band-top .ch-band-ico{width:18px;height:20px}
+.ch-help-band .ch-band-top .wash{transform-origin:5px 4px}
+.ch-help-band .ch-band-card:hover .ch-band-top .wash{animation:ch-pennant .6s var(--ch-day-ease) 1}
+@keyframes ch-pennant{0%,100%{rotate:0deg}40%{rotate:-7deg}75%{rotate:3deg}}
+:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]) .ch-band-top .wash{opacity:.75}
+/* Ticked cards: the done pile at the end of their day, washed green, the Done tick pressed in. */
+.ch-help-band .ch-band-card[data-done=true] .ch-band-head{background:color-mix(in srgb,#B7CBA5 26%,var(--rd-surface,#FFFDF8));box-shadow:3px 3px 0 -.5px color-mix(in srgb,#9CCB8E 42%,var(--rd-surface,#FFFDF8))}
+.ch-help-band .ch-band-card[data-done=true] :is(.ch-band-scroll,.ch-band-headline,.ch-study-meta){opacity:.62;transition:opacity .2s ease}
+.ch-help-band .ch-band-card[data-done=true]:is(:hover,:focus-within) :is(.ch-band-scroll,.ch-band-headline,.ch-study-meta){opacity:1}
+.ch-help-band .ch-band-head .ch-band-done[aria-pressed=true]{background:color-mix(in srgb,#B7CBA5 48%,var(--rd-surface,#FFFDF8))}
+.ch-help-band .ch-band-done[aria-pressed=true] .wash{transform:translate(1.6px,1.6px)}
+:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]) .ch-band-card[data-done=true] .ch-band-head{background:color-mix(in srgb,#B7CBA5 12%,var(--rd-surface));box-shadow:3px 3px 0 -.5px color-mix(in srgb,#9CCB8E 22%,var(--rd-surface))}
+:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]) .ch-band-head .ch-band-done[aria-pressed=true]{background:color-mix(in srgb,#B7CBA5 20%,var(--rd-surface))}
+:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]) .ch-band-card[data-done=true] :is(.ch-band-scroll,.ch-band-headline,.ch-study-meta){opacity:.74}
+/* Motion layers: the page arriving sits over the picture of the page leaving, which is not read or clicked. */
+.ch-help-band .ch-band-panel{position:relative}
+.ch-help-band .ch-band-stage{position:relative;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto;min-width:0;min-height:0}
+.ch-help-band .ch-band-stage[data-resizing]{overflow-y:clip}
+.ch-help-band .ch-band-stage>.ch-band-page{position:relative;z-index:1;grid-area:1/1}
+.ch-help-band .ch-band-stage>.ch-band-page.ch-band-leaving{position:absolute;z-index:0;margin:0;pointer-events:none}
+/* ---- end Help days and ranking ---- */
+/* ---- Card sizes in quarters and lapped stacks (owner, 2026-10-28: a card is "small, medium, large or xlarge, taking
+   1/4, 2/4, 3/4 or 4/4"; big cards of one set are lapped "leaving just the title so the user knows the information in the
+   card"). The front card is the card as ever, title strip and all. The cards behind it show only their tabs: kraft paper
+   tucked under the strip, number and title. The front card's tab is cut from the strip's own paper and joins it. Motion
+   is transform and opacity only with the band's easing; reduced motion and Motion off make every change instant. ---- */
+.ch-help-band{--ch-lap-ease:cubic-bezier(.34,-.08,.22,1.14);--ch-lap-tab:color-mix(in srgb,#E9D3A8 40%,var(--rd-surface,#FFFDF8));--ch-lap-tab-hover:color-mix(in srgb,#E9D3A8 58%,var(--rd-surface,#FFFDF8));--ch-lap-front:color-mix(in srgb,#E9D3A8 20%,var(--rd-surface,#FFFDF8))}
+:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]){--ch-lap-tab:color-mix(in srgb,#E9D3A8 17%,var(--rd-surface));--ch-lap-tab-hover:color-mix(in srgb,#E9D3A8 25%,var(--rd-surface));--ch-lap-front:color-mix(in srgb,#E9D3A8 9%,var(--rd-surface))}
+.ch-help-band .ch-band-lap[data-done=true]{--ch-lap-front:color-mix(in srgb,#B7CBA5 26%,var(--rd-surface,#FFFDF8))}
+:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]) .ch-band-lap[data-done=true]{--ch-lap-front:color-mix(in srgb,#B7CBA5 12%,var(--rd-surface))}
+.ch-help-band .ch-band-page>.ch-band-lap{position:relative;isolation:isolate;display:flex;flex-direction:column;min-width:0;min-height:0}
+.ch-help-band .ch-band-lap-bar{display:flex;align-items:flex-end;gap:6px;flex:none;min-width:0;padding-inline:14px 0}
+/* The tabs of a row share one height and their labels start on one line: a one-line title stands as tall as a two-line
+   neighbour, and when any title in the stack takes two lines every tab keeps room for two, on every row. */
+.ch-help-band .ch-band-tabs{flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;align-items:stretch;justify-content:flex-start;gap:1px 4px}
+.ch-help-band .ch-band-tabs[data-tall] .ch-band-lap-t{min-height:2.4em}
+.ch-help-band .ch-band-tabs[data-rows]{row-gap:3px}
+.ch-help-band .ch-band-lap-tab{position:relative;z-index:0;display:flex;flex:none;align-items:baseline;gap:6px;min-width:0;max-width:100%;height:auto;min-height:24px;margin:0;padding:4px 11px 7px 9px;border:1.2px solid color-mix(in srgb,var(--rd-ink,#141413) 44%,transparent);border-bottom:0;border-radius:9px 11px 0 0/8px 10px 0 0;background:var(--ch-lap-tab);box-shadow:none;color:color-mix(in srgb,var(--rd-ink,#141413) 76%,transparent);font:600 11.5px/1 var(--rd-ui-font,system-ui,"Segoe UI",sans-serif);letter-spacing:.005em;text-align:start;text-transform:none;white-space:normal;cursor:pointer;translate:0 4px;transition:translate .28s var(--ch-lap-ease),background-color .18s ease,color .18s ease;-webkit-tap-highlight-color:transparent;touch-action:pan-y;user-select:none}
+.ch-help-band .ch-band-lap-tab:nth-child(odd){rotate:-.5deg}.ch-help-band .ch-band-lap-tab:nth-child(even){rotate:.4deg}
+.ch-help-band .ch-band-lap-n{flex:none;font:700 11.5px/1.2 var(--rd-heading-font,Literata,Georgia,serif);font-variant-numeric:tabular-nums lining-nums;color:inherit}
+.ch-help-band .ch-band-lap-t{flex:0 1 auto;min-width:0;max-width:20ch;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:normal;line-height:1.2;text-wrap:balance}
+.ch-help-band .ch-band-lap-tab[aria-selected=true] .ch-band-lap-t{display:block;max-width:28ch}
+.ch-help-band .ch-band-lap-tab:is(:hover,:focus-visible):not([aria-selected=true]){translate:0 1px;background:var(--ch-lap-tab-hover);color:var(--rd-ink,#141413)}
+.ch-help-band .ch-band-lap-tab:active:not([aria-selected=true]){translate:0 3px}
+.ch-help-band .ch-band-lap-tab[aria-selected=true]{z-index:calc(var(--ch-lap-z,1) + 1);height:auto;padding-bottom:4.5px;margin-bottom:-1.5px;border:1.4px solid var(--rd-ink,#141413);border-bottom:0;background:var(--ch-lap-front);color:var(--rd-ink,#141413);rotate:none;translate:none;cursor:default}
+.ch-help-band .ch-band-lap-tab:focus-visible{outline:2px solid var(--rd-accent,#A9522F);outline-offset:-4px}
+.ch-help-band .ch-band-lap-step{display:flex;align-items:center;flex:none;gap:0;margin-bottom:2px}
+.ch-help-band :is(.ch-band-lap-prev,.ch-band-lap-next){display:grid;place-items:center;width:24px;height:24px;min-height:0;padding:0;border:0;border-radius:50%;background:none;box-shadow:none;color:var(--rd-ink,#141413);cursor:pointer}
+.ch-help-band :is(.ch-band-lap-prev,.ch-band-lap-next) .ch-band-ico{width:19px;height:19px}
+.ch-help-band :is(.ch-band-lap-prev,.ch-band-lap-next) .wash{opacity:0;scale:.55;transition:opacity .16s ease,scale .26s var(--ch-lap-ease)}
+.ch-help-band :is(.ch-band-lap-prev,.ch-band-lap-next) .ink{transition:translate .26s var(--ch-lap-ease)}
+.ch-help-band :is(.ch-band-lap-prev,.ch-band-lap-next):is(:hover,:focus-visible) .wash{opacity:1;scale:1}
+.ch-help-band .ch-band-lap-prev:is(:hover,:focus-visible) .ink{translate:-1.5px 0}
+.ch-help-band .ch-band-lap-next:is(:hover,:focus-visible) .ink{translate:1.5px 0}
+.ch-help-band :is(.ch-band-lap-prev,.ch-band-lap-next):active .ch-band-ico{transform:scale(.88)}
+.ch-help-band :is(.ch-band-lap-prev,.ch-band-lap-next):focus-visible{outline:2px solid var(--rd-accent,#A9522F);outline-offset:1px}
+:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]) :is(.ch-band-lap-prev,.ch-band-lap-next):is(:hover,:focus-visible) .wash{opacity:.45}
+/* The deck: every card in one grid cell, so the deck is as tall as its tallest card and bringing one to the front changes no layout; the cards behind are
+   unseen and out of reach. An opened (Show all) front card joins the flow so the band can grow to it. */
+.ch-help-band .ch-band-deck{position:relative;z-index:var(--ch-lap-z,1);flex:1 1 auto;min-width:0;min-height:0;touch-action:pan-y;display:grid;grid-template:minmax(0,auto)/minmax(0,1fr)}
+.ch-help-band .ch-band-deck>.ch-band-card{grid-area:1/1;position:relative;inset:auto;min-height:0}
+.ch-help-band .ch-band-deck>.ch-band-card[data-front=false]{visibility:hidden;pointer-events:none}
+.ch-help-band .ch-band-deck>.ch-band-card.is-leaving{visibility:visible;z-index:0}
+.ch-help-band .ch-band-deck>.ch-band-card[data-front=true]{z-index:1}
+.ch-help-band .ch-band-lap[data-parts=true] .ch-band-deck>.ch-band-card.is-leaving>.ch-band-head{visibility:hidden}
+.ch-help-band .ch-band-lap[data-dragging=true]{cursor:grabbing;user-select:none}
+.ch-help-band .ch-band-lap[data-dragging=true] .ch-band-lap-tab{cursor:grabbing}
+/* One question or problem on its own card. In a lapped stack its tab is its title and number, so the card does not
+   repeat them, and the question sits on the card itself, not in a box of its own. A wide card sets a worked problem
+   and its answer beside the working, and each step's detail runs on after its lead; a revealed answer to a question
+   goes beside the question. */
+.ch-help-band .ch-band-lap .ch-study-aid [data-solo=true] .ch-study-up-label{display:none}
+.ch-help-band .ch-band-card .ch-study-aid .ch-study-example[data-solo=true],:is(:is(.rd[data-theme=dark],.ch-help-band[data-ink=light]) .ch-help-band,.ch-help-band[data-ink=light]) .ch-band-card .ch-study-aid .ch-study-example[data-solo=true]{margin:0;padding:0;border-radius:0;background:none}
+.ch-help-band .ch-band-lap .ch-band-card .ch-study-aid ol.ch-study-test>li.ch-study-slip[data-solo=true]{min-height:0;padding:0}
+.ch-help-band .ch-band-lap .ch-band-card .ch-study-aid ol.ch-study-test>li.ch-study-slip[data-solo=true]::before,.ch-help-band .ch-band-lap .ch-study-slip[data-solo=true]::after{content:none;display:none}
+.ch-help-band .ch-band-lap .ch-study-aid ol.ch-study-test{margin-top:2px}
+@container (min-width:700px){
+ .ch-help-band .ch-band-card .ch-study-aid .ch-study-example[data-solo=true],.ch-help-band .ch-band-card .ch-study-aid li.ch-study-slip[data-solo=true]:has(>.ch-study-row-body>.ch-study-quiz-answer:not([hidden])){display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);grid-template-rows:auto 1fr;column-gap:34px;row-gap:0;align-items:start}
+ .ch-help-band .ch-band-card .ch-study-aid :is(.ch-study-example,.ch-study-slip)[data-solo=true]>.ch-study-row-head{grid-column:1;grid-row:1;max-width:64ch}
+ .ch-help-band .ch-band-card .ch-study-aid .ch-study-example[data-solo=true]>.ch-study-row-body,.ch-help-band .ch-band-card .ch-study-aid li.ch-study-slip[data-solo=true]:has(>.ch-study-row-body>.ch-study-quiz-answer:not([hidden]))>.ch-study-row-body{display:contents}
+ .ch-help-band .ch-band-card .ch-study-aid .ch-study-example[data-solo=true]>.ch-study-row-body>.ch-study-example-answer{grid-column:1;grid-row:2;align-self:start;margin:10px 0 0;max-width:64ch}
+ .ch-help-band .ch-band-card .ch-study-aid .ch-study-example[data-solo=true]>.ch-study-row-body>:not(.ch-study-example-answer){grid-column:2;max-width:80ch}
+ .ch-help-band .ch-band-card .ch-study-aid .ch-study-example[data-solo=true]>.ch-study-row-body>ol.ch-steps{grid-row:1/span 2;margin-top:0}
+ .ch-help-band .ch-band-card .ch-study-aid .ch-study-example[data-solo=true]>.ch-study-row-body>.ch-steps-rest{grid-row:3}
+ .ch-help-band .ch-band-card .ch-study-aid .ch-study-example[data-solo=true]>.ch-study-row-body>.ch-steps-more{grid-row:4;justify-self:start}
+ .ch-help-band .ch-band-card .ch-study-aid li.ch-study-slip[data-solo=true]>.ch-study-row-body>.ch-study-choices{grid-column:1;grid-row:2;margin-top:6px}
+ .ch-help-band .ch-band-card .ch-study-aid li.ch-study-slip[data-solo=true]>.ch-study-row-body>.ch-study-quiz-answer{grid-column:2;grid-row:1/span 2;margin:0;padding-top:0;border-top:0;max-width:80ch}
+ .ch-help-band .ch-band-card .ch-study-aid li.ch-study-slip[data-solo=true]:not(:has(>.ch-study-row-body>.ch-study-quiz-answer:not([hidden]))){max-width:84ch}
+}
+@container (min-width:900px){
+ .ch-help-band .ch-band-card .ch-study-aid [data-solo=true] .ch-step-head{display:inline}
+ .ch-help-band .ch-band-card .ch-study-aid [data-solo=true] .ch-step:not([data-lead=none]) .ch-step-detail{display:inline;margin:0 0 0 .45em}
+}
+/* Reduced motion and Motion off: tabs and arrows change at once. */
+@media (prefers-reduced-motion:reduce){.ch-help-band :is(.ch-band-lap-tab,.ch-band-lap-prev,.ch-band-lap-next,.ch-band-lap-prev *,.ch-band-lap-next *){transition:none!important;animation:none!important}}
+:is(.rd[data-motion=reduced],.ch-help-band[data-reduced-motion=true]) :is(.ch-band-lap-tab,.ch-band-lap-prev,.ch-band-lap-next,.ch-band-lap-prev *,.ch-band-lap-next *){transition:none!important;animation:none!important}
+/* ---- end quarters and lapped stacks ---- */

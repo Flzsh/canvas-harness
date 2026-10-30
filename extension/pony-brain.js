@@ -6,6 +6,7 @@
   for(const zone of zones)if(typeof zone==='string'&&zone)try{new Intl.DateTimeFormat('en-US',{timeZone:zone});return zone;}catch{}
   return 'UTC';
  }
+ const StudyKind=root.CanvasHarnessStudyKind||(typeof module==='object'&&module.exports?require('./study-kind.js'):null);
  const HOUR=3600000,DAY=86400000,MAX_COUNT=1000000,MAX_KINDS=64,DEFAULT_ZONE=defaultTimeZone(),OWN=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
  const object=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{},count=v=>typeof v==='number'&&Number.isFinite(v)?Math.min(MAX_COUNT,Math.max(0,Math.floor(v))):0;
  const kindName=v=>typeof v==='string'&&/^[a-z][a-z0-9_-]{0,47}$/.test(v)&&!['constructor','prototype','__proto__'].includes(v);
@@ -24,6 +25,7 @@
   const title=[v.title,v.name].find(x=>typeof x==='string'&&x.trim())||'Untitled item',text=title.replace(/\s+/g,' ').trim();
   return text.length>limit?text.slice(0,limit-3).trimEnd()+'...':text;
  };
+ const studyChoice=(row,label,data={})=>row?{key:row.id,label:label+shortTitle(row,Math.min(48,64-label.length)),data:{...data,itemId:row.id}}:null;
  function calendar(zone){
   let formatter;
   const options={year:'numeric',month:'2-digit',day:'2-digit',weekday:'long',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'};
@@ -36,8 +38,9 @@
    return {day:`${p.year.padStart(4,'0')}-${p.month}-${p.day}`,weekday:p.weekday,hour:Number(p.hour),minute:Number(p.minute),second:Number(p.second),time:`${p.hour}:${p.minute}`};
   };
  }
+ const inferKind=StudyKind.inferKind;
  function entries(s,local){
-  const rows=new Map(),fields=['title','name','dueAt','dueDay','done','planned','estimate','courseId'];
+  const rows=new Map(),fields=['title','name','description','dueAt','dueDay','kind','workKind','submissionTypes','done','planned','estimate','courseId','gradedAt','hasTeacherComments','url','quizTaking','pageKind','pathname'];
   for(const list of [s.assignments,s.planner])
    for(const value of Array.isArray(list)?list:[]){
     const v=object(value),id=itemId(v.id);
@@ -47,17 +50,26 @@
     rows.set(id,row);
    }
   return [...rows.values()].map(v=>{
-   const dueAt=ms(v.dueAt);
+   const dueAt=ms(v.dueAt),facts=StudyKind.classify(v,s);
    return {
     id:v.id,
     courseId:itemId(v.courseId),
+    gradedAt:ms(v.gradedAt),
+    hasTeacherComments:v.hasTeacherComments===true,
     title:typeof v.title==='string'?v.title:'',
     name:typeof v.name==='string'?v.name:'',
+    description:typeof v.description==='string'?v.description:'',
     dueAt,
     dueDay:dueAt!==null?local(dueAt).day:validDay(v.dueDay)?v.dueDay:'',
     done:v.done===true,
     planned:typeof v.planned==='string'?v.planned.trim():v.planned===true?'reserved':'',
-    estimate:estimate(v.estimate)
+    estimate:estimate(v.estimate),
+    kind:facts.kind,
+    reading:facts.reading,
+    rubric:facts.rubric,
+    feedback:facts.feedback,
+    notes:facts.notes,
+    assessment:['quiz','test'].includes(facts.kind)||facts.aid==='practice'
    };
   });
  }
@@ -101,7 +113,39 @@
    const row=rows.filter(x=>!x.planned&&x.estimate<=available).sort((a,b)=>a.estimate-b.estimate||byDue(a,b))[0];
    if(row){crunch={day:today,items:[{id:row.id,estimate:row.estimate}],crunchDay:day,count:rows.length};break;}
   }
-  const activity=object(s.activity);
+  const practice=object(s.practice),
+   practiceId=itemId(practice.itemId),
+   upcoming=open.filter(x=>x.dueAt!==null&&x.dueAt>=now&&x.dueDay<=horizon).sort(byDue),
+   assessments=upcoming.filter(x=>['quiz','test'].includes(x.kind)),
+   practiceItem=assessments.find(x=>x.id===practiceId)||assessments[0],
+   labItem=upcoming.find(x=>x.kind==='lab'&&x.dueDay<=addDays(today,2)),
+   readingItem=upcoming.find(x=>x.reading),
+   rubricItem=upcoming.find(x=>x.rubric),
+   notesItem=s.ai!==false?open.filter(x=>x.assessment&&x.notes&&x.dueAt!==null&&x.dueAt>=now&&x.dueAt-now<=3*DAY).sort(byDue)[0]:null;
+  const feedbackItem=s.teacherFeedback===true&&s.ai!==false?
+   all.filter(x=>
+    x.feedback&&
+     x.gradedAt<=now&&
+     now-x.gradedAt<=3*DAY&&
+     !Object.values(object(s.studyAids)).some(a=>a?.kind==='fixes'&&String(a.itemId)===x.id&&(!a.courseId||!x.courseId||String(a.courseId)===x.courseId))).sort((a,b)=>
+    b.gradedAt-a.gradedAt||compare(a.id,b.id))[0]:
+   null;
+  const ready=s.ai!==false?
+   Object.entries(object(s.studyAids)).filter(([,a])=>
+    a?.overnight===true&&skillEnabled(a.kind,s.skills)&&itemId(a.itemId)&&ms(a.savedAt)!==null&&a.savedAt<=now&&now-a.savedAt<=2*DAY).sort((a,b)=>
+    b[1].savedAt-a[1].savedAt||compare(a[0],b[0]))[0]:
+   null;
+  const reviews=Object.entries(object(s.studyAids)).flatMap(([key,value])=>{
+   const aid=object(value),
+    review=object(aid.review),
+    due=ms(review.due),
+    items=Array.isArray(aid.data?.items)?aid.data.items:[],
+    answers=object(aid.progress?.practice?.answers),
+    missed=items.filter((_,i)=>answers[i]?.correct===false).length;
+   return aid.kind==='practice'&&key&&key.length<=512&&Number.isInteger(review.step)&&review.step>=0&&review.step<3&&due!==null&&due<=now&&missed?
+    [{key,title:shortTitle(aid),due,missed}]:
+    [];
+  }).sort((a,b)=>a.due-b.due||compare(a.key,b.key)),activity=object(s.activity);
   return {
    now,
    local,
@@ -118,6 +162,15 @@
    plan,
    crunch,
    crunchDays,
+   practice,
+   practiceItem,
+   labItem,
+   readingItem,
+   rubricItem,
+   notesItem,
+   feedbackItem,
+   ready,
+   review:reviews[0],
    activity,
    unread:count(s.unreadAnnouncements),
    urgent:!!next&&next.dueAt-now<=3*HOUR
@@ -130,7 +183,12 @@
   deadline:{label:'Deadline watch',kinds:['next','deadline','crunch']},
   focus:{label:'Focus buddy',kinds:['focus','break']},
   planner:{label:'Planner help',kinds:['plan']},
+  quiz:{label:'Quiz prep',kinds:['practice','review','notes']},
   wellbeing:{label:'Wellbeing',kinds:['stretch']},
+  labprep:{label:'Lab prep',kinds:['lab']},
+  reading:{label:'Reading helper',kinds:['reading']},
+  rubric:{label:'Rubric helper',kinds:['rubric']},
+  feedback:{label:'Feedback helper',kinds:['fixes']},
   inbox:{label:'Inbox watch',kinds:['inbox']},
   reminders:{label:'Reminders',kinds:['reminder','routine']},
   night:{label:'Night owl guard',kinds:['deadline']}
@@ -138,9 +196,20 @@
  const cleanSkills=value=>Object.fromEntries(Object.keys(SKILLS).map(k=>[k,!OWN(object(value),k)||object(value)[k]!==false]));
  const skillEnabled=(kind,skills)=>!Object.entries(SKILLS).some(([key,spec])=>spec.kinds.includes(kind)&&OWN(object(skills),key)&&object(skills)[key]===false);
  const KINDS={
-  next:{action:'open',score:c=>c.urgent?1000:200,build:c=>!c.late&&c.next?{key:c.next.id,label:'Open next',data:{itemId:c.next.id,dueAt:c.next.dueAt}}:null,speech:dueSpeech},
+  ready:{action:'ready',score:300,build:c=>{
+   const [key,a]=c.ready||[],labels={practice:'Practice set',reading:'Reading guide',lab:'Lab checklist',rubric:'Rubric checklist',fixes:'Fix list',notes:'Notes outline'};
+   return a&&OWN(labels,a.kind)?{key,label:'Ready: '+labels[a.kind]+' for '+String(a.item||a.title||'').replace(/\s+/g,' ').trim().slice(0,80),data:{aidKey:key,itemId:a.itemId}}:null;
+  }},
+  next:{
+   action:'open',
+   score:c=>c.urgent?1000:c.review&&c.next?.dueDay===c.today?500:200,
+   build:c=>!c.late&&c.next?{key:c.next.id,label:'Open next',data:{itemId:c.next.id,dueAt:c.next.dueAt}}:null,
+   speech:dueSpeech
+  },
   focus:{action:'focus',score:160,build:c=>c.next&&!c.focus.running&&!c.onBreak?{key:c.next.id,label:'Focus 25 minutes',data:{itemId:c.next.id,minutes:25}}:null},
   plan:{action:'plan',score:120,build:c=>c.plan.length?{key:c.today,label:'Plan tonight',data:{day:c.today,items:c.plan}}:null},
+  practice:{action:'practice',score:180,build:c=>studyChoice(c.practiceItem,'Practice: ',c.practiceItem?.id===itemId(c.practice.itemId)?c.practice:{})},
+  review:{action:'review',score:240,build:c=>!c.late&&c.review?{key:c.review.key,label:'Missed ones: '+c.review.title+' ('+c.review.missed+')',data:{aidKey:c.review.key}}:null},
   stretch:{
    action:'stretch',
    score:230,
@@ -156,6 +225,11 @@
      {key:String(c.activity.session)+':'+c.activity.offered,label:'Stand up and stretch',data:{minutes:5}}:
      null
   },
+  lab:{action:'lab',score:176,build:c=>studyChoice(c.labItem,'Lab checklist: ')},
+  reading:{action:'reading',score:150,build:c=>studyChoice(c.readingItem,'Reading guide: ')},
+  notes:{action:'notes',score:181,build:c=>studyChoice(c.notesItem,'Notes outline: ')},
+  rubric:{action:'rubric',score:175,build:c=>studyChoice(c.rubricItem,'Rubric checklist: ')},
+  fixes:{action:'fixes',score:177,build:c=>studyChoice(c.feedbackItem,'Fix list: ')},
   inbox:{action:'inbox',score:120,build:c=>c.unread?{key:String(c.unread),label:c.unread+' new announcement'+(c.unread===1?'':'s'),data:{count:c.unread}}:null},
   break:{action:'break',score:260,build:c=>c.completed&&!c.focus.running&&!c.onBreak?{key:String(c.completedAt),label:'Take five minutes',data:{minutes:5,sessionId:c.completedAt}}:null},
   crunch:{action:'plan',score:400,build:c=>c.crunch?{key:c.crunch.crunchDay,label:'Ease the crunch',data:c.crunch}:null,speech:s=>{
@@ -177,9 +251,12 @@
     kinds[name]={shown:count(k.shown),used:count(k.used),ignored:count(k.ignored),streak:count(k.streak)};
    }
   const nudges=object(v.nudges),seen=new Set(),items=[];
-  for(const id of Array.isArray(nudges.items)?nudges.items:[]){const key=itemId(id);if(key&&!seen.has(key)){seen.add(key);items.push(key);if(items.length>=512)break;}}
-  const time=key=>typeof v[key]==='number'&&Number.isFinite(v[key])?Math.max(0,Math.min(8640000000000000,v[key])):0;
-  return {kinds,nudges:{day:validDay(nudges.day)?nudges.day:'',count:count(nudges.count),items},hiddenUntil:time('hiddenUntil'),quietUntil:time('quietUntil')};
+  for(const id of Array.isArray(nudges.items)?nudges.items:[]){const key=itemId(id);if(key&&!seen.has(key)){seen.add(key);items.push(key);}}
+  return {
+   kinds,
+   nudges:{day:validDay(nudges.day)?nudges.day:'',count:count(nudges.count),items},
+   hiddenUntil:typeof v.hiddenUntil==='number'&&Number.isFinite(v.hiddenUntil)?Math.max(0,Math.min(8640000000000000,v.hiddenUntil)):0
+  };
  }
  function record(learning,kind,event){
   const l=cleanLearning(learning);
@@ -205,8 +282,9 @@
  }
  function petSuggestions(snapshot,l){
   const p=object(snapshot.pet),
-   name=typeof p.name==='string'&&p.name.trim()?p.name.trim():'Biscuit',
-   rows=[['treat','Treat '+name,10],['home','Send '+name+' home',9],['hide','Hide for an hour',8],['settings','Pet settings',7],['quiet','Quiet',6]];
+   Art=root.ReservePetArt||(typeof module==='object'&&module.exports?require('./pet-art.js'):null),
+   name=Art?.identity(snapshot).name||(typeof p.name==='string'?p.name:'Biscuit'),
+   rows=[['treat','Treat '+name,10],['home','Send '+name+' home',9],['hide','Hide for an hour',8],['settings','Companion settings',7],['quiet','Quiet',6]];
   return rows.filter(([kind])=>(kind!=='treat'||p.treats!==0)&&(kind!=='home'||p.roam!=='home')&&(kind!=='quiet'||p.nudges!=='quiet'&&p.nudges!=='off')).map(([kind,label,score])=>
    ({id:'pet:'+kind,kind,label,action:'pet',data:{action:kind,...(kind==='hide'?{minutes:60}:{})},score:score+adjustment(l.kinds[kind])})).sort((a,b)=>
    b.score-a.score||compare(a.id,b.id)).slice(
@@ -227,25 +305,21 @@
  };
  function canNudge(suggestion,snapshot,learning,{typing=false,dragging=false,hidden=false}={}){
   const c=context(snapshot),l=cleanLearning(learning);
-  if(!suggestion||c.focus.running||typing||dragging||hidden||(l.hiddenUntil>c.now||l.quietUntil>c.now))return false;
+  if(!suggestion||c.focus.running||typing||dragging||hidden||l.hiddenUntil>c.now)return false;
   const top=suggestions(c,l)[0];
   if(!top||top.id!==suggestion.id||top.kind!==suggestion.kind||l.kinds[top.kind]?.streak>=3)return false;
   const data=object(top.data),
    dueAt=ms(data.dueAt),
    due=dueAt!==null&&dueAt>=c.now&&dueAt-c.now<=3*HOUR,
    crunch=validDay(data.crunchDay)&&data.crunchDay>c.today&&data.crunchDay<=c.horizon;
-  if(!(due||crunch||top.kind==='deadline'&&c.late)||c.late&&!due||l.nudges.day===c.today&&l.nudges.count>=3)return false;
+  if(!(due||crunch||top.kind==='ready'||top.kind==='deadline'&&c.late)||c.late&&!due||l.nudges.day===c.today&&l.nudges.count>=3)return false;
   const keys=nudgeKeys(top);
   return !!keys.length&&!keys.some(key=>l.nudges.items.includes(key));
  }
  function markNudge(learning,suggestion,snapshot){
   const l=cleanLearning(learning),c=context(snapshot),keys=nudgeKeys(suggestion);
   if(l.nudges.day!==c.today){l.nudges.day=c.today;l.nudges.count=0;}
-  if(keys.length&&!keys.some(key=>l.nudges.items.includes(key))){
-   l.nudges.count=Math.min(MAX_COUNT,l.nudges.count+1);
-   l.nudges.items.push(...keys);
-   l.nudges.items=l.nudges.items.slice(-512);
-  }
+  if(keys.length&&!keys.some(key=>l.nudges.items.includes(key))){l.nudges.count=Math.min(MAX_COUNT,l.nudges.count+1);l.nudges.items.push(...keys);}
   return l;
  }
  function speech(suggestion,snapshot){
@@ -254,7 +328,7 @@
   const label=typeof s.label==='string'?s.label.replace(/\s+/g,' ').trim().slice(0,120):'';
   return label?label+(/[.!?]$/.test(label)?'':'.'):'';
  }
- const api={KINDS,SKILLS,cleanSkills,skillEnabled,evaluate,cleanLearning,record,canNudge,markNudge,speech};
+ const api={KINDS,SKILLS,cleanSkills,skillEnabled,inferKind,evaluate,cleanLearning,record,canNudge,markNudge,speech};
  root.ReservePonyBrain=api;
  if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

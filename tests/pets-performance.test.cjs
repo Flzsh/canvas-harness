@@ -1,7 +1,51 @@
 'use strict';
-const test=require('node:test'),assert=require('node:assert/strict');
-const {fixture,teardown}=require('./pets-fixture.cjs');
-
+// Deterministic DOM/clock for the public pony controller; no browser, timers, or dependencies escape the VM.
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+function fixture({hz=60,extra=false,observers=true,hidden=false,frame='pen',rule=null,paddock=false,roam='page',initialBlocker=false,motion='full',mediaReduced=false,shadow=false}={}){
+ let clock=0,seq=0,random=[],pet={enabled:true,roam},trace=[],reads={rect:0,style:0,hit:0,range:0,offset:0},writes=[],rafCalls=0,enumerations=0,layoutEnumerations=0,scans=0,callbacks=0;const measured=new Set();
+ // Document/ShadowRoot.getAnimations(): every animation whose target is a connected element of that tree, including a
+ // target's ::before/::after (effect.pseudoElement set), as Chrome returns them. Element.getAnimations() below stays the
+ // element's own list.
+ function treeAnimations(root){layoutEnumerations++;const out=[],seen=new Set(),walk=n=>{if(seen.has(n)||!n.isConnected)return;seen.add(n);if(n.getRootNode()===root)out.push(...(n.layoutAnimations||(n.className==='pet'?animations:[])));for(const c of n.children)walk(c);};walk(host);walk(container);return out;}
+ const timers=new Map(),resizes=[],mutations=[],listeners=new Map(),animations=[],box=(left,top,width,height)=>({left,top,width,height,right:left+width,bottom:top+height});
+ const schedule=(fn,delay=0,repeat=0,kind='task')=>{const id=++seq;timers.set(id,{fn,at:clock+Math.max(0,delay),repeat,kind});return id;};
+ const events=target=>{target.events=new Map();target.addEventListener=(key,fn)=>{if(!target.events.has(key))target.events.set(key,new Set());target.events.get(key).add(fn);};target.removeEventListener=(key,fn)=>target.events.get(key)?.delete(fn);target.emit=(key,event={})=>{for(const fn of [...target.events.get(key)||[]])fn({...event,type:key,target:event.target||target});};return target;};
+ class Element{
+  constructor(cls='',data={}){events(this);this.className=cls;this.dataset=new Proxy({...data},{set:(o,k,v)=>{if(o[k]!==v)writes.push({t:clock,el:this,key:'data-'+String(k),value:v});o[k]=v;return true;}});this.children=[];this.childNodes=[];this.parentNode=null;this.connected=false;this.rect=box(0,0,300,120);this.attrs={};this.borders={};this.style=new Proxy({setProperty:(k,v)=>{this.style[k]=v;}},{set:(o,k,v)=>{writes.push({t:clock,el:this,key:k,value:v});trace.push({kind:'write',el:this,key:k});o[k]=v;return true;}});}
+  get ownerDocument(){return doc;}get nodeType(){return 1;}get parentElement(){return this.parentNode;}get firstElementChild(){return this.children[0]||null;}get isConnected(){return this.connected||!!this.parentNode?.isConnected;}get offsetWidth(){reads.offset++;trace.push({kind:'read',read:'offset'});return this.rect.width;}get offsetHeight(){reads.offset++;trace.push({kind:'read',read:'offset'});return this.rect.height;}
+  append(el){el.remove();el.parentNode=this;this.children.push(el);this.childNodes.push(el);}remove(){if(this.parentNode){this.parentNode.children=this.parentNode.children.filter(n=>n!==this);this.parentNode.childNodes=this.parentNode.childNodes.filter(n=>n!==this);this.parentNode=null;}}
+  contains(el){if(el!=null&&!(el instanceof Element)&&!el.nodeType)throw new TypeError("Failed to execute 'contains' on 'Node': parameter 1 is not of type 'Node'.");for(let n=el;n;n=n.parentNode)if(n===this)return true;return false;}getRootNode(){let n=this;while(n.parentNode)n=n.parentNode;return n.treeRoot||doc;}getBoundingClientRect(){reads.rect++;measured.add(this);trace.push({kind:'read',read:'rect'});return {...this.rect};}
+  setAttribute(k,v){this.attrs[k]=String(v);}setPointerCapture(){}releasePointerCapture(){}focus(){}
+  matches(sel){if(sel==='.rd-main > [data-arrange-key]')return this.kind==='panel';return sel.split(',').some(s=>{s=s.trim();if(s==='button')return this.control;if(s==='svg')return this.className==='pet-svg';if(s.startsWith('.'))return this.className.split(/\s+/).includes(s.slice(1));const data=/^\[data-([\w-]+)\]$/.exec(s);return !!data&&data[1].replace(/-([a-z])/g,(_,c)=>c.toUpperCase()) in this.dataset;});}
+  closest(sel){for(let n=this;n;n=n.parentNode)if(n.matches(sel))return n;return null;}
+  querySelectorAll(sel){if(this===container){if(sel==='[data-pet-ledge]'){scans++;return this.ledges||[];}if(sel==='.rd-main > [data-arrange-key]')return panels.filter(p=>p.isConnected);if(sel.includes(':is(section,'))return lines.filter(p=>p.isConnected);return [];}
+   const classes={'.pet-up':['pet-up'],'.pet-neck':['pet-neck'],'.pet-head':['pet-head'],'.pet-leg.lf,.pet-leg.lh2':['lf','lh2'],'.pet-leg.lh,.pet-leg.lf2':['lh','lf2'],'.pet-legs':['pet-legs'],'.pet-tuck,.pet-tuck2':['pet-tuck','pet-tuck2'],'.pet-shadow':['pet-shadow']};return this.children.filter(n=>(classes[sel]||[]).includes(n.className));}
+  querySelector(sel){return this.querySelectorAll(sel)[0]||null;}
+  set innerHTML(html){this.html=html;this.children=[];this.childNodes=[];if(this.className==='pet-layer'){const n=new Element('pet',{pose:'stand',face:'right'});n.control=true;this.append(n);}else if(this.className==='pet'){for(const cls of ['pet-up','pet-neck','pet-head','lf','lh2','lh','lf2','pet-legs','pet-tuck','pet-tuck2','pet-shadow'])this.append(new Element(cls));}}
+  getAnimations(){if(this.className==='pet')enumerations++;else layoutEnumerations++;return this.layoutAnimations||(this.className==='pet'?animations:[]);}
+ }
+ const motionMedia=events({matches:mediaReduced});
+ const win=events({innerWidth:1800,innerHeight:1000,performance:{now:()=>clock},matchMedia:()=>motionMedia,requestAnimationFrame:fn=>{rafCalls++;return schedule(()=>{trace.push({kind:'raf'});fn(clock);trace.push({kind:'paint'});},1000/hz,0,'raf');},cancelAnimationFrame:id=>timers.delete(id),getComputedStyle:el=>{reads.style++;return {borderTopWidth:'0',borderBottomWidth:'0',borderTopStyle:'none',borderBottomStyle:'none',...el.borders};}});
+ const doc=events({defaultView:win,hidden,createElement:()=>new Element(),elementsFromPoint:(x,y)=>{reads.hit++;trace.push({kind:'read',read:'hit'});return blockers.filter(n=>x>=n.rect.left&&x<=n.rect.right&&y>=n.rect.top&&y<=n.rect.bottom);},createRange:()=>({selectNodeContents(n){this.text=n;},getClientRects(){reads.range++;return [this.text.rect];}}),fonts:events({}),getAnimations:()=>treeAnimations(doc)});
+ const container=new Element('rd',{panelFrame:frame,motionStyle:motion}),host=new Element('host'),panels=[new Element('panel',{arrangeKey:'work'})],lines=[],blockers=[];host.connected=true;if(shadow){container.connected=true;container.treeRoot={host,getAnimations:()=>treeAnimations(container.treeRoot)};}else host.append(container);panels[0].kind='panel';panels[0].rect=box(100,300,1400,350);container.append(panels[0]);
+ if(extra){const other=new Element('panel',{arrangeKey:'context'});other.kind='panel';other.rect=box(100,600,1400,150);panels.push(other);container.append(other);}
+ if(rule){const line=new Element('line');line.rect=box(150,450,1000,40);line.borders=rule==='bottom'?{borderBottomWidth:'1px',borderBottomStyle:'solid',borderBottomColor:'rgb(20, 20, 20)'}:{borderTopWidth:'1px',borderTopStyle:'solid',borderTopColor:rule==='transparent'?'rgba(0, 0, 0, 0)':'rgb(20, 20, 20)'};lines.push(line);panels[0].append(line);}
+ if(paddock){const pen=new Element('paddock',{petLedge:'inside'});pen.rect=box(100,700,1400,132);container.ledges=[pen];container.append(pen);}
+ if(initialBlocker){const used=new Element('initial control');used.control=true;used.rect=box(130,930,100,70);blockers.push(used);container.append(used);}
+ class ResizeObserver{constructor(fn){this.fn=fn;this.nodes=new Set();resizes.push(this);}observe(n){this.nodes.add(n);}unobserve(n){this.nodes.delete(n);}disconnect(){this.nodes.clear();}}
+ class MutationObserver{constructor(fn){this.fn=fn;this.target=null;mutations.push(this);}observe(n,options){this.target=n;this.options=options;}disconnect(){this.target=null;}}
+ if(observers){win.ResizeObserver=ResizeObserver;win.MutationObserver=MutationObserver;}
+ const math=Object.create(Math);math.random=()=>random.length?random.shift():.5;
+ const env=vm.createContext({console,Math:math,Date,Map,Set,WeakMap,setTimeout:(fn,ms)=>schedule(fn,ms),clearTimeout:id=>timers.delete(id),setInterval:(fn,ms)=>schedule(fn,ms,ms),clearInterval:id=>timers.delete(id),...win,document:doc});
+ for(const file of ['pet-art.js','pets.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../extension',file),'utf8'),env,{filename:file});
+ const controller=env.ReservePets.create({container,getPet:()=>pet,savePet:p=>{pet=p;},now:()=>clock});
+ const advance=ms=>{const end=clock+ms;let count=0;for(;;){const ready=[...timers].filter(([,t])=>t.at<=end+1e-7).sort((a,b)=>a[1].at-b[1].at||a[0]-b[0])[0];if(!ready)break;if(++count>50000)throw Error('Timer loop');clock=Math.max(clock,ready[1].at);if(ready[1].repeat)ready[1].at=clock+ready[1].repeat;else timers.delete(ready[0]);callbacks++;ready[1].fn();}clock=end;};
+ const stall=ms=>{clock+=ms;const due=[...timers].filter(([,t])=>t.at<=clock);for(const [id,t]of due){if(!timers.has(id))continue;if(t.repeat)t.at=clock+t.repeat;else timers.delete(id);t.fn();}};
+ const node=()=>container.children.find(n=>n.className==='pet-layer')?.firstElementChild;
+ const paint=()=>{const ready=[...timers].filter(([,t])=>t.kind==='raf').sort((a,b)=>a[1].at-b[1].at)[0];assert.ok(ready,'a postpaint geometry frame is pending');clock=Math.max(clock,ready[1].at);timers.delete(ready[0]);ready[1].fn();};
+ const f={controller,container,host,panels,lines,blockers,win,doc,motionMedia,timers,resizes,mutations,animations,Element,box,advance,stall,paint,postpaint:()=>{paint();advance(0);},get node(){return node();},get clock(){return clock;},get reads(){return reads;},get writes(){return writes;},get trace(){return trace;},get rafCalls(){return rafCalls;},get enumerations(){return enumerations;},get layoutEnumerations(){return layoutEnumerations;},get scans(){return scans;},get callbacks(){return callbacks;},measured,random:(...r)=>{random=r;},clear:()=>{reads={rect:0,style:0,hit:0,range:0,offset:0};writes=[];trace=[];measured.clear();rafCalls=enumerations=layoutEnumerations=scans=callbacks=0;},mutate:(records)=>{for(const o of mutations)if(o.target)o.fn(records);},resize:(el=panels[0])=>{for(const o of resizes)if(o.nodes.has(el))o.fn([{target:el}]);},setPet:p=>{pet={...pet,...p};controller.sync();}};
+ f.startWalk=(trot=false)=>{advance(1400);random=[.1,...Array(9).fill(trot?.98:.65)];advance(6000);assert.ok(timers.size,'a walk is scheduled');return node()._x;};return f;
+}
 const drawn=f=>[...new Set(f.writes.filter(w=>w.el===f.node&&w.key==='transform').map(w=>w.t))];
 const nearly=(actual,expected,tolerance,message)=>assert.ok(Math.abs(actual-expected)<=tolerance,`${message}: ${actual} vs ${expected} (tolerance ${tolerance})`);
 for(const hz of [60,144,240])test(`walk and trot draw at the 24fps film cadence on a ${hz}Hz display`,()=>{
@@ -62,7 +106,7 @@ test('detached initial event handlers and already queued observer deliveries can
  const f=fixture(),old=f.node,resize=f.resizes[0].fn,mutate=f.mutations[0].fn;f.setPet({enabled:false});assert.ok([...old.events.values()].every(s=>!s.size),'all detached pony handlers are removed');f.setPet({enabled:true});f.clear();resize([{target:f.panels[0]}]);mutate([{type:'attributes',target:f.panels[0]}]);f.advance(1);assert.equal(f.reads.rect,0,'old observer generations are ignored');f.controller.destroy();
 });
 test('idle CSS reels keep their existing 24/12/6 cadence and stop after two minutes',()=>{
- const f=fixture();let times=[],pauses=0;const loop={animationName:'pet-tail',playState:'running',effect:{getTiming:()=>({duration:3400,iterations:Infinity}),getKeyframes:()=>[{computedOffset:0,transform:'rotate(5deg)'},{computedOffset:1,transform:'rotate(-7deg)'}]},pause(){pauses++;this.playState='paused';},set currentTime(v){times.push({at:f.clock,time:v});},get currentTime(){return 0;}},finite={...loop,animationName:'pet-show',effect:{getTiming:()=>({duration:300,iterations:1})},pause(){throw Error('finite animation must remain native');}};f.animations.push(loop,finite);f.node.emit('animationstart');f.advance(1500);assert.equal(pauses,1);times=[];f.advance(1000);assert.ok(times.length>=23&&times.length<=25);f.advance(3501);times=[];f.advance(2000);assert.ok(times.length>=23&&times.length<=25,'quiet reel is 12fps');f.advance(18000);times=[];f.advance(2000);assert.ok(times.length>=11&&times.length<=13,'long-idle reel is 6fps');f.advance(93000);times=[];f.advance(2000);assert.equal(times.length,0,'two-minute idle reel is held');f.doc.emit('pointermove');assert.ok(times.length>0,'input restarts the existing reel');f.controller.destroy();
+ const f=fixture();let times=[],pauses=0;const loop={animationName:'pet-tail',playState:'running',effect:{getTiming:()=>({duration:3400,iterations:Infinity}),getKeyframes:()=>[{computedOffset:0,transform:'rotate(5deg)'},{computedOffset:1,transform:'rotate(-7deg)'}]},pause(){pauses++;this.playState='paused';},set currentTime(v){times.push({at:f.clock,time:v});},get currentTime(){return 0;}},finite={...loop,animationName:'pet-show',effect:{getTiming:()=>({duration:300,iterations:1})},pause(){throw Error('finite animation must remain native');}};f.animations.push(loop,finite);f.node.emit('animationstart');f.advance(1000);assert.equal(pauses,1);assert.ok(times.length>=23&&times.length<=25);f.advance(5001);times=[];f.advance(2000);assert.ok(times.length>=23&&times.length<=25,'quiet reel is 12fps');f.advance(18000);times=[];f.advance(2000);assert.ok(times.length>=11&&times.length<=13,'long-idle reel is 6fps');f.advance(93000);times=[];f.advance(2000);assert.equal(times.length,0,'two-minute idle reel is held');f.doc.emit('pointermove');assert.ok(times.length>0,'input restarts the existing reel');f.controller.destroy();
 });
 
 test('an initial floor obstruction cannot start an evacuation before home establishes the pony position',()=>{
@@ -86,17 +130,21 @@ test('hidden, unmounted and destroyed ponies cancel both stages of the geometry 
  for(const stage of ['frame','task'])for(const action of ['hidden','unmount','destroy']){const f=fixture();f.win.emit('resize');if(stage==='task')f.paint();const queued=[...f.timers.values()].find(t=>stage==='frame'?t.kind==='raf':t.at===f.clock);assert.ok(queued,'the cancellable '+stage+' stage is queued');const stale=queued.fn;f.clear();if(action==='hidden'){f.doc.hidden=true;f.doc.emit('visibilitychange');}else if(action==='unmount')f.setPet({enabled:false});else f.controller.destroy();f.clear();f.advance(1000);assert.equal(f.reads.rect,0,stage+' '+action);if(action==='hidden'){stale();assert.equal(f.reads.rect,0);f.doc.hidden=false;f.doc.emit('visibilitychange');assert.equal(f.reads.rect,0,'wake also yields until paint');f.postpaint();assert.equal(f.reads.rect,1);}else if(action==='unmount'){f.setPet({enabled:true});f.clear();stale();f.advance(1);assert.equal(f.reads.rect,0,'a stale refresh cannot measure the remounted pony');}f.controller.destroy();assert.equal(f.timers.size,0);}
 });
 test('roll caches animation enumeration while the pony and pose are unchanged',()=>{
- const f=fixture();let times=[],pauses=0;const loop={animationName:'pet-tail',playState:'running',effect:{getTiming:()=>({duration:3400,iterations:Infinity}),getKeyframes:()=>[{computedOffset:0,transform:'rotate(5deg)'},{computedOffset:1,transform:'rotate(-7deg)'}]},pause(){this.playState='paused';pauses++;},get currentTime(){return 17;},set currentTime(v){times.push(v);}};f.animations.push(loop);f.node.emit('animationstart');f.advance(1500);assert.equal(pauses,1);f.clear();times=[];f.advance(200);assert.equal(f.enumerations,0,'24fps ticks reuse the discovered loops');assert.equal(f.layoutEnumerations,0,'unchanged ticks do not enumerate ledge animations either');assert.ok(times.length>=4);nearly(times.at(-1)-times[0],(times.length-1)*1000/24,.001,'cached loops retain elapsed time');f.mutate([{type:'attributes',attributeName:'style',target:f.node.children[0]}]);f.advance(100);assert.equal(f.enumerations,0,'rig transform writes do not enumerate');f.controller.destroy();
+ const f=fixture();let times=[],pauses=0;const loop={animationName:'pet-tail',playState:'running',effect:{getTiming:()=>({duration:3400,iterations:Infinity}),getKeyframes:()=>[{computedOffset:0,transform:'rotate(5deg)'},{computedOffset:1,transform:'rotate(-7deg)'}]},pause(){this.playState='paused';pauses++;},get currentTime(){return 17;},set currentTime(v){times.push(v);}};f.animations.push(loop);f.node.emit('animationstart');f.advance(1000);assert.equal(pauses,1);f.clear();times=[];f.advance(200);assert.equal(f.enumerations,0,'24fps ticks reuse the discovered loops');assert.equal(f.layoutEnumerations,0,'unchanged ticks do not enumerate ledge animations either');assert.ok(times.length>=4);nearly(times.at(-1)-times[0],(times.length-1)*1000/24,.001,'cached loops retain elapsed time');f.mutate([{type:'attributes',attributeName:'style',target:f.node.children[0]}]);f.advance(100);assert.equal(f.enumerations,0,'rig transform writes do not enumerate');f.controller.destroy();
 });
 test('roll rediscovers loops after pose, DOM, visibility, motion settings and remount changes',()=>{
- const f=fixture();let oldTimes=[],newTimes=[];const loop=times=>({animationName:'pet-tail',playState:'running',effect:{getTiming:()=>({duration:3400,iterations:Infinity}),getKeyframes:()=>[{computedOffset:0,transform:'rotate(5deg)'},{computedOffset:1,transform:'rotate(-7deg)'}]},pause(){this.playState='paused';},get currentTime(){return 0;},set currentTime(v){times.push(v);}});f.animations.push(loop(oldTimes));f.node.emit('animationstart');f.advance(1500);f.animations.splice(0,1,loop(newTimes));f.node.innerHTML='<svg></svg>';f.mutate([{type:'childList',target:f.node,addedNodes:f.node.children,removedNodes:[]}]);f.clear();const oldCount=oldTimes.length;f.advance(100);assert.equal(f.enumerations,1,'a replaced rig refreshes the animation list once');assert.equal(oldTimes.length,oldCount,'detached animations leave the reel');assert.ok(newTimes.length>0);f.controller.setFocus(true);f.clear();f.advance(500);assert.ok(f.enumerations>0,'a new pose discovers its loops');f.advance(3000);f.clear();f.advance(500);assert.equal(f.enumerations,0,'settled pose ticks stay cached');f.container.dataset.motionStyle='off';f.setPet({});f.clear();f.advance(100);assert.equal(f.enumerations,0,'reduced motion does not enumerate disabled loops');f.container.dataset.motionStyle='full';f.setPet({});f.doc.hidden=true;f.doc.emit('visibilitychange');f.clear();f.advance(1000);assert.equal(f.enumerations,0);f.doc.hidden=false;f.doc.emit('visibilitychange');assert.equal(f.enumerations,1,'wake rediscovers rebuilt CSS animations');f.setPet({enabled:false});f.clear();f.setPet({enabled:true});assert.equal(f.enumerations,0,'remount queues the cache refresh');f.advance(0);assert.equal(f.enumerations,1,'remount starts a fresh animation cache');assert.equal(f.layoutEnumerations,1,'remount separately discovers finite ledge/ancestor animations, in one read of their tree');f.controller.destroy();
+ const f=fixture();let oldTimes=[],newTimes=[];const loop=times=>({animationName:'pet-tail',playState:'running',effect:{getTiming:()=>({duration:3400,iterations:Infinity}),getKeyframes:()=>[{computedOffset:0,transform:'rotate(5deg)'},{computedOffset:1,transform:'rotate(-7deg)'}]},pause(){this.playState='paused';},get currentTime(){return 0;},set currentTime(v){times.push(v);}});
+ f.animations.push(loop(oldTimes));f.node.emit('animationstart');f.advance(100);f.animations.splice(0,1,loop(newTimes));f.node.innerHTML='<svg></svg>';f.mutate([{type:'childList',target:f.node,addedNodes:f.node.children,removedNodes:[]}]);f.clear();const oldCount=oldTimes.length;f.advance(100);assert.equal(f.enumerations,1,'a replaced rig refreshes the animation list once');assert.equal(oldTimes.length,oldCount,'detached animations leave the reel');assert.ok(newTimes.length>0);
+ f.controller.setFocus(true);f.clear();f.advance(500);assert.ok(f.enumerations>0,'a new pose discovers its loops');f.advance(3000);f.clear();f.advance(500);assert.equal(f.enumerations,0,'settled pose ticks stay cached');
+ f.container.dataset.motionStyle='off';f.setPet({});f.clear();f.advance(100);assert.equal(f.enumerations,0,'reduced motion needs no animation enumeration');f.doc.hidden=true;f.doc.emit('visibilitychange');f.clear();f.advance(1000);assert.equal(f.enumerations,0);
+ f.container.dataset.motionStyle='full';f.doc.hidden=false;f.doc.emit('visibilitychange');assert.equal(f.enumerations,1,'wake rediscovers rebuilt CSS animations');f.setPet({enabled:false});f.clear();f.setPet({enabled:true});assert.equal(f.enumerations,1,'remount starts a fresh animation cache');assert.equal(f.layoutEnumerations,1,'remount separately discovers finite ledge/ancestor animations, in one read of their tree');f.controller.destroy();
 });
 
 function layoutAnimation(el){
  let finish,cancel;const finished=new Promise((yes,no)=>{finish=yes;cancel=no;}),a={playState:'running',finished,effect:{target:el,getTiming:()=>({duration:260,iterations:1})},finish(){this.playState='finished';finish();},cancel(){this.playState='idle';cancel(Error('cancelled layout animation'));}};finished.catch(()=>{});el.layoutAnimations=[a];return a;
 }
 for(const ancestor of [false,true])for(const end of ['finish','cancel'])test('a moving ledge refreshes after its finite WAAPI animation settles: '+JSON.stringify({ancestor,end}),async()=>{
- const f=fixture();f.startWalk();const a=layoutAnimation(ancestor?f.host:f.panels[0]);f.panels[0].rect.top=340;f.panels[0].rect.bottom=690;f.mutate([{type:'attributes',attributeName:'style',target:ancestor?f.host:f.panels[0]}]);f.postpaint();assert.equal(f.node._y,341);f.clear();f.advance(150);assert.equal(f.reads.rect,0,'movement frames retain their snapshot');f.panels[0].rect.top=390;f.panels[0].rect.bottom=740;a[end]();await Promise.resolve();await Promise.resolve();assert.equal(f.reads.rect,0,'animation completion only schedules measurement');f.postpaint();assert.equal(f.node._y,391,'a walking pony follows the final ledge geometry');assert.equal(f.reads.rect,1);assert.equal(f.layoutEnumerations,1,'the ledge tree animations are read once per geometry refresh, not once per ledge/ancestor');f.clear();f.advance(200);assert.equal(f.reads.rect,0,'settled geometry is reused without polling');assert.equal(f.layoutEnumerations,0,'movement frames do not poll layout animations');f.controller.destroy();assert.equal(f.timers.size,0);
+ const f=fixture();f.startWalk();const a=layoutAnimation(ancestor?f.host:f.panels[0]);f.panels[0].rect.top=340;f.panels[0].rect.bottom=690;f.mutate([{type:'attributes',attributeName:'style',target:ancestor?f.host:f.panels[0]}]);f.postpaint();assert.equal(f.node._y,341);f.clear();f.advance(150);assert.equal(f.reads.rect,0,'movement frames retain their snapshot');f.panels[0].rect.top=390;f.panels[0].rect.bottom=740;a[end]();await Promise.resolve();await Promise.resolve();assert.equal(f.reads.rect,0,'animation completion only schedules measurement');f.postpaint();assert.equal(f.node._y,391,'a walking pony follows the final ledge geometry');assert.equal(f.reads.rect,1);assert.equal(f.layoutEnumerations,1,'the ledge tree\'s animations are read once per geometry refresh, not once per ledge/ancestor');f.clear();f.advance(200);assert.equal(f.reads.rect,0,'settled geometry is reused without polling');assert.equal(f.layoutEnumerations,0,'movement frames do not poll layout animations');f.controller.destroy();assert.equal(f.timers.size,0);
 });
 for(const event of ['transitionend','transitioncancel','animationend','animationcancel'])test('a moving ledge refreshes when its CSS motion settles: '+event,()=>{
  const f=fixture();f.startWalk();f.panels[0].rect.top+=70;f.panels[0].rect.bottom+=70;f.clear();f.container.emit(event,{target:f.panels[0]});assert.equal(f.reads.rect,0);f.postpaint();assert.equal(f.node._y,371);assert.equal(f.reads.rect,1);f.clear();f.advance(200);assert.equal(f.reads.rect,0);f.controller.destroy();
@@ -116,207 +164,6 @@ test('a jump launches from the current ledge after an unobserved source position
 });
 test('finite animation completion cannot schedule geometry after destroy',async()=>{
  const f=fixture(),a=layoutAnimation(f.panels[0]);f.win.emit('resize');f.postpaint();f.controller.destroy();f.clear();a.finish();await Promise.resolve();await Promise.resolve();f.advance(100);assert.equal(f.reads.rect,0);assert.equal(f.timers.size,0);
-});
-
-test('cosmetic workspace metadata and focus-clock ticks do not rescan pony geometry',t=>{
- const f=fixture();t.after(()=>teardown(f));
- const row=new f.Element('rd-quick-row',{quickIndex:'0'}),clock=new f.Element('rd-focus-clock',{rdFocusClock:''});
- f.container.append(row);f.container.append(clock);f.clear();
- for(let i=0;i<20;i++){
-  const text={nodeType:3,parentElement:clock,parentNode:clock,textContent:'24:59'};
-  f.mutate([
-   {type:'attributes',attributeName:'aria-selected',target:row},
-   ...['aria-label','aria-activedescendant','title','tabindex'].map(attributeName=>({type:'attributes',attributeName,target:f.panels[0]})),
-   {type:'characterData',target:text,oldValue:'25:00'},
-   {type:'childList',target:clock,addedNodes:[text],removedNodes:[{nodeType:3,textContent:'25:00'}]}
-  ]);
-  f.advance(50);
- }
- assert.equal(f.scans,0);assert.equal(f.reads.rect,0);assert.equal(f.rafCalls,0);
-});
-
-test('geometry attributes, ordinary text, clock visibility and clock width changes still invalidate',t=>{
- const f=fixture();t.after(()=>teardown(f));
- const clock=new f.Element('rd-focus-clock',{rdFocusClock:''});f.container.append(clock);
- const cases=[
-  ...['style','class','hidden','open','data-pet-ledge','data-arrange-key','aria-hidden','aria-expanded','aria-selected','role'].map(attributeName=>({type:'attributes',attributeName,target:f.panels[0]})),
-  {type:'attributes',attributeName:'data-panel-frame',target:f.container},
-  {type:'attributes',attributeName:'style',target:f.host},
-  {type:'attributes',attributeName:'hidden',target:clock},
-  {type:'characterData',oldValue:'Old title',target:{nodeType:3,parentElement:f.panels[0],parentNode:f.panels[0],textContent:'A longer title'}},
-  {type:'characterData',oldValue:'99:59',target:{nodeType:3,parentElement:clock,parentNode:clock,textContent:'100:00'}},
-  {type:'childList',target:clock,addedNodes:[{nodeType:3,textContent:'Done'}],removedNodes:[{nodeType:3,textContent:'00:00'}]}
- ];
- for(const record of cases){
-  f.panels[0].rect.top++;f.panels[0].rect.bottom++;f.clear();f.mutate([record]);
-  assert.equal(f.reads.rect,0);f.postpaint();
-  assert.equal(f.scans,1,record.attributeName||record.type);
-  assert.equal(f.node._y,f.panels[0].rect.top+1);
- }
-});
-
-for(const options of [{},{motion:'off'},{motion:'still'},{mediaReduced:true},{observers:false}])test('empty pony reels and ledge following stay asleep without input: '+JSON.stringify(options),t=>{
- const f=fixture(options);t.after(()=>teardown(f));f.clear();f.advance(1000);
- assert.equal(f.callbacks,0,'no empty reel or periodic follow callback');
- assert.equal(f.scans,0);assert.equal(f.reads.rect,0);
-});
-
-function reelAnimation(f,times){
- let time=0;
- return {animationName:'pet-tail',playState:'running',
-  effect:{getTiming:()=>({duration:3400,iterations:Infinity}),getKeyframes:()=>[
-   {computedOffset:0,transform:'rotate(5deg)'},{computedOffset:1,transform:'rotate(-7deg)'}
-  ]},
-  pause(){this.playState='paused';},get currentTime(){return time;},
-  set currentTime(value){time=value;times.push({at:f.clock,time:value});}};
-}
-
-test('the first reel enumerates at 1500ms after mount and animation events do not restart the wait',t=>{
- const f=fixture(),times=[];t.after(()=>teardown(f));f.animations.push(reelAnimation(f,times));
- assert.equal(f.enumerations,0,'mount leaves the authored CSS animations running');
- f.advance(1000);f.node.emit('animationstart');f.advance(499);
- assert.equal(f.enumerations,0,'animation enumeration waits through 1499ms');assert.equal(times.length,0,'the film clock has not written animation time');
- f.advance(1);assert.equal(f.enumerations,1,'the first enumeration runs at 1500ms after mount');assert.deepEqual(times,[{at:1500,time:0}]);
- f.advance(42);assert.equal(f.enumerations,1,'the next frame uses the discovered animation cache');assert.equal(times.length,2);nearly(times[1].time,1000/24,.001,'the first active interval keeps the 24fps cadence');
-});
-
-test('an empty reel resumes on animationstart and stops when its last loop is cancelled or finishes',t=>{
- for(const state of ['idle','finished']){
-  const f=fixture();t.after(()=>teardown(f));f.advance(1500);assert.equal(f.enumerations,1,'the initial empty reel has completed');
-  const times=[],animation=reelAnimation(f,times);f.animations.push(animation);
-  f.node.emit('animationstart');f.advance(100);
-  assert.ok(times.length>=2,'a dormant reel discovers the new loop');
-  animation.playState=state;f.node.emit(state==='idle'?'animationcancel':'animationend');f.advance(50);
-  f.clear();const before=times.length;f.advance(100);
-  assert.equal(times.length,before);assert.equal(f.callbacks,0,'a dead last loop leaves no ticking reel');
-  f.animations.splice(0,1,reelAnimation(f,times));f.node.emit('animationstart');f.advance(50);
-  assert.ok(times.length>before,'replacement loops wake the clock');
- }
-});
-
-test('reduced motion stops active reels and both workspace and OS motion changes resume them',t=>{
- for(const mode of ['off','still','media']){
-  const f=fixture(),times=[];t.after(()=>teardown(f));
-  f.animations.push(reelAnimation(f,times));f.node.emit('animationstart');f.advance(1500);assert.ok(times.length>0);
-  if(mode==='media'){f.motionMedia.matches=true;f.motionMedia.emit('change');}
-  else{f.container.dataset.motionStyle=mode;f.mutate([{type:'attributes',attributeName:'data-motion-style',target:f.container}]);}
-  f.advance(50);f.clear();const before=times.length;f.advance(1000);
-  assert.equal(times.length,before,mode+' writes no animation time');
-  assert.equal(f.callbacks,0,mode+' leaves no periodic reel or follow timer');assert.equal(f.node.dataset.still,'true');
-  if(mode==='media'){f.motionMedia.matches=false;f.motionMedia.emit('change');}
-  else{f.container.dataset.motionStyle='full';f.mutate([{type:'attributes',attributeName:'data-motion-style',target:f.container}]);}
-  f.advance(100);assert.ok(times.length>before,mode+' resumes animation');assert.equal(f.node.dataset.still,'false');
- }
-});
-
-for(const observers of [true,false])test('input wakes a single follow check and recovers unobserved ledge movement: '+observers,t=>{
- const f=fixture({observers});t.after(()=>teardown(f));
- f.panels[0].rect.top+=20;f.panels[0].rect.bottom+=20;f.clear();
- for(let i=0;i<100;i++)f.doc.emit('pointermove');f.doc.emit('input');f.advance(499);
- assert.equal(f.reads.rect,0,'input does not synchronously measure layout');f.advance(30);
- assert.equal(f.node._y,321);assert.equal(f.scans,1,'one postpaint scan serves the input burst');
- f.clear();f.advance(400);assert.equal(f.reads.rect,0,'no idle follow timer is rearmed');
-});
-
-test('hidden and unmounted ponies cancel input follow wakeups and dormant reel restarts',t=>{
- const f=fixture();t.after(()=>teardown(f));
- const staleMedia=[...f.motionMedia.events.get('change')||[]][0];
- f.doc.emit('pointermove');f.node.emit('animationstart');f.setPet({enabled:false});
- assert.equal(f.timers.size,0);assert.equal(f.listenerCount,0);
- f.setPet({enabled:true});f.clear();staleMedia?.({type:'change'});f.advance(1);
- assert.equal(f.reads.rect,0);assert.equal(f.enumerations,0,'a detached media listener cannot restart the replacement pony');
- f.doc.emit('pointermove');f.doc.hidden=true;f.doc.emit('visibilitychange');f.clear();f.advance(1000);
- assert.equal(f.callbacks,0);f.doc.hidden=false;f.doc.emit('visibilitychange');f.postpaint();assert.equal(f.node._y,301);
-});
-
-test('cancelled follow and reel callbacks cannot restart a hidden or replacement pony',t=>{
- for(const started of [false,true])for(const action of ['hide','remount']){
-  const f=fixture();t.after(()=>teardown(f));if(started)f.advance(1500);
-  f.doc.emit('pointermove');f.node.emit('animationstart');
-  const follow=[...f.timers.values()].find(timer=>timer.at===f.clock+500)?.fn;
-  const reel=[...f.timers.values()].find(timer=>timer.at===f.clock+(started?0:1500))?.fn;
-  assert.ok(follow&&reel,'both one-shot callbacks are queued');
-  if(action==='hide'){f.doc.hidden=true;f.doc.emit('visibilitychange');}
-  else{f.setPet({enabled:false});f.setPet({enabled:true});if(started)f.advance(0);}
-  const count=f.timers.size;f.clear();follow();reel();f.advance(1);
-  assert.equal(f.scans,0);assert.equal(f.enumerations,0);assert.equal(f.timers.size,count);
-  if(action==='hide'){f.advance(2000);assert.equal(f.enumerations,0);assert.equal(f.callbacks,0,'a hidden pony stays asleep beyond the cancelled deadline');assert.equal(f.timers.size,0);}
-  else if(!started){f.advance(1498);assert.equal(f.enumerations,0,'the replacement keeps its own initial delay');reel();assert.equal(f.enumerations,0,'the cancelled callback cannot start the replacement');f.advance(1);assert.equal(f.enumerations,1,'the replacement starts only on its own 1500ms callback');}
-  else{f.node.emit('animationstart');f.advance(0);assert.equal(f.enumerations,1,'a valid replacement callback still restarts immediately after the first reel');}
- }
-});
-
-test('a planned jump waits when every candidate on its destination is occupied',t=>{
- const f=fixture({extra:true});t.after(()=>teardown(f));f.advance(1400);
- const used=new f.Element('destination control');used.control=true;used.rect=f.box(0,535,1800,66);f.blockers.push(used);
- const start={x:f.node._x,y:f.node._y};f.random(.22,.5,...Array(9).fill(.5));f.clear();f.advance(7000);
- assert.equal(f.node._x,start.x);assert.equal(f.node._y,start.y);
- assert.equal(drawn(f).length,0,'an unsafe jump has no random fallback');assert.notEqual(f.node.dataset.pose,'fall');
-});
-
-test('evacuation waits when the current ledge, other ledges and viewport floor are all occupied',t=>{
- const f=fixture({extra:true});t.after(()=>teardown(f));f.advance(1400);
- for(const top of [235,535,930]){
-  const used=new f.Element('occupied control');used.control=true;used.rect=f.box(0,top,1800,70);f.blockers.push(used);
- }
- const start={x:f.node._x,y:f.node._y};f.clear();f.win.emit('resize');f.advance(1000);
- assert.equal(f.node._x,start.x);assert.equal(f.node._y,start.y);
- assert.equal(drawn(f).length,0);assert.notEqual(f.node.dataset.pose,'fall');
-});
-
-test('evacuation uses the destination already checked instead of sampling it a second time',t=>{
- const f=fixture({extra:true});t.after(()=>teardown(f));f.advance(1400);
- for(const rect of [f.box(0,235,1800,66),f.box(0,535,950,66),f.box(1050,535,750,66)]){
-  const used=new f.Element('occupied control');used.control=true;used.rect=rect;f.blockers.push(used);
- }
- f.random(...Array(9).fill(.5),...Array(9).fill(.65),...Array(10).fill(.1));
- f.win.emit('resize');f.advance(1300);
- nearly(f.node._x,1000.4,.01,'the previously checked destination is retained');assert.equal(f.node._y,601);
-});
-
-test('opening the existing menu pauses pet clocks and geometry work until it closes',t=>{
- const f=fixture(),times=[];t.after(()=>teardown(f));f.startWalk();f.advance(500);
- f.animations.push(reelAnimation(f,times));f.node.emit('animationstart');f.advance(50);
- f.doc.emit('pointermove');f.win.emit('resize');f.node.emit('click');
- const bubble=f.bubble,start={x:f.node._x,y:f.node._y},before=times.length;
- assert.equal(bubble.attrs.role,'menu','the public 3.2 menu keeps its existing semantics');
- assert.match(bubble.html,/data-pet-action="feed"/);assert.match(bubble.html,/data-pet-action="settings"/);
- assert.equal(f.node.attrs['aria-expanded'],'true');assert.equal(f.timers.size,0);
- f.clear();
- for(let i=0;i<10;i++){
-  f.doc.emit('input');f.resize(f.container);
-  f.mutate([{type:'attributes',attributeName:'style',target:f.panels[0]}]);f.advance(50);
- }
- assert.equal(f.callbacks,0);assert.equal(f.scans,0);assert.equal(f.reads.hit,0);assert.equal(times.length,before);
- assert.equal(f.node._x,start.x);assert.equal(f.node._y,start.y);
- f.node.emit('keydown',{key:'Escape',preventDefault(){}});assert.equal(f.bubble,undefined);
- assert.equal(bubble.events.get('click')?.size||0,0,'the detached menu has no event handler');
- f.clear();f.postpaint();f.advance(100);
- assert.equal(f.scans,1,'closing refreshes deferred geometry after paint');assert.ok(times.length>before,'CSS loops resume');
-});
-
-test('scroll and resize reposition an open menu once without collision checks or movement clocks',t=>{
- const f=fixture();t.after(()=>teardown(f));f.node.emit('click');
- for(const type of ['scroll','resize']){
-  f.panels[0].rect.top+=20;f.panels[0].rect.bottom+=20;f.clear();f.win.emit(type);
-  assert.equal(f.reads.rect,0);f.postpaint();assert.equal(f.node._y,f.panels[0].rect.top+1);
-  assert.equal(f.scans,1);assert.equal(f.reads.hit,0);assert.equal(f.timers.size,0);
- }
-});
-
-test('menu visibility changes and teardown leave no pet timers or detached event listeners',t=>{
- for(const action of ['hide','unmount','destroy']){
-  const f=fixture();t.after(()=>teardown(f));f.controller.say('A synthetic reminder');const oldBubble=f.bubble;
-  f.node.emit('click');const oldNode=f.node,menu=f.bubble;
-  assert.equal(oldBubble.events.get('click')?.size||0,0,'replacing a bubble detaches its listener');
-  if(action==='hide'){
-   f.doc.hidden=true;f.doc.emit('visibilitychange');f.doc.hidden=false;f.doc.emit('visibilitychange');
-   f.clear();f.advance(3000);assert.equal(f.callbacks,0,'a visible menu remains paused after a tab wake');
-  }else if(action==='unmount')f.setPet({enabled:false});
-  else f.controller.destroy();
-  teardown(f);assert.ok([...oldNode.events.values()].every(handlers=>!handlers.size));
-  assert.ok([...menu.events.values()].every(handlers=>!handlers.size));
- }
 });
 // The previous read: Element.getAnimations() on every measured element and each ancestor up through shadow hosts. An
 // element's own list is the animations whose target is that element, never its ::before/::after.
@@ -343,6 +190,24 @@ test('ledge animations are read once per tree and hook exactly what per-ancestor
  f.clear();hooked[3].finish();await Promise.resolve();await Promise.resolve();assert.equal(f.reads.rect,0,'completion only schedules measurement');
  f.postpaint();assert.ok(f.reads.rect>0,'the host animation settling, across the shadow boundary, measures again');
 });
+
+test('cosmetic workspace metadata and focus-clock ticks do not rescan pony geometry',t=>{
+ const f=fixture();t.after(()=>f.controller.destroy());
+ const row=new f.Element('rd-quick-row',{quickIndex:'0'}),clock=new f.Element('rd-focus-clock',{rdFocusClock:''});f.container.append(row);f.container.append(clock);
+ f.clear();
+ for(let i=0;i<20;i++){
+  const text={nodeType:3,parentElement:clock,parentNode:clock,textContent:'24:59'};
+  f.mutate([{type:'attributes',attributeName:'aria-selected',target:row},...['aria-label','aria-activedescendant','title','tabindex'].map(attributeName=>({type:'attributes',attributeName,target:f.panels[0]})),{type:'characterData',target:text,oldValue:'25:00'},{type:'childList',target:clock,addedNodes:[text],removedNodes:[{nodeType:3,textContent:'25:00'}]}]);
+  f.advance(50);
+ }
+ t.diagnostic(`20 cosmetic deliveries / 1 s: scans=${f.scans}, rect reads=${f.reads.rect}, geometry frames=${f.rafCalls}`);
+ assert.equal(f.scans,0);assert.equal(f.reads.rect,0);assert.equal(f.rafCalls,0);
+});
+test('geometry attributes, ordinary text, clock visibility and clock width changes still invalidate',t=>{
+ const f=fixture();t.after(()=>f.controller.destroy());const clock=new f.Element('rd-focus-clock',{rdFocusClock:''});f.container.append(clock);
+ const cases=[...['style','class','hidden','open','data-pet-ledge','data-arrange-key','aria-hidden','aria-expanded','aria-selected','role'].map(attributeName=>({type:'attributes',attributeName,target:f.panels[0]})),{type:'attributes',attributeName:'data-panel-frame',target:f.container},{type:'attributes',attributeName:'style',target:f.host},{type:'attributes',attributeName:'hidden',target:clock},{type:'characterData',oldValue:'Old title',target:{nodeType:3,parentElement:f.panels[0],parentNode:f.panels[0],textContent:'A longer title'}},{type:'characterData',oldValue:'99:59',target:{nodeType:3,parentElement:clock,parentNode:clock,textContent:'100:00'}},{type:'childList',target:clock,addedNodes:[{nodeType:3,textContent:'Done'}],removedNodes:[{nodeType:3,textContent:'00:00'}]}];
+ for(const record of cases){f.panels[0].rect.top++;f.panels[0].rect.bottom++;f.clear();f.mutate([record]);assert.equal(f.reads.rect,0);f.postpaint();assert.equal(f.scans,1,record.attributeName||record.type);assert.equal(f.node._y,f.panels[0].rect.top+1);}
+});
 // The art film (motion.js) writes inline --rd-tf/--rd-op/transform/opacity on every SVG part as each stroke starts and
 // frees; a course click's drawing-in made the pony re-measure ~80 times. A drawing's parts and the drawn frames cannot
 // move an HTML ledge, so they do not invalidate; the outer <svg> box and any structural change still do.
@@ -364,4 +229,32 @@ test('the outer drawing box, its structure and HTML around drawings still invali
  const f=fixture();t.after(()=>f.controller.destroy());const d=drawingParts(f);
  const cases=[{type:'attributes',attributeName:'style',target:d.svg},{type:'attributes',attributeName:'viewBox',target:d.svg},{type:'childList',target:d.svg,addedNodes:[new f.Element('art-stroke')],removedNodes:[]},{type:'childList',target:d.frame,addedNodes:[],removedNodes:[new f.Element('rd-frame-stretch')]},{type:'attributes',attributeName:'style',target:f.panels[0]}];
  for(const record of cases){f.panels[0].rect.top++;f.panels[0].rect.bottom++;f.clear();f.mutate([record]);assert.equal(f.reads.rect,0);f.postpaint();assert.equal(f.scans,1,record.attributeName||record.type);assert.equal(f.node._y,f.panels[0].rect.top+1);}
+});
+for(const options of [{},{motion:'off'},{motion:'still'},{mediaReduced:true},{observers:false}])test('empty pony reels and ledge following stay asleep without input: '+JSON.stringify(options),t=>{
+ const f=fixture(options);t.after(()=>f.controller.destroy());f.clear();f.advance(1000);
+ t.diagnostic(`empty pony / 1 s: callbacks=${f.callbacks}, scans=${f.scans}, rect reads=${f.reads.rect}`);
+ assert.equal(f.callbacks,0,'no empty reel or 500 ms follow callback');assert.equal(f.scans,0);assert.equal(f.reads.rect,0);
+});
+function reelAnimation(f,times){
+ let time=0;return {animationName:'pet-tail',playState:'running',effect:{getTiming:()=>({duration:3400,iterations:Infinity}),getKeyframes:()=>[{computedOffset:0,transform:'rotate(5deg)'},{computedOffset:1,transform:'rotate(-7deg)'}]},pause(){this.playState='paused';},get currentTime(){return time;},set currentTime(v){time=v;times.push({at:f.clock,time:v});}};
+}
+test('an empty reel resumes on animationstart and stops when its last loop is cancelled or finishes',t=>{
+ for(const state of ['idle','finished']){const f=fixture();t.after(()=>f.controller.destroy());f.advance(1000);const times=[],a=reelAnimation(f,times);f.animations.push(a);f.node.emit('animationstart');f.advance(100);assert.ok(times.length>=2,'a dormant reel discovers the new loop');a.playState=state;f.node.emit(state==='idle'?'animationcancel':'animationend');f.advance(50);f.clear();const before=times.length;f.advance(100);assert.equal(times.length,before);assert.equal(f.callbacks,0,'a dead last loop leaves no ticking reel');const fresh=reelAnimation(f,times);f.animations.splice(0,1,fresh);f.node.emit('animationstart');f.advance(50);assert.ok(times.length>before,'replacement loops wake the clock');}
+});
+test('reduced motion stops active reels and both workspace and OS motion changes resume them',t=>{
+ for(const mode of ['off','still','media']){const f=fixture(),times=[];t.after(()=>f.controller.destroy());f.animations.push(reelAnimation(f,times));f.node.emit('animationstart');f.advance(100);assert.ok(times.length>0);
+  if(mode==='media'){f.motionMedia.matches=true;f.motionMedia.emit('change');}else{f.container.dataset.motionStyle=mode;f.mutate([{type:'attributes',attributeName:'data-motion-style',target:f.container}]);}
+  f.advance(50);f.clear();const before=times.length;f.advance(1000);assert.equal(times.length,before,mode+' writes no animation time');assert.equal(f.callbacks,0,mode+' leaves no periodic reel or follow timer');assert.equal(f.node.dataset.still,'true');
+  if(mode==='media'){f.motionMedia.matches=false;f.motionMedia.emit('change');}else{f.container.dataset.motionStyle='full';f.mutate([{type:'attributes',attributeName:'data-motion-style',target:f.container}]);}
+  f.advance(100);assert.ok(times.length>before,mode+' resumes animation');assert.equal(f.node.dataset.still,'false');
+ }
+});
+for(const observers of [true,false])test('input wakes a single follow check and unobserved ledge movement is recovered: '+observers,t=>{
+ const f=fixture({observers});t.after(()=>f.controller.destroy());f.panels[0].rect.top+=20;f.panels[0].rect.bottom+=20;f.clear();
+ for(let i=0;i<100;i++)f.doc.emit('pointermove');f.doc.emit('input');f.advance(499);assert.equal(f.reads.rect,0,'input does not synchronously measure layout');f.advance(30);assert.equal(f.node._y,321);assert.equal(f.scans,1,'one postpaint scan serves the input burst');f.clear();f.advance(400);assert.equal(f.reads.rect,0,'no idle follow timer is rearmed');
+});
+test('hidden and unmounted ponies cancel input follow wakeups and dormant reel restarts',t=>{
+ const f=fixture();t.after(()=>f.controller.destroy());const staleMedia=[...f.motionMedia.events.get('change')||[]][0];f.doc.emit('pointermove');f.node.emit('animationstart');f.setPet({enabled:false});assert.equal(f.timers.size,0);assert.equal(f.motionMedia.events.get('change')?.size||0,0);
+ f.setPet({enabled:true});f.clear();staleMedia?.({type:'change'});f.advance(1);assert.equal(f.reads.rect,0);assert.equal(f.enumerations,0,'a detached media listener cannot restart the replacement pony');
+ f.doc.emit('pointermove');f.doc.hidden=true;f.doc.emit('visibilitychange');f.clear();f.advance(1000);assert.equal(f.callbacks,0);f.doc.hidden=false;f.doc.emit('visibilitychange');f.postpaint();assert.equal(f.node._y,301);
 });

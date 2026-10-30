@@ -94,7 +94,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
      ];
    }));
    const course=id=>courseMap.get(String(id))||{id:'personal',name:'Personal',code:'ME',color:'#7c718d',score:null,grade:null};
-   // Hidden by hand, or not a class (NameCoach, College Counseling) and never shown by hand: the dashboard's rule.
+   // Hidden by hand, or not a class (name tools, counseling groups) and never shown by hand: the dashboard's rule.
    const hiddenIds=C.hiddenCourseIds(allCourses,settings);
    const courses=allCourses.filter(x=>!hiddenIds.has(x.id)).map(x=>course(x.id));
    const items=currentSnapshot.assignments.filter(raw=>!hiddenIds.has(String(raw.course_id))).map(raw=>C.normalizeAssignment(raw,course(raw.course_id)));

@@ -11,7 +11,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // appearanceVersion 2 (Canvas Harness 2.15) made Clay the default accent; see cleanData.
   // readingFont: teacher text in the book serif or the interface sans; greeting: the time-of-day heading.
   // hiddenCourses: hidden by hand. shownCourses (2.17): shown by hand, which keeps a course that is hidden
-  // by default (NameCoach, College Counseling: ReserveCore.hiddenCourseIds) on screen. An id is in one list at most.
+  // by default (name tools and counseling groups: ReserveCore.hiddenCourseIds) on screen. An id is in one list at most.
   const defaults = () =>
     ({
       version:1,
@@ -47,6 +47,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       customTasks:[],
       gpa:gpa.defaults(),
       toolbox:{scratchpad:'',recent:[],dockSize:{width:0,height:0}},
+      gradeImpact:{pretend:{}},
       focus:{minutes:25,remaining:1500,endsAt:null,itemId:null,sessions:0},
       pet:{knowledge:'basic',skills:petSkills(),reminders:[],routines:[]}
     });
@@ -80,6 +81,27 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     heic:'image/heic',
     heif:'image/heif'
   };
+  // Grade impact's pretend assignments (the student's own, never sent to Canvas): per course, at most 8, each filed under
+  // one of the course's categories with its points, a name of up to 60 characters and the score the student set, if any.
+  // Anything else is dropped rather than refused, so a stale or hand-edited record never blocks a save or a restore.
+  function cleanGradeImpact(value){
+    const out={pretend:{}};if(!isRecord(value)||!isRecord(value.pretend))return out;let courses=0;
+    for(const [course,rows]of Object.entries(value.pretend)){
+      if(!/^\d{1,20}$/.test(course)||!Array.isArray(rows)||courses>=200)continue;const list=[],seen=new Set();
+      for(const x of rows){
+        if(list.length>=8)break;if(!isRecord(x))continue;
+        const id=typeof x.id==='string'&&/^gp-[a-z0-9]{4,24}$/.test(x.id)?x.id:'',
+          group=typeof x.group==='string'&&/^\d{1,20}$/.test(x.group)?x.group:typeof x.group==='number'&&Number.isSafeInteger(x.group)&&x.group>=0?String(x.group):'';
+        const points=typeof x.points==='number'&&Number.isFinite(x.points)&&x.points>0&&x.points<=10000?Math.round(x.points*100)/100:0;
+        if(!id||seen.has(id)||!group||!points)continue;seen.add(id);
+        const name=typeof x.name==='string'?x.name.replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,60):'',
+          score=typeof x.score==='number'&&Number.isFinite(x.score)&&x.score>=0&&x.score<=1?Math.round(x.score*1e4)/1e4:null;
+        list.push({id,group,points,name,score});
+      }
+      if(list.length){out.pretend[course]=list;courses++;}
+    }
+    return out;
+  }
   function cleanCourseFiles(value){
     if(!isRecord(value))return {};const out={},seen=new Set(),words=(v,n)=>typeof v==='string'?v.replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,n):'';let count=0,total=0;
     for(const [course,rows]of Object.entries(value)){
@@ -183,7 +205,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const petTime=value=>Number.isFinite(value)&&value>0&&value<=8640000000000000;
   const petDay=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&Number.isFinite(Date.parse(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;
   function petSkills(value){
-    return Object.fromEntries(['deadline','focus','planner','wellbeing','inbox','reminders','night'].map(key=>{const item=petField(value,key);return [key,typeof item==='boolean'?item:true];}));
+    return Object.fromEntries(['deadline','focus','planner','quiz','wellbeing','labprep','reading','rubric','feedback','inbox','reminders','night'].map(key=>{
+      const item=petField(value,key);
+      return [key,typeof item==='boolean'?item:true];
+    }));
   }
   function petReminders(value,now=Date.now()){
     const out=[],seen=new Set();
@@ -331,6 +356,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     out.moduleProgress=previous&&same(value.moduleProgress,previous.moduleProgress)?previous.moduleProgress:cleanModuleProgress(value.moduleProgress);
     out.courseFiles=previous&&same(value.courseFiles,previous.courseFiles)?previous.courseFiles:cleanCourseFiles(value.courseFiles);
     out.gpa=previous&&same(value.gpa,previous.gpa)?previous.gpa:gpa.cleanPreferences(value.gpa);
+    out.gradeImpact=previous&&same(value.gradeImpact,previous.gradeImpact)?previous.gradeImpact:cleanGradeImpact(value.gradeImpact);
     if (!isRecord(settings) || (value.tasks && !isRecord(value.tasks)) || (value.customTasks && !Array.isArray(value.customTasks))) throw Error('Backup data has an invalid structure.');
     // Validate every restored SVG before returning data or committing a save.
     if(!customization)throw Error('Canvas Harness customization modules are missing. Reload the extension.');
@@ -946,7 +972,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const lease=Object.freeze({});accountWriteLeases.set(lease,key);
     try{return await fn(lease);}finally{accountWriteLeases.delete(lease);}
   });
-  const api = { createStore, validateBackup, accountValidator, serveAccountWrites, runAccountWrite, ownsAccountWrite, cleanCourseFiles };
+  const api = { createStore, validateBackup, accountValidator, serveAccountWrites, runAccountWrite, ownsAccountWrite, cleanCourseFiles, cleanGradeImpact };
   root.ReserveStorage = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);

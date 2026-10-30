@@ -2,7 +2,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const storage=require('../extension/storage.js');
-const {createDOM}=require('./contributor-fixture.cjs');
+const {createDOM}=require('./addons-fixture.cjs');
 const read=file=>fs.readFileSync(path.join(__dirname,'../extension',file),'utf8');
 const ids=['','starry','sea','stars','blueprint'];
 function makeStore(){
@@ -68,7 +68,7 @@ test('Look offers five named native radio choices and only packaged decorative p
  }
 });
 
-test('each active scene hides night artwork and locks Light/Dark while preserving the saved choice',()=>{
+test('each active scene hides night artwork and keeps Light/Dark editable with the saved choice',()=>{
  for(const sceneTheme of ids.slice(1))for(const theme of ['light','dark','system']){
   const {document}=editor({settings:{sceneTheme,theme,nightArt:70,themePack:'night-library'}});
   const scenes=document.querySelectorAll('input[data-setting="sceneTheme"]');
@@ -76,7 +76,7 @@ test('each active scene hides night artwork and locks Light/Dark while preservin
   assert.ok(scenes.every(input=>!input.disabled),'None remains available to restore saved appearance');
   assert.equal(document.querySelector('[data-setting="nightArt"]'),null);
   const themeChoices=document.querySelectorAll('input[data-setting="theme"]');assert.equal(themeChoices.length,2);
-  assert.ok(themeChoices.every(input=>input.disabled),'the active scene owns its palette');
+  assert.ok(themeChoices.every(input=>!input.disabled),'scene colors remain adjustable in either mode');
   assert.deepEqual(themeChoices.filter(input=>input.checked).map(input=>input.value),[theme==='dark'?'dark':'light']);
   assert.doesNotMatch(document.body.textContent,/Choose None/,'no standing explanation: the locked choices speak for themselves');
  }
@@ -92,7 +92,7 @@ test('disabled scenes are absent and do not lock saved appearance or resolve pos
  assert.ok(document.querySelectorAll('input[data-setting="theme"]').every(input=>!input.disabled));
  assert.equal(document.querySelector('[data-setting="nightArt"]').value,'45');
  const off=editor({settings:{sceneTheme:'stars'},enabled:id=>id!=='customization'});
- assert.equal(off.html,'');assert.deepEqual(off.urls,[]);
+ assert.ok(off.document.querySelector('[data-value="features"]'));assert.ok(off.document.querySelector('[data-value="settings"]'));assert.equal(off.document.querySelector('[data-setting="sceneTheme"]'),null);assert.deepEqual(off.urls,[]);
 });
 
 test('the picker remains usable without an extension runtime and avoids school-relative image requests',()=>{

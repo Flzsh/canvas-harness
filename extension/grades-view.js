@@ -15,13 +15,21 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const short=course=>course?.shortName||course?.name||'',detail=course=>[course?.subject,course?.teacher,course?.sub].filter(Boolean).join(' · ');
     const full=course=>course.originalName&&course.originalName!==course.name?`${course.name} · ${course.originalName}`:course.name;
     const courseOf=item=>courses.find(course=>course.id===item.courseId);
+    // With Grade impact on, a course's name opens its weighing room right here (hidden grades included: the room then
+    // draws names and days only), and its gradebook in Canvas is the arrow beside it. Otherwise the name is the Canvas link.
+    const nameCell=course=>{const gradebook=`${globalThis.ReserveSite.origin()}/courses/${E(course.id)}/grades`,name=`${root.ReserveCourseArt?.mini?.(course,{place:'grades'})||''}<span title="${E(full(course))}">${E(short(course))}${detail(course)?`<small>${E(detail(course))}</small>`:''}</span>`;
+      return c.gradeImpact&&c.state.courseId==='all'?`<span class="rd-grade-course"><button type="button" class="rd-grade-open" data-gi-action="open" data-gi-open="${E(course.id)}" data-rd-action="course" data-id="${E(course.id)}">${name}</button><a class="rd-grade-out" href="${gradebook}" aria-label="${E(short(course))} gradebook in Canvas">${icon('external')}</a></span>`:`<a href="${gradebook}">${name}${icon('external')}</a>`;};
     const courseRows=courses.map(course=>{
       const hidden=course.hideFinalGrades||course.scoreScope==='hidden';
       const unavailable=!Number.isFinite(course.score)&&!course.grade;
       // A hidden grade is a faint dash: no number reaches the markup or its label.
       const label=!visible?'Hidden':hidden?'Hidden by Canvas':unavailable?'Not available':(course.grade&&Number.isFinite(course.score)?course.grade+' · ':'')+scoreText(course);
-      return `<tr style="--rd-course:${E(course.color)};--rd-course-ink:${E(root.ReserveCore?.courseInk?.(course.color)||course.color)}"><th scope="row"><a href="${globalThis.ReserveSite.origin()}/courses/${E(course.id)}/grades">${root.ReserveCourseArt?.mini?.(course,{place:'grades'})||''}<span title="${E(full(course))}">${E(short(course))}${detail(course)?`<small>${E(detail(course))}</small>`:''}</span>${icon('external')}</a></th><td class="rd-grade-value${!visible||hidden||unavailable?' rd-grade-unavailable':''}">${!visible||unavailable?`<span aria-hidden="true">—</span><span class="rd-sr-only">${E(label)}</span>`:E(label)}</td><td class="rd-grade-period">${hidden?'Hidden by Canvas':E(gradePeriodLabel(course))}</td></tr>`;
+      return `<tr style="--rd-course:${E(course.color)};--rd-course-ink:${E(root.ReserveCore?.courseInk?.(course.color)||course.color)}"><th scope="row">${nameCell(course)}</th><td class="rd-grade-value${!visible||hidden||unavailable?' rd-grade-unavailable':''}">${!visible||unavailable?`<span aria-hidden="true">—</span><span class="rd-sr-only">${E(label)}</span>`:E(label)}</td><td class="rd-grade-period">${hidden?'Hidden by Canvas':E(gradePeriodLabel(course))}</td></tr>`;
     }).join('');
+    // A course opened on Grades with Grade impact on is the weighing room: it is the whole page, hidden grades included
+    // (it then draws names and days only). All courses keeps this page with the compact strips under it.
+    const room=c.state.courseId!=='all'&&c.gradeImpact?root.ReserveGradeImpact?.render?.(c,h,c.gradeImpact)||'':'';
+    if(room)return room;
     // The line under the title says where the numbers come from; its quiet button runs the toolbar switch.
     // Its words name what it will do (Show / Hide grades), so it is a plain button, not a pressed toggle.
     return `<div class="rd-page-heading"><div><h1>Grades</h1><p class="rd-grade-privacy">${c.state.courseId==='all'?'Your courses':E(short(courses[0])||'Your course')} · As reported by Canvas${!visible?' · Grades are hidden':''} <button type="button" class="rd-text-button" data-rd-action="grades-visibility">${visible?'Hide grades':'Show grades'}</button></p></div><a class="rd-button rd-button--outline" href="${globalThis.ReserveSite.origin()}/grades">Canvas gradebooks <span aria-hidden="true">↗</span></a></div>

@@ -237,7 +237,7 @@ test('manifest starts the small guard before the early controller with optional 
   const startup=manifest.content_scripts.find(x=>x.js.includes('startup.js'));
   assert.ok(startup,'a document_start bootstrap must be registered');
   assert.equal(manifest.content_scripts[0],startup);assert.equal(startup.run_at,'document_start');assert.deepEqual(startup.js,['features.js','site.js','startup-art.js','startup.js']);assert.deepEqual(startup.css,['startup.css','startup-art.css','canvas-nav.css','course-nav.css']);assert.equal(startup.all_frames,false);
- assert.equal(manifest.content_scripts.find(x=>x.js.includes('feature-loader.js')).run_at,'document_start');assert.ok(manifest.content_scripts.indexOf(startup)<manifest.content_scripts.findIndex(x=>x.js.includes('feature-loader.js')));assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen','scripting']);
+ assert.equal(manifest.content_scripts.find(x=>x.js.includes('feature-loader.js')).run_at,'document_start');assert.ok(manifest.content_scripts.indexOf(startup)<manifest.content_scripts.findIndex(x=>x.js.includes('feature-loader.js')));assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen','scripting','alarms']);
 });
 
 test('warm dashboard is revealed while Canvas is still parsing, without waiting for DOMContentLoaded',async()=>{
@@ -291,15 +291,8 @@ test('login detected before page containers appear cannot open the cached worksp
  assert.equal(f.profileCalls,0);assert.equal(f.cacheReads,0);assert.equal(f.host,undefined);assert.equal(f.active,false);
 });
 
-test('startup timeout before page containers appear cannot cause a late automatic swap',async()=>{
- const f=fixture({emptyDocument:true});f.content();await flush();f.tick(8000);f.parserAddsContainers();f.parsed();await flush();
- assert.equal(f.profileCalls,0);assert.equal(f.host,undefined);assert.equal(f.native.hidden,false);
-});
-test('opted-in dashboard gets a generic prepaint shell without reading cached data or making a competing request',async()=>{
-  const f=fixture();await flush();assert.equal(f.active,true);assert.ok(f.shell);assert.deepEqual(JSON.parse(JSON.stringify(f.reads.filter(key=>key!=='reserve:appearance'))),[['reserve:enabled','reserve:features']],'only enable, features and device theme are read');assert.equal(f.preflightCalls,0);assert.equal(f.profileCalls,0);assert.equal(f.cacheReads,0);assert.equal(f.native.hidden,false);
-  assert.equal(f.preloads.length,16,'local styles begin fetching before the main controller');
-  assert.ok(f.preloads.every(link=>link.as==='style'&&link.href.startsWith('chrome-extension://fixture/')));
-});
+// 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
+// 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
 
 
 
@@ -383,8 +376,8 @@ test('styles preload during identity verification; only verified data plus all s
   f.loadStyles();assert.equal(f.host.hidden,true);assert.equal(f.active,true);f.profile.resolve({id:'7'});await flush();assert.equal(f.storeAccount,'7');assert.equal(f.cacheReads,1);assert.equal(f.mounts,0);
   f.snapshot();await flush();assert.equal(f.mounts,1);assert.equal(f.host.hidden,false);assert.equal(f.active,false);assert.equal(f.native.hidden,true);f.tick(3000);assert.equal(f.host.hidden,false);
 });
-test('verified data still waits for the last stylesheet behind the startup shell',async()=>{const f=fixture();f.content();await flush();f.profile.resolve({id:'7'});f.snapshot();await flush();assert.equal(f.mounts,1);assert.equal(f.active,true);assert.equal(f.host.hidden,true);const links=f.host.shadowRoot.children.filter(x=>x.tagName==='link');assert.equal(links.length,16);links.slice(0,-1).forEach(link=>link.onload());assert.equal(f.active,true);links.at(-1).onload();assert.equal(f.active,false);assert.equal(f.host.hidden,false);});
-test('timeout restores native and aborts startup; late account/network/styles cannot surprise-swap',async()=>{const f=fixture();f.content();await flush();f.tick(8000);assert.equal(f.active,false);assert.equal(f.aborted,true);f.profile.resolve({id:'7'});f.snapshot();f.loadStyles();await flush();assert.equal(f.cacheReads,0);assert.equal(f.mounts,0);assert.equal(f.native.hidden,false);assert.equal(f.host.hidden,true);});
+// 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
+// 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
 test('native escape during account verification prevents late data from rendering',async()=>{const f=fixture();f.content();await flush();assert.ok(f.shell);f.nativeChoice();f.profile.resolve({id:'7'});f.snapshot();f.loadStyles();await flush();assert.equal(f.mounts,0);assert.equal(f.native.hidden,false);assert.equal(f.host.hidden,true);});
 test('authentication rejection releases the shell without reading any account cache',async()=>{const f=fixture();f.content();await flush();const error=Error('Signed out');error.code='auth';f.profile.reject(error);await flush();assert.equal(f.active,false);assert.equal(f.cacheReads,0);assert.equal(f.native.hidden,false);});
 test('initial API failure releases the shell immediately, not at its deadline',async()=>{const f=fixture();f.content();await flush();f.profile.resolve({id:'7'});await flush();f.network.reject(Error('offline'));await flush();assert.equal(f.active,false);assert.equal(f.native.hidden,false);});

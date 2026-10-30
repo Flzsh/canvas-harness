@@ -1,7 +1,6 @@
 /* Course-aware language uses packaged data and loaded metadata; bounded alias edits require explicit retrieval. */
 (function(root){
  'use strict';
- const assetURL=file=>root.chrome?.runtime?.getURL?root.chrome.runtime.getURL(file):new URL('../extension/'+file,root.location.href).href;
  const DATA_FILE='biscuit-rules/school-language.json',
    node=typeof module==='object'&&module.exports,
    list=v=>Array.isArray(v)?v:[],
@@ -690,8 +689,8 @@
  },load(read){
    if(pending)return pending;
    if(!read&&node)return Promise.resolve(api);
-   if(!read&&!root.chrome?.runtime?.getURL&&!root.location?.href)return Promise.reject(Error('A packaged school-language reader is required'));
-   const reader=read||(()=>fetch(assetURL(DATA_FILE)).then(response=>{if(!response.ok)throw Error('School language data could not load');return response.json();}));
+   if(!read&&!root.chrome?.runtime?.getURL)return Promise.reject(Error('A packaged school-language reader is required'));
+   const reader=read||(()=>fetch(root.chrome.runtime.getURL(DATA_FILE)).then(response=>{if(!response.ok)throw Error('School language data could not load');return response.json();}));
    pending=Promise.resolve().then(()=>reader(DATA_FILE)).then(data=>api.configure(data)).finally(()=>{pending=null;});
    return pending;
  },get ready(){return current.data.subjects.length>0;}};

@@ -38,7 +38,7 @@ test('custom drawing uses sanitized SVG, the still copy and the artwork facing d
 test('installed drawings are isolated images with their own dimensions and ground line',t=>{
  const p=pack();p.assets.stand.data=Buffer.from('<svg>untrusted original bytes</svg>').toString('base64');const f=customFixture({custom:p,initialPet:{name:'Biscuit'}});t.after(()=>f.controller.destroy());
  assert.equal(f.node.children.length,1);assert.equal(f.image.tagName,'IMG');assert.equal(svg(f.image),p.assets.stand.svg);assert.equal(f.image.alt,'');assert.equal(f.image.draggable,false);assert.equal(f.image.attrs['aria-hidden'],'true');assert.equal(f.node.style.width,'96px');assert.equal(f.node.style.height,'48px');assert.equal(f.node.style.aspectRatio,'96 / 48');
- assert.equal(f.node.style.transform,`translate(${(f.node._x-48).toFixed(1)}px,${(f.node._y-40).toFixed(1)}px)`);assert.match(f.node.attrs['aria-label'],/Biscuit.*companion/);assert.equal(f.pet.name,'Biscuit');
+ assert.equal(f.node.style.transform,`translate(${(f.node._x-48).toFixed(1)}px,${(f.node._y-40).toFixed(1)}px)`);assert.match(f.node.attrs['aria-label'],/Moth.*companion/);assert.equal(f.pet.name,'Biscuit');
 });
 test('a zero ground line is used without substituting pony geometry',t=>{
  const f=customFixture({custom:pack({size:[32,128],ground:0})});t.after(()=>f.controller.destroy());assert.equal(f.node.style.width,'32px');assert.equal(f.node.style.height,'128px');assert.equal(f.node.style.transform,`translate(${(f.node._x-16).toFixed(1)}px,${f.node._y.toFixed(1)}px)`);
@@ -54,7 +54,7 @@ test('focus and resting keep their behavior while missing drawings use stand and
 });
 test('optional reading, eating and cheering keep Biscuit rewards and Ask menu',t=>{
  const f=customFixture({custom:pack({poses:{stand:'stand',walk:'walk',sleep:'sleep',read:'read',eat:'eat',cheer:'cheer'}})});t.after(()=>f.controller.destroy());f.controller.setFocus(true,{endsAt:f.epoch+1500000});assert.match(svg(f.image),/read moving/);assert.equal(f.controller.treat(),true);assert.equal(f.pet.treats,0);assert.equal(f.pet.fed,1);assert.match(svg(f.image),/eat moving/);f.advance(2500);assert.match(svg(f.image),/cheer moving/);
- f.node.emit('click');assert.match(f.bubble.html,/Pet settings/);assert.equal(f.bubble.attrs['aria-label'],'Biscuit');assert.equal(f.node.attrs['aria-expanded'],'true');assert.match(svg(f.image),/cheer still/);f.node.emit('keydown',{key:'Escape',preventDefault(){}});assert.equal(f.bubble,undefined);assert.match(svg(f.image),/cheer moving/);
+ f.node.emit('click');assert.match(f.bubble.html,/Ask Moth/);assert.equal(f.bubble.attrs['aria-label'],'Moth');assert.equal(f.node.attrs['aria-expanded'],'true');assert.match(svg(f.image),/cheer still/);f.node.emit('keydown',{key:'Escape',preventDefault(){}});assert.equal(f.bubble,undefined);assert.match(svg(f.image),/cheer moving/);
 });
 for(const motion of ['off','still','media','hidden'])test('custom artwork uses its still copy while '+motion,t=>{
  const f=customFixture();t.after(()=>f.controller.destroy());const image=f.image;
@@ -69,11 +69,11 @@ for(const options of [{},{motion:'off'},{motion:'still'},{mediaReduced:true},{hi
 test('unchanged refreshes preserve the image and null restores the pony on the same control',t=>{
  const f=customFixture();t.after(()=>f.controller.destroy());const node=f.node,image=f.image,writes=f.imageWrites;
  for(let i=0;i<5;i++)f.controller.sync();assert.equal(f.node,node);assert.equal(f.image,image);assert.equal(f.imageWrites,writes);f.setCustom(pack({size:[48,96],ground:72,faces:'left'}));assert.equal(f.node,node);assert.equal(f.node.style.width,'48px');assert.equal(f.node.style.height,'96px');assert.equal(f.image.style.transform,'scaleX(-1)');assert.equal(f.node.style.transform,`translate(${(node._x-24).toFixed(1)}px,${(node._y-72).toFixed(1)}px)`);
- f.setCustom(null);assert.equal(f.node,node);assert.equal(f.image,undefined);assert.ok(f.node.querySelector('.pet-up'));assert.equal(f.node.style.width,'');assert.equal(f.node.style.height,'');assert.equal(f.node.style.aspectRatio,'');assert.match(f.node.attrs['aria-label'],/Biscuit.*pony/);assert.equal(f.node.style.transform,`translate(${(node._x-29).toFixed(1)}px,${(node._y-58*60/72).toFixed(1)}px)`);f.node.emit('click');assert.match(f.bubble.html,/Pet settings/);
+ f.setCustom(null);assert.equal(f.node,node);assert.equal(f.image,undefined);assert.ok(f.node.querySelector('.pet-up'));assert.equal(f.node.style.width,'');assert.equal(f.node.style.height,'');assert.equal(f.node.style.aspectRatio,'');assert.match(f.node.attrs['aria-label'],/Biscuit.*companion/);assert.equal(f.node.style.transform,`translate(${(node._x-29).toFixed(1)}px,${(node._y-58*60/72).toFixed(1)}px)`);f.node.emit('click');assert.match(f.bubble.html,/Ask Biscuit/);
 });
 test('reenabling reads the current pack and callers can omit the provider',t=>{
  const f=customFixture();t.after(()=>f.controller.destroy());f.setPet({enabled:false});assert.equal(f.node,undefined);assert.equal(f.timers.size,0);f.setCustom(pack({faces:'left'}));f.setPet({enabled:true});assert.match(svg(f.image),/stand moving/);assert.equal(f.image.style.transform,'scaleX(-1)');
- const original=customFixture({provider:false});t.after(()=>original.controller.destroy());assert.equal(original.image,undefined);assert.ok(original.node.querySelector('.pet-up'));assert.match(original.node.attrs['aria-label'],/your pony/);
+ const original=customFixture({provider:false});t.after(()=>original.controller.destroy());assert.equal(original.image,undefined);assert.ok(original.node.querySelector('.pet-up'));assert.match(original.node.attrs['aria-label'],/your companion/);
 });
 for(const motion of ['off','still','media','hidden'])test('animated raster poses switch to the stand first frame while '+motion,t=>{
  const p=pack(),gif='R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';for(const name of Object.keys(p.assets))p.assets[name]={type:'image/gif',data:gif,animated:true,firstFrame:'data:image/gif;base64,'+gif};p.assets.walk.data=gif+'AAAA';

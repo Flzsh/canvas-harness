@@ -4,14 +4,13 @@
  // The three panels every workspace has, and the modules a student may add beside them. The layout is one tree:
  // any module can sit beside or below any other. Up next and Assignment details always stay; the rest can go.
  const PANELS=['context','work','reader'];
- const EXTRA=['today','handin','week','timer','clock','notes','bookmarks','grades','messages','pet'];
+ const EXTRA=['handin','week','timer','clock','notes','bookmarks','grades','impact','messages','pet','review'];
  const ALL=[...PANELS,...EXTRA];
  const LABELS={
    context:'Course information',
    work:'Up next',
    reader:'Assignment details',
    rail:'Courses',
-   today:'Today',
    handin:'To hand in',
    week:'This week',
    timer:'Focus timer',
@@ -19,20 +18,34 @@
    notes:'Notes',
    bookmarks:'Bookmarks',
    grades:'Grades',
+   impact:'Grade impact',
    messages:'Messages',
-   pet:'Paddock'
+   pet:'Paddock',
+   review:'Review'
  };
  // How much of a row a module asks for beside its neighbours, and the narrowest it can usefully be.
- const WEIGHT={context:1,work:1.12,reader:1.12,today:.82,handin:.9,week:.95,timer:.58,clock:.58,notes:.8,bookmarks:.8,grades:.8,messages:.9,pet:.66};
- const MIN_WIDTH={context:260,work:300,reader:300,today:220,handin:230,week:250,timer:170,clock:170,notes:210,bookmarks:210,grades:210,messages:230,pet:190};
- const isKey=key=>ALL.includes(key),isExtra=key=>EXTRA.includes(key),label=key=>LABELS[key]||'';
- const removable=key=>EXTRA.includes(key)||key==='context';
+ const WEIGHT={context:1,work:1.12,reader:1.12,week:.95,timer:.58,clock:.58,notes:.8,bookmarks:.8,grades:.8,impact:1.05,messages:.9,pet:.66,review:1};
+ const MIN_WIDTH={context:260,work:300,reader:300,week:250,timer:170,clock:170,notes:210,bookmarks:210,grades:210,impact:240,messages:230,pet:190,review:260};
+ const dynamic=key=>typeof key==='string'&&/^ai-[A-Za-z0-9_-]{1,36}$/.test(key),
+   isKey=key=>ALL.includes(key)||dynamic(key),
+   isExtra=key=>EXTRA.includes(key)||dynamic(key),
+   label=key=>LABELS[key]||(dynamic(key)?'Your AI':'');
+ const removable=key=>isExtra(key)||key==='context';
  const ROOT='*',SIZES={s:.68,m:1,l:1.5};
  function controls(key){
   if(!LABELS[key]||root.ReserveFeatures?.enabled('arrange')===false)return '';
   return `<span class="rd-arrange-tools"><button type="button" class="rd-arrange-grip" data-arrange-grip aria-label="Move ${LABELS[key]}" aria-describedby="rd-move-help" title="Hold to move · Space for keyboard"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="9" cy="5" r="1.4"/><circle cx="15" cy="5.5" r="1.4"/><circle cx="8.5" cy="12" r="1.4"/><circle cx="15.5" cy="12" r="1.4"/><circle cx="9" cy="19" r="1.4"/><circle cx="15" cy="18.5" r="1.4"/></svg></button>${(PANELS.includes(key)||EXTRA.includes(key))&&root.ReserveFeatures?.enabled('planner')!==false?`<button type="button" class="rd-arrange-more" data-rd-action="module-menu" data-widget="${key}" aria-haspopup="menu" aria-label="${LABELS[key]}: size and place" title="Size and place"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="12" r="1.7"/><circle cx="12" cy="12.3" r="1.7"/><circle cx="18.5" cy="12" r="1.7"/></svg></button>`:''}${EXTRA.includes(key)?`<button type="button" class="rd-arrange-remove" data-rd-action="widget-remove" data-widget="${key}" aria-label="Remove ${LABELS[key]} from Home" title="Remove from Home"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 7.4l10 9.4M17 7l-10 10.2"/></svg></button>`:''}</span>`;
  }
- const DEFAULT={order:[...PANELS],mode:'side-by-side',layout:{axis:'x',children:[...PANELS]},courseNavigation:'sidebar',dockSize:'medium',showCourseInformation:true,showCourseStrip:true};
+ const DEFAULT={
+   order:[...PANELS],
+   mode:'side-by-side',
+   layout:{axis:'x',children:[...PANELS]},
+   courseNavigation:'sidebar',
+   dockSize:'medium',
+   showCourseInformation:true,
+   showCourseStrip:true,
+   showHelp:true
+ };
  const isObject=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
  const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
  // A split remembers spatial relationships: a column can contain two stacked
@@ -46,8 +59,9 @@
   let count=0;
   function visit(node,depth=0){
    if(++count>40||depth>5)throw Error('Invalid workspaceLayout setting in backup.');
-   if(typeof node==='string'&&ALL.includes(node))return node;
-   if(!isObject(node)||!['x','y'].includes(node.axis)||!Array.isArray(node.children)||node.children.length<2||node.children.length>ALL.length)throw Error('Invalid workspaceLayout setting in backup.');
+   if(node==='today')return null; // Retired Home module; collapse its split without moving its neighbours.
+   if(typeof node==='string'&&isKey(node))return node;
+   if(!isObject(node)||!['x','y'].includes(node.axis)||!Array.isArray(node.children)||node.children.length<2||node.children.length>ALL.length+4)throw Error('Invalid workspaceLayout setting in backup.');
    return split(node.axis,node.children.map(child=>visit(child,depth+1)));
   }
   const result=visit(tree),keys=leaves(result);
@@ -161,6 +175,7 @@
  function legacyOrder(settings={}){return ['work-first','stacked'].includes(settings.deskOrder)?['work','reader','context']:[...PANELS];}
  function cleanOrder(value,{strict=false,fallback=PANELS}={}){
   if(value===undefined)return [...fallback];
+  if(Array.isArray(value))value=value.filter(key=>key!=='today');
   if(!Array.isArray(value)||strict&&(value.length!==PANELS.length||new Set(value).size!==PANELS.length)||value.some(key=>!PANELS.includes(key)))throw Error('Invalid workspaceOrder setting in backup.');
   return [...new Set(value.concat(PANELS))];
  }
@@ -174,10 +189,12 @@
    courseNavigation:settings.courseNavigation||DEFAULT.courseNavigation,
    dockSize:settings.dockSize===undefined?DEFAULT.dockSize:settings.dockSize,
    showCourseInformation:settings.showCourseInformation!==false,
-   showCourseStrip:settings.showCourseStrip!==false
+   showCourseStrip:settings.showCourseStrip!==false,showHelp:settings.showHelp!==false
   };
  }
  function cleanSnapshot(value){
+  if(isObject(value))value={...value,order:Array.isArray(value.order)?value.order.filter(key=>key!=='today'):value.order};
+  if(value?.showHelp!==undefined&&typeof value.showHelp!=='boolean')throw Error('Invalid workspaceUndo setting in backup.');
   if(!isObject(value)||
     !['stacked','side-by-side'].includes(value.mode)||
     !['sidebar','topbar','dock'].includes(value.courseNavigation)||
@@ -185,7 +202,7 @@
     typeof value.showCourseInformation!=='boolean'||
     typeof value.showCourseStrip!=='boolean')
     throw Error('Invalid workspaceUndo setting in backup.');
-  if(!Array.isArray(value.order)||new Set(value.order).size!==value.order.length||value.order.some(key=>!ALL.includes(key)))throw Error('Invalid workspaceOrder setting in backup.');
+  if(!Array.isArray(value.order)||new Set(value.order).size!==value.order.length||value.order.some(key=>key!=='today'&&!isKey(key)))throw Error('Invalid workspaceOrder setting in backup.');
   const order=cleanOrder(core(value.order),{strict:true});
   return {
     order:value.layout?leaves(cleanLayout(value.layout)):order,
@@ -195,13 +212,15 @@
     dockSize:value.dockSize===undefined?DEFAULT.dockSize:value.dockSize,
     showCourseInformation:value.showCourseInformation,
     showCourseStrip:value.showCourseStrip,
+    showHelp:value.showHelp!==false,
     ...(Array.isArray(value.courseOrder)?{courseOrder:value.courseOrder.filter(x=>typeof x==='string').slice(0,500)}:{})
   };
  }
  function cleanSizes(value){
   if(value===undefined||value===null)return {};
   if(!isObject(value))throw Error('Invalid moduleSize setting in backup.');
-  const out={};for(const [key,size] of Object.entries(value)){if(!ALL.includes(key)||!Object.hasOwn(SIZES,size))throw Error('Invalid moduleSize setting in backup.');if(size!=='m')out[key]=size;}
+  const out={};
+  for(const [key,size] of Object.entries(value)){if(key==='today')continue;if(!isKey(key)||!Object.hasOwn(SIZES,size))throw Error('Invalid moduleSize setting in backup.');if(size!=='m')out[key]=size;}
   return out;
  }
  function cleanSaved(settings={}){
@@ -256,6 +275,7 @@
    case 'navigation':if(['sidebar','topbar','dock'].includes(command.value))next.courseNavigation=command.value;break;
    case 'hide-context':next.showCourseInformation=false;break;
    case 'restore-context':next.showCourseInformation=true;break;
+   case 'help':if(typeof command.value==='boolean')next.showHelp=command.value;break;
    case 'reset':return {...DEFAULT,order:[...DEFAULT.order]};
   }
   if(['move','shift','mode'].includes(command?.type)){next.layout=withExtras(split(next.mode==='stacked'?'y':'x',core(next.order)),current.layout);next.order=leaves(next.layout);}
@@ -269,6 +289,7 @@
   settings.dockSize=state.dockSize;
   settings.showCourseInformation=state.showCourseInformation;
   settings.showCourseStrip=state.showCourseStrip;
+  settings.showHelp=state.showHelp;
   // Keep older customization controls and backups coherent with a new arrangement.
   settings.deskOrder=state.mode==='stacked'?'stacked':same(core(state.order),['work','reader','context'])?'work-first':'context-first';
   settings.dashboardLayout=state.mode==='stacked'?'list':'split';

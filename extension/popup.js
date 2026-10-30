@@ -14,7 +14,7 @@
  let origin='',lastRow=null,statusTimer=0,popupClosed=false;
  const MARKET_URL='https://flzsh.github.io/canvas-harness-packs/',PACKS_KEY='reserve:packs';
  let packInstalled=[],packLoading=false,packRevision=0,packWrites=Promise.resolve();const packPending=new Set();
- $('product-name').textContent=manifest.name;$('version').textContent=manifest.version;document.title=manifest.name;
+ $('product-name').textContent=manifest.name;$('version').textContent=manifest.version_name||manifest.version;document.title=manifest.name;
  $('school-section').hidden=!publicBuild;
  // the drawn pictures: row icons, the real Biscuit on the Pony row, and the four menu-bar layouts
  const PopupArt=globalThis.ReservePopupArt;

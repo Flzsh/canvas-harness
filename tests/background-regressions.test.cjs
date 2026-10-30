@@ -28,12 +28,7 @@ test('an early port that disconnects while trusted sites load never reconnects',
  assert.equal(source.disconnected,true);assert.equal(source.sent.length,0);assert.equal(source.onMessage.emit({kind:'catalog',data:{scopeKey:'unused'}}).length,0);
 });
 
-test('real worker retains an early draft for a late panel and acknowledges without a context or provider request',async()=>{
- const w=worker(),scopeKey='https://school.instructure.com|7|all|',draft={id:'real-worker-draft',scopeKey,text:'An original Biscuit line'};w.env.fetch=async()=>assert.fail('Draft handoff must not read account or provider data');let providerCalls=0;w.env.CanvasHarnessWeb={handle:async()=>{providerCalls++;throw Error('No explicit Send');}};
- const source=port('ch-ai-source',w.sender);w.runtime.onConnect.emit(source);source.onMessage.emit({kind:'catalog',data:{scopeKey,sources:[],courses:[]}});source.onMessage.emit({kind:'draft',draft});await tick();
- const panel=port('ch-ai-panel',{id:w.runtime.id,tab:{id:4},frameId:1,url:w.runtime.getURL('ai-panel.html')});w.runtime.onConnect.emit(panel);await tick();assert.deepEqual(panel.sent.map(message=>message.kind),['catalog','draft']);assert.deepEqual(JSON.parse(JSON.stringify(panel.sent[1].draft)),draft);
- panel.onMessage.emit({kind:'draft-ack',id:draft.id,scopeKey});assert.equal(source.sent.at(-1).kind,'draft-ack');assert.equal(source.sent.some(message=>message.kind==='source-request'),false);assert.equal(providerCalls,0);panel.disconnect();source.disconnect();
-});
+// 4.0: the 3.x Biscuit-to-AI draft handoff is replaced by Your AI's own question handoff (ai-panel tests).
 
 test('real worker refuses draft ports when the public AI feature is disabled',async()=>{
  const w=worker();w.env.chrome.storage.local.get=async()=>({'reserve:features':{preset:'lite'}});const source=port('ch-ai-source',w.sender),panel=port('ch-ai-panel',{id:w.runtime.id,tab:{id:4},frameId:1,url:w.runtime.getURL('ai-panel.html')});w.runtime.onConnect.emit(source);source.onMessage.emit({kind:'catalog',data:{scopeKey:'https://school.instructure.com|7|all|',sources:[]}});source.onMessage.emit({kind:'draft',draft:{id:'disabled',scopeKey:'https://school.instructure.com|7|all|',text:'Disabled question'}});w.runtime.onConnect.emit(panel);await tick();assert.equal(source.disconnected,true);assert.equal(panel.disconnected,true);assert.deepEqual(panel.sent,[]);

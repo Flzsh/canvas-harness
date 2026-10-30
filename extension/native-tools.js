@@ -2,10 +2,10 @@
 if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./site.js');
 (function(root){
  'use strict';
- const enabled=id=>!root.ReserveFeatures||root.ReserveFeatures.enabled(id);
+ const enabled=id=>!root.ReserveFeatures||root.ReserveFeatures.enabled(id),feature=enabled;
  const BASE=(globalThis.ReserveSite.origin());
  function context(snapshot,personal,pathname){
-  // Hidden as on the dashboard: by hand, or not a class (NameCoach, College Counseling) and never shown by hand.
+  // Hidden as on the dashboard: by hand, or not a class (name tools, counseling groups) and never shown by hand.
   const C=root.ReserveCore,
     s=personal.settings||{},
     all=(snapshot.courses||[]).map(C.normalizeCourse).filter(c=>/^\d+$/.test(c.id)),
@@ -34,13 +34,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const course=courseMap.get(String(raw.course_id??raw.courseId));
     return course?C.normalizeAssignment(raw,course):null;
   }).filter(Boolean);
-  const aiAssignmentId=String(pathname||'').match(/^\/courses\/\d+\/assignments\/(\d+)\/?$/)?.[1]||null;
+  const aiAssignmentId=String(pathname||'').match(/^\/courses\/\d+\/assignments\/(\d+)(?:\/submissions\/\d+)?\/?$/)?.[1]||null;
   return {
     s,
     courses,
     allCourses:all.map(c=>courseMap.get(c.id)||c),
     items,
     aiAssignmentId,
+    pageKind:/speed_grader|submissions/.test(String(pathname))?'feedback':aiAssignmentId?'assignment':/pages|files/.test(String(pathname))?'reader':'course',
+    now:Date.now(),
     courseId:courseMap.has(current)?current:'all',
     cacheNotice:snapshot.fetchedAt?'Uses your saved dashboard information. Open Canvas Harness to refresh deadlines.':'Open the Canvas Harness dashboard once to make your other courses and assignments available here.'
   };
@@ -210,6 +212,24 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     finally{if(token===version){pending=null;button.disabled=false;button.textContent=label;}}
    })();return pending;
   }
+  let helpButton=null;
+  if(feature('ai')&&/\/(?:assignments|pages|files)(?:\/|$)/.test(pathname())){
+    helpButton=document.createElement('button');
+    helpButton.type='button';
+    helpButton.className=button.className;
+    helpButton.textContent='Help with this';
+    helpButton.addEventListener('click',async()=>{
+      const selectedText=root.getSelection?.()?.toString()||root.document?.querySelector?.('#wiki_page_show .user_content, #wiki_page_show, .show-content.user_content')?.textContent||'';
+      await open('ai',helpButton);
+      if(!dead&&verified)
+        toolbox?.helpWith?.({
+          itemId:context(verified.snapshot,verified.store.get(),pathname()).aiAssignmentId||undefined,
+          page:/submissions/.test(pathname())?'feedback':/pages|files/.test(pathname())?'reader':'assignment',
+          selectedText
+        });
+    });
+    dockRoot.append(helpButton);
+  }
   const onClick=()=>open(undefined,button);
   const onKey=event=>{
    if(root.ReserveSite?.vanillaPage(root.location))return;
@@ -246,6 +266,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     document.removeEventListener('keydown',onKey);
     document.removeEventListener('visibilitychange',onVisibility);
     status.remove();
+    helpButton?.remove();
     for(const link of styleNodes)link.remove();
   }};
  }

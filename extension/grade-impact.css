@@ -1,0 +1,322 @@
+/* Grade impact: the weighing room (a course opened on Grades), its Home module, the compact strips on the Grades list
+   and the small weights in Up next and the reader. The drawings are grade-impact-art.js; every colour they use is a
+   class here, so light, dark, the four scene themes and Market theme kits repaint the same lines. Flat washes only:
+   no gradients, glows or filters. Only water, smoke, fire and drifting cloud move by themselves, and they stop when
+   the room is hidden, off screen, resting, Still, Off or reduced. Creator: Flzsh. */
+
+/* 1. Palette: a late-afternoon assay room. Low contrast washes, so the bar, the numbers and the weights stay brightest. */
+.rd .gi{
+ --gi-ink:var(--rd-ink,#141413);--gi-envk:#6F6455;--gi-soft:#8C8170;--gi-faint:#BCAF99;--gi-hi:#FFF8EA;
+ --gi-wall:#EFE7D8;--gi-wall2:#E7DCC8;--gi-oat:#E6DBC5;--gi-board:#E6D9C0;--gi-shadow:color-mix(in srgb,#5C4630 15%,transparent);--gi-shade:color-mix(in srgb,#5C4630 20%,transparent);
+ --gi-light:color-mix(in srgb,#FFE6AE 46%,transparent);--gi-light2:color-mix(in srgb,#FFF2D2 42%,transparent);--gi-lightbar:color-mix(in srgb,#C9A877 18%,transparent);--gi-mote:#FFF4D6;
+ --gi-brass:#DDB862;--gi-brassd:#B88D3C;--gi-kbrass:#8E6A2A;--gi-iron:#6F7F8C;--gi-irond:#56636E;--gi-kiron:#A3B2BC;--gi-stamp:#D9E0E5;
+ --gi-clay:#D97A55;--gi-clayd:#A9522F;--gi-clayl:#ECA483;--gi-tc:var(--rd-accent-deep,#8E4426);
+ --gi-tag:#FCF7EA;--gi-manila:#EBDBBC;--gi-slip:#FFFBF1;--gi-page:#F6EEDC;--gi-cover:#7A4A33;
+ --gi-bench:#CFAD80;--gi-benchd:#A9845C;--gi-benchf:#C29B6C;--gi-kg:#9C7A52;--gi-floor:#B99B77;--gi-cab:#BC9168;--gi-cabd:#9C7350;--gi-crate:#C6A57C;--gi-rope:#D9C59C;
+ --gi-felt:#843F3D;--gi-tin:#A3ACA8;--gi-pencil:#E4B53F;--gi-pencil2:#7193B3;--gi-eraser:#E6A4A0;--gi-wood:#EBCDA4;--gi-inkf:#2D2B33;--gi-red:#C4483B;
+ --gi-glassf:color-mix(in srgb,#D7E8EC 40%,transparent);--gi-kglass:color-mix(in srgb,#FFFFFF 70%,transparent);--gi-oil:#D9B65C;
+ --gi-pot:#C97B53;--gi-potd:#A6603F;--gi-soil:#5B4433;--gi-leaf:#83A462;--gi-kleaf:#4F6B3A;--gi-cloth:#F0E4CD;--gi-kcloth:#CDBB9C;
+ --gi-book1:#7D4136;--gi-book2:#3F5F58;--gi-book3:#8C6C3B;--gi-book4:#4B5070;--gi-kbook:#E7D3A0;
+ --gi-pool:color-mix(in srgb,#FFE2A0 26%,transparent);--gi-klamp:color-mix(in srgb,#E9A640 70%,transparent);--gi-dusk:color-mix(in srgb,#2E3550 16%,transparent);--gi-flame:#F0A63A;--gi-flamec:#FFEFB5;--gi-smoke:#D8D0C3;
+ --gi-band-a:#DCE3C6;--gi-band-b:#EFD9A5;--gi-band-c:#F2E5C6;--gi-band-d:#EDE4D5;--gi-band-f:#E9D9D1;
+ /* the window's views */
+ --gi-sky:#CFE0E5;--gi-sky2:#F4DEBA;--gi-sun:#F6C86C;--gi-ksun:#E2AE4E;--gi-cloud:#FBF7EE;--gi-ncloud:#4A5070;
+ --gi-hill1:#BAC89B;--gi-hill2:#A0B47F;--gi-tree:#7F9B63;--gi-tree2:#6D8A57;--gi-house:#EADBC0;--gi-roof:#B5684A;--gi-water:#A8C5CB;--gi-kw:#F3F9F9;--gi-kreed:#6E8050;
+ --gi-nsky:#2E3550;--gi-nsky2:#3B4363;--gi-star:#F1E2B8;--gi-moon:#EFE0B4;--gi-nhill:#272C41;--gi-nhill2:#1F2335;--gi-nwater:#39415E;--gi-kmoon:#E6D6A2;--gi-lit:#F0C46A;
+ --gi-sea:#2F6D8D;--gi-sea2:#3D84A1;--gi-ray:color-mix(in srgb,#CFF0F6 18%,transparent);--gi-sand:#D9C49A;--gi-kelp:#4E7F4E;--gi-rock:#6F6A60;--gi-bubble:#CFEFF6;--gi-fish:#F0A25A;
+ --gi-ssky:#233A73;--gi-swirl:#8FB0E0;--gi-sstar:#F3D46B;--gi-village:#2A2F44;--gi-village2:#3C4466;--gi-cypress:#1D2A22;
+ --gi-space:#10152F;--gi-nebula:color-mix(in srgb,#5A47A0 45%,transparent);--gi-nebula2:color-mix(in srgb,#9A4A86 30%,transparent);--gi-planet:#D9A066;--gi-kring:#E9C79A;
+ --gi-bp:#1F4E8C;--gi-bpg:color-mix(in srgb,#CFE0F5 22%,transparent);--gi-bpl:#DCE9F8;
+ color:var(--rd-ink);
+}
+/* Dark: a firelit room at night. Nothing white anywhere: warm greys, dim amber lines, ember and kraft tags, cream figures. */
+.rd[data-theme=dark] .gi{
+ --gi-ink:#E6D9BF;--gi-envk:#8A7B64;--gi-soft:#7A6D5A;--gi-faint:#4F463B;--gi-hi:#6A5B48;
+ --gi-wall:#2A2521;--gi-wall2:#312B26;--gi-oat:#3A322B;--gi-board:#362F28;--gi-shadow:color-mix(in srgb,#0C0906 40%,transparent);--gi-shade:color-mix(in srgb,#0C0906 45%,transparent);
+ --gi-light:color-mix(in srgb,#E8D6A8 7%,transparent);--gi-light2:color-mix(in srgb,#E8D6A8 5%,transparent);--gi-lightbar:color-mix(in srgb,#0C0906 18%,transparent);--gi-mote:#8F7E62;
+ --gi-brass:#B8924B;--gi-brassd:#8C6C33;--gi-kbrass:#C9A35A;--gi-iron:#4D5861;--gi-irond:#3C454D;--gi-kiron:#73828C;--gi-stamp:#A9B3B9;
+ --gi-clay:#B9623F;--gi-clayd:#E19B78;--gi-clayl:#CF7C58;--gi-tc:#E8A684;
+ --gi-tag:#4A3D2E;--gi-manila:#5C4834;--gi-slip:#433A30;--gi-page:#51463A;--gi-cover:#5A3524;
+ --gi-bench:#4B3B2B;--gi-benchd:#3A2D21;--gi-benchf:#433427;--gi-kg:#2C2219;--gi-floor:#2E251D;--gi-cab:#4A3828;--gi-cabd:#3A2C20;--gi-crate:#4C3D2D;--gi-rope:#6A5A42;
+ --gi-felt:#5C2C2A;--gi-tin:#5B625F;--gi-pencil:#A8853A;--gi-pencil2:#4C6680;--gi-eraser:#9C6E6A;--gi-wood:#8E7656;--gi-inkf:#17151A;--gi-red:#9A3A30;
+ --gi-glassf:color-mix(in srgb,#C9B994 10%,transparent);--gi-kglass:color-mix(in srgb,#E6D9BF 30%,transparent);--gi-oil:#A3863F;
+ --gi-pot:#8E5639;--gi-potd:#6E412B;--gi-soil:#2A1F17;--gi-leaf:#56703F;--gi-kleaf:#37492A;--gi-cloth:#4B4033;--gi-kcloth:#6A5B47;
+ --gi-book1:#5A2F27;--gi-book2:#2D433E;--gi-book3:#644E2B;--gi-book4:#363A52;--gi-kbook:#A08A5C;
+ --gi-pool:color-mix(in srgb,#F0B85A 13%,transparent);--gi-klamp:color-mix(in srgb,#D9A04A 75%,transparent);--gi-smoke:#5C5246;
+ --gi-band-a:#3A3F30;--gi-band-b:#4A3F28;--gi-band-c:#463D30;--gi-band-d:#3D3630;--gi-band-f:#3F3330;
+ --gi-kw:#8E9AA6;--gi-kmoon:#BBA978;--gi-lit:#D9A550;--gi-star:#D9C99A;--gi-moon:#D9C99C;--gi-flamec:#F2C66B;--gi-ncloud:#3E4258;
+}
+/* Scene themes and Market kits: the washes take the page's own colours; the window shows the theme's scene. The walls are
+   the page and its panels (never its accent: gold or red mixed into a night blue turns it grey), the wood leans on a
+   kraft, and the grade bands are a shade off the wall, so the bar, the poise and the tags stay the brightest things. */
+.rd:is([data-theme-kit],[data-rd-data-theme]) .gi{
+ --gi-band-a:color-mix(in srgb,#8FB96A 18%,var(--gi-wall));--gi-band-b:color-mix(in srgb,#E2B865 18%,var(--gi-wall));--gi-band-c:color-mix(in srgb,#D8C49A 16%,var(--gi-wall));
+ --gi-band-d:color-mix(in srgb,#B8AFA3 14%,var(--gi-wall));--gi-band-f:color-mix(in srgb,#D9A39A 16%,var(--gi-wall));
+ --gi-envk:color-mix(in srgb,var(--rd-ink) 55%,var(--rd-bg));--gi-tc:var(--rd-accent);
+ /* the papers the figures are written on (weight tags, the what-if slip, the note, the buttons' paper) are the kit's
+    own panels, so the kit's ink reads on them */
+ --gi-tag:color-mix(in srgb,var(--rd-surface) 85%,var(--rd-bg));--gi-slip:var(--rd-surface);--gi-manila:color-mix(in srgb,var(--rd-surface) 78%,#C9A27A);
+ --gi-page:color-mix(in srgb,var(--rd-surface) 90%,var(--rd-ink));
+}
+.rd[data-theme-kit] .gi{
+ --gi-wall:color-mix(in srgb,var(--rd-bg) 55%,var(--rd-surface));--gi-wall2:color-mix(in srgb,var(--rd-bg) 30%,var(--rd-surface));
+ --gi-oat:var(--rd-surface);--gi-board:color-mix(in srgb,var(--rd-surface) 88%,var(--rd-ink));
+ --gi-bench:color-mix(in srgb,#8C6A48 34%,var(--rd-bg));--gi-benchf:color-mix(in srgb,#8C6A48 28%,var(--rd-bg));--gi-benchd:color-mix(in srgb,#8C6A48 22%,var(--rd-bg));
+ --gi-floor:color-mix(in srgb,var(--rd-bg) 80%,#000);--gi-cab:color-mix(in srgb,#8C6A48 28%,var(--rd-bg));--gi-cabd:color-mix(in srgb,#8C6A48 20%,var(--rd-bg));
+ --gi-cloth:color-mix(in srgb,var(--rd-surface) 80%,var(--rd-ink));
+}
+/* the four scene themes: the same room as the Review deck's under that theme */
+.rd[data-theme-kit=starry] .gi{--gi-wall:#2B3A78;--gi-wall2:#33458A;--gi-oat:#304286;--gi-board:#304286;--gi-bench:#474368;--gi-benchf:#3E3A5C;--gi-benchd:#353150;--gi-floor:#232D5E;--gi-cab:#3E3A5C;--gi-cabd:#353150;--gi-cloth:#3E4A8A;--gi-crate:#474368}
+.rd[data-theme-kit=sea] .gi{--gi-wall:#0F5D87;--gi-wall2:#13698F;--gi-oat:#126590;--gi-board:#126590;--gi-bench:#246A80;--gi-benchf:#1F5E73;--gi-benchd:#1A5263;--gi-floor:#0B4C6E;--gi-cab:#1F5E73;--gi-cabd:#1A5263;--gi-cloth:#1A6A84;--gi-crate:#246A80}
+.rd[data-theme-kit=stars] .gi{--gi-wall:#0C1020;--gi-wall2:#11162A;--gi-oat:#0F1426;--gi-board:#0F1426;--gi-bench:#1E2438;--gi-benchf:#191E30;--gi-benchd:#151A2A;--gi-floor:#090C18;--gi-cab:#191E30;--gi-cabd:#151A2A;--gi-cloth:#1A1F34;--gi-crate:#1E2438}
+/* a Market kit: its paper with a little of its ink for the walls and the floor, a fixed kraft on its paper for the wood
+   (the accent stays in the small marks: the pills, the clay of the poise) */
+.rd[data-rd-data-theme] .gi{
+ --gi-wall:color-mix(in srgb,var(--rd-bg,#F4EEE2) 92%,var(--rd-ink,#141413));--gi-wall2:color-mix(in srgb,var(--rd-bg,#F4EEE2) 86%,var(--rd-ink,#141413));
+ --gi-oat:color-mix(in srgb,var(--rd-bg,#F4EEE2) 82%,#C9A27A);--gi-board:color-mix(in srgb,var(--rd-bg,#F4EEE2) 80%,#C9A27A);
+ --gi-bench:color-mix(in srgb,#C9A27A 50%,var(--rd-bg,#F4EEE2));--gi-benchf:color-mix(in srgb,#C29B6C 56%,var(--rd-bg,#F4EEE2));--gi-benchd:color-mix(in srgb,#A9845C 60%,var(--rd-bg,#F4EEE2));
+ --gi-floor:color-mix(in srgb,var(--rd-bg,#F4EEE2) 76%,var(--rd-ink,#141413));--gi-cab:color-mix(in srgb,#BC9168 50%,var(--rd-bg,#F4EEE2));--gi-cabd:color-mix(in srgb,#9C7350 56%,var(--rd-bg,#F4EEE2));
+ --gi-crate:color-mix(in srgb,#C6A57C 50%,var(--rd-bg,#F4EEE2));--gi-cloth:color-mix(in srgb,var(--rd-surface,#FFFDF6) 80%,var(--rd-bg,#F4EEE2));
+}
+.rd[data-theme-kit] .gi-svg .gi-ts{fill:var(--rd-muted)}
+.rd.rd.rd.rd.rd[data-theme-kit] :is(.gi-fold,.gi-show){color:var(--rd-ink)!important}
+.rd.rd.rd.rd.rd[data-theme-kit] :is(.gi-fold,.gi-show) .gi-chip-paper{fill:var(--rd-surface)}
+.rd.rd.rd.rd.rd:is([data-theme-kit],[data-rd-data-theme]) :is(.gi-status,.gi-mod-status,.gi-back,.gi-mod-course){color:var(--rd-ink)!important}
+.rd.rd.rd.rd.rd:is([data-theme-kit],[data-rd-data-theme]) .gi-pill{color:var(--gi-tc)!important}
+.rd[data-theme-kit=sea] .gi{--gi-light:color-mix(in srgb,#CFF0F6 20%,transparent);--gi-light2:color-mix(in srgb,#CFF0F6 16%,transparent)}
+.rd[data-theme-kit=starry] .gi,.rd[data-theme-kit=stars] .gi{--gi-light:color-mix(in srgb,#F3D46B 9%,transparent);--gi-light2:color-mix(in srgb,#F3D46B 7%,transparent)}
+.rd[data-theme-kit=blueprint] .gi{--gi-light:color-mix(in srgb,#DCE9F8 10%,transparent);--gi-light2:color-mix(in srgb,#DCE9F8 8%,transparent)}
+
+/* 2. The drawing's classes. Strokes are ink at different strengths; fills are washes. */
+.rd .gi-svg{display:block;overflow:visible}
+.rd .gi-svg path,.rd .gi-svg circle{fill:none;stroke:none;stroke-linecap:round;stroke-linejoin:round}
+.rd .gi-svg text{stroke:none;font-family:var(--rd-font,inherit);paint-order:stroke}
+.rd .gi-svg text.gi-lit{font-family:Literata,var(--rd-display,Georgia),serif}
+.rd .gi-svg .gi-t{fill:var(--gi-ink)}.rd .gi-svg .gi-ts{fill:var(--rd-muted,#5E5D59)}.rd .gi-svg .gi-tc{fill:var(--gi-tc)}
+.rd .gi-svg .gi-stamp{fill:var(--gi-stamp);font-family:Literata,Georgia,serif;letter-spacing:.02em}
+.rd .gi-svg .gi-faded{opacity:.55}
+.rd .gi-svg .gi-k{stroke:var(--gi-ink)}.rd .gi-env .gi-k{stroke:var(--gi-envk)}
+.rd .gi-svg .gi-ks{stroke:var(--gi-soft)}.rd .gi-svg .gi-kf{stroke:var(--gi-faint)}.rd .gi-svg .gi-kl{stroke:var(--gi-hi);opacity:.8}
+.rd .gi-svg .gi-kc{stroke:var(--gi-clayd)}.rd .gi-svg .gi-kg{stroke:var(--gi-kg);opacity:.7}.rd .gi-svg .gi-kbrass{stroke:var(--gi-kbrass)}
+.rd .gi-svg .gi-kiron{stroke:var(--gi-kiron)}.rd .gi-svg .gi-kink{stroke:var(--gi-inkf);opacity:.75}.rd .gi-svg .gi-kglass{stroke:var(--gi-kglass)}
+.rd .gi-svg .gi-kleaf{stroke:var(--gi-kleaf)}.rd .gi-svg .gi-kcloth{stroke:var(--gi-kcloth)}.rd .gi-svg .gi-kbook{stroke:var(--gi-kbook)}
+.rd .gi-svg .gi-kw{stroke:var(--gi-kw)}.rd .gi-svg .gi-kreed{stroke:var(--gi-kreed)}.rd .gi-svg .gi-kmoon{stroke:var(--gi-kmoon)}.rd .gi-svg .gi-kring{stroke:var(--gi-kring)}
+.rd .gi-svg .gi-kelp{stroke:var(--gi-kelp)}.rd .gi-svg .gi-swirl{stroke:var(--gi-swirl);opacity:.75}.rd .gi-svg .gi-bpg{stroke:var(--gi-bpg)}.rd .gi-svg .gi-bpl{stroke:var(--gi-bpl)}
+.rd .gi-svg circle.gi-bpl{fill:none}.rd .gi-svg circle.gi-sstar-ring{fill:none;stroke:var(--gi-sstar);opacity:.7}
+.rd .gi-svg .gi-wall{fill:var(--gi-wall)}.rd .gi-svg .gi-wall2{fill:var(--gi-wall2)}.rd .gi-svg .gi-oat{fill:var(--gi-oat)}.rd .gi-svg .gi-board{fill:var(--gi-board)}
+.rd .gi-svg .gi-shadow{fill:var(--gi-shadow)}.rd .gi-svg .gi-shade{fill:var(--gi-shade)}.rd .gi-svg .gi-cast{fill:var(--gi-shadow);opacity:.75}
+.rd .gi-svg .gi-light{fill:var(--gi-light)}.rd .gi-svg .gi-light2{fill:var(--gi-light2)}.rd .gi-svg .gi-lightbar{fill:var(--gi-lightbar)}.rd .gi-svg .gi-mote{fill:var(--gi-mote);opacity:.45}
+.rd .gi-svg .gi-brass{fill:var(--gi-brass)}.rd .gi-svg .gi-brassd{fill:var(--gi-brassd)}.rd .gi-svg .gi-iron{fill:var(--gi-iron)}.rd .gi-svg .gi-irond{fill:var(--gi-irond)}
+.rd .gi-svg .gi-clay{fill:var(--gi-clay)}.rd .gi-svg .gi-clayd{fill:var(--gi-clayd)}.rd .gi-svg .gi-clayl{fill:var(--gi-clayl)}
+.rd .gi-svg .gi-tag{fill:var(--gi-tag)}.rd .gi-svg .gi-manila{fill:var(--gi-manila)}.rd .gi-svg .gi-slip{fill:var(--gi-slip)}.rd .gi-svg .gi-page{fill:var(--gi-page)}.rd .gi-svg .gi-cover{fill:var(--gi-cover)}
+.rd .gi-svg .gi-bench{fill:var(--gi-bench)}.rd .gi-svg .gi-benchd{fill:var(--gi-benchd)}.rd .gi-svg .gi-benchf{fill:var(--gi-benchf)}.rd .gi-svg .gi-floor{fill:var(--gi-floor)}
+.rd .gi-svg .gi-cab{fill:var(--gi-cab)}.rd .gi-svg .gi-cabd{fill:var(--gi-cabd)}.rd .gi-svg .gi-crate{fill:var(--gi-crate)}.rd .gi-svg .gi-rope{fill:var(--gi-rope)}
+.rd .gi-svg .gi-felt{fill:var(--gi-felt)}.rd .gi-svg .gi-tin{fill:var(--gi-tin)}.rd .gi-svg .gi-pencil{fill:var(--gi-pencil)}.rd .gi-svg .gi-pencil2{fill:var(--gi-pencil2)}.rd .gi-svg .gi-eraser{fill:var(--gi-eraser)}
+.rd .gi-svg .gi-wood{fill:var(--gi-wood)}.rd .gi-svg .gi-inkf{fill:var(--gi-inkf)}.rd .gi-svg .gi-red{fill:var(--gi-red)}.rd .gi-svg .gi-glassf{fill:var(--gi-glassf)}.rd .gi-svg .gi-oil{fill:var(--gi-oil)}
+.rd .gi-svg .gi-pot{fill:var(--gi-pot)}.rd .gi-svg .gi-potd{fill:var(--gi-potd)}.rd .gi-svg .gi-soil{fill:var(--gi-soil)}.rd .gi-svg .gi-leaf{fill:var(--gi-leaf)}.rd .gi-svg .gi-cloth{fill:var(--gi-cloth)}
+.rd .gi-svg .gi-book1{fill:var(--gi-book1)}.rd .gi-svg .gi-book2{fill:var(--gi-book2)}.rd .gi-svg .gi-book3{fill:var(--gi-book3)}.rd .gi-svg .gi-book4{fill:var(--gi-book4)}
+.rd .gi-svg .gi-pool{fill:var(--gi-pool)}.rd .gi-svg .gi-klamp{stroke:var(--gi-klamp)}.rd .gi-svg .gi-dusk{fill:var(--gi-dusk)}.rd .gi-svg .gi-flame-f{fill:var(--gi-flame)}.rd .gi-svg .gi-flame-c{fill:var(--gi-flamec)}
+.rd .gi-svg .gi-band-a{fill:var(--gi-band-a)}.rd .gi-svg .gi-band-b{fill:var(--gi-band-b)}.rd .gi-svg .gi-band-c{fill:var(--gi-band-c)}.rd .gi-svg .gi-band-d{fill:var(--gi-band-d)}.rd .gi-svg .gi-band-f{fill:var(--gi-band-f)}
+.rd .gi-svg .gi-sky{fill:var(--gi-sky)}.rd .gi-svg .gi-sky2{fill:var(--gi-sky2)}.rd .gi-svg .gi-sun{fill:var(--gi-sun)}.rd .gi-svg .gi-ksun{stroke:var(--gi-ksun)}.rd .gi-svg .gi-cloud{fill:var(--gi-cloud)}
+.rd .gi-svg .gi-hill1{fill:var(--gi-hill1)}.rd .gi-svg .gi-hill2{fill:var(--gi-hill2)}.rd .gi-svg .gi-tree{fill:var(--gi-tree)}.rd .gi-svg .gi-tree2{fill:var(--gi-tree2)}
+.rd .gi-svg .gi-nightcloud .gi-cloud{fill:var(--gi-ncloud)}.rd .gi-svg .gi-house{fill:var(--gi-house)}.rd .gi-svg .gi-roof{fill:var(--gi-roof)}.rd .gi-svg .gi-water{fill:var(--gi-water)}
+.rd .gi-svg circle.gi-smoke{fill:var(--gi-smoke)}
+.rd .gi-svg .gi-nsky{fill:var(--gi-nsky)}.rd .gi-svg .gi-nsky2{fill:var(--gi-nsky2)}.rd .gi-svg .gi-star{fill:var(--gi-star)}.rd .gi-svg .gi-moon{fill:var(--gi-moon)}
+.rd .gi-svg .gi-nhill{fill:var(--gi-nhill)}.rd .gi-svg .gi-nhill2{fill:var(--gi-nhill2)}.rd .gi-svg .gi-nwater{fill:var(--gi-nwater)}.rd .gi-svg path.gi-lit{fill:var(--gi-lit)}
+.rd .gi-svg .gi-sea{fill:var(--gi-sea)}.rd .gi-svg .gi-sea2{fill:var(--gi-sea2)}.rd .gi-svg .gi-ray{fill:var(--gi-ray)}.rd .gi-svg .gi-sand{fill:var(--gi-sand)}.rd .gi-svg .gi-rock{fill:var(--gi-rock)}
+.rd .gi-svg circle.gi-bubble{fill:none;stroke:var(--gi-bubble);stroke-width:1.2}.rd .gi-svg .gi-fishf{fill:var(--gi-fish)}
+.rd .gi-svg .gi-ssky{fill:var(--gi-ssky)}.rd .gi-svg .gi-sstar{fill:var(--gi-sstar)}.rd .gi-svg .gi-village{fill:var(--gi-village)}.rd .gi-svg .gi-village2{fill:var(--gi-village2)}.rd .gi-svg .gi-cypress{fill:var(--gi-cypress)}
+.rd .gi-svg .gi-space{fill:var(--gi-space)}.rd .gi-svg .gi-nebula{fill:var(--gi-nebula)}.rd .gi-svg .gi-nebula2{fill:var(--gi-nebula2)}.rd .gi-svg .gi-planet{fill:var(--gi-planet)}.rd .gi-svg .gi-bp{fill:var(--gi-bp)}
+.rd .gi-svg .gi-hit{fill:transparent;stroke:none}
+
+/* 3. Which view the window shows; the lamp is lit at night and in the dark look. The sun stands at its hour through
+   --gi-sx/--gi-sy on the drawing (the room slides it there; it is never redrawn). At night in a light look a flat dusk
+   wash lies over the room behind the apparatus and the light through the window turns to a cool moon wash. */
+.rd .gi-sun-g{transform:translate(var(--gi-sx,0px),var(--gi-sy,0px))}
+.rd .gi-dusk{display:none}
+.rd:not([data-theme=dark]) .gi-svg[data-gi-night="1"] .gi-dusk{display:inline}
+/* after dark there is no sun through the window: no shaft, no bars, nothing where it landed (drawn under the dusk it read
+   darker than the wall, a grey smear across the tags); the dusk is warm and light, and the oil lamp's pool carries the room */
+.rd:not([data-theme=dark]) .gi-svg[data-gi-night="1"]{--gi-light:color-mix(in srgb,#CFD8E8 10%,transparent);--gi-light2:color-mix(in srgb,#CFD8E8 8%,transparent);--gi-lightbar:transparent;--gi-mote:#DCE3EE;--gi-dusk:color-mix(in srgb,#3A3350 10%,transparent)}
+.rd:not([data-theme=dark]) .gi-svg[data-gi-night="1"] :is(.gi-l-shaft,.gi-l-land){display:none}
+.rd .gi-out{pointer-events:none}
+.rd .gi-view{display:none}.rd .gi-view-day{display:inline}
+.rd .gi-svg[data-gi-night="1"] .gi-view-day,.rd[data-theme=dark] .gi-view-day{display:none}
+.rd .gi-svg[data-gi-night="1"] .gi-view-night,.rd[data-theme=dark] .gi-view-night{display:inline}
+.rd[data-theme-kit=sea] .gi-view,.rd[data-theme-kit=starry] .gi-view,.rd[data-theme-kit=stars] .gi-view,.rd[data-theme-kit=blueprint] .gi-view{display:none!important}
+.rd[data-theme-kit=sea] .gi-view-sea,.rd[data-theme-kit=starry] .gi-view-starry,.rd[data-theme-kit=stars] .gi-view-stars,.rd[data-theme-kit=blueprint] .gi-view-blue{display:inline!important}
+.rd .gi-lamp-pool,.rd .gi-flame,.rd .gi-lamp-smoke{display:none}
+.rd .gi-svg[data-gi-night="1"] :is(.gi-lamp-pool,.gi-flame,.gi-lamp-smoke),.rd[data-theme=dark] :is(.gi-lamp-pool,.gi-flame,.gi-lamp-smoke),.rd:is([data-theme-kit=starry],[data-theme-kit=stars]) :is(.gi-lamp-pool,.gi-flame,.gi-lamp-smoke){display:inline}
+.rd .gi-bird{opacity:0}
+.rd .gi-ghost[data-gi-on="0"]{display:none}
+.rd .gi-wt[data-gi-dial="1"] .gi-face{display:none}.rd .gi-wt:not([data-gi-dial="1"]) .gi-dial{display:none}
+.rd .gi-ledger-turn{opacity:0;transform-box:view-box}
+
+/* 4. What can be touched: weights pick up, bands press, tags and the ledger are links. */
+.rd .gi-handle{cursor:grab;touch-action:none;outline:none}
+.rd .gi-handle:active{cursor:grabbing}
+.rd .gi-band{cursor:pointer;outline:none}
+.rd .gi-btn{cursor:pointer;outline:none}
+.rd .gi-tag-link,.rd .gi-ledger-link{cursor:pointer;outline:none}
+.rd .gi-tag-link:hover .gi-face .gi-t,.rd .gi-ledger-link:hover .gi-ts{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.rd .gi-handle:focus-visible .gi-k,.rd .gi-band:focus-visible path,.rd .gi-btn:focus-visible .gi-k,.rd .gi-tag-link:focus-visible ~ * .gi-k{stroke:var(--rd-mark,#C96442)}
+.rd .gi-band:focus-visible path:first-child,.rd .gi-btn:focus-visible path:nth-child(2){stroke:var(--rd-mark,#C96442);stroke-width:2.6}
+.rd .gi-tag-link:focus-visible .gi-t{fill:var(--rd-mark,#C96442);text-decoration:underline}
+.rd .gi-ledger-link:focus-visible .gi-hit{stroke:var(--rd-mark,#C96442);stroke-width:2;stroke-dasharray:5 4}
+.rd .gi-band[aria-pressed=true] path:first-child{opacity:1}
+.rd .gi-thread{fill:none}
+.rd .gi-wt,.rd .gi-swing,.rd .gi-cordg,.rd .gi-sun-g,.rd .gi-lift,.rd .gi-drop,.rd .gi-tagg,.rd .gi-knob,.rd .gi-poise-in,.rd .gi-ghost-in,.rd .gi-slip-g,.rd .gi-slip-part,.rd .gi-app-in,.rd .gi-env{transform-box:view-box}
+.rd .gi-handle,.rd .gi-handle-static{transform-box:fill-box;transform-origin:50% 0}
+
+/* 5. Things that never stop: water, smoke, the lamp's flame, the sea's bubbles (the clouds stand still). */
+@keyframes gi-shimmer{0%,100%{transform:translateX(0);opacity:.9}50%{transform:translateX(5px);opacity:.4}}
+@keyframes gi-smoke{0%{transform:translate(0,0) scale(.6);opacity:0}15%{opacity:.7}100%{transform:translate(9px,-34px) scale(2.3);opacity:0}}
+@keyframes gi-flicker{0%,100%{transform:scale(1,1)}27%{transform:scale(.94,1.07)}55%{transform:scale(1.05,.95)}78%{transform:scale(.98,1.03)}}
+@keyframes gi-bubble{0%{transform:translateY(0);opacity:0}12%{opacity:.85}100%{transform:translateY(var(--gi-rise));opacity:0}}
+.rd .gi-shimmer{animation:gi-shimmer 5.5s ease-in-out infinite}
+.rd circle.gi-smoke{transform-box:fill-box;transform-origin:center;animation:gi-smoke 4.2s linear infinite}
+.rd .gi-flame-in{transform-box:view-box;animation:gi-flicker 1.7s ease-in-out infinite}
+.rd circle.gi-bubble{animation:gi-bubble 6.4s linear infinite}
+.rd .gi[data-gi-paused] .gi-loop,.rd[data-art-rest] .gi .gi-loop,.rd:is([data-motion-style=still]) .gi .gi-loop{animation-play-state:paused}
+.rd:is([data-motion-style=off],[data-feature-motion=off],[data-living-art=off]) .gi .gi-loop{animation:none!important}
+.rd:is([data-motion-style=off],[data-feature-motion=off],[data-living-art=off]) .gi circle.gi-smoke{opacity:.35}
+@media (prefers-reduced-motion:reduce){.rd .gi .gi-loop{animation:none!important}.rd .gi circle.gi-smoke{opacity:.35}}
+
+/* 6. The room: the page under the toolbar is the room; the heading is written on its wall. */
+.rd .gi-room{position:relative;margin:0;isolation:isolate;overflow:hidden;border-radius:var(--rd-r-paper,16px);background:var(--gi-wall)}
+.rd .gi-room>.gi-svg{width:100%;height:auto}
+.rd .gi-head{position:absolute;z-index:3;left:0;right:0;top:0;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:16px;align-items:baseline;padding:26px 30px 0 32px;pointer-events:none}
+.rd .gi-head>*{pointer-events:auto}
+.rd .gi-head h1{grid-column:1;grid-row:1;margin:0;font:600 34px/1.1 Literata,var(--rd-display,Georgia),serif;color:var(--rd-ink);letter-spacing:-.01em;outline:none}
+.rd .gi-grade{grid-column:2;grid-row:1;margin:0;font:700 24px/1.1 Literata,var(--rd-display,Georgia),serif;color:var(--gi-tc);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rd .gi-room[data-gi-hidden="1"] .gi-grade{font:500 16px/1.2 var(--rd-font,inherit);color:var(--rd-muted)}
+.rd .gi-back{grid-column:1/3;grid-row:2;justify-self:start;margin-top:6px;padding:2px 0;border:0;background:none;color:var(--rd-muted);font:500 14px/1.3 var(--rd-font,inherit);cursor:pointer;position:relative}
+.rd .gi-back:hover{color:var(--rd-ink)}
+.rd .gi-head-tools{grid-column:3;grid-row:1/3;display:flex;gap:10px;align-items:center;align-self:start}
+.rd .gi-status{position:absolute;z-index:3;left:50%;top:44%;transform:translate(-50%,-50%);margin:0;max-width:min(440px,80%);padding:14px 22px;color:var(--rd-ink);font:600 16px/1.35 var(--rd-font,inherit);text-align:center}
+/* the sheet of the room's wall that grows out of the module over Home and folds back into it: fixed over the page, the
+   wall's own wash with a drawn edge (never a white box), only its transform and opacity move */
+.rd .gi-flylayer{position:fixed;inset:0;z-index:80;pointer-events:none;overflow:hidden;contain:strict}
+.rd .gi-flylayer .gi-flysheet{position:fixed;transform-origin:0 0;background:var(--gi-wall);border-radius:var(--rd-r-paper,16px);will-change:transform,opacity}
+.rd .gi-flylayer .gi-flysheet>.gi-fly-edge{overflow:visible}
+.rd .gi-fly-edge{position:absolute;inset:0;width:100%;height:100%}
+.rd .gi-fly-edge path{fill:none;stroke:var(--rd-ink);stroke-linecap:round;stroke-linejoin:round}
+
+/* Drawn controls: each carries its own small drawing (grade-impact-art.js chip): an offset wash, the paper, and an ink
+   outline drawn by hand, stretched to the control. No plain boxes. */
+.rd :is(.gi-fold,.gi-show,.gi-pill,.gi-status,.gi-mod-status){position:relative;isolation:isolate;border:0;background:none}
+.rd .gi-chip-art{position:absolute;z-index:-1;left:-2px;top:-1px;width:calc(100% + 6px);height:calc(100% + 6px);overflow:visible;pointer-events:none}
+.rd .gi-chip-art path{stroke-linecap:round;stroke-linejoin:round}
+.rd .gi-chip-wash{fill:var(--gi-shadow);stroke:none}
+.rd .gi-chip-paper{fill:var(--gi-tag);stroke:none}
+.rd .gi-chip-ink{fill:none;stroke:var(--gi-ink,var(--rd-ink));stroke-width:1.7px}
+.rd :is(.gi-fold,.gi-show){display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:6px 18px;color:var(--gi-ink,var(--rd-ink));font:650 15px/1 var(--rd-font,inherit);cursor:pointer}
+.rd .gi-show .gi-chip-paper{fill:var(--gi-manila)}
+.rd :is(.gi-fold:hover,.gi-pill:hover) .gi-chip-paper{fill:var(--gi-manila)}
+.rd .gi-show:hover .gi-chip-paper{fill:var(--gi-band-b)}
+.rd .gi-status .gi-chip-paper,.rd .gi-mod-status .gi-chip-paper{fill:var(--gi-slip)}
+.rd :is(.gi-fold,.gi-show,.gi-back,.gi-pill,.gi-pg,.gi-strip-open,.gi-open):focus-visible{outline:2px solid var(--rd-mark,#C96442);outline-offset:3px}
+.rd :is(.gi-fold,.gi-show,.gi-pill):active{transform:translateY(1px)}
+
+/* 7. The Home module: no room, the same apparatus at module size. */
+.rd .gi-mod{display:grid;gap:8px;min-width:0}
+.rd .gi-mod-top{display:flex;align-items:baseline;gap:10px;min-width:0;font-size:13px;color:var(--rd-muted)}
+.rd .gi-mod-course{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--rd-ink);font-weight:650}
+.rd .gi-mod-grade{white-space:nowrap;color:var(--gi-tc);font:700 13.5px/1 Literata,var(--rd-display,Georgia),serif}
+.rd .gi-pager{margin-left:auto;display:inline-flex;align-items:center;gap:2px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rd .gi-pg{width:26px;height:26px;padding:0;border:0;background:none;color:var(--rd-muted);font:600 17px/1 var(--rd-font,inherit);cursor:pointer;border-radius:8px}
+.rd .gi-pg:hover{color:var(--rd-ink);background:var(--rd-tint,#F0EEE6)}
+.rd .gi-mod-svg{width:100%;height:auto}
+.rd .gi-mod-foot{display:flex;flex-wrap:wrap;align-items:center;gap:10px;min-height:0}
+.rd .gi-pill{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:3px 14px;color:var(--gi-tc);font:650 12.5px/1 var(--rd-font,inherit);cursor:pointer}
+.rd .gi-pill .gi-chip-paper{fill:color-mix(in srgb,var(--gi-clay) 22%,var(--gi-tag))}.rd .gi-pill .gi-chip-ink{stroke:var(--gi-clayd)}
+.rd .gi-mod .gi-show{min-height:32px;padding:4px 16px;font-size:13px;margin-inline:auto}
+.rd .gi-mod-status{margin:0;padding:10px 14px;color:var(--rd-ink);font:600 13px/1.35 var(--rd-font,inherit)}
+.rd .gi-open{display:inline-grid;place-items:center;width:30px;height:30px;padding:0;color:var(--rd-muted)}
+.rd .gi-open:hover{color:var(--rd-ink)}
+
+/* 8. The compact strips on the Grades list, and the small weight lanes elsewhere. */
+.rd .gi-strips{display:grid;gap:14px}
+.rd .gi-strip{display:grid;gap:4px;min-width:0}
+.rd .gi-strip-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.rd .gi-strip-open{display:inline-flex;align-items:center;gap:6px;padding:2px 2px;border:0;background:none;color:var(--rd-ink);font:650 15px/1.2 Literata,var(--rd-display,Georgia),serif;cursor:pointer}
+.rd .gi-strip-open svg{color:var(--rd-muted)}
+.rd .gi-strip-open:hover svg{color:var(--rd-ink)}
+.rd .gi-strip-grade{color:var(--gi-tc);font:700 14px/1 Literata,var(--rd-display,Georgia),serif}
+.rd .gi-strip .gi-mod-svg{max-width:100%}
+.rd .gi-door{display:inline-grid;place-items:center;flex:none;width:30px;height:28px;color:var(--rd-ink)}
+/* Up next keeps a 44 px lane for the weight at the right of a row; the reader gives it a slot beside the title. */
+.rd .rd-assignment>.gi-door{width:44px;align-self:center;justify-self:end;margin-inline-start:4px}
+/* On pointer screens the pin floats at the row's bottom right; a row with a weight keeps it left of the weight's lane. */
+.rd[data-workspace=work] .rd-assignment:has(>.gi-door)>.rd-row-actions{right:62px}
+.rd .rd-reader-heading>.gi-door{width:44px;align-self:center}
+.rd .gi-mini path{fill:none;stroke:none;stroke-linecap:round;stroke-linejoin:round}
+.rd .gi-mini .gi-k{stroke:var(--gi-ink,var(--rd-ink))}.rd .gi-mini .gi-iron{fill:var(--gi-iron,#6F7F8C)}
+
+/* 9. The Home module, answer first: the answer line in the display serif, the ruler with its band tabs and two pins, a
+   row per coming assignment with a drawn slider, Add assignment and Clear (a drawing and a name each), and the add row.
+   Pretend assignments are pencilled in: the pencil's grey, dashed lines, a paper wash. */
+.rd .gi{--gi-ruler:#EFE2C4;--gi-tabon:color-mix(in srgb,#D97A55 34%,#FCF7EA);--gi-kpen:#77716A;--gi-pw:#F5EDDC;--gi-pwd:#E7DCC6;--gi-pwl:#FFF9EC;--gi-knobon:color-mix(in srgb,#D97A55 24%,#FCF7EA)}
+.rd[data-theme=dark] .gi{--gi-ruler:#4B4031;--gi-tabon:color-mix(in srgb,#B9623F 45%,#4A3D2E);--gi-kpen:#A79E8C;--gi-pw:#3D352C;--gi-pwd:#332C25;--gi-pwl:#4D4337;--gi-knobon:color-mix(in srgb,#B9623F 40%,#4A3D2E)}
+.rd:is([data-theme-kit],[data-rd-data-theme]) .gi{--gi-ruler:color-mix(in srgb,var(--gi-tag) 80%,#C9A27A);--gi-tabon:color-mix(in srgb,var(--rd-accent) 30%,var(--gi-tag));--gi-knobon:color-mix(in srgb,var(--rd-accent) 22%,var(--gi-tag));--gi-kpen:color-mix(in srgb,var(--rd-ink) 62%,var(--rd-surface));--gi-pw:color-mix(in srgb,var(--rd-surface) 88%,var(--rd-ink));--gi-pwd:color-mix(in srgb,var(--rd-surface) 80%,var(--rd-ink));--gi-pwl:var(--rd-surface)}
+.rd .gi-svg .gi-ruler{fill:var(--gi-ruler)}.rd .gi-svg .gi-tab-on{fill:var(--gi-tabon)}.rd .gi-svg .gi-hollow{fill:var(--rd-surface,#FFFDF8)}
+.rd .gi-svg .gi-kp{stroke:var(--gi-kpen)}.rd .gi-svg .gi-pw{fill:var(--gi-pw)}.rd .gi-svg .gi-pwd{fill:var(--gi-pwd)}.rd .gi-svg .gi-pwl{fill:var(--gi-pwl)}
+.rd .gi-svg text.gi-pin-now{fill:var(--gi-tc)}.rd .gi-svg text.gi-pencil-t{fill:var(--gi-kpen);font-style:italic}.rd .gi-svg text.gi-tab-letter{pointer-events:none}
+.rd .gi-svg .gi-slide-fill{fill:none;stroke:var(--gi-clayd);stroke-linecap:round}.rd .gi-svg .gi-slide-fill[data-gi-off]{display:none}
+.rd .gi-svg .gi-knob-paper{fill:var(--gi-tag)}.rd .gi-svg .gi-knob-on .gi-knob-paper{fill:var(--gi-knobon)}.rd .gi-svg .gi-knob-ink{stroke:var(--gi-ink)}
+.rd .gi-svg .gi-slide-p .gi-knob-rest .gi-knob-ink{stroke:var(--gi-kpen);stroke-dasharray:3 2.5}
+.rd .gi-knob-rest{opacity:.5}.rd .gi-knob-need{opacity:.72}
+.rd .gi-knob-on .gi-knob-grip,.rd .gi-knob-need .gi-knob-grip,.rd .gi-knob-rest:not(.gi-knob-need) .gi-knob-t{display:none}
+.rd .gi-slide{cursor:pointer;touch-action:none;outline:none}.rd .gi-slide.gi-held{cursor:grabbing}
+.rd .gi-slide:focus-visible .gi-knob-ink{stroke:var(--rd-mark,#C96442);stroke-width:2.4}.rd .gi-slide:focus-visible .gi-knob2{opacity:1}
+.rd .gi-x{cursor:pointer;outline:none}.rd .gi-x:hover .gi-k{stroke:var(--gi-clayd)}.rd .gi-x:focus-visible .gi-k{stroke:var(--rd-mark,#C96442);stroke-width:2.2}.rd .gi-x:focus-visible .gi-hit{stroke:var(--rd-mark,#C96442);stroke-width:1.2;stroke-dasharray:3 3}
+.rd .gi-row-link:hover .gi-t,.rd .gi-row-link:focus-visible .gi-t{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}.rd .gi-row-link:focus-visible .gi-t{fill:var(--rd-mark,#C96442)}
+.rd .gi-tab:hover path:first-child{opacity:.8}
+.rd .gi-knob2,.rd .gi-row,.rd .gi-cat-tag{transform-box:view-box}
+/* only the module's controls take the pointer: the ruler, the figures, the tags and the lines are drawing */
+.rd .gi-mod-svg path,.rd .gi-mod-svg text{pointer-events:none}
+.rd .gi-mod-svg :is(.gi-hit,.gi-tab path,.gi-tab text,.gi-row-link text,.gi-knob2 path){pointer-events:auto}
+/* the answer: one sentence, its figure in clay; nothing to say is said quietly */
+.rd .gi-ans{margin:0;min-width:0;font:600 20px/1.24 Literata,var(--rd-display,Georgia),serif;letter-spacing:-.006em;color:var(--rd-ink);text-wrap:balance;overflow-wrap:anywhere}
+.rd .gi-mod[data-gi-size=s] .gi-ans{font-size:17px}.rd .gi-mod[data-gi-size=l] .gi-ans{font-size:22.5px}
+.rd .gi-ans-t{display:inline-block}.rd .gi-ans .gi-ans-n{color:var(--gi-tc);font-weight:700}
+.rd .gi-ans[data-gi-ans=none]{font:500 14px/1.35 var(--rd-font,inherit);color:var(--rd-muted)}
+.rd .gi-mod-top .gi-pager{margin-left:auto}
+.rd .gi-mod-foot{gap:4px 16px}
+/* Add assignment, Clear, the add row's Add and ×: a drawing and a name, no box */
+.rd .gi-act{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:3px 6px 3px 0;border:0;background:none;color:var(--rd-ink);font:650 13px/1 var(--rd-font,inherit);cursor:pointer;white-space:nowrap}
+.rd .gi-act:hover span,.rd .gi-act:focus-visible span{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.rd .gi-act:focus-visible{outline:2px solid var(--rd-mark,#C96442);outline-offset:2px;border-radius:4px}
+.rd .gi-ico{flex:none;width:28px;height:22px;overflow:visible;transition:transform .18s cubic-bezier(.2,.75,.25,1)}
+.rd .gi-ico-tick,.rd .gi-ico-cross{width:18px;height:18px}
+.rd .gi-act:hover .gi-ico-add,.rd .gi-act:focus-visible .gi-ico-add{transform:rotate(-5deg) translateY(-1px)}.rd .gi-act:hover .gi-ico-eraser{transform:translateX(-2px) rotate(-6deg)}
+.rd .gi-ico path,.rd .gi-line path{fill:none;stroke:none;stroke-linecap:round;stroke-linejoin:round}
+.rd .gi-ico .gi-ico-wash{fill:var(--gi-shadow)}.rd .gi-ico .gi-ico-paper{fill:var(--gi-tag)}.rd .gi-ico .gi-ico-k{stroke:var(--gi-ink)}.rd .gi-ico .gi-ico-soft{stroke:var(--gi-soft)}
+.rd .gi-ico .gi-ico-pencil{fill:var(--gi-pencil)}.rd .gi-ico .gi-ico-eraser{fill:var(--gi-eraser)}.rd .gi-ico .gi-ico-wood{fill:var(--gi-wood)}.rd .gi-ico .gi-ico-lead{fill:var(--gi-inkf)}
+.rd .gi-ico .gi-ico-sleeve{fill:var(--gi-sky)}.rd .gi-ico .gi-ico-clay{stroke:var(--gi-clayd)}
+.rd .gi-add-ok{color:var(--gi-tc)}.rd .gi-add-x{padding-right:2px}
+/* the add row: the categories as paper tags (one chosen, pressed in, clay), the points and a name over drawn lines */
+.rd .gi-addrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:4px 2px 2px;min-width:0}
+.rd .gi-cats{display:flex;flex-wrap:wrap;gap:7px 9px;flex-basis:100%;min-width:0}
+.rd .gi-cat{position:relative;isolation:isolate;display:inline-flex;align-items:baseline;gap:5px;min-height:28px;padding:6px 13px;border:0;background:none;color:var(--gi-ink);font:650 12.5px/1 var(--rd-font,inherit);cursor:pointer;transform:rotate(var(--gi-tilt,0deg));white-space:nowrap}
+.rd .gi-cat small{font-size:11px;font-weight:550;color:var(--rd-muted)}
+.rd .gi-cat:hover .gi-chip-paper{fill:var(--gi-manila)}
+.rd .gi-cat[aria-checked=true]{color:var(--gi-tc);transform:rotate(var(--gi-tilt,0deg)) translateY(1.5px)}
+.rd .gi-cat[aria-checked=true] .gi-chip-paper{fill:var(--gi-tabon)}.rd .gi-cat[aria-checked=true] .gi-chip-ink{stroke:var(--gi-clayd);stroke-width:2px}.rd .gi-cat[aria-checked=true] .gi-chip-wash{opacity:.4}
+.rd .gi-cat:focus-visible{outline:2px solid var(--rd-mark,#C96442);outline-offset:3px}
+.rd .gi-field{position:relative;display:inline-flex;align-items:baseline;gap:5px;min-width:0;color:var(--rd-muted);font:550 12.5px/1 var(--rd-font,inherit)}
+.rd .gi-field input{min-width:0;margin:0;padding:4px 2px 5px;border:0;border-radius:0;background:none;outline:none;color:var(--rd-ink);font:600 14px/1.2 var(--rd-font,inherit)}
+.rd .gi-field input::placeholder{color:var(--rd-muted);opacity:.85;font-style:italic}
+.rd .gi-field-pts input{width:3.6em;text-align:right;font-variant-numeric:tabular-nums}
+.rd .gi-field-name{flex:1 1 130px}.rd .gi-field-name input{width:100%}
+.rd .gi-line{position:absolute;left:0;right:0;bottom:-2px;width:100%;height:6px;overflow:visible;pointer-events:none}
+.rd .gi-line .gi-line-ink{stroke:var(--gi-ink);stroke-width:1.4px}.rd .gi-field:focus-within .gi-line-ink{stroke:var(--gi-clayd);stroke-width:2.2px}
+.rd .gi-field-pts .gi-line{right:2.2em}
+/* the room: Add assignment on the wall beside Fold; opened, the add row is a paper slip pinned under them */
+.rd .gi-room .gi-add-room{min-height:38px;padding:6px 8px 6px 2px;color:var(--gi-ink,var(--rd-ink));font-size:15px}
+.rd .gi-room-add{grid-column:2/4;grid-row:2/4;justify-self:end;align-self:start;position:relative;isolation:isolate;width:min(460px,100%);margin-top:8px;padding:12px 16px 10px}
+.rd .gi-room-add>.gi-chip-art .gi-chip-paper{fill:var(--gi-slip)}
+@media (prefers-reduced-motion:reduce){.rd .gi-ico{transition:none}}
+.rd:is([data-motion-style=off],[data-feature-motion=off]) .gi-ico{transition:none}
+
+@media (max-width:760px){.rd .gi-head{padding:18px 18px 0}.rd .gi-head h1{font-size:26px}.rd .gi-grade{font-size:19px}}

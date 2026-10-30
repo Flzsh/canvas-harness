@@ -127,6 +127,7 @@
 .pet-layer .pet[data-time-left]::after{content:attr(data-time-left);position:absolute;right:0;bottom:1px;padding:2px 4px;border-radius:6px;background:var(--rd-surface,#FFFDF8);color:var(--rd-ink,#141413);font:600 10px/1.2 system-ui,sans-serif;font-variant-numeric:tabular-nums;pointer-events:none}
 /* Ask Biscuit: a line to write on (no box), and what Biscuit understood on a manila slip; Enter does it. */
 .biscuit-ask{margin:0 0 8px}
+.biscuit-ask-art{display:inline-block;flex:none;width:32px;height:28px;line-height:0}.biscuit-ask-art img,.biscuit-ask-art svg{display:block;width:100%;height:100%;object-fit:contain}
 .biscuit-ask input{box-sizing:border-box;width:100%;padding:4px 2px 6px;border:0;border-radius:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='4' viewBox='0 0 120 4' preserveAspectRatio='none'%3E%3Cpath d='M1 2.5 Q22 1.4 44 2.3 T86 2.1 T119 2.6' fill='none' stroke='%23141413' stroke-opacity='.6' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E") left bottom / 100% 4px no-repeat;color:var(--rd-ink,#141413);font:500 14px/1.3 var(--rd-ui-font,system-ui);outline:none}
 .biscuit-ask input::placeholder{color:var(--rd-muted,#5E5D59);font-style:italic}
 .biscuit-ask input:focus-visible{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='4' viewBox='0 0 120 4' preserveAspectRatio='none'%3E%3Cpath d='M1 2.5 Q22 1.4 44 2.3 T86 2.1 T119 2.6' fill='none' stroke='%23A9522F' stroke-opacity='.95' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E")}
@@ -138,5 +139,6 @@
 .biscuit-suggestions{display:grid;gap:2px}
 /* The drawn line turning clay is this field's focus mark; no square ring round it. */
 .rd .pet-bubble .biscuit-ask input:focus,.rd .pet-bubble .biscuit-ask input:focus-visible,.pet-bubble .biscuit-ask input:focus-visible{outline:none;box-shadow:none}
+
 .biscuit-row small{display:block;margin-top:3px;font-size:.85em;font-weight:400;line-height:1.35;opacity:.78}
 .biscuit-preview strong{font-weight:800;color:var(--rd-ink,#141413);text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 22%,transparent);text-underline-offset:3px}

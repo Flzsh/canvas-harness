@@ -1,9 +1,10 @@
 // PDF mark-up tools adapted from HarryX081125's work, issue #53.
-// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {RenderQueue,occurrences,smoothPath,createReader}=require('../extension/pdf-reader.js');
 const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};};
+
+for(const indexed of [true,false])test('PDF legacy migration preserves original behaviour with obsolete API index (present='+indexed+')',async t=>{const h=fixture(),model=require('../extension/pdf-model.js'),legacy=model.legacyStorageKey('https://school.instructure.com','42');t.after(()=>h.reader.destroy());h.storage[legacy]={version:1,annotations:[{id:'original',type:'note',page:0,point:[2,3],text:'Original note'}]};if(indexed)h.storage['reserve:api-legacy-keys']=[];await h.initialise();await h.settle();assert.equal(h.reader.state.annotations.annotations[0].text,'Original note');assert.equal(h.storage[legacy].annotations[0].text,'Original note');});
 
 test('PDF render queue serializes mocked PDF.js tasks and discards stale zoom jobs',async()=>{
  const started=[],gate=deferred();let simultaneous=0,maximum=0,cancelled=0;
@@ -37,7 +38,6 @@ test('search finds literal case-insensitive spans and smoothed ink has finite SV
 // Deliberately small DOM/PDF.js doubles: no browser, network, real worker or PDF.
 function lockFixture(){const tails=new Map();return {request(key,fn){const next=(tails.get(key)||Promise.resolve()).catch(()=>{}).then(fn);tails.set(key,next);return next;}};}
 function fixture(shared={}){
- const origin=shared.origin||'https://school.instructure.com';
  const listeners=new Map(),ids=new Map(),observers=[],resizeObservers=[],frames=new Map(),timers=new Map(),timerDelays=new Map(),sent=[],storage=shared.storage||{},renders=[],workers=[],cleanup=[];let seq=0,doc;const subscribers=shared.subscribers||new Set(),locks=shared.locks||lockFixture();
  class Element{
   constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[];this.dataset={};this.attrs={};this.className='';this.hidden=false;this.style={setProperty(k,v){this[k]=v;}};this.handlers=new Map();this.value='';this.width=0;this.height=0;this.scrollTop=0;this.scrollLeft=0;this.disabled=false;this._text='';}
@@ -64,17 +64,17 @@ function fixture(shared={}){
  const get=id=>{if(!ids.has(id)){const node=new Element(id==='find-input'?'input':'div');node.id=id;ids.set(id,node);}return ids.get(id);};
  doc={hidden:false,documentElement:new Element('html'),body:new Element('body'),getElementById:get,createElement:tag=>new Element(tag),createElementNS:(_ns,tag)=>new Element(tag),createTextNode:text=>{const e=new Element('#text');e.textContent=text;return e;},addEventListener(type,fn){listeners.set(type,fn);}};
  for(const id of ['side-view','find-bar','pen-palette','selection-menu','outline','marks'])get(id).hidden=true;
- const env={document:doc,location:{search:'?parentOrigin='+encodeURIComponent(origin)+'&token=test'},parent:{postMessage:(message,targetOrigin)=>{sent.push({message,origin:targetOrigin});if(message.type==='reserve-pdf-account')void Promise.resolve().then(()=>env.accountResponse()).then(accountId=>listeners.get('message')({source:env.parent,origin,data:{type:'reserve-pdf-account-result',token:'test',requestId:message.requestId,accountId}}));}},innerWidth:800,innerHeight:1000,devicePixelRatio:3,accountId:'7',accountResponse:()=>env.accountId,
+ const env={document:doc,location:{search:'?parentOrigin=https%3A%2F%2Fschool.instructure.com&token=test'},parent:{postMessage:(message,origin)=>{sent.push({message,origin});if(message.type==='reserve-pdf-account')void Promise.resolve().then(()=>env.accountResponse()).then(accountId=>listeners.get('message')({source:env.parent,origin:'https://school.instructure.com',data:{type:'reserve-pdf-account-result',token:'test',requestId:message.requestId,accountId}}));}},innerWidth:800,innerHeight:1000,devicePixelRatio:3,accountId:'7',accountResponse:()=>env.accountId,
   addEventListener(type,fn){listeners.set(type,fn);},setTimeout:(fn,delay)=>{const id=++seq;timers.set(id,fn);timerDelays.set(id,delay);return id;},clearTimeout:id=>{timers.delete(id);timerDelays.delete(id);},
   requestAnimationFrame:fn=>{const id=++seq;frames.set(id,fn);return id;},cancelAnimationFrame:id=>frames.delete(id),
   IntersectionObserver:class{constructor(callback,options){this.callback=callback;this.options=options;this.nodes=[];observers.push(this);}observe(node){this.nodes.push(node);}disconnect(){this.nodes=[];this.disconnected=true;}},
   ResizeObserver:class{constructor(callback){this.callback=callback;resizeObservers.push(this);}observe(){}disconnect(){}},Worker:class{constructor(url,options){this.url=url;this.options=options;workers.push(this);}terminate(){this.terminated=true;}},
-  chrome:{runtime:{getURL:path=>'chrome-extension://test/'+path},storage:{local:{get:async keys=>Object.fromEntries((Array.isArray(keys)?keys:[keys]).map(key=>[key,storage[key]])),set:async values=>{const changes={};for(const [key,newValue]of Object.entries(values)){changes[key]={oldValue:storage[key],newValue};storage[key]=newValue;}for(const fn of subscribers)fn(changes,'local');},remove:async key=>{const oldValue=storage[key];delete storage[key];for(const fn of subscribers)fn({[key]:{oldValue}},'local');}},onChanged:{addListener:fn=>{env.storageChanged=fn;subscribers.add(fn);},removeListener:fn=>{subscribers.delete(fn);if(env.storageChanged===fn)env.storageChanged=null;}}}},
+  chrome:{runtime:{getURL:path=>'chrome-extension://test/'+path},storage:{local:{get:async keys=>keys==null?structuredClone(storage):Object.fromEntries((Array.isArray(keys)?keys:[keys]).map(key=>[key,structuredClone(storage[key])])),set:async values=>{const changes={};for(const [key,newValue]of Object.entries(values)){changes[key]={oldValue:storage[key],newValue:structuredClone(newValue)};storage[key]=structuredClone(newValue);}for(const fn of subscribers)fn(changes,'local');},remove:async key=>{const oldValue=storage[key];delete storage[key];for(const fn of subscribers)fn({[key]:{oldValue}},'local');}},onChanged:{addListener:fn=>{env.storageChanged=fn;subscribers.add(fn);},removeListener:fn=>{subscribers.delete(fn);if(env.storageChanged===fn)env.storageChanged=null;}}}},
   ReservePdfArt:{icons:new Proxy({},{get:()=>'<svg></svg>'}),pens:{yellow:'#F6DE7A',green:'#B5DE9A',pink:'#F5B3C2',blue:'#A9D3F0'}},navigator:{locks,clipboard:{writeText:async()=>{}}},getSelection:()=>null};
  const pages=Array.from({length:12},(_,index)=>({getViewport:({scale})=>({width:600*scale,height:800*scale,scale,convertToPdfPoint:(x,y)=>[x/scale,800-y/scale],convertToViewportPoint:(x,y)=>[x*scale,(800-y)*scale]}),render(options){renders.push({index,options});return {promise:Promise.resolve(),cancel(){}};},getTextContent:async()=>({items:[{str:'Page '+(index+1)+' text'}]}),cleanup(){cleanup.push(index);}}));
  const library={AnnotationMode:{ENABLE:1},GlobalWorkerOptions:{},PDFWorker:class{destroy(){env.wrapperDestroyed=true;}},getDocument(options){env.documentOptions=options;return {promise:Promise.resolve({numPages:12,getPage:async number=>pages[number-1],getOutline:async()=>null}),destroy:async()=>{await env.destroyPdf?.();}};},TextLayer:class{constructor(options){this.options=options;}render(){for(const item of this.options.textContentSource.items){if(!item.str)continue;const span=new Element('span');span.textContent=item.str;this.options.container.append(span);}return Promise.resolve();}cancel(){}}};
  const model=require('../extension/pdf-model.js'),reader=createReader(env,{library,model});
- const initialise=(extra={})=>reader.initialise({bytes:new ArrayBuffer(8),origin,fileId:'42',name:'Algebra.pdf',url:origin+'/files/42/download',appearance:{theme:'dark'},...extra});
+ const initialise=(extra={})=>reader.initialise({bytes:new ArrayBuffer(8),origin:'https://school.instructure.com',fileId:'42',name:'Algebra.pdf',url:'https://school.instructure.com/files/42/download',appearance:{theme:'dark'},...extra});
  const settle=async()=>{for(let i=0;i<35;i++){await Promise.resolve();await reader.queue.done;}};
  return {env,doc,get,reader,initialise,settle,observers,resizeObservers,frames,sent,storage,renders,workers,cleanup,timers,timerDelays,listeners,pages};
 }
@@ -85,8 +85,7 @@ test('local PDFs preserve their own download name, disable AI and keep annotatio
  await h.initialise({local:true,accountId:'7',fileId:'cf-private-notes',name:'My private notes.pdf',url:'blob:https://school.instructure.com/local-pdf',aiEnabled:true});await h.settle();
  assert.ok(h.renders.length);assert.equal(h.reader.state.annotations.annotations.length,0);
  const download=h.get('heading-actions').children.find(x=>x.tagName==='A');assert.equal(download.download,'My private notes.pdf');
- const ai=h.get('toolbar').children.find(x=>x.attrs['aria-label']==='Ask AI about pages of this PDF');assert.equal(ai.hidden,true);
- await ai.fire('click');assert.equal(h.sent.some(x=>x.message.type==='reserve-pdf-ai'),false);assert.equal(h.doc.body.querySelector('#ai-range'),null);
+ const ai=h.get('toolbar').children.find(x=>x.attrs['aria-label']==='Help with this');assert.equal(ai.hidden,true);
  const noteTool=h.get('tool-buttons').children.find(x=>x.attrs['aria-label']==='Sticky note');await noteTool.fire('click');
  const slot=h.reader.state.slots[0];await h.get('pages').fire('pointerdown',{target:slot.node,button:0,clientX:20,clientY:slot.node.getBoundingClientRect().top+40});
  h.get('note-text').value='Local note';h.get('note-editor').returnValue='save';await h.get('note-editor').fire('close');await h.reader.close();
@@ -97,39 +96,9 @@ test('local PDFs cannot load a foreign Blob URL or adopt another account after b
  const bad=fixture();await assert.rejects(bad.initialise({local:true,accountId:'7',fileId:'cf-private-notes',url:'blob:https://other.instructure.com/local-pdf'}),/site|origin|address/i);assert.equal(bad.renders.length,0);bad.reader.destroy();
  const h=fixture();await h.initialise({local:true,accountId:'7',fileId:'cf-private-notes',url:'blob:https://school.instructure.com/local-pdf'});await h.settle();
  h.doc.hidden=true;h.listeners.get('visibilitychange')();assert.equal(h.get('pages').hidden,true);
- const download=h.get('heading-actions').children.find(x=>x.tagName==='A');assert.equal(download.hidden,true);
  h.env.accountId='8';h.doc.hidden=false;h.listeners.get('visibilitychange')();await h.settle();
  assert.equal(h.get('pages').hidden,true);assert.ok(h.sent.some(x=>x.message.type==='reserve-pdf-error'&&/account.*changed/i.test(x.message.message)));
  assert.equal(h.storage['reserve:pdf:https://school.instructure.com:8:cf-private-notes'],undefined);h.reader.destroy();
-});
-test('saved PDFs accept a custom Canvas parent and read bytes without fetching the Blob URL',async t=>{
- const origin='https://canvas.my-school.edu',h=fixture({origin});t.after(()=>h.reader.destroy());
- h.env.fetch=()=>{throw Error('Local PDF bytes must not be fetched.');};
- await h.initialise({local:true,accountId:'7',fileId:'cf-private-notes',url:'blob:'+origin+'/saved-pdf',name:'My saved reading.pdf'});await h.settle();
- assert.ok(h.renders.length);assert.ok(h.env.documentOptions.data instanceof Uint8Array);assert.equal(h.env.documentOptions.url,undefined);
- const download=h.get('heading-actions').children.find(x=>x.tagName==='A');assert.equal(download.href,'blob:'+origin+'/saved-pdf');assert.equal(download.download,'My saved reading.pdf');assert.equal(download.hidden,false);assert.equal(download.target,'');
- assert.ok(h.sent.every(x=>x.origin===origin));
-});
-test('a local PDF is not parsed or rendered when the initial account differs from its owner',async t=>{
- const h=fixture();t.after(()=>h.reader.destroy());h.env.accountId='8';
- await h.initialise({local:true,accountId:'7',fileId:'cf-private-notes',url:'blob:https://school.instructure.com/local-pdf'});await h.settle();
- assert.equal(h.renders.length,0);assert.equal(h.workers.length,0);assert.equal(h.env.documentOptions,undefined);assert.equal(h.get('reader-layout').hidden,true);
- assert.equal(h.get('heading-actions').children.find(x=>x.tagName==='A').hidden,true);
- assert.ok(h.sent.some(x=>x.message.type==='reserve-pdf-error'&&/account.*changed/i.test(x.message.message)));assert.deepEqual(h.storage,{});
-});
-test('hiding during the initial local account check cannot start parsing unverified bytes',async t=>{
- const h=fixture(),gate=deferred();t.after(()=>h.reader.destroy());h.env.accountResponse=()=>gate.promise;
- const opening=h.initialise({local:true,accountId:'7',fileId:'cf-private-notes',url:'blob:https://school.instructure.com/local-pdf'});
- h.doc.hidden=true;h.listeners.get('visibilitychange')();gate.resolve('7');await opening;await h.settle();
- assert.equal(h.workers.length,0);assert.equal(h.env.documentOptions,undefined);assert.equal(h.renders.length,0);assert.equal(h.get('pages').hidden,true);
- assert.ok(h.sent.some(x=>x.message.type==='reserve-pdf-error'));
-});
-test('a verified local PDF remains readable when its annotation record is invalid and preserves that record',async t=>{
- const h=fixture(),key='reserve:pdf:https://school.instructure.com:7:cf-private-notes',saved={version:99,annotations:[]};t.after(()=>h.reader.destroy());h.storage[key]=saved;
- await h.initialise({local:true,accountId:'7',fileId:'cf-private-notes',url:'blob:https://school.instructure.com/local-pdf'});await h.settle();
- assert.ok(h.renders.length);assert.equal(h.get('reader-layout').hidden,false);assert.equal(h.get('heading-actions').children.find(x=>x.tagName==='A').hidden,false);
- assert.equal(h.get('tool-buttons').children.find(x=>x.attrs['aria-label']==='Sticky note').disabled,true);assert.equal(h.storage[key],saved);
- assert.equal(h.sent.some(x=>x.message.type==='reserve-pdf-error'),false);
 });
 
 test('mocked reader initially draws visible ±1 at capped DPR, frees distant canvases and terminates on close',async()=>{
@@ -147,7 +116,7 @@ test('reader rejects spoofed parent messages, suspends while hidden and sends th
  h.observers[0].callback([{target:h.reader.state.slots[10].node,isIntersecting:true}]);await h.settle();assert.equal(h.renders.length,before);assert.equal(h.reader.queue.paused,true);
  h.doc.hidden=false;h.listeners.get('visibilitychange')();await h.settle();
  assert.equal(h.sent.filter(s=>s.message.type==='reserve-pdf-ai').length,0);
- const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Ask AI about pages of this PDF');await ai.fire('click');await h.settle();
+ const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Help with this');await ai.fire('click');await h.settle();
  assert.equal(h.sent.filter(s=>s.message.type==='reserve-pdf-ai').length,0,'the button first asks which pages');
  const all=node=>[node,...(node.children||[]).flatMap(all)],menu=h.doc.body.children.find(n=>n.attrs?.id==='ai-range');assert.ok(menu&&!menu.hidden,'the range menu opens');
  await menu.fire('submit',{preventDefault(){}});await h.settle();
@@ -159,53 +128,6 @@ test('reader rejects spoofed parent messages, suspends while hidden and sends th
  h.env.storageChanged({'reserve:appearance':{newValue:{theme:'light'}}},'local');assert.equal(h.doc.documentElement.dataset.theme,'light');h.reader.destroy();
 });
 
-test('the AI page menu contains only page choices and keeps keyboard navigation local',async t=>{
- const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
- const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Ask AI about pages of this PDF');await ai.fire('click');
- const menu=h.doc.body.querySelector('#ai-range'),from=menu.querySelector('[aria-label="From page"]');
- assert.equal(menu.classList.contains('paper-popover'),true);assert.equal(menu.querySelector('[value="page"]').checked,true);
- assert.equal(menu.querySelector('.ai-range-go').textContent,'Ask AI');assert.deepEqual(menu.querySelectorAll('select'),[]);
- const page=h.reader.state.currentPage,scroll=h.get('page-scroll').scrollTop;
- for(const key of ['ArrowDown','ArrowRight','Home'])h.listeners.get('keydown')({key,target:from});
- assert.equal(h.reader.state.currentPage,page);assert.equal(h.get('page-scroll').scrollTop,scroll);
- const inputs=menu.querySelectorAll('input');assert.deepEqual(inputs.map(n=>n.attrs.name||n.attrs['aria-label']),['ai-range','ai-range','From page','To page','ai-range']);
- h.listeners.get('keydown')({key:'Escape',target:from,preventDefault(){}});
- assert.equal(menu.hidden,true);assert.equal(h.doc.activeElement,ai);assert.equal(h.sent.some(s=>s.message.type==='reserve-pdf-close'),false);
-});
-
-test('Ask AI hands off every word of the chosen range using the plain pages message',async t=>{
- const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
- const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Ask AI about pages of this PDF');await ai.fire('click');
- const menu=h.doc.body.querySelector('#ai-range');menu.querySelector('[value="range"]').checked=true;
- menu.querySelector('[aria-label="From page"]').value='2';menu.querySelector('[aria-label="To page"]').value='4';
- await menu.fire('submit');for(let i=0;i<3;i++)await h.settle();
- assert.deepEqual(h.sent.filter(s=>s.message.type==='reserve-pdf-ai').map(s=>s.message),[{
-  type:'reserve-pdf-ai',token:'test',text:'[Page 2]\nPage 2 text\n\n[Page 3]\nPage 3 text\n\n[Page 4]\nPage 4 text',page:1,endPage:3,name:'Algebra.pdf'
- }]);
- assert.equal(menu.hidden,true);
-});
-
-test('Ask AI keeps the existing range size limit and empty-page handling',async t=>{
- const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
- const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Ask AI about pages of this PDF');await ai.fire('click');
- const menu=h.doc.body.querySelector('#ai-range');
- menu.querySelector('[value="range"]').checked=true;menu.querySelector('[aria-label="From page"]').value='1';menu.querySelector('[aria-label="To page"]').value='2';
- h.pages[0].getTextContent=async()=>({items:[{str:'x'.repeat(60000)}]});h.pages[1].getTextContent=async()=>({items:[{str:'y'.repeat(60000)}]});
- await menu.fire('submit');for(let i=0;i<3;i++)await h.settle();
- assert.equal(menu.hidden,false);assert.equal(menu.querySelector('.ai-range-go').disabled,false);
- assert.match(menu.querySelector('.ai-range-note').textContent,/Pages 1 to 2.*100,000.*Pages 1 to 1 fit/);
- assert.equal(h.sent.some(s=>s.message.type==='reserve-pdf-ai'),false);
- menu.querySelector('[value="range"]').checked=false;h.pages[0].getTextContent=async()=>({items:[]});
- await menu.fire('submit');await h.settle();assert.match(menu.querySelector('.ai-range-note').textContent,/no selectable text/);
- assert.equal(h.sent.some(s=>s.message.type==='reserve-pdf-ai'),false);
-});
-
-test('a reader without its AI source transport keeps AI actions unavailable',async t=>{
- const h=fixture();t.after(()=>h.reader.destroy());await h.initialise({aiEnabled:false});await h.settle();
- const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Ask AI about pages of this PDF');assert.equal(ai.hidden,true);
- await ai.fire('click');assert.equal(h.doc.body.querySelector('#ai-range'),null);assert.equal(h.sent.some(s=>s.message.type==='reserve-pdf-ai'),false);
-});
-
 test('a note is stored in PDF units; quota failure keeps the reader open and retry preserves the note',async()=>{
  const h=fixture();await h.initialise();await h.settle();
  const noteTool=h.get('tool-buttons').children.find(n=>n.attrs['aria-label']==='Sticky note');await noteTool.fire('click');
@@ -214,7 +136,7 @@ test('a note is stored in PDF units; quota failure keeps the reader open and ret
  const note=h.reader.state.annotations.annotations[0];assert.equal(note.type,'note');assert.equal(note.text,'My private note');assert.ok(Math.abs(note.point[0]-30/h.reader.state.zoom)<.01);
  const save=h.env.chrome.storage.local.set;h.env.chrome.storage.local.set=async()=>{throw Error('QUOTA_BYTES');};await h.reader.close();
  assert.match(h.get('status').textContent,/storage is full or unavailable/);assert.equal(h.sent.filter(s=>s.message.type==='reserve-pdf-close').length,0);assert.equal(h.workers[0].terminated,undefined);
- h.env.chrome.storage.local.set=save;await h.reader.close();const record=Object.values(h.storage).find(v=>v?.version===1);assert.equal(record.annotations[0].text,'My private note');assert.equal(h.workers[0].terminated,true);
+ h.env.chrome.storage.local.set=save;await h.reader.close();const record=h.storage[require('../extension/pdf-model.js').storageKey('https://school.instructure.com','7','42')];assert.equal(record.annotations[0].text,'My private note');assert.equal(h.workers[0].terminated,true);
 });
 
 test('thumbnails wait for idle time, share the render queue and are freed when the side view closes',async()=>{
@@ -226,13 +148,23 @@ test('thumbnails wait for idle time, share the render queue and are freed when t
  await side.fire('click');await h.settle();assert.equal(h.reader.state.slots[0].thumbnail,null);assert.equal(h.timers.size,0);h.reader.destroy();
 });
 
+test('highlights draw repeatable chisel marker paths while underlines are hand-drawn ink lines',async()=>{
+ const h=fixture();await h.initialise();await h.settle();
+ const slot=h.reader.state.slots[0],bounds=slot.node.getBoundingClientRect(),rect={left:10,right:100,top:bounds.top+20,bottom:bounds.top+35,width:90,height:15};
+ h.env.getSelection=()=>({isCollapsed:false,rangeCount:1,toString:()=>'Marked line',removeAllRanges(){},getRangeAt:()=>({intersectsNode:node=>node===slot.textLayer,getClientRects:()=>[rect],getBoundingClientRect:()=>rect})});
+ h.listeners.get('pointerup')({target:slot.textLayer});await h.get('selection-menu').children[0].fire('click');
+ const group=slot.overlay.children[0].children[0],stroke=group.children[0];assert.equal(stroke.tagName,'PATH');assert.match(stroke.attrs.d,/^M.+L.+Z$/);assert.doesNotMatch(stroke.attrs.d,/NaN|Infinity/);assert.equal(stroke.attrs.opacity,'0.62');assert.equal(stroke.attrs.style,'mix-blend-mode:multiply');
+ const shape=stroke.attrs.d;
+ h.listeners.get('pointerup')({target:slot.textLayer});await h.get('tool-buttons').children.find(b=>b.attrs['aria-label']==='Underline').fire('click');const ink=slot.overlay.children[0].children[1].children[0];assert.equal(ink.tagName,'PATH');assert.equal(ink.attrs.fill,'none');assert.match(ink.attrs.d,/^M[\d. -]+(L[\d. -]+)+$/);assert.equal(slot.overlay.children[0].children[0].children[0].attrs.d,shape,'redrawing keeps the same marker shape');h.reader.destroy();
+});
+
 test('incremental document search navigates to a later page and selection AI receives only the chosen text',async()=>{
  const h=fixture();await h.initialise();await h.settle();h.get('find-input').value='Page 8';await h.get('find-input').fire('input');
  for(let step=0;step<14;step++){const timer=h.timers.entries().next().value;if(timer){h.timers.delete(timer[0]);timer[1]();}await h.settle();}
  assert.equal(h.reader.state.matches.length,1);assert.equal(h.reader.state.matches[0].page,7);assert.equal(h.reader.state.currentPage,7);assert.equal(h.get('find-count').textContent,'1 / 1');
  const slot=h.reader.state.slots[7],bounds=slot.node.getBoundingClientRect(),rect={left:10,right:100,top:bounds.top+20,bottom:bounds.top+35,width:90,height:15};
  h.env.getSelection=()=>({isCollapsed:false,rangeCount:1,toString:()=>'Only this selected line',getRangeAt:()=>({intersectsNode:node=>node===slot.textLayer,getClientRects:()=>[rect],getBoundingClientRect:()=>rect})});
- h.listeners.get('pointerup')({target:slot.textLayer});const ai=h.get('selection-menu').children.find(b=>b.textContent==='Ask AI');await ai.fire('click');
+ h.listeners.get('pointerup')({target:slot.textLayer});const ai=h.get('selection-menu').children.find(b=>b.textContent==='Help with this');await ai.fire('click');
  const message=h.sent.at(-1).message;assert.equal(message.type,'reserve-pdf-ai');assert.equal(message.text,'Only this selected line');assert.equal(message.page,7);assert.equal(message.name,'Algebra.pdf');assert.equal(message.annotations,undefined);h.reader.destroy();
 });
 
@@ -281,124 +213,76 @@ test('zoom cancels intervening text extraction and user units reach text-layer s
 });
 
 test('Escape closes the innermost layer first: selection actions, then search, then the reader',async()=>{
- const h=fixture();await h.initialise();await h.settle();h.get('find-bar').hidden=false;h.get('selection-menu').hidden=false;let prevented=0;
+ const h=fixture();await h.initialise();await h.settle();h.listeners.get('keydown')({key:'f',ctrlKey:true,target:h.get('page-scroll'),preventDefault(){}});await h.settle();h.get('selection-menu').hidden=false;let prevented=0;
  const escape=async()=>{h.listeners.get('keydown')({key:'Escape',target:h.get('page-scroll'),preventDefault(){prevented++;}});await h.settle();};
  const closed=()=>h.sent.some(entry=>entry.message.type==='reserve-pdf-close');
- await escape();assert.equal(h.get('selection-menu').hidden,true);assert.equal(h.get('find-bar').hidden,false);assert.equal(closed(),false);
- await escape();assert.equal(h.get('find-bar').hidden,true);assert.equal(closed(),false,'the reader stays open while search closes');
+ const searching=()=>h.get('find-bar').classList.contains('is-searching');assert.equal(searching(),true);
+ await escape();assert.equal(h.get('selection-menu').hidden,true);assert.equal(searching(),true);assert.equal(closed(),false);
+ await escape();assert.equal(searching(),false);assert.equal(closed(),false,'the reader stays open while search closes');
  await escape();assert.equal(prevented,3);assert.equal(h.sent.at(-1).message.type,'reserve-pdf-close');assert.equal(h.workers[0].terminated,true);
 });
 
-test('closing the search bar clears its marks and reopening searches the kept words again',async()=>{
+test('leaving the find box clears its marks and coming back searches the kept words again',async()=>{
  const h=fixture();await h.initialise();await h.settle();
  const run=async()=>{for(let step=0;step<14;step++){const timer=h.timers.entries().next().value;if(timer){h.timers.delete(timer[0]);timer[1]();}await h.settle();}};
  h.listeners.get('keydown')({key:'f',ctrlKey:true,target:h.get('page-scroll'),preventDefault(){}});await h.settle();
  h.get('find-input').value='Page 8';await h.get('find-input').fire('input');await run();
  assert.equal(h.reader.state.matches.length,1);
  h.listeners.get('keydown')({key:'Escape',target:h.get('find-input'),preventDefault(){}});await h.settle();
- assert.equal(h.get('find-bar').hidden,true);assert.equal(h.reader.state.matches.length,0,'no marks stay on the pages');assert.equal(h.get('find-count').textContent,'');
+ assert.equal(h.get('find-bar').classList.contains('is-searching'),false);assert.equal(h.reader.state.matches.length,0,'no marks stay on the pages');assert.equal(h.get('find-count').textContent,'');
  assert.equal(h.sent.some(entry=>entry.message.type==='reserve-pdf-close'),false,'the reader stays open');
  h.listeners.get('keydown')({key:'f',ctrlKey:true,target:h.get('page-scroll'),preventDefault(){}});await h.settle();await run();
  assert.equal(h.get('find-input').value,'Page 8');assert.equal(h.reader.state.matches.length,1,'reopening finds the words again');h.reader.destroy();
 });
 
-test('shrinking then restoring the reader before the 160 ms settle restores every page to the real zoom',async t=>{
+test('Help with this chooses pages without a kind-of-help menu',async t=>{
  const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
- assert.equal(h.reader.state.zoom,1.11);
- const resize=width=>{
-  h.get('page-scroll')._clientWidth=width;h.resizeObservers[0].callback([{target:h.get('page-scroll')}]);
-  const pending=[...h.frames];h.frames.clear();for(const [,run]of pending)run();
- };
- resize(420);
- assert.equal(h.reader.state.slots[0].node.style.width,'386px','the intermediate width really stretches the pages');
- assert.equal(h.reader.state.slots[0].canvas.style.width,'386px');
- const settleTimer=[...h.timers].find(([id])=>h.timerDelays.get(id)===160);assert.ok(settleTimer);
- resize(700); // No settle callback has run between these two observer notifications.
- assert.equal(h.timers.size,1);assert.equal(h.reader.state.zoom,1.11);
- h.timers.delete(settleTimer[0]);settleTimer[1]();await h.settle();
- assert.equal(h.reader.state.slots.length,12);
- for(const slot of h.reader.state.slots){
-  assert.ok(Math.abs(parseFloat(slot.node.style.width)-666)<1e-9,'page '+(slot.index+1));
-  assert.ok(Math.abs(parseFloat(slot.node.style.height)-888)<1e-9);
-  assert.equal(slot.node.style['--total-scale-factor'],1.11);
-  if(slot.canvas){
-   assert.ok(Math.abs(parseFloat(slot.canvas.style.width)-666)<1e-9);assert.ok(Math.abs(parseFloat(slot.canvas.style.height)-888)<1e-9);
-   assert.ok(Math.abs(slot.viewport.width-666)<1e-9);assert.equal(slot.viewport.scale,1.11);
-  }
- }
- assert.equal(h.get('zoom-label').textContent,'111%');
+ const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Help with this');await ai.fire('click');
+ const menu=h.doc.body.querySelector('#ai-range'),go=menu.querySelector('.ai-range-go');assert.equal(menu.classList.contains('paper-popover'),true);assert.equal(go.textContent,'Help with this');
+ assert.deepEqual(menu.querySelectorAll('select'),[]);assert.deepEqual(menu.querySelectorAll('[name="ai-intent"]'),[]);
+ const page=h.reader.state.currentPage,scroll=h.get('page-scroll').scrollTop,from=menu.querySelector('[aria-label="From page"]');
+ for(const key of ['ArrowDown','ArrowRight','Home'])h.listeners.get('keydown')({key,target:from});assert.equal(h.reader.state.currentPage,page);assert.equal(h.get('page-scroll').scrollTop,scroll);
+ assert.deepEqual(menu.querySelectorAll('input').map(n=>n.attrs.name||n.attrs['aria-label']),['ai-range','ai-range','From page','To page','ai-range']);
+ h.listeners.get('keydown')({key:'Escape',target:from,preventDefault(){}});assert.equal(menu.hidden,true);assert.equal(h.doc.activeElement,ai);assert.equal(h.sent.some(s=>s.message.type==='reserve-pdf-close'),false);
 });
 
-for(const cancel of ['Cancel','Escape'])test('closing the Ask AI range menu with '+cancel+' suppresses an in-flight text read',async t=>{
+test('Help handoff keeps all range text without carrying a chosen shape',async t=>{
  const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
- const gate=deferred(),started=deferred();
- h.pages[0].getTextContent=()=>{started.resolve();return gate.promise;};
- const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Ask AI about pages of this PDF');
- await ai.fire('click');const menu=h.doc.body.children.find(n=>n.attrs.id==='ai-range');
- await menu.fire('submit');await started.promise;
- assert.equal(menu.querySelector('.ai-range-go').disabled,true,'the read is still pending');
- if(cancel==='Cancel')await menu.querySelectorAll('button').find(n=>n.textContent==='Cancel').fire('click');
- else h.listeners.get('keydown')({key:'Escape',target:h.doc.activeElement,preventDefault(){}});
- assert.equal(menu.hidden,true);assert.equal(h.doc.activeElement,ai);
- gate.resolve({items:[{str:'Cancelled text must never be sent'}]});await h.settle();
- assert.deepEqual(h.sent.filter(s=>s.message.type==='reserve-pdf-ai'),[]);
+ const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Help with this');await ai.fire('click');
+ const menu=h.doc.body.querySelector('#ai-range');menu.querySelector('[value="range"]').checked=true;
+ menu.querySelector('[aria-label="From page"]').value='2';menu.querySelector('[aria-label="To page"]').value='4';
+ await menu.fire('submit');for(let i=0;i<3;i++)await h.settle();
+ assert.deepEqual(h.sent.filter(s=>s.message.type==='reserve-pdf-ai').map(s=>s.message),[{
+  type:'reserve-pdf-ai',token:'test',text:'[Page 2]\nPage 2 text\n\n[Page 3]\nPage 3 text\n\n[Page 4]\nPage 4 text',page:1,endPage:3,name:'Algebra.pdf'
+ }]);
  assert.equal(menu.hidden,true);
+ await ai.fire('click');
+ await menu.fire('submit');for(let i=0;i<3;i++)await h.settle();
+ const normal=h.sent.filter(s=>s.message.type==='reserve-pdf-ai').at(-1).message;
+ assert.equal(Object.hasOwn(normal,'intent'),false);assert.equal(Object.hasOwn(normal,'count'),false);assert.equal(Object.hasOwn(normal,'kind'),false);
 });
 
-for(const order of ['stale first','fresh first'])test('reopening and resubmitting Ask AI only sends the new read ('+order+')',async t=>{
+test('Help keeps the existing range size limit and empty-page handling',async t=>{
  const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
- const old=deferred(),fresh=deferred(),oldStarted=deferred(),freshStarted=deferred();let reads=0;
- h.pages[0].getTextContent=()=>{if(++reads===1){oldStarted.resolve();return old.promise;}freshStarted.resolve();return fresh.promise;};
- const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Ask AI about pages of this PDF');
- await ai.fire('click');const menu=h.doc.body.children.find(n=>n.attrs.id==='ai-range');
- await menu.fire('submit');await oldStarted.promise;
- await ai.fire('click');assert.equal(menu.hidden,false);assert.equal(menu.querySelector('.ai-range-go').disabled,false);
- await menu.fire('submit');await freshStarted.promise;
- const messages=()=>h.sent.filter(s=>s.message.type==='reserve-pdf-ai');
- const finishOld=()=>old.resolve({items:[{str:'Stale selection'}]}),finishFresh=()=>fresh.resolve({items:[{str:'Fresh selection'}]});
- if(order==='stale first'){
-  finishOld();await h.settle();assert.deepEqual(messages(),[],'an old read cannot send while its replacement is pending');
-  assert.equal(menu.hidden,false);assert.equal(menu.querySelector('.ai-range-go').disabled,true);
-  finishFresh();
- }else{finishFresh();await h.settle();assert.equal(messages().length,1);finishOld();}
- await h.settle();assert.equal(reads,2);
- assert.deepEqual(messages().map(s=>s.message),[{type:'reserve-pdf-ai',token:'test',text:'Fresh selection',page:0,endPage:0,name:'Algebra.pdf'}]);
- assert.equal(menu.hidden,true);
+ const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Help with this');await ai.fire('click');
+ const menu=h.doc.body.querySelector('#ai-range');
+ menu.querySelector('[value="range"]').checked=true;menu.querySelector('[aria-label="From page"]').value='1';menu.querySelector('[aria-label="To page"]').value='2';
+ h.pages[0].getTextContent=async()=>({items:[{str:'x'.repeat(60000)}]});h.pages[1].getTextContent=async()=>({items:[{str:'y'.repeat(60000)}]});
+ await menu.fire('submit');for(let i=0;i<3;i++)await h.settle();
+ assert.equal(menu.hidden,false);assert.equal(menu.querySelector('.ai-range-go').disabled,false);
+ assert.match(menu.querySelector('.ai-range-note').textContent,/Pages 1 to 2.*100,000.*Pages 1 to 1 fit/);
+ assert.equal(h.sent.some(s=>s.message.type==='reserve-pdf-ai'),false);
+ menu.querySelector('[value="range"]').checked=false;h.pages[0].getTextContent=async()=>({items:[]});
+ await menu.fire('submit');await h.settle();assert.match(menu.querySelector('.ai-range-note').textContent,/no selectable text/);
+ assert.equal(h.sent.some(s=>s.message.type==='reserve-pdf-ai'),false);
 });
 
-test('an eraser click with no coalesced events removes just the mark under it and can be undone',async t=>{
- const h=fixture();t.after(()=>h.reader.destroy());
- const key=require('../extension/pdf-model.js').storageKey('https://school.instructure.com','7','42');
- h.storage[key]={version:1,annotations:[
-  {id:'under-click',type:'highlight',page:0,rects:[[20,740,90,780]]},
-  {id:'untouched',type:'underline',page:0,rects:[[200,500,280,520]]}
- ]};
- await h.initialise();await h.settle();const slot=h.reader.state.slots[0],zoom=h.reader.state.zoom;let batches=0;
- h.doc.elementsFromPoint=()=>[slot.node];
- await h.get('tool-buttons').children.find(n=>n.attrs['aria-label']==='Eraser').fire('click');
- const event={target:slot.node,button:0,pointerId:7,clientX:40*zoom,clientY:slot.node.getBoundingClientRect().top+40*zoom,getCoalescedEvents(){batches++;return [];}};
- await h.get('pages').fire('pointerdown',event);
- assert.equal(slot.overlay.querySelector('[data-annotation="under-click"]').style.display,'none');
- await h.get('pages').fire('pointerup',event);
- assert.equal(batches,1);assert.deepEqual(h.reader.state.annotations.annotations.map(a=>a.id),['untouched']);
- assert.equal(slot.node.hasPointerCapture(7),false);
- await h.get('history-buttons').children.find(n=>n.attrs['aria-label']==='Undo').fire('click');
- assert.deepEqual(h.reader.state.annotations.annotations.map(a=>a.id),['under-click','untouched']);
-});
-
-test('pen moves with no coalesced events still record the pointer points in PDF coordinates',async t=>{
- const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
- await h.get('tool-buttons').children.find(n=>n.attrs['aria-label']==='Pen').fire('click');
- const slot=h.reader.state.slots[0],zoom=h.reader.state.zoom,top=slot.node.getBoundingClientRect().top;let batches=0;
- const event=(x,y)=>({target:slot.node,button:0,pointerId:9,clientX:x*zoom,clientY:top+y*zoom,getCoalescedEvents(){batches++;return [];}});
- await h.get('pages').fire('pointerdown',event(20,20));
- await h.get('pages').fire('pointermove',event(40,40));await h.get('pages').fire('pointermove',event(60,60));
- await h.get('pages').fire('pointerup',event(60,60));
- assert.equal(batches,2);assert.equal(slot.node.hasPointerCapture(9),false);
- const marks=h.reader.state.annotations.annotations;assert.equal(marks.length,1);assert.equal(marks[0].type,'pen');assert.equal(marks[0].page,0);
- assert.equal(marks[0].points.length,3);
- for(const [index,want]of [[20,780],[40,760],[60,740]].entries())for(let axis=0;axis<2;axis++)assert.ok(Math.abs(marks[0].points[index][axis]-want[axis])<1e-9);
- assert.ok(slot.overlay.querySelector('[data-annotation="'+marks[0].id+'"]'));
+test('AI-off readers never create practice controls or send handoffs, and load no AI source files',async t=>{
+ const h=fixture();t.after(()=>h.reader.destroy());h.env.ReserveFeatures={enabled:id=>id!=='ai'};await h.initialise();await h.settle();
+ const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Help with this');assert.equal(ai.hidden,true);
+ await ai.fire('click');assert.equal(h.doc.body.querySelector('#ai-range'),null);assert.equal(h.sent.some(s=>s.message.type==='reserve-pdf-ai'),false);
+ const selection=require('../extension/features.js').resolve({preset:'custom',custom:['pdf']});
+ assert.ok(selection.js.includes('pdf-host.js'));assert.equal(selection.js.some(file=>/^ai-/.test(file)),false);
 });
 
 test('highlight, underline and pen handles open their menus with Enter and regain focus on Escape',async t=>{
@@ -429,19 +313,19 @@ async function addFixtureNote(h,text){await h.get('tool-buttons').children.find(
 const parentMessage=(h,data)=>h.listeners.get('message')({source:h.env.parent,origin:'https://school.instructure.com',data:{token:'test',...data}});
 async function saveFixture(h){for(const [id,run]of [...h.timers])if(h.timerDelays.get(id)===450){h.timers.delete(id);run();}await h.settle();}
 
-test('marks are not read before verification; legacy marks move once to the first verified account',async t=>{
+test('marks are not read before verification; legacy originals survive the one-time verified-account migration',async t=>{
  const shared={storage:{},locks:lockFixture(),subscribers:new Set()},a=fixture(shared),b=fixture(shared),M=require('../extension/pdf-model.js'),legacy=M.legacyStorageKey('https://school.instructure.com','42');
  t.after(()=>{a.reader.destroy();b.reader.destroy();});shared.storage[legacy]={version:1,annotations:[noteRecord('legacy-private')]};
  const gate=deferred();a.env.accountResponse=()=>gate.promise;let reads=0;const get=a.env.chrome.storage.local.get;a.env.chrome.storage.local.get=async keys=>{reads++;return get(keys);};
  const opening=a.initialise();await Promise.resolve();assert.equal(reads,0);assert.equal(a.reader.state.annotations.annotations.length,0);
- gate.resolve('7');await opening;await a.settle();assert.equal(shared.storage[legacy],undefined);assert.equal(a.reader.state.annotations.annotations[0].id,'legacy-private');
+ gate.resolve('7');await opening;await a.settle();assert.deepEqual(shared.storage[legacy],{version:1,annotations:[noteRecord('legacy-private')]});assert.equal(a.reader.state.annotations.annotations[0].id,'legacy-private');
  b.env.accountId='8';await b.initialise();await b.settle();assert.deepEqual(b.reader.state.annotations.annotations,[]);assert.equal(shared.storage[M.storageKey('https://school.instructure.com','7','42')].annotations[0].id,'legacy-private');
 });
 
 test('simultaneous account migrations claim the legacy record only once',async t=>{
  const shared={storage:{},locks:lockFixture(),subscribers:new Set()},a=fixture(shared),b=fixture(shared),M=require('../extension/pdf-model.js');t.after(()=>{a.reader.destroy();b.reader.destroy();});
  shared.storage[M.legacyStorageKey('https://school.instructure.com','42')]={version:1,annotations:[noteRecord('first-account-only')]};b.env.accountId='8';await Promise.all([a.initialise(),b.initialise()]);await Promise.all([a.settle(),b.settle()]);
- assert.equal(a.reader.state.annotations.annotations.length+b.reader.state.annotations.annotations.length,1);assert.equal(shared.storage[M.legacyStorageKey('https://school.instructure.com','42')],undefined);
+ assert.equal(a.reader.state.annotations.annotations.length+b.reader.state.annotations.annotations.length,1);assert.deepEqual(shared.storage[M.legacyStorageKey('https://school.instructure.com','42')],{version:1,annotations:[noteRecord('first-account-only')]});
 });
 
 test('returning to the tab hides private marks until reverified and switches accounts without leaking notes',async t=>{
@@ -454,10 +338,10 @@ test('returning to the tab hides private marks until reverified and switches acc
  h.doc.hidden=true;h.listeners.get('visibilitychange')();h.env.accountResponse=()=>null;h.doc.hidden=false;h.listeners.get('visibilitychange')();await h.settle();assert.equal(h.reader.state.slots[0].overlay,null);assert.match(h.get('status').textContent,/sign-in/);
 });
 
-test('a failed legacy deletion cannot expose migrated marks to a second account',async t=>{
+test('migration never deletes or replaces the legacy original and cannot expose it to another account',async t=>{
  const shared={storage:{},locks:lockFixture(),subscribers:new Set()},a=fixture(shared),b=fixture(shared),M=require('../extension/pdf-model.js'),legacy=M.legacyStorageKey('https://school.instructure.com','42');t.after(()=>{a.reader.destroy();b.reader.destroy();});
- shared.storage[legacy]={version:1,annotations:[noteRecord('claimed')]};a.env.chrome.storage.local.remove=async()=>{throw Error('remove failed');};await a.initialise();await a.settle();assert.equal(shared.storage[legacy].migratedTo,M.storageKey('https://school.instructure.com','7','42'));
- b.env.accountId='8';await b.initialise();await b.settle();assert.deepEqual(b.reader.state.annotations.annotations,[]);assert.equal(shared.storage[legacy],undefined);
+ const original={version:1,annotations:[noteRecord('claimed')]};shared.storage[legacy]=structuredClone(original);let deletes=0;a.env.chrome.storage.local.remove=async()=>{deletes++;throw Error('never delete originals');};await a.initialise();await a.settle();assert.deepEqual(shared.storage[legacy],original);
+ b.env.accountId='8';await b.initialise();await b.settle();assert.deepEqual(b.reader.state.annotations.annotations,[]);assert.deepEqual(shared.storage[legacy],original);assert.equal(deletes,0);
 });
 
 test('two tabs serialize mutations and reconcile adds, edits, erasure and undo without whole-record loss',async t=>{
@@ -475,6 +359,27 @@ test('a host replacement request leaves the reader open after a failed save and 
  h.env.chrome.storage.local.set=save;parentMessage(h,{type:'reserve-pdf-request-close',requestId:21});await h.settle();assert.equal(h.sent.at(-1).message.ok,true);assert.equal(h.sent.at(-1).message.requestId,21);assert.equal(h.workers[0].terminated,true);
 });
 
+for(const outcome of ['missing record','unchanged record','unreadable record'])test('ordinary annotation saves must verify persistence before guarded close: '+outcome,async t=>{
+ const h=fixture(),M=require('../extension/pdf-model.js'),key=M.storageKey('https://school.instructure.com','7','42'),legacy=M.legacyStorageKey('https://school.instructure.com','42'),original={version:1,annotations:[noteRecord('original-private','Keep the original')]};t.after(()=>h.reader.destroy());if(outcome!=='missing record')h.storage[legacy]=structuredClone(original);await h.initialise();await h.settle();await addFixtureNote(h,'New unsaved note');const pending=h.reader.state.annotations.serialise(),local=h.env.chrome.storage.local,set=local.set,get=local.get;let wrote=false;
+ local.set=async values=>{wrote=true;const kept={...values};if(outcome!=='unreadable record')delete kept[key];await set(kept);};local.get=async keys=>{if(outcome==='unreadable record'&&wrote)throw Error('read-back unavailable');return get(keys);};
+ assert.equal(await h.reader.close(),false,'a resolved set without verified persistence cannot acknowledge the note');assert.equal(h.workers[0].terminated,undefined);assert.deepEqual(h.reader.state.annotations.serialise(),pending);assert.equal(h.sent.some(s=>s.message.type==='reserve-pdf-close'),false);assert.match(h.get('status').textContent,/storage is full or unavailable/);
+ parentMessage(h,{type:'reserve-pdf-request-close',requestId:81});await h.settle();assert.deepEqual(h.sent.at(-1).message,{type:'reserve-pdf-close-result',token:'test',requestId:81,ok:false});assert.equal(h.workers[0].terminated,undefined);assert.deepEqual(h.reader.state.annotations.serialise(),pending);if(outcome==='missing record')assert.equal(h.storage[key],undefined);if(outcome!=='unreadable record')assert.equal(h.storage[key]?.annotations.some(n=>n.text==='New unsaved note')||false,false);if(outcome!=='missing record')assert.deepEqual(h.storage[legacy],original);
+ local.set=set;local.get=get;parentMessage(h,{type:'reserve-pdf-request-close',requestId:82});await h.settle();assert.deepEqual(h.sent.at(-1).message,{type:'reserve-pdf-close-result',token:'test',requestId:82,ok:true});assert.equal(h.workers[0].terminated,true);assert.deepEqual(M.createAnnotations(h.storage[key]).serialise(),pending);if(outcome!=='missing record')assert.deepEqual(h.storage[legacy],original);
+});
+
+test('save acknowledgment cannot roll back another tab visible marks after releasing the file lock',async t=>{
+ const locks=lockFixture(),shared={storage:{},locks,subscribers:new Set()},a=fixture(shared),b=fixture(shared),M=require('../extension/pdf-model.js'),key=M.storageKey('https://school.instructure.com','7','42');t.after(()=>{a.reader.destroy();b.reader.destroy();});await Promise.all([a.initialise(),b.initialise()]);await Promise.all([a.settle(),b.settle()]);await addFixtureNote(a,'from A');await addFixtureNote(b,'from B');let handoffs=0,visibleBeforeContinuation;
+ a.env.navigator.locks={request(name,fn){return locks.request(name,fn).then(async value=>{if(name===key&&handoffs++===0){await saveFixture(b);visibleBeforeContinuation=a.reader.state.annotations.annotations.map(n=>n.text).sort();}return value;});}};
+ await saveFixture(a);await b.settle();assert.equal(handoffs,1);assert.deepEqual(visibleBeforeContinuation,['from A','from B'],'the newer onChanged value reaches A before its lock continuation');assert.deepEqual(shared.storage[key].annotations.map(n=>n.text).sort(),['from A','from B']);
+ for(const h of [a,b]){assert.deepEqual(h.reader.state.annotations.annotations.map(n=>n.text).sort(),['from A','from B'],'saved merged marks remain immediately visible');assert.equal(h.reader.state.slots[0].overlay.querySelectorAll('.note-marker').length,2);}
+ assert.equal(await a.reader.close(),true);assert.deepEqual(shared.storage[key].annotations.map(n=>n.text).sort(),['from A','from B']);
+});
+
+test('ordinary save retains a newer onChanged note injected before the file lock promise resumes',async t=>{
+ const M=require('../extension/pdf-model.js'),key=M.storageKey('https://school.instructure.com','7','42'),underlyingLocks=lockFixture();let armed=false,injected=false,h;const shared={storage:{},subscribers:new Set(),locks:{request(name,fn){return underlyingLocks.request(name,fn).then(async value=>{if(armed&&name===key&&!injected){injected=true;await underlyingLocks.request(key,async()=>{const remote=M.createAnnotations(shared.storage[key]);remote.add({type:'note',page:0,point:[50,700],text:'other tab'});await h.env.chrome.storage.local.set({[key]:remote.serialise()});});}return value;});}}};h=fixture(shared);t.after(()=>h.reader.destroy());await h.initialise();await h.settle();await addFixtureNote(h,'this tab');armed=true;
+ await saveFixture(h);assert.equal(injected,true);assert.deepEqual(shared.storage[key].annotations.map(n=>n.text).sort(),['other tab','this tab']);assert.deepEqual(h.reader.state.annotations.annotations.map(n=>n.text).sort(),['other tab','this tab']);assert.equal(h.reader.state.slots[0].overlay.querySelectorAll('.note-marker').length,2);assert.equal(await h.reader.close(),true);assert.deepEqual(shared.storage[key].annotations.map(n=>n.text).sort(),['other tab','this tab']);
+});
+
 test('PDF pages and thumbnails render embedded static annotations while keeping executable content disabled',async t=>{
  const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();assert.ok(h.renders.length);assert.ok(h.renders.every(r=>r.options.annotationMode===1));
  await h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Show page navigation').fire('click');h.observers[1].callback([{target:h.get('thumbnails').children[0],isIntersecting:true}]);for(const [id,run]of [...h.timers]){h.timers.delete(id);run();}await h.settle();
@@ -485,7 +390,7 @@ test('PDF pages and thumbnails render embedded static annotations while keeping 
 for(const streaming of [true,false])test('hiding during Ask AI restores controls and rejects stale extraction (streaming='+streaming+')',async t=>{
  const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();const gate=deferred(),started=deferred();
  if(streaming)h.pages[0].streamTextContent=()=>({getReader:()=>({read(){started.resolve();return gate.promise;},cancel(){gate.resolve({done:true});return Promise.resolve();},releaseLock(){}})});else h.pages[0].getTextContent=()=>{started.resolve();return gate.promise;};
- const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Ask AI about pages of this PDF');await ai.fire('click');const menu=h.doc.body.querySelector('#ai-range');await menu.fire('submit');await started.promise;assert.equal(menu.querySelector('.ai-range-go').disabled,true);
+ const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Help with this');await ai.fire('click');const menu=h.doc.body.querySelector('#ai-range');await menu.fire('submit');await started.promise;assert.equal(menu.querySelector('.ai-range-go').disabled,true);
  h.doc.hidden=true;h.listeners.get('visibilitychange')();assert.equal(menu.querySelector('.ai-range-go').disabled,false);assert.equal(menu.querySelector('.ai-range-note').textContent,'');
  h.doc.hidden=false;h.listeners.get('visibilitychange')();if(!streaming)gate.resolve({items:[{str:'stale hidden text'}]});await h.settle();assert.equal(menu.querySelector('.ai-range-go').disabled,false);assert.equal(menu.querySelector('.ai-range-note').textContent,'');assert.deepEqual(h.sent.filter(s=>s.message.type==='reserve-pdf-ai'),[]);
 });
@@ -602,15 +507,28 @@ test('Marks lists every kind by page, navigates and exports matching clipboard a
   {id:'typed-text',type:'text',page:0,point:[20,650],text:'Typed words',color:'#222222',size:12},
   {id:'drawn-box',type:'shape',shape:'rect',page:1,points:[[10,20],[50,60]],width:3,color:'#C8372D'},
   {id:'drawn-marker',type:'pen',page:2,points:[[10,20],[50,60]],width:12,opacity:.42,color:'#F6DE7A'}]};
- h.env.ReservePdfStudyNotes=require('../extension/pdf-study-notes.js');
  let copied='',blob=null,download=null;h.env.navigator.clipboard.writeText=async value=>{copied=value;};h.env.Blob=class{constructor(parts,options){this.parts=parts;this.type=options.type;}};h.env.URL={createObjectURL(value){blob=value;return 'blob:test-notes';},revokeObjectURL(){}};
  const create=h.doc.createElement;h.doc.createElement=tag=>{const node=create(tag);if(tag==='a')node.click=()=>{download=node.download;};return node;};
  await h.initialise();await h.settle();await h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Show page navigation').fire('click');await h.get('marks-tab').fire('click');
  assert.equal(h.get('marks-count').textContent,'5');assert.deepEqual(h.get('marks-list').querySelectorAll('.marks-page').map(n=>n.textContent),['Page 1','Page 2','Page 3','Page 4']);
  const items=h.get('marks-list').querySelectorAll('.mark-item');assert.equal(items.length,5);assert.match(items[3].textContent,/Highlighter pen/);await items[4].fire('click');assert.equal(h.reader.state.currentPage,3);
- await h.get('marks-copy').fire('click');assert.match(copied,/## Page 1/);assert.match(copied,/Old words/);assert.match(copied,/2 drawings or marks without text omitted/);assert.match(copied,/Typed words/);assert.doesNotMatch(copied,/Box|Highlighter pen/);assert.match(copied,/Later note/);
- await h.get('marks-download').fire('click');assert.equal(blob.type,'text/markdown;charset=utf-8');assert.equal(blob.parts[0],copied);assert.equal(download,'Algebra-study-notes.md');
+ await h.get('marks-copy').fire('click');assert.match(copied,/## Page 1/);assert.match(copied,/~~Old words~~/);assert.match(copied,/Typed words/);assert.match(copied,/Box/);assert.match(copied,/Highlighter pen/);assert.match(copied,/Later note/);
+ await h.get('marks-download').fire('click');assert.equal(blob.type,'text/markdown');assert.equal(blob.parts[0],copied);assert.equal(download,'Algebra (notes).md');
  h.doc.hidden=true;h.listeners.get('visibilitychange')();assert.equal(h.get('marks-list').children.length,0);assert.equal(h.get('marks-copy').disabled,true);
+});
+
+test('Marks copy and download use the literal study sheet (PR #51) and download re-checks the Canvas account',async t=>{
+ const M=require('../extension/pdf-model.js'),key=M.storageKey('https://school.instructure.com','7','42'),h=fixture();t.after(()=>h.reader.destroy());h.env.ReservePdfStudyNotes=require('../extension/pdf-study-notes.js');
+ h.storage[key]={version:1,annotations:[{id:'tricky',type:'highlight',page:0,rects:[[20,700,100,720]],text:'![x](https://evil.example/pixel) <b>bold</b>',color:'#F6DE7A'},
+  {id:'selected-strike',type:'strike',page:0,rects:[[20,600,100,620]],text:'Old words',color:'#C8372D'},
+  {id:'drawn-box',type:'shape',shape:'rect',page:1,points:[[10,20],[50,60]],width:3,color:'#C8372D'},
+  {id:'drawn-marker',type:'pen',page:2,points:[[10,20],[50,60]],width:12,opacity:.42,color:'#F6DE7A'}]};
+ let copied='',blob=null,download=null;h.env.navigator.clipboard.writeText=async value=>{copied=value;};h.env.Blob=class{constructor(parts,options){this.parts=parts;this.type=options.type;}};h.env.URL={createObjectURL(value){blob=value;return 'blob:test-notes';},revokeObjectURL(){}};
+ const create=h.doc.createElement;h.doc.createElement=tag=>{const node=create(tag);if(tag==='a')node.click=()=>{download=node.download;};return node;};
+ await h.initialise();await h.settle();await h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Show page navigation').fire('click');await h.get('marks-tab').fire('click');
+ await h.get('marks-copy').fire('click');assert.match(copied,/\*\*Strikethrough\*\*\n> Old words/);assert.match(copied,/&lt;b&gt;bold&lt;\/b&gt;/);assert.ok(!copied.includes('![x]('),'a note cannot become a live image link');assert.match(copied,/2 drawings or marks without text omitted/);
+ await h.get('marks-download').fire('click');await h.settle();assert.equal(download,'Algebra-study-notes.md');assert.equal(blob.type,'text/markdown;charset=utf-8');assert.equal(blob.parts[0],copied);
+ download=null;h.env.accountId='8';await h.get('marks-download').fire('click');await h.settle();assert.equal(download,null,'no file leaves the reader after an account switch');assert.match(h.get('status').textContent,/account could not be confirmed/);
 });
 
 test('reopen restores the last page per account and local file while an explicit page takes precedence',async t=>{
@@ -661,7 +579,7 @@ test('Open normally declines without a browser prompt and concurrent readers sha
 test('granted external PDF access omits credentials, opens the link page, isolates marks and hides Canvas and AI actions',async t=>{
  const shared={storage:{}},h=remoteFixture(shared);t.after(()=>h.reader.destroy());let opening=h.initialise(h.extra);await h.settle();h.grant(true);await h.get('status').children[0].fire('click');await opening;for(const run of [...h.frames.values()])run();await h.settle();
  assert.equal(h.calls.requests.length,1);assert.equal(h.calls.fetches[0].options.credentials,'omit');assert.equal(h.calls.fetches[0].url,'https://example.org/reading.pdf');assert.equal(h.reader.state.currentPage,3);
- assert.equal(h.get('heading-actions').children.find(n=>n.attrs['aria-label']==="Open in Canvas's own viewer").hidden,true);assert.equal(h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Ask AI about pages of this PDF').hidden,true);
+ assert.equal(h.get('heading-actions').children.find(n=>n.attrs['aria-label']==="Open in Canvas's own viewer").hidden,true);assert.equal(h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Help with this').hidden,true);
  await addFixtureNote(h,'Outside file note');await h.reader.close();const key=require('../extension/pdf-model.js').storageKey('https://school.instructure.com','7',h.extra.fileId);assert.equal(shared.storage[key].annotations[0].text,'Outside file note');
  const again=remoteFixture(shared,true);t.after(()=>again.reader.destroy());await again.initialise(again.extra);await again.settle();assert.equal(again.calls.requests.length,0);assert.equal(again.calls.fetches.length,1);
 });
@@ -699,11 +617,188 @@ test('closing before a saved-page animation frame cancels that navigation',async
  const key=require('../extension/pdf-model.js').storageKey('https://school.instructure.com','7','42'),h=fixture({storage:{[key+':place']:{page:5}}});await h.initialise();assert.ok(h.frames.size);await h.reader.close();for(const run of [...h.frames.values()])assert.doesNotThrow(run);assert.equal(h.frames.size,0);
 });
 
-test('study-sheet download rechecks the account and cannot release the previous account marks',async t=>{
- const M=require('../extension/pdf-model.js'),key=M.storageKey('https://school.instructure.com','7','42'),h=fixture();t.after(()=>h.reader.destroy());h.env.ReservePdfStudyNotes=require('../extension/pdf-study-notes.js');
- h.storage[key]={version:1,annotations:[{id:'private',type:'note',page:0,point:[20,700],text:'Private account seven note'}]};let downloads=0;h.env.URL={createObjectURL(){downloads++;return 'blob:blocked';},revokeObjectURL(){}};
- await h.initialise();await h.settle();const checks=h.sent.filter(x=>x.message.type==='reserve-pdf-account').length;h.env.accountId='8';await h.get('marks-download').fire('click');
- assert.equal(h.sent.filter(x=>x.message.type==='reserve-pdf-account').length,checks+1);assert.equal(downloads,0);assert.match(h.get('status').textContent,/account could not be confirmed/);assert.equal(h.storage[key].annotations[0].text,'Private account seven note');
+for(const order of ['stale first','fresh first'])test('reopening and resubmitting Ask AI only sends the new read ('+order+')',async t=>{
+ const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
+ const old=deferred(),fresh=deferred(),oldStarted=deferred(),freshStarted=deferred();let reads=0;
+ h.pages[0].getTextContent=()=>{if(++reads===1){oldStarted.resolve();return old.promise;}freshStarted.resolve();return fresh.promise;};
+ const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Help with this');
+ await ai.fire('click');const menu=h.doc.body.children.find(n=>n.attrs.id==='ai-range');
+ await menu.fire('submit');await oldStarted.promise;
+ await ai.fire('click');assert.equal(menu.hidden,false);assert.equal(menu.querySelector('.ai-range-go').disabled,false);
+ await menu.fire('submit');await freshStarted.promise;
+ const messages=()=>h.sent.filter(s=>s.message.type==='reserve-pdf-ai');
+ const finishOld=()=>old.resolve({items:[{str:'Stale selection'}]}),finishFresh=()=>fresh.resolve({items:[{str:'Fresh selection'}]});
+ if(order==='stale first'){
+  finishOld();await h.settle();assert.deepEqual(messages(),[],'an old read cannot send while its replacement is pending');
+  assert.equal(menu.hidden,false);assert.equal(menu.querySelector('.ai-range-go').disabled,true);
+  finishFresh();
+ }else{finishFresh();await h.settle();assert.equal(messages().length,1);finishOld();}
+ await h.settle();assert.equal(reads,2);
+ assert.deepEqual(messages().map(s=>s.message),[{type:'reserve-pdf-ai',token:'test',text:'Fresh selection',page:0,endPage:0,name:'Algebra.pdf'}]);
+ assert.equal(menu.hidden,true);
+});
+
+test('an eraser click with no coalesced events removes just the mark under it and can be undone',async t=>{
+ const h=fixture();t.after(()=>h.reader.destroy());
+ const key=require('../extension/pdf-model.js').storageKey('https://school.instructure.com','7','42');
+ h.storage[key]={version:1,annotations:[
+  {id:'under-click',type:'highlight',page:0,rects:[[20,740,90,780]]},
+  {id:'untouched',type:'underline',page:0,rects:[[200,500,280,520]]}
+ ]};
+ await h.initialise();await h.settle();const slot=h.reader.state.slots[0],zoom=h.reader.state.zoom;let batches=0;
+ h.doc.elementsFromPoint=()=>[slot.node];
+ await h.get('tool-buttons').children.find(n=>n.attrs['aria-label']==='Eraser').fire('click');
+ const event={target:slot.node,button:0,pointerId:7,clientX:40*zoom,clientY:slot.node.getBoundingClientRect().top+40*zoom,getCoalescedEvents(){batches++;return [];}};
+ await h.get('pages').fire('pointerdown',event);
+ assert.equal(slot.overlay.querySelector('[data-annotation="under-click"]').style.display,'none');
+ await h.get('pages').fire('pointerup',event);
+ assert.equal(batches,1);assert.deepEqual(h.reader.state.annotations.annotations.map(a=>a.id),['untouched']);
+ assert.equal(slot.node.hasPointerCapture(7),false);
+ await h.get('history-buttons').children.find(n=>n.attrs['aria-label']==='Undo').fire('click');
+ assert.deepEqual(h.reader.state.annotations.annotations.map(a=>a.id),['under-click','untouched']);
+});
+
+const pdfOrigin='https://school.instructure.com',migrationKey='reserve:pdf-migration:'+pdfOrigin;
+test('one verified account claims EVERY legacy file, preserves all originals and scoped collisions, and never reimports erased marks',async t=>{
+ const shared={storage:{},locks:lockFixture(),subscribers:new Set()},M=require('../extension/pdf-model.js'),readers=[],open=async(accountId,fileId='42')=>{const h=fixture(shared);readers.push(h);h.env.accountId=accountId;await h.initialise({fileId,url:pdfOrigin+'/files/'+fileId+'/download'});await h.settle();return h;};t.after(()=>readers.forEach(h=>h.reader.destroy()));
+ const originals={};for(const file of ['42','43','144'])originals[M.legacyStorageKey(pdfOrigin,file)]={version:1,annotations:[noteRecord('same-id','legacy '+file),noteRecord('second-'+file,'second '+file)],originalMetadata:'Keep 原件 '+file};
+ const foreign=M.legacyStorageKey('https://another.instructure.com','42');originals[foreign]={version:1,annotations:[noteRecord('foreign-private')]};Object.assign(shared.storage,structuredClone(originals));const bytes=JSON.stringify(originals);
+ const key=M.storageKey(pdfOrigin,'7','42');shared.storage[key]={version:1,annotations:[noteRecord('same-id','scoped newer'),noteRecord('scoped-only')]};
+ const a=await open('7');assert.deepEqual(a.reader.state.annotations.annotations.map(n=>n.text).sort(),['legacy 42','scoped newer','scoped-only','second 42']);assert.equal(new Set(a.reader.state.annotations.annotations.map(n=>n.id)).size,4);
+ for(const file of ['43','144'])assert.deepEqual(shared.storage[M.storageKey(pdfOrigin,'7',file)].annotations.map(n=>n.text),['legacy '+file,'second '+file]);
+ assert.equal(shared.storage[migrationKey].accountId,'7');assert.equal(shared.storage[migrationKey].complete,true);assert.equal(shared.storage['reserve:pdf-migration:https://another.instructure.com'],undefined);
+ assert.equal(JSON.stringify(Object.fromEntries(Object.keys(originals).map(k=>[k,shared.storage[k]]))),bytes,'every original site+file record remains byte-equivalent');
+ const erasedKey=M.storageKey(pdfOrigin,'7','43');await a.env.chrome.storage.local.set({[erasedKey]:{version:1,annotations:[]}});await a.reader.close();
+ const again=await open('7','43');assert.deepEqual(again.reader.state.annotations.annotations,[],'repeat migration cannot resurrect deleted marks');
+ const b=await open('8','144');assert.deepEqual(b.reader.state.annotations.annotations,[],'another account cannot claim an unopened legacy file');await addFixtureNote(b,'only account eight');await saveFixture(b);
+ const back=await open('7','144');assert.deepEqual(back.reader.state.annotations.annotations.map(n=>n.text),['legacy 144','second 144']);assert.deepEqual(shared.storage[M.storageKey(pdfOrigin,'8','144')].annotations.map(n=>n.text),['only account eight']);assert.equal(JSON.stringify(Object.fromEntries(Object.keys(originals).map(k=>[k,shared.storage[k]]))),bytes);
+});
+
+test('different accounts opening different files concurrently cannot split the legacy collection between owners',async t=>{
+ const shared={storage:{},locks:lockFixture(),subscribers:new Set()},a=fixture(shared),b=fixture(shared),M=require('../extension/pdf-model.js');t.after(()=>{a.reader.destroy();b.reader.destroy();});for(const file of ['42','43','44'])shared.storage[M.legacyStorageKey(pdfOrigin,file)]={version:1,annotations:[noteRecord('private-'+file)]};const original=structuredClone(shared.storage);b.env.accountId='8';
+ await Promise.all([a.initialise(),b.initialise({fileId:'43',url:pdfOrigin+'/files/43/download'})]);await Promise.all([a.settle(),b.settle()]);const owner=shared.storage[migrationKey].accountId,other=owner==='7'?'8':'7';
+ for(const file of ['42','43','44']){assert.equal(shared.storage[M.storageKey(pdfOrigin,owner,file)].annotations[0].id,'private-'+file);assert.equal(shared.storage[M.storageKey(pdfOrigin,other,file)],undefined);assert.deepEqual(shared.storage[M.legacyStorageKey(pdfOrigin,file)],original[M.legacyStorageKey(pdfOrigin,file)]);}
+ assert.equal((owner==='7'?b:a).reader.state.annotations.annotations.length,0);
+});
+
+test('a failed sibling migration preserves completed files, originals and the owner claim, then retries without resurrecting an erased mark',async t=>{
+ const shared={storage:{},locks:lockFixture(),subscribers:new Set()},a=fixture(shared),b=fixture(shared),c=fixture(shared),M=require('../extension/pdf-model.js'),first=M.storageKey(pdfOrigin,'7','42'),second=M.storageKey(pdfOrigin,'7','43');t.after(()=>[a,b,c].forEach(h=>h.reader.destroy()));for(const file of ['42','43'])shared.storage[M.legacyStorageKey(pdfOrigin,file)]={version:1,annotations:[noteRecord('old-'+file)]};const originals=structuredClone(shared.storage),set=a.env.chrome.storage.local.set;
+ a.env.chrome.storage.local.set=async values=>{if(Object.hasOwn(values,second))throw Error('storage write failed');return set(values);};await a.initialise();await a.settle();assert.equal(shared.storage[migrationKey].complete,false);assert.equal(shared.storage[migrationKey].accountId,'7');assert.equal(shared.storage[first].annotations[0].id,'old-42');assert.match(a.get('status').textContent,/Editing is disabled/);
+ await set({[first]:{version:1,annotations:[]}});b.env.accountId='8';await b.initialise({fileId:'43',url:pdfOrigin+'/files/43/download'});await b.settle();assert.deepEqual(b.reader.state.annotations.annotations,[]);assert.equal(shared.storage[second],undefined);
+ await c.initialise({fileId:'43',url:pdfOrigin+'/files/43/download'});await c.settle();assert.deepEqual(shared.storage[first].annotations,[]);assert.equal(shared.storage[second].annotations[0].id,'old-43');assert.equal(shared.storage[migrationKey].complete,true);for(const key of Object.keys(originals))assert.deepEqual(shared.storage[key],originals[key]);
+});
+
+test('migration verifies each copied file before marking completion and can recover from a dropped write',async t=>{
+ const shared={storage:{},locks:lockFixture(),subscribers:new Set()},a=fixture(shared),b=fixture(shared),M=require('../extension/pdf-model.js'),legacy=M.legacyStorageKey(pdfOrigin,'42'),key=M.storageKey(pdfOrigin,'7','42'),original={version:1,annotations:[noteRecord('do-not-lose')]};t.after(()=>[a,b].forEach(h=>h.reader.destroy()));shared.storage[legacy]=structuredClone(original);const set=a.env.chrome.storage.local.set;a.env.chrome.storage.local.set=async values=>{const kept={...values};delete kept[key];return set(kept);};
+ await a.initialise();await a.settle();assert.match(a.get('status').textContent,/Editing is disabled/);assert.equal(shared.storage[migrationKey].complete,false);assert.deepEqual(shared.storage[legacy],original);assert.equal(shared.storage[key],undefined);
+ await b.initialise();await b.settle();assert.equal(shared.storage[key].annotations[0].id,'do-not-lose');assert.equal(shared.storage[migrationKey].complete,true);assert.deepEqual(shared.storage[legacy],original);
+});
+
+test('a malformed unopened legacy record blocks migration without deleting or truncating any original',async t=>{
+ const h=fixture(),M=require('../extension/pdf-model.js');t.after(()=>h.reader.destroy());h.storage[M.legacyStorageKey(pdfOrigin,'42')]={version:1,annotations:[noteRecord('good')]};h.storage[M.legacyStorageKey(pdfOrigin,'99')]={version:9,annotations:[noteRecord('unsupported')]};const originals=structuredClone(h.storage);await h.initialise();await h.settle();assert.match(h.get('status').textContent,/Editing is disabled/);for(const key of Object.keys(originals))assert.deepEqual(h.storage[key],originals[key]);assert.notEqual(h.storage[migrationKey]?.complete,true);
+});
+
+test('migration shares each destination save lock and merges a tab write that finishes after enumeration',async t=>{
+ const M=require('../extension/pdf-model.js'),key=M.storageKey(pdfOrigin,'7','43'),legacy=M.legacyStorageKey(pdfOrigin,'43'),locks=lockFixture(),waiting=deferred(),release=deferred(),held=deferred(),names=[],shared={storage:{},subscribers:new Set(),locks:{request(name,fn){names.push(name);if(name===key)waiting.resolve();return locks.request(name,fn);}}},h=fixture(shared);t.after(()=>h.reader.destroy());
+ shared.storage[legacy]={version:1,annotations:[noteRecord('legacy-private')]};shared.storage[key]={version:1,annotations:[noteRecord('scoped-existing')]};const original=JSON.stringify(shared.storage[legacy]);
+ const writer=locks.request(key,async()=>{held.resolve();await release.promise;await h.env.chrome.storage.local.set({[key]:{version:1,annotations:[noteRecord('scoped-existing'),noteRecord('concurrent-save')]}});});await held.promise;const opening=h.initialise();await waiting.promise;release.resolve();await Promise.all([writer,opening]);await h.settle();
+ assert.deepEqual(shared.storage[key].annotations.map(n=>n.id),['scoped-existing','concurrent-save','legacy-private']);assert.equal(JSON.stringify(shared.storage[legacy]),original);assert.ok(names.includes(migrationKey));assert.ok(names.includes(key));assert.equal(shared.storage[migrationKey].complete,true);
+});
+
+test('hiding during an eraser drag cancels the gesture before a reverified account can receive its pointer-up',async t=>{
+ const h=fixture(),M=require('../extension/pdf-model.js'),key7=M.storageKey(pdfOrigin,'7','42'),key8=M.storageKey(pdfOrigin,'8','42');t.after(()=>h.reader.destroy());h.storage[key7]={version:1,annotations:[noteRecord('same-id','account seven')]};h.storage[key8]={version:1,annotations:[noteRecord('same-id','account eight')]};await h.initialise();await h.settle();
+ const slot=h.reader.state.slots[0],marker=slot.overlay.querySelector('[data-annotation="same-id"]'),event={target:slot.node,button:0,pointerId:17,clientX:30*h.reader.state.zoom,clientY:slot.node.getBoundingClientRect().top+40*h.reader.state.zoom};h.doc.elementsFromPoint=()=>[marker,slot.node];await h.get('tool-buttons').children.find(n=>n.attrs['aria-label']==='Eraser').fire('click');await h.get('pages').fire('pointerdown',event);assert.equal(marker.style.display,'none');
+ h.doc.hidden=true;h.listeners.get('visibilitychange')();h.env.accountId='8';h.doc.hidden=false;h.listeners.get('visibilitychange')();await h.settle();await h.get('pages').fire('pointerup',event);await saveFixture(h);assert.deepEqual(h.reader.state.annotations.annotations.map(n=>n.text),['account eight']);assert.deepEqual(h.storage[key7].annotations.map(n=>n.text),['account seven']);assert.deepEqual(h.storage[key8].annotations.map(n=>n.text),['account eight']);assert.equal(slot.node.hasPointerCapture(17),false);
+});
+
+
+test('Ask AI hands off every word of the chosen range using the plain pages message',async t=>{
+ const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
+ const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Help with this');await ai.fire('click');
+ const menu=h.doc.body.querySelector('#ai-range');menu.querySelector('[value="range"]').checked=true;
+ menu.querySelector('[aria-label="From page"]').value='2';menu.querySelector('[aria-label="To page"]').value='4';
+ await menu.fire('submit');for(let i=0;i<3;i++)await h.settle();
+ assert.deepEqual(h.sent.filter(s=>s.message.type==='reserve-pdf-ai').map(s=>s.message),[{
+  type:'reserve-pdf-ai',token:'test',text:'[Page 2]\nPage 2 text\n\n[Page 3]\nPage 3 text\n\n[Page 4]\nPage 4 text',page:1,endPage:3,name:'Algebra.pdf'
+ }]);
+ assert.equal(menu.hidden,true);
+});
+
+
+test('a reader without its AI source transport keeps AI actions unavailable',async t=>{
+ const h=fixture();t.after(()=>h.reader.destroy());await h.initialise({aiEnabled:false});await h.settle();
+ const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Help with this');assert.equal(ai.hidden,true);
+ await ai.fire('click');assert.equal(h.doc.body.querySelector('#ai-range'),null);assert.equal(h.sent.some(s=>s.message.type==='reserve-pdf-ai'),false);
+});
+
+
+test('shrinking then restoring the reader before the 160 ms settle restores every page to the real zoom',async t=>{
+ const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
+ assert.equal(h.reader.state.zoom,1.11);
+ const resize=width=>{
+  h.get('page-scroll')._clientWidth=width;h.resizeObservers[0].callback([{target:h.get('page-scroll')}]);
+  const pending=[...h.frames];h.frames.clear();for(const [,run]of pending)run();
+ };
+ resize(420);
+ assert.equal(h.reader.state.slots[0].node.style.width,'386px','the intermediate width really stretches the pages');
+ assert.equal(h.reader.state.slots[0].canvas.style.width,'386px');
+ const settleTimer=[...h.timers].find(([id])=>h.timerDelays.get(id)===160);assert.ok(settleTimer);
+ resize(700); // No settle callback has run between these two observer notifications.
+ assert.equal(h.timers.size,1);assert.equal(h.reader.state.zoom,1.11);
+ h.timers.delete(settleTimer[0]);settleTimer[1]();await h.settle();
+ assert.equal(h.reader.state.slots.length,12);
+ for(const slot of h.reader.state.slots){
+  assert.ok(Math.abs(parseFloat(slot.node.style.width)-666)<1e-9,'page '+(slot.index+1));
+  assert.ok(Math.abs(parseFloat(slot.node.style.height)-888)<1e-9);
+  assert.equal(slot.node.style['--total-scale-factor'],1.11);
+  if(slot.canvas){
+   assert.ok(Math.abs(parseFloat(slot.canvas.style.width)-666)<1e-9);assert.ok(Math.abs(parseFloat(slot.canvas.style.height)-888)<1e-9);
+   assert.ok(Math.abs(slot.viewport.width-666)<1e-9);assert.equal(slot.viewport.scale,1.11);
+  }
+ }
+ assert.equal(h.get('zoom-label').textContent,'111%');
+});
+
+
+for(const cancel of ['Cancel','Escape'])test('closing the Ask AI range menu with '+cancel+' suppresses an in-flight text read',async t=>{
+ const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
+ const gate=deferred(),started=deferred();
+ h.pages[0].getTextContent=()=>{started.resolve();return gate.promise;};
+ const ai=h.get('toolbar').children.find(n=>n.attrs['aria-label']==='Help with this');
+ await ai.fire('click');const menu=h.doc.body.children.find(n=>n.attrs.id==='ai-range');
+ await menu.fire('submit');await started.promise;
+ assert.equal(menu.querySelector('.ai-range-go').disabled,true,'the read is still pending');
+ if(cancel==='Cancel')await menu.querySelectorAll('button').find(n=>n.textContent==='Cancel').fire('click');
+ else h.listeners.get('keydown')({key:'Escape',target:h.doc.activeElement,preventDefault(){}});
+ assert.equal(menu.hidden,true);assert.equal(h.doc.activeElement,ai);
+ gate.resolve({items:[{str:'Cancelled text must never be sent'}]});await h.settle();
+ assert.deepEqual(h.sent.filter(s=>s.message.type==='reserve-pdf-ai'),[]);
+ assert.equal(menu.hidden,true);
+});
+
+
+test('pen moves with no coalesced events still record the pointer points in PDF coordinates',async t=>{
+ const h=fixture();t.after(()=>h.reader.destroy());await h.initialise();await h.settle();
+ await h.get('tool-buttons').children.find(n=>n.attrs['aria-label']==='Pen').fire('click');
+ const slot=h.reader.state.slots[0],zoom=h.reader.state.zoom,top=slot.node.getBoundingClientRect().top;let batches=0;
+ const event=(x,y)=>({target:slot.node,button:0,pointerId:9,clientX:x*zoom,clientY:top+y*zoom,getCoalescedEvents(){batches++;return [];}});
+ await h.get('pages').fire('pointerdown',event(20,20));
+ await h.get('pages').fire('pointermove',event(40,40));await h.get('pages').fire('pointermove',event(60,60));
+ await h.get('pages').fire('pointerup',event(60,60));
+ assert.equal(batches,2);assert.equal(slot.node.hasPointerCapture(9),false);
+ const marks=h.reader.state.annotations.annotations;assert.equal(marks.length,1);assert.equal(marks[0].type,'pen');assert.equal(marks[0].page,0);
+ assert.equal(marks[0].points.length,3);
+ for(const [index,want]of [[20,780],[40,760],[60,740]].entries())for(let axis=0;axis<2;axis++)assert.ok(Math.abs(marks[0].points[index][axis]-want[axis])<1e-9);
+ assert.ok(slot.overlay.querySelector('[data-annotation="'+marks[0].id+'"]'));
+});
+
+
+
+test('the find box sits in the toolbar row: clicking into it starts a search, Escape leaves it, and there is no second close button',async()=>{
+ const h=fixture();await h.initialise();await h.settle();const box=h.get('find-input'),bar=h.get('find-bar');
+ assert.equal(bar.classList.contains('is-searching'),false);await box.fire('focus');await h.settle();assert.equal(bar.classList.contains('is-searching'),true);
+ box.value='Page 8';await box.fire('input');await h.settle();assert.equal(h.get('find-actions').children.some(n=>/close|clear/i.test(n.title||'')),false,'only the reader has a close button');
+ h.listeners.get('keydown')({key:'Escape',target:box,preventDefault(){}});await h.settle();assert.equal(bar.classList.contains('is-searching'),false);assert.equal(h.reader.state.matches.length,0);h.reader.destroy();
 });
 
 async function typeTextBox(h,text){

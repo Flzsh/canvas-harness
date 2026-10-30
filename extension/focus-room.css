@@ -1,0 +1,741 @@
+/* Canvas Harness Plus: the Focus room. One focus session, two modes: the Home module (seal, +5, Finish, the task tag,
+   the time and the light arc) and the room, a whole drawn place that fills the screen. The drawings come from
+   focus-room-art.js and paint with the colour tokens at the end of this file (day, night with no white, theme kits).
+   Motion: only what never stops moves all the time (water, rain, fire, smoke, drifting cloud); everything else acts
+   once, on an event, with anticipation, action, settle and rest. Motion off, Still and reduced motion: no movement. */
+
+/* ---------------------------------------------------------------- shared drawing rules */
+:where(.fr-room,.fr-mod) svg .k { fill:none;stroke:var(--c-ink);stroke-linecap:round;stroke-linejoin:round; }
+:where(.fr-room,.fr-mod) svg .m { fill:none;stroke-linecap:round;stroke-linejoin:round; }
+:where(.fr-room,.fr-mod) svg .s-tagink { stroke:var(--c-tagink); }
+:where(.fr-room,.fr-mod) svg .s-sealink { stroke:var(--c-sealink); }
+:where(.fr-room,.fr-mod) svg .f-shadow { fill-opacity:.26; }
+:where(.fr-room,.fr-mod) button { appearance:none;background:none;border:0;margin:0;padding:0;font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent; }
+:where(.fr-room,.fr-mod) [hidden] { display:none!important; }
+:where(.fr-room,.fr-mod) :focus-visible { outline:2px dashed var(--c-uink);outline-offset:4px;border-radius:3px; }
+
+/* ---------------------------------------------------------------- the room */
+.rd .fr-room { position:fixed;inset:0;z-index:2147483000;overflow:hidden;background:var(--c-sky0);color:var(--c-uink);font-family:var(--rd-ui-font,"Segoe UI",system-ui,sans-serif);isolation:isolate;contain:strict;--k:var(--fr-k,1); }
+.fr-room .fr-world { position:absolute;inset:0;overflow:hidden; }
+.fr-room .fr-stage { position:absolute;left:50%;top:50%;width:1440px;height:900px;margin:-450px 0 0 -720px;transform:scale(var(--fr-s,1));transform-origin:50% 50%;contain:layout paint style; }
+.fr-room .fr-l { position:absolute;left:0;top:0;width:1440px;height:900px;overflow:visible;pointer-events:none; }
+/* the five depths of a place (sky, far, middle, near, front), so the room comes in and settles one ground at a time */
+.fr-room .fr-depth { position:absolute;left:0;top:0;width:1440px;height:900px;pointer-events:none; }
+/* the next place is built under the current one, painted while the wash is still coming */
+.fr-room .fr-stage-next { z-index:-1; }
+/* a ground still going in a share at a time is laid out but not painted; it is painted once, whole, when it is all in */
+.fr-room .fr-depth[data-fr-filling] { visibility:hidden; }
+/* opening and closing: a sheet of the room's own sky grows out of the module (and folds back into it) */
+.fr-room .fr-sheet { position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:0 0;display:none;pointer-events:none; }
+.fr-room .fr-sheet svg { display:block;width:100%;height:100%;overflow:visible; }
+.fr-room.fr-morphing { background:transparent; }
+.fr-room.fr-morphing .fr-sheet { display:block; }
+.fr-room.fr-morphing .fr-tint { visibility:hidden; }
+.fr-room .fr-arcline { fill:none;stroke:var(--c-arc);stroke-width:2.2;stroke-dasharray:2 12;stroke-linecap:round; }
+.fr-room .fr-sun { position:absolute;left:0;top:0;width:80px;height:80px;will-change:transform; }
+.fr-room .fr-sun svg { display:block;overflow:visible; }
+.fr-room .fr-sunbody,.fr-room .fr-moonbody { transform-box:fill-box;transform-origin:50% 50%; }
+.fr-room .fr-sun.fr-sun-jump,.fr-mod .fr-mod-sun.fr-sun-jump { transition:none!important; }
+.fr-room .fr-clouds { position:absolute;inset:0;pointer-events:none; }
+.fr-room .fr-cloud { position:absolute;left:0;transform:translateX(var(--x,0px));will-change:transform; }
+.fr-room .fr-glint { will-change:transform; }
+.fr-room .fr-glint .fr-gl { transition:opacity .5s var(--rd-fade,ease-in-out); }
+.fr-room .fr-cloud svg { display:block;overflow:visible; }
+/* Shadows are offset washes that follow the sun: long to the right at dawn, short at noon, long to the left at dusk. */
+.fr-room .fr-am { opacity:calc(max(0,1 - var(--fr-p,0) * 2.1) * .95); }
+.fr-room .fr-pm { opacity:calc(max(0,var(--fr-p,0) * 2.1 - 1.1) * .95); }
+/* at night only the shadows from the lantern (or the fire) are drawn */
+.fr-room .fr-nt { opacity:.9; }
+.fr-room .fr-tint { position:absolute;inset:0;background:var(--fr-tint,transparent);opacity:var(--fr-tint-o,0);pointer-events:none;mix-blend-mode:normal; }
+.fr-room[data-night="true"] .fr-tint { display:none; }
+.fr-room .fr-washer { position:absolute;top:-2%;bottom:-2%;left:0;width:160%;transform:translateX(-100%);pointer-events:none;z-index:3; }
+.fr-room .fr-washer svg { display:block;width:100%;height:100%; }
+.fr-room .fr-actors { position:absolute;inset:0;pointer-events:none; }
+.fr-room .fr-a { position:absolute; }
+.fr-room .fr-a svg { display:block;overflow:visible; }
+.fr-room .fr-firelight { position:absolute;left:0;top:0;width:1440px;height:900px;pointer-events:none;will-change:opacity; }
+.fr-room .fr-firelight svg { display:block; }
+
+/* the creatures: one pose shows at a time */
+.fr-room .fr-pose { opacity:0; }
+.fr-room :is(.fr-biscuit .p-sleep,.fr-heron .p-stand,.fr-kingfisher .p-perch,.fr-frog .p-sit,.fr-owl .p-front) { opacity:1; }
+.fr-room[data-pony="false"] .fr-biscuit { display:none; }
+.fr-room .fr-biscuit svg,.fr-room .fr-heron svg,.fr-room .fr-frog svg,.fr-room .fr-kingfisher svg { transform-origin:50% 92%; }
+.fr-room .fr-zz { opacity:.9; }
+.fr-room .fr-joy { opacity:0; }
+.fr-room .fr-hdrops { opacity:0; }
+.fr-room .fr-hdrop,.fr-room .fr-swirl,.fr-room .fr-sdrop { transform-box:fill-box;transform-origin:50% 50%; }
+.fr-room .fr-owlhead { transform-box:fill-box;transform-origin:50% 80%; }
+
+/* the lantern: dark until night or until the end of a session; its flame never stops once lit */
+.fr-room .fr-lantern :is(.fr-glow,.fr-lit,.fr-flame) { opacity:0;transition:opacity .6s ease; }
+.fr-room:is([data-night="true"],[data-fr-after="end"]) .fr-lantern :is(.fr-glow,.fr-lit,.fr-flame) { opacity:1; }
+/* where its light falls: a pool on the boards or the grass, and on the lake a broken streak that moves with the water */
+.fr-room :is(.fr-lpool,.fr-lrefl) { opacity:0;transition:opacity .6s ease; }
+.fr-room:is([data-night="true"],[data-fr-after="end"]) :is(.fr-lpool,.fr-lrefl) { opacity:1; }
+.fr-room .fr-lrefl .s2 { opacity:0; }
+.fr-room .fr-flame { transform-box:fill-box;transform-origin:50% 100%; }
+.fr-room .fr-kettle:not(.fr-kettle-fire) .fr-steam,.fr-room .fr-jet { display:none; }
+.fr-room .fr-start-life,.fr-room .fr-end-splash { opacity:0; }
+.fr-room .fr-swirl,.fr-room .fr-ring2,.fr-room .fr-sdrop { opacity:0; }
+.fr-room .fr-puff,.fr-room .fr-spark,.fr-room .fr-burst,.fr-room .fr-pring,.fr-room .fr-ripplering,.fr-room .fr-fish,.fr-room .fr-ff,.fr-room .fr-flames { transform-box:fill-box;transform-origin:50% 50%; }
+.fr-room .fr-flames { transform-origin:50% 100%; }
+/* still pictures of the things that move (Motion off, Still, reduced motion): a plume, rain hanging, one flame */
+.fr-room .fr-sh .f-light { opacity:.5; }
+.fr-room .fr-puff { opacity:calc(.3 - var(--i) * .045);transform:translate(calc(var(--i) * 5px),calc(var(--i) * -21px)) scale(calc(.8 + var(--i) * .3)); }
+/* chimney smoke: thin open wisps, each a little higher and fainter than the last, never more than a hand above the cap */
+.fr-room .fr-wisp { opacity:calc(.95 - var(--i) * .28);transform:translate(calc(var(--i) * 3px),calc(var(--i) * -10px)); }
+.fr-room .fr-ff { opacity:0; }
+.fr-room .fr-ff.f1 { opacity:1; }
+.fr-room .fr-spark { opacity:0; }
+.fr-room .fr-pring { opacity:.45; }
+.fr-room .fr-drip { opacity:0; }
+.fr-room .fr-shimmer.s2 { opacity:0; }
+.fr-room .fr-fall svg { overflow:hidden; }
+.fr-room .fr-foam .s2 { opacity:0; }
+.fr-room .fr-rain { position:absolute;left:0;top:0;width:1440px;height:900px;overflow:hidden;pointer-events:none;transition:opacity 3s ease; }
+.fr-room .fr-rain svg { display:block;transform:translateY(-90px);will-change:transform; }
+.fr-room .fr-rain-far { opacity:.8; }
+.fr-room[data-fr-after="end"] .fr-rain-near { opacity:.32; }
+.fr-room[data-fr-after="end"] .fr-rain-far { opacity:.45; }
+/* what the end leaves behind: Biscuit awake, the heron gone, the frog's eyes in the puddle */
+.fr-room[data-fr-after="end"] .fr-biscuit .p-sleep { opacity:0; }
+.fr-room[data-fr-after="end"] .fr-biscuit .p-stand { opacity:1; }
+.fr-room[data-fr-after="end"] .fr-zz { opacity:0; }
+.fr-room[data-fr-after="end"] .fr-heron { opacity:0; }
+.fr-room[data-fr-after="end"] .fr-frog { transform:translate(232px,24px); }
+.fr-room[data-fr-after="end"] .fr-frog .p-sit { opacity:0; }
+.fr-room[data-fr-after="end"] .fr-frog .p-eyes { opacity:1; }
+
+/* ---------------------------------------------------------------- the room's controls */
+.fr-room .fr-ui { position:absolute;inset:0;z-index:4;pointer-events:none; }
+.fr-room .fr-ui > * { pointer-events:auto; }
+.fr-room .fr-close { position:absolute;top:calc(26px * var(--k));right:calc(30px * var(--k));display:grid;justify-items:center;gap:1px;width:calc(52px * var(--k));color:var(--c-uink); }
+.fr-room .fr-close svg { width:calc(34px * var(--k));height:calc(34px * var(--k));overflow:visible; }
+.fr-room .fr-close .k { stroke:var(--c-uink); }
+.fr-room .fr-esc { font:600 calc(11px * var(--k))/1 var(--rd-ui-font,"Segoe UI",system-ui);color:var(--c-umuted); }
+.fr-room .fr-close:hover svg { transform:rotate(-6deg) scale(1.06);transition:transform .2s var(--rd-glide,cubic-bezier(.2,.8,.2,1)); }
+/* the task tag hangs on its string from a pin, top left */
+/* the task tag stays left of the sun's arc all session (focus-room.js sets --fr-tagw for the window's shape); its drawing
+   is made at that width, so the art sits 8 px out at the sides and 42 px above for the string */
+.fr-room .fr-task { position:absolute;left:4.5%;top:calc(9.5% + 30px * var(--k));width:calc(var(--fr-tagw,300) * 1px * var(--k));height:calc(136px * var(--k));rotate:-2deg;transform-origin:48% -30%;color:var(--c-tagink); }
+.fr-room .fr-task > svg { position:absolute;left:calc(-8px * var(--k));top:calc(-42px * var(--k));width:calc(100% + 16px * var(--k));height:calc(100% + 52px * var(--k));overflow:visible;pointer-events:none; }
+.fr-mod .fr-mod-tag > svg { position:absolute;left:-2.7%;top:-40.4%;width:105.3%;height:150%;overflow:visible;pointer-events:none; }
+.fr-room .fr-task-text,.fr-mod .fr-task-text { position:absolute;left:24%;right:5%;top:22%;display:grid;gap:.3em;min-width:0; }
+.fr-room .fr-task-text { left:calc(84px * var(--k));right:calc(14px * var(--k));top:calc(25px * var(--k)); }
+.fr-room .fr-task-text strong { font:650 calc(21px * var(--k))/1.16 var(--rd-display,Georgia,serif);color:var(--c-tagink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden; }
+.fr-room .fr-task-text small { font:500 calc(13px * var(--k))/1.3 var(--rd-ui-font,"Segoe UI",system-ui);color:var(--c-tagmeta);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden; }
+/* the course and the due time each stay whole: a line breaks between them, never inside "10:59 PM" */
+:where(.fr-room,.fr-mod) .fr-task-text small > span { white-space:nowrap; }
+.fr-room .fr-notebook,.fr-mod .fr-notebook { --c-course:var(--fr-course,#9CCB8E); }
+/* below the tag's left half: clear of its drawn edge and of the sun's dotted arc, which passes under its right half */
+.fr-room .fr-paused { position:absolute;left:22%;right:auto;bottom:calc(-34px * var(--k));z-index:2;display:flex;align-items:center;gap:4px;opacity:0;rotate:-5deg;pointer-events:none; }
+.fr-room .fr-paused-word { font:italic 600 calc(20px * var(--k))/1 var(--rd-display,Georgia,serif);color:var(--c-sealink);clip-path:inset(0 0 0 0); }
+/* at night the word is written in the warm cream ink of the night's words: maroon on the navy sky could not be read */
+.fr-room:is([data-night="true"],[data-place="fire"]) .fr-paused-word { color:var(--c-uink); }
+.fr-room .fr-pencil { display:block;width:calc(60px * var(--k));opacity:0; }
+.fr-room .fr-pencil svg { display:block;width:100%; }
+.fr-room[data-mode="paused"] .fr-paused,.fr-room[data-mode="break-paused"] .fr-paused { opacity:1; }
+/* Starry Night paints its swirls into the night sky (the Review deck's window and Grade impact's do the same) */
+.fr-room .fr-starry { display:none; }
+.rd[data-theme-kit="starry"] .fr-room .fr-starry { display:inline; }
+/* the time, the label, the tally and the seal row, in the quiet middle of the sky */
+/* the seal row keeps one height in every mode (the tally sits on the label's line, the lengths beside the seal), so the
+   seal never moves and never comes down onto the ridge; layout() lifts the column (--fr-lift) when a window's shape
+   would still bring the row down to a peak */
+.fr-room .fr-center { position:absolute;left:50%;top:17%;translate:0 calc(var(--fr-lift,0px) * -1);transform:translateX(-50%);display:grid;justify-items:center;gap:calc(4px * var(--k));width:max-content;max-width:92vw; }
+.fr-room .fr-time { font:650 calc(132px * var(--k))/1 var(--rd-display,Georgia,serif);font-variant-numeric:tabular-nums;letter-spacing:-.01em;color:var(--c-utime);padding:0 .05em; }
+.fr-room .fr-label { font:600 calc(14px * var(--k))/1.2 var(--rd-ui-font,"Segoe UI",system-ui);color:var(--c-ulabel);min-height:1.2em; }
+.fr-room .fr-line { display:flex;align-items:center;justify-content:center;gap:calc(12px * var(--k));height:calc(20px * var(--k)); }
+.fr-room .fr-line .fr-tally svg { width:auto;height:calc(18px * var(--k)); }
+/* three columns, the outer two of one width: the seal stands in the middle whatever hangs beside it */
+.fr-room .fr-controls { display:grid;grid-template-columns:1fr auto 1fr;align-items:center;column-gap:calc(18px * var(--k));margin-top:calc(12px * var(--k)); }
+.fr-room .fr-controls > .fr-lengths { grid-column:1;justify-self:end;display:flex;gap:calc(8px * var(--k)); }
+.fr-room .fr-controls > .fr-seal { grid-column:2; }
+.fr-room .fr-controls > .fr-side { grid-column:3;justify-self:start;display:flex;align-items:center;gap:calc(14px * var(--k)); }
+.fr-room .fr-place { position:absolute;right:calc(30px * var(--k));bottom:calc(28px * var(--k));display:grid;justify-items:end; }
+
+/* the wax seal: the one main button */
+:where(.fr-room,.fr-mod) .fr-seal { position:relative;display:grid;place-items:center;flex:none; }
+.fr-room .fr-seal { width:calc(104px * var(--k));height:calc(104px * var(--k)); }
+:where(.fr-room,.fr-mod) .fr-seal .fr-seal-art { position:absolute;inset:0;width:100%;height:100%;overflow:visible;transform-origin:50% 55%; }
+:where(.fr-room,.fr-mod) .fr-seal > span { position:relative;font:700 calc(18px * var(--k,1))/1 var(--rd-display,Georgia,serif);color:var(--c-sealtext);letter-spacing:.01em;text-align:center;max-width:64%;text-wrap:balance;pointer-events:none; }
+/* inside the inner ring: six letters ("Resume") a little smaller, two words ("Back to it") on two balanced lines */
+:where(.fr-room,.fr-mod) .fr-seal > span[data-len="long"] { font-size:calc(16px * var(--k,1)); }
+:where(.fr-room,.fr-mod) .fr-seal > span[data-len="words"] { font-size:calc(15px * var(--k,1));line-height:1.04;max-width:58%; }
+:where(.fr-room,.fr-mod) .fr-seal:hover .fr-seal-art { transform:translateY(-2px) rotate(-3deg);transition:transform .22s var(--rd-glide,cubic-bezier(.2,.8,.2,1)); }
+:where(.fr-room,.fr-mod) .fr-seal:active .fr-seal-art { transform:scale(.94);transition-duration:.08s; }
+/* hanging paper tags: +5, Finish, Break, the lengths, Quiet and the place */
+:where(.fr-room,.fr-mod) .fr-tagbtn { position:relative;display:inline-grid;place-items:center;flex:none;height:calc(44px * var(--k,1));min-width:calc(64px * var(--k,1));padding:0 calc(16px * var(--k,1)) 0 calc(24px * var(--k,1));transform-origin:14% 24%; }
+:where(.fr-room,.fr-mod) .fr-tagbtn .fr-tag-art { position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none; }
+:where(.fr-room,.fr-mod) .fr-tagbtn > span { position:relative;font:650 calc(17px * var(--k,1))/1 var(--rd-display,Georgia,serif);color:var(--c-tagtext);white-space:nowrap; }
+:where(.fr-room,.fr-mod) .fr-tagbtn:hover { translate:0 -1px; }
+:where(.fr-room,.fr-mod) .fr-tagbtn[aria-pressed="true"] .f-tag { fill:var(--c-tag2); }
+:where(.fr-room,.fr-mod) .fr-tagbtn[aria-pressed="true"] > span { text-decoration:underline 2px;text-underline-offset:3px; }
+.fr-room .fr-placetag i { position:relative;font-style:normal;margin-left:.35em;font-size:.8em;color:var(--c-tagtext); }
+.fr-room .fr-placetag { display:inline-flex;gap:.2em; }
+.fr-room .fr-tally,.fr-mod .fr-tally { display:inline-flex;align-items:center;gap:6px;font:600 calc(12px * var(--k,1))/1 var(--rd-ui-font,"Segoe UI",system-ui);color:var(--c-ulabel); }
+:where(.fr-room,.fr-mod) .fr-tally svg .k { stroke:var(--c-uink); }
+/* the place picker: four drawn cards, the volume knob and Quiet, rising from the place tag */
+.fr-room .fr-picker { position:absolute;right:0;bottom:calc(100% + 18px * var(--k));display:flex;align-items:flex-end;gap:calc(10px * var(--k));padding:calc(4px * var(--k));isolation:isolate; }
+/* the plank they stand on: behind them, a little wider and taller than the row */
+.fr-room .fr-picker-ground { position:absolute;left:calc(-16px * var(--k));right:calc(-16px * var(--k));top:calc(-12px * var(--k));bottom:calc(-12px * var(--k));z-index:-1;pointer-events:none;transform-origin:50% 100%; }
+.fr-room .fr-picker-ground svg { display:block;width:100%;height:100%;overflow:visible; }
+.fr-room .fr-card { display:grid;justify-items:center;gap:4px;width:calc(108px * var(--k));transform-origin:50% 100%; }
+/* the knob above Quiet, in one column: the plank stays short enough to keep clear of the middle of the place */
+.fr-room .fr-picker-tools { display:grid;justify-items:center;gap:calc(6px * var(--k));transform-origin:50% 100%; }
+.fr-room .fr-card svg { width:100%;display:block;overflow:visible; }
+.fr-room .fr-card > span { font:650 calc(14px * var(--k))/1 var(--rd-display,Georgia,serif);color:var(--c-uink); }
+.fr-room .fr-card[aria-pressed="true"] > span { text-decoration:underline 2px;text-underline-offset:3px; }
+.fr-room .fr-card:hover svg { translate:0 -3px;transition:translate .2s var(--rd-glide,cubic-bezier(.2,.8,.2,1)); }
+.fr-room .fr-knob { width:calc(58px * var(--k));height:calc(58px * var(--k));touch-action:none;cursor:ns-resize;border-radius:50%; }
+.fr-room .fr-knob svg { display:block;width:100%;height:100%;overflow:visible; }
+.fr-room .fr-knob-pointer { transform-box:view-box;transform-origin:50% 50%;transform:rotate(calc(-135deg + var(--fr-vol,.4) * 270deg)); }
+.fr-room .fr-sr { position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap; }
+.fr-room .fr-sr:not(:empty) { position:absolute;left:50%;bottom:calc(24px * var(--k));width:auto;height:auto;clip-path:none;transform:translateX(-50%);padding:4px 12px;font:600 13px/1.3 var(--rd-ui-font,"Segoe UI",system-ui);color:var(--c-tagtext);background:var(--c-tag);rotate:-1deg; }
+
+/* ---------------------------------------------------------------- the Home module: the room without its place */
+.rd .fr-mod { container:fr-mod / inline-size;color:var(--rd-ink,#141413);--k:1; }
+.fr-mod .fr-mod-in { display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"clock" "controls";justify-items:center;align-items:center;gap:6px 14px;padding:2px 0 4px; }
+.fr-mod .fr-mod-tag { grid-area:tag;position:relative;display:none;width:100%;max-width:300px;aspect-ratio:300/104;rotate:-2deg;transform-origin:48% -30%;margin:22px 0 4px;color:var(--c-tagink); }
+.fr-mod .fr-mod-tag .fr-task-text strong { font:650 15px/1.15 var(--rd-display,Georgia,serif);color:var(--c-tagink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden; }
+.fr-mod .fr-mod-tag .fr-task-text small { font:500 11px/1.25 var(--rd-ui-font,"Segoe UI",system-ui);color:var(--c-tagmeta);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden; }
+/* the drawn notebook on the tag has a column of its own: the words start clear of it */
+/* the module's tag text is in the flow: a two-line title with a two-line meta grows the paper (its drawing stretches
+   with it) instead of running off its edge */
+.fr-mod .fr-mod-tag .fr-task-text { position:relative;left:auto;right:auto;top:auto;padding:6.2% 5% calc(6% + 9px) calc(25% + 12px); }
+/* the time stands under the arc: its ends (where the sun rises and sets) come down to the top of the digits, never beside them */
+.fr-mod .fr-mod-clock { grid-area:clock;position:relative;display:grid;justify-items:center;width:100%;max-width:260px;padding-top:calc(min(180px,calc(100cqi - 32px)) * .44); }
+.fr-mod .fr-mod-arc { position:absolute;left:50%;top:0;--arc:min(180px,calc(100cqi - 32px));width:var(--arc);height:calc(var(--arc) / 2);margin-left:calc(var(--arc) / -2);overflow:visible;pointer-events:none; }
+.fr-mod .fr-arc-line { stroke:var(--rd-line-strong,#C9BFAE);stroke-width:1.6;stroke-dasharray:1.5 6;stroke-linecap:round; }
+.fr-mod .fr-mod-sun { transition:transform 1s linear; }
+.fr-mod .fr-mod-sun-wash { fill:var(--c-sun); }
+.fr-mod .fr-mod-sun-line { fill:none;stroke:var(--rd-ink,#141413);stroke-width:1.4;stroke-opacity:.75; }
+.fr-mod .fr-mod-time { position:relative;font:650 clamp(32px,14cqi,48px)/1 var(--rd-display,Georgia,serif);font-variant-numeric:tabular-nums;color:var(--rd-ink,#141413);margin-top:6px; }
+.fr-mod .fr-mod-sub { font:500 12px/1.3 var(--rd-ui-font,"Segoe UI",system-ui);color:var(--rd-muted,#5E5D59);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.fr-mod .fr-mod-label { font:600 11.5px/1.3 var(--rd-ui-font,"Segoe UI",system-ui);color:var(--rd-muted,#5E5D59); }
+.fr-mod .fr-mod-label:empty { display:none; }
+.fr-mod .fr-mod-controls { grid-area:controls;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px 8px;padding-inline:13px; }
+.fr-mod .fr-seal { width:52px;height:52px; }
+.fr-mod .fr-seal > span { font-size:12px; }
+.fr-mod .fr-seal > span[data-len="long"] { font-size:10.5px; }
+.fr-mod .fr-seal > span[data-len="words"] { font-size:10px;max-width:60%; }
+.fr-mod .fr-tagbtn { height:32px;min-width:44px;padding:0 10px 0 17px; }
+.fr-mod .fr-tagbtn > span { font-size:13.5px; }
+.fr-mod .fr-lengths { display:flex;gap:6px; }
+.fr-mod .fr-tally { --k:.9; }
+.fr-mod .fr-mod-place { grid-area:place;display:none;justify-items:center;gap:3px;width:104px;font:650 12.5px/1 var(--rd-display,Georgia,serif);color:var(--rd-ink,#141413); }
+.fr-mod .fr-mod-thumb svg { display:block;width:100%;overflow:visible; }
+.fr-mod .fr-mod-place:hover .fr-mod-thumb { translate:0 -2px;transition:translate .2s var(--rd-glide,cubic-bezier(.2,.8,.2,1)); }
+/* the module's head: a short title and the drawn corner arrows that grow it into the room (widgets.js) */
+.rd .rd-widget-head .fr-open { display:inline-grid;place-items:center;width:30px;height:30px;padding:0;margin-left:auto;color:var(--rd-muted,#5E5D59); }
+.rd .rd-widget-head .fr-open:hover { color:var(--rd-ink,#141413); }
+/* medium: the tag beside the time */
+@container fr-mod (min-width:380px) {
+ .fr-mod:not([data-size="s"]) .fr-mod-in { grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"tag clock" "tag controls";justify-items:center; }
+ .fr-mod:not([data-size="s"]) .fr-mod-tag { display:block; }
+ .fr-mod:not([data-size="s"]) .fr-mod-sub { display:none; }
+}
+/* large, beside other modules (about 400-660 px): the place card, the way into the room, stands under the tag */
+@container fr-mod (min-width:400px) {
+ .fr-mod[data-size="l"] .fr-mod-in { grid-template-areas:"tag clock" "place controls";align-items:center; }
+ .fr-mod[data-size="l"] .fr-mod-place { display:grid;align-self:start; }
+}
+/* large: tag, time, seal row and the place card in one line */
+@container fr-mod (min-width:660px) {
+ .fr-mod:not([data-size="s"]) .fr-mod-in { grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) auto auto;grid-template-areas:"tag clock controls place"; }
+ .fr-mod:not([data-size="s"]) .fr-mod-controls { flex-wrap:nowrap; }
+ .fr-mod:not([data-size="s"]) .fr-mod-place { display:grid; }
+ .fr-mod:not([data-size="s"]) .fr-seal { width:60px;height:60px; }
+}
+.rd[data-theme="dark"] .fr-mod .fr-mod-time { color:var(--c-utime); }
+.rd[data-theme="dark"] .fr-mod :is(.fr-mod-sub,.fr-mod-label) { color:var(--c-umuted); }
+.rd[data-theme="dark"] .fr-mod .fr-mod-sun-line { stroke:var(--c-ink); }
+.rd[data-theme="dark"] .fr-mod .fr-arc-line { stroke:var(--c-arc); }
+.fr-mod .fr-tally-new svg path:last-child,.fr-room .fr-tally-new svg path:last-child { stroke-dasharray:40;stroke-dashoffset:0; }
+
+/* ---------------------------------------------------------------- theme kits colour text with strong rules (a scene theme
+   paints every [class*=time] salmon, every small lavender and every button's words in its own ink): the room's and the
+   module's own words keep the colours of the paper, the wax and the sky they are written on */
+.rd.rd.rd.rd.rd :is(.fr-room,.fr-mod) .fr-tagbtn > span,.rd.rd.rd.rd.rd .fr-room .fr-placetag i { color:var(--c-tagtext)!important; }
+.rd.rd.rd.rd.rd :is(.fr-room,.fr-mod) .fr-seal > span { color:var(--c-sealtext)!important; }
+.rd.rd.rd.rd.rd :is(.fr-room,.fr-mod) .fr-task-text strong { color:var(--c-tagink)!important; }
+.rd.rd.rd.rd.rd :is(.fr-room,.fr-mod) .fr-task-text small { color:var(--c-tagmeta)!important; }
+.rd.rd.rd.rd.rd .fr-room .fr-time { color:var(--c-utime)!important; }
+.rd.rd.rd.rd.rd .fr-room :is(.fr-label,.fr-tally) { color:var(--c-ulabel)!important; }
+.rd.rd.rd.rd.rd .fr-room :is(.fr-card > span,.fr-close) { color:var(--c-uink)!important; }
+.rd.rd.rd.rd.rd .fr-room .fr-esc { color:var(--c-umuted)!important; }
+.rd.rd.rd.rd.rd .fr-room .fr-paused-word { color:var(--c-sealink)!important; }
+.rd.rd.rd.rd.rd .fr-room:is([data-night="true"],[data-place="fire"]) .fr-paused-word { color:var(--c-uink)!important; }
+.rd.rd.rd.rd.rd:is([data-theme-kit],[data-rd-data-theme]) .fr-mod .fr-mod-time { color:var(--rd-ink)!important; }
+.rd.rd.rd.rd.rd:is([data-theme-kit],[data-rd-data-theme]) .fr-mod :is(.fr-mod-sub,.fr-mod-label,.fr-tally) { color:var(--rd-muted)!important; }
+
+/* ---------------------------------------------------------------- motion: only with Gentle motion, never when hidden */
+@media (prefers-reduced-motion:no-preference) {
+ .fr-room[data-motion="gentle"] .fr-center { transition:translate .6s var(--rd-settle,cubic-bezier(.3,.7,.3,1)); }
+ /* the things that never stop: once the room has come in (data-fr-live, so the entrance never shares its frames with
+    them), and only while "Living drawings" is on; the one-shot moments below play either way */
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-cloud { animation:fr-drift var(--d,300s) linear var(--dl,0s) infinite; }
+ .fr-room[data-motion="gentle"] .fr-sun { transition:transform 1.05s linear; }
+ .fr-room[data-motion="gentle"] .fr-glint { transition:transform 1.05s linear; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-lrefl .s1 { animation:fr-foamA 2.6s ease-in-out infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-lrefl .s2 { animation:fr-foamB 2.6s ease-in-out infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-shimmer.s1 { animation:fr-shimA 7.4s ease-in-out infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-shimmer.s2 { animation:fr-shimB 7.4s ease-in-out infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-foam .s1 { animation:fr-foamA 1.7s ease-in-out infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-foam .s2 { animation:fr-foamB 1.7s ease-in-out infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-fallstrands { animation:fr-fall .8s linear infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-wisp { animation:fr-wisp 6.6s var(--rd-fade,ease-in-out) calc(var(--i) * -2.2s) infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-puff { animation:fr-rise 7.2s var(--rd-pen,cubic-bezier(.3,.1,.6,1)) calc(var(--i) * -1.44s) infinite; }
+ /* the kettle's steam stays by its spout: a short curl that thins out within about 70 px, never a ring drifting over the place */
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-steam .fr-puff { animation-name:fr-steamrise;animation-duration:3.6s;animation-delay:calc(var(--i) * -.9s); }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-rain-near svg { animation:fr-rain .124s linear infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-rain-far svg { animation:fr-rain .21s linear infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-drip { animation:fr-drip 2.1s cubic-bezier(.5,0,.9,.6) calc(var(--i) * -.37s) infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-pring { animation:fr-pring 2.6s var(--rd-settle,cubic-bezier(.2,.6,.4,1)) calc(var(--i) * -.87s) infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-ff.f1 { animation:fr-ff .42s steps(1,end) infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-ff.f2 { animation:fr-ff .42s steps(1,end) -.28s infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-ff.f3 { animation:fr-ff .42s steps(1,end) -.14s infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-flames { animation:fr-sway 2.3s ease-in-out infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-spark { animation:fr-spark 2.8s var(--rd-settle,cubic-bezier(.2,.5,.5,1)) calc(var(--i) * -.4s) infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-firelight { animation:fr-firelight 3.3s linear infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live]:is([data-night="true"],[data-fr-after="end"]) .fr-lantern .fr-flame { animation:fr-flick 1.9s ease-in-out infinite; }
+ .fr-room[data-motion="gentle"][data-hidden="true"] *,.fr-room[data-hidden="true"] * { animation-play-state:paused!important; }
+
+ /* acting once: the start of a session. The sun dips and rises (JS); a fish jumps, a ring spreads, embers burst. */
+ .fr-room[data-motion="gentle"]:is([data-fr-moment="start"],[data-fr-moment="wake-start"]) .fr-start-life { animation:fr-show 2.2s linear both; }
+ .fr-room[data-motion="gentle"]:is([data-fr-moment="start"],[data-fr-moment="wake-start"]) .fr-start-life .fr-swirl { animation:fr-swirl .5s var(--rd-pen,cubic-bezier(.4,0,.6,1)) both; }
+ .fr-room[data-motion="gentle"]:is([data-fr-moment="start"],[data-fr-moment="wake-start"]) .fr-start-life .fr-ripplering { animation:fr-ring 1.4s var(--rd-settle,cubic-bezier(.2,.7,.3,1)) .3s both; }
+ .fr-room[data-motion="gentle"]:is([data-fr-moment="start"],[data-fr-moment="wake-start"]) .fr-start-life .fr-ring2 { animation:fr-ring 1s var(--rd-settle,cubic-bezier(.2,.7,.3,1)) 1.06s both; }
+ .fr-room[data-motion="gentle"]:is([data-fr-moment="start"],[data-fr-moment="wake-start"]) .fr-fish { animation:fr-fishjump .8s var(--rd-pen,cubic-bezier(.3,0,.5,1)) .3s both; }
+ .fr-room[data-motion="gentle"]:is([data-fr-moment="start"],[data-fr-moment="wake-start"]) .fr-burst { animation:fr-burst 1.5s var(--rd-settle,cubic-bezier(.15,.6,.4,1)) calc(var(--i) * 40ms) both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="wake-start"] .fr-biscuit svg { animation:fr-settle 1.4s var(--rd-settle,cubic-bezier(.3,.7,.3,1)) both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="wake-start"] .fr-biscuit .p-stand { animation:fr-stand-to-sleep 1.4s linear both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="wake-start"] .fr-biscuit .p-sleep { animation:fr-sleep-in 1.4s linear both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="wake-start"] .fr-heron { animation:fr-heron-back 1.6s var(--rd-settle,cubic-bezier(.2,.7,.3,1)) both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="wake-start"] .fr-heron .p-stand { animation:fr-hb-stand 1.6s linear both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="wake-start"] .fr-heron .p-fly2 { animation:fr-hb-glide 1.6s linear both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="wake-start"] .fr-frog { animation:fr-frog-back 1.2s var(--rd-settle,cubic-bezier(.3,.6,.4,1)) both; }
+
+ /* acting once: the end. The lantern lights, Biscuit wakes and cheers, and each place's own life acts. */
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-lantern :is(.fr-glow,.fr-lit,.fr-flame) { transition:none;animation:fr-lightup 1.6s linear .3s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-biscuit svg { animation:fr-b-body 5s linear both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-biscuit .p-sleep { animation:fr-b-sleep 5s linear both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-biscuit .p-stand { animation:fr-b-stand 5s linear both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-biscuit .p-cheer { animation:fr-b-cheer 5s linear both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-zz { animation:fr-zz-off .6s ease-in both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-joy { animation:fr-joy 5s linear both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-heron { animation:fr-heron-fly 4.6s linear .5s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-heron .p-stand { animation:fr-h-stand 4.6s linear .5s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-heron .p-crouch { animation:fr-h-crouch 4.6s linear .5s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-heron .p-fly1 { animation:fr-h-up 4.6s linear .5s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-heron .p-fly2 { animation:fr-h-mid 4.6s linear .5s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-heron .p-fly3 { animation:fr-h-down 4.6s linear .5s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-hdrops { animation:fr-show 1.4s linear 1.5s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-hdropfall { animation:fr-hdrops .62s cubic-bezier(.5,0,.9,.6) 1.5s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-hring { animation:fr-ring .9s var(--rd-settle,cubic-bezier(.2,.7,.3,1)) 2.06s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-kingfisher { animation:fr-kf-dive 3.4s linear .6s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-kingfisher .p-perch { animation:fr-kf-perch 3.4s linear .6s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-kingfisher .p-dive { animation:fr-kf-divepose 3.4s linear .6s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-end-splash { animation:fr-show 1.7s linear 1.75s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-end-splash .fr-ripplering { animation:fr-ring 1.5s var(--rd-settle,cubic-bezier(.2,.7,.3,1)) 1.8s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-end-splash .fr-sdrop { animation:fr-sdrop .7s var(--rd-settle,cubic-bezier(.2,.6,.5,1)) calc(1.82s + var(--i) * 20ms) both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-frog { animation:fr-frog-hop 2.4s linear 1.4s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-frog .p-sit { animation:fr-frog-sit 2.4s linear 1.4s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-frog .p-leap { animation:fr-frog-leap 2.4s linear 1.4s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-frog .p-eyes { animation:fr-frog-eyes 2.4s linear 1.4s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-rain-near { opacity:.32; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-rain-far { opacity:.45; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-owlhead { animation:fr-owl-turn 4.2s var(--rd-pen,cubic-bezier(.4,0,.3,1)) .4s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-owl .p-front { animation:fr-owl-front 4.2s linear .4s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-owl .p-side { animation:fr-owl-side 4.2s linear .4s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-kettle-fire .fr-jet { display:inline;animation:fr-show 2.6s linear 2.2s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-kettle-fire .fr-jet .fr-puff { animation:fr-jet .55s linear calc(var(--i) * -.11s) infinite; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-kettle-fire svg { animation:fr-rattle 2.6s linear 2.2s both; }
+ /* pause and resume: the pencil writes "paused" on the tag; resuming rubs it out */
+ .fr-room[data-motion="gentle"] .fr-paused.fr-write .fr-paused-word { animation:fr-write .9s var(--rd-pen,cubic-bezier(.4,0,.6,1)) both; }
+ .fr-room[data-motion="gentle"] .fr-paused.fr-write .fr-pencil { animation:fr-pencil .9s var(--rd-pen,cubic-bezier(.4,0,.6,1)) both; }
+ .fr-room[data-motion="gentle"] .fr-paused.fr-rub { opacity:1;animation:fr-rub .7s ease-in both; }
+ :is(.fr-room[data-motion="gentle"],.rd:not([data-motion-style="off"]):not([data-motion-style="still"]) .fr-mod) .fr-tally-new svg path:last-child { animation:fr-draw .55s var(--rd-settle,cubic-bezier(.3,.7,.3,1)) both; }
+}
+/* Motion off and Still: nothing travels; the end shows its rest at once (JS sets data-fr-after straight away). */
+.fr-room:not([data-motion="gentle"]) *,.rd[data-motion-style="off"] .fr-mod *,.rd[data-motion-style="still"] .fr-mod * { animation:none!important;transition:none!important; }
+@media (prefers-reduced-motion:reduce) { .fr-room *,.fr-mod * { animation:none!important;transition:none!important; } }
+
+/* ---------------------------------------------------------------- keyframes */
+@keyframes fr-drift { from { transform:translateX(calc(var(--cw,380px) * -1)); } to { transform:translateX(1480px); } }
+@keyframes fr-shimA { 0%,100% { opacity:1;transform:translateX(0); } 50% { opacity:0;transform:translateX(9px); } }
+@keyframes fr-shimB { 0%,100% { opacity:0;transform:translateX(-9px); } 50% { opacity:1;transform:translateX(0); } }
+@keyframes fr-foamA { 0%,100% { opacity:1;transform:translate(0,0); } 50% { opacity:.15;transform:translate(3px,2px); } }
+@keyframes fr-foamB { 0%,100% { opacity:.15;transform:translate(-3px,1px); } 50% { opacity:1;transform:translate(0,0); } }
+@keyframes fr-fall { from { transform:translateY(0); } to { transform:translateY(44px); } }
+@keyframes fr-wisp { 0% { opacity:0;transform:translate(0,10px); } 25% { opacity:.9; } 70% { opacity:.5; } 100% { opacity:0;transform:translate(9px,-26px); } }
+@keyframes fr-steamrise { 0% { opacity:0;transform:translate(0,0) scale(.5); } 15% { opacity:.55; } 65% { opacity:.18; } 100% { opacity:0;transform:translate(10px,-70px) scale(1.4); } }
+@keyframes fr-rise { 0% { opacity:0;transform:translate(0,0) scale(.45); } 12% { opacity:.7; } 60% { opacity:.42; } 100% { opacity:0;transform:translate(16px,-200px) scale(2.1); } }
+/* one period of the drops (RAIN_P in focus-room-art.js) a loop, at the speed the whole screen fell before */
+@keyframes fr-rain { from { transform:translateY(-180px); } to { transform:translateY(0); } }
+@keyframes fr-drip { 0%,58% { opacity:0;transform:translateY(0) scale(.6); } 62% { opacity:1;transform:translateY(0) scale(1,1.2); } 96% { opacity:1;transform:translateY(176px) scale(.8,1.3); } 100% { opacity:0;transform:translateY(184px) scale(1.4,.4); } }
+@keyframes fr-pring { 0% { opacity:.95;transform:scale(.18); } 100% { opacity:0;transform:scale(1.45); } }
+@keyframes fr-ff { 0% { opacity:1; } 33.34%,100% { opacity:0; } }
+@keyframes fr-sway { 0%,100% { transform:scale(1,1) skewX(0deg); } 30% { transform:scale(.97,1.06) skewX(-2.4deg); } 65% { transform:scale(1.03,.95) skewX(1.8deg); } }
+@keyframes fr-spark { 0% { opacity:0;transform:translate(0,0); } 8% { opacity:1; } 70% { opacity:.8; } 100% { opacity:0;transform:translate(18px,-150px); } }
+@keyframes fr-firelight { 0%,100% { opacity:1; } 18% { opacity:.86; } 31% { opacity:.97; } 47% { opacity:.82; } 63% { opacity:1; } 80% { opacity:.9; } }
+@keyframes fr-flick { 0%,100% { transform:scale(1,1); } 30% { transform:scale(.9,1.1) skewX(-4deg); } 62% { transform:scale(1.06,.93) skewX(3deg); } }
+@keyframes fr-show { 0% { opacity:0; } 4%,90% { opacity:1; } 100% { opacity:0; } }
+@keyframes fr-ring { 0% { opacity:1;transform:scale(.15); } 70% { opacity:.6; } 100% { opacity:0;transform:scale(1.35); } }
+/* the fish: drawn facing right, nose up as it rises, nose down as it falls back; the clip hides it under the surface */
+@keyframes fr-fishjump { 0% { transform:translate(-30px,16px) rotate(-40deg); } 50% { transform:translate(0,-34px) rotate(0deg); } 100% { transform:translate(30px,16px) rotate(50deg); } }
+@keyframes fr-swirl { 0% { opacity:0;transform:scale(.5); } 40% { opacity:1;transform:translateY(0) scale(1); } 75% { opacity:1;transform:translateY(2px) scale(1.06); } 100% { opacity:0;transform:translateY(2px) scale(1.3); } }
+@keyframes fr-sdrop { 0% { opacity:0;transform:translate(0,0); } 10% { opacity:1; } 45% { transform:translate(calc(var(--dx) * 1.2),calc(var(--k) * 16px)); } 100% { opacity:0;transform:translate(calc(var(--dx) * 2),6px); } }
+@keyframes fr-hdrops { 0% { transform:translateY(0); } 100% { transform:translateY(30px); } }
+@keyframes fr-burst { 0% { opacity:0;transform:translate(0,0) scale(.6); } 10% { opacity:1;transform:translate(0,-10px) scale(1.2); } 100% { opacity:0;transform:translate(calc((var(--i) - 2.5) * 16px),-130px) scale(.6); } }
+@keyframes fr-lightup { 0% { opacity:0; } 12% { opacity:.55; } 18% { opacity:.1; } 30% { opacity:.8; } 36% { opacity:.4; } 52%,100% { opacity:1; } }
+/* Biscuit at the end: a stir (anticipation), up onto the hooves with a hop, a cheer rearing twice, settle, stand at rest */
+@keyframes fr-b-body {
+ 0% { transform:none; } 7% { transform:translateY(1px) scale(1.03,.94); } 12% { transform:translateY(-14px) scale(.97,1.05); } 16% { transform:translateY(0) scale(1.04,.95); } 20% { transform:none; }
+ 30% { transform:translateY(2px) scale(1.03,.96); } 38% { transform:translateY(-18px) rotate(-3deg); } 46% { transform:translateY(-2px) rotate(0); } 54% { transform:translateY(-16px) rotate(-3deg); } 62% { transform:translateY(0) scale(1.03,.96); } 68%,100% { transform:none; } }
+@keyframes fr-b-sleep { 0%,9.9% { opacity:1; } 10%,100% { opacity:0; } }
+@keyframes fr-b-stand { 0%,9.9% { opacity:0; } 10%,31.9% { opacity:1; } 32%,63.9% { opacity:0; } 64%,100% { opacity:1; } }
+@keyframes fr-b-cheer { 0%,31.9% { opacity:0; } 32%,63.9% { opacity:1; } 64%,100% { opacity:0; } }
+@keyframes fr-zz-off { to { opacity:0;transform:translate(10px,-14px); } }
+@keyframes fr-joy { 0%,33% { opacity:0;transform:scale(.6); } 38% { opacity:1;transform:scale(1.15); } 44%,58% { opacity:1;transform:scale(1); } 66%,100% { opacity:0; } }
+@keyframes fr-stand-to-sleep { 0%,59.9% { opacity:1; } 60%,100% { opacity:0; } }
+@keyframes fr-sleep-in { 0%,59.9% { opacity:0; } 60%,100% { opacity:1; } }
+@keyframes fr-settle { 0% { transform:none; } 40% { transform:translateY(2px) scale(1.02,.97); } 60% { transform:translateY(4px) scale(1.04,.93); } 78% { transform:translateY(-1px) scale(.99,1.02); } 100% { transform:none; } }
+/* the heron: still, a crouch, a heavy first wingbeat, then away over the far shore */
+@keyframes fr-heron-fly { 0%,22% { transform:none;opacity:1; } 30% { transform:translate(-30px,-40px) scale(.98); } 45% { transform:translate(-150px,-150px) scale(.9); } 65% { transform:translate(-420px,-290px) scale(.74); } 85% { transform:translate(-760px,-400px) scale(.58);opacity:1; } 100% { transform:translate(-1000px,-460px) scale(.48);opacity:0; } }
+@keyframes fr-h-stand { 0%,9.9% { opacity:1; } 10%,100% { opacity:0; } }
+@keyframes fr-h-crouch { 0%,9.9% { opacity:0; } 10%,21.9% { opacity:1; } 22%,100% { opacity:0; } }
+/* coming back after a new start: it glides in from the right, wings half open, and lands on its feet */
+@keyframes fr-heron-back { 0% { opacity:0;transform:translate(70px,-56px) scale(.94); } 15% { opacity:1; } 62% { transform:translate(0,4px) scale(1.01); } 80% { transform:translate(0,-2px); } 100% { opacity:1;transform:none; } }
+@keyframes fr-hb-glide { 0%,55% { opacity:1; } 55.1%,100% { opacity:0; } }
+@keyframes fr-hb-stand { 0%,55% { opacity:0; } 55.1%,100% { opacity:1; } }
+/* the kingfisher: a bob on the branch, a straight dive, the splash, back up to the branch with a shake */
+@keyframes fr-kf-dive { 0%,12% { transform:none; } 18% { transform:translateY(-6px); } 36% { transform:translate(-405px,94px); } 40% { transform:translate(-407px,102px); } 50% { transform:translate(-402px,92px); } 62% { transform:translate(-270px,30px); } 80% { transform:translate(-30px,-12px); } 88% { transform:translateY(3px); } 94%,100% { transform:none; } }
+/* bill first into the water, gone under for a moment, up again facing home */
+@keyframes fr-kf-perch { 0%,17.9% { opacity:1; } 18%,49.9% { opacity:0; } 50%,100% { opacity:1; } }
+@keyframes fr-kf-divepose { 0%,17.9% { opacity:0; } 18%,38.9% { opacity:1; } 39%,100% { opacity:0; } }
+/* the frog: a crouch, a leap in an arc, into the puddle, only its eyes left above the water */
+@keyframes fr-frog-hop { 0%,20% { transform:none; } 28% { transform:translate(0,3px) scale(1.06,.9); } 34% { transform:translate(40px,-60px); } 46% { transform:translate(132px,-92px); } 60% { transform:translate(212px,-20px); } 66% { transform:translate(232px,26px); } 74% { transform:translate(232px,20px); } 100% { transform:translate(232px,24px); } }
+@keyframes fr-frog-sit { 0%,29.9% { opacity:1; } 30%,100% { opacity:0; } }
+@keyframes fr-frog-leap { 0%,29.9% { opacity:0; } 30%,64.9% { opacity:1; } 65%,100% { opacity:0; } }
+@keyframes fr-frog-eyes { 0%,64.9% { opacity:0; } 65%,100% { opacity:1; } }
+@keyframes fr-frog-back { 0% { opacity:0;transform:translate(0,12px); } 50% { opacity:1;transform:translate(0,-6px); } 75% { transform:translate(0,2px); } 100% { opacity:1;transform:none; } }
+/* the owl: its head turns to you, holds, and turns back; the kettle whistles and rattles on the stones */
+@keyframes fr-owl-turn { 0% { transform:none; } 8% { transform:rotate(6deg); } 20% { transform:rotate(-14deg); } 26% { transform:rotate(-9deg); } 30%,70% { transform:rotate(-11deg); } 80% { transform:rotate(5deg); } 88% { transform:rotate(-2deg); } 94%,100% { transform:none; } }
+@keyframes fr-owl-front { 0%,19.9% { opacity:1; } 20%,79.9% { opacity:0; } 80%,100% { opacity:1; } }
+@keyframes fr-owl-side { 0%,19.9% { opacity:0; } 20%,79.9% { opacity:1; } 80%,100% { opacity:0; } }
+@keyframes fr-jet { 0% { opacity:0;transform:translate(0,0) scale(.4); } 15% { opacity:.85; } 100% { opacity:0;transform:translate(60px,-30px) scale(1.8); } }
+@keyframes fr-rattle { 0%,100% { transform:none; } 10%,30%,50%,70% { transform:translateY(-1.5px) rotate(-1deg); } 20%,40%,60%,80% { transform:translateY(0) rotate(1deg); } }
+@keyframes fr-write { from { clip-path:inset(0 100% 0 0); } to { clip-path:inset(0 0 0 0); } }
+@keyframes fr-pencil { 0% { opacity:0;transform:translate(-90px,-6px) rotate(-8deg); } 10% { opacity:1; } 30% { transform:translate(-60px,2px) rotate(-4deg); } 50% { transform:translate(-36px,-4px) rotate(-10deg); } 70% { transform:translate(-14px,3px) rotate(-3deg); } 88% { opacity:1;transform:translate(0,0) rotate(-6deg); } 100% { opacity:0;transform:translate(10px,-10px) rotate(-6deg); } }
+@keyframes fr-rub { 0% { opacity:1;transform:none; } 20% { transform:translateX(-3px); } 40% { opacity:.7;transform:translateX(3px); } 60% { transform:translateX(-2px); } 100% { opacity:0;transform:none; } }
+@keyframes fr-draw { from { stroke-dashoffset:40; } to { stroke-dashoffset:0; } }
+/* ---------------------------------------------------------------- night ink
+   Night scenes are inked dark: the lines stay deeper than the washes they hold, and the light comes from the washes
+   (the moon, the lantern, the fire, a lit window). Only the stage: the room's controls keep their own ink. The
+   blueprint kit is a drawing in pale line on blue by design, so its stage keeps the kit's ink. */
+.fr-room[data-night="true"] .fr-stage{--c-ink:#11141B}
+.fr-room[data-kit="true"][data-night="true"]:not([data-kit-dark="false"]) .fr-stage{--c-ink:color-mix(in srgb,#11141B 86%,var(--rd-bg,#232B40))}
+.fr-room[data-kit="true"][data-night="true"][data-kit-dark="false"] .fr-stage{--c-ink:color-mix(in srgb,#11141B 92%,var(--rd-accent,#D9AE6A))}
+.rd[data-theme-kit="blueprint"] .fr-room.fr-room.fr-room .fr-stage{--c-ink:inherit}
+/* Winter: the snow falls slowly in two depths, the near flakes a little faster (the same sheet mechanism as the rain) */
+.fr-room .fr-snow-far { opacity:.85; }
+.fr-room[data-fr-after="end"] .fr-snow-near { opacity:.5; }
+@media (prefers-reduced-motion: no-preference) {
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-snow-near svg { animation:fr-rain 3.4s linear infinite; }
+ .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-snow-far svg { animation:fr-rain 5.6s linear infinite; }
+}
+/* Winter: at the start, a little powder slides off a bough of the near spruce */
+@media (prefers-reduced-motion: no-preference) {
+ .fr-room[data-motion="gentle"]:is([data-fr-moment="start"],[data-fr-moment="wake-start"]) .fr-start-life .fr-pfall { animation:fr-pfall 1.6s var(--rd-settle,cubic-bezier(.2,.7,.3,1)) calc(var(--i) * 70ms) both; }
+}
+@keyframes fr-pfall { 0% { opacity:0;transform:translateY(-4px); } 18% { opacity:1; } 100% { opacity:0;transform:translateY(64px); } }
+
+/* ---------------------------------------------------------------- colour tokens (made by build-focus/make-css.cjs from palette.cjs) */
+.fr-room,.fr-mod{--c-ink:#141413;--c-sky0:#EEF2EE;--c-sky1:#E7EFEC;--c-sky2:#E2ECE6;--c-sky3:#DCE8E2;--c-sun:#F2C14E;--c-sun2:#F6DE9A;--c-moon:#E6C68C;--c-moon2:#CDAF78;--c-star:#E6C68C;--c-cloud:#FFFDF8;--c-cloud2:#ECE8DE;--c-mtnfar:#D9DFDD;--c-mtn:#C8D2CE;--c-snow:#F7F6F1;--c-hill:#C2CFA9;--c-treefar:#C9D4C2;--c-tree1:#A9BF95;--c-tree2:#B4C59F;--c-tree3:#9DB287;--c-treeshade:#7D8B5F;--c-leaf:#B9C99A;--c-leaf2:#A7B996;--c-leaf3:#C9D7A4;--c-water:#BCD7E2;--c-water2:#A6C6D4;--c-water3:#F1F7F6;--c-ripple:#86AEC2;--c-foam:#F1F7F6;--c-fallline:#F1F7F6;--c-glint:#FFF3CF;--c-mist:#F2F2EF;--c-rain:#8FA3B0;--c-ground:#DCE5C8;--c-ground2:#C9D7B9;--c-sand:#E8DFC9;--c-sand2:#D6CBB3;--c-path:#E2D7C3;--c-grass:#7D8B5F;--c-grass2:#94A275;--c-fern:#6F8A4E;--c-moss:#A7B996;--c-rock:#D3CDBF;--c-rock2:#B7AF9F;--c-wood:#C9A27A;--c-wood2:#B08A62;--c-wood3:#8C6A48;--c-bark:#A88B6A;--c-birch:#F4F1E8;--c-roof:#B9644A;--c-roof2:#8F4430;--c-fl1:#F2C14E;--c-fl2:#E0855C;--c-fl3:#C9B6CC;--c-fl4:#FFFDF8;--c-lily:#A9BF95;--c-reed:#6F7D4E;--c-reed2:#8A9A6B;--c-cattail:#7A4A2A;--c-boat:#B97E54;--c-boat2:#96603D;--c-heron:#CDD1D3;--c-heron2:#AEB4B8;--c-heronw:#F3F1EA;--c-heronleg:#C9A55A;--c-snowf:#F6F8F8;--c-snow2:#D3DDE5;--c-ice:#CFE3EC;--c-flake:#FFFFFF;--c-ice2:#B3CEDB;--c-lowsun:#F7D7BF;--c-beak:#D9A441;--c-eye:#141413;--c-eyeshine:#FFFDF8;--c-pony:#F1DEC0;--c-pony2:#E2CBA6;--c-mane:#7A4A2A;--c-mane2:#9A6440;--c-muzzle:#EBCDBB;--c-hoof:#6B5A48;--c-blanket:#E2463B;--c-blanket2:#B5372C;--c-mouth:#9A3A30;--c-shade:#9C9583;--c-shadow:#7E7A6C;--c-light:#FFF4D6;--c-glow:#F3CE7E;--c-glowcore:#F6DE9A;--c-glass:#ECE5D5;--c-iron:#4A4F55;--c-candle:#F2EBDD;--c-flame:#F2A957;--c-flame2:#E2463B;--c-flame3:#F6DE9A;--c-ember:#E8803A;--c-ash:#8E8A82;--c-smoke:#C8C7B8;--c-steam:#F2F0E8;--c-kettle:#3D3B36;--c-kettle2:#5A574F;--c-bucket:#8C9AA0;--c-mug:#4F86B8;--c-rope:#C9A27A;--c-hyd1:#7FA9C9;--c-hyd2:#A7A2D2;--c-hyd3:#C9D7E6;--c-blue:#4F86B8;--c-blue2:#3A6A96;--c-frog:#8FA868;--c-frog2:#6E8A4E;--c-kingfisher:#3E8FB0;--c-breast:#E0855C;--c-owl:#8A7A62;--c-owl2:#A8987C;--c-owleye:#D9AE6A;--c-tent:#E7DCC4;--c-tent2:#CFC2AC;--c-tentlit:#F3CE7E;--c-fish:#C9B07A;--c-course:#9CCB8E;--c-string:#9A6440;--c-page:#FBF8EF;--c-page2:#E6DFCC;--c-seed:#E9E4D6;--c-rule:#9FB8C8;--c-cap:#C0654A;--c-duck:#B59A78;--c-duck2:#8F7558;--c-duckhead:#4E7A5A;--c-wing:#DDE8EC;--c-can:#7E9AA6;--c-can2:#61808C;--c-clay:#C47A52;--c-clay2:#A8603E;--c-snail:#C9B49A;--c-shell:#B98A5A;--c-enamel:#3F6E8E;--c-enamel2:#DDE6EA;--c-tin:#A9AFB2;--c-paper:#F4EFE4;--c-paper2:#EAE2D2;--c-tag:#FFFDF8;--c-tag2:#EBDBBC;--c-bigtag:#EBDBBC;--c-tagshade:#141413;--c-taghole:#FAF9F5;--c-tagfiber:#C9B69A;--c-tagink:#141413;--c-seal:#B5452E;--c-sealink:#7E2E1E;--c-sealring:#F1C8B8;--c-seallight:#D46A4E;--c-sealdark:#8E3322;--c-sealshadow:#141413;--c-raincloud:#C9CED0;--c-raincloud2:#AEB5B9;--c-washedge:#CDBF9F;--c-heronp:#55595E;--c-kfback:#5FB4C9;--c-fish2:#A88E5A;--c-bag:#C2603E;--c-bagend:#E7DCC4;--c-knob:#EBDBBC;--c-knob2:#D9C6A4;--c-pencil:#E8B94A;--c-eraser:#E0855C;--c-firesmoke:#B9A894;--c-swirl:#C9D6DF;--c-uink:#141413;--c-umuted:#5E5D59;--c-utime:#141413;--c-ulabel:#5E5D59;--c-tagtext:#141413;--c-tagmeta:#5E5D59;--c-sealtext:#FFF4EA;--c-arc:#C9BFAE}
+.fr-room:not([data-night="true"]):not([data-kit="true"]) :is(.fr-skyl,.fr-sun,.fr-skyfade){--c-sky0:var(--fr-sky0,#EEF2EE);--c-sky1:var(--fr-sky1,#E7EFEC);--c-sky2:var(--fr-sky2,#E2ECE6);--c-sky3:var(--fr-sky3,#DCE8E2);--c-sun:var(--fr-sun,#F2C14E)}
+.fr-room:not([data-night="true"]):not([data-kit="true"]) :is(.fr-mid,.fr-mid2){--c-water:var(--fr-water,#BCD7E2)}
+.fr-room[data-night="true"],.rd[data-theme="dark"] .fr-mod,.rd:is([data-theme-kit="starry"],[data-theme-kit="stars"]) .fr-mod,.fr-mod[data-fr-night="true"],.fr-mod .fr-nightart{--c-ink:#8A7256;--c-sky0:#232B40;--c-sky1:#2A3450;--c-sky2:#334061;--c-sky3:#3A4868;--c-sun:#D9AE6A;--c-sun2:#B8955E;--c-moon:#E6C68C;--c-moon2:#B8955E;--c-star:#D9AE6A;--c-cloud:#3A3A44;--c-cloud2:#33333C;--c-mtnfar:#3B4458;--c-mtn:#343C4E;--c-snow:#5A5E6A;--c-hill:#2E3A33;--c-treefar:#2E3A3C;--c-tree1:#2C3B30;--c-tree2:#33423A;--c-tree3:#283429;--c-treeshade:#1E2922;--c-leaf:#3E5236;--c-leaf2:#36482F;--c-leaf3:#46593C;--c-water:#2B3A52;--c-water2:#24324A;--c-water3:#7C6B58;--c-ripple:#55657E;--c-foam:#6E83A3;--c-fallline:#7C90AE;--c-glint:#D9AE6A;--c-mist:#3A4050;--c-rain:#7F7464;--c-ground:#2A3329;--c-ground2:#232B22;--c-sand:#3A3A32;--c-sand2:#4A463A;--c-path:#4A4438;--c-grass:#56653F;--c-grass2:#4A5838;--c-fern:#4A5E3A;--c-moss:#3E4C36;--c-rock:#4E4C48;--c-rock2:#3C3A37;--c-wood:#6E5236;--c-wood2:#5E452E;--c-wood3:#4A3624;--c-bark:#4A3B2C;--c-birch:#6F5D49;--c-roof:#6A3A2A;--c-roof2:#4E2A1E;--c-fl1:#B08A3A;--c-fl2:#9C5A3A;--c-fl3:#6E5A70;--c-fl4:#9C8A6A;--c-lily:#3E5236;--c-reed:#3E4A2E;--c-reed2:#4E5A3A;--c-cattail:#4A3020;--c-boat:#6A4A30;--c-boat2:#4E3622;--c-heron:#6E6A64;--c-heron2:#5A5652;--c-heronw:#858077;--c-heronleg:#7A6440;--c-snowf:#4C5A76;--c-snow2:#3A4662;--c-ice:#42587A;--c-flake:#C3CEDF;--c-ice2:#34466A;--c-lowsun:#2C3550;--c-beak:#A07A30;--c-eye:#1A1612;--c-eyeshine:#D9AE6A;--c-pony:#C29A6C;--c-pony2:#A8825A;--c-mane:#5A3620;--c-mane2:#6E4A30;--c-muzzle:#B08868;--c-hoof:#3A2E24;--c-blanket:#A8382C;--c-blanket2:#7E2A22;--c-mouth:#6E2A22;--c-shade:#0E120E;--c-shadow:#0E120E;--c-light:#E9B860;--c-glow:#E9A84E;--c-glowcore:#E9B860;--c-glass:#3A3A44;--c-iron:#2A2C30;--c-candle:#CDB890;--c-flame:#E9A84E;--c-flame2:#C8463A;--c-flame3:#F0C878;--c-ember:#E07A36;--c-ash:#3A3632;--c-smoke:#5A5650;--c-steam:#6A665E;--c-kettle:#2A2826;--c-kettle2:#3E3A36;--c-bucket:#4A5056;--c-mug:#2E4E6E;--c-rope:#7A5E40;--c-hyd1:#3E5A78;--c-hyd2:#5A5480;--c-hyd3:#4A5A70;--c-blue:#2E4E6E;--c-blue2:#24405A;--c-frog:#4E6038;--c-frog2:#3E4E2E;--c-kingfisher:#2A5A70;--c-breast:#9C5A3A;--c-owl:#8A7A62;--c-owl2:#6E604C;--c-owleye:#D9AE6A;--c-tent:#9C7448;--c-tent2:#7A5A38;--c-tentlit:#E9A84E;--c-fish:#8A7650;--c-course:#6E8A5E;--c-string:#8A5A3A;--c-page:#A89676;--c-page2:#8A7A5E;--c-seed:#8A7E68;--c-rule:#6A7480;--c-cap:#8A4A34;--c-duck:#6A5A46;--c-duck2:#54463A;--c-duckhead:#344A3A;--c-wing:#5A6470;--c-can:#46565E;--c-can2:#384850;--c-clay:#7A4A32;--c-clay2:#643C28;--c-snail:#7A6A58;--c-shell:#6E5236;--c-enamel:#2E4A60;--c-enamel2:#6A7074;--c-tin:#5E6264;--c-paper:#3A332A;--c-paper2:#2E2922;--c-tag:#5E4A33;--c-tag2:#4E3D2A;--c-bigtag:#D2B07E;--c-tagshade:#000000;--c-taghole:#2A2620;--c-tagfiber:#7A6046;--c-tagink:#2A1F14;--c-seal:#9E3E2A;--c-sealink:#5E2418;--c-sealring:#D99A7A;--c-seallight:#B85A40;--c-sealdark:#6E2A1C;--c-sealshadow:#000000;--c-raincloud:#3E434C;--c-raincloud2:#343840;--c-washedge:#241F19;--c-heronp:#33353A;--c-kfback:#3A7A90;--c-fish2:#6E5E40;--c-bag:#A0553A;--c-bagend:#9C8A6A;--c-knob:#5E4A33;--c-knob2:#4E3D2A;--c-pencil:#B08A3A;--c-eraser:#9C5A3A;--c-firesmoke:#7A6450;--c-swirl:#7E9BD0;--c-uink:#E6CFA2;--c-umuted:#A88E6A;--c-utime:#EEDCB8;--c-ulabel:#A88E6A;--c-tagtext:#F0D6A2;--c-tagmeta:#4A3826;--c-sealtext:#F3D9A8;--c-arc:#6A553F}
+.fr-mod .fr-mod-place:not(:has(.fr-nightart)) svg{--c-ink:#141413}
+.fr-room,.fr-mod{--c-course:var(--fr-course,#9CCB8E)}
+.fr-room[data-night="true"],.rd[data-theme="dark"] .fr-mod,.rd:is([data-theme-kit="starry"],[data-theme-kit="stars"]) .fr-mod,.fr-mod[data-fr-night="true"]{--c-course:var(--fr-course,#6E8A5E)}
+/* theme kits (scene themes and Market kits): the kit's paper, ink and accent; the place leans toward the kit's ground */
+.fr-room[data-kit="true"]{--c-ink:color-mix(in srgb,#141413 80%,var(--rd-bg,#FAF9F5));--c-sky0:color-mix(in srgb,#EEF2EE 80%,var(--rd-bg,#FAF9F5));--c-sky1:color-mix(in srgb,#E7EFEC 80%,var(--rd-bg,#FAF9F5));--c-sky2:color-mix(in srgb,#E2ECE6 80%,var(--rd-bg,#FAF9F5));--c-sky3:color-mix(in srgb,#DCE8E2 80%,var(--rd-bg,#FAF9F5));--c-sun:color-mix(in srgb,#F2C14E 80%,var(--rd-bg,#FAF9F5));--c-sun2:color-mix(in srgb,
+#F6DE9A 80%,var(--rd-bg,#FAF9F5));--c-moon:color-mix(in srgb,#E6C68C 80%,var(--rd-bg,#FAF9F5));--c-moon2:color-mix(in srgb,#CDAF78 80%,var(--rd-bg,#FAF9F5));--c-star:color-mix(in srgb,#E6C68C 80%,var(--rd-bg,#FAF9F5));--c-cloud:color-mix(in srgb,#FFFDF8 80%,var(--rd-bg,#FAF9F5));--c-cloud2:color-mix(in srgb,#ECE8DE 80%,var(--rd-bg,#FAF9F5));--c-mtnfar:color-mix(in srgb,#D9DFDD 80%,var(--rd-bg,#FAF9F5));
+--c-mtn:color-mix(in srgb,#C8D2CE 80%,var(--rd-bg,#FAF9F5));--c-snow:color-mix(in srgb,#F7F6F1 80%,var(--rd-bg,#FAF9F5));--c-hill:color-mix(in srgb,#C2CFA9 80%,var(--rd-bg,#FAF9F5));--c-treefar:color-mix(in srgb,#C9D4C2 80%,var(--rd-bg,#FAF9F5));--c-tree1:color-mix(in srgb,#A9BF95 80%,var(--rd-bg,#FAF9F5));--c-tree2:color-mix(in srgb,#B4C59F 80%,var(--rd-bg,#FAF9F5));--c-tree3:color-mix(in srgb,#9DB287 80%,
+var(--rd-bg,#FAF9F5));--c-treeshade:color-mix(in srgb,#7D8B5F 80%,var(--rd-bg,#FAF9F5));--c-leaf:color-mix(in srgb,#B9C99A 80%,var(--rd-bg,#FAF9F5));--c-leaf2:color-mix(in srgb,#A7B996 80%,var(--rd-bg,#FAF9F5));--c-leaf3:color-mix(in srgb,#C9D7A4 80%,var(--rd-bg,#FAF9F5));--c-water:color-mix(in srgb,#BCD7E2 80%,var(--rd-bg,#FAF9F5));--c-water2:color-mix(in srgb,#A6C6D4 80%,var(--rd-bg,#FAF9F5));--c-water3:color-mix(in srgb,
+#F1F7F6 80%,var(--rd-bg,#FAF9F5));--c-ripple:color-mix(in srgb,#86AEC2 80%,var(--rd-bg,#FAF9F5));--c-foam:color-mix(in srgb,#F1F7F6 80%,var(--rd-bg,#FAF9F5));--c-fallline:color-mix(in srgb,#F1F7F6 80%,var(--rd-bg,#FAF9F5));--c-glint:color-mix(in srgb,#FFF3CF 80%,var(--rd-bg,#FAF9F5));--c-mist:color-mix(in srgb,#F2F2EF 80%,var(--rd-bg,#FAF9F5));--c-rain:color-mix(in srgb,#8FA3B0 80%,var(--rd-bg,#FAF9F5));
+--c-ground:color-mix(in srgb,#DCE5C8 80%,var(--rd-bg,#FAF9F5));--c-ground2:color-mix(in srgb,#C9D7B9 80%,var(--rd-bg,#FAF9F5));--c-sand:color-mix(in srgb,#E8DFC9 80%,var(--rd-bg,#FAF9F5));--c-sand2:color-mix(in srgb,#D6CBB3 80%,var(--rd-bg,#FAF9F5));--c-path:color-mix(in srgb,#E2D7C3 80%,var(--rd-bg,#FAF9F5));--c-grass:color-mix(in srgb,#7D8B5F 80%,var(--rd-bg,#FAF9F5));--c-grass2:color-mix(in srgb,
+#94A275 80%,var(--rd-bg,#FAF9F5));--c-fern:color-mix(in srgb,#6F8A4E 80%,var(--rd-bg,#FAF9F5));--c-moss:color-mix(in srgb,#A7B996 80%,var(--rd-bg,#FAF9F5));--c-rock:color-mix(in srgb,#D3CDBF 80%,var(--rd-bg,#FAF9F5));--c-rock2:color-mix(in srgb,#B7AF9F 80%,var(--rd-bg,#FAF9F5));--c-wood:color-mix(in srgb,#C9A27A 80%,var(--rd-bg,#FAF9F5));--c-wood2:color-mix(in srgb,#B08A62 80%,var(--rd-bg,#FAF9F5));
+--c-wood3:color-mix(in srgb,#8C6A48 80%,var(--rd-bg,#FAF9F5));--c-bark:color-mix(in srgb,#A88B6A 80%,var(--rd-bg,#FAF9F5));--c-birch:color-mix(in srgb,#F4F1E8 80%,var(--rd-bg,#FAF9F5));--c-roof:color-mix(in srgb,#B9644A 80%,var(--rd-bg,#FAF9F5));--c-roof2:color-mix(in srgb,#8F4430 80%,var(--rd-bg,#FAF9F5));--c-fl1:color-mix(in srgb,#F2C14E 80%,var(--rd-bg,#FAF9F5));--c-fl2:color-mix(in srgb,#E0855C 80%,
+var(--rd-bg,#FAF9F5));--c-fl3:color-mix(in srgb,#C9B6CC 80%,var(--rd-bg,#FAF9F5));--c-fl4:color-mix(in srgb,#FFFDF8 80%,var(--rd-bg,#FAF9F5));--c-lily:color-mix(in srgb,#A9BF95 80%,var(--rd-bg,#FAF9F5));--c-reed:color-mix(in srgb,#6F7D4E 80%,var(--rd-bg,#FAF9F5));--c-reed2:color-mix(in srgb,#8A9A6B 80%,var(--rd-bg,#FAF9F5));--c-cattail:color-mix(in srgb,#7A4A2A 80%,var(--rd-bg,#FAF9F5));--c-boat:color-mix(in srgb,
+#B97E54 80%,var(--rd-bg,#FAF9F5));--c-boat2:color-mix(in srgb,#96603D 80%,var(--rd-bg,#FAF9F5));--c-heron:color-mix(in srgb,#CDD1D3 80%,var(--rd-bg,#FAF9F5));--c-heron2:color-mix(in srgb,#AEB4B8 80%,var(--rd-bg,#FAF9F5));--c-heronw:color-mix(in srgb,#F3F1EA 80%,var(--rd-bg,#FAF9F5));--c-heronleg:color-mix(in srgb,#C9A55A 80%,var(--rd-bg,#FAF9F5));--c-snowf:color-mix(in srgb,#F6F8F8 80%,var(--rd-bg,
+#FAF9F5));--c-snow2:color-mix(in srgb,#D3DDE5 80%,var(--rd-bg,#FAF9F5));--c-ice:color-mix(in srgb,#CFE3EC 80%,var(--rd-bg,#FAF9F5));--c-flake:color-mix(in srgb,#FFFFFF 80%,var(--rd-bg,#FAF9F5));--c-ice2:color-mix(in srgb,#B3CEDB 80%,var(--rd-bg,#FAF9F5));--c-lowsun:color-mix(in srgb,#F7D7BF 80%,var(--rd-bg,#FAF9F5));--c-beak:color-mix(in srgb,#D9A441 80%,var(--rd-bg,#FAF9F5));--c-eye:color-mix(in srgb,
+#141413 80%,var(--rd-bg,#FAF9F5));--c-eyeshine:color-mix(in srgb,#FFFDF8 80%,var(--rd-bg,#FAF9F5));--c-pony:color-mix(in srgb,#F1DEC0 80%,var(--rd-bg,#FAF9F5));--c-pony2:color-mix(in srgb,#E2CBA6 80%,var(--rd-bg,#FAF9F5));--c-mane:color-mix(in srgb,#7A4A2A 80%,var(--rd-bg,#FAF9F5));--c-mane2:color-mix(in srgb,#9A6440 80%,var(--rd-bg,#FAF9F5));--c-muzzle:color-mix(in srgb,#EBCDBB 80%,var(--rd-bg,#FAF9F5));
+--c-hoof:color-mix(in srgb,#6B5A48 80%,var(--rd-bg,#FAF9F5));--c-blanket:color-mix(in srgb,#E2463B 80%,var(--rd-bg,#FAF9F5));--c-blanket2:color-mix(in srgb,#B5372C 80%,var(--rd-bg,#FAF9F5));--c-mouth:color-mix(in srgb,#9A3A30 80%,var(--rd-bg,#FAF9F5));--c-shade:color-mix(in srgb,#9C9583 80%,var(--rd-bg,#FAF9F5));--c-shadow:color-mix(in srgb,#7E7A6C 80%,var(--rd-bg,#FAF9F5));--c-light:color-mix(in srgb,
+#FFF4D6 80%,var(--rd-bg,#FAF9F5));--c-glow:color-mix(in srgb,#F3CE7E 80%,var(--rd-bg,#FAF9F5));--c-glowcore:color-mix(in srgb,#F6DE9A 80%,var(--rd-bg,#FAF9F5));--c-glass:color-mix(in srgb,#ECE5D5 80%,var(--rd-bg,#FAF9F5));--c-iron:color-mix(in srgb,#4A4F55 80%,var(--rd-bg,#FAF9F5));--c-candle:color-mix(in srgb,#F2EBDD 80%,var(--rd-bg,#FAF9F5));--c-flame:color-mix(in srgb,#F2A957 80%,var(--rd-bg,#FAF9F5));
+--c-flame2:color-mix(in srgb,#E2463B 80%,var(--rd-bg,#FAF9F5));--c-flame3:color-mix(in srgb,#F6DE9A 80%,var(--rd-bg,#FAF9F5));--c-ember:color-mix(in srgb,#E8803A 80%,var(--rd-bg,#FAF9F5));--c-ash:color-mix(in srgb,#8E8A82 80%,var(--rd-bg,#FAF9F5));--c-smoke:color-mix(in srgb,#C8C7B8 80%,var(--rd-bg,#FAF9F5));--c-steam:color-mix(in srgb,#F2F0E8 80%,var(--rd-bg,#FAF9F5));--c-kettle:color-mix(in srgb,
+#3D3B36 80%,var(--rd-bg,#FAF9F5));--c-kettle2:color-mix(in srgb,#5A574F 80%,var(--rd-bg,#FAF9F5));--c-bucket:color-mix(in srgb,#8C9AA0 80%,var(--rd-bg,#FAF9F5));--c-mug:color-mix(in srgb,#4F86B8 80%,var(--rd-bg,#FAF9F5));--c-rope:color-mix(in srgb,#C9A27A 80%,var(--rd-bg,#FAF9F5));--c-hyd1:color-mix(in srgb,#7FA9C9 80%,var(--rd-bg,#FAF9F5));--c-hyd2:color-mix(in srgb,#A7A2D2 80%,var(--rd-bg,#FAF9F5));
+--c-hyd3:color-mix(in srgb,#C9D7E6 80%,var(--rd-bg,#FAF9F5));--c-blue:color-mix(in srgb,#4F86B8 80%,var(--rd-bg,#FAF9F5));--c-blue2:color-mix(in srgb,#3A6A96 80%,var(--rd-bg,#FAF9F5));--c-frog:color-mix(in srgb,#8FA868 80%,var(--rd-bg,#FAF9F5));--c-frog2:color-mix(in srgb,#6E8A4E 80%,var(--rd-bg,#FAF9F5));--c-kingfisher:color-mix(in srgb,#3E8FB0 80%,var(--rd-bg,#FAF9F5));--c-breast:color-mix(in srgb,
+#E0855C 80%,var(--rd-bg,#FAF9F5));--c-owl:color-mix(in srgb,#8A7A62 80%,var(--rd-bg,#FAF9F5));--c-owl2:color-mix(in srgb,#A8987C 80%,var(--rd-bg,#FAF9F5));--c-owleye:color-mix(in srgb,#D9AE6A 80%,var(--rd-bg,#FAF9F5));--c-tent:color-mix(in srgb,#E7DCC4 80%,var(--rd-bg,#FAF9F5));--c-tent2:color-mix(in srgb,#CFC2AC 80%,var(--rd-bg,#FAF9F5));--c-tentlit:color-mix(in srgb,#F3CE7E 80%,var(--rd-bg,#FAF9F5));
+--c-fish:color-mix(in srgb,#C9B07A 80%,var(--rd-bg,#FAF9F5));--c-course:#9CCB8E;--c-string:color-mix(in srgb,#9A6440 80%,var(--rd-bg,#FAF9F5));--c-page:color-mix(in srgb,#FBF8EF 80%,var(--rd-bg,#FAF9F5));--c-page2:color-mix(in srgb,#E6DFCC 80%,var(--rd-bg,#FAF9F5));--c-seed:color-mix(in srgb,#E9E4D6 80%,var(--rd-bg,#FAF9F5));--c-rule:color-mix(in srgb,#9FB8C8 80%,var(--rd-bg,#FAF9F5));--c-cap:color-mix(in srgb,
+#C0654A 80%,var(--rd-bg,#FAF9F5));--c-duck:color-mix(in srgb,#B59A78 80%,var(--rd-bg,#FAF9F5));--c-duck2:color-mix(in srgb,#8F7558 80%,var(--rd-bg,#FAF9F5));--c-duckhead:color-mix(in srgb,#4E7A5A 80%,var(--rd-bg,#FAF9F5));--c-wing:color-mix(in srgb,#DDE8EC 80%,var(--rd-bg,#FAF9F5));--c-can:color-mix(in srgb,#7E9AA6 80%,var(--rd-bg,#FAF9F5));--c-can2:color-mix(in srgb,#61808C 80%,var(--rd-bg,#FAF9F5));
+--c-clay:color-mix(in srgb,#C47A52 80%,var(--rd-bg,#FAF9F5));--c-clay2:color-mix(in srgb,#A8603E 80%,var(--rd-bg,#FAF9F5));--c-snail:color-mix(in srgb,#C9B49A 80%,var(--rd-bg,#FAF9F5));--c-shell:color-mix(in srgb,#B98A5A 80%,var(--rd-bg,#FAF9F5));--c-enamel:color-mix(in srgb,#3F6E8E 80%,var(--rd-bg,#FAF9F5));--c-enamel2:color-mix(in srgb,#DDE6EA 80%,var(--rd-bg,#FAF9F5));--c-tin:color-mix(in srgb,#A9AFB2 80%,
+var(--rd-bg,#FAF9F5));--c-paper:color-mix(in srgb,#F4EFE4 80%,var(--rd-bg,#FAF9F5));--c-paper2:color-mix(in srgb,#EAE2D2 80%,var(--rd-bg,#FAF9F5));--c-tag:color-mix(in srgb,#FFFDF8 80%,var(--rd-bg,#FAF9F5));--c-tag2:color-mix(in srgb,#EBDBBC 80%,var(--rd-bg,#FAF9F5));--c-bigtag:color-mix(in srgb,#EBDBBC 80%,var(--rd-bg,#FAF9F5));--c-tagshade:color-mix(in srgb,#141413 80%,var(--rd-bg,#FAF9F5));--c-taghole:color-mix(in srgb,
+#FAF9F5 80%,var(--rd-bg,#FAF9F5));--c-tagfiber:color-mix(in srgb,#C9B69A 80%,var(--rd-bg,#FAF9F5));--c-tagink:color-mix(in srgb,#141413 80%,var(--rd-bg,#FAF9F5));--c-seal:color-mix(in srgb,#B5452E 80%,var(--rd-bg,#FAF9F5));--c-sealink:color-mix(in srgb,#7E2E1E 80%,var(--rd-bg,#FAF9F5));--c-sealring:color-mix(in srgb,#F1C8B8 80%,var(--rd-bg,#FAF9F5));--c-seallight:color-mix(in srgb,#D46A4E 80%,var(--rd-bg,
+#FAF9F5));--c-sealdark:color-mix(in srgb,#8E3322 80%,var(--rd-bg,#FAF9F5));--c-sealshadow:color-mix(in srgb,#141413 80%,var(--rd-bg,#FAF9F5));--c-raincloud:color-mix(in srgb,#C9CED0 80%,var(--rd-bg,#FAF9F5));--c-raincloud2:color-mix(in srgb,#AEB5B9 80%,var(--rd-bg,#FAF9F5));--c-washedge:color-mix(in srgb,#CDBF9F 80%,var(--rd-bg,#FAF9F5));--c-heronp:color-mix(in srgb,#55595E 80%,var(--rd-bg,#FAF9F5));
+--c-kfback:color-mix(in srgb,#5FB4C9 80%,var(--rd-bg,#FAF9F5));--c-fish2:color-mix(in srgb,#A88E5A 80%,var(--rd-bg,#FAF9F5));--c-bag:color-mix(in srgb,#C2603E 80%,var(--rd-bg,#FAF9F5));--c-bagend:color-mix(in srgb,#E7DCC4 80%,var(--rd-bg,#FAF9F5));--c-knob:color-mix(in srgb,#EBDBBC 80%,var(--rd-bg,#FAF9F5));--c-knob2:color-mix(in srgb,#D9C6A4 80%,var(--rd-bg,#FAF9F5));--c-pencil:color-mix(in srgb,#E8B94A 80%,
+var(--rd-bg,#FAF9F5));--c-eraser:color-mix(in srgb,#E0855C 80%,var(--rd-bg,#FAF9F5));--c-firesmoke:color-mix(in srgb,#B9A894 80%,var(--rd-bg,#FAF9F5));--c-swirl:color-mix(in srgb,#C9D6DF 80%,var(--rd-bg,#FAF9F5));--c-utime:var(--rd-ink,#141413);--c-uink:var(--rd-ink,#141413);--c-ulabel:var(--rd-muted,#5E5D59);--c-umuted:var(--rd-muted,#5E5D59);--c-seal:color-mix(in srgb,var(--rd-accent,#B5452E) 30%,
+#8E2E20);--c-tagmeta:color-mix(in srgb,var(--c-tagink) 70%,var(--c-bigtag));--c-arc:var(--rd-line-strong,#C9BFAE)}
+.fr-room[data-kit="true"][data-place="rain"]{--c-sky0:color-mix(in srgb,#E6E9E6 80%,var(--rd-bg,#FAF9F5));--c-sky1:color-mix(in srgb,#DDE2E1 80%,var(--rd-bg,#FAF9F5));--c-sky2:color-mix(in srgb,#D4DBDA 80%,var(--rd-bg,#FAF9F5));--c-sky3:color-mix(in srgb,#CCD5D5 80%,var(--rd-bg,#FAF9F5))}
+.fr-room[data-kit="true"][data-night="true"]:not([data-kit-dark="false"]){--c-ink:color-mix(in srgb,#8A7256 78%,var(--rd-bg,#232B40));--c-sky0:color-mix(in srgb,#232B40 78%,var(--rd-bg,#232B40));--c-sky1:color-mix(in srgb,#2A3450 78%,var(--rd-bg,#232B40));--c-sky2:color-mix(in srgb,#334061 78%,var(--rd-bg,#232B40));--c-sky3:color-mix(in srgb,#3A4868 78%,var(--rd-bg,#232B40));--c-sun:color-mix(in srgb,
+#D9AE6A 78%,var(--rd-bg,#232B40));--c-sun2:color-mix(in srgb,#B8955E 78%,var(--rd-bg,#232B40));--c-moon:color-mix(in srgb,#E6C68C 78%,var(--rd-bg,#232B40));--c-moon2:color-mix(in srgb,#B8955E 78%,var(--rd-bg,#232B40));--c-star:color-mix(in srgb,#D9AE6A 78%,var(--rd-bg,#232B40));--c-cloud:color-mix(in srgb,#3A3A44 78%,var(--rd-bg,#232B40));--c-cloud2:color-mix(in srgb,#33333C 78%,var(--rd-bg,#232B40));
+--c-mtnfar:color-mix(in srgb,#3B4458 78%,var(--rd-bg,#232B40));--c-mtn:color-mix(in srgb,#343C4E 78%,var(--rd-bg,#232B40));--c-snow:color-mix(in srgb,#5A5E6A 78%,var(--rd-bg,#232B40));--c-hill:color-mix(in srgb,#2E3A33 78%,var(--rd-bg,#232B40));--c-treefar:color-mix(in srgb,#2E3A3C 78%,var(--rd-bg,#232B40));--c-tree1:color-mix(in srgb,#2C3B30 78%,var(--rd-bg,#232B40));--c-tree2:color-mix(in srgb,#33423A 78%,
+var(--rd-bg,#232B40));--c-tree3:color-mix(in srgb,#283429 78%,var(--rd-bg,#232B40));--c-treeshade:color-mix(in srgb,#1E2922 78%,var(--rd-bg,#232B40));--c-leaf:color-mix(in srgb,#3E5236 78%,var(--rd-bg,#232B40));--c-leaf2:color-mix(in srgb,#36482F 78%,var(--rd-bg,#232B40));--c-leaf3:color-mix(in srgb,#46593C 78%,var(--rd-bg,#232B40));--c-water:color-mix(in srgb,#2B3A52 78%,var(--rd-bg,#232B40));--c-water2:color-mix(in srgb,
+#24324A 78%,var(--rd-bg,#232B40));--c-water3:color-mix(in srgb,#7C6B58 78%,var(--rd-bg,#232B40));--c-ripple:color-mix(in srgb,#55657E 78%,var(--rd-bg,#232B40));--c-foam:color-mix(in srgb,#6E83A3 78%,var(--rd-bg,#232B40));--c-fallline:color-mix(in srgb,#7C90AE 78%,var(--rd-bg,#232B40));--c-glint:color-mix(in srgb,#D9AE6A 78%,var(--rd-bg,#232B40));--c-mist:color-mix(in srgb,#3A4050 78%,var(--rd-bg,#232B40));
+--c-rain:color-mix(in srgb,#7F7464 78%,var(--rd-bg,#232B40));--c-ground:color-mix(in srgb,#2A3329 78%,var(--rd-bg,#232B40));--c-ground2:color-mix(in srgb,#232B22 78%,var(--rd-bg,#232B40));--c-sand:color-mix(in srgb,#3A3A32 78%,var(--rd-bg,#232B40));--c-sand2:color-mix(in srgb,#4A463A 78%,var(--rd-bg,#232B40));--c-path:color-mix(in srgb,#4A4438 78%,var(--rd-bg,#232B40));--c-grass:color-mix(in srgb,#56653F 78%,
+var(--rd-bg,#232B40));--c-grass2:color-mix(in srgb,#4A5838 78%,var(--rd-bg,#232B40));--c-fern:color-mix(in srgb,#4A5E3A 78%,var(--rd-bg,#232B40));--c-moss:color-mix(in srgb,#3E4C36 78%,var(--rd-bg,#232B40));--c-rock:color-mix(in srgb,#4E4C48 78%,var(--rd-bg,#232B40));--c-rock2:color-mix(in srgb,#3C3A37 78%,var(--rd-bg,#232B40));--c-wood:color-mix(in srgb,#6E5236 78%,var(--rd-bg,#232B40));--c-wood2:color-mix(in srgb,
+#5E452E 78%,var(--rd-bg,#232B40));--c-wood3:color-mix(in srgb,#4A3624 78%,var(--rd-bg,#232B40));--c-bark:color-mix(in srgb,#4A3B2C 78%,var(--rd-bg,#232B40));--c-birch:color-mix(in srgb,#6F5D49 78%,var(--rd-bg,#232B40));--c-roof:color-mix(in srgb,#6A3A2A 78%,var(--rd-bg,#232B40));--c-roof2:color-mix(in srgb,#4E2A1E 78%,var(--rd-bg,#232B40));--c-fl1:color-mix(in srgb,#B08A3A 78%,var(--rd-bg,#232B40));
+--c-fl2:color-mix(in srgb,#9C5A3A 78%,var(--rd-bg,#232B40));--c-fl3:color-mix(in srgb,#6E5A70 78%,var(--rd-bg,#232B40));--c-fl4:color-mix(in srgb,#9C8A6A 78%,var(--rd-bg,#232B40));--c-lily:color-mix(in srgb,#3E5236 78%,var(--rd-bg,#232B40));--c-reed:color-mix(in srgb,#3E4A2E 78%,var(--rd-bg,#232B40));--c-reed2:color-mix(in srgb,#4E5A3A 78%,var(--rd-bg,#232B40));--c-cattail:color-mix(in srgb,#4A3020 78%,
+var(--rd-bg,#232B40));--c-boat:color-mix(in srgb,#6A4A30 78%,var(--rd-bg,#232B40));--c-boat2:color-mix(in srgb,#4E3622 78%,var(--rd-bg,#232B40));--c-heron:color-mix(in srgb,#6E6A64 78%,var(--rd-bg,#232B40));--c-heron2:color-mix(in srgb,#5A5652 78%,var(--rd-bg,#232B40));--c-heronw:color-mix(in srgb,#858077 78%,var(--rd-bg,#232B40));--c-heronleg:color-mix(in srgb,#7A6440 78%,var(--rd-bg,#232B40));--c-snowf:color-mix(in srgb,
+#4C5A76 78%,var(--rd-bg,#232B40));--c-snow2:color-mix(in srgb,#3A4662 78%,var(--rd-bg,#232B40));--c-ice:color-mix(in srgb,#42587A 78%,var(--rd-bg,#232B40));--c-flake:color-mix(in srgb,#C3CEDF 78%,var(--rd-bg,#232B40));--c-ice2:color-mix(in srgb,#34466A 78%,var(--rd-bg,#232B40));--c-lowsun:color-mix(in srgb,#2C3550 78%,var(--rd-bg,#232B40));--c-beak:color-mix(in srgb,#A07A30 78%,var(--rd-bg,#232B40));
+--c-eye:color-mix(in srgb,#1A1612 78%,var(--rd-bg,#232B40));--c-eyeshine:color-mix(in srgb,#D9AE6A 78%,var(--rd-bg,#232B40));--c-pony:color-mix(in srgb,#C29A6C 78%,var(--rd-bg,#232B40));--c-pony2:color-mix(in srgb,#A8825A 78%,var(--rd-bg,#232B40));--c-mane:color-mix(in srgb,#5A3620 78%,var(--rd-bg,#232B40));--c-mane2:color-mix(in srgb,#6E4A30 78%,var(--rd-bg,#232B40));--c-muzzle:color-mix(in srgb,#B08868 78%,
+var(--rd-bg,#232B40));--c-hoof:color-mix(in srgb,#3A2E24 78%,var(--rd-bg,#232B40));--c-blanket:color-mix(in srgb,#A8382C 78%,var(--rd-bg,#232B40));--c-blanket2:color-mix(in srgb,#7E2A22 78%,var(--rd-bg,#232B40));--c-mouth:color-mix(in srgb,#6E2A22 78%,var(--rd-bg,#232B40));--c-shade:color-mix(in srgb,#0E120E 78%,var(--rd-bg,#232B40));--c-shadow:color-mix(in srgb,#0E120E 78%,var(--rd-bg,#232B40));--c-light:color-mix(in srgb,
+#E9B860 78%,var(--rd-bg,#232B40));--c-glow:color-mix(in srgb,#E9A84E 78%,var(--rd-bg,#232B40));--c-glowcore:color-mix(in srgb,#E9B860 78%,var(--rd-bg,#232B40));--c-glass:color-mix(in srgb,#3A3A44 78%,var(--rd-bg,#232B40));--c-iron:color-mix(in srgb,#2A2C30 78%,var(--rd-bg,#232B40));--c-candle:color-mix(in srgb,#CDB890 78%,var(--rd-bg,#232B40));--c-flame:color-mix(in srgb,#E9A84E 78%,var(--rd-bg,#232B40));
+--c-flame2:color-mix(in srgb,#C8463A 78%,var(--rd-bg,#232B40));--c-flame3:color-mix(in srgb,#F0C878 78%,var(--rd-bg,#232B40));--c-ember:color-mix(in srgb,#E07A36 78%,var(--rd-bg,#232B40));--c-ash:color-mix(in srgb,#3A3632 78%,var(--rd-bg,#232B40));--c-smoke:color-mix(in srgb,#5A5650 78%,var(--rd-bg,#232B40));--c-steam:color-mix(in srgb,#6A665E 78%,var(--rd-bg,#232B40));--c-kettle:color-mix(in srgb,
+#2A2826 78%,var(--rd-bg,#232B40));--c-kettle2:color-mix(in srgb,#3E3A36 78%,var(--rd-bg,#232B40));--c-bucket:color-mix(in srgb,#4A5056 78%,var(--rd-bg,#232B40));--c-mug:color-mix(in srgb,#2E4E6E 78%,var(--rd-bg,#232B40));--c-rope:color-mix(in srgb,#7A5E40 78%,var(--rd-bg,#232B40));--c-hyd1:color-mix(in srgb,#3E5A78 78%,var(--rd-bg,#232B40));--c-hyd2:color-mix(in srgb,#5A5480 78%,var(--rd-bg,#232B40));
+--c-hyd3:color-mix(in srgb,#4A5A70 78%,var(--rd-bg,#232B40));--c-blue:color-mix(in srgb,#2E4E6E 78%,var(--rd-bg,#232B40));--c-blue2:color-mix(in srgb,#24405A 78%,var(--rd-bg,#232B40));--c-frog:color-mix(in srgb,#4E6038 78%,var(--rd-bg,#232B40));--c-frog2:color-mix(in srgb,#3E4E2E 78%,var(--rd-bg,#232B40));--c-kingfisher:color-mix(in srgb,#2A5A70 78%,var(--rd-bg,#232B40));--c-breast:color-mix(in srgb,
+#9C5A3A 78%,var(--rd-bg,#232B40));--c-owl:color-mix(in srgb,#8A7A62 78%,var(--rd-bg,#232B40));--c-owl2:color-mix(in srgb,#6E604C 78%,var(--rd-bg,#232B40));--c-owleye:color-mix(in srgb,#D9AE6A 78%,var(--rd-bg,#232B40));--c-tent:color-mix(in srgb,#9C7448 78%,var(--rd-bg,#232B40));--c-tent2:color-mix(in srgb,#7A5A38 78%,var(--rd-bg,#232B40));--c-tentlit:color-mix(in srgb,#E9A84E 78%,var(--rd-bg,#232B40));
+--c-fish:color-mix(in srgb,#8A7650 78%,var(--rd-bg,#232B40));--c-course:#6E8A5E;--c-string:color-mix(in srgb,#8A5A3A 78%,var(--rd-bg,#232B40));--c-page:color-mix(in srgb,#A89676 78%,var(--rd-bg,#232B40));--c-page2:color-mix(in srgb,#8A7A5E 78%,var(--rd-bg,#232B40));--c-seed:color-mix(in srgb,#8A7E68 78%,var(--rd-bg,#232B40));--c-rule:color-mix(in srgb,#6A7480 78%,var(--rd-bg,#232B40));--c-cap:color-mix(in srgb,
+#8A4A34 78%,var(--rd-bg,#232B40));--c-duck:color-mix(in srgb,#6A5A46 78%,var(--rd-bg,#232B40));--c-duck2:color-mix(in srgb,#54463A 78%,var(--rd-bg,#232B40));--c-duckhead:color-mix(in srgb,#344A3A 78%,var(--rd-bg,#232B40));--c-wing:color-mix(in srgb,#5A6470 78%,var(--rd-bg,#232B40));--c-can:color-mix(in srgb,#46565E 78%,var(--rd-bg,#232B40));--c-can2:color-mix(in srgb,#384850 78%,var(--rd-bg,#232B40));
+--c-clay:color-mix(in srgb,#7A4A32 78%,var(--rd-bg,#232B40));--c-clay2:color-mix(in srgb,#643C28 78%,var(--rd-bg,#232B40));--c-snail:color-mix(in srgb,#7A6A58 78%,var(--rd-bg,#232B40));--c-shell:color-mix(in srgb,#6E5236 78%,var(--rd-bg,#232B40));--c-enamel:color-mix(in srgb,#2E4A60 78%,var(--rd-bg,#232B40));--c-enamel2:color-mix(in srgb,#6A7074 78%,var(--rd-bg,#232B40));--c-tin:color-mix(in srgb,#5E6264 78%,
+var(--rd-bg,#232B40));--c-paper:color-mix(in srgb,#3A332A 78%,var(--rd-bg,#232B40));--c-paper2:color-mix(in srgb,#2E2922 78%,var(--rd-bg,#232B40));--c-tag:color-mix(in srgb,#5E4A33 78%,var(--rd-bg,#232B40));--c-tag2:color-mix(in srgb,#4E3D2A 78%,var(--rd-bg,#232B40));--c-bigtag:color-mix(in srgb,#D2B07E 78%,var(--rd-bg,#232B40));--c-tagshade:color-mix(in srgb,#000000 78%,var(--rd-bg,#232B40));--c-taghole:color-mix(in srgb,
+#2A2620 78%,var(--rd-bg,#232B40));--c-tagfiber:color-mix(in srgb,#7A6046 78%,var(--rd-bg,#232B40));--c-tagink:color-mix(in srgb,#2A1F14 78%,var(--rd-bg,#232B40));--c-seal:color-mix(in srgb,#9E3E2A 78%,var(--rd-bg,#232B40));--c-sealink:color-mix(in srgb,#5E2418 78%,var(--rd-bg,#232B40));--c-sealring:color-mix(in srgb,#D99A7A 78%,var(--rd-bg,#232B40));--c-seallight:color-mix(in srgb,#B85A40 78%,var(--rd-bg,
+#232B40));--c-sealdark:color-mix(in srgb,#6E2A1C 78%,var(--rd-bg,#232B40));--c-sealshadow:color-mix(in srgb,#000000 78%,var(--rd-bg,#232B40));--c-raincloud:color-mix(in srgb,#3E434C 78%,var(--rd-bg,#232B40));--c-raincloud2:color-mix(in srgb,#343840 78%,var(--rd-bg,#232B40));--c-washedge:color-mix(in srgb,#241F19 78%,var(--rd-bg,#232B40));--c-heronp:color-mix(in srgb,#33353A 78%,var(--rd-bg,#232B40));
+--c-kfback:color-mix(in srgb,#3A7A90 78%,var(--rd-bg,#232B40));--c-fish2:color-mix(in srgb,#6E5E40 78%,var(--rd-bg,#232B40));--c-bag:color-mix(in srgb,#A0553A 78%,var(--rd-bg,#232B40));--c-bagend:color-mix(in srgb,#9C8A6A 78%,var(--rd-bg,#232B40));--c-knob:color-mix(in srgb,#5E4A33 78%,var(--rd-bg,#232B40));--c-knob2:color-mix(in srgb,#4E3D2A 78%,var(--rd-bg,#232B40));--c-pencil:color-mix(in srgb,#B08A3A 78%,
+var(--rd-bg,#232B40));--c-eraser:color-mix(in srgb,#9C5A3A 78%,var(--rd-bg,#232B40));--c-firesmoke:color-mix(in srgb,#7A6450 78%,var(--rd-bg,#232B40));--c-swirl:color-mix(in srgb,#7E9BD0 78%,var(--rd-bg,#232B40));--c-utime:color-mix(in srgb,#EEDCB8 85%,var(--rd-ink,#EEDCB8));--c-uink:color-mix(in srgb,#E6CFA2 85%,var(--rd-ink,#E6CFA2));--c-ulabel:var(--rd-muted,#A88E6A);--c-umuted:var(--rd-muted,#A88E6A);
+--c-seal:color-mix(in srgb,var(--rd-accent,#9E3E2A) 15%,#8A2E1E);--c-tagmeta:color-mix(in srgb,var(--c-tagink) 70%,var(--c-bigtag))}
+.fr-room[data-kit="true"][data-night="true"][data-kit-dark="false"]{--c-ink:color-mix(in srgb,#8A7256 95%,var(--rd-accent,#D9AE6A));--c-sky0:color-mix(in srgb,#232B40 92%,var(--rd-accent,#D9AE6A));--c-sky1:color-mix(in srgb,#2A3450 92%,var(--rd-accent,#D9AE6A));--c-sky2:color-mix(in srgb,#334061 92%,var(--rd-accent,#D9AE6A));--c-sky3:#3A4868;--c-sun:color-mix(in srgb,#D9AE6A 95%,var(--rd-accent,#D9AE6A));
+--c-sun2:color-mix(in srgb,#B8955E 95%,var(--rd-accent,#D9AE6A));--c-moon:color-mix(in srgb,#E6C68C 95%,var(--rd-accent,#D9AE6A));--c-moon2:color-mix(in srgb,#B8955E 95%,var(--rd-accent,#D9AE6A));--c-star:color-mix(in srgb,#D9AE6A 95%,var(--rd-accent,#D9AE6A));--c-cloud:color-mix(in srgb,#3A3A44 95%,var(--rd-accent,#D9AE6A));--c-cloud2:color-mix(in srgb,#33333C 95%,var(--rd-accent,#D9AE6A));--c-mtnfar:color-mix(in srgb,
+#3B4458 95%,var(--rd-accent,#D9AE6A));--c-mtn:color-mix(in srgb,#343C4E 95%,var(--rd-accent,#D9AE6A));--c-snow:color-mix(in srgb,#5A5E6A 95%,var(--rd-accent,#D9AE6A));--c-hill:color-mix(in srgb,#2E3A33 95%,var(--rd-accent,#D9AE6A));--c-treefar:color-mix(in srgb,#2E3A3C 95%,var(--rd-accent,#D9AE6A));--c-tree1:color-mix(in srgb,#2C3B30 95%,var(--rd-accent,#D9AE6A));--c-tree2:color-mix(in srgb,#33423A 95%,
+var(--rd-accent,#D9AE6A));--c-tree3:color-mix(in srgb,#283429 95%,var(--rd-accent,#D9AE6A));--c-treeshade:color-mix(in srgb,#1E2922 95%,var(--rd-accent,#D9AE6A));--c-leaf:color-mix(in srgb,#3E5236 95%,var(--rd-accent,#D9AE6A));--c-leaf2:color-mix(in srgb,#36482F 95%,var(--rd-accent,#D9AE6A));--c-leaf3:color-mix(in srgb,#46593C 95%,var(--rd-accent,#D9AE6A));--c-water:color-mix(in srgb,#2B3A52 95%,var(--rd-accent,
+#D9AE6A));--c-water2:color-mix(in srgb,#24324A 95%,var(--rd-accent,#D9AE6A));--c-water3:color-mix(in srgb,#7C6B58 95%,var(--rd-accent,#D9AE6A));--c-ripple:color-mix(in srgb,#55657E 95%,var(--rd-accent,#D9AE6A));--c-foam:color-mix(in srgb,#6E83A3 95%,var(--rd-accent,#D9AE6A));--c-fallline:color-mix(in srgb,#7C90AE 95%,var(--rd-accent,#D9AE6A));--c-glint:color-mix(in srgb,#D9AE6A 95%,var(--rd-accent,
+#D9AE6A));--c-mist:color-mix(in srgb,#3A4050 95%,var(--rd-accent,#D9AE6A));--c-rain:color-mix(in srgb,#7F7464 95%,var(--rd-accent,#D9AE6A));--c-ground:color-mix(in srgb,#2A3329 95%,var(--rd-accent,#D9AE6A));--c-ground2:color-mix(in srgb,#232B22 95%,var(--rd-accent,#D9AE6A));--c-sand:color-mix(in srgb,#3A3A32 95%,var(--rd-accent,#D9AE6A));--c-sand2:color-mix(in srgb,#4A463A 95%,var(--rd-accent,#D9AE6A));
+--c-path:color-mix(in srgb,#4A4438 95%,var(--rd-accent,#D9AE6A));--c-grass:color-mix(in srgb,#56653F 95%,var(--rd-accent,#D9AE6A));--c-grass2:color-mix(in srgb,#4A5838 95%,var(--rd-accent,#D9AE6A));--c-fern:color-mix(in srgb,#4A5E3A 95%,var(--rd-accent,#D9AE6A));--c-moss:color-mix(in srgb,#3E4C36 95%,var(--rd-accent,#D9AE6A));--c-rock:color-mix(in srgb,#4E4C48 95%,var(--rd-accent,#D9AE6A));--c-rock2:color-mix(in srgb,
+#3C3A37 95%,var(--rd-accent,#D9AE6A));--c-wood:color-mix(in srgb,#6E5236 95%,var(--rd-accent,#D9AE6A));--c-wood2:color-mix(in srgb,#5E452E 95%,var(--rd-accent,#D9AE6A));--c-wood3:color-mix(in srgb,#4A3624 95%,var(--rd-accent,#D9AE6A));--c-bark:color-mix(in srgb,#4A3B2C 95%,var(--rd-accent,#D9AE6A));--c-birch:color-mix(in srgb,#6F5D49 95%,var(--rd-accent,#D9AE6A));--c-roof:color-mix(in srgb,#6A3A2A 95%,
+var(--rd-accent,#D9AE6A));--c-roof2:color-mix(in srgb,#4E2A1E 95%,var(--rd-accent,#D9AE6A));--c-fl1:color-mix(in srgb,#B08A3A 95%,var(--rd-accent,#D9AE6A));--c-fl2:color-mix(in srgb,#9C5A3A 95%,var(--rd-accent,#D9AE6A));--c-fl3:color-mix(in srgb,#6E5A70 95%,var(--rd-accent,#D9AE6A));--c-fl4:color-mix(in srgb,#9C8A6A 95%,var(--rd-accent,#D9AE6A));--c-lily:color-mix(in srgb,#3E5236 95%,var(--rd-accent,
+#D9AE6A));--c-reed:color-mix(in srgb,#3E4A2E 95%,var(--rd-accent,#D9AE6A));--c-reed2:color-mix(in srgb,#4E5A3A 95%,var(--rd-accent,#D9AE6A));--c-cattail:color-mix(in srgb,#4A3020 95%,var(--rd-accent,#D9AE6A));--c-boat:color-mix(in srgb,#6A4A30 95%,var(--rd-accent,#D9AE6A));--c-boat2:color-mix(in srgb,#4E3622 95%,var(--rd-accent,#D9AE6A));--c-heron:color-mix(in srgb,#6E6A64 95%,var(--rd-accent,#D9AE6A));
+--c-heron2:color-mix(in srgb,#5A5652 95%,var(--rd-accent,#D9AE6A));--c-heronw:color-mix(in srgb,#858077 95%,var(--rd-accent,#D9AE6A));--c-heronleg:color-mix(in srgb,#7A6440 95%,var(--rd-accent,#D9AE6A));--c-snowf:color-mix(in srgb,#4C5A76 95%,var(--rd-accent,#D9AE6A));--c-snow2:color-mix(in srgb,#3A4662 95%,var(--rd-accent,#D9AE6A));--c-ice:color-mix(in srgb,#42587A 95%,var(--rd-accent,#D9AE6A));--c-flake:color-mix(in srgb,
+#C3CEDF 95%,var(--rd-accent,#D9AE6A));--c-ice2:color-mix(in srgb,#34466A 95%,var(--rd-accent,#D9AE6A));--c-lowsun:color-mix(in srgb,#2C3550 95%,var(--rd-accent,#D9AE6A));--c-beak:color-mix(in srgb,#A07A30 95%,var(--rd-accent,#D9AE6A));--c-eye:color-mix(in srgb,#1A1612 95%,var(--rd-accent,#D9AE6A));--c-eyeshine:color-mix(in srgb,#D9AE6A 95%,var(--rd-accent,#D9AE6A));--c-pony:color-mix(in srgb,#C29A6C 95%,
+var(--rd-accent,#D9AE6A));--c-pony2:color-mix(in srgb,#A8825A 95%,var(--rd-accent,#D9AE6A));--c-mane:color-mix(in srgb,#5A3620 95%,var(--rd-accent,#D9AE6A));--c-mane2:color-mix(in srgb,#6E4A30 95%,var(--rd-accent,#D9AE6A));--c-muzzle:color-mix(in srgb,#B08868 95%,var(--rd-accent,#D9AE6A));--c-hoof:color-mix(in srgb,#3A2E24 95%,var(--rd-accent,#D9AE6A));--c-blanket:color-mix(in srgb,#A8382C 95%,var(--rd-accent,
+#D9AE6A));--c-blanket2:color-mix(in srgb,#7E2A22 95%,var(--rd-accent,#D9AE6A));--c-mouth:color-mix(in srgb,#6E2A22 95%,var(--rd-accent,#D9AE6A));--c-shade:color-mix(in srgb,#0E120E 95%,var(--rd-accent,#D9AE6A));--c-shadow:color-mix(in srgb,#0E120E 95%,var(--rd-accent,#D9AE6A));--c-light:color-mix(in srgb,#E9B860 95%,var(--rd-accent,#D9AE6A));--c-glow:color-mix(in srgb,#E9A84E 95%,var(--rd-accent,#D9AE6A));
+--c-glowcore:color-mix(in srgb,#E9B860 95%,var(--rd-accent,#D9AE6A));--c-glass:color-mix(in srgb,#3A3A44 95%,var(--rd-accent,#D9AE6A));--c-iron:color-mix(in srgb,#2A2C30 95%,var(--rd-accent,#D9AE6A));--c-candle:color-mix(in srgb,#CDB890 95%,var(--rd-accent,#D9AE6A));--c-flame:color-mix(in srgb,#E9A84E 95%,var(--rd-accent,#D9AE6A));--c-flame2:color-mix(in srgb,#C8463A 95%,var(--rd-accent,#D9AE6A));--c-flame3:color-mix(in srgb,
+#F0C878 95%,var(--rd-accent,#D9AE6A));--c-ember:color-mix(in srgb,#E07A36 95%,var(--rd-accent,#D9AE6A));--c-ash:color-mix(in srgb,#3A3632 95%,var(--rd-accent,#D9AE6A));--c-smoke:color-mix(in srgb,#5A5650 95%,var(--rd-accent,#D9AE6A));--c-steam:color-mix(in srgb,#6A665E 95%,var(--rd-accent,#D9AE6A));--c-kettle:color-mix(in srgb,#2A2826 95%,var(--rd-accent,#D9AE6A));--c-kettle2:color-mix(in srgb,#3E3A36 95%,
+var(--rd-accent,#D9AE6A));--c-bucket:color-mix(in srgb,#4A5056 95%,var(--rd-accent,#D9AE6A));--c-mug:color-mix(in srgb,#2E4E6E 95%,var(--rd-accent,#D9AE6A));--c-rope:color-mix(in srgb,#7A5E40 95%,var(--rd-accent,#D9AE6A));--c-hyd1:color-mix(in srgb,#3E5A78 95%,var(--rd-accent,#D9AE6A));--c-hyd2:color-mix(in srgb,#5A5480 95%,var(--rd-accent,#D9AE6A));--c-hyd3:color-mix(in srgb,#4A5A70 95%,var(--rd-accent,
+#D9AE6A));--c-blue:color-mix(in srgb,#2E4E6E 95%,var(--rd-accent,#D9AE6A));--c-blue2:color-mix(in srgb,#24405A 95%,var(--rd-accent,#D9AE6A));--c-frog:color-mix(in srgb,#4E6038 95%,var(--rd-accent,#D9AE6A));--c-frog2:color-mix(in srgb,#3E4E2E 95%,var(--rd-accent,#D9AE6A));--c-kingfisher:color-mix(in srgb,#2A5A70 95%,var(--rd-accent,#D9AE6A));--c-breast:color-mix(in srgb,#9C5A3A 95%,var(--rd-accent,#D9AE6A));
+--c-owl:color-mix(in srgb,#8A7A62 95%,var(--rd-accent,#D9AE6A));--c-owl2:color-mix(in srgb,#6E604C 95%,var(--rd-accent,#D9AE6A));--c-owleye:color-mix(in srgb,#D9AE6A 95%,var(--rd-accent,#D9AE6A));--c-tent:color-mix(in srgb,#9C7448 95%,var(--rd-accent,#D9AE6A));--c-tent2:color-mix(in srgb,#7A5A38 95%,var(--rd-accent,#D9AE6A));--c-tentlit:color-mix(in srgb,#E9A84E 95%,var(--rd-accent,#D9AE6A));--c-fish:color-mix(in srgb,
+#8A7650 95%,var(--rd-accent,#D9AE6A));--c-course:#6E8A5E;--c-string:color-mix(in srgb,#8A5A3A 95%,var(--rd-accent,#D9AE6A));--c-page:color-mix(in srgb,#A89676 95%,var(--rd-accent,#D9AE6A));--c-page2:color-mix(in srgb,#8A7A5E 95%,var(--rd-accent,#D9AE6A));--c-seed:color-mix(in srgb,#8A7E68 95%,var(--rd-accent,#D9AE6A));--c-rule:color-mix(in srgb,#6A7480 95%,var(--rd-accent,#D9AE6A));--c-cap:color-mix(in srgb,
+#8A4A34 95%,var(--rd-accent,#D9AE6A));--c-duck:color-mix(in srgb,#6A5A46 95%,var(--rd-accent,#D9AE6A));--c-duck2:color-mix(in srgb,#54463A 95%,var(--rd-accent,#D9AE6A));--c-duckhead:color-mix(in srgb,#344A3A 95%,var(--rd-accent,#D9AE6A));--c-wing:color-mix(in srgb,#5A6470 95%,var(--rd-accent,#D9AE6A));--c-can:color-mix(in srgb,#46565E 95%,var(--rd-accent,#D9AE6A));--c-can2:color-mix(in srgb,#384850 95%,
+var(--rd-accent,#D9AE6A));--c-clay:color-mix(in srgb,#7A4A32 95%,var(--rd-accent,#D9AE6A));--c-clay2:color-mix(in srgb,#643C28 95%,var(--rd-accent,#D9AE6A));--c-snail:color-mix(in srgb,#7A6A58 95%,var(--rd-accent,#D9AE6A));--c-shell:color-mix(in srgb,#6E5236 95%,var(--rd-accent,#D9AE6A));--c-enamel:color-mix(in srgb,#2E4A60 95%,var(--rd-accent,#D9AE6A));--c-enamel2:color-mix(in srgb,#6A7074 95%,var(--rd-accent,
+#D9AE6A));--c-tin:color-mix(in srgb,#5E6264 95%,var(--rd-accent,#D9AE6A));--c-paper:color-mix(in srgb,#3A332A 95%,var(--rd-accent,#D9AE6A));--c-paper2:color-mix(in srgb,#2E2922 95%,var(--rd-accent,#D9AE6A));--c-tag:color-mix(in srgb,#5E4A33 95%,var(--rd-accent,#D9AE6A));--c-tag2:color-mix(in srgb,#4E3D2A 95%,var(--rd-accent,#D9AE6A));--c-bigtag:color-mix(in srgb,#D2B07E 95%,var(--rd-accent,#D9AE6A));
+--c-tagshade:color-mix(in srgb,#000000 95%,var(--rd-accent,#D9AE6A));--c-taghole:color-mix(in srgb,#2A2620 95%,var(--rd-accent,#D9AE6A));--c-tagfiber:color-mix(in srgb,#7A6046 95%,var(--rd-accent,#D9AE6A));--c-tagink:color-mix(in srgb,#2A1F14 95%,var(--rd-accent,#D9AE6A));--c-seal:color-mix(in srgb,#9E3E2A 95%,var(--rd-accent,#D9AE6A));--c-sealink:color-mix(in srgb,#5E2418 95%,var(--rd-accent,#D9AE6A));
+--c-sealring:color-mix(in srgb,#D99A7A 95%,var(--rd-accent,#D9AE6A));--c-seallight:color-mix(in srgb,#B85A40 95%,var(--rd-accent,#D9AE6A));--c-sealdark:color-mix(in srgb,#6E2A1C 95%,var(--rd-accent,#D9AE6A));--c-sealshadow:color-mix(in srgb,#000000 95%,var(--rd-accent,#D9AE6A));--c-raincloud:color-mix(in srgb,#3E434C 95%,var(--rd-accent,#D9AE6A));--c-raincloud2:color-mix(in srgb,#343840 95%,var(--rd-accent,
+#D9AE6A));--c-washedge:color-mix(in srgb,#241F19 95%,var(--rd-accent,#D9AE6A));--c-heronp:color-mix(in srgb,#33353A 95%,var(--rd-accent,#D9AE6A));--c-kfback:color-mix(in srgb,#3A7A90 95%,var(--rd-accent,#D9AE6A));--c-fish2:color-mix(in srgb,#6E5E40 95%,var(--rd-accent,#D9AE6A));--c-bag:color-mix(in srgb,#A0553A 95%,var(--rd-accent,#D9AE6A));--c-bagend:color-mix(in srgb,#9C8A6A 95%,var(--rd-accent,#D9AE6A));
+--c-knob:color-mix(in srgb,#5E4A33 95%,var(--rd-accent,#D9AE6A));--c-knob2:color-mix(in srgb,#4E3D2A 95%,var(--rd-accent,#D9AE6A));--c-pencil:color-mix(in srgb,#B08A3A 95%,var(--rd-accent,#D9AE6A));--c-eraser:color-mix(in srgb,#9C5A3A 95%,var(--rd-accent,#D9AE6A));--c-firesmoke:color-mix(in srgb,#7A6450 95%,var(--rd-accent,#D9AE6A));--c-swirl:color-mix(in srgb,#7E9BD0 95%,var(--rd-accent,#D9AE6A));
+--c-uink:#E6CFA2;--c-umuted:#A88E6A;--c-utime:#EEDCB8;--c-ulabel:#A88E6A;--c-tagtext:#F0D6A2;--c-tagmeta:#4A3826;--c-sealtext:#F3D9A8;--c-arc:#6A553F;--c-seal:color-mix(in srgb,var(--rd-accent,#9E3E2A) 25%,#9E3E2A)}
+.rd[data-theme-kit="blueprint"] .fr-room.fr-room.fr-room{--c-ink:color-mix(in srgb,#141413 24%,#1F4F8F);--c-sky0:color-mix(in srgb,#EEF2EE 24%,#1F4F8F);--c-sky1:color-mix(in srgb,#E7EFEC 24%,#1F4F8F);--c-sky2:color-mix(in srgb,#E2ECE6 24%,#1F4F8F);--c-sky3:color-mix(in srgb,#DCE8E2 24%,#1F4F8F);--c-sun:color-mix(in srgb,#F2C14E 24%,#1F4F8F);--c-sun2:color-mix(in srgb,#F6DE9A 24%,#1F4F8F);--c-moon:color-mix(in srgb,
+#E6C68C 24%,#1F4F8F);--c-moon2:color-mix(in srgb,#CDAF78 24%,#1F4F8F);--c-star:color-mix(in srgb,#E6C68C 24%,#1F4F8F);--c-cloud:color-mix(in srgb,#FFFDF8 24%,#1F4F8F);--c-cloud2:color-mix(in srgb,#ECE8DE 24%,#1F4F8F);--c-mtnfar:color-mix(in srgb,#D9DFDD 24%,#1F4F8F);--c-mtn:color-mix(in srgb,#C8D2CE 24%,#1F4F8F);--c-snow:color-mix(in srgb,#F7F6F1 24%,#1F4F8F);--c-hill:color-mix(in srgb,#C2CFA9 24%,
+#1F4F8F);--c-treefar:color-mix(in srgb,#C9D4C2 24%,#1F4F8F);--c-tree1:color-mix(in srgb,#A9BF95 24%,#1F4F8F);--c-tree2:color-mix(in srgb,#B4C59F 24%,#1F4F8F);--c-tree3:color-mix(in srgb,#9DB287 24%,#1F4F8F);--c-treeshade:color-mix(in srgb,#7D8B5F 24%,#1F4F8F);--c-leaf:color-mix(in srgb,#B9C99A 24%,#1F4F8F);--c-leaf2:color-mix(in srgb,#A7B996 24%,#1F4F8F);--c-leaf3:color-mix(in srgb,#C9D7A4 24%,#1F4F8F);
+--c-water:color-mix(in srgb,#BCD7E2 24%,#1F4F8F);--c-water2:color-mix(in srgb,#A6C6D4 24%,#1F4F8F);--c-water3:color-mix(in srgb,#F1F7F6 24%,#1F4F8F);--c-ripple:color-mix(in srgb,#86AEC2 24%,#1F4F8F);--c-foam:color-mix(in srgb,#F1F7F6 24%,#1F4F8F);--c-fallline:color-mix(in srgb,#F1F7F6 24%,#1F4F8F);--c-glint:color-mix(in srgb,#FFF3CF 24%,#1F4F8F);--c-mist:color-mix(in srgb,#F2F2EF 24%,#1F4F8F);--c-rain:color-mix(in srgb,
+#8FA3B0 24%,#1F4F8F);--c-ground:color-mix(in srgb,#DCE5C8 24%,#1F4F8F);--c-ground2:color-mix(in srgb,#C9D7B9 24%,#1F4F8F);--c-sand:color-mix(in srgb,#E8DFC9 24%,#1F4F8F);--c-sand2:color-mix(in srgb,#D6CBB3 24%,#1F4F8F);--c-path:color-mix(in srgb,#E2D7C3 24%,#1F4F8F);--c-grass:color-mix(in srgb,#7D8B5F 24%,#1F4F8F);--c-grass2:color-mix(in srgb,#94A275 24%,#1F4F8F);--c-fern:color-mix(in srgb,#6F8A4E 24%,
+#1F4F8F);--c-moss:color-mix(in srgb,#A7B996 24%,#1F4F8F);--c-rock:color-mix(in srgb,#D3CDBF 24%,#1F4F8F);--c-rock2:color-mix(in srgb,#B7AF9F 24%,#1F4F8F);--c-wood:color-mix(in srgb,#C9A27A 24%,#1F4F8F);--c-wood2:color-mix(in srgb,#B08A62 24%,#1F4F8F);--c-wood3:color-mix(in srgb,#8C6A48 24%,#1F4F8F);--c-bark:color-mix(in srgb,#A88B6A 24%,#1F4F8F);--c-birch:color-mix(in srgb,#F4F1E8 24%,#1F4F8F);--c-roof:color-mix(in srgb,
+#B9644A 24%,#1F4F8F);--c-roof2:color-mix(in srgb,#8F4430 24%,#1F4F8F);--c-fl1:color-mix(in srgb,#F2C14E 24%,#1F4F8F);--c-fl2:color-mix(in srgb,#E0855C 24%,#1F4F8F);--c-fl3:color-mix(in srgb,#C9B6CC 24%,#1F4F8F);--c-fl4:color-mix(in srgb,#FFFDF8 24%,#1F4F8F);--c-lily:color-mix(in srgb,#A9BF95 24%,#1F4F8F);--c-reed:color-mix(in srgb,#6F7D4E 24%,#1F4F8F);--c-reed2:color-mix(in srgb,#8A9A6B 24%,#1F4F8F);
+--c-cattail:color-mix(in srgb,#7A4A2A 24%,#1F4F8F);--c-boat:color-mix(in srgb,#B97E54 24%,#1F4F8F);--c-boat2:color-mix(in srgb,#96603D 24%,#1F4F8F);--c-heron:color-mix(in srgb,#CDD1D3 24%,#1F4F8F);--c-heron2:color-mix(in srgb,#AEB4B8 24%,#1F4F8F);--c-heronw:color-mix(in srgb,#F3F1EA 24%,#1F4F8F);--c-heronleg:color-mix(in srgb,#C9A55A 24%,#1F4F8F);--c-snowf:color-mix(in srgb,#F6F8F8 24%,#1F4F8F);--c-snow2:color-mix(in srgb,
+#D3DDE5 24%,#1F4F8F);--c-ice:color-mix(in srgb,#CFE3EC 24%,#1F4F8F);--c-flake:color-mix(in srgb,#FFFFFF 24%,#1F4F8F);--c-ice2:color-mix(in srgb,#B3CEDB 24%,#1F4F8F);--c-lowsun:color-mix(in srgb,#F7D7BF 24%,#1F4F8F);--c-beak:color-mix(in srgb,#D9A441 24%,#1F4F8F);--c-eye:color-mix(in srgb,#141413 24%,#1F4F8F);--c-eyeshine:color-mix(in srgb,#FFFDF8 24%,#1F4F8F);--c-pony:color-mix(in srgb,#F1DEC0 24%,
+#1F4F8F);--c-pony2:color-mix(in srgb,#E2CBA6 24%,#1F4F8F);--c-mane:color-mix(in srgb,#7A4A2A 24%,#1F4F8F);--c-mane2:color-mix(in srgb,#9A6440 24%,#1F4F8F);--c-muzzle:color-mix(in srgb,#EBCDBB 24%,#1F4F8F);--c-hoof:color-mix(in srgb,#6B5A48 24%,#1F4F8F);--c-blanket:color-mix(in srgb,#E2463B 24%,#1F4F8F);--c-blanket2:color-mix(in srgb,#B5372C 24%,#1F4F8F);--c-mouth:color-mix(in srgb,#9A3A30 24%,#1F4F8F);
+--c-shade:color-mix(in srgb,#9C9583 24%,#1F4F8F);--c-shadow:color-mix(in srgb,#7E7A6C 24%,#1F4F8F);--c-light:color-mix(in srgb,#FFF4D6 24%,#1F4F8F);--c-glow:color-mix(in srgb,#F3CE7E 24%,#1F4F8F);--c-glowcore:color-mix(in srgb,#F6DE9A 24%,#1F4F8F);--c-glass:color-mix(in srgb,#ECE5D5 24%,#1F4F8F);--c-iron:color-mix(in srgb,#4A4F55 24%,#1F4F8F);--c-candle:color-mix(in srgb,#F2EBDD 24%,#1F4F8F);--c-flame:color-mix(in srgb,
+#F2A957 24%,#1F4F8F);--c-flame2:color-mix(in srgb,#E2463B 24%,#1F4F8F);--c-flame3:color-mix(in srgb,#F6DE9A 24%,#1F4F8F);--c-ember:color-mix(in srgb,#E8803A 24%,#1F4F8F);--c-ash:color-mix(in srgb,#8E8A82 24%,#1F4F8F);--c-smoke:color-mix(in srgb,#C8C7B8 24%,#1F4F8F);--c-steam:color-mix(in srgb,#F2F0E8 24%,#1F4F8F);--c-kettle:color-mix(in srgb,#3D3B36 24%,#1F4F8F);--c-kettle2:color-mix(in srgb,#5A574F 24%,
+#1F4F8F);--c-bucket:color-mix(in srgb,#8C9AA0 24%,#1F4F8F);--c-mug:color-mix(in srgb,#4F86B8 24%,#1F4F8F);--c-rope:color-mix(in srgb,#C9A27A 24%,#1F4F8F);--c-hyd1:color-mix(in srgb,#7FA9C9 24%,#1F4F8F);--c-hyd2:color-mix(in srgb,#A7A2D2 24%,#1F4F8F);--c-hyd3:color-mix(in srgb,#C9D7E6 24%,#1F4F8F);--c-blue:color-mix(in srgb,#4F86B8 24%,#1F4F8F);--c-blue2:color-mix(in srgb,#3A6A96 24%,#1F4F8F);--c-frog:color-mix(in srgb,
+#8FA868 24%,#1F4F8F);--c-frog2:color-mix(in srgb,#6E8A4E 24%,#1F4F8F);--c-kingfisher:color-mix(in srgb,#3E8FB0 24%,#1F4F8F);--c-breast:color-mix(in srgb,#E0855C 24%,#1F4F8F);--c-owl:color-mix(in srgb,#8A7A62 24%,#1F4F8F);--c-owl2:color-mix(in srgb,#A8987C 24%,#1F4F8F);--c-owleye:color-mix(in srgb,#D9AE6A 24%,#1F4F8F);--c-tent:color-mix(in srgb,#E7DCC4 24%,#1F4F8F);--c-tent2:color-mix(in srgb,#CFC2AC 24%,
+#1F4F8F);--c-tentlit:color-mix(in srgb,#F3CE7E 24%,#1F4F8F);--c-fish:color-mix(in srgb,#C9B07A 24%,#1F4F8F);--c-course:color-mix(in srgb,#9CCB8E 24%,#1F4F8F);--c-string:color-mix(in srgb,#9A6440 24%,#1F4F8F);--c-page:color-mix(in srgb,#FBF8EF 24%,#1F4F8F);--c-page2:color-mix(in srgb,#E6DFCC 24%,#1F4F8F);--c-seed:color-mix(in srgb,#E9E4D6 24%,#1F4F8F);--c-rule:color-mix(in srgb,#9FB8C8 24%,#1F4F8F);
+--c-cap:color-mix(in srgb,#C0654A 24%,#1F4F8F);--c-duck:color-mix(in srgb,#B59A78 24%,#1F4F8F);--c-duck2:color-mix(in srgb,#8F7558 24%,#1F4F8F);--c-duckhead:color-mix(in srgb,#4E7A5A 24%,#1F4F8F);--c-wing:color-mix(in srgb,#DDE8EC 24%,#1F4F8F);--c-can:color-mix(in srgb,#7E9AA6 24%,#1F4F8F);--c-can2:color-mix(in srgb,#61808C 24%,#1F4F8F);--c-clay:color-mix(in srgb,#C47A52 24%,#1F4F8F);--c-clay2:color-mix(in srgb,
+#A8603E 24%,#1F4F8F);--c-snail:color-mix(in srgb,#C9B49A 24%,#1F4F8F);--c-shell:color-mix(in srgb,#B98A5A 24%,#1F4F8F);--c-enamel:color-mix(in srgb,#3F6E8E 24%,#1F4F8F);--c-enamel2:color-mix(in srgb,#DDE6EA 24%,#1F4F8F);--c-tin:color-mix(in srgb,#A9AFB2 24%,#1F4F8F);--c-paper:color-mix(in srgb,#F4EFE4 24%,#1F4F8F);--c-paper2:color-mix(in srgb,#EAE2D2 24%,#1F4F8F);--c-tag:color-mix(in srgb,#FFFDF8 24%,
+#1F4F8F);--c-tag2:color-mix(in srgb,#EBDBBC 24%,#1F4F8F);--c-bigtag:color-mix(in srgb,#EBDBBC 24%,#1F4F8F);--c-tagshade:color-mix(in srgb,#141413 24%,#1F4F8F);--c-taghole:color-mix(in srgb,#FAF9F5 24%,#1F4F8F);--c-tagfiber:color-mix(in srgb,#C9B69A 24%,#1F4F8F);--c-tagink:color-mix(in srgb,#141413 24%,#1F4F8F);--c-seal:color-mix(in srgb,#B5452E 24%,#1F4F8F);--c-sealink:color-mix(in srgb,#7E2E1E 24%,
+#1F4F8F);--c-sealring:color-mix(in srgb,#F1C8B8 24%,#1F4F8F);--c-seallight:color-mix(in srgb,#D46A4E 24%,#1F4F8F);--c-sealdark:color-mix(in srgb,#8E3322 24%,#1F4F8F);--c-sealshadow:color-mix(in srgb,#141413 24%,#1F4F8F);--c-raincloud:color-mix(in srgb,#C9CED0 24%,#1F4F8F);--c-raincloud2:color-mix(in srgb,#AEB5B9 24%,#1F4F8F);--c-washedge:color-mix(in srgb,#CDBF9F 24%,#1F4F8F);--c-heronp:color-mix(in srgb,
+#55595E 24%,#1F4F8F);--c-kfback:color-mix(in srgb,#5FB4C9 24%,#1F4F8F);--c-fish2:color-mix(in srgb,#A88E5A 24%,#1F4F8F);--c-bag:color-mix(in srgb,#C2603E 24%,#1F4F8F);--c-bagend:color-mix(in srgb,#E7DCC4 24%,#1F4F8F);--c-knob:color-mix(in srgb,#EBDBBC 24%,#1F4F8F);--c-knob2:color-mix(in srgb,#D9C6A4 24%,#1F4F8F);--c-pencil:color-mix(in srgb,#E8B94A 24%,#1F4F8F);--c-eraser:color-mix(in srgb,#E0855C 24%,
+#1F4F8F);--c-firesmoke:color-mix(in srgb,#B9A894 24%,#1F4F8F);--c-swirl:color-mix(in srgb,#C9D6DF 24%,#1F4F8F);--c-ink:#D4E2F2;--c-tagink:#D4E2F2;--c-sealink:#D4E2F2;--c-sky0:#1F4F8F;--c-sky1:#24578F;--c-sky2:#295E99;--c-sky3:#2E65A1;--c-utime:#EAF2FB;--c-uink:#D4E2F2;--c-ulabel:#A9C2DE;--c-umuted:#A9C2DE;--c-tagtext:#D4E2F2;--c-tagmeta:#A9C2DE;--c-sealtext:#EAF2FB;--c-arc:#5E86B8}
+.rd[data-theme-kit="blueprint"] .fr-room .fr-tint{display:none}
+/* the heron's wingbeats (made by make-css.cjs) */
+@keyframes fr-h-up { 0%,21.95% { opacity:0; } 22%,25.95% { opacity:1; } 26%,37.95% { opacity:0; } 38%,41.95% { opacity:1; } 42%,53.95% { opacity:0; } 54%,57.95% { opacity:1; } 58%,69.95% { opacity:0; } 70%,73.95% { opacity:1; } 74%,85.95% { opacity:0; } 86%,89.95% { opacity:1; } 90%,100% { opacity:0; } }
+@keyframes fr-h-mid { 0%,25.95% { opacity:0; } 26%,30.95% { opacity:1; } 31%,34.95% { opacity:0; } 35%,37.95% { opacity:1; } 38%,41.95% { opacity:0; } 42%,46.95% { opacity:1; } 47%,50.95% { opacity:0; } 51%,53.95% { opacity:1; } 54%,57.95% { opacity:0; } 58%,62.95% { opacity:1; } 63%,66.95% { opacity:0; } 67%,69.95% { opacity:1; } 70%,73.95% { opacity:0; } 74%,78.95% { opacity:1; } 79%,82.95% { opacity:0; } 83%,85.95% { opacity:1; } 86%,89.95% { opacity:0; } 90%,94.95% { opacity:1; } 95%,98.95% { opacity:0; } 99%,100% { opacity:1; } }
+@keyframes fr-h-down { 0%,30.95% { opacity:0; } 31%,34.95% { opacity:1; } 35%,46.95% { opacity:0; } 47%,50.95% { opacity:1; } 51%,62.95% { opacity:0; } 63%,66.95% { opacity:1; } 67%,78.95% { opacity:0; } 79%,82.95% { opacity:1; } 83%,94.95% { opacity:0; } 95%,98.95% { opacity:1; } 99%,100% { opacity:0; } }
+/* the drawing tokens */
+:where(.fr-room,.fr-mod) svg .f-ink{fill:var(--c-ink)}:where(.fr-room,.fr-mod) svg .s-ink{stroke:var(--c-ink)}
+:where(.fr-room,.fr-mod) svg .f-sky0{fill:var(--c-sky0)}:where(.fr-room,.fr-mod) svg .s-sky0{stroke:var(--c-sky0)}
+:where(.fr-room,.fr-mod) svg .f-sky1{fill:var(--c-sky1)}:where(.fr-room,.fr-mod) svg .s-sky1{stroke:var(--c-sky1)}
+:where(.fr-room,.fr-mod) svg .f-sky2{fill:var(--c-sky2)}:where(.fr-room,.fr-mod) svg .s-sky2{stroke:var(--c-sky2)}
+:where(.fr-room,.fr-mod) svg .f-sky3{fill:var(--c-sky3)}:where(.fr-room,.fr-mod) svg .s-sky3{stroke:var(--c-sky3)}
+:where(.fr-room,.fr-mod) svg .f-sun{fill:var(--c-sun)}:where(.fr-room,.fr-mod) svg .s-sun{stroke:var(--c-sun)}
+:where(.fr-room,.fr-mod) svg .f-sun2{fill:var(--c-sun2)}:where(.fr-room,.fr-mod) svg .s-sun2{stroke:var(--c-sun2)}
+:where(.fr-room,.fr-mod) svg .f-moon{fill:var(--c-moon)}:where(.fr-room,.fr-mod) svg .s-moon{stroke:var(--c-moon)}
+:where(.fr-room,.fr-mod) svg .f-moon2{fill:var(--c-moon2)}:where(.fr-room,.fr-mod) svg .s-moon2{stroke:var(--c-moon2)}
+:where(.fr-room,.fr-mod) svg .f-star{fill:var(--c-star)}:where(.fr-room,.fr-mod) svg .s-star{stroke:var(--c-star)}
+:where(.fr-room,.fr-mod) svg .f-cloud{fill:var(--c-cloud)}:where(.fr-room,.fr-mod) svg .s-cloud{stroke:var(--c-cloud)}
+:where(.fr-room,.fr-mod) svg .f-cloud2{fill:var(--c-cloud2)}:where(.fr-room,.fr-mod) svg .s-cloud2{stroke:var(--c-cloud2)}
+:where(.fr-room,.fr-mod) svg .f-mtnfar{fill:var(--c-mtnfar)}:where(.fr-room,.fr-mod) svg .s-mtnfar{stroke:var(--c-mtnfar)}
+:where(.fr-room,.fr-mod) svg .f-mtn{fill:var(--c-mtn)}:where(.fr-room,.fr-mod) svg .s-mtn{stroke:var(--c-mtn)}
+:where(.fr-room,.fr-mod) svg .f-snow{fill:var(--c-snow)}:where(.fr-room,.fr-mod) svg .s-snow{stroke:var(--c-snow)}
+:where(.fr-room,.fr-mod) svg .f-hill{fill:var(--c-hill)}:where(.fr-room,.fr-mod) svg .s-hill{stroke:var(--c-hill)}
+:where(.fr-room,.fr-mod) svg .f-treefar{fill:var(--c-treefar)}:where(.fr-room,.fr-mod) svg .s-treefar{stroke:var(--c-treefar)}
+:where(.fr-room,.fr-mod) svg .f-tree1{fill:var(--c-tree1)}:where(.fr-room,.fr-mod) svg .s-tree1{stroke:var(--c-tree1)}
+:where(.fr-room,.fr-mod) svg .f-tree2{fill:var(--c-tree2)}:where(.fr-room,.fr-mod) svg .s-tree2{stroke:var(--c-tree2)}
+:where(.fr-room,.fr-mod) svg .f-tree3{fill:var(--c-tree3)}:where(.fr-room,.fr-mod) svg .s-tree3{stroke:var(--c-tree3)}
+:where(.fr-room,.fr-mod) svg .f-treeshade{fill:var(--c-treeshade)}:where(.fr-room,.fr-mod) svg .s-treeshade{stroke:var(--c-treeshade)}
+:where(.fr-room,.fr-mod) svg .f-leaf{fill:var(--c-leaf)}:where(.fr-room,.fr-mod) svg .s-leaf{stroke:var(--c-leaf)}
+:where(.fr-room,.fr-mod) svg .f-leaf2{fill:var(--c-leaf2)}:where(.fr-room,.fr-mod) svg .s-leaf2{stroke:var(--c-leaf2)}
+:where(.fr-room,.fr-mod) svg .f-leaf3{fill:var(--c-leaf3)}:where(.fr-room,.fr-mod) svg .s-leaf3{stroke:var(--c-leaf3)}
+:where(.fr-room,.fr-mod) svg .f-water{fill:var(--c-water)}:where(.fr-room,.fr-mod) svg .s-water{stroke:var(--c-water)}
+:where(.fr-room,.fr-mod) svg .f-water2{fill:var(--c-water2)}:where(.fr-room,.fr-mod) svg .s-water2{stroke:var(--c-water2)}
+:where(.fr-room,.fr-mod) svg .f-water3{fill:var(--c-water3)}:where(.fr-room,.fr-mod) svg .s-water3{stroke:var(--c-water3)}
+:where(.fr-room,.fr-mod) svg .f-ripple{fill:var(--c-ripple)}:where(.fr-room,.fr-mod) svg .s-ripple{stroke:var(--c-ripple)}
+:where(.fr-room,.fr-mod) svg .f-foam{fill:var(--c-foam)}:where(.fr-room,.fr-mod) svg .s-foam{stroke:var(--c-foam)}
+:where(.fr-room,.fr-mod) svg .f-fallline{fill:var(--c-fallline)}:where(.fr-room,.fr-mod) svg .s-fallline{stroke:var(--c-fallline)}
+:where(.fr-room,.fr-mod) svg .f-glint{fill:var(--c-glint)}:where(.fr-room,.fr-mod) svg .s-glint{stroke:var(--c-glint)}
+:where(.fr-room,.fr-mod) svg .f-mist{fill:var(--c-mist)}:where(.fr-room,.fr-mod) svg .s-mist{stroke:var(--c-mist)}
+:where(.fr-room,.fr-mod) svg .f-rain{fill:var(--c-rain)}:where(.fr-room,.fr-mod) svg .s-rain{stroke:var(--c-rain)}
+:where(.fr-room,.fr-mod) svg .f-ground{fill:var(--c-ground)}:where(.fr-room,.fr-mod) svg .s-ground{stroke:var(--c-ground)}
+:where(.fr-room,.fr-mod) svg .f-ground2{fill:var(--c-ground2)}:where(.fr-room,.fr-mod) svg .s-ground2{stroke:var(--c-ground2)}
+:where(.fr-room,.fr-mod) svg .f-sand{fill:var(--c-sand)}:where(.fr-room,.fr-mod) svg .s-sand{stroke:var(--c-sand)}
+:where(.fr-room,.fr-mod) svg .f-sand2{fill:var(--c-sand2)}:where(.fr-room,.fr-mod) svg .s-sand2{stroke:var(--c-sand2)}
+:where(.fr-room,.fr-mod) svg .f-path{fill:var(--c-path)}:where(.fr-room,.fr-mod) svg .s-path{stroke:var(--c-path)}
+:where(.fr-room,.fr-mod) svg .f-grass{fill:var(--c-grass)}:where(.fr-room,.fr-mod) svg .s-grass{stroke:var(--c-grass)}
+:where(.fr-room,.fr-mod) svg .f-grass2{fill:var(--c-grass2)}:where(.fr-room,.fr-mod) svg .s-grass2{stroke:var(--c-grass2)}
+:where(.fr-room,.fr-mod) svg .f-fern{fill:var(--c-fern)}:where(.fr-room,.fr-mod) svg .s-fern{stroke:var(--c-fern)}
+:where(.fr-room,.fr-mod) svg .f-moss{fill:var(--c-moss)}:where(.fr-room,.fr-mod) svg .s-moss{stroke:var(--c-moss)}
+:where(.fr-room,.fr-mod) svg .f-rock{fill:var(--c-rock)}:where(.fr-room,.fr-mod) svg .s-rock{stroke:var(--c-rock)}
+:where(.fr-room,.fr-mod) svg .f-rock2{fill:var(--c-rock2)}:where(.fr-room,.fr-mod) svg .s-rock2{stroke:var(--c-rock2)}
+:where(.fr-room,.fr-mod) svg .f-wood{fill:var(--c-wood)}:where(.fr-room,.fr-mod) svg .s-wood{stroke:var(--c-wood)}
+:where(.fr-room,.fr-mod) svg .f-wood2{fill:var(--c-wood2)}:where(.fr-room,.fr-mod) svg .s-wood2{stroke:var(--c-wood2)}
+:where(.fr-room,.fr-mod) svg .f-wood3{fill:var(--c-wood3)}:where(.fr-room,.fr-mod) svg .s-wood3{stroke:var(--c-wood3)}
+:where(.fr-room,.fr-mod) svg .f-bark{fill:var(--c-bark)}:where(.fr-room,.fr-mod) svg .s-bark{stroke:var(--c-bark)}
+:where(.fr-room,.fr-mod) svg .f-birch{fill:var(--c-birch)}:where(.fr-room,.fr-mod) svg .s-birch{stroke:var(--c-birch)}
+:where(.fr-room,.fr-mod) svg .f-roof{fill:var(--c-roof)}:where(.fr-room,.fr-mod) svg .s-roof{stroke:var(--c-roof)}
+:where(.fr-room,.fr-mod) svg .f-roof2{fill:var(--c-roof2)}:where(.fr-room,.fr-mod) svg .s-roof2{stroke:var(--c-roof2)}
+:where(.fr-room,.fr-mod) svg .f-fl1{fill:var(--c-fl1)}:where(.fr-room,.fr-mod) svg .s-fl1{stroke:var(--c-fl1)}
+:where(.fr-room,.fr-mod) svg .f-fl2{fill:var(--c-fl2)}:where(.fr-room,.fr-mod) svg .s-fl2{stroke:var(--c-fl2)}
+:where(.fr-room,.fr-mod) svg .f-fl3{fill:var(--c-fl3)}:where(.fr-room,.fr-mod) svg .s-fl3{stroke:var(--c-fl3)}
+:where(.fr-room,.fr-mod) svg .f-fl4{fill:var(--c-fl4)}:where(.fr-room,.fr-mod) svg .s-fl4{stroke:var(--c-fl4)}
+:where(.fr-room,.fr-mod) svg .f-lily{fill:var(--c-lily)}:where(.fr-room,.fr-mod) svg .s-lily{stroke:var(--c-lily)}
+:where(.fr-room,.fr-mod) svg .f-reed{fill:var(--c-reed)}:where(.fr-room,.fr-mod) svg .s-reed{stroke:var(--c-reed)}
+:where(.fr-room,.fr-mod) svg .f-reed2{fill:var(--c-reed2)}:where(.fr-room,.fr-mod) svg .s-reed2{stroke:var(--c-reed2)}
+:where(.fr-room,.fr-mod) svg .f-cattail{fill:var(--c-cattail)}:where(.fr-room,.fr-mod) svg .s-cattail{stroke:var(--c-cattail)}
+:where(.fr-room,.fr-mod) svg .f-boat{fill:var(--c-boat)}:where(.fr-room,.fr-mod) svg .s-boat{stroke:var(--c-boat)}
+:where(.fr-room,.fr-mod) svg .f-boat2{fill:var(--c-boat2)}:where(.fr-room,.fr-mod) svg .s-boat2{stroke:var(--c-boat2)}
+:where(.fr-room,.fr-mod) svg .f-heron{fill:var(--c-heron)}:where(.fr-room,.fr-mod) svg .s-heron{stroke:var(--c-heron)}
+:where(.fr-room,.fr-mod) svg .f-heron2{fill:var(--c-heron2)}:where(.fr-room,.fr-mod) svg .s-heron2{stroke:var(--c-heron2)}
+:where(.fr-room,.fr-mod) svg .f-heronw{fill:var(--c-heronw)}:where(.fr-room,.fr-mod) svg .s-heronw{stroke:var(--c-heronw)}
+:where(.fr-room,.fr-mod) svg .f-heronleg{fill:var(--c-heronleg)}:where(.fr-room,.fr-mod) svg .s-heronleg{stroke:var(--c-heronleg)}
+:where(.fr-room,.fr-mod) svg .f-snowf{fill:var(--c-snowf)}:where(.fr-room,.fr-mod) svg .s-snowf{stroke:var(--c-snowf)}
+:where(.fr-room,.fr-mod) svg .f-snow2{fill:var(--c-snow2)}:where(.fr-room,.fr-mod) svg .s-snow2{stroke:var(--c-snow2)}
+:where(.fr-room,.fr-mod) svg .f-ice{fill:var(--c-ice)}:where(.fr-room,.fr-mod) svg .s-ice{stroke:var(--c-ice)}
+:where(.fr-room,.fr-mod) svg .f-flake{fill:var(--c-flake)}:where(.fr-room,.fr-mod) svg .s-flake{stroke:var(--c-flake)}
+:where(.fr-room,.fr-mod) svg .f-ice2{fill:var(--c-ice2)}:where(.fr-room,.fr-mod) svg .s-ice2{stroke:var(--c-ice2)}
+:where(.fr-room,.fr-mod) svg .f-lowsun{fill:var(--c-lowsun)}:where(.fr-room,.fr-mod) svg .s-lowsun{stroke:var(--c-lowsun)}
+:where(.fr-room,.fr-mod) svg .f-beak{fill:var(--c-beak)}:where(.fr-room,.fr-mod) svg .s-beak{stroke:var(--c-beak)}
+:where(.fr-room,.fr-mod) svg .f-eye{fill:var(--c-eye)}:where(.fr-room,.fr-mod) svg .s-eye{stroke:var(--c-eye)}
+:where(.fr-room,.fr-mod) svg .f-eyeshine{fill:var(--c-eyeshine)}:where(.fr-room,.fr-mod) svg .s-eyeshine{stroke:var(--c-eyeshine)}
+:where(.fr-room,.fr-mod) svg .f-pony{fill:var(--c-pony)}:where(.fr-room,.fr-mod) svg .s-pony{stroke:var(--c-pony)}
+:where(.fr-room,.fr-mod) svg .f-pony2{fill:var(--c-pony2)}:where(.fr-room,.fr-mod) svg .s-pony2{stroke:var(--c-pony2)}
+:where(.fr-room,.fr-mod) svg .f-mane{fill:var(--c-mane)}:where(.fr-room,.fr-mod) svg .s-mane{stroke:var(--c-mane)}
+:where(.fr-room,.fr-mod) svg .f-mane2{fill:var(--c-mane2)}:where(.fr-room,.fr-mod) svg .s-mane2{stroke:var(--c-mane2)}
+:where(.fr-room,.fr-mod) svg .f-muzzle{fill:var(--c-muzzle)}:where(.fr-room,.fr-mod) svg .s-muzzle{stroke:var(--c-muzzle)}
+:where(.fr-room,.fr-mod) svg .f-hoof{fill:var(--c-hoof)}:where(.fr-room,.fr-mod) svg .s-hoof{stroke:var(--c-hoof)}
+:where(.fr-room,.fr-mod) svg .f-blanket{fill:var(--c-blanket)}:where(.fr-room,.fr-mod) svg .s-blanket{stroke:var(--c-blanket)}
+:where(.fr-room,.fr-mod) svg .f-blanket2{fill:var(--c-blanket2)}:where(.fr-room,.fr-mod) svg .s-blanket2{stroke:var(--c-blanket2)}
+:where(.fr-room,.fr-mod) svg .f-mouth{fill:var(--c-mouth)}:where(.fr-room,.fr-mod) svg .s-mouth{stroke:var(--c-mouth)}
+:where(.fr-room,.fr-mod) svg .f-shade{fill:var(--c-shade)}:where(.fr-room,.fr-mod) svg .s-shade{stroke:var(--c-shade)}
+:where(.fr-room,.fr-mod) svg .f-shadow{fill:var(--c-shadow)}:where(.fr-room,.fr-mod) svg .s-shadow{stroke:var(--c-shadow)}
+:where(.fr-room,.fr-mod) svg .f-light{fill:var(--c-light)}:where(.fr-room,.fr-mod) svg .s-light{stroke:var(--c-light)}
+:where(.fr-room,.fr-mod) svg .f-glow{fill:var(--c-glow)}:where(.fr-room,.fr-mod) svg .s-glow{stroke:var(--c-glow)}
+:where(.fr-room,.fr-mod) svg .f-glowcore{fill:var(--c-glowcore)}:where(.fr-room,.fr-mod) svg .s-glowcore{stroke:var(--c-glowcore)}
+:where(.fr-room,.fr-mod) svg .f-glass{fill:var(--c-glass)}:where(.fr-room,.fr-mod) svg .s-glass{stroke:var(--c-glass)}
+:where(.fr-room,.fr-mod) svg .f-iron{fill:var(--c-iron)}:where(.fr-room,.fr-mod) svg .s-iron{stroke:var(--c-iron)}
+:where(.fr-room,.fr-mod) svg .f-candle{fill:var(--c-candle)}:where(.fr-room,.fr-mod) svg .s-candle{stroke:var(--c-candle)}
+:where(.fr-room,.fr-mod) svg .f-flame{fill:var(--c-flame)}:where(.fr-room,.fr-mod) svg .s-flame{stroke:var(--c-flame)}
+:where(.fr-room,.fr-mod) svg .f-flame2{fill:var(--c-flame2)}:where(.fr-room,.fr-mod) svg .s-flame2{stroke:var(--c-flame2)}
+:where(.fr-room,.fr-mod) svg .f-flame3{fill:var(--c-flame3)}:where(.fr-room,.fr-mod) svg .s-flame3{stroke:var(--c-flame3)}
+:where(.fr-room,.fr-mod) svg .f-ember{fill:var(--c-ember)}:where(.fr-room,.fr-mod) svg .s-ember{stroke:var(--c-ember)}
+:where(.fr-room,.fr-mod) svg .f-ash{fill:var(--c-ash)}:where(.fr-room,.fr-mod) svg .s-ash{stroke:var(--c-ash)}
+:where(.fr-room,.fr-mod) svg .f-smoke{fill:var(--c-smoke)}:where(.fr-room,.fr-mod) svg .s-smoke{stroke:var(--c-smoke)}
+:where(.fr-room,.fr-mod) svg .f-steam{fill:var(--c-steam)}:where(.fr-room,.fr-mod) svg .s-steam{stroke:var(--c-steam)}
+:where(.fr-room,.fr-mod) svg .f-kettle{fill:var(--c-kettle)}:where(.fr-room,.fr-mod) svg .s-kettle{stroke:var(--c-kettle)}
+:where(.fr-room,.fr-mod) svg .f-kettle2{fill:var(--c-kettle2)}:where(.fr-room,.fr-mod) svg .s-kettle2{stroke:var(--c-kettle2)}
+:where(.fr-room,.fr-mod) svg .f-bucket{fill:var(--c-bucket)}:where(.fr-room,.fr-mod) svg .s-bucket{stroke:var(--c-bucket)}
+:where(.fr-room,.fr-mod) svg .f-mug{fill:var(--c-mug)}:where(.fr-room,.fr-mod) svg .s-mug{stroke:var(--c-mug)}
+:where(.fr-room,.fr-mod) svg .f-rope{fill:var(--c-rope)}:where(.fr-room,.fr-mod) svg .s-rope{stroke:var(--c-rope)}
+:where(.fr-room,.fr-mod) svg .f-hyd1{fill:var(--c-hyd1)}:where(.fr-room,.fr-mod) svg .s-hyd1{stroke:var(--c-hyd1)}
+:where(.fr-room,.fr-mod) svg .f-hyd2{fill:var(--c-hyd2)}:where(.fr-room,.fr-mod) svg .s-hyd2{stroke:var(--c-hyd2)}
+:where(.fr-room,.fr-mod) svg .f-hyd3{fill:var(--c-hyd3)}:where(.fr-room,.fr-mod) svg .s-hyd3{stroke:var(--c-hyd3)}
+:where(.fr-room,.fr-mod) svg .f-blue{fill:var(--c-blue)}:where(.fr-room,.fr-mod) svg .s-blue{stroke:var(--c-blue)}
+:where(.fr-room,.fr-mod) svg .f-blue2{fill:var(--c-blue2)}:where(.fr-room,.fr-mod) svg .s-blue2{stroke:var(--c-blue2)}
+:where(.fr-room,.fr-mod) svg .f-frog{fill:var(--c-frog)}:where(.fr-room,.fr-mod) svg .s-frog{stroke:var(--c-frog)}
+:where(.fr-room,.fr-mod) svg .f-frog2{fill:var(--c-frog2)}:where(.fr-room,.fr-mod) svg .s-frog2{stroke:var(--c-frog2)}
+:where(.fr-room,.fr-mod) svg .f-kingfisher{fill:var(--c-kingfisher)}:where(.fr-room,.fr-mod) svg .s-kingfisher{stroke:var(--c-kingfisher)}
+:where(.fr-room,.fr-mod) svg .f-breast{fill:var(--c-breast)}:where(.fr-room,.fr-mod) svg .s-breast{stroke:var(--c-breast)}
+:where(.fr-room,.fr-mod) svg .f-owl{fill:var(--c-owl)}:where(.fr-room,.fr-mod) svg .s-owl{stroke:var(--c-owl)}
+:where(.fr-room,.fr-mod) svg .f-owl2{fill:var(--c-owl2)}:where(.fr-room,.fr-mod) svg .s-owl2{stroke:var(--c-owl2)}
+:where(.fr-room,.fr-mod) svg .f-owleye{fill:var(--c-owleye)}:where(.fr-room,.fr-mod) svg .s-owleye{stroke:var(--c-owleye)}
+:where(.fr-room,.fr-mod) svg .f-tent{fill:var(--c-tent)}:where(.fr-room,.fr-mod) svg .s-tent{stroke:var(--c-tent)}
+:where(.fr-room,.fr-mod) svg .f-tent2{fill:var(--c-tent2)}:where(.fr-room,.fr-mod) svg .s-tent2{stroke:var(--c-tent2)}
+:where(.fr-room,.fr-mod) svg .f-tentlit{fill:var(--c-tentlit)}:where(.fr-room,.fr-mod) svg .s-tentlit{stroke:var(--c-tentlit)}
+:where(.fr-room,.fr-mod) svg .f-fish{fill:var(--c-fish)}:where(.fr-room,.fr-mod) svg .s-fish{stroke:var(--c-fish)}
+:where(.fr-room,.fr-mod) svg .f-course{fill:var(--c-course)}:where(.fr-room,.fr-mod) svg .s-course{stroke:var(--c-course)}
+:where(.fr-room,.fr-mod) svg .f-string{fill:var(--c-string)}:where(.fr-room,.fr-mod) svg .s-string{stroke:var(--c-string)}
+:where(.fr-room,.fr-mod) svg .f-page{fill:var(--c-page)}:where(.fr-room,.fr-mod) svg .s-page{stroke:var(--c-page)}
+:where(.fr-room,.fr-mod) svg .f-page2{fill:var(--c-page2)}:where(.fr-room,.fr-mod) svg .s-page2{stroke:var(--c-page2)}
+:where(.fr-room,.fr-mod) svg .f-seed{fill:var(--c-seed)}:where(.fr-room,.fr-mod) svg .s-seed{stroke:var(--c-seed)}
+:where(.fr-room,.fr-mod) svg .f-rule{fill:var(--c-rule)}:where(.fr-room,.fr-mod) svg .s-rule{stroke:var(--c-rule)}
+:where(.fr-room,.fr-mod) svg .f-cap{fill:var(--c-cap)}:where(.fr-room,.fr-mod) svg .s-cap{stroke:var(--c-cap)}
+:where(.fr-room,.fr-mod) svg .f-duck{fill:var(--c-duck)}:where(.fr-room,.fr-mod) svg .s-duck{stroke:var(--c-duck)}
+:where(.fr-room,.fr-mod) svg .f-duck2{fill:var(--c-duck2)}:where(.fr-room,.fr-mod) svg .s-duck2{stroke:var(--c-duck2)}
+:where(.fr-room,.fr-mod) svg .f-duckhead{fill:var(--c-duckhead)}:where(.fr-room,.fr-mod) svg .s-duckhead{stroke:var(--c-duckhead)}
+:where(.fr-room,.fr-mod) svg .f-wing{fill:var(--c-wing)}:where(.fr-room,.fr-mod) svg .s-wing{stroke:var(--c-wing)}
+:where(.fr-room,.fr-mod) svg .f-can{fill:var(--c-can)}:where(.fr-room,.fr-mod) svg .s-can{stroke:var(--c-can)}
+:where(.fr-room,.fr-mod) svg .f-can2{fill:var(--c-can2)}:where(.fr-room,.fr-mod) svg .s-can2{stroke:var(--c-can2)}
+:where(.fr-room,.fr-mod) svg .f-clay{fill:var(--c-clay)}:where(.fr-room,.fr-mod) svg .s-clay{stroke:var(--c-clay)}
+:where(.fr-room,.fr-mod) svg .f-clay2{fill:var(--c-clay2)}:where(.fr-room,.fr-mod) svg .s-clay2{stroke:var(--c-clay2)}
+:where(.fr-room,.fr-mod) svg .f-snail{fill:var(--c-snail)}:where(.fr-room,.fr-mod) svg .s-snail{stroke:var(--c-snail)}
+:where(.fr-room,.fr-mod) svg .f-shell{fill:var(--c-shell)}:where(.fr-room,.fr-mod) svg .s-shell{stroke:var(--c-shell)}
+:where(.fr-room,.fr-mod) svg .f-enamel{fill:var(--c-enamel)}:where(.fr-room,.fr-mod) svg .s-enamel{stroke:var(--c-enamel)}
+:where(.fr-room,.fr-mod) svg .f-enamel2{fill:var(--c-enamel2)}:where(.fr-room,.fr-mod) svg .s-enamel2{stroke:var(--c-enamel2)}
+:where(.fr-room,.fr-mod) svg .f-tin{fill:var(--c-tin)}:where(.fr-room,.fr-mod) svg .s-tin{stroke:var(--c-tin)}
+:where(.fr-room,.fr-mod) svg .f-paper{fill:var(--c-paper)}:where(.fr-room,.fr-mod) svg .s-paper{stroke:var(--c-paper)}
+:where(.fr-room,.fr-mod) svg .f-paper2{fill:var(--c-paper2)}:where(.fr-room,.fr-mod) svg .s-paper2{stroke:var(--c-paper2)}
+:where(.fr-room,.fr-mod) svg .f-tag{fill:var(--c-tag)}:where(.fr-room,.fr-mod) svg .s-tag{stroke:var(--c-tag)}
+:where(.fr-room,.fr-mod) svg .f-tag2{fill:var(--c-tag2)}:where(.fr-room,.fr-mod) svg .s-tag2{stroke:var(--c-tag2)}
+:where(.fr-room,.fr-mod) svg .f-bigtag{fill:var(--c-bigtag)}:where(.fr-room,.fr-mod) svg .s-bigtag{stroke:var(--c-bigtag)}
+:where(.fr-room,.fr-mod) svg .f-tagshade{fill:var(--c-tagshade)}:where(.fr-room,.fr-mod) svg .s-tagshade{stroke:var(--c-tagshade)}
+:where(.fr-room,.fr-mod) svg .f-taghole{fill:var(--c-taghole)}:where(.fr-room,.fr-mod) svg .s-taghole{stroke:var(--c-taghole)}
+:where(.fr-room,.fr-mod) svg .f-tagfiber{fill:var(--c-tagfiber)}:where(.fr-room,.fr-mod) svg .s-tagfiber{stroke:var(--c-tagfiber)}
+:where(.fr-room,.fr-mod) svg .f-tagink{fill:var(--c-tagink)}:where(.fr-room,.fr-mod) svg .s-tagink{stroke:var(--c-tagink)}
+:where(.fr-room,.fr-mod) svg .f-seal{fill:var(--c-seal)}:where(.fr-room,.fr-mod) svg .s-seal{stroke:var(--c-seal)}
+:where(.fr-room,.fr-mod) svg .f-sealink{fill:var(--c-sealink)}:where(.fr-room,.fr-mod) svg .s-sealink{stroke:var(--c-sealink)}
+:where(.fr-room,.fr-mod) svg .f-sealring{fill:var(--c-sealring)}:where(.fr-room,.fr-mod) svg .s-sealring{stroke:var(--c-sealring)}
+:where(.fr-room,.fr-mod) svg .f-seallight{fill:var(--c-seallight)}:where(.fr-room,.fr-mod) svg .s-seallight{stroke:var(--c-seallight)}
+:where(.fr-room,.fr-mod) svg .f-sealdark{fill:var(--c-sealdark)}:where(.fr-room,.fr-mod) svg .s-sealdark{stroke:var(--c-sealdark)}
+:where(.fr-room,.fr-mod) svg .f-sealshadow{fill:var(--c-sealshadow)}:where(.fr-room,.fr-mod) svg .s-sealshadow{stroke:var(--c-sealshadow)}
+:where(.fr-room,.fr-mod) svg .f-raincloud{fill:var(--c-raincloud)}:where(.fr-room,.fr-mod) svg .s-raincloud{stroke:var(--c-raincloud)}
+:where(.fr-room,.fr-mod) svg .f-raincloud2{fill:var(--c-raincloud2)}:where(.fr-room,.fr-mod) svg .s-raincloud2{stroke:var(--c-raincloud2)}
+:where(.fr-room,.fr-mod) svg .f-washedge{fill:var(--c-washedge)}:where(.fr-room,.fr-mod) svg .s-washedge{stroke:var(--c-washedge)}
+:where(.fr-room,.fr-mod) svg .f-heronp{fill:var(--c-heronp)}:where(.fr-room,.fr-mod) svg .s-heronp{stroke:var(--c-heronp)}
+:where(.fr-room,.fr-mod) svg .f-kfback{fill:var(--c-kfback)}:where(.fr-room,.fr-mod) svg .s-kfback{stroke:var(--c-kfback)}
+:where(.fr-room,.fr-mod) svg .f-fish2{fill:var(--c-fish2)}:where(.fr-room,.fr-mod) svg .s-fish2{stroke:var(--c-fish2)}
+:where(.fr-room,.fr-mod) svg .f-bag{fill:var(--c-bag)}:where(.fr-room,.fr-mod) svg .s-bag{stroke:var(--c-bag)}
+:where(.fr-room,.fr-mod) svg .f-bagend{fill:var(--c-bagend)}:where(.fr-room,.fr-mod) svg .s-bagend{stroke:var(--c-bagend)}
+:where(.fr-room,.fr-mod) svg .f-knob{fill:var(--c-knob)}:where(.fr-room,.fr-mod) svg .s-knob{stroke:var(--c-knob)}
+:where(.fr-room,.fr-mod) svg .f-knob2{fill:var(--c-knob2)}:where(.fr-room,.fr-mod) svg .s-knob2{stroke:var(--c-knob2)}
+:where(.fr-room,.fr-mod) svg .f-pencil{fill:var(--c-pencil)}:where(.fr-room,.fr-mod) svg .s-pencil{stroke:var(--c-pencil)}
+:where(.fr-room,.fr-mod) svg .f-eraser{fill:var(--c-eraser)}:where(.fr-room,.fr-mod) svg .s-eraser{stroke:var(--c-eraser)}
+:where(.fr-room,.fr-mod) svg .f-firesmoke{fill:var(--c-firesmoke)}:where(.fr-room,.fr-mod) svg .s-firesmoke{stroke:var(--c-firesmoke)}
+:where(.fr-room,.fr-mod) svg .f-swirl{fill:var(--c-swirl)}:where(.fr-room,.fr-mod) svg .s-swirl{stroke:var(--c-swirl)}

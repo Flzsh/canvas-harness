@@ -1,7 +1,7 @@
 // Adapted from Gary Wu's pull request #47 to Canvas Harness.
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
-function fixture(pathname='/',search='',{deferDashboard=false,lateSite=false}={}){
- const nodes=new Map(),events={},winEvents={};let lastSnapshot=null;
+function fixture(pathname='/',search='',{deferDashboard=false,lateSite=false,quickOpen=false,features,assignments=[]}={}){
+ const nodes=new Map(),events={},winEvents={};
  class El{
   constructor(tag='div'){this.tagName=tag;this.children=[];this.hidden=false;this.style={};this.events={};this.dataset={};this._query={};}
   set id(v){this._id=v;nodes.set(v,this);}get id(){return this._id;}
@@ -10,31 +10,34 @@ function fixture(pathname='/',search='',{deferDashboard=false,lateSite=false}={}
   addEventListener(name,fn){this.events[name]=fn;}
   setAttribute(name,value){this[name]=value;}
   contains(el){return this===el||this.children.some(child=>child.contains(el));}
-  set innerHTML(value){this._html=value;for(const key of ['button','span','[data-dashboard]','[data-native]'])this._query[key]=new El(key);}
+  set innerHTML(value){this._html=value;for(const key of ['button','[data-native]'])this._query[key]=new El(key);}
   querySelector(key){return this._query[key]||null;}
   remove(){if(this.parentElement)this.parentElement.children=this.parentElement.children.filter(x=>x!==this);}
   scrollIntoView(){}
  }
- const body=new El('body'),head=new El('head'),html=new El('html'),classes=new Set();html.classList={add:(...names)=>names.forEach(name=>classes.add(name)),remove:(...names)=>names.forEach(name=>classes.delete(name)),contains:name=>classes.has(name)};
- const content=new El();content.id='content';const native=new El();native.id='dashboard';const sidebar=new El();sidebar.id='right-side';content.append(native);const application=new El();application.id='application';application.append(content,sidebar);body.append(application);
+ const body=new El('body'),head=new El('head'),html=new El('html');html.classList={add(){},remove(){}};
+ const content=new El();content.id='content';const native=new El();native.id='dashboard';const sidebar=new El();sidebar.id='right-side';content.append(native);const application=new El();application.id='application';body.append(content,sidebar,application);
  const document={body,head,documentElement:html,visibilityState:'visible',getElementById:id=>nodes.get(id),querySelector:()=>null,createElement:tag=>new El(tag),addEventListener:(key,fn)=>events[key]=fn};
- let callbacks,started=0,dashboardOptions,plannerOptions,scrollRestored,nativeToolsCreated=0,mounts=0,dashboardDestroys=0,painted=!deferDashboard;const statuses=[],trail=[];
- const window={scrollY:460,scrollTo:(options)=>scrollRestored=options.top,addEventListener:(key,fn)=>winEvents[key]=fn};window.top=window;
+ let callbacks,started=0,dashboardOptions,nativeToolsCreated=0,mounts=0,dashboardDestroys=0,fileCloses=0,fileResumes=0,settingsOpens=0,painted=!deferDashboard;const statuses=[],trail=[];
+ const window={scrollY:460,scrollTo(){},addEventListener:(key,fn)=>winEvents[key]=fn};window.top=window;
+ const verifiedStore={get:()=>({settings:{showGrades:false,quickOpen:quickOpen?'on':'off'}})};
  const session={start(){started++;},refresh:async()=>null,verify:async()=>true,suspend(){},destroy(){}};
- const mockView=()=>({destroy(){dashboardDestroys++;},closePersonalFiles(){trail.push('close');},resumePersonalFiles(){trail.push('files');},setStatus:message=>statuses.push(message),updateSnapshot(next){trail.push(next===lastSnapshot?'same snapshot':'new snapshot');},getState:()=>({query:'gas',mode:'tomorrow',courseId:'7',day:'',limit:60})});
- const context={document,window,requestAnimationFrame:fn=>fn(),setTimeout,location:{origin:'https://school.instructure.com',pathname,search},URL,URLSearchParams,Date,
+ const mockView=()=>({destroy(){},closePersonalFiles(){fileCloses++;},resumePersonalFiles(){fileResumes++;trail.push('files');},setStatus:message=>statuses.push(message),updateSnapshot(next){const cover=nodes.get('reserve-companion-host')?.shadowRoot?.children.find(el=>el.className==='reserve-resume');trail.push('snapshot:'+(next?.courses?'data':'none')+':'+(cover&&!cover.hidden?'covered':'open'));},getState:()=>({query:'gas',mode:'tomorrow',courseId:'7',day:'',limit:60})});
+ const context={document,window,requestAnimationFrame:fn=>fn(),location:{origin:'https://school.instructure.com',pathname,search,reload(){}},URLSearchParams,Date,
+  // The controller's start watch waits twenty seconds; it must not outlive these short tests.
+  setTimeout:(fn,ms)=>{const timer=setTimeout(fn,ms);timer.unref?.();return timer;},ReserveSite:lateSite?undefined:require('../extension/site.js'),
   sessionStorage:{setItem(){},removeItem(){},getItem:()=>null},
   // This fixture isolates controller behavior; startup.test.cjs runs the real guard.
   ReserveStartup:{canReveal:()=>true,complete:()=>true,release(){},onNative(){}},
   chrome:{storage:{local:{get:async()=>({})}},runtime:{getURL:name=>'chrome-extension://fixture/'+name}},
   ReserveSession:{createSession:options=>{callbacks=options;return session;}},
-  ReserveStorage:{createStore(){}},ReserveAPI:{createClient:()=>({})},ReserveDashboard:{mount:(_target,options)=>{dashboardOptions=options;mounts++;const view=mockView();if(deferDashboard)view.isReady=()=>painted;return view;}},ReserveApp:{mount:(_target,options)=>{plannerOptions=options;return mockView();}}};
+  ReserveStorage:{createStore(){}},ReserveAPI:{createClient:()=>({})},ReserveDashboard:{mount:(_target,options)=>{_target._query['[data-rd-action="settings"]']={click(){settingsOpens++;}};dashboardOptions=options;mounts++;const view=mockView();view.destroy=()=>dashboardDestroys++;if(deferDashboard)view.isReady=()=>painted;return view;}}};
+ if(features)context.ReserveFeatures=features;
  context.ReserveNativeTools={create:()=>{nativeToolsCreated++;return {destroy(){}};}};
- context.location.href=context.location.origin+pathname+search;
- if(!lateSite)vm.runInNewContext(fs.readFileSync(require.resolve('../extension/site.js'),'utf8'),context);
  vm.runInNewContext(fs.readFileSync(require.resolve('../extension/content.js'),'utf8'),context);
- if(lateSite)vm.runInNewContext(fs.readFileSync(require.resolve('../extension/site.js'),'utf8'),context);
- return {nodes,body,head,native,sidebar,events,winEvents,statuses,classes,trail,document,session,get dashboardDestroys(){return dashboardDestroys;},get mounts(){return mounts;},get nativeToolsCreated(){return nativeToolsCreated;},get dashboardOptions(){return dashboardOptions;},get plannerOptions(){return plannerOptions;},get scrollRestored(){return scrollRestored;},get started(){return started;},get callbacks(){return callbacks;},paintDashboard(){painted=true;dashboardOptions.onReady();},deliver(){lastSnapshot={courses:[],assignments:[]};callbacks.onSnapshot(lastSnapshot,{get:()=>({settings:{showGrades:false}})},{stale:false});},loadStyles(){for(const el of nodes.get('reserve-companion-host').shadowRoot.children)el.onload?.();}};
+ // Edge can inject the registered content.js before the manifest's site.js; site.js then runs in the same pass
+ if(lateSite)context.ReserveSite=require('../extension/site.js');
+ return {document,session,nodes,body,head,native,sidebar,events,winEvents,statuses,trail,get settingsOpens(){return settingsOpens;},get mounts(){return mounts;},get dashboardDestroys(){return dashboardDestroys;},get fileCloses(){return fileCloses;},get fileResumes(){return fileResumes;},get nativeToolsCreated(){return nativeToolsCreated;},get dashboardOptions(){return dashboardOptions;},get started(){return started;},get callbacks(){return callbacks;},paintDashboard(){painted=true;dashboardOptions.onReady();},deliver(meta={stale:false}){callbacks.onSnapshot({courses:[],assignments},verifiedStore,meta);},loadStyles(){for(const el of nodes.get('reserve-companion-host').shadowRoot.children)el.onload?.();}};
 }
 test('controller preloads hidden styles and waits for verified data before replacing Canvas',async()=>{
  const f=fixture();await new Promise(setImmediate);assert.equal(f.started,1);assert.equal(f.native.hidden,false);assert.equal(f.sidebar.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
@@ -43,7 +46,7 @@ test('controller preloads hidden styles and waits for verified data before repla
 });
 test('Canvas dashboard button restores the native dashboard without deleting it',async()=>{
  const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();const root=f.nodes.get('reserve-companion-host').shadowRoot;
- const toolbar=root.children.find(el=>el.className==='reserve-toolbar');toolbar.querySelector('[data-native]').events.click();
+ const cover=root.children.find(el=>el.className==='reserve-resume');cover.querySelector('[data-native]').events.click();
  assert.equal(f.native.hidden,false);assert.equal(f.sidebar.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
 });
 test('assignment and submission pages have no dock, tools, downloads or replacement content',async()=>{
@@ -59,42 +62,155 @@ test('other native course pages keep their dock and tools',async()=>{
 test('a native toolbox shortcut opens the requested workspace without an intermediate navigation step',async()=>{
  const f=fixture('/','?reserve=open&workspace=materials&course=7');await new Promise(setImmediate);f.deliver();assert.equal(f.dashboardOptions.initialState.workspace,'materials');assert.equal(f.dashboardOptions.initialState.courseId,'7');assert.equal(f.nativeToolsCreated,0);
 });
-test('a native personal-task shortcut opens its plan and retains hidden grades',async()=>{
- const f=fixture('/','?reserve=open&plan=assignments&item=local-cycle');await new Promise(setImmediate);f.deliver();assert.equal(f.plannerOptions.initialPage,'assignments');assert.equal(f.plannerOptions.initialId,'local-cycle');assert.equal(f.plannerOptions.hideGrades,true);
+test('an old personal-task shortcut opens the current assignment reader plan',async()=>{
+ const f=fixture('/','?reserve=open&plan=assignments&item=local-cycle');await new Promise(setImmediate);f.deliver();
+ const state=f.dashboardOptions.initialState;assert.equal(state.workspace,'assignments');assert.equal(state.selectedId,'local-cycle');assert.equal(state.readerTab,'plan');assert.equal(state.readerOpen,true);assert.equal(f.mounts,1);
+ assert.equal(typeof f.dashboardOptions.onPlanner,'function');
 });
+
+test('old week, settings, grades and home URLs land on the current dashboard',async()=>{
+ for(const [page,workspace] of [['week','plan'],['settings','work'],['grades','grades'],['home','work'],['unknown','work']]){
+  const f=fixture('/','?reserve=open&plan='+page);await new Promise(setImmediate);f.deliver();f.loadStyles();
+  assert.equal(f.dashboardOptions.initialState.workspace,workspace,page);assert.equal(f.mounts,1);assert.equal(f.nodes.get('reserve-companion-host').hidden,false);
+ }
+});
+
+test('old numeric assignment URLs select the current reader and invalid IDs do not',async()=>{
+ for(const id of ['17','local-reminder','bad/id','<script>','1'.repeat(31),'local-'+ 'x'.repeat(101),'']){
+  const f=fixture('/','?plan=assignments&item='+encodeURIComponent(id));await new Promise(setImmediate);f.deliver();
+  const state=f.dashboardOptions.initialState;assert.equal(state.workspace,'assignments');
+  if(['17','local-reminder'].includes(id)){assert.equal(state.selectedId,id);assert.equal(state.readerTab,'plan');assert.equal(state.readerOpen,true);}
+  else{assert.equal(state.selectedId,undefined);assert.equal(state.readerOpen,undefined);}
+ }
+});
+
+test('current workspace URLs take precedence over old plan parameters',async()=>{
+ const f=fixture('/','?reserve=open&workspace=materials&course=7&plan=assignments&item=17');await new Promise(setImmediate);f.deliver();
+ assert.equal(f.dashboardOptions.initialState.workspace,'materials');assert.equal(f.dashboardOptions.initialState.courseId,'7');assert.equal(f.dashboardOptions.initialState.selectedId,undefined);
+});
+
+test('old planner URLs fall back when the Planner feature is disabled',async()=>{
+ const features={enabled:id=>id==='dashboard',workspace:()=> 'work',filterFiles:files=>files},f=fixture('/','?reserve=open&plan=week',{features});await new Promise(setImmediate);f.deliver();
+ assert.equal(f.dashboardOptions.initialState.workspace,'work');assert.equal(f.mounts,1);
+});
+
 test('account failure removes the enhanced view and restores original Canvas',async()=>{
  const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();f.callbacks.onError(Error('Account changed'),{clear:true});assert.equal(f.native.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
 });
+
+test('a source account failure destroys dashboard file viewers before returning to Canvas',async()=>{
+ const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();assert.equal(f.dashboardDestroys,0);
+ f.dashboardOptions.onAuthError(Error('Account changed'));assert.equal(f.dashboardDestroys,1);assert.equal(f.native.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
+ f.paintDashboard();assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
+});
+
+test('tab suspension and switching to Canvas close personal file viewers before account revalidation',async()=>{
+ const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();f.document.visibilityState='hidden';f.events.visibilitychange();assert.equal(f.fileCloses,1);assert.equal(f.dashboardDestroys,0);
+ f.dashboardOptions.onNative();assert.equal(f.fileCloses,2);assert.equal(f.native.hidden,false);
+});
+
+test('unverified saved views keep personal links hidden until a verified snapshot arrives',async()=>{
+ const f=fixture();await new Promise(setImmediate);f.deliver({stale:true,unverified:true});f.loadStyles();assert.equal(f.dashboardOptions.personalVerified,false);assert.equal(f.fileCloses,1);assert.equal(f.fileResumes,0);
+ f.deliver();assert.equal(f.fileResumes,1);assert.equal(f.mounts,1);
+});
+
+test('successful account revalidation releases personal links after a tab returns',async()=>{
+ const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();const before=f.fileResumes;f.document.visibilityState='hidden';f.events.visibilitychange();assert.equal(f.fileResumes,before);
+ f.document.visibilityState='visible';f.events.visibilitychange();await new Promise(setImmediate);assert.equal(f.fileResumes,before+1);
+});
+// Perf (leaks-3): the reopened files' render is the one redraw a return needs. Handing the dashboard the same snapshot
+// again cleared its caches and ran a second AI visit; newer Canvas data still arrives through receive.
+test('a returning tab redraws once through its reopened files and does not hand the same snapshot over again',async()=>{
+ const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();f.document.visibilityState='hidden';f.events.visibilitychange();
+ const cover=f.nodes.get('reserve-companion-host').shadowRoot.children.find(el=>el.className==='reserve-resume');assert.equal(cover.hidden,false,'the place is kept under the cover while hidden');
+ const before=f.trail.length;f.document.visibilityState='visible';f.events.visibilitychange();await new Promise(setImmediate);await new Promise(done=>setTimeout(done,20));
+ assert.deepEqual(f.trail.slice(before),['files']);assert.equal(cover.hidden,true);assert.equal(f.nodes.get('reserve-companion-host').hidden,false);
+ // A stale snapshot refreshed by the check still reaches the open dashboard.
+ f.deliver();assert.deepEqual(f.trail.slice(before),['files','snapshot:data:open','files']);assert.equal(f.mounts,1);
+});
+test('Open at once still shows the workspace as the tab returns and redraws once after the check',async()=>{
+ const f=fixture('/','',{quickOpen:true});await new Promise(setImmediate);f.deliver();f.loadStyles();let finish;f.session.verify=()=>new Promise(done=>finish=done);
+ const host=f.nodes.get('reserve-companion-host'),root=host.shadowRoot,area=root.children.find(el=>el.className==='reserve-workspace'),cover=root.children.find(el=>el.className==='reserve-resume');
+ f.document.visibilityState='hidden';f.events.visibilitychange();const before=f.trail.length;
+ f.document.visibilityState='visible';f.events.visibilitychange();
+ assert.equal(cover.hidden,true,'shown before the check finishes');assert.equal(area.hidden,false);assert.equal(host.hidden,false);assert.deepEqual(f.trail.slice(before),[]);
+ finish(true);await new Promise(setImmediate);await new Promise(done=>setTimeout(done,20));
+ assert.deepEqual(f.trail.slice(before),['files']);assert.equal(cover.hidden,true);assert.equal(area.hidden,false);assert.equal(f.mounts,1);
+});
+test('a tab hidden again before its check finishes skips the refresh and stays covered',async()=>{
+ const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();let release;f.session.verify=()=>new Promise(done=>release=done);
+ f.document.visibilityState='hidden';f.events.visibilitychange();const before=f.trail.length;f.document.visibilityState='visible';f.events.visibilitychange();
+ f.document.visibilityState='hidden';f.events.visibilitychange();release(true);await new Promise(setImmediate);await new Promise(done=>setTimeout(done,20));
+ assert.deepEqual(f.trail.slice(before),[]);
+});
+
+test('old settings URLs keep personal access closed until account verification',async()=>{
+ const f=fixture('/','?reserve=open&plan=settings');await new Promise(setImmediate);f.deliver({stale:true,unverified:true});f.loadStyles();
+ assert.equal(f.dashboardOptions.personalVerified,false);assert.equal(f.dashboardOptions.initialState.workspace,'work');assert.equal(f.fileCloses,1);assert.equal(f.fileResumes,0);assert.equal(f.dashboardDestroys,0);
+ f.deliver();assert.equal(f.fileResumes,1);assert.equal(f.mounts,1);
+});
+
+test('account revalidation covers the current dashboard until its session check completes',async()=>{
+ const f=fixture('/','?reserve=open&plan=settings');await new Promise(setImmediate);f.deliver();f.loadStyles();const area=f.nodes.get('reserve-companion-host').shadowRoot.children.find(el=>el.className==='reserve-workspace');let finish;f.session.verify=()=>new Promise(resolve=>finish=resolve);
+ f.document.visibilityState='hidden';f.events.visibilitychange();f.document.visibilityState='visible';f.events.visibilitychange();assert.equal(area.hidden,true);assert.equal(area.inert,true);
+ finish(true);await new Promise(setImmediate);assert.equal(area.hidden,false);assert.equal(area.inert,false);assert.equal(f.mounts,1);
+});
+
+// Perf (startup-2): drawing the cover over a page that is being thrown away restyled the whole workspace on the
+// critical path of the next Canvas page. A discarded page skips it; a page kept for Back still covers.
+test('leaving the dashboard for another page takes it down without covering the discarded page',async()=>{
+ const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();
+ const host=f.nodes.get('reserve-companion-host'),root=host.shadowRoot,area=root.children.find(el=>el.className==='reserve-workspace'),cover=root.children.find(el=>el.className==='reserve-resume');
+ assert.equal(area.hidden,false);assert.equal(cover.hidden,true);
+ f.winEvents.pagehide({persisted:false});
+ assert.equal(area.hidden,false);assert.equal(area.inert,false);assert.equal(cover.hidden,true);assert.notEqual(host['data-reserve-verifying'],'true');assert.equal(cover.style.minHeight,undefined);
+ assert.equal(f.fileCloses,1,'personal files still close');assert.equal(f.dashboardDestroys,1,'the dashboard is still taken down and remembers its view');
+ // The browser hides the page right after its last pagehide: nothing is paused or covered a second time.
+ f.document.visibilityState='hidden';f.events.visibilitychange();
+ assert.equal(area.hidden,false);assert.equal(cover.hidden,true);assert.equal(f.fileCloses,1);assert.equal(f.dashboardDestroys,1);
+});
+test('a page kept for Back still covers its workspace on pagehide and reopens after the account check',async()=>{
+ const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();
+ const host=f.nodes.get('reserve-companion-host'),root=host.shadowRoot,area=root.children.find(el=>el.className==='reserve-workspace'),cover=root.children.find(el=>el.className==='reserve-resume');
+ f.winEvents.pagehide({persisted:true});
+ assert.equal(area.hidden,true);assert.equal(area.inert,true);assert.equal(cover.hidden,false);assert.equal(host['data-reserve-verifying'],'true');assert.equal(f.dashboardDestroys,0);
+ f.document.visibilityState='hidden';f.events.visibilitychange();assert.equal(area.hidden,true);assert.equal(cover.hidden,false);assert.equal(f.fileCloses,2,'a kept page still pauses on hide');
+ f.document.visibilityState='visible';f.winEvents.pageshow({persisted:true});await new Promise(setImmediate);
+ assert.equal(area.hidden,false);assert.equal(area.inert,false);assert.equal(cover.hidden,true);assert.equal(f.mounts,1);assert.equal(f.dashboardDestroys,0);
+});
+test('a tab hidden before the page is thrown away keeps its cover until then',async()=>{
+ const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();
+ const root=f.nodes.get('reserve-companion-host').shadowRoot,area=root.children.find(el=>el.className==='reserve-workspace'),cover=root.children.find(el=>el.className==='reserve-resume');
+ f.document.visibilityState='hidden';f.events.visibilitychange();assert.equal(area.hidden,true);assert.equal(cover.hidden,false);
+ f.winEvents.pagehide({persisted:false});assert.equal(area.hidden,true);assert.equal(cover.hidden,false);assert.equal(f.dashboardDestroys,1);
+});
+
 test('starting to use native Canvas prevents a late dashboard swap',async()=>{
  const f=fixture();await new Promise(setImmediate);f.events.pointerdown({composedPath:()=>[f.native]});f.deliver();f.loadStyles();assert.equal(f.native.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
 });
 
-test('returning from optional planning restores dashboard filters and scroll position',async()=>{
- const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();
- f.dashboardOptions.onPlanner({page:'assignments',id:'17'});
- assert.equal(f.plannerOptions.initialId,'17');f.plannerOptions.onExit();
- assert.equal(f.dashboardOptions.initialState.query,'gas');assert.equal(f.dashboardOptions.initialState.mode,'tomorrow');assert.equal(f.scrollRestored,460);
+test('a refreshed legacy assignment link keeps one current dashboard and its reader selection',async()=>{
+ const f=fixture('/','?reserve=open&plan=assignments&item=17');await new Promise(setImmediate);f.deliver();f.loadStyles();
+ assert.equal(f.dashboardOptions.initialState.selectedId,'17');const mounts=f.mounts;f.deliver();assert.equal(f.mounts,mounts);assert.equal(f.dashboardDestroys,0);
 });
 
-
-
-test('Canvas stays usable if the final layout stylesheet has not loaded',async()=>{
- const f=fixture();await new Promise(setImmediate);f.deliver();const host=f.nodes.get('reserve-companion-host'),links=host.shadowRoot.children.filter(x=>x.tagName==='link');assert.equal(links.length,16);
- links.slice(0,-1).forEach(link=>link.onload());assert.equal(host.hidden,true);assert.equal(f.native.hidden,false);links.at(-1).onload();assert.equal(host.hidden,false);
+// 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
+test('fallback dashboard waits for each framing stylesheet before replacing Canvas',async()=>{
+ for(const file of ['media-frame.css','frame-editor.css']){
+  const f=fixture();await new Promise(setImmediate);f.deliver();
+  const host=f.nodes.get('reserve-companion-host'),links=host.shadowRoot.children.filter(node=>node.tagName==='link'),pending=links.filter(link=>link.href.endsWith('/'+file));
+  assert.equal(pending.length,1,file+' must link once in the dashboard shadow root');
+  for(const link of links)if(link!==pending[0])link.onload();
+  assert.equal(host.hidden,true);assert.equal(f.native.hidden,false);
+  pending[0].onload();assert.equal(host.hidden,false);assert.equal(f.native.hidden,true);
+ }
 });
 
-test('while the dashboard shows, its own command row carries the Canvas dashboard switch and the host row folds away; the planner brings that row back with "Back to dashboard"',async()=>{
+test('the current dashboard owns its status and Canvas switch without an extra host toolbar',async()=>{
  const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();
- const root=f.nodes.get('reserve-companion-host').shadowRoot,toolbar=root.children.find(el=>el.className==='reserve-toolbar'),back=toolbar.querySelector('[data-dashboard]'),label=toolbar.querySelector('span');
- assert.equal(toolbar.hidden,true,'no mostly empty band above the command row');assert.equal(back.hidden,true);
- assert.equal(typeof f.dashboardOptions.onNative,'function','the dashboard renders the switch in its own row');
- // The status stays available: Canvas Harness's footer (its one live region) takes each message.
- f.callbacks.onStatus('Updated just now');assert.equal(f.statuses.at(-1),'Updated just now');assert.match(label.textContent,/^Canvas Harness \d/);
- // The planner has no command row of its own: the host row returns, and "Back to dashboard" redraws the dashboard.
- f.dashboardOptions.onPlanner({page:'week'});assert.equal(toolbar.hidden,false);assert.equal(back.hidden,false);
- f.callbacks.onStatus('Saved view');assert.equal(label.textContent,'Saved view','the row speaks for itself while it shows');
- const mounts=f.mounts;back.events.click();assert.equal(f.mounts,mounts+1);assert.equal(toolbar.hidden,true);assert.equal(back.hidden,true);
- // The dashboard's switch shows Canvas's own dashboard exactly as the host button does.
+ const root=f.nodes.get('reserve-companion-host').shadowRoot;
+ assert.equal(root.children.find(el=>el.className==='reserve-toolbar'),undefined);assert.equal(typeof f.dashboardOptions.onNative,'function');
+ f.callbacks.onStatus('Updated just now');assert.equal(f.statuses.at(-1),'Updated just now');
  f.dashboardOptions.onNative();assert.equal(f.native.hidden,false);assert.equal(f.sidebar.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
 });
 
@@ -105,74 +221,36 @@ test('a coalesced dashboard keeps Canvas visible until its complete first frame 
 test('an initial coalesced render failure leaves Canvas usable and a later readiness callback cannot reveal it',async()=>{
  const f=fixture('/','',{deferDashboard:true});await new Promise(setImmediate);f.deliver();f.loadStyles();f.dashboardOptions.onRenderError(Error('initial render failed'));assert.equal(f.native.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);f.paintDashboard();assert.equal(f.native.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
 });
-
 test('starts when Edge runs it before the manifest scripts (site.js only arrives after it)',async()=>{
  const f=fixture('/','',{lateSite:true});assert.equal(f.started,0);await new Promise(r=>setTimeout(r,20));await new Promise(setImmediate);
  assert.equal(f.started,1);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
 });
 
-
-test('dashboard page style removes Canvas padding, body margin and the page scrollbar only while active',()=>{
- const code=fs.readFileSync(require.resolve('../extension/content.js'),'utf8');
- assert.match(code,/html\.reserve-inline-active #content\{[^}]*padding:0!important/);
- assert.ok(code.includes('html.reserve-inline-active body{margin:0!important}'));
- assert.ok(code.includes('html.reserve-inline-active{scrollbar-width:none}'));
- assert.ok(code.includes('html.reserve-inline-active::-webkit-scrollbar{display:none}'));
+test('compatibility plan callbacks reuse current dashboard state and reader instead of a second app',async()=>{
+ const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();
+ f.dashboardOptions.onPlanner({page:'assignments',id:'17',hideGrades:true});let state=f.dashboardOptions.initialState;
+ assert.equal(f.mounts,2);assert.equal(f.dashboardDestroys,1);assert.equal(state.workspace,'assignments');assert.equal(state.selectedId,'17');assert.equal(state.readerTab,'plan');assert.equal(state.readerOpen,true);assert.equal(state.query,'');assert.equal(state.day,'');assert.equal(state.mode,'undated');assert.equal(state.gradeVisibilityOverride,false);
+ f.dashboardOptions.onPlanner({page:'week'});state=f.dashboardOptions.initialState;assert.equal(state.workspace,'plan');assert.equal(state.query,'gas');assert.equal(f.mounts,3);
 });
 
-test('dashboard styles hide Canvas wrapper scrollbars and footer only while active',async()=>{
- const f=fixture();await new Promise(setImmediate);
- const css=f.head.children.find(node=>node.tagName==='style').textContent;
- assert.ok(css.includes('html.reserve-inline-active :is(body,#application,#wrapper,#main,#not_right_side,#content-wrapper){scrollbar-width:none}'));
- assert.ok(css.includes('html.reserve-inline-active :is(body,#application,#wrapper,#main,#not_right_side,#content-wrapper)::-webkit-scrollbar{display:none}'));
- assert.ok(css.includes('html.reserve-inline-active :is(#footer,.ic-app-footer,footer[role=contentinfo]){display:none!important}'));
- assert.ok(css.includes('html.reserve-inline-active.reserve-fit,html.reserve-inline-active.reserve-fit body{overflow-y:hidden!important}'));
- assert.equal(f.classes.has('reserve-inline-active'),false);
- f.deliver();f.loadStyles();assert.equal(f.classes.has('reserve-inline-active'),true);
- f.dashboardOptions.onNative();assert.equal(f.classes.has('reserve-inline-active'),false);
+test('compatibility settings callbacks wait for account verification before remounting',async()=>{
+ const f=fixture();await new Promise(setImmediate);f.deliver({stale:true,unverified:true});f.loadStyles();
+ f.dashboardOptions.onPlanner({page:'settings'});assert.equal(f.mounts,1);assert.equal(f.dashboardDestroys,0);
+ f.deliver();assert.equal(f.mounts,2);assert.equal(f.dashboardOptions.initialState.workspace,'work');assert.equal(f.dashboardOptions.personalVerified,true);
 });
 
-for(const reason of ['native','account error','stylesheet error'])test('restoring Canvas clears fitted page layout after '+reason,async()=>{
- const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();f.classes.add('reserve-fit');
- if(reason==='native')f.dashboardOptions.onNative();
- else if(reason==='account error')f.callbacks.onError(Error('Account changed'),{clear:true});
- else f.nodes.get('reserve-companion-host').shadowRoot.children.find(node=>node.tagName==='link').onerror();
- assert.equal(f.classes.has('reserve-inline-active'),false);assert.equal(f.classes.has('reserve-fit'),false);
- assert.equal(f.native.hidden,false);assert.equal(f.sidebar.hidden,false);assert.equal(f.nodes.get('reserve-companion-host').hidden,true);
+test('appearance deep links wait for verified personal data before opening the current dock',async()=>{
+ const f=fixture('/','?reserve=open&appearance=true');await new Promise(setImmediate);f.deliver({stale:true,unverified:true});f.loadStyles();assert.equal(f.settingsOpens,0);
+ f.deliver();assert.equal(f.settingsOpens,1);f.deliver();assert.equal(f.settingsOpens,1);
 });
 
-// Leaving the dashboard for another Canvas page: the page is thrown away, so the cover is not drawn over it (drawing it
-// restyled the whole workspace on the next page's critical path). A page kept for Back still covers.
-const parts=f=>{const host=f.nodes.get('reserve-companion-host'),root=host.shadowRoot;return {host,area:root.children.find(el=>el.className==='reserve-workspace'),cover:root.children.find(el=>el.className==='reserve-resume')};};
-test('leaving the dashboard for another page takes it down without covering the discarded page',async()=>{
- const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();const {host,area,cover}=parts(f);
- assert.equal(area.hidden,false);assert.equal(cover.hidden,true);
- f.winEvents.pagehide({persisted:false});
- assert.equal(area.hidden,false);assert.notEqual(area.inert,true);assert.equal(cover.hidden,true);assert.notEqual(host['data-reserve-verifying'],'true');
- assert.equal(f.dashboardDestroys,1,'the dashboard is still taken down');
- // The browser hides the page right after its last pagehide: nothing is paused or covered a second time.
- const closes=f.trail.filter(x=>x==='close').length;f.document.visibilityState='hidden';f.events.visibilitychange();
- assert.equal(area.hidden,false);assert.equal(cover.hidden,true);assert.equal(f.trail.filter(x=>x==='close').length,closes);assert.equal(f.dashboardDestroys,1);
-});
-test('a page kept for Back still covers its workspace on pagehide and reopens after the account check',async()=>{
- const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();const {host,area,cover}=parts(f);
- f.winEvents.pagehide({persisted:true});
- assert.equal(area.hidden,true);assert.equal(area.inert,true);assert.equal(cover.hidden,false);assert.equal(host['data-reserve-verifying'],'true');assert.equal(f.dashboardDestroys,0);
- f.document.visibilityState='visible';f.winEvents.pageshow({persisted:true});await new Promise(setImmediate);
- assert.equal(area.hidden,false);assert.equal(area.inert,false);assert.equal(cover.hidden,true);assert.equal(f.mounts,1);assert.equal(f.dashboardDestroys,0);
-});
-// A returning tab hands the dashboard the snapshot it already has, once, after the first frame: the dashboard keeps its
-// caches and redraws only when the clock changed what it shows (dashboard-freshness.test.cjs), so a return is one redraw
-// at most.
-test('a returning tab hands the same snapshot back once and keeps its dashboard',async()=>{
- const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();const {area,cover}=parts(f);
- f.document.visibilityState='hidden';f.events.visibilitychange();assert.equal(cover.hidden,false,'the place is kept under the cover while hidden');
- const before=f.trail.length;f.document.visibilityState='visible';f.events.visibilitychange();await new Promise(setImmediate);await new Promise(done=>setTimeout(done,20));
- assert.deepEqual(f.trail.slice(before),['files','same snapshot']);assert.equal(cover.hidden,true);assert.equal(area.hidden,false);assert.equal(f.mounts,1);
-});
-test('a tab hidden again before its check finishes hands nothing over and stays covered',async()=>{
- const f=fixture();await new Promise(setImmediate);f.deliver();f.loadStyles();let release;f.session.verify=()=>new Promise(done=>release=done);const {cover}=parts(f);
- f.document.visibilityState='hidden';f.events.visibilitychange();const before=f.trail.length;f.document.visibilityState='visible';f.events.visibilitychange();
- f.document.visibilityState='hidden';f.events.visibilitychange();release(true);await new Promise(setImmediate);await new Promise(done=>setTimeout(done,20));
- assert.deepEqual(f.trail.slice(before).filter(x=>x!=='close'),[]);assert.equal(cover.hidden,false);
+test('old completed, undated and dated assignment links select a filter that retains their target',async()=>{
+ const Core=require('../extension/core.js'),Model=require('../extension/dashboard-model.js');
+ for(const [due,submission,mode] of [['2020-01-01T12:00:00Z',{workflow_state:'unsubmitted'},'dated'],[null,{workflow_state:'unsubmitted'},'undated'],['2020-01-01T12:00:00Z',{workflow_state:'graded',score:10},'dated']]){
+  const raw={id:'17',course_id:'7',name:'Old assignment',due_at:due,submission_types:['online_upload'],submission};
+  const f=fixture('/','?reserve=open&plan=assignments&item=17',{assignments:[raw]});await new Promise(setImmediate);f.deliver();
+  const state=f.dashboardOptions.initialState;assert.equal(state.mode,mode);assert.equal(state.query,'');assert.equal(state.day,'');
+  const result=Model.filterAssignments([Core.normalizeAssignment(raw,{id:'7',name:'Chemistry'})],{...state,now:Date.now(),timeZone:'America/New_York',local:{}});
+  assert.deepEqual(result.items.map(item=>item.id),['17']);
+ }
 });

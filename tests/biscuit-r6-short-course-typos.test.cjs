@@ -165,11 +165,7 @@ test('file retrieval requires a resolved course and abstains on multiple same-co
 test('several homework rows do not acquire an arbitrary preferred item',()=>{
  const s=world();s.workItems.push({...s.workItems[0],id:'synth-extra-hw',title:'Another Homework'});abstain(evaluate(rt,'zorx hw',s));
 });
-test('tomorrow and today phrasings answer like "due tmrw" and "due today" instead of picking one item',()=>{
- const s=world(),same=(line,base)=>{const a=evaluate(rt,line,s),b=evaluate(rt,base,s);assert.deepEqual([a.action,a.message,a.next.fields,a.items.map(r=>r.id)],[b.action,b.message,b.next.fields,b.items.map(r=>r.id)],line);};
- for(const line of ['tmrw','tomorrow','whats due tomorrow',"what's due tmrw",'tmrw hw','hw due tomorrow',"tomorrow's homework"])same(line,'due tmrw');
- for(const line of ['today','tdy','whats due today','hw due tonight'])same(line,'due today');
-});
+// 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
 test('an abstaining homework question still offers that course\'s matches to tap',()=>{
  const s=world();s.workItems.push({...s.workItems[0],id:'synth-extra-hw',title:'Another Homework'});const r=evaluate(rt,'zorx hw',s);abstain(r);
  assert.equal(r.clarify,true);assert.deepEqual(r.choices.map(row=>row.id).sort(),['synth-extra-hw','synth-hw-0']);assert.ok(r.choices.every(row=>row.courseId===s.courses[0].id));
@@ -204,7 +200,8 @@ const untouched=[
  'explain zorx homework',
  'steps zorx homework'
 ];
-for(const line of untouched)test('guard/reference path stays outside loaded-course typo repair: '+line,()=>{
+// 4.0: with Your AI, "draft a message ..." and "explain ..." lines go to AI with the loaded course instead of staying local.
+for(const line of untouched.filter(line=>!/^(?:draft a message saying|explain) "?zorx/.test(line)))test('guard/reference path stays outside loaded-course typo repair: '+line,()=>{
  const s=world(),session={lastItemId:'missing-synthetic-id',items:[{id:'also-missing'}]};
  assert.equal(request(rt,line,s),null);
  const original=plain({s,session}),result=evaluate(rt,line,s,session);assert.equal(result.route,'local');assert.ok(!result.courseAlias);assert.deepEqual(plain({s,session}),original);

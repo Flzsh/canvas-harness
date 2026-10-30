@@ -1,40 +1,52 @@
-/* Canvas Harness Home modules. Beside the three original panels a student can add small modules: today's list, the
+/* Canvas Harness Home modules. Beside the three original panels a student can add small modules: the
    week, a focus timer, a clock, notes, bookmarks, grades, messages and the pony's paddock. This file draws them and
    answers their buttons; where they sit is workspace-arrange.js. Nothing here writes to Canvas. Creator: Flzsh. */
 (function(root){
  'use strict';
- const enabled=id=>!root.ReserveFeatures||root.ReserveFeatures.enabled(id);
- const available=key=>enabled('planner')&&(!['context','messages'].includes(key)||enabled('course-hub'))&&(key!=='grades'||enabled('grades'))&&(key!=='pet'||enabled('pony'));
- const Arrange=()=>root.ReserveWorkspaceArrange,Plan=()=>root.ReservePlanner,Pets=()=>enabled('pony')?root.ReservePets:null;
+ const enabled=id=>!globalThis.ReserveFeatures||globalThis.ReserveFeatures.enabled(id);
+ const available=key=>
+   key!=='today'&&
+     enabled('planner')&&
+     (!['context','messages'].includes(key)||enabled('course-hub'))&&
+     (key!=='grades'||enabled('grades'))&&
+     (key!=='pet'||enabled('pony'))&&
+     (key!=='review'||root.ReserveReviewDeck?.moduleAvailable?.()===true)&&
+     (key!=='impact'||root.ReserveGradeImpact?.moduleAvailable?.()===true);
+ const Arrange=()=>root.ReserveWorkspaceArrange,Plan=()=>root.ReservePlanner,Pets=()=>root.ReservePets;
  // One line each: what the module is for. Shown in the gallery, so it has to be enough to choose by.
  const INFO={
   context:{hint:'Announcements, messages and the teacher’s page for one course.'},
-  handin:{hint:'Work to hand in, with local completion choices.'},
-  today:{hint:'What you planned for today and what is due. Tick things off, add your own.'},
+  handin:{},
+  review:{},
+  impact:{},
   week:{hint:'Seven days at a glance: how much is on each one.'},
-  timer:{hint:'A 15 to 60 minute focus session. Your pony studies with you.'},
+  timer:{hint:'A focus session you can pause, stop or adjust. Your companion studies with you.'},
   clock:{hint:'The time, the date, and how long until the next thing is due.'},
   notes:{hint:'A scratchpad that saves as you type.'},
   bookmarks:{hint:'The assignments and materials you bookmarked.'},
   grades:{hint:'Current course grades. Follows the Show grades switch.'},
   messages:{hint:'How many messages are unread, and a way in.'},
-  pet:{hint:'Home for your pony: treats, level, and where it rests.'}
+  pet:{hint:'Home for your companion: treats, level, and where it rests.'}
  };
  const FRAMES=[['pen','Pen line','A hand-drawn line round each module.'],['stitch','Stitched','A row of stitches, like a strap.'],['card','Card','A soft card with a little shadow.'],['line','Thin rule','A plain hairline.'],['none','None','No outline: modules sit on the page.']];
  // Small drawings for the gallery and the module headings: one pen, 24 units, no fills that need a theme.
  const ART={
-  context:'<path d="M4.5 5.2c5-.6 10-.5 15 .1l-.2 11.6c-4.9.6-9.9.5-14.7-.1z"/><path d="M8 9h8M8 12.4h5.4"/><path d="M9.4 17l-.6 3.4 4-3.2"/>',
-  today:'<path d="M5.2 4.4c4.6-.5 9.2-.4 13.6.1l.2 15c-4.6.5-9.3.5-13.9 0z"/><path d="M8 9.4l1.4 1.5 2.4-2.9M8 14.6l1.4 1.5 2.4-2.9M14 9.8h3M14 15h3"/>',
+  help:'<path d="M9 8a3 3 0 1 1 5 2c-2 1-2 2-2 3M12 17h.01"/><circle cx="12" cy="12" r="9"/>',
+  context:'<path d="M4.5 5.2c5-.6 10-.5 15 .1l-.2 11.6c-4.9.6-9.9.5-14.7-.1z"/><path d="M8 9h8M8 12.4h5.4"/><path d="M9.4 17l-.6 3.4 4-3.2"/>',handin:'<path d="M6.4 7.4L3.6 13.2l.6 6.1c5.2.6 10.4.6 15.6 0l.6-6.1-2.8-5.8"/><path d="M3.8 13.2h4.6c.4 1.8 1.7 2.8 3.6 2.8s3.2-1 3.6-2.8h4.6"/><path d="M12.1 3.4c-.1 2.7 0 5.3-.1 8M9 8.6l3 3.1 3-3.2"/>',
   week:'<path d="M3.6 6.4c5.6-.5 11.2-.5 16.8 0l.1 12.4c-5.7.5-11.4.5-17 0z"/><path d="M3.8 10.2h16.4M8 3.6v4M16 3.6v4M7.4 13.4v2.8M12 13.4v2.8M16.6 13.4v2.8"/>',
   timer:'<path d="M12 6.4c4.2-.2 7.4 3 7.2 7.2-.2 4-3.2 7-7.4 6.8-4-.2-7-3.2-6.8-7.4.2-3.8 3-6.6 7-6.6"/><path d="M12 13.4V9.6M9.6 3.6h4.8M12 3.6v2.6M17.6 7.2l1.4-1.4"/>',
   clock:'<path d="M12 4c4.6-.2 8.2 3.4 8 8-.2 4.4-3.6 8-8.2 7.8C7.4 19.6 4 16.2 4.2 11.6 4.4 7.4 7.6 4 12 4"/><path d="M12 7.6v4.8l3.2 1.8"/>',
   notes:'<path d="M6 3.8c4-.4 8-.4 12 0l.2 16.4c-4.1.4-8.2.4-12.3 0z"/><path d="M9 8h6M9 11.4h6M9 14.8h3.6"/>',
   bookmarks:'<path d="M6.4 3.8c3.7-.5 7.4-.5 11.2 0V20.6l-5.6-3.8-5.6 3.8z"/><path d="M9.6 8h4.8"/>',
+  review:'<path d="M3.8 10.6c5.5-.5 10.9-.5 16.4 0l-.5 9c-5.1.5-10.3.5-15.4 0z"/><path d="M6.4 10.4V5.4c3.7-.5 7.4-.5 11.2 0v5"/><path d="M9.4 5.4v5M12.2 5.2v5.2M15 5.4v5M9.8 14.6h4.4"/>',
   grades:'<path d="M4 19.6h16"/><path d="M6.6 19.4v-6.2M11 19.4V8.6M15.4 19.4v-9M19 19.4V5"/>',
   messages:'<path d="M3.8 6c5.5-.5 10.9-.5 16.4 0l.1 12c-5.5.5-11.1.5-16.6 0z"/><path d="M4.2 6.6l7.8 6 7.8-6"/>',
+  impact:'<path d="M3.4 7.8c5.8-.3 11.4-.2 17.2.1"/><path d="M4.6 5.8v4.2M19.4 5.8v4.2"/><path d="M14.2 5.6l3.6-.1.1 4.4-3.6.1z"/><path d="M8.4 8.2v3.4"/><path d="M6.4 13.4c1.4-.2 2.7-.2 4.1 0l1.3 5.8c-2.2.3-4.5.3-6.8 0z"/>',
   pet:'<path d="M5.4 12.6c2.6-1.4 6-1.4 8.6-.4 1.2-2.6 2.6-4.6 4.4-6l1.6 2.4c-1.4 1.4-2.2 3.4-2.6 5.8-.6 2-3.4 2.8-7.2 2.6-3-.2-5.6-1.6-4.8-4.4z"/><path d="M7 17v3.4M10 17.2v3.2M14 17.2v3.2M16.4 16.6v3.8M5.4 12.8c-1.4.4-2 2-1.8 4"/>'
  };
- const glyph=key=>`<svg class="rd-widget-glyph" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ART[key]||ART.notes}</svg>`;
+ const companion=c=>root.ReservePetArt?.identity?.({pet:c.personal?.pet,settings:c.s},c.makeOwn?.pet),
+   companionDrawing=c=>root.ReservePetArt?.drawing?.({pet:c.personal?.pet,settings:c.s},c.makeOwn?.pet);
+ const glyph=(key,c)=>key==='pet'&&c&&companionDrawing(c)?`<span class="rd-widget-glyph" aria-hidden="true" style="display:inline-block;width:22px;height:22px">${companionDrawing(c)}</span>`:`<svg class="rd-widget-glyph" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ART[key]||ART.notes}</svg>`;
  // A circle drawn by hand, used by the timer (the same stroke as the hold circle).
  const RING='M61 9C90 7 112 31 111 61C110 90 87 112 59 111C31 110 8 88 9 59C10 32 32 9 60 9C65 9 70 10 75 12';
  const drafts={};   // text being typed in a module, kept across renders until it is saved
@@ -91,35 +103,22 @@ ${sign}
 </svg></div>`;
  }
  function render(key,c,h){
-  if(!available(key)||!Arrange())return '';
-  if(['today','week'].includes(key)&&!Plan())return '';
+  if(!available(key)||!Arrange()?.isKey(key))return '';
   const {E}=h,
     A=Arrange(),
     label=A.LABELS[key],
     action=(name,text,extra='',cls='rd-button')=>name==='pet-settings'&&!enabled('customization')?'':`<button type="button" class="${cls}" data-rd-action="${name}" ${extra}>${text}</button>`;
   const time=(value,options)=>h.formatDate(value,c.s.timeZone,options);
   const mine=c.personal||{};
-  const todo=(e,{showDue=true}={})=>{
-   const canvasDone=e.done&&!(c.local[e.id]?.checkedOff),
-     bits=[
-       e.personal&&e.courseId==='personal'?'Mine':E(e.course||''),
-       showDue&&e.dueAt?E(time(e.dueAt,{hour:'numeric',minute:'2-digit'})):'',
-       e.estimate?E(Plan().minutes(e.estimate)):'',
-       e.steps?`${e.stepsDone}/${e.steps} steps`:''
-     ].filter(Boolean);
-   return `<li class="rd-todo" data-rd-key="todo-${E(e.id)}" data-done="${e.done}" style="--rd-course:${E(e.color||'#7c718d')}">${canvasDone?`<span class="rd-todo-check" data-done="true" title="Completed in Canvas" aria-label="Completed in Canvas"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M4.6 10.6l3.4 3.6 7.6-8.8"/></svg></span>`:action(e.done?'undo-check-off':'check-off','<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M4.6 10.6l3.4 3.6 7.6-8.8"/></svg>',`data-id="${E(e.id)}" aria-pressed="${e.done}" aria-label="${e.done?'Put back':'Mark done'}: ${E(e.title)}" title="${e.done?'Put back in the list':'Mark done'}"`,'rd-todo-check')}${action('preview',`<strong>${E(e.title)}</strong>${bits.length?`<small>${bits.join(' · ')}</small>`:''}`,`data-id="${E(e.id)}" aria-label="Open ${E(e.title)}"`,'rd-todo-open')}</li>`;
-  };
+  const Home=root.CanvasHarnessAgentHome;if(Home&&A.dynamic?.(key))return Home.renderModule(key,c,h,{controls:A.controls});
   let body='',extra='';
-  if(key==='today'){
-   const {board,today}=plan(c,h),d=board.days.find(x=>x.key===today)||{all:[],open:0,done:0,minutes:0},late=board.overdue.slice(0,3);
-   const total=d.all.length,line=total?`${d.done} of ${total} done${d.minutes?` · ${E(Plan().minutes(d.minutes))} left`:''}`:'';
-   body=`${total?`<div class="rd-progress" role="img" aria-label="${E(line)}"><i style="width:${Math.round(100*d.done/total)}%"></i></div><p class="rd-widget-note">${line}</p>`:''}
-${late.length?`<p class="rd-widget-label">Still open from before</p><ul class="rd-todo-list">${late.map(e=>todo(e,{showDue:false})).join('')}</ul>${action('plan-carry','Move to today','','rd-text-button')}`:''}
-${total?`<ul class="rd-todo-list">${d.all.map(e=>todo(e)).join('')}</ul>`:`<p class="rd-widget-empty">${late.length?'Nothing else for today.':'Nothing for today yet. Add a task below, or give something from Up next a day in the Planner.'}</p>`}
-<form class="rd-quick-add" data-rd-form="plan-quick" data-day="${today}"><input type="text" data-rd-field="plan-quick" data-day="${today}" maxlength="200" autocomplete="off" aria-label="Add a task for today" placeholder="Add a task…  try “read ch. 3 45m”">${action('plan-quick-add','Add',`data-day="${today}"`,'rd-button rd-quick-add-button')}</form>`;
-   extra=action('workspace','Planner','data-tab="plan"','rd-text-button rd-widget-link');
-  }else if(key==='handin'){
+  if(key==='handin'){
    body=root.ReserveHandIn?.render(c,h,{action})||'';
+  }else if(key==='review'){
+   body=root.ReserveReviewDeck?.renderModule?.(c,h)||'';extra=root.ReserveReviewDeck?.moduleOpener?.(c,h)||'';
+  }else if(key==='impact'){
+   body=root.ReserveGradeImpact?.renderModule?.(c,h,c.gradeImpact)||'';
+   extra=root.ReserveGradeImpact?.moduleOpener?.(c,h,c.gradeImpact)||'';
   }else if(key==='week'){
    const {board,today}=plan(c,h);
    body=`<div class="rd-wk" role="group" aria-label="This week">${board.days.map(d=>{
@@ -128,6 +127,17 @@ ${total?`<ul class="rd-todo-list">${d.all.map(e=>todo(e)).join('')}</ul>`:`<p cl
     return action('plan-open',`<span>${E(h.formatDate(dt,'UTC',{weekday:'short'}))}</span><strong>${new Date(dt).getUTCDate()}</strong><span class="rd-wk-dots">${dots}</span><small>${d.minutes?E(Plan().minutes(d.minutes)):d.open?`${d.open} to do`:d.done?'done':''}</small>`,`data-day="${d.key}" data-today="${d.key===today}" data-past="${d.key<today}" aria-label="${E(h.formatDate(dt,'UTC',{weekday:'long',month:'short',day:'numeric'}))}: ${d.open} to do, ${d.done} done${d.minutes?`, ${E(Plan().minutes(d.minutes))} planned`:''}"`,'rd-wk-day');}).join('')}</div>
 ${board.waiting.length||board.overdue.length?`<p class="rd-widget-note">${[board.overdue.length?`${board.overdue.length} still open from before`:'',board.waiting.length?`${board.waiting.length} due soon with no day yet`:''].filter(Boolean).join(' · ')}</p>`:''}`;
    extra=action('workspace','Planner','data-tab="plan"','rd-text-button rd-widget-link');
+  }else if(key==='timer'&&enabled('focus-room')&&root.ReserveFocusRoom?.module){
+   const R=root.ReserveFocusRoom;
+   body=R.module({
+     focus:mine.focus,
+     now:c.now,
+     size:c.s.moduleSize?.timer||'m',
+     task:R.pickTask(mine.focus,plan(c,h).list,c.courses,v=>h.formatDate(v,c.s.timeZone,{weekday:'short',hour:'numeric',minute:'2-digit'}),c.now)
+   });
+   // like Review and Grade impact: a short title and the drawn corner arrows that grow the module into its room, so the
+   // head never wraps on a narrow module
+   extra=action('room-open','<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.2 4.4c2 .1 3.9 0 5.4.2.2 1.5.1 3.4.2 5.4M19.4 4.8l-5.6 5.4M9.8 19.6c-2-.1-3.9 0-5.4-.2-.2-1.5-.1-3.4-.2-5.4M4.6 19.2l5.6-5.4"/></svg>','aria-label="Focus room"','rd-text-button rd-widget-link fr-open');
   }else if(key==='timer'){
    const f=focusState(mine.focus,c.now);
    body=`<div class="rd-timer" data-running="${f.running}" data-rd-timer><span data-rd-timer-phase ${f.phase==='break'?'':'hidden'}>Break</span><div class="rd-timer-dial"><svg viewBox="0 0 120 120" aria-hidden="true"><path class="rd-timer-track" d="${RING}"/><path class="rd-timer-arc" pathLength="1" d="${RING}" style="stroke-dashoffset:${(1-f.progress).toFixed(4)}"/></svg><output data-rd-timer-text aria-live="off">${mmss(f.left)}</output></div>
@@ -141,7 +151,7 @@ ${f.sessions?`<p class="rd-widget-note">${f.sessions} session${f.sessions===1?''
 ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Date.parse(next.dueAt)}">${E(howLong(next.ms))}</b></small><strong>${E(next.title)}</strong>`,`data-id="${E(next.id)}" style="--rd-course:${E(next.color||'#7c718d')}"`,'rd-clock-next'):'<p class="rd-widget-note">Nothing due soon.</p>'}</div>`;
   }else if(key==='notes'){
    const value=drafts.notes??mine.toolbox?.scratchpad??'';
-   body=`<label class="rd-notes"><span class="rd-sr-only">Notes</span><textarea data-rd-field="widget-notes" maxlength="30000" spellcheck="true" placeholder="Jot something down. It saves as you type.">${E(value)}</textarea></label><p class="rd-widget-note" data-rd-notes-status>${drafts.notes!==undefined?'Saving…':value?'Saved on this device.':''}</p>`;
+   body=`<label class="rd-notes"><span class="rd-sr-only">Notes</span><textarea data-rd-field="widget-notes" maxlength="30000" spellcheck="true" placeholder="Jot something down. It saves as you type.">${E(value)}</textarea></label>${enabled('ai')&&enabled('tools')?'<button type="button" class="rd-text-button" data-rd-action="notes-help">Help with this</button>':''}<p class="rd-widget-note" data-rd-notes-status>${drafts.notes!==undefined?'Saving…':value?'Saved on this device.':''}</p>`;
   }else if(key==='bookmarks'){
    const items=(root.ReserveDashboardView?.bookmarkItems?.(c)||[]).slice(0,8);
    body=items.length?`<ul class="rd-link-list">${items.map(item=>{const course=c.courseMap.get(item.courseId),inner=`<strong>${E(item.title)}</strong><small>${E(course?.shortName||course?.name||'Personal')}</small>`;
@@ -154,49 +164,63 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
    const n=c.unread||0;
    body=`<div class="rd-messages"><p class="rd-messages-count"><strong>${n}</strong><span>unread message${n===1?'':'s'}</span></p>${action('workspace',n?'Read them':'Open Messages','data-tab="inbox"','rd-button')}</div>`;
   }else if(key==='pet'){
-   const P=Pets(),pet=P?P.clean(mine.pet):null;
+   const P=Pets(),pet=P?{...P.clean(mine.pet),name:companion(c)?.name||P.clean(mine.pet).name}:null;
    body=pet?`${paddock(pet.name,E)}
 <div class="rd-pet-card"><p><strong>${E(pet.name)}</strong><span>Level ${P.level(pet.xp)}${pet.streak>1?` · ${pet.streak} days in a row`:''}</span></p><span class="rd-progress" aria-hidden="true"><i style="width:${Math.round(P.levelProgress(pet.xp)*100)}%"></i></span>
 <div class="rd-pet-actions">${action('pet-feed',`Give a treat <b>${pet.treats}</b>`,pet.treats&&pet.enabled&&pet.roam!=='off'?'':'disabled','rd-button')}${action('pet-roam',pet.roam==='home'?'Let it roam':'Keep it here','','rd-text-button')}${action('pet-settings','Change','','rd-text-button')}</div></div>`:'';
   }
-  return `<section class="rd-widget rd-widget-${key}" data-rd-key="widget-${key}" data-arrange-key="${key}" data-widget="${key}" aria-label="${E(label)}"><header class="rd-arrange-heading rd-widget-head" data-arrange-head="${key}">${glyph(key)}<h2>${E(label)}</h2>${extra}${enabled('arrange')?A.controls(key):''}</header><div class="rd-widget-body">${body}</div></section>`;
+   const title=key==='timer'&&enabled('focus-room')&&root.ReserveFocusRoom?.module?'Focus':label;
+   return `<section class="rd-widget rd-widget-${key}" data-rd-key="widget-${key}" data-arrange-key="${key}" data-widget="${key}" aria-label="${E(label)}"><header class="rd-arrange-heading rd-widget-head" data-arrange-head="${key}">${glyph(key,c)}<h2>${E(title)}</h2>${extra}${enabled('arrange')?A.controls(key):''}</header><div class="rd-widget-body">${body}</div></section>`;
  }
 
  // The tray that opens with "Edit Home": every module with a drawing, one line about it and a switch; then the outline.
  function gallery(c,h){
   if(!enabled('planner')||!Arrange())return '';
   const {E}=h,A=Arrange(),on=new Set(A.snapshot(c.s).order),frame=c.s.panelFrame||'pen';
+  const help=enabled('ai')?`<li class="rd-gallery-card" data-on="${c.s.showHelp!==false}" data-rd-key="gallery-help">${glyph('help',c)}<div><strong>Help</strong></div><button type="button" class="rd-gswitch" role="switch" data-rd-action="help-toggle" aria-checked="${c.s.showHelp!==false}" aria-label="Help"><i></i></button></li>`:'';
   const card=key=>{const shown=key==='context'?c.s.showCourseInformation!==false:on.has(key),fixed=!A.removable(key);
-   return `<li class="rd-gallery-card" data-on="${shown}" data-rd-key="gallery-${key}">${glyph(key)}<div><strong>${E(A.LABELS[key])}</strong><p>${E(INFO[key]?.hint||'')}</p></div>${fixed?'<span class="rd-gallery-fixed">Always on</span>':`<button type="button" class="rd-gswitch" role="switch" data-rd-action="${shown?'widget-remove':'widget-add'}" data-widget="${key}" aria-checked="${shown}" aria-label="${shown?'Remove':'Add'} ${E(A.LABELS[key])}"><i></i></button>`}</li>`;};
+    return `<li class="rd-gallery-card" data-on="${shown}" data-rd-key="gallery-${key}">${glyph(key,c)}<div><strong>${E(A.LABELS[key])}</strong>${INFO[key]?.hint?`<p>${E(INFO[key].hint)}</p>`:''}</div>${fixed?'<span class="rd-gallery-fixed">Always on</span>':`<button type="button" class="rd-gswitch" role="switch" data-rd-action="${shown?'widget-remove':'widget-add'}" data-widget="${key}" aria-checked="${shown}" aria-label="${shown?'Remove':'Add'} ${E(A.LABELS[key])}"><i></i></button>`}</li>`;};
   return `<section class="rd-gallery" data-rd-key="gallery" aria-label="Edit Home"><header><div><h2>Edit Home</h2><p>Switch modules on or off here. To move one, hold its heading until the circle closes, then drag it beside or below another.</p></div><button type="button" class="rd-button rd-button-primary" data-rd-action="board-edit">Done</button></header>
-<ul class="rd-gallery-list">${['context',...A.EXTRA].filter(available).map(card).join('')}</ul>
+<ul class="rd-gallery-list">${help}${['context',...A.EXTRA].filter(available).map(card).join('')}</ul>
 ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" aria-label="Module outline"><span>Outline</span>${FRAMES.map(([value,name,hint])=>`<button type="button" class="rd-frame-choice" role="radio" data-rd-action="board-frame" data-value="${value}" aria-checked="${frame===value}" title="${E(hint)}"><i data-frame="${value}"></i>${E(name)}</button>`).join('')}</div>`:''}</section>`;
  }
 
- function create({
-   container,
-   store,
-   getCustomPet=null,
-   save,
-   rerender,
-   getContext,
-   helpers,
-   preview=null,
-   openSettings=null,
-   startTick=()=>{},
-   go=()=>{},
-   selectCourse=null,
-   closeSettings=()=>{},
-   askAI=null,
-   announcements=()=>false,
-   appearance=null,
-   layoutPreset=null,
-   navigate=null,
-   bookmark=null,
-   openCourseFile=null
- }){
-  if(!enabled('planner')||root.ReserveSite?.vanillaPage(root.location))return null;
-   let dead=false,editing=false,settingsTab='look',clockTimer=0,timerTick=0,notesTimer=0,pets=null,lastDone=null,focusSettlement=null;
+  function create({
+    container,
+    store,
+    previewSize=()=>false,
+    getCustomPet=()=>null,
+    getCatalogue=()=>[],
+    installed=null,
+    loadCatalogue=null,
+    save,
+    rerender,
+    getContext,
+    helpers,
+    studyStore=null,
+    studyScope='',
+    openHelp=()=>false,
+    openCourseFile=null,
+    preview=()=>{},
+    openSettings=()=>{},
+    startTick=()=>{},
+    go=()=>{},
+    selectCourse=null,
+    closeSettings=()=>{},
+    getPractice=()=>null,
+    practice=null,
+    askAI=null,
+    studyAI=null,
+    helpWith=null,
+    openAid=null,
+    announcements=()=>false,
+    appearance=null,
+    layoutPreset=null,
+    navigate=null,
+    bookmark=null
+  }){
+  if(!enabled('planner')&&!(enabled('ai')&&enabled('tools'))||root.ReserveSite?.vanillaPage(root.location))return null;
+  let dead=false,editing=false,settingsTab='layout',clockTimer=0,timerTick=0,notesTimer=0,pets=null,lastDone=null,focusSettlement=null;
   const win=container.ownerDocument?.defaultView||root;
   const newId=()=>'local-'+(root.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const ctx=()=>getContext();
@@ -212,80 +236,49 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
     recording=null,
     measuring=null,
     executorBusy=false,
+    sourceExecution=null,
     executionValidation=null,
-    localFiles=null,
-    localFileOpen=null;
+    unregisterExecutor=null;
   save=change=>persist(recording?recordChange(change,recording):change);
-  const on=id=>enabled(id)&&(!requestedFeatures||requestedFeatures.includes(id)),unavailable=name=>({ok:false,message:name+' is off. Turn it on in the Add-ons popup.'});
-  function appearanceCommand(request={}){
-   const {key,value}=request,C=root.ReserveBiscuitControls;
-   if(key==='pet.quietUntil'){
-     if(!on('pony'))return unavailable('Pony companion');
-     if(!Number.isFinite(value)||value<=Date.now()||value>Date.now()+86400000||request.until!==undefined&&request.until!==value)return clarify('Choose a future quiet period up to 1440 minutes.');
-     return save(data=>{
-       if(value<=Date.now()||value>Date.now()+86400000)throw Error('Choose a future quiet period up to 1440 minutes.');
-       const p=Pets().clean(data.pet),brain=root.ReservePonyBrain?.cleanLearning(p.brain)||p.brain||{};
-       data.pet={...p,brain:{...brain,quietUntil:value}};
-     });
-   }
-   if(key==='pet.nudges'||key==='pet.enabled'){
-     if(!on('pony'))return unavailable('Pony companion');
-     if(key==='pet.nudges'&&!['helpful','quiet'].includes(value)||key==='pet.enabled'&&typeof value!=='boolean')return clarify('Choose a valid companion setting.');
-     return save(data=>{data.pet={...Pets().clean(data.pet),[key.slice(4)]:value};});
-   }
-   const known=new Set('theme sceneTheme pageTint courseNavigation dockSize deskOrder surfaceStyle courseCardStyle bannerSize panelFrame density accent motion livingArt readingFont greeting quickOpen font textSize dashboardLayout nightArt showGrades showRecentGrades showBookmarks showCourseIcons showDeadlinePreview showCourseInformation showCourseStrip timeZone bedtime biscuitOffers dockShelf dockStyle dockNamesAlways dockCounts dockLively dockHide'.split(' '));if(!known.has(key))return clarify('That setting is unavailable in the public appearance controls.');
-   if(C?.ENUMS?.[key]&&!C.ENUMS[key].includes(value)&&!(key==='accent'&&typeof value==='string'&&/^#[\da-f]{6}$/i.test(value))||
-     typeof C?.DEFAULTS?.[key]==='boolean'&&typeof value!=='boolean'||
-     key==='nightArt'&&(!Number.isInteger(value)||value<0||value>100)||
-     key==='bedtime'&&(typeof value!=='string'||value.length!==5||!/^([01]\d|2[0-3]):[0-5]\d$/.test(value))||
-     key==='biscuitOffers'&&typeof value!=='boolean')
-     return clarify('Choose a valid value for '+key+'.');
-   if(key==='timeZone'){try{if(typeof value!=='string'||!value)throw Error();new Intl.DateTimeFormat('en-US',{timeZone:value});}catch{return clarify('Choose a valid timezone.');}}
-   // Companion schedule and offers require Pony as well as customization.
-   const feature={
-     showGrades:'grades',
-     sceneTheme:'scene-themes',
-     motion:'motion',
-     livingArt:'course-art',
-     nightArt:'course-art',
-     bannerSize:'course-art',
-     showCourseIcons:'course-art',
-     courseCardStyle:'course-art',
-     showCourseInformation:'course-hub',
-     showRecentGrades:'grades',
-     deskOrder:'arrange',
-     dashboardLayout:'arrange',
-     courseNavigation:'arrange',
-     dockSize:'arrange',
-     dockShelf:'arrange',
-     dockStyle:'arrange',
-     dockNamesAlways:'arrange',
-     dockCounts:'arrange',
-     dockLively:'arrange',
-     dockHide:'arrange',
-     bedtime:'pony',
-     biscuitOffers:'pony'
-   }[key];
-   if(key!=='showGrades'&&!on('customization'))return unavailable('Appearance editor');
-   if(feature&&!on(feature)||key==='livingArt'&&!on('motion'))return unavailable(root.ReserveFeatures?.catalogue?.find(f=>f.id===feature)?.name||feature);
-   return appearance?appearance(request):false;
+  const on=id=>enabled(id)&&(!requestedFeatures||requestedFeatures.includes(id)),unavailable=name=>({ok:false,message:name+' is off. Turn it on in Make it yours → Features.'});
+   // A navigation answer: a promise settles to its own answer; false or a reply object stays as it is, anything else is done.
+   function opened(result){return typeof result?.then==='function'?Promise.resolve(result).then(opened):result===false||record(result)?result:true;}
+  // Companion schedule and offers need valid values and the Pony switch.
+  function appearanceCommand(request){
+    if(request.key==='showHelp'&&typeof request.value==='boolean'){if(!on('ai'))return unavailable('Your AI');return save(data=>{Arrange().change(data.settings,{type:'help',value:request.value});});}
+    if(request.key==='pet.nudges'&&['helpful','quiet'].includes(request.value)||request.key==='pet.enabled'&&typeof request.value==='boolean')
+      return save(data=>{data.pet={...Pets().clean(data.pet),[request.key.slice(4)]:request.value};});
+    const feature={
+      showGrades:'grades',
+      sceneTheme:'scene-themes',
+      motion:'motion',
+      livingArt:'motion',
+      nightArt:'course-art',
+      bannerSize:'course-art',
+      showCourseIcons:'course-art',
+      courseCardStyle:'course-art',
+      showCourseInformation:'course-hub',
+      showRecentGrades:'grades',
+      deskOrder:'arrange',
+      dashboardLayout:'arrange',
+      courseNavigation:'arrange',
+      dockSize:'arrange'
+    }[request.key];
+    if(['bedtime','biscuitOffers'].includes(request.key)){
+      if(request.key==='bedtime'&&(typeof request.value!=='string'||request.value.length!==5||!/^([01]\d|2[0-3]):[0-5]\d$/.test(request.value))||
+        request.key==='biscuitOffers'&&typeof request.value!=='boolean')
+        return clarify('Choose a valid value for '+request.key+'.');
+      if(!on('customization'))return unavailable('Appearance editor');
+      if(!on('pony'))return unavailable('Pony companion');
+      return save(data=>{data.settings[request.key]=request.value;});
+    }
+    if(request.key!=='showGrades'&&!on('customization'))return unavailable('Appearance editor');
+    if(feature&&!on(feature))return unavailable(root.ReserveFeatures?.catalogue.find(f=>f.id===feature)?.name||feature);
+    return appearance?appearance(request):false;
   }
-  function opened(result){return typeof result?.then==='function'?Promise.resolve(result).then(opened):result===false||record(result)?result:true;}
-  // Biscuit names a course page ({tab:"course",courseId}), the calendar and the announcements; in this build they are that
-  // course, the Planner and the Course hub.
-  function navigationRequest(request){
-    if(request.tab==='course'&&request.courseId!=null){const {tab,...rest}=request;return rest;}
-    const tab={calendar:'planner',announcements:'course-hub'}[request.tab];
-    return tab?{...request,tab}:request;
-  }
-  function navigateCommand(request={}){
-    request=navigationRequest(request);
+  function navigateCommand(request){
     const A=Arrange(),homeKey=A?.EXTRA?.includes(request.tab)&&!['grades','messages'].includes(request.tab)?request.tab:null;
     if(homeKey){if(Object.keys(request).some(key=>key!=='tab'))return clarify('Open this Home module without an additional course or destination.');return openHomeModule(homeKey);}
-    if(request.tab!==undefined&&!['home','assignments','planner','messages','course-hub','materials','grades'].includes(request.tab)||
-      request.tab===undefined&&!request.courseId||
-      request.courseId!==undefined&&!(ctx().courses||[]).some(row=>String(row.id)===String(request.courseId)))
-      return false;
     const feature={planner:'planner',messages:'course-hub','course-hub':'course-hub',materials:'materials',grades:'grades'}[request.tab]||'dashboard';
     return on(feature)?navigate?opened(navigate(request)):false:unavailable(root.ReserveFeatures?.catalogue?.find(f=>f.id===feature)?.name||feature);
   }
@@ -317,6 +310,36 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
      node.scrollIntoView?.({behavior:'auto',block:'nearest'});
      if(node.focus){if(!node.hasAttribute?.('tabindex'))node.setAttribute?.('tabindex','-1');node.focus({preventScroll:true});}
      return {ok:true,message:'Opened '+A.LABELS[key]+' on Home.',undo};
+   }catch{try{await undo();}catch{}return clarify('The Home module could not open. '+guidance);}
+  }
+  async function openHomeModule(key){
+    const A=Arrange(),guidance='Open Home > '+(A?.label(key)||key)+'.';
+    if(!on('dashboard'))return unavailable('Dashboard');
+    if(!on('planner')||!available(key))return unavailable('Planner');
+    if(typeof navigate!=='function'||!A?.snapshot||!A?.isExtra(key))return clarify(guidance);
+    const shown=A.snapshot(store.get().settings).order.includes(key);
+    if(!shown&&!on('customization'))return unavailable('Appearance editor');
+    if(!shown&&!on('arrange'))return unavailable('Arrange the workspace');
+    let destination,restoreLayout=null;
+    const undo=async()=>{
+      if(restoreLayout){const restored=await restoreLayout();if(restored===false||restored?.ok===false)return restored;}
+      return destination?.undo?destination.undo():true;
+    };
+   try{
+     destination=await navigate({tab:'home'});
+     if(destination===false||destination?.ok===false)return destination?.ok===false?destination:clarify(guidance);
+     if(!shown){
+       const journal={changes:[]},saved=await capture(journal,()=>moduleCommand({key,action:'show'}));
+       restoreLayout=changed(journal);
+       if(saved===false||saved?.ok===false){await undo();return saved?.ok===false?saved:clarify('The Home module could not save. '+guidance);}
+     }
+     rerender();
+     const node=container.querySelector('[data-rd-key="widget-'+key+'"]'),
+       visible=on('planner')&&available(key)&&A.snapshot(store.get().settings).order.includes(key)&&node&&!node.hidden&&(!node.getClientRects||node.getClientRects().length>0);
+     if(!visible){const restored=await undo();return clarify((restored===false||restored?.ok===false?'Newer layout changes were kept. ':'')+guidance+' The requested module was not visible.');}
+     node.scrollIntoView?.({behavior:'auto',block:'nearest'});
+     if(node.focus){if(!node.hasAttribute?.('tabindex'))node.setAttribute?.('tabindex','-1');node.focus({preventScroll:true});}
+     return {ok:true,message:'Opened '+A.label(key)+' on Home.',undo};
    }catch{try{await undo();}catch{}return clarify('The Home module could not open. '+guidance);}
   }
   function checkpoint(intent){
@@ -401,25 +424,37 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
    }:null;
   }
   async function featureCommand(request){
-   const F=root.ReserveFeatures;if(!F||!root.chrome?.storage?.local)return {ok:false,message:'Features are unavailable. Reload Canvas.'};
-   if(request.id==='ai')return clarify('That feature is unavailable in the public companion controls.');
-   if(request.id&&typeof request.on!=='boolean')return clarify('Choose on or off for that feature.');
-   if(request.id==='pony'&&!request.on)return {ok:false,message:'The Pony switch is in the extension popup → Pony.'};
-   if(request.id&&!F.catalogue.some(row=>row.id===request.id)||!request.id&&!['full','lite'].includes(request.preset))return false;
-   const validate=recording?.validate||executionValidation;
-   let saved;
-   try{
-     validate?.();
-     saved=await F.change(request.id?{id:request.id,on:request.on}:{preset:request.preset},{keepPony:true});
-   }catch(error){return {ok:false,message:error.message};}
-   const {before,value:next}=saved;requestedFeatures=request.id?F.resolve(next).enabled:null;
-   return {ok:true,message:request.preset==='lite'?'Lite mode saved. Reload Canvas to apply.':'Saved. Reload Canvas to apply.',reload:true,undo:async()=>{
-     try{await F.write(before,{expected:next});}catch(error){if(error.code==='feature-conflict')return {ok:false,message:error.message};throw error;}
-     requestedFeatures=request.id?F.resolve(before).enabled:null;
-     return {ok:true,message:'Undone. Reload Canvas to apply.',reload:true};
-   }};
+   const validate=executionValidation;
+   const F=root.ReserveFeatures,D=root.ReserveSettingsDock;if(!F||!D?.saveFeatures||!root.chrome?.storage?.local)return {ok:false,message:'Features are unavailable. Reload Canvas.'};
+    if(request.id==='pony'&&!request.on)return {ok:false,message:'The Companion switch is in the extension popup → Companion.'};
+   const saved=(await root.chrome.storage.local.get(F.KEY))[F.KEY],before=F.normalize(saved);
+   let next=request.id?D.toggleFeatures(before,request.id,request.on):F.normalize({preset:request.preset});
+   if(!F.resolve(next).enabled.includes('pony')){
+     if(request.id)return {ok:false,message:'That also turns '+(root.ReservePetArt?.identity?.(store.get())?.name||'Biscuit')+' off. Use Make it yours → Features for that switch.'};
+    next=F.normalize({preset:'custom',custom:[...F.resolve(next).enabled,'pony']});
+   }
+   validate?.();await D.saveFeatures(next);requestedFeatures=F.resolve(next).enabled;
+    return {
+      ok:true,
+      message:request.preset==='lite'?'Lite mode, keeping '+(root.ReservePetArt?.identity?.(store.get())?.name||'Biscuit')+' on. Reload Canvas to apply.':'Saved. Reload Canvas to apply.',
+      reload:true,
+      undo:async()=>{
+      const current=F.normalize((await root.chrome.storage.local.get(F.KEY))[F.KEY]);
+      if(JSON.stringify(current)!==JSON.stringify(next))return {ok:false,message:'Features have changed since then. Your newer choices are kept.'};
+      await D.saveFeatures(before);
+      requestedFeatures=F.resolve(before).enabled;
+      return {ok:true,message:'Undone. Reload Canvas to apply.',reload:true};
+    }};
   }
   function moduleCommand({action,key}){
+   if(key==='help'){
+     if(!on('ai'))return unavailable('Your AI');
+     if(!['show','hide'].includes(action))return {ok:false,message:'Help stays above the Home modules; use its switch in Edit Home.'};
+     return Promise.resolve(save(data=>{Arrange().change(data.settings,{type:'help',value:action==='show'});})).then(async ok=>{
+       if(ok===false)return false;
+       return action==='show'?openHelp():true;
+     });
+   }
    const A=Arrange(),feature={context:'course-hub',messages:'course-hub',grades:'grades',pet:'pony'}[key]||'planner';
    if(!on('arrange'))return unavailable('Arrange the workspace');
    if(!on(feature)||!available(key)||!A?.ALL.includes(key))return unavailable(A?.LABELS[key]||'That module');
@@ -446,7 +481,7 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
     clarify=message=>({ok:false,message}),
     sameMutation=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
   async function localMutation(kind,operation,change){
-   const journal={changes:[],validate:recording?.validate||executionValidation},rejected=Error('The local entry changed. Try again.');
+   const journal={changes:[],validate:executionValidation},rejected=Error('The local entry changed. Try again.');
    let result;
    try{result=change(copy(store.get()));}catch{return clarify('The local change could not be prepared. Your saved data is kept.');}
    if(result?.ok!==true)return result||clarify('Choose the local entry to change.');
@@ -537,6 +572,57 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
     if(!B||!Object.hasOwn(B.SKILLS,skill)||typeof value!=='boolean')return false;
     return saveSkill(skill,value);
   }
+  // A module made wider or narrower moves the modules around it: each one glides from where it stood to where the new
+  // layout puts it (FLIP: measured before the save and after the render, transform only, 240 ms on the house settle)
+  // while its contents fade back in, so nothing jumps. Still, Off and reduced motion: the layout simply changes.
+  function reflow(){
+   const style=container?.dataset?.motionStyle;
+   if(style==='off'||container?.dataset?.featureMotion==='off'||root.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches||typeof root.MutationObserver!=='function')return null;
+   // Still: nothing travels; the modules that moved or changed width fade their contents back in where they land
+   const still=style==='still';
+   // Where every module stands in the layout now. A glide still under way (a second change while the first plays) is
+   // remembered with it, so the new glide starts from where that one has got to when the new layout lands (the save
+   // takes a moment, and the old glide runs on meanwhile), never from where it was at the press, never with a snap.
+   const nodes=[...(container.querySelectorAll?.('[data-arrange-key]')||[])],rects=new Map();
+   const progress=a=>{try{const t=a?.effect?.getComputedTiming?.();return a.playState==='finished'||!t||t.progress==null?1:t.progress;}catch{return 1;}};
+   for(const node of nodes){
+     const r=node.getBoundingClientRect?.();
+     if(!r?.width)continue;
+     const a=(node.getAnimations?.()||[]).find(x=>x.id==='rd-reflow'&&x.playState!=='finished'),f=a?.flip;
+    // the box without the glide's transform (origin top left): the rect read is the box moved and scaled by it
+    let box={left:r.left,top:r.top,width:r.width,height:r.height};
+    if(f){const k=1-progress(a);box={left:r.left-f[0]*k,top:r.top-f[1]*k,width:r.width/(1+(f[2]-1)*k),height:r.height/(1+(f[3]-1)*k)};}
+    rects.set(node.dataset.arrangeKey,{box,anim:f?a:null});}
+   if(!rects.size)return null;
+   const seen=e=>{
+     const f=e.anim?.flip;
+     if(!f)return e.box;
+     const k=1-progress(e.anim),b=e.box;
+     return {left:b.left+f[0]*k,top:b.top+f[1]*k,width:b.width*(1+(f[2]-1)*k),height:b.height*(1+(f[3]-1)*k)};
+   };
+   return ()=>{let done=false;const watch=new root.MutationObserver(()=>{if(done)return;const moved=[],firsts=new Map();
+     // where each one is seen right now (its old glide read at this moment), before the new layout is measured
+     for(const [key,e] of rects)firsts.set(key,seen(e));
+     for(const node of container.querySelectorAll('[data-arrange-key]')){
+       const a=firsts.get(node.dataset.arrangeKey),b=node.getBoundingClientRect?.();
+       if(!a||!b?.width)continue;
+       const dx=a.left-b.left,dy=a.top-b.top,sx=a.width/b.width,sy=a.height/b.height;
+       if(Math.abs(dx)>.5||Math.abs(dy)>.5||Math.abs(sx-1)>.004||Math.abs(sy-1)>.004)moved.push([node,dx,dy,sx,sy]);
+     }
+     for(const e of rects.values())try{e.anim?.cancel();}catch{}
+     if(!moved.length)return;done=true;watch.disconnect();const ease=root.ReserveMotion?.easings?.settle||'cubic-bezier(.2,.8,.2,1)';
+     if(still){for(const [node] of moved)try{node.querySelector(':scope > .rd-widget-body')?.animate?.([{opacity:0},{opacity:1}],{duration:160,easing:'linear',fill:'backwards'});}catch{}return;}
+     for(const [node,dx,dy,sx,sy]of moved){
+       try{
+         for(const old of node.getAnimations?.()||[])if(old.id==='rd-reflow')old.cancel();
+         const a=node.animate(
+           [{transform:`translate(${dx.toFixed(1)}px,${dy.toFixed(1)}px) scale(${sx.toFixed(4)},${sy.toFixed(4)})`,transformOrigin:'0 0'},{transform:'none',transformOrigin:'0 0'}],
+           {duration:240,easing:ease});
+         if(a){a.id='rd-reflow';a.flip=[dx,dy,sx,sy];}
+      // a module that changed size would stretch its drawings while it scales: its contents fade back in instead
+      if(Math.abs(sx-1)>.004||Math.abs(sy-1)>.004)node.querySelector(':scope > .rd-widget-body')?.animate?.([{opacity:0},{opacity:1}],{duration:160,delay:60,easing:'linear',fill:'backwards'});}catch{}}});
+    watch.observe(container,{subtree:true,childList:true,attributes:true});root.setTimeout?.(()=>{done=true;watch.disconnect();},2000);};
+  }
   function saveSkill(key,value){
     return save(data=>{const B=root.ReservePonyBrain,p=Pets().clean(data.pet);data.pet={...p,skills:{...B.cleanSkills(p.skills),[key]:value}};});
   }
@@ -566,19 +652,25 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
    const previous=playTray.tool??null;if(previous!==tool)playTray.pick(tool);
    return {ok:true,undo:()=>{playTray.pick(null);if(previous)playTray.pick(previous);return true;}};
   }
-  const livePlan=(data=store.get())=>{
-    const c=ctx(),
-      custom=new Map((data.customTasks||[]).map(row=>[String(row.id),row])),
-      items=new Map((c.items||[]).filter(row=>!row.personal||custom.has(String(row.id))).map(row=>[String(row.id),row]));
-    for(const [id,row]of custom)
-      items.set(id,{...items.get(id),...row,personal:true,courseName:(c.courses||[]).find(course=>String(course.id)===String(row.courseId))?.name||''});
-    return plan({...c,items:[...items.values()],local:data.tasks||{},__plan:null},helpers()).list;
-  };
+  const agentHome=root.CanvasHarnessAgentHome?.create({
+    container,
+    store,
+    save,
+    rerender,
+    getContext:()=>({...ctx(),personal:store.get()}),
+    studyStore,
+    studyScope,
+    env:root
+  });
+  const livePlan=(data=store.get())=>plan({...ctx(),local:data.tasks||{},__plan:null},helpers()).list;
   const openWork=(request={},data=store.get())=>
     livePlan(data).filter(e=>!e.done&&(!request.itemId||e.id===String(request.itemId))&&(!request.courseId||e.courseId===String(request.courseId))).sort((a,b)=>
       (Date.parse(a.dueAt)||Infinity)-(Date.parse(b.dueAt)||Infinity));
   const planner=root.ReservePlannerUI?.create({container,store,save,rerender,getContext,helpers,view:id=>preview(id)})||null;
-  const room=enabled('focus-room')?root.ReserveFocusRoom?.create({container,store}):null;
+  const room=enabled('focus-room')?root.ReserveFocusRoom?.create({container,store,task:()=>{
+    const c=ctx(),h=helpers();
+    return root.ReserveFocusRoom.pickTask(store.get().focus,plan(c,h).list,c.courses,v=>h.formatDate(v,c.s.timeZone,{weekday:'short',hour:'numeric',minute:'2-digit'}),Date.now());
+  }}):null;
   // Size and place: the menu behind a module's three dots. It is built on demand and floats over the page.
   let menu=null,menuKey='';
   function closeMenu(refocus=false){
@@ -657,7 +749,8 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    return {
      ...sources,
      biscuitPlan:data.toolbox?.biscuitPlan,
-     companion:{name:root.ReservePetArt?.identity?.(data,selectedPet())?.name||data.pet?.name||'Biscuit'},
+     companion:{name:root.ReservePetArt?.identity?.(store.get(),getCustomPet())?.name},
+     catalogue:getCatalogue(),
      now:Date.now(),
      timeZone:c.s.timeZone,
      settings:{...c.s,showGrades:visible},
@@ -692,7 +785,8 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
      assignments:entries,
      planner:entries,
      skills:data.pet?.skills,
-     unreadAnnouncements:on('course-hub')?c.unreadAnnouncements||0:0,
+     studyAids:enabled('ai')?c.studyAids||{}:{},
+     unreadAnnouncements:enabled('course-hub')?c.unreadAnnouncements||0:0,
      pageKind:c.pageKind||'dashboard',
      courseId:c.courseId||c.selected?.courseId||'all',
      selected:c.selected?sanitize(c.selected):null,
@@ -1105,36 +1199,27 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
     return P?writeLocalPlan(P.build(petInfo(),request)):Promise.resolve({ok:false,message:'Reload Canvas Harness to use the local planner.'});
   }
   async function undoLocalPlan(){return planUndo?planUndo():{ok:false,message:'There is no plan to undo.'};}
-  async function savedFile(row){
-   if(!on('course-files'))return unavailable('My links & files');
-   try{
-     if(openCourseFile){const result=await openCourseFile(row.courseId,row.id);return result===false||result?.ok===false?result:{ok:true,message:'Opened '+row.title+'.'};}
-     if(!localFileOpen){
-       if(!root.ReserveCourseFiles?.create||!root.ReserveCourseFileOpen?.create||!store.owner)return clarify('Open this saved file in Course hub > My links & files.');
-       localFiles=root.ReserveCourseFiles.create({store});
-       localFileOpen=root.ReserveCourseFileOpen.create({store,files:localFiles,container});
-     }
-     await localFileOpen.open(row.courseId,row.id,container.querySelector(':focus'));
-     return {ok:true,message:'Opened '+row.title+'.'};
-   }catch(error){return clarify(error?.message||'The saved file could not open.');}
-  }
-  function localEntry(request={}){
-   const rows=(root.ReserveBiscuitEngine?.prepare(petInfo())||[]).filter(v=>
+  function localEntry(request){
+   // A tool's URL is resolved from its current source catalogue by the registry provider.
+   // Model fields never supply this capability, and ordinary Biscuit requests keep their existing path.
+   if(request.sourceId){
+     if(!sourceExecution||sourceExecution.id!==request.sourceId||!root.location?.assign)return false;
+     root.location.assign(sourceExecution.url);
+     return true;
+   }
+   const row=root.ReserveBiscuitEngine?.prepare(petInfo()).find(v=>
      v.id===String(request.entryId)&&(!request.kind||v.kind===request.kind)&&(!request.courseId||v.courseId===String(request.courseId)));
-   if(rows.length!==1)return clarify('Choose one currently loaded item and its course.');
-   const row=rows[0];
-   if(row.locked||row.locked_for_user||row.hidden_for_user||row.published===false)return clarify('This item is unavailable in the loaded course.');
-   if(row.savedFile)return savedFile(row);
-   if(row.kind==='note')return row.itemId&&row.id!=='scratchpad'?openItem({itemId:row.itemId,courseId:row.courseId}):navigateCommand({tab:'notes'});
-   if(row.kind==='setting')return settingsCommand({key:row.key||row.id});
-   if(row.kind==='feature')return clarify('Feature switches are in the extension popup > Add-ons.');
-   if(['grade','course-grade'].includes(row.kind))return navigateCommand({tab:'grades',...(row.courseId?{courseId:row.courseId}:{})});
-   if(row.kind==='course')return openItem({courseId:row.id});
-   if(!row.url)return clarify('Open its course to view this loaded item.');
+   if(!row)return false;
+   if(row.savedFile&&openCourseFile)return openCourseFile(row.courseId,row.id);
+   if(row.kind==='note')return navigateCommand({tab:'home'});
+   if(['setting','feature'].includes(row.kind)){openSettings(row.kind==='feature'?'settings':root.ReserveCustomizeUI?.tabFor?.(row.key)||'all');rerender();return true;}
+   if(row.kind==='grade')return navigateCommand({tab:'grades',courseId:row.courseId});
+   const raw=request.url||row.url;
+   if(!raw)return row.courseId?openItem({courseId:row.courseId}):{ok:false,message:'Open its course to view this loaded item.'};
    try{
-     const u=new URL(row.url,store.owner?.origin||root.location?.origin);
-     if(!['https:','http:'].includes(u.protocol)||u.username||u.password||typeof root.location?.assign!=='function')return false;
-     root.location.assign(u.href);
+     const u=new URL(raw,root.location?.origin||globalThis.ReserveSite?.origin?.()||'https://school.instructure.com');
+     if(!['https:','http:'].includes(u.protocol)||u.username||u.password)return false;
+     root.location?.assign?.(u.href);
      return true;
    }catch{return false;}
   }
@@ -1234,95 +1319,108 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
     return ok===false?false:{ok:true,message:'Marked '+(row.title||row.name)+' done locally.'};
   }
 
-  function settingsCommand(request={}){
-    if(!on('customization')||typeof openSettings!=='function')return false;
-    const tab=request.tab||(request.key?root.ReserveCustomizeUI?.tabFor?.(request.key)||'look':'pet');
-    if(!['look','layout','courses','pet','settings'].includes(tab)||tab==='pet'&&!on('pony'))return false;
-    settingsTab=tab;
-    openSettings(tab);
-    rerender();
-    return true;
+  function installedCommand(request){
+   if(request.action==='use'){
+     if(!on('customization'))return unavailable('Appearance editor');
+     const row=getCatalogue().find(row=>row.id===request.id),kind=row?.kind||request.kind,feature={scene:'scene-themes',pet:'pony',art:'course-art',kit:'course-art'}[kind];
+     if(feature&&!on(feature))return unavailable(root.ReserveFeatures?.catalogue.find(f=>f.id===feature)?.name||feature);
+   }
+   return installed?installed(request):false;
   }
-  const actions={
-    setting:appearanceCommand,
-    preset:request=>on('customization')&&on('arrange')?layoutPreset?layoutPreset(request):false:unavailable('Appearance editor or arrangement'),
-    feature:featureCommand,
-    features:featureCommand,
-    module:moduleCommand,
-    navigate:navigateCommand,
-    skill:skillCommand,
-    note:noteCommand,
-    bookmark:bookmarkCommand,
-    play:playCommand,
-    reload:()=>typeof root.location?.reload==='function'?(root.location.reload(),true):false,
-    open:request=>request.entryId?localEntry(request):openItem(request),
-    find:request=>request.entryId?localEntry(request):openItem(request),
-    focus:item=>item.mode==='break'?startBreak(item):startPonyFocus(item),
-    'focus-control':focusControl,
-    'focus-status':focusStatus,
-    reminder:addReminder,
-    due:dueWork,
-    plan:request=>request?.local||request?.operation!==undefined?localPlan(request):planTonight(request),
-    move:request=>changeLocalPlan(request),
-    remove:request=>changeLocalPlan(request,true),
-    complete:completeLocal,
-    chat:()=>true,
-    none:()=>true,
-    break:startBreak,
-    stretch:()=>store.get().pet?.skills?.wellbeing!==false?startBreak({minutes:5,explicit:true,stretch:true}):false,
-    inbox:()=>on('course-hub')&&root.ReservePonyBrain?.skillEnabled?.('inbox',store.get().pet?.skills)!==false?announcements():false,
-    settings:settingsCommand
-  };
-  actions.copy=async({text}={})=>{
-    if(typeof text!=='string'||!text.trim()||text.length>12000||!root.navigator?.clipboard?.writeText)return clarify('Copy is unavailable. Select the text and copy it.');
-    await root.navigator.clipboard.writeText(text);
-    return {ok:true,message:'Copied.'};
-  };
-    actions.batch=async({steps})=>{
-      if(!Array.isArray(steps)||!steps.length||steps.length>32||steps.some(step=>!record(step)||typeof step.action!=='string'||step.fields!==undefined&&!record(step.fields)))
-        return clarify('Choose 1 to 32 supported local steps.');
-      const journal=recording,undos=[],messages=[],receipts=[];
-      let completed=0,failure='';
-      for(const step of steps||[]){
-        if(step.manual===true||step.ui){
-          failure=typeof step.message==='string'&&step.message?step.message:'Complete this step in '+(Array.isArray(step.ui?.path)?step.ui.path:['the requested controls']).join(' > ')+'.';
-          break;
-        }
-        const action=Object.hasOwn(actions,step.action)?actions[step.action]:null;
-        if(typeof action!=='function'||step.action==='batch'||['chat','none','reload'].includes(step.action)){failure='An action is unavailable.';break;}
-        let result;
-        const firstPatch=journal?.changes.length||0;
-        try{result=await capture(journal,()=>action(step.fields||{}));}catch{failure='An action could not finish.';break;}
-        if(result===false||result===undefined||result===null||result?.ok===false){failure=result?.message||'An action could not finish.';break;}
-        completed++;
-        messages.push(typeof result==='string'?result:result?.message||step.message||'Completed '+step.action+'.');
-        if(['note','bookmark','reminder','plan'].includes(step.action)&&result?.ok===true)
-          receipts.push({
-            action:step.action,
-            fields:Object.fromEntries(['operation','targetId','blockId','plannerId','itemId','courseId'].filter(key=>step.fields?.[key]!==undefined).map(key=>[key,step.fields[key]])),
-            result:{ok:true,...Object.fromEntries(['before','after','targetId','plan'].filter(key=>Object.hasOwn(result,key)).map(key=>[key,copy(result[key])]))}
-          });
-        if(result?.undo){
-          undos.push(result.undo);
-          if(journal&&(step.action==='plan'||step.action==='navigate'||step.fields?.operation!==undefined&&['note','bookmark','reminder'].includes(step.action)))journal.changes.splice(firstPatch);
-        }
-      }
-      const revert=changed(journal);
-      return {
-        ok:completed>0,
-        complete:!failure,
-        completed,
-        total:(steps||[]).length,
-        receipts,
-        message:failure?(completed?'Completed '+completed+' step'+(completed===1?'':'s')+'. ':'')+failure:messages.join(' '),
-        ...(undos.length||revert?{undo:async()=>{
-        for(const undo of [...undos].reverse()){const r=await undo();if(r===false||r?.ok===false)return r;}
-        const restored=revert?await revert():true;
-        return restored===false||restored?.ok===false?
-          restored:
-          receipts.some(v=>v.action==='plan')?{ok:true,message:'Undone.',plan:planReceipt(store.get().toolbox?.biscuitPlan)}:restored;
-      }}:{})};
-    };
+   const actions={
+     installed:installedCommand,
+     catalogue:()=>loadCatalogue?.(),
+     setting:appearanceCommand,
+     preset:request=>on('customization')&&on('arrange')?layoutPreset?layoutPreset(request):false:unavailable('Appearance editor or arrangement'),
+     feature:featureCommand,
+     features:featureCommand,
+     module:moduleCommand,
+     navigate:navigateCommand,
+     skill:skillCommand,
+     note:noteCommand,
+     bookmark:request=>bookmarkCommand(request),
+     play:playCommand,
+     reload:()=>root.location?.reload(),
+     open:request=>request.entryId?localEntry(request):openItem(request),
+     find:request=>request.entryId?localEntry(request):openItem(request),
+     focus:item=>startPonyFocus(item),
+     'focus-control':request=>focusControl(request),
+     'focus-status':()=>focusStatus(),
+     reminder:request=>addReminder(request),
+     due:request=>dueWork(request),
+     study:request=>studyWork(request),
+     plan:items=>items?.local||items?.operation!==undefined?localPlan(items):planTonight(items),
+     move:request=>changeLocalPlan(request),
+     remove:request=>changeLocalPlan(request,true),
+     complete:request=>completeLocal(request),
+     chat:()=>true,
+     none:()=>true,
+     break:request=>startBreak(request),
+     stretch:()=>store.get().pet?.skills?.wellbeing!==false?startBreak({minutes:5,explicit:true,stretch:true}):false,
+     review:item=>openReview(item),
+     ready:item=>openReady(item),
+     ai:request=>openAI(request),
+     practice:item=>openStudy('practice',item),
+     lab:item=>openStudy('lab',item),
+     reading:item=>openStudy('reading',item),
+     notes:item=>openStudy('notes',item),
+     rubric:item=>openStudy('rubric',item),
+     fixes:item=>openStudy('fixes',item),
+     inbox:()=>enabled('course-hub')&&skillEnabled('inbox')?announcements():false,
+     settings:()=>{
+     if(!enabled('customization'))return false;
+     settingsTab='pet';
+     openSettings('pet');
+     rerender();
+     return true;
+   }};
+   actions.copy=async({text}={})=>{
+     if(typeof text!=='string'||!text.trim()||text.length>12000||!root.navigator?.clipboard?.writeText)return {ok:false,message:'Copy is unavailable. Select the text and copy it.'};
+     await root.navigator.clipboard.writeText(text);
+     return {ok:true,message:'Copied.'};
+   };
+   actions.batch=async({steps})=>{
+     const journal=recording,undos=[],messages=[],receipts=[];
+     let completed=0,failure='';
+     for(const step of steps||[]){
+       if(step.manual===true||step.ui){failure=step.message||'Complete this step in '+(step.ui?.path||['the requested controls']).join(' > ')+'.';break;}
+       const action=actions[step.action];
+       if(!action||step.action==='batch'){failure='An action is unavailable.';break;}
+       let result;
+       const firstPatch=journal?.changes.length||0;
+       try{
+         result=await capture(journal,()=>action(step.action==='ai'?{question:step.fields.handoff?.wishes||step.fields.text,handoff:step.fields.handoff}:step.fields));
+       }catch{failure='An action could not finish.';break;}
+       if(result===false||result?.ok===false){failure=result?.message||'An action could not finish.';break;}
+       completed++;
+       messages.push(typeof result==='string'?result:result?.message||step.message||'Completed '+step.action+'.');
+       if(['note','bookmark','reminder','plan'].includes(step.action)&&result?.ok===true)
+         receipts.push({
+           action:step.action,
+           fields:Object.fromEntries(['operation','targetId','blockId','plannerId','itemId','courseId'].filter(key=>step.fields?.[key]!==undefined).map(key=>[key,step.fields[key]])),
+           result:{ok:true,...Object.fromEntries(['before','after','targetId','plan'].filter(key=>Object.hasOwn(result,key)).map(key=>[key,copy(result[key])]))}
+         });
+       if(result?.undo){
+         undos.push(result.undo);
+         if(journal&&(step.action==='plan'||step.action==='navigate'||step.fields?.operation!==undefined&&['note','bookmark','reminder'].includes(step.action)))journal.changes.splice(firstPatch);
+       }
+     }
+     const revert=changed(journal);
+     return {
+       ok:completed>0,
+       complete:!failure,
+       completed,
+       total:(steps||[]).length,
+       receipts,
+       message:failure?(completed?'Completed '+completed+' step'+(completed===1?'':'s')+'. ':'')+failure:messages.join(' '),
+       ...(undos.length||revert?{undo:async()=>{
+       for(const undo of [...undos].reverse()){const r=await undo();if(r===false||r?.ok===false)return r;}
+       const restored=revert?await revert():true;
+       return restored===false||restored?.ok===false?
+         restored:
+         receipts.some(v=>v.action==='plan')?{ok:true,message:'Undone.',plan:planReceipt(store.get().toolbox?.biscuitPlan)}:restored;
+     }}:{})};
+   };
    for(const key of Object.keys(actions))actions[key]=command(actions[key]);
   async function executeBiscuit(action,fields={},options={}){
    if(dead||executorBusy||typeof action!=='string'||!Object.hasOwn(actions,action)||!record(fields))return {ok:false,message:'That action is unavailable in this workspace.'};
@@ -1334,18 +1432,79 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
     journal=before?.then?await before:before;
     options.validate?.();
     if(options.validate)journal.validate=options.validate;
-    const previousValidation=executionValidation;let pending;executionValidation=options.validate||null;
-    try{pending=capture(journal,()=>actions[action](fields));}finally{executionValidation=previousValidation;}
-    const result=await pending;
-    if(result===false||result===undefined||result===null||result?.ok===false)return typeof result==='object'&&result?result:{ok:false,message:'That action is unavailable in this workspace.'};
+    const previous=sourceExecution,previousValidation=executionValidation;let pending;sourceExecution=options.source||null;executionValidation=options.validate||null;
+    try{pending=capture(journal,()=>actions[action](fields));}finally{sourceExecution=previous;executionValidation=previousValidation;}
+    const result=await pending;if(result===false||result?.ok===false)return typeof result==='object'&&result?result:{ok:false,message:'That action is unavailable in this workspace.'};
     const undo=result?.undo||changed(journal);
     return {...(record(result)?result:{}),ok:true,message:typeof result?.message==='string'?result.message:typeof result==='string'?result:'Done.',...(undo?{undo}:{})};
    }catch(error){return {ok:false,message:String(error?.message||'The action could not finish.').slice(0,1000)};}
    finally{if(pendingCommand===journal)pendingCommand=null;executorBusy=false;}
   }
+  function executorContext(){
+   const c=ctx(),
+     origin=store.owner?.origin||root.location?.origin,
+     accountId=store.owner?.accountId||c.user?.id,
+     biscuit=c.biscuitData||c.biscuitContext||{},
+     sources=new Map((Array.isArray(c.sources)?c.sources:[]).map(source=>[source.id,source]));
+   let hasSources=Array.isArray(c.sources);
+   const add=(row,fallback)=>{
+    if(!row||row.locked||row.locked_for_user||row.hidden_for_user||row.published===false)return;
+    const courseId=String(row.courseId||row.course_id||''),
+      rawKind=String(row.kind||row.type||fallback).toLowerCase(),
+      kind={frontpage:'home',externalurl:'link',externaltool:'tool'}[rawKind]||rawKind;
+    if(!/^\d+$/.test(courseId)||!['page','home','syllabus','file','link','material','module'].includes(kind))return;
+    let url=row.html_url||row.url;
+    if(kind==='page'&&(!url||!/^https?:|^\//i.test(url)))
+      url=origin+'/courses/'+courseId+'/pages/'+encodeURIComponent(row.pageUrl||row.page_url||row.slug||url||row.id);
+    else if(kind==='home'&&!url)
+      url=origin+'/courses/'+courseId;
+    else if(kind==='file'&&!url&&/^\d+$/.test(String(row.fileId||row.contentId||row.content_id||row.id)))
+      url=origin+'/courses/'+courseId+'/files/'+(row.fileId||row.contentId||row.content_id||row.id);
+    if(!url)return;
+    let id=root.CanvasHarnessContext?.sourceId?.({...row,kind,url},courseId,origin);
+    if(!id){
+      try{
+        const path=new URL(url,origin).pathname,match=path.match(/^\/courses\/\d+\/(pages|files)\/([^/]+)\/?$/);
+        id=match?(match[1]==='pages'?'page:':'file:')+courseId+':'+decodeURIComponent(match[2]):kind==='home'?'home:'+courseId:String(row.id||'');
+      }catch{return;}
+    }
+    if(id)sources.set(id,{...row,id,kind,courseId,url});
+   };
+   for(const [field,kind]of [['files','file'],['materials','material'],['pages','page'],['links','link']])if(Array.isArray(biscuit[field])){hasSources=true;for(const row of biscuit[field])add(row,kind);}
+   if(root.CanvasHarnessContext?.catalog){
+    const rows=value=>Array.isArray(value)?value:[],
+      loaded=rows(c.courses).map(course=>
+        ({
+          courseId:String(course.id),
+          modules:rows(biscuit.modules).filter(row=>String(row.courseId??row.course_id)===String(course.id)&&(!row.type||row.type==='Module')&&!row.locked&&!row.hidden_for_user),
+          announcements:rows(biscuit.announcements).filter(row=>String(row.courseId??row.course_id)===String(course.id)&&!row.locked&&!row.hidden_for_user)
+        }));
+    hasSources=true;
+    for(const source of root.CanvasHarnessContext.catalog(c,{origin,resources:[...rows(c.aiResources),...loaded],updates:[...rows(c.aiUpdates),...loaded]}).sources||
+      [])
+      if(!sources.has(source.id))sources.set(source.id,source);
+   }
+   return {
+     ...c,
+     owner:store.owner,
+     origin,
+     accountId,
+     courseId:c.courseId||biscuit.courseId||'all',
+     featureCatalogue:root.ReserveFeatures?.catalogue||[],
+     ...(hasSources?{sources:[...sources.values()]}:{})
+   };
+  }
+  function ensureExecutor(){
+   if(unregisterExecutor||dead||!root.CanvasHarnessStudyTools?.registerExecutor||!root.ReserveBiscuitRegistry?.register)return;
+   unregisterExecutor=root.CanvasHarnessStudyTools.registerExecutor({
+     isCurrent:()=>!dead&&container.isConnected!==false,
+     getContext:executorContext,
+     executeBiscuit
+   });
+  }
   function ensurePets(){
    const P=Pets();if(!enabled('pony')||!P||!root.ReservePetArt||pets||dead)return;
-   pets=P.create({container,getPet:()=>store.get().pet,getCustomPet:selectedPet,savePet:(pet,patch,mutate)=>{
+   pets=P.create({container,getPet:()=>store.get().pet,getCustomPet,getData:()=>store.get(),store,savePet:(pet,patch,mutate)=>{
      const write=()=>save(data=>{data.pet=mutate?mutate(P.clean(data.pet)):{...data.pet,...(patch||pet)};});
      return pendingCommand&&['pet','routine','quiet'].includes(pendingCommand.intent)?command(write)():write();
    },info:petInfo,
@@ -1475,6 +1634,65 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
     return {ok:true,targetId,original,before:copy(original.reminder),after:copy(row),message:operation==='reschedule'?'Rescheduled the selected reminder.':'Saved the selected reminder.'};
    });
   }
+  function reminderStamp(value){
+    if(typeof value==='number')return Number.isFinite(value)&&value>0&&value<=8640000000000000?value:null;
+    if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,3})?)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.test(value)||!validDay(value.slice(0,10)))return null;
+    const at=Date.parse(value);
+    return Number.isFinite(at)&&at>0&&at<=8640000000000000?at:null;
+  }
+  function reminderOperation(request){
+   const {operation}=request;
+   if(!['create','edit','reschedule','delete','cancel','undo-cancel'].includes(operation))return clarify('Choose create, edit, reschedule, delete, cancel, or Undo for a reminder.');
+   if(operation==='undo-cancel')return undoMutation('reminder',request,['cancel','delete']);
+   const creating=operation==='create',targetId=creating?newId():mutationId(request.targetId);
+   if(!targetId)return clarify('Which reminder should I change?');
+   const title=request.title,hasTitle=title!==undefined,hasAt=request.at!==undefined,at=hasAt?reminderStamp(request.at):null;
+   if(creating&&!hasTitle||hasTitle&&(typeof title!=='string'||!title.trim()||title.length>200||/[\u0000-\u001f\u007f]/.test(title)))return clarify('Choose a reminder title of 1 to 200 characters.');
+   if((creating||operation==='reschedule')&&!hasAt||hasAt&&(at===null||at<=Date.now()))return clarify('What future date and time should the reminder use?');
+   if(operation==='edit'&&!hasTitle&&!hasAt)return clarify('What reminder title or time should change?');
+   if(request.courseId!==undefined&&!ctx().courses.some(row=>String(row.id)===String(request.courseId)))return clarify('Choose an existing course for this reminder.');
+   return localMutation('reminder',operation,data=>{
+     const rows=(data.pet?.reminders||[]).filter(row=>String(row.id)===targetId),tasks=(data.customTasks||[]).filter(row=>String(row.id)===targetId);
+     if(!creating&&rows.length!==1||tasks.length>1)return clarify('Choose one existing reminder ID.');
+     if(creating&&(rows.length||tasks.length))return clarify('That reminder ID is already in use. Try again.');
+     if(hasAt&&at<=Date.now())return clarify('That reminder time has passed. Choose a future time.');
+    if(creating){
+      if((data.pet?.reminders||[]).length>=20||(data.customTasks||[]).length>=1000)return clarify('Reminders is full. Remove a reminder first.');
+      const now=Date.now(),day=helpers().dayKey(at,ctx().s.timeZone);
+      data.customTasks||=[];
+      data.tasks||={};
+      Plan().addTask({name:title,day},{courseId:request.courseId===undefined?'personal':String(request.courseId),id:targetId,nowISO:new Date(now).toISOString()})(data);
+      data.customTasks.find(row=>row.id===targetId).dueAt=new Date(at).toISOString();
+      data.pet={...data.pet,reminders:[...(data.pet?.reminders||[]),{id:targetId,text:title,at,createdAt:now}]};
+      return {ok:true,targetId,after:copy(data.pet.reminders.find(v=>String(v.id)===targetId)),message:'Created the local reminder.'};
+    }
+    const row=rows[0],task=tasks[0],original={reminder:copy(row),task:copy(task),local:copy(data.tasks?.[targetId])};
+    if(task&&Date.parse(task.createdAt)!==row.createdAt)return clarify('The linked personal task has changed. Open this reminder to review it first.');
+    if(request.courseId!==undefined&&task&&String(task.courseId)!==String(request.courseId))return clarify('That reminder belongs to another course. Choose its current course.');
+    if(['delete','cancel'].includes(operation)){
+      if(operation==='delete'&&data.toolbox?.biscuitPlan?.blocks?.some(block=>block.itemId===targetId))return clarify('Remove this reminder task from its local study plan before deleting it.');
+      data.pet.reminders=data.pet.reminders.filter(item=>item!==row);
+      if(operation==='delete'&&task){data.customTasks=data.customTasks.filter(item=>item!==task);delete data.tasks[targetId];}
+      return {ok:true,targetId,original,before:copy(original.reminder),message:operation==='cancel'?'Cancelled reminder delivery. Its personal task is kept.':'Deleted the selected local reminder.'};
+    }
+    if(hasTitle){row.text=title;if(task)task.name=title;}
+    if(hasAt){
+      row.at=at;
+      delete row.delivered;
+      if(task){
+        task.dueAt=new Date(at).toISOString();
+        const local=localTask(data,targetId);
+        local.plannedDate=helpers().dayKey(at,ctx().s.timeZone);
+        if(Object.hasOwn(local,'plannedTime')){
+          const p=root.CanvasHarnessAgentClock?.calendar?.(ctx().s.timeZone)(at);
+          if(!p)return clarify('The account clock is unavailable. Reload Canvas.');
+          local.plannedTime=String(Math.floor(p.minute/60)).padStart(2,'0')+':'+String(p.minute%60).padStart(2,'0');
+        }
+      }
+    }
+    return {ok:true,targetId,original,before:copy(original.reminder),after:copy(row),message:operation==='reschedule'?'Rescheduled the selected reminder.':'Saved the selected reminder.'};
+   });
+  }
   function addReminder(request={}){
    if(request.operation!==undefined)return on('planner')?reminderOperation(request):unavailable('Reminders');
    const title=String(request.title||request.text||'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,200),c=ctx(),now=Date.now();let at=request.at;
@@ -1495,6 +1713,68 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
      data.pet={...data.pet,reminders:[...(data.pet?.reminders||[]),{id,text:title,at,createdAt:now}]};
      added=true;
    }).then(ok=>ok&&added);
+  }
+  function openStudy(kind,item){
+   // Recheck skills when an already displayed offer is used.
+   if(!skillEnabled(kind))return false;
+   if(kind==='notes'){
+     const snapshot=petInfo(),
+       row=snapshot.assignments.find(e=>e.id===String(item?.itemId)),
+       dueAt=typeof row?.dueAt==='number'?row.dueAt:Date.parse(row?.dueAt),
+       facts=root.CanvasHarnessStudyKind?.classify(row,snapshot);
+     if(!enabled('ai')||
+       !studyAI||
+       store.get().pet?.skills?.quiz===false||
+       !row||
+       row.done||
+       !facts?.notes||
+       (!['quiz','test'].includes(facts.kind)&&facts.aid!=='practice')||
+       !Number.isFinite(dueAt)||
+       dueAt<snapshot.now||
+       dueAt-snapshot.now>3*86400000)
+       return false;
+     return studyAI(kind,row.id);
+   }
+   if(kind==='fixes'){
+     const B=root.ReservePonyBrain,snapshot=petInfo();
+     if(!enabled('ai')||!studyAI||!B||!B.evaluate(snapshot,store.get().pet?.brain).suggestions.some(s=>s.kind==='fixes'&&s.data.itemId===String(item.itemId)))return false;
+     return studyAI(kind,item.itemId);
+   }
+   if(!enabled('ai')||kind==='rubric'&&store.get().pet?.skills?.rubric===false||!plan(ctx(),helpers()).list.some(e=>e.id===String(item.itemId)&&!e.done))return false;
+   if(kind==='rubric')return studyAI?studyAI(kind,item.itemId):false;
+   const handoff=enabled('pdf')&&practice?getPractice():null;
+   return handoff&&String(handoff.itemId)===String(item.itemId)?practice(handoff,kind):studyAI?studyAI(kind,item.itemId):false;
+  }
+  function skillEnabled(kind){return root.ReservePonyBrain?.skillEnabled?.(kind,store.get().pet?.skills)!==false;}
+  function openReady(item){const aid=ctx().studyAids?.[item.aidKey];return enabled('ai')&&!!openAid&&!!aid&&skillEnabled(aid.kind)?openAid(item.aidKey):false;}
+  function openAI(request){
+    const handoff=request.handoff;
+    return enabled('ai')&&askAI&&[handoff?.kind,...(handoff?.kinds||[])].filter(Boolean).every(skillEnabled)?askAI(request.question,handoff):false;
+  }
+  async function scheduleReview(request){
+   if(!skillEnabled('review'))return false;
+   const validate=executionValidation;
+   if(!enabled('ai')||!studyStore?.scheduleReview||!studyStore?.list||!studyScope)return clarify('Reload Canvas Harness to schedule saved practice reviews.');
+   const aidKey=mutationId(request.aidKey),at=reminderStamp(request.at);if(!aidKey||at===null||at<=Date.now())return clarify('Choose an existing practice set and a future review time.');
+   const before=(await studyStore.list(studyScope))[aidKey],c=ctx();
+   if(!before||
+     before.kind!=='practice'||
+     !c.courses.some(row=>String(row.id)===String(before.courseId))||
+     request.courseId!==undefined&&String(request.courseId)!==String(before.courseId)||
+     !Object.values(before.progress?.practice?.answers||{}).some(answer=>answer?.correct===false))
+     return clarify('Choose a saved practice set with missed questions in this course.');
+   if(!skillEnabled('review'))return false;
+   const expected=copy(before.review),review={due:at,step:0};
+   validate?.();
+   await studyStore.scheduleReview(studyScope,aidKey,review,{expectedReview:expected,validate});
+   return {ok:true,message:'Scheduled the practice review.',undo:async()=>{await studyStore.scheduleReview(studyScope,aidKey,expected,{expectedReview:review});return {ok:true,message:'Undone.'};}};
+  }
+  function openReview(item={}){
+    if(item.operation==='schedule')return scheduleReview(item);
+    if(!enabled('ai')||!openAid||store.get().pet?.skills?.quiz===false)return false;
+    const aid=ctx().studyAids?.[item.aidKey];
+    if(!aid||aid.kind!=='practice'||!aid.review||aid.review.due>Date.now()||aid.review.step>=3)return false;
+    return openAid(item.aidKey,{missed:true});
   }
   const freshFocus=(focus,minutes,now)=>{
     if(root.ReserveCore?.resetFocus)return root.ReserveCore.resetFocus(focus,minutes,now);
@@ -1536,6 +1816,7 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
     }).then(ok=>afterFocus(ok&&started));
   }
   function startPonyFocus(item={}){
+   if(item.mode==='break')return startBreak(item);
    const minutes=duration(item.minutes,25),
      cycles=item.cycles===undefined?1:item.cycles,
      breakMinutes=item.breakMinutes===undefined?0:item.breakMinutes,
@@ -1610,7 +1891,8 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
   }
   function focusControl(request={}){
    if(['set-remaining','reset'].includes(request.action))return focusOperation(request);
-   if(!['pause','resume','stop','adjust'].includes(request.action)||request.action==='adjust'&&!Number.isFinite(request.minutes))return false;let changed=false,completed=false,ended=0;
+   if(!['pause','resume','stop','adjust','finish'].includes(request.action)||request.action==='adjust'&&!Number.isFinite(request.minutes))return false;
+   let changed=false,completed=false,ended=0,early=false;
    return save(data=>{
      const now=Date.now();
      ended=data.focus?.endsAt||0;
@@ -1621,6 +1903,24 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
     if(request.action==='pause'){next.endsAt=null;next.pausedAt=now;}
     if(request.action==='resume'){next.endsAt=now+f.left*1000;next.pausedAt=0;}
     if(request.action==='stop')Object.assign(next,{endsAt:null,pausedAt:0,stoppedAt:now,completedAt:0,completedMinutes:0,breakUntil:0});
+    if(request.action==='finish'){
+      if(f.phase==='break')
+        Object.assign(next,{endsAt:null,pausedAt:0,stoppedAt:now,completedAt:0,completedMinutes:0,breakUntil:0});
+      else{
+        Object.assign(next,{
+          endsAt:null,
+          pausedAt:0,
+          remaining:0,
+          elapsed:f.elapsed,
+          completedAt:now,
+          completedMinutes:f.elapsed/60,
+          sessions:(Number.isInteger(data.focus.sessions)?data.focus.sessions:0)+1,
+          breakUntil:0
+        });
+        for(const key of ['phase','focusMinutes','breakMinutes','cycles','cycle'])delete next[key];
+        early=true;
+      }
+    }
     if(request.action==='adjust'){
       const left=Math.max(60,f.left+request.minutes*60);
       if(!Number.isFinite(left)||now+left*1000>8640000000000000)return;
@@ -1628,7 +1928,7 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
     }
     if(next.phase==='break')next.breakUntil=next.endsAt||0;
     data.focus=next;changed=true;
-   }).then(ok=>{if(ok&&completed&&Date.now()-ended<60000)finished('focus');afterFocus(ok&&(changed||completed));return ok&&changed;});
+   }).then(ok=>{if(ok&&(completed&&Date.now()-ended<60000||early))finished('focus');afterFocus(ok&&(changed||completed));return ok&&changed;});
   }
   function startBreak(request={}){
     let started=false;
@@ -1812,7 +2112,7 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    if(running&&!timerTick)timerTick=setInterval(tick,1000);
    // The countdown ticks here too: the dashboard no longer redraws Home every minute (dashboard.js updateFreshness).
    if(container.querySelector('[data-rd-clock],[data-rd-countdown]')){if(!clockTimer)clockTimer=setInterval(clock,15000);}else if(clockTimer){clearInterval(clockTimer);clockTimer=0;}
-   room?.sync();hydratePet();ensurePets();pets?.sync();pets?.setFocus(running,data.focus);focusControls();
+   room?.sync();agentHome?.sync();ensureExecutor();ensurePets();pets?.sync();pets?.setFocus(running,data.focus);focusControls();
    if(data.focus?.phase&&running&&Date.now()>=data.focus.endsAt)void settleTimer().catch(()=>{});
    // Dashboard syncFocus follows sync in the same render. Restore a paused clock after its running-only update.
    Promise.resolve().then(()=>{if(!dead)focusControls();});
@@ -1831,6 +2131,8 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    else input.value=text;
   }
   function click(event){
+   // "Open" beside Play in the features list: the tray of tools, with none in hand yet.
+   if(event.target.closest?.('[data-rd-action]')?.dataset?.rdAction==='play-open'){void playCommand({tool:null});return true;}
    if(!enabled('planner'))return false;
    if(room?.click(event))return true;
    if(focusClick(event))return true;
@@ -1843,6 +2145,8 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    if(planner?.click(event))return true;
    const button=event.target.closest?.('[data-rd-action]');if(!button||dead)return false;
    const action=button.dataset.rdAction,key=button.dataset.widget,A=Arrange();
+   if(action==='help-toggle'){save(data=>{A.change(data.settings,{type:'help',value:data.settings.showHelp===false});});return true;}
+   if(action==='notes-help'){helpWith?.({page:'notes',selectedText:drafts.notes??store.get().toolbox?.scratchpad??''});return true;}
    if(action==='hidden-courses'){settingsTab='courses';return false;}
    if(action==='plan-open'){planner?.goto(button.dataset.day);go('plan');return true;}
     if(action==='customize-tab'){
@@ -1855,10 +2159,18 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    if(action==='board-edit'&&button.dataset.from==='settings'){editing=true;closeSettings();go('work');rerender();container.querySelector('.rd-gallery')?.scrollIntoView({block:'nearest'});return true;}
    if(action==='board-edit'){editing=!editing;rerender();if(!editing)container.querySelector('[data-rd-action="board-edit"]')?.focus({preventScroll:true});return true;}
    if(action==='board-frame'){save(data=>{data.settings.panelFrame=button.dataset.value;});return true;}
-   if(action==='module-menu'){if(menu&&menuKey===key)closeMenu(true);else if(A.ALL.includes(key))openMenu(button,key);return true;}
-   if(action==='module-size'&&A.ALL.includes(key)&&Object.hasOwn(A.SIZES,button.dataset.value)){
-    const size=button.dataset.value;closeMenu(true);
-    save(data=>{const sizes={...(data.settings.moduleSize||{})};if(size==='m')delete sizes[key];else sizes[key]=size;data.settings.moduleSize=sizes;});return true;
+   if(action==='module-menu'){if(menu&&menuKey===key)closeMenu(true);else if(A.isKey(key))openMenu(button,key);return true;}
+   if(action==='module-pin'&&A.isKey(key)){closeMenu(true);save(data=>{pinModule(data,key,!data.toolbox?.agentPins?.includes(key));});return true;}
+   if(action==='module-size'&&A.isKey(key)&&Object.hasOwn(A.SIZES,button.dataset.value)){
+    // measured, laid out at its new width in the same press (the glide starts at once), then saved
+    const size=button.dataset.value;closeMenu(true);const flip=reflow();flip?.();previewSize(key,size);
+    save(data=>{
+      const sizes={...(data.settings.moduleSize||{})};
+      if(size==='m')delete sizes[key];else sizes[key]=size;
+      data.settings.moduleSize=sizes;
+      pinModule(data,key);
+    });
+    return true;
    }
    if(action==='module-dock'&&A.ALL.includes(key)&&['top','bottom','left','right'].includes(button.dataset.value)){
      const edge=button.dataset.value;
@@ -1887,6 +2199,33 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
      }).then(ok=>afterFocus(ok));
      return true;
    }
+   if(action==='focus-back'){
+     const n=duration(Number(button.dataset.minutes))||25;
+     save(data=>{
+       const f=data.focus||{},
+         now=Date.now(),
+         next=f.phase==='break'&&Number.isInteger(f.cycles)&&Number.isInteger(f.cycle)&&f.cycle<f.cycles&&f.focusMinutes>0&&Number.isFinite(now+f.focusMinutes*60000);
+    // a break inside a run of pomodoros moves on to the run's next focus; otherwise a fresh session
+    data.focus=next?
+      {
+        ...f,
+        phase:'focus',
+        minutes:f.focusMinutes,
+        remaining:f.focusMinutes*60,
+        elapsed:0,
+        pausedAt:0,
+        stoppedAt:0,
+        completedAt:0,
+        completedMinutes:0,
+        breakUntil:0,
+        endsAt:now+f.focusMinutes*60000,
+        cycle:f.cycle+1
+      }:
+      {...freshFocus(f,n,now),fromPony:false};}).then(ok=>
+      afterFocus(ok));
+    return true;
+   }
+   if(action==='focus-break'){startBreak({minutes:Number(button.dataset.minutes)||5,explicit:true});return true;}
    if(action==='timer-minutes'){
      const n=duration(Number(button.dataset.minutes));
      if(n)save(data=>{if(data.focus?.endsAt)return;data.focus={...freshFocus(data.focus,n,Date.now()),endsAt:null};}).then(ok=>afterFocus(ok));
@@ -1964,9 +2303,8 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
   }
   function destroy(){
     dead=true;
-    localFileOpen?.destroy();
-    localFiles?.destroy();
-    customPetVersion++;
+    unregisterExecutor?.();
+    unregisterExecutor=null;
     room?.destroy();
     playTray?.destroy?.();
     playBox?.remove();
@@ -1979,9 +2317,28 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
     pets?.destroy();
     planner?.destroy();
   }
-  return {click,keydown,input,change,sync,finished,destroy,executeBiscuit,settingsTab:()=>settingsTab,planUI:()=>planner?.ui||{},editing:()=>editing,close(){
-    if(editing){editing=false;rerender();}
-  }};
+   ensureExecutor();
+   // While the Focus room covers Home: only what the room needs (its timer, its sync); Home catches up when it folds away
+   function syncRoom(){if(dead)return;const focus=store.get().focus,running=!!focus?.endsAt;if(running&&!timerTick)timerTick=setInterval(tick,1000);room?.sync();}
+   return {
+     click,
+     keydown,
+     input,
+     change,
+     sync,
+     syncRoom,
+     finished,
+     destroy,
+     executeBiscuit,
+     askPet:()=>pets?.ask?.()??false,
+     biscuitContext:petInfo,
+     flush:flushNotes,
+     settingsTab:()=>settingsTab,
+     planUI:()=>planner?.ui||{},
+     editing:()=>editing,
+     close(){
+     if(editing){editing=false;rerender();}
+   }};
  }
  const api={INFO,FRAMES,glyph,render,gallery,create,focusState,howLong,nextDue,plan};
  root.ReserveWidgets=api;if(typeof module==='object'&&module.exports)module.exports=api;

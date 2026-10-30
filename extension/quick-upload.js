@@ -12,7 +12,8 @@
  * write. apply()/undo() -> Promise<{ok,error?,applied,notApplied,unresolved,
  * conflicts?}>. Parse/validation/storage failures are returned, not thrown.
  *
- * Undo is one in-memory receipt for the last successful pack. Any changed
+ * Undo remembers the last successful pack; account pack support also keeps a
+ * durable named inventory. Any changed
  * affected field causes an atomic undo-conflict; unrelated fields survive.
  * Failed apply/undo and reset/review retain that receipt. destroy() invalidates
  * pending work and stops notifications. A storage write already dispatched
@@ -96,9 +97,9 @@
  // Pure candidate construction: all-course parts first, other parts in pack
  // order. Record the final owner of EACH field (including banner options), so
  // overriding a banner without options leaves earlier/current options intact.
- function plan(settings,parsed,parts,groups,courses){
+ function plan(settings,parsed,parts,groups,courses,defer=false){
   const candidate=clone(settings),byGroup=new Map(groups.map(g=>[g.key,g])),owners=new Map(),touched=new Map(),outcomes=[],notApplied=[];
-  const unresolved=groups.filter(g=>g.included&&g.target?.type==='course'&&!g.courseId&&g.parts.some(p=>p.included&&!p.errors.length)).map(g=>
+  const unresolved=groups.filter(g=>g.included&&g.target?.type==='course'&&!g.courseId&&!(defer&&g.status==='none')&&g.parts.some(p=>p.included&&!p.errors.length)).map(g=>
     ({key:g.key,target:clone(g.target),status:g.status,candidates:clone(g.candidates),partIndexes:[...g.partIndexes]}));
   const reason=part=>{
    const group=byGroup.get(part.groupKey);
@@ -106,14 +107,17 @@
    if(!part.included)return 'excluded-part';
    if(part.errors.length)return part.errors[0].code;
    if(!part.asset)return 'invalid-svg';
-   if(group.target.type==='course'&&!group.courseId)return 'unresolved-target';
+   if(group.target.type==='course'&&!group.courseId)return defer&&group.status==='none'?'unassigned':'unresolved-target';
    if(group.target.type==='every-course'&&!courses.length)return 'no-courses';
    return null;
   };
   for(const part of parts){
    part.targets=[];part.replaces=false;part.replacement=false;
    const why=reason(part);
-   if(why){part.status=why==='replaced'?'replaced':why==='unresolved-target'?'unresolved':why.startsWith('excluded')?'excluded':'error';notApplied.push({index:part.index,slot:part.slot,reason:why});}
+   if(why){
+     part.status=why==='unassigned'?'unassigned':why==='replaced'?'replaced':why==='unresolved-target'?'unresolved':why.startsWith('excluded')?'excluded':'error';
+     if(why!=='unassigned')notApplied.push({index:part.index,slot:part.slot,reason:why});
+   }
    else part.status='ready';
   }
   const ordered=[...parts.filter(p=>p.target?.type==='every-course'),...parts.filter(p=>p.target?.type!=='every-course')];
@@ -171,9 +175,12 @@
   }
   for(const skipped of parsed.skipped)notApplied.push({index:skipped.index,kind:skipped.kind,reason:skipped.reason});
   notApplied.sort((a,b)=>a.index-b.index);
-  const changes=[...touched.values()].map(change=>({...change,after:clone(appearance(candidate,change)[change.key])})).filter(change=>
-    !change.beforeOwn||!same(change.before,change.after));
-  return {settings:candidate,changes,applied,notApplied,unresolved,budget:budget(candidate)};
+   const inventoryChanges=[...touched.values()].map(({before,...change})=>
+     ({...change,...(change.beforeOwn?{before}:{}),after:clone(appearance(candidate,change)[change.key])})),
+     changes=inventoryChanges.filter(change=>!change.beforeOwn||!same(change.before,change.after));
+   const unassigned=parts.filter(p=>p.status==='unassigned').map(p=>
+     ({[Pack.SLOT_KEYS[p.slot]]:clone(p.asset),...(p.slot==='banner'?{...(p.fit?{bannerFit:p.fit}:{}),...(p.position?{bannerPosition:p.position}:{})}:{})}));
+   return {settings:candidate,changes,inventoryChanges,applied,notApplied,unresolved,unassigned,budget:budget(candidate)};
  }
  function create({store,getCourses,onChange}={}){
   if(!Pack||!Art||!Custom)throw Error('Quick upload modules are unavailable. Reload Canvas Harness.');
@@ -197,6 +204,8 @@
       report:null
     });
   let state=blank();
+  const canInstall=()=>
+    !!(store.owner&&typeof root.ReservePacks?.installArt==='function'&&(typeof root.ReservePacks.supportsOwner!=='function'||root.ReservePacks.supportsOwner(store.owner)));
   const snapshot=()=>clone(state);
   function emit(){
     state.canUndo=!!receipt&&!busy&&!destroyed;
@@ -207,11 +216,11 @@
   function recompute(){
    state.errors=[...(state.parsed?.errors||[])];
    if(!state.parsed?.ok||baseSettings===null){if(invalidated)state.errors.push(invalidated);state.canApply=false;state.budget=null;state.unresolved=[];return;}
-   const candidate=plan(baseSettings,state.parsed,state.parts,state.groups,state.courses);
+   const candidate=plan(baseSettings,state.parsed,state.parts,state.groups,state.courses,canInstall());
    state.budget=candidate.budget;state.unresolved=candidate.unresolved;
    if(!candidate.budget.ok)state.errors.push(candidate.budget.error);
    if(invalidated)state.errors.push(invalidated);
-   state.canApply=!busy&&!destroyed&&!state.errors.length&&!candidate.unresolved.length&&candidate.applied.length>0&&state.phase==='review';
+   state.canApply=!busy&&!destroyed&&!state.errors.length&&!candidate.unresolved.length&&(candidate.applied.length>0||candidate.unassigned.length>0)&&state.phase==='review';
   }
   function failResult(error,extra={}){
    return {ok:false,error:issue(error.code||'storage-error',error.message||String(error)),applied:[],notApplied:[],unresolved:clone(state.unresolved),...extra};
@@ -283,27 +292,43 @@
    if(state.phase!=='review'||!state.parsed?.ok||!baseSettings)return failResult(failure('no-review','Review a valid pack before confirming it.'));
    if(state.unresolved.length)
      return rejected(
-       plan(baseSettings,state.parsed,state.parts,state.groups,state.courses),
+       plan(baseSettings,state.parsed,state.parts,state.groups,state.courses,canInstall()),
        failure('unresolved-target','Choose a course for each included target, or uncheck that target before applying.'));
    if(!state.canApply)
-     return rejected(plan(baseSettings,state.parsed,state.parts,state.groups,state.courses),state.errors[0]||failure('nothing-to-apply','There are no selected, resolved artwork pieces to apply.'));
+     return rejected(
+       plan(baseSettings,state.parsed,state.parts,state.groups,state.courses,canInstall()),
+       state.errors[0]||failure('nothing-to-apply','There are no selected, resolved artwork pieces to apply.'));
    const token=revision,selection=clone({parsed:state.parsed,parts:state.parts,groups:state.groups}),expected=reviewFingerprint;
    busy=true;state.phase='applying';state.canApply=false;state.error=null;emit();let candidate;
    try{
-    await store.update(next=>{
+    let installed=null;const packs=root.ReservePacks,durable=canInstall();
+    const prepare=next=>{
      current(token);
      const courses=transactionCourses(next.settings);
      if(fingerprint(courses)!==expected)throw failure('courses-changed','Your courses or their matching names changed. Review the pack again before applying it.');
-     candidate=plan(next.settings,selection.parsed,selection.parts,selection.groups,courses);
+     candidate=plan(next.settings,selection.parsed,selection.parts,selection.groups,courses,durable);
      if(candidate.unresolved.length)throw failure('unresolved-target','Choose a course for each included target, or uncheck that target before applying.');
      if(!candidate.budget.ok)throw failure('budget-exceeded',candidate.budget.error.message);
-     if(!candidate.applied.length)throw failure('nothing-to-apply','No artwork can be applied to the current courses.');
+     if(!candidate.applied.length&&!candidate.unassigned.length)throw failure('nothing-to-apply','No artwork can be applied to the current courses.');
      // Only art and explicit banner options change. Never replace settings or
      // the account data object, and never touch titleArt.
-     for(const change of candidate.changes)putAppearance(next.settings,change)[change.key]=clone(change.after);
-    });
-    receipt=candidate.changes.length?clone(candidate.changes):null;
-    const result={ok:true,applied:clone(candidate.applied),notApplied:clone(candidate.notApplied),unresolved:clone(candidate.unresolved)};
+     if(!durable)for(const change of candidate.changes)putAppearance(next.settings,change)[change.key]=clone(change.after);
+    };
+    if(durable){
+      prepare(store.get());
+      installed=await packs.installArt(
+        {name:state.name,changes:candidate.inventoryChanges,...(candidate.unassigned.length?{unassigned:candidate.unassigned}:{})},
+        {store});
+    }
+    else await store.update(prepare);
+    receipt=installed?{id:installed.id,changes:clone(candidate.inventoryChanges)}:candidate.changes.length?clone(candidate.changes):null;
+    const result={
+      ok:true,
+      applied:clone(candidate.applied),
+      notApplied:clone(candidate.notApplied),
+      unresolved:clone(candidate.unresolved),
+      ...(candidate.unassigned.length?{unassigned:clone(candidate.unassigned)}:{})
+    };
     if(!destroyed&&token===revision){
       state.parts=selection.parts;
       state.groups=selection.groups;
@@ -316,7 +341,7 @@
     }
     return result;
    }catch(error){
-    const result=rejected(candidate||plan(baseSettings,selection.parsed,selection.parts,selection.groups,state.courses),error);
+    const result=rejected(candidate||plan(baseSettings,selection.parsed,selection.parts,selection.groups,state.courses,canInstall()),error);
     if(!destroyed&&token===revision){state.phase='review';state.error=clone(result.error);
      if(['courses-changed','courses-unavailable','budget-exceeded'].includes(result.error.code))invalidated=clone(result.error);
      recompute();state.report=clone(result);
@@ -328,10 +353,10 @@
    const guarded=guardWrite();if(guarded)return guarded;
    if(!receipt)return failResult(failure('nothing-to-undo','There is no successful pack to undo.'));
    // Undo cancels an in-progress review, but never another write.
-   const token=++revision,changes=clone(receipt),previousPhase=state.phase;
+   const token=++revision,changes=clone(receipt.changes||receipt),installedId=receipt.id,previousPhase=state.phase;
    busy=true;state.phase='undoing';state.canApply=false;state.error=null;emit();
    try{
-    await store.update(next=>{
+    const restore=next=>{
      current(token);
      const conflicts=changes.filter(change=>{
        const pref=appearance(next.settings,change);
@@ -341,8 +366,10 @@
      const candidate=clone(next.settings);
      for(const change of changes){const pref=putAppearance(candidate,change);if(change.beforeOwn)pref[change.key]=clone(change.before);else delete pref[change.key];}
      const total=budget(candidate);if(!total.ok)throw failure('budget-exceeded',total.error.message);
-     for(const change of changes){const pref=putAppearance(next.settings,change);if(change.beforeOwn)pref[change.key]=clone(change.before);else delete pref[change.key];}
-    });
+     if(!installedId)
+       for(const change of changes){const pref=putAppearance(next.settings,change);if(change.beforeOwn)pref[change.key]=clone(change.before);else delete pref[change.key];}
+    };
+    if(installedId){restore(store.get());await root.ReservePacks.removeLocal(installedId,{store,strict:true});}else await store.update(restore);
     receipt=null;const result={ok:true,applied:changes.map(({type,courseId,key})=>({type,...(courseId?{courseId}:{}),key})),notApplied:[],unresolved:[]};
     if(!destroyed&&token===revision){baseSettings=null;reviewFingerprint=null;invalidated=null;state=blank();state.phase='undone';state.report=clone(result);}
     return result;

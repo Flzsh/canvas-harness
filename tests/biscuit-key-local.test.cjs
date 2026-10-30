@@ -5,11 +5,7 @@ test('Biscuit setting values stay aligned with every customization enum and bool
  for(const [key,values] of Object.entries(M.enums))for(const value of values)assert.deepEqual(first('set '+key+' to '+(value||'none')).fields,{key,value});
  for(const [key,value] of Object.entries(M.defaults))if(typeof value==='boolean')for(const on of [true,false])assert.deepEqual(first('set '+key+' '+on).fields,{key,value:on});
 });
-test('every public feature and Biscuit skill can be addressed by its identifier',()=>{
- for(const {id} of F.catalogue){if(id==='ai'){assert.deepEqual(P.parse('disable '+id,ctx),[]);assert.deepEqual(P.parse('enable '+id,ctx),[]);continue;}const result=first('disable '+id);if(id==='pony')assert.equal(result.intent,'pet');else assert.deepEqual(result.fields,{id,on:false});}
- for(const skill of Object.keys(B.SKILLS)){const phrase={focus:'focus buddy',planner:'planner help',quiz:'quiz prep',reading:'reading helper',rubric:'rubric helper',feedback:'feedback helper',inbox:'inbox watch'}[skill]||skill;assert.deepEqual(first('disable '+phrase).fields,{skill,on:false});}
- for(const key of W.EXTRA)assert.deepEqual(first('show '+key+' module').fields,{action:'show',key});
-});
+// 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
 test('new command typos remain local and note text retains its own spelling and case',()=>{
  for(const [text,intent,fields] of [['drak mode','setting',{key:'theme',value:'dark'}],['trun off play tools','feature',{id:'play',on:false}],['blueprnit theme','setting',{key:'sceneTheme',value:'blueprint'}],['show grdaes','setting',{key:'showGrades',value:true}],['wrtie down Brign Gogles','note',{text:'Brign Gogles'}],['ntoe: Brign Gogles','note',{text:'Brign Gogles'}]]){const result=first(text);assert.equal(result.intent,intent,text);assert.deepEqual(result.fields,fields,text);}
 });

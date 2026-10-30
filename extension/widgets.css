@@ -2,14 +2,14 @@
    Colours come from the page's own variables, so accents and page styles carry through. */
 
 /* ---- the outline round modules (Edit Home -> Outline). Drawn behind the module, so nothing inside moves. ---- */
-.rd[data-workspace=work]:not([data-panel-frame=none]) :is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key] {padding:14px 18px 18px;}
-.rd[data-workspace=work]:not([data-panel-frame=none]) :is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key]::after {content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:16px;}
-.rd[data-workspace=work][data-panel-frame=pen] :is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key]::after {
+.rd[data-workspace=work]:not([data-panel-frame=none]) :is(:is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key],.ch-band-host) {padding:14px 18px 18px;}
+.rd[data-workspace=work]:not([data-panel-frame=none]) :is(:is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key],.ch-band-host)::after {content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:16px;}
+.rd[data-workspace=work][data-panel-frame=pen] :is(:is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key],.ch-band-host)::after {
  border:18px solid transparent;border-radius:0;
  border-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%233D3D3A' stroke-opacity='.8' stroke-width='2.5' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E") 30 / 18px stretch;}
-.rd[data-workspace=work][data-panel-frame=stitch] :is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key]::after {border:2px dashed #B07A54;box-shadow:inset 0 0 0 4px color-mix(in srgb,#B07A54 9%,transparent);}
-.rd[data-workspace=work][data-panel-frame=card] :is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key]::after {background:var(--rd-surface);border:1px solid var(--rd-line);box-shadow:0 1px 2px #3028190a,0 6px 22px #30281912;}
-.rd[data-workspace=work][data-panel-frame=line] :is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key]::after {border:1px solid var(--rd-line-strong);}
+.rd[data-workspace=work][data-panel-frame=stitch] :is(:is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key],.ch-band-host)::after {border:2px dashed #B07A54;box-shadow:inset 0 0 0 4px color-mix(in srgb,#B07A54 9%,transparent);}
+.rd[data-workspace=work][data-panel-frame=card] :is(:is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key],.ch-band-host)::after {background:var(--rd-surface);border:1px solid var(--rd-line);box-shadow:0 1px 2px #3028190a,0 6px 22px #30281912;}
+.rd[data-workspace=work][data-panel-frame=line] :is(:is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key],.ch-band-host)::after {border:1px solid var(--rd-line-strong);}
 /* The reader keeps its content; its own card gives way to the chosen outline. */
 .rd[data-workspace=work]:not([data-panel-frame=none]) .rd-main.rd-desk > .rd-information > .rd-reader, .rd[data-workspace=work]:not([data-panel-frame=none]) .rd-main.rd-desk > .rd-information > .rd-assignment-empty {border:0;box-shadow:none;background:none;padding:0;}
 .rd[data-workspace=work] .rd-main.rd-desk {row-gap:18px;}
@@ -27,6 +27,9 @@
 .rd .rd-widget-glyph {flex:none;color:var(--rd-accent);}
 .rd .rd-widget-link {margin-left:auto;font-size:12.5px;}
 .rd .rd-widget-link + .rd-arrange-tools {margin-left:2px;}
+/* the three rooms' openers (Focus room, Review deck, Grade impact) stand in one place: the right end of the head, before the module's own tools */
+.rd .rd-widget-head .rv-grow, .rd .rd-widget-head .gi-open {margin-left:auto;}
+.rd .rd-widget-head :is(.fr-open,.rv-grow,.gi-open) + .rd-arrange-tools {margin-left:2px;}
 .rd .rd-arrange-more {display:grid;place-items:center;width:32px;height:38px;border:0;border-radius:9px;background:none;color:var(--rd-faint);cursor:pointer;opacity:0;transition:opacity 140ms,background-color 140ms,color 140ms;}
 .rd [data-arrange-key]:is(:hover,:focus-within) .rd-arrange-more,.rd[data-board-editing=true] .rd-arrange-more,.rd .rd-arrange-more[aria-expanded=true] {opacity:1;}
 .rd .rd-arrange-more:is(:hover,:focus-visible,[aria-expanded=true]) {background:var(--rd-tint);color:var(--rd-ink);outline:none;}
@@ -56,22 +59,13 @@
 .rd .rd-progress {display:block;height:6px;border-radius:9px;background:var(--rd-tint);overflow:hidden;}
 .rd .rd-progress i {display:block;height:100%;min-width:0;border-radius:9px;background:var(--rd-accent);transition:width 320ms cubic-bezier(.2,.8,.2,1);}
 
-/* today's list */
-.rd .rd-todo-list {list-style:none;margin:8px -8px 0;padding:0;display:grid;gap:1px;}
-.rd .rd-todo {display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:2px;border-radius:11px;}
-.rd .rd-todo:hover {background:var(--rd-row-hover,var(--rd-surface-2));}
+/* Planner completion and quick add */
 .rd .rd-todo-check {display:grid;place-items:center;width:38px;height:38px;padding:0;border:0;background:none;cursor:pointer;border-radius:50%;}
 .rd .rd-todo-check svg {width:21px;height:21px;border-radius:50%;box-shadow:inset 0 0 0 1.7px var(--rd-control,#8A8880);fill:none;stroke:transparent;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;transition:box-shadow 140ms,background-color 140ms,stroke 140ms;}
 .rd .rd-todo-check:is(:hover,:focus-visible) svg {box-shadow:inset 0 0 0 2px var(--rd-accent);stroke:color-mix(in srgb,var(--rd-accent) 45%,transparent);}
 .rd .rd-todo-check:focus-visible {outline:2px solid var(--rd-accent);outline-offset:-3px;}
 .rd .rd-todo[data-done=true] .rd-todo-check svg,.rd .rd-todo-check[data-done=true] svg {background:var(--rd-accent);box-shadow:none;stroke:#fff;}
 .rd span.rd-todo-check {cursor:default;}
-.rd .rd-todo-open {display:grid;gap:0;min-width:0;padding:8px 8px 8px 0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:9px;}
-.rd .rd-todo-open strong {font-weight:550;overflow-wrap:anywhere;}
-.rd .rd-todo-open small {color:var(--rd-muted);font-size:12.5px;}
-.rd .rd-todo-open small::before {content:"";display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:50%;background:var(--rd-course,var(--rd-muted));}
-.rd .rd-todo-open:focus-visible {outline:2px solid var(--rd-accent);outline-offset:1px;}
-.rd .rd-todo[data-done=true] .rd-todo-open strong {color:var(--rd-muted);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--rd-muted) 55%,transparent);}
 .rd .rd-quick-add {display:flex;gap:8px;margin-top:12px;}
 .rd .rd-quick-add input {flex:1;min-width:0;height:38px;padding:0 12px;border:1px solid var(--rd-control-line,#D1CFC5);border-radius:10px;background:var(--rd-surface);color:var(--rd-ink);font:inherit;}
 .rd .rd-quick-add input::placeholder {color:var(--rd-faint);}
@@ -292,6 +286,7 @@
 .rd .cz-choice-art {display:grid;place-items:center;width:100%;min-height:52px;margin-bottom:5px;border-radius:9px;background:var(--rd-surface-2);color:var(--rd-muted);}
 .rd .cz-choice-art:empty {display:none;}
 .rd .cz-choice-art svg {max-width:100%;height:auto;}
+.rd .cz-companion-art svg {width:auto;height:64px;max-width:100%;}
 .rd .cz-choice-art .cz-fill {fill:color-mix(in srgb,var(--rd-accent) 30%,var(--rd-surface));stroke:var(--rd-accent);}
 .rd .cz-choice-art .cz-soft {fill:var(--rd-surface-3,#F0EEE6);}
 .rd .cz-choice-art .cz-accent {stroke:var(--rd-accent);stroke-width:2.6;}
@@ -406,6 +401,11 @@
 .rd .rd-course-rail .rd-rail-course > .rd-grade {top:auto;bottom:calc(var(--rd-rail-pad,10px) + 5px);}
 /* Only the card's last line can meet the grade now, so the lines above it use the full width. */
 .rd .rd-course-rail .rd-rail-course:has(> .rd-grade) .rd-rail-text > small:not(:last-child) {padding-right:0;}
+/* Below 1000 px tall the "then" line is hidden (refresh.css), so the "next" line is the last one the grade can meet. */
+@media (max-height: 999.98px) {
+ .rd .rd-course-rail .rd-rail-course:has(> .rd-grade) .rd-rail-text > small.rd-rail-next:has(+ .rd-rail-then) {padding-right:calc(var(--rd-rail-grade-w) - 11px);}
+ .rd .rd-course-rail .rd-rail-course:has(> .rd-grade):not(:has(.rd-rail-count)) .rd-rail-text > small.rd-rail-next:has(+ .rd-rail-then) {padding-right:calc(var(--rd-rail-grade-w) + 6px);}
+}
 /* Only the assignment's own words are the link to Canvas; the empty space to their right selects the row like the rest of it. */
 .rd[data-workspace=work] .rd-assignment-top > .rd-assignment-title {flex:0 1 auto;width:fit-content;max-width:100%;margin-right:auto;}
 
@@ -456,15 +456,121 @@
 
 /* ---- Module outlines follow the accent color. The pen line is the same drawn shape, used as a mask over the
    accent (mixed with ink so it stays a line, not a highlight). ---- */
-.rd[data-workspace=work][data-panel-frame=pen] :is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key]::after {
+.rd[data-workspace=work][data-panel-frame=pen] :is(:is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key],.ch-band-host)::after {
  border-image:none;border:18px solid transparent;border-radius:0;
  background:color-mix(in srgb,var(--rd-accent) 70%,var(--rd-ink));
  -webkit-mask-box-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E") 30 30 30 30 stretch;
 }
-.rd[data-workspace=work][data-panel-frame=stitch] :is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key]::after {border-color:color-mix(in srgb,var(--rd-accent) 62%,#B07A54);box-shadow:inset 0 0 0 4px color-mix(in srgb,var(--rd-accent) 8%,transparent);}
-.rd[data-workspace=work][data-panel-frame=line] :is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key]::after {border-color:color-mix(in srgb,var(--rd-accent) 50%,var(--rd-line-strong));}
+.rd[data-workspace=work][data-panel-frame=stitch] :is(:is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key],.ch-band-host)::after {border-color:color-mix(in srgb,var(--rd-accent) 62%,#B07A54);box-shadow:inset 0 0 0 4px color-mix(in srgb,var(--rd-accent) 8%,transparent);}
+.rd[data-workspace=work][data-panel-frame=line] :is(:is(.rd-main.rd-desk,.rd-lift-ghost) > [data-arrange-key],.ch-band-host)::after {border-color:color-mix(in srgb,var(--rd-accent) 50%,var(--rd-line-strong));}
 /* On short windows a shown grade stands on the card's last line, its underline in the padding below. */
 @media (max-height: 820px), (max-width: 900px) {
  .rd .rd-course-rail .rd-rail-course > .rd-grade {bottom:max(0px, calc(var(--rd-rail-pad) - 8px));}
  .rd .rd-course-rail .rd-rail-course:has(> .rd-frame) > .rd-grade {bottom:max(2px, calc(var(--rd-rail-pad) - 4px));}
 }
+
+.biscuit-rows,.biscuit-plan-list{display:grid;gap:.4rem;min-width:0}
+.biscuit-row{display:block;text-align:left;overflow-wrap:anywhere}
+.biscuit-plan-row{display:grid;grid-template-columns:auto 1fr;gap:.35rem .7rem;align-items:baseline}
+.biscuit-plan-reason{grid-column:2;margin:0;overflow-wrap:anywhere}
+/* In a Planner day the study blocks are a narrow timeline: the time small above its block, breaks quieter, all on a
+   dashed rule in the accent. */
+.rd .rd-plan-day .biscuit-plan-list{list-style:none;margin:0 0 10px;padding:0 0 0 10px;gap:8px;border-left:1.5px dashed color-mix(in srgb,var(--rd-accent) 45%,var(--rd-line))}
+.rd .rd-plan-day .biscuit-plan-row{grid-template-columns:minmax(0,1fr);gap:1px;align-items:start;font-size:12.5px;line-height:1.35}
+.rd .rd-plan-day .biscuit-plan-row>span{color:var(--rd-muted);font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rd .rd-plan-day .biscuit-plan-row .rd-text-button{display:block;min-height:0;padding:0;font:600 12.5px/1.35 var(--rd-ui-font,inherit);color:var(--rd-ink);text-align:left;white-space:normal;overflow-wrap:anywhere}
+.rd .rd-plan-day .biscuit-plan-row .rd-text-button:hover{color:var(--rd-accent);text-decoration:underline;text-underline-offset:2px}
+.rd .rd-plan-day .biscuit-plan-reason{grid-column:1;color:var(--rd-muted);font-size:11.5px}
+.rd .rd-plan-day .biscuit-plan-row[data-kind=break]{opacity:.72}
+.rd .rd-plan-day .biscuit-plan-row[data-kind=break]>div>span{font-style:italic}
+
+/* <x:generated> To hand in: written by handin/gen-handin-css.cjs (owner, 2026-10-27: "the UI and aesthetic is so bad now").
+   Small clay labels; rows read like Up next rows (the course drawing in its colour, the name, course · due time, a
+   late / today chip in the glance chips' tones) divided by a pen line; "Done another way" is a small word with a clay
+   hand underline that opens a row of paper tags, each a little drawing and its name; nothing to hand in is an empty
+   kraft tray. Small, medium and large modules stay compact; the switch in Edit Home is the settings panel's switch. */
+.rd .ch-handin{--hi-pad:6px;--hi-art:24px;--hi-gap:9px;--hi-side:112px;--hi-wash:color-mix(in srgb,#EBDBBC 62%,var(--rd-surface));--hi-wash-hover:color-mix(in srgb,#F6DE9A 72%,var(--rd-surface));--hi-open:color-mix(in srgb,#F6DE9A 22%,transparent);display:grid;margin:0 -2px;font:400 13px/1.4 var(--rd-ui-font,system-ui);color:var(--rd-ink)}
+.rd[data-theme-kit] .ch-handin{--hi-wash:color-mix(in srgb,var(--rd-accent) 16%,var(--rd-surface));--hi-wash-hover:color-mix(in srgb,var(--rd-accent) 28%,var(--rd-surface));--hi-open:color-mix(in srgb,var(--rd-accent) 9%,transparent);--hi-tray:color-mix(in srgb,var(--rd-accent) 30%,var(--rd-surface));--hi-tray-in:color-mix(in srgb,var(--rd-accent) 16%,var(--rd-surface))}
+.rd[data-theme=dark]:not([data-theme-kit]) .ch-handin{--hi-tray:color-mix(in srgb,#D4A27F 34%,var(--rd-surface));--hi-tray-in:color-mix(in srgb,#CFC2AC 18%,var(--rd-surface));--hi-wash:color-mix(in srgb,#EBDBBC 14%,var(--rd-surface));--hi-wash-hover:color-mix(in srgb,#F6DE9A 24%,var(--rd-surface));--hi-open:color-mix(in srgb,#F6DE9A 9%,transparent)}
+.rd .ch-handin-group+.ch-handin-group{margin-top:10px}
+.rd .ch-handin-label{display:flex;align-items:baseline;gap:6px;margin:0 0 2px;padding:0 8px;font:650 11px/1.5 var(--rd-ui-font,system-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--rd-accent)}
+.rd .ch-handin-label b{font-weight:650;letter-spacing:0;color:var(--rd-muted);font-variant-numeric:lining-nums tabular-nums}
+.rd .ch-handin-list{display:grid;margin:0;padding:0;list-style:none}
+.rd .ch-handin-row{position:relative;margin:0;padding:0;border-radius:9px 12px 8px 11px;transition:background-color 160ms ease}
+.rd .ch-handin-row+.ch-handin-row::before{content:"";position:absolute;left:8px;right:8px;top:-1.5px;height:3px;background:var(--rd-line-strong);-webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%204'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M1%202.2C20%201.2%2038%202.9%2056%202S86%201.4%2099%202.3'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.1'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") center/100% 100% no-repeat;mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%204'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M1%202.2C20%201.2%2038%202.9%2056%202S86%201.4%2099%202.3'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.1'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") center/100% 100% no-repeat;pointer-events:none}
+.rd .ch-handin .ch-handin-open{display:grid;grid-template-columns:var(--hi-art) minmax(0,1fr) minmax(var(--hi-side),max-content);grid-template-rows:18px 16px;column-gap:var(--hi-gap);row-gap:1px;align-items:center;width:100%;height:auto;min-height:0;margin:0;padding:var(--hi-pad) 8px;border:0;border-radius:9px 12px 8px 11px;background:none;box-shadow:none;color:var(--rd-ink);font:inherit;text-align:left;text-decoration:none;cursor:pointer;transition:background-color 140ms ease}
+.rd .ch-handin-open>.rd-mini, .rd .ch-handin-open>.ch-handin-dot, .rd .ch-handin-open>.ch-custom-icon{grid-area:1/1/3/2;justify-self:center;align-self:center}
+.rd .ch-handin-open>.rd-mini{width:22px;height:22px}
+.rd .ch-handin-open>.ch-handin-dot{width:14px;height:14px;overflow:visible}
+.rd .ch-handin-dot .w{fill:var(--rd-course,#69758b);transform:translate(.9px,1.1px)}
+.rd .ch-handin-dot .k{fill:none;stroke:var(--rd-ink);stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round}
+.rd .ch-handin-open>strong{grid-area:1/2;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:13.5px;font-weight:600;line-height:18px;letter-spacing:-.005em;color:var(--rd-ink)}
+.rd .ch-handin-open:not(:has(>.ch-handin-chip))>strong{grid-column:2/4}
+.rd .ch-handin-open>small{grid-area:2/2;display:flex;min-width:0;overflow:hidden;white-space:nowrap;font-size:12px;font-weight:450;line-height:16px;color:var(--rd-muted)}
+.rd .ch-handin-open>small>span{flex:none}
+.rd .ch-handin-open>small>span:first-child:not(:last-child){flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.rd .ch-handin-open>small>span+span::before{content:"·" / "";margin:0 5px;color:var(--rd-faint)}
+.rd .ch-handin-chip{grid-area:1/3;justify-self:end;display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:999px;background:var(--tone-soft);color:var(--tone);font-size:11px;font-weight:600;line-height:1;white-space:nowrap;font-variant-numeric:lining-nums tabular-nums}
+@media (hover:hover) and (pointer:fine){.rd .ch-handin-row:hover>.ch-handin-open{background:var(--rd-row-hover,var(--rd-tint))}.rd .ch-handin-row:hover::before,.rd .ch-handin-row:hover+.ch-handin-row::before{opacity:0}}
+.rd .ch-handin .ch-handin-open:focus-visible{outline:2px solid var(--rd-accent);outline-offset:-2px}
+.rd .ch-handin-menu{margin:0}
+.rd .ch-handin-menu>summary{position:absolute;z-index:1;right:8px;top:calc(var(--hi-pad) + 19px);display:block;height:16px;padding:0 1px;border-radius:3px;list-style:none;color:var(--rd-muted);font-size:11.5px;font-weight:600;line-height:15px;white-space:nowrap;cursor:pointer;transition:color 140ms ease}
+.rd .ch-handin summary::-webkit-details-marker{display:none}
+.rd .ch-handin summary::marker{content:""}
+.rd .ch-handin :is(.ch-handin-menu>summary,.ch-handin-hidden>summary,.ch-handin-undo)::after{content:"";position:absolute;left:0;right:0;bottom:-3px;height:4px;background:currentColor;opacity:.45;-webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%2010'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M2%206.2C20%204.4%2038%207.4%2055%205.6S84%204.2%2098%205.4'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'2.6'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") center/100% 100% no-repeat;mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%2010'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M2%206.2C20%204.4%2038%207.4%2055%205.6S84%204.2%2098%205.4'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'2.6'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") center/100% 100% no-repeat;pointer-events:none;transition:opacity 140ms ease}
+.rd .ch-handin :is(.ch-handin-menu>summary,.ch-handin-hidden>summary,.ch-handin-undo):hover,.rd .ch-handin :is(.ch-handin-menu,.ch-handin-hidden)[open]>summary{color:var(--rd-accent)}
+.rd .ch-handin :is(.ch-handin-menu>summary,.ch-handin-hidden>summary,.ch-handin-undo):hover::after,.rd .ch-handin :is(.ch-handin-menu,.ch-handin-hidden)[open]>summary::after{opacity:1}
+.rd .ch-handin :is(.ch-handin-menu,.ch-handin-hidden)[open]>summary::after{animation:ch-handin-draw 280ms cubic-bezier(.3,0,.2,1) both}
+@keyframes ch-handin-draw{0%{clip-path:inset(0 100% 0 0)}78%{clip-path:inset(0 -3px 0 0)}100%{clip-path:inset(0 0 0 0)}}
+@media (hover:hover) and (pointer:fine){.rd .ch-handin-menu>summary{opacity:0;transition:color 140ms ease,opacity 120ms ease}.rd .ch-handin-row:is(:hover,:focus-within)>.ch-handin-menu>summary,.rd .ch-handin-menu[open]>summary{opacity:1}.rd .ch-handin-row:has(>.ch-handin-menu[open]):hover>.ch-handin-open{background:none}}
+.rd .ch-handin-row:has(>.ch-handin-menu[open]){background:var(--hi-open)}
+.rd .ch-handin-row:has(>.ch-handin-menu[open])::before,.rd .ch-handin-row:has(>.ch-handin-menu[open])+.ch-handin-row::before{opacity:0}
+.rd .ch-handin-reasons{display:flex;flex-wrap:wrap;gap:6px 7px;padding:3px 8px 10px calc(8px + var(--hi-art) + var(--hi-gap))}
+.rd .ch-handin .ch-handin-reason{position:relative;isolation:isolate;display:inline-flex;align-items:center;gap:5px;height:26px;min-height:0;margin:0;padding:0 11px 0 9px;border:0;border-radius:0;background:none;box-shadow:none;color:var(--rd-ink);font:600 11.5px/1 var(--rd-ui-font,system-ui);white-space:nowrap;cursor:pointer;rotate:-.6deg;transition:translate 140ms ease,scale 90ms ease}
+.rd .ch-handin-reason:nth-child(2n){rotate:.7deg}
+.rd .ch-handin-reason::before{content:"";position:absolute;inset:2px 1px 1px 2px;z-index:-2;border-radius:7px 9px 6px 8px;background:var(--hi-wash);translate:1.1px 1.3px;transition:background-color 140ms ease,translate 140ms ease;pointer-events:none}
+.rd .ch-handin-reason::after{content:"";position:absolute;inset:0;z-index:-1;border:9px solid transparent;background:var(--rd-ink);opacity:.8;-webkit-mask-box-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'60'%20height%3D'30'%20viewBox%3D'0%200%2060%2030'%3E%3Cpath%20d%3D'M14%205.2C24%204.4%2036%205.4%2046%204.8C53.6%204.6%2055.6%208.6%2055.4%2015C55.6%2021.6%2053.8%2025.4%2046%2025.4C36%2026%2024%2025%2014%2025.6C6.6%2025.6%204.4%2021.8%204.6%2015C4.4%208.4%206.8%204.8%2012.6%205C14.6%204.9%2016.4%204.4%2018.2%204'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") 14 18 14 18 stretch;mask-border:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'60'%20height%3D'30'%20viewBox%3D'0%200%2060%2030'%3E%3Cpath%20d%3D'M14%205.2C24%204.4%2036%205.4%2046%204.8C53.6%204.6%2055.6%208.6%2055.4%2015C55.6%2021.6%2053.8%2025.4%2046%2025.4C36%2026%2024%2025%2014%2025.6C6.6%2025.6%204.4%2021.8%204.6%2015C4.4%208.4%206.8%204.8%2012.6%205C14.6%204.9%2016.4%204.4%2018.2%204'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") 14 18 14 18 stretch;pointer-events:none}
+.rd .ch-handin-glyph{width:12px;height:12px;flex:none;background:currentColor;-webkit-mask:var(--hi-g) center/12px no-repeat;mask:var(--hi-g) center/12px no-repeat}
+.rd .ch-handin-reason[data-value=class]{--hi-g:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'12'%20height%3D'12'%20viewBox%3D'0%200%2012%2012'%3E%3Cpath%20d%3D'M1.9%202.4c2.8-.2%205.4-.2%208.2%200l-.1%205.4c-2.7.2-5.4.2-8%200z'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.25'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3Cpath%20d%3D'M3.6%208.1l-.8%202.7M8.4%208.1l.8%202.7M3.7%204.4h3M3.7%206h1.8'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.05'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-handin-reason[data-value=paper]{--hi-g:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'12'%20height%3D'12'%20viewBox%3D'0%200%2012%2012'%3E%3Cpath%20d%3D'M3.1%201.6c1.4-.1%202.8-.1%204.2%200l2.1%202.1-.1%206.8c-2.1.1-4.1.1-6.2%200z'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.25'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3Cpath%20d%3D'M7.3%201.7v2h2M4.6%206h3.2M4.6%207.9h2.2'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.05'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-handin-reason[data-value=none]{--hi-g:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'12'%20height%3D'12'%20viewBox%3D'0%200%2012%2012'%3E%3Cpath%20d%3D'M6%201.8c2.4-.1%204.3%201.8%204.2%204.2-.1%202.4-1.9%204.2-4.3%204.1C3.6%2010.1%201.8%208.3%201.9%205.9%202%203.6%203.7%201.9%206%201.8c.7%200%201.3.2%201.9.5'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.25'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3Cpath%20d%3D'M4%206.1h4'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.25'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E")}
+.rd .ch-handin-reason[data-value=teacher]{--hi-g:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'12'%20height%3D'12'%20viewBox%3D'0%200%2012%2012'%3E%3Cpath%20d%3D'M2%202.4c2.7-.2%205.4-.2%208.1%200l-.1%205.3c-1.3.1-2.6.1-3.9.1L3.6%209.9l.2-2.1c-.6%200-1.2%200-1.8-.1z'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.25'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3Cpath%20d%3D'M4.2%204.6h3.6M4.2%206.1h2'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.05'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E")}
+@media (hover:hover) and (pointer:fine){.rd .ch-handin-reason:hover{translate:0 -1px}.rd .ch-handin-reason:hover::before{background:var(--hi-wash-hover);translate:0 0}}
+.rd .ch-handin-reason:active{scale:.97}
+.rd .ch-handin-reason:focus-visible{outline:2px solid var(--rd-accent);outline-offset:2px}
+.rd .ch-handin :is(summary,.ch-handin-undo):focus-visible{outline:2px solid var(--rd-accent);outline-offset:2px}
+.rd .ch-handin-menu[open] .ch-handin-reason{animation:ch-handin-tag 300ms cubic-bezier(.3,1.35,.5,1) backwards}
+.rd .ch-handin-menu[open] .ch-handin-reason:nth-child(2){animation-delay:35ms}
+.rd .ch-handin-menu[open] .ch-handin-reason:nth-child(3){animation-delay:70ms}
+.rd .ch-handin-menu[open] .ch-handin-reason:nth-child(4){animation-delay:105ms}
+@keyframes ch-handin-tag{0%{opacity:0;translate:0 -6px}55%{opacity:1;translate:0 1.5px}100%{opacity:1;translate:0 0}}
+.rd .ch-handin-hidden{margin:10px 0 0;padding:0 8px}
+.rd .ch-handin-hidden>summary{position:relative;display:inline-block;padding:0 1px;border-radius:3px;list-style:none;color:var(--rd-muted);font-size:11.5px;font-weight:600;line-height:16px;cursor:pointer;transition:color 140ms ease}
+.rd .ch-handin-done-list{display:grid;gap:1px;margin:7px 0 2px;padding:0;list-style:none}
+.rd .ch-handin-done{display:grid;grid-template-columns:14px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:24px}
+.rd .ch-handin-done-mark{width:14px;height:14px;background:var(--rd-accent);-webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2016%2016'%3E%3Cpath%20d%3D'M3.2%208.6l3%203.2%206.6-7.6'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'2.1'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") center/14px no-repeat;mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2016%2016'%3E%3Cpath%20d%3D'M3.2%208.6l3%203.2%206.6-7.6'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'2.1'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") center/14px no-repeat}
+.rd .ch-handin-done-text{display:flex;align-items:baseline;min-width:0;overflow:hidden;white-space:nowrap;font-size:12.5px}
+.rd .ch-handin-done-text strong{min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:550;color:var(--rd-ink-2)}
+.rd .ch-handin-done-text small{flex:none;font-size:11.5px;color:var(--rd-muted)}
+.rd .ch-handin-done-text small::before{content:"·" / "";margin:0 5px;color:var(--rd-faint)}
+.rd .ch-handin .ch-handin-undo{position:relative;height:auto;min-height:0;margin:0;padding:0 1px;border:0;border-radius:3px;background:none;box-shadow:none;color:var(--rd-accent);font-size:11.5px;font-weight:600;line-height:16px;text-decoration:none}
+.rd .ch-handin .ch-handin-undo:hover{background:none;text-decoration:none}
+.rd .ch-handin-empty{display:grid;place-items:center;padding:6px 0 4px}
+.rd .ch-handin-empty-art{display:block;width:112px;height:64px;overflow:visible}
+.rd .ch-handin-empty-art .k{fill:none;stroke:var(--rd-ink);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.rd .ch-handin-empty-art .w{fill:var(--hi-tray,color-mix(in srgb,#D4A27F 74%,var(--rd-surface)))}
+.rd .ch-handin-empty-art .in{fill:var(--hi-tray-in,color-mix(in srgb,#CFC2AC 62%,var(--rd-surface)))}
+.rd .ch-handin-empty-art .p{fill:var(--rd-surface);stroke:var(--rd-ink);stroke-width:1.1;stroke-linejoin:round}
+.rd .ch-handin-empty-art .s{fill:var(--rd-ink);opacity:.09}
+.rd .ch-handin-empty-art .h{fill:none;stroke:var(--rd-ink);stroke-width:.9;stroke-linecap:round;opacity:.5}
+.rd .ch-handin-empty-art .t{fill:none;stroke:var(--rd-accent);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+@container (max-width:299px){.rd .ch-handin{--hi-pad:5px;--hi-art:20px;--hi-gap:7px;--hi-side:0px}.rd .ch-handin .ch-handin-open{grid-template-columns:var(--hi-art) minmax(0,1fr) auto;padding-inline:6px}.rd .ch-handin-open>.rd-mini{width:20px;height:20px}.rd .ch-handin-open>strong{font-size:13px}.rd .ch-handin-open>small{grid-column:2/4}.rd .ch-handin-menu>summary{position:relative;right:auto;top:auto;display:inline-block;margin:-2px 0 6px calc(6px + var(--hi-art) + var(--hi-gap))}.rd .ch-handin-reasons{padding-left:calc(6px + var(--hi-art) + var(--hi-gap))}.rd .ch-handin-empty-art{width:92px;height:53px}}
+@media (hover:hover) and (pointer:fine){@container (max-width:299px){.rd .ch-handin-menu:not([open])>summary{position:absolute;right:6px;top:calc(var(--hi-pad) + 19px);margin:0;background:var(--rd-row-hover,var(--rd-tint));box-shadow:-8px 0 0 var(--rd-row-hover,var(--rd-tint))}.rd .ch-handin-row:focus-within>.ch-handin-open{background:var(--rd-row-hover,var(--rd-tint))}}}
+@container (min-width:620px){.rd .ch-handin-list{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px;align-items:start}.rd .ch-handin-row:nth-child(2)::before{content:none}}
+.rd .rd-gallery .rd-gswitch{box-sizing:border-box;width:40px;height:22px;border:1.5px solid var(--rd-ink);border-radius:11px;background:var(--rd-surface);transition:background-color .15s}
+.rd .rd-gallery .rd-gswitch i{left:2.5px;top:2.5px;width:14px;height:14px;border-radius:50%;background:var(--rd-surface);box-shadow:inset 0 0 0 1.5px var(--rd-ink);transform:none;transition:translate .2s cubic-bezier(.3,1.5,.5,1)}
+.rd .rd-gallery .rd-gswitch[aria-checked=true]{background:color-mix(in srgb,var(--rd-accent) 78%,var(--rd-surface))}
+.rd .rd-gallery .rd-gswitch[aria-checked=true] i{transform:none;translate:18px 0}
+.rd[data-motion-style=off] .ch-handin *,.rd[data-motion-style=still] .ch-handin *,.rd[data-feature-motion=off] .ch-handin *,.rd[data-motion-style=off] .ch-handin *::before,.rd[data-motion-style=still] .ch-handin *::before,.rd[data-feature-motion=off] .ch-handin *::before,.rd[data-motion-style=off] .ch-handin *::after,.rd[data-motion-style=still] .ch-handin *::after,.rd[data-feature-motion=off] .ch-handin *::after,.rd[data-motion-style=off] .rd-gallery .rd-gswitch,.rd[data-motion-style=still] .rd-gallery .rd-gswitch,.rd[data-feature-motion=off] .rd-gallery .rd-gswitch,.rd[data-motion-style=off] .rd-gallery .rd-gswitch i,.rd[data-motion-style=still] .rd-gallery .rd-gswitch i,.rd[data-feature-motion=off] .rd-gallery .rd-gswitch i{animation:none!important;transition:none!important}
+@media (prefers-reduced-motion:reduce){.rd .ch-handin *,.rd .ch-handin *::before,.rd .ch-handin *::after,.rd .rd-gallery .rd-gswitch,.rd .rd-gallery .rd-gswitch i{animation:none!important;transition:none!important}}
+/* </x:generated> */

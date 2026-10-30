@@ -4,11 +4,13 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),asse
 const root=path.resolve(__dirname,'..'),extension=path.join(root,'extension');
 const manifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json'),'utf8'));
 assert.equal(manifest.manifest_version,3);
-assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen','scripting']);
+// alarms: Your AI keeps one alarm while a run is unfinished, so the run can continue after the worker sleeps; it never starts a run.
+assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen','scripting','alarms']);
 assert.equal(manifest.optional_permissions,undefined);
 const providers=require('../extension/ai-providers.js');
-// AI provider sites, plus a school's own Canvas address: optional, asked for one site at a time.
-assert.deepEqual(manifest.optional_host_permissions,[...providers.list.flatMap(p=>p.origins),'https://flzsh.github.io/*','https://*/*']);
+// AI provider sites and their API hosts (a key the student adds), plus a school's own Canvas address: optional, asked for one site at a time.
+const apiHosts=['https://api.anthropic.com/*','https://api.openai.com/*','https://generativelanguage.googleapis.com/*'];
+assert.deepEqual(manifest.optional_host_permissions,[...providers.list.flatMap(p=>p.origins),...apiHosts,'https://flzsh.github.io/*','https://*/*']);
 // The reader entry and host sheet also use randomized URLs for local PDFs on
 // granted custom Canvas sites. Executable reader internals remain private.
 {const [fixed,dynamic,...rest]=manifest.web_accessible_resources;assert.equal(rest.length,0);assert.deepEqual(fixed.matches,['https://*.instructure.com/*']);
@@ -42,12 +44,12 @@ for(const file of ['popup.html','welcome.html','pdf-reader.html']){
  assert.ok(!/\son\w+\s*=/i.test(html),'Inline event handler in '+file);
 }
 // Every place that names the release version must agree, so a release never ships mixed numbers.
-const version=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version;
+const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')),version=pkg.version,versionName=pkg.versionName||version;
 assert.equal(manifest.version,version,'manifest.json version must match package.json');
-assert.equal(manifest.version_name,version,'manifest.json version_name must match package.json');
+assert.equal(manifest.version_name,versionName,'manifest.json version_name must match package.json versionName');
 assert.equal(JSON.parse(fs.readFileSync(path.join(extension,'provenance.json'),'utf8')).version,version,'provenance.json version must match package.json');
 assert.equal(fs.readFileSync(path.join(extension,'content.js'),'utf8').match(/const build='([^']+)'/)?.[1],version,'content.js build must match package.json');
-assert.ok(fs.readFileSync(path.join(extension,'popup.html'),'utf8').includes(version),'popup.html must show the package.json version');
+assert.ok(fs.readFileSync(path.join(extension,'popup.html'),'utf8').includes(versionName),'popup.html must show the package.json version name');
 // The drawn Canvas menu bar carries a copy of the frame rules: it must match refresh.css.
 {const subjects=require('./css-subjects.cjs');for(const file of subjects.FILES){const p=path.join(extension,file);if(fs.existsSync(p))assert.equal(subjects.rewrite(fs.readFileSync(p,'utf8')).changed,0,`extension/${file} has :is() subjects that can be spelled out: run node scripts/css-subjects.cjs`);}}
 {const nav=require('./canvas-nav-css.cjs');assert.equal(nav.build(),fs.readFileSync(path.join(extension,'canvas-nav.css'),'utf8'),'extension/canvas-nav.css is out of date: run node scripts/canvas-nav-css.cjs');}

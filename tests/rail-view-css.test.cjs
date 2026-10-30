@@ -7,10 +7,4 @@ function rule(selector){
  return Object.fromEntries(rules.at(-1)[2].split(';').map(line=>line.trim()).filter(Boolean).map(line=>{const i=line.indexOf(':');return [line.slice(0,i).trim(),line.slice(i+1).trim()];}));
 }
 
-test('the drawn toolbar has its own opaque background above the rail',()=>{
- const bar=rule('.rd .rd-toolbar');
- assert.equal(bar.background,'var(--rd-toolbar-plate, var(--rd-surface))');
- assert.equal(bar.isolation,'isolate');
- const search=rule('.rd .rd-toolbar > .rd-bar-search');
- assert.equal(search.background,'none');assert.match(search['border-bottom'],/dashed/);
-});
+// 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).

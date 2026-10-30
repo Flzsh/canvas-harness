@@ -9,16 +9,18 @@
  const pdfEvidence=/(?:\.pdf)(?:$|[?#\s"'(),;])|(?:^|[\s;,])application\/pdf(?:$|[\s;,])|(?:^|\s)PDF File\b/i;
  const attribute=(node,key)=>String(node?.getAttribute?.(key)??'');
  function pdfPage(value){
-  try{
-   const path=decodeURIComponent(new URL(value?.href||value,'https://school.instructure.com/').pathname);
-   return /^\/(?:dashboard\/?)?$/.test(path)||filesPath.test(path)||/^\/files\/\d+(?:\/(?:preview|file_preview))?\/?$/.test(path)||/^\/courses\/\d+\/?$/.test(path)||
-    /^\/courses\/\d+\/(?:files|modules|pages|announcements|discussion_topics)(?:\/|$)/.test(path)||
-    /^\/courses\/\d+\/assignments\/(?:\d+|syllabus)(?:\/|$)/.test(path);
-  }catch{return false;}
+   try{
+     const path=decodeURIComponent(new URL(value?.href||value,'https://school.instructure.com/').pathname);
+     return /^\/(?:dashboard\/?)?$/.test(path)||
+       filesPath.test(path)||
+       /^\/files\/\d+(?:\/(?:preview|file_preview))?\/?$/.test(path)||
+       /^\/courses\/\d+\/?$/.test(path)||
+       /^\/courses\/\d+\/(?:files|modules|pages|announcements|discussion_topics)(?:\/|$)/.test(path)||
+       /^\/courses\/\d+\/assignments\/(?:\d+|syllabus)(?:\/|$)/.test(path);
+   }catch{return false;}
  }
  function moduleURL(value,origin){
-  try{const url=new URL(value,origin);return url.origin===origin&&!url.username&&!url.password&&/^\/courses\/\d+\/modules\/items\/\d+\/?$/.test(url.pathname)?url:null;}
-  catch{return null;}
+   try{const url=new URL(value,origin);return url.origin===origin&&!url.username&&!url.password&&/^\/courses\/\d+\/modules\/items\/\d+\/?$/.test(url.pathname)?url:null;}catch{return null;}
  }
  function fileURL(value,origin){
   if(!value||typeof value!=='string')return null;
@@ -78,11 +80,10 @@
   if(href&&!href.startsWith('#')){
    try{const url=new URL(href,origin);if(url.origin!==origin||url.username||url.password)return null;}catch{return null;}
   }
-  const dashboardId=attribute(el,'data-pdf-file-id'),courseId=attribute(el,'data-pdf-course-id'),itemURL=moduleURL(href,origin);
-  const row=el.closest?.('.context_module_item,.ef-item-row')||null;
+  const dashboardId=attribute(el,'data-pdf-file-id'),courseId=attribute(el,'data-pdf-course-id'),itemURL=moduleURL(href,origin),row=el.closest?.('.context_module_item,.ef-item-row')||null;
   if(itemURL){
-   const type=attribute(row,'data-module-type')||attribute(row,'data-type');
-   if(type&&!/^(?:file|attachment)$/i.test(type)||/\b(?:wiki_page|assignment|discussion_topic|quiz|external_url|external_tool)\b/.test(String(row?.className||'')))return null;
+    const type=attribute(row,'data-module-type')||attribute(row,'data-type');
+    if(type&&!/^(?:file|attachment)$/i.test(type)||/\b(?:wiki_page|assignment|discussion_topic|quiz|external_url|external_tool)\b/.test(String(row?.className||'')))return null;
   }
   const preview=/\b(?:file_preview_link|inline_file_preview|instructure_file_link)\b/i.test(String(el.className||''))||
    /^(?:true|1|pdf)$/i.test(attribute(el,'data-preview'))||attribute(el,'data-api-returntype')==='File';
@@ -95,8 +96,7 @@
   const filename=[attribute(el,'data-pdf-name'),attribute(el,'data-pdf-mime'),attribute(el,'data-filename'),attribute(el,'data-display-name'),
    attribute(el,'title'),attribute(el,'aria-label'),el.textContent||'',
    attribute(el,'href'),el.href||'',attribute(el,'data-content-type'),attribute(el,'data-mime-type'),
-   attribute(el,'type'),attribute(parent,'title'),attribute(parent,'data-filename'),
-   attribute(row,'data-filename'),attribute(row,'data-content-type'),attribute(row,'data-mime-type')].join(' ');
+   attribute(el,'type'),attribute(parent,'title'),attribute(parent,'data-filename'),attribute(row,'data-filename'),attribute(row,'data-content-type'),attribute(row,'data-mime-type')].join(' ');
   const sibling=parent?.querySelector?.('a[data-api-returntype="File"], a[href*="/files/"]')||null;
   const evidence=pdfEvidence.test(filename)||
    (sibling&&pdfEvidence.test([sibling.textContent,attribute(sibling,'title'),attribute(sibling,'href')].join(' ')));
@@ -104,23 +104,26 @@
   // Canvas's metadata endpoint provides an ID for download and inline-preview toggles.
   // Require that ID to resolve back to this exact authorized Canvas origin.
   // A "#" link resolves to the page it sits on (a file's own page names another file), so only real addresses count.
-  const placeholder=!href||href.startsWith('#'),real=a=>{const v=attribute(a,'href');return v&&!v.startsWith('#')?[v,a.href]:[];};
+  const real=a=>{const v=attribute(a,'href');return v&&!v.startsWith('#')?[v,a.href]:[];};
   const paths=[...real(el),attribute(el,'data-api-endpoint'),
    attribute(parent,'data-api-endpoint'),...real(sibling),attribute(sibling,'data-api-endpoint')];
   let found=null;
   for(const value of paths){found=fileURL(value,origin);if(found)break;}
-  if(!found&&placeholder&&/^\d+$/.test(dashboardId)&&/^\d+$/.test(courseId))found={id:dashboardId};
+  if(!found&&/^\d+$/.test(dashboardId)&&/^\d+$/.test(courseId))found={id:dashboardId};
   if(!found&&itemURL){
-   const type=attribute(row,'data-module-type')||attribute(row,'data-type');
-   const id=attribute(el,'data-file-id')||attribute(row,'data-file-id')||
-    (/^(?:file|attachment)$/i.test(type)||/\battachment\b/.test(String(row?.className||''))?attribute(row,'data-content-id'):'');
-   if(/^\d+$/.test(id))found={id};
+    const type=attribute(row,'data-module-type')||attribute(row,'data-type'),
+      id=attribute(el,'data-file-id')||attribute(row,'data-file-id')||(/^(?:file|attachment)$/i.test(type)||/\battachment\b/.test(String(row?.className||''))?attribute(row,'data-content-id'):'');
+    if(/^\d+$/.test(id))found={id};
   }
-  if(!found&&placeholder&&!itemURL&&/\bef-item-row\b/.test(String(row?.className||''))&&
-   /\bef-name-col(?:__link)?\b/.test(String(el.className||''))&&!/folder/i.test(attribute(row,'data-type')||String(row.className||''))){
-   const id=attribute(row,'data-id');if(/^\d+$/.test(id))found={id};
+  if(!found&&
+    !itemURL&&
+    /\bef-item-row\b/.test(String(row?.className||''))&&
+    /\bef-name-col(?:__link)?\b/.test(String(el.className||''))&&
+    !/folder/i.test(attribute(row,'data-type')||String(row.className||''))){
+    const id=attribute(row,'data-id');
+    if(/^\d+$/.test(id))found={id};
   }
-  if(!found&&placeholder&&preview&&!itemURL){
+  if(!found&&preview&&!itemURL){
    const id=attribute(el,'data-file-id')||attribute(el,'data-id')||attribute(parent,'data-file-id');
    if(/^\d+$/.test(id))found={id};
   }
@@ -130,10 +133,16 @@
    .map(value=>value.replace(/^\s*PDF File\s*/i,'').trim());
   const moduleName=/\bPDF File\b/i.test(filename)?names.find(Boolean):'';
   const name=names[0]||names.find(value=>/\.pdf(?:$|[\s"'(),;])/i.test(value))||(moduleName?moduleName+'.pdf':'Canvas PDF '+(found?.id||'document')+'.pdf');
-  const originalURL=!placeholder?new URL(href,origin).href:fileURL(attribute(sibling,'href')||sibling?.href,origin)?.url.href||
-   (found?origin+(/^\d+$/.test(courseId)?'/courses/'+courseId:'')+'/files/'+found.id:itemURL.href);
-  return {element:el,originalURL,...(found?{fileId:found.id,url:origin+'/files/'+found.id+'/download'}:{moduleURL:itemURL.href,url:itemURL.href}),
-   name:name.trim().slice(0,240),preview:Boolean(preview)};
+  const originalURL=href&&!href.startsWith('#')?
+    new URL(href,origin).href:
+    fileURL(attribute(sibling,'href')||sibling?.href,origin)?.url.href||(found?origin+(/^\d+$/.test(courseId)?'/courses/'+courseId:'')+'/files/'+found.id:itemURL.href);
+  return {
+    element:el,
+    originalURL,
+    ...(found?{fileId:found.id,url:origin+'/files/'+found.id+'/download'}:{moduleURL:itemURL.href,url:itemURL.href}),
+    name:name.trim().slice(0,240),
+    preview:Boolean(preview)
+  };
  }
  async function readVerifiedPdf({origin,fileId,fetchImpl,signal,maxBytes=MAX_BYTES}){
   let target;
@@ -176,17 +185,17 @@
   const enabled=id=>!env.ReserveFeatures||env.ReserveFeatures.enabled(id);
   if(!enabled('pdf'))return null;
   const site=env.ReserveSite;
-   const allowed=()=>site?.supported?.(env.location?.href)&&pdfPage(env.location);
-   if(!env.document||!allowed())return null;
+  const allowed=()=>site?.supported?.(env.location?.href)&&pdfPage(env.location);
+  if(!env.document||!allowed())return null;
   const doc=env.document,model=env.ReservePdfModel||root.ReservePdfModel;
   if(!model)return null;
-  // Ordinary Canvas links retain the public Instructure-only reader policy.
-  // Saved local PDFs also open on trusted custom Canvas sites, using the
-  // randomized reader entry and host stylesheet.
+  // The fixed reader WAR is intentionally limited to Instructure Canvas.
+  // Dynamic custom school sites must retain the native viewer until a
+  // narrowly scoped per-origin reader exposure mechanism exists.
   const fixedReaderOrigin=/(?:^|\.)instructure\.com$/i.test(new URL(env.location.origin).hostname);
-   let active=null,dead=false,replaying=false,notice=null,noticeTimer=null,noticeOwner=null,openGeneration=0,closeSequence=0,localReadSequence=0;
-   let switchButton=null,switchInfo=null,switchSticky=false,hrefTimer=null,addressReady=null,viewerMode='reader';
-   const pending=new Set(),noticeDownloads=new Set();
+  let active=null,dead=false,replaying=false,notice=null,noticeTimer=null,noticeOwner=null,openGeneration=0,closeSequence=0,localReadSequence=0;
+  let switchButton=null,switchInfo=null,switchSticky=false,hrefTimer=null,addressReady=null,viewerMode='reader';
+  const pending=new Set(),noticeDownloads=new Set();
   const runtime=()=>env.chrome?.runtime;
   const persisted=async key=>{try{return (await env.chrome?.storage?.local?.get?.(key))?.[key];}catch{return undefined;}};
   const saveWidth=width=>{Promise.resolve(env.chrome?.storage?.local?.set?.({[WIDTH_KEY]:width})).catch(()=>{});};
@@ -235,22 +244,22 @@
   }
   function fallback(state,error){
    if(!state||state!==active||state.closed)return;
-    if(state.info.openGeneration!==openGeneration){if(state.closeRequest)settleClose(state,true);else restore(state,false);return;}
+   if(state.info.openGeneration!==openGeneration){if(state.closeRequest)settleClose(state,true);else restore(state,false);return;}
    const message=String(error?.message||error||'The PDF could not be opened.');
    restore(state,false);
    if(state.info.local){inform(message,state.info);return;}
    inform(state.info.remote?message+' Opening the original link.':message.includes('inst-fs')?message:message+' Returning to the original Canvas viewer.');
    // Replay the same Canvas click once, bypassing only our delegated listener.
    // This preserves Canvas's own inline preview handlers and link behavior.
-    replayClick(state.info);
-   }
-   function replayClick(info){
-    if(info.local){inform('Open this saved PDF from its signed-in Canvas account.');return;}
+   replayClick(state.info);
+  }
+  function replayClick(info){
+   if(info.local){inform('Open this saved PDF from its signed-in Canvas account.');return;}
     if(info.addressHref||info.canvasVisible)return;
-    replaying=true;
+   replaying=true;
    try{
-     if(info.element?.isConnected!==false&&typeof info.element?.click==='function')info.element.click();
-     else env.location?.assign?.(info.originalURL||info.url);
+    if(info.element?.isConnected!==false&&typeof info.element?.click==='function')info.element.click();
+    else env.location?.assign?.(info.originalURL||info.url);
    }finally{replaying=false;}
   }
   // This reader takes the click from the Modules page, so a module PDF it opened counts as opened here, as it does in
@@ -259,21 +268,16 @@
    const row=info.element?.closest?.('li.context_module_item'),item=/^context_module_item_(\d+)$/.exec(row?.id||'')?.[1]||/\/modules\/items\/(\d+)\/?$/.exec(info.moduleURL||'')?.[1];
    if(item)Promise.resolve().then(()=>env.ReserveModulesPage?.progress?.opened(item)).catch(()=>{});
   }
-   async function resolveModule(info){
-    const task={abort:new AbortController()};let response;pending.add(task);
-    try{
-     const deadline=new Promise((_,reject)=>{task.reject=reject;task.timer=env.setTimeout?.(()=>{
-      task.abort.abort();reject(Error('Canvas did not resolve this module file in time.'));
-     },20000);});
-     response=await Promise.race([env.fetch(info.moduleURL,{method:'GET',credentials:'same-origin',redirect:'follow',signal:task.abort.signal}),deadline]);
-     const file=response?.ok&&fileURL(response.url,env.location.origin);
-     if(!file)throw Error('Canvas did not resolve this module item to a file.');
-     return {...info,fileId:file.id,url:env.location.origin+'/files/'+file.id+'/download'};
-    }finally{
-     env.clearTimeout?.(task.timer);task.abort.abort();pending.delete(task);
-     try{void response?.body?.cancel?.()?.catch?.(()=>{});}catch{}
-    }
-   }
+  async function resolveModule(info){
+   const task={abort:new AbortController()};let response;pending.add(task);
+   try{
+    const deadline=new Promise((_,reject)=>{task.reject=reject;task.timer=env.setTimeout?.(()=>{task.abort.abort();reject(Error('Canvas did not resolve this module file in time.'));},20000);});
+    response=await Promise.race([env.fetch(info.moduleURL,{method:'GET',credentials:'same-origin',redirect:'follow',signal:task.abort.signal}),deadline]);
+    const file=response?.ok&&fileURL(response.url,env.location.origin);
+    if(!file)throw Error('Canvas did not resolve this module item to a file.');
+    return {...info,fileId:file.id,url:env.location.origin+'/files/'+file.id+'/download'};
+   }finally{env.clearTimeout?.(task.timer);task.abort.abort();pending.delete(task);try{void response?.body?.cancel?.()?.catch?.(()=>{});}catch{}}
+  }
    async function fileMeta(info){
     const task={abort:new AbortController()};pending.add(task);
     try{
@@ -320,11 +324,11 @@
    state.status.hidden=false;state.status.textContent='Checking your Canvas sign-in for AI…';
    let accountId;
    try{accountId=await verifyAccount(state);}catch(error){
-    if(state!==active||state.closed||generation!==state.aiGeneration)return;
+    if(!enabled('ai')||state!==active||state.closed||generation!==state.aiGeneration)return;
     state.status.textContent='AI setup unavailable: '+String(error.message||error);
     return;
    }
-   if(state!==active||state.closed||generation!==state.aiGeneration)return;
+   if(!enabled('ai')||state!==active||state.closed||generation!==state.aiGeneration)return;
    state.ai?.destroy?.();state.aiShell?.remove?.();
    const shell=doc.createElement('section');shell.className='reserve-pdf-ai-shell';shell.setAttribute('role','dialog');
    shell.setAttribute('aria-label','Ask AI about selected PDF text');
@@ -355,7 +359,8 @@
    };
    try{
     state.ai=env.CanvasHarnessAISource.mount({container:content,store,pdfHandoff:{
-     origin:env.location.origin,accountId,fileId:state.info.fileId,name:state.info.name,text,page,endPage,appearance:state.appearance
+     origin:env.location.origin,accountId,fileId:state.info.fileId,name:state.info.name,text,page,endPage,appearance:state.appearance,
+     ...(message.intent==='practice'||message.intent==='reading'?{intent:message.intent}:{})
     },onClose:dispose});
     if(!state.ai)throw Error('The existing AI panel could not be started.');
     state.aiShell=shell;state.status.hidden=true;content.querySelector('iframe')?.focus?.();
@@ -393,9 +398,9 @@
    return requestClose(state);
   }
   async function open(info){
-    if(info.openSignal?.aborted)return;
-    ++localReadSequence;
-    const generation=++openGeneration;info={...info,openGeneration:generation};
+   if(info.openSignal?.aborted)return;
+   ++localReadSequence;
+   const generation=++openGeneration;info={...info,openGeneration:generation};
     if(info.moduleURL||info.metadata||info.remote){
      // A newer click that gives up leaves the open reader in charge again, with its own fallback intact.
      const keep=()=>{if(active&&!active.closed)active.info.openGeneration=generation;};
@@ -417,10 +422,10 @@
      if((original.metadata||info.remote)&&env.location.href!==href){keep();return;}
      if(!enabled('pdf')||!allowed()){keep();replayClick(info);return;}
     }
-    let state=active;
-    const differentOwner=state?.info.local&&info.local&&(state.info.owner.origin!==info.owner.origin||state.info.owner.accountId!==info.owner.accountId);
-    // A retired reader must not block a different account verified by openLocal.
-    if(state?.retiring&&differentOwner){restore(state,false);state=null;}
+   let state=active;
+   const differentOwner=state?.info.local&&info.local&&(state.info.owner.origin!==info.owner.origin||state.info.owner.accountId!==info.owner.accountId);
+   // A retired reader's failed save must not block a different account that openLocal has verified.
+   if(state?.retiring&&differentOwner){restore(state,false);state=null;}
    if(state){
     const closed=await requestClose(state);
     if(info.openSignal?.aborted){if(!dead&&generation===openGeneration&&active===state)state.info.openGeneration=generation;return;}
@@ -438,7 +443,7 @@
        return;
      }
     }
-     if(dead||generation!==openGeneration||active)return;
+    if(dead||generation!==openGeneration||active)return;
    }
     if(!dead&&!info.openSignal?.aborted){
      if(info.addressHref&&info.addressHref!==env.location.href)return;
@@ -480,10 +485,14 @@
     if(readerURL.protocol!=='chrome-extension:'||!readerURL.host)throw Error('Invalid extension URL.');
     // URL.origin is "null" for chrome-extension: under Node; derive scheme and host.
     // The frame loads from the dynamic URL (use_dynamic_url), but its messages carry the extension's real origin.
-    extensionOrigin=readerURL.protocol+'//'+(/^[a-p]{32}$/.test(String(currentRuntime.id||''))?currentRuntime.id:readerURL.host);
-    }catch{if(info.local)inform('The PDF reader is unavailable. Download the saved file to open it.');else{inform('The PDF reader is unavailable. Opening the Canvas viewer.');replayClick(info);}return;}
+     extensionOrigin=readerURL.protocol+'//'+(/^[a-p]{32}$/.test(String(currentRuntime.id||''))?currentRuntime.id:readerURL.host);
+   }catch{
+     inform(info.local?'The PDF reader is unavailable. Download the saved file to open it.':'The PDF reader is unavailable. Opening the Canvas viewer.');
+     if(!info.local){replaying=true;try{info.element?.click?.();}finally{replaying=false;}}
+     return;
+   }
    const token=env.crypto?.randomUUID?.();
-    if(typeof token!=='string'||token.length<16){inform('A secure PDF session could not be created.');if(!info.local)replayClick(info);return;}
+   if(typeof token!=='string'||token.length<16){inform('A secure PDF session could not be created.');if(!info.local){replaying=true;try{info.element?.click?.();}finally{replaying=false;}}return;}
    readerURL.searchParams.set('parentOrigin',env.location.origin);readerURL.searchParams.set('token',token);
    const state={info,trigger:info.element,token,extensionOrigin,dispose:[],timers:[],abort:new AbortController(),
     width:model.clampWidth(undefined,env.innerWidth),
@@ -681,7 +690,7 @@
    return state;
   }
   function delegated(event){
-    if(!enabled('pdf')||dead||replaying||!fixedReaderOrigin||!allowed())return;
+   if(!enabled('pdf')||dead||replaying||!fixedReaderOrigin||!allowed())return;
    const info=matchPdfClick(event,env.location?.origin||'')||(!canvasMode()&&matchCanvasFile(event,env.location?.origin||''));
    if(!info)return;
    if(canvasMode()&&!info.remote){if(info.fileId)showSwitch(info,true);return;}
@@ -744,21 +753,21 @@
     if(env.location.href!==lastHref){lastHref=env.location.href;openFromAddress();}
    },700);
   }
-    return {active:()=>active,openLocal,closeLocal,destroy(){
-      if(dead)return;
-      dead=true;++localReadSequence;
-      env.clearInterval?.(hrefTimer);
-      if(addressReady)doc.removeEventListener('DOMContentLoaded',addressReady);
-      hideSwitch();
-      for(const task of pending){task.abort.abort();task.reject(Error('PDF loading was cancelled.'));}
-      doc.removeEventListener('click',delegated,true);
-      restore(active,false);
-      cleanNotice();
-    }};
+  return {active:()=>active,openLocal,closeLocal,destroy(){
+    if(dead)return;
+    dead=true;++localReadSequence;
+    env.clearInterval?.(hrefTimer);
+    if(addressReady)doc.removeEventListener('DOMContentLoaded',addressReady);
+    hideSwitch();
+    for(const task of pending){task.abort.abort();task.reject(Error('PDF loading was cancelled.'));}
+    doc.removeEventListener('click',delegated,true);
+    restore(active,false);
+    cleanNotice();
+  }};
  }
   const api=Object.freeze({create,matchPdfClick,matchCanvasFile,readVerifiedPdf,remoteFileId,MAX_BYTES});
  root.ReservePdfHost=api;
  if(typeof module==='object'&&module.exports)module.exports=api;
-  if(root.document&&pdfPage(root.location)&&root.ReserveSite?.supported?.(root.location?.href)&&!root.ReservePdfHostController)
+ if(root.document&&pdfPage(root.location)&&root.ReserveSite?.supported?.(root.location?.href)&&!root.ReservePdfHostController)
   root.ReservePdfHostController=create({root});
 })(globalThis);

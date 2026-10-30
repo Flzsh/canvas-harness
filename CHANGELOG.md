@@ -1,5 +1,20 @@
 # Changelog
 
+## 4.0 Preview 1 - 2026-10-29
+
+A test build of 4.0 for people who want to try it early and send fixes. Version 3.99.1 in the browser, so the real 4.0.0 replaces it.
+
+- Your AI: Help cards for an assignment, a PDF's pages or a selection; Today on Home; Prepare reads your courses and builds cards ahead of time; study aids (practice test, reading guide, lab checklist, rubric check, fixes, notes, steps, outline, message, summary, flashcards) saved beside their assignment. Answers come from the AI website you choose in its own tab, from an API key you add, or from your own AI tool through a folder you pick (Overnight). Off in Lite. Nothing goes to an AI until you press a button, unless you choose **Every day**: the Help band asks once, and **Prepare every day** in Tools → AI changes it later. The brief names only Inbox messages from teachers and TAs, teacher comments go only with **Teacher feedback** on (never your own), and on ChatGPT and Claude only the chat Canvas Harness started is opened to read its reply.
+- Biscuit can hand a question to Your AI with the item you are on, wakes with the B key, and offers help at sensible moments (never while Quiet is on).
+- Review deck, Grade impact and Focus room open as rooms over Home, which stays in place; a room you used before opens at once.
+- Review deck: Big card (B), and the box tabs no longer overlap.
+- Focus room: the four places are redrawn and a fifth, Winter, is added. Sound starts only after you click.
+- Grade impact: the answer comes first, with a ruler showing now and if; pretend assignments in your course's categories stay on this device; scores can have decimal points. On Grades, a course's name opens its Grade impact room.
+- Make it yours: a Settings tab (time zone, backups, keyboard shortcuts) and a Features tab with drawn switches; choose a course's drawing from the subject sets.
+- The top bar is drawn; the course dock and the top bar share one scrolling model.
+- Start-up waits for the add-ons while they load, and Canvas shows as soon as you use its page.
+- Works for any school: every address goes through the school-address setting, and pages on your school's address that are not Canvas are left alone.
+
 ## 3.8.1 - 2026-10-29
 
 - Modules page: the progress line (count, bar, Hide finished and Continue) is spaced out instead of squeezed together, and Retry only shows after loading fails. Each module's count, bar and Mark all done sit apart on its label. Each item's tick has its own space instead of covering the item's icon, and an item not yet done shows a drawn ring instead of Canvas's "unpublished" sign. Hide finished looks pressed while it is on.

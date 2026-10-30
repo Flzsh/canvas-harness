@@ -1278,32 +1278,6 @@
 
 
 .rd-check-off{border-color:color-mix(in srgb,var(--rd-muted) 60%,var(--rd-line))}
-/* Contributor modules share the public page palette and existing controls. */
-.rd .ch-handin-list {list-style:none;padding:0;margin:0;}
-.rd .ch-handin-label {margin:16px 0 6px;color:var(--rd-muted);font-size:12px;font-weight:600;}
-.rd .ch-handin-row {display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--rd-line);}
-.rd .ch-handin-open {display:grid;gap:3px;min-width:0;text-align:left;}
-.rd .ch-handin-open strong,.rd .ch-handin-open small {overflow-wrap:anywhere;}
-.rd .ch-handin-open small {color:var(--rd-muted);font-size:11.5px;}
-.rd .ch-handin-menu {flex-shrink:0;max-width:45%;font-size:12px;}
-.rd .ch-handin-menu summary,.rd .ch-handin-hidden summary {cursor:pointer;color:var(--rd-muted);}
-.rd .ch-handin-menu[open] {display:grid;gap:4px;}
-.rd .ch-handin-menu .rd-text-button {display:block;text-align:left;}
-.rd .ch-handin-hidden {margin-top:12px;font-size:12px;}
-.rd .ch-handin-hidden ul {padding-left:0;list-style:none;}
-.rd .ch-room-view {display:flex;flex-direction:column;min-height:calc(100dvh - 48px);width:100%;padding:24px;box-sizing:border-box;}
-.rd .ch-room-view > .rd-widget-head {display:flex;align-items:center;justify-content:space-between;gap:12px;}
-.rd .ch-room-timer {flex:1;align-content:center;min-height:220px;}
-.rd .ch-room-time {margin:12px 0;font:500 clamp(48px,14vw,140px)/1.1 var(--rd-display,Georgia,serif);font-variant-numeric:tabular-nums;letter-spacing:-.03em;}
-.rd .ch-room-status {min-height:1.5em;text-align:center;color:var(--rd-muted);font-size:12px;}
-.rd[data-ch-room=open]:fullscreen {padding:0;background:var(--rd-bg);color:var(--rd-ink);overflow:auto;}
-.rd .ch-deck-view {min-width:0;max-width:100%;}
-.rd .ch-deck-view > .rd-workspace-tabs {flex-wrap:nowrap;overflow-x:auto;}
-.rd .ch-deck-view .rd-list-toolbar,.rd .ch-deck-view .rd-heading-actions {flex-wrap:wrap;gap:8px;}
-.rd .ch-deck-view textarea {min-height:100px;resize:vertical;}
-.rd .ch-deck-view .rd-material-group {margin-bottom:12px;overflow-wrap:anywhere;}
-.rd .ch-impact-scores {white-space:normal;}
-.rd .ch-impact-swing small {display:block;max-width:16ch;font-size:11px;white-space:normal;}
 /* Deadline changes (PR #52): a paper sheet in the theme's colours, entries ruled like the Up next list. */
 .rd-deadline-dialog{width:min(620px,calc(100vw - 32px));max-height:80vh;overflow:auto;background:var(--rd-surface,#fffdf8);color:var(--rd-ink,#292720);border:1px solid var(--rd-line,#c9beab);border-radius:14px;padding:22px 24px;box-shadow:0 18px 40px color-mix(in srgb,var(--rd-ink,#292720) 18%,transparent)}
 .rd-deadline-dialog::backdrop{background:color-mix(in srgb,var(--rd-ink,#292720) 30%,transparent)}

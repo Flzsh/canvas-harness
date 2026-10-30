@@ -15,7 +15,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const kind=[entry.kind,item.locked?'Locked in Canvas':''].filter(Boolean).join(' · ');
     return `<${tag} class="rd-teacher-row${rowClass?' '+rowClass:''}"${key?` data-rd-key="${E(key)}"`:''} data-rd-row="${E(item.id)}">${open}${actions}<span class="rd-row-kind">${E(kind)}${kind&&answer?'<span aria-hidden="true"> · </span>':''}${answer}</span><span class="rd-row-format">${entry.format?`<span>${E(entry.format)}</span>`:''}</span></${tag}>`;
   }
-  function create({isSelected=()=>false,store,user,client,onChange=()=>{},onAuthError=()=>{},onCapture=()=>{}}){
+  function create({isSelected=()=>false,store,user,client,getAssignments=()=>undefined,onChange=()=>{},onAuthError=()=>{},onCapture=()=>{}}){
     if(!enabled('materials')||!root.ReserveMaterials)return null;
     const M=root.ReserveMaterials,U=root.ReserveUI,E=U.escapeHTML;
     const courses=new Map(),pages=new Map(),pending=new Map(),versions=new Map(),controller=new AbortController();
@@ -79,7 +79,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
             }
           }
           if(!client?.loadCourseResources)throw Error('Open Canvas and refresh to load course materials.');
-          const raw=await client.loadCourseResources(id,{user,signal:controller.signal});if(dead)return;accept(raw,id);
+          // The resource client may not be the one that loaded the current dashboard snapshot.
+          const raw=await client.loadCourseResources(id,{user,signal:controller.signal,force,assignments:getAssignments()});if(dead)return;accept(raw,id);
           try{await store.writeResourceCache?.(raw);}catch{if(!dead)view(id).message='Materials loaded. They could not be saved for a later visit.';}
         }catch(error){if(dead)return;if(error.code==='auth'){invalidate(error);}
           else courses.set(id,{...(courses.get(id)||entry),loading:false,error:error.message||'Materials could not load.'});

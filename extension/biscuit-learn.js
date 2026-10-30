@@ -765,14 +765,14 @@
   if(Object.hasOwn(kindConfig,'kindRequestEvidence')){
     if(typeof kindConfig.kindRequestEvidence!=='boolean')throw new TypeError('features.kindRequestEvidence must be a boolean');
     if(kindConfig.kindRequestEvidence&&!optional('ReserveBiscuitIntent','./biscuit-intent.js')?.literalNoteRequest?.(raw)){
-      const requested=null?.requestedHelp?.({typed:text});
+      const requested=optional('CanvasHarnessStudyKind','./study-kind.js')?.requestedHelp?.({typed:text});
       if(typeof requested==='string'&&productCues.some(([kind])=>kind===requested))out['requestHelp:'+requested]=1;
     }
   }
   for(const [kind,re]of productCues)if(re.test(text))out['product:'+kind]=1;
   const history=conversationState(raw,s,session,[],kindConfig);
   if(history){
-    const StudyKind=null,priorHelp=StudyKind?.requestedHelp?.({typed:history.prior});
+    const StudyKind=optional('CanvasHarnessStudyKind','./study-kind.js'),priorHelp=StudyKind?.requestedHelp?.({typed:history.prior});
     if(priorHelp)out['history:requestedHelp:'+priorHelp]=1;
     for(const [kind,re]of productCues)if(re.test(history.prior))out['history:product:'+kind]=1;
   }

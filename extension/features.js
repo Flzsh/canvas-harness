@@ -7,7 +7,7 @@
  const catalogue=[
   feature('dashboard','Dashboard & assignments','Study',['views.js','app.js','dashboard-model.js','work-model.js','dashboard-view.js','dashboard.js']),
   feature('deadline-changes','Deadline changes','Study',['deadline-model.js','deadline-changes.js'],[],['dashboard']),
-  feature('planner','Planner & home widgets','Study',['planner-model.js','planner-ui.js','hand-in.js','widgets.js'],[],['dashboard']),
+  feature('planner','Planner & home widgets','Study',['planner-model.js','planner-ui.js','hand-in.js','widgets.js','agent-home.js'],[],['dashboard']),
   feature('grades','Grades','Study',['grades-view.js'],[],['dashboard']),
   feature('materials','Materials library','Study',['materials-ui.js'],[],['dashboard']),
   feature('course-hub','Course hub & inbox','Study',['course-hub-model.js','course-hub-ui.js'],[],['dashboard','materials']),
@@ -15,23 +15,23 @@
   feature('math','Math tools','Study',['math.js']),
   feature('gpa','GPA calculator','Study',['gpa-ui.js'],['gpa.css'],['tools']),
   feature('tools','Quick open & study tools','Study',['quick-open.js','toolbox-resize.js','toolbox.js','toolbox-session.js','native-tools.js']),
-  feature('customization','Appearance editor','Personalize',['market-site.js','media-store.js','media-frame.js','frame-editor.js','custom-kits.js','pack-common.js','theme-pack.js','pet-pack.js','preset-pack.js','data-theme.js','packs.js','make-your-own.js','customize-ui.js','settings-dock.js'],['media-frame.css','frame-editor.css','settings-dock.css'],['dashboard']),
+  feature('customization','Appearance editor','Personalize',['market-site.js','media-store.js','media-frame.js','frame-editor.js','custom-kits.js','pack-common.js','theme-pack.js','pet-pack.js','preset-pack.js','data-theme.js','packs.js','make-your-own.js','customize-ui.js'],['media-frame.css','frame-editor.css'],['dashboard']),
   feature('scene-themes','Scene themes','Personalize',['scene-themes.js'],['scene-themes.css'],['dashboard']),
   feature('arrange','Arrange the workspace','Personalize',['workspace-gestures.js'],[],['dashboard']),
   feature('course-art','Course artwork','Drawings',['subject-art-data.js','subject-art.js','generic-art.js','course-art.js'],['subject-art.css']),
   feature('quick-pack','Local artwork packs','Drawings',['quick-pack.js','quick-upload.js','quick-upload-ui.js'],[],['customization','course-art']),
-  feature('pony','Pony companion','Drawings',['pet-art.js','agent-clock.js','biscuit-context-selector.js','biscuit-control-request.js','biscuit-controls.js','biscuit-details.js','biscuit-engine.js','biscuit-facts.js','biscuit-inference.js','biscuit-intent.js','biscuit-language.js','biscuit-learn.js','biscuit-parse.js','biscuit-planner.js','biscuit-registry.js','biscuit-replies.js','biscuit-rules.js','biscuit-selection.js','biscuit-semantics.js','biscuit-trees.js','biscuit-values.js','biscuit-workflow.js','pony-brain.js','pony-ask.js','pets.js'],['pet.css'],['planner']),
+  feature('pony','Pony companion','Drawings',['pet-art.js','biscuit-context-selector.js','biscuit-control-request.js','biscuit-controls.js','biscuit-details.js','biscuit-engine.js','biscuit-facts.js','biscuit-inference.js','biscuit-intent.js','biscuit-language.js','biscuit-learn.js','biscuit-parse.js','biscuit-planner.js','biscuit-registry.js','biscuit-replies.js','biscuit-rules.js','biscuit-selection.js','biscuit-semantics.js','biscuit-trees.js','biscuit-values.js','biscuit-workflow.js','pony-brain.js','pony-ask.js','pets.js'],['pet.css'],['planner']),
   feature('biscuit-more-rules','Biscuit: more rules','Drawings',[],[],['pony']),
   feature('motion','Living drawings & motion','Drawings',['startup-art.js','motion.js'],['startup-art.css']),
   feature('canvas-nav','Drawn Canvas navigation','Canvas',['canvas-nav.js'],['canvas-nav.css']),
   feature('course-nav','Drawn course menu & modules','Canvas',['course-nav-art.js','course-nav.js','modules-page.js'],['course-nav.css','course-nav-art.css','modules-page.css']),
   feature('native-appearance','Native page appearance','Canvas',['native-appearance.js','native-page.js'],['native-page.css']),
   feature('pdf','PDF reader','Extras',['pdf-art.js','pdf-model.js','pdf-host.js'],['pdf-host.css']),
-  feature('focus-room','Focus room','Extras',['focus-room.js'],[],['planner']),
-  feature('review-deck','Review deck','Extras',['review-deck-model.js','review-deck.js'],[],['dashboard']),
-  feature('grade-impact','Grade impact','Extras',['grade-impact.js'],[],['grades']),
+  feature('focus-room','Focus room','Extras',['focus-room-art.js','focus-room.js'],['focus-room.css'],['planner']),
+  feature('review-deck','Review deck','Extras',['review-deck-model.js','review-deck-art.js','review-deck.js'],['review-deck.css'],['dashboard']),
+  feature('grade-impact','Grade impact','Extras',['grade-impact-art.js','grade-impact.js'],['grade-impact.css'],['grades']),
   feature('play','Play & submission celebrations','Extras',['submit-celebrate.js']),
-  feature('ai','AI context & handoff','Extras',['ai-context.js','ai-source.js'],[],['tools']),
+  feature('ai','Your AI & study aids','Extras',['study-tools.js','study-prompts.js','study-writes.js','math-render.js','study-ui.js','study-band.js','overnight.js','ai-context.js','agent-prompts.js','agent-data.js','agent-actions.js','agent-runtime.js','ai-canvas-bridge.js','agent-client.js','ai-source.js'],['agent.css','study-band.css'],['tools']),
  ];
  // Retained public modules keep their relative order; new helpers precede their consumers.
  const order=[
@@ -72,8 +72,10 @@
    "course-file-open.js",
    "course-links-ui.js",
    "course-hub-ui.js",
+   "grade-impact-art.js",
    "grade-impact.js",
    "review-deck-model.js",
+   "review-deck-art.js",
    "review-deck.js",
    "grades-view.js",
    "market-site.js",
@@ -81,6 +83,7 @@
    "media-frame.js",
    "frame-editor.js",
    "agent-clock.js",
+   "study-kind.js",
    "pony-ask.js",
    "custom-kits.js",
    "pack-common.js",
@@ -95,7 +98,21 @@
    "motion.js",
    "quick-open.js",
    "toolbox-resize.js",
+   "study-tools.js",
+   "study-prompts.js",
+   "study-writes.js",
+   "math-render.js",
+   "study-ui.js",
+   "study-band.js",
+   "overnight.js",
    "ai-context.js",
+   "agent-prompts.js",
+   "agent-data.js",
+   "agent-actions.js",
+   "agent-runtime.js",
+   "ai-canvas-bridge.js",
+   "agent-client.js",
+   "agent-home.js",
    "ai-source.js",
    "gpa-ui.js",
    "toolbox.js",
@@ -129,8 +146,11 @@
    "pets.js",
    "planner-ui.js",
    "hand-in.js",
+   "focus-room-art.js",
    "focus-room.js",
    "widgets.js",
+   "addons-art.js",
+   "addons-panel.js",
    "settings-dock.js",
    "scene-themes.js",
    "dashboard.js",
@@ -144,18 +164,18 @@
    "submit-celebrate.js",
    "content.js"
  ];
- const dashboardCSS=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','course-links.css'];
+ const dashboardCSS=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','addons-panel.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','agent.css','study-band.css','course-links.css','focus-room.css','review-deck.css','grade-impact.css'];
  const startupCSS=['startup.css','startup-art.css','canvas-nav.css','course-nav.css'];
  const nativeCSS=['app.css','dashboard.css','workspace.css','refresh.css','gpa.css'];
  // customize.css and widgets.css are core: besides the editor and the widgets they hold the dashboard's setting-driven layout (hidden columns, card styles,
  // arrange grips), which every preset needs. Only the editor's scripts belong to the Appearance editor.
- const core={js:['features.js','site.js','core.js','api.js','personal-work.js','custom-art.js','workspace-arrange.js','media-reference.js','customization-model.js','backup-media.js','gpa-model.js','page-preferences.js','storage.js','ui-utils.js','icons.js','session.js','material-model.js','content.js','startup.js','feature-loader.js'],css:['startup.css','app.css','dashboard.css','workspace.css','refresh.css','customize.css','selection.css','responsive-layout.css','widgets.css']};
+ const core={js:['features.js','site.js','agent-clock.js','core.js','api.js','study-kind.js','personal-work.js','custom-art.js','workspace-arrange.js','media-reference.js','customization-model.js','backup-media.js','gpa-model.js','page-preferences.js','storage.js','ui-utils.js','icons.js','session.js','material-model.js','content.js','startup.js','feature-loader.js','addons-art.js','addons-panel.js','settings-dock.js'],css:['startup.css','app.css','dashboard.css','workspace.css','refresh.css','customize.css','addons-panel.css','settings-dock.css','selection.css','responsive-layout.css','widgets.css']};
  // Prepaint drawings must not wait for the worker. Other mandatory files stay
  // interleaved with optional files in the original main declaration's order.
  const staticJS=['startup-art.js','site.js','core.js','api.js','personal-work.js','custom-art.js','workspace-arrange.js','canvas-nav.js','course-nav-art.js','course-nav.js'];
  core.assets=['background.js','popup.html','icon.svg','account-writes.js','market.js','market-bridge.js','market-worker.js','market-holds.js','market-media.js'];
  catalogue.find(f=>f.id==='pdf').files.assets=['pdf-reader.html','pdf-reader.js','pdf-reader.css','pdf-art.css','pdf-library.mjs','pdf-worker.mjs','pdf-polyfills.js','vendor/pdfjs/pdf.mjs','vendor/pdfjs/pdf.worker.mjs'];
- catalogue.find(f=>f.id==='ai').files.assets=['ai-panel.html','ai-panel.js','ai-panel.css'];
+ catalogue.find(f=>f.id==='ai').files.assets=['ai-panel.html','ai-panel.js','ai-panel.css','overnight.html','overnight-page.js','overnight.css'];
  catalogue.find(f=>f.id==='play').files.assets=['submit-scenes.js','play-art.js','play-space.js','play-physics.js','play-tools.js','play-tools.css'];
  catalogue.find(f=>f.id==='scene-themes').files.assets=[
    "themes/blueprint/blueprint-card.png",
