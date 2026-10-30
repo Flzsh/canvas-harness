@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Canvas Harness",
   "short_name": "Canvas Harness",
-  "version": "3.99.1",
+  "version": "3.99.2",
   "description": "For students on Canvas LMS: your courses, assignments, planner and PDFs redrawn as one calm page you arrange yourself.",
   "minimum_chrome_version": "126",
   "permissions": [
@@ -281,5 +281,5 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'; worker-src 'self'"
   },
-  "version_name": "4.0 Preview 1"
+  "version_name": "4.0 Preview 2"
 }

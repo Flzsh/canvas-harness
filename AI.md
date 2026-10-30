@@ -1,6 +1,6 @@
 # Study with AI
 
-Canvas Harness 4.0 Preview 1 adds **Your AI**. It reads your Canvas the way the rest of Canvas Harness does, writes a message for an AI, and turns the reply into Help cards, a Today list and study aids on your page. Canvas Harness has no AI of its own and no server. The answer comes from an AI you choose, reached in one of three ways:
+Canvas Harness 4.0 Preview 2 adds **Your AI**. It reads your Canvas the way the rest of Canvas Harness does, writes a message for an AI, and turns the reply into Help cards, a Today list and study aids on your page. Canvas Harness has no AI of its own and no server. The answer comes from an AI you choose, reached in one of three ways:
 
 - **Web AI** (the default): the AI's own website, in a browser tab where you are signed in. ChatGPT, Claude and Gemini are listed first; Grok, DeepSeek, Kimi, Qwen and Z.ai (GLM) are under **More**.
 - **API**: your own API key for Anthropic, OpenAI, Google or an OpenAI-compatible service. The provider bills you for each request.

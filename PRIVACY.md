@@ -1,14 +1,14 @@
 # Canvas Harness privacy
 
-Applies to Canvas Harness 3.6.0 through 4.0 Preview 1, which the browser shows as version 3.99.1. Last updated October 30, 2026.
+Applies to Canvas Harness 3.6.0 through 4.0 Preview 2, which the browser shows as version 3.99.2. Last updated October 30, 2026.
 
-Canvas Harness is a browser extension maintained by Flzsh. It displays information from the Canvas account already signed in on your school's website. It has no developer-operated account service, analytics collector or tracking endpoint in the extension code for this release. From 4.0 Preview 1, **Your AI** can send Canvas text to an AI service that you choose; see [Your AI](#your-ai-what-goes-where).
+Canvas Harness is a browser extension maintained by Flzsh. It displays information from the Canvas account already signed in on your school's website. It has no developer-operated account service, analytics collector or tracking endpoint in the extension code for this release. From 4.0 Preview 2, **Your AI** can send Canvas text to an AI service that you choose; see [Your AI](#your-ai-what-goes-where).
 
 ## Canvas access and local storage
 
 The optional Deadline changes feature keeps a bounded, separate observation record per Canvas site and account: assignment/course identifiers and names, due dates, detection times and read flags. It keeps at most 100 changes from the past 30 days and 10,000 baseline assignments, makes no additional Canvas requests and adds no permissions. It is not included in personal workspace backups. Disabling the feature stops observation while retaining its saved record.
 
-- Canvas Harness reads courses, assignments, due dates, teacher materials, announcements, Canvas Inbox messages and grades that your signed-in Canvas account is allowed to view. Canvas API requests are read-only. Inbox messages are shown in the Course hub, and read by Your AI, without changing their read status. Before 4.0 Preview 1 they were never included in AI context; from 4.0 Preview 1, Your AI can include parts of them, as described below.
+- Canvas Harness reads courses, assignments, due dates, teacher materials, announcements, Canvas Inbox messages and grades that your signed-in Canvas account is allowed to view. Canvas API requests are read-only. Inbox messages are shown in the Course hub, and read by Your AI, without changing their read status. Before 4.0 Preview 2 they were never included in AI context; from 4.0 Preview 2, Your AI can include parts of them, as described below.
 - Your Canvas profile is read to greet you by name and to keep each account's data apart. From 3.8.0, only your name and Canvas account ID are kept, cached on this device; your email address, login and SIS IDs, profile picture and calendar feed address are not saved. Versions 3.6.0 and 3.7.0 cached the whole profile response on this device; 3.8.0 replaces it at the next refresh.
 - The extension can cache fetched Canvas information, including course and assignment details and grade data, in your browser. Personal notes, plans, bookmarks, homework check-offs, imported course artwork, layout choices, GPA preferences and the study companion's name, look and progress counters are also stored locally.
 - Your look settings (light or dark theme, motion, artwork at night, whether the pony is shown) are kept once for this browser, not per account. So the opening screen can be dark from its first moment, the word "dark" (and nothing else) is remembered in the Canvas site's own browser storage while dark is chosen; choosing light removes it.
@@ -17,7 +17,7 @@ The optional Deadline changes feature keeps a bounded, separate observation reco
 - Grades are hidden by default in the interface, but hiding them does not necessarily remove them from the local cache. GPA and what-if calculations run locally and are never sent to an AI. Scores and grades reach an AI only when you turn the matching switches on, as described under Your AI.
 - Checking off homework or making a personal plan changes only your local Canvas Harness data. It does not submit homework, edit a Canvas assignment or change your Canvas grade.
 
-Personal backups are files that you choose to export. They can contain private notes, preferences, artwork and other personal information. From 4.0 Preview 1 they also contain Your AI's settings, its memory and its record of the last 14 days of runs, including the Canvas text each run used and what it changed. They do not contain API keys, API settings, Help cards, study aids or Overnight folder access. Keep them private. The public extension package and example previews should contain only shared code, generic artwork and artificial example data, never your exported backup or personal course records.
+Personal backups are files that you choose to export. They can contain private notes, preferences, artwork and other personal information. From 4.0 Preview 2 they also contain Your AI's settings, its memory and its record of the last 14 days of runs, including the Canvas text each run used and what it changed. They do not contain API keys, API settings, Help cards, study aids or Overnight folder access. Keep them private. The public extension package and example previews should contain only shared code, generic artwork and artificial example data, never your exported backup or personal course records.
 
 ## Feature choices
 

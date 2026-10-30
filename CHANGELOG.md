@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.0 Preview 2 - 2026-10-30
+
+Version 3.99.2 in the browser.
+
+- Your AI: when a run stops, the Help band says so. The progress track no longer stays frozen on its last step beside the message, which looked like a stuck run.
+- Your AI: a new "updated" time on a Canvas assignment no longer stops a run, because the newest text is read at that moment anyway. A source that has been locked or unpublished still stops it.
+
 ## 4.0 Preview 1 - 2026-10-29
 
 A test build of 4.0 for people who want to try it early and send fixes. Version 3.99.1 in the browser, so the real 4.0.0 replaces it.

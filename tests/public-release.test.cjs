@@ -38,7 +38,7 @@ test('manifest keeps required permissions and publishes only explicit page resou
 });
 test('release versions and contributor source credits agree',()=>{
  const version=JSON.parse(read('package.json')).version,m=JSON.parse(read('extension/manifest.json'));
- assert.equal(version,'3.99.1');assert.equal(m.version,version);assert.equal(m.version_name,'4.0 Preview 1');
+ assert.equal(version,'3.99.2');assert.equal(m.version,version);assert.equal(m.version_name,'4.0 Preview 2');
  assert.equal(JSON.parse(read('package.json')).versionName,m.version_name);
  assert.match(read('CHANGELOG.md'),/## 4\.0 Preview 1 - 2026-10-\d\d/);
  assert.match(read('CHANGELOG.md'),/## 3\.8\.0 - 2026-10-28/);

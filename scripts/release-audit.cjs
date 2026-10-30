@@ -273,7 +273,7 @@ function auditRelease({unpackedDir,manifestPath=path.join(ROOT,'dist/release-man
    if(result.status===0)summary.counts.jsChecked++;else errors.push('node --check failed for '+name+': '+(result.stderr||result.stdout||'exit '+result.status).trim().slice(0,4000));
   }
  }
- summary.ok=errors.length===0;const version=summary.version||'3.99.1',destination=path.resolve(outputPath||path.join(path.dirname(manifestPath),'audit-'+version+'.json'));
+ summary.ok=errors.length===0;const version=summary.version||'3.99.2',destination=path.resolve(outputPath||path.join(path.dirname(manifestPath),'audit-'+version+'.json'));
  const same=(a,b)=>process.platform==='win32'?a.toLowerCase()===b.toLowerCase():a===b,outputRelative=path.relative(unpackedDir,destination);
  ensure(!same(destination,manifestPath),'summary output must not overwrite the release manifest');
  if(summary.inputs.archive)ensure(!same(destination,summary.inputs.archive),'summary output must not overwrite the archive');

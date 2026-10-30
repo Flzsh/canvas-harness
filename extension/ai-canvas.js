@@ -198,8 +198,10 @@
     omissions:{items:built.snapshot.omittedItems||0,resources:built.snapshot.omittedResources||0,availability:built.snapshot.availability||[]}
    };
   }
-  function changed(row,value){
-   return value?.locked||value?.locked_for_user||value?.published===false||row.version&&value?.updated_at&&row.version!==value.updated_at;
+  // Canvas moves updated_at for more than the words (a grade, a date, a save with no edit), and what is read here is the
+  // newest text, so a new time alone never stops a run; a source that closed or was unpublished does.
+  function changed(value){
+   return value?.locked||value?.locked_for_user||value?.published===false;
   }
   async function validate(run,ids,signal){
    client.invalidateSources?.();
@@ -211,7 +213,7 @@
     const method={assignment:'readAssignment',page:'readCoursePage',pdf:'readFile',file:'readFile',module:'readModule',discussion:'readDiscussion',announcement:'readAnnouncement'}[row.what];
     if(method&&client[method]){
      const current=await client[method](row.courseId,row.slug||row.canvasId,{user,signal,linked:row.linked===true});
-     if(changed(row,current))throw Error('Canvas instructions changed. Refresh Canvas and start a new Prepare run.');
+     if(changed(current))throw Error('Canvas instructions changed. Refresh Canvas and start a new Prepare run.');
     }
    }
   }
@@ -223,7 +225,7 @@
      wrapped[method]=async(cid,id,options)=>{
       const value=await client[method](cid,id,options),
        row=run.snapshot.index.map(([,r])=>r).find(r=>String(r.courseId)===String(cid)&&String(r.slug||r.canvasId)===String(id));
-      if(row&&changed(row,value)){sourceChanged=true;throw Error('forbidden');}
+      if(row&&changed(value)){sourceChanged=true;throw Error('forbidden');}
       return value;
      };
    const r=Data.createReader({index:new Map(run.snapshot.index),client:wrapped,user,origin,signal,parsePDF,fetchImpl});

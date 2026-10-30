@@ -477,7 +477,7 @@
      trackLabels.push(label);
      track.append(step,label);
    });
-   track.hidden=true;
+   track.toggleAttribute?.('hidden',true);
   }
   // Drawn icons for the Help controls: ink over an offset color wash, like the progress track; each moves on hover.
   const ICONS={
@@ -538,7 +538,7 @@
    // While help is being made (and as it finishes) the track shows the stage; a stop or a question shows its words.
    if(track){
      const live=!finished.includes(value.state)||value.state==='cards-ready';
-     track.hidden=!live;
+     track.toggleAttribute?.('hidden',!live);
      if(live){
        if(track.parentNode!==prepareLine||prepareLine.children?.[0]!==track)prepareLine.insertBefore?.(track,prepareText)??prepareLine.append(track);
        setTrack(value);

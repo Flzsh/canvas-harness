@@ -108,7 +108,7 @@ async function fixture(t,{saved={},readGate=null,failReads=0,missingAPI=false,la
 
 test('popup keeps author and branding, shows the version name, and loads the catalogue before its controls',()=>{
  const html=read('popup.html'),scripts=[...html.matchAll(/<script\b[^>]*src="([^"]+)"/g)].map(match=>match[1]);
- assert.match(html,/<meta name="author" content="Flzsh">/);assert.match(html,/id="version"[^>]*>4.0 Preview 1</);
+ assert.match(html,/<meta name="author" content="Flzsh">/);assert.match(html,/id="version"[^>]*>4.0 Preview 2</);
  assert.ok(scripts.indexOf('features.js')>=0&&scripts.indexOf('features.js')<scripts.indexOf('popup.js'));
  assert.match(html,/id="welcome-tour" href="welcome.html" target="_blank" rel="noopener"/);
  assert.match(read('popup.js'),/@preserve Canvas Harness original creator: Flzsh/);
