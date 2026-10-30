@@ -1,0 +1,40 @@
+{
+  "name": "@notepilot/extension",
+  "private": true,
+  "version": "0.3.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch --mode development",
+    "build": "vite build && vite build -c vite.content.config.ts",
+    "build:e2e": "VITE_E2E_FAKE_AUTH=1 vite build --outDir dist-e2e && VITE_E2E_FAKE_AUTH=1 vite build -c vite.content.config.ts --outDir dist-e2e",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "e2e": "npm run build:e2e && node e2e/run-e2e.mjs",
+    "setup:oauth": "node scripts/setup-oauth.mjs"
+  },
+  "dependencies": {
+    "idb": "^8.0.4",
+    "katex": "^0.16.47",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^9.1.0",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "zod": "3.23"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.3.5",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.6.1",
+    "fake-indexeddb": "^6.2.6",
+    "playwright-core": "1.56",
+    "postcss": "^8.5.31",
+    "tailwindcss": "3.4",
+    "typescript": "5.6",
+    "vite": "5.4",
+    "vitest": "2.1"
+  }
+}

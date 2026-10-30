@@ -57,6 +57,12 @@ Also in 3.7: a course dock you can move and resize, and a Cards look. Thanks to 
 
 Works on `*.instructure.com` and on your school's own Canvas address once you add it in the popup. Needs Chrome or Edge 126 or newer. [Help](INSTALL.md)
 
+## NotePilot: organized notes from a Google Doc
+
+[NotePilot](notepilot/README.md) is a separate Chrome extension that lives in this repository. While you type notes in a Google Doc, it keeps a rewritten, organized copy in Chrome's side panel: sections, tables and numbered steps, with AI insights beside them. **Summarize** makes a short version in the same outline and saves everything to a separate Google Doc. It only reads your notes and never changes them.
+
+NotePilot is installed and set up on its own: it asks you to sign in with Google (read-only access to Docs) and to connect an AI model with your own key or a shared server, and it sends nothing until you approve. Canvas Harness does not include it and its permissions and privacy notes below are unchanged. [Set up NotePilot](notepilot/README.md#quick-start).
+
 ## Privacy
 
 Everything you make stays in your browser: no ads, no analytics, no server of ours. It never changes submissions or grades. [Details](PRIVACY.md)
