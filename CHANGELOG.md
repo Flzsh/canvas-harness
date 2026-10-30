@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.8.1 - 2026-10-29
+
+- Modules page: the progress line (count, bar, Hide finished and Continue) is spaced out instead of squeezed together, and Retry only shows after loading fails. Each module's count, bar and Mark all done sit apart on its label. Each item's tick has its own space instead of covering the item's icon, and an item not yet done shows a drawn ring instead of Canvas's "unpublished" sign. Hide finished looks pressed while it is on.
+
 ## 3.8.0 - 2026-10-28
 
 - The PDF reader uses PDF.js's modern build. A small, readable polyfill file adds the few newer built-ins it calls, so Canvas Harness needs Chrome or Edge 126 or newer (3.7.0 needed 120).

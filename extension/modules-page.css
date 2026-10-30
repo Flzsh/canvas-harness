@@ -71,3 +71,31 @@ html.reserve-modules[data-md-motion=off] #context_modules .md-icon svg *{animati
 @media (prefers-reduced-motion:reduce){html.reserve-modules #context_modules .md-icon svg *{animation:none!important}}
 
 html.reserve-modules #context_modules .ig-details .due_date_display.md-empty,html.reserve-modules #context_modules .ig-details .due_date_display[hidden]{display:none}
+/* Module progress (modules-page.js, 3.8.1): the course's count, its bar, Hide finished, Continue and Retry spaced on one
+   line; each module's count, bar and Mark all done on its label; a drawn ring to tick each item, clear of its icon.
+   Canvas's .btn and its icon font are undone here, so nothing is squeezed, overlaps or shows while hidden. */
+html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0;padding:8px 2px 16px;border:0;background:none}
+html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress [hidden],html.reserve-modules #context_modules .ch-modprog-module-progress [hidden],html.reserve-modules #context_modules .ch-modprog-module-progress[hidden]{display:none!important}
+html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress .ch-modprog-summary{color:#2B2A27;font:650 14px/1.3 "Segoe UI",system-ui,sans-serif;white-space:nowrap}
+html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress .ch-modprog-message{color:#5E5D59;font:500 13px/1.3 "Segoe UI",system-ui,sans-serif}
+html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress .ch-modprog-message:empty{display:none}
+html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress .btn{margin:0;padding:4px 12px;font:600 13px/1.35 "Segoe UI",system-ui,sans-serif;white-space:nowrap}
+html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress .ch-modprog-hide[aria-pressed=true]{border-color:#2E6B45;background:#E4F1E7;color:#2E6B45;box-shadow:inset 1px 2px 0 rgb(43 42 39 / .12)}
+html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress .ch-modprog-continue{max-width:min(440px,100%);overflow:hidden;text-overflow:ellipsis}
+html.reserve-modules :is(.header-bar,.header-bar-right) .ch-modprog-meter,html.reserve-modules #context_modules .ch-modprog-meter{-webkit-appearance:none;appearance:none;flex:none;box-sizing:border-box;width:150px;height:10px;margin:0 6px 0 0;border:1.4px solid #2B2A27;border-radius:6px;background:#FFFDF8;overflow:hidden;vertical-align:middle}
+html.reserve-modules :is(.header-bar,.header-bar-right) .ch-modprog-meter::-webkit-progress-bar,html.reserve-modules #context_modules .ch-modprog-meter::-webkit-progress-bar{background:#FFFDF8}
+html.reserve-modules :is(.header-bar,.header-bar-right) .ch-modprog-meter::-webkit-progress-value,html.reserve-modules #context_modules .ch-modprog-meter::-webkit-progress-value{background:#6FAF84}
+html.reserve-modules :is(.header-bar,.header-bar-right) .ch-modprog-meter::-moz-progress-bar,html.reserve-modules #context_modules .ch-modprog-meter::-moz-progress-bar{background:#6FAF84}
+html.reserve-modules #context_modules .context_module>.ig-header .ch-modprog-module-progress{flex:none;margin:0 0 0 auto}
+html.reserve-modules #context_modules .context_module>.ig-header .ch-modprog-module-progress li{display:inline-flex;align-items:center;gap:8px;padding:4px 5px 4px 11px;white-space:nowrap;transform:none}
+html.reserve-modules #context_modules .ch-modprog-module-progress .ch-modprog-meter{width:84px;height:8px;margin:0}
+html.reserve-modules #context_modules .ch-modprog-all{margin:0;padding:2px 9px;border:1.2px solid var(--md-ink);border-radius:7px;background:var(--md-paper);color:var(--md-ink);box-shadow:none;text-shadow:none;font:600 11.5px/1.4 "Segoe UI",system-ui,sans-serif}
+html.reserve-modules #context_modules .ch-modprog-all:hover:not(:disabled){background:var(--md-hover)}
+html.reserve-modules #context_modules .ch-modprog-all:disabled{opacity:.45;cursor:default}
+html.reserve-modules #context_modules .ig-row>.ch-modprog-check{flex:none;display:inline-grid;place-items:center;box-sizing:border-box;width:32px;height:32px;margin:0 8px 0 0;padding:0;border:0;border-radius:50%;background:none;box-shadow:none;line-height:0;cursor:pointer}
+html.reserve-modules #context_modules .ig-row>.ch-modprog-check:hover:not(:disabled){background:var(--md-hover)}
+html.reserve-modules #context_modules .ig-row>.ch-modprog-check:focus-visible{outline:2px solid var(--md-clay);outline-offset:1px}
+html.reserve-modules #context_modules .ig-row>.ch-modprog-check:disabled{cursor:default;opacity:1}
+html.reserve-modules #context_modules .ch-modprog-check i{display:block;width:24px;height:24px;margin:0;font-size:0;line-height:0}
+html.reserve-modules #context_modules .ch-modprog-check i.icon-unpublished::before{content:""!important;display:block;width:24px;height:24px;background:center/contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23FFFDF8' d='M12.6 3.4c4.6.1 8.4 3.6 8.1 8.6-.2 4.8-3.9 8.4-8.7 8.3-4.9-.1-8.5-3.9-8.2-8.8.3-4.6 4.1-8.2 8.8-8.1z'/%3E%3Cpath fill='none' stroke='%235E5D59' stroke-width='1.6' stroke-linecap='round' d='M11.8 2.6c4.9-.2 8.8 3.4 8.8 8.6 0 5-3.7 8.8-8.7 8.9-5 .1-8.9-3.8-8.9-8.7.1-4.6 3.9-8.3 8.4-8.8'/%3E%3C/svg%3E")}
+html.reserve-modules #context_modules .ig-row>.ch-modprog-check:hover:not(:disabled) i.icon-unpublished::before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23FFFDF8' d='M12.6 3.4c4.6.1 8.4 3.6 8.1 8.6-.2 4.8-3.9 8.4-8.7 8.3-4.9-.1-8.5-3.9-8.2-8.8.3-4.6 4.1-8.2 8.8-8.1z'/%3E%3Cpath fill='none' stroke='%232E6B45' stroke-width='1.6' stroke-linecap='round' d='M11.8 2.6c4.9-.2 8.8 3.4 8.8 8.6 0 5-3.7 8.8-8.7 8.9-5 .1-8.9-3.8-8.9-8.7.1-4.6 3.9-8.3 8.4-8.8'/%3E%3Cpath fill='none' stroke='%232E6B45' stroke-opacity='.45' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' d='M7.4 11.9l3 3.1 6.4-7.1'/%3E%3C/svg%3E")}

@@ -373,3 +373,12 @@ test('an Up next slip the progress tracker hides is not shown by the slip style'
  const css=read('modules-page.css'),rule=css.split('}').find(r=>/\.due_date_display\[hidden\]/.test(r));
  assert.ok(rule,'the hidden slip has its own rule');assert.match(rule,/\{display:none$/);
 });
+test('module progress has its own room: the bar is spaced, hidden buttons stay hidden, and each tick sits clear of its icon',()=>{
+ const css=read('modules-page.css'),rule=re=>css.split('\n').find(line=>re.test(line))||'';
+ assert.match(rule(/^html\.reserve-modules :is\(\.header-bar,\.header-bar-right\)\.ch-modprog-progress\{/),/display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px/,'the course line is spaced');
+ assert.match(rule(/\.ch-modprog-progress \[hidden\]/),/\{display:none!important\}$/,'Retry and Continue stay hidden while the tracker hides them (Canvas .btn would show them)');
+ assert.match(rule(/\.ig-row>\.ch-modprog-check\{/),/flex:none;[^}]*width:32px;height:32px;margin:0 8px 0 0;padding:0/,'the tick keeps its own width and a gap before the item icon');
+ assert.match(rule(/\.ch-modprog-check i\.icon-unpublished::before\{/),/content:""!important;[^}]*url\("data:image\/svg\+xml/,'not done is a drawn ring, not Canvas\'s unpublished sign');
+ assert.match(rule(/\.ch-modprog-hide\[aria-pressed=true\]\{/),/background:#E4F1E7/,'Hide finished looks pressed while it is on');
+ assert.match(rule(/\.ch-modprog-module-progress li\{/),/display:inline-flex;align-items:center;gap:8px/,'a module\'s count, bar and Mark all done sit apart');
+});
