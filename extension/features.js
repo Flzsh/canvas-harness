@@ -27,9 +27,9 @@
   feature('course-nav','Drawn course menu & modules','Canvas',['course-nav-art.js','course-nav.js','modules-page.js'],['course-nav.css','course-nav-art.css','modules-page.css']),
   feature('native-appearance','Native page appearance','Canvas',['native-appearance.js','native-page.js'],['native-page.css']),
   feature('pdf','PDF reader','Extras',['pdf-art.js','pdf-model.js','pdf-host.js'],['pdf-host.css']),
-  feature('focus-room','Focus room','Extras',['focus-room.js'],[],['planner']),
-  feature('review-deck','Review deck','Extras',['review-deck-model.js','review-deck.js'],[],['dashboard']),
-  feature('grade-impact','Grade impact','Extras',['grade-impact.js'],[],['grades']),
+  feature('focus-room','Focus room','Extras',['focus-room-art.js','focus-room.js'],['focus-room.css'],['planner']),
+  feature('review-deck','Review deck','Extras',['review-deck-model.js','review-deck-art.js','review-deck.js'],['review-deck.css'],['dashboard']),
+  feature('grade-impact','Grade impact','Extras',['grade-impact-art.js','grade-impact.js'],['grade-impact.css'],['grades']),
   feature('play','Play & submission celebrations','Extras',['submit-celebrate.js']),
   feature('ai','AI context & handoff','Extras',['ai-context.js','ai-source.js'],[],['tools']),
  ];
@@ -72,8 +72,10 @@
    "course-file-open.js",
    "course-links-ui.js",
    "course-hub-ui.js",
+   "grade-impact-art.js",
    "grade-impact.js",
    "review-deck-model.js",
+   "review-deck-art.js",
    "review-deck.js",
    "grades-view.js",
    "market-site.js",
@@ -129,6 +131,7 @@
    "pets.js",
    "planner-ui.js",
    "hand-in.js",
+   "focus-room-art.js",
    "focus-room.js",
    "widgets.js",
    "settings-dock.js",
@@ -144,7 +147,7 @@
    "submit-celebrate.js",
    "content.js"
  ];
- const dashboardCSS=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','course-links.css'];
+ const dashboardCSS=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','course-links.css','focus-room.css','review-deck.css','grade-impact.css'];
  const startupCSS=['startup.css','startup-art.css','canvas-nav.css','course-nav.css'];
  const nativeCSS=['app.css','dashboard.css','workspace.css','refresh.css','gpa.css'];
  // customize.css and widgets.css are core: besides the editor and the widgets they hold the dashboard's setting-driven layout (hidden columns, card styles,

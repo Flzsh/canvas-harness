@@ -48,7 +48,7 @@ test('keyboard tab navigation preserves an unfinished drawing and its film origi
 test('course, theme, artwork and heading data changes replace the shared heading',async t=>{
  const f=fixture();t.after(()=>f.dashboard.destroy());await flush();
  let heading=f.container.querySelector('.rd-workspace-heading');
- const replaced=()=>{const next=f.container.querySelector('.rd-workspace-heading');assert.notStrictEqual(next,heading);assert.equal(heading.isConnected,false);heading=next;};
+ const replaced=()=>{f.tick(0);const next=f.container.querySelector('.rd-workspace-heading');assert.notStrictEqual(next,heading);assert.equal(heading.isConnected,false);heading=next;};
  f.click('course',{id:'20'});replaced();await flush();
  await f.store.update(data=>{data.settings.theme='dark';});replaced();
  await f.store.update(data=>{data.settings.coursePrefs['20']={titlePlacement:'banner',bannerArt:{svg:'synthetic changed art'}};});replaced();

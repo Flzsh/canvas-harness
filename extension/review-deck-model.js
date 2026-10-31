@@ -64,6 +64,7 @@
       newPerDay:integer(st.newPerDay,...LIMITS.newPerDay,DEFAULT_SETTINGS.newPerDay),
       maxReviews:integer(st.maxReviews,...LIMITS.maxReviews,DEFAULT_SETTINGS.maxReviews)
     };
+  if(st.bigCard===true)settings.bigCard=true;
   const testDates={},log=[],days=new Set();for(const [id,day] of Object.entries(value.testDates||{})){if(!courseId(id)||!validDay(day))throw Error('Invalid review test date.');testDates[id]=day;}
   if(Object.keys(testDates).length>500)throw Error('Too many review test dates.');
   for(const e of value.log||[]){

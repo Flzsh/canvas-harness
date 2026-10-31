@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Canvas Harness",
   "short_name": "Canvas Harness",
-  "version": "3.8.1",
+  "version": "3.9.0",
   "description": "For students on Canvas LMS: your courses, assignments, planner and PDFs redrawn as one calm page you arrange yourself.",
   "minimum_chrome_version": "126",
   "permissions": [
@@ -166,7 +166,10 @@
         "biscuit-rules/basic.json",
         "biscuit-rules/more.json",
         "biscuit-rules/most.json",
-        "biscuit-rules/school-language.json"
+        "biscuit-rules/school-language.json",
+        "focus-room.css",
+        "review-deck.css",
+        "grade-impact.css"
       ],
       "matches": [
         "https://*.instructure.com/*"
@@ -254,7 +257,10 @@
         "biscuit-rules/basic.json",
         "biscuit-rules/more.json",
         "biscuit-rules/most.json",
-        "biscuit-rules/school-language.json"
+        "biscuit-rules/school-language.json",
+        "focus-room.css",
+        "review-deck.css",
+        "grade-impact.css"
       ],
       "matches": [
         "https://*/*"
@@ -265,5 +271,5 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'; worker-src 'self'"
   },
-  "version_name": "3.8.1"
+  "version_name": "3.9.0"
 }

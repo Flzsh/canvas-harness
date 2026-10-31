@@ -5,7 +5,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
  const enabled=id=>!root.ReserveFeatures||root.ReserveFeatures.enabled(id);
  const BASE=(globalThis.ReserveSite.origin());
  function context(snapshot,personal,pathname){
-  // Hidden as on the dashboard: by hand, or not a class (NameCoach, College Counseling) and never shown by hand.
+  // Hidden as on the dashboard: by hand, or not a class (name tools, counseling groups) and never shown by hand.
   const C=root.ReserveCore,
     s=personal.settings||{},
     all=(snapshot.courses||[]).map(C.normalizeCourse).filter(c=>/^\d+$/.test(c.id)),

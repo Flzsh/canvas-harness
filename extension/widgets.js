@@ -4,12 +4,20 @@
 (function(root){
  'use strict';
  const enabled=id=>!root.ReserveFeatures||root.ReserveFeatures.enabled(id);
- const available=key=>enabled('planner')&&(!['context','messages'].includes(key)||enabled('course-hub'))&&(key!=='grades'||enabled('grades'))&&(key!=='pet'||enabled('pony'));
+ const available=key=>
+   enabled('planner')&&
+     (!['context','messages'].includes(key)||enabled('course-hub'))&&
+     (key!=='grades'||enabled('grades'))&&
+     (key!=='pet'||enabled('pony'))&&
+     (key!=='review'||root.ReserveReviewDeck?.moduleAvailable?.()===true)&&
+     (key!=='impact'||root.ReserveGradeImpact?.moduleAvailable?.()===true);
  const Arrange=()=>root.ReserveWorkspaceArrange,Plan=()=>root.ReservePlanner,Pets=()=>enabled('pony')?root.ReservePets:null;
  // One line each: what the module is for. Shown in the gallery, so it has to be enough to choose by.
  const INFO={
   context:{hint:'Announcements, messages and the teacher’s page for one course.'},
   handin:{hint:'Work to hand in, with local completion choices.'},
+  review:{},
+  impact:{},
   today:{hint:'What you planned for today and what is due. Tick things off, add your own.'},
   week:{hint:'Seven days at a glance: how much is on each one.'},
   timer:{hint:'A 15 to 60 minute focus session. Your pony studies with you.'},
@@ -25,12 +33,14 @@
  const ART={
   context:'<path d="M4.5 5.2c5-.6 10-.5 15 .1l-.2 11.6c-4.9.6-9.9.5-14.7-.1z"/><path d="M8 9h8M8 12.4h5.4"/><path d="M9.4 17l-.6 3.4 4-3.2"/>',
   today:'<path d="M5.2 4.4c4.6-.5 9.2-.4 13.6.1l.2 15c-4.6.5-9.3.5-13.9 0z"/><path d="M8 9.4l1.4 1.5 2.4-2.9M8 14.6l1.4 1.5 2.4-2.9M14 9.8h3M14 15h3"/>',
+  review:'<path d="M3.8 10.6c5.5-.5 10.9-.5 16.4 0l-.5 9c-5.1.5-10.3.5-15.4 0z"/><path d="M6.4 10.4V5.4c3.7-.5 7.4-.5 11.2 0v5"/><path d="M9.4 5.4v5M12.2 5.2v5.2M15 5.4v5M9.8 14.6h4.4"/>',
   week:'<path d="M3.6 6.4c5.6-.5 11.2-.5 16.8 0l.1 12.4c-5.7.5-11.4.5-17 0z"/><path d="M3.8 10.2h16.4M8 3.6v4M16 3.6v4M7.4 13.4v2.8M12 13.4v2.8M16.6 13.4v2.8"/>',
   timer:'<path d="M12 6.4c4.2-.2 7.4 3 7.2 7.2-.2 4-3.2 7-7.4 6.8-4-.2-7-3.2-6.8-7.4.2-3.8 3-6.6 7-6.6"/><path d="M12 13.4V9.6M9.6 3.6h4.8M12 3.6v2.6M17.6 7.2l1.4-1.4"/>',
   clock:'<path d="M12 4c4.6-.2 8.2 3.4 8 8-.2 4.4-3.6 8-8.2 7.8C7.4 19.6 4 16.2 4.2 11.6 4.4 7.4 7.6 4 12 4"/><path d="M12 7.6v4.8l3.2 1.8"/>',
   notes:'<path d="M6 3.8c4-.4 8-.4 12 0l.2 16.4c-4.1.4-8.2.4-12.3 0z"/><path d="M9 8h6M9 11.4h6M9 14.8h3.6"/>',
   bookmarks:'<path d="M6.4 3.8c3.7-.5 7.4-.5 11.2 0V20.6l-5.6-3.8-5.6 3.8z"/><path d="M9.6 8h4.8"/>',
   grades:'<path d="M4 19.6h16"/><path d="M6.6 19.4v-6.2M11 19.4V8.6M15.4 19.4v-9M19 19.4V5"/>',
+  impact:'<path d="M3.4 7.8c5.8-.3 11.4-.2 17.2.1"/><path d="M4.6 5.8v4.2M19.4 5.8v4.2"/><path d="M14.2 5.6l3.6-.1.1 4.4-3.6.1z"/><path d="M8.4 8.2v3.4"/><path d="M6.4 13.4c1.4-.2 2.7-.2 4.1 0l1.3 5.8c-2.2.3-4.5.3-6.8 0z"/>',
   messages:'<path d="M3.8 6c5.5-.5 10.9-.5 16.4 0l.1 12c-5.5.5-11.1.5-16.6 0z"/><path d="M4.2 6.6l7.8 6 7.8-6"/>',
   pet:'<path d="M5.4 12.6c2.6-1.4 6-1.4 8.6-.4 1.2-2.6 2.6-4.6 4.4-6l1.6 2.4c-1.4 1.4-2.2 3.4-2.6 5.8-.6 2-3.4 2.8-7.2 2.6-3-.2-5.6-1.6-4.8-4.4z"/><path d="M7 17v3.4M10 17.2v3.2M14 17.2v3.2M16.4 16.6v3.8M5.4 12.8c-1.4.4-2 2-1.8 4"/>'
  };
@@ -120,6 +130,11 @@ ${total?`<ul class="rd-todo-list">${d.all.map(e=>todo(e)).join('')}</ul>`:`<p cl
    extra=action('workspace','Planner','data-tab="plan"','rd-text-button rd-widget-link');
   }else if(key==='handin'){
    body=root.ReserveHandIn?.render(c,h,{action})||'';
+  }else if(key==='review'){
+   body=root.ReserveReviewDeck?.renderModule?.(c,h)||'';extra=root.ReserveReviewDeck?.moduleOpener?.(c,h)||'';
+  }else if(key==='impact'){
+   body=root.ReserveGradeImpact?.renderModule?.(c,h,c.gradeImpact)||'';
+   extra=root.ReserveGradeImpact?.moduleOpener?.(c,h,c.gradeImpact)||'';
   }else if(key==='week'){
    const {board,today}=plan(c,h);
    body=`<div class="rd-wk" role="group" aria-label="This week">${board.days.map(d=>{
@@ -128,6 +143,17 @@ ${total?`<ul class="rd-todo-list">${d.all.map(e=>todo(e)).join('')}</ul>`:`<p cl
     return action('plan-open',`<span>${E(h.formatDate(dt,'UTC',{weekday:'short'}))}</span><strong>${new Date(dt).getUTCDate()}</strong><span class="rd-wk-dots">${dots}</span><small>${d.minutes?E(Plan().minutes(d.minutes)):d.open?`${d.open} to do`:d.done?'done':''}</small>`,`data-day="${d.key}" data-today="${d.key===today}" data-past="${d.key<today}" aria-label="${E(h.formatDate(dt,'UTC',{weekday:'long',month:'short',day:'numeric'}))}: ${d.open} to do, ${d.done} done${d.minutes?`, ${E(Plan().minutes(d.minutes))} planned`:''}"`,'rd-wk-day');}).join('')}</div>
 ${board.waiting.length||board.overdue.length?`<p class="rd-widget-note">${[board.overdue.length?`${board.overdue.length} still open from before`:'',board.waiting.length?`${board.waiting.length} due soon with no day yet`:''].filter(Boolean).join(' · ')}</p>`:''}`;
    extra=action('workspace','Planner','data-tab="plan"','rd-text-button rd-widget-link');
+  }else if(key==='timer'&&enabled('focus-room')&&root.ReserveFocusRoom?.module){
+   const R=root.ReserveFocusRoom;
+   body=R.module({
+     focus:mine.focus,
+     now:c.now,
+     size:c.s.moduleSize?.timer||'m',
+     task:R.pickTask(mine.focus,plan(c,h).list,c.courses,v=>h.formatDate(v,c.s.timeZone,{weekday:'short',hour:'numeric',minute:'2-digit'}),c.now)
+   });
+   // like Review and Grade impact: a short title and the drawn corner arrows that grow the module into its room, so the
+   // head never wraps on a narrow module
+   extra=action('room-open','<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.2 4.4c2 .1 3.9 0 5.4.2.2 1.5.1 3.4.2 5.4M19.4 4.8l-5.6 5.4M9.8 19.6c-2-.1-3.9 0-5.4-.2-.2-1.5-.1-3.4-.2-5.4M4.6 19.2l5.6-5.4"/></svg>','aria-label="Focus room"','rd-text-button rd-widget-link fr-open');
   }else if(key==='timer'){
    const f=focusState(mine.focus,c.now);
    body=`<div class="rd-timer" data-running="${f.running}" data-rd-timer><span data-rd-timer-phase ${f.phase==='break'?'':'hidden'}>Break</span><div class="rd-timer-dial"><svg viewBox="0 0 120 120" aria-hidden="true"><path class="rd-timer-track" d="${RING}"/><path class="rd-timer-arc" pathLength="1" d="${RING}" style="stroke-dashoffset:${(1-f.progress).toFixed(4)}"/></svg><output data-rd-timer-text aria-live="off">${mmss(f.left)}</output></div>
@@ -159,7 +185,8 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
 <div class="rd-pet-card"><p><strong>${E(pet.name)}</strong><span>Level ${P.level(pet.xp)}${pet.streak>1?` · ${pet.streak} days in a row`:''}</span></p><span class="rd-progress" aria-hidden="true"><i style="width:${Math.round(P.levelProgress(pet.xp)*100)}%"></i></span>
 <div class="rd-pet-actions">${action('pet-feed',`Give a treat <b>${pet.treats}</b>`,pet.treats&&pet.enabled&&pet.roam!=='off'?'':'disabled','rd-button')}${action('pet-roam',pet.roam==='home'?'Let it roam':'Keep it here','','rd-text-button')}${action('pet-settings','Change','','rd-text-button')}</div></div>`:'';
   }
-  return `<section class="rd-widget rd-widget-${key}" data-rd-key="widget-${key}" data-arrange-key="${key}" data-widget="${key}" aria-label="${E(label)}"><header class="rd-arrange-heading rd-widget-head" data-arrange-head="${key}">${glyph(key)}<h2>${E(label)}</h2>${extra}${enabled('arrange')?A.controls(key):''}</header><div class="rd-widget-body">${body}</div></section>`;
+  const title=key==='timer'&&enabled('focus-room')&&root.ReserveFocusRoom?.module?'Focus':label;
+  return `<section class="rd-widget rd-widget-${key}" data-rd-key="widget-${key}" data-arrange-key="${key}" data-widget="${key}" aria-label="${E(label)}"><header class="rd-arrange-heading rd-widget-head" data-arrange-head="${key}">${glyph(key)}<h2>${E(title)}</h2>${extra}${enabled('arrange')?A.controls(key):''}</header><div class="rd-widget-body">${body}</div></section>`;
  }
 
  // The tray that opens with "Edit Home": every module with a drawing, one line about it and a switch; then the outline.
@@ -167,7 +194,7 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
   if(!enabled('planner')||!Arrange())return '';
   const {E}=h,A=Arrange(),on=new Set(A.snapshot(c.s).order),frame=c.s.panelFrame||'pen';
   const card=key=>{const shown=key==='context'?c.s.showCourseInformation!==false:on.has(key),fixed=!A.removable(key);
-   return `<li class="rd-gallery-card" data-on="${shown}" data-rd-key="gallery-${key}">${glyph(key)}<div><strong>${E(A.LABELS[key])}</strong><p>${E(INFO[key]?.hint||'')}</p></div>${fixed?'<span class="rd-gallery-fixed">Always on</span>':`<button type="button" class="rd-gswitch" role="switch" data-rd-action="${shown?'widget-remove':'widget-add'}" data-widget="${key}" aria-checked="${shown}" aria-label="${shown?'Remove':'Add'} ${E(A.LABELS[key])}"><i></i></button>`}</li>`;};
+   return `<li class="rd-gallery-card" data-on="${shown}" data-rd-key="gallery-${key}">${glyph(key)}<div><strong>${E(A.LABELS[key])}</strong>${INFO[key]?.hint?`<p>${E(INFO[key].hint)}</p>`:''}</div>${fixed?'<span class="rd-gallery-fixed">Always on</span>':`<button type="button" class="rd-gswitch" role="switch" data-rd-action="${shown?'widget-remove':'widget-add'}" data-widget="${key}" aria-checked="${shown}" aria-label="${shown?'Remove':'Add'} ${E(A.LABELS[key])}"><i></i></button>`}</li>`;};
   return `<section class="rd-gallery" data-rd-key="gallery" aria-label="Edit Home"><header><div><h2>Edit Home</h2><p>Switch modules on or off here. To move one, hold its heading until the circle closes, then drag it beside or below another.</p></div><button type="button" class="rd-button rd-button-primary" data-rd-action="board-edit">Done</button></header>
 <ul class="rd-gallery-list">${['context',...A.EXTRA].filter(available).map(card).join('')}</ul>
 ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" aria-label="Module outline"><span>Outline</span>${FRAMES.map(([value,name,hint])=>`<button type="button" class="rd-frame-choice" role="radio" data-rd-action="board-frame" data-value="${value}" aria-checked="${frame===value}" title="${E(hint)}"><i data-frame="${value}"></i>${E(name)}</button>`).join('')}</div>`:''}</section>`;
@@ -578,7 +605,10 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
     livePlan(data).filter(e=>!e.done&&(!request.itemId||e.id===String(request.itemId))&&(!request.courseId||e.courseId===String(request.courseId))).sort((a,b)=>
       (Date.parse(a.dueAt)||Infinity)-(Date.parse(b.dueAt)||Infinity));
   const planner=root.ReservePlannerUI?.create({container,store,save,rerender,getContext,helpers,view:id=>preview(id)})||null;
-  const room=enabled('focus-room')?root.ReserveFocusRoom?.create({container,store}):null;
+  const room=enabled('focus-room')?root.ReserveFocusRoom?.create({container,store,task:()=>{
+    const c=ctx(),h=helpers();
+    return root.ReserveFocusRoom.pickTask(store.get().focus,plan(c,h).list,c.courses,v=>h.formatDate(v,c.s.timeZone,{weekday:'short',hour:'numeric',minute:'2-digit'}),Date.now());
+  }}):null;
   // Size and place: the menu behind a module's three dots. It is built on demand and floats over the page.
   let menu=null,menuKey='';
   function closeMenu(refocus=false){
@@ -1610,7 +1640,8 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
   }
   function focusControl(request={}){
    if(['set-remaining','reset'].includes(request.action))return focusOperation(request);
-   if(!['pause','resume','stop','adjust'].includes(request.action)||request.action==='adjust'&&!Number.isFinite(request.minutes))return false;let changed=false,completed=false,ended=0;
+   if(!['pause','resume','stop','adjust','finish'].includes(request.action)||request.action==='adjust'&&!Number.isFinite(request.minutes))return false;
+   let changed=false,completed=false,ended=0,early=false;
    return save(data=>{
      const now=Date.now();
      ended=data.focus?.endsAt||0;
@@ -1621,6 +1652,24 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
     if(request.action==='pause'){next.endsAt=null;next.pausedAt=now;}
     if(request.action==='resume'){next.endsAt=now+f.left*1000;next.pausedAt=0;}
     if(request.action==='stop')Object.assign(next,{endsAt:null,pausedAt:0,stoppedAt:now,completedAt:0,completedMinutes:0,breakUntil:0});
+    if(request.action==='finish'){
+      if(f.phase==='break')
+        Object.assign(next,{endsAt:null,pausedAt:0,stoppedAt:now,completedAt:0,completedMinutes:0,breakUntil:0});
+      else{
+        Object.assign(next,{
+          endsAt:null,
+          pausedAt:0,
+          remaining:0,
+          elapsed:f.elapsed,
+          completedAt:now,
+          completedMinutes:f.elapsed/60,
+          sessions:(Number.isInteger(data.focus.sessions)?data.focus.sessions:0)+1,
+          breakUntil:0
+        });
+        for(const key of ['phase','focusMinutes','breakMinutes','cycles','cycle'])delete next[key];
+        early=true;
+      }
+    }
     if(request.action==='adjust'){
       const left=Math.max(60,f.left+request.minutes*60);
       if(!Number.isFinite(left)||now+left*1000>8640000000000000)return;
@@ -1628,7 +1677,7 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
     }
     if(next.phase==='break')next.breakUntil=next.endsAt||0;
     data.focus=next;changed=true;
-   }).then(ok=>{if(ok&&completed&&Date.now()-ended<60000)finished('focus');afterFocus(ok&&(changed||completed));return ok&&changed;});
+   }).then(ok=>{if(ok&&(completed&&Date.now()-ended<60000||early))finished('focus');afterFocus(ok&&(changed||completed));return ok&&changed;});
   }
   function startBreak(request={}){
     let started=false;
@@ -1887,6 +1936,33 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
      }).then(ok=>afterFocus(ok));
      return true;
    }
+   if(action==='focus-back'){
+     const n=duration(Number(button.dataset.minutes))||25;
+     save(data=>{
+       const f=data.focus||{},
+         now=Date.now(),
+         next=f.phase==='break'&&Number.isInteger(f.cycles)&&Number.isInteger(f.cycle)&&f.cycle<f.cycles&&f.focusMinutes>0&&Number.isFinite(now+f.focusMinutes*60000);
+    // a break inside a run of pomodoros moves on to the run's next focus; otherwise a fresh session
+    data.focus=next?
+      {
+        ...f,
+        phase:'focus',
+        minutes:f.focusMinutes,
+        remaining:f.focusMinutes*60,
+        elapsed:0,
+        pausedAt:0,
+        stoppedAt:0,
+        completedAt:0,
+        completedMinutes:0,
+        breakUntil:0,
+        endsAt:now+f.focusMinutes*60000,
+        cycle:f.cycle+1
+      }:
+      {...freshFocus(f,n,now),fromPony:false};}).then(ok=>
+      afterFocus(ok));
+    return true;
+   }
+   if(action==='focus-break'){startBreak({minutes:Number(button.dataset.minutes)||5,explicit:true});return true;}
    if(action==='timer-minutes'){
      const n=duration(Number(button.dataset.minutes));
      if(n)save(data=>{if(data.focus?.endsAt)return;data.focus={...freshFocus(data.focus,n,Date.now()),endsAt:null};}).then(ok=>afterFocus(ok));
@@ -1979,7 +2055,10 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
     pets?.destroy();
     planner?.destroy();
   }
-  return {click,keydown,input,change,sync,finished,destroy,executeBiscuit,settingsTab:()=>settingsTab,planUI:()=>planner?.ui||{},editing:()=>editing,close(){
+  // While the Focus room covers Home: only what the room needs (its timer, its sync); Home catches up when it folds away
+  function syncRoom(){if(dead)return;const focus=store.get().focus,running=!!focus?.endsAt;if(running&&!timerTick)timerTick=setInterval(tick,1000);room?.sync();}
+  return {click,keydown,input,change,sync,syncRoom,finished,destroy,executeBiscuit,
+   settingsTab:()=>settingsTab,planUI:()=>planner?.ui||{},editing:()=>editing,close(){
     if(editing){editing=false;rerender();}
   }};
  }

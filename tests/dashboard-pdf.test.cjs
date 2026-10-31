@@ -2,10 +2,10 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),vm=requir
 const UI=require('../extension/ui-utils.js'),Materials=require('../extension/material-model.js');
 test('topbar puts the shared banner and title before the course strip; sidebar keeps it in the workspace',async t=>{
  const {fixture}=require('./dashboard-heading-fixture.cjs'),f=fixture();t.after(()=>f.dashboard.destroy());
- await f.store.update(data=>{data.settings.courseNavigation='topbar';});
+ await f.store.update(data=>{data.settings.courseNavigation='topbar';});f.tick(0);
  const shell=f.container.querySelector('.rd-shell'),heading=f.container.querySelector('.rd-workspace-heading'),workspace=f.container.querySelector('.rd-workspace');
  assert.ok(shell.firstElementChild===heading);assert.ok(heading.querySelector('h1'));assert.notEqual(shell.children[1],workspace);
- await f.store.update(data=>{data.settings.courseNavigation='sidebar';});
+ await f.store.update(data=>{data.settings.courseNavigation='sidebar';});f.tick(0);
  assert.ok(f.container.querySelector('.rd-workspace').firstElementChild===f.container.querySelector('.rd-workspace-heading'));
 });
 const attrs=tag=>Object.fromEntries([...tag.matchAll(/([\w-]+)="([^"]*)"/g)].map(m=>[m[1],m[2]]));

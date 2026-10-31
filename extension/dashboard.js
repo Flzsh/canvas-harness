@@ -92,6 +92,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(current.getAttribute(attr.name)!==attr.value)current.setAttribute(attr.name,attr.value);
     }
     if(framedMedia)return;
+    // A feature's own drawn place (data-rd-own) keeps the subtree it hung there; only its attributes follow the render.
+    if(current.hasAttribute('data-rd-own')&&current.getAttribute('data-rd-own')===next.getAttribute('data-rd-own'))return;
     if(current.tagName==='INPUT'){if(current.value!==next.value)current.value=next.value;current.checked=next.checked;return;}
     if(current.tagName==='TEXTAREA'){if(current.value!==next.value)current.value=next.value;return;}
     if(current.classList.contains('rd-rich-text')){if(current.innerHTML!==next.innerHTML)current.innerHTML=next.innerHTML;return;}
@@ -364,20 +366,361 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let externalStatus=stringValue(status);
     let transientStatus='';
     let refreshing=false;
-    let destroyed=false,rendering=false,mounted=false,sourceFrame=0,pendingRender=null;
+    let destroyed=false,rendering=false,mounted=false,sourceFrame=0,pendingRender=null,shownPage='';
     // When the last whole render read the clock, and the next moment the clock alone changes the page (updateFreshness).
     let renderedAt=0,timeBoundary=null;
     const beforePaint=fn=>root.requestAnimationFrame?root.requestAnimationFrame(fn):root.setTimeout(fn,0);
     const cancelPaint=id=>root.requestAnimationFrame?root.cancelAnimationFrame?.(id):root.clearTimeout(id);
     function sourceChange(){scheduleRender();}
+    // (a render asked for by data or a timer, not by the student's own press: while a room is up it waits, see below)
+    let sourcing=false;
     function scheduleRender(options=null){
       if(destroyed)return;
       if(options)pendingRender={...pendingRender,...options};
-      if(!sourceFrame)sourceFrame=beforePaint(()=>{sourceFrame=0;try{render();}catch(error){if(!mounted&&onRenderError)onRenderError(error);else throw error;}});
+      if(!sourceFrame)
+        sourceFrame=beforePaint(()=>{
+          sourceFrame=0;
+          sourcing=true;
+          try{render();}catch(error){if(!mounted&&onRenderError)onRenderError(error);else throw error;}finally{sourcing=false;}
+        });
     }
     function consumeSources(){if(sourceFrame)cancelPaint(sourceFrame);sourceFrame=0;}
+    // While the Focus room covers the dashboard (data-ch-room="open"), everything behind it is hidden: renders wait (the
+    // widgets, and with them the room, still sync), and one render brings the page up to date a moment after the room
+    // has folded away, when the browser is idle. A whole-dashboard render in the middle of the room's moves was each
+    // move's longest frame.
+    let roomHeld=false;
+    function holdForRoom(options){
+      consumeSources();if(options)pendingRender={...pendingRender,...options};
+      if(!roomHeld&&typeof root.MutationObserver==='function'){
+        roomHeld=true;
+        const watch=new root.MutationObserver(()=>{if(container.dataset.chRoom==='open')return;watch.disconnect();roomHeld=false;
+        // (once the fold and the module's settle have played out, data-ch-moving: an idle moment inside a compositor-run
+        // fold came at once, and the whole render landed in the middle of the settle)
+        const later=()=>{
+          if(destroyed)return;
+          const until=Number(container.dataset.chMoving||0)-Date.now();
+          if(until>0){root.setTimeout(()=>{if(typeof root.requestIdleCallback==='function')root.requestIdleCallback(later,{timeout:1500});else later();},until+40);return;}
+          scheduleRender();
+        };
+        if(typeof root.requestIdleCallback==='function')root.requestIdleCallback(later,{timeout:1500});else root.setTimeout(later,600);});
+        watch.observe(container,{attributes:true,attributeFilter:['data-ch-room']});
+      }
+      // the look the room follows (Motion, light or dark) still comes through at once
+      // (read from the settings alone: building the whole page's context here cost each of the room's moves a long frame)
+      try{
+        const ctx={s:settings()};
+        ctx.theme=effectiveTheme(ctx.s);
+        container.dataset.theme=ctx.theme;
+        container.dataset.motionStyle=MOTION_STYLES.includes(ctx.s.motion)?ctx.s.motion:'gentle';
+        container.dataset.featureMotion=enabled('motion')?'on':'off';
+        container.dataset.livingArt=ctx.s.livingArt==='off'?'off':'on';
+      }catch{}
+      // the room only: the timer and the room's own sync (the whole board's sync cloned the store several times and worked
+      // out every day and date on Home, in each press in the room)
+      try{if(board?.syncRoom)board.syncRoom();else board?.sync();}catch{}
+    }
+    // ---- The rooms over the page: the Review deck's reading room and Grade impact's weighing room ----
+    // Each is a layer of its own over the workspace column (.rd-roomlayer, in the column's grid area of .rd-shell), never
+    // a page in place of Home: swapping the page styled, laid out and painted Home's ~2,700 elements and ~3,000 drawn
+    // paths in one task (0.45-1.3 s at 4x CPU). The page under a room stays laid out and painted, and data-workspace and
+    // its markup never change while the room is up. Once the room has grown over it, the page goes see-through and is
+    // hidden from assistive technology, as under the Focus room (opacity and aria-hidden, never inert), and the room keeps
+    // Tab inside itself. While a room is up the dashboard's renders wait and the room alone is redrawn; what the page
+    // missed is drawn once the room has folded away, when the browser is idle. A fold is the room shrinking into its
+    // module on the compositor: the page is back from its first frame, and the layer goes behind the page once the fold
+    // has played and out of it when the browser is idle. A pointer resting on (or the keyboard reaching) a way in builds
+    // the room ahead of time, behind the page and see-through, its drawing going in a share per frame: the press only
+    // shows it.
+    const ROOM_NAMES={review:'Review deck',impact:'Grade impact'},drawn=new WeakMap();
+    let room=null,roomStale=false,roomFrame=0,bootRoom=null,homeAria=null;const spares=new Map(),leavingRooms=new Set();
+    // where the student is, as Biscuit and the saved state see it: a room that is up is the page it used to be
+    const here=()=>room?.kind==='review'?'review':room?.kind==='impact'?'grades':workspace;
+    const hereCourse=()=>room?.kind==='impact'?room.course:state.courseId;
+    // how long the move under way still plays (a stamp further off than any move lasts is a clock that jumped: none)
+    const movingLeft=()=>{const ms=Number(container.dataset.chMoving||0)-Date.now();return ms>0&&ms<8000?ms:0;};
+    // The rooms' own place in the shell (.rd-roomhost, see-through to presses, in the column's grid area), made once with
+    // the page: a room put straight into the shell, or taken out of it, restyled the whole shell (its :has() rule), a
+    // quarter of a second at 4x CPU in the press.
+    function roomShell(make=true){
+      const shell=container.querySelector(':scope > .rd-shell');
+      if(!shell)return null;
+      let host=shell.querySelector(':scope > .rd-roomhost');
+      if(!host&&make){host=document.createElement('div');host.className='rd-roomhost';host.dataset.rdKeep='true';shell.append(host);}
+      return host;
+    }
+    const homeColumn=()=>container.querySelector(':scope > .rd-shell > .rd-workspace');
+    function roomContext(course,ctx=buildContext()){
+      return {
+        ...ctx,
+        state:{...state,courseId:String(course)},
+        workspace:'grades',
+        workPage:'',
+        gradeImpact,
+        gradeImpactRevision:currentSnapshot.fetchedAt,
+        user:currentSnapshot.user
+      };
+    }
+    function roomMarkup(kind,course,ctx=null){
+      if(kind==='review')return reviewDeck?.renderReviewDeck()||'';
+      if(kind==='impact'&&gradeImpact&&root.ReserveGradeImpact?.render)
+        return root.ReserveGradeImpact.render(
+          ctx||roomContext(course),
+          {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete},
+          gradeImpact)||
+          '';
+      return '';
+    }
+    // A room's section that is a spare or on its way out is no room to anything that looks for one (the deck's and Grade
+    // impact's own code, Biscuit, the keys): the deck's loses its name, Grade impact's is marked away, until it is shown.
+    function setAway(section,kind,away){
+      if(!section)return;
+      if(kind==='review'){
+        if(away&&section.hasAttribute('data-review-deck')){section.removeAttribute('data-review-deck');section.setAttribute('data-rv-away','');}
+        else if(!away&&section.hasAttribute('data-rv-away')){section.removeAttribute('data-rv-away');section.setAttribute('data-review-deck','');}
+      }
+      else if(away)section.setAttribute('data-gi-away','');else section.removeAttribute('data-gi-away');
+    }
+    const firstLeaving=shell=>shell.querySelector(':scope > .rd-roomlayer[data-state="leaving"], :scope > .rd-roomlayer[data-state="gone"]');
+    function makeLayer(kind,html=''){
+      const layer=document.createElement('div');layer.className='rd-roomlayer';layer.dataset.rdKeep='true';layer.dataset.room=kind;layer.dataset.state='spare';
+      layer.setAttribute('role','dialog');layer.setAttribute('aria-modal','true');layer.setAttribute('aria-label',ROOM_NAMES[kind]);layer.setAttribute('aria-hidden','true');
+      layer.innerHTML=html;setAway(layer.firstElementChild,kind,true);return layer;
+    }
+    // a drawing that goes in a share per frame (a slow frame halves the next share), unseen; finish() puts the rest in
+    function fillShares(svg){
+      const rest=[...(svg?.children||[])];if(rest.length<2||!root.requestAnimationFrame)return null;for(const n of rest)n.remove();
+      const size=n=>(n.getElementsByTagName?.('*').length||0)+1;let share=700,last=0,stop=false;
+      const step=t=>{
+        if(stop)return;
+        const gap=last?t-last:16;
+        last=t;
+        share=gap>34?Math.max(250,share/2):gap<20?Math.min(1400,share*1.25):share;
+        let spent=0;
+        while(rest.length&&(spent===0||spent+size(rest[0])<=share)){const n=rest.shift();spent+=size(n);svg.append(n);}
+        if(rest.length)root.requestAnimationFrame(step);else stop=true;
+      };
+      root.requestAnimationFrame(step);
+      return {finish(){stop=true;for(const n of rest.splice(0))svg.append(n);},cancel(){stop=true;rest.length=0;}};
+    }
+    // A layer made and put in place, out of sight. Grade impact's drawing is made for the room's size: the layer goes in
+    // first and is measured the way the room measures itself, so the room is not drawn again in the frame it is shown.
+    function newLayer(kind,course,shell){
+      const layer=makeLayer(kind,'');shell.insertBefore(layer,firstLeaving(shell));
+      if(kind==='impact')
+        try{
+          const top=layer.getBoundingClientRect().top,w=layer.clientWidth;
+          gradeImpact.presize?.(w,Math.round(Math.min(1100,Math.max(780,(root.innerHeight||900)-Math.max(0,top)-12))));
+        }catch{}
+      let html='';try{html=roomMarkup(kind,course);}catch{html='';}
+      const t=document.createElement('template');t.innerHTML=html;if(!t.content.firstElementChild){layer.remove();return null;}
+      setAway(t.content.firstElementChild,kind,true);layer.append(t.content);drawn.set(layer,html);return layer;
+    }
+    function dropSpare(kind){const s=spares.get(kind);if(!s)return;spares.delete(kind);root.clearTimeout(s.timer);s.fill?.cancel();s.layer.remove();}
+    function buildSpare(kind,course=''){
+      if(destroyed||!mounted||room||container.dataset.chRoom||(kind==='review'?!reviewDeck:!gradeImpact))return;course=String(course||'');
+      const old=spares.get(kind);
+      if(old&&old.course===course&&old.layer.isConnected){
+        root.clearTimeout(old.timer);
+        old.timer=root.setTimeout(()=>dropSpare(kind),30000);
+        if(kind==='review')reviewDeck?.prebuild?.(old.layer.firstElementChild);
+        return;
+      }
+      dropSpare(kind);const shell=roomShell(),column=homeColumn();if(!shell||!column)return;
+      const layer=newLayer(kind,course,shell),section=layer?.firstElementChild;if(!section)return;
+      const fill=kind==='impact'?fillShares(section.querySelector(':scope > svg')):null;
+      // the page under it becomes a layer of its own now, so hiding it and showing it again are compositor-only
+      column.style.setProperty('will-change','opacity');
+      spares.set(kind,{kind,course,layer,fill,timer:root.setTimeout(()=>dropSpare(kind),30000)});
+      if(kind==='review')reviewDeck?.prebuild?.(section);
+    }
+    // While a room is up the toolbar marks its tab (the Review deck's, Grades for Grade impact) and the course rail marks
+    // its course (Grade impact's), as they did when the room was a page: only those few attributes change, never
+    // data-workspace or the page's markup; when the room goes, the page's own marks come back.
+    function markRoom(){
+      const pageTab=workspace==='work'&&workPage==='assignments'?'assignments':workspace,
+        tabNow=room?(room.kind==='review'?'review':'grades'):pageTab,
+        courseNow=room?.kind==='impact'?room.course:state.courseId;
+      for(const tab of container.querySelector(':scope > .rd-toolbar')?.querySelectorAll('.rd-workspace-tabs .t-tab')||[]){
+        const on=tab.dataset.tab===tabNow;
+        if(tab.getAttribute('aria-selected')!==String(on))tab.setAttribute('aria-selected',String(on));
+        if(tab.tabIndex!==(on?0:-1))tab.tabIndex=on?0:-1;
+      }
+      const rail=container.querySelector(':scope > .rd-shell > .rd-course-rail');if(!rail)return;
+      for(const row of rail.querySelectorAll('.rd-rail-course[data-arrange-course]')){
+        const on=String(row.dataset.arrangeCourse===String(courseNow));
+        if(row.getAttribute('data-selected')!==on)row.setAttribute('data-selected',on);
+      }
+      const all=rail.querySelector('.rd-rail-all'),pressed=String(courseNow==='all');
+      if(all&&all.hasAttribute('aria-pressed')&&all.getAttribute('aria-pressed')!==pressed)all.setAttribute('aria-pressed',pressed);
+    }
+    // (at a room's open and fold the marks change a frame after the move's busiest frame: 13-41 ms of style at 4x CPU)
+    let markFrame=0;
+    function markLater(){
+      if(markFrame)return;
+      const go=()=>{markFrame=0;if(!destroyed)markRoom();};
+      if(root.requestAnimationFrame)markFrame=root.requestAnimationFrame(()=>root.setTimeout(go,0));else go();
+    }
+    function hideHome(){
+      const column=homeColumn();
+      if(!column||!room)return;
+      column.style.setProperty('opacity','0');
+      if(homeAria===null)homeAria=column.getAttribute('aria-hidden')||'';
+      if(column.getAttribute('aria-hidden')!=='true')column.setAttribute('aria-hidden','true');
+    }
+    function showHome(){
+      const column=homeColumn();
+      if(!column)return;
+      column.style.removeProperty('opacity');
+      if(homeAria!==null){if(homeAria)column.setAttribute('aria-hidden',homeAria);else column.removeAttribute('aria-hidden');homeAria=null;}
+    }
+    // Shown: a room grown from its module (the sheet covers the column) hides the page at once; one opened by a tab or a
+    // link fades in over the page, which is hidden once it is covered.
+    function openRoom(kind,course='',{fade=false}={}){
+      if(destroyed)return false;course=String(course||'');
+      if(room){if(room.kind===kind&&room.course===course)return true;dropRoom();}
+      const shell=roomShell(),column=homeColumn();if(!shell||!column)return false;
+      for(const k of [...spares.keys()])if(k!==kind||spares.get(k).course!==course||!spares.get(k).layer.isConnected)dropSpare(k);
+      const spare=spares.get(kind);let layer;
+      if(spare){spares.delete(kind);root.clearTimeout(spare.timer);spare.fill?.finish();layer=spare.layer;}
+      else{layer=newLayer(kind,course,shell);if(!layer)return false;}
+      room={kind,course,layer};column.style.setProperty('will-change','opacity');
+      // (with the courses across the top the page itself scrolls: the room stands where the window is)
+      if(container.dataset.courseNavigation==='topbar'){
+        const r=shell.getBoundingClientRect(),top=Math.max(0,-r.top);
+        layer.style.top=top+'px';
+        layer.style.bottom='auto';
+        layer.style.height=`calc(100dvh - ${Math.round(Math.max(0,r.top))}px)`;
+      }
+      setAway(layer.firstElementChild,kind,false);layer.dataset.state='open';layer.removeAttribute('aria-hidden');
+      renderRoomNow(true);markLater();
+      const lvl=container.dataset.featureMotion==='off'?'off':container.dataset.motionStyle||'gentle',r=room;
+      if(fade&&lvl!=='off'&&layer.animate&&!root.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches){
+        const a=layer.animate([{opacity:0},{opacity:1}],{duration:200,easing:'ease-out'});
+        a.finished.then(()=>{if(room===r)hideHome();},()=>{});
+      }
+      else hideHome();
+      return true;
+    }
+    // the room alone is redrawn (the dashboard's own renders wait while it is up)
+    function scheduleRoomRender(){if(roomFrame||destroyed)return;roomFrame=beforePaint(()=>{roomFrame=0;renderRoomNow();});}
+    function renderRoomNow(shown=false){
+      if(roomFrame){cancelPaint(roomFrame);roomFrame=0;}
+      if(destroyed||!room)return;const r=room;let html='',ctx=null;
+      try{if(r.kind==='impact')ctx=roomContext(r.course);html=roomMarkup(r.kind,r.course,ctx);}catch{html='';}
+      // a room that can no longer be drawn (its feature turned off, a course Grade impact cannot weigh) gives way to its page
+      if(!html){
+        dropRoom();
+        if(r.kind==='impact'&&workspaceEnabled('grades')){savedWorkspace=null;captureCourseView();workspace='grades';switchCourse(r.course,{rememberCurrent:false});}
+        render();
+        return;
+      }
+      // (a room drawn ahead of time that is still what it would be drawn as now is only shown)
+      // (the room's own redraws in place, later, make what was drawn ahead of time no guide)
+      const ahead=drawn.get(r.layer);drawn.delete(r.layer);if(shown&&ahead===html){if(r.kind==='impact')gradeImpact?.ensure(ctx);return;}
+      const t=document.createElement('template');t.innerHTML=html;const next=t.content.firstElementChild,section=r.layer.firstElementChild;
+      if(section&&next&&section.nodeName===next.nodeName&&section.getAttribute('data-rd-key')===next.getAttribute('data-rd-key'))patchUI(section,next);else r.layer.replaceChildren(t.content);
+      if(r.kind==='impact')gradeImpact?.ensure(ctx);
+    }
+    // The room's own way out: it folds into its module (the deck's and Grade impact's code play the fold) while the page
+    // under it is back at once; the module takes in what changed in the room.
+    function foldRoom(){
+      if(!room)return false;const r=room;room=null;if(roomFrame){cancelPaint(roomFrame);roomFrame=0;}
+      r.layer.dataset.state='leaving';r.layer.setAttribute('aria-hidden','true');setAway(r.layer.firstElementChild,r.kind,true);leavingRooms.add(r);
+      showHome();markLater();
+      // (a module that could not be redrawn alone waits for the page's catch-up)
+      try{if(r.kind==='review'){if(reviewDeck?.redrawModule?.()===false)roomStale=true;}else gradeImpact?.redraw?.();}catch{roomStale=true;}
+      const left=movingLeft;
+      const behind=()=>{if(destroyed)return;const ms=left();if(ms>0){root.setTimeout(behind,ms+20);return;}r.layer.dataset.state='gone';
+        const gone=()=>{r.layer.remove();leavingRooms.delete(r);catchUp();};
+        if(typeof root.requestIdleCallback==='function')root.requestIdleCallback(gone,{timeout:1500});else root.setTimeout(gone,300);};
+      root.setTimeout(behind,Math.max(480,left()));
+      return true;
+    }
+    // Any other way out (another page, a course, a tab): the room is gone at once.
+    function dropRoom(){
+      for(const k of [...spares.keys()])dropSpare(k);
+      if(!room)return false;const r=room;room=null;if(roomFrame){cancelPaint(roomFrame);roomFrame=0;}
+      r.layer.remove();showHome();markRoom();catchUp();return true;
+    }
+    // what the page missed while a room was up, drawn once the room has folded away and the browser is idle
+    function catchUp(){
+      if(!roomStale||destroyed||room)return;
+      const later=()=>{
+        if(destroyed||room||!roomStale)return;
+        const until=movingLeft();
+        if(until>0||leavingRooms.size){
+          root.setTimeout(()=>{if(typeof root.requestIdleCallback==='function')root.requestIdleCallback(later,{timeout:1500});else later();},Math.max(until,0)+60);
+          return;
+        }
+        roomStale=false;
+        scheduleRender();
+      };
+      if(typeof root.requestIdleCallback==='function')root.requestIdleCallback(later,{timeout:1500});else root.setTimeout(later,600);
+    }
+    function holdForRooms(){
+      consumeSources();roomStale=true;
+      // the look the room follows (Motion, light or dark) still comes through at once
+      try{
+        const s=settings();
+        container.dataset.theme=effectiveTheme(s);
+        container.dataset.motionStyle=MOTION_STYLES.includes(s.motion)?s.motion:'gentle';
+        container.dataset.featureMotion=enabled('motion')?'on':'off';
+        container.dataset.livingArt=s.livingArt==='off'?'off':'on';
+      }catch{}
+      scheduleRoomRender();
+    }
+    // A change in a room is drawn in the room; one that lands while a room folds away waits for the page's catch-up.
+    function roomChanged(kind){if(room?.kind===kind){scheduleRoomRender();return;}if(leavingRooms.size){roomStale=true;catchUp();return;}scheduleRender();}
+    // the room keeps Tab inside itself
+    function roomTab(event){
+      if(event.key!=='Tab'||!room||event.defaultPrevented||container.dataset.chRoom)return false;const target=event.composedPath?.()[0]||event.target;
+      const list=[...room.layer.querySelectorAll('button,a[href],input,select,textarea,summary,[tabindex]')].filter(n=>
+        n.tabIndex>=0&&!n.disabled&&!n.hidden&&!n.closest('[hidden],[inert],[aria-hidden="true"]:not(.rd-roomlayer)')&&n.getClientRects().length);
+      if(!list.length)return false;const first=list[0],end=list[list.length-1],inside=room.layer.contains(target)&&list.includes(target);
+      if(inside&&!(event.shiftKey?target===first:target===end))return false;
+      event.preventDefault();(event.shiftKey?end:first).focus({preventScroll:true});return true;
+    }
+    // A press on a room that is folding away lands on what is under it (the room let presses through without a rule on
+    // each of its drawn shapes: pointer-events on the room restyled all of them in the fold's first frame).
+    function throughRoom(event){
+      const t=event.composedPath?.()[0]||event.target,layer=t?.closest?.('.rd-roomlayer');if(!layer||layer.dataset.state==='open'||!container.contains(layer))return;
+      event.stopImmediatePropagation();if(event.cancelable)event.preventDefault();if(event.type!=='click')return;
+      const under=(container.getRootNode?.()?.elementsFromPoint?.(event.clientX,event.clientY)||[]).find(n=>container.contains(n)&&!n.closest?.('.rd-roomlayer:not([data-state="open"])'));
+      const node=under?.closest?.('button,a[href],summary,[data-rd-action],[data-gi-action],[data-gi-band]')||under;if(!node)return;node.focus?.({preventScroll:true});node.click?.();
+    }
+    // A pointer resting on a way into a room, or the keyboard reaching one, builds the room ahead of time; focus never goes
+    // into a room that is not up (the keyboard passes over it).
+    function roomWayIn(event){
+      if(destroyed)return;const t=event.composedPath?.()[0]||event.target;if(!container.contains(t))return;
+      const layer=t?.closest?.('.rd-roomlayer');
+      if(layer){
+        if(event.type==='focusin'&&layer.dataset.state!=='open'){
+          const back=event.relatedTarget&&container.contains(event.relatedTarget)&&!event.relatedTarget.closest?.('.rd-roomlayer')?event.relatedTarget:null;
+          if(back)back.focus({preventScroll:true});else t.blur?.();
+        }
+        return;
+      }
+      // (not while a move plays: focus put back on the opener by a fold is no student reaching for the room)
+      if(room||movingLeft()>0)return;const way=t?.closest?.('[data-rv-grow],[data-rd-action="review-deck-open"],.rd-workspace-tab[data-tab="review"],[data-gi-open]');if(!way)return;
+      if(way.hasAttribute('data-gi-open'))spareLater('impact',way.getAttribute('data-gi-open'));else spareLater('review');
+    }
+    // (built when the browser is idle, never in the pointer's own event: a press that comes first builds the room itself)
+    let spareWait=0,spareAsk=null;
+    function spareLater(kind,course=''){
+      spareAsk={kind,course:String(course||'')};const old=spares.get(kind);if(old&&old.course===spareAsk.course&&old.layer.isConnected){buildSpare(kind,course);return;}
+      // (never while a move plays: a room growing is built when it lands, and a spare made in the middle of the grow was
+      // that move's longest frame)
+      if(spareWait)return;const go=()=>{spareWait=0;const ask=spareAsk;spareAsk=null;if(ask&&!destroyed&&!room&&!movingLeft())buildSpare(ask.kind,ask.course);};
+      spareWait=typeof root.requestIdleCallback==='function'?root.requestIdleCallback(go,{timeout:400}):root.setTimeout(go,60);
+    }
     function render(options={}){
       if(destroyed)return;if(rendering){scheduleRender(options);return;}
+      if(mounted&&container.dataset.chRoom==='open'&&typeof root.MutationObserver==='function'&&container.querySelector(':scope > .fr-room')){holdForRoom(options);return;}
+      // While a room is up, renders asked for by data or timers wait (the room alone is redrawn) and so does everything
+      // during a room's move; a press on the page around the room (the toolbar: Make it yours, Show grades) still draws
+      // the page, which then stays hidden under the room, and the room after it.
+      if(mounted&&room&&(sourcing||movingLeft()>0)){holdForRooms();return;}
       consumeSources();const next={...pendingRender,...options};pendingRender=null;rendering=true;
       // The clock is read before buildContext reads its own, so a moment that passes during the render is drawn
       // again on the next minute tick, never skipped (updateFreshness). A render that throws leaves no time on record.
@@ -386,6 +729,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // The page's answer to an input is drawn: drawings held for it go on once it has painted (motion.js busy).
       motion?.answered?.();
       if(!mounted){mounted=true;onReady();}
+      // (the page's patch takes the hiding off the column: it goes back on at once, and the room follows the page)
+      if(room){homeColumn()?.style.setProperty('will-change','opacity');hideHome();markRoom();renderRoomNow();}
+      // a link to the Review deck opens its room over Home once Home is drawn
+      if(bootRoom&&!destroyed){const kind=bootRoom;bootRoom=null;openRoom(kind,'',{fade:true});}
     }
     let focusTimer=0,focusSettling=false,focusDoneUntil=0;// syncFocus
     const stateKey=store.owner?`reserve:dashboard:${store.owner.origin}:${store.owner.accountId}`:'';
@@ -416,6 +763,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const readerLayout=typeof root.ResizeObserver==='function'?new root.ResizeObserver(()=>{if(restoreReaderScroll())remember();}):null;
     const explicitWorkspace=initialState?.workspace||savedState?.workspace;
     let workspace=resolveWorkspace(explicitWorkspace==='assignments'?'work':explicitWorkspace),workPage=explicitWorkspace==='assignments'?'assignments':'home';
+    // the Review deck is a room over Home, never a page of its own: a link to it opens Home with the room over it
+    if(workspace==='review'){bootRoom='review';workspace='work';workPage='home';}
     let savedWorkspace=['plan','materials','hub','inbox','grades','review'].includes(explicitWorkspace)&&workspace!==explicitWorkspace?explicitWorkspace:null;
     let deckCourseRequested='';
     const headingCache={};
@@ -434,14 +783,25 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         container,
         store,
         getContext:()=>({...buildContext(),user:currentSnapshot.user,origin:currentSnapshot.origin}),
-        onChange:sourceChange,
+        onChange:()=>roomChanged('review'),
         isEnabled:()=>root.ReserveFeatures?.enabled('review-deck')===true,
-        isSelected:()=>workspace==='review',
-        onAuthError
+        isSelected:()=>room?.kind==='review',
+        onAuthError,
+        onRoom:tab=>tab==='review'&&openRoom('review','',{fade:!container.querySelector('.rv-fly .rv-flysheet')}),
+        onGrow:()=>buildSpare('review')
       }):
       null;
     const gradeImpact=root.ReserveFeatures?.enabled('grade-impact')===true?
-      root.ReserveGradeImpact?.create({client:resourceClient,user:currentSnapshot.user,onChange:sourceChange,onAuthError}):
+      root.ReserveGradeImpact?.create({
+        client:resourceClient,
+        user:currentSnapshot.user,
+        container,
+        navigate:request=>gradeImpactNavigate(request),
+        onChange:()=>roomChanged('impact'),
+        onAuthError,
+        store,
+        saved:()=>personal.gradeImpact
+      }):
       null;
     const materials=enabled('materials')?
       root.ReserveMaterialsUI?.create({
@@ -521,7 +881,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const c=buildContext();
       return {
         ...c,
-        pageKind:readerOpen?'assignment':state.courseId!=='all'?'course':'dashboard',
+        pageKind:room?room.kind==='impact'?'course':'dashboard':readerOpen?'assignment':state.courseId!=='all'?'course':'dashboard',
         unreadAnnouncements:c.courses.reduce((n,course)=>n+(hub?.getCourse(course.id)?.announcements||[]).filter(x=>x.unread).length,0)
       };
     },
@@ -548,19 +908,21 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         return true;
       }}):null;
     // The Planner is a workspace of its own; older entry points that asked for the week land there.
-    function goWorkspace(tab){
-      if(!workspaceEnabled(tab))return;
-      savedWorkspace=null;
-      if(destroyed||workspace===tab&&(tab!=='work'||workPage==='home'))return;
-      captureCourseView();
-      workspace=tab;
-      if(tab==='work')workPage='home';
-      render({motionTarget:'.rd-workspace'});
-      container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});
-    }
     function selectWorkspace(action,button,event={},snapshot){
         const tabMotion=event.detail>0;
         const nextWorkspace=action==='open-materials'?'materials':action==='open-hub'?'hub':['plan','materials','hub','inbox','grades','review'].includes(button.dataset.tab)?button.dataset.tab:'work';
+        // The Review deck is a room over the page: its tab (or the module's way in) shows it, the room's own way out folds
+        // it away, and another page closes it first.
+        // (the tab: the room grows out of it on a sheet, and the sheet stays over the room until its drawing is in)
+        if(nextWorkspace==='review'){
+          if(room?.kind!=='review'){
+            const hook=!!button?.dataset?.rvGo;
+            if(!hook&&!room&&reviewDeck?.growFromTab?.())return;
+            if(openRoom('review','',{fade:!hook||!container.querySelector('.rv-fly .rv-flysheet')})&&!hook)reviewDeck?.shown?.();
+          }
+          return;
+        }
+        if(room){if(button?.dataset?.rvGo&&room.kind==='review'){foldRoom();return;}dropRoom();}
         const nextPage=action==='workspace'&&nextWorkspace==='work'?(button.dataset.tab==='assignments'?'assignments':'home'):workPage;
         if(action==='workspace'&&workspace===nextWorkspace&&workPage===nextPage)return;
         const order=['home','work','assignments','plan','hub','materials','inbox','grades','review'],
@@ -583,6 +945,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     function selectDashboardCourse(id,event={},snapshot){
         // The snapshot only reads, so an early return needs no undo.
+        if(room)dropRoom();
         if(!switchCourse(id))return;
         if(state.courseId==='all'&&!['home','grades','inbox','review'].includes(workspace))workspace='work';
         if(workspace==='inbox')hub?.setCourse?.(state.courseId);
@@ -592,6 +955,20 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const heading=container.querySelector('.rd-workspace-heading, .rd-page-heading, .rd-materials-header');
         if(heading&&above(heading.getBoundingClientRect()))heading.scrollIntoView({block:'start',behavior:'instant'});
         if(workspace==='materials')materials?.load(state.courseId);if(workspace==='hub')hub?.loadCourse(state.courseId);return;
+    }
+    // Grade impact grows a Home module or a Grades strip into the weighing room (one course opened on Grades) and folds
+    // it back. No tab motion: the room plays its own, and places focus itself (Fold on opening, the opener on folding).
+    function gradeImpactNavigate({to,courseId}={}){
+      const id=String(courseId??'all');if(!['room','grades','home'].includes(to)||to==='room'&&!/^\d+$/.test(id))return false;
+      if(to!=='home'&&!workspaceEnabled('grades'))return false;
+      // the room is a layer over the page it grew from (Home's module, a course's strip on Grades); its way back folds it
+      // away over that page (a course opened on Grades itself, from the rail or a link, is still that page)
+      if(to==='room'&&mounted&&openRoom('impact',id))return true;
+      if(to!=='room'&&room?.kind==='impact')return foldRoom();
+      if(room)dropRoom();
+      savedWorkspace=null;captureCourseView();workspace=to==='home'?'work':'grades';if(to==='home')workPage='home';
+      if(state.courseId!==id&&!switchCourse(id,{rememberCurrent:false}))return false;
+      materials?.activate(state.courseId);render({motionTarget:'.rd-workspace',resetWorkspaceScroll:true,preserveFocus:false});return true;
     }
     function bookmarkItem(id,on){
       id=String(id);if(!buildContext().items.some(item=>String(item.id)===id))return false;
@@ -639,6 +1016,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     function goWorkspace(tab){
       if(!workspaceEnabled(tab))return;
+      if(tab==='review'){if(room?.kind!=='review'&&openRoom('review','',{fade:true}))reviewDeck?.shown?.();return;}
+      if(room)dropRoom();
       savedWorkspace=null;
       if(destroyed||workspace===tab&&(tab!=='work'||workPage==='home'))return;
       captureCourseView();
@@ -648,7 +1027,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});
     }
     const toolbox=enabled('tools')?root.ReserveToolbox?.create({container,store,materials,aiConfig:{client:resourceClient,user:snapshot.user,demo},getContext:()=>{
-      const ctx=buildContext();return {...ctx,courseId:state.courseId,aiAssignmentId:workspace==='work'&&readerOpen?selectedId:null,aiSelectedIds:[...selectionIds],
+      const ctx=buildContext();return {...ctx,courseId:hereCourse(),aiAssignmentId:!room&&workspace==='work'&&readerOpen?selectedId:null,aiSelectedIds:[...selectionIds],
         aiResources:ctx.courses.map(c=>materials?.getCourse(c.id)?.raw).filter(Boolean),
         aiUpdates:ctx.courses.map(c=>({courseId:c.id,announcements:hub?.getCourse(c.id)?.announcements||[]}))};
     },
@@ -791,7 +1170,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const normalized=(currentSnapshot.courses||[]).map((raw,index)=>
         ({...C.normalizeCourse(raw),defaultView:raw.default_view||raw.defaultView||'',_index:index})).filter(course=>
         /^\d+$/.test(course.id));
-      // Hidden by hand, or not a class (NameCoach, College Counseling) and never shown by hand (ReserveCore.hiddenCourseIds).
+      // Hidden by hand, or not a class (name tools, counseling groups) and never shown by hand (ReserveCore.hiddenCourseIds).
       const hidden=C.hiddenCourseIds(normalized,s);
       normalized.sort((a,b)=>{
         const ai=order.indexOf(a.id),bi=order.indexOf(b.id);
@@ -1136,7 +1515,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       captureCourseView();
       return {
         ...courseMemory.recall(state.courseId),
-        workspace:preserveDisabled&&savedWorkspace?savedWorkspace:workspace==='work'&&workPage==='assignments'?'assignments':workspace,
+        ...(room?.kind==='impact'?{courseId:room.course}:{}),
+        workspace:preserveDisabled&&savedWorkspace?savedWorkspace:room?here():workspace==='work'&&workPage==='assignments'?'assignments':workspace,
         overviewVersion:1,
         courseViews:courseMemory.serialize(),
         gradeVisibilityOverride:gradeVisibilityOverride===false?false:undefined
@@ -1156,6 +1536,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         workPage:workspace==='work'?workPage:'',
         gradeImpact,
         gradeImpactRevision:currentSnapshot.fetchedAt,
+        reviewDeck,
         reviewDeckHTML:!panel&&workspace==='review'?reviewDeck?.renderReviewDeck()||'':'',
         gradeQuery,
         gradeLimit,
@@ -1225,8 +1606,23 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       for(const el of inner.querySelectorAll?.('details[data-rd-section]')||[])if(sections.has(el.dataset.rdSection))setProp(el,'open',sections.get(el.dataset.rdSection));
       return true;
     }
+    // A page swap (a room growing out of its module or folding back into it, Home and Assignments, a tab's page): the
+    // control that started it (Fold, the module's opener) has focus and sits on the page that goes. Removed with focus
+    // inside it, after the new page had gone in, the old page made the browser restyle the whole new page right there
+    // to move focus (Chrome's focus fix-up): 0.4-0.6 s of the fold's long frame at 4x CPU, against 33 ms for the removal
+    // itself. Focus is let go first, while the page is still as it was drawn; the swap's own focus code then places it
+    // (the opener, Fold, the tab). Every other render leaves focus where it is.
+    const pageOf=()=>workspace+'|'+(workspace==='work'?workPage:'')+'|'+(workspace==='grades'?state.courseId:'');
+    function releasePageFocus(){
+      const page=pageOf(),was=shownPage;shownPage=page;if(!mounted||!was||was===page)return false;
+      const column=container.querySelector('.rd-shell > .rd-workspace'),active=container.getRootNode?.()?.activeElement;
+      if(active&&active!==column&&column?.contains?.(active)&&!active.closest?.('.rd-workspace-heading'))active.blur?.();
+      return true;
+    }
     function renderNow({preserveFocus=true,tabMotion=false,motionTarget='',motionKind='workspace',direction=1,snapshot=null,resetWorkspaceScroll=false}={}){
       if(destroyed)return;
+      // whether a room's move is playing, read once as the render starts (a long render must not outlast its own answer)
+      const moving=Number(container.dataset.chMoving||0)>Date.now();
       const oldReader=container.querySelector('.rd-reader-content'),previousCourse=container.dataset.courseId;
       const readerScroll=oldReader?.getClientRects().length?oldReader.scrollTop:courseMemory.recall(previousCourse).readerScroll;
       const oldMaterialPage=container.querySelector('.rd-material-page');
@@ -1311,6 +1707,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
          {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete},
          {headingCache,reuseHeading:container.querySelector('.rd-workspace-heading')?.getAttribute('data-rd-key')===`heading-${headingCache.revision}`});
       const toolbar=container.querySelector('.rd-toolbar'),appearance=container.querySelector('.rd-appearance');
+      // A swapped page starts at its top: the column's scroll is reset while the old page is still laid out. Read after
+      // the swap, the offset laid the whole new page out inside the render, before the room's own measuring did it again.
+      const swapped=releasePageFocus();let scrollReset=false;
+      if(swapped&&resetWorkspaceScroll){const column=container.querySelector('.rd-shell > .rd-workspace');if(column?.scrollTop)column.scrollTop=0;scrollReset=true;}
       if(toolbar){
         // Keep the actual transitioning nodes connected through data renders.
         const template=document.createElement('template');template.innerHTML=markup;
@@ -1401,6 +1801,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         container.append(template.content);
       }else container.innerHTML=markup;
       setData('courseId',state.courseId);setData('workspace',workspace);setData('workPage',workspace==='work'?workPage:'');
+      if(enabled('review-deck')&&reviewDeck||gradeImpact)roomShell();
       if(scene){root.ReserveSceneThemes.apply(container.getRootNode?.()||target,container,scene,{motionStyle:container.dataset.motionStyle});sceneActive=true;}
       else if(sceneActive){root.ReserveSceneThemes?.remove(container);sceneActive=false;}
       if(dataTheme)root.ReserveDataTheme?.apply(container.getRootNode?.()||target,container,dataTheme,{theme:ctx.theme,motionStyle:container.dataset.motionStyle});
@@ -1418,10 +1819,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       courseDock.sync();
       arrange?.sync();
       board?.sync();
-      gradeImpact?.ensure({...ctx,workspace,state,user:currentSnapshot.user,gradeImpactRevision:currentSnapshot.fetchedAt});
+      gradeImpact?.ensure({...ctx,workspace,workPage:workspace==='work'?workPage:'',state,user:currentSnapshot.user,gradeImpactRevision:currentSnapshot.fetchedAt});
       // Preserve the column node; a newly chosen tab still starts at its top.
       // Reset before motion reads visibility, including when the old body was scrolled.
-      if(resetWorkspaceScroll){const column=container.querySelector('.rd-shell > .rd-workspace');if(column?.scrollTop)column.scrollTop=0;}
+      if(resetWorkspaceScroll&&!scrollReset){const column=container.querySelector('.rd-shell > .rd-workspace');if(column?.scrollTop)column.scrollTop=0;}
       // Arrange has now installed the final layout. Measure its layout before motion paints a drag spring
       // and before the next timer/frame, so course rows cannot linger at a compressed intermediate size.
       const signature=JSON.stringify([
@@ -1442,7 +1843,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       watchRail();sheetCover();measureRail(0,false);
       updateStatus();toolbox?.update();syncFocus();
       if(railSelectionFrame){cancelPaint(railSelectionFrame);railSelectionFrame=0;}
-      motion?.syncTabs(tabMotion,false,snapshot);
+      // the tab bar's pill (it measures every surface) waits while a room's move plays (data-ch-moving): in the render that
+      // swaps a room's page for Home it was a quarter of a second at 4x CPU in the middle of the fold. The swap itself
+      // (a room growing out of its module or folding back: motionTarget set, no tab motion) waits too: its offsets were
+      // read over the whole new page in the fold's long frame.
+      if(!tabMotion&&moving)syncTabsLater();else motion?.syncTabs(tabMotion,false,snapshot);
       if(motionTarget)motion?.reveal(container.querySelector(motionTarget),{animate:tabMotion&&container.dataset.input==='pointer',kind:motionKind,direction,snapshot});
       for(const draft of drafts.values()){const field=container.querySelector(`[data-rd-field="${draft.field}"][data-id="${draft.id}"]`);if(field)field.value=draft.value;}
       for(const [id,value] of stepDrafts){const field=container.querySelector(`[data-rd-field="new-step"][data-id="${id}"]`);if(field)field.value=value;}
@@ -1510,6 +1915,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
             behavior:container.dataset.input==='pointer'&&container.dataset.motionStyle==='gentle'&&!root.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'smooth':'instant'
           });
         if(list?.type==='more')materialFocus.scrollIntoView({block:'nearest',behavior:'instant'});}
+      // A render made while a room's move plays (the page swap of a room growing or folding) counts the move from its
+      // own end: on a slow machine the swap alone outlasted the room's stamp, and the frame that drew it then measured
+      // the tabs, the surfaces and the art film it was meant to leave for later.
+      if(moving&&swapped){const t=Date.now()+400;if(!(Number(container.dataset.chMoving)>=t))container.dataset.chMoving=String(t);}
     }
 
     function updateStatus(){
@@ -1557,10 +1966,24 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(timeBoundary===null)timeBoundary=timeBoundaryAfter(renderedAt);
       return now<timeBoundary;
     }
+    // A whole render once a minute never lands in a move or in a room: while a move plays (data-ch-moving), a room is up
+    // (the Focus room, the Review deck's or Grade impact's page) it waits, and then it runs when the browser is idle.
+    let freshWait=0;
     function updateFreshness(){
-      if(destroyed||document.visibilityState==='hidden'||!container.getClientRects?.().length)return;
       // Calendar boundaries and countdowns advance while the page stays open.
+      if(destroyed||document.visibilityState==='hidden'||!container.getClientRects?.().length||freshWait)return;
       if(timeSettled()){updateStatus();return;}
+      const busy=()=>Number(container.dataset.chMoving||0)>Date.now()||!!container.dataset.chRoom||!!room||!!container.querySelector('.gi-room:not([data-gi-away]), [data-review-deck]');
+      if(busy()||typeof root.requestIdleCallback==='function'){
+        const go=()=>{
+          freshWait=0;
+          if(destroyed||document.visibilityState==='hidden')return;
+          if(Number(container.dataset.chMoving||0)>Date.now()||container.dataset.chRoom){freshWait=root.setTimeout(()=>{freshWait=0;updateFreshness();},2000);return;}
+          if(room){holdForRooms();return;}
+          render();
+        };
+        freshWait=typeof root.requestIdleCallback==='function'?root.requestIdleCallback(go,{timeout:5000}):root.setTimeout(go,1000);return;
+      }
       render();
     }
 
@@ -2028,7 +2451,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }
       // Busy controls use aria-disabled so they keep keyboard focus while loading.
       if(!button||button.disabled||button.getAttribute?.('aria-disabled')==='true')return;
-      const action=button.dataset.rdAction,snapshot=MOTION_ACTIONS.has(action)?take():null;
+      // (the Review tab opens a room over the page: no page motion, so no snapshot of the page to read)
+      const action=button.dataset.rdAction,snapshot=MOTION_ACTIONS.has(action)&&!room&&!(action==='workspace'&&button.dataset.tab==='review')?take():null;
+      // a way to another page from outside a room closes the room first
+      if(room&&!room.layer.contains(button)&&['open-materials','open-hub','overview-all','grades','preview','course-section','native'].includes(action))dropRoom();
       if(arrange?.action(button))return;
       if(action==='deadline-changes'){deadlineChanges?.open(button);return;}
       if(action==='drawer'){setDrawer(!button.dataset.close&&container.dataset.drawer!=='open');return;}
@@ -2106,7 +2532,19 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(action==='advanced-settings'){openPlanner({page:'settings'});return;}
       if(action==='grades'){workspace='grades';render({tabMotion:event.detail>0,motionTarget:'.rd-workspace',snapshot});return;}
       if(action==='more-grades'){gradeLimit+=40;render();return;}
-      if(action==='course'){selectDashboardCourse(button.dataset.id,event,snapshot);return;}
+      if(action==='course'){
+        if(room?.kind==='impact'&&room.layer.contains(button)){
+          dropRoom();
+          savedWorkspace=null;
+          captureCourseView();
+          workspace='grades';
+          switchCourse(String(button.dataset.id||'all'));
+          render({motionTarget:'.rd-workspace',resetWorkspaceScroll:true});
+          return;
+        }
+        selectDashboardCourse(button.dataset.id,event,snapshot);
+        return;
+      }
       if(action==='reader-tab'){
         const next=button.dataset.tab==='plan'?'plan':'details';
         if(readerTab===next)return;
@@ -2453,14 +2891,60 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       catch(error){transientStatus=`Could not save: ${error?.message||'Please try again.'}`;render();return false;}
     }
 
+    let tabsWait=0;
+    function syncTabsLater(){
+      if(tabsWait)return;const idle=fn=>typeof root.requestIdleCallback==='function'?root.requestIdleCallback(fn,{timeout:800}):root.setTimeout(fn,200);
+      const go=()=>{
+        if(destroyed){tabsWait=0;return;}
+        const until=Number(container.dataset.chMoving||0)-Date.now();
+        if(until>0){tabsWait=root.setTimeout(()=>{tabsWait=idle(go);},until+30);return;}
+        tabsWait=0;
+        motion?.syncTabs(false);
+      };
+      tabsWait=idle(go);
+    }
+    // Keyboard use marked a moment later: once any move on screen (data-ch-moving) has landed and the browser is idle.
+    // A pointer press in between keeps the pointer look (onPointerdown sets it; the waiting mark then does nothing).
+    let keyboardWait=0;
+    function keyboardLater(){
+      if(keyboardWait||container.dataset.input==='keyboard')return;const asked=container.dataset.input||'';
+      const idle=fn=>typeof root.requestIdleCallback==='function'?root.requestIdleCallback(fn,{timeout:1500}):root.setTimeout(fn,400);
+      const go=()=>{
+        if(destroyed){keyboardWait=0;return;}
+        const until=Math.max(container.dataset.chRoom?400:0,Number(container.dataset.chMoving||0)-Date.now());
+        if(until>0){keyboardWait=root.setTimeout(()=>{keyboardWait=idle(go);},until+40);return;}
+       keyboardWait=0;
+       if((container.dataset.input||'')!==asked||container.dataset.input==='keyboard')return;
+       container.dataset.input='keyboard';
+       motion?.cancel({preserveArt:true});
+       motion?.syncTabs(false,true);
+      };
+      keyboardWait=idle(go);
+    }
     function onKeydown(event){
       if(destroyed||!container.getClientRects?.().length)return;
+      pointerTurn++;
+      if(roomTab(event))return;
+      // The Focus room covers everything while it is open (data-ch-room): its keys are its own, and nothing under it
+      // (the Review deck's Space and 1/2/3, its Escape) may hear them, even when a click on the scene left focus on the body.
+      // Escape alone, the key that closes a room, never marks keyboard use: marking it restyles every element on the page
+      // (.rd[data-input=keyboard] *), some 0.17 s on its own even once the fold has landed (0.67 s at 4x CPU). Tab and the
+      // other keys still mark it, a moment later.
+      if(container.dataset.chRoom){if(event.key==='Tab')tabAt=Date.now();if(event.key!=='Escape')keyboardLater();board?.keydown(event);return;}
       if(!container.dataset.chLinksPending&&enabled('course-files')&&hub?.keydown?.(event))return;
       motion?.activity?.();motion?.busy?.();if(event.key==='Tab')tabAt=Date.now();
-      const enteringKeyboard=container.dataset.input!=='keyboard';container.dataset.input='keyboard';if(enteringKeyboard){motion?.cancel({preserveArt:true});motion?.syncTabs(false,true);}
+      // The first key after the mouse marks keyboard use and restyles the tabs (some five thousand elements). While a
+      // full-page room (Grade impact, the Review deck) is up, its own key (Escape folds it) goes first and the restyle waits
+      // until the browser is idle after the move.
+      // A room still growing counts as up (Escape then takes its sheet back into the module), and Escape, the rooms' own
+      // key, never marks keyboard use at all (as with the Focus room above).
+      if(container.dataset.input!=='keyboard'){
+        if(room||container.querySelector('.gi-room:not([data-gi-away]), [data-review-deck]')||Number(container.dataset.chMoving||0)>Date.now()){if(event.key!=='Escape')keyboardLater();}
+        else{container.dataset.input='keyboard';motion?.cancel({preserveArt:true});motion?.syncTabs(false,true);}
+      }
       if(arrange?.keydown(event))return;
-      if(board?.keydown(event))return;
       if(reviewDeck?.keydown(event))return;
+      if(board?.keydown(event))return;
       if(courseDock.keydown(event))return;
       if(settingsDock?.handleKeydown(event))return;
       // Esc closes the phone drawer, then the phone reader sheet (focus returns to its row).
@@ -2492,7 +2976,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }else if(event.key==='Escape'&&target?.dataset?.rdField==='query'&&state.query){event.preventDefault();state.query='';visibleLimit=60;render();}
     }
 
-    const unsubscribe=typeof store.subscribe==='function'?store.subscribe(data=>{personal=data||store.get()||{};normalizedCache=null;render();}):()=>{};
+    // A grade the reading room draws itself (it saves, then brings its own page up to date) needs no whole-page render.
+    const unsubscribe=typeof store.subscribe==='function'?store.subscribe(data=>{
+      personal=data||store.get()||{};
+      normalizedCache=null;
+      const quietDeck=reviewDeck?.takeQuietSave?.(),quietImpact=gradeImpact?.takeQuietSave?.();
+      if(quietDeck||quietImpact)return;
+      scheduleRender();
+    }):()=>{};
     container.addEventListener('dragover',onPackDragover);
     container.addEventListener('dragleave',onPackDragleave);
     container.addEventListener('drop',onPackDrop);
@@ -2501,11 +2992,36 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     container.addEventListener('change',onChange);
     container.addEventListener('focusout',onFocusout);container.addEventListener('focusin',onHeaderFocusin);
     container.addEventListener('click',onClick);
+    // The rooms' own listeners sit on the dashboard's shadow root, ahead of every listener inside it (a press on a room
+    // that is folding away is passed on before anything in the room hears it); the document's are left alone.
+    const rootOf=container.getRootNode?.(),roomScope=rootOf&&rootOf.nodeType===11?rootOf:null,ROOM_PRESSES=['pointerdown','mousedown','pointerup','mouseup','click','dblclick'];
+    for(const type of ROOM_PRESSES)roomScope?.addEventListener?.(type,throughRoom,true);
+    roomScope?.addEventListener?.('pointerover',roomWayIn,{capture:true,passive:true});roomScope?.addEventListener?.('focusin',roomWayIn,true);
     const onDisclosure=event=>{if(event.target?.dataset?.message&&event.target.open)hub?.readMessage(event.target.dataset.message);};
     container.addEventListener('toggle',onDisclosure,true);
     // Pointer and key input also keep the living drawings going: after two minutes with none,
     // motion.js lets them rest where they stand until the next input (the idle rest).
-    const onPointerdown=event=>{container.dataset.input='pointer';motion?.activity?.();motion?.busy?.();arrange?.pointerdown(event);};
+    // The first press after the keyboard marks pointer use, which restyles every element on the page (.rd[data-input]):
+    // a press on a way into a room, in a room, or while a move plays marks it once the move has played and the browser is
+    // idle (half a second of the open's first frame at 4x CPU); a key pressed meanwhile keeps the keyboard's.
+    let pointerTurn=0;
+    function pointerLater(){
+      const turn=++pointerTurn,idle=fn=>typeof root.requestIdleCallback==='function'?root.requestIdleCallback(fn,{timeout:1500}):root.setTimeout(fn,400);
+      const go=()=>{
+        if(destroyed||turn!==pointerTurn)return;
+        const until=movingLeft();
+        if(until>0){root.setTimeout(()=>idle(go),until+40);return;}
+        if(container.dataset.input!=='pointer')container.dataset.input='pointer';
+      };
+      idle(go);
+    }
+    function pointerUse(event){
+      if(container.dataset.input==='pointer')return;const t=event.composedPath?.()[0]||event.target;
+      if(room||movingLeft()>0||t?.closest?.('.rd-roomlayer,[data-rv-grow],[data-rd-action="review-deck-open"],[data-gi-open],[data-rd-action="room-open"],.rd-workspace-tab[data-tab="review"]'))
+        pointerLater();
+      else{pointerTurn++;container.dataset.input='pointer';}
+    }
+    const onPointerdown=event=>{pointerUse(event);motion?.activity?.();motion?.busy?.();arrange?.pointerdown(event);};
     // Scrolling is input too, but it never holds the drawings: they keep playing while the page scrolls.
     const onWheel=()=>{motion?.activity?.();};
     container.addEventListener('pointerdown',onPointerdown);container.addEventListener('wheel',onWheel,{passive:true});
@@ -2550,6 +3066,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(sceneActive){root.ReserveSceneThemes?.remove(container);sceneActive=false;}
         root.ReserveDataTheme?.remove(container);makeOwn?.destroy();frameEditor?.destroy();frameController?.destroy();mediaController?.destroy();courseDock.destroy();
         if(!customizeBusy)mediaStore?.close();
+        for(const type of ROOM_PRESSES)roomScope?.removeEventListener?.(type,throughRoom,true);
+        roomScope?.removeEventListener?.('pointerover',roomWayIn,true);
+        roomScope?.removeEventListener?.('focusin',roomWayIn,true);
+        for(const k of [...spares.keys()])dropSpare(k);if(roomFrame)cancelPaint(roomFrame);room=null;
         reviewDeck?.destroy();gradeImpact?.destroy();
         ++quickPackRead;
         deadlineChanges?.destroy();

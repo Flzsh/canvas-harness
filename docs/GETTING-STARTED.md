@@ -1,6 +1,6 @@
 # Get started with Canvas Harness
 
-Canvas Harness 3.8.1: use Features in the popup for Full, Lite or Custom. The optional Market asks for its own site access on first use; Make it yours → More → Add from a file imports artwork, kits, themes, pets and presets. Modules progress and To hand in are included; Focus room, Review deck and Grade impact start off. Your school's own Canvas address is still added through the popup.
+Canvas Harness 3.9.0: use Features in the popup for Full, Lite or Custom. The optional Market asks for its own site access on first use; Make it yours → More → Add from a file imports artwork, kits, themes, pets and presets. Modules progress and To hand in are included; Focus room, Review deck and Grade impact start off. Your school's own Canvas address is still added through the popup.
 
 Use this guide after [installing in Chrome or Edge](../INSTALL.md). Canvas Harness uses your signed-in school Canvas account, so there is no separate Canvas Harness login or Canvas API token to enter.
 
@@ -57,6 +57,14 @@ Release ends the move. To move something else, start a new hold; dragging does n
 For keyboard moving, focus a panel's move grip and press **Space**. Use **Tab** to choose a target panel, the **arrow keys** to choose an edge, and **Enter** to place it. For a course card, focus it and press **Alt + Space**, use the arrow keys to reorder it, then press **Enter**. **Esc** cancels either kind of move.
 
 Open **Appearance settings** for layout presets and smaller adjustments. Studio puts course information first; Study puts assignments first; Focus starts with a stacked layout. You can keep using the main page while the settings dock is open. See [Themes and artwork](THEMES.md) for surface, type, and motion choices.
+
+## Focus room, Review deck and Grade impact
+
+These three are off until you switch them on: **Features** in the popup, then **Custom**. Add their modules from **Edit Home**.
+
+- **Focus room**: a focus session with four drawn places. It grows out of its Home module and folds back.
+- **Review deck**: your cards, in a reading room that grows out of its Home module.
+- **Grade impact**: opens from a course on **Grades** or its Home module and shows what the work coming up can do to that course. Pretend assignments stay in this browser.
 
 ## Give a course its own artwork
 

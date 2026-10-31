@@ -249,7 +249,19 @@ document.documentElement.classList.toggle('chb-reduced', reduce);
 const timers = new Set(), later = (fn, ms) => { const id = setTimeout(() => { timers.delete(id); fn(); }, ms); timers.add(id); return id; };
 const PAGE = () => (typeof opts.root === 'function' ? opts.root() : opts.root) || document.body, OURS = '#chb-tray,#chb-undo,.chb-box,script,style,#chb-layer' + (opts.ours ? ',' + opts.ours : '');
 const splits = [], moved = new Set(), marks = [], lines = new Map(), folds = [], holes = [], returning = new Set();
-const shown = () => { undo.style.display = 'inline'; };
+const shown = () => { undo.style.display = 'inline'; stir(); };
+let stirred = 0, resting = false, restTimer = 0; const REST = 120000, htmlEl = document.documentElement;
+function stir() {
+  stirred = performance.now();
+  if (resting) { resting = false; htmlEl.classList.remove('chb-rest'); physicsView.hold(false); }
+  if (!restTimer) restTimer = setTimeout(rest, REST);
+}
+function rest() {
+  restTimer = 0;
+  const left = REST - (performance.now() - stirred);
+  if (left > 0) restTimer = setTimeout(rest, left); else { resting = true; htmlEl.classList.add('chb-rest'); physicsView.hold(true); }
+}
+const unrest = () => { clearTimeout(restTimer); restTimer = 0; resting = false; htmlEl.classList.remove('chb-rest'); physicsView.hold(false); };
 function place(inner, x, y, box) {
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   s.setAttribute('viewBox', box.join(' '));
@@ -259,33 +271,191 @@ function place(inner, x, y, box) {
   return s;
 }
 const sheet = () => { const s = place('', 0, 0, [0, 0, innerWidth, innerHeight]); s.style.left = s.style.top = '0'; return s; };
+const textWalker = () =>
+  document.createTreeWalker(PAGE(), NodeFilter.SHOW_TEXT, {
+    acceptNode: n => n.nodeValue.trim() && !n.parentElement.closest(OURS + ',.chb-ch') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+  });
+// The text nodes and where they lie are read once per gesture (a walk of the page per pointer move is what made the small
+// tools stutter); only the words a tool reaches become letters, the rest of their node stays plain text.
+let textIndex = null, textIndexAt = -1e9;
+function textBoxes() {
+  const now = performance.now(); if (textIndex && now - textIndexAt < 300) { textIndexAt = now; return textIndex; } textIndex = []; textIndexAt = now;
+  const walk = textWalker(); for (let n; (n = walk.nextNode());) textIndex.push({ n, boxes: null });
+  return textIndex;
+}
+const touches = (b, x, y, rad) => b.right > x - rad && b.left < x + rad && b.bottom > y - rad && b.top < y + rad;
 function textNodesNear(x, y, rad) {
-  const out = [],
-    walk = document.createTreeWalker(PAGE(), NodeFilter.SHOW_TEXT, {
-      acceptNode: n => n.nodeValue.trim() && !n.parentElement.closest(OURS + ',.chb-ch') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
-    });
-  for (let n; (n = walk.nextNode());) {
-    const r = document.createRange();
-    r.selectNodeContents(n);
-    for (const b of r.getClientRects()) if (b.right > x - rad && b.left < x + rad && b.bottom > y - rad && b.top < y + rad) { out.push(n); break; }
+  const out = [], range = document.createRange();
+  for (const t of textBoxes()) {
+    if (!t.n.isConnected) continue;
+    if (!t.boxes) { range.selectNodeContents(t.n); t.boxes = [...range.getClientRects()]; }
+    for (const b of t.boxes) if (touches(b, x, y, rad) && inView(b)) { out.push(t.n); break; }
   }
   return out;
 }
-function split(node) {
-  const frag = document.createDocumentFragment();
-  for (const word of node.nodeValue.split(/(\s+)/)) {
-    if (!word) continue;
-    if (/^\s+$/.test(word)) { frag.append(word); continue; }
-    const w = document.createElement('span');
-    w.className = 'chb-word';
-    for (const ch of word) { const s = document.createElement('span'); s.className = 'chb-ch'; s.textContent = ch; w.append(s); }
-    frag.append(w);
-  }
-  const holder = document.createElement('span'); holder.className = 'chb-split'; holder.append(frag); node.replaceWith(holder); splits.push({ holder, node });
+function wordsNear(x, y, rad) {
+  const out = [], range = document.createRange();
+  for (const n of textNodesNear(x, y, rad))
+    for (const m of n.nodeValue.matchAll(/\S+/g)) {
+      range.setStart(n, m.index);
+      range.setEnd(n, m.index + m[0].length);
+      const r = range.getClientRects()[0];
+      if (r && touches(r, x, y, rad) && inView(r)) out.push({ node: n, start: m.index, end: m.index + m[0].length, r });
+    }
+  return out;
 }
-function lettersNear(x, y, rad, test, kept = false) {
-  for (const n of textNodesNear(x, y, rad)) split(n); const out = [];
-  for (const s of PAGE().querySelectorAll('.chb-ch')) {
+// one pass, no reads. (flat: letters that only leave as copies need no word round them, and in the flow they cannot move a line)
+function splitWords(words, flat = false) {
+  for (let i = 0; i < words.length;) { const node = words[i].node, text = node.nodeValue, frag = document.createDocumentFragment(), holder = document.createElement('span'); let at = 0;
+    for (; i < words.length && words[i].node === node; i++) { const { start, end, whole } = words[i], word = text.slice(start, end); if (start > at) frag.append(text.slice(at, start)); at = end;
+      if (whole || flat) { for (const piece of whole ? [word] : word) { const s = document.createElement('span'); s.className = 'chb-ch chb-run'; s.textContent = piece; frag.append(s); } continue; }
+      const w = document.createElement('span');
+      w.className = 'chb-word';
+      for (const ch of word) { const s = document.createElement('span'); s.className = 'chb-ch'; s.textContent = ch; w.append(s); }
+      frag.append(w);
+    }
+    if (at < text.length) frag.append(text.slice(at)); holder.className = 'chb-split'; holder.append(frag); node.replaceWith(holder); splits.push({ holder, node });
+    for (const n of holder.childNodes) if (n.nodeType === 3 && n.nodeValue.trim()) textIndex?.push({ n, boxes: null }); }
+}
+// what the tools have already split, looked up only in the text nodes near the point
+function splitNear(x, y, rad, selector) {
+  const out = new Set();
+  for (const { holder } of splits) if (holder.isConnected && touches(holder.getBoundingClientRect(), x, y, rad)) for (const el of holder.querySelectorAll(selector)) out.add(el);
+  return out;
+}
+// ---------------------------------------------------------------- what is on screen, read without touching the page
+// Budget the pieces, not the text: everything on screen falls, in as many pieces as a smooth frame can carry. Letters on a
+// short page, whole words next, runs of words along their line on a text-heavy one; past that, neighbours share a body.
+// Ranges read the words where they are, so nothing is split or laid out until the pieces are known.
+// Blasts stay in letters for now. Under the shared budget their outer part goes as whole words, which shows on the floor and in the
+// ring round the hit, and saves about a third of the bomb's main-thread work: that call is the owner's, and this is the one switch.
+const WORDS_IN_BLASTS = false, blast = (cover, cap = 300) => WORDS_IN_BLASTS ? { cap, cover, flat: true } : { cap: cover, letters: cover, flat: true };
+const PIECES = 300, CEILING = 600, inView = r => r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+function wordsInView() {
+  const out = [], range = document.createRange(), walk = textWalker();
+  for (let n; (n = walk.nextNode());) { range.selectNodeContents(n); let on = false; for (const b of range.getClientRects()) if (inView(b)) { on = true; break; } if (!on) continue;
+    const found = [...n.nodeValue.matchAll(/\S+/g)], box = m => {
+      range.setStart(n, m.index);
+      range.setEnd(n, m.index + m[0].length);
+      return range.getClientRects()[0];
+    }, first = past => { let lo = 0, hi = found.length; while (lo < hi) { const mid = (lo + hi) >> 1, r = box(found[mid]); if (r && past(r)) hi = mid; else lo = mid + 1; } return lo; };
+    // (a node of thousands of words is searched for the part on screen rather than read word by word)
+    const from = found.length > 2000 ? first(r => r.bottom > 0) : 0, to = found.length > 2000 ? first(r => r.top >= innerHeight) : found.length;
+    for (let i = from; i < to; i++) { const m = found[i], r = box(m); if (r && inView(r)) out.push({ node: n, start: m.index, end: m.index + m[0].length, r }); } }
+  return out;
+}
+const lettersOf = words => {
+  const out = [], range = document.createRange();
+  for (const { node, start, end } of words)
+    for (let at = start; at < end;) {
+      const next = at + (node.nodeValue.codePointAt(at) > 65535 ? 2 : 1);
+      range.setStart(node, at);
+      range.setEnd(node, next);
+      const r = range.getClientRects()[0];
+      if (r) out.push({ node, start: at, end: next, r });
+      at = next;
+    }
+  return out;
+};
+function piecesOf(words, budget) {
+  if (words.reduce((n, w) => n + w.end - w.start, 0) <= budget) return lettersOf(words);
+  if (words.length <= budget) return words;
+  for (let run = Math.max(2, Math.ceil(words.length / budget)); ; run = Math.ceil(run * 1.5)) { const out = []; let at = null, n = 0;
+    for (const w of words) {
+      if (at && at.node === w.node && n < run && Math.abs(w.r.top - at.r.top) < at.r.height / 2 && w.r.left >= at.r.right - 1) {
+        at.end = w.end;
+        at.r = { left: at.r.left, top: at.r.top, right: w.r.right, bottom: at.r.bottom, width: w.r.right - at.r.left, height: at.r.height };
+        n++;
+      }
+      else { at = { ...w }; out.push(at); n = 1; }
+    }
+    if (out.length <= budget || run >= words.length) return out; }
+}
+// a page of thousands of tiny labels (a gradebook) has more nodes than runs can join: the copies stop at the ceiling, the largest
+// pieces fall and the smallest labels stay where they are
+const atCeiling = pieces => {
+  if (pieces.length <= CEILING) return pieces;
+  const keep = new Set([...pieces].sort((a, b) => b.r.width * b.r.height - a.r.width * a.r.height).slice(0, CEILING));
+  return pieces.filter(p => keep.has(p));
+};
+// (Home's render reuses elements by position and tag, so a span of ours can become one of its own while pieces are out: it takes
+// the new class, and Put it back then leaves it alone, see below)
+// one pass, no reads: each piece becomes a span in the flow (the line stays exactly as it was), the rest of its node stays plain text
+function wrapPieces(pieces) {
+  for (let i = 0; i < pieces.length;) { const node = pieces[i].node, text = node.nodeValue, one = pieces[i];
+    // (a node that falls whole is its own span: no holder round it)
+    if (pieces[i + 1]?.node !== node && !text.slice(0, one.start).trim() && !text.slice(one.end).trim()) {
+      const s = one.s = document.createElement('span');
+      s.className = 'chb-ch chb-run';
+      s.textContent = text;
+      s._type = one.type;
+      node.replaceWith(s);
+      splits.push({ holder: s, node });
+      i++;
+      continue;
+    }
+    const frag = document.createDocumentFragment(), holder = document.createElement('span'); let at = 0;
+    for (; i < pieces.length && pieces[i].node === node; i++) {
+      const p = pieces[i], s = p.s = document.createElement('span');
+      if (p.start > at) frag.append(text.slice(at, p.start));
+      s.className = 'chb-ch chb-run';
+      s.textContent = text.slice(p.start, p.end);
+      s._type = p.type;
+      frag.append(s);
+      at = p.end;
+    }
+    if (at < text.length) frag.append(text.slice(at)); holder.className = 'chb-split'; holder.append(frag); node.replaceWith(holder); splits.push({ holder, node }); }
+  textIndex = null;
+}
+// past the budget one cell of the screen falls as one torn-off scrap, so the bodies never outnumber the budget
+function clumps(items, budget) {
+  if (items.length <= budget) return items.map(p => [p]);
+  const side = Math.sqrt(innerWidth * innerHeight / budget) * 1.2, cells = new Map();
+  for (const p of items) {
+    const key = Math.floor((p.r.left + p.r.width / 2) / side) + Math.floor((p.r.top + p.r.height / 2) / side) * 4096, cell = cells.get(key);
+    if (cell) cell.push(p); else cells.set(key, [p]);
+  }
+  return [...cells.values()];
+}
+// a wide area that only nudges what it reaches (the railgun's outer ring) does it in pieces, not letters
+function piecesNear(x, y, rad, near, budget) {
+  const pieces = piecesOf(wordsNear(x, y, rad).filter(w => near(w.r.left + w.r.width / 2, w.r.top + w.r.height / 2)), budget); types = new WeakMap();
+  for (const p of pieces) p.type = typeIn(p.node.parentElement); wrapPieces(pieces);
+  return pieces.map(p => ({ s: p.s, r: p.r, cx: p.r.left + p.r.width / 2, cy: p.r.top + p.r.height / 2 }));
+}
+// a copy keeps the page's type. It is read once per parent, before anything is written, so laying the copies down never forces a style recalculation
+let types = new WeakMap(), copies = null;
+const typeIn = el => {
+  let t = types.get(el);
+  if (!t) {
+    const cs = getComputedStyle(el);
+    t = { font: cs.font, color: cs.color, textTransform: cs.textTransform, letterSpacing: cs.letterSpacing, wordSpacing: cs.wordSpacing };
+    types.set(el, t);
+  }
+  return t;
+}, typeOf = s => typeIn(s.parentElement?.classList.contains('chb-painted') ? s : s.parentElement || s);
+// (near: a test that also holds for a whole word; cap: the pieces this tool can use, nearest first by rank. Half of them at most
+// are letters, the nearest; the words round those go whole. letters: a different share of letters. whole: which words may go whole.
+// cover: how many letters' worth of text it reaches, so cutting it into fewer pieces does not make it reach further)
+function lettersNear(x, y, rad, test, kept = false, { near, cap = 0, rank, letters: share = cap / 2, whole, cover = Infinity, flat = false } = {}) {
+  let words = wordsNear(x, y, rad); if (near) words = words.filter(w => near(w.r.left + w.r.width / 2, w.r.top + w.r.height / 2, w.r));
+  if (cap) {
+    const place = new Map(words.map((w, i) => [w, i])),
+      score = rank || ((cx, cy) => Math.hypot(cx - x, cy - y)),
+      ranked = words.map(w => [score(w.r.left + w.r.width / 2, w.r.top + w.r.height / 2), w]).sort((a, b) => a[0] - b[0]);
+    let used = 0, spent = 0, covered = 0;
+    words = [];
+    for (const [, w] of ranked) {
+      if (spent >= cap || covered >= cover) break;
+      const n = w.end - w.start;
+      covered += n;
+      if (whole ? whole(w.r) : used + n > share) { w.whole = true; spent++; } else { used += n; spent += n; }
+      words.push(w);
+    }
+    words.sort((a, b) => place.get(a) - place.get(b));
+  }
+  splitWords(words, flat); const out = [];
+  for (const s of splitNear(x, y, rad, '.chb-ch')) {
     if (moved.has(s)) continue;
     const r = s.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, d = Math.hypot(cx - x, cy - y);
     if (test ? test(cx, cy, r) : d <= rad) out.push({ s, r, d, cx, cy });
@@ -305,17 +475,29 @@ function lettersNear(x, y, rad, test, kept = false) {
     const r = { left, top, width: w, height: h, right: left + w, bottom: top + h }, cx = left + w / 2, cy = top + h / 2, d = Math.hypot(cx - x, cy - y);
     if (test ? test(cx, cy, r) : d <= rad) out.push({ s, r, d, cx, cy });
   }
+  types = new WeakMap(); for (const p of out) p.s._type = typeOf(p.s);
   return out;
 }
 // a moved letter is a copy in the fixed layer (it can never stretch the page); the real one is only hidden
 function lift(s, r) {
   if (s._body) { const b = s._body; b.parts = b.parts.filter(p => p.s !== s); if (!b.parts.length) physics.remove(b); delete s._body; }
   delete s._physicsPath;
-  if (s._c) { s._c.getAnimations?.().forEach(a => a.cancel()); s._c.remove(); delete s._c; }
-  const cs = getComputedStyle(s), c = document.createElement('span');
-  c.textContent = s.textContent;
-  Object.assign(c.style, { position: 'absolute', left: r.left + 'px', top: r.top + 'px', font: cs.font, color: cs.color, lineHeight: r.height + 'px', whiteSpace: 'pre' });
-  layer.append(c);
+  if (s._c) { s._c.remove(); delete s._c; }
+  const t = s._type || typeOf(s), c = document.createElement('span');
+  c.textContent = s.classList.contains('chb-run') ? s.textContent.trim().replace(/\s+/g, ' ') : s.textContent;
+  Object.assign(c.style, {
+    position: 'absolute',
+    left: r.left + 'px',
+    top: r.top + 'px',
+    font: t.font,
+    color: t.color,
+    textTransform: t.textTransform,
+    letterSpacing: t.letterSpacing,
+    wordSpacing: t.wordSpacing,
+    lineHeight: r.height + 'px',
+    whiteSpace: 'pre'
+  });
+  (copies || layer).append(c);
   s.style.visibility = 'hidden';
   moved.add(s);
   return c;
@@ -325,10 +507,7 @@ function fly(s, r, k, dur, delay = 0) {
   s._k = k;
   s._d = D(dur);
   c.animate(k, { duration: s._d, delay: D(delay), easing: 'linear', fill: 'forwards' }).onfinish = () => c.remove();
-  if (!reduce)
-    c.animate(
-      [{ textShadow: '0 0 0 rgba(20,20,19,0)' }, { textShadow: '4px 11px 5px rgba(20,20,19,.26)', offset: .25 }, { textShadow: '3px 8px 4px rgba(20,20,19,.2)' }],
-      { duration: s._d, fill: 'forwards' }); }
+  if (!reduce) c.style.textShadow = '3px 8px 4px rgba(20,20,19,.2)'; }
 function keep(s, r, k, dur, easing = 'cubic-bezier(.3,1.4,.5,1)', delay = 0) {
   const c = lift(s, r);
   s._c = c;
@@ -350,28 +529,44 @@ const spiral = (dx, dy, turns = 1.4) => {
 };
 
 // the page's ruled lines (borders) break too: the part inside a blast leaves in pieces, the rest stays
-function bordersNear(x, y, rad) {
-  const out = [];
-  const root = PAGE(); for (const el of [root, ...root.querySelectorAll('*')]) {
-    if (el.closest(OURS)) continue; const cs = getComputedStyle(el), r = el.getBoundingClientRect();
-    if (r.right < x - rad || r.left > x + rad || r.bottom < y - rad || r.top > y + rad) continue;
-    for (const side of ['Top', 'Bottom', 'Left', 'Right']) {
-      const w = parseFloat(cs['border' + side + 'Width']); if (!w || cs['border' + side + 'Style'] === 'none' || /,\s*0\)$/.test(cs['border' + side + 'Color'])) continue;
-      const h = side === 'Top' || side === 'Bottom',
-        pos = side === 'Top' ? r.top + w / 2 : side === 'Bottom' ? r.bottom - w / 2 : side === 'Left' ? r.left + w / 2 : r.right - w / 2,
-        a = h ? r.left : r.top,
-        b = h ? r.right : r.bottom;
-      const dist = Math.abs((h ? y : x) - pos);
-      if (dist >= rad) continue;
-      const half = Math.sqrt(rad * rad - dist * dist), c0 = Math.max(a, (h ? x : y) - half), c1 = Math.min(b, (h ? x : y) + half);
-      if (c1 <= c0) continue;
-      out.push({ el, side, h, pos, a, b, w, color: cs['border' + side + 'Color'], cut: [c0, c1] });
+// (a few hit tests find the boxes near the blast, so the cost follows the blast and not the size of the page: a scan of every
+// element on each pointer move, or on each step along the railgun's shot, is what made those tools stutter. Each box is read
+// once per gesture, and a line already cut is left alone, as its colour has gone)
+let ruled = null, ruledAt = -1e9, probed = new Set();
+function ruledOf(el) {
+  let list = ruled.get(el); if (list) return list; ruled.set(el, list = []); if (el.closest(OURS)) return list; const cs = getComputedStyle(el); let r = null;
+  for (const side of ['Top', 'Bottom', 'Left', 'Right']) {
+    const w = parseFloat(cs['border' + side + 'Width']); if (!w || cs['border' + side + 'Style'] === 'none' || /,\s*0\)$/.test(cs['border' + side + 'Color'])) continue; r ||= el.getBoundingClientRect();
+    const h = side === 'Top' || side === 'Bottom', pos = side === 'Top' ? r.top + w / 2 : side === 'Bottom' ? r.bottom - w / 2 : side === 'Left' ? r.left + w / 2 : r.right - w / 2;
+    list.push({ el, side, h, pos, a: h ? r.left : r.top, b: h ? r.right : r.bottom, w, color: cs['border' + side + 'Color'], r });
+  }
+  return list;
+}
+function probeLines(x0, y0, x1, y1, stepX, stepY) {
+  const now = performance.now(), root = PAGE(), scope = root.getRootNode?.() || document;
+  if (!ruled || now - ruledAt >= 300) { ruled = new Map(); probed = new Set(); for (const el of root.querySelectorAll('hr')) ruledOf(el); } ruledAt = now;   // (a rule is too thin to rely on hitting it)
+  for (let px = x0; px <= x1; px += stepX)
+    for (let py = y0; py <= y1; py += stepY) {
+      const key = Math.round(px / 20) * 16384 + Math.round(py / 20);
+      if (probed.has(key)) continue;
+      probed.add(key);
+      for (const el of scope.elementsFromPoint?.(px, py) || []) if (root.contains(el)) ruledOf(el);
     }
+}
+function bordersNear(x, y, rad, ready = false) {
+  const step = Math.max(20, rad / 3), n = Math.ceil(rad / step), out = []; if (!ready) probeLines(x - n * step, y - n * step, x + n * step, y + n * step, step, step);
+  for (const list of ruled.values())
+    for (const L of list) { const { r, h } = L; if (r.right < x - rad || r.left > x + rad || r.bottom < y - rad || r.top > y + rad || lines.get(L.el)?.[L.side]) continue;
+    const dist = Math.abs((h ? y : x) - L.pos);
+    if (dist >= rad) continue;
+    const half = Math.sqrt(rad * rad - dist * dist), c0 = Math.max(L.a, (h ? x : y) - half), c1 = Math.min(L.b, (h ? x : y) + half);
+    if (c1 <= c0) continue;
+    out.push({ ...L, cut: [c0, c1] });
   }
   return out;
 }
-function breakLines(x, y, rad, how = 'out', force = 1) {
-  for (const L of bordersNear(x, y, rad)) {
+function breakLines(x, y, rad, how = 'out', force = 1, ready = false) {
+  for (const L of bordersNear(x, y, rad, ready)) {
     let sides = lines.get(L.el); if (!sides) lines.set(L.el, sides = {}); let rec = sides[L.side];
     if (!rec) { rec = sides[L.side] = { ...L, keepRanges: [[L.a, L.b]], inline: L.el.style['border' + L.side + 'Color'], svg: sheet() }; L.el.style['border' + L.side + 'Color'] = 'transparent'; }
     const [c0, c1] = L.cut, next = [], gone = [];
@@ -399,6 +594,8 @@ function breakLines(x, y, rad, how = 'out', force = 1) {
   }
 }
 const mark = el => { marks.push(el); return el; };
+// (a page element we only styled for a while gets no empty style attribute left behind)
+const tidy = el => { if (!el.getAttribute('style')) el.removeAttribute('style'); };
 // what a closed black hole leaves (a pinhole, the back end still turning in it) can itself be broken: anything that hits
 // it makes it pop (a flash and a puff of 0 and 1), another black hole swallows it, the foil flattens it
 const PINS = [];
@@ -493,6 +690,7 @@ const fallShadow = (d, from, to, dur, delay = 0, easing = 'ease-in') => {
 
 // the page jolts: amplitude, length and character differ per weapon (the bomb jolts hard, the railgun kicks sideways,
 // the black hole rumbles low and long, the hammer knocks once, the foil is silent)
+const baseTransform = new WeakMap();
 const SHAKE = {
   foil: [18, 520, 'all'],
   foiljolt: [8, 240, 'y'],
@@ -518,10 +716,13 @@ function shake(kind) {
     const f = how === 'build' ? (i === n ? 0 : .45 + .55 * Math.pow(i / n, 1.4)) : how === 'rumble' ? (i === 0 || i === n ? 0 : Math.sin(i / n * Math.PI)) : (1 - i / n) ** 2, a = amp * f;
     const dx = how === 'y' ? 0 : J(a), dy = how === 'x' ? J(a * .15) : J(a); k.push({ transform: i === n ? 'none' : `translate(${R(how === 'x' && i < 3 ? -a : dx)}px,${R(dy)}px)` }); }
   // the effects layer shakes with the page, so cracks, scars and falling pieces (even ones added during a long shake) move with it
-  const page = [...document.querySelectorAll(opts.shake || 'body > *:not(#chb-layer)')];
   // Nested Canvas wrappers must not multiply the jolt. The overlay receives the same transform exactly once.
+  // (a jolt laid over a longer rumble takes over for its moment, which nobody can tell from adding to it; 'add' is only kept for
+  // an element with a transform of its own, as replacing would drop that)
+  const page = [...document.querySelectorAll(opts.shake || 'body > *:not(#chb-layer)')];
   for (const el of new Set([...page.filter(el => !page.some(parent => parent !== el && parent.contains?.(el))), layer])) {
-    const animation = el.animate(k, { duration: dur, easing: 'linear', composite: 'add' });
+    if (!baseTransform.has(el)) baseTransform.set(el, getComputedStyle(el).transform);
+    const own = baseTransform.get(el), animation = el.animate(k, { duration: dur, easing: 'linear', composite: own && own !== 'none' ? 'add' : 'replace' });
     pageAnimations.add(animation); animation.onfinish = () => pageAnimations.delete(animation);
   }
 }
@@ -540,24 +741,30 @@ function puffs(x, y, n, spread = 30, rise = 40) {
     [{ transform: 'scale(.3) rotate(0deg)', opacity: 0 }, { transform: `translate(${R(Math.cos(a) * d)}px,${R(Math.sin(a) * d * .6)}px) scale(1.05) rotate(${R(J(10))}deg)`, opacity: 1, offset: .2 }, { transform: `translate(${R(Math.cos(a) * d * 1.35)}px,${R(Math.sin(a) * d * .6 - rise)}px) scale(1.35) rotate(${R(J(20))}deg)`, opacity: 0 }],
     { duration: D(1500 + rnd() * 500), delay: D(40 + i * 25), easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'both' }).onfinish = () =>
     p.remove(); } }
-// hit-stop: everything holds still for a beat on impact, which is what makes a hit feel heavy
+// what the tools have running (not the whole document's: that list grows with the page and with Home's own art)
 function ourAnimations() {
   return [
     ...new Set([
       ...pageAnimations,
       ...folds.map(f => f.a),
       ...[...returning].map(f => f.a),
-      ...[layer, aim, box.querySelector('.chb-box')].flatMap(el => el?.getAnimations?.({ subtree: true }) || [])
+      ...[layer, MUL, OVL, SCR, aim, box.querySelector('.chb-box')].flatMap(el => el?.getAnimations?.({ subtree: true }) || [])
     ])
   ];
 }
-function hitStop(ms) { if (reduce) return; for (const a of ourAnimations()) { if (a.playState === 'running') { a.pause(); setTimeout(() => a.play(), ms); } } }
+// hit-stop: everything holds still for a beat on impact, which is what makes a hit feel heavy
+function hitStop(ms) {
+  if (reduce) return;
+  const list = ourAnimations().filter(a => a.playState === 'running');
+  for (const a of list) a.pause();
+  setTimeout(() => { for (const a of list) a.play(); }, ms);
+}
 // ---------------------------------------------------------------- things thrown to the floor: real falls, bounces and a pile that grows
 // A thrown letter, chip or shard is simulated once (gravity, the sides of the screen, a floor it bounces on and comes to
 // rest on, on top of whatever landed there before) and its path is handed to the Web Animations API as keyframes, so
 // nothing of ours runs per frame. What lands stays on the floor until "Put it back".
-const FLOOR = new Map(), HITS = [], balloons = [];
-const physics = globalThis.ReservePlayPhysics.create({ width: innerWidth, height: innerHeight, floor: FLOOR, reduced: reduce });
+const HITS = [], balloons = [];
+const physics = globalThis.ReservePlayPhysics.create({ width: innerWidth, height: innerHeight, reduced: reduce }), FLOOR = physics.floor;
 const physicsView = globalThis.ReservePlayPhysics.attach(physics, {
   document,
   requestFrame: requestAnimationFrame,
@@ -566,29 +773,31 @@ const physicsView = globalThis.ReservePlayPhysics.attach(physics, {
   onFrame: physicsFrame,
   onRender: drawBalloons
 });
+// one transform per frame, written only when it changed. The way home is sampled as it goes; when it grows long every second
+// stop is dropped, so it never holds more than a smooth half-second walk back can show
 function renderBody(b) {
-  const dx = R(b.x - b.homeX),
-    dy = R(b.y - b.homeY),
-    angle = R(b.angle),
-    c = Math.cos(angle * Math.PI / 180),
-    s = Math.sin(angle * Math.PI / 180),
-    transform = `translate(${dx}px,${dy}px) rotate(${angle}deg)`;
+  const transform = `translate(${R(b.x - b.homeX)}px,${R(b.y - b.homeY)}px) rotate(${R(b.angle)}deg)`;
+  if (transform === b.drawn || !b.parts) return; b.drawn = transform; for (const p of b.parts) p.c.style.transform = transform;
+  const path = b.path; if (!path || restoring || physics.time - (b.sampled || 0) <= .06) return; b.sampled = physics.time; path.push({ transform });
+  if (path.length >= 64) { let kept = 1; for (let i = 2; i < path.length; i += 2) path[kept++] = path[i]; path.length = kept; }
+}
+// where a body's letters are drawn now (only a balloon's string needs to know)
+function boundsOf(b) {
+  const dx = R(b.x - b.homeX), dy = R(b.y - b.homeY), angle = R(b.angle), c = Math.cos(angle * Math.PI / 180), s = Math.sin(angle * Math.PI / 180);
   let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
-  for (const p of b.parts || []) {
-    p.c.style.transform = transform;
+  for (const p of b.parts) {
     const x = p.r.left + p.r.width / 2 - b.homeX,
       y = p.r.top + p.r.height / 2 - b.homeY,
       cx = b.homeX + dx + x * c - y * s,
       cy = b.homeY + dy + x * s + y * c,
       hw = (Math.abs(c) * p.r.width + Math.abs(s) * p.r.height) / 2,
       hh = (Math.abs(s) * p.r.width + Math.abs(c) * p.r.height) / 2;
-    left = Math.min(left, cx - hw); right = Math.max(right, cx + hw); top = Math.min(top, cy - hh); bottom = Math.max(bottom, cy + hh);
-    if (!restoring) {
-      const path = p.s._physicsPath;
-      if (!path.length || physics.time - (p.lastPath || 0) > .06) { path.push({ transform }); p.lastPath = physics.time; if (path.length > 100) path.splice(1, 1); }
-    }
+    left = Math.min(left, cx - hw);
+    right = Math.max(right, cx + hw);
+    top = Math.min(top, cy - hh);
+    bottom = Math.max(bottom, cy + hh);
   }
-  b.bounds = { left, top, right, bottom };
+  return { left, top, right, bottom };
 }
 function liveBody(items) {
   if (!items.length) return null;
@@ -596,31 +805,22 @@ function liveBody(items) {
     top = Math.min(...items.map(p => p.r.top)),
     right = Math.max(...items.map(p => p.r.left + p.r.width)),
     bottom = Math.max(...items.map(p => p.r.top + p.r.height)),
+    path = [{ transform: 'none' }],
     parts = items.map(({ s, r }) => {
     const c = lift(s, r);
     s._c = c;
-    s._physicsPath = [{ transform: 'none' }];
+    s._physicsPath = path;
     c.classList.add('chb-physics-body');
     Object.assign(c.style, { width: r.width + 'px', height: r.height + 'px', boxSizing: 'border-box', transformOrigin: `${(left + right) / 2 - r.left}px ${(top + bottom) / 2 - r.top}px` });
     return { s, c, r };
-  }),
-  b = physics.add({
-    x: (left + right) / 2,
-    y: (top + bottom) / 2,
-    width: right - left,
-    height: bottom - top,
-    homeX: (left + right) / 2,
-    homeY: (top + bottom) / 2,
-    bounds: { left, top, right, bottom },
-    parts
-  });
+  }), b = physics.add({ x: (left + right) / 2, y: (top + bottom) / 2, width: right - left, height: bottom - top, homeX: (left + right) / 2, homeY: (top + bottom) / 2, parts, path });
   for (const p of parts) p.s._body = p.c._body = b;
   shown();
   return b;
 }
 function wordAt(x, y) {
-  for (const n of textNodesNear(x, y, 12)) split(n);
-  for (const w of PAGE().querySelectorAll('.chb-word')) {
+  splitWords(wordsNear(x, y, 12));
+  for (const w of splitNear(x, y, 12, '.chb-word')) {
     const r = w.getBoundingClientRect();
     if (x < r.left - 3 || x > r.right + 3 || y < r.top - 4 || y > r.bottom + 4) continue;
     const items = [...w.children].filter(s => !moved.has(s)).map(s => ({ s, r: s.getBoundingClientRect() }));
@@ -650,13 +850,15 @@ function drawBalloons() {
   for (const b of [...balloons]) {
     if (b.body.retired) { b.el.remove(); b.string.remove(); balloons.splice(balloons.indexOf(b), 1); continue; }
     b.el.style.transform = `translate(${b.x}px,${b.y}px)`;
-    const bounds = b.body.bounds, dx = (bounds.left + bounds.right) / 2 - b.x, dy = bounds.top - b.y - 1, length = Math.hypot(dx, dy);
+    const bounds = boundsOf(b.body), dx = (bounds.left + bounds.right) / 2 - b.x, dy = bounds.top - b.y - 1, length = Math.hypot(dx, dy);
     b.thread.setAttribute('d', `M0 0L${length} 0`);
     b.string.style.transformOrigin = '0 50%';
     b.string.style.transform = `translate(${b.x}px,${b.y + 1}px) rotate(${Math.atan2(dy, dx) * 180 / Math.PI}deg)`;
   }
 }
+listen(document, 'scroll', () => { ruled = textIndex = null; }, true);
 listen(globalThis, 'resize', () => {
+  ruled = textIndex = null;
   physics.resize(innerWidth, innerHeight);
   for (const p of portals) { p.x = Math.max(4, Math.min(innerWidth - 4, p.x)); p.y = Math.max(4, Math.min(innerHeight - 4, p.y)); drawPortal(p); }
   syncPortals();
@@ -809,7 +1011,11 @@ function boom(x, y) {
   }
   // the letters in the blast are thrown, bounce and pile up on the floor; those the shockwave reaches further out are
   // knocked askew and stay that way
-  let n = 0; for (const { s: l, r, d, cx, cy } of lettersNear(x, y, R0 * 2.3, undefined, true).sort((p, q) => p.d - q.d)) { if (++n > 520) break; const a = Math.atan2(cy - y, cx - x);
+  // (a burst this size goes in two tasks, a frame apart, which nobody can see; the jolt waits for the second so bullet time takes every letter)
+  const thrown = lettersNear(x, y, R0 * 2.3, undefined, true, blast(520)).sort((p, q) => p.d - q.d).slice(0, 520),
+    rest = thrown.splice(Math.ceil(thrown.length / 2)),
+    throwOne = ({ s: l, r, d, cx, cy }) => {
+    const a = Math.atan2(cy - y, cx - x);
     if (d <= R0) {
       const f = (1 - d / R0) * .75 + .35, [k, dur] = toss(cx, cy, Math.cos(a) * f * 780 + J(90), Math.sin(a) * f * 520 - 560 * f - 120 + J(60), J(900), r.height);
       keep(l, r, k, dur, 'linear');
@@ -817,8 +1023,8 @@ function boom(x, y) {
     else {
       const f = 1 - (d - R0) / (R0 * 1.3), push = 3 + 11 * f;
       keep(l, r, [{ transform: 'none' }, { transform: `translate(${R(Math.cos(a) * push * 1.6)}px,${R(Math.sin(a) * push - 4 * f)}px) rotate(${R(J(16) * f)}deg)`, offset: .4 }, { transform: `translate(${R(Math.cos(a) * push)}px,${R(Math.sin(a) * push * .6)}px) rotate(${R(J(12) * f)}deg)` }], 420, 'cubic-bezier(.2,.9,.3,1)', (d - R0) / 1.1);
-    } }
-  breakLines(x, y, R0 * .8); shake('bomb'); hitStop(70); slowmo(.3, 380); shown();
+    } };
+  thrown.forEach(throwOne); later(() => { rest.forEach(throwOne); breakLines(x, y, R0 * .8); shake('bomb'); hitStop(70); slowmo(.3, 380); shown(); }, 0);
   if (!reduce) {
     const wf = fxEl(SCR, innerWidth / 2, innerHeight / 2, innerWidth, innerHeight, { background: 'rgb(255,250,236)' });
     wf.animate([{ opacity: .95 }, { opacity: 0 }], { duration: 240, easing: 'ease-out', fill: 'forwards' }).onfinish = () => wf.remove();
@@ -913,7 +1119,7 @@ function strike(x, y, n) {
     { duration: D(260 + n * 60), easing: 'ease-out' }); }
   hitStop(40 + n * 25);
   if (n >= 3) shatter(x, y);
-  else for (const { s, r, d } of lettersNear(x, y, rad, undefined, true)) {
+  else for (const { s, r, d } of lettersNear(x, y, rad, undefined, true, { cap: PIECES, letters: PIECES })) {
     const f = 1 - d / rad;
     keep(
       s,
@@ -945,17 +1151,23 @@ function shatter(x, y) {
     mark(place(PA ? fresh(pickOf(PA.scar)) : scarSVG(50), x, y, [-95, -62, 190, 124])).animate(
       [{ opacity: 0, transform: 'scale(.5)' }, { opacity: 1, transform: 'none' }],
       { duration: D(260), easing: 'ease-out', fill: 'backwards' });   // (the third rendered dent tears its own hole)
+  const nearHit = [];
   for (const l of moved) {
     const c = l._c;
     if (!c || l._halves || !c.isConnected) continue;
     const b = c.getBoundingClientRect(), cx = b.left + b.width / 2, cy = b.top + b.height / 2;
-    if (Math.hypot(cx - x, cy - y) > 96) continue;
-    const cur = getComputedStyle(c).transform, mid = cur === 'none' ? '' : cur, [k, dur] = toss(cx, cy, J(160), -60 - rnd() * 120, J(500), b.height, mid);
-    c.getAnimations().forEach(a => a.cancel());
+    if (Math.hypot(cx - x, cy - y) <= 96) nearHit.push({ c, b, cx, cy, cur: getComputedStyle(c).transform, running: c.getAnimations() });
+  }
+  for (const { c, b, cx, cy, cur, running } of nearHit) {
+    const mid = cur === 'none' ? '' : cur, [k, dur] = toss(cx, cy, J(160), -60 - rnd() * 120, J(500), b.height, mid);
+    running.forEach(a => a.cancel());
     c.style.transform = mid;
     c.animate(k, { duration: D(dur), easing: 'linear', fill: 'forwards' });
   }
-  for (const { s: l, r, cx, cy } of lettersNear(x, y, 96)) { const [k, dur] = toss(cx, cy, J(160), -60 - rnd() * 160, J(500), r.height); keep(l, r, k, dur, 'linear', rnd() * 120); }
+  for (const { s: l, r, cx, cy } of lettersNear(x, y, 96, undefined, false, { cap: PIECES, letters: PIECES })) {
+    const [k, dur] = toss(cx, cy, J(160), -60 - rnd() * 160, J(500), r.height);
+    keep(l, r, k, dur, 'linear', rnd() * 120);
+  }
   if (!reduce)
     for (let i = 0; i < 14; i++) {
       const sx = x + J(60), sy = y + J(36), sc = .7 + rnd() * .7, sd = mark(place(shardSVG(), sx, sy, [-16, -16, 32, 32])), [k, dur] = toss(sx, sy, J(220), -80 - rnd() * 200, J(700), 10);
@@ -1000,7 +1212,7 @@ function laser(x, y, first) {
   }
   // a letter the beam passes through is cut in two: the halves part along the cut and the lower one slips
   for (const { s, r } of lettersNear(x, y, 9)) {
-    const cs = getComputedStyle(s), half = (top) => {
+    const cs = s._type, half = (top) => {
       const c = document.createElement('span');
       c.textContent = s.textContent;
       Object.assign(c.style, {
@@ -1099,10 +1311,17 @@ function dropOut(poly, hinge) {
   Object.assign(piece.style, { position: 'absolute', left: R(x0) + 'px', top: R(y0) + 'px', width: R(w) + 'px', height: R(h) + 'px', transformOrigin: `${R(hinge[0] - x0)}px ${R(hinge[1] - y0)}px` });
   wrap.append(piece);
   piece.innerHTML = `<svg viewBox="${R(x0)} ${R(y0)} ${R(w)} ${R(h)}" style="left:0;top:0;width:${R(w)}px;height:${R(h)}px"><path d="${path}" fill="${paper}"/><path d="${path}" fill="none" stroke="#3A2414" stroke-width="2.6" stroke-opacity=".8"/><path d="${path}" fill="none" stroke="${GOLD}" stroke-width=".8" stroke-opacity=".7"/></svg>`;
-  for (const { s, r } of lettersNear(x0 + w / 2, y0 + h / 2, Math.hypot(w, h) / 2 + 4, (lx, ly) => inside(lx, ly))) {
-    const cs = getComputedStyle(s), c = document.createElement('span');
+  for (const { s, r } of lettersNear(
+    x0 + w / 2,
+    y0 + h / 2,
+    Math.hypot(w, h) / 2 + 4,
+    (lx, ly) => inside(lx, ly),
+    false,
+    { cap: PIECES, letters: PIECES, whole: b => inside(b.left, b.top) && inside(b.right, b.top) && inside(b.left, b.bottom) && inside(b.right, b.bottom) })) {
+    const cs = s._type, c = document.createElement('span');
     c.textContent = s.textContent;
     Object.assign(c.style, { position: 'absolute', left: R(r.left - x0) + 'px', top: R(r.top - y0) + 'px', font: cs.font, color: cs.color, lineHeight: r.height + 'px', whiteSpace: 'pre' });
+    if (s.classList.contains('chb-run')) c.textContent = s.textContent.trim().replace(/\s+/g, ' ');
     piece.append(c);
     s.style.visibility = 'hidden';
     moved.add(s);
@@ -1250,15 +1469,21 @@ function railgun(x, y) {
         const [k, dur] = toss(u, y, J(220), -(260 + rnd() * 520), J(720), 14);
         d.animate(k, { duration: dur, delay: 200 + Math.abs(u - start) / (b - a) * 260 + rnd() * 240, easing: 'linear', fill: 'both' });
       } }
-    let torn = 0;
-    for (const { s, r, cx, cy } of lettersNear(x, y, 9999, (cx, cy) => Math.abs(cy - y) < HW + 8, true)) {
-      if (++torn > 420) break;
+    for (const {
+      s,
+      r,
+      cx,
+      cy
+    } of lettersNear(x, y, 9999, (cx, cy) => Math.abs(cy - y) < HW + 8, true, { ...blast(420, 200), near: (cx, cy) => Math.abs(cy - y) < HW + 8, rank: (cx, cy) => Math.abs(cy - y) }).slice(
+      0,
+      420)) {
       const side = cy < y ? -1 : 1, delay = Math.abs(cx - x0) / Math.abs(x1 - x0) * 220, [k, dur] = toss(cx, cy, dir * (180 + rnd() * 420), side * (160 + rnd() * 280) - 140, J(800), r.height);
       keep(s, r, k, dur, 'linear', delay);
     }
-    for (const { s, r, cx, cy } of lettersNear(x, y, 9999, (cx, cy) => Math.abs(cy - y) >= HW + 8 && Math.abs(cy - y) < HW + 90)) {
-      const side = cy < y ? -1 : 1, f = 1 - (Math.abs(cy - y) - HW - 8) / 82, delay = Math.abs(cx - x0) / Math.abs(x1 - x0) * 220;
-      keep(s, r, [{ transform: 'none' }, { transform: `translate(${R(dir * 6 * f)}px,${R(side * (8 + rnd() * 8) * f)}px) rotate(${R(J(14) * f)}deg)`, offset: .35 }, { transform: `translate(${R(dir * 3 * f)}px,${R(side * (4 + rnd() * 5) * f)}px) rotate(${R(J(10) * f)}deg)` }], 420, 'cubic-bezier(.2,.9,.3,1)', delay); }
+    later(() => {
+      for (const { s, r, cx, cy } of piecesNear(x, y, 9999, (cx, cy) => Math.abs(cy - y) >= HW + 8 && Math.abs(cy - y) < HW + 90, WORDS_IN_BLASTS ? 136 : 300)) {
+        const side = cy < y ? -1 : 1, f = 1 - (Math.abs(cy - y) - HW - 8) / 82, delay = Math.abs(cx - x0) / Math.abs(x1 - x0) * 220;
+      keep(s, r, [{ transform: 'none' }, { transform: `translate(${R(dir * 6 * f)}px,${R(side * (8 + rnd() * 8) * f)}px) rotate(${R(J(14) * f)}deg)`, offset: .35 }, { transform: `translate(${R(dir * 3 * f)}px,${R(side * (4 + rnd() * 5) * f)}px) rotate(${R(J(10) * f)}deg)` }], 420, 'cubic-bezier(.2,.9,.3,1)', delay); } }, 0);
     if (!reduce) { // where the slug leaves the screen, a burst; along the trench, smoke rising
       const ex = left ? innerWidth - 10 : 10;
       light(ex, y, 160, '255,222,150', 500, 1);
@@ -1266,7 +1491,7 @@ function railgun(x, y) {
       eb.animate([{ transform: 'scale(.2)', opacity: 1 }, { transform: 'scale(1.2)', offset: .35 }, { transform: 'scale(.6)', opacity: 0 }], { duration: 420, delay: 200, fill: 'both' }).onfinish = () =>
         eb.remove();
       for (let u = a + 40, i = 0; u < b; u += 110, i++) later(() => puffs(u, y, 1, 10, 46), 240 + i * 40); }
-    for (let u = a; u < b; u += 16) breakLines(u, y, HW, 'out', .7); shake('railgun');
+    probeLines(a, y - HW, b, y + HW, 44, 22); for (let u = a; u < b; u += 16) breakLines(u, y, HW, 'out', .7, true); shake('railgun');
     gun.animate([{ opacity: 1 }, { opacity: 0 }], { duration: D(500), delay: D(500), fill: 'forwards' }).onfinish = () => gun.remove();
     gsh.animate([{ opacity: gsh.style.opacity }, { opacity: 0 }], { duration: D(500), delay: D(500), fill: 'forwards' }).onfinish = () => gsh.remove();
     shown();
@@ -1325,8 +1550,12 @@ function blackhole(x, y) {
     g.animate([{ transform: 'scale(0) rotate(-40deg)' }, { transform: 'scale(1.12)', offset: .7 }, { transform: 'none' }], { duration: D(600), easing: 'cubic-bezier(.2,.8,.3,1)' });
   }
   // its pull reaches further as it grows: each letter goes when the pull reaches it, nearest first, more and more
-  let n = 0; const leaning = [], edge = reach * .9; for (const { s, r, d, cx, cy } of lettersNear(x, y, reach + edge, undefined, true).sort((p, q) => p.d - q.d)) { if (++n > 520) break;
-    if (d <= reach) { fly(s, r, spiral(cx - x, cy - y), space?.timeAt ? 1200 + d * 2.6 : 700 + d * 7, timeAt(d)); continue; }
+  const leaning = [],
+    edge = reach * .9,
+    taken = lettersNear(x, y, reach + edge, undefined, true, blast(520)).sort((p, q) => p.d - q.d).slice(0, 520),
+    later2 = taken.splice(Math.ceil(taken.length / 2)),
+    takeOne = ({ s, r, d, cx, cy }) => {
+    if (d <= reach) { fly(s, r, spiral(cx - x, cy - y), space?.timeAt ? 1200 + d * 2.6 : 700 + d * 7, timeAt(d)); return; }
     // further out: pulled a little way in, turned and drawn out toward it (stretched along the pull)
     const f = 1 - (d - reach) / edge, a = Math.atan2(y - cy, x - cx), deg = R(a * 180 / Math.PI), pull = 4 + 16 * f;
     leaning.push({
@@ -1339,7 +1568,8 @@ function blackhole(x, y) {
         space?.timeAt ? timeAt(Math.min(d, reach * 1.3)) * .6 : 0),
       a,
       f
-    }); }
+    }); };
+  taken.forEach(takeOne); later(() => later2.forEach(takeOne), 0);
   // (spiral() takes the vector from the hole to the letter, so the letters fall in)
   // the page itself bends toward it: each block near it is drawn in, turned and shrunk a little (springs back when it closes)
   const pulled = []; if (!reduce) for (const el of [...document.querySelectorAll(opts.blocks || 'body > *')].filter(el => !el.closest('.chb-box, #chb-layer') && !el.querySelector('.chb-box'))) {
@@ -1479,8 +1709,19 @@ function foil(x, y) {
           wf.remove(); }
       // every letter on screen is smeared flat onto the line as the wavefront reaches it
       let n = 0;
-      for (const { s: l, r, cy } of lettersNear(x, y, Math.max(innerWidth, innerHeight) * 1.5, (cx, cy) => cy > -20 && cy < innerHeight + 20).sort((p, q) => Math.abs(p.cy - y) - Math.abs(q.cy - y))) {
-        if (++n > 900) break;
+      for (const {
+        s: l,
+        r,
+        cy
+      } of lettersNear(
+        x,
+        y,
+        Math.max(innerWidth, innerHeight) * 1.5,
+        (cx, cy) => cy > -20 && cy < innerHeight + 20,
+        false,
+        { cap: PIECES, cover: 900, flat: true, rank: (cx, cy) => Math.abs(cy - y) }).sort((p, q) =>
+        Math.abs(p.cy - y) - Math.abs(q.cy - y))) {
+        if (++n > PIECES) break;
         keep(
           l,
           r,
@@ -1540,36 +1781,36 @@ function erase(x, y) {
     } }
   breakLines(x, y, 9, 'drop'); if (PINS.length) breakPins((px, py) => Math.hypot(px - x, py - y) < 18); shown();
 }
-let magnetEl = null, caught = [], magnetX = 0, magnetY = 0, polarity = 1;
+let magnetEl = null, caught = [], magnetX = 0, magnetY = 0, polarity = 1, clumped = 0; const inClump = new Set();
 function magnet(x, y) {
   magnetX = x;
   magnetY = y;
   if (!magnetEl) { magnetEl = mark(place(magnetArt(false), 0, 0, [-26, -32, 52, 64])); magnetEl.classList.add('chb-magnet-live'); polarity = 1; }
   magnetEl.style.transform = 'translate(' + R(x) + 'px,' + R(y) + 'px)';
-  physics.setAttractor('magnet', { x, y, radius: 150, strength: polarity * 11000 });
-  const nearby = lettersNear(x, y, 130).sort((a, b) => a.d - b.d);
-  for (const p of nearby) {
-    if (polarity > 0 && caught.reduce((n, k) => n + k.body.parts.length, 0) >= 160) break;
-    const body = liveBody([p]);
-    if (polarity < 0) { const dx = body.x - x, dy = body.y - y, d = Math.hypot(dx, dy) || 1; physics.force(body, dx / d * 850, dy / d * 850 - 120); continue; }
-    catchLetter(body);
-  }
-  if (polarity > 0)
-    for (const body of physics.bodies) {
-      if (caught.reduce((n, k) => n + k.body.parts.length, 0) >= 160) break;
-      if (!body.retired && !body.constraint && !body.dragged && Math.hypot(body.x - x, body.y - y) < 150) catchLetter(body);
+  clumped = caught.reduce((n, k) => n + k.body.parts.length, 0);
+  const room = polarity > 0 ? 160 - clumped : 160, nearby = room > 0 ? lettersNear(x, y, 130, undefined, false, { cap: room, letters: room }).sort((a, b) => a.d - b.d) : [];
+  physics.batch(() => { physics.setAttractor('magnet', { x, y, radius: 150, strength: polarity * 11000 });
+    for (const p of nearby) {
+      if (polarity > 0 && clumped >= 160) break;
+      const body = liveBody([p]);
+      if (polarity < 0) { const dx = body.x - x, dy = body.y - y, d = Math.hypot(dx, dy) || 1; physics.force(body, dx / d * 850, dy / d * 850 - 120); continue; }
+      catchLetter(body);
     }
-  for (const k of caught) {
-    if (k.body.constraint) {
-      k.body.constraint.x = x + k.off[0];
-      k.body.constraint.y = y + k.off[1];
-      if (reduce) physics.constrain(k.body, k.body.constraint); else physics.wake(k.body);
-    }
-  }
-  shown();
+    if (polarity > 0)
+      for (const body of physics.bodies) { if (clumped >= 160) break; if (!body.retired && !body.constraint && !body.dragged && Math.hypot(body.x - x, body.y - y) < 150) catchLetter(body); }
+    for (const k of caught) {
+      if (k.body.constraint) {
+        k.body.constraint.x = x + k.off[0];
+        k.body.constraint.y = y + k.off[1];
+        if (reduce) physics.constrain(k.body, k.body.constraint); else physics.wake(k.body);
+      }
+    } });
+    shown();
 }
 function catchLetter(body) {
-  if (caught.some(k => k.body === body) || caught.reduce((n, k) => n + k.body.parts.length, 0) + body.parts.length > 160) return;
+  if (inClump.has(body) || clumped + body.parts.length > 160) return;
+  inClump.add(body);
+  clumped += body.parts.length;
   const i = caught.length, pole = i % 2 ? 1 : -1, ring = Math.floor(i / 12), a = i * 2.39996, radius = 5 + ring * 2.2, off = [pole * 11 + Math.cos(a) * radius, -13 + Math.sin(a) * radius];
   caught.push({ body, off });
   for (const p of body.parts) p.c.classList.add('chb-magnet-clump');
@@ -1582,20 +1823,24 @@ function flipMagnet() {
   magnetEl.innerHTML = magnetArt(polarity < 0);
   physics.removeAttractor('magnet');
   const clump = caught.splice(0);
-  for (const k of clump) { physics.release(k.body); for (const p of k.body.parts) p.c.classList.remove('chb-magnet-clump'); }
-  if (polarity < 0) {
-    for (const b of physics.bodies) {
-      const dx = b.x - magnetX, dy = b.y - magnetY, d = Math.hypot(dx, dy);
-      if (d > 180) continue;
-      physics.force(b, (dx || (b.id % 2 ? -1 : 1)) / (d || 1) * 950, dy / (d || 1) * 950 - 150);
+  inClump.clear();
+  physics.batch(() => {
+    for (const k of clump) { physics.release(k.body); for (const p of k.body.parts) p.c.classList.remove('chb-magnet-clump'); }
+    if (polarity < 0) {
+      for (const b of physics.bodies) {
+        const dx = b.x - magnetX, dy = b.y - magnetY, d = Math.hypot(dx, dy);
+        if (d > 180) continue;
+        physics.force(b, (dx || (b.id % 2 ? -1 : 1)) / (d || 1) * 950, dy / (d || 1) * 950 - 150);
+      }
     }
-  }
+  });
   magnet(magnetX, magnetY);
 }
 function letGo() {
   physics.removeAttractor('magnet');
-  for (const k of caught) { physics.release(k.body); for (const p of k.body.parts) p.c.classList.remove('chb-magnet-clump'); }
+  physics.batch(() => { for (const k of caught) { physics.release(k.body); for (const p of k.body.parts) p.c.classList.remove('chb-magnet-clump'); } });
   caught = [];
+  inClump.clear();
   magnetEl?.remove();
   magnetEl = null;
   polarity = 1;
@@ -1649,8 +1894,8 @@ function paint(x, y, first) {
     }
     if (rnd() < .06 && !reduce) (brush.drips ||= []).push(mark(place(`<path d="${closed(ring(0, 0, 1.6 + rnd() * 2.2, 1.4 + rnd() * 2, 6, .2))}" fill="${brush.col}" opacity=".8"/>`, x + J(26), y + J(20), [-6, -6, 12, 12])));   // a spatter
   }
-  for (const n of textNodesNear(x, y, 14)) split(n);
-  for (const w of PAGE().querySelectorAll('.chb-word')) {
+  splitWords(wordsNear(x, y, 14));
+  for (const w of splitNear(x, y, 14, '.chb-word')) {
     if (painted.has(w)) continue;
     const r = w.getBoundingClientRect();
     if (x < r.left - 4 || x > r.right + 4 || y < r.top - 6 || y > r.bottom + 6) continue;
@@ -1780,18 +2025,42 @@ function gravity() {
   drawGravity();
   shown();
 }
+// every read comes first (where the loose pieces lie, where the words are, their type); then one pass of writes
 function gravityFall() {
-  const onScreen = r => r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth,
-    all = lettersNear(innerWidth / 2, innerHeight / 2, Math.hypot(innerWidth, innerHeight), (x, y, r) => onScreen(r));
-  for (const s of moved) if (s._c?.isConnected && !s._halves) { const r = s._c.getBoundingClientRect(); if (onScreen(r)) all.push({ s, r, cy: r.top + r.height / 2 }); }
-  all.sort((a, b) => b.cy - a.cy);
-  for (const p of all) { const body = liveBody([p]); if (reduce) physics.settle(body); else physics.force(body, J(25), J(20)); }
+  types = new WeakMap(); const loose = [];
+  for (const s of moved) {
+    const c = s._c;
+    if (!c?.isConnected || s._halves) continue;
+    const b = s._body,
+      p = b?.parts.find(q => q.s === s),
+      r = p ?
+        { left: p.r.left + b.x - b.homeX, top: p.r.top + b.y - b.homeY, width: p.r.width, height: p.r.height, right: p.r.right + b.x - b.homeX, bottom: p.r.bottom + b.y - b.homeY } :
+        c.getBoundingClientRect();
+    if (inView(r)) loose.push({ s, r });
+  }
+  for (const s of PAGE().querySelectorAll('.chb-ch')) { if (moved.has(s)) continue; const r = s.getBoundingClientRect(); if (inView(r)) loose.push({ s, r }); }
+  const pieces = atCeiling(piecesOf(wordsInView(), Math.max(60, PIECES - loose.length)));
+  for (const p of pieces) p.type = typeIn(p.node.parentElement);
+  for (const p of loose) p.s._type = typeOf(p.s);
+  physics.batch(() => {
+    copies = document.createDocumentFragment();
+    wrapPieces(pieces);
+    const all = [...loose, ...pieces].sort((a, b) => b.r.top + b.r.height / 2 - a.r.top - a.r.height / 2);
+    for (const group of clumps(all, PIECES)) { const body = liveBody(group); if (reduce) physics.settle(body); else physics.force(body, J(25), J(20)); }
+    layer.append(copies); copies = null; });
 }
 function drawGravity() {
   if (gravityHandle) gravityHandle.style.transform = 'translate(' + R(gravityHandle._x) + 'px,' + R(gravityHandle._y) + 'px) rotate(' + R(Math.atan2(gravityY, gravityX) * 180 / Math.PI - 90) + 'deg)';
 }
-function tiltGravity(x, y) {
-  const dx = x - innerWidth / 2, dy = y - innerHeight / 2, d = Math.hypot(dx, dy);
+// the handle aims once a frame, however many moves arrive in it
+let tilt = null, tiltFrame = 0;
+function tiltGravity(x, y) { tilt = [x, y]; if (!tiltFrame) tiltFrame = requestAnimationFrame(aimGravity); }
+function aimGravity() {
+  cancelAnimationFrame(tiltFrame);
+  tiltFrame = 0;
+  if (!tilt) return;
+  const dx = tilt[0] - innerWidth / 2, dy = tilt[1] - innerHeight / 2, d = Math.hypot(dx, dy);
+  tilt = null;
   if (d < 8) return;
   gravityX = dx / d * 2300;
   gravityY = dy / d * 2300;
@@ -1933,8 +2202,10 @@ function aimArt(k) {
     + `<svg class="chb-badge" viewBox="-16 -16 32 32">${shp(ring(0, 0, 13, 12, 8, .06), PAPER, 1.6, true)}<svg x="-10" y="-10" width="20" height="20" viewBox="${t[2]}">${ART[k]()}</svg></svg>`;
   aimFor = k;
 }
+// (on Home the tray lives in a shadow root: at the document an event's target is the host, so the path says what was really hit)
+const hit = e => e.composedPath?.()[0] || e.target;
 function aimAt(e) {
-  const show = opts.allowed?.() !== false && !!tool && !(opts.ours && e.target.closest?.(opts.ours)) && e.pointerType !== 'touch' && !e.target.closest?.('.chb-box') && e.target.tagName !== 'IFRAME';
+  const show = opts.allowed?.() !== false && !!tool && !(opts.ours && hit(e).closest?.(opts.ours)) && e.pointerType !== 'touch' && !hit(e).closest?.('.chb-box') && e.target.tagName !== 'IFRAME';
   if (show && aimFor !== tool) aimArt(tool);
   if (show) aim.style.transform = `translate(${e.clientX}px,${e.clientY}px)`;
   aim.classList.toggle('is-on', show); document.documentElement.classList.toggle('chb-aiming', show);
@@ -1950,14 +2221,14 @@ listen(document, 'pointerover', aimAt, true);
 listen(document, 'pointerout', e => { if (!e.relatedTarget) aimOff(); }, true);
 listen(globalThis, 'blur', aimOff);
 tray.addEventListener('click', e => { const b = e.target.closest('button[data-tool]'); if (b) { e.stopPropagation(); pick(b.dataset.tool); } });
-const notOurs = e => !tool || opts.allowed?.() === false || e.target.closest('#chb-tray,#chb-undo') || !!(opts.ours && e.target.closest(opts.ours));
+const notOurs = e => !tool || opts.allowed?.() === false || hit(e).closest?.('#chb-tray,#chb-undo') || !!(opts.ours && hit(e).closest?.(opts.ours));
 let restoring = false;
 const CLICK = { bomb, hammer, railgun, blackhole, foil, ink, garden, balloon, portal, gravity: () => gravity() };
 let interaction = null, swallowUntil = -1, swallowX = 0, swallowY = 0;
 const stamp = e => Number.isFinite(e.timeStamp) ? e.timeStamp : performance.now();
 const managed = e => e.target.closest?.('.chb-physics-body,.chb-balloon-live,.chb-gravity-handle,.chb-portal-live,.chb-portal-knob,.chb-portal-edge');
 const ownedInput = e =>
-  opts.allowed?.() !== false && !(opts.ours && e.target.closest?.(opts.ours)) && !e.target.closest?.('#chb-tray,#chb-undo') && (!tool || ['portal', 'gravity', 'balloon', 'magnet'].includes(tool));
+  opts.allowed?.() !== false && !(opts.ours && hit(e).closest?.(opts.ours)) && !hit(e).closest?.('#chb-tray,#chb-undo') && (!tool || ['portal', 'gravity', 'balloon', 'magnet'].includes(tool));
 function captureInteraction(e, value) {
   interaction = { ...value, id: e.pointerId, startX: e.clientX, startY: e.clientY, moved: false, target: e.target };
   try { e.target.setPointerCapture?.(e.pointerId); } catch {}
@@ -1969,13 +2240,13 @@ function releaseInteraction(cancelled = false, e) {
   const i = interaction;
   interaction = null;
   if (i.body) physics.dragEnd(i.body, cancelled ? (e ? stamp(e) : performance.now()) + 1000 : stamp(e || {}));
-  if (i.kind === 'gravity' && !i.moved && !cancelled) flipGravity();
+  if (i.kind === 'gravity') { if (i.moved) aimGravity(); else if (!cancelled) flipGravity(); }
   if (i.kind === 'balloon' && !cancelled) popBalloon(i.balloon);
   if (i.kind !== 'pending' || i.moved) { swallowUntil = (e ? stamp(e) : performance.now()) + 450; swallowX = e?.clientX ?? i.startX; swallowY = e?.clientY ?? i.startY; }
   try { i.target.releasePointerCapture?.(i.id); } catch {}
 }
 listen(document, 'click', e => {
-  if (stamp(e) <= swallowUntil && Math.hypot(e.clientX - swallowX, e.clientY - swallowY) < 8 && !e.target.closest?.('#chb-tray,#chb-undo')) {
+  if (stamp(e) <= swallowUntil && Math.hypot(e.clientX - swallowX, e.clientY - swallowY) < 8 && !hit(e).closest?.('#chb-tray,#chb-undo')) {
     swallowUntil = -1;
     e.preventDefault();
     e.stopPropagation();
@@ -2020,6 +2291,7 @@ listen(document, 'pointerdown', e => {
 }, true);
 listen(document, 'pointermove', e => {
   if (opts.allowed?.() === false) { pick(null); return; }
+  if (restTimer || resting) stir();
   aimAt(e);
   if (interaction && interaction.id === e.pointerId) {
     const i = interaction;
@@ -2075,13 +2347,13 @@ listen(document, 'contextmenu', e => {
   e.stopPropagation();
   if (magnetEl) flipMagnet(); else magnet(e.clientX, e.clientY);
 }, true);
-listen(document, 'keydown', e => { if (e.key === 'Escape') { releaseInteraction(true); if (tool) pick(tool); else letGo(); } });
+listen(document, 'keydown', e => { if (restTimer || resting) stir(); if (e.key === 'Escape') { releaseInteraction(true); if (tool) pick(tool); else letGo(); } });
 listen(globalThis, 'blur', () => { releaseInteraction(true); release(); letGo(); });
 
 function returnFold(f, duration, easing) {
   const from = getComputedStyle(f.el).transform; f.a.cancel();
   const back = { ...f, a: f.el.animate([{ transform: from }, { transform: 'none' }], { duration: D(duration), easing }) };
-  returning.add(back); back.a.onfinish = () => { f.el.style.transform = f.prev.t; f.el.style.transformOrigin = f.prev.o; back.a.cancel(); returning.delete(back); };
+  returning.add(back); back.a.onfinish = () => { f.el.style.transform = f.prev.t; f.el.style.transformOrigin = f.prev.o; back.a.cancel(); returning.delete(back); tidy(f.el); };
 }
 // ---------------------------------------------------------------- put it back: letters home along their own paths, lines mended, the page unfolded
 undo.addEventListener('click', () => {
@@ -2091,6 +2363,7 @@ undo.addEventListener('click', () => {
   timers.clear();
   restoring = true;
   releaseInteraction(true);
+  tilt = null;
   letGo();
   physicsView.clear();
   balloons.length = 0;
@@ -2107,6 +2380,7 @@ undo.addEventListener('click', () => {
   if (tool) pick(tool); letGo(); laserOff(); paintOff(); let longest = 400;
   for (const [w, st] of painted) w.classList.remove('chb-painted', st); painted.clear();
   for (const f of folds.splice(0)) { returnFold(f, 1100, 'cubic-bezier(.2,.9,.3,1)'); longest = Math.max(longest, 1100); }
+  const held = new Map(); for (const s of moved) if (s._c && !s._physicsPath) held.set(s, [getComputedStyle(s._c).transform, s._c.getAnimations()]);
   for (const s of moved) try {
     if (s._halves) {
       for (const h of s._halves)
@@ -2114,9 +2388,11 @@ undo.addEventListener('click', () => {
       continue;
     }
     if (s._c) {
-      const c = s._c, from = getComputedStyle(c).transform, home = s._physicsPath ? [...s._physicsPath].reverse().map(f => ({ ...f })) : [{ transform: from }, { transform: 'none' }];
+      const c = s._c,
+        [from, running] = held.get(s) || [c.style.transform || 'none', []],
+        home = s._physicsPath ? [...s._physicsPath].reverse().map(f => ({ ...f })) : [{ transform: from }, { transform: 'none' }];
       if (s._physicsPath) { home[0] = { transform: from }; home.push({ transform: 'none' }); }
-      c.getAnimations().forEach(a => a.cancel());
+      running.forEach(a => a.cancel());
       c.style.transition = 'none';
       c.style.transform = 'none';
       c.animate(home, { duration: D(520), easing: 'cubic-bezier(.3,0,.2,1)' }).onfinish = () => { c.remove(); s.style.visibility = ''; };
@@ -2132,10 +2408,10 @@ undo.addEventListener('click', () => {
       c.animate(back, { duration: D(s._d / 1.6), easing: 'cubic-bezier(.3,0,.2,1)' }).onfinish = () => { c.remove(); s.style.visibility = ''; }; longest = Math.max(longest, s._d / 1.6); }
     else c.animate([{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none' }], { duration: D(360) }).onfinish = () => { c.remove(); s.style.visibility = ''; };
   } catch { s.style.visibility = ''; s._c?.remove(); }
-  holes.length = 0; FLOOR.clear(); HITS.length = 0; PINS.length = 0; flat = false;
+  holes.length = 0; FLOOR.clear(); HITS.length = 0; PINS.length = 0; flat = false; ruled = textIndex = null; unrest();
   for (const m of marks.splice(0)) m.animate([{ opacity: 1 }, { opacity: 0 }], { duration: D(400), fill: 'forwards' }).onfinish = () => m.remove();
-  setTimeout(() => { for (const [el, sides] of lines) for (const side in sides) el.style['border' + side + 'Color'] = sides[side].inline; lines.clear();
-    for (const { holder, node } of splits.splice(0)) holder.replaceWith(node);
+  setTimeout(() => { for (const [el, sides] of lines) { for (const side in sides) el.style['border' + side + 'Color'] = sides[side].inline; tidy(el); } lines.clear();
+    for (const { holder, node } of splits.splice(0)) if (holder.classList.contains('chb-split') || holder.classList.contains('chb-run')) holder.replaceWith(node);
     for (const s of moved) { delete s._c; delete s._k; delete s._halves; delete s._body; delete s._physicsPath; }
     moved.clear();
     undo.style.display = 'none';

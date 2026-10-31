@@ -140,7 +140,7 @@ async function dashboardFixture(t,options={}){
  const document={createElement:()=>element,addEventListener:(name,fn)=>{docEvents[name]=fn;},removeEventListener(){}};
  element.ownerDocument=document;
  const env=context(STORE_FILES,{document,matchMedia:()=>({matches:false}),sessionStorage:{getItem:key=>saved.get(key),setItem:(key,value)=>saved.set(key,value)},
-  setTimeout:()=>0,clearTimeout(){},setInterval:()=>0,clearInterval(){},
+  setTimeout:()=>0,clearTimeout(){},setInterval:()=>0,clearInterval(){},requestAnimationFrame:fn=>{setImmediate(()=>fn(0));return 1;},cancelAnimationFrame(){},
   ReserveToolbox:{create(value){toolboxOptions=value;return {update(){},close(){},destroy(){},open(){}};}}});
  // Gesture/rendering geometry is outside this storage/selection audit.
  env.ReserveWorkspaceGestures={create:()=>({active:()=>false,sync(){},destroy(){},click(){return false;},action(){return false;},pointerdown(){},pointerup(){},pointercancel(){},contextmenu(){},pointermove(){},keydown(){return false;}})};
@@ -148,6 +148,7 @@ async function dashboardFixture(t,options={}){
  const f=await stores(t,{env});await personalSeed(f);
  const snapshot={origin:ORIGIN,user:{id:'7'},courses:courses(),assignments:[{id:'1',course_id:'10',name:'Synthetic lab',description:'',due_at:new Date(Date.now()+86400000).toISOString(),submission_types:['online_upload'],submission:{workflow_state:'unsubmitted',score:12}},{id:'2',course_id:'20',name:'Synthetic essay',description:'',due_at:new Date(Date.now()+86400000).toISOString(),submission_types:['online_upload'],submission:{workflow_state:'unsubmitted'}}]};
  const before=copy(snapshot),view=env.ReserveDashboard.mount({append(){}},{snapshot,store:f.store,initialState:{workspace:'work',...options.initialState}});t.after(()=>view.destroy());
+ await new Promise(setImmediate);
  const click=(action,data={})=>events.click({detail:0,target:{closest:selector=>selector==='[data-rd-action]'?{dataset:{rdAction:action,...data}}:null}});
  const change=(field,value,id='1')=>events.change({target:{dataset:{rdField:field,id},value}});
  const idle=async()=>{await f.store.update(()=>{});await tick();await tick();};

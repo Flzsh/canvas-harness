@@ -27,6 +27,9 @@
 .rd .rd-widget-glyph {flex:none;color:var(--rd-accent);}
 .rd .rd-widget-link {margin-left:auto;font-size:12.5px;}
 .rd .rd-widget-link + .rd-arrange-tools {margin-left:2px;}
+/* the three rooms' openers (Focus room, Review deck, Grade impact) stand in one place: the right end of the head, before the module's own tools */
+.rd .rd-widget-head .rv-grow, .rd .rd-widget-head .gi-open {margin-left:auto;}
+.rd .rd-widget-head :is(.fr-open,.rv-grow,.gi-open) + .rd-arrange-tools {margin-left:2px;}
 .rd .rd-arrange-more {display:grid;place-items:center;width:32px;height:38px;border:0;border-radius:9px;background:none;color:var(--rd-faint);cursor:pointer;opacity:0;transition:opacity 140ms,background-color 140ms,color 140ms;}
 .rd [data-arrange-key]:is(:hover,:focus-within) .rd-arrange-more,.rd[data-board-editing=true] .rd-arrange-more,.rd .rd-arrange-more[aria-expanded=true] {opacity:1;}
 .rd .rd-arrange-more:is(:hover,:focus-visible,[aria-expanded=true]) {background:var(--rd-tint);color:var(--rd-ink);outline:none;}

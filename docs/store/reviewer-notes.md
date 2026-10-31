@@ -1,5 +1,9 @@
 # Reviewer testing notes
 
+## 3.9.0 changes
+
+3.9.0 redraws the opt-in Focus room, Review deck and Grade impact and makes the play tools lighter. It adds no permissions, no network requests and no remote code; all three stay off until switched on under Features → Custom.
+
 ## 3.8.0 Chrome Web Store submission scope
 
 3.8.0 is a Chrome Web Store submission of `dist/Canvas-Harness-3.8.0.zip`. It replaces 3.7.0, which was not published. The PDF reader now uses PDF.js 6.4.299's unmodified modern build from the official npm package (`vendor/pdfjs`, SHA-256 hashes in `pdf-context.js`) instead of the legacy build, whose bundled core-js code was reported as obfuscated. `pdf-library.mjs` and `pdf-worker.mjs` first load `pdf-polyfills.js`, a short readable file that adds the few newer standard built-ins PDF.js calls; the minimum Chrome version is 126. PDF.js still runs with eval and WebAssembly off. `vendor/pdfjs/README.md` explains two upstream spots kept byte for byte: `pdf.worker.mjs` line 9180 is the RFC 7932 Brotli dictionary stored as text (data, not code), and `pdf.mjs` line 16224 builds a wrapper for a worker hosted on another site, which is never reached because the extension gives PDF.js its packaged worker. Biscuit's local language rules are updated, the PDF reader has four fixes (a refused text box keeps its draft, text size and colour apply to the box being typed, a marked copy is never saved after the reader is hidden or closed, and module PDFs count as opened), and the dashboard does less work while nothing changes. No permission, host or network request is added.

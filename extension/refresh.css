@@ -1416,6 +1416,14 @@
 .rd .rd-grade-table tbody th a > .rd-mini { margin-block: -4px; }
 .rd .rd-grade-table tbody th a > .rd-icon { opacity: 0; transition: opacity 140ms var(--rd-fade); }
 .rd .rd-grade-table tbody tr:is(:hover, :focus-within) th a > .rd-icon { opacity: 1; }
+/* With Grade impact on, a course name is a button that opens its weighing room, and the Canvas arrow sits beside it. */
+.rd .rd-grade-table th .rd-grade-course { display: flex; align-items: center; gap: 6px; }
+.rd .rd-grade-table th .rd-grade-open { display: flex; flex: 1; min-width: 0; align-items: center; gap: 10px; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-size: 14px; font-weight: var(--rd-bold); line-height: 1.5; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+.rd .rd-grade-table th .rd-grade-open > .rd-mini { margin-block: -4px; }
+.rd .rd-grade-table th .rd-grade-open:hover > span { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.rd .rd-grade-table th .rd-grade-out { display: inline-grid; place-items: center; padding: 4px; color: var(--rd-muted); opacity: 0; transition: opacity 140ms var(--rd-fade); }
+.rd .rd-grade-table tbody tr:is(:hover, :focus-within) th .rd-grade-out { opacity: 1; }
+.rd .rd-grade-table th .rd-grade-out > .rd-icon { width: 13px; height: 13px; }
 .rd .rd-grade-value { font-family: var(--rd-display); font-size: 17px; font-weight: var(--rd-num-w) !important; letter-spacing: -.005em; color: var(--rd-ink); font-variant-numeric: lining-nums tabular-nums; }
 .rd .rd-grade-value.rd-grade-unavailable { font-family: inherit; font-size: 13px; font-weight: 450 !important; color: var(--rd-faint); }
 .rd .rd-grade-period { font-size: 12.5px; color: var(--rd-muted); }
@@ -2050,7 +2058,7 @@
 
 
 
-.rd .rd-grade-table th a > span small { display: block; margin-top: 1px; font-size: 11.5px; font-weight: 450; line-height: 1.4; color: var(--rd-muted); }
+.rd .rd-grade-table th :is(a, .rd-grade-open) > span small { display: block; margin-top: 1px; font-size: 11.5px; font-weight: 450; line-height: 1.4; color: var(--rd-muted); }
 .rd .rd-reader-course small { font-size: inherit; font-weight: 450; color: var(--rd-muted); }
 
 
@@ -2315,3 +2323,16 @@
 .rd .rd-toolbar > .rd-bar-search input { border-radius: 0; background: transparent; box-shadow: none; }
 .rd .rd-toolbar > .rd-bar-search:focus-within { border-bottom: 1.6px solid var(--rd-mark); }
 .rd .rd-toolbar > .rd-bar-search input:focus-visible { box-shadow: none; }
+
+/* The rooms over the page (dashboard.js): the Review deck's reading room and Grade impact's weighing room are a layer
+   of their own in the workspace column's place, over the page, which keeps its layout and its paint under them. The
+   layer's box is the column's (its host takes the column's grid area and the shell's height; it has the column's
+   scrollbar gutter), so a room stands exactly where it stood as a page. A room built ahead of time, and one that has
+   folded away, stand behind the page, see-through, until they are shown or let go. The host is no stacking context and
+   lets presses through, so the layers stack with the page itself. No containment on a layer: a part of a room may be
+   lifted out of it over the whole window (a card brought to the middle), as a layer of its own. A layer is composited
+   in every state, so showing it, hiding it and its moves never change what is painted. */
+.rd .rd-shell > .rd-roomhost { position: absolute; grid-column: -2 / -1; inset: 0; min-width: 0; pointer-events: none; }
+.rd .rd-roomhost > .rd-roomlayer { position: absolute; inset: 0; z-index: 3; pointer-events: auto; will-change: opacity; box-sizing: border-box; min-width: 0; overflow-x: clip; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-gutter: stable; }
+.rd .rd-roomhost > .rd-roomlayer[data-state=leaving] { z-index: 2; }
+.rd .rd-roomhost > .rd-roomlayer:is([data-state=spare], [data-state=gone]) { z-index: -1; opacity: 0; }

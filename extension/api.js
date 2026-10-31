@@ -322,7 +322,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const trusted = () => !!knownUser && /^\d+$/.test(String(knownUser.id ?? '')) && Date.now() - verifiedAt < 5000;
       const user = trusted() ? knownUser : await profile({signal});
       if (knownUser && String(knownUser.id) !== String(user.id)) throw new CanvasError('Your Canvas account changed. Reopen Canvas Harness to load the new account.', 'auth');
-      // include[]=term adds each course's term name, so "Default Term" (school resources such as NameCoach) is known by name
+      // include[]=term adds each course's term name, so "Default Term" (school resources such as a name-pronunciation tool) is known by name
       // as well as by enrollment_term_id (ReserveCore.nonAcademicCourseIds). Still one GET.
       const courses = await list('/api/v1/courses?enrollment_state=active&enrollment_type=student&include[]=total_scores&include[]=current_grading_period_scores&include[]=term&per_page=100', {signal});
       const errors = [], assignments = []; let cursor=0, completed=0, fatal=null;

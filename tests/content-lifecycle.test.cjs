@@ -79,7 +79,7 @@ test('returning from optional planning restores dashboard filters and scroll pos
 
 
 test('Canvas stays usable if the final layout stylesheet has not loaded',async()=>{
- const f=fixture();await new Promise(setImmediate);f.deliver();const host=f.nodes.get('reserve-companion-host'),links=host.shadowRoot.children.filter(x=>x.tagName==='link');assert.equal(links.length,16);
+ const f=fixture();await new Promise(setImmediate);f.deliver();const host=f.nodes.get('reserve-companion-host'),links=host.shadowRoot.children.filter(x=>x.tagName==='link');assert.equal(links.length,19);
  links.slice(0,-1).forEach(link=>link.onload());assert.equal(host.hidden,true);assert.equal(f.native.hidden,false);links.at(-1).onload();assert.equal(host.hidden,false);
 });
 

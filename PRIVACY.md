@@ -1,6 +1,6 @@
 # Canvas Harness privacy
 
-Applies to Canvas Harness 3.6.0 through 3.8.0. Last updated October 28, 2026.
+Applies to Canvas Harness 3.6.0 through 3.9.0. Last updated October 30, 2026.
 
 Canvas Harness is a browser extension maintained by Flzsh. It displays information from the Canvas account already signed in on your school's website. It has no developer-operated account service, analytics collector or tracking endpoint in the extension code for this release.
 
@@ -15,6 +15,7 @@ The optional Deadline changes feature keeps a bounded, separate observation reco
 - The extension uses Chrome/Edge extension local storage and separates saved data by school Canvas origin and account ID. It does not send these records to a Canvas Harness developer server or synchronize them through a Canvas Harness account.
 - Cached coursework becomes visible only after the signed-in Canvas account is verified. Returning to an idle tab temporarily hides private content while the account is checked again; a different account cannot inherit the previous account's visible workspace. The one exception is a switch you control: **Open at once** (off unless you turn it on) shows your saved workspace immediately on load and on returning to the tab while the same account check runs, and closes the workspace if the check fails. While it is on, the extension also remembers the account ID that last opened the workspace on that Canvas site. Leave it off on a shared computer.
 - Grades are hidden by default in the interface, but hiding them does not necessarily remove them from the local cache. GPA and what-if calculations run locally. Grade and GPA data are excluded from the AI context builder.
+- Grade impact's pretend assignments are saved with your other personal data on this device and in personal backups. They are never sent to Canvas.
 - Checking off homework or making a personal plan changes only your local Canvas Harness data. It does not submit homework, edit a Canvas assignment or change your Canvas grade.
 
 Personal backups are files that you choose to export. They can contain private notes, preferences, artwork and other personal information. Keep them private. The public extension package and example previews should contain only shared code, generic artwork and artificial example data, never your exported backup or personal course records.

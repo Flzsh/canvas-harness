@@ -559,7 +559,12 @@
   cv.height = Math.ceil(H * K);
   Object.assign(cv.style, { position: 'fixed', left: 0, top: 0, width: W + 'px', height: H + 'px', pointerEvents: 'none' });
   const g = cv.getContext('2d');
-  if (dark) { dark.width = cv.width; dark.height = cv.height; Object.assign(dark.style, { position: 'fixed', left: 0, top: 0, width: W + 'px', height: H + 'px', pointerEvents: 'none' }); }
+  const KD = K / 2;
+  if (dark) {
+    dark.width = Math.ceil(W * KD);
+    dark.height = Math.ceil(H * KD);
+    Object.assign(dark.style, { position: 'fixed', left: 0, top: 0, width: W + 'px', height: H + 'px', pointerEvents: 'none' });
+  }
   const gd = dark?.getContext('2d');
   let seed = 5150; const rnd = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
   const far = Math.max(Math.hypot(x, y), Math.hypot(W - x, y), Math.hypot(x, H - y), Math.hypot(W - x, H - y)),
@@ -652,15 +657,36 @@
     c.height = Math.ceil(LS * KL);
     return [c, c.getContext('2d')];
   }, [backC, bk] = mk(), [frontC, fr] = mk();
+  const softLayer = (scale, px) => {
+    const c = document.createElement('canvas');
+    c.width = c.height = Math.ceil(LS * scale);
+    const q = c.getContext('2d');
+    q.filter = `blur(${px * scale}px)`;
+    return { c, q, scale };
+  }, soft6 = softLayer(.25, 6), soft18 = softLayer(.125, 18);
+  // only the part of each layer the disk reaches is drawn: most of it is empty while the hole is small
+  let hw = LS / 2, hh = LS / 2;
+  const blurred = (c, s, alpha) => {
+    const dw = hw * 2 * s.scale, dh = hh * 2 * s.scale;
+    s.q.clearRect(0, 0, s.c.width, s.c.height);
+    s.q.drawImage(c, (LS / 2 - hw) * KL, (LS / 2 - hh) * KL, hw * 2 * KL, hh * 2 * KL, 0, 0, dw, dh);
+    g.globalAlpha = alpha;
+    g.drawImage(s.c, 0, 0, dw, dh, x - hw, y - hh, hw * 2, hh * 2);
+  };
   const bloom = c => {
-    const X = x - LS / 2, Y = y - LS / 2;
     g.globalCompositeOperation = 'lighter';
-    if (!reduce) { g.save(); g.filter = 'blur(6px)'; g.globalAlpha = .8; g.drawImage(c, X, Y, LS, LS); g.filter = 'blur(18px)'; g.globalAlpha = .5; g.drawImage(c, X, Y, LS, LS); g.restore(); }
-    g.drawImage(c, X, Y, LS, LS);
+    if (!reduce) { g.save(); blurred(c, soft6, .8); blurred(c, soft18, .5); g.restore(); }
+    g.drawImage(c, (LS / 2 - hw) * KL, (LS / 2 - hh) * KL, hw * 2 * KL, hh * 2 * KL, x - hw, y - hh, hw * 2, hh * 2);
   };
   function disk(t, rs, fade) {
-   const rin = rs * 1.35, rout = rs * 4.6;
-   for (const c of [bk, fr]) { c.setTransform(KL, 0, 0, KL, 0, 0); c.clearRect(0, 0, LS, LS); c.translate(LS / 2 - x, LS / 2 - y); c.globalCompositeOperation = 'lighter'; c.lineCap = 'round'; }
+   const rin = rs * 1.35, rout = rs * 4.6; hw = Math.min(LS / 2, rout + 70); hh = Math.min(LS / 2, rs * 2.7 + 70);
+   for (const c of [bk, fr]) {
+     c.setTransform(KL, 0, 0, KL, 0, 0);
+     c.clearRect(LS / 2 - hw, LS / 2 - hh, hw * 2, hh * 2);
+     c.translate(LS / 2 - x, LS / 2 - y);
+     c.globalCompositeOperation = 'lighter';
+     c.lineCap = 'round';
+   }
    // every stroke gathered into a few paths by layer, colour, brightness and width
    const B = new Map(), put = (front, c, x0, y0, x1, y1, al, w) => {
      if (al < .03) return;
@@ -696,13 +722,13 @@
    fr.stroke();
    bloom(backC); g.globalCompositeOperation = 'source-over'; g.fillStyle = '#000'; g.beginPath(); g.arc(x, y, rs, 0, TAU); g.fill(); bloom(frontC); g.globalCompositeOperation = 'source-over';
   }
-  let closing = -1, done = false, last = 0;
+  let closing = -1, done = false, last = 0, darkened = false;
   function frame(t) {
    if (done) return; t = Math.max(0, t) / SLOW; last = t;
    const cK = closing < 0 ? 0 : clamp((t - closing) / .55);
    g.setTransform(1, 0, 0, 1, 0, 0);
    g.clearRect(0, 0, cv.width, cv.height);
-   if (gd) { gd.setTransform(1, 0, 0, 1, 0, 0); gd.clearRect(0, 0, dark.width, dark.height); }
+   if (gd && darkened) { gd.setTransform(1, 0, 0, 1, 0, 0); gd.clearRect(0, 0, dark.width, dark.height); darkened = false; }
    if (cK >= 1) { done = true; dim = 0; return; }
    const keep = 1 - cK * cK; g.setTransform(K, 0, 0, K, 0, 0); g.translate(x, y); g.scale(keep, keep); g.translate(-x, -y);
    const F = front(t), rs = rsAt(t), open0 = 1, dR = rs * 1.3;
@@ -741,31 +767,32 @@
    g.save(); g.clip(region);
    const bg = g.createRadialGradient(x, y, rs, x, y, Rmax); bg.addColorStop(0, '#010206'); bg.addColorStop(1, '#0a1626'); g.fillStyle = bg; g.fillRect(x - Rmax, y - Rmax, Rmax * 2, Rmax * 2);
    g.globalCompositeOperation = 'lighter'; g.textAlign = 'center'; g.textBaseline = 'middle';
+   let open = dR; for (const c of gone) if (c.rOut > open) open = c.rOut; open = open * 1.2 + 30; const base = g.getTransform(), { a: ba, b: bb, c: bc, d: bd, e: be, f: bf } = base;
    for (const b of bits) {
-     const u = (b.ph + t * b.sp) % 1,
-       e = Math.pow(u, 1.5),
-       r = rs + (b.r0 - rs) * (1 - e),
-       a = b.a0 + e * 3.4,
+     const u = (b.ph + t * b.sp) % 1, e = Math.pow(u, 1.5), r = rs + (b.r0 - rs) * (1 - e);
+     if (r > open) continue;
+     const a = b.a0 + e * 3.4,
        px = x + Math.cos(a) * r,
        py = y + Math.sin(a) * r,
        st = 1 + (1 - (r - rs) / (b.r0 - rs + 1)) * 2.2,
-       sz = b.s * clamp(.55 + r / 500, .55, 1.1);
-    g.save();
-    g.translate(px, py);
-    g.rotate(a + Math.PI / 2);
-    g.scale(sz / 18 / Math.sqrt(st), sz / 18 * st);
+       sz = b.s * clamp(.55 + r / 500, .55, 1.1),
+       c = Math.cos(a + Math.PI / 2),
+       n = Math.sin(a + Math.PI / 2),
+       sx = sz / 18 / Math.sqrt(st),
+       sy = sz / 18 * st;
+    const ma = c * sx, mb = n * sx, mc = -n * sy, md = c * sy;
+    g.setTransform(ba * ma + bc * mb, bb * ma + bd * mb, ba * mc + bc * md, bb * mc + bd * md, ba * px + bc * py + be, bb * px + bd * py + bf);
     g.globalAlpha = Math.min(1, (1 - u) * 3) * .85;
     g.drawImage(GLYPH[b.v + b.c], -10, -10, 20, 20);
-    g.restore();
    }
-   g.globalAlpha = 1; disk(t, rs, 1);
+   g.setTransform(base); g.globalAlpha = 1; disk(t, rs, 1);
    g.globalCompositeOperation = 'source-over';
    for (const [w, a] of [[20, .22], [11, .3], [5, .38]]) { g.strokeStyle = `rgba(0,0,0,${a})`; g.lineWidth = w; g.stroke(lips); }   // a soft shadow under each broken edge (no full-screen blur)
    g.restore();
    // the light of the page is swallowed: it darkens round the hole (darkest near it, deeper as it grows), the open region
    // stays lit by the hole's own light; streaks of light from all over are caught and drawn in on spirals
    dim = Math.pow(clamp(t / 4.6), 1.6) * (1 - cK);
-   if (gd && dim > .005) { gd.setTransform(K, 0, 0, K, 0, 0); gd.translate(x, y); gd.scale(keep, keep); gd.translate(-x, -y);
+   if (gd && dim > .005) { darkened = true; gd.setTransform(KD, 0, 0, KD, 0, 0); gd.translate(x, y); gd.scale(keep, keep); gd.translate(-x, -y);
     const dk = gd.createRadialGradient(x, y, dR, x, y, Rmax * 1.25);
     dk.addColorStop(0, `rgba(4,5,26,${.94 * dim})`);
     dk.addColorStop(.3, `rgba(8,10,46,${.82 * dim})`);

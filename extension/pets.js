@@ -408,7 +408,7 @@
    }catch{return null;}
   }
   function roll(){
-   clearTimeout(reel);reel=0;if(!node||dead||doc.hidden||menuOpen)return;
+   clearTimeout(reel);reel=0;if(!node||dead||doc.hidden||menuOpen)return;if(roomBusy()){scheduleReel(1200);return;}
    if(custom||reduced()){reels.clear();reelsDirty=true;return;}
    reelStarted=true;
     const t=now();
@@ -530,7 +530,7 @@
    const rect=el=>{if(!rects.has(el))rects.set(el,el.getBoundingClientRect());return rects.get(el);};
    const floor={el:null,y:height-5,x0:14,x1:width-14,floor:true,shown:true};
    const read=el=>{
-    if(!el)return floor;if(places.has(el))return places.get(el);if(!el.isConnected)return null;
+    if(!el)return floor;if(places.has(el))return places.get(el);if(!el.isConnected||underRoom(el))return null;
     const r=rect(el),side=sides.get(el);if(r.width<120||!side&&r.height<30){places.set(el,null);return null;}
     const inside=el.dataset.petLedge==='inside',y=inside?r.bottom-9:side==='bottom'?r.bottom:r.top+1;
     const l={el,inside,paddock:inside,y,x0:r.left+(inside?26:18),x1:r.right-(inside?26:18),shown:y>96&&y<height-6&&r.right>60&&r.left<width-60};places.set(el,l);return l;
@@ -574,7 +574,10 @@
    }
    measureBubble();
   }
-  function ledgeFor(el){return el?(el.isConnected?geometry?.places.get(el)||null:null):geometry?.floor||null;}
+  // A room over the page (dashboard.js: the Review deck's, Grade impact's) hides the page under it: a ledge on that page
+  // is no ledge while it is hidden (the companion stands on the floor, as when the room was a page of its own).
+  const underRoom=el=>!!el?.closest?.('.rd-shell > .rd-workspace[aria-hidden="true"]');
+  function ledgeFor(el){return el?(el.isConnected&&!underRoom(el)?geometry?.places.get(el)||null:null):geometry?.floor||null;}
   function ledges(){if(!geometry)measurePlaces();else if(dirty)invalidate();return geometry.all;}
   function cancelPlaces(){
     decisionPending=false;
@@ -600,10 +603,29 @@
     };
     layoutFrame=win.requestAnimationFrame?win.requestAnimationFrame(afterFrame):setTimeout(afterFrame,16);
   }
+  // While a room covers the page (the Focus room) or one of the rooms' moves is playing (they stamp data-ch-moving with
+  // when it ends), the companion keeps still: its measuring, deciding and reel reading took the frames the move needed.
+  // It catches up once the move is over, when the browser is idle.
+  // (the Review deck's and Grade impact's full pages count as rooms too: the pony keeps still over them and while they fold)
+  const roomBusy=()=>{
+    try{
+      return !!container.hasAttribute?.('data-ch-room')||Number(container.dataset?.chMoving||0)>Date.now()||!!container.querySelector?.('.gi-room:not([data-gi-away]), [data-review-deck]');
+    }catch{return false;}
+  };
+  let placesLater=0;
+  function refreshLater(){
+    if(placesLater||dead)return;
+    placesLater=setTimeout(()=>{
+      const run=()=>{placesLater=0;if(!dead)refreshPlaces();};
+      if(win.requestIdleCallback)win.requestIdleCallback(run,{timeout:1000});else run();
+    },450);
+    placesLater?.unref?.();
+  }
   function refreshPlaces(){
     clearTimeout(layoutTimer);
     layoutTimer=0;
     if(!node||dead||doc.hidden)return;
+    if(roomBusy()){if(spot.ledge&&underRoom(spot.ledge)&&!grab&&!goal)place();refreshLater();return;}
     measurePlaces();
     if(menuOpen){place();placeBubble();return;}
     if(decisionPending){decisionPending=false;decide(true);}
@@ -725,7 +747,7 @@
   function settle(as,ms){goal=null;rest=as;setPose(as);run();plan(ms);}
   function decide(measured=false){
    timer=0;if(!node||dead)return;
-   if(doc.hidden)return;
+   if(doc.hidden)return;if(roomBusy()){plan(1500);return;}
    if(menuOpen||grab||goal){plan(2500);return;}
     if(dirty){decisionPending=true;invalidate();return;}if(!measured)measurePlaces();const data=Brain()?snapshot:info(),idle=now()-lastInput,here=current();
    if(focusing){settle('read',20000);return;}
@@ -1425,7 +1447,19 @@
     return savePet?.(pet,patch,mutate);
   }
   // ---- called by the workspace
-  function sync(){const outer=syncInfo;syncInfo={data:null};try{syncNow();}finally{syncInfo=outer;}}
+  // While a room's move plays (data-ch-moving), the companion's upkeep in a render (its brain, offers, nudges: the
+  // Biscuit engine's offer among them) waits until the move has landed and the browser is idle. In the render that swaps
+  // a room's page for Home it was an eighth of the fold's long task at 4x CPU, for a companion that keeps still then.
+  let syncWait=0;
+  function sync(){
+   const until=layer&&!dead?Number(container.dataset?.chMoving||0)-Date.now():0;
+   if(until>0){
+     if(!syncWait)
+       syncWait=setTimeout(()=>{const go=()=>{syncWait=0;if(!dead)sync();};if(win.requestIdleCallback)win.requestIdleCallback(go,{timeout:1000});else go();},until+40);
+     return;
+   }
+   const outer=syncInfo;syncInfo={data:null};try{syncNow();}finally{syncInfo=outer;}
+  }
   function syncNow(){
    if(dead)return;
    const before=pet.knowledge,roam=pet.roam,more=snapshot.biscuitMoreRules;

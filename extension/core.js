@@ -157,8 +157,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     };
   }
 
-  // Courses that are not classes (2.17). Canvas lists school resources (NameCoach,
-  // College Counseling) beside the real courses. A course is non-academic when
+  // Courses that are not classes (2.17). Canvas lists school resources (a name-pronunciation tool,
+  // a counseling group) beside the real courses. A course is non-academic when
   //   - its drawing is the pronunciation or the counseling one (course-art.js
   //     decides by the Canvas name and code; the same words are kept here for
   //     pages and tests that run without the art), or

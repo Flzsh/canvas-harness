@@ -427,8 +427,24 @@
   }={}){
     let geometry=null,dead=false,layer=null,first=true,geo={},watched=[],bar=null;
     const active=new Map(),ghosts=new Set();
-    const observer=ResizeObserverImpl?new ResizeObserverImpl(()=>syncTabs(false)):null;
     const host=()=>container.closest?.('.rd')||container;
+    // A resize while a room's move plays (data-ch-moving on the dashboard: Home drawn again under a fold, a room swapped
+    // in): the surfaces are measured, and the art film books its drawings, once the move has landed and the browser is
+    // idle. Measured in the frame the page was swapped, their offsets laid out the whole new page a second time.
+    let resizeWait=0;
+    const resized=()=>{
+      if(dead)return;const until=Number(host().dataset?.chMoving||0)-Date.now();
+      if(until>0&&root.setTimeout){
+        if(!resizeWait)
+          resizeWait=root.setTimeout(()=>{
+            const go=()=>{resizeWait=0;if(!dead)syncTabs(false);};
+            if(typeof root.requestIdleCallback==='function')root.requestIdleCallback(go,{timeout:800});else go();
+          },until+30)||0;
+        return;
+      }
+      syncTabs(false);
+    };
+    const observer=ResizeObserverImpl?new ResizeObserverImpl(resized):null;
     const style=()=>{const value=container.dataset?.motionStyle||host().dataset?.motionStyle;return value==='still'||value==='off'?value:'gentle';};
     const reduced=()=>!!media?.matches||style()==='off';
     const pointer=()=>(container.dataset?.input||host().dataset?.input)==='pointer';

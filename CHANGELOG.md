@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.9.0 - 2026-10-30
+
+- Review deck: redrawn as a reading room that grows out of its Home module and folds back into it. The module comes in three sizes, and the large one lets you study right there.
+- Grade impact: redrawn as a weighing room for one course, opened from Grades or its Home module. Pretend assignments you add stay in this browser and are never sent to Canvas.
+- Focus room: redrawn with four drawn places and their sounds. Its Home module has the seal, +5, Finish and Break.
+- Those three stay off until you switch them on: Features in the popup, then Custom.
+- Play tools run much lighter on long pages: words or runs of words are cut only where a tool reaches, and each tool reads the page once per gesture. Bomb, railgun and black hole still break into letters.
+- Foil now works on long pages: it smears the letters nearest its line and whole words beyond them.
+- Marks and physics rest after 2 minutes without input, like the rest of the drawings.
+
 ## 3.8.1 - 2026-10-29
 
 - Modules page: the progress line (count, bar, Hide finished and Continue) is spaced out instead of squeezed together, and Retry only shows after loading fails. Each module's count, bar and Mark all done sit apart on its label. Each item's tick has its own space instead of covering the item's icon, and an item not yet done shows a drawn ring instead of Canvas's "unpublished" sign. Hide finished looks pressed while it is on.

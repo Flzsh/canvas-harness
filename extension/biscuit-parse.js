@@ -567,7 +567,7 @@
   ['deadline','deadline|deadline watch|deadline reminders'],['focus','focus buddy|focus help'],['planner','planner help|planner helper'],['quiz','quiz prep|quiz preparation'],['wellbeing','wellbeing|well-being|well being|wellness|stretch reminders'],['labprep','labprep|lab prep|lab preparation'],['reading','reading helper|reading help'],['rubric','rubric helper|rubric help'],['feedback','feedback helper|feedback help'],['inbox','inbox watch'],['reminders','reminders|reminder skill'],['night','night|night owl|night owl guard']
  ]);
  const MODULE_NAMES=names([
-  ['context','context|course information|course info'],['work','work|up next|upcoming work|assignment list'],['reader','reader|assignment details'],['today','today'],['handin','handin|to hand in|hand in'],['week','week|this week|planner'],['timer','timer|focus timer'],['clock','clock'],['notes','notes|note|quick notes'],['bookmarks','bookmarks|saved items'],['grades','grades|recent grades'],['messages','messages|inbox'],['pet','pet|paddock|pony|biscuit']
+  ['context','context|course information|course info'],['work','work|up next|upcoming work|assignment list'],['reader','reader|assignment details'],['today','today'],['handin','handin|to hand in|hand in'],['week','week|this week|planner'],['timer','timer|focus timer'],['clock','clock'],['notes','notes|note|quick notes'],['bookmarks','bookmarks|saved items'],['grades','grades|recent grades'],['impact','impact|grade impact|what if grades|what-if grades'],['messages','messages|inbox'],['pet','pet|paddock|pony|biscuit'],['review','review|review deck|flashcards|flash cards']
  ]),
  MODULE_LABELS={
    context:'Course information',
@@ -581,8 +581,10 @@
    notes:'Notes',
    bookmarks:'Bookmarks',
    grades:'Grades',
+   impact:'Grade impact',
    messages:'Messages',
-   pet:'Paddock'
+   pet:'Paddock',
+   review:'Review'
  };
  const TAB_NAMES=names([['home','home|dashboard'],['planner','planner|plan'],['messages','messages|inbox'],['assignments','assignments|assignment list'],['course-hub','course-hub|course hub|hub'],['materials','materials|materials library'],['grades','grades']]);
  const PLAY_NAMES=names([

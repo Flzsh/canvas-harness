@@ -4,7 +4,7 @@
  // The three panels every workspace has, and the modules a student may add beside them. The layout is one tree:
  // any module can sit beside or below any other. Up next and Assignment details always stay; the rest can go.
  const PANELS=['context','work','reader'];
- const EXTRA=['today','handin','week','timer','clock','notes','bookmarks','grades','messages','pet'];
+ const EXTRA=['today','handin','week','timer','clock','notes','bookmarks','grades','impact','messages','pet','review'];
  const ALL=[...PANELS,...EXTRA];
  const LABELS={
    context:'Course information',
@@ -19,12 +19,14 @@
    notes:'Notes',
    bookmarks:'Bookmarks',
    grades:'Grades',
+   impact:'Grade impact',
    messages:'Messages',
-   pet:'Paddock'
+   pet:'Paddock',
+   review:'Review'
  };
  // How much of a row a module asks for beside its neighbours, and the narrowest it can usefully be.
- const WEIGHT={context:1,work:1.12,reader:1.12,today:.82,handin:.9,week:.95,timer:.58,clock:.58,notes:.8,bookmarks:.8,grades:.8,messages:.9,pet:.66};
- const MIN_WIDTH={context:260,work:300,reader:300,today:220,handin:230,week:250,timer:170,clock:170,notes:210,bookmarks:210,grades:210,messages:230,pet:190};
+ const WEIGHT={context:1,work:1.12,reader:1.12,today:.82,handin:.9,week:.95,timer:.58,clock:.58,notes:.8,bookmarks:.8,grades:.8,impact:1.05,messages:.9,pet:.66,review:1};
+ const MIN_WIDTH={context:260,work:300,reader:300,today:220,handin:230,week:250,timer:170,clock:170,notes:210,bookmarks:210,grades:210,impact:240,messages:230,pet:190,review:260};
  const isKey=key=>ALL.includes(key),isExtra=key=>EXTRA.includes(key),label=key=>LABELS[key]||'';
  const removable=key=>EXTRA.includes(key)||key==='context';
  const ROOT='*',SIZES={s:.68,m:1,l:1.5};
