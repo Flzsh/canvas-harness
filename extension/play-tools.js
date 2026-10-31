@@ -10,11 +10,11 @@
 'use strict';
 const TIER = Object.freeze({
   painter: 'common',
-  garden: 'common',
   balloon: 'common',
   ink: 'common',
-  eraser: 'common',
-  magnet: 'common',
+  garden: 'common',
+  eraser: 'uncommon',
+  magnet: 'uncommon',
   hammer: 'rare',
   gravity: 'rare',
   portal: 'rare',
@@ -24,16 +24,14 @@ const TIER = Object.freeze({
   blackhole: 'legendary',
   foil: 'legendary'
 });
-const ODDS = Object.freeze({ common: 50, rare: 30, epic: 15, legendary: 5 });
-// Tier weights are probabilities for the whole tier, then each eligible tool shares that tier equally.
+// every gadget has its own chance out of 100; the band shows on its button
+const CHANCE = Object.freeze({ painter: 13, balloon: 13, ink: 12, garden: 12, eraser: 9, magnet: 9, hammer: 6, gravity: 6, portal: 5, laser: 5, bomb: 4, railgun: 3, blackhole: 2, foil: 1 });
 // Supplying an RNG makes the public deal reproducible without changing the drawing's own seeded randomness.
 function deal({ random = Math.random, last = '' } = {}) {
-  const roll = () => { const value = Number(random()); return Number.isFinite(value) ? Math.max(0, Math.min(1 - Number.EPSILON, value)) : 0; };
-  const pool = Object.keys(TIER).filter(key => key !== last), tiers = Object.keys(ODDS).filter(tier => pool.some(key => TIER[key] === tier));
-  let value = roll() * tiers.reduce((sum, tier) => sum + ODDS[tier], 0), tier = tiers.at(-1);
-  for (const key of tiers) { value -= ODDS[key]; if (value < 0) { tier = key; break; } }
-  const choices = pool.filter(key => TIER[key] === tier);
-  return choices[Math.floor(roll() * choices.length)];
+  const value = Number(random()), pool = Object.keys(TIER).filter(key => key !== last);
+  let roll = (Number.isFinite(value) ? Math.max(0, Math.min(1 - Number.EPSILON, value)) : 0) * pool.reduce((sum, key) => sum + CHANCE[key], 0);
+  for (const key of pool) { roll -= CHANCE[key]; if (roll < 0) return key; }
+  return pool.at(-1);
 }
 const mount = (opts = {}) => {
 const listeners = [], listen = (target, type, fn, options) => {
@@ -271,9 +269,11 @@ function place(inner, x, y, box) {
   return s;
 }
 const sheet = () => { const s = place('', 0, 0, [0, 0, innerWidth, innerHeight]); s.style.left = s.style.top = '0'; return s; };
+// (words inside a button go with the button, and text kept for screen readers is not on the page)
+const SKIP = OURS + ',.chb-ch,.screenreader-only,.ui-helper-hidden-accessible' + (opts.things === false ? '' : ',button,select,textarea,[role=button],.btn,.Button');
 const textWalker = () =>
   document.createTreeWalker(PAGE(), NodeFilter.SHOW_TEXT, {
-    acceptNode: n => n.nodeValue.trim() && !n.parentElement.closest(OURS + ',.chb-ch') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+    acceptNode: n => n.nodeValue.trim() && !n.parentElement.closest(SKIP) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
   });
 // The text nodes and where they lie are read once per gesture (a walk of the page per pointer move is what made the small
 // tools stutter); only the words a tool reaches become letters, the rest of their node stays plain text.
@@ -327,10 +327,14 @@ function splitNear(x, y, rad, selector) {
 // Budget the pieces, not the text: everything on screen falls, in as many pieces as a smooth frame can carry. Letters on a
 // short page, whole words next, runs of words along their line on a text-heavy one; past that, neighbours share a body.
 // Ranges read the words where they are, so nothing is split or laid out until the pieces are known.
-// Blasts stay in letters for now. Under the shared budget their outer part goes as whole words, which shows on the floor and in the
-// ring round the hit, and saves about a third of the bomb's main-thread work: that call is the owner's, and this is the one switch.
-const WORDS_IN_BLASTS = false, blast = (cover, cap = 300) => WORDS_IN_BLASTS ? { cap, cover, flat: true } : { cap: cover, letters: cover, flat: true };
-const PIECES = 300, CEILING = 600, inView = r => r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+// Blasts stay in letters on a normal machine. Under the shared budget their outer part goes as whole words, which shows on the floor and in the
+// ring round the hit, and saves about a third of the bomb's main-thread work: this is the one switch.
+// A Chromebook or a small laptop (4 GB or less, or two cores) gets the same effects at a price it can pay: about half the pieces, whole words in the
+// blasts, fewer sparks and smaller canvases. Nothing to turn on; opts.low overrides it for tests.
+const LOW = opts.low ?? ((globalThis.navigator?.deviceMemory || 8) <= 4 || (globalThis.navigator?.hardwareConcurrency || 8) <= 2), FX = LOW ? .45 : 1; globalThis.ReservePlayLow = LOW;
+const WORDS_IN_BLASTS = LOW,
+  blast = (cover, cap = 300) => WORDS_IN_BLASTS ? { cap: Math.round(cap * .6), cover: Math.round(cover * .7), letters: 0, flat: true } : { cap: cover, letters: cover, flat: true };
+const PIECES = LOW ? 170 : 300, CEILING = LOW ? 320 : 600, inView = r => r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
 function wordsInView() {
   const out = [], range = document.createRange(), walk = textWalker();
   for (let n; (n = walk.nextNode());) { range.selectNodeContents(n); let on = false; for (const b of range.getClientRects()) if (inView(b)) { on = true; break; } if (!on) continue;
@@ -437,7 +441,7 @@ const typeIn = el => {
 // (near: a test that also holds for a whole word; cap: the pieces this tool can use, nearest first by rank. Half of them at most
 // are letters, the nearest; the words round those go whole. letters: a different share of letters. whole: which words may go whole.
 // cover: how many letters' worth of text it reaches, so cutting it into fewer pieces does not make it reach further)
-function lettersNear(x, y, rad, test, kept = false, { near, cap = 0, rank, letters: share = cap / 2, whole, cover = Infinity, flat = false } = {}) {
+function lettersNear(x, y, rad, test, kept = false, { near, cap = 0, rank, letters: share = cap / 2, whole, cover = Infinity, flat = false, things = true } = {}) {
   let words = wordsNear(x, y, rad); if (near) words = words.filter(w => near(w.r.left + w.r.width / 2, w.r.top + w.r.height / 2, w.r));
   if (cap) {
     const place = new Map(words.map((w, i) => [w, i])),
@@ -454,12 +458,19 @@ function lettersNear(x, y, rad, test, kept = false, { near, cap = 0, rank, lette
     }
     words.sort((a, b) => place.get(a) - place.get(b));
   }
-  splitWords(words, flat); const out = [];
+  const out = [];
+  if (LOW && flat) {
+    types = new WeakMap();
+    for (const w of words) w.type = typeIn(w.node.parentElement);
+    wrapPieces(words);
+    for (const { s, r } of words) { const cx = r.left + r.width / 2, cy = r.top + r.height / 2, d = Math.hypot(cx - x, cy - y); if (test ? test(cx, cy, r) : d <= rad) out.push({ s, r, d, cx, cy }); }
+  }
+  else { splitWords(words, flat);
   for (const s of splitNear(x, y, rad, '.chb-ch')) {
     if (moved.has(s)) continue;
     const r = s.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, d = Math.hypot(cx - x, cy - y);
     if (test ? test(cx, cy, r) : d <= rad) out.push({ s, r, d, cx, cy });
-  }
+  } }
   // letters already knocked about (resting copies in our layer: knocked askew, piled on the floor) can be hit again,
   // found where they lie now
   if (kept)
@@ -475,7 +486,92 @@ function lettersNear(x, y, rad, test, kept = false, { near, cap = 0, rank, lette
     const r = { left, top, width: w, height: h, right: left + w, bottom: top + h }, cx = left + w / 2, cy = top + h / 2, d = Math.hypot(cx - x, cy - y);
     if (test ? test(cx, cy, r) : d <= rad) out.push({ s, r, d, cx, cy });
   }
-  types = new WeakMap(); for (const p of out) p.s._type = typeOf(p.s);
+  if (things)
+    for (const { el, r } of thingBoxes()) {
+      if (moved.has(el)) continue;
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2, gap = Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
+      if (test ? test(cx, cy, r) : gap <= rad) out.push({ s: el, r, d: Math.hypot(cx - x, cy - y), cx, cy });
+    }
+  types = new WeakMap(); for (const p of out) if (!p.s._thing && !p.s._line && !p.s._dot && !p.s._type) p.s._type = typeOf(p.s);
+  return out;
+}
+// ---------------------------------------------------------------- the rest of the page: pictures, icons, buttons and fields go with the text
+// Each is found once per gesture and moves whole, as a copy in its own look. Not a picture that fills the page, and not on Home (opts.things false),
+// whose shadow styles a copy in our layer cannot reach.
+const THINGS = 'img,svg,canvas,video,button,input:not([type=hidden]),select,textarea,[role=button],.btn,.Button';
+let thingIndex = null, thingsAt = -1e9;
+// list bullets are not text: each is a dot of its own, and its list item loses the marker until Put it back
+const dots = new Map();
+function dotsInView() {
+  const out = []; if (opts.things === false) return out;
+  for (const li of PAGE().querySelectorAll?.('li') || []) {
+    if (dots.has(li) || li.closest(OURS)) continue;
+    const cs = getComputedStyle(li);
+    if (!/disc|circle|square/.test(cs.listStyleType || '')) continue;
+    const r = li.getBoundingClientRect(), size = parseFloat(cs.fontSize) || 14;
+    if (r.width < 6 || !inView(r)) continue;
+    const side = Math.max(4, size * .36), left = r.left - size * .9, top = r.top + size * .45, s = document.createElement('span');
+    s._dot = { li, color: cs.color, inline: li.style.listStyleType };
+    out.push({ s, r: { left, top, width: side, height: side, right: left + side, bottom: top + side } });
+    if (out.length >= 40) break;
+  }
+  return out;
+}
+function thingBoxes() {
+  const now = performance.now(); if (thingIndex && now - thingsAt < 300) return thingIndex; thingsAt = now; thingIndex = []; if (opts.things === false) return thingIndex;
+  const most = innerWidth * innerHeight * .4;
+  for (const el of PAGE().querySelectorAll?.(THINGS) || []) {
+    if (moved.has(el) || el.closest(OURS) || el.parentElement?.closest(THINGS)) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width < 6 || r.height < 6 || r.width * r.height > most || !inView(r)) continue;
+    el._thing = true;
+    thingIndex.push({ el, r });
+  }
+  return thingIndex;
+}
+const LOOK = ['backgroundColor', 'backgroundImage', 'backgroundSize', 'backgroundPosition', 'backgroundRepeat', 'borderTop', 'borderRight', 'borderBottom', 'borderLeft', 'borderRadius', 'boxShadow', 'color', 'font', 'padding', 'textAlign', 'textDecoration', 'textTransform', 'letterSpacing', 'lineHeight', 'objectFit'];
+const lookOf = el => { const cs = getComputedStyle(el), look = {}; for (const k of LOOK) look[k] = cs[k]; return look; };
+function hideLine(L) {
+  let sides = lines.get(L.el);
+  if (!sides) lines.set(L.el, sides = {});
+  if (!sides[L.side]) { sides[L.side] = { ...L, keepRanges: [], inline: L.el.style['border' + L.side + 'Color'], svg: null }; L.el.style['border' + L.side + 'Color'] = 'transparent'; }
+}
+function thingCopy(s, r) {
+  const at = { position: 'absolute', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' };
+  if (s._line) { const c = document.createElement('div'); Object.assign(c.style, at, { background: s._line.color }); hideLine(s._line); return c; }
+  if (s._dot) {
+    const c = document.createElement('div');
+    Object.assign(c.style, at, { background: s._dot.color, borderRadius: '50%' });
+    if (!dots.has(s._dot.li)) { dots.set(s._dot.li, s._dot.inline); s._dot.li.style.listStyleType = 'none'; }
+    return c;
+  }
+  if (s._style === undefined) s._style = s.getAttribute?.('style') ?? null;
+  const c = s.cloneNode(true);
+  c.removeAttribute?.('id');
+  c.setAttribute?.('aria-hidden', 'true');
+  c.setAttribute?.('tabindex', '-1');
+  Object.assign(c.style, s._look || (s._look = lookOf(s)), at, { margin: '0', boxSizing: 'border-box', visibility: 'visible', transition: 'none' });
+  if ('value' in s) c.value = s.value;
+  return c;
+}
+// every ruled line on screen, broken into lengths that fall on their own (a table's worth of cells stops at 80 lengths, the longest lines first)
+function linesInView() {
+  probeLines(60, 12, innerWidth, innerHeight, 120, 24); const out = [], found = [];
+  for (const list of ruled.values())
+    for (const L of list) {
+      const far = L.h ? innerWidth : innerHeight, a = Math.max(0, L.a), b = Math.min(far, L.b);
+      if (lines.get(L.el)?.[L.side] || b - a < 12 || L.pos < 0 || L.pos > (L.h ? innerHeight : innerWidth)) continue;
+      found.push({ L, a, b });
+    }
+  found.sort((p, q) => q.b - q.a - p.b + p.a);
+  for (const { L, a, b } of found) {
+    const n = Math.ceil((b - a) / 110), len = (b - a) / n, pos = L.pos - L.w / 2, w = Math.max(1, L.w);
+    for (let i = 0; i < n && out.length < 80; i++) {
+      const u = a + i * len, s = document.createElement('span');
+      s._line = L;
+      out.push({ s, r: L.h ? { left: u, top: pos, width: len, height: w, right: u + len, bottom: pos + w } : { left: pos, top: u, width: w, height: len, right: pos + w, bottom: u + len } });
+    }
+  }
   return out;
 }
 // a moved letter is a copy in the fixed layer (it can never stretch the page); the real one is only hidden
@@ -483,6 +579,7 @@ function lift(s, r) {
   if (s._body) { const b = s._body; b.parts = b.parts.filter(p => p.s !== s); if (!b.parts.length) physics.remove(b); delete s._body; }
   delete s._physicsPath;
   if (s._c) { s._c.remove(); delete s._c; }
+  if (s._thing || s._line || s._dot) { const c = thingCopy(s, r); (copies || layer).append(c); s.style.visibility = 'hidden'; moved.add(s); return c; }
   const t = s._type || typeOf(s), c = document.createElement('span');
   c.textContent = s.classList.contains('chb-run') ? s.textContent.trim().replace(/\s+/g, ' ') : s.textContent;
   Object.assign(c.style, {
@@ -623,7 +720,7 @@ function breakPins(test, how = 'pop', delayOf = () => 0) {
         { duration: D(420), easing: 'cubic-bezier(.4,0,.7,1)', fill: 'forwards' }).onfinish = () =>
         el.remove();
       if (!reduce)
-        for (let k = 0; k < 12; k++) {
+        for (let k = 0; k < 12 * FX; k++) {
           const d = document.createElement('span');
           d.textContent = rnd() < .5 ? '0' : '1';
           Object.assign(d.style, {
@@ -856,15 +953,17 @@ function drawBalloons() {
     b.string.style.transform = `translate(${b.x}px,${b.y + 1}px) rotate(${Math.atan2(dy, dx) * 180 / Math.PI}deg)`;
   }
 }
-listen(document, 'scroll', () => { ruled = textIndex = null; }, true);
+listen(document, 'scroll', () => { ruled = textIndex = thingIndex = null; }, true);
 listen(globalThis, 'resize', () => {
-  ruled = textIndex = null;
+  ruled = textIndex = thingIndex = null;
   physics.resize(innerWidth, innerHeight);
   for (const p of portals) { p.x = Math.max(4, Math.min(innerWidth - 4, p.x)); p.y = Math.max(4, Math.min(innerHeight - 4, p.y)); drawPortal(p); }
   syncPortals();
 });
 // the rendered marks (play-space.js): a canvas laid under the flying letters, run on animation frames until it settles
 const SPX = () => globalThis.ReservePlaySpace, liveCanvas = cls => { const cv = document.createElement('canvas'); cv.className = cls; layer.prepend(cv); return cv; };
+// (a weak machine draws the big canvases every other frame)
+const everyOther = () => { let n = 0; return () => !LOW || ++n % 2 === 0; };
 const run = (cv, anim) => {
   const t0 = performance.now(), tick = now => { if (!cv.isConnected) return; anim.frame((now - t0) / 1000); if (!anim.done) requestAnimationFrame(tick); };
   requestAnimationFrame(tick);
@@ -1012,6 +1111,7 @@ function boom(x, y) {
   // the letters in the blast are thrown, bounce and pile up on the floor; those the shockwave reaches further out are
   // knocked askew and stay that way
   // (a burst this size goes in two tasks, a frame apart, which nobody can see; the jolt waits for the second so bullet time takes every letter)
+  bordersNear(x, y, R0 * .8);
   const thrown = lettersNear(x, y, R0 * 2.3, undefined, true, blast(520)).sort((p, q) => p.d - q.d).slice(0, 520),
     rest = thrown.splice(Math.ceil(thrown.length / 2)),
     throwOne = ({ s: l, r, d, cx, cy }) => {
@@ -1211,7 +1311,7 @@ function laser(x, y, first) {
     beam.svg.querySelector('.bits').insertAdjacentHTML('beforeend', `<text class="chb-blink" style="animation-delay:${R(beam.n * .08 % 2.4)}s" x="${R((x + lx) / 2)}" y="${R((y + ly) / 2)}" font-size="5" fill="${DATA2}" ${MONO} text-anchor="middle" dominant-baseline="middle" transform="rotate(${R(a)} ${R((x + lx) / 2)} ${R((y + ly) / 2)})">${bits(Math.max(1, Math.round(step / 3.6)))}</text>`);
   }
   // a letter the beam passes through is cut in two: the halves part along the cut and the lower one slips
-  for (const { s, r } of lettersNear(x, y, 9)) {
+  for (const { s, r } of lettersNear(x, y, 9, undefined, false, { things: false })) {
     const cs = s._type, half = (top) => {
       const c = document.createElement('span');
       c.textContent = s.textContent;
@@ -1318,6 +1418,7 @@ function dropOut(poly, hinge) {
     (lx, ly) => inside(lx, ly),
     false,
     { cap: PIECES, letters: PIECES, whole: b => inside(b.left, b.top) && inside(b.right, b.top) && inside(b.left, b.bottom) && inside(b.right, b.bottom) })) {
+    if (s._thing) { piece.append(thingCopy(s, { ...r, left: r.left - x0, top: r.top - y0 })); s.style.visibility = 'hidden'; moved.add(s); continue; }
     const cs = s._type, c = document.createElement('span');
     c.textContent = s.textContent;
     Object.assign(c.style, { position: 'absolute', left: R(r.left - x0) + 'px', top: R(r.top - y0) + 'px', font: cs.font, color: cs.color, lineHeight: r.height + 'px', whiteSpace: 'pre' });
@@ -1453,7 +1554,7 @@ function railgun(x, y) {
       river2.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: 300, fill: 'backwards' });
       mark(river2);
       // the 0 and 1 break out of the rift and rain down
-      for (let i = 0; i < 64; i++) {
+      for (let i = 0; i < 64 * FX; i++) {
         const u = a + rnd() * (b - a), d = document.createElement('span');
         d.textContent = rnd() < .5 ? '0' : '1';
         Object.assign(d.style, {
@@ -1469,6 +1570,7 @@ function railgun(x, y) {
         const [k, dur] = toss(u, y, J(220), -(260 + rnd() * 520), J(720), 14);
         d.animate(k, { duration: dur, delay: 200 + Math.abs(u - start) / (b - a) * 260 + rnd() * 240, easing: 'linear', fill: 'both' });
       } }
+    probeLines(a, y - HW, b, y + HW, 44, 22);   // (before anything on the page changes: a hit test after a write lays the whole page out again)
     for (const {
       s,
       r,
@@ -1491,7 +1593,7 @@ function railgun(x, y) {
       eb.animate([{ transform: 'scale(.2)', opacity: 1 }, { transform: 'scale(1.2)', offset: .35 }, { transform: 'scale(.6)', opacity: 0 }], { duration: 420, delay: 200, fill: 'both' }).onfinish = () =>
         eb.remove();
       for (let u = a + 40, i = 0; u < b; u += 110, i++) later(() => puffs(u, y, 1, 10, 46), 240 + i * 40); }
-    probeLines(a, y - HW, b, y + HW, 44, 22); for (let u = a; u < b; u += 16) breakLines(u, y, HW, 'out', .7, true); shake('railgun');
+    for (let u = a; u < b; u += 16) breakLines(u, y, HW, 'out', .7, true); shake('railgun');
     gun.animate([{ opacity: 1 }, { opacity: 0 }], { duration: D(500), delay: D(500), fill: 'forwards' }).onfinish = () => gun.remove();
     gsh.animate([{ opacity: gsh.style.opacity }, { opacity: 0 }], { duration: D(500), delay: D(500), fill: 'forwards' }).onfinish = () => gsh.remove();
     shown();
@@ -1527,9 +1629,9 @@ function blackhole(x, y) {
   if (SP?.hole) { // it opens in the page: its pull reaches further and further, the page cracks and breaks in toward it (play-space.js)
     const cv = document.createElement('canvas'), dk = document.createElement('canvas'); cv.className = 'chb-space'; dk.className = 'chb-space-dark'; layer.prepend(cv); layer.append(dk);
     space = SP.hole(cv, x, y, { reduce, paper: paperAt(x, y), dark: dk }); g = cv; reach = space.reachMax; timeAt = d => space.timeAt(d) * 1000;
-    const t0 = performance.now(), tick = now => {
+    const t0 = performance.now(), draw = everyOther(), tick = now => {
       if (!cv.isConnected) { dk.remove(); return; }
-      space.frame(reduce ? 2.6 * 2 : (now - t0) / 1000);
+      if (draw()) space.frame(reduce ? 2.6 * 2 : (now - t0) / 1000);
       if (space.done) { cv.remove(); dk.remove(); } else requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
@@ -1540,7 +1642,11 @@ function blackhole(x, y) {
     space = SP.open(cv, { size: Math.min(620, Math.max(420, innerWidth * .42)), reduce });
     Object.assign(cv.style, { position: 'absolute', left: R(x - space.W / 2) + 'px', top: R(y - space.H / 2) + 'px', pointerEvents: 'none' });
     g = cv;
-    const t0 = performance.now(), tick = now => { if (!cv.isConnected) return; space.frame(reduce ? 1.6 : (now - t0) / 1000); if (space.done) cv.remove(); else requestAnimationFrame(tick); };
+    const t0 = performance.now(), draw = everyOther(), tick = now => {
+      if (!cv.isConnected) return;
+      if (draw()) space.frame(reduce ? 1.6 : (now - t0) / 1000);
+      if (space.done) cv.remove(); else requestAnimationFrame(tick);
+    };
     requestAnimationFrame(tick);
   }
   else {
@@ -1550,6 +1656,7 @@ function blackhole(x, y) {
     g.animate([{ transform: 'scale(0) rotate(-40deg)' }, { transform: 'scale(1.12)', offset: .7 }, { transform: 'none' }], { duration: D(600), easing: 'cubic-bezier(.2,.8,.3,1)' });
   }
   // its pull reaches further as it grows: each letter goes when the pull reaches it, nearest first, more and more
+  bordersNear(x, y, R0 * .8);
   const leaning = [],
     edge = reach * .9,
     taken = lettersNear(x, y, reach + edge, undefined, true, blast(520)).sort((p, q) => p.d - q.d).slice(0, 520),
@@ -1600,7 +1707,7 @@ function blackhole(x, y) {
       sw.animate([{ transform: 'scale(.2)', opacity: 1 }, { transform: 'scale(7)', opacity: 0 }], { duration: 560, delay: 380, easing: 'cubic-bezier(.1,.6,.3,1)', fill: 'both' }).onfinish = () =>
         sw.remove();
       later(() => shake('bhclose'), 380);
-      for (let i = 0; i < 44; i++) {
+      for (let i = 0; i < 44 * FX; i++) {
         const up = i % 2 ? -1 : 1, d = document.createElement('span');
         d.textContent = rnd() < .5 ? '0' : '1';
         Object.assign(d.style, {
@@ -1690,9 +1797,9 @@ function foil(x, y) {
       const cv = document.createElement('canvas');
       cv.className = 'chb-strike';
       layer.append(cv);
-      const st = SPC.foil(cv, x, y, { speed: SPEED * 1000, cols }), t0 = performance.now(), tick = now => {
+      const st = SPC.foil(cv, x, y, { speed: SPEED * 1000, cols }), t0 = performance.now(), draw = everyOther(), tick = now => {
         if (!cv.isConnected) return;
-        st.frame((now - t0) / 1000);
+        if (draw()) st.frame((now - t0) / 1000);
         if (st.done) cv.remove(); else requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
@@ -1759,18 +1866,39 @@ function foil(x, y) {
 }
 // ---------------------------------------------------------------- eraser, magnet, ink
 let eraserEl = null;
+let rubbed = null;
 function erase(x, y) {
+  if (!rubbed?.isConnected) rubbed = flatSheet();
+  const rub = rubbed.getContext?.('2d');
+  if (rub) {
+    rub.lineCap = 'round';
+    rub.lineWidth = 24 + J(3);
+    rub.strokeStyle = 'rgba(232,167,156,.07)';
+    rub.beginPath();
+    rub.moveTo(eraserEl?._px ?? x, eraserEl?._py ?? y);
+    rub.lineTo(x + .1, y);
+    rub.stroke();
+    rub.lineWidth = 1;
+    rub.strokeStyle = 'rgba(120,70,60,.08)';
+    for (let i = 0; i < 3; i++) { const o = J(10); rub.beginPath(); rub.moveTo((eraserEl?._px ?? x) + o, (eraserEl?._py ?? y) + o); rub.lineTo(x + o, y + o + .1); rub.stroke(); }
+  }
   if (!eraserEl) { eraserEl = place(ART.eraser(), 0, 0, [-19, -11, 34, 26]); eraserEl.style.filter = 'drop-shadow(1px 2px 1px rgba(20,20,19,.3))'; eraserEl._sh = shadow(x, y, 36, .08); }
   eraserEl.style.left = x + 'px';
   eraserEl.style.top = y + 'px';
+  eraserEl._px = x;
+  eraserEl._py = y;
   moveShadow(eraserEl._sh, x, y);
-  if (rnd() < .3) { const r = mark(fxEl(SCR, x, y + 2, 26, 18, { background: soft('255,255,250', .4, .5) })); r.style.transform = `rotate(${R(J(20))}deg)`; }
   for (const { s, r } of lettersNear(x, y, 11)) {
     const c = lift(s, r);
     c.animate([{ opacity: 1 }, { opacity: 0, transform: 'translate(1px,2px) scale(.6)' }], { duration: D(260), fill: 'forwards' }).onfinish = () => c.remove();
-    {
-      const b0 = rnd() < .5, dl = R(rnd() * 4);
-      mark(place(`<g class="chb-flipA" style="animation-delay:${dl}s"><text x="0" y="3" text-anchor="middle" ${MONO} font-size="${R(r.height * .62)}" fill="${DATAINK}" opacity=".75">${b0 ? '0' : '1'}</text></g><g class="chb-flipB" style="animation-delay:${dl}s"><text x="0" y="3" text-anchor="middle" ${MONO} font-size="${R(r.height * .62)}" fill="${DATAINK}" opacity=".75">${b0 ? '1' : '0'}</text></g>`, r.left + r.width / 2, r.top + r.height / 2, [-6, -8, 12, 16]));
+    if (rub && r.width < 40) {
+      rub.globalAlpha = .78;
+      rub.fillStyle = DATAINK;
+      rub.font = `700 ${R(r.height * .62)}px Consolas,'Courier New',monospace`;
+      rub.textAlign = 'center';
+      rub.textBaseline = 'middle';
+      rub.fillText(rnd() < .5 ? '0' : '1', r.left + r.width / 2, r.top + r.height / 2);
+      rub.globalAlpha = 1;
     }
     if (rnd() < .35) {
       const cx = x + J(6),
@@ -1811,11 +1939,11 @@ function catchLetter(body) {
   if (inClump.has(body) || clumped + body.parts.length > 160) return;
   inClump.add(body);
   clumped += body.parts.length;
-  const i = caught.length, pole = i % 2 ? 1 : -1, ring = Math.floor(i / 12), a = i * 2.39996, radius = 5 + ring * 2.2, off = [pole * 11 + Math.cos(a) * radius, -13 + Math.sin(a) * radius];
+  const i = caught.length, a = i * 2.39996, radius = 22 + 6.5 * Math.sqrt(i), off = [Math.cos(a) * radius, -13 + Math.sin(a) * radius];
   caught.push({ body, off });
   for (const p of body.parts) p.c.classList.add('chb-magnet-clump');
-  physics.constrain(body, { x: magnetX + off[0], y: magnetY + off[1], stiffness: 115, damping: 15, sway: reduce ? 0 : 1.8 });
-}
+  physics.constrain(body, { x: magnetX + off[0], y: magnetY + off[1], stiffness: 115, damping: 15, sway: reduce ? 0 : 1.8, angle: (a * 180 / Math.PI + 90) % 180 - 90 });
+} // the letters stand around the magnet like filings, each pointing at it, far enough apart to stay letters
 function flipMagnet() {
   if (!magnetEl) return;
   polarity *= -1;
@@ -1864,9 +1992,21 @@ function ink(x, y) {
     pot.remove();
   later(() => splat(x, y), reduce ? 0 : 780);
 }
+// the blot: lobed and thrown, not a circle; wet ink, lit from the upper left, with the paper soaking it up around the edge
+const blotShape = () => {
+  const n = 28, k = 3 + Math.floor(rnd() * 3), ph = rnd() * 6.28, pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = i / n * 6.2832, w = 1 + .17 * Math.sin(a * k + ph) + .1 * Math.sin(a * (k * 2 + 1) + ph * 1.7) + (rnd() < .2 ? .22 * rnd() : 0);
+    pts.push([Math.cos(a) * 30 * w, Math.sin(a) * 26 * w]);
+  }
+  return pts;
+};
 function splat(x, y) {
-  const col = [DEEP, '#3B3D42', SLATE, SAGE2][Math.floor(rnd() * 4)], blot = ring(0, 0, 24, 20, 12, .28), drips = [0, 1, 2].map(() => [J(16), 12 + rnd() * 6, 4 + rnd() * 3, 20 + rnd() * 26]);
-  const g = mark(place(`<path d="${closed(blot.map(([px, py]) => [px + 1.5, py + 1.5]))}" fill="${col}" opacity=".9"/>${drips.map(([dx, dy, w, h]) => `<g class="drip" style="transform-origin:${R(dx)}px ${R(dy)}px"><path d="M${R(dx - w / 2)} ${R(dy)}L${R(dx - w / 2)} ${R(dy + h)}A${R(w / 2)} ${R(w / 2)} 0 0 0 ${R(dx + w / 2)} ${R(dy + h)}L${R(dx + w / 2)} ${R(dy)}Z" fill="${col}" opacity=".9"/></g>`).join('')}${[0, 1, 2, 3].map(() => { const a = rnd() * 6.28, d = 30 + rnd() * 14; return `<path d="${closed(ring(Math.cos(a) * d, Math.sin(a) * d * .8, 2 + rnd() * 2.4, 2 + rnd() * 2, 6, .2))}" fill="${col}" opacity=".9"/>`; }).join('')}${drips.map(([dx, dy, w, h], i) => `<path class="chb-drop" style="animation-delay:${R(1 + i * .9 + rnd())}s" d="${closed(ring(dx, dy + h + 4, w * .42, w * .55, 6, .05))}" fill="${col}" opacity=".9"/>`).join('')}<g clip-path="url(#chbI${++uid})"><path class="chb-sheen" d="M-30 -30L-22 -30L-40 30L-48 30Z" fill="${PAPER}" opacity=".3"/></g><clipPath id="chbI${uid}"><path d="${closed(blot)}"/></clipPath>${inkP(over(blot), 1.6, .35)}`, x, y, [-46, -40, 92, 110]));
+  const col = [DEEP, '#3B3D42', SLATE, SAGE2][Math.floor(rnd() * 4)], blot = blotShape(), drips = [0, 1, 2].map(() => [J(16), 12 + rnd() * 6, 4 + rnd() * 3, 20 + rnd() * 26]);
+  const g = mark(place(`<path d="${closed(blot.map(([px, py]) => [px * 1.09 + 1, py * 1.09 + 1]))}" fill="${col}" opacity=".2"/><path d="${closed(blot)}" fill="${col}" opacity=".95"/>${drips.map(([dx, dy, w, h]) => `<g class="drip" style="transform-origin:${R(dx)}px ${R(dy)}px"><path d="M${R(dx - w / 2)} ${R(dy)}L${R(dx - w / 2)} ${R(dy + h)}A${R(w / 2)} ${R(w / 2)} 0 0 0 ${R(dx + w / 2)} ${R(dy + h)}L${R(dx + w / 2)} ${R(dy)}Z" fill="${col}" opacity=".9"/></g>`).join('')}${[0, 1, 2, 3, 4, 5, 6, 7, 8].map(() => {
+    const a = rnd() * 6.28, d = 42 + rnd() * rnd() * 46, w = Math.max(1.2, 6.5 - d / 14 + J(1));
+    return `<path transform="translate(${R(Math.cos(a) * d)} ${R(Math.sin(a) * d * .86)}) rotate(${R(a * 57.3)})" d="${closed(ring(0, 0, w * 1.5, w, 7, .12))}" fill="${col}" opacity=".93"/>`;
+  }).join('')}${drips.map(([dx, dy, w, h], i) => `<path class="chb-drop" style="animation-delay:${R(1 + i * .9 + rnd())}s" d="${closed(ring(dx, dy + h + 4, w * .42, w * .55, 6, .05))}" fill="${col}" opacity=".9"/>`).join('')}<g clip-path="url(#chbI${++uid})"><path class="chb-sheen" d="M-30 -30L-22 -30L-40 30L-48 30Z" fill="${PAPER}" opacity=".3"/></g><clipPath id="chbI${uid}"><path d="${closed(blot)}"/></clipPath><radialGradient id="chbG${uid}" cx=".36" cy=".32" r=".82"><stop offset="0" stop-color="#fff" stop-opacity=".3"/><stop offset=".46" stop-color="#fff" stop-opacity="0"/><stop offset=".62" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".42"/></radialGradient><path d="${closed(blot)}" fill="url(#chbG${uid})"/><path d="M-18 -11Q-10 -19 2 -18Q-8 -14 -14 -6Z" fill="${PAPER}" opacity=".72"/><path d="${closed(ring(-19, -2, 1.9, 1.7, 6, .1))}" fill="${PAPER}" opacity=".6"/>${inkP(over(blot), 1.2, .3)}`, x, y, [-46, -40, 92, 110]));
   g.animate([{ transform: 'scale(.2)' }, { transform: 'scale(1.1)', offset: .6 }, { transform: 'none' }], { duration: D(260), easing: 'ease-out' });
   { const rgb = col === DEEP ? '150,60,30' : col === SLATE ? '60,80,100' : col === SAGE2 ? '70,90,50' : '40,42,48'; stain(x, y + 4, 44, 36, rgb, .32, J(30)); stain(x + 2, y + 30, 26, 46, rgb, .16, 0); }
   g.querySelectorAll('.drip').forEach((d, i) =>
@@ -1877,22 +2017,60 @@ function splat(x, y) {
 // ---------------------------------------------------------------- painter: words brushed come alive in a random colour style
 const PAINTS = ['chb-p-wave', 'chb-p-hop', 'chb-p-sweep', 'chb-p-jelly', 'chb-p-stack', 'chb-p-script', 'chb-p-type', 'chb-p-flag'];
 const painted = new Map(); let brush = null;
+// wet paint: one canvas a stroke, so a long stroke costs no more than a short one (every step used to add paths to a page-sized drawing).
+// A broad band of colour under a dozen bristles of its own darker and lighter tones, some running dry for a moment, one catching the light.
+const shade = (hex, t) => {
+  const n = parseInt(hex.slice(1), 16), to = t < 0 ? 0 : 255, k = Math.abs(t), c = s => Math.round(((n >> s) & 255) * (1 - k) + to * k);
+  return `rgb(${c(16)},${c(8)},${c(0)})`;
+};
+function flatSheet(opacity = 1) {
+  const c = document.createElement('canvas'), dpr = Math.min(globalThis.devicePixelRatio || 1, 1.5);
+  c.width = innerWidth * dpr;
+  c.height = innerHeight * dpr;
+  Object.assign(c.style, { position: 'absolute', left: '0', top: '0', width: innerWidth + 'px', height: innerHeight + 'px', opacity });
+  layer.prepend(c);
+  c.getContext?.('2d')?.scale(dpr, dpr);
+  return mark(c);
+}
+const bristles = col =>
+  [...Array(13)].map((_, i) => ({ off: (i - 6) * 1.2 + J(.4), w: .8 + rnd() * 1.5, a: .5 + rnd() * .45, dry: 0, tone: i === 2 ? shade(col, .62) : shade(col, (Math.abs(i - 6) > 4 ? -.3 : 0) + J(.2)) }));
 function paint(x, y, first) {
-  const col = [CLAY, GOLD, '#7FB8AE', '#C9B6CC', SKY][Math.floor(rnd() * 5)];
-  if (first || !brush) brush = { last: [x, y], col, el: place(`<g transform="translate(-7 -9)">${ART.painter()}</g>`, x, y, [-24, -26, 34, 34]) };
+  const col = [DEEP, GOLD, '#3F9C8E', '#8A63B8', '#4F93C9'][Math.floor(rnd() * 5)];
+  if (first || !brush) brush = { last: [x, y], col, hairs: bristles(col), el: place(`<g transform="translate(-7 -9)">${ART.painter()}</g>`, x, y, [-24, -26, 34, 34]) };
   brush.el.style.left = x + 'px'; brush.el.style.top = y + 'px';
   const [lx, ly] = brush.last, step = Math.hypot(x - lx, y - ly); if (step > 3) {
-    if (!brush.svg) { brush.svg = mark(sheet()); brush.went = 0; brush.next = 50 + rnd() * 60; }
-    const nx = -(y - ly) / step * 3, ny = (x - lx) / step * 3;   // the bristles: a lighter streak along one side of the stroke
-    brush.svg.insertAdjacentHTML('beforeend', `<path d="M${R(lx)} ${R(ly)}L${R(x)} ${R(y)}" stroke="${brush.col}" stroke-width="${R(12 + J(2))}" stroke-linecap="round" opacity=".82"/><path d="M${R(lx + nx)} ${R(ly + ny)}L${R(x + nx)} ${R(y + ny)}" stroke="${PAPER}" stroke-width="2" stroke-linecap="round" opacity=".3"/>`);
+    if (!brush.svg) { brush.svg = flatSheet(.9); brush.went = 0; brush.next = 50 + rnd() * 60; }
+    const g = brush.svg.getContext?.('2d'), nx = -(y - ly) / step, ny = (x - lx) / step;
+    if (g) { g.lineCap = 'round'; g.globalAlpha = 1; g.strokeStyle = brush.col; g.lineWidth = 13.5 + J(1); g.beginPath(); g.moveTo(lx, ly); g.lineTo(x, y); g.stroke();
+      for (const h of brush.hairs) {
+        if (h.dry > 0) { h.dry -= step; continue; }
+        if (rnd() < .02) h.dry = 8 + rnd() * 18;
+        g.strokeStyle = h.tone;
+        g.globalAlpha = h.a;
+        g.lineWidth = h.w;
+        g.beginPath();
+        g.moveTo(lx + nx * h.off, ly + ny * h.off);
+        g.lineTo(x + nx * h.off, y + ny * h.off);
+        g.stroke();
+      }
+      if (rnd() < .06 && !reduce) {
+        const d = 10 + rnd() * 26, a = rnd() * 6.28;
+        g.globalAlpha = .9;
+        g.fillStyle = brush.col;
+        g.beginPath();
+        g.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, .8 + rnd() * 2.2, 0, 6.2832);
+        g.fill();
+      } }
     brush.went += step; brush.last = [x, y];
-    if (brush.went > brush.next && !reduce) { brush.went = 0; brush.next = 60 + rnd() * 90; const h = 14 + rnd() * 34, dw = 4 + rnd() * 3, dx = x + J(4);   // a drip runs down from the wet paint
-      const d = mark(place(`<path d="M${R(-dw / 2)} 0L${R(-dw / 2)} ${R(h)}A${R(dw / 2)} ${R(dw / 2)} 0 0 0 ${R(dw / 2)} ${R(h)}L${R(dw / 2)} 0Z" fill="${brush.col}" opacity=".82"/><path d="${closed(ring(0, h + 3, dw * .6, dw * .75, 6, .05))}" fill="${brush.col}" opacity=".82"/>`, dx, y + 2, [-8, -2, 16, h + 12]));
+    if (brush.went > brush.next && !reduce) {
+      brush.went = 0;
+      brush.next = 60 + rnd() * 90;
+      const h = 14 + rnd() * 34, dw = 3 + rnd() * 2.5, dx = x + J(4), lean = J(1.6);   // a drip runs down from the wet paint: thin from the stroke, a bead at its end, lit down one side
+      const d = mark(place(`<path d="M${R(-dw)} 0Q${R(-dw * .42)} 3 ${R(-dw * .36 + lean)} ${R(h * .6)}L${R(-dw * .5)} ${R(h)}A${R(dw * .62)} ${R(dw * .72)} 0 1 0 ${R(dw * .5)} ${R(h)}L${R(dw * .36 + lean)} ${R(h * .6)}Q${R(dw * .42)} 3 ${R(dw)} 0Z" fill="${shade(brush.col, -.08)}" opacity=".93"/><path d="M${R(-dw * .16 + lean)} ${R(h * .5)}L${R(-dw * .2)} ${R(h + 1)}" stroke="${PAPER}" stroke-width=".9" stroke-linecap="round" opacity=".55"/>`, dx, y + 2, [-8, -2, 16, h + 12]));
       (brush.drips ||= []).push(d);
       d.style.transformOrigin = '50% 0';
       d.animate([{ transform: 'scaleY(0)' }, { transform: 'none' }], { duration: 1800 + rnd() * 1800, easing: 'cubic-bezier(.3,0,.3,1)', fill: 'backwards' });
     }
-    if (rnd() < .06 && !reduce) (brush.drips ||= []).push(mark(place(`<path d="${closed(ring(0, 0, 1.6 + rnd() * 2.2, 1.4 + rnd() * 2, 6, .2))}" fill="${brush.col}" opacity=".8"/>`, x + J(26), y + J(20), [-6, -6, 12, 12])));   // a spatter
   }
   splitWords(wordsNear(x, y, 14));
   for (const w of splitNear(x, y, 14, '.chb-word')) {
@@ -1914,33 +2092,48 @@ function paintOff() { const b = brush; brush = null; b?.el.remove(); if (!b?.svg
       el.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: reduce ? 'none' : 'translateY(9px)' }], { duration: 2600, easing: 'ease-in', fill: 'forwards' }).onfinish = () => el.remove();
     }
   }, 4200); }
-// ---------------------------------------------------------------- garden: a seed; a vine grows along the line of text, leaves unfold, flowers open
+// ---------------------------------------------------------------- garden: a seed falls and the words themselves grow: each sends up a stem, leaves unfold, a flower opens
+// the plants are small drawings of their own, each swaying as a whole: a page-sized drawing would repaint on every frame of the sway
+const plants = [];
+function leafArt(u, v, side) {
+  const s = 1 + rnd() * .3,
+    a = .55 + J(.25),
+    L = 12 * s,
+    tx = u + side * Math.cos(a) * L,
+    ty = v - Math.sin(a) * L,
+    nx = -(ty - v) / L,
+    ny = (tx - u) / L,
+    w = 3.6 * s,
+    m1 = [u + (tx - u) * .45 + nx * w, v + (ty - v) * .45 + ny * w],
+    m2 = [u + (tx - u) * .45 - nx * w, v + (ty - v) * .45 - ny * w];
+  const leaf = `M${R(u)} ${R(v)}Q${R(m1[0])} ${R(m1[1])} ${R(tx)} ${R(ty)}Q${R(m2[0])} ${R(m2[1])} ${R(u)} ${R(v)}`;
+  return `<path d="${leaf}Z" fill="#B7C0A0" transform="translate(.7 .7)"/><path d="M${R(u)} ${R(v)}Q${R(m2[0])} ${R(m2[1])} ${R(tx)} ${R(ty)}L${R(u)} ${R(v)}Z" fill="#9EAA82"/>${inkP(leaf, 1.2)}`;
+}
+function bloomArt(fx, fy) {
+  const c = [GOLD, CLAY, '#C9B6CC', PAPER, '#E8A79C'][Math.floor(rnd() * 5)], kind = rnd();
+  if (kind < .22) return `<path d="${closed(ring(fx, fy - 2, 3.2, 4.6, 6, .08))}" fill="#E8A79C"/>${inkP(over(ring(fx, fy - 2, 3.2, 4.6, 6, .08)), 1.1)}`;   // a bud
+  if (kind < .5) { const w = 6 + rnd() * 1.6, h = 9 + rnd() * 2, cup = `M${R(fx - w)} ${R(fy - h)}Q${R(fx - w * .5)} ${R(fy - h * .55)} ${R(fx)} ${R(fy - h * 1.1)}Q${R(fx + w * .5)} ${R(fy - h * .55)} ${R(fx + w)} ${R(fy - h)}Q${R(fx + w * 1.05)} ${R(fy + 1)} ${R(fx)} ${R(fy + 2)}Q${R(fx - w * 1.05)} ${R(fy + 1)} ${R(fx - w)} ${R(fy - h)}Z`; return `<path d="${cup}" fill="${c}" transform="translate(.8 .8)"/><path d="${cup}" fill="${c}"/>${inkP(cup, 1.2, .85)}<path d="${closed(ring(fx - w * .45, fy - h * .45, w * .2, h * .22, 5, .1))}" fill="${PAPER}" opacity=".55"/>`; }   // a tulip
+  const np = 5 + Math.floor(rnd() * 2), pr = 5.2 + rnd() * 1.6;   // a daisy
+  const at = k => ring(fx + Math.cos(k / np * 6.28) * pr, fy + Math.sin(k / np * 6.28) * pr * .92, pr * .72, pr * .52, 7, .08);
+  const petals = [...Array(np)].map((_, k) => `<path d="${closed(at(k).map(([u, v]) => [u + .8, v + .8]))}" fill="${c}"/>`).join(''),
+    ink = [...Array(np)].map((_, k) => inkP(over(at(k)), 1.1, .85)).join('');
+  return `${petals}${ink}<path d="${closed(ring(fx, fy, pr * .42, pr * .4, 6, .08))}" fill="${DEEP}"/>${inkP(over(ring(fx, fy, pr * .42, pr * .4, 6, .08)), 1)}<path d="${closed(ring(fx - pr * .4, fy - pr * .45, pr * .28, pr * .16, 5, .1))}" fill="${PAPER}" opacity=".55"/>`;
+}
 function garden(x, y) {
-  setTimeout(() => {
-    for (const el of layer.querySelectorAll('svg:not([data-lit])'))
-      if (el.querySelector('.chb-flower, .chb-vine, [class*=vine], [class*=flower]')) { el.dataset.lit = '1'; el.style.filter = 'drop-shadow(1px 2px 1px rgba(30,50,20,.28))'; }
-  }, 0);
-  // a vine that runs along the line of text both ways, leaves with a vein that unfold in turn, flowers that open and nod,
-  // buds between them; all of it drawn in the hand (offset washes, ink past its start, a lighter lobe on each flower)
-  const left = Math.max(10, x - 190 - rnd() * 60), right = Math.min(innerWidth - 10, x + 190 + rnd() * 60), base = y + 10, pts = [];
-  for (let u = left; u <= right; u += 9) pts.push([u, base + Math.sin(u / 21) * 3.4 + J(.8)]);
-  const d = 'M' + pts.map(([u, v]) => `${R(u)} ${R(v)}`).join('L'); let leaves = '', flowers = '';
-  pts.forEach(([u, v], i) => {
-    if (i % 3 === 1) { const up = i % 2 ? -1 : 1, s = 1.5 + rnd() * .4, a = J(.25) + .6, L = 15 * s, tx = u + Math.cos(a) * L, ty = v + Math.sin(a) * L * up * .9 + up * 2;
-      // an almond leaf: two curves from the stalk to the tip, a midrib, the underside a shade darker, the ink run past its start
-      const nx = -(ty - v) / L, ny = (tx - u) / L, w = 4.4 * s, m1 = [u + (tx - u) * .45 + nx * w, v + (ty - v) * .45 + ny * w], m2 = [u + (tx - u) * .45 - nx * w, v + (ty - v) * .45 - ny * w];
-      const leaf = `M${R(u)} ${R(v)}Q${R(m1[0])} ${R(m1[1])} ${R(tx)} ${R(ty)}Q${R(m2[0])} ${R(m2[1])} ${R(u)} ${R(v)}`, half = `M${R(u)} ${R(v)}Q${R(m2[0])} ${R(m2[1])} ${R(tx)} ${R(ty)}L${R(u)} ${R(v)}Z`;
-      leaves += `<g class="chb-leaf" style="transform-origin:${R(u)}px ${R(v)}px;animation-delay:${R(Math.abs(u - x) / 300)}s, ${R(rnd() * 3)}s"><path d="${leaf}Z" fill="#B7C0A0" transform="translate(.8 .8)"/><path d="${half}" fill="#9EAA82"/>${inkP(leaf + `Q${R(m1[0])} ${R(m1[1])} ${R(lerp(u, tx, .25) + nx * w * .5)} ${R(lerp(v, ty, .25) + ny * w * .5)}`, 1.5)}${inkP(`M${R(u)} ${R(v)}Q${R(lerp(u, tx, .5) + nx * 1.2)} ${R(lerp(v, ty, .5) + ny * 1.2)} ${R(lerp(u, tx, .86))} ${R(lerp(v, ty, .86))}`, .9, .6)}</g>`; }
-    if (i % 8 === 5) { const c = [GOLD, CLAY, '#C9B6CC', PAPER, '#E8A79C'][Math.floor(rnd() * 5)], fy = v - 16 - rnd() * 8, fx = u + J(3), np = 5 + Math.floor(rnd() * 2), pr = 6.4 + rnd() * 1.6;
-      const petals = [...Array(np)].map((_, k) => { const a = k / np * 6.28 + rnd() * .2; return `<path d="${closed(ring(fx + Math.cos(a) * pr + 1, fy + Math.sin(a) * pr * .92 + 1, pr * .72, pr * .52, 7, .08))}" fill="${c}"/>`; }).join('');
-      const petalInk = [...Array(np)].map((_, k) => { const a = k / np * 6.28; return inkP(over(ring(fx + Math.cos(a) * pr, fy + Math.sin(a) * pr * .92, pr * .72, pr * .52, 7, .08)), 1.3, .85); }).join('');
-      flowers += `<g class="chb-flower" style="transform-origin:${R(u)}px ${R(v)}px;animation-delay:${R(Math.abs(u - x) / 300 + .55)}s, ${R(rnd() * 4)}s">${inkP(`M${R(u)} ${R(v)}C${R(u - 3)} ${R(v - 6)} ${R(fx + 3)} ${R(fy + 7)} ${R(fx)} ${R(fy)}`, 1.8)}${petals}${petalInk}<path d="${closed(ring(fx, fy, pr * .42, pr * .4, 6, .08))}" fill="${DEEP}"/>${inkP(over(ring(fx, fy, pr * .42, pr * .4, 6, .08)), 1.2)}<path d="${closed(ring(fx - pr * .5, fy - pr * .6, pr * .3, pr * .18, 5, .1))}" fill="${PAPER}" opacity=".55"/></g>`; }
-    else if (i % 8 === 1) { const bx = u + J(2), by = v - 9; flowers += `<g class="chb-flower" style="transform-origin:${R(u)}px ${R(v)}px;animation-delay:${R(Math.abs(u - x) / 300 + .4)}s, ${R(rnd() * 4)}s">${inkP(`M${R(u)} ${R(v)}C${R(u)} ${R(v - 4)} ${R(bx)} ${R(by + 4)} ${R(bx)} ${R(by)}`, 1.4)}<path d="${closed(ring(bx, by - 2, 2.8, 4, 6, .08))}" fill="#E8A79C"/>${inkP(over(ring(bx, by - 2, 2.8, 4, 6, .08)), 1.2)}</g>`; }
-  });
-  const g = mark(sheet());
-  g.innerHTML = `<path class="chb-vine" pathLength="1" d="${d}" fill="none" stroke="${SAGE2}" stroke-width="3.2" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${INK}" stroke-width="1" stroke-opacity=".35" transform="translate(0 1.6)"/>${leaves}${flowers}`;
-  const v = g.querySelector('.chb-vine'); v.style.strokeDasharray = '1'; v.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: D(1500), easing: 'ease-out', fill: 'backwards' });
-  const seedEl = place(`<path d="${closed(ring(0, 0, 4, 2.8, 6, .1))}" fill="${KRAFT}"/>${inkP(over(ring(0, 0, 4, 2.8, 6, .1)), 1.6)}`, x, base, [-6, -6, 12, 12]);
+  splitWords(wordsNear(x, y, 150));
+  const near = [...splitNear(x, y, 150, '.chb-word')].map(w => {
+    const r = w.getBoundingClientRect(), cx = r.left + r.width / 2;
+    return { w, r, cx, d: Math.hypot(cx - x, r.top + r.height / 2 - y) };
+  }).filter(o => o.r.width && inView(o.r) && !painted.has(o.w)).sort((a, b) => a.d - b.d), picked = [];
+  for (const o of near) { if (picked.some(p => Math.abs(p.cx - o.cx) < 38 && Math.abs(p.r.top - o.r.top) < 26)) continue; picked.push(o); if (picked.length >= 14) break; }
+  for (const { w, r, d } of picked) {
+    painted.set(w, 'chb-sprout'); w.classList.add('chb-painted', 'chb-sprout');
+    const h = 18 + rnd() * 24, lean = J(7), u = r.left + r.width * (.3 + rnd() * .4), v = r.top + r.height * .3, t = .34 + rnd() * .3, box = [-28, -h - 20, 56, h + 26], tall = R(-h * t);
+    const plant = mark(place(`${inkP(`M0 0C-2.4 ${R(-h * .34)} ${R(lean + 2.4)} ${R(-h * .68)} ${R(lean)} ${R(-h)}`, 2.6, .35)}<path d="M0 0C-2.4 ${R(-h * .34)} ${R(lean + 2.4)} ${R(-h * .68)} ${R(lean)} ${R(-h)}" fill="none" stroke="${SAGE2}" stroke-width="1.9" stroke-linecap="round"/>${leafArt(lean * t, tall, rnd() < .5 ? -1 : 1)}${h > 28 ? leafArt(lean * (t + .2), R(-h * (t + .22)), rnd() < .5 ? -1 : 1) : ''}${bloomArt(lean, -h)}`, u, v, box));
+    plant.classList.add('chb-plant'); plant.style.transformOrigin = `${-box[0]}px ${-box[1]}px`; plant.style.animationDelay = `${R(d / 320)}s, ${R(rnd() * 4)}s`; plants.push(plant);
+  }
+  for (const old of plants.splice(0, Math.max(0, plants.length - 70))) old.remove();
+  const seedEl = place(`<path d="${closed(ring(0, 0, 4, 2.8, 6, .1))}" fill="${KRAFT}"/>${inkP(over(ring(0, 0, 4, 2.8, 6, .1)), 1.6)}`, x, y, [-6, -6, 12, 12]);
   seedEl.animate(
     [
       { transform: 'translateY(-50px) rotate(-40deg)' },
@@ -2013,47 +2206,78 @@ function popBalloon(b) {
     }
 }
 // ---------------------------------------------------------------- gravity: loose letters, a handle that aims the force
-let gravityHandle = null, gravityX = 0, gravityY = 2300;
-function gravity() {
+let gravityHandle = null, gravityX = 0, gravityY = 2300, gravityPull = 2300;
+// one apple: it lands where the page is clicked and the tool is put away, so nothing is left in the hand while it is there
+function gravity(x = innerWidth / 2, y = innerHeight / 2 + 80) {
   gravityFall();
   if (!gravityHandle) {
     gravityHandle = mark(place(gravityArt(), 0, 0, [-16, -22, 32, 68]));
     gravityHandle.classList.add('chb-gravity-handle');
-    gravityHandle._x = innerWidth / 2;
-    gravityHandle._y = innerHeight / 2 + 80;
+    gravityHandle._x = x;
+    gravityHandle._y = Math.min(y, innerHeight - 50);
   }
   drawGravity();
   shown();
+  if (tool === 'gravity') pick(null);
 }
 // every read comes first (where the loose pieces lie, where the words are, their type); then one pass of writes
-function gravityFall() {
+function gravityFall(fresh = false) {
   types = new WeakMap(); const loose = [];
-  for (const s of moved) {
-    const c = s._c;
-    if (!c?.isConnected || s._halves) continue;
-    const b = s._body,
-      p = b?.parts.find(q => q.s === s),
-      r = p ?
-        { left: p.r.left + b.x - b.homeX, top: p.r.top + b.y - b.homeY, width: p.r.width, height: p.r.height, right: p.r.right + b.x - b.homeX, bottom: p.r.bottom + b.y - b.homeY } :
-        c.getBoundingClientRect();
-    if (inView(r)) loose.push({ s, r });
-  }
+  if (!fresh)
+    for (const s of moved) {
+      const c = s._c;
+      if (!c?.isConnected || s._halves) continue;
+      const b = s._body,
+        p = b?.parts.find(q => q.s === s),
+        r = p ?
+          { left: p.r.left + b.x - b.homeX, top: p.r.top + b.y - b.homeY, width: p.r.width, height: p.r.height, right: p.r.right + b.x - b.homeX, bottom: p.r.bottom + b.y - b.homeY } :
+          c.getBoundingClientRect();
+      if (inView(r)) loose.push({ s, r });
+    }
   for (const s of PAGE().querySelectorAll('.chb-ch')) { if (moved.has(s)) continue; const r = s.getBoundingClientRect(); if (inView(r)) loose.push({ s, r }); }
-  const pieces = atCeiling(piecesOf(wordsInView(), Math.max(60, PIECES - loose.length)));
+  const things = []; for (const { el, r } of thingBoxes()) if (!moved.has(el)) { el._look = lookOf(el); things.push({ s: el, r }); } const thin = [...linesInView(), ...dotsInView()];
+  const pieces = atCeiling(piecesOf(wordsInView(), Math.max(60, PIECES - loose.length - things.length)));
   for (const p of pieces) p.type = typeIn(p.node.parentElement);
-  for (const p of loose) p.s._type = typeOf(p.s);
+  for (const p of loose) if (!p.s._thing && !p.s._line && !p.s._dot) p.s._type = typeOf(p.s);
   physics.batch(() => {
     copies = document.createDocumentFragment();
     wrapPieces(pieces);
-    const all = [...loose, ...pieces].sort((a, b) => b.r.top + b.r.height / 2 - a.r.top - a.r.height / 2);
-    for (const group of clumps(all, PIECES)) { const body = liveBody(group); if (reduce) physics.settle(body); else physics.force(body, J(25), J(20)); }
+    const all = [...loose, ...pieces, ...things].sort((a, b) => b.r.top + b.r.height / 2 - a.r.top - a.r.height / 2);
+    for (const group of clumps(all, PIECES)) {
+      const body = liveBody(group);
+      if (body && group.every(p => p.s._line || p.s._dot)) body.thin = true;
+      if (reduce) physics.settle(body); else { physics.force(body, J(70), J(110)); if (body && !body.thin) body.spin = J(34) * body.tumble; }
+    }
+    // (a ruled length or a bullet never shares a body: it falls alone, a rule tipping over as it goes)
+    for (const p of thin) {
+      const body = liveBody([p]);
+      body.thin = true;
+      if (reduce) physics.settle(body); else { physics.force(body, J(60), J(90)); body.spin = p.r.height > p.r.width ? (rnd() < .5 ? -1 : 1) * (150 + rnd() * 90) : J(60); }
+    }
     layer.append(copies); copies = null; });
 }
 function drawGravity() {
-  if (gravityHandle) gravityHandle.style.transform = 'translate(' + R(gravityHandle._x) + 'px,' + R(gravityHandle._y) + 'px) rotate(' + R(Math.atan2(gravityY, gravityX) * 180 / Math.PI - 90) + 'deg)';
+  if (!gravityHandle) return;
+  gravityHandle.style.transform = 'translate(' + R(gravityHandle._x) + 'px,' + R(gravityHandle._y) + 'px) rotate(' + R(Math.atan2(gravityY, gravityX) * 180 / Math.PI - 90) + 'deg)';
+  const len = 26 * Math.sqrt(gravityPull / 2300);
+  gravityHandle.querySelector?.('.chb-g-shaft')?.setAttribute('d', 'M0 14V' + R(14 + len));
+  gravityHandle.querySelector?.('.chb-g-head')?.setAttribute('transform', 'translate(0 ' + R(len - 26) + ')');
 }
 // the handle aims once a frame, however many moves arrive in it
 let tilt = null, tiltFrame = 0;
+// the faster the apple is dragged, the harder the words fall (the arrow shows how hard): the quickest stretch of a drag counts, so slowing down to aim loses nothing
+function paceGravity(i, e) {
+  const t = stamp(e), dt = t - (i.paceAt || 0);
+  if (i.paceAt && dt < 3) return;
+  if (i.paceAt) {
+    i.pace = (i.pace || 0) * .6 + Math.hypot(e.clientX - i.paceX, e.clientY - i.paceY) / dt * 400;
+    if (i.pace > (i.peak || 0)) { i.peak = i.pace; gravityPull = Math.max(450, Math.min(5600, 2300 * Math.pow(i.pace / 900, .7))); }
+  }
+  i.paceAt = t;
+  i.paceX = e.clientX;
+  i.paceY = e.clientY;
+}
+const pullGravity = () => { physics.setGravity(gravityX, gravityY, gravityPull * .52); drawGravity(); };
 function tiltGravity(x, y) { tilt = [x, y]; if (!tiltFrame) tiltFrame = requestAnimationFrame(aimGravity); }
 function aimGravity() {
   cancelAnimationFrame(tiltFrame);
@@ -2062,12 +2286,11 @@ function aimGravity() {
   const dx = tilt[0] - innerWidth / 2, dy = tilt[1] - innerHeight / 2, d = Math.hypot(dx, dy);
   tilt = null;
   if (d < 8) return;
-  gravityX = dx / d * 2300;
-  gravityY = dy / d * 2300;
-  physics.setGravity(gravityX, gravityY);
-  drawGravity();
+  gravityX = dx / d * gravityPull;
+  gravityY = dy / d * gravityPull;
+  pullGravity();
 }
-function flipGravity() { gravityY = gravityY < 0 ? 2300 : -2300; gravityX = 0; physics.setGravity(gravityX, gravityY); drawGravity(); }
+function flipGravity() { gravityY = gravityY < 0 ? gravityPull : -gravityPull; gravityX = 0; pullGravity(); }
 
 // ---------------------------------------------------------------- the live tools' drawings (portals and their handles, the gravity apple, the magnet)
 const PCOL = {"in":["#D97757","#F2A27F","#FFE2CF"],"out":["#4F93C9","#8CC0E6","#DDF0FF"]};
@@ -2091,7 +2314,7 @@ ${wisps}
 };
 const knobArt = c => `<g><circle r="7.5" fill="#E2B865" stroke="#141413" stroke-width="1.4"/><circle cx="-2.2" cy="-2.4" r="2" fill="#FFF3D6" opacity=".9"/><path d="M-11 -2A11 11 0 0 1 4 -10.6" fill="none" stroke="${c}" stroke-width="1.6" stroke-linecap="round"/><path d="M4 -10.6l-4.2 -.6M4 -10.6l-1.6 3.8" stroke="${c}" stroke-width="1.6" stroke-linecap="round"/></g>`;
 const edgeArt = c => `<g><path d="M-9 -6L8 -6.6L9 6.4L-8.4 6.8Z" fill="#FFFDF8" stroke="#141413" stroke-width="1.3" stroke-linejoin="round"/><path d="M-5 0H5M-5 0l2.6 -2.4M-5 0l2.6 2.4M5 0l-2.6 -2.4M5 0l-2.6 2.4" stroke="${c}" stroke-width="1.4" stroke-linecap="round"/></g>`;
-const gravityArt = () => `<g><path d="M0 14V40" stroke="#141413" stroke-width="2.2" stroke-linecap="round"/><path d="M-7 33L0 42L7 33" fill="none" stroke="#141413" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+const gravityArt = () => `<g><path class="chb-g-shaft" d="M0 14V40" stroke="#141413" stroke-width="2.2" stroke-linecap="round"/><path class="chb-g-head" d="M-7 33L0 42L7 33" fill="none" stroke="#141413" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M-12 20V30M12 22V31" stroke="#141413" stroke-width="1.2" stroke-linecap="round" opacity=".45"/>
 <path d="M-12.6 1C-13.4 -9 -6 -13 0 -9C6 -13 13.4 -9 12.6 1C11.8 10 5 14 0 12C-5 14 -11.8 10 -12.6 1Z" fill="#D9573B" transform="translate(1.2 1.4)"/>
 <path d="M-12.6 1C-13.4 -9 -6 -13 0 -9C6 -13 13.4 -9 12.6 1C11.8 10 5 14 0 12C-5 14 -11.8 10 -12.6 1Z" fill="none" stroke="#141413" stroke-width="1.8" stroke-linejoin="round"/>
@@ -2141,7 +2364,7 @@ function syncPortals() { physics.setPortals(portals.map(({ x, y, size, angle }) 
 
 // ---------------------------------------------------------------- the tray and the input
 // rarity: the gentle tools are common, the strong ones rare, so being dealt a black hole feels like a prize
-const TIERNAME = { rare: 'Rare', epic: 'Epic', legendary: 'Legendary' };
+const TIERNAME = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare', epic: 'Epic', legendary: 'Legendary' };
 const btnHTML = ([k, name, box]) => `<button type="button" data-tool="${k}" data-tier="${TIER[k] || 'common'}" aria-pressed="false"><svg viewBox="${box}">${ART[k]()}</svg><span>${name}</span>${!opts.all && TIERNAME[TIER[k]] ? `<em class="chb-tier">${TIERNAME[TIER[k]]}</em>` : ''}</button>`;
 let last = opts.lastTool || ''; if (!last) try { last = localStorage.getItem('reserve:last-play-tool') || ''; } catch {}
 const dealt = Object.hasOwn(TIER, opts.deal) ? opts.deal : deal({ random: opts.random || Math.random, last });
@@ -2155,7 +2378,7 @@ tray.innerHTML = shelf('weapon') + shelf('play');
 if (!opts.all && opts.reveal !== false) {
   const b = tray.querySelector('button'), tier = b?.dataset.tier || 'common';
   if (b && !reduce) { box.querySelector('.chb-box')?.classList.add('chb-dealt'); b.classList.add('chb-reveal');
-  if (tier !== 'common') {
+  if (tier !== 'common' && tier !== 'uncommon') {
     const col = { rare: '#9DB4C8', epic: '#DE9A7C', legendary: GOLD }[tier], n = tier === 'legendary' ? 16 : 12, rays = [...Array(n)].map((_, i) => {
       const a = i / n * 6.2832, a2 = a + 6.2832 / n * .45, r1 = 44 + (i % 2) * 8;
       return `<path d="M0 0L${R(Math.cos(a) * r1)} ${R(Math.sin(a) * r1)}L${R(Math.cos(a2) * r1)} ${R(Math.sin(a2) * r1)}Z" fill="${col}" opacity=".85"/>` + inkP(`M${R(Math.cos(a) * 14)} ${R(Math.sin(a) * 14)}L${R(Math.cos(a) * r1)} ${R(Math.sin(a) * r1)}`, 1, .35);
@@ -2177,6 +2400,12 @@ function pick(name) {
   if (tool === 'magnet') letGo();
   releaseInteraction(true);
   release();
+  // the apple is already out: the button drops only what is on screen and has not fallen yet, and everything fallen stays where it lies
+  if (name === 'gravity' && gravityHandle) {
+    gravityFall(true);
+    if (!reduce) gravityHandle.animate?.([{ scale: 1 }, { scale: 1.22, offset: .4 }, { scale: 1 }], { duration: 280, easing: 'ease-out' });
+    name = null;
+  }
   tool = tool === name ? null : name;
   for (const b of tray.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.tool === tool));
   document.documentElement.classList.toggle('chb-armed', !!tool);
@@ -2223,7 +2452,7 @@ listen(globalThis, 'blur', aimOff);
 tray.addEventListener('click', e => { const b = e.target.closest('button[data-tool]'); if (b) { e.stopPropagation(); pick(b.dataset.tool); } });
 const notOurs = e => !tool || opts.allowed?.() === false || hit(e).closest?.('#chb-tray,#chb-undo') || !!(opts.ours && hit(e).closest?.(opts.ours));
 let restoring = false;
-const CLICK = { bomb, hammer, railgun, blackhole, foil, ink, garden, balloon, portal, gravity: () => gravity() };
+const CLICK = { bomb, hammer, railgun, blackhole, foil, ink, garden, balloon, portal, gravity };
 let interaction = null, swallowUntil = -1, swallowX = 0, swallowY = 0;
 const stamp = e => Number.isFinite(e.timeStamp) ? e.timeStamp : performance.now();
 const managed = e => e.target.closest?.('.chb-physics-body,.chb-balloon-live,.chb-gravity-handle,.chb-portal-live,.chb-portal-knob,.chb-portal-edge');
@@ -2298,7 +2527,7 @@ listen(document, 'pointermove', e => {
     if (Math.hypot(e.clientX - i.startX, e.clientY - i.startY) > 4) i.moved = true;
     if (i.kind === 'pending' && i.moved) { const body = wordAt(i.startX, i.startY); i.kind = 'body'; if (body) { i.body = body; physics.dragStart(body, i.startX, i.startY, stamp(e) - 16); } }
     if (i.body) physics.dragMove(i.body, e.clientX, e.clientY, stamp(e));
-    if (i.kind === 'gravity' && i.moved) { gravityHandle._x = e.clientX; gravityHandle._y = e.clientY; tiltGravity(e.clientX, e.clientY); }
+    if (i.kind === 'gravity' && i.moved) { gravityHandle._x = e.clientX; gravityHandle._y = e.clientY; paceGravity(i, e); tiltGravity(e.clientX, e.clientY); }
     if (i.kind === 'portal') {
       const p = i.portal;
       if (i.action === 'rotate')
@@ -2370,7 +2599,7 @@ undo.addEventListener('click', () => {
   portals.length = 0;
   gravityHandle = null;
   gravityX = 0;
-  gravityY = 2300;
+  gravityY = gravityPull = 2300;
   physics.setGravity(0, 2300);
   {
     const keepers = new Set(marks);
@@ -2399,20 +2628,37 @@ undo.addEventListener('click', () => {
       longest = Math.max(longest, 520);
       continue;
     }
-    const r = s.getBoundingClientRect(), cs = getComputedStyle(s), c = document.createElement('span');
-    c.textContent = s.textContent;
-    Object.assign(c.style, { position: 'absolute', left: r.left + 'px', top: r.top + 'px', font: cs.font, color: cs.color, lineHeight: r.height + 'px', whiteSpace: 'pre' });
+    if (s._line || s._dot) continue;
+    const r = s.getBoundingClientRect(), cs = getComputedStyle(s);
+    let c = document.createElement('span');
+    if (s._thing)
+      c = thingCopy(s, r);
+    else {
+      c.textContent = s.textContent;
+      Object.assign(c.style, { position: 'absolute', left: r.left + 'px', top: r.top + 'px', font: cs.font, color: cs.color, lineHeight: r.height + 'px', whiteSpace: 'pre' });
+    }
     layer.append(c);
     // the path home is the flight reversed (timed stops mirrored so they stay in order)
     if (s._k) { const back = [...s._k].reverse().map(f => { const g = { ...f, opacity: 1 }; if (f.offset != null) g.offset = 1 - f.offset; delete g.easing; return g; });
       c.animate(back, { duration: D(s._d / 1.6), easing: 'cubic-bezier(.3,0,.2,1)' }).onfinish = () => { c.remove(); s.style.visibility = ''; }; longest = Math.max(longest, s._d / 1.6); }
     else c.animate([{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none' }], { duration: D(360) }).onfinish = () => { c.remove(); s.style.visibility = ''; };
   } catch { s.style.visibility = ''; s._c?.remove(); }
-  holes.length = 0; FLOOR.clear(); HITS.length = 0; PINS.length = 0; flat = false; ruled = textIndex = null; unrest();
+  holes.length = 0; FLOOR.clear(); HITS.length = 0; PINS.length = 0; flat = false; ruled = textIndex = thingIndex = null; unrest();
   for (const m of marks.splice(0)) m.animate([{ opacity: 1 }, { opacity: 0 }], { duration: D(400), fill: 'forwards' }).onfinish = () => m.remove();
-  setTimeout(() => { for (const [el, sides] of lines) { for (const side in sides) el.style['border' + side + 'Color'] = sides[side].inline; tidy(el); } lines.clear();
+  setTimeout(() => {
+    for (const [el, sides] of lines) { for (const side in sides) el.style['border' + side + 'Color'] = sides[side].inline; tidy(el); }
+    lines.clear();
+    for (const [li, inline] of dots) { li.style.listStyleType = inline; tidy(li); }
+    dots.clear();
     for (const { holder, node } of splits.splice(0)) if (holder.classList.contains('chb-split') || holder.classList.contains('chb-run')) holder.replaceWith(node);
-    for (const s of moved) { delete s._c; delete s._k; delete s._halves; delete s._body; delete s._physicsPath; }
+    for (const s of moved) {
+      if (s._thing) { if (s._style == null) s.removeAttribute('style'); else s.setAttribute('style', s._style); delete s._thing; delete s._look; delete s._style; }
+      delete s._c;
+      delete s._k;
+      delete s._halves;
+      delete s._body;
+      delete s._physicsPath;
+    }
     moved.clear();
     undo.style.display = 'none';
     restoring = false;
@@ -2434,12 +2680,17 @@ function reset() {
   for (const animation of ourAnimations()) animation.cancel(); pageAnimations.clear(); heldAnimations.clear();
   for (const f of [...folds.splice(0), ...returning]) { f.a.cancel(); f.el.style.transform = f.prev.t; f.el.style.transformOrigin = f.prev.o; } returning.clear();
   for (const [el, sides] of lines) for (const side in sides) el.style['border' + side + 'Color'] = sides[side].inline;
-  lines.clear(); for (const [word, style] of painted) word.classList.remove('chb-painted', style); painted.clear();
-  for (const s of moved) { s.style.visibility = ''; s._c?.remove(); for (const h of s._halves || []) h.remove(); for (const key of ['_c', '_k', '_halves', '_body', '_physicsPath']) delete s[key]; }
+  lines.clear(); for (const [li, inline] of dots) { li.style.listStyleType = inline; tidy(li); } dots.clear();
+  for (const [word, style] of painted) word.classList.remove('chb-painted', style); painted.clear();
+  for (const s of moved) {
+    s.style.visibility = ''; s._c?.remove(); for (const h of s._halves || []) h.remove();
+    if (s._thing) { if (s._style == null) s.removeAttribute('style'); else s.setAttribute('style', s._style); delete s._thing; delete s._look; delete s._style; }
+    for (const key of ['_c', '_k', '_halves', '_body', '_physicsPath']) delete s[key];
+  }
   moved.clear(); for (const { holder, node } of splits.splice(0)) if (holder.parentNode) holder.replaceWith(node);
   for (const el of [...layer.children]) if ([MUL, OVL, SCR].includes(el)) { for (const child of [...el.children]) child.remove(); } else el.remove();
-  marks.length = holes.length = HITS.length = PINS.length = balloons.length = portals.length = 0;
-  FLOOR.clear(); flat = false; gravityHandle = null; gravityX = 0; gravityY = 2300; physics.setGravity(0, 2300);
+  marks.length = holes.length = HITS.length = PINS.length = balloons.length = portals.length = plants.length = 0;
+  FLOOR.clear(); flat = false; thingIndex = null; gravityHandle = null; gravityX = 0; gravityY = gravityPull = 2300; physics.setGravity(0, 2300);
   undo.style.display = 'none'; restoring = false; cancelWork();
 }
 function setMotion(value) {
@@ -2510,5 +2761,5 @@ return {
   return tool;
 }, destroy, undo: () => undo.click() };
 };
-globalThis.ReservePlay = { mount, deal, tiers: TIER, weights: ODDS };
+globalThis.ReservePlay = { mount, deal, tiers: TIER, weights: CHANCE };
 })();

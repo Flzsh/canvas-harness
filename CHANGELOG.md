@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.9.0 - 2026-10-30
+## 3.9.0 - 2026-10-31
 
 - Review deck: redrawn as a reading room that grows out of its Home module and folds back into it. The module comes in three sizes, and the large one lets you study right there.
 - Grade impact: redrawn as a weighing room for one course, opened from Grades or its Home module. Pretend assignments you add stay in this browser and are never sent to Canvas.
@@ -9,6 +9,13 @@
 - Play tools run much lighter on long pages: words or runs of words are cut only where a tool reaches, and each tool reads the page once per gesture. Bomb, railgun and black hole still break into letters.
 - Foil now works on long pages: it smears the letters nearest its line and whole words beyond them.
 - Marks and physics rest after 2 minutes without input, like the rest of the drawings.
+- Play tools take the whole page: pictures, icons, buttons and fields go with the words, and under Gravity so do ruled lines and list bullets. Put it back brings everything home.
+- Gravity has one apple. It lands where you click, and the faster you drag it the harder the page falls; its arrow shows how hard.
+- Hammer cracks are softer, Magnet holds letters around it like filings, and Ink, Painter and Eraser are redrawn. In Garden the words themselves grow stems, leaves and flowers.
+- The tool you are dealt comes from a full rarity list, Common to Legendary, each with its own chance out of 100. Its band shows on the card.
+- A Chromebook or a small laptop gets the same tools at a lighter cost, with nothing to turn on.
+- Every window size: the top bar stays one row in half and quarter windows, and the tabs scroll sideways when it runs out of room. Tools and Make it yours float over the page below 1720 px. A short window keeps the heading to one line, and the pony is smaller in a small window.
+- A part of Canvas that a teacher hid no longer stops a whole load, and courses that have not opened yet are left out.
 
 ## 3.8.1 - 2026-10-29
 

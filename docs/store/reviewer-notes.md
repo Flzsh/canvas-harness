@@ -2,7 +2,7 @@
 
 ## 3.9.0 changes
 
-3.9.0 redraws the opt-in Focus room, Review deck and Grade impact and makes the play tools lighter. It adds no permissions, no network requests and no remote code; all three stay off until switched on under Features → Custom.
+3.9.0 redraws the opt-in Focus room, Review deck and Grade impact, makes the play tools lighter and lets them act on the whole page, and fits the page to every window size. It adds no permissions, no network requests and no remote code; all three stay off until switched on under Features → Custom.
 
 ## 3.8.0 Chrome Web Store submission scope
 

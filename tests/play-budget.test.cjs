@@ -78,7 +78,7 @@ test('a node of tens of thousands of words is searched, not read word by word', 
 });
 
 test('on Home the tray lives in a shadow root: with a tool in hand Put it back and the tray are not taken for the page', () => {
-  const h = fixture(), host = h.document.createElement('div'); h.document.body.append(host); h.api.pick('gravity'); h.api.gravity();
+  const h = fixture(), host = h.document.createElement('div'); h.document.body.append(host); h.api.gravity(); h.api.pick('balloon');
   const undo = h.document.getElementById('chb-undo'), inside = extra => ({ composedPath: () => [undo, host, h.document.documentElement], ...extra });
   assert.notEqual(h.dispatch('click', host, 5, 5, inside()).prevented, true, 'the click goes on to the button');
   assert.equal(h.api.physics.bodies.length, 13, 'and no second tool action fired');
@@ -193,7 +193,7 @@ test('a full magnet stops opening words as it moves', () => {
 
 const heavy = (width = 4000) => fixture({ text: 'abcde '.repeat(4000).trim(), width, height: 900 });
 const hidden = h => h.page.querySelectorAll('.chb-ch').filter(s => s.style.visibility === 'hidden').length;
-// (the foil is held to the shared budget by the element guard; the blasts stay in letters until the owner decides, see WORDS_IN_BLASTS)
+// (the foil is held to the shared budget by the element guard; the blasts stay in letters unless the machine is weak, see WORDS_IN_BLASTS)
 for (const [name, act, wait, limit] of [['railgun', h => h.api.railgun(600, 130), 1000, 720], ['black hole', h => h.api.blackhole(600, 130), 200, 520], ['foil', h => h.api.foil(600, 130), 2500, BUDGET]]) test(`${name} keeps to its limit of pieces on a page full of text, and Put it back is exact`, () => {
   const h = heavy(); act(h); h.frame(wait); h.frame();
   const count = h.page.querySelectorAll('.chb-ch').length; assert.ok(count > 20, `${count} pieces`); assert.ok(count <= limit + 40, `${count} pieces`); assert.ok(hidden(h) <= limit);
@@ -211,8 +211,8 @@ test('the foil smears letters nearest the line and whole words beyond them, unde
   h.api.undo(); h.finish(); assert.equal(h.page.querySelectorAll('.chb-ch').length, 0);
 });
 
-test('blasts stay in letters until the owner chooses: one switch, and it is off', () => {
-  const source = require('node:fs').readFileSync(require('node:path').join(__dirname, '../extension/play-tools.js'), 'utf8'); assert.match(source, /const WORDS_IN_BLASTS = false,/);
+test('blasts stay in letters unless the machine is weak: one switch', () => {
+  const source = require('node:fs').readFileSync(require('node:path').join(__dirname, '../extension/play-tools.js'), 'utf8'); assert.match(source, /const WORDS_IN_BLASTS = LOW,/);
   const h = heavy(); h.api.blackhole(600, 130); assert.ok(h.page.querySelectorAll('.chb-ch').every(s => s.textContent.length === 1));
 });
 

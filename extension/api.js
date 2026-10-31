@@ -48,6 +48,27 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         throw new CanvasError('Message previews must preserve read status.', 'endpoint');
       return url;
     }
+    // Canvas also answers 401 to a signed-in student for one thing they may not read (a tab the teacher hid, a closed Inbox):
+    // only Canvas's own refusal, with a profile that still answers, is read that way. The wording is translated, so the profile decides.
+    let sessionSeen=0;
+    async function signedOut(url,response,signal) {
+      if (url.pathname === '/api/v1/users/self/profile') return true;
+      let said=''; try { said=String(await response.text?.()).slice(0,2000); } catch {}
+      if (/unauthenticated|authorization required/i.test(said) || !/"(?:errors|message)"\s*:/.test(said)) return true;
+      if (Date.now()-sessionSeen < 30000) return false;
+      try {
+        const check=await fetchImpl(new URL('/api/v1/users/self/profile',base).href,{
+          method:'GET',
+          credentials:'same-origin',
+          cache:'no-store',
+          headers:{Accept:'application/json+canvas-string-ids'},
+          signal,
+          redirect:'error'
+        });
+        if (check?.status !== 200) return true;
+        sessionSeen=Date.now(); return false;
+      } catch { return true; }
+    }
     async function throttled(response) {
       if (response.status === 429) return true;
       if (response.status !== 403) return false;
@@ -84,7 +105,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const response = await fetchImpl(url.href, fetchOptions);
         if (response?.redirected || response?.type === 'opaqueredirect') throw new CanvasError('Canvas redirected this read request unexpectedly.', 'redirect');
         if (signal?.aborted) throw new CanvasError('Refresh cancelled.', 'cancelled');
-        if (response.status === 401) throw new CanvasError('Sign in to Canvas, then refresh Canvas Harness.', 'auth');
+        if (response.status === 401) {
+          if (await signedOut(url,response,controller.signal)) throw new CanvasError('Sign in to Canvas, then refresh Canvas Harness.', 'auth');
+          throw new CanvasError('Canvas did not allow this course to be read.', '403');
+        }
         if (await throttled(response)) throw Object.assign(new CanvasError('Canvas is receiving too many requests. Wait a minute, then refresh.', 'rate'), {retryAfter: retryAfter(response)});
         if (!response.ok)
           throw new CanvasError(response.status === 403 ? 'Canvas did not allow this course to be read.' : `Canvas could not load this information (${response.status}).`, String(response.status));
@@ -324,7 +348,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if (knownUser && String(knownUser.id) !== String(user.id)) throw new CanvasError('Your Canvas account changed. Reopen Canvas Harness to load the new account.', 'auth');
       // include[]=term adds each course's term name, so "Default Term" (school resources such as a name-pronunciation tool) is known by name
       // as well as by enrollment_term_id (ReserveCore.nonAcademicCourseIds). Still one GET.
-      const courses = await list('/api/v1/courses?enrollment_state=active&enrollment_type=student&include[]=total_scores&include[]=current_grading_period_scores&include[]=term&per_page=100', {signal});
+      // A course that is not open yet comes back as its id and access_restricted_by_date; nothing in it can be read.
+      const courses = (await list('/api/v1/courses?enrollment_state=active&enrollment_type=student&include[]=total_scores&include[]=current_grading_period_scores&include[]=term&per_page=100', {signal})).filter(c=>
+        c?.access_restricted_by_date!==true);
       const errors = [], assignments = []; let cursor=0, completed=0, fatal=null;
       async function worker() {
         while (cursor < courses.length && !fatal) {

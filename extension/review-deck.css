@@ -535,7 +535,7 @@
 .rv-mod .rv-mod-boxes:has(.rv-testtag){padding-top:clamp(18px,4.6cqw,34px)}
 .rv-mod .rv-mod-boxes .rv-box{flex:1 1 0;max-width:210px;min-width:0}
 /* a module's words never go below a readable size, whatever the box's scale: the name on its plate and the red test tag */
-.rv-mod .rv-box-name{font-size:max(11px,7.4cqw)}.rv-mod .rv-box-name[data-len=m]{font-size:max(11px,6.6cqw)}.rv-mod .rv-box-name[data-len=l]{font-size:max(10.5px,5.4cqw)}.rv-mod .rv-box-name[data-len=xl]{font-size:max(10px,4.7cqw)}
+.rv-mod .rv-box-name{font-size:max(10.5px,7.4cqw)}.rv-mod .rv-box-name[data-len=m]{font-size:max(10px,6.2cqw)}.rv-mod .rv-box-name[data-len=l]{font-size:max(10.5px,5.4cqw)}.rv-mod .rv-box-name[data-len=xl]{font-size:max(10px,4.7cqw)}
 .rv-mod .rv-testtag span{font-size:max(11px,5.4cqw);padding-left:max(10px,6cqw)}
 /* a narrow medium module (under about 460 px) shows two boxes, larger, and the rest behind a "+1" plate */
 .rv-mod .rv-more{display:none}

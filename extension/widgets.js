@@ -583,6 +583,7 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
      playTray=root.ReservePlay?.mount({
        box:playBox,
        all:true,
+       things:false,
        root:()=>container.querySelector('.rd-workspace')||container,
        blocks:'.rd-main > *, .rd-workspace > *',
        ours:'.pet-layer,.chb-box',

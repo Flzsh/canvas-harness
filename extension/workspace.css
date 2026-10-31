@@ -125,8 +125,8 @@
 
 /* 2.12: shared header baseline and a workspace that adapts to its own width. */
 .rd{--rd-dock-width:clamp(360px,29vw,460px);--rd-dock-gap:20px}
-.rd:not(.rd-native-tools){transition:padding-right 220ms cubic-bezier(.22,1,.36,1)}
-.rd[data-toolbox=open]:not(.rd-native-tools){padding-right:calc(var(--rd-dock-width) + var(--rd-dock-gap) + 16px)}
+/* The dock slides over the page. Only a window wide enough keeps room for it beside the page, in one step: animating the page's padding laid the whole page out on every frame. */
+@media(min-width:1720px){.rd[data-toolbox=open]:not(.rd-native-tools){padding-right:calc(var(--rd-dock-width) + var(--rd-dock-gap) + 16px)}}
 .rd[data-workspace=work] .rd-shell{grid-template-columns:184px minmax(0,1fr);gap:24px}
 .rd[data-workspace=work] .rd-course-rail{padding-right:16px}
 .rd .rd-workspace{container-type:inline-size;container-name:work-area}
@@ -257,12 +257,6 @@
  .rd[data-workspace=work][data-reader-open=true] .rd-information{order:-1}
  .rd[data-workspace=work] .rd-assignment-list{max-height:440px;overflow:auto}
 }
-@media(max-width:1400px){
- .rd[data-toolbox=open] .rd-shell{display:block}
- .rd[data-toolbox=open] .rd-course-rail{display:none}
- .rd[data-toolbox=open] .rd-course-select{display:block}
- .rd[data-toolbox=open] .rd-toolbar{flex-wrap:wrap;gap:10px}
-}
 @media(max-width:900px){
  .rd[data-workspace=work] .rd-shell{display:block}
  .rd[data-workspace=work] .rd-course-rail{display:none}
@@ -376,7 +370,6 @@
  .rd .rd-course-heading select{max-width:100%;font-size:21px}
 }
 .rd[data-workspace][data-courses=false] .rd-course-heading h1{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
-@media(max-width:1400px){.rd[data-toolbox=open] .rd-course-heading h1{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}}
 @media(max-width:900px){.rd[data-workspace] .rd-course-heading h1{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}}
 /* Fill the working area; each tool owns its internal scrolling. */
 .rd .rd-utility-dialog[data-docked=true]{transition:width 200ms var(--rd-ease-out),height 200ms var(--rd-ease-out);border-radius:14px;box-shadow:0 16px 48px #14213218,0 2px 8px #14213208}
@@ -440,7 +433,6 @@
 
 @media(max-width:900px){.rd .rd-utility-dialog[data-docked=true]:not([data-collapsed=true]){width:calc(100% - 24px);max-width:none;min-height:min(240px,75dvh)}}
 
-@media(max-width:1400px){.rd[data-toolbox=open] .rd-mobile-course{display:flex;max-width:280px;margin-bottom:18px}}
 @media(max-width:900px){.rd .rd-mobile-course{display:flex;max-width:100%;margin-bottom:18px}}
 
 .rd .rd-utility-dialog select.rd-dock-size{width:82px;font-size:11px;line-height:1.2;padding:5px 7px;height:32px;min-height:32px}

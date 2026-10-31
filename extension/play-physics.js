@@ -2,7 +2,7 @@
 (function(root){
 'use strict';
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), finite = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
-// how far from the far side of the window a pile may rise, as a share of the window
+// how far from the far side of the window a pile may rise, as a share of the window (each body a little different, so a full pile is a heap, not one line)
 const PILE_REACH = .12, pileLimit = (extent, size, share) => size + 8 >= extent ? extent / 2 : extent * share;
 // A wall's pile: a height per column, and the highest it has reached, so a body far from the wall never looks it up.
 class Pile extends Map {
@@ -29,7 +29,7 @@ function create(options = {}) {
     quiet = 0,
     unsaid = false,
     stepped = false;
-  let reduced = !!options.reduced; const maxSpeed = clamp(finite(options.maxSpeed, 1200), 100, 1800), drag = Math.max(0, finite(options.drag, .35));
+  let reduced = !!options.reduced; const maxSpeed = clamp(finite(options.maxSpeed, 1200), 100, 1800); let topSpeed = maxSpeed; const drag = Math.max(0, finite(options.drag, .35));
   // listeners hear about a change once per batch, however many bodies it touched
   const notify = () => { if (quiet) unsaid = true; else for (const fn of listeners) fn(); }, changed = b => { if (b) dirty.add(b); notify(); }, active = b => !!b && !b.retired && members.has(b);
   const batch = fn => { quiet++; try { return fn(); } finally { if (!--quiet && unsaid) { unsaid = false; notify(); } } };
@@ -37,6 +37,7 @@ function create(options = {}) {
     if (!b.pile) return;
     for (const [map, key, value] of b.pile) { const next = (map.get(key) || 0) - value; if (next > .001) map.set(key, next); else map.delete(key); }
     b.pile = null;
+    b.seat = '';
   };
   const sideOfGravity = () => Math.abs(gravity.x) > Math.abs(gravity.y) ? gravity.x < 0 ? 'left' : 'right' : gravity.y < 0 ? 'top' : 'bottom';
   const bins = (b, side) => {
@@ -52,13 +53,21 @@ function create(options = {}) {
     return h;
   };
   // (gap: how far the body's edge is from that wall; further than the pile has ever reached, it cannot be touching it)
-  const pileNear = (b, gap, side) => gap <= 4 + walls[side].top ? pileHeight(b, side) : 0;
+  // the part of the pile a body can land on: a stack taller than it is beside it, so it falls past instead of being lifted up; with stacks all across it is buried and stays where it is
+  const pileNear = (b, gap, side) => {
+    if (b.seat === side) return b.seatAt;
+    if (gap > 4 + walls[side].top) return 0;
+    const map = walls[side], [a, z] = bins(b, side);
+    let h = 0, open = false;
+    for (let i = a; i <= z; i++) { const v = map.get(i) || 0; if (v > gap + 16) continue; open = true; if (v > h) h = v; }
+    return open || side !== sideOfGravity() ? h : Math.max(0, gap - 4);
+  };
   const limitPosition = b => {
     b.x = clamp(b.x, Math.min(b.width / 2 + 4, width / 2), Math.max(width / 2, width - b.width / 2 - 4));
     b.y = clamp(b.y, Math.min(b.height / 2 + 4, height / 2), Math.max(height / 2, height - b.height / 2 - 4));
   };
   function deposit(b, side) {
-    if (b.pile) return;
+    if (b.pile || b.thin) return;
     const horizontal = side === 'bottom' || side === 'top',
       extent = horizontal ? height : width,
       size = horizontal ? b.height : b.width,
@@ -67,6 +76,12 @@ function create(options = {}) {
       [a, z] = bins(b, side);
     b.pile = [];
     for (let i = a; i <= z; i++) { const old = map.get(i) || 0, next = Math.max(old, Math.min(extent - size - 8, depth)); if (next > old) { map.set(i, next); b.pile.push([map, i, next - old]); } }
+  }
+  // a landing body takes its place at once, so the next one lands on top of it, not through it; it keeps the height it landed on while it bounces
+  function seat(b, side) {
+    b.seatAt = Math.max(0, (side === 'bottom' ? height - b.y - b.height / 2 : side === 'top' ? b.y - b.height / 2 : side === 'left' ? b.x - b.width / 2 : width - b.x - b.width / 2) - 4);
+    b.seat = side;
+    deposit(b, side);
   }
   function settle(b, side = sideOfGravity()) {
     if (!b || b.retired) return;
@@ -86,7 +101,7 @@ function create(options = {}) {
   const wake = b => { if (!active(b)) return; unpile(b); b.awake = true; b.still = 0; notify(); };
   const speedLimit = b => {
     const squared = b.vx * b.vx + b.vy * b.vy;
-    if (squared > maxSpeed * maxSpeed) { const k = maxSpeed / Math.sqrt(squared); b.vx *= k; b.vy *= k; }
+    if (squared > topSpeed * topSpeed) { const k = topSpeed / Math.sqrt(squared); b.vx *= k; b.vy *= k; }
     b.spin = clamp(b.spin, -540, 540);
   };
   function add(spec = {}) {
@@ -142,7 +157,15 @@ function create(options = {}) {
     if (!active(b)) return;
     wake(b);
     b.constraint = { length: 0, stiffness: 90, damping: 18, sway: 0, ...spec };
-    if (reduced) { b.x = b.constraint.x; b.y = b.constraint.y + b.constraint.length; limitPosition(b); b.vx = b.vy = b.spin = 0; b.awake = false; changed(b); }
+    if (reduced) {
+      b.x = b.constraint.x;
+      b.y = b.constraint.y + b.constraint.length;
+      limitPosition(b);
+      if (spec.angle !== undefined) b.angle = spec.angle;
+      b.vx = b.vy = b.spin = 0;
+      b.awake = false;
+      changed(b);
+    }
     return b.constraint;
   }
   function release(b) { if (!active(b)) return; b.constraint = null; wake(b); if (reduced) settle(b); }
@@ -184,8 +207,9 @@ function create(options = {}) {
     wake(b);
     if (reduced) { if (b.constraint) constrain(b, b.constraint); else settle(b); }
   }
-  function setGravity(x, y) {
+  function setGravity(x, y, limit) {
     gravity = { x: finite(x), y: finite(y) };
+    topSpeed = clamp(finite(limit, maxSpeed), maxSpeed, 1800);
     batch(() => { for (const b of bodies) wake(b); if (reduced) for (const b of bodies) if (!b.dragged) { if (b.constraint) constrain(b, b.constraint); else settle(b); } });
   }
   function setAttractor(id, spec) {
@@ -235,10 +259,11 @@ function create(options = {}) {
     let contact = false;
     const halfW = b.width / 2,
       halfH = b.height / 2,
-      left = Math.min(pileLimit(width, b.width, 1 - PILE_REACH), 4 + pileNear(b, b.x - halfW, 'left') + halfW),
-      right = Math.max(pileLimit(width, b.width, PILE_REACH), width - 4 - pileNear(b, width - b.x - halfW, 'right') - halfW),
-      top = Math.min(pileLimit(height, b.height, 1 - PILE_REACH), 4 + pileNear(b, b.y - halfH, 'top') + halfH),
-      bottom = Math.max(pileLimit(height, b.height, PILE_REACH), height - 4 - pileNear(b, height - b.y - halfH, 'bottom') - halfH);
+      reach = PILE_REACH + (b.id % 9) * .012,
+      left = Math.min(pileLimit(width, b.width, 1 - reach), 4 + pileNear(b, b.x - halfW, 'left') + halfW),
+      right = Math.max(pileLimit(width, b.width, reach), width - 4 - pileNear(b, width - b.x - halfW, 'right') - halfW),
+      top = Math.min(pileLimit(height, b.height, 1 - reach), 4 + pileNear(b, b.y - halfH, 'top') + halfH),
+      bottom = Math.max(pileLimit(height, b.height, reach), height - 4 - pileNear(b, height - b.y - halfH, 'bottom') - halfH);
     const hit = (axis, edge, normal) => {
       b[axis] = edge;
       const key = axis === 'x' ? 'vx' : 'vy', tangent = axis === 'x' ? 'vy' : 'vx', speed = b[key] * normal;
@@ -275,9 +300,12 @@ function create(options = {}) {
     b.x += b.vx * dt;
     b.y += b.vy * dt;
     b.angle = (b.angle + b.spin * dt) % 360;
+    if (q?.angle !== undefined) { b.spin = 0; b.angle += ((q.angle - b.angle + 540) % 360 - 180) * Math.min(1, dt * 9); }
     teleport(b, oldX, oldY);
     if (!b.awake) return;
-    const contact = collide(b), slow = b.vx * b.vx + b.vy * b.vy < 196 && Math.abs(b.spin) < 12;
+    const contact = collide(b);
+    if (contact && !q && !b.pile && !weightless && contact === sideOfGravity()) seat(b, contact);
+    const slow = b.vx * b.vx + b.vy * b.vy < 196 && Math.abs(b.spin) < 12;
     b.still = slow && (contact || q || weightless) && !q?.sway ? b.still + dt : 0;
     if (b.still > .22) { b.awake = false; b.vx = b.vy = b.spin = 0; if (contact && !q) deposit(b, contact); }
     dirty.add(b);

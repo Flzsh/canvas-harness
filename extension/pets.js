@@ -269,7 +269,10 @@
     bubbleBox={w:250,h:120};
   const filmNow=()=>win.performance?.now?.()??now(),motionMedia=win.matchMedia?.('(prefers-reduced-motion: reduce)');let motionChange=null;
   const reduced=()=>menuOpen||['off','still'].includes(container.dataset.motionStyle)||!!motionMedia?.matches;
-  const size=()=>custom?custom.size[0]:SIZES[pet.size]||SIZES.medium,height=()=>custom?custom.size[1]:size()*64/72,ground=()=>custom?custom.ground:height()*60/64;
+  const small=()=>win&&(win.innerWidth<800||win.innerHeight<600)?.72:1,
+    size=()=>(custom?custom.size[0]:SIZES[pet.size]||SIZES.medium)*small(),
+    height=()=>custom?custom.size[1]*small():size()*64/72,
+    ground=()=>custom?custom.ground*small():height()*60/64;
   const visible=()=>pet.enabled&&pet.roam!=='off'&&!(pet.brain?.hiddenUntil>now());
   function mount(){
    if(layer||dead)return;

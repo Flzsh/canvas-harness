@@ -58,6 +58,7 @@ html.chb-armed.chb-aiming[data-chb-tool],html.chb-armed.chb-aiming[data-chb-tool
 .chb-sheen{animation:chb-sheen 5s ease-in-out infinite}@keyframes chb-sheen{0%,60%{transform:translateX(0)}90%,100%{transform:translateX(80px)}}
 .chb-leaf{animation:chb-grow .5s cubic-bezier(.3,1.5,.5,1) backwards,chb-sway 4s ease-in-out infinite}
 .chb-flower{animation:chb-grow .6s cubic-bezier(.3,1.6,.5,1) backwards,chb-nod 5s ease-in-out infinite}
+#chb-layer .chb-plant{animation:chb-grow .7s cubic-bezier(.3,1.5,.5,1) backwards,chb-nod 5s ease-in-out infinite}.chb-sprout{color:#4E6B3C;transition:color .6s}
 @keyframes chb-grow{from{transform:scale(0)}}@keyframes chb-sway{0%,100%{rotate:0deg}50%{rotate:7deg}}@keyframes chb-nod{0%,100%{rotate:-4deg}50%{rotate:5deg}}
 .chb-streak{animation:chb-streak 1.6s linear infinite}@keyframes chb-streak{to{stroke-dashoffset:-64}}
 .chb-portal{animation:chb-breathe 2.6s ease-in-out infinite}@keyframes chb-breathe{0%,100%{transform:none}50%{transform:scale(1.04,1.08)}}
@@ -85,10 +86,10 @@ html.chb-armed.chb-aiming[data-chb-tool],html.chb-armed.chb-aiming[data-chb-tool
 /* two minutes without input: the marks rest, as the rest of the living art does */
 html.chb-rest #chb-layer *,html.chb-rest .chb-blend *,html.chb-rest .chb-painted,html.chb-rest .chb-painted *{animation-play-state:paused!important}
 /* rarity: a small gem in the corner of each tool (all tools offered), and the reveal of the one tool dealt (play-tools.js) */
-#chb-tray button{position:relative}#chb-tray button[data-tier]:not([data-tier=common])::after{content:"";position:absolute;top:3px;right:4px;width:7px;height:7px;transform:rotate(45deg);border:1.2px solid #141413;border-radius:1.5px}
-#chb-tray button[data-tier=rare]::after{background:#9DB4C8}#chb-tray button[data-tier=epic]::after{background:#DE9A7C}#chb-tray button[data-tier=legendary]::after{background:#E2B865}
+#chb-tray button{position:relative}#chb-tray button[data-tier]::after{content:"";position:absolute;top:3px;right:4px;width:7px;height:7px;transform:rotate(45deg);border:1.2px solid #141413;border-radius:1.5px}
+#chb-tray button[data-tier=common]::after{background:#E3DACC}#chb-tray button[data-tier=uncommon]::after{background:#A9BC8C}#chb-tray button[data-tier=rare]::after{background:#9DB4C8}#chb-tray button[data-tier=epic]::after{background:#DE9A7C}#chb-tray button[data-tier=legendary]::after{background:#E2B865}
 .chb-tier{display:block;font:700 8.5px "Segoe UI";font-style:normal;letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
-#chb-tray button[data-tier=rare] .chb-tier{color:#4F7FA8}#chb-tray button[data-tier=epic] .chb-tier{color:#C96442}#chb-tray button[data-tier=legendary] .chb-tier{color:#A9771F}
+#chb-tray button[data-tier=common] .chb-tier{color:#6F6A5E}#chb-tray button[data-tier=uncommon] .chb-tier{color:#5F7A45}#chb-tray button[data-tier=rare] .chb-tier{color:#4F7FA8}#chb-tray button[data-tier=epic] .chb-tier{color:#C96442}#chb-tray button[data-tier=legendary] .chb-tier{color:#A9771F}
 .chb-dealt #chb-tray{overflow:visible}#chb-tray button.chb-reveal{overflow:visible;animation:chb-deal .7s cubic-bezier(.2,1.5,.4,1) .15s backwards}#chb-tray button.chb-reveal>svg:not(.chb-rays):not(.chb-spark),#chb-tray button.chb-reveal>span,#chb-tray button.chb-reveal>em{position:relative;z-index:1}
 @keyframes chb-deal{0%{transform:scale(.2) rotate(-14deg);opacity:0}60%{transform:scale(1.16) rotate(3deg);opacity:1}100%{transform:none}}
 #chb-tray svg.chb-rays{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;z-index:0;pointer-events:none;animation:chb-rays 1.6s cubic-bezier(.2,.8,.3,1) .3s backwards;opacity:.9}

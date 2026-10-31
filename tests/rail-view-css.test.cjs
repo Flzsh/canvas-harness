@@ -14,3 +14,11 @@ test('the drawn toolbar has its own opaque background above the rail',()=>{
  const search=rule('.rd .rd-toolbar > .rd-bar-search');
  assert.equal(search.background,'none');assert.match(search['border-bottom'],/dashed/);
 });
+
+test('every window size: the row stays one line and the tabs keep their words, which are all they have',()=>{
+ assert.doesNotMatch(css,/rd-workspace-tab\[aria-selected=false\][^{]*\{[^}]*clip-path/);
+ assert.match(css,/@media \(min-width: 1000px\) \{ \.rd \{ --rd-search-at: bar; \} \}/);
+ const narrow=css.slice(css.indexOf('@media (min-width: 601px) {'));
+ assert.match(narrow,/\.rd \.rd-toolbar > \.rd-workspace-tabs \{ flex: 0 1 auto; width: auto; min-width: 0; \}/);
+ assert.match(narrow,/\.rd \.rd-toolbar > \.rd-bar-search:not\(\[hidden\]\) \{ flex: 0 10 300px; min-width: 140px; \}/);
+});
