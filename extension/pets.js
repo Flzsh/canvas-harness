@@ -1112,7 +1112,7 @@
        pet=clean(claimed);
        engineMemory.lastOffer=now();
        if(manners().typing||manners().dragging||manners().hidden||focusing)return;
-       show(`<p class="pet-say">${E(offer.label)}</p><div class="pet-items">${suggestionItems([offer],false)}</div>`,{ms:11000});
+       show(`<div class="pet-items">${suggestionItems([offer],false)}</div>`,{ms:11000});
        expose([offer]);
      };
      if(claimEngineOffer){claiming=true;Promise.resolve(claimEngineOffer(offer,snapshot,state)).then(display).catch(()=>{}).finally(()=>{claiming=false;});}
