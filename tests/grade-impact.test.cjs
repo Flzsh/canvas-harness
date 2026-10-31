@@ -92,6 +92,12 @@ test('empty weighted categories use Canvas active-category normalization when th
  assert.equal(m.supported,true);close(m.current,80);close(m.impact(m.upcoming[0]).at(0),40);close(m.impact(m.upcoming[0]).at(1),90);
 });
 
+test('All courses on the Grades page keeps the strips under its tables, and only while grades show',()=>{
+ const gradeImpact=ready(base());
+ const shown=Grades.render({...context(),gradeImpact},helpers);assert.match(shown,/rd-grade-sheet ch-impact/);assert.match(shown,/Coming up/);
+ assert.ok(shown.indexOf('rd-scored-work')<shown.indexOf('ch-grade-impact'),'under the tables');
+ assert.doesNotMatch(Grades.render({...context(false),gradeImpact},helpers),/ch-impact/);
+});
 test('the Grades list shows each course as a compact strip: escaped names, swings, honest projections, links and no script URLs',()=>{
  const html=G.render(context(),helpers,ready(base()));assert.match(html,/Coming up/);assert.match(html,/rd-grade-sheet ch-impact/);assert.match(html,/Unit &lt;3&gt; test/);assert.match(html,/moves 25\.0/);
  assert.match(html,/0% gives 65\.0, 100% gives 90\.0/);assert.match(html,/class="gi gi-strip"/);assert.match(html,/data-gi-open="5"/);assert.doesNotMatch(html,/javascript:|\/quizzes\/|<script|on[a-z]+=/i);

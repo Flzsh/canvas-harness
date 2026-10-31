@@ -70,7 +70,7 @@
    }
   }
   const parts=scene?[scene,box]:[box];if(marker)marker.after(...parts);else parent.prepend(...parts);
-  play=globalThis.ReservePlay.mount({box,motion,root:document.querySelector('#content')||document.body,
+  play=globalThis.ReservePlay.mount({box,motion,root:document.querySelector('#application')||document.body,
    blocks:'#content > *, #right-side-wrapper > *, #left-side',shake:'#application, #wrapper',ours:'.chs-scene',allowed:()=>enabled()&&assignment()});
   syncMotion();
  }

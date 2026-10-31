@@ -1,4 +1,4 @@
-/* Canvas Harness Plus: the Focus room's four places, drawn in code by one hand. Each place is a whole world on a
+/* Canvas Harness: the Focus room's four places, drawn in code by one hand. Each place is a whole world on a
    1440 x 900 stage (horizon at 560): a sky of flat washes, far ground, middle ground and near ground, with the small
    true things that belong there. Heavy drawing is returned as still layers; everything that ever moves is a small
    separate actor so the browser only repaints what moves. Colours are classes (f-* fills, s-* strokes) that

@@ -295,7 +295,8 @@
     bubbleBox={w:250,h:120};
   const filmNow=()=>win.performance?.now?.()??now(),motionMedia=win.matchMedia?.('(prefers-reduced-motion: reduce)');let motionChange=null;
   const reduced=()=>menuOpen||['off','still'].includes(container.dataset.motionStyle)||customMotion!=='gentle'||!!motionMedia?.matches;
-  const size=()=>custom?custom.size[0]*(SIZES[pet.size]||SIZES.medium)/SIZES.medium:SIZES[pet.size]||SIZES.medium,
+  const small=()=>win&&(win.innerWidth<800||win.innerHeight<600)?.72:1,
+    size=()=>(custom?custom.size[0]*(SIZES[pet.size]||SIZES.medium)/SIZES.medium:SIZES[pet.size]||SIZES.medium)*small(),
     height=()=>custom?size()*custom.size[1]/custom.size[0]:size()*64/72,
     ground=()=>custom?height()*custom.ground/custom.size[1]:height()*60/64;
   const visible=()=>pet.enabled&&pet.roam!=='off'&&!(pet.brain?.hiddenUntil>now());

@@ -1,6 +1,6 @@
 /*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. Third-party components retain their respective attribution. */
 // Adapted from Gary Wu's pull request #43 to Canvas Harness.
-/* Canvas Harness Plus: the Focus room. One focus session, two modes. On Home it is a small module (the seal, +5,
+/* Canvas Harness: the Focus room. One focus session, two modes. On Home it is a small module (the seal, +5,
    Finish, the task tag, the time and the light arc); "Room" grows the module into a whole drawn place that fills the
    screen (Lake, Stream, Rain or Fire), where the sky is the session: dawn at the start, dusk at the end. The timer is
    the planner's one focus record, so a running session keeps counting while the module grows and folds back. This

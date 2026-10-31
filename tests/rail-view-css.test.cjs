@@ -8,3 +8,10 @@ function rule(selector){
 }
 
 // 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
+
+test('every window size: a tab that gives up its word keeps its drawing and shows its name as a tooltip',()=>{
+ const view=fs.readFileSync(path.join(__dirname,'../extension/dashboard-view.js'),'utf8');
+ assert.match(view,/data-tab="\$\{key\}" title="\$\{label\}"/);assert.match(view,/'>'\+draw\(key\)\+'\$1'/);
+ assert.match(css,/rd-workspace-tab\[aria-selected=false\] > span:not\(\.rd-n\):not\(\.rd-sr-only\) \{ position: absolute;/);
+ assert.match(css,/@media \(min-width: 1000px\) \{ \.rd \{ --rd-search-at: bar; \} \}/);
+});

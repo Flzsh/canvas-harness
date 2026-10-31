@@ -176,8 +176,7 @@
 .rd .rd-toolbar > .rd-tools { margin-left: auto; }
 
 .rd { --rd-search-at: heading; }
-@media (min-width: 1240px) { .rd:not([data-toolbox=open]) { --rd-search-at: bar; } }
-@media (min-width: 1720px) { .rd[data-toolbox=open] { --rd-search-at: bar; } }
+@media (min-width: 1000px) { .rd { --rd-search-at: bar; } }
 .rd .rd-toolbar > .rd-bar-search { display: none; }
 .rd:not([data-workspace=work]) .rd-workspace-heading > .rd-work-search { display: none; }
 @container style(--rd-search-at: bar) {
@@ -2489,3 +2488,52 @@
 .rd .rd-roomhost > .rd-roomlayer { position: absolute; inset: 0; z-index: 3; pointer-events: auto; will-change: opacity; box-sizing: border-box; min-width: 0; overflow-x: clip; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-gutter: stable; }
 .rd .rd-roomhost > .rd-roomlayer[data-state=leaving] { z-index: 2; }
 .rd .rd-roomhost > .rd-roomlayer:is([data-state=spare], [data-state=gone]) { z-index: -1; opacity: 0; }
+
+/* ----------------------------------------------------------------- every window size
+   Students split the screen in half and in quarters, on laptops as small as 1366 x 768, and the browser's own bars take about 100 px of that.
+   The command bar stays one row at every width and gives up words in steps, widest first; a word it drops stays for screen readers, and a tab
+   shows its name as a tooltip. A short window keeps the heading to a single line, so the work starts near the top of the page. */
+@media (min-width: 601px) {
+  .rd .rd-toolbar, .rd[data-workspace] .rd-toolbar { flex-wrap: nowrap; gap: 12px; }
+  .rd .rd-toolbar > .rd-workspace-tabs { flex: none; width: auto; min-width: 0; }
+  .rd .rd-toolbar > .rd-tools { flex: none; width: auto; margin-left: auto; }
+  .rd .rd-toolbar > .rd-bar-search:not([hidden]) { min-width: 140px; }
+}
+@media (min-width: 601px) and (max-width: 1719.98px) {
+  .rd .rd-grade-switch > span:not(.rd-switch-track) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .rd .rd-tools .rd-button.rd-native-switch { width: 32px; min-width: 32px; padding: 0; justify-content: center; border-radius: 999px; }
+  .rd .rd-tools .rd-native-switch > span { display: none; }
+}
+@media (min-width: 601px) and (max-width: 1399.98px) {
+  .rd .rd-tools .rd-tb-tool > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .rd .rd-toolbox-trigger kbd { display: none; }
+}
+@media (min-width: 601px) and (max-width: 1299.98px) {
+  .rd .rd-toolbar .rd-workspace-tab[aria-selected=false] > span:not(.rd-n):not(.rd-sr-only) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .rd .rd-toolbar .rd-workspace-tabs .t-tab { padding: 0 8px; }
+  .rd .rd-tools .rd-toolbox-trigger > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+@media (min-width: 601px) and (max-width: 779.98px) {
+  .rd .rd-toolbar, .rd[data-workspace] .rd-toolbar { gap: 6px; padding-inline: 8px; }
+  .rd .rd-toolbar .rd-workspace-tabs .t-tab { padding: 0 6px; }
+}
+/* the rail is gone and the heading's own menu picks the course, so the second menu below it goes; All tools opens from the line's start, so it stays on screen */
+@media (max-width: 900px) { .rd .rd-mobile-course { display: none; } .rd .rd-hub-links { position: relative; } .rd .rd-hub-links .rd-course-tools { position: static; } }
+/* a short window: one line of heading, no banner, and the search beside it */
+@media (max-height: 599.98px) {
+  .rd[data-workspace] .rd-workspace-heading { display: flex !important; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 0; margin-bottom: 6px; padding: 0 !important; }
+  .rd[data-workspace] .rd-workspace-heading > .rd-course-heading { display: flex !important; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 2px 10px; min-height: 0 !important; margin: 0; padding: 0 !important; }
+  .rd .rd-course-heading > .rd-heading-art, .rd .rd-course-heading > .rd-title-art { display: none !important; }
+  .rd .rd-course-heading > h1 { position: static !important; width: auto !important; height: auto !important; margin: 0 !important; padding: 0 !important; clip-path: none !important; opacity: 1 !important; font-size: 19px !important; line-height: 1.2 !important; }
+  .rd .rd-course-heading > p { margin: 0 !important; }
+  .rd[data-workspace] .rd-workspace-heading > .rd-work-search { flex: 1 1 200px; max-width: 320px; min-height: 0; height: 34px; margin: 0; }
+  .rd[data-workspace] .rd-toolbar { margin-bottom: 6px; }
+  .rd .rd-page-heading { margin-block: 4px 8px; }
+}
+/* a quarter of the screen: the course menu takes the greeting's place, and the date and chips sit beside it */
+@media (max-height: 599.98px) and (max-width: 799.98px) {
+  .rd .rd-course-heading:has(> .rd-course-select) > h1 { display: none !important; }
+  .rd .rd-course-heading > .rd-course-select { flex: 0 1 auto !important; min-height: 0; }
+  .rd[data-workspace] .rd-course-heading .rd-course-select select { height: 30px; min-height: 0; padding-block: 0; font-size: 17px !important; }
+  .rd[data-workspace] .rd-workspace-heading > .rd-work-search { flex-basis: 100%; max-width: none; }
+}

@@ -1,6 +1,6 @@
 # Study with AI
 
-Canvas Harness 4.0 Preview 2 adds **Your AI**. It reads your Canvas the way the rest of Canvas Harness does, writes a message for an AI, and turns the reply into Help cards, a Today list and study aids on your page. Canvas Harness has no AI of its own and no server. The answer comes from an AI you choose, reached in one of three ways:
+Canvas Harness 4.0 Preview 3 adds **Your AI**. It reads your Canvas the way the rest of Canvas Harness does, writes a message for an AI, and turns the reply into Help cards, a Today list and study aids on your page. Canvas Harness has no AI of its own and no server. The answer comes from an AI you choose, reached in one of three ways:
 
 - **Web AI** (the default): the AI's own website, in a browser tab where you are signed in. ChatGPT, Claude and Gemini are listed first; Grok, DeepSeek, Kimi, Qwen and Z.ai (GLM) are under **More**.
 - **API**: your own API key for Anthropic, OpenAI, Google or an OpenAI-compatible service. The provider bills you for each request.
@@ -35,8 +35,8 @@ Your AI does not run on a quiz-taking page. Changing any Your AI setting, **Show
 
 ## Web AI, step by step
 
-1. In **Tools → AI**, choose the website. **Open website / sign in** opens it in a normal tab. Opening it sends nothing.
-2. Press **Send** in Tools → AI once with that website. Your browser asks to allow Canvas Harness on that one site. Prepare, Help cards and Ask your AI wait until it is allowed; they do not ask on their own. They use the website picked in Tools → AI, which is ChatGPT until you pick another.
+1. In **Tools → AI**, or in the Help band beside Daily AI help, choose the website. **Open website / sign in** opens it in a normal tab. Opening it sends nothing.
+2. Press **Send** in Tools → AI once with that website. Your browser asks to allow Canvas Harness on that one site. Choosing a new website in the Help band asks for that site right then. Otherwise Prepare, Help cards and Ask your AI wait until it is allowed; they do not ask on their own. They use the website you picked, which is ChatGPT until you pick another.
 3. For Prepare and Help cards, Canvas Harness opens the site in a background tab beside Canvas, starts a new chat for each request, puts the message in the chat box, presses the site's Send button and waits for the reply. On ChatGPT these are temporary chats and on Claude incognito chats, which those sites keep out of your chat history; the other sites use normal chats. **Ask your AI** does the same in the website tab Canvas Harness opened from this Canvas tab (or a new one), brings that tab to the front, and uses a normal chat.
 4. It reads the reply from the page. For Prepare and Help cards on ChatGPT and Claude, it can also read the reply from the site's own record of that chat, using your signed-in session, so it finds the answer while the tab sleeps. To find a new ChatGPT chat whose address the tab has not shown yet, it lists your six newest chats (their names and times, not their messages) and reads only the one created when its message was sent. On Claude it looks up your account's organizations to reach the chat it started. It keeps only the reply that follows its own message and does not open your other chats. Your session token is used for these reads and not saved.
 5. If the site needs you (a sign-in, a dialog, an error, or text already in the chat box), Canvas Harness stops and the Help band shows a button such as **Open chat** or **Review draft**. A message that may already have been sent is never sent again automatically. **Try again** starts a fresh chat.
@@ -76,14 +76,15 @@ Canvas Harness never deletes these files and never uploads them; they stay in yo
 The **Canvas brief**, built on this device, up to 24,000 characters:
 
 - your course names, shortened;
-- work that is overdue and not handed in, and work due in the next three weeks: name, course, due date, points possible, how it is handed in, and Canvas's missing or late mark;
-- the instructions (up to 1,500 characters each) for work due in the next seven days;
+- work that is overdue and not handed in, work due in the next three weeks, and up to 8 open online items with no due date: name, course, due date, points possible, how it is handed in, the outside tool it uses, and Canvas's missing, late, locked or asked-again mark;
+- which parts of a course Canvas would not show, so the AI does not guess at them;
+- the instructions (up to 1,500 characters each, fewer in a heavy week) for work due in the next seven days, or why they cannot be read, such as Canvas's reason for a lock;
 - announcements from the last ten days (up to 600 characters each) and course calendar events in the next 14 days;
 - Canvas Inbox conversations with activity in the last seven days whose newest message is by a teacher or TA of that course, as Canvas lists the course's staff: the subject and the start (up to 300 characters) of that message, with classmates' names in the conversation replaced by `[classmate]`. A conversation whose newest message is by a classmate, by you, or by someone Canvas Harness cannot show to be course staff is left out;
 - the names of recent files and pages in courses with work due soon;
 - with **Teacher feedback** on: the latest comment by a teacher or TA on your submission (up to 400 characters) for assignments due from two weeks ago onward. Your own comments are never included.
 
-Before the brief leaves, lines that look like login details (a password, username or access code) are replaced, email addresses are removed and web addresses lose their query strings. The brief contains no scores or grades.
+Before the brief leaves, lines that look like login details (a password, username or access code) are replaced, email addresses are removed and web addresses lose their query strings. Login lines and email addresses are removed the same way from everything added for an item. The brief contains no scores or grades.
 
 For each item it helps with, Canvas Harness adds the teacher's instructions, up to four files or pages attached to the item, the course home page or syllabus, course files the AI asks for from a list of up to 40 titles, text you pasted, and on GitHub installs the Google Docs the item links (below). Your instructions for Prepare go with each request, and Remember notes go with later requests for the same item or kind of card (or every request, if saved for all). A question adds your words (up to 2,000 characters), the item's name and instructions, and the card you asked about. PDF text is extracted on this device; files are not uploaded as files. In these materials, classmates' names that appear in Canvas data are replaced with `[classmate]`, and score-like text is removed unless both **Show grades** and **Let the AI see my grades** are on.
 

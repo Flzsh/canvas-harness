@@ -6,7 +6,7 @@
   if(typeof module==='object'&&module.exports)module.exports=api;else root.CanvasHarnessPrepareBrief=api;
 })(globalThis,function(root){
  'use strict';
- const DAY=864e5,LIMITS=Object.freeze({total:24000,instructions:1500,announcement:600,feedback:400,message:300,later:21,recent:10,files:8});
+ const DAY=864e5,LIMITS=Object.freeze({total:24000,instructions:1500,announcement:600,feedback:400,message:300,later:21,recent:10,files:8,undated:8});
  const ONLINE=new Set(['online_upload','online_text_entry','online_url','media_recording','online_quiz','discussion_topic','external_tool','student_annotation']);
  const HAND_IN={
    online_upload:'upload a file',
@@ -23,8 +23,10 @@
  };
  const SECRET=/\b(pass ?word|passcode|pass code|user ?name|log ?in|sign ?in|pin|access code|credentials?)\b\s*[:=]/i;
  // Remove what must never reach an AI: login lines, e-mail addresses and query strings that can carry tokens.
+ // A long line is a paragraph that mentions a login, so only the value after the label goes.
  function scrub(value){
-  return String(value??'').split(/\r?\n/).map(line=>SECRET.test(line)?'[login details removed]':line).join('\n')
+  return String(value??'').split(/\r?\n/).map(line=>
+    !SECRET.test(line)?line:line.length>300?line.replace(new RegExp(SECRET.source+'\\s*\\S*','gi'),'[login details removed]'):'[login details removed]').join('\n')
    .replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g,'[email removed]')
    .replace(/(https?:\/\/[^\s?#)]+)[?#][^\s)]*/g,'$1')
    .replace(/(\[login details removed\]\n?)+/g,'[login details removed]\n').trim();
@@ -40,9 +42,9 @@
      /\n\s*\n+/g,
      '\n').trim();
  const clip=(value,n)=>{const text=String(value??'').trim();return text.length>n?text.slice(0,n-1).trimEnd()+'…':text;};
- // "CL Biology-Rivera-Okafor" -> "Biology"; keeps names that have no class/teacher decoration.
+ // "CL Biology-Rivera-Okafor" -> "Biology"; keeps names that have no class/teacher decoration ("Pre-Calculus").
  function courseName(name){
-   const text=String(name||'').trim().replace(/^CL\s+/,'').replace(/-[A-Z][a-z'’]+(?:-[A-Z][a-z'’]+)*\s*$/,'');
+   const raw=String(name||'').trim(),text=/^CL\s/.test(raw)?raw.replace(/^CL\s+/,'').replace(/-[A-Z][a-z'’]+(?:-[A-Z][a-z'’]+)*\s*$/,''):raw;
    return text.replace(/\s+\d{2}-\d{2}\s+(Fall|Spring|Winter|Summer)\s*$/i,'').trim()||String(name||'Course').trim();
  }
  function formatter(timeZone){
@@ -66,39 +68,49 @@
   const priv=value=>scrub(value);
   const courses=new Map((input.courses||[]).map(c=>[String(c.id),courseName(c.name)]));
   const label=item=>(courses.get(String(item.courseId))||'Course')+' · '+clip(priv(item.title,'title'),120);
-  const items=(input.items||[]).filter(i=>i&&i.title&&!i.excused).map(i=>({...i,at:Date.parse(i.due)})).filter(i=>Number.isFinite(i.at)).sort((a,b)=>a.at-b.at);
+  const listed=(input.items||[]).filter(i=>i&&i.title&&!i.excused).map(i=>({...i,at:Date.parse(i.due)})),
+    items=listed.filter(i=>Number.isFinite(i.at)).sort((a,b)=>a.at-b.at);
   const open=i=>!i.submitted&&!i.graded&&!i.done,online=i=>(i.submissionTypes||[]).some(t=>ONLINE.has(t));
   const overdue=items.filter(i=>open(i)&&i.at<now&&(online(i)?now-i.at<LIMITS.later*DAY:now-i.at<2*DAY));
   const soon=items.filter(i=>open(i)&&i.at>=now&&i.at<now+7*DAY),later=items.filter(i=>open(i)&&i.at>=now+7*DAY&&i.at<now+LIMITS.later*DAY);
+  // Self-paced courses and undated work have no place on a calendar; open online work without a date still counts.
+  const undated=listed.filter(i=>!Number.isFinite(i.at)&&open(i)&&online(i)).slice(0,LIMITS.undated);
   // Short refs ("A1") let a card point at an item without the AI handling Canvas IDs; CH maps them back.
   const refs={},refOf=new Map();
-  for(const i of [...overdue,...soon,...later]){
+  for(const i of [...overdue,...soon,...later,...undated]){
     const ref='A'+(refOf.size+1);
     refOf.set(i,ref);
     refs[ref]={id:String(i.id),courseId:String(i.courseId),title:String(i.title||'').trim()};
   }
-  const line=i=>
-    '- ['+
-      refOf.get(i)+
-      '] '+
-      label(i)+
-      ' — due '+
-      fmt.when(i.at)+
-      ' ('+
-      relative(i.at,now,fmt)+
-      ')'+
-      (i.points?' · '+i.points+' pts':'')+
-      (testLike(i.title)?' · test or quiz':'')+
-      (handIn(i.submissionTypes)?' · '+handIn(i.submissionTypes):'')+
+  const facts=i=>
+    (i.points?' · '+i.points+' pts':'')+
+      (testLike(i.title)||i.quiz?' · test or quiz':'')+
+      (handIn(i.submissionTypes)?' · '+handIn(i.submissionTypes)+(i.tool&&!i.quiz?' ('+clip(i.tool,60)+')':''):'')+
+      (i.locked?' · locked in Canvas':'')+
+      (i.redo?' · the teacher asked for it again':'')+
       (i.missing?' · Canvas marks it missing':i.late?' · late':'');
+  const line=i=>'- ['+refOf.get(i)+'] '+label(i)+' — due '+fmt.when(i.at)+' ('+relative(i.at,now,fmt)+')'+facts(i);
   const out=[],add=(title,rows)=>{if(rows.length)out.push(title+'\n'+rows.join('\n'));};
   out.push('Courses: '+[...new Set(courses.values())].join('; '));
+  const missing=new Map();
+  for(const u of input.unavailable||[]){
+    const course=courses.get(String(u.courseId))||'Course',what=u.source==='frontPage'?'home page':String(u.source||'Canvas');
+    missing.set(course,(missing.get(course)||new Set()).add(what));
+  }
+  add('Canvas would not show these, so nothing below covers them. Do not guess what they hold:',[...missing].map(([course,what])=>'- '+course+': '+[...what].join(', ')));
   add('Overdue and not handed in:',overdue.map(line));
-  add('Due in the next 7 days:',soon.map(i=>{
-    const text=clip(priv(plain(i.instructions)),LIMITS.instructions);
-    return line(i)+(text?'\n  Instructions: '+text.replace(/\n/g,'\n  '):'\n  Instructions: none posted in Canvas');
-  }));
+  // A locked item's instructions stay hidden; "none posted" is only said when Canvas really has nothing to show.
+  const week=limit=>soon.map(i=>{
+    const text=clip(priv(i.text??plain(i.instructions)),limit);
+    return line(i)+
+      '\n  Instructions: '+
+      (i.locked?
+        'not visible while it is locked'+(i.lockedWhy?' ('+clip(priv(i.lockedWhy),200)+')':''):
+        text?text.replace(/\n/g,'\n  '):i.unreadable?'posted as an image or video that cannot be read here':'none posted in Canvas');
+  });
+  const weekAt=out.length;add('Due in the next 7 days:',week(LIMITS.instructions));
   add('Later, within 3 weeks:',later.map(line));
+  add('No due date:',undated.map(i=>'- ['+refOf.get(i)+'] '+label(i)+facts(i)));
   if(input.teacherFeedback===true)add('Teacher feedback from the last 2 weeks:',items.filter(i=>i.feedback&&now-i.at<14*DAY).map(i=>'- '+label(i)+': '+clip(priv(i.feedback),LIMITS.feedback)));
   add(
     'Announcements from the last '+LIMITS.recent+' days:',
@@ -121,7 +133,10 @@
     return '- ['+ref+'] '+(courses.get(String(r.courseId))||'Course')+' · '+clip(priv(r.title,'title'),120)+(stamp(r.at)?' ('+fmt.when(stamp(r.at)).split(',').slice(0,2).join(',')+')':'');
   }));
   if(!overdue.length&&!soon.length)out.push('Nothing is due in the next 7 days.');
-  let text=out.join('\n\n');if(text.length>LIMITS.total)text=text.slice(0,LIMITS.total-40).trimEnd()+'\n[brief cut short to fit]';
+  let text=out.join('\n\n');
+  // A heavy week shortens each item's instructions first: teachers' messages come after them and must survive.
+  if(soon.length)for(const limit of [900,500,250,120]){if(text.length<=LIMITS.total)break;out[weekAt]='Due in the next 7 days:\n'+week(limit).join('\n');text=out.join('\n\n');}
+  if(text.length>LIMITS.total)text=text.slice(0,LIMITS.total-40).trimEnd()+'\n[brief cut short to fit]';
   return {text,refs,counts:{overdue:overdue.length,soon:soon.length,later:later.length}};
  }
  return {build,scrub,courseName,LIMITS};

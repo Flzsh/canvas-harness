@@ -331,7 +331,7 @@
     staffFor=cid=>{
     if(!staff.has(cid))staff.set(cid,courseStaff(context,cid));
     return staff.get(cid);
-  },tasks=object(data.tasks),byOriginal=new Map(),incoming={v:1,assignments:{},announcements:{},files:{}},changes=[];
+  },tasks=object(data.tasks),byOriginal=new Map(),moduleItems=new Map(),incoming={v:1,assignments:{},announcements:{},files:{}},changes=[];
   function put(what,cid,canvasId,raw={},item=null,slug=null,expose=true){
     cid=String(cid??'');
     canvasId=String(canvasId??'');
@@ -426,6 +426,7 @@
         if(type==='file')source=put('pdf',cid,child.content_id,{id:child.content_id,title:child.title});
         if(type==='page'&&child.page_url)source=put('page',cid,child.content_id||child.page_url,{title:child.title},null,String(child.page_url));
         if(type==='discussion')source=put('discussion',cid,child.content_id,{title:child.title});
+        if(source&&child?.id!=null)moduleItems.set(cid+':'+child.id,source);
         const rule=object(child?.completion_requirement),needs=needsOf(rule);
         rows.push({
           title:plain(child?.title,120),
@@ -526,8 +527,12 @@
     let match;
     const work=url.pathname.match(/^\/courses\/(\d+)\/(assignments|discussion_topics|modules)\/(\d+)\/?$/);
     if(work&&work[1]===cid){const what={assignments:'assignment',discussion_topics:'discussion',modules:'module'}[work[2]];return put(what,cid,work[3],{title},null,null,what!=='assignment');}
-    if((match=url.pathname.match(/^\/(?:courses\/(\d+)\/)?files\/(\d+)(?:\/(?:download|preview))?\/?$/))&&(!match[1]||match[1]===cid))return put('pdf',cid,match[2],{title});
-    if((match=url.pathname.match(/^\/courses\/(\d+)\/pages\/([^/]+)\/?$/))&&match[1]===cid){try{const slug=decodeURIComponent(match[2]);return put('page',cid,slug,{title},null,slug);}catch{}}
+    if((match=url.pathname.match(/^\/(?:courses\/(\d+)\/)?files\/(\d+)(?:\/(?:download|preview))?\/?$/))&&(!match[1]||match[1]===cid))
+      return put('pdf',cid,match[2],{title});/* The Files page's own address names the open file in ?preview=, and a module link names the module item. */
+    if((match=url.pathname.match(/^\/courses\/(\d+)\/files(?:\/folder(?:\/[^?]*)?)?\/?$/))&&match[1]===cid&&/^\d+$/.test(url.searchParams.get('preview')||''))
+      return put('pdf',cid,url.searchParams.get('preview'),{title});
+    if((match=url.pathname.match(/^\/courses\/(\d+)\/modules\/items\/(\d+)\/?$/))&&match[1]===cid)return moduleItems.get(cid+':'+match[2])||null;
+    if((match=url.pathname.match(/^\/courses\/(\d+)\/(?:pages|wiki)\/([^/]+)\/?$/))&&match[1]===cid){try{const slug=decodeURIComponent(match[2]);return put('page',cid,slug,{title},null,slug);}catch{}}
     return null;
   }
   for(const a of all)
@@ -1176,12 +1181,16 @@
       else if(what==='assignment'){
         if(typeof client?.readAssignment!=='function')throw Error('unavailable');
         value=await client.readAssignment(meta.courseId,meta.canvasId,options);
-        if(blocked(value))throw Error('forbidden');
-        google=googleLinks(value?.description);
+        if(blocked(value))throw Error('forbidden');/* A discussion's prompt can live on its topic. */
+        const html=typeof value?.description==='string'&&value.description.trim()?value.description:value?.discussion_topic?.message,
+          tool=(root.ReserveCore||(typeof require==='function'?require('./core.js'):null)).normalizeAssignment(value).externalTool||
+            (array(value?.submission_types).includes('external_tool')?'an outside tool':'');
+        google=googleLinks(html);
         text=[
           plain(value?.name||meta.title,180),
-          headTail(plain(value?.description,600000),TEXT_BODY_LIMIT),
-          ...contextText().sourceWarnings(value?.description,origin).map(w=>'Source not available: '+w),
+          headTail(plain(html,600000),TEXT_BODY_LIMIT),
+          ...contextText().sourceWarnings(html,origin,meta.courseId).map(w=>'Source not available: '+w),
+          ...(tool?['Source not available: this work is done in '+tool+'; what is there is not in these materials.']:plain(html).trim()?[]:['The teacher posted no instructions for this item in Canvas.']),
           ...rubric(value?.rubric).map(r=>[r.title,r.description,r.points==null?'':String(r.points)+' possible points',...r.levels.map(l=>l.text)].filter(Boolean).join('\n'))
         ].filter(Boolean).join('\n\n');
       }

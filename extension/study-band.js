@@ -308,12 +308,15 @@
   }
   return pages;
  }
+ const AIS=[['chatgpt','ChatGPT'],['claude','Claude'],['gemini','Gemini'],['grok','Grok'],['deepseek','DeepSeek'],['kimi','Kimi'],['qwen','Qwen'],['zai','Z.ai (GLM)']];
  function renderBand(container,aids,{
    env=root,
    scope='',
    store,
    onAsk,
    onPrepare,
+   aiChoice,
+   onAiChoice,
    helpItems,
    onDocsAccess,
    onPrepareSettings,
@@ -616,6 +619,20 @@
     remembered=drawn(button('Remembered',()=>openSheet(sheetKind==='notes'?'':'notes'),'ch-band-act ch-band-bar-act'),'pin');
     toolbar.append(remembered);
     Promise.resolve(store.getNotes(scope)).then(list=>{notes=Array.isArray(list)?list:[];showNotesCount();}).catch(()=>{});
+  }
+  // The student's AI, right beside what it makes (the same choice as the Tools panel; an API key has no site to pick)
+  if(typeof aiChoice==='function'&&typeof onAiChoice==='function'&&aiChoice()){
+    const pick=make('select',undefined,'ch-band-ai'),show=()=>{const id=aiChoice();if(id&&pick.value!==id)pick.value=id;};
+    pick.setAttribute('aria-label','Your AI');
+    pick.title='Your AI';
+    for(const [id,name] of env.CanvasHarnessProviders?.list?.map(p=>[p.id,p.label])||AIS){const o=make('option',name);o.value=id;pick.append(o);}
+    show();
+    pick.addEventListener('focus',show);
+    pick.addEventListener('change',async()=>{
+      pick.disabled=true;
+      try{await onAiChoice(pick.value);}catch(error){show();if(!disposed)onError(error);}finally{if(!disposed)pick.disabled=false;}
+    });
+    toolbar.append(pick);
   }
   const undo=button('Undo',restore,'ch-band-undo');
   undo.hidden=true;

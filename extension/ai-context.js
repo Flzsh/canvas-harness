@@ -44,11 +44,17 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
  }
  function links(html,origin,courseId,includeTitles=false){
   const result=[],seen=new Set();
-  for(const m of str(html,MAX_LIMIT).matchAll(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)){
-   const url=safeURL((m[1]||m[2]).replace(/&amp;/g,'&'),origin);if(!url||seen.has(url))continue;
+  for(const m of (typeof html==='string'?html.slice(0,MAX_LIMIT):'').matchAll(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)){
+   const href=(m[1]||m[2]).replace(/&amp;/g,'&'),url=safeURL(href,origin);if(!url)continue;
    const u=new URL(url),p=u.pathname;let match;
-   if(u.origin!==origin)continue;
-   if((match=p.match(/^\/courses\/(\d+)\/pages\/([^/]+)\/?$/))&&match[1]===String(courseId)){
+   if(u.origin!==origin)continue;/* The Files page's own address names the open file in ?preview=. */
+   if((match=p.match(/^\/courses\/(\d+)\/files(?:\/folder(?:\/.*)?)?\/?$/))&&match[1]===String(courseId)){
+     const preview=new URL(href,origin).searchParams.get('preview'),file=/^\d+$/.test(preview||'')?origin+'/courses/'+courseId+'/files/'+preview:'';
+     if(file&&!seen.has(file)){result.push({kind:'file',courseId:String(courseId),fileId:preview,url:file});seen.add(file);}
+     continue;
+   }
+   if(seen.has(url))continue;
+   if((match=p.match(/^\/courses\/(\d+)\/(?:pages|wiki)\/([^/]+)\/?$/))&&match[1]===String(courseId)){
      try{result.push({kind:'page',courseId:String(courseId),slug:decodeURIComponent(match[2]),url});seen.add(url);}catch{}
    }
    else if((match=p.match(/^\/courses\/(\d+)\/(assignments|discussion_topics|modules)\/(\d+)\/?$/))&&match[1]===String(courseId)){
@@ -182,14 +188,20 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
      v.metadataOnly?'Module contents are unavailable while locked; only public availability was read.':''
    ].filter(Boolean).join('\n');
  }
- function sourceWarnings(html,origin){
+ function sourceWarnings(html,origin,courseId){
    const warnings=[],text=String(html||'');
    if(/<img\b/i.test(text)&&!/<img\b[^>]*(?:alt|data-equation-content)\s*=\s*["'][^"']+/i.test(text))warnings.push('Image instructions are not available as readable text.');
    if(/<iframe\b|<video\b|<audio\b/i.test(text))warnings.push('Embedded video or audio instructions are not available without a transcript.');
    for(const m of text.matchAll(/<a\b[^>]*href\s*=\s*(?:"([^"]*)"|'([^']*)')[^>]*>([\s\S]*?)<\/a>/gi)){
      try{
        const u=new URL((m[1]||m[2]).replace(/&amp;/g,'&'),origin);
-       if(u.origin!==origin&&/^https?:$/.test(u.protocol))warnings.push((plain(m[3])||u.hostname)+': external source content not available in Canvas.');
+       if(u.origin!==origin&&/^https?:$/.test(u.protocol))
+         warnings.push((plain(m[3])||u.hostname)+': external source content not available in Canvas.');/* Same Canvas, but out of reach: another course, a teacher's own files, a quiz or an outside tool. */
+       else if(courseId!=null&&
+         u.origin===origin&&
+         /^\/(?:(?:users|groups)\/\d+\/files|courses\/\d+\/(?:files\/\d|pages\/|wiki\/|assignments\/\d|discussion_topics\/\d|quizzes\/\d|external_tools\/\d))/.test(u.pathname)&&
+         !links(m[0],origin,courseId).length)
+         warnings.push((plain(m[3])||u.pathname)+': linked content could not be read.');
      }catch{}
    }
    return [...new Set(warnings)];

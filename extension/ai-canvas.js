@@ -13,33 +13,52 @@
   Brief=load('CanvasHarnessPrepareBrief','./prepare-brief.js');
  // Canvas rows -> the brief's plain item shape. Scores never enter it.
  const submissionOf=a=>a&&typeof a.submission==='object'&&a.submission?a.submission:{};
- function briefInput({raw,assignments,aiUpdates,calendarEvents,conversations,data,now,index,staff=[],user}){
+ function briefInput({raw,assignments,aiResources,aiUpdates,calendarEvents,conversations,data,now,index,staff=[],user}){
   const courseOf=code=>String(code||'').replace(/^course_/,''),
     teacherFeedback=data.toolbox?.aiTeacherFeedback===true,
     people={courses:raw.courses||[],agentCourseStaff:staff,user};
   return {now,timeZone:data.settings?.timeZone,teacherFeedback,
    courses:(raw.courses||[]).map(c=>({id:c.id,name:c.name||c.course_code||''})),
+   // Pieces Canvas refused, by course, so a quiet brief is never read as nothing there.
+   unavailable:[
+     ...(raw.errors||[]).map(e=>({courseId:e.courseId,source:'assignments'})),
+     ...[...(aiResources||[]),...(aiUpdates||[])].flatMap(r=>(Array.isArray(r?.errors)?r.errors:[]).map(e=>({courseId:r.courseId,source:e.source})))
+   ].filter(u=>
+     u.source!=='tabs'),
+   // `text` keeps what the brief's own tag strip loses: equations, image descriptions, embedded documents, table cells.
+   // A discussion's prompt can live on its topic; discussion checkpoints carry the dates when the item itself has none.
    items:(assignments||[]).map(a=>{
-    const sub=submissionOf(a),state=String(sub.workflow_state||'');
-    return {
-     id:a.id,
-     courseId:a.course_id,
-     title:a.name||a.title||'',
-     due:a.due_at||null,
-     points:a.points_possible,
-     submissionTypes:Array.isArray(a.submission_types)?a.submission_types:[],
-     submitted:!!sub.submitted_at||['submitted','pending_review','graded'].includes(state),
-     graded:state==='graded',
-     missing:sub.missing===true,
-     late:sub.late===true,
-     excused:sub.excused===true,
-     instructions:a.description||'',
-     feedback:teacherFeedback?
-       (Array.isArray(sub.submission_comments)?sub.submission_comments:[]).filter(c=>c?.comment&&Data.staffComment(c,a.course_id,people)).map(c=>
-         c.comment).slice(-1)[0]||
-         '':
-       ''
-    };
+     const sub=submissionOf(a),
+       state=String(sub.workflow_state||''),
+       redo=sub.redo_request===true,
+       n=Core.normalizeAssignment(a,{id:a.course_id}),
+       text=Data.plain(n.description);
+     return {
+       id:a.id,
+       courseId:a.course_id,
+       title:a.name||a.title||'',
+       due:a.due_at||n.checkpoints.filter(c=>c.dueAt&&!c.done).map(c=>c.dueAt).sort()[0]||null,
+       points:a.points_possible,
+       submissionTypes:Array.isArray(a.submission_types)?a.submission_types:[],
+       submitted:!redo&&(!!sub.submitted_at||['submitted','pending_review','graded'].includes(state)),
+       graded:!redo&&state==='graded',
+       redo,
+       missing:sub.missing===true,
+       late:sub.late===true,
+       excused:sub.excused===true,
+       instructions:n.description,
+       text,
+       unreadable:!text&&/<(?:img|video|audio|object|embed)\b/i.test(n.description),
+       locked:n.locked,
+       lockedWhy:n.lockExplanation,
+       quiz:a.is_quiz_assignment===true||a.is_quiz_lti_assignment===true||/\bquiz-lti\b/.test(n.externalTool),
+       tool:n.externalTool,
+       feedback:teacherFeedback?
+         (Array.isArray(sub.submission_comments)?sub.submission_comments:[]).filter(c=>c?.comment&&Data.staffComment(c,a.course_id,people)).map(c=>
+           c.comment).slice(-1)[0]||
+           '':
+         ''
+     };
    }),
    announcements:(aiUpdates||[]).flatMap(u=>
     (Array.isArray(u?.announcements)?u.announcements:[]).map(x=>
@@ -68,7 +87,9 @@
   async function verify(signal){const p=await client.profile({signal});if(String(p.id)!==accountId)throw Error('Your Canvas account changed.');}
   async function scan(run,signal){
    await verify(signal);await store.sync();const data=store.get(),s=Actions.state(data),scanStartedAt=now(),raw=await client.loadSnapshot({user,signal});
-   if(fetchImpl.unavailable)throw fetchImpl.unavailable;if(raw.partial)throw Error('Canvas is incomplete. Refresh Canvas before preparing.');
+   // One course that cannot be read is named in the brief; only when no course could be read is there nothing to go on.
+   if(fetchImpl.unavailable)throw fetchImpl.unavailable;
+   if(raw.partial&&new Set((raw.errors||[]).map(e=>e.courseId)).size>=raw.courses.length)throw Error('Canvas is incomplete. Refresh Canvas before preparing.');
    const courses=raw.courses.map(Core.normalizeCourse),
     byId=new Map(courses.map(c=>[c.id,c])),
     assignments=raw.assignments.map(a=>data.toolbox?.aiTeacherFeedback===true?a:{...a,submission:a.submission?{...a.submission,submission_comments:[]}:undefined}),
@@ -150,7 +171,9 @@
          name:item.name,
          courseName:item.courseName,
          dueAt:item.dueAt,
-         ...(id.startsWith('local:')||item.syllabus||String(row.canvasId).startsWith('quiz-')?{description:Data.plain(item.description||''),quiz:item.quiz,syllabus:item.syllabus}:{})
+         ...(id.startsWith('local:')||item.syllabus||String(row.canvasId).startsWith('quiz-')?
+           {description:Core.smartCut(Data.plain(item.description||'',600000),60000),quiz:item.quiz,syllabus:item.syllabus}:
+           {})
         }
        }:
        {})
@@ -159,7 +182,9 @@
    },manifest=[...built.index].map(entryOf);
    if(fetchImpl.unavailable)throw fetchImpl.unavailable;
    await verify(signal);
-   const brief=Brief?Brief.build(briefInput({raw,assignments,aiUpdates,calendarEvents,conversations,data,now:now(),index:built.index,staff,user})):{text:'',refs:{}};
+   const brief=Brief?
+     Brief.build(briefInput({raw,assignments,aiResources,aiUpdates,calendarEvents,conversations,data,now:now(),index:built.index,staff,user})):
+     {text:'',refs:{}};
    // Items the brief lists stay readable even when the agent snapshot trimmed them for size.
    // The item asked about with Help with this is added the same way, found by its id even when the brief left it out.
    const picked=run?.kind!=='ask'?[]:Array.isArray(run.items)&&run.items.length?run.items:run.itemId?[{itemId:run.itemId,courseId:run.courseId}]:[],
@@ -206,8 +231,8 @@
   async function validate(run,ids,signal){
    client.invalidateSources?.();
    for(const id of new Set(ids.filter(Boolean))){
-    const row=new Map(run.snapshot.index).get(id);
-    if(!row||row.locked)throw Error('This source is unavailable. Refresh Canvas.');
+    const row=new Map(run.snapshot.index).get(id);/* A file hidden in Files stays open through the assignment that links it. */
+    if(!row||row.locked&&!(row.linked===true&&row.hiddenOnly===true))throw Error('This source is unavailable. Refresh Canvas.');
     if(id.startsWith('local:')){if(!store.get().customTasks.some(i=>String(i.id)===String(row.canvasId)))throw Error('This local source was removed.');continue;}
     if(String(row.canvasId).startsWith('quiz-')||row.item?.syllabus)continue;
     const method={assignment:'readAssignment',page:'readCoursePage',pdf:'readFile',file:'readFile',module:'readModule',discussion:'readDiscussion',announcement:'readAnnouncement'}[row.what];

@@ -7,9 +7,9 @@
  * for as long as it lives (a few seconds); nothing runs once it is done. */
 (function(root){
  'use strict';
- const TAU = Math.PI * 2;
+ const TAU = Math.PI * 2, LOW = () => !!root.ReservePlayLow;   // (set by play-tools on a weak machine: smaller canvases, no blur, fewer particles)
  function open(cv, { size = 560, reduce = false } = {}) {
-  const dpr = Math.min(2, root.devicePixelRatio || 1), W = size, H = Math.round(size * .78); cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  const dpr = Math.min(LOW() ? 1 : 2, root.devicePixelRatio || 1), W = size, H = Math.round(size * .78); cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px';
   const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
   let seed = 4242; const rnd = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
   const cx = W / 2, cy = H / 2, rs = W * .075, rE = rs * 1.45, tearR = W * .43;
@@ -52,7 +52,7 @@
   // a layer drawn with its own bloom (two blurred passes added under it)
   const bloom = (c) => {
     g.globalCompositeOperation = 'lighter';
-    if (!reduce) { g.save(); g.filter = 'blur(6px)'; g.globalAlpha = .8; g.drawImage(c, 0, 0, W, H); g.filter = 'blur(20px)'; g.globalAlpha = .5; g.drawImage(c, 0, 0, W, H); g.restore(); }
+    if (!reduce && !LOW()) { g.save(); g.filter = 'blur(6px)'; g.globalAlpha = .8; g.drawImage(c, 0, 0, W, H); g.filter = 'blur(20px)'; g.globalAlpha = .5; g.drawImage(c, 0, 0, W, H); g.restore(); }
     g.drawImage(c, 0, 0, W, H);
   };
   let closing = -1, done = false, last = 0;
@@ -188,7 +188,7 @@
   const palette = cols.length ? cols.map(c => c[1]) : ['#5B7FB5', '#C96442', '#3C7D3E', '#2D3B45', '#E2B865'];
   const sparks = [...Array(160)].map(() => ({ x: rnd() * W, t0: .25 + rnd() * (far / speed), v: (rnd() < .5 ? -1 : 1) * (60 + rnd() * 300), c: rnd() < .4 ? '255,236,180' : '200,230,255' }));
   // what the page became: streaks of its own colours, each starting where the front took it and racing out along the line
-  const streaks = [...Array(reduce ? 80 : 340)].map(() =>
+  const streaks = [...Array(reduce ? 80 : LOW() ? 140 : 340)].map(() =>
     ({
       x: rnd() * W,
       dy: 20 + rnd() * far,
@@ -203,7 +203,7 @@
   let done = false, bolts = [], boltT = -1;
   const fan = [...Array(14)].map((_, i) => ({ a: -Math.PI / 2 + (i / 13 - .5) * 2.4 + (rnd() - .5) * .08, h: i / 13 * 300, len: .6 + rnd() * .5 })).concat([...Array(14)].map((_, i) =>
     ({ a: Math.PI / 2 + (i / 13 - .5) * 2.4 + (rnd() - .5) * .08, h: 300 - i / 13 * 300, len: .6 + rnd() * .5 })));
-  const glitch = [...Array(reduce ? 0 : 46)].map(() => ({ y: rnd() * H, h: 1 + rnd() * 3.5, x: rnd() * W * .5, w: 120 + rnd() * W * .6, t0: .05 + rnd() * .7, life: .03 + rnd() * .07 }));
+  const glitch = [...Array(reduce ? 0 : LOW() ? 14 : 46)].map(() => ({ y: rnd() * H, h: 1 + rnd() * 3.5, x: rnd() * W * .5, w: 120 + rnd() * W * .6, t0: .05 + rnd() * .7, life: .03 + rnd() * .07 }));
   const rainbow = (t, a) => { const q = g.createLinearGradient(0, 0, W, 0); for (let i = 0; i <= 12; i++) q.addColorStop(i / 12, `hsla(${(i * 50 + t * 160) % 360},95%,68%,${a})`); return q; };
   function frame(t) {
    if (done) return; t = Math.max(0, t); g.clearRect(0, 0, W, H); if (t > life) { done = true; return; }
@@ -431,7 +431,7 @@
  const fbm = (x, y) => nz(x, y) * .55 + nz(x * 2.03, y * 2.03) * .28 + nz(x * 4.1, y * 4.1) * .17;
  const lerp = (a, b, t) => a + (b - a) * t, mixc = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)], clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
  const sized = (cv, S, x, y) => {
-   const dpr = Math.min(2, root.devicePixelRatio || 1);
+   const dpr = Math.min(LOW() ? 1 : 2, root.devicePixelRatio || 1);
    cv.width = Math.ceil(S * dpr);
    cv.height = Math.ceil(S * dpr);
    Object.assign(cv.style, { position: 'absolute', left: Math.round(x - S / 2) + 'px', top: Math.round(y - S / 2) + 'px', width: S + 'px', height: S + 'px', pointerEvents: 'none' });
@@ -545,6 +545,32 @@
   };
   pass('rgba(255,255,255,.85)', -.8, -.8, .55); pass('rgba(20,20,19,.92)', 0, 0, 1); if (glow > 0) pass(`rgba(150,236,140,${glow})`, 0, 0, .3, .48);
  }
+ // a crack with depth: a torn wedge, opening just past its start and closing to a hair, dark inside; the wall facing the light catches it
+ function crackWedge(g, pts, w0, part = 1, glow = 0) {
+  const last = pts.length - 1, n = Math.min(pts.length, Math.max(2, Math.ceil(last * clamp(part)) + 1)); if (last < 1) return; const a = [], b = [];
+  for (let i = 0; i < n; i++) {
+    const p = pts[Math.max(0, i - 1)],
+      q = pts[Math.min(last, i + 1)],
+      dx = q[0] - p[0],
+      dy = q[1] - p[1],
+      d = Math.hypot(dx, dy) || 1,
+      w = (w0 * Math.pow(1 - i / last, 1.8) * .5 + .14) * (.5 + (i * 7 % 5) * .25) * Math.min(1, (i + 1) / 3);
+    a.push([pts[i][0] - dy / d * w, pts[i][1] + dx / d * w]);
+    b.push([pts[i][0] + dy / d * w * .8, pts[i][1] - dx / d * w * .8]);
+  }
+  const gap = new Path2D(); [...a, ...b.reverse()].forEach(([x, y], i) => i ? gap.lineTo(x, y) : gap.moveTo(x, y)); gap.closePath();
+  const lay = (style, dx, dy) => { g.save(); g.translate(dx, dy); g.fillStyle = style; g.fill(gap); g.restore(); };
+  lay('rgba(70,78,150,.3)', -1, -1); lay('rgba(255,255,255,.96)', 1, 1); lay('rgba(10,13,22,.97)', 0, 0);
+  if (glow > 0) {
+    const k = Math.max(2, Math.ceil(n * .55));
+    g.lineCap = 'round';
+    g.strokeStyle = `rgba(150,236,140,${glow})`;
+    g.lineWidth = Math.max(.5, w0 * .16);
+    g.beginPath();
+    for (let i = 0; i < k; i++) i ? g.lineTo(pts[i][0], pts[i][1]) : g.moveTo(pts[i][0], pts[i][1]);
+    g.stroke();
+  }
+ }
  // ---------------------------------------------------------------- the black hole, opened in the page: it pulls, the page breaks in
  // It appears as a point and grows. Its pull reaches further and further: cracks run out across the page from it, joined
  // into a web by rings; the pieces between them come loose, nearest first, lift and are dragged in on spirals, drawn out
@@ -554,12 +580,17 @@
  // reachMax}: timeAt(d) is when its pull reaches a point d px away (for the caller's letters).
  function hole(cv, x, y, { reduce = false, paper = '#FFFFFF', dark = null } = {}) {
   const SLOW = 2;   // the whole thing runs this much slower than the times written below
-  const W = innerWidth, H = innerHeight, K = Math.min(1.25, root.devicePixelRatio || 1);
+  const W = innerWidth, H = innerHeight, K = Math.min(LOW() ? .75 : 1.25, root.devicePixelRatio || 1);
   cv.width = Math.ceil(W * K);
   cv.height = Math.ceil(H * K);
   Object.assign(cv.style, { position: 'fixed', left: 0, top: 0, width: W + 'px', height: H + 'px', pointerEvents: 'none' });
   const g = cv.getContext('2d');
-  if (dark) { dark.width = cv.width; dark.height = cv.height; Object.assign(dark.style, { position: 'fixed', left: 0, top: 0, width: W + 'px', height: H + 'px', pointerEvents: 'none' }); }
+  const KD = K / 2;
+  if (dark) {
+    dark.width = Math.ceil(W * KD);
+    dark.height = Math.ceil(H * KD);
+    Object.assign(dark.style, { position: 'fixed', left: 0, top: 0, width: W + 'px', height: H + 'px', pointerEvents: 'none' });
+  }
   const gd = dark?.getContext('2d');
   let seed = 5150; const rnd = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
   const far = Math.max(Math.hypot(x, y), Math.hypot(W - x, y), Math.hypot(x, H - y), Math.hypot(W - x, H - y)),
@@ -622,7 +653,7 @@
      i, { k, i, poly, cx, cy, go, rIn: lo.r, rOut: hi.r, lo: lo.pts, hi: hi.pts, sideA, sideB, fall: .55 + rnd() * .3, turn: (1.2 + rnd() * .9) * (rnd() < .5 ? -1 : 1), spin: (rnd() - .5) * 7 }); }
   const cellAt = (k, i) => cells.get(k + ',' + i), list = [...cells.values()].sort((a, b) => a.go - b.go);
   // light from all over the page, caught and drawn in on spirals
-  const rays = [...Array(reduce ? 0 : 170)].map(() =>
+  const rays = [...Array(reduce ? 0 : LOW() ? 60 : 170)].map(() =>
     ({ r0: Rmax * (.25 + .9 * rnd()), a0: rnd() * TAU, ph: rnd(), sp: .18 + rnd() * .16, w: .5 + rnd() * 1.1, c: rnd() < .5 ? '255,244,220' : rnd() < .5 ? '210,226,255' : '255,214,160' }));
   let dim = 0;
   // the back end's 0 and 1, streaming in on spirals
@@ -640,10 +671,10 @@
     return c;
   };
   const GLYPH = {}; for (const ch of '01') for (const col of ['#E4FAD8', '#8BE07A']) GLYPH[ch + col] = glyph(ch, col);
-  const bits = [...Array(reduce ? 200 : 720)].map(() =>
+  const bits = [...Array(reduce ? 200 : LOW() ? 260 : 720)].map(() =>
     ({ r0: r0 + (Rmax * .8 - r0) * Math.sqrt(rnd()), a0: rnd() * TAU, ph: rnd(), v: rnd() < .5 ? '0' : '1', s: 11 + rnd() * 7, c: rnd() < .3 ? '#E4FAD8' : '#8BE07A', sp: .16 + rnd() * .12 }));
   // the disk: particles on circular orbits in a plane seen almost edge on, drawn on two small layers and bloomed
-  const COSI = .2, parts = [...Array(reduce ? 500 : 1300)].map(() => ({ u: Math.pow(rnd(), 1.6), a: rnd() * TAU, len: .06 + rnd() * .18, b: .45 + rnd() * .55 }));
+  const COSI = .2, parts = [...Array(reduce ? 500 : LOW() ? 460 : 1300)].map(() => ({ u: Math.pow(rnd(), 1.6), a: rnd() * TAU, len: .06 + rnd() * .18, b: .45 + rnd() * .55 }));
   const TINT = [[255, 236, 196], [255, 214, 140], [255, 160, 80], [220, 90, 40]], ti = k => k < .15 ? 0 : k < .4 ? 1 : k < .7 ? 2 : 3, WID = [1.4, 1.7, 1.1, 1.5];
   // (the disk's layers at a lower resolution: it is all glow, and they are large now that the hole grows big)
   const LS = Math.ceil(rsMax * 4.8 * 2 + 80), KL = K * .6, mk = () => {
@@ -652,15 +683,36 @@
     c.height = Math.ceil(LS * KL);
     return [c, c.getContext('2d')];
   }, [backC, bk] = mk(), [frontC, fr] = mk();
+  const softLayer = (scale, px) => {
+    const c = document.createElement('canvas');
+    c.width = c.height = Math.ceil(LS * scale);
+    const q = c.getContext('2d');
+    q.filter = `blur(${px * scale}px)`;
+    return { c, q, scale };
+  }, soft6 = softLayer(.25, 6), soft18 = softLayer(.125, 18);
+  // only the part of each layer the disk reaches is drawn: most of it is empty while the hole is small
+  let hw = LS / 2, hh = LS / 2;
+  const blurred = (c, s, alpha) => {
+    const dw = hw * 2 * s.scale, dh = hh * 2 * s.scale;
+    s.q.clearRect(0, 0, s.c.width, s.c.height);
+    s.q.drawImage(c, (LS / 2 - hw) * KL, (LS / 2 - hh) * KL, hw * 2 * KL, hh * 2 * KL, 0, 0, dw, dh);
+    g.globalAlpha = alpha;
+    g.drawImage(s.c, 0, 0, dw, dh, x - hw, y - hh, hw * 2, hh * 2);
+  };
   const bloom = c => {
-    const X = x - LS / 2, Y = y - LS / 2;
     g.globalCompositeOperation = 'lighter';
-    if (!reduce) { g.save(); g.filter = 'blur(6px)'; g.globalAlpha = .8; g.drawImage(c, X, Y, LS, LS); g.filter = 'blur(18px)'; g.globalAlpha = .5; g.drawImage(c, X, Y, LS, LS); g.restore(); }
-    g.drawImage(c, X, Y, LS, LS);
+    if (!reduce) { g.save(); blurred(c, soft6, .8); blurred(c, soft18, .5); g.restore(); }
+    g.drawImage(c, (LS / 2 - hw) * KL, (LS / 2 - hh) * KL, hw * 2 * KL, hh * 2 * KL, x - hw, y - hh, hw * 2, hh * 2);
   };
   function disk(t, rs, fade) {
-   const rin = rs * 1.35, rout = rs * 4.6;
-   for (const c of [bk, fr]) { c.setTransform(KL, 0, 0, KL, 0, 0); c.clearRect(0, 0, LS, LS); c.translate(LS / 2 - x, LS / 2 - y); c.globalCompositeOperation = 'lighter'; c.lineCap = 'round'; }
+   const rin = rs * 1.35, rout = rs * 4.6; hw = Math.min(LS / 2, rout + 70); hh = Math.min(LS / 2, rs * 2.7 + 70);
+   for (const c of [bk, fr]) {
+     c.setTransform(KL, 0, 0, KL, 0, 0);
+     c.clearRect(LS / 2 - hw, LS / 2 - hh, hw * 2, hh * 2);
+     c.translate(LS / 2 - x, LS / 2 - y);
+     c.globalCompositeOperation = 'lighter';
+     c.lineCap = 'round';
+   }
    // every stroke gathered into a few paths by layer, colour, brightness and width
    const B = new Map(), put = (front, c, x0, y0, x1, y1, al, w) => {
      if (al < .03) return;
@@ -696,13 +748,13 @@
    fr.stroke();
    bloom(backC); g.globalCompositeOperation = 'source-over'; g.fillStyle = '#000'; g.beginPath(); g.arc(x, y, rs, 0, TAU); g.fill(); bloom(frontC); g.globalCompositeOperation = 'source-over';
   }
-  let closing = -1, done = false, last = 0;
+  let closing = -1, done = false, last = 0, darkened = false;
   function frame(t) {
    if (done) return; t = Math.max(0, t) / SLOW; last = t;
    const cK = closing < 0 ? 0 : clamp((t - closing) / .55);
    g.setTransform(1, 0, 0, 1, 0, 0);
    g.clearRect(0, 0, cv.width, cv.height);
-   if (gd) { gd.setTransform(1, 0, 0, 1, 0, 0); gd.clearRect(0, 0, dark.width, dark.height); }
+   if (gd && darkened) { gd.setTransform(1, 0, 0, 1, 0, 0); gd.clearRect(0, 0, dark.width, dark.height); darkened = false; }
    if (cK >= 1) { done = true; dim = 0; return; }
    const keep = 1 - cK * cK; g.setTransform(K, 0, 0, K, 0, 0); g.translate(x, y); g.scale(keep, keep); g.translate(-x, -y);
    const F = front(t), rs = rsAt(t), open0 = 1, dR = rs * 1.3;
@@ -741,31 +793,32 @@
    g.save(); g.clip(region);
    const bg = g.createRadialGradient(x, y, rs, x, y, Rmax); bg.addColorStop(0, '#010206'); bg.addColorStop(1, '#0a1626'); g.fillStyle = bg; g.fillRect(x - Rmax, y - Rmax, Rmax * 2, Rmax * 2);
    g.globalCompositeOperation = 'lighter'; g.textAlign = 'center'; g.textBaseline = 'middle';
+   let open = dR; for (const c of gone) if (c.rOut > open) open = c.rOut; open = open * 1.2 + 30; const base = g.getTransform(), { a: ba, b: bb, c: bc, d: bd, e: be, f: bf } = base;
    for (const b of bits) {
-     const u = (b.ph + t * b.sp) % 1,
-       e = Math.pow(u, 1.5),
-       r = rs + (b.r0 - rs) * (1 - e),
-       a = b.a0 + e * 3.4,
+     const u = (b.ph + t * b.sp) % 1, e = Math.pow(u, 1.5), r = rs + (b.r0 - rs) * (1 - e);
+     if (r > open) continue;
+     const a = b.a0 + e * 3.4,
        px = x + Math.cos(a) * r,
        py = y + Math.sin(a) * r,
        st = 1 + (1 - (r - rs) / (b.r0 - rs + 1)) * 2.2,
-       sz = b.s * clamp(.55 + r / 500, .55, 1.1);
-    g.save();
-    g.translate(px, py);
-    g.rotate(a + Math.PI / 2);
-    g.scale(sz / 18 / Math.sqrt(st), sz / 18 * st);
+       sz = b.s * clamp(.55 + r / 500, .55, 1.1),
+       c = Math.cos(a + Math.PI / 2),
+       n = Math.sin(a + Math.PI / 2),
+       sx = sz / 18 / Math.sqrt(st),
+       sy = sz / 18 * st;
+    const ma = c * sx, mb = n * sx, mc = -n * sy, md = c * sy;
+    g.setTransform(ba * ma + bc * mb, bb * ma + bd * mb, ba * mc + bc * md, bb * mc + bd * md, ba * px + bc * py + be, bb * px + bd * py + bf);
     g.globalAlpha = Math.min(1, (1 - u) * 3) * .85;
     g.drawImage(GLYPH[b.v + b.c], -10, -10, 20, 20);
-    g.restore();
    }
-   g.globalAlpha = 1; disk(t, rs, 1);
+   g.setTransform(base); g.globalAlpha = 1; disk(t, rs, 1);
    g.globalCompositeOperation = 'source-over';
    for (const [w, a] of [[20, .22], [11, .3], [5, .38]]) { g.strokeStyle = `rgba(0,0,0,${a})`; g.lineWidth = w; g.stroke(lips); }   // a soft shadow under each broken edge (no full-screen blur)
    g.restore();
    // the light of the page is swallowed: it darkens round the hole (darkest near it, deeper as it grows), the open region
    // stays lit by the hole's own light; streaks of light from all over are caught and drawn in on spirals
    dim = Math.pow(clamp(t / 4.6), 1.6) * (1 - cK);
-   if (gd && dim > .005) { gd.setTransform(K, 0, 0, K, 0, 0); gd.translate(x, y); gd.scale(keep, keep); gd.translate(-x, -y);
+   if (gd && dim > .005) { darkened = true; gd.setTransform(KD, 0, 0, KD, 0, 0); gd.translate(x, y); gd.scale(keep, keep); gd.translate(-x, -y);
     const dk = gd.createRadialGradient(x, y, dR, x, y, Rmax * 1.25);
     dk.addColorStop(0, `rgba(4,5,26,${.94 * dim})`);
     dk.addColorStop(.3, `rgba(8,10,46,${.82 * dim})`);
@@ -860,7 +913,7 @@
    if (done) return; const p = reduce ? 1 : clamp(t / .28), e = 1 - Math.pow(1 - p, 3), k = .55 + .45 * (1 - Math.pow(1 - clamp(t / .12), 3)), hp = holePath(reduce ? 1 : k);
    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, S, S);
    // the shadow inside the hole, under its lip
-   g.save(); g.clip(hp); g.filter = 'blur(4px)'; g.strokeStyle = 'rgba(0,0,0,.75)'; g.lineWidth = 12; g.stroke(hp); g.restore();
+   g.save(); g.clip(hp); if (!LOW()) g.filter = 'blur(4px)'; g.strokeStyle = 'rgba(0,0,0,.75)'; g.lineWidth = 12; g.stroke(hp); g.restore();
    for (const cr of cracks) crackLine(g, cr.pts, cr.w, .5, e, .5);
    // the broken lip: a band of paper seen edge on, inked; chips of it lifted along the edge
    g.lineJoin = 'miter'; g.strokeStyle = 'rgba(218,214,204,1)'; g.lineWidth = 3.4; g.stroke(hp); g.strokeStyle = 'rgba(20,20,19,.95)'; g.lineWidth = 1.3; g.stroke(hp);
@@ -886,9 +939,9 @@
   return { frame, get done() { return done; }, outline };
  }
  // ---------------------------------------------------------------- the hammer's mark: the page cracked where it was struck
- // A crushed point and a star of cracks running out of it. Struck again in the same place, the cracks run further, branch
- // and join into a web: the same seed, so a second blow extends the first instead of drawing a new one. No dent, no grey
- // shading, only the breaks (a third blow breaks through: the caller uses shatter). crackStar(canvas, x, y, R, level, {seed}).
+ // A soft pit and a star of cracks running out of it. Struck again in the same place, the cracks run further, branch
+ // and join into a web: the same seed, so a second blow extends the first instead of drawing a new one. No dent, only the
+ // breaks (a third blow breaks through: the caller uses shatter). crackStar(canvas, x, y, R, level, {seed}).
  function crackStar(cv, x, y, R, level = 1, { reduce = false, seed: sd = .5 } = {}) {
   const S = Math.ceil(R * 2.2 * (1 + level * .4)), dpr = sized(cv, S, x, y), g = cv.getContext('2d'), c = S / 2;
   let seed = 1000 + Math.floor(sd * 1e6); const rnd = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
@@ -899,14 +952,14 @@
       base = R * (.45 + .55 * rnd()),
       shown = i % 2 === 0 || i < 3 + level * 3,
       len = base * (.42 + .34 * level),
-      pts = crackPath(c + Math.cos(a) * R * .07, c + Math.sin(a) * R * .07, a, len, rnd, .26, 8);
+      pts = crackPath(c + Math.cos(a) * R * .07, c + Math.sin(a) * R * .07, a, len, rnd, .62, 8);
    const bf = .4 + rnd() * .3, bs = rnd() < .5 ? -1 : 1, bl = len * (.25 + rnd() * .25), bOn = rnd() < .5, bseed = rnd();
    if (!shown) continue; mains.push({ pts, a }); cracks.push({ pts, w: 1.6 + level * .55 });
    if (level >= 2 && bOn) {
      const at = pts[Math.floor(pts.length * bf)];
      let s2 = 7 + Math.floor(bseed * 1e5);
      const r2 = () => (s2 = (s2 * 48271) % 2147483647) / 2147483647;
-     cracks.push({ pts: crackPath(at[0], at[1], a + bs * (.5 + bseed * .4), bl, r2, .26, 8), w: 1.1 + level * .3 });
+     cracks.push({ pts: crackPath(at[0], at[1], a + bs * (.5 + bseed * .4), bl, r2, .62, 8), w: 1.1 + level * .3 });
    } }
   if (level >= 2) {
     mains.sort((p, q) => p.a - q.a);
@@ -918,22 +971,18 @@
     }
   }
   const chips = crush.filter((_, i) => i % 3 === 0).map(([px, py], i) => ({ x: px, y: py, a: i * 2.1, s: 2.2 + level * .8 }));
+  const rim = Math.max(...crush.map(([a, b]) => Math.hypot(a - c, b - c))), pit = g.createRadialGradient(c, c, 0, c, c, rim);
+  pit.addColorStop(0, 'rgba(10,13,22,.92)');
+  pit.addColorStop(.4, 'rgba(10,13,22,.74)');
+  pit.addColorStop(.75, 'rgba(10,13,22,.16)');
+  pit.addColorStop(1, 'rgba(10,13,22,0)');
   let done = false;
   function frame(t) {
    if (done) return; const p = reduce ? 1 : clamp(t / .2), e = 1 - Math.pow(1 - p, 3);
    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, S, S);
-   for (const cr of cracks) crackLine(g, cr.pts, cr.w, .4, e, level >= 2 ? .35 : 0);
+   for (const cr of cracks) crackWedge(g, cr.pts, cr.w * 1.9, e, level >= 2 ? .55 : .3);
    const cp = new Path2D(); crush.forEach(([a, b], i) => i ? cp.lineTo(a, b) : cp.moveTo(a, b)); cp.closePath();
-   g.lineJoin = 'miter';
-   g.strokeStyle = 'rgba(255,255,255,.85)';
-   g.lineWidth = 1.2;
-   g.save();
-   g.translate(-.8, -.8);
-   g.stroke(cp);
-   g.restore();
-   g.strokeStyle = 'rgba(20,20,19,.92)';
-   g.lineWidth = 1.3;
-   g.stroke(cp);
+   g.fillStyle = pit; g.fill(cp);
    for (const ch of chips) {
      g.save();
      g.translate(ch.x, ch.y);
@@ -1015,7 +1064,10 @@
  function blast(cv, x, y, R, { reduce = false } = {}) {
   const S = Math.ceil(R * 7), dpr = sized(cv, S, x, y), g = cv.getContext('2d'), c = S / 2; g.setTransform(dpr, 0, 0, dpr, 0, 0);
   let seed = 61; const rnd = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
-  const P = [...Array(reduce ? 0 : 190)].map(() => { const a = rnd() * TAU, v = (.35 + rnd() * .65) * R * 9; return { a, v, s: R * (.12 + rnd() * .3), life: .55 + rnd() * .6, spin: rnd() }; });
+  const P = [...Array(reduce ? 0 : LOW() ? 70 : 190)].map(() => {
+    const a = rnd() * TAU, v = (.35 + rnd() * .65) * R * 9;
+    return { a, v, s: R * (.12 + rnd() * .3), life: .55 + rnd() * .6, spin: rnd() };
+  });
   const ramp = [[0, [255, 252, 236]], [.12, [255, 226, 140]], [.35, [250, 156, 60]], [.62, [190, 72, 34]], [.85, [80, 40, 26]], [1, [40, 26, 20]]];
   const colAt = u => {
     for (let i = 1; i < ramp.length; i++) if (u <= ramp[i][0]) { const [u0, c0] = ramp[i - 1], [u1, c1] = ramp[i]; return mixc(c0, c1, (u - u0) / (u1 - u0)); }

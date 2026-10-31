@@ -66,7 +66,7 @@
       status:response.status,
       url:file?url.href:response.url||url.href,
       type:file?'basic':response.type||'basic',
-      headers:Object.fromEntries(['content-type','content-length','link','location','retry-after'].map(k=>[k,response.headers.get(k)||''])),
+      headers:Object.fromEntries(['content-type','content-length','link','location','retry-after','x-rate-limit-remaining'].map(k=>[k,response.headers.get(k)||''])),
       base64:env.btoa(binary)
     };
    }finally{env.clearTimeout(timer);pending.delete(message.id);}

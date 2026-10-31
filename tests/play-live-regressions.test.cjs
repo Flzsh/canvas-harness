@@ -82,7 +82,8 @@ test('3: lifted letters keep the page type with a letter-shaped shadow, no card,
   const css = fs.readFileSync(path.join(__dirname, '../extension/play-tools.css'), 'utf8');
   const rule = css.match(/#chb-layer\s+\.chb-physics-body\{([^}]+)\}/);
   assert.ok(rule, 'the letter style is scoped to the overlay so a host span rule cannot override it');
-  assert.equal(rule[1], 'background:none;box-shadow:none;filter:drop-shadow(1.5px 2.5px 1px rgb(20 20 19/.22))');
+  assert.equal(rule[1], 'background:none;box-shadow:none;text-shadow:1.5px 2.5px 2px rgb(20 20 19/.22)');
+  assert.doesNotMatch(rule[1], /filter/, 'a filter per piece is a render surface per piece: the shadow is drawn with the glyphs');
   assert.match(css, /\.chb-physics-body\{[^}]*z-index:5/, 'letters paint above the tether');
   for (const mode of ['balloon', 'portal', 'gravity', 'magnet']) {
     const h = fixture();

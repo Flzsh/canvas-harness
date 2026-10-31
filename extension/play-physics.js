@@ -2,10 +2,20 @@
 (function(root){
 'use strict';
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), finite = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
+// how far from the far side of the window a pile may rise, as a share of the window (each body a little different, so a full pile is a heap, not one line)
+const PILE_REACH = .12, pileLimit = (extent, size, share) => size + 8 >= extent ? extent / 2 : extent * share;
+// A wall's pile: a height per column, and the highest it has reached, so a body far from the wall never looks it up.
+class Pile extends Map {
+  top = 0;
+  set(key, value) { if (value > this.top) this.top = value; return super.set(key, value); }
+  delete(key) { const had = super.delete(key); if (!this.size) this.top = 0; return had; }
+  clear() { super.clear(); this.top = 0; }
+}
 function create(options = {}) {
   const bodies = [],
-    floor = options.floor || new Map(),
-    walls = { bottom: floor, top: new Map(), left: new Map(), right: new Map() },
+    members = new Set(),
+    floor = new Pile(),
+    walls = { bottom: floor, top: new Pile(), left: new Pile(), right: new Pile() },
     attractors = new Map(),
     listeners = new Set(),
     dirty = new Set(),
@@ -15,26 +25,49 @@ function create(options = {}) {
     gravity = { x: finite(options.gravity?.x), y: finite(options.gravity?.y, 2300) },
     portals = [],
     serial = 0,
-    time = 0;
-  let reduced = !!options.reduced; const maxSpeed = clamp(finite(options.maxSpeed, 1200), 100, 1800), drag = Math.max(0, finite(options.drag, .35));
-  const changed = b => { if (b) dirty.add(b); for (const fn of listeners) fn(); }, active = b => b && !b.retired && bodies.includes(b);
+    time = 0,
+    quiet = 0,
+    unsaid = false,
+    stepped = false;
+  let reduced = !!options.reduced; const maxSpeed = clamp(finite(options.maxSpeed, 1200), 100, 1800); let topSpeed = maxSpeed; const drag = Math.max(0, finite(options.drag, .35));
+  // listeners hear about a change once per batch, however many bodies it touched
+  const notify = () => { if (quiet) unsaid = true; else for (const fn of listeners) fn(); }, changed = b => { if (b) dirty.add(b); notify(); }, active = b => !!b && !b.retired && members.has(b);
+  const batch = fn => { quiet++; try { return fn(); } finally { if (!--quiet && unsaid) { unsaid = false; notify(); } } };
   const unpile = b => {
     if (!b.pile) return;
     for (const [map, key, value] of b.pile) { const next = (map.get(key) || 0) - value; if (next > .001) map.set(key, next); else map.delete(key); }
     b.pile = null;
+    b.seat = '';
   };
   const sideOfGravity = () => Math.abs(gravity.x) > Math.abs(gravity.y) ? gravity.x < 0 ? 'left' : 'right' : gravity.y < 0 ? 'top' : 'bottom';
   const bins = (b, side) => {
     const horizontal = side === 'bottom' || side === 'top', center = horizontal ? b.x : b.y, span = horizontal ? b.width : b.height;
     return [Math.floor((center - span * .45) / 7), Math.floor((center + span * .45) / 7)];
   };
-  const pileHeight = (b, side) => { const [a, z] = bins(b, side), map = walls[side]; let h = 0; for (let i = a; i <= z; i++) h = Math.max(h, map.get(i) || 0); return h; };
+  const pileHeight = (b, side) => {
+    const map = walls[side];
+    if (!map.size) return 0;
+    const [a, z] = bins(b, side);
+    let h = 0;
+    for (let i = a; i <= z; i++) { const v = map.get(i); if (v > h) h = v; }
+    return h;
+  };
+  // (gap: how far the body's edge is from that wall; further than the pile has ever reached, it cannot be touching it)
+  // the part of the pile a body can land on: a stack taller than it is beside it, so it falls past instead of being lifted up; with stacks all across it is buried and stays where it is
+  const pileNear = (b, gap, side) => {
+    if (b.seat === side) return b.seatAt;
+    if (gap > 4 + walls[side].top) return 0;
+    const map = walls[side], [a, z] = bins(b, side);
+    let h = 0, open = false;
+    for (let i = a; i <= z; i++) { const v = map.get(i) || 0; if (v > gap + 16) continue; open = true; if (v > h) h = v; }
+    return open || side !== sideOfGravity() ? h : Math.max(0, gap - 4);
+  };
   const limitPosition = b => {
     b.x = clamp(b.x, Math.min(b.width / 2 + 4, width / 2), Math.max(width / 2, width - b.width / 2 - 4));
     b.y = clamp(b.y, Math.min(b.height / 2 + 4, height / 2), Math.max(height / 2, height - b.height / 2 - 4));
   };
   function deposit(b, side) {
-    if (b.pile) return;
+    if (b.pile || b.thin) return;
     const horizontal = side === 'bottom' || side === 'top',
       extent = horizontal ? height : width,
       size = horizontal ? b.height : b.width,
@@ -43,6 +76,12 @@ function create(options = {}) {
       [a, z] = bins(b, side);
     b.pile = [];
     for (let i = a; i <= z; i++) { const old = map.get(i) || 0, next = Math.max(old, Math.min(extent - size - 8, depth)); if (next > old) { map.set(i, next); b.pile.push([map, i, next - old]); } }
+  }
+  // a landing body takes its place at once, so the next one lands on top of it, not through it; it keeps the height it landed on while it bounces
+  function seat(b, side) {
+    b.seatAt = Math.max(0, (side === 'bottom' ? height - b.y - b.height / 2 : side === 'top' ? b.y - b.height / 2 : side === 'left' ? b.x - b.width / 2 : width - b.x - b.width / 2) - 4);
+    b.seat = side;
+    deposit(b, side);
   }
   function settle(b, side = sideOfGravity()) {
     if (!b || b.retired) return;
@@ -59,11 +98,22 @@ function create(options = {}) {
     deposit(b, side);
     changed(b);
   }
-  const wake = b => { if (!active(b)) return; unpile(b); b.awake = true; b.still = 0; changed(b); };
-  const speedLimit = b => { const speed = Math.hypot(b.vx, b.vy); if (speed > maxSpeed) { b.vx *= maxSpeed / speed; b.vy *= maxSpeed / speed; } b.spin = clamp(b.spin, -540, 540); };
+  const wake = b => { if (!active(b)) return; unpile(b); b.awake = true; b.still = 0; notify(); };
+  const speedLimit = b => {
+    const squared = b.vx * b.vx + b.vy * b.vy;
+    if (squared > topSpeed * topSpeed) { const k = topSpeed / Math.sqrt(squared); b.vx *= k; b.vy *= k; }
+    b.spin = clamp(b.spin, -540, 540);
+  };
   function add(spec = {}) {
     unpile(spec);
-    if (bodies.length >= 400) { const oldest = bodies.shift(); settle(oldest, 'bottom'); oldest.retired = true; const i = loopers.indexOf(oldest); if (i >= 0) loopers.splice(i, 1); }
+    if (bodies.length >= 400) {
+      const oldest = bodies.shift();
+      members.delete(oldest);
+      settle(oldest, 'bottom');
+      oldest.retired = true;
+      const i = loopers.indexOf(oldest);
+      if (i >= 0) loopers.splice(i, 1);
+    }
     const b = {
       ...spec,
       id: ++serial,
@@ -84,16 +134,17 @@ function create(options = {}) {
       constraint: null,
       pile: null
     };
+    b.tumble = Math.min(1, 44 / b.width);
     speedLimit(b);
     bodies.push(b);
+    members.add(b);
     changed(b);
     return b;
   }
   function remove(b) {
-    const i = bodies.indexOf(b);
-    if (i < 0) return;
+    if (!members.delete(b)) return;
     unpile(b);
-    bodies.splice(i, 1);
+    bodies.splice(bodies.indexOf(b), 1);
     const k = loopers.indexOf(b);
     if (k >= 0) loopers.splice(k, 1);
     b.awake = b.dragged = false;
@@ -106,7 +157,15 @@ function create(options = {}) {
     if (!active(b)) return;
     wake(b);
     b.constraint = { length: 0, stiffness: 90, damping: 18, sway: 0, ...spec };
-    if (reduced) { b.x = b.constraint.x; b.y = b.constraint.y + b.constraint.length; limitPosition(b); b.vx = b.vy = b.spin = 0; b.awake = false; changed(b); }
+    if (reduced) {
+      b.x = b.constraint.x;
+      b.y = b.constraint.y + b.constraint.length;
+      limitPosition(b);
+      if (spec.angle !== undefined) b.angle = spec.angle;
+      b.vx = b.vy = b.spin = 0;
+      b.awake = false;
+      changed(b);
+    }
     return b.constraint;
   }
   function release(b) { if (!active(b)) return; b.constraint = null; wake(b); if (reduced) settle(b); }
@@ -143,24 +202,25 @@ function create(options = {}) {
     b.grab = null;
     b.vx = fresh ? g.vx : 0;
     b.vy = fresh ? g.vy : 0;
-    b.spin = b.vx * .12;
+    b.spin = b.vx * .12 * b.tumble;
     speedLimit(b);
     wake(b);
     if (reduced) { if (b.constraint) constrain(b, b.constraint); else settle(b); }
   }
-  function setGravity(x, y) {
+  function setGravity(x, y, limit) {
     gravity = { x: finite(x), y: finite(y) };
-    for (const b of bodies) wake(b);
-    if (reduced) for (const b of bodies) if (!b.dragged) { if (b.constraint) constrain(b, b.constraint); else settle(b); }
+    topSpeed = clamp(finite(limit, maxSpeed), maxSpeed, 1800);
+    batch(() => { for (const b of bodies) wake(b); if (reduced) for (const b of bodies) if (!b.dragged) { if (b.constraint) constrain(b, b.constraint); else settle(b); } });
   }
   function setAttractor(id, spec) {
     attractors.set(id, { strength: 2200, radius: 130, ...spec });
-    for (const b of bodies) { const d = Math.hypot(b.x - spec.x, b.y - spec.y); if (d < (spec.radius || 130)) wake(b); }
+    const reach = (spec.radius || 130) ** 2;
+    batch(() => { for (const b of bodies) { const dx = b.x - spec.x, dy = b.y - spec.y; if (dx * dx + dy * dy < reach) wake(b); } });
   }
   function removeAttractor(id) { attractors.delete(id); }
   function setPortals(pair) {
     portals = pair.slice(0, 2).map(p => ({ ...p, size: clamp(finite(p.size, 80), 40, 220), angle: finite(p.angle, -Math.PI / 2) }));
-    for (const b of bodies) if (!b.portalBlocked) wake(b);
+    batch(() => { for (const b of bodies) if (!b.portalBlocked) wake(b); });
   }
   function teleport(b, oldX, oldY) {
     if (portals.length !== 2 || b.portalBlocked || time < (b.portalUntil || 0)) return;
@@ -197,17 +257,20 @@ function create(options = {}) {
   }
   function collide(b) {
     let contact = false;
-    const left = Math.min(width / 2, 4 + pileHeight(b, 'left') + b.width / 2),
-      right = Math.max(width / 2, width - 4 - pileHeight(b, 'right') - b.width / 2),
-      top = Math.min(height / 2, 4 + pileHeight(b, 'top') + b.height / 2),
-      bottom = Math.max(height / 2, height - 4 - pileHeight(b, 'bottom') - b.height / 2);
+    const halfW = b.width / 2,
+      halfH = b.height / 2,
+      reach = PILE_REACH + (b.id % 9) * .012,
+      left = Math.min(pileLimit(width, b.width, 1 - reach), 4 + pileNear(b, b.x - halfW, 'left') + halfW),
+      right = Math.max(pileLimit(width, b.width, reach), width - 4 - pileNear(b, width - b.x - halfW, 'right') - halfW),
+      top = Math.min(pileLimit(height, b.height, 1 - reach), 4 + pileNear(b, b.y - halfH, 'top') + halfH),
+      bottom = Math.max(pileLimit(height, b.height, reach), height - 4 - pileNear(b, height - b.y - halfH, 'bottom') - halfH);
     const hit = (axis, edge, normal) => {
       b[axis] = edge;
       const key = axis === 'x' ? 'vx' : 'vy', tangent = axis === 'x' ? 'vy' : 'vx', speed = b[key] * normal;
       if (speed < 0) {
         b[key] = speed < -110 && !reduced ? -b[key] * .34 : 0;
         b[tangent] *= .64;
-        b.spin = reduced ? 0 : -b.spin * .35 + b[tangent] * .08 + (b.id % 2 ? 1 : -1) * Math.min(40, Math.abs(speed) * .06);
+        b.spin = reduced ? 0 : (-b.spin * .35 + b[tangent] * .08 + (b.id % 2 ? 1 : -1) * Math.min(40, Math.abs(speed) * .06)) * b.tumble;
       }
       contact = axis === 'x' ? normal > 0 ? 'left' : 'right' : normal > 0 ? 'top' : 'bottom';
     };
@@ -215,44 +278,53 @@ function create(options = {}) {
     if (b.y <= top) hit('y', top, 1); else if (b.y >= bottom) hit('y', bottom, -1);
     return contact;
   }
-  function integrate(b, dt) {
+  function integrate(b, dt, decay, spinDecay, weightless) {
     if (!b.awake || b.dragged) return;
     if (reduced && !b.constraint) { settle(b); return; }
     const oldX = b.x, oldY = b.y;
     let ax = gravity.x, ay = gravity.y;
     for (const a of attractors.values()) {
-      const dx = a.x - b.x, dy = a.y - b.y, d = Math.hypot(dx, dy);
+      const dx = a.x - b.x, dy = a.y - b.y, d = Math.sqrt(dx * dx + dy * dy);
       if (d < a.radius && d > .01) { const k = a.strength * (1 - d / a.radius) / d; ax += dx * k; ay += dy * k; }
     }
     const q = b.constraint;
     if (q) {
-      const dx = q.x + Math.sin(time * 2.3 + b.id) * q.sway - b.x, dy = q.y - b.y, d = Math.hypot(dx, dy) || 1;
+      const dx = q.x + Math.sin(time * 2.3 + b.id) * q.sway - b.x, dy = q.y - b.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
       if (!q.length) { ax = dx * q.stiffness - b.vx * q.damping; ay = dy * q.stiffness - b.vy * q.damping; }
       else if (d > q.length) { const tension = (d - q.length) * q.stiffness + (-(b.vx * dx + b.vy * dy) / d) * q.damping; ax += dx / d * tension; ay += dy / d * tension; }
     }
-    const decay = Math.exp(-drag * dt);
     b.vx = (b.vx + ax * dt) * decay;
     b.vy = (b.vy + ay * dt) * decay;
-    b.spin *= Math.exp(-1.2 * dt);
+    b.spin *= spinDecay;
     speedLimit(b);
     b.x += b.vx * dt;
     b.y += b.vy * dt;
     b.angle = (b.angle + b.spin * dt) % 360;
+    if (q?.angle !== undefined) { b.spin = 0; b.angle += ((q.angle - b.angle + 540) % 360 - 180) * Math.min(1, dt * 9); }
     teleport(b, oldX, oldY);
     if (!b.awake) return;
-    const contact = collide(b), slow = Math.hypot(b.vx, b.vy) < 14 && Math.abs(b.spin) < 12;
-    b.still = slow && (contact || q || Math.hypot(gravity.x, gravity.y) < .01) && !q?.sway ? b.still + dt : 0;
+    const contact = collide(b);
+    if (contact && !q && !b.pile && !weightless && contact === sideOfGravity()) seat(b, contact);
+    const slow = b.vx * b.vx + b.vy * b.vy < 196 && Math.abs(b.spin) < 12;
+    b.still = slow && (contact || q || weightless) && !q?.sway ? b.still + dt : 0;
     if (b.still > .22) { b.awake = false; b.vx = b.vy = b.spin = 0; if (contact && !q) deposit(b, contact); }
-    changed(b);
+    dirty.add(b);
+    stepped = true;
   }
   function step(seconds) {
-    const duration = clamp(finite(seconds), 0, .05), steps = Math.max(1, Math.ceil(duration * 120)), dt = duration / steps;
-    for (let i = 0; i < steps; i++) { time += dt; for (const b of bodies) integrate(b, dt); }
-    return bodies;
+    const duration = clamp(finite(seconds), 0, .05),
+      steps = Math.max(1, Math.ceil(duration * 120)),
+      dt = duration / steps,
+      decay = Math.exp(-drag * dt),
+      spinDecay = Math.exp(-1.2 * dt),
+      weightless = gravity.x * gravity.x + gravity.y * gravity.y < 1e-4;
+    stepped = false;
+    return batch(() => { for (let i = 0; i < steps; i++) { time += dt; for (const b of bodies) integrate(b, dt, decay, spinDecay, weightless); } if (stepped) notify(); return bodies; });
   }
   function clear() {
     for (const b of bodies) { b.awake = b.dragged = false; b.constraint = b.grab = null; b.retired = true; }
     bodies.length = loopers.length = 0;
+    members.clear();
     attractors.clear();
     portals = [];
     for (const map of Object.values(walls)) map.clear();
@@ -267,6 +339,7 @@ function create(options = {}) {
   bodies,
   floor,
   attractors,
+  batch,
   add,
   remove,
   step,
@@ -293,7 +366,7 @@ function create(options = {}) {
   }, resize(w, h) {
     width = Math.max(32, w);
     height = Math.max(32, h);
-    for (const b of bodies) wake(b);
+    batch(() => { for (const b of bodies) wake(b); });
   }, get awake() {
     return bodies.some(b => b.awake || b.dragged);
   }, get gravity() {
@@ -308,8 +381,8 @@ function attach(engine, options = {}) {
     render = options.render || (b => {
     if (b.el) b.el.style.transform = `translate(${b.x - b.homeX}px,${b.y - b.homeY}px) rotate(${b.angle}deg)`;
   });
-  let frame = null, last = null, stopped = false, ticking = false;
-  const hidden = () => doc?.hidden || doc?.visibilityState === 'hidden';
+  let frame = null, last = null, stopped = false, ticking = false, held = false;
+  const hidden = () => held || doc?.hidden || doc?.visibilityState === 'hidden';
   const flush = () => { for (const b of engine.takeChanges()) render(b); options.onRender?.(); };
   function wake() {
     if (stopped || ticking || hidden()) return;
@@ -331,7 +404,10 @@ function attach(engine, options = {}) {
   }
   function visibility() { if (hidden()) { if (frame !== null) cancel(frame); frame = last = null; } else wake(); }
   const unsubscribe = engine.subscribe(wake); doc?.addEventListener('visibilitychange', visibility);
-  const api = { wake, clear() {
+  const api = { wake, hold(value) {
+    held = !!value;
+    visibility();
+  }, clear() {
     if (frame !== null) cancel(frame);
     frame = last = null;
     engine.clear();

@@ -9,6 +9,17 @@
   Study=load('CanvasHarnessStudy','./study-prompts.js'),
   Runtime=load('CanvasHarnessAgentRuntime','./agent-runtime.js'),
   Band=load('CanvasHarnessStudyBand','./study-band.js');
+ // The brief's rule holds for every source: login lines and e-mail addresses in a teacher's text never reach the AI.
+ const scrub=v=>load('CanvasHarnessPrepareBrief','./prepare-brief.js')?.scrub?.(v)??String(v??'');
+ // A long syllabus or home page: its opening, then the lines that name this item, so a schedule near the end still arrives.
+ const named=(text,title,max)=>{
+  if(text.length<=max)return text;
+  const words=s=>new Set(String(s).toLowerCase().match(/[\p{L}\p{N}]+/gu)||[]),wanted=[...words(title)],own=wanted.length?text.split(/\n+/).filter(line=>{
+   const has=words(line);
+   return wanted.filter(w=>has.has(w)).length>=Math.min(2,wanted.length);
+  }).join('\n').slice(0,Math.floor(max/2)):'';
+  return text.slice(0,max-own.length-1)+'\n'+own;
+ };
  function create({canvas,results,account,adapter,docs=load('CanvasHarnessGoogleDocs','./google-docs.js'),now=()=>Date.now(),uuid=()=>root.crypto.randomUUID()}={}){
   async function step(run,{save,guard,signal,claimProvider}){
    await guard();const reader=run.snapshot?canvas.reader(run,signal):null;
@@ -34,11 +45,7 @@
     await guard();
     await account.sync();
     const data=account.get();
-    if(run.kind==='ask'){
-     const brief=run.snapshot.brief||{text:'',refs:{}},
-      refs=brief.refs||{},
-      ref=Object.keys(refs).find(k=>run.itemId&&refs[k].id===String(run.itemId)),
-      scrub=root.CanvasHarnessPrepareBrief?.scrub||(v=>String(v||''));
+    if(run.kind==='ask'){const brief=run.snapshot.brief||{text:'',refs:{}},refs=brief.refs||{},ref=Object.keys(refs).find(k=>run.itemId&&refs[k].id===String(run.itemId));
      const focus=ref?'['+ref+'] '+refs[ref].title:run.itemTitle?scrub(run.itemTitle)+(run.itemText?'\nIts instructions: '+scrub(run.itemText).slice(0,4000):''):'';
      // Help with this item, or the items Help with… picked (up to three): one deliverable each from the item's own
      // materials, of the kind asked for or the kind the AI chooses.
@@ -77,6 +84,8 @@
       }
      ];
      run.state='asking';run.progress='Asking your AI';return save(run);}
+    // No course to look at (a break, or an account with no student enrollment): there is nothing to ask the AI about.
+    if(Array.isArray(run.snapshot.snapshot?.courses)&&!run.snapshot.snapshot.courses.length){run.state='unchanged';run.progress='Nothing needs help today';return save(run);}
     // Nothing new since the last visit skips an automatic run; a run the student clicked for always asks.
     if(run.entry!=='manual'&&run.day===data.toolbox?.agent?.lastVisitDay&&run.snapshot.baseline.fingerprint===data.toolbox?.agent?.baseline?.fingerprint){
      run.state='unchanged';
@@ -101,6 +110,8 @@
    }
    if(run.state==='asking'){
     await canvas.validate?.(run,Object.values(run.reads||{}).filter(r=>!r.error).map(r=>r.id),signal);await guard();
+    // A cut emoji leaves half a character; some AI APIs refuse the whole request for it.
+    run.messages.at(-1).content=String(run.messages.at(-1).content).toWellFormed?.()??run.messages.at(-1).content;
     const kind=run.mode==='prepare'||run.mode==='ask'?'prepare':run.phase==='aid'?run.aids[run.aidIndex].action.kind:'agent';
     // Each deliverable opens its own chat; the hidden check of a translation follows in the chat that made it.
     const turn={
@@ -281,14 +292,16 @@
      run.progress='Saving your cards';await save(run);run.cardCount=await results.saveCards(run,cards,refs,{ask:run.kind==='ask'});run.state='publishing';return save(run);
     }
     const pick=run.picks[run.pickIndex],ref=refs[pick.ref];if(!ref||ref.source){run.pickIndex++;return save(run);}
-    const id='assignment:'+ref.courseId+':'+ref.id,row=index.get(id),sources=[],took=new Set(),linked=[],add=async(what,sid,label,max=14000)=>{
+    const id='assignment:'+ref.courseId+':'+ref.id,row=index.get(id),sources=[],took=new Set(),linked=[],unreadable=[],add=async(what,sid,label,max=14000)=>{
      took.add(sid);
-     const result=await read({what,id:sid});
-     if(!result.error&&String(result.text||'').trim())sources.push({label,text:String(result.text).slice(0,max)});
+     const course=/^Course (?:syllabus|home page)$/.test(label),result=await read({what,id:sid});
+     if(!result.error&&String(result.text||'').trim())
+      sources.push({label,text:course?named(scrub(result.text),ref.title,max):scrub(result.text).slice(0,max)});
+     else if(!course)unreadable.push(result.error||label);
      for(const g of result.google||[])if(!linked.some(x=>x.id===g.id))linked.push(g);
     };
     run.progress='Reading '+ref.title;await save(run);
-    if(row)await add('assignment',id,'Teacher instructions: '+ref.title);
+    if(row)await add('assignment',id,'Teacher instructions: '+ref.title);else unreadable.push(ref.title+': its instructions could not be read from Canvas.');
     const open=r=>r&&(!r.locked||r.linked===true&&r.hiddenOnly===true);
     // The item's attached files and pages are listed on its snapshot entry, not on its index record.
     const entry=(run.snapshot.snapshot?.items||[]).find(i=>i?.id===id)||row||{};
@@ -328,6 +341,8 @@
       label:'Linked but not readable',
       text:pick.unread.map(u=>'"'+u.title+'" ('+(u.kind==='document'||u.kind==='published'?'Google Doc':u.kind==='presentation'?'Google Slides':'Google Sheet')+')').join('\n')+'\nIts text is not in these materials. Do not guess what it says; name it in gaps.'
      });
+    // What the item names but could not be read is said aloud, so the AI cannot fill it in from the title.
+    if(unreadable.length)sources.push({label:'Could not be read',text:[...new Set(unreadable)].join('\n')+'\nTheir text is not in these materials. Do not guess what they say; name them in gaps.'});
     sources.push({label:'Canvas brief (dates, other work, teacher messages)',text:run.snapshot.brief?.text||''});
     const names={test:'a practice test',reading:'a reading breakdown',translate:'translation help',examples:'worked examples',auto:'help for this item'};
     run.progress='Making '+(names[pick.make]||'help')+' · '+(run.pickIndex+1)+' of '+run.picks.length;

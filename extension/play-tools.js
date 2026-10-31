@@ -10,11 +10,11 @@
 'use strict';
 const TIER = Object.freeze({
   painter: 'common',
-  garden: 'common',
   balloon: 'common',
   ink: 'common',
-  eraser: 'common',
-  magnet: 'common',
+  garden: 'common',
+  eraser: 'uncommon',
+  magnet: 'uncommon',
   hammer: 'rare',
   gravity: 'rare',
   portal: 'rare',
@@ -24,16 +24,14 @@ const TIER = Object.freeze({
   blackhole: 'legendary',
   foil: 'legendary'
 });
-const ODDS = Object.freeze({ common: 50, rare: 30, epic: 15, legendary: 5 });
-// Tier weights are probabilities for the whole tier, then each eligible tool shares that tier equally.
+// every gadget has its own chance out of 100; the band shows on its button
+const CHANCE = Object.freeze({ painter: 13, balloon: 13, ink: 12, garden: 12, eraser: 9, magnet: 9, hammer: 6, gravity: 6, portal: 5, laser: 5, bomb: 4, railgun: 3, blackhole: 2, foil: 1 });
 // Supplying an RNG makes the public deal reproducible without changing the drawing's own seeded randomness.
 function deal({ random = Math.random, last = '' } = {}) {
-  const roll = () => { const value = Number(random()); return Number.isFinite(value) ? Math.max(0, Math.min(1 - Number.EPSILON, value)) : 0; };
-  const pool = Object.keys(TIER).filter(key => key !== last), tiers = Object.keys(ODDS).filter(tier => pool.some(key => TIER[key] === tier));
-  let value = roll() * tiers.reduce((sum, tier) => sum + ODDS[tier], 0), tier = tiers.at(-1);
-  for (const key of tiers) { value -= ODDS[key]; if (value < 0) { tier = key; break; } }
-  const choices = pool.filter(key => TIER[key] === tier);
-  return choices[Math.floor(roll() * choices.length)];
+  const value = Number(random()), pool = Object.keys(TIER).filter(key => key !== last);
+  let roll = (Number.isFinite(value) ? Math.max(0, Math.min(1 - Number.EPSILON, value)) : 0) * pool.reduce((sum, key) => sum + CHANCE[key], 0);
+  for (const key of pool) { roll -= CHANCE[key]; if (roll < 0) return key; }
+  return pool.at(-1);
 }
 const mount = (opts = {}) => {
 const listeners = [], listen = (target, type, fn, options) => {
@@ -249,7 +247,19 @@ document.documentElement.classList.toggle('chb-reduced', reduce);
 const timers = new Set(), later = (fn, ms) => { const id = setTimeout(() => { timers.delete(id); fn(); }, ms); timers.add(id); return id; };
 const PAGE = () => (typeof opts.root === 'function' ? opts.root() : opts.root) || document.body, OURS = '#chb-tray,#chb-undo,.chb-box,script,style,#chb-layer' + (opts.ours ? ',' + opts.ours : '');
 const splits = [], moved = new Set(), marks = [], lines = new Map(), folds = [], holes = [], returning = new Set();
-const shown = () => { undo.style.display = 'inline'; };
+const shown = () => { undo.style.display = 'inline'; stir(); };
+let stirred = 0, resting = false, restTimer = 0; const REST = 120000, htmlEl = document.documentElement;
+function stir() {
+  stirred = performance.now();
+  if (resting) { resting = false; htmlEl.classList.remove('chb-rest'); physicsView.hold(false); }
+  if (!restTimer) restTimer = setTimeout(rest, REST);
+}
+function rest() {
+  restTimer = 0;
+  const left = REST - (performance.now() - stirred);
+  if (left > 0) restTimer = setTimeout(rest, left); else { resting = true; htmlEl.classList.add('chb-rest'); physicsView.hold(true); }
+}
+const unrest = () => { clearTimeout(restTimer); restTimer = 0; resting = false; htmlEl.classList.remove('chb-rest'); physicsView.hold(false); };
 function place(inner, x, y, box) {
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   s.setAttribute('viewBox', box.join(' '));
@@ -259,37 +269,208 @@ function place(inner, x, y, box) {
   return s;
 }
 const sheet = () => { const s = place('', 0, 0, [0, 0, innerWidth, innerHeight]); s.style.left = s.style.top = '0'; return s; };
+// (words inside a button go with the button, and text kept for screen readers is not on the page)
+const SKIP = OURS + ',.chb-ch,.screenreader-only,.ui-helper-hidden-accessible' + (opts.things === false ? '' : ',button,select,textarea,[role=button],.btn,.Button');
+const textWalker = () =>
+  document.createTreeWalker(PAGE(), NodeFilter.SHOW_TEXT, {
+    acceptNode: n => n.nodeValue.trim() && !n.parentElement.closest(SKIP) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+  });
+// The text nodes and where they lie are read once per gesture (a walk of the page per pointer move is what made the small
+// tools stutter); only the words a tool reaches become letters, the rest of their node stays plain text.
+let textIndex = null, textIndexAt = -1e9;
+function textBoxes() {
+  const now = performance.now(); if (textIndex && now - textIndexAt < 300) { textIndexAt = now; return textIndex; } textIndex = []; textIndexAt = now;
+  const walk = textWalker(); for (let n; (n = walk.nextNode());) textIndex.push({ n, boxes: null });
+  return textIndex;
+}
+const touches = (b, x, y, rad) => b.right > x - rad && b.left < x + rad && b.bottom > y - rad && b.top < y + rad;
 function textNodesNear(x, y, rad) {
-  const out = [],
-    walk = document.createTreeWalker(PAGE(), NodeFilter.SHOW_TEXT, {
-      acceptNode: n => n.nodeValue.trim() && !n.parentElement.closest(OURS + ',.chb-ch') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
-    });
-  for (let n; (n = walk.nextNode());) {
-    const r = document.createRange();
-    r.selectNodeContents(n);
-    for (const b of r.getClientRects()) if (b.right > x - rad && b.left < x + rad && b.bottom > y - rad && b.top < y + rad) { out.push(n); break; }
+  const out = [], range = document.createRange();
+  for (const t of textBoxes()) {
+    if (!t.n.isConnected) continue;
+    if (!t.boxes) { range.selectNodeContents(t.n); t.boxes = [...range.getClientRects()]; }
+    for (const b of t.boxes) if (touches(b, x, y, rad) && inView(b)) { out.push(t.n); break; }
   }
   return out;
 }
-function split(node) {
-  const frag = document.createDocumentFragment();
-  for (const word of node.nodeValue.split(/(\s+)/)) {
-    if (!word) continue;
-    if (/^\s+$/.test(word)) { frag.append(word); continue; }
-    const w = document.createElement('span');
-    w.className = 'chb-word';
-    for (const ch of word) { const s = document.createElement('span'); s.className = 'chb-ch'; s.textContent = ch; w.append(s); }
-    frag.append(w);
-  }
-  const holder = document.createElement('span'); holder.className = 'chb-split'; holder.append(frag); node.replaceWith(holder); splits.push({ holder, node });
+function wordsNear(x, y, rad) {
+  const out = [], range = document.createRange();
+  for (const n of textNodesNear(x, y, rad))
+    for (const m of n.nodeValue.matchAll(/\S+/g)) {
+      range.setStart(n, m.index);
+      range.setEnd(n, m.index + m[0].length);
+      const r = range.getClientRects()[0];
+      if (r && touches(r, x, y, rad) && inView(r)) out.push({ node: n, start: m.index, end: m.index + m[0].length, r });
+    }
+  return out;
 }
-function lettersNear(x, y, rad, test, kept = false) {
-  for (const n of textNodesNear(x, y, rad)) split(n); const out = [];
-  for (const s of PAGE().querySelectorAll('.chb-ch')) {
+// one pass, no reads. (flat: letters that only leave as copies need no word round them, and in the flow they cannot move a line)
+function splitWords(words, flat = false) {
+  for (let i = 0; i < words.length;) { const node = words[i].node, text = node.nodeValue, frag = document.createDocumentFragment(), holder = document.createElement('span'); let at = 0;
+    for (; i < words.length && words[i].node === node; i++) { const { start, end, whole } = words[i], word = text.slice(start, end); if (start > at) frag.append(text.slice(at, start)); at = end;
+      if (whole || flat) { for (const piece of whole ? [word] : word) { const s = document.createElement('span'); s.className = 'chb-ch chb-run'; s.textContent = piece; frag.append(s); } continue; }
+      const w = document.createElement('span');
+      w.className = 'chb-word';
+      for (const ch of word) { const s = document.createElement('span'); s.className = 'chb-ch'; s.textContent = ch; w.append(s); }
+      frag.append(w);
+    }
+    if (at < text.length) frag.append(text.slice(at)); holder.className = 'chb-split'; holder.append(frag); node.replaceWith(holder); splits.push({ holder, node });
+    for (const n of holder.childNodes) if (n.nodeType === 3 && n.nodeValue.trim()) textIndex?.push({ n, boxes: null }); }
+}
+// what the tools have already split, looked up only in the text nodes near the point
+function splitNear(x, y, rad, selector) {
+  const out = new Set();
+  for (const { holder } of splits) if (holder.isConnected && touches(holder.getBoundingClientRect(), x, y, rad)) for (const el of holder.querySelectorAll(selector)) out.add(el);
+  return out;
+}
+// ---------------------------------------------------------------- what is on screen, read without touching the page
+// Budget the pieces, not the text: everything on screen falls, in as many pieces as a smooth frame can carry. Letters on a
+// short page, whole words next, runs of words along their line on a text-heavy one; past that, neighbours share a body.
+// Ranges read the words where they are, so nothing is split or laid out until the pieces are known.
+// Blasts stay in letters on a normal machine. Under the shared budget their outer part goes as whole words, which shows on the floor and in the
+// ring round the hit, and saves about a third of the bomb's main-thread work: this is the one switch.
+// A Chromebook or a small laptop (4 GB or less, or two cores) gets the same effects at a price it can pay: about half the pieces, whole words in the
+// blasts, fewer sparks and smaller canvases. Nothing to turn on; opts.low overrides it for tests.
+const LOW = opts.low ?? ((globalThis.navigator?.deviceMemory || 8) <= 4 || (globalThis.navigator?.hardwareConcurrency || 8) <= 2), FX = LOW ? .45 : 1; globalThis.ReservePlayLow = LOW;
+const WORDS_IN_BLASTS = LOW,
+  blast = (cover, cap = 300) => WORDS_IN_BLASTS ? { cap: Math.round(cap * .6), cover: Math.round(cover * .7), letters: 0, flat: true } : { cap: cover, letters: cover, flat: true };
+const PIECES = LOW ? 170 : 300, CEILING = LOW ? 320 : 600, inView = r => r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+function wordsInView() {
+  const out = [], range = document.createRange(), walk = textWalker();
+  for (let n; (n = walk.nextNode());) { range.selectNodeContents(n); let on = false; for (const b of range.getClientRects()) if (inView(b)) { on = true; break; } if (!on) continue;
+    const found = [...n.nodeValue.matchAll(/\S+/g)], box = m => {
+      range.setStart(n, m.index);
+      range.setEnd(n, m.index + m[0].length);
+      return range.getClientRects()[0];
+    }, first = past => { let lo = 0, hi = found.length; while (lo < hi) { const mid = (lo + hi) >> 1, r = box(found[mid]); if (r && past(r)) hi = mid; else lo = mid + 1; } return lo; };
+    // (a node of thousands of words is searched for the part on screen rather than read word by word)
+    const from = found.length > 2000 ? first(r => r.bottom > 0) : 0, to = found.length > 2000 ? first(r => r.top >= innerHeight) : found.length;
+    for (let i = from; i < to; i++) { const m = found[i], r = box(m); if (r && inView(r)) out.push({ node: n, start: m.index, end: m.index + m[0].length, r }); } }
+  return out;
+}
+const lettersOf = words => {
+  const out = [], range = document.createRange();
+  for (const { node, start, end } of words)
+    for (let at = start; at < end;) {
+      const next = at + (node.nodeValue.codePointAt(at) > 65535 ? 2 : 1);
+      range.setStart(node, at);
+      range.setEnd(node, next);
+      const r = range.getClientRects()[0];
+      if (r) out.push({ node, start: at, end: next, r });
+      at = next;
+    }
+  return out;
+};
+function piecesOf(words, budget) {
+  if (words.reduce((n, w) => n + w.end - w.start, 0) <= budget) return lettersOf(words);
+  if (words.length <= budget) return words;
+  for (let run = Math.max(2, Math.ceil(words.length / budget)); ; run = Math.ceil(run * 1.5)) { const out = []; let at = null, n = 0;
+    for (const w of words) {
+      if (at && at.node === w.node && n < run && Math.abs(w.r.top - at.r.top) < at.r.height / 2 && w.r.left >= at.r.right - 1) {
+        at.end = w.end;
+        at.r = { left: at.r.left, top: at.r.top, right: w.r.right, bottom: at.r.bottom, width: w.r.right - at.r.left, height: at.r.height };
+        n++;
+      }
+      else { at = { ...w }; out.push(at); n = 1; }
+    }
+    if (out.length <= budget || run >= words.length) return out; }
+}
+// a page of thousands of tiny labels (a gradebook) has more nodes than runs can join: the copies stop at the ceiling, the largest
+// pieces fall and the smallest labels stay where they are
+const atCeiling = pieces => {
+  if (pieces.length <= CEILING) return pieces;
+  const keep = new Set([...pieces].sort((a, b) => b.r.width * b.r.height - a.r.width * a.r.height).slice(0, CEILING));
+  return pieces.filter(p => keep.has(p));
+};
+// (Home's render reuses elements by position and tag, so a span of ours can become one of its own while pieces are out: it takes
+// the new class, and Put it back then leaves it alone, see below)
+// one pass, no reads: each piece becomes a span in the flow (the line stays exactly as it was), the rest of its node stays plain text
+function wrapPieces(pieces) {
+  for (let i = 0; i < pieces.length;) { const node = pieces[i].node, text = node.nodeValue, one = pieces[i];
+    // (a node that falls whole is its own span: no holder round it)
+    if (pieces[i + 1]?.node !== node && !text.slice(0, one.start).trim() && !text.slice(one.end).trim()) {
+      const s = one.s = document.createElement('span');
+      s.className = 'chb-ch chb-run';
+      s.textContent = text;
+      s._type = one.type;
+      node.replaceWith(s);
+      splits.push({ holder: s, node });
+      i++;
+      continue;
+    }
+    const frag = document.createDocumentFragment(), holder = document.createElement('span'); let at = 0;
+    for (; i < pieces.length && pieces[i].node === node; i++) {
+      const p = pieces[i], s = p.s = document.createElement('span');
+      if (p.start > at) frag.append(text.slice(at, p.start));
+      s.className = 'chb-ch chb-run';
+      s.textContent = text.slice(p.start, p.end);
+      s._type = p.type;
+      frag.append(s);
+      at = p.end;
+    }
+    if (at < text.length) frag.append(text.slice(at)); holder.className = 'chb-split'; holder.append(frag); node.replaceWith(holder); splits.push({ holder, node }); }
+  textIndex = null;
+}
+// past the budget one cell of the screen falls as one torn-off scrap, so the bodies never outnumber the budget
+function clumps(items, budget) {
+  if (items.length <= budget) return items.map(p => [p]);
+  const side = Math.sqrt(innerWidth * innerHeight / budget) * 1.2, cells = new Map();
+  for (const p of items) {
+    const key = Math.floor((p.r.left + p.r.width / 2) / side) + Math.floor((p.r.top + p.r.height / 2) / side) * 4096, cell = cells.get(key);
+    if (cell) cell.push(p); else cells.set(key, [p]);
+  }
+  return [...cells.values()];
+}
+// a wide area that only nudges what it reaches (the railgun's outer ring) does it in pieces, not letters
+function piecesNear(x, y, rad, near, budget) {
+  const pieces = piecesOf(wordsNear(x, y, rad).filter(w => near(w.r.left + w.r.width / 2, w.r.top + w.r.height / 2)), budget); types = new WeakMap();
+  for (const p of pieces) p.type = typeIn(p.node.parentElement); wrapPieces(pieces);
+  return pieces.map(p => ({ s: p.s, r: p.r, cx: p.r.left + p.r.width / 2, cy: p.r.top + p.r.height / 2 }));
+}
+// a copy keeps the page's type. It is read once per parent, before anything is written, so laying the copies down never forces a style recalculation
+let types = new WeakMap(), copies = null;
+const typeIn = el => {
+  let t = types.get(el);
+  if (!t) {
+    const cs = getComputedStyle(el);
+    t = { font: cs.font, color: cs.color, textTransform: cs.textTransform, letterSpacing: cs.letterSpacing, wordSpacing: cs.wordSpacing };
+    types.set(el, t);
+  }
+  return t;
+}, typeOf = s => typeIn(s.parentElement?.classList.contains('chb-painted') ? s : s.parentElement || s);
+// (near: a test that also holds for a whole word; cap: the pieces this tool can use, nearest first by rank. Half of them at most
+// are letters, the nearest; the words round those go whole. letters: a different share of letters. whole: which words may go whole.
+// cover: how many letters' worth of text it reaches, so cutting it into fewer pieces does not make it reach further)
+function lettersNear(x, y, rad, test, kept = false, { near, cap = 0, rank, letters: share = cap / 2, whole, cover = Infinity, flat = false, things = true } = {}) {
+  let words = wordsNear(x, y, rad); if (near) words = words.filter(w => near(w.r.left + w.r.width / 2, w.r.top + w.r.height / 2, w.r));
+  if (cap) {
+    const place = new Map(words.map((w, i) => [w, i])),
+      score = rank || ((cx, cy) => Math.hypot(cx - x, cy - y)),
+      ranked = words.map(w => [score(w.r.left + w.r.width / 2, w.r.top + w.r.height / 2), w]).sort((a, b) => a[0] - b[0]);
+    let used = 0, spent = 0, covered = 0;
+    words = [];
+    for (const [, w] of ranked) {
+      if (spent >= cap || covered >= cover) break;
+      const n = w.end - w.start;
+      covered += n;
+      if (whole ? whole(w.r) : used + n > share) { w.whole = true; spent++; } else { used += n; spent += n; }
+      words.push(w);
+    }
+    words.sort((a, b) => place.get(a) - place.get(b));
+  }
+  const out = [];
+  if (LOW && flat) {
+    types = new WeakMap();
+    for (const w of words) w.type = typeIn(w.node.parentElement);
+    wrapPieces(words);
+    for (const { s, r } of words) { const cx = r.left + r.width / 2, cy = r.top + r.height / 2, d = Math.hypot(cx - x, cy - y); if (test ? test(cx, cy, r) : d <= rad) out.push({ s, r, d, cx, cy }); }
+  }
+  else { splitWords(words, flat);
+  for (const s of splitNear(x, y, rad, '.chb-ch')) {
     if (moved.has(s)) continue;
     const r = s.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, d = Math.hypot(cx - x, cy - y);
     if (test ? test(cx, cy, r) : d <= rad) out.push({ s, r, d, cx, cy });
-  }
+  } }
   // letters already knocked about (resting copies in our layer: knocked askew, piled on the floor) can be hit again,
   // found where they lie now
   if (kept)
@@ -305,17 +486,115 @@ function lettersNear(x, y, rad, test, kept = false) {
     const r = { left, top, width: w, height: h, right: left + w, bottom: top + h }, cx = left + w / 2, cy = top + h / 2, d = Math.hypot(cx - x, cy - y);
     if (test ? test(cx, cy, r) : d <= rad) out.push({ s, r, d, cx, cy });
   }
+  if (things)
+    for (const { el, r } of thingBoxes()) {
+      if (moved.has(el)) continue;
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2, gap = Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
+      if (test ? test(cx, cy, r) : gap <= rad) out.push({ s: el, r, d: Math.hypot(cx - x, cy - y), cx, cy });
+    }
+  types = new WeakMap(); for (const p of out) if (!p.s._thing && !p.s._line && !p.s._dot && !p.s._type) p.s._type = typeOf(p.s);
+  return out;
+}
+// ---------------------------------------------------------------- the rest of the page: pictures, icons, buttons and fields go with the text
+// Each is found once per gesture and moves whole, as a copy in its own look. Not a picture that fills the page, and not on Home (opts.things false),
+// whose shadow styles a copy in our layer cannot reach.
+const THINGS = 'img,svg,canvas,video,button,input:not([type=hidden]),select,textarea,[role=button],.btn,.Button';
+let thingIndex = null, thingsAt = -1e9;
+// list bullets are not text: each is a dot of its own, and its list item loses the marker until Put it back
+const dots = new Map();
+function dotsInView() {
+  const out = []; if (opts.things === false) return out;
+  for (const li of PAGE().querySelectorAll?.('li') || []) {
+    if (dots.has(li) || li.closest(OURS)) continue;
+    const cs = getComputedStyle(li);
+    if (!/disc|circle|square/.test(cs.listStyleType || '')) continue;
+    const r = li.getBoundingClientRect(), size = parseFloat(cs.fontSize) || 14;
+    if (r.width < 6 || !inView(r)) continue;
+    const side = Math.max(4, size * .36), left = r.left - size * .9, top = r.top + size * .45, s = document.createElement('span');
+    s._dot = { li, color: cs.color, inline: li.style.listStyleType };
+    out.push({ s, r: { left, top, width: side, height: side, right: left + side, bottom: top + side } });
+    if (out.length >= 40) break;
+  }
+  return out;
+}
+function thingBoxes() {
+  const now = performance.now(); if (thingIndex && now - thingsAt < 300) return thingIndex; thingsAt = now; thingIndex = []; if (opts.things === false) return thingIndex;
+  const most = innerWidth * innerHeight * .4;
+  for (const el of PAGE().querySelectorAll?.(THINGS) || []) {
+    if (moved.has(el) || el.closest(OURS) || el.parentElement?.closest(THINGS)) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width < 6 || r.height < 6 || r.width * r.height > most || !inView(r)) continue;
+    el._thing = true;
+    thingIndex.push({ el, r });
+  }
+  return thingIndex;
+}
+const LOOK = ['backgroundColor', 'backgroundImage', 'backgroundSize', 'backgroundPosition', 'backgroundRepeat', 'borderTop', 'borderRight', 'borderBottom', 'borderLeft', 'borderRadius', 'boxShadow', 'color', 'font', 'padding', 'textAlign', 'textDecoration', 'textTransform', 'letterSpacing', 'lineHeight', 'objectFit'];
+const lookOf = el => { const cs = getComputedStyle(el), look = {}; for (const k of LOOK) look[k] = cs[k]; return look; };
+function hideLine(L) {
+  let sides = lines.get(L.el);
+  if (!sides) lines.set(L.el, sides = {});
+  if (!sides[L.side]) { sides[L.side] = { ...L, keepRanges: [], inline: L.el.style['border' + L.side + 'Color'], svg: null }; L.el.style['border' + L.side + 'Color'] = 'transparent'; }
+}
+function thingCopy(s, r) {
+  const at = { position: 'absolute', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' };
+  if (s._line) { const c = document.createElement('div'); Object.assign(c.style, at, { background: s._line.color }); hideLine(s._line); return c; }
+  if (s._dot) {
+    const c = document.createElement('div');
+    Object.assign(c.style, at, { background: s._dot.color, borderRadius: '50%' });
+    if (!dots.has(s._dot.li)) { dots.set(s._dot.li, s._dot.inline); s._dot.li.style.listStyleType = 'none'; }
+    return c;
+  }
+  if (s._style === undefined) s._style = s.getAttribute?.('style') ?? null;
+  const c = s.cloneNode(true);
+  c.removeAttribute?.('id');
+  c.setAttribute?.('aria-hidden', 'true');
+  c.setAttribute?.('tabindex', '-1');
+  Object.assign(c.style, s._look || (s._look = lookOf(s)), at, { margin: '0', boxSizing: 'border-box', visibility: 'visible', transition: 'none' });
+  if ('value' in s) c.value = s.value;
+  return c;
+}
+// every ruled line on screen, broken into lengths that fall on their own (a table's worth of cells stops at 80 lengths, the longest lines first)
+function linesInView() {
+  probeLines(60, 12, innerWidth, innerHeight, 120, 24); const out = [], found = [];
+  for (const list of ruled.values())
+    for (const L of list) {
+      const far = L.h ? innerWidth : innerHeight, a = Math.max(0, L.a), b = Math.min(far, L.b);
+      if (lines.get(L.el)?.[L.side] || b - a < 12 || L.pos < 0 || L.pos > (L.h ? innerHeight : innerWidth)) continue;
+      found.push({ L, a, b });
+    }
+  found.sort((p, q) => q.b - q.a - p.b + p.a);
+  for (const { L, a, b } of found) {
+    const n = Math.ceil((b - a) / 110), len = (b - a) / n, pos = L.pos - L.w / 2, w = Math.max(1, L.w);
+    for (let i = 0; i < n && out.length < 80; i++) {
+      const u = a + i * len, s = document.createElement('span');
+      s._line = L;
+      out.push({ s, r: L.h ? { left: u, top: pos, width: len, height: w, right: u + len, bottom: pos + w } : { left: pos, top: u, width: w, height: len, right: pos + w, bottom: u + len } });
+    }
+  }
   return out;
 }
 // a moved letter is a copy in the fixed layer (it can never stretch the page); the real one is only hidden
 function lift(s, r) {
   if (s._body) { const b = s._body; b.parts = b.parts.filter(p => p.s !== s); if (!b.parts.length) physics.remove(b); delete s._body; }
   delete s._physicsPath;
-  if (s._c) { s._c.getAnimations?.().forEach(a => a.cancel()); s._c.remove(); delete s._c; }
-  const cs = getComputedStyle(s), c = document.createElement('span');
-  c.textContent = s.textContent;
-  Object.assign(c.style, { position: 'absolute', left: r.left + 'px', top: r.top + 'px', font: cs.font, color: cs.color, lineHeight: r.height + 'px', whiteSpace: 'pre' });
-  layer.append(c);
+  if (s._c) { s._c.remove(); delete s._c; }
+  if (s._thing || s._line || s._dot) { const c = thingCopy(s, r); (copies || layer).append(c); s.style.visibility = 'hidden'; moved.add(s); return c; }
+  const t = s._type || typeOf(s), c = document.createElement('span');
+  c.textContent = s.classList.contains('chb-run') ? s.textContent.trim().replace(/\s+/g, ' ') : s.textContent;
+  Object.assign(c.style, {
+    position: 'absolute',
+    left: r.left + 'px',
+    top: r.top + 'px',
+    font: t.font,
+    color: t.color,
+    textTransform: t.textTransform,
+    letterSpacing: t.letterSpacing,
+    wordSpacing: t.wordSpacing,
+    lineHeight: r.height + 'px',
+    whiteSpace: 'pre'
+  });
+  (copies || layer).append(c);
   s.style.visibility = 'hidden';
   moved.add(s);
   return c;
@@ -325,10 +604,7 @@ function fly(s, r, k, dur, delay = 0) {
   s._k = k;
   s._d = D(dur);
   c.animate(k, { duration: s._d, delay: D(delay), easing: 'linear', fill: 'forwards' }).onfinish = () => c.remove();
-  if (!reduce)
-    c.animate(
-      [{ textShadow: '0 0 0 rgba(20,20,19,0)' }, { textShadow: '4px 11px 5px rgba(20,20,19,.26)', offset: .25 }, { textShadow: '3px 8px 4px rgba(20,20,19,.2)' }],
-      { duration: s._d, fill: 'forwards' }); }
+  if (!reduce) c.style.textShadow = '3px 8px 4px rgba(20,20,19,.2)'; }
 function keep(s, r, k, dur, easing = 'cubic-bezier(.3,1.4,.5,1)', delay = 0) {
   const c = lift(s, r);
   s._c = c;
@@ -350,28 +626,44 @@ const spiral = (dx, dy, turns = 1.4) => {
 };
 
 // the page's ruled lines (borders) break too: the part inside a blast leaves in pieces, the rest stays
-function bordersNear(x, y, rad) {
-  const out = [];
-  const root = PAGE(); for (const el of [root, ...root.querySelectorAll('*')]) {
-    if (el.closest(OURS)) continue; const cs = getComputedStyle(el), r = el.getBoundingClientRect();
-    if (r.right < x - rad || r.left > x + rad || r.bottom < y - rad || r.top > y + rad) continue;
-    for (const side of ['Top', 'Bottom', 'Left', 'Right']) {
-      const w = parseFloat(cs['border' + side + 'Width']); if (!w || cs['border' + side + 'Style'] === 'none' || /,\s*0\)$/.test(cs['border' + side + 'Color'])) continue;
-      const h = side === 'Top' || side === 'Bottom',
-        pos = side === 'Top' ? r.top + w / 2 : side === 'Bottom' ? r.bottom - w / 2 : side === 'Left' ? r.left + w / 2 : r.right - w / 2,
-        a = h ? r.left : r.top,
-        b = h ? r.right : r.bottom;
-      const dist = Math.abs((h ? y : x) - pos);
-      if (dist >= rad) continue;
-      const half = Math.sqrt(rad * rad - dist * dist), c0 = Math.max(a, (h ? x : y) - half), c1 = Math.min(b, (h ? x : y) + half);
-      if (c1 <= c0) continue;
-      out.push({ el, side, h, pos, a, b, w, color: cs['border' + side + 'Color'], cut: [c0, c1] });
+// (a few hit tests find the boxes near the blast, so the cost follows the blast and not the size of the page: a scan of every
+// element on each pointer move, or on each step along the railgun's shot, is what made those tools stutter. Each box is read
+// once per gesture, and a line already cut is left alone, as its colour has gone)
+let ruled = null, ruledAt = -1e9, probed = new Set();
+function ruledOf(el) {
+  let list = ruled.get(el); if (list) return list; ruled.set(el, list = []); if (el.closest(OURS)) return list; const cs = getComputedStyle(el); let r = null;
+  for (const side of ['Top', 'Bottom', 'Left', 'Right']) {
+    const w = parseFloat(cs['border' + side + 'Width']); if (!w || cs['border' + side + 'Style'] === 'none' || /,\s*0\)$/.test(cs['border' + side + 'Color'])) continue; r ||= el.getBoundingClientRect();
+    const h = side === 'Top' || side === 'Bottom', pos = side === 'Top' ? r.top + w / 2 : side === 'Bottom' ? r.bottom - w / 2 : side === 'Left' ? r.left + w / 2 : r.right - w / 2;
+    list.push({ el, side, h, pos, a: h ? r.left : r.top, b: h ? r.right : r.bottom, w, color: cs['border' + side + 'Color'], r });
+  }
+  return list;
+}
+function probeLines(x0, y0, x1, y1, stepX, stepY) {
+  const now = performance.now(), root = PAGE(), scope = root.getRootNode?.() || document;
+  if (!ruled || now - ruledAt >= 300) { ruled = new Map(); probed = new Set(); for (const el of root.querySelectorAll('hr')) ruledOf(el); } ruledAt = now;   // (a rule is too thin to rely on hitting it)
+  for (let px = x0; px <= x1; px += stepX)
+    for (let py = y0; py <= y1; py += stepY) {
+      const key = Math.round(px / 20) * 16384 + Math.round(py / 20);
+      if (probed.has(key)) continue;
+      probed.add(key);
+      for (const el of scope.elementsFromPoint?.(px, py) || []) if (root.contains(el)) ruledOf(el);
     }
+}
+function bordersNear(x, y, rad, ready = false) {
+  const step = Math.max(20, rad / 3), n = Math.ceil(rad / step), out = []; if (!ready) probeLines(x - n * step, y - n * step, x + n * step, y + n * step, step, step);
+  for (const list of ruled.values())
+    for (const L of list) { const { r, h } = L; if (r.right < x - rad || r.left > x + rad || r.bottom < y - rad || r.top > y + rad || lines.get(L.el)?.[L.side]) continue;
+    const dist = Math.abs((h ? y : x) - L.pos);
+    if (dist >= rad) continue;
+    const half = Math.sqrt(rad * rad - dist * dist), c0 = Math.max(L.a, (h ? x : y) - half), c1 = Math.min(L.b, (h ? x : y) + half);
+    if (c1 <= c0) continue;
+    out.push({ ...L, cut: [c0, c1] });
   }
   return out;
 }
-function breakLines(x, y, rad, how = 'out', force = 1) {
-  for (const L of bordersNear(x, y, rad)) {
+function breakLines(x, y, rad, how = 'out', force = 1, ready = false) {
+  for (const L of bordersNear(x, y, rad, ready)) {
     let sides = lines.get(L.el); if (!sides) lines.set(L.el, sides = {}); let rec = sides[L.side];
     if (!rec) { rec = sides[L.side] = { ...L, keepRanges: [[L.a, L.b]], inline: L.el.style['border' + L.side + 'Color'], svg: sheet() }; L.el.style['border' + L.side + 'Color'] = 'transparent'; }
     const [c0, c1] = L.cut, next = [], gone = [];
@@ -399,6 +691,8 @@ function breakLines(x, y, rad, how = 'out', force = 1) {
   }
 }
 const mark = el => { marks.push(el); return el; };
+// (a page element we only styled for a while gets no empty style attribute left behind)
+const tidy = el => { if (!el.getAttribute('style')) el.removeAttribute('style'); };
 // what a closed black hole leaves (a pinhole, the back end still turning in it) can itself be broken: anything that hits
 // it makes it pop (a flash and a puff of 0 and 1), another black hole swallows it, the foil flattens it
 const PINS = [];
@@ -426,7 +720,7 @@ function breakPins(test, how = 'pop', delayOf = () => 0) {
         { duration: D(420), easing: 'cubic-bezier(.4,0,.7,1)', fill: 'forwards' }).onfinish = () =>
         el.remove();
       if (!reduce)
-        for (let k = 0; k < 12; k++) {
+        for (let k = 0; k < 12 * FX; k++) {
           const d = document.createElement('span');
           d.textContent = rnd() < .5 ? '0' : '1';
           Object.assign(d.style, {
@@ -493,6 +787,7 @@ const fallShadow = (d, from, to, dur, delay = 0, easing = 'ease-in') => {
 
 // the page jolts: amplitude, length and character differ per weapon (the bomb jolts hard, the railgun kicks sideways,
 // the black hole rumbles low and long, the hammer knocks once, the foil is silent)
+const baseTransform = new WeakMap();
 const SHAKE = {
   foil: [18, 520, 'all'],
   foiljolt: [8, 240, 'y'],
@@ -518,10 +813,13 @@ function shake(kind) {
     const f = how === 'build' ? (i === n ? 0 : .45 + .55 * Math.pow(i / n, 1.4)) : how === 'rumble' ? (i === 0 || i === n ? 0 : Math.sin(i / n * Math.PI)) : (1 - i / n) ** 2, a = amp * f;
     const dx = how === 'y' ? 0 : J(a), dy = how === 'x' ? J(a * .15) : J(a); k.push({ transform: i === n ? 'none' : `translate(${R(how === 'x' && i < 3 ? -a : dx)}px,${R(dy)}px)` }); }
   // the effects layer shakes with the page, so cracks, scars and falling pieces (even ones added during a long shake) move with it
-  const page = [...document.querySelectorAll(opts.shake || 'body > *:not(#chb-layer)')];
   // Nested Canvas wrappers must not multiply the jolt. The overlay receives the same transform exactly once.
+  // (a jolt laid over a longer rumble takes over for its moment, which nobody can tell from adding to it; 'add' is only kept for
+  // an element with a transform of its own, as replacing would drop that)
+  const page = [...document.querySelectorAll(opts.shake || 'body > *:not(#chb-layer)')];
   for (const el of new Set([...page.filter(el => !page.some(parent => parent !== el && parent.contains?.(el))), layer])) {
-    const animation = el.animate(k, { duration: dur, easing: 'linear', composite: 'add' });
+    if (!baseTransform.has(el)) baseTransform.set(el, getComputedStyle(el).transform);
+    const own = baseTransform.get(el), animation = el.animate(k, { duration: dur, easing: 'linear', composite: own && own !== 'none' ? 'add' : 'replace' });
     pageAnimations.add(animation); animation.onfinish = () => pageAnimations.delete(animation);
   }
 }
@@ -540,24 +838,30 @@ function puffs(x, y, n, spread = 30, rise = 40) {
     [{ transform: 'scale(.3) rotate(0deg)', opacity: 0 }, { transform: `translate(${R(Math.cos(a) * d)}px,${R(Math.sin(a) * d * .6)}px) scale(1.05) rotate(${R(J(10))}deg)`, opacity: 1, offset: .2 }, { transform: `translate(${R(Math.cos(a) * d * 1.35)}px,${R(Math.sin(a) * d * .6 - rise)}px) scale(1.35) rotate(${R(J(20))}deg)`, opacity: 0 }],
     { duration: D(1500 + rnd() * 500), delay: D(40 + i * 25), easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'both' }).onfinish = () =>
     p.remove(); } }
-// hit-stop: everything holds still for a beat on impact, which is what makes a hit feel heavy
+// what the tools have running (not the whole document's: that list grows with the page and with Home's own art)
 function ourAnimations() {
   return [
     ...new Set([
       ...pageAnimations,
       ...folds.map(f => f.a),
       ...[...returning].map(f => f.a),
-      ...[layer, aim, box.querySelector('.chb-box')].flatMap(el => el?.getAnimations?.({ subtree: true }) || [])
+      ...[layer, MUL, OVL, SCR, aim, box.querySelector('.chb-box')].flatMap(el => el?.getAnimations?.({ subtree: true }) || [])
     ])
   ];
 }
-function hitStop(ms) { if (reduce) return; for (const a of ourAnimations()) { if (a.playState === 'running') { a.pause(); setTimeout(() => a.play(), ms); } } }
+// hit-stop: everything holds still for a beat on impact, which is what makes a hit feel heavy
+function hitStop(ms) {
+  if (reduce) return;
+  const list = ourAnimations().filter(a => a.playState === 'running');
+  for (const a of list) a.pause();
+  setTimeout(() => { for (const a of list) a.play(); }, ms);
+}
 // ---------------------------------------------------------------- things thrown to the floor: real falls, bounces and a pile that grows
 // A thrown letter, chip or shard is simulated once (gravity, the sides of the screen, a floor it bounces on and comes to
 // rest on, on top of whatever landed there before) and its path is handed to the Web Animations API as keyframes, so
 // nothing of ours runs per frame. What lands stays on the floor until "Put it back".
-const FLOOR = new Map(), HITS = [], balloons = [];
-const physics = globalThis.ReservePlayPhysics.create({ width: innerWidth, height: innerHeight, floor: FLOOR, reduced: reduce });
+const HITS = [], balloons = [];
+const physics = globalThis.ReservePlayPhysics.create({ width: innerWidth, height: innerHeight, reduced: reduce }), FLOOR = physics.floor;
 const physicsView = globalThis.ReservePlayPhysics.attach(physics, {
   document,
   requestFrame: requestAnimationFrame,
@@ -566,29 +870,31 @@ const physicsView = globalThis.ReservePlayPhysics.attach(physics, {
   onFrame: physicsFrame,
   onRender: drawBalloons
 });
+// one transform per frame, written only when it changed. The way home is sampled as it goes; when it grows long every second
+// stop is dropped, so it never holds more than a smooth half-second walk back can show
 function renderBody(b) {
-  const dx = R(b.x - b.homeX),
-    dy = R(b.y - b.homeY),
-    angle = R(b.angle),
-    c = Math.cos(angle * Math.PI / 180),
-    s = Math.sin(angle * Math.PI / 180),
-    transform = `translate(${dx}px,${dy}px) rotate(${angle}deg)`;
+  const transform = `translate(${R(b.x - b.homeX)}px,${R(b.y - b.homeY)}px) rotate(${R(b.angle)}deg)`;
+  if (transform === b.drawn || !b.parts) return; b.drawn = transform; for (const p of b.parts) p.c.style.transform = transform;
+  const path = b.path; if (!path || restoring || physics.time - (b.sampled || 0) <= .06) return; b.sampled = physics.time; path.push({ transform });
+  if (path.length >= 64) { let kept = 1; for (let i = 2; i < path.length; i += 2) path[kept++] = path[i]; path.length = kept; }
+}
+// where a body's letters are drawn now (only a balloon's string needs to know)
+function boundsOf(b) {
+  const dx = R(b.x - b.homeX), dy = R(b.y - b.homeY), angle = R(b.angle), c = Math.cos(angle * Math.PI / 180), s = Math.sin(angle * Math.PI / 180);
   let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
-  for (const p of b.parts || []) {
-    p.c.style.transform = transform;
+  for (const p of b.parts) {
     const x = p.r.left + p.r.width / 2 - b.homeX,
       y = p.r.top + p.r.height / 2 - b.homeY,
       cx = b.homeX + dx + x * c - y * s,
       cy = b.homeY + dy + x * s + y * c,
       hw = (Math.abs(c) * p.r.width + Math.abs(s) * p.r.height) / 2,
       hh = (Math.abs(s) * p.r.width + Math.abs(c) * p.r.height) / 2;
-    left = Math.min(left, cx - hw); right = Math.max(right, cx + hw); top = Math.min(top, cy - hh); bottom = Math.max(bottom, cy + hh);
-    if (!restoring) {
-      const path = p.s._physicsPath;
-      if (!path.length || physics.time - (p.lastPath || 0) > .06) { path.push({ transform }); p.lastPath = physics.time; if (path.length > 100) path.splice(1, 1); }
-    }
+    left = Math.min(left, cx - hw);
+    right = Math.max(right, cx + hw);
+    top = Math.min(top, cy - hh);
+    bottom = Math.max(bottom, cy + hh);
   }
-  b.bounds = { left, top, right, bottom };
+  return { left, top, right, bottom };
 }
 function liveBody(items) {
   if (!items.length) return null;
@@ -596,31 +902,22 @@ function liveBody(items) {
     top = Math.min(...items.map(p => p.r.top)),
     right = Math.max(...items.map(p => p.r.left + p.r.width)),
     bottom = Math.max(...items.map(p => p.r.top + p.r.height)),
+    path = [{ transform: 'none' }],
     parts = items.map(({ s, r }) => {
     const c = lift(s, r);
     s._c = c;
-    s._physicsPath = [{ transform: 'none' }];
+    s._physicsPath = path;
     c.classList.add('chb-physics-body');
     Object.assign(c.style, { width: r.width + 'px', height: r.height + 'px', boxSizing: 'border-box', transformOrigin: `${(left + right) / 2 - r.left}px ${(top + bottom) / 2 - r.top}px` });
     return { s, c, r };
-  }),
-  b = physics.add({
-    x: (left + right) / 2,
-    y: (top + bottom) / 2,
-    width: right - left,
-    height: bottom - top,
-    homeX: (left + right) / 2,
-    homeY: (top + bottom) / 2,
-    bounds: { left, top, right, bottom },
-    parts
-  });
+  }), b = physics.add({ x: (left + right) / 2, y: (top + bottom) / 2, width: right - left, height: bottom - top, homeX: (left + right) / 2, homeY: (top + bottom) / 2, parts, path });
   for (const p of parts) p.s._body = p.c._body = b;
   shown();
   return b;
 }
 function wordAt(x, y) {
-  for (const n of textNodesNear(x, y, 12)) split(n);
-  for (const w of PAGE().querySelectorAll('.chb-word')) {
+  splitWords(wordsNear(x, y, 12));
+  for (const w of splitNear(x, y, 12, '.chb-word')) {
     const r = w.getBoundingClientRect();
     if (x < r.left - 3 || x > r.right + 3 || y < r.top - 4 || y > r.bottom + 4) continue;
     const items = [...w.children].filter(s => !moved.has(s)).map(s => ({ s, r: s.getBoundingClientRect() }));
@@ -650,19 +947,23 @@ function drawBalloons() {
   for (const b of [...balloons]) {
     if (b.body.retired) { b.el.remove(); b.string.remove(); balloons.splice(balloons.indexOf(b), 1); continue; }
     b.el.style.transform = `translate(${b.x}px,${b.y}px)`;
-    const bounds = b.body.bounds, dx = (bounds.left + bounds.right) / 2 - b.x, dy = bounds.top - b.y - 1, length = Math.hypot(dx, dy);
+    const bounds = boundsOf(b.body), dx = (bounds.left + bounds.right) / 2 - b.x, dy = bounds.top - b.y - 1, length = Math.hypot(dx, dy);
     b.thread.setAttribute('d', `M0 0L${length} 0`);
     b.string.style.transformOrigin = '0 50%';
     b.string.style.transform = `translate(${b.x}px,${b.y + 1}px) rotate(${Math.atan2(dy, dx) * 180 / Math.PI}deg)`;
   }
 }
+listen(document, 'scroll', () => { ruled = textIndex = thingIndex = null; }, true);
 listen(globalThis, 'resize', () => {
+  ruled = textIndex = thingIndex = null;
   physics.resize(innerWidth, innerHeight);
   for (const p of portals) { p.x = Math.max(4, Math.min(innerWidth - 4, p.x)); p.y = Math.max(4, Math.min(innerHeight - 4, p.y)); drawPortal(p); }
   syncPortals();
 });
 // the rendered marks (play-space.js): a canvas laid under the flying letters, run on animation frames until it settles
 const SPX = () => globalThis.ReservePlaySpace, liveCanvas = cls => { const cv = document.createElement('canvas'); cv.className = cls; layer.prepend(cv); return cv; };
+// (a weak machine draws the big canvases every other frame)
+const everyOther = () => { let n = 0; return () => !LOW || ++n % 2 === 0; };
 const run = (cv, anim) => {
   const t0 = performance.now(), tick = now => { if (!cv.isConnected) return; anim.frame((now - t0) / 1000); if (!anim.done) requestAnimationFrame(tick); };
   requestAnimationFrame(tick);
@@ -809,7 +1110,12 @@ function boom(x, y) {
   }
   // the letters in the blast are thrown, bounce and pile up on the floor; those the shockwave reaches further out are
   // knocked askew and stay that way
-  let n = 0; for (const { s: l, r, d, cx, cy } of lettersNear(x, y, R0 * 2.3, undefined, true).sort((p, q) => p.d - q.d)) { if (++n > 520) break; const a = Math.atan2(cy - y, cx - x);
+  // (a burst this size goes in two tasks, a frame apart, which nobody can see; the jolt waits for the second so bullet time takes every letter)
+  bordersNear(x, y, R0 * .8);
+  const thrown = lettersNear(x, y, R0 * 2.3, undefined, true, blast(520)).sort((p, q) => p.d - q.d).slice(0, 520),
+    rest = thrown.splice(Math.ceil(thrown.length / 2)),
+    throwOne = ({ s: l, r, d, cx, cy }) => {
+    const a = Math.atan2(cy - y, cx - x);
     if (d <= R0) {
       const f = (1 - d / R0) * .75 + .35, [k, dur] = toss(cx, cy, Math.cos(a) * f * 780 + J(90), Math.sin(a) * f * 520 - 560 * f - 120 + J(60), J(900), r.height);
       keep(l, r, k, dur, 'linear');
@@ -817,8 +1123,8 @@ function boom(x, y) {
     else {
       const f = 1 - (d - R0) / (R0 * 1.3), push = 3 + 11 * f;
       keep(l, r, [{ transform: 'none' }, { transform: `translate(${R(Math.cos(a) * push * 1.6)}px,${R(Math.sin(a) * push - 4 * f)}px) rotate(${R(J(16) * f)}deg)`, offset: .4 }, { transform: `translate(${R(Math.cos(a) * push)}px,${R(Math.sin(a) * push * .6)}px) rotate(${R(J(12) * f)}deg)` }], 420, 'cubic-bezier(.2,.9,.3,1)', (d - R0) / 1.1);
-    } }
-  breakLines(x, y, R0 * .8); shake('bomb'); hitStop(70); slowmo(.3, 380); shown();
+    } };
+  thrown.forEach(throwOne); later(() => { rest.forEach(throwOne); breakLines(x, y, R0 * .8); shake('bomb'); hitStop(70); slowmo(.3, 380); shown(); }, 0);
   if (!reduce) {
     const wf = fxEl(SCR, innerWidth / 2, innerHeight / 2, innerWidth, innerHeight, { background: 'rgb(255,250,236)' });
     wf.animate([{ opacity: .95 }, { opacity: 0 }], { duration: 240, easing: 'ease-out', fill: 'forwards' }).onfinish = () => wf.remove();
@@ -913,7 +1219,7 @@ function strike(x, y, n) {
     { duration: D(260 + n * 60), easing: 'ease-out' }); }
   hitStop(40 + n * 25);
   if (n >= 3) shatter(x, y);
-  else for (const { s, r, d } of lettersNear(x, y, rad, undefined, true)) {
+  else for (const { s, r, d } of lettersNear(x, y, rad, undefined, true, { cap: PIECES, letters: PIECES })) {
     const f = 1 - d / rad;
     keep(
       s,
@@ -945,17 +1251,23 @@ function shatter(x, y) {
     mark(place(PA ? fresh(pickOf(PA.scar)) : scarSVG(50), x, y, [-95, -62, 190, 124])).animate(
       [{ opacity: 0, transform: 'scale(.5)' }, { opacity: 1, transform: 'none' }],
       { duration: D(260), easing: 'ease-out', fill: 'backwards' });   // (the third rendered dent tears its own hole)
+  const nearHit = [];
   for (const l of moved) {
     const c = l._c;
     if (!c || l._halves || !c.isConnected) continue;
     const b = c.getBoundingClientRect(), cx = b.left + b.width / 2, cy = b.top + b.height / 2;
-    if (Math.hypot(cx - x, cy - y) > 96) continue;
-    const cur = getComputedStyle(c).transform, mid = cur === 'none' ? '' : cur, [k, dur] = toss(cx, cy, J(160), -60 - rnd() * 120, J(500), b.height, mid);
-    c.getAnimations().forEach(a => a.cancel());
+    if (Math.hypot(cx - x, cy - y) <= 96) nearHit.push({ c, b, cx, cy, cur: getComputedStyle(c).transform, running: c.getAnimations() });
+  }
+  for (const { c, b, cx, cy, cur, running } of nearHit) {
+    const mid = cur === 'none' ? '' : cur, [k, dur] = toss(cx, cy, J(160), -60 - rnd() * 120, J(500), b.height, mid);
+    running.forEach(a => a.cancel());
     c.style.transform = mid;
     c.animate(k, { duration: D(dur), easing: 'linear', fill: 'forwards' });
   }
-  for (const { s: l, r, cx, cy } of lettersNear(x, y, 96)) { const [k, dur] = toss(cx, cy, J(160), -60 - rnd() * 160, J(500), r.height); keep(l, r, k, dur, 'linear', rnd() * 120); }
+  for (const { s: l, r, cx, cy } of lettersNear(x, y, 96, undefined, false, { cap: PIECES, letters: PIECES })) {
+    const [k, dur] = toss(cx, cy, J(160), -60 - rnd() * 160, J(500), r.height);
+    keep(l, r, k, dur, 'linear', rnd() * 120);
+  }
   if (!reduce)
     for (let i = 0; i < 14; i++) {
       const sx = x + J(60), sy = y + J(36), sc = .7 + rnd() * .7, sd = mark(place(shardSVG(), sx, sy, [-16, -16, 32, 32])), [k, dur] = toss(sx, sy, J(220), -80 - rnd() * 200, J(700), 10);
@@ -999,8 +1311,8 @@ function laser(x, y, first) {
     beam.svg.querySelector('.bits').insertAdjacentHTML('beforeend', `<text class="chb-blink" style="animation-delay:${R(beam.n * .08 % 2.4)}s" x="${R((x + lx) / 2)}" y="${R((y + ly) / 2)}" font-size="5" fill="${DATA2}" ${MONO} text-anchor="middle" dominant-baseline="middle" transform="rotate(${R(a)} ${R((x + lx) / 2)} ${R((y + ly) / 2)})">${bits(Math.max(1, Math.round(step / 3.6)))}</text>`);
   }
   // a letter the beam passes through is cut in two: the halves part along the cut and the lower one slips
-  for (const { s, r } of lettersNear(x, y, 9)) {
-    const cs = getComputedStyle(s), half = (top) => {
+  for (const { s, r } of lettersNear(x, y, 9, undefined, false, { things: false })) {
+    const cs = s._type, half = (top) => {
       const c = document.createElement('span');
       c.textContent = s.textContent;
       Object.assign(c.style, {
@@ -1099,10 +1411,18 @@ function dropOut(poly, hinge) {
   Object.assign(piece.style, { position: 'absolute', left: R(x0) + 'px', top: R(y0) + 'px', width: R(w) + 'px', height: R(h) + 'px', transformOrigin: `${R(hinge[0] - x0)}px ${R(hinge[1] - y0)}px` });
   wrap.append(piece);
   piece.innerHTML = `<svg viewBox="${R(x0)} ${R(y0)} ${R(w)} ${R(h)}" style="left:0;top:0;width:${R(w)}px;height:${R(h)}px"><path d="${path}" fill="${paper}"/><path d="${path}" fill="none" stroke="#3A2414" stroke-width="2.6" stroke-opacity=".8"/><path d="${path}" fill="none" stroke="${GOLD}" stroke-width=".8" stroke-opacity=".7"/></svg>`;
-  for (const { s, r } of lettersNear(x0 + w / 2, y0 + h / 2, Math.hypot(w, h) / 2 + 4, (lx, ly) => inside(lx, ly))) {
-    const cs = getComputedStyle(s), c = document.createElement('span');
+  for (const { s, r } of lettersNear(
+    x0 + w / 2,
+    y0 + h / 2,
+    Math.hypot(w, h) / 2 + 4,
+    (lx, ly) => inside(lx, ly),
+    false,
+    { cap: PIECES, letters: PIECES, whole: b => inside(b.left, b.top) && inside(b.right, b.top) && inside(b.left, b.bottom) && inside(b.right, b.bottom) })) {
+    if (s._thing) { piece.append(thingCopy(s, { ...r, left: r.left - x0, top: r.top - y0 })); s.style.visibility = 'hidden'; moved.add(s); continue; }
+    const cs = s._type, c = document.createElement('span');
     c.textContent = s.textContent;
     Object.assign(c.style, { position: 'absolute', left: R(r.left - x0) + 'px', top: R(r.top - y0) + 'px', font: cs.font, color: cs.color, lineHeight: r.height + 'px', whiteSpace: 'pre' });
+    if (s.classList.contains('chb-run')) c.textContent = s.textContent.trim().replace(/\s+/g, ' ');
     piece.append(c);
     s.style.visibility = 'hidden';
     moved.add(s);
@@ -1234,7 +1554,7 @@ function railgun(x, y) {
       river2.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: 300, fill: 'backwards' });
       mark(river2);
       // the 0 and 1 break out of the rift and rain down
-      for (let i = 0; i < 64; i++) {
+      for (let i = 0; i < 64 * FX; i++) {
         const u = a + rnd() * (b - a), d = document.createElement('span');
         d.textContent = rnd() < .5 ? '0' : '1';
         Object.assign(d.style, {
@@ -1250,15 +1570,22 @@ function railgun(x, y) {
         const [k, dur] = toss(u, y, J(220), -(260 + rnd() * 520), J(720), 14);
         d.animate(k, { duration: dur, delay: 200 + Math.abs(u - start) / (b - a) * 260 + rnd() * 240, easing: 'linear', fill: 'both' });
       } }
-    let torn = 0;
-    for (const { s, r, cx, cy } of lettersNear(x, y, 9999, (cx, cy) => Math.abs(cy - y) < HW + 8, true)) {
-      if (++torn > 420) break;
+    probeLines(a, y - HW, b, y + HW, 44, 22);   // (before anything on the page changes: a hit test after a write lays the whole page out again)
+    for (const {
+      s,
+      r,
+      cx,
+      cy
+    } of lettersNear(x, y, 9999, (cx, cy) => Math.abs(cy - y) < HW + 8, true, { ...blast(420, 200), near: (cx, cy) => Math.abs(cy - y) < HW + 8, rank: (cx, cy) => Math.abs(cy - y) }).slice(
+      0,
+      420)) {
       const side = cy < y ? -1 : 1, delay = Math.abs(cx - x0) / Math.abs(x1 - x0) * 220, [k, dur] = toss(cx, cy, dir * (180 + rnd() * 420), side * (160 + rnd() * 280) - 140, J(800), r.height);
       keep(s, r, k, dur, 'linear', delay);
     }
-    for (const { s, r, cx, cy } of lettersNear(x, y, 9999, (cx, cy) => Math.abs(cy - y) >= HW + 8 && Math.abs(cy - y) < HW + 90)) {
-      const side = cy < y ? -1 : 1, f = 1 - (Math.abs(cy - y) - HW - 8) / 82, delay = Math.abs(cx - x0) / Math.abs(x1 - x0) * 220;
-      keep(s, r, [{ transform: 'none' }, { transform: `translate(${R(dir * 6 * f)}px,${R(side * (8 + rnd() * 8) * f)}px) rotate(${R(J(14) * f)}deg)`, offset: .35 }, { transform: `translate(${R(dir * 3 * f)}px,${R(side * (4 + rnd() * 5) * f)}px) rotate(${R(J(10) * f)}deg)` }], 420, 'cubic-bezier(.2,.9,.3,1)', delay); }
+    later(() => {
+      for (const { s, r, cx, cy } of piecesNear(x, y, 9999, (cx, cy) => Math.abs(cy - y) >= HW + 8 && Math.abs(cy - y) < HW + 90, WORDS_IN_BLASTS ? 136 : 300)) {
+        const side = cy < y ? -1 : 1, f = 1 - (Math.abs(cy - y) - HW - 8) / 82, delay = Math.abs(cx - x0) / Math.abs(x1 - x0) * 220;
+      keep(s, r, [{ transform: 'none' }, { transform: `translate(${R(dir * 6 * f)}px,${R(side * (8 + rnd() * 8) * f)}px) rotate(${R(J(14) * f)}deg)`, offset: .35 }, { transform: `translate(${R(dir * 3 * f)}px,${R(side * (4 + rnd() * 5) * f)}px) rotate(${R(J(10) * f)}deg)` }], 420, 'cubic-bezier(.2,.9,.3,1)', delay); } }, 0);
     if (!reduce) { // where the slug leaves the screen, a burst; along the trench, smoke rising
       const ex = left ? innerWidth - 10 : 10;
       light(ex, y, 160, '255,222,150', 500, 1);
@@ -1266,7 +1593,7 @@ function railgun(x, y) {
       eb.animate([{ transform: 'scale(.2)', opacity: 1 }, { transform: 'scale(1.2)', offset: .35 }, { transform: 'scale(.6)', opacity: 0 }], { duration: 420, delay: 200, fill: 'both' }).onfinish = () =>
         eb.remove();
       for (let u = a + 40, i = 0; u < b; u += 110, i++) later(() => puffs(u, y, 1, 10, 46), 240 + i * 40); }
-    for (let u = a; u < b; u += 16) breakLines(u, y, HW, 'out', .7); shake('railgun');
+    for (let u = a; u < b; u += 16) breakLines(u, y, HW, 'out', .7, true); shake('railgun');
     gun.animate([{ opacity: 1 }, { opacity: 0 }], { duration: D(500), delay: D(500), fill: 'forwards' }).onfinish = () => gun.remove();
     gsh.animate([{ opacity: gsh.style.opacity }, { opacity: 0 }], { duration: D(500), delay: D(500), fill: 'forwards' }).onfinish = () => gsh.remove();
     shown();
@@ -1302,9 +1629,9 @@ function blackhole(x, y) {
   if (SP?.hole) { // it opens in the page: its pull reaches further and further, the page cracks and breaks in toward it (play-space.js)
     const cv = document.createElement('canvas'), dk = document.createElement('canvas'); cv.className = 'chb-space'; dk.className = 'chb-space-dark'; layer.prepend(cv); layer.append(dk);
     space = SP.hole(cv, x, y, { reduce, paper: paperAt(x, y), dark: dk }); g = cv; reach = space.reachMax; timeAt = d => space.timeAt(d) * 1000;
-    const t0 = performance.now(), tick = now => {
+    const t0 = performance.now(), draw = everyOther(), tick = now => {
       if (!cv.isConnected) { dk.remove(); return; }
-      space.frame(reduce ? 2.6 * 2 : (now - t0) / 1000);
+      if (draw()) space.frame(reduce ? 2.6 * 2 : (now - t0) / 1000);
       if (space.done) { cv.remove(); dk.remove(); } else requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
@@ -1315,7 +1642,11 @@ function blackhole(x, y) {
     space = SP.open(cv, { size: Math.min(620, Math.max(420, innerWidth * .42)), reduce });
     Object.assign(cv.style, { position: 'absolute', left: R(x - space.W / 2) + 'px', top: R(y - space.H / 2) + 'px', pointerEvents: 'none' });
     g = cv;
-    const t0 = performance.now(), tick = now => { if (!cv.isConnected) return; space.frame(reduce ? 1.6 : (now - t0) / 1000); if (space.done) cv.remove(); else requestAnimationFrame(tick); };
+    const t0 = performance.now(), draw = everyOther(), tick = now => {
+      if (!cv.isConnected) return;
+      if (draw()) space.frame(reduce ? 1.6 : (now - t0) / 1000);
+      if (space.done) cv.remove(); else requestAnimationFrame(tick);
+    };
     requestAnimationFrame(tick);
   }
   else {
@@ -1325,8 +1656,13 @@ function blackhole(x, y) {
     g.animate([{ transform: 'scale(0) rotate(-40deg)' }, { transform: 'scale(1.12)', offset: .7 }, { transform: 'none' }], { duration: D(600), easing: 'cubic-bezier(.2,.8,.3,1)' });
   }
   // its pull reaches further as it grows: each letter goes when the pull reaches it, nearest first, more and more
-  let n = 0; const leaning = [], edge = reach * .9; for (const { s, r, d, cx, cy } of lettersNear(x, y, reach + edge, undefined, true).sort((p, q) => p.d - q.d)) { if (++n > 520) break;
-    if (d <= reach) { fly(s, r, spiral(cx - x, cy - y), space?.timeAt ? 1200 + d * 2.6 : 700 + d * 7, timeAt(d)); continue; }
+  bordersNear(x, y, R0 * .8);
+  const leaning = [],
+    edge = reach * .9,
+    taken = lettersNear(x, y, reach + edge, undefined, true, blast(520)).sort((p, q) => p.d - q.d).slice(0, 520),
+    later2 = taken.splice(Math.ceil(taken.length / 2)),
+    takeOne = ({ s, r, d, cx, cy }) => {
+    if (d <= reach) { fly(s, r, spiral(cx - x, cy - y), space?.timeAt ? 1200 + d * 2.6 : 700 + d * 7, timeAt(d)); return; }
     // further out: pulled a little way in, turned and drawn out toward it (stretched along the pull)
     const f = 1 - (d - reach) / edge, a = Math.atan2(y - cy, x - cx), deg = R(a * 180 / Math.PI), pull = 4 + 16 * f;
     leaning.push({
@@ -1339,7 +1675,8 @@ function blackhole(x, y) {
         space?.timeAt ? timeAt(Math.min(d, reach * 1.3)) * .6 : 0),
       a,
       f
-    }); }
+    }); };
+  taken.forEach(takeOne); later(() => later2.forEach(takeOne), 0);
   // (spiral() takes the vector from the hole to the letter, so the letters fall in)
   // the page itself bends toward it: each block near it is drawn in, turned and shrunk a little (springs back when it closes)
   const pulled = []; if (!reduce) for (const el of [...document.querySelectorAll(opts.blocks || 'body > *')].filter(el => !el.closest('.chb-box, #chb-layer') && !el.querySelector('.chb-box'))) {
@@ -1370,7 +1707,7 @@ function blackhole(x, y) {
       sw.animate([{ transform: 'scale(.2)', opacity: 1 }, { transform: 'scale(7)', opacity: 0 }], { duration: 560, delay: 380, easing: 'cubic-bezier(.1,.6,.3,1)', fill: 'both' }).onfinish = () =>
         sw.remove();
       later(() => shake('bhclose'), 380);
-      for (let i = 0; i < 44; i++) {
+      for (let i = 0; i < 44 * FX; i++) {
         const up = i % 2 ? -1 : 1, d = document.createElement('span');
         d.textContent = rnd() < .5 ? '0' : '1';
         Object.assign(d.style, {
@@ -1460,9 +1797,9 @@ function foil(x, y) {
       const cv = document.createElement('canvas');
       cv.className = 'chb-strike';
       layer.append(cv);
-      const st = SPC.foil(cv, x, y, { speed: SPEED * 1000, cols }), t0 = performance.now(), tick = now => {
+      const st = SPC.foil(cv, x, y, { speed: SPEED * 1000, cols }), t0 = performance.now(), draw = everyOther(), tick = now => {
         if (!cv.isConnected) return;
-        st.frame((now - t0) / 1000);
+        if (draw()) st.frame((now - t0) / 1000);
         if (st.done) cv.remove(); else requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
@@ -1479,8 +1816,19 @@ function foil(x, y) {
           wf.remove(); }
       // every letter on screen is smeared flat onto the line as the wavefront reaches it
       let n = 0;
-      for (const { s: l, r, cy } of lettersNear(x, y, Math.max(innerWidth, innerHeight) * 1.5, (cx, cy) => cy > -20 && cy < innerHeight + 20).sort((p, q) => Math.abs(p.cy - y) - Math.abs(q.cy - y))) {
-        if (++n > 900) break;
+      for (const {
+        s: l,
+        r,
+        cy
+      } of lettersNear(
+        x,
+        y,
+        Math.max(innerWidth, innerHeight) * 1.5,
+        (cx, cy) => cy > -20 && cy < innerHeight + 20,
+        false,
+        { cap: PIECES, cover: 900, flat: true, rank: (cx, cy) => Math.abs(cy - y) }).sort((p, q) =>
+        Math.abs(p.cy - y) - Math.abs(q.cy - y))) {
+        if (++n > PIECES) break;
         keep(
           l,
           r,
@@ -1518,18 +1866,39 @@ function foil(x, y) {
 }
 // ---------------------------------------------------------------- eraser, magnet, ink
 let eraserEl = null;
+let rubbed = null;
 function erase(x, y) {
+  if (!rubbed?.isConnected) rubbed = flatSheet();
+  const rub = rubbed.getContext?.('2d');
+  if (rub) {
+    rub.lineCap = 'round';
+    rub.lineWidth = 24 + J(3);
+    rub.strokeStyle = 'rgba(232,167,156,.07)';
+    rub.beginPath();
+    rub.moveTo(eraserEl?._px ?? x, eraserEl?._py ?? y);
+    rub.lineTo(x + .1, y);
+    rub.stroke();
+    rub.lineWidth = 1;
+    rub.strokeStyle = 'rgba(120,70,60,.08)';
+    for (let i = 0; i < 3; i++) { const o = J(10); rub.beginPath(); rub.moveTo((eraserEl?._px ?? x) + o, (eraserEl?._py ?? y) + o); rub.lineTo(x + o, y + o + .1); rub.stroke(); }
+  }
   if (!eraserEl) { eraserEl = place(ART.eraser(), 0, 0, [-19, -11, 34, 26]); eraserEl.style.filter = 'drop-shadow(1px 2px 1px rgba(20,20,19,.3))'; eraserEl._sh = shadow(x, y, 36, .08); }
   eraserEl.style.left = x + 'px';
   eraserEl.style.top = y + 'px';
+  eraserEl._px = x;
+  eraserEl._py = y;
   moveShadow(eraserEl._sh, x, y);
-  if (rnd() < .3) { const r = mark(fxEl(SCR, x, y + 2, 26, 18, { background: soft('255,255,250', .4, .5) })); r.style.transform = `rotate(${R(J(20))}deg)`; }
   for (const { s, r } of lettersNear(x, y, 11)) {
     const c = lift(s, r);
     c.animate([{ opacity: 1 }, { opacity: 0, transform: 'translate(1px,2px) scale(.6)' }], { duration: D(260), fill: 'forwards' }).onfinish = () => c.remove();
-    {
-      const b0 = rnd() < .5, dl = R(rnd() * 4);
-      mark(place(`<g class="chb-flipA" style="animation-delay:${dl}s"><text x="0" y="3" text-anchor="middle" ${MONO} font-size="${R(r.height * .62)}" fill="${DATAINK}" opacity=".75">${b0 ? '0' : '1'}</text></g><g class="chb-flipB" style="animation-delay:${dl}s"><text x="0" y="3" text-anchor="middle" ${MONO} font-size="${R(r.height * .62)}" fill="${DATAINK}" opacity=".75">${b0 ? '1' : '0'}</text></g>`, r.left + r.width / 2, r.top + r.height / 2, [-6, -8, 12, 16]));
+    if (rub && r.width < 40) {
+      rub.globalAlpha = .78;
+      rub.fillStyle = DATAINK;
+      rub.font = `700 ${R(r.height * .62)}px Consolas,'Courier New',monospace`;
+      rub.textAlign = 'center';
+      rub.textBaseline = 'middle';
+      rub.fillText(rnd() < .5 ? '0' : '1', r.left + r.width / 2, r.top + r.height / 2);
+      rub.globalAlpha = 1;
     }
     if (rnd() < .35) {
       const cx = x + J(6),
@@ -1540,41 +1909,41 @@ function erase(x, y) {
     } }
   breakLines(x, y, 9, 'drop'); if (PINS.length) breakPins((px, py) => Math.hypot(px - x, py - y) < 18); shown();
 }
-let magnetEl = null, caught = [], magnetX = 0, magnetY = 0, polarity = 1;
+let magnetEl = null, caught = [], magnetX = 0, magnetY = 0, polarity = 1, clumped = 0; const inClump = new Set();
 function magnet(x, y) {
   magnetX = x;
   magnetY = y;
   if (!magnetEl) { magnetEl = mark(place(magnetArt(false), 0, 0, [-26, -32, 52, 64])); magnetEl.classList.add('chb-magnet-live'); polarity = 1; }
   magnetEl.style.transform = 'translate(' + R(x) + 'px,' + R(y) + 'px)';
-  physics.setAttractor('magnet', { x, y, radius: 150, strength: polarity * 11000 });
-  const nearby = lettersNear(x, y, 130).sort((a, b) => a.d - b.d);
-  for (const p of nearby) {
-    if (polarity > 0 && caught.reduce((n, k) => n + k.body.parts.length, 0) >= 160) break;
-    const body = liveBody([p]);
-    if (polarity < 0) { const dx = body.x - x, dy = body.y - y, d = Math.hypot(dx, dy) || 1; physics.force(body, dx / d * 850, dy / d * 850 - 120); continue; }
-    catchLetter(body);
-  }
-  if (polarity > 0)
-    for (const body of physics.bodies) {
-      if (caught.reduce((n, k) => n + k.body.parts.length, 0) >= 160) break;
-      if (!body.retired && !body.constraint && !body.dragged && Math.hypot(body.x - x, body.y - y) < 150) catchLetter(body);
+  clumped = caught.reduce((n, k) => n + k.body.parts.length, 0);
+  const room = polarity > 0 ? 160 - clumped : 160, nearby = room > 0 ? lettersNear(x, y, 130, undefined, false, { cap: room, letters: room }).sort((a, b) => a.d - b.d) : [];
+  physics.batch(() => { physics.setAttractor('magnet', { x, y, radius: 150, strength: polarity * 11000 });
+    for (const p of nearby) {
+      if (polarity > 0 && clumped >= 160) break;
+      const body = liveBody([p]);
+      if (polarity < 0) { const dx = body.x - x, dy = body.y - y, d = Math.hypot(dx, dy) || 1; physics.force(body, dx / d * 850, dy / d * 850 - 120); continue; }
+      catchLetter(body);
     }
-  for (const k of caught) {
-    if (k.body.constraint) {
-      k.body.constraint.x = x + k.off[0];
-      k.body.constraint.y = y + k.off[1];
-      if (reduce) physics.constrain(k.body, k.body.constraint); else physics.wake(k.body);
-    }
-  }
-  shown();
+    if (polarity > 0)
+      for (const body of physics.bodies) { if (clumped >= 160) break; if (!body.retired && !body.constraint && !body.dragged && Math.hypot(body.x - x, body.y - y) < 150) catchLetter(body); }
+    for (const k of caught) {
+      if (k.body.constraint) {
+        k.body.constraint.x = x + k.off[0];
+        k.body.constraint.y = y + k.off[1];
+        if (reduce) physics.constrain(k.body, k.body.constraint); else physics.wake(k.body);
+      }
+    } });
+    shown();
 }
 function catchLetter(body) {
-  if (caught.some(k => k.body === body) || caught.reduce((n, k) => n + k.body.parts.length, 0) + body.parts.length > 160) return;
-  const i = caught.length, pole = i % 2 ? 1 : -1, ring = Math.floor(i / 12), a = i * 2.39996, radius = 5 + ring * 2.2, off = [pole * 11 + Math.cos(a) * radius, -13 + Math.sin(a) * radius];
+  if (inClump.has(body) || clumped + body.parts.length > 160) return;
+  inClump.add(body);
+  clumped += body.parts.length;
+  const i = caught.length, a = i * 2.39996, radius = 22 + 6.5 * Math.sqrt(i), off = [Math.cos(a) * radius, -13 + Math.sin(a) * radius];
   caught.push({ body, off });
   for (const p of body.parts) p.c.classList.add('chb-magnet-clump');
-  physics.constrain(body, { x: magnetX + off[0], y: magnetY + off[1], stiffness: 115, damping: 15, sway: reduce ? 0 : 1.8 });
-}
+  physics.constrain(body, { x: magnetX + off[0], y: magnetY + off[1], stiffness: 115, damping: 15, sway: reduce ? 0 : 1.8, angle: (a * 180 / Math.PI + 90) % 180 - 90 });
+} // the letters stand around the magnet like filings, each pointing at it, far enough apart to stay letters
 function flipMagnet() {
   if (!magnetEl) return;
   polarity *= -1;
@@ -1582,20 +1951,24 @@ function flipMagnet() {
   magnetEl.innerHTML = magnetArt(polarity < 0);
   physics.removeAttractor('magnet');
   const clump = caught.splice(0);
-  for (const k of clump) { physics.release(k.body); for (const p of k.body.parts) p.c.classList.remove('chb-magnet-clump'); }
-  if (polarity < 0) {
-    for (const b of physics.bodies) {
-      const dx = b.x - magnetX, dy = b.y - magnetY, d = Math.hypot(dx, dy);
-      if (d > 180) continue;
-      physics.force(b, (dx || (b.id % 2 ? -1 : 1)) / (d || 1) * 950, dy / (d || 1) * 950 - 150);
+  inClump.clear();
+  physics.batch(() => {
+    for (const k of clump) { physics.release(k.body); for (const p of k.body.parts) p.c.classList.remove('chb-magnet-clump'); }
+    if (polarity < 0) {
+      for (const b of physics.bodies) {
+        const dx = b.x - magnetX, dy = b.y - magnetY, d = Math.hypot(dx, dy);
+        if (d > 180) continue;
+        physics.force(b, (dx || (b.id % 2 ? -1 : 1)) / (d || 1) * 950, dy / (d || 1) * 950 - 150);
+      }
     }
-  }
+  });
   magnet(magnetX, magnetY);
 }
 function letGo() {
   physics.removeAttractor('magnet');
-  for (const k of caught) { physics.release(k.body); for (const p of k.body.parts) p.c.classList.remove('chb-magnet-clump'); }
+  physics.batch(() => { for (const k of caught) { physics.release(k.body); for (const p of k.body.parts) p.c.classList.remove('chb-magnet-clump'); } });
   caught = [];
+  inClump.clear();
   magnetEl?.remove();
   magnetEl = null;
   polarity = 1;
@@ -1619,9 +1992,21 @@ function ink(x, y) {
     pot.remove();
   later(() => splat(x, y), reduce ? 0 : 780);
 }
+// the blot: lobed and thrown, not a circle; wet ink, lit from the upper left, with the paper soaking it up around the edge
+const blotShape = () => {
+  const n = 28, k = 3 + Math.floor(rnd() * 3), ph = rnd() * 6.28, pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = i / n * 6.2832, w = 1 + .17 * Math.sin(a * k + ph) + .1 * Math.sin(a * (k * 2 + 1) + ph * 1.7) + (rnd() < .2 ? .22 * rnd() : 0);
+    pts.push([Math.cos(a) * 30 * w, Math.sin(a) * 26 * w]);
+  }
+  return pts;
+};
 function splat(x, y) {
-  const col = [DEEP, '#3B3D42', SLATE, SAGE2][Math.floor(rnd() * 4)], blot = ring(0, 0, 24, 20, 12, .28), drips = [0, 1, 2].map(() => [J(16), 12 + rnd() * 6, 4 + rnd() * 3, 20 + rnd() * 26]);
-  const g = mark(place(`<path d="${closed(blot.map(([px, py]) => [px + 1.5, py + 1.5]))}" fill="${col}" opacity=".9"/>${drips.map(([dx, dy, w, h]) => `<g class="drip" style="transform-origin:${R(dx)}px ${R(dy)}px"><path d="M${R(dx - w / 2)} ${R(dy)}L${R(dx - w / 2)} ${R(dy + h)}A${R(w / 2)} ${R(w / 2)} 0 0 0 ${R(dx + w / 2)} ${R(dy + h)}L${R(dx + w / 2)} ${R(dy)}Z" fill="${col}" opacity=".9"/></g>`).join('')}${[0, 1, 2, 3].map(() => { const a = rnd() * 6.28, d = 30 + rnd() * 14; return `<path d="${closed(ring(Math.cos(a) * d, Math.sin(a) * d * .8, 2 + rnd() * 2.4, 2 + rnd() * 2, 6, .2))}" fill="${col}" opacity=".9"/>`; }).join('')}${drips.map(([dx, dy, w, h], i) => `<path class="chb-drop" style="animation-delay:${R(1 + i * .9 + rnd())}s" d="${closed(ring(dx, dy + h + 4, w * .42, w * .55, 6, .05))}" fill="${col}" opacity=".9"/>`).join('')}<g clip-path="url(#chbI${++uid})"><path class="chb-sheen" d="M-30 -30L-22 -30L-40 30L-48 30Z" fill="${PAPER}" opacity=".3"/></g><clipPath id="chbI${uid}"><path d="${closed(blot)}"/></clipPath>${inkP(over(blot), 1.6, .35)}`, x, y, [-46, -40, 92, 110]));
+  const col = [DEEP, '#3B3D42', SLATE, SAGE2][Math.floor(rnd() * 4)], blot = blotShape(), drips = [0, 1, 2].map(() => [J(16), 12 + rnd() * 6, 4 + rnd() * 3, 20 + rnd() * 26]);
+  const g = mark(place(`<path d="${closed(blot.map(([px, py]) => [px * 1.09 + 1, py * 1.09 + 1]))}" fill="${col}" opacity=".2"/><path d="${closed(blot)}" fill="${col}" opacity=".95"/>${drips.map(([dx, dy, w, h]) => `<g class="drip" style="transform-origin:${R(dx)}px ${R(dy)}px"><path d="M${R(dx - w / 2)} ${R(dy)}L${R(dx - w / 2)} ${R(dy + h)}A${R(w / 2)} ${R(w / 2)} 0 0 0 ${R(dx + w / 2)} ${R(dy + h)}L${R(dx + w / 2)} ${R(dy)}Z" fill="${col}" opacity=".9"/></g>`).join('')}${[0, 1, 2, 3, 4, 5, 6, 7, 8].map(() => {
+    const a = rnd() * 6.28, d = 42 + rnd() * rnd() * 46, w = Math.max(1.2, 6.5 - d / 14 + J(1));
+    return `<path transform="translate(${R(Math.cos(a) * d)} ${R(Math.sin(a) * d * .86)}) rotate(${R(a * 57.3)})" d="${closed(ring(0, 0, w * 1.5, w, 7, .12))}" fill="${col}" opacity=".93"/>`;
+  }).join('')}${drips.map(([dx, dy, w, h], i) => `<path class="chb-drop" style="animation-delay:${R(1 + i * .9 + rnd())}s" d="${closed(ring(dx, dy + h + 4, w * .42, w * .55, 6, .05))}" fill="${col}" opacity=".9"/>`).join('')}<g clip-path="url(#chbI${++uid})"><path class="chb-sheen" d="M-30 -30L-22 -30L-40 30L-48 30Z" fill="${PAPER}" opacity=".3"/></g><clipPath id="chbI${uid}"><path d="${closed(blot)}"/></clipPath><radialGradient id="chbG${uid}" cx=".36" cy=".32" r=".82"><stop offset="0" stop-color="#fff" stop-opacity=".3"/><stop offset=".46" stop-color="#fff" stop-opacity="0"/><stop offset=".62" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".42"/></radialGradient><path d="${closed(blot)}" fill="url(#chbG${uid})"/><path d="M-18 -11Q-10 -19 2 -18Q-8 -14 -14 -6Z" fill="${PAPER}" opacity=".72"/><path d="${closed(ring(-19, -2, 1.9, 1.7, 6, .1))}" fill="${PAPER}" opacity=".6"/>${inkP(over(blot), 1.2, .3)}`, x, y, [-46, -40, 92, 110]));
   g.animate([{ transform: 'scale(.2)' }, { transform: 'scale(1.1)', offset: .6 }, { transform: 'none' }], { duration: D(260), easing: 'ease-out' });
   { const rgb = col === DEEP ? '150,60,30' : col === SLATE ? '60,80,100' : col === SAGE2 ? '70,90,50' : '40,42,48'; stain(x, y + 4, 44, 36, rgb, .32, J(30)); stain(x + 2, y + 30, 26, 46, rgb, .16, 0); }
   g.querySelectorAll('.drip').forEach((d, i) =>
@@ -1632,25 +2017,63 @@ function splat(x, y) {
 // ---------------------------------------------------------------- painter: words brushed come alive in a random colour style
 const PAINTS = ['chb-p-wave', 'chb-p-hop', 'chb-p-sweep', 'chb-p-jelly', 'chb-p-stack', 'chb-p-script', 'chb-p-type', 'chb-p-flag'];
 const painted = new Map(); let brush = null;
+// wet paint: one canvas a stroke, so a long stroke costs no more than a short one (every step used to add paths to a page-sized drawing).
+// A broad band of colour under a dozen bristles of its own darker and lighter tones, some running dry for a moment, one catching the light.
+const shade = (hex, t) => {
+  const n = parseInt(hex.slice(1), 16), to = t < 0 ? 0 : 255, k = Math.abs(t), c = s => Math.round(((n >> s) & 255) * (1 - k) + to * k);
+  return `rgb(${c(16)},${c(8)},${c(0)})`;
+};
+function flatSheet(opacity = 1) {
+  const c = document.createElement('canvas'), dpr = Math.min(globalThis.devicePixelRatio || 1, 1.5);
+  c.width = innerWidth * dpr;
+  c.height = innerHeight * dpr;
+  Object.assign(c.style, { position: 'absolute', left: '0', top: '0', width: innerWidth + 'px', height: innerHeight + 'px', opacity });
+  layer.prepend(c);
+  c.getContext?.('2d')?.scale(dpr, dpr);
+  return mark(c);
+}
+const bristles = col =>
+  [...Array(13)].map((_, i) => ({ off: (i - 6) * 1.2 + J(.4), w: .8 + rnd() * 1.5, a: .5 + rnd() * .45, dry: 0, tone: i === 2 ? shade(col, .62) : shade(col, (Math.abs(i - 6) > 4 ? -.3 : 0) + J(.2)) }));
 function paint(x, y, first) {
-  const col = [CLAY, GOLD, '#7FB8AE', '#C9B6CC', SKY][Math.floor(rnd() * 5)];
-  if (first || !brush) brush = { last: [x, y], col, el: place(`<g transform="translate(-7 -9)">${ART.painter()}</g>`, x, y, [-24, -26, 34, 34]) };
+  const col = [DEEP, GOLD, '#3F9C8E', '#8A63B8', '#4F93C9'][Math.floor(rnd() * 5)];
+  if (first || !brush) brush = { last: [x, y], col, hairs: bristles(col), el: place(`<g transform="translate(-7 -9)">${ART.painter()}</g>`, x, y, [-24, -26, 34, 34]) };
   brush.el.style.left = x + 'px'; brush.el.style.top = y + 'px';
   const [lx, ly] = brush.last, step = Math.hypot(x - lx, y - ly); if (step > 3) {
-    if (!brush.svg) { brush.svg = mark(sheet()); brush.went = 0; brush.next = 50 + rnd() * 60; }
-    const nx = -(y - ly) / step * 3, ny = (x - lx) / step * 3;   // the bristles: a lighter streak along one side of the stroke
-    brush.svg.insertAdjacentHTML('beforeend', `<path d="M${R(lx)} ${R(ly)}L${R(x)} ${R(y)}" stroke="${brush.col}" stroke-width="${R(12 + J(2))}" stroke-linecap="round" opacity=".82"/><path d="M${R(lx + nx)} ${R(ly + ny)}L${R(x + nx)} ${R(y + ny)}" stroke="${PAPER}" stroke-width="2" stroke-linecap="round" opacity=".3"/>`);
+    if (!brush.svg) { brush.svg = flatSheet(.9); brush.went = 0; brush.next = 50 + rnd() * 60; }
+    const g = brush.svg.getContext?.('2d'), nx = -(y - ly) / step, ny = (x - lx) / step;
+    if (g) { g.lineCap = 'round'; g.globalAlpha = 1; g.strokeStyle = brush.col; g.lineWidth = 13.5 + J(1); g.beginPath(); g.moveTo(lx, ly); g.lineTo(x, y); g.stroke();
+      for (const h of brush.hairs) {
+        if (h.dry > 0) { h.dry -= step; continue; }
+        if (rnd() < .02) h.dry = 8 + rnd() * 18;
+        g.strokeStyle = h.tone;
+        g.globalAlpha = h.a;
+        g.lineWidth = h.w;
+        g.beginPath();
+        g.moveTo(lx + nx * h.off, ly + ny * h.off);
+        g.lineTo(x + nx * h.off, y + ny * h.off);
+        g.stroke();
+      }
+      if (rnd() < .06 && !reduce) {
+        const d = 10 + rnd() * 26, a = rnd() * 6.28;
+        g.globalAlpha = .9;
+        g.fillStyle = brush.col;
+        g.beginPath();
+        g.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, .8 + rnd() * 2.2, 0, 6.2832);
+        g.fill();
+      } }
     brush.went += step; brush.last = [x, y];
-    if (brush.went > brush.next && !reduce) { brush.went = 0; brush.next = 60 + rnd() * 90; const h = 14 + rnd() * 34, dw = 4 + rnd() * 3, dx = x + J(4);   // a drip runs down from the wet paint
-      const d = mark(place(`<path d="M${R(-dw / 2)} 0L${R(-dw / 2)} ${R(h)}A${R(dw / 2)} ${R(dw / 2)} 0 0 0 ${R(dw / 2)} ${R(h)}L${R(dw / 2)} 0Z" fill="${brush.col}" opacity=".82"/><path d="${closed(ring(0, h + 3, dw * .6, dw * .75, 6, .05))}" fill="${brush.col}" opacity=".82"/>`, dx, y + 2, [-8, -2, 16, h + 12]));
+    if (brush.went > brush.next && !reduce) {
+      brush.went = 0;
+      brush.next = 60 + rnd() * 90;
+      const h = 14 + rnd() * 34, dw = 3 + rnd() * 2.5, dx = x + J(4), lean = J(1.6);   // a drip runs down from the wet paint: thin from the stroke, a bead at its end, lit down one side
+      const d = mark(place(`<path d="M${R(-dw)} 0Q${R(-dw * .42)} 3 ${R(-dw * .36 + lean)} ${R(h * .6)}L${R(-dw * .5)} ${R(h)}A${R(dw * .62)} ${R(dw * .72)} 0 1 0 ${R(dw * .5)} ${R(h)}L${R(dw * .36 + lean)} ${R(h * .6)}Q${R(dw * .42)} 3 ${R(dw)} 0Z" fill="${shade(brush.col, -.08)}" opacity=".93"/><path d="M${R(-dw * .16 + lean)} ${R(h * .5)}L${R(-dw * .2)} ${R(h + 1)}" stroke="${PAPER}" stroke-width=".9" stroke-linecap="round" opacity=".55"/>`, dx, y + 2, [-8, -2, 16, h + 12]));
       (brush.drips ||= []).push(d);
       d.style.transformOrigin = '50% 0';
       d.animate([{ transform: 'scaleY(0)' }, { transform: 'none' }], { duration: 1800 + rnd() * 1800, easing: 'cubic-bezier(.3,0,.3,1)', fill: 'backwards' });
     }
-    if (rnd() < .06 && !reduce) (brush.drips ||= []).push(mark(place(`<path d="${closed(ring(0, 0, 1.6 + rnd() * 2.2, 1.4 + rnd() * 2, 6, .2))}" fill="${brush.col}" opacity=".8"/>`, x + J(26), y + J(20), [-6, -6, 12, 12])));   // a spatter
   }
-  for (const n of textNodesNear(x, y, 14)) split(n);
-  for (const w of PAGE().querySelectorAll('.chb-word')) {
+  splitWords(wordsNear(x, y, 14));
+  for (const w of splitNear(x, y, 14, '.chb-word')) {
     if (painted.has(w)) continue;
     const r = w.getBoundingClientRect();
     if (x < r.left - 4 || x > r.right + 4 || y < r.top - 6 || y > r.bottom + 6) continue;
@@ -1669,33 +2092,48 @@ function paintOff() { const b = brush; brush = null; b?.el.remove(); if (!b?.svg
       el.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: reduce ? 'none' : 'translateY(9px)' }], { duration: 2600, easing: 'ease-in', fill: 'forwards' }).onfinish = () => el.remove();
     }
   }, 4200); }
-// ---------------------------------------------------------------- garden: a seed; a vine grows along the line of text, leaves unfold, flowers open
+// ---------------------------------------------------------------- garden: a seed falls and the words themselves grow: each sends up a stem, leaves unfold, a flower opens
+// the plants are small drawings of their own, each swaying as a whole: a page-sized drawing would repaint on every frame of the sway
+const plants = [];
+function leafArt(u, v, side) {
+  const s = 1 + rnd() * .3,
+    a = .55 + J(.25),
+    L = 12 * s,
+    tx = u + side * Math.cos(a) * L,
+    ty = v - Math.sin(a) * L,
+    nx = -(ty - v) / L,
+    ny = (tx - u) / L,
+    w = 3.6 * s,
+    m1 = [u + (tx - u) * .45 + nx * w, v + (ty - v) * .45 + ny * w],
+    m2 = [u + (tx - u) * .45 - nx * w, v + (ty - v) * .45 - ny * w];
+  const leaf = `M${R(u)} ${R(v)}Q${R(m1[0])} ${R(m1[1])} ${R(tx)} ${R(ty)}Q${R(m2[0])} ${R(m2[1])} ${R(u)} ${R(v)}`;
+  return `<path d="${leaf}Z" fill="#B7C0A0" transform="translate(.7 .7)"/><path d="M${R(u)} ${R(v)}Q${R(m2[0])} ${R(m2[1])} ${R(tx)} ${R(ty)}L${R(u)} ${R(v)}Z" fill="#9EAA82"/>${inkP(leaf, 1.2)}`;
+}
+function bloomArt(fx, fy) {
+  const c = [GOLD, CLAY, '#C9B6CC', PAPER, '#E8A79C'][Math.floor(rnd() * 5)], kind = rnd();
+  if (kind < .22) return `<path d="${closed(ring(fx, fy - 2, 3.2, 4.6, 6, .08))}" fill="#E8A79C"/>${inkP(over(ring(fx, fy - 2, 3.2, 4.6, 6, .08)), 1.1)}`;   // a bud
+  if (kind < .5) { const w = 6 + rnd() * 1.6, h = 9 + rnd() * 2, cup = `M${R(fx - w)} ${R(fy - h)}Q${R(fx - w * .5)} ${R(fy - h * .55)} ${R(fx)} ${R(fy - h * 1.1)}Q${R(fx + w * .5)} ${R(fy - h * .55)} ${R(fx + w)} ${R(fy - h)}Q${R(fx + w * 1.05)} ${R(fy + 1)} ${R(fx)} ${R(fy + 2)}Q${R(fx - w * 1.05)} ${R(fy + 1)} ${R(fx - w)} ${R(fy - h)}Z`; return `<path d="${cup}" fill="${c}" transform="translate(.8 .8)"/><path d="${cup}" fill="${c}"/>${inkP(cup, 1.2, .85)}<path d="${closed(ring(fx - w * .45, fy - h * .45, w * .2, h * .22, 5, .1))}" fill="${PAPER}" opacity=".55"/>`; }   // a tulip
+  const np = 5 + Math.floor(rnd() * 2), pr = 5.2 + rnd() * 1.6;   // a daisy
+  const at = k => ring(fx + Math.cos(k / np * 6.28) * pr, fy + Math.sin(k / np * 6.28) * pr * .92, pr * .72, pr * .52, 7, .08);
+  const petals = [...Array(np)].map((_, k) => `<path d="${closed(at(k).map(([u, v]) => [u + .8, v + .8]))}" fill="${c}"/>`).join(''),
+    ink = [...Array(np)].map((_, k) => inkP(over(at(k)), 1.1, .85)).join('');
+  return `${petals}${ink}<path d="${closed(ring(fx, fy, pr * .42, pr * .4, 6, .08))}" fill="${DEEP}"/>${inkP(over(ring(fx, fy, pr * .42, pr * .4, 6, .08)), 1)}<path d="${closed(ring(fx - pr * .4, fy - pr * .45, pr * .28, pr * .16, 5, .1))}" fill="${PAPER}" opacity=".55"/>`;
+}
 function garden(x, y) {
-  setTimeout(() => {
-    for (const el of layer.querySelectorAll('svg:not([data-lit])'))
-      if (el.querySelector('.chb-flower, .chb-vine, [class*=vine], [class*=flower]')) { el.dataset.lit = '1'; el.style.filter = 'drop-shadow(1px 2px 1px rgba(30,50,20,.28))'; }
-  }, 0);
-  // a vine that runs along the line of text both ways, leaves with a vein that unfold in turn, flowers that open and nod,
-  // buds between them; all of it drawn in the hand (offset washes, ink past its start, a lighter lobe on each flower)
-  const left = Math.max(10, x - 190 - rnd() * 60), right = Math.min(innerWidth - 10, x + 190 + rnd() * 60), base = y + 10, pts = [];
-  for (let u = left; u <= right; u += 9) pts.push([u, base + Math.sin(u / 21) * 3.4 + J(.8)]);
-  const d = 'M' + pts.map(([u, v]) => `${R(u)} ${R(v)}`).join('L'); let leaves = '', flowers = '';
-  pts.forEach(([u, v], i) => {
-    if (i % 3 === 1) { const up = i % 2 ? -1 : 1, s = 1.5 + rnd() * .4, a = J(.25) + .6, L = 15 * s, tx = u + Math.cos(a) * L, ty = v + Math.sin(a) * L * up * .9 + up * 2;
-      // an almond leaf: two curves from the stalk to the tip, a midrib, the underside a shade darker, the ink run past its start
-      const nx = -(ty - v) / L, ny = (tx - u) / L, w = 4.4 * s, m1 = [u + (tx - u) * .45 + nx * w, v + (ty - v) * .45 + ny * w], m2 = [u + (tx - u) * .45 - nx * w, v + (ty - v) * .45 - ny * w];
-      const leaf = `M${R(u)} ${R(v)}Q${R(m1[0])} ${R(m1[1])} ${R(tx)} ${R(ty)}Q${R(m2[0])} ${R(m2[1])} ${R(u)} ${R(v)}`, half = `M${R(u)} ${R(v)}Q${R(m2[0])} ${R(m2[1])} ${R(tx)} ${R(ty)}L${R(u)} ${R(v)}Z`;
-      leaves += `<g class="chb-leaf" style="transform-origin:${R(u)}px ${R(v)}px;animation-delay:${R(Math.abs(u - x) / 300)}s, ${R(rnd() * 3)}s"><path d="${leaf}Z" fill="#B7C0A0" transform="translate(.8 .8)"/><path d="${half}" fill="#9EAA82"/>${inkP(leaf + `Q${R(m1[0])} ${R(m1[1])} ${R(lerp(u, tx, .25) + nx * w * .5)} ${R(lerp(v, ty, .25) + ny * w * .5)}`, 1.5)}${inkP(`M${R(u)} ${R(v)}Q${R(lerp(u, tx, .5) + nx * 1.2)} ${R(lerp(v, ty, .5) + ny * 1.2)} ${R(lerp(u, tx, .86))} ${R(lerp(v, ty, .86))}`, .9, .6)}</g>`; }
-    if (i % 8 === 5) { const c = [GOLD, CLAY, '#C9B6CC', PAPER, '#E8A79C'][Math.floor(rnd() * 5)], fy = v - 16 - rnd() * 8, fx = u + J(3), np = 5 + Math.floor(rnd() * 2), pr = 6.4 + rnd() * 1.6;
-      const petals = [...Array(np)].map((_, k) => { const a = k / np * 6.28 + rnd() * .2; return `<path d="${closed(ring(fx + Math.cos(a) * pr + 1, fy + Math.sin(a) * pr * .92 + 1, pr * .72, pr * .52, 7, .08))}" fill="${c}"/>`; }).join('');
-      const petalInk = [...Array(np)].map((_, k) => { const a = k / np * 6.28; return inkP(over(ring(fx + Math.cos(a) * pr, fy + Math.sin(a) * pr * .92, pr * .72, pr * .52, 7, .08)), 1.3, .85); }).join('');
-      flowers += `<g class="chb-flower" style="transform-origin:${R(u)}px ${R(v)}px;animation-delay:${R(Math.abs(u - x) / 300 + .55)}s, ${R(rnd() * 4)}s">${inkP(`M${R(u)} ${R(v)}C${R(u - 3)} ${R(v - 6)} ${R(fx + 3)} ${R(fy + 7)} ${R(fx)} ${R(fy)}`, 1.8)}${petals}${petalInk}<path d="${closed(ring(fx, fy, pr * .42, pr * .4, 6, .08))}" fill="${DEEP}"/>${inkP(over(ring(fx, fy, pr * .42, pr * .4, 6, .08)), 1.2)}<path d="${closed(ring(fx - pr * .5, fy - pr * .6, pr * .3, pr * .18, 5, .1))}" fill="${PAPER}" opacity=".55"/></g>`; }
-    else if (i % 8 === 1) { const bx = u + J(2), by = v - 9; flowers += `<g class="chb-flower" style="transform-origin:${R(u)}px ${R(v)}px;animation-delay:${R(Math.abs(u - x) / 300 + .4)}s, ${R(rnd() * 4)}s">${inkP(`M${R(u)} ${R(v)}C${R(u)} ${R(v - 4)} ${R(bx)} ${R(by + 4)} ${R(bx)} ${R(by)}`, 1.4)}<path d="${closed(ring(bx, by - 2, 2.8, 4, 6, .08))}" fill="#E8A79C"/>${inkP(over(ring(bx, by - 2, 2.8, 4, 6, .08)), 1.2)}</g>`; }
-  });
-  const g = mark(sheet());
-  g.innerHTML = `<path class="chb-vine" pathLength="1" d="${d}" fill="none" stroke="${SAGE2}" stroke-width="3.2" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${INK}" stroke-width="1" stroke-opacity=".35" transform="translate(0 1.6)"/>${leaves}${flowers}`;
-  const v = g.querySelector('.chb-vine'); v.style.strokeDasharray = '1'; v.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: D(1500), easing: 'ease-out', fill: 'backwards' });
-  const seedEl = place(`<path d="${closed(ring(0, 0, 4, 2.8, 6, .1))}" fill="${KRAFT}"/>${inkP(over(ring(0, 0, 4, 2.8, 6, .1)), 1.6)}`, x, base, [-6, -6, 12, 12]);
+  splitWords(wordsNear(x, y, 150));
+  const near = [...splitNear(x, y, 150, '.chb-word')].map(w => {
+    const r = w.getBoundingClientRect(), cx = r.left + r.width / 2;
+    return { w, r, cx, d: Math.hypot(cx - x, r.top + r.height / 2 - y) };
+  }).filter(o => o.r.width && inView(o.r) && !painted.has(o.w)).sort((a, b) => a.d - b.d), picked = [];
+  for (const o of near) { if (picked.some(p => Math.abs(p.cx - o.cx) < 38 && Math.abs(p.r.top - o.r.top) < 26)) continue; picked.push(o); if (picked.length >= 14) break; }
+  for (const { w, r, d } of picked) {
+    painted.set(w, 'chb-sprout'); w.classList.add('chb-painted', 'chb-sprout');
+    const h = 18 + rnd() * 24, lean = J(7), u = r.left + r.width * (.3 + rnd() * .4), v = r.top + r.height * .3, t = .34 + rnd() * .3, box = [-28, -h - 20, 56, h + 26], tall = R(-h * t);
+    const plant = mark(place(`${inkP(`M0 0C-2.4 ${R(-h * .34)} ${R(lean + 2.4)} ${R(-h * .68)} ${R(lean)} ${R(-h)}`, 2.6, .35)}<path d="M0 0C-2.4 ${R(-h * .34)} ${R(lean + 2.4)} ${R(-h * .68)} ${R(lean)} ${R(-h)}" fill="none" stroke="${SAGE2}" stroke-width="1.9" stroke-linecap="round"/>${leafArt(lean * t, tall, rnd() < .5 ? -1 : 1)}${h > 28 ? leafArt(lean * (t + .2), R(-h * (t + .22)), rnd() < .5 ? -1 : 1) : ''}${bloomArt(lean, -h)}`, u, v, box));
+    plant.classList.add('chb-plant'); plant.style.transformOrigin = `${-box[0]}px ${-box[1]}px`; plant.style.animationDelay = `${R(d / 320)}s, ${R(rnd() * 4)}s`; plants.push(plant);
+  }
+  for (const old of plants.splice(0, Math.max(0, plants.length - 70))) old.remove();
+  const seedEl = place(`<path d="${closed(ring(0, 0, 4, 2.8, 6, .1))}" fill="${KRAFT}"/>${inkP(over(ring(0, 0, 4, 2.8, 6, .1)), 1.6)}`, x, y, [-6, -6, 12, 12]);
   seedEl.animate(
     [
       { transform: 'translateY(-50px) rotate(-40deg)' },
@@ -1768,37 +2206,91 @@ function popBalloon(b) {
     }
 }
 // ---------------------------------------------------------------- gravity: loose letters, a handle that aims the force
-let gravityHandle = null, gravityX = 0, gravityY = 2300;
-function gravity() {
+let gravityHandle = null, gravityX = 0, gravityY = 2300, gravityPull = 2300;
+// one apple: it lands where the page is clicked and the tool is put away, so nothing is left in the hand while it is there
+function gravity(x = innerWidth / 2, y = innerHeight / 2 + 80) {
   gravityFall();
   if (!gravityHandle) {
     gravityHandle = mark(place(gravityArt(), 0, 0, [-16, -22, 32, 68]));
     gravityHandle.classList.add('chb-gravity-handle');
-    gravityHandle._x = innerWidth / 2;
-    gravityHandle._y = innerHeight / 2 + 80;
+    gravityHandle._x = x;
+    gravityHandle._y = Math.min(y, innerHeight - 50);
   }
   drawGravity();
   shown();
+  if (tool === 'gravity') pick(null);
 }
-function gravityFall() {
-  const onScreen = r => r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth,
-    all = lettersNear(innerWidth / 2, innerHeight / 2, Math.hypot(innerWidth, innerHeight), (x, y, r) => onScreen(r));
-  for (const s of moved) if (s._c?.isConnected && !s._halves) { const r = s._c.getBoundingClientRect(); if (onScreen(r)) all.push({ s, r, cy: r.top + r.height / 2 }); }
-  all.sort((a, b) => b.cy - a.cy);
-  for (const p of all) { const body = liveBody([p]); if (reduce) physics.settle(body); else physics.force(body, J(25), J(20)); }
+// every read comes first (where the loose pieces lie, where the words are, their type); then one pass of writes
+function gravityFall(fresh = false) {
+  types = new WeakMap(); const loose = [];
+  if (!fresh)
+    for (const s of moved) {
+      const c = s._c;
+      if (!c?.isConnected || s._halves) continue;
+      const b = s._body,
+        p = b?.parts.find(q => q.s === s),
+        r = p ?
+          { left: p.r.left + b.x - b.homeX, top: p.r.top + b.y - b.homeY, width: p.r.width, height: p.r.height, right: p.r.right + b.x - b.homeX, bottom: p.r.bottom + b.y - b.homeY } :
+          c.getBoundingClientRect();
+      if (inView(r)) loose.push({ s, r });
+    }
+  for (const s of PAGE().querySelectorAll('.chb-ch')) { if (moved.has(s)) continue; const r = s.getBoundingClientRect(); if (inView(r)) loose.push({ s, r }); }
+  const things = []; for (const { el, r } of thingBoxes()) if (!moved.has(el)) { el._look = lookOf(el); things.push({ s: el, r }); } const thin = [...linesInView(), ...dotsInView()];
+  const pieces = atCeiling(piecesOf(wordsInView(), Math.max(60, PIECES - loose.length - things.length)));
+  for (const p of pieces) p.type = typeIn(p.node.parentElement);
+  for (const p of loose) if (!p.s._thing && !p.s._line && !p.s._dot) p.s._type = typeOf(p.s);
+  physics.batch(() => {
+    copies = document.createDocumentFragment();
+    wrapPieces(pieces);
+    const all = [...loose, ...pieces, ...things].sort((a, b) => b.r.top + b.r.height / 2 - a.r.top - a.r.height / 2);
+    for (const group of clumps(all, PIECES)) {
+      const body = liveBody(group);
+      if (body && group.every(p => p.s._line || p.s._dot)) body.thin = true;
+      if (reduce) physics.settle(body); else { physics.force(body, J(70), J(110)); if (body && !body.thin) body.spin = J(34) * body.tumble; }
+    }
+    // (a ruled length or a bullet never shares a body: it falls alone, a rule tipping over as it goes)
+    for (const p of thin) {
+      const body = liveBody([p]);
+      body.thin = true;
+      if (reduce) physics.settle(body); else { physics.force(body, J(60), J(90)); body.spin = p.r.height > p.r.width ? (rnd() < .5 ? -1 : 1) * (150 + rnd() * 90) : J(60); }
+    }
+    layer.append(copies); copies = null; });
 }
 function drawGravity() {
-  if (gravityHandle) gravityHandle.style.transform = 'translate(' + R(gravityHandle._x) + 'px,' + R(gravityHandle._y) + 'px) rotate(' + R(Math.atan2(gravityY, gravityX) * 180 / Math.PI - 90) + 'deg)';
+  if (!gravityHandle) return;
+  gravityHandle.style.transform = 'translate(' + R(gravityHandle._x) + 'px,' + R(gravityHandle._y) + 'px) rotate(' + R(Math.atan2(gravityY, gravityX) * 180 / Math.PI - 90) + 'deg)';
+  const len = 26 * Math.sqrt(gravityPull / 2300);
+  gravityHandle.querySelector?.('.chb-g-shaft')?.setAttribute('d', 'M0 14V' + R(14 + len));
+  gravityHandle.querySelector?.('.chb-g-head')?.setAttribute('transform', 'translate(0 ' + R(len - 26) + ')');
 }
-function tiltGravity(x, y) {
-  const dx = x - innerWidth / 2, dy = y - innerHeight / 2, d = Math.hypot(dx, dy);
+// the handle aims once a frame, however many moves arrive in it
+let tilt = null, tiltFrame = 0;
+// the faster the apple is dragged, the harder the words fall (the arrow shows how hard): the quickest stretch of a drag counts, so slowing down to aim loses nothing
+function paceGravity(i, e) {
+  const t = stamp(e), dt = t - (i.paceAt || 0);
+  if (i.paceAt && dt < 3) return;
+  if (i.paceAt) {
+    i.pace = (i.pace || 0) * .6 + Math.hypot(e.clientX - i.paceX, e.clientY - i.paceY) / dt * 400;
+    if (i.pace > (i.peak || 0)) { i.peak = i.pace; gravityPull = Math.max(450, Math.min(5600, 2300 * Math.pow(i.pace / 900, .7))); }
+  }
+  i.paceAt = t;
+  i.paceX = e.clientX;
+  i.paceY = e.clientY;
+}
+const pullGravity = () => { physics.setGravity(gravityX, gravityY, gravityPull * .52); drawGravity(); };
+function tiltGravity(x, y) { tilt = [x, y]; if (!tiltFrame) tiltFrame = requestAnimationFrame(aimGravity); }
+function aimGravity() {
+  cancelAnimationFrame(tiltFrame);
+  tiltFrame = 0;
+  if (!tilt) return;
+  const dx = tilt[0] - innerWidth / 2, dy = tilt[1] - innerHeight / 2, d = Math.hypot(dx, dy);
+  tilt = null;
   if (d < 8) return;
-  gravityX = dx / d * 2300;
-  gravityY = dy / d * 2300;
-  physics.setGravity(gravityX, gravityY);
-  drawGravity();
+  gravityX = dx / d * gravityPull;
+  gravityY = dy / d * gravityPull;
+  pullGravity();
 }
-function flipGravity() { gravityY = gravityY < 0 ? 2300 : -2300; gravityX = 0; physics.setGravity(gravityX, gravityY); drawGravity(); }
+function flipGravity() { gravityY = gravityY < 0 ? gravityPull : -gravityPull; gravityX = 0; pullGravity(); }
 
 // ---------------------------------------------------------------- the live tools' drawings (portals and their handles, the gravity apple, the magnet)
 const PCOL = {"in":["#D97757","#F2A27F","#FFE2CF"],"out":["#4F93C9","#8CC0E6","#DDF0FF"]};
@@ -1822,7 +2314,7 @@ ${wisps}
 };
 const knobArt = c => `<g><circle r="7.5" fill="#E2B865" stroke="#141413" stroke-width="1.4"/><circle cx="-2.2" cy="-2.4" r="2" fill="#FFF3D6" opacity=".9"/><path d="M-11 -2A11 11 0 0 1 4 -10.6" fill="none" stroke="${c}" stroke-width="1.6" stroke-linecap="round"/><path d="M4 -10.6l-4.2 -.6M4 -10.6l-1.6 3.8" stroke="${c}" stroke-width="1.6" stroke-linecap="round"/></g>`;
 const edgeArt = c => `<g><path d="M-9 -6L8 -6.6L9 6.4L-8.4 6.8Z" fill="#FFFDF8" stroke="#141413" stroke-width="1.3" stroke-linejoin="round"/><path d="M-5 0H5M-5 0l2.6 -2.4M-5 0l2.6 2.4M5 0l-2.6 -2.4M5 0l-2.6 2.4" stroke="${c}" stroke-width="1.4" stroke-linecap="round"/></g>`;
-const gravityArt = () => `<g><path d="M0 14V40" stroke="#141413" stroke-width="2.2" stroke-linecap="round"/><path d="M-7 33L0 42L7 33" fill="none" stroke="#141413" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+const gravityArt = () => `<g><path class="chb-g-shaft" d="M0 14V40" stroke="#141413" stroke-width="2.2" stroke-linecap="round"/><path class="chb-g-head" d="M-7 33L0 42L7 33" fill="none" stroke="#141413" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M-12 20V30M12 22V31" stroke="#141413" stroke-width="1.2" stroke-linecap="round" opacity=".45"/>
 <path d="M-12.6 1C-13.4 -9 -6 -13 0 -9C6 -13 13.4 -9 12.6 1C11.8 10 5 14 0 12C-5 14 -11.8 10 -12.6 1Z" fill="#D9573B" transform="translate(1.2 1.4)"/>
 <path d="M-12.6 1C-13.4 -9 -6 -13 0 -9C6 -13 13.4 -9 12.6 1C11.8 10 5 14 0 12C-5 14 -11.8 10 -12.6 1Z" fill="none" stroke="#141413" stroke-width="1.8" stroke-linejoin="round"/>
@@ -1872,7 +2364,7 @@ function syncPortals() { physics.setPortals(portals.map(({ x, y, size, angle }) 
 
 // ---------------------------------------------------------------- the tray and the input
 // rarity: the gentle tools are common, the strong ones rare, so being dealt a black hole feels like a prize
-const TIERNAME = { rare: 'Rare', epic: 'Epic', legendary: 'Legendary' };
+const TIERNAME = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare', epic: 'Epic', legendary: 'Legendary' };
 const btnHTML = ([k, name, box]) => `<button type="button" data-tool="${k}" data-tier="${TIER[k] || 'common'}" aria-pressed="false"><svg viewBox="${box}">${ART[k]()}</svg><span>${name}</span>${!opts.all && TIERNAME[TIER[k]] ? `<em class="chb-tier">${TIERNAME[TIER[k]]}</em>` : ''}</button>`;
 let last = opts.lastTool || ''; if (!last) try { last = localStorage.getItem('reserve:last-play-tool') || ''; } catch {}
 const dealt = Object.hasOwn(TIER, opts.deal) ? opts.deal : deal({ random: opts.random || Math.random, last });
@@ -1886,7 +2378,7 @@ tray.innerHTML = shelf('weapon') + shelf('play');
 if (!opts.all && opts.reveal !== false) {
   const b = tray.querySelector('button'), tier = b?.dataset.tier || 'common';
   if (b && !reduce) { box.querySelector('.chb-box')?.classList.add('chb-dealt'); b.classList.add('chb-reveal');
-  if (tier !== 'common') {
+  if (tier !== 'common' && tier !== 'uncommon') {
     const col = { rare: '#9DB4C8', epic: '#DE9A7C', legendary: GOLD }[tier], n = tier === 'legendary' ? 16 : 12, rays = [...Array(n)].map((_, i) => {
       const a = i / n * 6.2832, a2 = a + 6.2832 / n * .45, r1 = 44 + (i % 2) * 8;
       return `<path d="M0 0L${R(Math.cos(a) * r1)} ${R(Math.sin(a) * r1)}L${R(Math.cos(a2) * r1)} ${R(Math.sin(a2) * r1)}Z" fill="${col}" opacity=".85"/>` + inkP(`M${R(Math.cos(a) * 14)} ${R(Math.sin(a) * 14)}L${R(Math.cos(a) * r1)} ${R(Math.sin(a) * r1)}`, 1, .35);
@@ -1908,6 +2400,12 @@ function pick(name) {
   if (tool === 'magnet') letGo();
   releaseInteraction(true);
   release();
+  // the apple is already out: the button drops only what is on screen and has not fallen yet, and everything fallen stays where it lies
+  if (name === 'gravity' && gravityHandle) {
+    gravityFall(true);
+    if (!reduce) gravityHandle.animate?.([{ scale: 1 }, { scale: 1.22, offset: .4 }, { scale: 1 }], { duration: 280, easing: 'ease-out' });
+    name = null;
+  }
   tool = tool === name ? null : name;
   for (const b of tray.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.tool === tool));
   document.documentElement.classList.toggle('chb-armed', !!tool);
@@ -1933,8 +2431,10 @@ function aimArt(k) {
     + `<svg class="chb-badge" viewBox="-16 -16 32 32">${shp(ring(0, 0, 13, 12, 8, .06), PAPER, 1.6, true)}<svg x="-10" y="-10" width="20" height="20" viewBox="${t[2]}">${ART[k]()}</svg></svg>`;
   aimFor = k;
 }
+// (on Home the tray lives in a shadow root: at the document an event's target is the host, so the path says what was really hit)
+const hit = e => e.composedPath?.()[0] || e.target;
 function aimAt(e) {
-  const show = opts.allowed?.() !== false && !!tool && !(opts.ours && e.target.closest?.(opts.ours)) && e.pointerType !== 'touch' && !e.target.closest?.('.chb-box') && e.target.tagName !== 'IFRAME';
+  const show = opts.allowed?.() !== false && !!tool && !(opts.ours && hit(e).closest?.(opts.ours)) && e.pointerType !== 'touch' && !hit(e).closest?.('.chb-box') && e.target.tagName !== 'IFRAME';
   if (show && aimFor !== tool) aimArt(tool);
   if (show) aim.style.transform = `translate(${e.clientX}px,${e.clientY}px)`;
   aim.classList.toggle('is-on', show); document.documentElement.classList.toggle('chb-aiming', show);
@@ -1950,14 +2450,14 @@ listen(document, 'pointerover', aimAt, true);
 listen(document, 'pointerout', e => { if (!e.relatedTarget) aimOff(); }, true);
 listen(globalThis, 'blur', aimOff);
 tray.addEventListener('click', e => { const b = e.target.closest('button[data-tool]'); if (b) { e.stopPropagation(); pick(b.dataset.tool); } });
-const notOurs = e => !tool || opts.allowed?.() === false || e.target.closest('#chb-tray,#chb-undo') || !!(opts.ours && e.target.closest(opts.ours));
+const notOurs = e => !tool || opts.allowed?.() === false || hit(e).closest?.('#chb-tray,#chb-undo') || !!(opts.ours && hit(e).closest?.(opts.ours));
 let restoring = false;
-const CLICK = { bomb, hammer, railgun, blackhole, foil, ink, garden, balloon, portal, gravity: () => gravity() };
+const CLICK = { bomb, hammer, railgun, blackhole, foil, ink, garden, balloon, portal, gravity };
 let interaction = null, swallowUntil = -1, swallowX = 0, swallowY = 0;
 const stamp = e => Number.isFinite(e.timeStamp) ? e.timeStamp : performance.now();
 const managed = e => e.target.closest?.('.chb-physics-body,.chb-balloon-live,.chb-gravity-handle,.chb-portal-live,.chb-portal-knob,.chb-portal-edge');
 const ownedInput = e =>
-  opts.allowed?.() !== false && !(opts.ours && e.target.closest?.(opts.ours)) && !e.target.closest?.('#chb-tray,#chb-undo') && (!tool || ['portal', 'gravity', 'balloon', 'magnet'].includes(tool));
+  opts.allowed?.() !== false && !(opts.ours && hit(e).closest?.(opts.ours)) && !hit(e).closest?.('#chb-tray,#chb-undo') && (!tool || ['portal', 'gravity', 'balloon', 'magnet'].includes(tool));
 function captureInteraction(e, value) {
   interaction = { ...value, id: e.pointerId, startX: e.clientX, startY: e.clientY, moved: false, target: e.target };
   try { e.target.setPointerCapture?.(e.pointerId); } catch {}
@@ -1969,13 +2469,13 @@ function releaseInteraction(cancelled = false, e) {
   const i = interaction;
   interaction = null;
   if (i.body) physics.dragEnd(i.body, cancelled ? (e ? stamp(e) : performance.now()) + 1000 : stamp(e || {}));
-  if (i.kind === 'gravity' && !i.moved && !cancelled) flipGravity();
+  if (i.kind === 'gravity') { if (i.moved) aimGravity(); else if (!cancelled) flipGravity(); }
   if (i.kind === 'balloon' && !cancelled) popBalloon(i.balloon);
   if (i.kind !== 'pending' || i.moved) { swallowUntil = (e ? stamp(e) : performance.now()) + 450; swallowX = e?.clientX ?? i.startX; swallowY = e?.clientY ?? i.startY; }
   try { i.target.releasePointerCapture?.(i.id); } catch {}
 }
 listen(document, 'click', e => {
-  if (stamp(e) <= swallowUntil && Math.hypot(e.clientX - swallowX, e.clientY - swallowY) < 8 && !e.target.closest?.('#chb-tray,#chb-undo')) {
+  if (stamp(e) <= swallowUntil && Math.hypot(e.clientX - swallowX, e.clientY - swallowY) < 8 && !hit(e).closest?.('#chb-tray,#chb-undo')) {
     swallowUntil = -1;
     e.preventDefault();
     e.stopPropagation();
@@ -2020,13 +2520,14 @@ listen(document, 'pointerdown', e => {
 }, true);
 listen(document, 'pointermove', e => {
   if (opts.allowed?.() === false) { pick(null); return; }
+  if (restTimer || resting) stir();
   aimAt(e);
   if (interaction && interaction.id === e.pointerId) {
     const i = interaction;
     if (Math.hypot(e.clientX - i.startX, e.clientY - i.startY) > 4) i.moved = true;
     if (i.kind === 'pending' && i.moved) { const body = wordAt(i.startX, i.startY); i.kind = 'body'; if (body) { i.body = body; physics.dragStart(body, i.startX, i.startY, stamp(e) - 16); } }
     if (i.body) physics.dragMove(i.body, e.clientX, e.clientY, stamp(e));
-    if (i.kind === 'gravity' && i.moved) { gravityHandle._x = e.clientX; gravityHandle._y = e.clientY; tiltGravity(e.clientX, e.clientY); }
+    if (i.kind === 'gravity' && i.moved) { gravityHandle._x = e.clientX; gravityHandle._y = e.clientY; paceGravity(i, e); tiltGravity(e.clientX, e.clientY); }
     if (i.kind === 'portal') {
       const p = i.portal;
       if (i.action === 'rotate')
@@ -2075,13 +2576,13 @@ listen(document, 'contextmenu', e => {
   e.stopPropagation();
   if (magnetEl) flipMagnet(); else magnet(e.clientX, e.clientY);
 }, true);
-listen(document, 'keydown', e => { if (e.key === 'Escape') { releaseInteraction(true); if (tool) pick(tool); else letGo(); } });
+listen(document, 'keydown', e => { if (restTimer || resting) stir(); if (e.key === 'Escape') { releaseInteraction(true); if (tool) pick(tool); else letGo(); } });
 listen(globalThis, 'blur', () => { releaseInteraction(true); release(); letGo(); });
 
 function returnFold(f, duration, easing) {
   const from = getComputedStyle(f.el).transform; f.a.cancel();
   const back = { ...f, a: f.el.animate([{ transform: from }, { transform: 'none' }], { duration: D(duration), easing }) };
-  returning.add(back); back.a.onfinish = () => { f.el.style.transform = f.prev.t; f.el.style.transformOrigin = f.prev.o; back.a.cancel(); returning.delete(back); };
+  returning.add(back); back.a.onfinish = () => { f.el.style.transform = f.prev.t; f.el.style.transformOrigin = f.prev.o; back.a.cancel(); returning.delete(back); tidy(f.el); };
 }
 // ---------------------------------------------------------------- put it back: letters home along their own paths, lines mended, the page unfolded
 undo.addEventListener('click', () => {
@@ -2091,13 +2592,14 @@ undo.addEventListener('click', () => {
   timers.clear();
   restoring = true;
   releaseInteraction(true);
+  tilt = null;
   letGo();
   physicsView.clear();
   balloons.length = 0;
   portals.length = 0;
   gravityHandle = null;
   gravityX = 0;
-  gravityY = 2300;
+  gravityY = gravityPull = 2300;
   physics.setGravity(0, 2300);
   {
     const keepers = new Set(marks);
@@ -2107,6 +2609,7 @@ undo.addEventListener('click', () => {
   if (tool) pick(tool); letGo(); laserOff(); paintOff(); let longest = 400;
   for (const [w, st] of painted) w.classList.remove('chb-painted', st); painted.clear();
   for (const f of folds.splice(0)) { returnFold(f, 1100, 'cubic-bezier(.2,.9,.3,1)'); longest = Math.max(longest, 1100); }
+  const held = new Map(); for (const s of moved) if (s._c && !s._physicsPath) held.set(s, [getComputedStyle(s._c).transform, s._c.getAnimations()]);
   for (const s of moved) try {
     if (s._halves) {
       for (const h of s._halves)
@@ -2114,29 +2617,48 @@ undo.addEventListener('click', () => {
       continue;
     }
     if (s._c) {
-      const c = s._c, from = getComputedStyle(c).transform, home = s._physicsPath ? [...s._physicsPath].reverse().map(f => ({ ...f })) : [{ transform: from }, { transform: 'none' }];
+      const c = s._c,
+        [from, running] = held.get(s) || [c.style.transform || 'none', []],
+        home = s._physicsPath ? [...s._physicsPath].reverse().map(f => ({ ...f })) : [{ transform: from }, { transform: 'none' }];
       if (s._physicsPath) { home[0] = { transform: from }; home.push({ transform: 'none' }); }
-      c.getAnimations().forEach(a => a.cancel());
+      running.forEach(a => a.cancel());
       c.style.transition = 'none';
       c.style.transform = 'none';
       c.animate(home, { duration: D(520), easing: 'cubic-bezier(.3,0,.2,1)' }).onfinish = () => { c.remove(); s.style.visibility = ''; };
       longest = Math.max(longest, 520);
       continue;
     }
-    const r = s.getBoundingClientRect(), cs = getComputedStyle(s), c = document.createElement('span');
-    c.textContent = s.textContent;
-    Object.assign(c.style, { position: 'absolute', left: r.left + 'px', top: r.top + 'px', font: cs.font, color: cs.color, lineHeight: r.height + 'px', whiteSpace: 'pre' });
+    if (s._line || s._dot) continue;
+    const r = s.getBoundingClientRect(), cs = getComputedStyle(s);
+    let c = document.createElement('span');
+    if (s._thing)
+      c = thingCopy(s, r);
+    else {
+      c.textContent = s.textContent;
+      Object.assign(c.style, { position: 'absolute', left: r.left + 'px', top: r.top + 'px', font: cs.font, color: cs.color, lineHeight: r.height + 'px', whiteSpace: 'pre' });
+    }
     layer.append(c);
     // the path home is the flight reversed (timed stops mirrored so they stay in order)
     if (s._k) { const back = [...s._k].reverse().map(f => { const g = { ...f, opacity: 1 }; if (f.offset != null) g.offset = 1 - f.offset; delete g.easing; return g; });
       c.animate(back, { duration: D(s._d / 1.6), easing: 'cubic-bezier(.3,0,.2,1)' }).onfinish = () => { c.remove(); s.style.visibility = ''; }; longest = Math.max(longest, s._d / 1.6); }
     else c.animate([{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none' }], { duration: D(360) }).onfinish = () => { c.remove(); s.style.visibility = ''; };
   } catch { s.style.visibility = ''; s._c?.remove(); }
-  holes.length = 0; FLOOR.clear(); HITS.length = 0; PINS.length = 0; flat = false;
+  holes.length = 0; FLOOR.clear(); HITS.length = 0; PINS.length = 0; flat = false; ruled = textIndex = thingIndex = null; unrest();
   for (const m of marks.splice(0)) m.animate([{ opacity: 1 }, { opacity: 0 }], { duration: D(400), fill: 'forwards' }).onfinish = () => m.remove();
-  setTimeout(() => { for (const [el, sides] of lines) for (const side in sides) el.style['border' + side + 'Color'] = sides[side].inline; lines.clear();
-    for (const { holder, node } of splits.splice(0)) holder.replaceWith(node);
-    for (const s of moved) { delete s._c; delete s._k; delete s._halves; delete s._body; delete s._physicsPath; }
+  setTimeout(() => {
+    for (const [el, sides] of lines) { for (const side in sides) el.style['border' + side + 'Color'] = sides[side].inline; tidy(el); }
+    lines.clear();
+    for (const [li, inline] of dots) { li.style.listStyleType = inline; tidy(li); }
+    dots.clear();
+    for (const { holder, node } of splits.splice(0)) if (holder.classList.contains('chb-split') || holder.classList.contains('chb-run')) holder.replaceWith(node);
+    for (const s of moved) {
+      if (s._thing) { if (s._style == null) s.removeAttribute('style'); else s.setAttribute('style', s._style); delete s._thing; delete s._look; delete s._style; }
+      delete s._c;
+      delete s._k;
+      delete s._halves;
+      delete s._body;
+      delete s._physicsPath;
+    }
     moved.clear();
     undo.style.display = 'none';
     restoring = false;
@@ -2158,12 +2680,17 @@ function reset() {
   for (const animation of ourAnimations()) animation.cancel(); pageAnimations.clear(); heldAnimations.clear();
   for (const f of [...folds.splice(0), ...returning]) { f.a.cancel(); f.el.style.transform = f.prev.t; f.el.style.transformOrigin = f.prev.o; } returning.clear();
   for (const [el, sides] of lines) for (const side in sides) el.style['border' + side + 'Color'] = sides[side].inline;
-  lines.clear(); for (const [word, style] of painted) word.classList.remove('chb-painted', style); painted.clear();
-  for (const s of moved) { s.style.visibility = ''; s._c?.remove(); for (const h of s._halves || []) h.remove(); for (const key of ['_c', '_k', '_halves', '_body', '_physicsPath']) delete s[key]; }
+  lines.clear(); for (const [li, inline] of dots) { li.style.listStyleType = inline; tidy(li); } dots.clear();
+  for (const [word, style] of painted) word.classList.remove('chb-painted', style); painted.clear();
+  for (const s of moved) {
+    s.style.visibility = ''; s._c?.remove(); for (const h of s._halves || []) h.remove();
+    if (s._thing) { if (s._style == null) s.removeAttribute('style'); else s.setAttribute('style', s._style); delete s._thing; delete s._look; delete s._style; }
+    for (const key of ['_c', '_k', '_halves', '_body', '_physicsPath']) delete s[key];
+  }
   moved.clear(); for (const { holder, node } of splits.splice(0)) if (holder.parentNode) holder.replaceWith(node);
   for (const el of [...layer.children]) if ([MUL, OVL, SCR].includes(el)) { for (const child of [...el.children]) child.remove(); } else el.remove();
-  marks.length = holes.length = HITS.length = PINS.length = balloons.length = portals.length = 0;
-  FLOOR.clear(); flat = false; gravityHandle = null; gravityX = 0; gravityY = 2300; physics.setGravity(0, 2300);
+  marks.length = holes.length = HITS.length = PINS.length = balloons.length = portals.length = plants.length = 0;
+  FLOOR.clear(); flat = false; thingIndex = null; gravityHandle = null; gravityX = 0; gravityY = gravityPull = 2300; physics.setGravity(0, 2300);
   undo.style.display = 'none'; restoring = false; cancelWork();
 }
 function setMotion(value) {
@@ -2234,5 +2761,5 @@ return {
   return tool;
 }, destroy, undo: () => undo.click() };
 };
-globalThis.ReservePlay = { mount, deal, tiers: TIER, weights: ODDS };
+globalThis.ReservePlay = { mount, deal, tiers: TIER, weights: CHANCE };
 })();

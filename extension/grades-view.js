@@ -29,6 +29,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // A course opened on Grades with Grade impact on is the weighing room: it is the whole page, hidden grades included
     // (it then draws names and days only). All courses keeps this page with the compact strips under it.
     const room=c.state.courseId!=='all'&&c.gradeImpact?root.ReserveGradeImpact?.render?.(c,h,c.gradeImpact)||'':'';
+    const impact=visible&&c.gradeImpact?root.ReserveGradeImpact?.render?.(c,h,c.gradeImpact)||'':'';
     if(room)return room;
     // The line under the title says where the numbers come from; its quiet button runs the toolbar switch.
     // Its words name what it will do (Show / Hide grades), so it is a plain button, not a pressed toggle.
@@ -37,7 +38,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       <table class="rd-grade-table"><thead><tr><th scope="col">Course</th><th scope="col">Grade</th><th scope="col">Period</th></tr></thead><tbody>${courseRows}</tbody></table>${courses.length?'':'<p class="rd-grade-note">No visible courses. You can change course visibility in Appearance.</p>'}<p class="rd-grade-note">Open a course for its complete gradebook, feedback and grading rules.</p></section>
       <section class="rd-grade-sheet" aria-labelledby="rd-scored-work"><div class="rd-sheet-heading"><h2 id="rd-scored-work">Scored work</h2><span>${scored.length} loaded</span></div><div class="rd-grade-search"><label class="rd-search">${icon('search')}<span class="rd-sr-only">Search scored work</span><input type="search" data-rd-field="grade-query" value="${E(c.gradeQuery||'')}" placeholder="Find an assignment or course" aria-label="Search scored work" maxlength="200"></label></div>
       <div class="rd-scored-list">${scored.slice(0,c.gradeLimit||40).map(item=>`<a class="rd-scored-row" href="${E(assignmentLink(item))}"><span><strong>${E(item.name)}</strong><small>${E(short(courseOf(item))||item.courseName)}${item.gradedAt?' · graded '+E(formatDate(item.gradedAt,c.s.timeZone,{month:'short',day:'numeric'})):item.updatedAt?' · updated '+E(formatDate(item.updatedAt,c.s.timeZone,{month:'short',day:'numeric'})):''}${item.gradeMatchesCurrentSubmission===false?' · Earlier submission':''}${item.redoRequested?' · Resubmission requested':item.missing?' · Missing':''}</small></span><span class="rd-scored-value">${visible?`${Number.isFinite(item.score)?number(item.score):E(item.grade)}${Number.isFinite(item.score)&&Number.isFinite(item.points)?`<small> / ${number(item.points)}</small>`:''}`:'<small>Hidden</small>'}${icon('arrow')}</span></a>`).join('')||`<p class="rd-grade-note">${query?'No scored work matches your search.':'No scored assignments were returned for these courses.'}</p>`}</div>
-      ${scored.length>(c.gradeLimit||40)?'<button class="rd-load-more" data-rd-action="more-grades">Show more scored work</button>':''}<p class="rd-grade-note">Loaded assignment results may span grading periods. Canvas gradebooks contain the full history.</p></section></div>`;
+      ${scored.length>(c.gradeLimit||40)?'<button class="rd-load-more" data-rd-action="more-grades">Show more scored work</button>':''}<p class="rd-grade-note">Loaded assignment results may span grading periods. Canvas gradebooks contain the full history.</p></section>${impact}</div>`;
   }
   return {render};
 });

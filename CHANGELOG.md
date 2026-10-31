@@ -1,5 +1,22 @@
 # Changelog
 
+## 4.0 Preview 3 - 2026-10-31
+
+Version 3.99.3 in the browser.
+
+- Your AI: choose the AI in the Help band, beside Daily AI help. A newly chosen website asks for its own access once, when you pick it.
+- Your AI works across many more Canvas setups. A course or tab Canvas refuses is named to the AI and the run goes on, and no courses at all means nothing is sent. Quizzes, outside tools, locked items, picture-only instructions, discussion prompts and checkpoints, redo requests and work with no due date all reach it correctly, and links in every form Canvas writes are followed. Whatever could not be read is named, so the AI is told not to guess.
+- Your AI: login lines and email addresses are now removed from everything added for an item, not only from the brief.
+- Play tools run much lighter on long pages: words or runs of words are cut only where a tool reaches, and each tool reads the page once per gesture. Foil now works on long pages.
+- Play tools take the whole page: pictures, icons, buttons and fields go with the words, and under Gravity so do ruled lines and list bullets. Put it back brings everything home.
+- Gravity has one apple. It lands where you click, and the faster you drag it the harder the page falls; its arrow shows how hard.
+- Hammer cracks are softer, Magnet holds letters around it like filings, and Ink, Painter and Eraser are redrawn. In Garden the words themselves grow stems, leaves and flowers.
+- The tool you are dealt comes from a full rarity list, Common to Legendary, each with its own chance out of 100. Its band shows on the card.
+- A Chromebook or a small laptop gets the same tools at a lighter cost, with nothing to turn on.
+- Every window size: the top bar stays one row in half and quarter windows, its words giving way to its drawings, and each tab shows its name as a tooltip. Tools and Make it yours float over the page below 1720 px. A short window keeps the heading to one line, and the pony is smaller in a small window.
+- Grades: All courses shows Grade impact's Coming up strips again.
+- A part of Canvas that a teacher hid no longer stops a whole load, and courses that have not opened yet are left out.
+
 ## 4.0 Preview 2 - 2026-10-30
 
 Version 3.99.2 in the browser.

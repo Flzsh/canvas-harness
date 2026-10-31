@@ -173,6 +173,13 @@
     }
     // A card's Read on a Google Doc: the access page opens beside Canvas (GitHub installs; store installs paste).
     if(message.op==='docs-access'){await chrome.tabs.create({url:chrome.runtime.getURL('ai-permission.html?source=google-docs'),index:(sender.tab.index??0)+1});return {opened:true};}
+    // A newly picked AI asks for its own site once, on the pick, not on the first run that would stop for it
+    if(message.op==='ai-access'){
+      const provider=root.CanvasHarnessProviders?.get?.(message.provider);
+      if(!provider||await chrome.permissions.contains({permissions:['scripting'],origins:Array.from(provider.origins)}))return {opened:false};
+      await chrome.tabs.create({url:chrome.runtime.getURL('ai-permission.html?provider='+encodeURIComponent(provider.id)),index:(sender.tab.index??0)+1});
+      return {opened:true};
+    }
     if(message.op==='ask'){
      const s=v=>typeof v==='string'?v:undefined,
        input={

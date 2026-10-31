@@ -2152,7 +2152,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           helpBand=Band.renderBand(bandHost,cards,{env:root,scope:studyScope,store:studyStore,timeZone:()=>settings().timeZone,itemFacts:bandFacts,onPrepare:()=>{
             if(!agentController?.prepareNow)throw Error('Turn on Your AI in Tools first.');
             return agentController.prepareNow();
-          },onPrepareSettings:()=>toolbox?.open('ai'),prepareChoice:()=>{
+          },onPrepareSettings:()=>toolbox?.open('ai'),aiChoice:()=>{
+            const a=personal?.toolbox?.agent?.settings;
+            return !agentController||demo||a?.on===false||(a?.way&&a.way!=='web')?'':a?.provider||'chatgpt';
+          },onAiChoice:async provider=>{
+            if(!agentController?.settings)throw Error('Turn on Your AI in Tools first.');
+            await agentController.settings({provider});
+            await root.chrome?.runtime?.sendMessage?.({target:'ch-ai-engine',op:'ai-access',scopeKey:studyScope,provider});
+          },prepareChoice:()=>{
             const a=personal?.toolbox?.agent;
             return {show:!!agentController&&!demo&&a?.settings?.on!==false&&a?.everyDayChosen!==true,cap:a?.settings?.dailyCap??3};
           },onPrepareChoice:everyDay=>{

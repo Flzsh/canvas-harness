@@ -1,6 +1,6 @@
 /*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. Third-party components retain their respective attribution. */
 // Adapted from Gary Wu's pull request #44 to Canvas Harness.
-/* Canvas Harness Plus: the Review deck. One deck, two modes. On Home it is a module (small: what is due and the box to
+/* Canvas Harness: the Review deck. One deck, two modes. On Home it is a module (small: what is due and the box to
    start with; medium: the boxes; large: study right there, one card at a time). Opened, the module grows into the
    reading room, a drawn room that fills the page: the boxes stand on the long table, the card is held up in the
    window's light and the done pile grows by the books. A session is one session in both modes, card for card, however
