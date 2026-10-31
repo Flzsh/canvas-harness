@@ -2358,6 +2358,8 @@
 }
 @media (min-width: 601px) and (max-width: 1299.98px) {
   .rd .rd-toolbar .rd-workspace-tabs .t-tab { padding: 0 8px; }
+  /* (the strip fades at its end, so a tab past the edge reads as more to scroll to and not as a cut word) */
+  .rd .rd-toolbar > .rd-workspace-tabs { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
   .rd .rd-tools .rd-toolbox-trigger > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
 @media (min-width: 601px) and (max-width: 779.98px) {
