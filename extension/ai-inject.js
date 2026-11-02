@@ -347,7 +347,9 @@
         try{const data=JSON.parse(raw.slice(open,close+1));if(Array.isArray(data?.cards))return {status:'answer',text:raw.slice(open,close+1),...meta};}catch{}
       }
       const problem=String(text||'').length<=300?String(text||'').match(/Connection interrupted|Something went wrong|network error|An error occurred|There was an error generating a response|Too many requests|You['’]ve reached|usage limit/i):null;
-      if(problem)return {status:'provider-error',message:problem[0],...meta};
+      // A usage limit comes back with the AI's own sentence (at most 300 characters), for the band to say why the run stopped.
+      if(problem)
+        return {status:'provider-error',message:problem[0],...(/You['’]ve reached|usage limit/i.test(problem[0])?{limit:true,text:String(text||'').replace(/\s+/g,' ').trim().slice(0,300)}:{}),...meta};
       // A finished reply that is not cards is handed over once it stops changing, so CH can ask the student to read it.
       state.still=state.text===state.lastPrepareText?(state.still||0)+1:0;state.lastPrepareText=state.text;
       return text&&state.still>=4?{status:'answer',text:String(text),...meta}:{status:'waiting',...meta};
@@ -484,7 +486,60 @@
     if(editor.getAttribute('data-canvas-harness-send')===key)return {status:'waiting'};
     editor.setAttribute('data-canvas-harness-send',key);buttons[0].click();return {status:'waiting',clicked:true};
   }
-  const api = Object.freeze({insertDraft,readStudyBlock,inspectTurn});
+  // A site's thinking effort lives in its model menu and stays on the account (ChatGPT: a slider; Claude: an Effort submenu), so a run
+  // sets it for one send and puts it back after. A level the account cannot use, or a menu that has changed, leaves the site's own setting alone.
+  async function setEffort(arg) {
+    const pause = ms => new Promise(done => setTimeout(done, ms)), levels = ['instant', 'medium', 'high', 'extra'];
+    if (arg?.id === 'claude') {
+      const press = el => {
+        for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'])
+          el.dispatchEvent(new (type.startsWith('pointer') ? PointerEvent : MouseEvent)(type, {bubbles: true, cancelable: true, button: 0, pointerType: 'mouse'}));
+      };
+      const word = el => (el.innerText || '').trim().split(/\s+/)[0].toLowerCase(),
+        LEVELS = ['low', 'medium', 'high', 'extra', 'max'],
+        want = String(arg.value || ''),
+        button = document.querySelector('[data-testid="model-selector-dropdown"]');
+      const shut = async () => {
+        for (let i = 0; i < 2; i++) {
+          (document.activeElement || document.body).dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', code: 'Escape', bubbles: true, cancelable: true}));
+          await pause(90);
+        }
+      };
+      if (want === 'max' || !LEVELS.includes(want) || !button) return {ok: false};
+      press(button); let item = null, radios = [];
+      for (let i = 0; i < 20 && !item; i++) { await pause(75); item = [...document.querySelectorAll('[role="menuitem"]')].find(el => word(el) === 'effort'); }
+      if (!item) { await shut(); return {ok: false}; }
+      for (const type of ['pointerenter', 'pointermove', 'mouseenter', 'mousemove', 'mouseover'])
+        item.dispatchEvent(new (type.startsWith('pointer') ? PointerEvent : MouseEvent)(type, {bubbles: true, cancelable: true, pointerType: 'mouse'}));
+      item.focus(); item.dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowRight', code: 'ArrowRight', bubbles: true, cancelable: true}));
+      for (let i = 0; i < 20 && !radios.length; i++) { await pause(75); radios = [...document.querySelectorAll('[role="menuitemradio"]')].filter(el => LEVELS.includes(word(el))); }
+      const was = word(radios.find(el => el.getAttribute('aria-checked') === 'true') || {innerText: ''}), target = radios.find(el => word(el) === want);
+      if (!target) { await shut(); return {ok: false}; }
+      if (was !== want) press(target);
+      await pause(260); await shut();
+      const shown = (button.innerText || '').toLowerCase().split(/\s+/);
+      return {ok: shown.includes(want) || !shown.some(v => LEVELS.includes(v)), before: was};
+    }
+    if (arg?.id !== 'chatgpt') return {ok: false};
+    const want = Number.isInteger(arg.index) ? arg.index : levels.indexOf(arg.value), button = document.querySelector('button[aria-label="Select ChatGPT model"]');
+    if (want < 0 || !button) return {ok: false};
+    for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'])
+      button.dispatchEvent(new (type.startsWith('pointer') ? PointerEvent : MouseEvent)(type, {bubbles: true, cancelable: true, button: 0, pointerType: 'mouse'}));
+    let slider = null;
+    for (let i = 0; i < 20 && !slider; i++) { await pause(75); slider = document.querySelector('[role="slider"]'); }
+    if (!slider) return {ok: false};
+    const level = () => Number(slider.getAttribute('aria-valuenow')), before = level();
+    for (let i = 0; i < 6 && level() !== want; i++) {
+      const key = level() < want ? 'ArrowRight' : 'ArrowLeft';
+      slider.dispatchEvent(new KeyboardEvent('keydown', {key, code: key, bubbles: true, cancelable: true}));
+      await pause(90);
+    }
+    const ok = level() === want;
+    slider.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', code: 'Escape', bubbles: true, cancelable: true}));
+    await pause(200);
+    return {ok, before};
+  }
+  const api = Object.freeze({insertDraft,readStudyBlock,inspectTurn,setEffort});
   root.CanvasHarnessInject = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(globalThis);

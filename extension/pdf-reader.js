@@ -194,6 +194,39 @@
   const send=(type,data={})=>{if((alive||type==='reserve-pdf-close'||type==='reserve-pdf-close-result')&&parentOrigin&&token)env.parent.postMessage({type,token,...data},parentOrigin);};
   const notice=message=>{$('status').textContent=message;};
   const listen=(target,type,fn,options={})=>target.addEventListener(type,fn,{...options,signal});
+  // Reading ruler: a clear band at the pointer's height, the rest of the page a little quieter. It only ever moves by transform,
+  // takes no clicks, and stays where it was while the keyboard scrolls the page through it.
+  let ruler=null,rulerBand=null,rulerOn=false,rulerY=null,rulerFrame=0;const RULER_KEY='reserve:pdf-ruler';
+  env.ReservePdfArt.icons.ruler='<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path fill="#F6DE7A" d="M3.800 11.600c8.200-.4 16.200-.3 24.600.2.300 2.900.3 5.700 0 8.500-8.200.5-16.400.5-24.600 0-.3-2.900-.3-5.800 0-8.700Z"/><path fill="none" stroke="var(--pa-ink,#141413)" stroke-width="1.700" stroke-linecap="round" stroke-linejoin="round" d="M3.200 10.900c8.400-.4 16.800-.3 25.400.2.300 3.100.3 6.100 0 9.100-8.500.5-16.900.5-25.400 0-.3-3.100-.3-6.200 0-9.300Z"/><path fill="none" stroke="var(--pa-ink,#141413)" stroke-width="1.400" stroke-linecap="round" d="M8.200 11.200v3.300M13 11.200v4.800M17.900 11.200v3.300M22.800 11.200v4.800"/></svg>';
+  function placeRuler(){
+    rulerFrame=0;
+    if(!rulerOn||!rulerBand)return;
+    ruler.style.cssText='left:'+scroll.offsetLeft+'px;top:'+scroll.offsetTop+'px;width:'+scroll.clientWidth+'px;height:'+scroll.clientHeight+'px';
+    const box=scroll.getBoundingClientRect(),
+      height=Math.round(Math.max(40,Math.min(96,zoom*44))),
+      y=rulerY===null?box.top+box.height*.38:rulerY,
+      top=Math.round(Math.max(0,Math.min(box.height-height,y-box.top-height/2)));
+    rulerBand.style.height=height+'px';
+    rulerBand.style.transform='translateY('+top+'px)';
+  }
+  function setRuler(on,{save=true}={}){
+    rulerOn=on===true;
+    if(rulerOn&&!ruler){
+      ruler=doc.createElement('div');
+      ruler.id='reading-ruler';
+      ruler.setAttribute('aria-hidden','true');
+      rulerBand=doc.createElement('div');
+      rulerBand.className='ruler-band';
+      ruler.append(rulerBand);
+      scroll.parentElement.append(ruler);
+    }
+    if(ruler)ruler.hidden=!rulerOn;
+    buttons.ruler?.classList.toggle('is-active',rulerOn);
+    buttons.ruler?.setAttribute('aria-pressed',String(rulerOn));
+    if(rulerOn)placeRuler();
+    if(save)void env.chrome?.storage?.local?.set?.({[RULER_KEY]:rulerOn})?.catch?.(()=>{});
+  }
+  function moveRuler(event){if(!rulerOn)return;rulerY=event.clientY;if(!rulerFrame)rulerFrame=env.requestAnimationFrame(placeRuler);}
   function makeButton(name,label,action,parent=$('toolbar')){
    const button=doc.createElement('button');button.type='button';button.className='pa-i';button.title=label;button.setAttribute('aria-label',label);
    const icon=env.ReservePdfArt.icons[name];if(icon)button.innerHTML=icon;else{button.textContent=label;button.className+=' pa-word';}
@@ -322,6 +355,7 @@
    buttons.zoomIn=makeButton('zoomIn','Zoom in (+)',()=>setZoom(zoom*1.2));
    buttons.fit=makeButton('fit','Fit page width',()=>{fit=true;fitWidth();});buttons.fit.setAttribute('aria-pressed','true');
    buttons.spread=makeButton('spread','Two pages side by side',toggleSpread);buttons.spread.setAttribute('aria-pressed','false');
+   buttons.ruler=makeButton('ruler','Reading ruler (L)',()=>setRuler(!rulerOn));buttons.ruler.setAttribute('aria-pressed','false');
    buttons.ai=makeButton('ai','Help with this',()=>openAskRange());buttons.ai.setAttribute('aria-haspopup','dialog');
    buttons.save=makeButton('save','Save a copy with my marks',()=>void saveWithMarks(),$('heading-actions'));
    // Canvas's own viewer for this file; a button there ("Open in Harness reader") switches back
@@ -425,7 +459,7 @@
    buttons.spread.setAttribute('aria-label',buttons.spread.title);
    if(fit)fitWidth();else if(slots[currentPage])go(currentPage);
   }
-  function setZoom(value,fromFit=false){
+  function setZoom(value,fromFit=false){if(rulerOn&&!rulerFrame)rulerFrame=env.requestAnimationFrame(placeRuler);
    commitText();value=clamp(value,.2,5);fit=fromFit;buttons.fit.classList.toggle('is-active',fit);buttons.fit.setAttribute('aria-pressed',String(fit));
    if(Math.abs(value-zoom)<.002)return;
    const slot=slots[currentPage],fraction=slot?(scroll.scrollTop-slot.node.offsetTop)/Math.max(1,slot.node.offsetHeight):0;
@@ -1464,6 +1498,7 @@
     if(key==='0'){event.preventDefault();fit=true;fitWidth();return;}
    }
    if(typing||event.ctrlKey||event.metaKey||event.altKey||!pdf)return;
+   if(event.key.toLowerCase()==='l'&&!event.shiftKey){event.preventDefault();setRuler(!rulerOn);return;}
    if(KEYS[event.key.toLowerCase()]&&!event.shiftKey&&storageWritable){event.preventDefault();setTool(KEYS[event.key.toLowerCase()]);return;}
    if(event.target.closest('button,a')&&(event.key===' '||event.key==='Enter'))return;
    const handlers={PageDown:()=>go(currentPage+1),PageUp:()=>go(currentPage-1),ArrowDown:()=>{
@@ -1734,7 +1769,11 @@
   listen(doc,'pointerup',event=>{if(!event.target.closest('.paper-popover,#toolbar,#tool-dock,.annotation-layer,.text-editor,dialog'))selectedText();});
   listen(doc,'keyup',event=>{if(event.shiftKey&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))selectedText();});
   listen(doc,'pointerdown',event=>{if(!event.target.closest('#mark-menu'))closeMarkMenu();});
-  listen($('pages'),'click',onMarkClick);listen(doc,'selectionchange',selectionMoved);listen(scroll,'scroll',closeMarkMenu,{passive:true});
+  listen($('pages'),'click',onMarkClick);
+  listen(doc,'selectionchange',selectionMoved);
+  listen(scroll,'scroll',closeMarkMenu,{passive:true});
+  listen(scroll,'pointermove',moveRuler,{passive:true});
+  try{Promise.resolve(env.chrome.storage.local.get([RULER_KEY])).then(saved=>{if(saved?.[RULER_KEY]===true)setRuler(true,{save:false});}).catch(()=>{});}catch{}
   listen($('selection-menu'),'pointerdown',event=>event.preventDefault());
   listen($('find-input'),'focus',()=>{if(!searching)toggleSearch(true);});
   listen($('find-input'),'input',()=>{if(!searching)toggleSearch(true);resetSearch();});

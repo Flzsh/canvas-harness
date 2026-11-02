@@ -19,7 +19,8 @@ test('every new kind builds a one-turn message and reads a complete reply', () =
 });
 test('the reader refuses replies that break the new rules', () => {
  const bad = (kind, change) => Study.parse(wrap({ ...structuredClone(good[kind]), ...change }), kind);
- assert.equal(bad('outline', { thesis: 'Cities should ban cars because they are loud.' }).ok, false);
+ // A thesis written as the student's answer never reaches them: it is left out and the outline stays (it used to cost the card).
+ const stated = bad('outline', { thesis: 'Cities should ban cars because they are loud.' }); assert.equal(stated.ok, true, String(stated.errors)); assert.equal(stated.data.thesis, '');
  assert.equal(bad('message', { body: 'word '.repeat(150) }).ok, false);
  assert.equal(bad('flashcards', { cards: many(10, () => ({ front: 'Same', back: 'same', src: 'Notes' })) }).ok, false);
  assert.equal(bad('steps', { steps: good.steps.steps.map(({ minutes, ...step }) => step) }).ok, false);

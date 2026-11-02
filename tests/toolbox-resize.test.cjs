@@ -56,7 +56,7 @@ test('desktop defaults and explicit sizes reserve space for the Canvas rail, mai
 });
 test('narrow viewports force width and cap stale heights including very short screens',()=>{
  const {resolveSize}=api();
- assert.deepEqual(resolveSize({}, {width:900,height:800}),{width:876,height:368});
+ assert.deepEqual(resolveSize({}, {width:900,height:800}),{width:876,height:496});
  assert.deepEqual(resolveSize({width:9000,height:9000},{width:390,height:800}),{width:366,height:600});
  assert.deepEqual(resolveSize({width:800,height:1},{width:390,height:800}),{width:366,height:240});
  assert.deepEqual(resolveSize({width:800,height:9000},{width:390,height:200}),{width:366,height:150});
@@ -109,8 +109,8 @@ test('responsive changes clamp without overwriting desktop preferences or collap
 });
 test('narrow mode permits only height resizing and retains an explicit desktop width',async t=>{
  const f=await fixture(t,{width:390,height:800,dockSize:{width:850,height:0}});f.handles.both.dispatch('pointerdown');assert.equal(f.dialog.dataset.resizing,undefined);
- f.handles.height.dispatch('pointerdown');f.window.dispatch('pointerup',{clientY:100});await tick();assert.deepEqual(f.size(),{width:366,height:468});assert.deepEqual(plain(f.store.get().toolbox.dockSize),{width:850,height:468});
- f.handles.height.dispatch('keydown',{key:'ArrowUp',shiftKey:true});f.runTimers();await tick();assert.equal(f.size().height,516);
+ f.handles.height.dispatch('pointerdown');f.window.dispatch('pointerup',{clientY:100});await tick();assert.deepEqual(f.size(),{width:366,height:596});assert.deepEqual(plain(f.store.get().toolbox.dockSize),{width:850,height:596});
+ f.handles.height.dispatch('keydown',{key:'ArrowUp',shiftKey:true});f.runTimers();await tick();assert.equal(f.size().height,600);
 });
 for(const reason of ['pointercancel','lostpointercapture','blur','Escape','visibilitychange','close','collapse','resize'])test(`drag ${reason} restores starting size and cleans up without saving`,async t=>{
  const f=await fixture(t);f.handles.both.dispatch('pointerdown');f.window.dispatch('pointermove',{clientX:600,clientY:400});

@@ -14,7 +14,7 @@ function blocks(css){
  return list;
 }
 // Only the drawing of a frame: nothing about the sidebar's rows, its dark theme, keyboard state or its own motion settings.
-const skip=/rd-rail-|rd-course-rail|data-theme=dark|data-input=keyboard|data-motion-style=off|data-art-rest|data-motion-style=still\]\)/;
+const skip=/rd-rail-|rd-course-rail|data-g-|data-theme=dark|data-input=keyboard|data-motion-style=off|data-art-rest|data-motion-style=still\]\)/;
 function copied(){
  const kept=blocks(fs.readFileSync(src,'utf8')).filter(b=>b.includes('rd-frame')&&!skip.test(b.startsWith('@')?b:b.slice(0,b.indexOf('{'))));
  return kept.map(b=>b

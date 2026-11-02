@@ -34,7 +34,7 @@ test('drawn-frame stroke loops ending or cancelling under the pointer do not re-
 });
 
 test('one workspace sync builds the pet context once; reads outside a sync stay fresh',t=>{
- let calls=0;const data={features:[{id:'biscuit-more-rules',on:false}],assignments:[]};
+ let calls=0;const data={features:[{id:'grades',on:false}],assignments:[]};
  const f=fixture({brain:B,info:()=>{calls++;return data;}});t.after(()=>f.controller.destroy());f.advance(1000);
  calls=0;f.controller.sync();assert.equal(calls,1,'knowledge tier and brain share one build');
  calls=0;f.controller.sync();f.controller.sync();f.controller.sync();assert.equal(calls,3,'each sync builds its own');

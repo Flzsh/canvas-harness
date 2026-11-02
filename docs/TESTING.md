@@ -2,6 +2,8 @@
 
 A GitHub test build, version 3.99.3 in the browser, not a Chrome Web Store submission. The checks below are the same; the build writes `dist/Canvas-Harness-3.99.3.zip`, renamed `Canvas-Harness-4.0-Preview-3.zip` for the release.
 
+Preview 3, November 2, 2026: `npm test` ran 6,728 tests, 6,719 passed and 9 were skipped; `npm run check` passed, and the release audit of the extracted ZIP passed with 301 files.
+
 ## 3.8.1 Chrome Web Store submission scope
 
 This Chrome Web Store submission takes the place of 3.7.0, which the store did not publish. The PDF reader loads PDF.js 6.4.299's unmodified modern build through `pdf-library.mjs` and `pdf-worker.mjs`, which first load the readable `pdf-polyfills.js`; `minimum_chrome_version` is 126. `tests/store-readability.test.cjs` keeps the packaged source readable. It also carries Biscuit's round-8 language rules, PDF reader fixes for issues #58, #59, #60 and #61, the reader-frame origin fix from 3.7.0 on GitHub and the speed work described in [perf-3.8.md](perf-3.8.md). Everything in 3.7.0 stays: the course dock and Cards look, the 3.6.0 Make it yours and top-bar redraws, and the 3.5.0 contributions: #47 My links & files, #51 PDF study-sheet export, #52 deadline changes, and issue #53 PDF tools and icons. Existing public feature choices and handoff modules remain; no new AI runtime modules are included.

@@ -16,8 +16,12 @@
         progress:r.progress,
         needsYou:r.needsYou,
         entry:r.entry,
+        check:r.check,
         phase:r.phase,
         step:r.phase==='deliver'&&Array.isArray(r.picks)?[r.pickIndex||0,r.picks.length]:null,
+        ...(r.made?.length?{made:r.made.length}:{}),
+        ...(r.notMade?.length?{notMade:r.notMade.map(({title,reason})=>({title,reason}))}:{}),
+        ...(r.stopNote?{stopNote:r.stopNote}:{}),
         turnId:r.turns?.[r.turnIndex]?.id
       }:
       null;
@@ -43,10 +47,16 @@
   }
   async function authorize(run){
    const {saved,settings,policy,tab}=await checkLocal(run);if(tab)await requireFeature('ai',{id:chrome.runtime.id,frameId:0,tab:{id:tab.id},url:tab.url});
-   // Sending and waiting only touch the AI chat; scanning and publishing check the Canvas account first.
+   // Sending and waiting only touch the AI chat; scanning and publishing check the Canvas account first. Another account
+   // stops the run; a sign-out asks for Canvas again; Canvas not answering is waited for (a while, then the same ask).
    if(!['asking','awaiting-reply'].includes(run.state)){
-     const fetcher=root.CanvasHarnessAICanvas.createFetch({chrome,run}),response=await fetcher(run.scope.split('|')[0]+'/api/v1/users/self/profile',{method:'GET'});
-     if(!response.ok||String((await response.json()).id)!==run.scope.split('|')[1])throw Error('Your Canvas account changed.');
+     const fetcher=root.CanvasHarnessAICanvas.createFetch({chrome,run}),away=()=>Object.assign(Error('Canvas is not answering.'),{code:'canvas-page-unavailable'});
+     let response,me;
+     try{response=await fetcher(run.scope.split('|')[0]+'/api/v1/users/self/profile',{method:'GET'});}catch{throw away();}
+    if(response.status===401)throw Object.assign(Error('Canvas signed you out. Refresh Canvas.'),{code:'canvas-signed-out'});
+    if(!response.ok)throw away();
+    try{me=await response.json();}catch{throw away();}
+    if(String(me?.id)!==run.scope.split('|')[1])throw Error('Your Canvas account changed.');
    }
    const studyKey=root.CanvasHarnessStudyUI.storageKey(run.scope),study=(await chrome.storage.local.get(studyKey))[studyKey]||{};
    let connectionRevision;
@@ -180,6 +190,21 @@
       await chrome.tabs.create({url:chrome.runtime.getURL('ai-permission.html?provider='+encodeURIComponent(provider.id)),index:(sender.tab.index??0)+1});
       return {opened:true};
     }
+    // Test beside Your AI: the engine's own road with nothing from Canvas in it
+    if(message.op==='check'){
+      if(!/^[\w-]{6,80}$/.test(String(message.requestId||'')))throw Error('Invalid test.');
+      return projection(await engine.start({
+        id:'run-check-'+message.requestId,
+        scope,
+        sourceTab:sender.tab.id,
+        triggerKey:'check:'+message.requestId,
+        day:message.day,
+        entry:'band',
+        kind:'ask',
+        check:true,
+        question:'Test'
+      }));
+    }
     if(message.op==='ask'){
      const s=v=>typeof v==='string'?v:undefined,
        input={
@@ -228,23 +253,32 @@
     if(message.op==='cancel')return projection(await engine.cancel(run.id));
     if(message.op==='importReply')return projection(await engine.importReply(run.id,message.turnId,message.text));
    if(message.op==='retry')return projection(await engine.retry(run.id));
-    if(message.op==='open'){
-      if(run.needsYou?.action==='Refresh Canvas'){await chrome.tabs.reload(run.sourceTab);return projection(run);}
-      const turn=run.turns[run.turnIndex],receipt=turn?.deliveryReceipt,open=receipt?.tabId?await chrome.tabs.get(receipt.tabId).catch(()=>null):null;
-      let same=false;
-      try{same=!!open?.url&&new URL(open.url).origin===receipt.origin;}catch{}
-     // The chat may have moved to its real address since; bring the tab forward as it is.
-     if(same){await chrome.tabs.update(open.id,{active:true});await chrome.windows.update(open.windowId,{focused:true}).catch(()=>{});}
-     else if(receipt?.tabId)
-       await chrome.tabs.update(receipt.tabId,{url:receipt.conversationURL,active:true});
-     else await chrome.tabs.create({url:root.CanvasHarnessProviders.get(run.provider).url});
-     return projection(run);
-    }
-    if(message.op==='resume'){
+    const resume=async()=>{
       await authorize(run);
       await journal.mutate(run.id,null,r=>{if(r.state==='needs-you'){r.state=r.needsYou.resumeState;r.needsYou=null;r.lease={epoch:r.lease.epoch+1,expiresAt:0};}});
       void engine.execute(run.id);
       return projection(await journal.get(run.id));
+    };
+    // Back to where the run waits: Canvas reloaded (a run Canvas stopped then goes on), or the AI chat brought forward; a
+    // closed chat opens again at its own address (else the AI's start page). A run stopped by a sleeping tab goes on.
+    if(message.op==='open'){
+      if(run.needsYou?.action==='Refresh Canvas'){await chrome.tabs.reload(run.sourceTab);return run.needsYou.canvas?resume():projection(run);}
+      const turn=run.turns[run.turnIndex],receipt=turn?.deliveryReceipt,open=receipt?.tabId?await chrome.tabs.get(receipt.tabId).catch(()=>null):null;
+      let same=false,real=false;
+      try{same=!!open?.url&&new URL(open.url).origin===receipt.origin;}catch{}
+      try{real=/^\/(?:c|chat)\/(?!local-)[\w-]{8,}/.test(new URL(receipt.conversationURL).pathname);}catch{}
+     // The chat may have moved to its real address since; bring the tab forward as it is.
+     if(same){await chrome.tabs.update(open.id,{active:true});await chrome.windows.update(open.windowId,{focused:true}).catch(()=>{});}
+     else if(open)
+       await chrome.tabs.update(open.id,{url:receipt.conversationURL,active:true});
+     else await chrome.tabs.create({url:real?receipt.conversationURL:root.CanvasHarnessProviders.get(run.provider).url});
+     return run.needsYou?.asleep?resume():projection(run);
+    }
+    // A sleeping chat tab is brought forward first, so its reply can be read.
+    if(message.op==='resume'){
+      const receipt=run.turns?.[run.turnIndex]?.deliveryReceipt,tab=receipt?.tabId!=null?await chrome.tabs.get(receipt.tabId).catch(()=>null):null;
+      if(tab&&(tab.frozen||tab.discarded))await chrome.tabs.update(tab.id,{active:true}).catch(()=>{});
+      return resume();
     }
     throw Error('Unknown engine operation.');
    })().then(result=>reply({ok:true,result}),error=>reply({ok:false,error:String(error.message||error)}));return true;

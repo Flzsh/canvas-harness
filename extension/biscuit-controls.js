@@ -24,7 +24,7 @@
    "pageTint":["paper","accent","sky","sage","lilac","blush","sand","snow"],
    "panelFrame":["pen","stitch","card","line","none"],
    "quickOpen":["on","off"],
-   "readingFont":["book","interface"],
+   "readingFont":["book","interface","easy"],
    "sceneTheme":["","starry","sea","stars","blueprint"],
    "surfaceStyle":["paper","clean","contrast"],
    "textSize":["standard","large"],
@@ -101,7 +101,7 @@
    "livingArt":{"yes":"on","no":"off"},
    "quickOpen":{"yes":"on","no":"off"}
  };
- const FEATURES={"arrange":"Arrange the workspace","biscuit-more-rules":"Biscuit: more rules","canvas-nav":"Drawn Canvas navigation","course-art":"Course artwork","course-files":"My links & files","course-hub":"Course hub & inbox","course-nav":"Drawn course menu & modules","customization":"Appearance editor","dashboard":"Dashboard & assignments","deadline-changes":"Deadline changes","focus-room":"Focus room","gpa":"GPA calculator","grade-impact":"Grade impact","grades":"Grades","materials":"Materials library","math":"Math tools","motion":"Living drawings & motion","native-appearance":"Native page appearance","pdf":"PDF reader","planner":"Planner & home widgets","play":"Play & submission celebrations","pony":"Pony companion","quick-pack":"Local artwork packs","review-deck":"Review deck","scene-themes":"Scene themes","tools":"Quick open & study tools"};
+ const FEATURES={"arrange":"Arrange the workspace","canvas-nav":"Drawn Canvas navigation","course-art":"Course artwork","course-files":"My links & files","course-hub":"Course hub & inbox","course-nav":"Drawn course menu & modules","customization":"Appearance editor","dashboard":"Dashboard & assignments","deadline-changes":"Deadline changes","developer":"Developer tools","focus-room":"Focus room","gpa":"GPA calculator","grade-impact":"Grade impact","grades":"Grades","materials":"Materials library","math":"Math tools","motion":"Living drawings & motion","native-appearance":"Native page appearance","pdf":"PDF reader","planner":"Planner & home widgets","play":"Play & submission celebrations","pony":"Pony companion","quick-pack":"Local artwork packs","review-deck":"Review deck","scene-themes":"Scene themes","tools":"Quick open & study tools"};
  const MODULES={"bookmarks":"Bookmarks","clock":"Clock","context":"Course information","grades":"Grades","handin":"To hand in","impact":"Grade impact","messages":"Messages","notes":"Notes","pet":"Paddock","reader":"Assignment details","review":"Review","timer":"Focus timer","week":"This week","work":"Up next"};
  const TABS={
    home:'home',
@@ -117,7 +117,7 @@
    grades:'grades'
  };
  const SKILLS={"deadline":"Deadline watch","feedback":"Feedback helper","focus":"Focus buddy","inbox":"Inbox watch","labprep":"Lab prep","night":"Night owl guard","planner":"Planner help","quiz":"Quiz prep","reading":"Reading helper","reminders":"Reminders","rubric":"Rubric helper","wellbeing":"Wellbeing"};
- const PET_VALUES={"coat":["oat","chestnut","dapple","ink","sage","rose"],"gear":["full","collar","none"],"harness":["red","clay","gold","forest","ocean","iris"],"knowledge":["basic","more","most"],"nudges":["helpful","quiet","off"],"roam":["page","home","off"],"size":["small","medium","large"]};
+ const PET_VALUES={"coat":["oat","chestnut","dapple","ink","sage","rose"],"gear":["full","collar","none"],"harness":["red","clay","gold","forest","ocean","iris"],"knowledge":["basic","more","most","lite"],"nudges":["helpful","quiet","off"],"roam":["page","home","off"],"size":["small","medium","large"]};
  /* BEGIN BISCUIT CONTROL UI */
  const UI=[
   ["appearance-value","bannerFit","Banner fit = contain",["Make it yours","Courses","Banner fit","contain"],"contain","set"],
@@ -213,9 +213,9 @@
   ["panel-button","capture","Add a reminder…",["Home","Add a reminder…"],null,"request"],
   ["panel-button","capture","Add reminder",["Home","Add reminder"],null,"request"],
   ["panel-button","close-preview","Back to work list",["Home","Back to work list"],null,"request"],
+  ["panel-button","course","course: {label}",["Home","course: {label}"],null,"request"],
   ["panel-button","course","All courses",["Home","All courses"],null,"request"],
   ["panel-button","course","{name}, open, overdue",["Home","{name}, open, overdue"],null,"request"],
-  ["panel-button","course","course: {label}",["Home","course: {label}"],null,"request"],
   ["panel-button","course","course: {course}",["Home","course: {course}"],null,"request"],
   ["panel-button","day","day: {date}",["Home","day: {date}"],null,"request"],
   ["panel-button","deadline-changes","Changes",["Home","Changes"],null,"request"],
@@ -230,6 +230,8 @@
   ["panel-button","grades","All grades",["Home","All grades"],null,"request"],
   ["panel-button","help-this","Help with this",["Home","Help with this"],null,"request"],
   ["panel-button","hidden-courses","{count} hidden courses: choose which courses show",["Home","{count} hidden courses: choose which courses show"],null,"request"],
+  ["panel-button","machine-keep","Keep",["Home","Keep"],null,"request"],
+  ["panel-button","machine-low","Use Low",["Home","Use Low"],null,"request"],
   ["panel-button","more","Show more assignments",["Home","Show more assignments"],null,"request"],
   ["panel-button","native","Canvas dashboard",["Home","Canvas dashboard"],null,"request"],
   ["panel-button","native","Canvas dashboard",["Home","Canvas dashboard"],null,"request"],
@@ -264,6 +266,9 @@
   ["panel-button","adjust","adjust: {option}",["Home","adjust: {option}"],null,"request"],
   ["panel-button","retry-save","Retry save",["Home","Retry save"],null,"request"],
   ["panel-button","use","use: {option}",["Home","use: {option}"],null,"request"],
+  ["panel-button","button","Course",["Home","Course"],null,"request"],
+  ["panel-button","button","Assignment",["Home","Assignment"],null,"request"],
+  ["panel-button","button","Copy report",["Home","Copy report"],null,"request"],
   ["panel-button","button","Winter",["Home","Winter"],null,"request"],
   ["panel-button","button","Fire",["Home","Fire"],null,"request"],
   ["panel-button","button","Quiet",["Home","Quiet"],null,"request"],
@@ -395,7 +400,7 @@
   ["panel-button","preview","Preview",["Workspace","Review","Preview"],null,"request"],
   ["panel-button","review-deck-big","Big card",["Workspace","Review","Big card"],null,"request"],
   ["panel-button","review-deck-edit","Edit",["Workspace","Review","Edit"],null,"request"],
-  ["panel-button","review-deck-fold","Back to Home",["Workspace","Review","Back to Home"],null,"request"],
+  ["panel-button","review-deck-fold","Fold",["Workspace","Review","Fold"],null,"request"],
   ["panel-button","review-deck-grade","Good",["Workspace","Review","Good"],null,"request"],
   ["panel-button","review-deck-grade","Easy",["Workspace","Review","Easy"],null,"request"],
   ["panel-button","review-deck-grade","Next",["Workspace","Review","Next"],null,"request"],
@@ -462,6 +467,7 @@
   ["panel-button","Remove","Remove",["Home","Remove"],null,"request"],
   ["panel-button","Save and redo","Save and redo",["Home","Save and redo"],null,"request"],
   ["panel-button","Show all","Show all",["Home","Show all"],null,"request"],
+  ["panel-button","Test","Test",["Home","Test"],null,"request"],
   ["panel-button","Undo","Undo",["Home","Undo"],null,"request"],
   ["toolbox-action","button","Add to my plan",["Tools","Quick open","Add to my plan"],null,"request"],
   ["toolbox-action","calculator-mode","calculator mode: {label}",["Tools","Quick open","calculator mode: {label}"],null,"request"],
@@ -679,6 +685,7 @@
   ["pet-value","harness","companion harness = ocean",["Make it yours","Companion","Harness color","ocean"],"ocean","set"],
   ["pet-value","harness","companion harness = red",["Make it yours","Companion","Harness color","red"],"red","set"],
   ["pet-value","knowledge","companion knowledge = basic",["Make it yours","Companion","How much Biscuit knows","basic"],"basic","set"],
+  ["pet-value","knowledge","companion knowledge = lite",["Make it yours","Companion","How much Biscuit knows","lite"],"lite","set"],
   ["pet-value","knowledge","companion knowledge = more",["Make it yours","Companion","How much Biscuit knows","more"],"more","set"],
   ["pet-value","knowledge","companion knowledge = most",["Make it yours","Companion","How much Biscuit knows","most"],"most","set"],
   ["pet-value","nudges","companion nudges = off",["Make it yours","Companion","Reminders","off"],"off","set"],
@@ -700,6 +707,10 @@
   ["setting-value","canvasNav","Canvas menu bar = original",["Make it yours","Home","Canvas menu bar","original"],"original","set"],
   ["setting-value","canvasNav","Canvas menu bar = shown",["Make it yours","Home","Canvas menu bar","shown"],"shown","set"],
   ["setting-value","canvasNav","Canvas menu bar = top",["Make it yours","Home","Canvas menu bar","top"],"top","set"],
+  ["setting-value","graphics","Graphics = high",["Make it yours","Look","Graphics","high"],"high","set"],
+  ["setting-value","graphics","Graphics = low",["Make it yours","Look","Graphics","low"],"low","set"],
+  ["setting-value","graphics","Graphics = medium",["Make it yours","Look","Graphics","medium"],"medium","set"],
+  ["setting-value","graphics","Graphics = xhigh",["Make it yours","Look","Graphics","xhigh"],"xhigh","set"],
   ["setting","accent","Accent color",["Make it yours","Look","Accent color"],null,"inspect"],
   ["setting","bannerSize","Banner size",["Make it yours","Courses","Banner size"],null,"inspect"],
   ["setting","bedtime","bedtime",["Make it yours","Companion","bedtime"],null,"inspect"],
@@ -713,6 +724,8 @@
   ["setting","dockShelf","Shelf",["Make it yours","Look","Shelf"],null,"inspect"],
   ["setting","dockStyle","Look",["Make it yours","Look","Look"],null,"inspect"],
   ["setting","font","Interface type",["Make it yours","Look","Interface type"],null,"inspect"],
+  ["setting","graphics","Graphics",["Make it yours","Look","Graphics"],null,"inspect"],
+  ["setting","graphics","Graphics",["Make it yours","Look","Graphics"],null,"reset"],
   ["setting","greeting","greeting",["Make it yours","Home","greeting"],null,"inspect"],
   ["setting","livingArt","living art",["Make it yours","Look","living art"],null,"inspect"],
   ["setting","motion","motion",["Make it yours","Look","motion"],null,"inspect"],
@@ -732,6 +745,7 @@
   ["settings-tab","pet","Companion",["Make it yours","Companion"],null,"request"],
   ["settings-tab","settings","More",["Make it yours","More"],null,"request"],
   ["toolbox","calculator","Calculator",["Tools","Calculator"],null,"request"],
+  ["toolbox","developer","Developer",["Tools","Developer"],null,"request"],
   ["toolbox","gpa","GPA",["Tools","GPA"],null,"request"],
   ["toolbox","quick","Quick open",["Tools","Quick open"],null,"request"],
   ["workspace","review","Review",["Workspace","Review"],null,"request"]

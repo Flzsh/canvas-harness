@@ -397,7 +397,12 @@
   // frame. A scene on screen plays at 24 all the time it is seen (a drawing that dropped to twos a few seconds
   // after the last input read as a stutter); the minis stay on twos, as drawn. What stops the clock is the
   // drawing leaving the screen, a hidden tab, Still, Off, reduced motion and the idle rest.
-  const FILM_FPS={scene:24,mini:12};
+  // GRAPHICS (Make it yours > Look) sets what the film spends: Extra high all of the above; High keeps the scenes at 24 and
+  // puts the minis on fours, where nobody sees the difference; Medium puts the scenes on twos too. Low has no film at all.
+  // A WEAK MACHINE (four cores or fewer, or 4 GB of memory or less: most Chromebooks) starts on Medium.
+  const WEAK_MACHINE=!!((root.navigator?.hardwareConcurrency>0&&root.navigator.hardwareConcurrency<=4)||
+    (root.navigator?.deviceMemory>0&&root.navigator.deviceMemory<=4));
+  const FILM_FPS={scene:24,mini:12},FILM_LEVELS={full:FILM_FPS,calm:{scene:24,mini:6},slow:{scene:12,mini:6}};
   // THE FILM'S TICKS, SHARED. The pony (pets.js) keeps its own 24/12/6 clock, and on a clock of its own each of its frames
   // is a whole-page frame of its own (measured, Home idle: 47-48 main frames a second, 11-14 of them the pony's alone, each
   // 2.4-2.8 ms of layering, hit testing and commit). So it may draw on the film's ticks (onFilmTick): what falls due before
@@ -416,7 +421,12 @@
   // THE IDLE REST: a page nobody has touched for two minutes (no pointer, wheel or key input on it) holds every
   // living drawing where it stands, so a dashboard left open on a screen costs nothing at all; the next
   // input (or the tab shown again) lets them go on from that very frame. The clock checks it as it ticks.
-  const ART_IDLE_MS=120000;
+  // High rests after a minute, Medium and Low, or any laptop running on its battery, after half of one.
+  const ART_IDLE_MS=120000,ART_IDLE_LEVELS={calm:60000,slow:30000};
+  let onBattery=false;
+  try{
+    root.navigator?.getBattery?.().then(battery=>{const sync=()=>{onBattery=!battery.charging;};sync();battery.addEventListener?.('chargingchange',sync);}).catch(()=>{});
+  }catch{}
 
   function create(container,{
     media=root.matchMedia?.('(prefers-reduced-motion: reduce)'),
@@ -1001,9 +1011,10 @@
       // (when it was held), then ([end, next]: a first swing hands over to its steady swing when its time
       // passes end)}.
       // The rate of the fastest drawing that is going: 24 while a scene plays, 12 where only minis do.
+      const fpsOf=f=>(FILM_LEVELS[container.dataset?.gFilm]||FILM_FPS)[f.scene?'scene':'mini'];
       function rate(){
         let fps=0;
-        for(const r of runs.values())if(r.at==null&&!r.unseen)fps=Math.max(fps,r.f.fps);
+        for(const r of runs.values())if(r.at==null&&!r.unseen)fps=Math.max(fps,fpsOf(r.f));
         return fps;
       }
       function wake(){
@@ -1107,7 +1118,7 @@
       }
       function frameLoops(t){
         if(railOff){if(t-railPeek<2000)return;railPeek=t;const rail=container.querySelector?.('.rd-course-rail')||null;if(rail===railSeen)return;watchRail(rail);loopsSeen=-Infinity;}
-        const step=1000/FILM_FPS.mini,gap=t-loopsAt;if(gap<step-4)return;loopsAt=t;
+        const step=1000/(FILM_LEVELS[container.dataset?.gFilm]||FILM_FPS).mini,gap=t-loopsAt;if(gap<step-4)return;loopsAt=t;
         try{
           if(t-loopsSeen>=2000){
             loopsSeen=t;const live=new Set(),rail=container.querySelector?.('.rd-course-rail');watchRail(rail||null);
@@ -1141,11 +1152,15 @@
         if(FILM_TICKS.size&&clock)handOn(t);
         // A drawing slower than the clock (a mini while a scene lives) takes every second tick: its turn comes
         // when its own frame time has passed (less half a tick, for a timer that fires a little early).
-        const turn=f=>{let ok=turns.get(f);if(ok===undefined){ok=!clock||f.fps>=clock||t-f.shown>=1000/f.fps-500/clock;if(ok)f.shown=t;turns.set(f,ok);}return ok;};
+        const turn=f=>{let ok=turns.get(f);if(ok===undefined){ok=!clock||fpsOf(f)>=clock||t-f.shown>=1000/fpsOf(f)-500/clock;if(ok)f.shown=t;turns.set(f,ok);}return ok;};
         for(const [x,r] of [...runs])if(r.at==null&&!r.unseen&&turn(r.f))frame(x,r,t);
         // This frame is the one they hold, so the next input goes on from exactly here.
         if(!busyHeld&&t>=scrollUntil)frameLoops(t);else loopsHeld=true;
-        if(t-lastInput>=ART_IDLE_MS){idle=true;rest(true);for(const f of films.values())hold(f,t);}
+        if(t-lastInput>=Math.min(ART_IDLE_LEVELS[container.dataset?.gFilm]??ART_IDLE_MS,onBattery?30000:ART_IDLE_MS)){
+          idle=true;
+          rest(true);
+          for(const f of films.values())hold(f,t);
+        }
         wake();
       }
       // Any input on the page (dashboard.js: pointer moves and presses, wheel turns, keys) or the tab shown again: after
@@ -1813,6 +1828,8 @@
       id:ART_ID,
       loopId:ART_LOOP_ID,
       filmFps:FILM_FPS,
+      filmLevels:FILM_LEVELS,
+      weakMachine:WEAK_MACHINE,
       busyMs:ART_BUSY_MS,
       scrollMs:ART_SCROLL_MS,
       idleMs:ART_IDLE_MS,

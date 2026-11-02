@@ -22,7 +22,7 @@
 .rd .ch-agent-module .ch-agent-days{margin:0;font:600 15px var(--rd-heading-font,Literata,Georgia,serif)}
 .rd .ch-agent-module .ch-agent-days b{margin-right:4px;font-size:34px;line-height:1;color:#A9522F}
 .rd[data-theme=dark] .ch-agent-module .ch-agent-days b{color:#E4A184}
-.rd .ch-agent-module :is(.ch-agent-checklist,.ch-agent-files){list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.rd .ch-agent-module .ch-agent-checklist, .rd .ch-agent-module .ch-agent-files{list-style:none;margin:0;padding:0;display:grid;gap:4px}
 .rd .ch-agent-module .ch-agent-checklist label{display:flex;align-items:flex-start;gap:8px;padding:3px 0;cursor:pointer}
 .rd .ch-agent-module .ch-agent-checklist input{appearance:none;width:18px;height:18px;margin:1px 0 0;flex:none;background:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%20width%3D%2218%22%20height%3D%2218%22%20aria-hidden%3D%22true%22%3E%3Cpath%20d%3D%22M3.4%203.8%20Q9%203.1%2014.6%203.6%20Q15.1%209%2014.4%2014.5%20Q9%2015%203.6%2014.4%20Q3%209%203.4%203.8%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23141413%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E") center/18px no-repeat;cursor:pointer}
 .rd .ch-agent-module .ch-agent-checklist input:checked{background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2018%2018%22%20width%3D%2218%22%20height%3D%2218%22%20aria-hidden%3D%22true%22%3E%3Cpath%20d%3D%22M3.4%203.8%20Q9%203.1%2014.6%203.6%20Q15.1%209%2014.4%2014.5%20Q9%2015%203.6%2014.4%20Q3%209%203.4%203.8%20Z%22%20fill%3D%22%23B7C0A0%22%20transform%3D%22translate(1.2%201.3)%22%2F%3E%3Cpath%20d%3D%22M3.4%203.8%20Q9%203.1%2014.6%203.6%20Q15.1%209%2014.4%2014.5%20Q9%2015%203.6%2014.4%20Q3%209%203.4%203.8%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23141413%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M5.4%209.4%20L8%2012%20L13.2%205.8%22%20fill%3D%22none%22%20stroke%3D%22%23141413%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")}
@@ -40,7 +40,7 @@
 .rd[data-theme=dark] .ch-agent-module-body{--accent-ink:#251C17;--error:#FFA5AE;--warn:#E9C286;--warn-surface:#383022;--hs-ink:#D2C8B2}
 .rd :is(.ch-study-viewer,.ch-study-aid) button{min-height:34px;padding:5px 10px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;transition:background-color var(--duration) var(--ease),border-color var(--duration) var(--ease)}
 .rd[data-input=pointer] :is(.ch-study-viewer,.ch-study-aid) button:hover:not(:disabled){background:var(--soft);border-color:var(--muted)}
-.rd :is(.ch-study-viewer,.ch-study-aid) :is(button,a,input,textarea):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.rd :is(.ch-study-viewer,.ch-study-aid) button:focus-visible, .rd :is(.ch-study-viewer,.ch-study-aid) a:focus-visible, .rd :is(.ch-study-viewer,.ch-study-aid) input:focus-visible, .rd :is(.ch-study-viewer,.ch-study-aid) textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .rd :is(.ch-study-viewer,.ch-study-aid) a{color:var(--accent);text-underline-offset:3px}
 .rd :is(.ch-study-viewer,.ch-study-aid) textarea{width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:7px;padding:10px;line-height:1.55;font:inherit}
 .rd :is(.ch-study-viewer,.ch-study-aid) h2{font:530 16px/1.4 var(--display);letter-spacing:-.015em}
@@ -112,7 +112,7 @@
 .rd .ch-study-gaps h3{margin:0 0 4px!important;font:700 14px var(--display)!important;color:var(--warn)!important}
 .rd .ch-study-gaps li{font:13.5px/1.45 var(--ui)}
 .rd .ch-study-viewer:not([hidden]){flex:1 1 auto;min-height:0;overflow:auto;padding-bottom:12px}
-.rd .ai-panel:has(#ch-study-viewer:not([hidden])) :is(.ai-scene,.providers){display:none}
+.rd .ai-panel:has(#ch-study-viewer:not([hidden])) .ai-scene, .rd .ai-panel:has(#ch-study-viewer:not([hidden])) .providers{display:none}
 .rd .ch-study-feedback:empty{margin:0;padding:0;background:none;box-shadow:none}
 .rd .ch-study-feedback:empty::after{display:none}
 .rd .ch-study-row-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 4px}

@@ -24,5 +24,6 @@ test('a feature that lives elsewhere offers Open only while it is on and loaded,
  assert.equal(h.get('[data-open-feature="planner"]').textContent,'Open');
  h.get('[data-open-feature="planner"]').click();assert.deepEqual(calls,['planner']);
  h.panel.update({prefs:{preset:'custom',on:{planner:true,art:true}}});assert.equal(h.box.querySelector('[data-open-feature="art"]'),null,'switched on, waiting for the reload');
+ const dock=require('node:fs').readFileSync(require('node:path').join(__dirname,'../extension/settings-dock.js'),'utf8');assert.doesNotMatch(dock.match(/const OPENS=\{.*\};/)[0],/play/,'gadgets open at a hand-in, so Play has no Open');
  const popup=setup({opens:['planner'],live:['planner']});assert.equal(popup.box.querySelector('[data-open-feature]'),null,'no Open without a place to open it');
 });

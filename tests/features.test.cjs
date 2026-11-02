@@ -497,3 +497,9 @@ test('course file codecs load only for an explicit backup request in a trusted t
  for(const bad of [{...w.sender,id:'other'},{...w.sender,frameId:1},{...w.sender,url:'https://attacker.test/'},{...w.sender,tab:undefined}])assert.equal((await w.request({target:'ch-course-files',op:'load'},bad)).ok,false);
  assert.equal((await w.request({target:'ch-course-files',op:'other'})).ok,false);assert.equal(w.executions.length,before);
 });
+
+test('every feature script has a place in the load order, so none is listed and silently never loaded',()=>{
+ const missing=F.catalogue.flatMap(f=>f.files.js).filter(file=>!F.order.includes(file)&&file!=='startup-art.js');
+ assert.deepEqual(missing,[]);
+ assert.ok(F.resolve({preset:'full'}).js.includes('biscuit-mind.js'));
+});

@@ -50,8 +50,9 @@ html.chb-armed.chb-aiming[data-chb-tool],html.chb-armed.chb-aiming[data-chb-tool
 .chb-blink{animation:chb-blink 2.4s ease-in-out infinite}@keyframes chb-blink{0%,100%{opacity:.35}50%{opacity:1}}
 .chb-warm{animation:chb-warm 3s ease-in-out infinite}@keyframes chb-warm{0%,100%{opacity:.18}50%{opacity:.45}}
 .chb-flow{animation:chb-flow 1.4s linear infinite}@keyframes chb-flow{to{transform:translateX(21.6px)}}
+@keyframes chb-river{to{transform:translate3d(216px,0,0)}}
 .chb-hotedge{animation:chb-warm 2.2s ease-in-out infinite}
-.chb-swirl,.chb-swirl2{transform-box:fill-box;transform-origin:50% 50%;animation:chb-swirl 3s linear infinite}.chb-swirl2{animation-duration:1.6s}@keyframes chb-swirl{to{transform:rotate(360deg)}}
+.chb-swirl{transform-box:fill-box;transform-origin:50% 50%;animation:chb-swirl 3s linear infinite}@keyframes chb-swirl{to{transform:rotate(360deg)}}
 .chb-flipA{animation:chb-flipA 4s steps(1) infinite}.chb-flipB{opacity:0;animation:chb-flipB 4s steps(1) infinite}
 @keyframes chb-flipA{0%,70%{opacity:1}71%,100%{opacity:0}}@keyframes chb-flipB{0%,70%{opacity:0}71%,100%{opacity:1}}
 .chb-drop{transform-box:fill-box;animation:chb-drop 3.2s ease-in infinite}@keyframes chb-drop{0%{transform:scale(.2);opacity:0}30%{transform:none;opacity:.9}60%{transform:none;opacity:.9}100%{transform:translateY(46px);opacity:0}}
@@ -61,7 +62,6 @@ html.chb-armed.chb-aiming[data-chb-tool],html.chb-armed.chb-aiming[data-chb-tool
 #chb-layer .chb-plant{animation:chb-grow .7s cubic-bezier(.3,1.5,.5,1) backwards,chb-nod 5s ease-in-out infinite}.chb-sprout{color:#4E6B3C;transition:color .6s}
 @keyframes chb-grow{from{transform:scale(0)}}@keyframes chb-sway{0%,100%{rotate:0deg}50%{rotate:7deg}}@keyframes chb-nod{0%,100%{rotate:-4deg}50%{rotate:5deg}}
 .chb-streak{animation:chb-streak 1.6s linear infinite}@keyframes chb-streak{to{stroke-dashoffset:-64}}
-.chb-portal{animation:chb-breathe 2.6s ease-in-out infinite}@keyframes chb-breathe{0%,100%{transform:none}50%{transform:scale(1.04,1.08)}}
 
 /* ---- the painter's styles: each painted word comes alive in one of these, picked at random */
 .chb-painted{position:relative}
@@ -101,9 +101,10 @@ html.chb-rest #chb-layer *,html.chb-rest .chb-blend *,html.chb-rest .chb-painted
 @media (prefers-reduced-motion:reduce){#chb-tray button.chb-reveal,.chb-rays,.chb-shine::before,.chb-spark{animation:none}}
 /* the black hole's darkness lies above the letters it pulls in (they darken with the page) */
 #chb-layer > canvas.chb-space-dark{z-index:3}
+@keyframes chb-fine{to{transform:rotate(360deg)}}
 /* Physics stand-ins: dimensions are cached by the solver; only transforms change in its frame loop. */
 .chb-physics-body{pointer-events:auto;touch-action:none;user-select:none;cursor:grab;z-index:5}
-.chb-balloon-live,.chb-gravity-handle,.chb-portal-live,.chb-portal-knob,.chb-portal-edge{pointer-events:auto;touch-action:none;user-select:none;cursor:grab}
+.chb-balloon-live,.chb-gravity-handle,.chb-portal-hit,.chb-portal-knob,.chb-portal-edge{pointer-events:auto;touch-action:none;user-select:none;cursor:grab}
 .chb-balloon-live{z-index:5}.chb-balloon-string{pointer-events:none;transform-origin:0 50%;z-index:4}
 .chb-gravity-handle{z-index:7}.chb-portal-live{z-index:4}.chb-portal-knob,.chb-portal-edge{z-index:6}.chb-portal-knob{cursor:crosshair}.chb-portal-edge{cursor:nwse-resize}
 .chb-magnet-live{pointer-events:none;z-index:6}.chb-magnet-clump{z-index:5}.chb-magnet-live.is-repel{outline:1px dashed #C96442}
@@ -112,8 +113,12 @@ html.chb-rest #chb-layer *,html.chb-rest .chb-blend *,html.chb-rest .chb-painted
 /* lifted letters stay the page's own type, with only a soft shadow that follows the letters (no card around each one) */
 #chb-layer .chb-physics-body{background:none;box-shadow:none;text-shadow:1.5px 2.5px 2px rgb(20 20 19/.22)}
 
-/* the portals live: the inside turns, sparks circle the rim, wisps rise from the side it faces */
-.chb-portal-spin{animation:chbPspin 2.6s linear infinite}.chb-portal-orbit{animation:chbPorbit 7s linear infinite}.chb-portal-wisp{animation:chbPwisp 1.8s ease-out infinite}@keyframes chbPspin{to{transform:rotate(360deg)}}@keyframes chbPorbit{to{transform:rotate(360deg)}}@keyframes chbPwisp{0%{opacity:0;transform:translateY(6px)}30%{opacity:.6}100%{opacity:0;transform:translateY(-10px)}}@media (prefers-reduced-motion:reduce){.chb-portal-spin,.chb-portal-orbit,.chb-portal-wisp{animation:none}}
+/* the portals live: canvases painted once and laid flat by the wrapper; the bands turn on the compositor. Only the ellipse takes the pointer, and the handles show when it comes near */
+.chb-portal-live{position:absolute;left:0;top:0;width:0;height:0}.chb-portal-wrap{position:absolute;left:0;top:0;width:0;height:0;transform:scale(1,.42);pointer-events:none}.chb-portal-wrap canvas{position:absolute;pointer-events:none}
+.chb-portal-hit{position:absolute;left:-68px;top:-34px;width:136px;height:68px;border-radius:50%}
+.chb-portal-spin{will-change:transform;animation:chb-fine var(--turn,6s) linear infinite var(--way,normal)}.chb-portal-pulse{animation:chb-fine var(--turn,6s) linear infinite var(--way,normal),chbPglint 1.7s ease-in-out infinite alternate}@keyframes chbPglint{from{opacity:.45}to{opacity:1}}
+.chb-portal-knob,.chb-portal-edge{opacity:0;pointer-events:none;transition:opacity .16s ease-out}.chb-portal-knob.is-near,.chb-portal-edge.is-near{opacity:1;pointer-events:auto}
+@media (prefers-reduced-motion:reduce){.chb-portal-spin,.chb-portal-pulse{animation:none;will-change:auto}}
 html.chb-paused :is(#chb-layer,#chb-aim,.chb-box) *,html.chb-paused :is(#chb-layer,#chb-aim,.chb-box) *::before{animation-play-state:paused!important}
 html.chb-reduced :is(#chb-layer,#chb-aim,.chb-box) *,html.chb-reduced :is(#chb-layer,#chb-aim,.chb-box) *::before{animation:none!important;transition:none!important}
 .chs-scene.chs-paused *{animation-play-state:paused!important}

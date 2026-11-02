@@ -7,7 +7,7 @@
  const DEFAULTS={
    enabled:true,
    name:'Biscuit',
-   knowledge:'basic',
+   knowledge:'most',
    coat:'oat',
    harness:'red',
    gear:'full',
@@ -29,7 +29,7 @@
  const Brain=()=>root.ReservePonyBrain,Ask=()=>root.ReservePonyAsk,Parse=()=>root.ReserveBiscuitParse;
  const SIZES={small:46,medium:58,large:74};
  // What a level needs, and what it opens. Levels only go up.
- const ROAM=['page','home','off'],NUDGES=['helpful','quiet','off'],GEAR=['full','collar','none'],KNOWLEDGE=['basic','more','most'];
+ const ROAM=['page','home','off'],NUDGES=['helpful','quiet','off'],GEAR=['full','collar','none'],KNOWLEDGE=['basic','more','most','lite'];
  const LEVEL_XP=[0,30,80,150,250,380,540,740,980,1260];
  const UNLOCKS={coat:{oat:1,chestnut:1,dapple:2,sage:4,rose:6,ink:8},harness:{red:1,clay:1,gold:3,forest:3,ocean:5,iris:7}};
  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -42,7 +42,7 @@
   if(typeof v.enabled==='boolean')out.enabled=v.enabled;
   if(Object.hasOwn(v,'knowledge')&&KNOWLEDGE.includes(v.knowledge))out.knowledge=v.knowledge;
   if(typeof v.name==='string'&&v.name.trim())out.name=v.name.trim().slice(0,24);
-  if(Object.hasOwn(v,'knowledge')&&KNOWLEDGE.includes(v.knowledge))out.knowledge=v.knowledge;
+  if(Object.hasOwn(v,'knowledge')&&KNOWLEDGE.includes(v.knowledge))out.knowledge=v.knowledge==='lite'?'lite':'most';
   if(art?.COATS[v.coat])out.coat=v.coat;if(art?.HARNESS[v.harness])out.harness=v.harness;
   if(GEAR.includes(v.gear))out.gear=v.gear;
   if(ROAM.includes(v.roam))out.roam=v.roam;
@@ -208,7 +208,7 @@
   const undoChanges=[];
   const offered=new Set(),newId=()=>`pony-${now()}-${root.crypto?.randomUUID?.()||Math.random().toString(36).slice(2)}`;
   const engine=root.ReserveBiscuitEngine?.create(),engineMemory={items:[],lastOffer:0},engineSession={};let engineCard=null,previewTimer=0;
-  let catalogueRows=null,catalogueLoad=null,catalogueTurn=0,submitTurn=0,knowledgeTier='',knowledgeLoad=null,knowledgeTurn=0;
+  let catalogueRows=null,catalogueLoad=null,catalogueTurn=0,submitTurn=0,knowledgeTier='',knowledgeLoad=null,knowledgeTurn=0,knowledgeWanted=false;
   // One sync reads the workspace's context once: choosing the knowledge tier and refreshing the brain each built all of
   // it on every dashboard render. The store only changes asynchronously, so both readers see the same data.
   const hostInfo=info;let syncInfo=null;info=()=>syncInfo?syncInfo.data||(syncInfo.data=hostInfo()):hostInfo();
@@ -219,11 +219,13 @@
     if(!offerSnap||offerVersion!==thoughtVersion||!Brain()){offerVersion=thoughtVersion;offerSnap={};}
     return Object.assign(offerSnap,snapshot,{now:now()});
   };
-  const moreRules=data=>Array.isArray(data.features)?data.features.find(row=>row?.id==='biscuit-more-rules')?.on===true:data.features?.['biscuit-more-rules']===true,
-    knowledgeChoice=()=>moreRules(info())?pet.knowledge:'basic';
+  const knowledgeChoice=()=>pet.knowledge;
   function loadKnowledge(){
    if(dead||!pet.enabled){if(knowledgeTier||knowledgeLoad){knowledgeTurn++;knowledgeTier='';knowledgeLoad=null;}return null;}
-   const tier=knowledgeChoice();if(typeof root.ReserveBiscuitRules?.load!=='function'||knowledgeTier===tier)return knowledgeLoad;
+   if(!knowledgeWanted)return null; // Megabytes of rules: most page loads never open Biscuit, so nothing is read until one does.
+   const tier=knowledgeChoice();
+   if(tier==='lite'){if(knowledgeTier||knowledgeLoad){knowledgeTurn++;knowledgeTier='';knowledgeLoad=null;}return null;}
+   if(typeof root.ReserveBiscuitRules?.load!=='function'||knowledgeTier===tier)return knowledgeLoad;
    const turn=++knowledgeTurn;knowledgeTier=tier;
    knowledgeLoad=Promise.resolve().then(()=>{
      if(!dead&&turn===knowledgeTurn&&pet.enabled&&knowledgeChoice()===tier)
@@ -575,10 +577,18 @@
    if(r.type==='childList'){const changed=[...r.addedNodes,...r.removedNodes];if(changed.length&&changed.every(n=>n===layer||layer?.contains(n)))return false;}
    return !clockTick(r);
   }
+  // (with the courses on the strip the ground is the strip's top edge: standing in front of it would cover their names)
+  function floorNow(){
+   const width=win.innerWidth,
+     height=win.innerHeight,
+     shelf=container.dataset?.courseNavigation==='dock'?container.querySelector?.('.rd-dock-ink')?.getBoundingClientRect?.():null,
+     onShelf=!!shelf&&shelf.width>120&&shelf.top>96&&shelf.top<height-6;
+   return {el:null,y:onShelf?shelf.top+1:height-5,x0:onShelf?shelf.left+14:14,x1:onShelf?shelf.right-14:width-14,floor:true,shown:true};
+  }
   function measurePlaces(){
    const width=win.innerWidth,height=win.innerHeight,rects=new Map(),places=new Map(),out=[];sides=new WeakMap();
    const rect=el=>{if(!rects.has(el))rects.set(el,el.getBoundingClientRect());return rects.get(el);};
-   const floor={el:null,y:height-5,x0:14,x1:width-14,floor:true,shown:true};
+   const floor=floorNow();
    const read=el=>{
     if(!el)return floor;if(places.has(el))return places.get(el);if(!el.isConnected||underRoom(el))return null;
     const r=rect(el),side=sides.get(el);if(r.width<120||!side&&r.height<30){places.set(el,null);return null;}
@@ -675,13 +685,27 @@
     clearTimeout(layoutTimer);
     layoutTimer=0;
     if(!node||dead||doc.hidden)return;
-    if(roomBusy()){if(spot.ledge&&underRoom(spot.ledge)&&!grab&&!goal)place();refreshLater();return;}
+    if(roomBusy()){
+      if(spot.ledge&&underRoom(spot.ledge)&&!grab&&!goal)
+        place();
+      else if(!spot.ledge&&geometry&&!grab&&!goal&&!(Number(container.dataset?.chMoving||0)>Date.now()))settleFloor();
+      refreshLater();
+      return;
+    }
     measurePlaces();
     if(menuOpen){place();placeBubble();return;}
     if(decisionPending){decisionPending=false;decide(true);}
     if(!grab&&!goal&&Number.isFinite(node._x)&&Number.isFinite(node._y)){const here=current();if(!free(here,spot.u))moveOff(here);}
     place();
     if(bubble)placeBubble();
+  }
+  // Over a room the companion keeps still, but the ground under it can still move: a page that opens straight into a room
+  // drew the strip after the companion stood down, and it stayed on the window's edge in front of the course names. One read.
+  function settleFloor(){
+    const f=floorNow(),g=geometry.floor;
+    if(Math.abs(f.y-g.y)<=1&&Math.abs(f.x0-g.x0)<=1&&Math.abs(f.x1-g.x1)<=1)return;
+    Object.assign(g,f);
+    place();
   }
   function scheduleFollow(){
     if(!node||dead||doc.hidden||menuOpen||follow)return;
@@ -984,7 +1008,11 @@
   function measureBubble(){if(bubble)bubbleBox={w:bubble.offsetWidth||250,h:bubble.offsetHeight||120};}
   function placeBubble(){
    if(!bubble||!node)return;const vw=geometry?.width||win.innerWidth,w=bubbleBox.w,h=bubbleBox.h,s=size();
-   const x=clamp(node._x-w/2,10,vw-w-10),above=node._y-(custom?ground():s)-h-6;
+   // (the left limit is where the page's cards start: a side rail stands over this layer and would hide the bubble's edge)
+   const cards=(geometry?.all||[]).filter(l=>!l.floor),
+     wall=Math.max(10,cards.length?Math.min(...cards.map(l=>l.x0))-26:(geometry?.floor?.x0??14)-4),
+     x=clamp(node._x-w/2,wall,Math.max(wall,vw-w-10)),
+     above=node._y-(custom?ground():s)-h-6;
    bubble.style.transform=`translate(${x.toFixed(0)}px,${(above>70?above:node._y+(custom?height()-ground():0)+10).toFixed(0)}px)`;
    bubble.style.setProperty('--pet-tail-x',clamp(node._x-x,22,w-22).toFixed(0)+'px');bubble.dataset.below=String(above<=70);
   }
@@ -1056,7 +1084,6 @@
      const B=Brain(),data=info();
      snapshot={
        ...data,
-       biscuitMoreRules:moreRules(data),
        ...(catalogueRows?{catalogue:catalogueRows}:{}),
        ...(personal?{settings:personal.settings}:{}),
        companion:{name:companionName()},
@@ -1397,7 +1424,7 @@
     if(ok&&undo)afterSlip(result?.message||choice.preview,{undo:true,reload:result?.reload});
     else if(result?.message)afterSlip(result.message,{reload:result.reload,suggestions:result.suggestions});
     else if(!ok&&choice.intent!=='ai')
-      afterSlip(['setting','preset','navigate','bookmark','study','installed'].includes(choice.intent)?'That feature is off or unavailable. Check Make it yours \u2192 Features.':choice.intent==='break'?'No break started: a break comes after a focus session ends.':'Unavailable');
+      afterSlip(['setting','preset','navigate','bookmark','study','installed'].includes(choice.intent)?'That feature is off or unavailable. Check Make it yours \u2192 More.':choice.intent==='break'?'No break started: a break comes after a focus session ends.':'Unavailable');
    }
    async function runPet(fields){
      if(fields.action==='treat')return treat();
@@ -1452,6 +1479,7 @@
    bubble.querySelector('.pet-item:not([disabled])')?.focus({preventScroll:true});
   }
   function openMenu(){
+   knowledgeWanted=true;
    void loadKnowledge();
    refreshBrain();
    const offer=engine?.offer({...snapshot,now:now()},{},{brain:pet.brain}),list=engine?(offer&&offer.kind!=='reminder'?[offer]:[]):thought.suggestions.slice(0,2);
@@ -1543,16 +1571,11 @@
    const outer=syncInfo;syncInfo={data:null};try{syncNow();}finally{syncInfo=outer;}
   }
   function syncNow(){
-   if(dead)return;
-   const before=pet.knowledge,roam=pet.roam,more=snapshot.biscuitMoreRules;
-   pet=clean(getPet());
-   personal=getData();
-   hydrateCustom();
-   void loadKnowledge();
+   if(dead)return;const before=pet.knowledge,roam=pet.roam;pet=clean(getPet());personal=getData();hydrateCustom();void loadKnowledge();
    if(!visible()){unmount();scheduleReturn();return;}
     if(!layer)mount();else{dress();if(!container.contains(layer)){container.append(layer);rig=null;resetReels();}if(!moveForRoam(roam))invalidate();}
    refreshBrain();
-   if(before!==pet.knowledge||more!==snapshot.biscuitMoreRules){const input=bubble?.querySelector('[data-pet-question]');if(input?.value?.trim())previewAsk({target:input,flush:true});}
+   if(before!==pet.knowledge){const input=bubble?.querySelector('[data-pet-question]');if(input?.value?.trim())previewAsk({target:input,flush:true});}
    offerBreak();
    offerStretch();
    maybeNudge();
@@ -1577,7 +1600,7 @@
     if(was!==focusing&&layer&&!grab){if(focusing){goal=null;speed=0;if(!menuOpen){closeBubble();settle('read',20000);}}else if(!menuOpen)plan(400);}
   }
   function destroy(){dead=true;clearTimeout(syncWait);hydrationRevision++;catalogueTurn++;submitTurn++;knowledgeTurn++;clearTimeout(hideTimer);unmount();}
-  hydrateCustom();void loadKnowledge();if(visible())mount();else scheduleReturn();
+  hydrateCustom();if(visible())mount();else scheduleReturn();
   return {sync,celebrate,setFocus,say,treat,ask,destroy,get pet(){return pet;}};
  }
  function rememberAction(session,intent,fields={},result={},depth=0){

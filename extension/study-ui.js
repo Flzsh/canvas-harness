@@ -301,7 +301,7 @@
       env.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches===true||
       container?.closest?.('[data-reduced-motion="true"],.rd[data-motion=reduced],[data-motion-style=off],[data-motion-style=still]')!=null;
   const save=()=>{try{Promise.resolve(onProgress(clone(progress))).catch(onError);}catch(e){onError(e);}};
-  const source=(node,src)=>{if(aid.prepare&&src==='Canvas')return;node.append(make('small',src,'ch-study-src'));};
+  const source=(node,src)=>{if(!src||aid.prepare&&src==='Canvas')return;node.append(make('small',src,'ch-study-src'));};
   const heading=(node,text)=>node.append(make('h3',text));
   const worked=(node,name,value,src)=>{
     if(typeof value!=='string'||!value.trim())return;
@@ -843,8 +843,14 @@
    });
    if(data.handin){const hand=make('section',undefined,'ch-study-keep');heading(hand,'Hand it in');hand.append(fill(make('p'),data.handin));body.append(hand);}
   }else if(aid.kind==='outline'){
-   if(data.thesis){const thesis=make('section',undefined,'ch-study-up');thesis.append(make('small','Your thesis answers','ch-study-up-label'),fill(make('p'),data.thesis));body.append(thesis);}
-   const sections=embedded?make('div',undefined,'ch-band-columns'):body;if(embedded)body.append(sections);
+   // (in the band a plan is a stack like worked problems: one part to a card, the question it answers on the first)
+   const stacked=Number.isInteger(data.partIndex);if(stacked&&data.partCount>1)meta('Parts · '+data.partCount);
+   if(data.thesis&&!data.partIndex){
+     const thesis=make('section',undefined,'ch-study-up');
+     thesis.append(make('small',data.partCount?'The question':'Your thesis answers','ch-study-up-label'),fill(make('p'),data.thesis));
+     body.append(thesis);
+   }
+   const sections=embedded&&!stacked?make('div',undefined,'ch-band-columns'):body;if(sections!==body)body.append(sections);
    for(const part of data.sections){
      const section=make('section',undefined,'ch-study-check ch-study-rubric-row'),head=make('div',undefined,'ch-study-row-head');
      head.append(make('h3',part.part));

@@ -374,10 +374,11 @@
     return reply.result;
   }
   async function settings(patch){
-    if(!patch||typeof patch!=='object'||Array.isArray(patch)||Object.keys(patch).some(k=>!['on','way','grades','everyDay','dailyCap','wishes','provider','allowActions'].includes(k)))
+    if(!patch||typeof patch!=='object'||Array.isArray(patch)||Object.keys(patch).some(k=>!['on','way','grades','everyDay','dailyCap','wishes','provider','effort','allowActions'].includes(k)))
       throw Error('Invalid agent setting.');
     for(const k of ['on','grades','everyDay','allowActions'])if(k in patch&&typeof patch[k]!=='boolean')throw Error('Choose an agent switch.');
     if('way'in patch&&!['web','api','overnight'].includes(patch.way))throw Error('Choose an AI way.');
+    if('effort'in patch&&!['','instant','low','medium','high','extra'].includes(patch.effort))throw Error('Choose a thinking effort.');
     if('dailyCap'in patch&&(!Number.isInteger(patch.dailyCap)||patch.dailyCap<0||patch.dailyCap>20))throw Error('Choose a daily cap from 0 to 20.');
     if('wishes'in patch&&(typeof patch.wishes!=='string'||patch.wishes.length>600))throw Error('Instructions exceed 600 characters.');
     if('provider'in patch&&(typeof patch.provider!=='string'||!['chatgpt','claude','gemini','grok','deepseek','kimi','qwen','zai'].includes(patch.provider)))throw Error('Unknown AI website.');

@@ -18,7 +18,7 @@
       minWidth:narrow ? maxWidth : Math.min(320, maxWidth), maxWidth,
       minHeight:Math.min(narrow ? 240 : 320, maxHeight), maxHeight,
       defaultWidth:narrow ? maxWidth : Math.round(clamp(width * .29, 360, 460)),
-      defaultHeight:Math.round(narrow ? height * .46 : height - 32)
+      defaultHeight:Math.round(narrow ? height * (height < 500 ? .75 : .62) : height - 32)
     };
   }
 

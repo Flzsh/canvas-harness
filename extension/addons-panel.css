@@ -31,7 +31,7 @@ html[data-theme=dark] .ap{--ap-ink:#D2C8B2;--ap-card:#2C2E29;--ap-line:#54564C;-
 .ap-market-open:hover{background:var(--ap-hover)}
 .ap-empty{display:flex;flex-direction:column;align-items:center;gap:12px;padding:28px 12px 20px;text-align:center;color:var(--ap-muted)}
 .ap-empty-art{display:block;width:76px}.ap-empty-art svg{display:block;width:100%;height:auto;overflow:visible}.ap-empty p{margin:0;font-size:13px}
-html[data-theme=dark] .ap :is(.ap-ic,.ap-pot,.ap-empty-art){border-radius:8px;background:#E9E3D4;box-shadow:0 0 0 2px #E9E3D4}
+html[data-theme=dark] .ap .ap-ic, html[data-theme=dark] .ap .ap-pot, html[data-theme=dark] .ap .ap-empty-art{border-radius:8px;background:#E9E3D4;box-shadow:0 0 0 2px #E9E3D4}
 @media (prefers-reduced-motion:reduce){.ap *{animation:none!important;transition:none!important}}
 
 /* "Open" beside a feature that lives elsewhere (a room, a workspace, the Play tray). */

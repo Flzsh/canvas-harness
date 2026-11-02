@@ -258,3 +258,13 @@ test('hidden and unmounted ponies cancel input follow wakeups and dormant reel r
  f.setPet({enabled:true});f.clear();staleMedia?.({type:'change'});f.advance(1);assert.equal(f.reads.rect,0);assert.equal(f.enumerations,0,'a detached media listener cannot restart the replacement pony');
  f.doc.emit('pointermove');f.doc.hidden=true;f.doc.emit('visibilitychange');f.clear();f.advance(1000);assert.equal(f.callbacks,0);f.doc.hidden=false;f.doc.emit('visibilitychange');f.postpaint();assert.equal(f.node._y,301);
 });
+
+test('over a room the companion keeps still but steps up onto the course strip when the strip appears under it', () => {
+ // (the public tree spreads long lines over several, whitespace only: the code is read without the breaks)
+ const source = require('node:fs').readFileSync(require('node:path').join(__dirname, '../extension/pets.js'), 'utf8').replace(/\n[ \t]*/g, '');
+ assert.match(source, /if\(roomBusy\(\)\)\{if\(spot\.ledge&&underRoom\(spot\.ledge\)&&!grab&&!goal\)place\(\);else if\(!spot\.ledge&&geometry&&!grab&&!goal&&!\(Number\(container\.dataset\?\.chMoving\|\|0\)>Date\.now\(\)\)\)settleFloor\(\);refreshLater\(\);return;\}/);
+ const settle = source.slice(source.indexOf('function settleFloor()'), source.indexOf('function scheduleFollow()'));
+ assert.ok(settle.includes('floorNow()') && !/querySelectorAll|measurePlaces/.test(settle), 'one read of the strip, not a measure of every ledge');
+ assert.match(source, /const floor=floorNow\(\);/, 'the full measure uses the same ground');
+});
+

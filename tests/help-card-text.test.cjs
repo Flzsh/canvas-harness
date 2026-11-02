@@ -51,7 +51,7 @@ test('steps are an outline: number, drawn mark with a name, the lead and the lig
  assert.equal(two.dataset.mark,undefined);assert.equal(all(two,'ch-step-lead')[0].textContent,'Write the powers');
  assert.match(css,/ol\.ch-steps>li\.ch-step\{[^}]*display:grid;grid-template-columns:1\.25em 15px minmax\(0,1fr\)/,'number, mark and text each have a column');
  assert.equal(rule.children[0].className,'ch-mark','the mark sits in its own column, not inside the lead');assert.equal(two.children[0].className,'ch-mark-slot','a step without a mark keeps the slot, so every lead starts on one edge');
- assert.match(css,/ol\.ch-steps>li\.ch-step>:is\(\.ch-mark,\.ch-mark-slot\)\{grid-column:2;/);
+ assert.match(css,/ol\.ch-steps>li\.ch-step>\.ch-mark-slot\{grid-column:2;/);
  assert.match(css,/\.ch-step-detail\{display:block;[^}]*color:var\(--rd-muted/,'the detail is lighter, under the lead');
 });
 test('five steps or more show three and a More steps button that opens the rest in place and closes it again',()=>{

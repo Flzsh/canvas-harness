@@ -240,7 +240,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     };
     // Hide until near: the dock waits below the window's edge until the pointer comes within reach of it.
     const near=ev=>{
-      if(container.dataset.dockHide!=='true'||!dock||nearFrame)return;
+      if(container.dataset.dockHide!=='true'&&(env.innerHeight||0)>=560||!dock||nearFrame)return;
       nearFrame=env.requestAnimationFrame?.(()=>{
         nearFrame=0;
         const show=ev.clientY>(env.innerHeight||0)-110||dock.contains?.(container.getRootNode?.().activeElement);
@@ -461,8 +461,6 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     function studyChanged(changes,area){if(area==='local'&&studyKey&&Object.hasOwn(changes||{},studyKey))readStudy();}
     root.chrome?.storage?.onChanged?.addListener?.(studyChanged);
-    function biscuitRulesChanged(){scheduleRender();}
-    root.document?.addEventListener?.('reserve:biscuit-rules',biscuitRulesChanged);
     const beforePaint=fn=>root.requestAnimationFrame?root.requestAnimationFrame(fn):root.setTimeout(fn,0);
     const cancelPaint=id=>root.requestAnimationFrame?root.cancelAnimationFrame?.(id):root.clearTimeout(id);
     // A failed visit only changes the status line (and the refresh button's title): written in place, no whole render.
@@ -480,7 +478,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         sourceFrame=beforePaint(()=>{
           sourceFrame=0;
           sourcing=true;
-          try{render();}catch(error){if(!mounted&&onRenderError)onRenderError(error);else throw error;}finally{sourcing=false;}
+          try{render();}catch(error){if(!mounted&&onRenderError){root.ReserveDeveloper?.caught(error);onRenderError(error);}else throw error;}finally{sourcing=false;}
         });
     }
     function consumeSources(){if(sourceFrame)cancelPaint(sourceFrame);sourceFrame=0;}
@@ -530,6 +528,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         ctx.theme=effectiveTheme(ctx.s);
         container.dataset.theme=ctx.theme;
         container.dataset.motionStyle=MOTION_STYLES.includes(ctx.s.motion)?ctx.s.motion:'gentle';
+        container.toggleAttribute?.('data-calm',container.dataset.motionStyle==='off');
         container.dataset.featureMotion=enabled('motion')?'on':'off';
         container.dataset.livingArt=ctx.s.livingArt==='off'?'off':'on';
       }catch{}
@@ -655,6 +654,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // its course (Grade impact's), as they did when the room was a page: only those few attributes change, never
     // data-workspace or the page's markup; when the room goes, the page's own marks come back.
     function markRoom(){
+      const shellNow=container.querySelector(':scope > .rd-shell');if(shellNow&&shellNow.hasAttribute('data-in-room')!==!!room)shellNow.toggleAttribute('data-in-room',!!room);
       const pageTab=workspace==='work'&&workPage==='assignments'?'assignments':workspace,
         tabNow=room?(room.kind==='review'?'review':'grades'):pageTab,
         courseNow=room?.kind==='impact'?room.course:state.courseId;
@@ -782,6 +782,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const s=settings();
         container.dataset.theme=effectiveTheme(s);
         container.dataset.motionStyle=MOTION_STYLES.includes(s.motion)?s.motion:'gentle';
+        container.toggleAttribute?.('data-calm',container.dataset.motionStyle==='off');
         container.dataset.featureMotion=enabled('motion')?'on':'off';
         container.dataset.livingArt=s.livingArt==='off'?'off':'on';
       }catch{}
@@ -845,6 +846,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       try{renderNow(next);renderedAt=started;}finally{rendering=false;}
       // The page's answer to an input is drawn: drawings held for it go on once it has painted (motion.js busy).
       motion?.answered?.();
+      root.ReserveDeveloper?.rendered(Date.now()-started);
       if(!mounted){mounted=true;onReady();}
       // (the page's patch takes the hiding off the column: it goes back on at once, and the room follows the page)
       if(room){homeColumn()?.style.setProperty('will-change','opacity');hideHome();markRoom();renderRoomNow();}
@@ -866,7 +868,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       gradeVisibilityOverride=(initialState?.gradeVisibilityOverride??savedState?.gradeVisibilityOverride)===false?false:null,
       gradeSaveVersion=0;
     let selectedId=restoredView.selectedId;
-    let readerTab=restoredView.readerTab,
+    let heldDock=null,
+      readerTab=restoredView.readerTab,
       customizeTab='all',
       customizeOpen=false,
       canvasNav='drawn',
@@ -889,6 +892,37 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let deckCourseRequested='';
     const headingCache={};
     let overviewMode='actionable',overviewQuery='',checkOffNotice=null,dockMenu=false;
+    // New since the last look: work Canvas added and grades that came back. The mark moves when the student opens the view.
+    let seenCache=null,newShown=null,seenStarted=false;
+    const gradedBack=x=>!x.personal&&x.state==='graded'&&Number.isFinite(x.score);
+    const seenKey=()=>'reserve:seen-work:'+String(currentSnapshot.user?.id||'');
+    function readSeen(){
+      if(seenCache)return seenCache;
+      let v=null;
+      try{v=JSON.parse(root.localStorage?.getItem(seenKey())||'null');}catch{}
+      return seenCache=v&&Array.isArray(v.ids)?{ids:new Set(v.ids),graded:new Set(v.graded)}:null;
+    }
+    function newWorkIds(items,s){
+      if(!readSeen())return [];
+      const out=[];
+      for(const x of items){
+        const id=String(x.id);
+        if(x.personal)continue;
+        if(!seenCache.ids.has(id)&&!root.ReserveCore?.isComplete?.(x))out.push(id);else if(s.showGrades===true&&gradedBack(x)&&!seenCache.graded.has(id))out.push(id);
+      }
+      return out;
+    }
+    function markSeen(items){
+      const ids=items.filter(x=>!x.personal).map(x=>String(x.id)).slice(0,3000),graded=items.filter(gradedBack).map(x=>String(x.id)).slice(0,3000);
+      seenCache={ids:new Set(ids),graded:new Set(graded)};
+      try{root.localStorage?.setItem(seenKey(),JSON.stringify({ids,graded}));}catch{}
+    }
+    function lateCostFor(ctx){
+      const item=ctx.selected;
+      if(!item||item.personal||!item.dueAt||!(Date.parse(item.dueAt)<ctx.now))return null;
+      const past=Model.lateHistory(ctx.items,item.courseId);
+      return past?.policy?Model.lateCost(item,past.policy,ctx.now):past?.clean?{clean:true}:null;
+    }
     const checkingOff=new Set();
     const selectionIds=new Set();let archiveUndo=null,archiving=false;
     const selectionOptions={isSelected:id=>selectionIds.has(id)};
@@ -1326,9 +1360,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       onPlanner({...options,...(options?.page==='week'&&personal.focus?.endsAt?{page:'home'}:{}),hideGrades:settings().showGrades!==true});
     }
 
+    // Graphics: the student's choice, or what suits the machine. Every level draws the same page; lower ones leave out detail.
+    function graphicsLevel(){const saved=personal.settings?.graphics;return ['low','medium','high','xhigh'].includes(saved)?saved:enabled('motion')&&root.ReserveMotion?.art?.weakMachine?'medium':'high';}
     function settings(){
       return {
         ...personal.settings,
+        graphics:graphicsLevel(),
+        graphicsPlan:root.ReserveCustomization?.graphicsPlan?.(graphicsLevel(),personal.settings?.graphicsDetail)||{},
         ...(gradeVisibilityOverride===null?{}:{showGrades:gradeVisibilityOverride}),
         ...(!enabled('grades')?{showGrades:false}:{}),
         ...(!enabled('motion')?{motion:'off',livingArt:'off'}:{}),
@@ -1506,7 +1544,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(state.courseId!=='all'&&!courses.some(x=>x.id===state.courseId))switchCourse('all',{rememberCurrent:false});
       const now=Date.now();
       const local=personal.tasks||{};
-      const filtered=Model.filterAssignments(items,{...state,now,timeZone:s.timeZone,local,prioritizePins:false});
+      // The New view only lives while it is open: a saved or restored view never comes back to it.
+      if(state.mode==='new'&&!newShown)state.mode='actionable';if(state.mode!=='new')newShown=null;
+      const newIds=newWorkIds(items,s);
+      if(!seenStarted&&!readSeen()&&items.length&&currentSnapshot.partial!==true&&!demo){seenStarted=true;markSeen(items);}
+      const filtered=Model.filterAssignments(items,{...state,now,timeZone:s.timeZone,local,prioritizePins:false,newIds:newShown||new Set(newIds)});
       const palette=effectiveTheme(s)==='dark'?DARK_ACCENTS:ACCENTS;
       const accent=/^#[\da-f]{6}$/i.test(s.accent)?s.accent:palette[s.accent]||palette.clay;
       const retained=readerOpen?items.find(x=>x.id===selectedId&&x.personal&&(state.courseId==='all'||state.courseId===x.courseId)):null;
@@ -1534,6 +1576,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           [mode,mode===state.mode&&!state.day?filtered.items.length:Model.filterAssignments(items,{...state,mode,day:'',now,timeZone:s.timeZone,local}).items.length])):
         {};
       return {
+        newWorkIds:newIds,
+        newCount:state.mode==='new'?(newShown||new Set(newIds)).size:newIds.length,
+        machineNotice:enabled('motion')&&root.ReserveMotion?.art?.weakMachine===true&&enabled('customization')&&!personal.settings?.graphics&&!personal.settings?.graphicsTold,
         dockMenu,
         s,
         courses,
@@ -1793,6 +1838,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function viewArgs(ctx,assignmentContent,panel=false){
       return {
         ...ctx,
+        lateCost:lateCostFor(ctx),
         state,
         workspace,
         workPage:workspace==='work'?workPage:'',
@@ -1960,8 +2006,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // Living drawings (default On): the course drawings keep moving once drawn (Gentle only).
       setData('motionStyle',MOTION_STYLES.includes(ctx.s.motion)?ctx.s.motion:'gentle');
       // Teacher text, announcements and messages: the book serif (default) or the interface sans.
-      setData('livingArt',ctx.s.livingArt==='off'?'off':'on');
-      setData('readingFont',ctx.s.readingFont==='interface'?'interface':'book');
+      const detail=ctx.s.graphicsPlan||{};
+      if(container.dataset.graphics!==ctx.s.graphics)try{root.localStorage?.setItem('reserve:graphics',ctx.s.graphics);}catch{}
+      setData('graphics',ctx.s.graphics);
+      setData('gFilm',detail.film||'full');
+      setData('gLife',detail.life||'full');
+      setData('gFrames',detail.frames||'full');
+      setData('gRooms',detail.rooms||'full');
+      setData('gPanorama',detail.panorama||'on');
+      setData('livingArt',ctx.s.livingArt==='off'||detail.film==='off'?'off':'on');
+      setData('readingFont',['interface','easy'].includes(ctx.s.readingFont)?ctx.s.readingFont:'book');
       setData('readerOpen',String(readerOpen));
       setData('courses',String(ctx.s.showCourseStrip!==false));
       if(scene||dataTheme){if(container.style.getPropertyValue?.('--rd-accent')!=='')container.style.removeProperty('--rd-accent');}else setVar('--rd-accent',ctx.accent);
@@ -2155,10 +2209,19 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           },onPrepareSettings:()=>toolbox?.open('ai'),aiChoice:()=>{
             const a=personal?.toolbox?.agent?.settings;
             return !agentController||demo||a?.on===false||(a?.way&&a.way!=='web')?'':a?.provider||'chatgpt';
+          },effortChoice:()=>personal?.toolbox?.agent?.settings?.effort||'',onEffortChoice:async effort=>{
+            if(!agentController?.settings)throw Error('Turn on Your AI in Tools first.');
+            await agentController.settings({effort});
           },onAiChoice:async provider=>{
             if(!agentController?.settings)throw Error('Turn on Your AI in Tools first.');
             await agentController.settings({provider});
             await root.chrome?.runtime?.sendMessage?.({target:'ch-ai-engine',op:'ai-access',scopeKey:studyScope,provider});
+          },onAiCheck:async()=>{
+            let day;
+            try{day=new Intl.DateTimeFormat('en-CA',{timeZone:settings().timeZone||undefined,year:'numeric',month:'2-digit',day:'2-digit'}).format(Date.now());}catch{day=new Date().toISOString().slice(0,10);}
+            const reply=await root.chrome?.runtime?.sendMessage?.({target:'ch-ai-engine',op:'check',scopeKey:studyScope,requestId:root.crypto.randomUUID(),day});
+            if(!reply?.ok)throw Error(reply?.error||'The test could not start.');
+            return reply.result;
           },prepareChoice:()=>{
             const a=personal?.toolbox?.agent;
             return {show:!!agentController&&!demo&&a?.settings?.on!==false&&a?.everyDayChosen!==true,cap:a?.settings?.dailyCap??3};
@@ -2421,6 +2484,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(field?.startsWith('quick-pack-'))return enabled('customization')&&enabled('course-art')&&enabled('quick-pack');
       if(field?.startsWith('kit-')||field?.startsWith('art-')||field==='customize-course')return enabled('customization')&&enabled('course-art');
       if(field==='pet')return enabled('customization')&&enabled('pony');
+      if(field==='graphics-detail')return enabled('customization');
       if(['course-name','course-color','course-visible'].includes(field))return enabled('customization');
       if(field==='canvas-nav')return enabled('customization')&&enabled('canvas-nav');
       if(field?.startsWith('hub-'))return enabled('course-hub');
@@ -2530,12 +2594,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         root.chrome?.storage?.local?.set?.({'reserve:canvasNav':value})?.catch?.(()=>{});
         return;
       }
+      if(field==='graphics-detail'){
+        const key=event.target.dataset.detail,value=event.target.value;
+        void savePersonal(data=>{data.settings.graphicsDetail=root.ReserveCustomization.graphicsDetail({...data.settings.graphicsDetail,[key]:value});});
+        return;
+      }
       if(field==='setting'){
         const key=event.target.dataset.setting;
         if(![
           'theme',
           'accent',
           'motion',
+          'graphics',
           'livingArt',
           'readingFont',
           'greeting',
@@ -2864,6 +2934,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(action==='help-this'){helpWithItem({itemId:button.dataset.id,page:readerTab==='plan'?'notes':'assignment',selectedText:root.getSelection?.()?.toString()||''});return;}
       if(action==='open-aid'){toolbox?.openAid(button.dataset.aidKey);return;}
       if(action==='selection-archive'||action==='selection-undo'){void archiveSelection(action==='selection-undo');return;}
+      if(action==='machine-low'||action==='machine-keep'){
+        void savePersonal(data=>{data.settings.graphicsTold=true;if(action==='machine-low'){data.settings.graphics='low';delete data.settings.graphicsDetail;data.pet.knowledge='lite';}});
+        return;
+      }
       if(action==='check-off'||action==='undo-check-off'){checkOff(String(button.dataset.id),action==='check-off',event,snapshot);return;}
       if(action==='overview-view'){
         overviewMode=button.dataset.mode==='completed'?'completed':'actionable';
@@ -2978,10 +3052,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }
       if(action==='glance'){
         // A summary chip filters to its view; choosing it again returns to Up next.
-        const mode=['overdue','today','tomorrow'].includes(button.dataset.mode)?button.dataset.mode:'actionable';
+        const mode=['overdue','today','tomorrow','new'].includes(button.dataset.mode)?button.dataset.mode:'actionable';
         const fromOtherWorkspace=workspace!=='work';
         if(fromOtherWorkspace){captureCourseView();workspace='work';workPage='assignments';board?.close();}
         readerOpen=false;state.mode=!fromOtherWorkspace&&state.mode===mode&&!state.day?'actionable':mode;state.day='';visibleLimit=60;
+        if(state.mode==='new'){newShown=new Set();const c=buildContext();newShown=new Set(c.newWorkIds);markSeen(c.items);}
         render({tabMotion:event.detail>0,motionTarget:fromOtherWorkspace?'.rd-workspace':'.rd-work',motionKind:fromOtherWorkspace?'workspace':'filter',snapshot,resetWorkspaceScroll:fromOtherWorkspace});
         return;
       }
@@ -3279,6 +3354,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           render();
           return false;
         });
+        if(key==='graphics')return savePersonal(data=>{data.settings.graphics=value;delete data.settings.graphicsDetail;});
         if(key==='showGrades'){
           const version=++gradeSaveVersion;gradeVisibilityOverride=value===true;motion?.cancel();render();
           return savePersonal(data=>{data.settings.showGrades=value===true;}).then(saved=>{
@@ -3532,7 +3608,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     return {
       isReady(){return mounted;},
       getState(){return navigationState(true);},
-      closePersonalFiles(){
+      closePersonalFiles({forget=false}={}){
+        heldDock=forget?null:customizeOpen?{top:container.querySelector('.ch-settings-dock .t-acc-panel')?.scrollTop||0}:heldDock;
         personalRevision++;
         companionTurn++;
         companionKey='';
@@ -3543,7 +3620,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         makeOwn?.setOpen?.(false);
         courseFileOpen?.close();
       },
-      resumePersonalFiles(){delete container.dataset.chLinksPending;makeOwn?.setOpen?.(customizeOpen);scheduleRender();},
+      resumePersonalFiles(){delete container.dataset.chLinksPending;makeOwn?.setOpen?.(customizeOpen);scheduleRender();
+        // the same account came back: Make it yours is where the student left it
+        const held=heldDock;
+        heldDock=null;
+        if(held&&!customizeOpen){settingsDock?.open();root.requestAnimationFrame?.(()=>{const panel=container.querySelector('.ch-settings-dock .t-acc-panel');if(panel)panel.scrollTop=held.top;});}
+      },
       destroy(){
         if(destroyed)return;
         remember();
@@ -3553,7 +3635,6 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         pendingRender=null;
         root.chrome?.storage?.onChanged?.removeListener?.(navChanged);
         root.chrome?.storage?.onChanged?.removeListener?.(studyChanged);
-        root.document?.removeEventListener?.('reserve:biscuit-rules',biscuitRulesChanged);
         if(sceneActive){root.ReserveSceneThemes?.remove(container);sceneActive=false;}
         personalRevision++;companionTurn++;root.ReserveDataTheme?.remove(container);makeOwn?.destroy();preferences?.destroy();
         readerLayout?.disconnect();

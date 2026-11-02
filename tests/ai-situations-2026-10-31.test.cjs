@@ -81,6 +81,12 @@ for(const [status,body]of [[401,refused],[403,{}],[404,{message:'That page has b
  }
  for(const match of [/\/quizzes\?/,/\/assignment_groups\?/,/\/late_policy/,/\/peer_reviews/,/\/tabs\?/]){const {run,prompt}=await harness({assignments:{1:[task({peer_reviews:true})]},routes:[{match,status,body}]}).prepare();assert.equal(run.state,'awaiting-reply',String(match));assert.match(prompt,/Finish the sample task/);assert.doesNotMatch(prompt,/Canvas would not show/,'a side list is not worth a line');}
 });
+test('a section the teacher hid is told to the AI but is no fault on the student\'s screen',()=>{
+ const read=name=>require('node:fs').readFileSync(require('node:path').join(__dirname,'../extension',name),'utf8');
+ assert.match(read('api.js'),/\['403','404'\]\.includes\(String\(error\?\.code\)\)\?\{hidden:true\}/,'the reader still records it, marked');
+ assert.match(read('course-hub-ui.js'),/filter\(error=>!error\.hidden&&/,'the hub leaves it out');
+ assert.match(read('materials-ui.js'),/const faults=raw=>\(raw\?\.errors\|\|\[\]\)\.filter\(e=>!e\.hidden\)/,'Materials leaves it out');
+});
 test('a translated 401 with a live session costs one piece; a translated signed-out session still stops',async()=>{
  const said={status:'no autorizado',errors:[{message:'usuario no autorizado'}]};
  const live=harness({assignments:{1:[task()]},routes:[{match:/\/courses\/1\/files\?/,status:401,body:said}]});assert.match((await live.prepare()).prompt,/Sample Science: files/);
@@ -271,4 +277,21 @@ test('no score reaches a prompt with grades off, hidden totals, muted scores or 
 });
 test('every Canvas call in a whole run is a GET on the read list',async()=>{
  const h=harness({assignments:{1:[task({description:'<a href="/courses/1/files/55">Guide.txt</a>'})]},files:{1:[guide()]},bodies:{55:'Bring the form.'}});await h.prepare();await h.help('21');assert.ok(h.calls.length>20);assert.ok(h.calls.every(c=>/^\/(?:api\/v1\/|files\/\d+\/download)/.test(c)));
+});
+
+// From the live stress test of 2026-11-01: each of these went wrong in front of a real AI.
+test('a paragraph of requirements stays whole when a long syllabus is shortened',async()=>{
+ const body='<p>'+'Attendance, grading, and classroom expectations are described in the student handbook. '.repeat(900)+'</p><p>Project 2: implement a hash map in C. Handle collisions by chaining. Resize when the load factor passes 0.75. The autograder runs valgrind, and any leak loses 15 points. Late work loses 10 percent per day.</p>';
+ const {prompt}=await harness({assignments:{1:[task({name:'Project 2',description:''})]},syllabus:{1:body}}).help('21');assert.match(prompt,/Handle collisions by chaining/);assert.ok((prompt.match(/\[Excerpts; source shortened\]/g)||[]).length<=1);assert.doesNotMatch(prompt,/\[Excerpts;\n/);
+});
+test('"the password is x" is taken out as well, on a page the AI reads',async()=>{
+ const h=harness({assignments:{1:[task({name:'Reading 3',description:'See the page.'})]},modules:{1:[{id:'5',name:'Unit',items:[{id:'900',type:'Page',title:'Notes',page_url:'notes'},{id:'901',type:'Assignment',title:'Reading 3',content_id:'21'}]}]},pages:{1:[{url:'notes',title:'Notes',body:'<p>Read this.</p><p>The class portal password is riverbank42.</p>',updated_at:at(-1)}]}}),{run}=await h.help('21');run.turns[run.turnIndex].reply='```json\n{"read":["L1"]}\n```';await h.step(run);await h.drive(run);assert.doesNotMatch(run.messages[0].content,/riverbank42/);assert.match(run.messages[0].content,/Read this\./);
+});
+test('a discussion tells Help both its dates and that the first post comes before classmates can be seen',async()=>{
+ const {prompt}=await harness({assignments:{1:[task({due_at:null,description:null,has_sub_assignments:true,submission_types:['discussion_topic'],checkpoints:[{tag:'reply_to_topic',due_at:at(1)},{tag:'reply_to_entry',due_at:at(3)}],discussion_topic:{id:'40',message:'<p>Take a side.</p>',require_initial_post:true,user_can_see_posts:false}})]}}).help('21');
+ assert.match(prompt,/first post due Thu, Oct 22/);assert.match(prompt,/replies due Sat, Oct 24/);assert.match(prompt,/hidden until the student posts/);
+});
+test('Help can plan a piece of the student\'s own work, and its plan is a card',()=>{
+ const Study=require('../extension/study-prompts.js');assert.ok(Study.DELIVER_KINDS.includes('outline'));
+ const r=Study.parseDeliver('```json\n'+JSON.stringify({kind:'outline',title:'Lab 4 report',size:'m',thesis:'How does temperature change catalase activity?',sections:[{part:'Analysis',purpose:'12 of 40: the largest share.',example:'1.6 at 37 C against 0.3 at 60 C: what happened?',src:'Source 1',timing:'',words:0,evidence:[]},{part:'Data table and graph',purpose:'10 of 40.',example:'Four temperatures, one rate each.',src:'Source 1',timing:'',words:0,evidence:[]},{part:'Conclusion',purpose:'4 of 40: answer the question.',example:'Does the peak support your hypothesis?',src:'Source 1',timing:'',words:0,evidence:[]}],gaps:[]})+'\n```','auto');assert.equal(r.ok,true,String(r.errors));assert.equal(r.data.kind,'outline');assert.equal(r.data.sections.length,3);
 });

@@ -19,7 +19,7 @@
    accent:['clay','forest','indigo','rose','ocean','amber'],
    motion:['gentle','still','off'],
    livingArt:['on','off'],
-   readingFont:['book','interface'],
+   readingFont:['book','interface','easy'],
    greeting:['on','off'],
    quickOpen:['on','off'],
    density:['comfortable','compact'],

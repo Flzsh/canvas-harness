@@ -78,7 +78,7 @@ test('course dock leaves older backup defaults and all layout preset navigation 
 test('course dock Home choice is a named native radio with its own dock artwork and no descriptions',()=>{
  for(const courseNavigation of ['sidebar','topbar','dock']){
   const document=editor({courseNavigation}),group=document.querySelector('[role="radiogroup"][aria-label="Course navigation"]');assert.ok(group);
-  const radios=group.querySelectorAll('input');assert.deepEqual(radios.map(input=>input.value),['sidebar','topbar','dock']);assert.deepEqual(radios.map(input=>input.closest('label').querySelector('strong').textContent),['Down the side','Across the top','Along the bottom']);
+  const radios=group.querySelectorAll('input');assert.deepEqual(radios.map(input=>input.value),['sidebar','topbar','dock']);assert.deepEqual(radios.map(input=>input.closest('label').querySelector('strong').textContent),['Down the side','Across the top','At the bottom']);
   assert.deepEqual(radios.filter(input=>input.checked).map(input=>input.value),[courseNavigation]);
   for(const input of radios){assert.equal(input.type,'radio');assert.equal(input.getAttribute('name'),'cz-courseNavigation');assert.equal(input.dataset.rdField,'setting');assert.equal(input.dataset.setting,'courseNavigation');assert.equal(input.disabled,false);assert.equal(input.hasAttribute('tabindex'),false);}
   const dock=radios[2].closest('label');assert.equal(dock.querySelector('small'),null);assert.notEqual(dock.querySelector('svg').outerHTML,radios[1].closest('label').querySelector('svg').outerHTML);assert.ok(dock.querySelector('svg rect.cz-fill[y="38"]'));

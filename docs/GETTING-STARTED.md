@@ -58,6 +58,20 @@ For keyboard moving, focus a panel's move grip and press **Space**. Use **Tab** 
 
 Open **Appearance settings** for layout presets and smaller adjustments. Studio puts course information first; Study puts assignments first; Focus starts with a stacked layout. You can keep using the main page while the settings dock is open. See [Themes and artwork](THEMES.md) for surface, type, and motion choices.
 
+On a slower computer, choose a lower **Graphics** level in **Make it yours → Look**: Low, Medium, High or Extra high. Each step down leaves out the detail that is seen least; **Advanced** under it tunes one kind of detail at a time.
+
+## Focus room, Review deck and Grade impact
+
+These three are off until you switch them on: **Features** in the popup, then **Custom**. Add their modules from **Edit Home**.
+
+- **Focus room**: a focus session with five drawn places. It opens as a room over Home and folds back into its module.
+- **Review deck**: your cards, in a reading room over Home.
+- **Grade impact**: opens from a course on **Grades** or its Home module and shows what the work coming up can do to that course. Pretend assignments stay in this browser.
+
+## Developer tools
+
+Off until you switch it on: **Features** in the popup, then **Custom**, then **Developer tools**. Reload Canvas, open **Tools** and choose **Developer**. It shows the build, what is switched on, the settings you changed, the Canvas sync, speed, storage and errors from Canvas Harness's own files. **Copy report** puts the same rows on your clipboard for a bug report; it never includes names, coursework or your school address.
+
 ## Give a course its own artwork
 
 Canvas Harness includes 22 automatic subject presets and a general fallback. To create something for your own course:

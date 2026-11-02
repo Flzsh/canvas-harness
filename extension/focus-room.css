@@ -13,6 +13,7 @@
 :where(.fr-room,.fr-mod) button { appearance:none;background:none;border:0;margin:0;padding:0;font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent; }
 :where(.fr-room,.fr-mod) [hidden] { display:none!important; }
 :where(.fr-room,.fr-mod) :focus-visible { outline:2px dashed var(--c-uink);outline-offset:4px;border-radius:3px; }
+:where(.fr-room) [data-fr-seal]:focus-visible { outline-offset:2px;border-radius:50%; }
 
 /* ---------------------------------------------------------------- the room */
 .rd .fr-room { position:fixed;inset:0;z-index:2147483000;overflow:hidden;background:var(--c-sky0);color:var(--c-uink);font-family:var(--rd-ui-font,"Segoe UI",system-ui,sans-serif);isolation:isolate;contain:strict;--k:var(--fr-k,1); }
@@ -68,11 +69,11 @@
 .fr-room .fr-owlhead { transform-box:fill-box;transform-origin:50% 80%; }
 
 /* the lantern: dark until night or until the end of a session; its flame never stops once lit */
-.fr-room .fr-lantern :is(.fr-glow,.fr-lit,.fr-flame) { opacity:0;transition:opacity .6s ease; }
-.fr-room:is([data-night="true"],[data-fr-after="end"]) .fr-lantern :is(.fr-glow,.fr-lit,.fr-flame) { opacity:1; }
+.fr-room .fr-lantern .fr-glow, .fr-room .fr-lantern .fr-lit, .fr-room .fr-lantern .fr-flame { opacity:0;transition:opacity .6s ease; }
+.fr-room:is([data-night="true"],[data-fr-after="end"]) .fr-lantern .fr-glow, .fr-room:is([data-night="true"],[data-fr-after="end"]) .fr-lantern .fr-lit, .fr-room:is([data-night="true"],[data-fr-after="end"]) .fr-lantern .fr-flame { opacity:1; }
 /* where its light falls: a pool on the boards or the grass, and on the lake a broken streak that moves with the water */
-.fr-room :is(.fr-lpool,.fr-lrefl) { opacity:0;transition:opacity .6s ease; }
-.fr-room:is([data-night="true"],[data-fr-after="end"]) :is(.fr-lpool,.fr-lrefl) { opacity:1; }
+.fr-room .fr-lpool, .fr-room .fr-lrefl { opacity:0;transition:opacity .6s ease; }
+.fr-room:is([data-night="true"],[data-fr-after="end"]) .fr-lpool, .fr-room:is([data-night="true"],[data-fr-after="end"]) .fr-lrefl { opacity:1; }
 .fr-room .fr-lrefl .s2 { opacity:0; }
 .fr-room .fr-flame { transform-box:fill-box;transform-origin:50% 100%; }
 .fr-room .fr-kettle:not(.fr-kettle-fire) .fr-steam,.fr-room .fr-jet { display:none; }
@@ -113,7 +114,7 @@
 .fr-room .fr-close { position:absolute;top:calc(26px * var(--k));right:calc(30px * var(--k));display:grid;justify-items:center;gap:1px;width:calc(52px * var(--k));color:var(--c-uink); }
 .fr-room .fr-close svg { width:calc(34px * var(--k));height:calc(34px * var(--k));overflow:visible; }
 .fr-room .fr-close .k { stroke:var(--c-uink); }
-.fr-room .fr-esc { font:600 calc(11px * var(--k))/1 var(--rd-ui-font,"Segoe UI",system-ui);color:var(--c-umuted); }
+.fr-room .fr-esc { font:600 max(11px,calc(12px * var(--k)))/1 var(--rd-ui-font,"Segoe UI",system-ui);color:var(--c-umuted); }
 .fr-room .fr-close:hover svg { transform:rotate(-6deg) scale(1.06);transition:transform .2s var(--rd-glide,cubic-bezier(.2,.8,.2,1)); }
 /* the task tag hangs on its string from a pin, top left */
 /* the task tag stays left of the sun's arc all session (focus-room.js sets --fr-tagw for the window's shape); its drawing
@@ -192,7 +193,6 @@
 .fr-room .fr-knob svg { display:block;width:100%;height:100%;overflow:visible; }
 .fr-room .fr-knob-pointer { transform-box:view-box;transform-origin:50% 50%;transform:rotate(calc(-135deg + var(--fr-vol,.4) * 270deg)); }
 .fr-room .fr-sr { position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap; }
-.fr-room .fr-sr:not(:empty) { position:absolute;left:50%;bottom:calc(24px * var(--k));width:auto;height:auto;clip-path:none;transform:translateX(-50%);padding:4px 12px;font:600 13px/1.3 var(--rd-ui-font,"Segoe UI",system-ui);color:var(--c-tagtext);background:var(--c-tag);rotate:-1deg; }
 
 /* ---------------------------------------------------------------- the Home module: the room without its place */
 .rd .fr-mod { container:fr-mod / inline-size;color:var(--rd-ink,#141413);--k:1; }
@@ -249,7 +249,7 @@
  .fr-mod:not([data-size="s"]) .fr-seal { width:60px;height:60px; }
 }
 .rd[data-theme="dark"] .fr-mod .fr-mod-time { color:var(--c-utime); }
-.rd[data-theme="dark"] .fr-mod :is(.fr-mod-sub,.fr-mod-label) { color:var(--c-umuted); }
+.rd[data-theme="dark"] .fr-mod .fr-mod-sub, .rd[data-theme="dark"] .fr-mod .fr-mod-label { color:var(--c-umuted); }
 .rd[data-theme="dark"] .fr-mod .fr-mod-sun-line { stroke:var(--c-ink); }
 .rd[data-theme="dark"] .fr-mod .fr-arc-line { stroke:var(--c-arc); }
 .fr-mod .fr-tally-new svg path:last-child,.fr-room .fr-tally-new svg path:last-child { stroke-dasharray:40;stroke-dashoffset:0; }
@@ -262,13 +262,13 @@
 .rd.rd.rd.rd.rd :is(.fr-room,.fr-mod) .fr-task-text strong { color:var(--c-tagink)!important; }
 .rd.rd.rd.rd.rd :is(.fr-room,.fr-mod) .fr-task-text small { color:var(--c-tagmeta)!important; }
 .rd.rd.rd.rd.rd .fr-room .fr-time { color:var(--c-utime)!important; }
-.rd.rd.rd.rd.rd .fr-room :is(.fr-label,.fr-tally) { color:var(--c-ulabel)!important; }
+.rd.rd.rd.rd.rd .fr-room .fr-label, .rd.rd.rd.rd.rd .fr-room .fr-tally { color:var(--c-ulabel)!important; }
 .rd.rd.rd.rd.rd .fr-room :is(.fr-card > span,.fr-close) { color:var(--c-uink)!important; }
 .rd.rd.rd.rd.rd .fr-room .fr-esc { color:var(--c-umuted)!important; }
 .rd.rd.rd.rd.rd .fr-room .fr-paused-word { color:var(--c-sealink)!important; }
 .rd.rd.rd.rd.rd .fr-room:is([data-night="true"],[data-place="fire"]) .fr-paused-word { color:var(--c-uink)!important; }
 .rd.rd.rd.rd.rd:is([data-theme-kit],[data-rd-data-theme]) .fr-mod .fr-mod-time { color:var(--rd-ink)!important; }
-.rd.rd.rd.rd.rd:is([data-theme-kit],[data-rd-data-theme]) .fr-mod :is(.fr-mod-sub,.fr-mod-label,.fr-tally) { color:var(--rd-muted)!important; }
+.rd.rd.rd.rd.rd:is([data-theme-kit],[data-rd-data-theme]) .fr-mod .fr-mod-sub, .rd.rd.rd.rd.rd:is([data-theme-kit],[data-rd-data-theme]) .fr-mod .fr-mod-label, .rd.rd.rd.rd.rd:is([data-theme-kit],[data-rd-data-theme]) .fr-mod .fr-tally { color:var(--rd-muted)!important; }
 
 /* ---------------------------------------------------------------- motion: only with Gentle motion, never when hidden */
 @media (prefers-reduced-motion:no-preference) {
@@ -318,7 +318,7 @@
  .fr-room[data-motion="gentle"][data-fr-moment="wake-start"] .fr-frog { animation:fr-frog-back 1.2s var(--rd-settle,cubic-bezier(.3,.6,.4,1)) both; }
 
  /* acting once: the end. The lantern lights, Biscuit wakes and cheers, and each place's own life acts. */
- .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-lantern :is(.fr-glow,.fr-lit,.fr-flame) { transition:none;animation:fr-lightup 1.6s linear .3s both; }
+ .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-lantern .fr-glow, .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-lantern .fr-lit, .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-lantern .fr-flame { transition:none;animation:fr-lightup 1.6s linear .3s both; }
  .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-biscuit svg { animation:fr-b-body 5s linear both; }
  .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-biscuit .p-sleep { animation:fr-b-sleep 5s linear both; }
  .fr-room[data-motion="gentle"][data-fr-moment="end"] .fr-biscuit .p-stand { animation:fr-b-stand 5s linear both; }
@@ -454,8 +454,8 @@
 
 /* ---------------------------------------------------------------- colour tokens (made by build-focus/make-css.cjs from palette.cjs) */
 .fr-room,.fr-mod{--c-ink:#141413;--c-sky0:#EEF2EE;--c-sky1:#E7EFEC;--c-sky2:#E2ECE6;--c-sky3:#DCE8E2;--c-sun:#F2C14E;--c-sun2:#F6DE9A;--c-moon:#E6C68C;--c-moon2:#CDAF78;--c-star:#E6C68C;--c-cloud:#FFFDF8;--c-cloud2:#ECE8DE;--c-mtnfar:#D9DFDD;--c-mtn:#C8D2CE;--c-snow:#F7F6F1;--c-hill:#C2CFA9;--c-treefar:#C9D4C2;--c-tree1:#A9BF95;--c-tree2:#B4C59F;--c-tree3:#9DB287;--c-treeshade:#7D8B5F;--c-leaf:#B9C99A;--c-leaf2:#A7B996;--c-leaf3:#C9D7A4;--c-water:#BCD7E2;--c-water2:#A6C6D4;--c-water3:#F1F7F6;--c-ripple:#86AEC2;--c-foam:#F1F7F6;--c-fallline:#F1F7F6;--c-glint:#FFF3CF;--c-mist:#F2F2EF;--c-rain:#8FA3B0;--c-ground:#DCE5C8;--c-ground2:#C9D7B9;--c-sand:#E8DFC9;--c-sand2:#D6CBB3;--c-path:#E2D7C3;--c-grass:#7D8B5F;--c-grass2:#94A275;--c-fern:#6F8A4E;--c-moss:#A7B996;--c-rock:#D3CDBF;--c-rock2:#B7AF9F;--c-wood:#C9A27A;--c-wood2:#B08A62;--c-wood3:#8C6A48;--c-bark:#A88B6A;--c-birch:#F4F1E8;--c-roof:#B9644A;--c-roof2:#8F4430;--c-fl1:#F2C14E;--c-fl2:#E0855C;--c-fl3:#C9B6CC;--c-fl4:#FFFDF8;--c-lily:#A9BF95;--c-reed:#6F7D4E;--c-reed2:#8A9A6B;--c-cattail:#7A4A2A;--c-boat:#B97E54;--c-boat2:#96603D;--c-heron:#CDD1D3;--c-heron2:#AEB4B8;--c-heronw:#F3F1EA;--c-heronleg:#C9A55A;--c-snowf:#F6F8F8;--c-snow2:#D3DDE5;--c-ice:#CFE3EC;--c-flake:#FFFFFF;--c-ice2:#B3CEDB;--c-lowsun:#F7D7BF;--c-beak:#D9A441;--c-eye:#141413;--c-eyeshine:#FFFDF8;--c-pony:#F1DEC0;--c-pony2:#E2CBA6;--c-mane:#7A4A2A;--c-mane2:#9A6440;--c-muzzle:#EBCDBB;--c-hoof:#6B5A48;--c-blanket:#E2463B;--c-blanket2:#B5372C;--c-mouth:#9A3A30;--c-shade:#9C9583;--c-shadow:#7E7A6C;--c-light:#FFF4D6;--c-glow:#F3CE7E;--c-glowcore:#F6DE9A;--c-glass:#ECE5D5;--c-iron:#4A4F55;--c-candle:#F2EBDD;--c-flame:#F2A957;--c-flame2:#E2463B;--c-flame3:#F6DE9A;--c-ember:#E8803A;--c-ash:#8E8A82;--c-smoke:#C8C7B8;--c-steam:#F2F0E8;--c-kettle:#3D3B36;--c-kettle2:#5A574F;--c-bucket:#8C9AA0;--c-mug:#4F86B8;--c-rope:#C9A27A;--c-hyd1:#7FA9C9;--c-hyd2:#A7A2D2;--c-hyd3:#C9D7E6;--c-blue:#4F86B8;--c-blue2:#3A6A96;--c-frog:#8FA868;--c-frog2:#6E8A4E;--c-kingfisher:#3E8FB0;--c-breast:#E0855C;--c-owl:#8A7A62;--c-owl2:#A8987C;--c-owleye:#D9AE6A;--c-tent:#E7DCC4;--c-tent2:#CFC2AC;--c-tentlit:#F3CE7E;--c-fish:#C9B07A;--c-course:#9CCB8E;--c-string:#9A6440;--c-page:#FBF8EF;--c-page2:#E6DFCC;--c-seed:#E9E4D6;--c-rule:#9FB8C8;--c-cap:#C0654A;--c-duck:#B59A78;--c-duck2:#8F7558;--c-duckhead:#4E7A5A;--c-wing:#DDE8EC;--c-can:#7E9AA6;--c-can2:#61808C;--c-clay:#C47A52;--c-clay2:#A8603E;--c-snail:#C9B49A;--c-shell:#B98A5A;--c-enamel:#3F6E8E;--c-enamel2:#DDE6EA;--c-tin:#A9AFB2;--c-paper:#F4EFE4;--c-paper2:#EAE2D2;--c-tag:#FFFDF8;--c-tag2:#EBDBBC;--c-bigtag:#EBDBBC;--c-tagshade:#141413;--c-taghole:#FAF9F5;--c-tagfiber:#C9B69A;--c-tagink:#141413;--c-seal:#B5452E;--c-sealink:#7E2E1E;--c-sealring:#F1C8B8;--c-seallight:#D46A4E;--c-sealdark:#8E3322;--c-sealshadow:#141413;--c-raincloud:#C9CED0;--c-raincloud2:#AEB5B9;--c-washedge:#CDBF9F;--c-heronp:#55595E;--c-kfback:#5FB4C9;--c-fish2:#A88E5A;--c-bag:#C2603E;--c-bagend:#E7DCC4;--c-knob:#EBDBBC;--c-knob2:#D9C6A4;--c-pencil:#E8B94A;--c-eraser:#E0855C;--c-firesmoke:#B9A894;--c-swirl:#C9D6DF;--c-uink:#141413;--c-umuted:#5E5D59;--c-utime:#141413;--c-ulabel:#5E5D59;--c-tagtext:#141413;--c-tagmeta:#5E5D59;--c-sealtext:#FFF4EA;--c-arc:#C9BFAE}
-.fr-room:not([data-night="true"]):not([data-kit="true"]) :is(.fr-skyl,.fr-sun,.fr-skyfade){--c-sky0:var(--fr-sky0,#EEF2EE);--c-sky1:var(--fr-sky1,#E7EFEC);--c-sky2:var(--fr-sky2,#E2ECE6);--c-sky3:var(--fr-sky3,#DCE8E2);--c-sun:var(--fr-sun,#F2C14E)}
-.fr-room:not([data-night="true"]):not([data-kit="true"]) :is(.fr-mid,.fr-mid2){--c-water:var(--fr-water,#BCD7E2)}
+.fr-room:not([data-night="true"]):not([data-kit="true"]) .fr-skyl, .fr-room:not([data-night="true"]):not([data-kit="true"]) .fr-sun, .fr-room:not([data-night="true"]):not([data-kit="true"]) .fr-skyfade{--c-sky0:var(--fr-sky0,#EEF2EE);--c-sky1:var(--fr-sky1,#E7EFEC);--c-sky2:var(--fr-sky2,#E2ECE6);--c-sky3:var(--fr-sky3,#DCE8E2);--c-sun:var(--fr-sun,#F2C14E)}
+.fr-room:not([data-night="true"]):not([data-kit="true"]) .fr-mid, .fr-room:not([data-night="true"]):not([data-kit="true"]) .fr-mid2{--c-water:var(--fr-water,#BCD7E2)}
 .fr-room[data-night="true"],.rd[data-theme="dark"] .fr-mod,.rd:is([data-theme-kit="starry"],[data-theme-kit="stars"]) .fr-mod,.fr-mod[data-fr-night="true"],.fr-mod .fr-nightart{--c-ink:#8A7256;--c-sky0:#232B40;--c-sky1:#2A3450;--c-sky2:#334061;--c-sky3:#3A4868;--c-sun:#D9AE6A;--c-sun2:#B8955E;--c-moon:#E6C68C;--c-moon2:#B8955E;--c-star:#D9AE6A;--c-cloud:#3A3A44;--c-cloud2:#33333C;--c-mtnfar:#3B4458;--c-mtn:#343C4E;--c-snow:#5A5E6A;--c-hill:#2E3A33;--c-treefar:#2E3A3C;--c-tree1:#2C3B30;--c-tree2:#33423A;--c-tree3:#283429;--c-treeshade:#1E2922;--c-leaf:#3E5236;--c-leaf2:#36482F;--c-leaf3:#46593C;--c-water:#2B3A52;--c-water2:#24324A;--c-water3:#7C6B58;--c-ripple:#55657E;--c-foam:#6E83A3;--c-fallline:#7C90AE;--c-glint:#D9AE6A;--c-mist:#3A4050;--c-rain:#7F7464;--c-ground:#2A3329;--c-ground2:#232B22;--c-sand:#3A3A32;--c-sand2:#4A463A;--c-path:#4A4438;--c-grass:#56653F;--c-grass2:#4A5838;--c-fern:#4A5E3A;--c-moss:#3E4C36;--c-rock:#4E4C48;--c-rock2:#3C3A37;--c-wood:#6E5236;--c-wood2:#5E452E;--c-wood3:#4A3624;--c-bark:#4A3B2C;--c-birch:#6F5D49;--c-roof:#6A3A2A;--c-roof2:#4E2A1E;--c-fl1:#B08A3A;--c-fl2:#9C5A3A;--c-fl3:#6E5A70;--c-fl4:#9C8A6A;--c-lily:#3E5236;--c-reed:#3E4A2E;--c-reed2:#4E5A3A;--c-cattail:#4A3020;--c-boat:#6A4A30;--c-boat2:#4E3622;--c-heron:#6E6A64;--c-heron2:#5A5652;--c-heronw:#858077;--c-heronleg:#7A6440;--c-snowf:#4C5A76;--c-snow2:#3A4662;--c-ice:#42587A;--c-flake:#C3CEDF;--c-ice2:#34466A;--c-lowsun:#2C3550;--c-beak:#A07A30;--c-eye:#1A1612;--c-eyeshine:#D9AE6A;--c-pony:#C29A6C;--c-pony2:#A8825A;--c-mane:#5A3620;--c-mane2:#6E4A30;--c-muzzle:#B08868;--c-hoof:#3A2E24;--c-blanket:#A8382C;--c-blanket2:#7E2A22;--c-mouth:#6E2A22;--c-shade:#0E120E;--c-shadow:#0E120E;--c-light:#E9B860;--c-glow:#E9A84E;--c-glowcore:#E9B860;--c-glass:#3A3A44;--c-iron:#2A2C30;--c-candle:#CDB890;--c-flame:#E9A84E;--c-flame2:#C8463A;--c-flame3:#F0C878;--c-ember:#E07A36;--c-ash:#3A3632;--c-smoke:#5A5650;--c-steam:#6A665E;--c-kettle:#2A2826;--c-kettle2:#3E3A36;--c-bucket:#4A5056;--c-mug:#2E4E6E;--c-rope:#7A5E40;--c-hyd1:#3E5A78;--c-hyd2:#5A5480;--c-hyd3:#4A5A70;--c-blue:#2E4E6E;--c-blue2:#24405A;--c-frog:#4E6038;--c-frog2:#3E4E2E;--c-kingfisher:#2A5A70;--c-breast:#9C5A3A;--c-owl:#8A7A62;--c-owl2:#6E604C;--c-owleye:#D9AE6A;--c-tent:#9C7448;--c-tent2:#7A5A38;--c-tentlit:#E9A84E;--c-fish:#8A7650;--c-course:#6E8A5E;--c-string:#8A5A3A;--c-page:#A89676;--c-page2:#8A7A5E;--c-seed:#8A7E68;--c-rule:#6A7480;--c-cap:#8A4A34;--c-duck:#6A5A46;--c-duck2:#54463A;--c-duckhead:#344A3A;--c-wing:#5A6470;--c-can:#46565E;--c-can2:#384850;--c-clay:#7A4A32;--c-clay2:#643C28;--c-snail:#7A6A58;--c-shell:#6E5236;--c-enamel:#2E4A60;--c-enamel2:#6A7074;--c-tin:#5E6264;--c-paper:#3A332A;--c-paper2:#2E2922;--c-tag:#5E4A33;--c-tag2:#4E3D2A;--c-bigtag:#D2B07E;--c-tagshade:#000000;--c-taghole:#2A2620;--c-tagfiber:#7A6046;--c-tagink:#2A1F14;--c-seal:#9E3E2A;--c-sealink:#5E2418;--c-sealring:#D99A7A;--c-seallight:#B85A40;--c-sealdark:#6E2A1C;--c-sealshadow:#000000;--c-raincloud:#3E434C;--c-raincloud2:#343840;--c-washedge:#241F19;--c-heronp:#33353A;--c-kfback:#3A7A90;--c-fish2:#6E5E40;--c-bag:#A0553A;--c-bagend:#9C8A6A;--c-knob:#5E4A33;--c-knob2:#4E3D2A;--c-pencil:#B08A3A;--c-eraser:#9C5A3A;--c-firesmoke:#7A6450;--c-swirl:#7E9BD0;--c-uink:#E6CFA2;--c-umuted:#A88E6A;--c-utime:#EEDCB8;--c-ulabel:#A88E6A;--c-tagtext:#F0D6A2;--c-tagmeta:#4A3826;--c-sealtext:#F3D9A8;--c-arc:#6A553F}
 .fr-mod .fr-mod-place:not(:has(.fr-nightart)) svg{--c-ink:#141413}
 .fr-room,.fr-mod{--c-course:var(--fr-course,#9CCB8E)}

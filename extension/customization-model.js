@@ -112,7 +112,22 @@
     0);
   if(total>(root.ReserveCustomArt?.limits.totalBytes||2097152))throw Error('Course artwork is full. Remove an unused upload to stay below 2 MiB.');
  }
- const api={enums,defaults,artKeys,presets,cleanAppearance,cleanSettings,checkBudget};
+ // Graphics: each level is a set of details. Extra high keeps all of them; each step down lets go of what is seen least.
+ const GRAPHICS={
+   xhigh:{film:'full',life:'full',frames:'full',panorama:'on',rooms:'full',cards:'on'},
+   high:{film:'calm',life:'some',frames:'full',panorama:'on',rooms:'full',cards:'on'},
+   medium:{film:'slow',life:'off',frames:'still',panorama:'on',rooms:'most',cards:'on'},
+   low:{film:'off',life:'off',frames:'off',panorama:'off',rooms:'simple',cards:'off'}
+ };
+ const GRAPHICS_CHOICES={film:['full','calm','slow','off'],life:['full','some','off'],frames:['full','still','off'],panorama:['on','off'],rooms:['full','most','simple'],cards:['on','off']};
+ function graphicsDetail(value){
+   const out={};
+   for(const [key,allowed] of Object.entries(GRAPHICS_CHOICES))if(allowed.includes(value?.[key]))out[key]=value[key];
+   return out;
+ }
+ function graphicsPlan(level,detail){return {...(GRAPHICS[level]||GRAPHICS.high),...graphicsDetail(detail)};}
+
+ const api={enums,defaults,artKeys,presets,cleanAppearance,cleanSettings,checkBudget,graphicsPlan,graphicsDetail};
  root.ReserveCustomization=api;
  if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

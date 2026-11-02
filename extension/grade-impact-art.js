@@ -756,7 +756,11 @@
   if(pretend&&o.course!=null){const cx=x+tw-14*k,cy=yt+15*k;paper+=`<g class="gi-x" role="button" tabindex="0" data-gi-action="unpretend" data-gi-course="${o.course}" data-gi-pid="${row.key}" aria-label="${row.removeLabel||'Remove'}"><path class="gi-hit" d="M${R(cx-9)} ${R(cy-9)}h18v18h-18z"/>${S(p.line(cx-3.8,cy-4,cx+4,cy+3.8,.3)+p.line(cx+3.9,cy-3.9,cx-3.8,cy+4,.3),'gi-k',1.5)}</g>`;}
   const eye=F(p.ell(0,yt+10*k,5*k,5*k,.1),'gi-manila')+S(p.ell(0,yt+10*k,5*k,5*k,.1),'gi-ks',1)+S(p.ell(0,yt+10*k,2.4*k,2.4*k,.1),'gi-k',1.3);
   const nm=typeof row.name==='function'?row.name(Math.max(6,Math.floor((tw-16)/(16*k*.56)))):row.name;
-  let face=T(0,yt+32*k,nm,16*k,'gi-t','middle',700)+T(0,yt+50*k,row.meta,12.5*k,'gi-ts','middle',500);
+  // a long name takes two smaller lines rather than losing its end
+  const lines=row.name?.lines?.(Math.max(6,Math.floor((tw-16)/(13.5*k*.56))));
+  let face=lines?.length===2?
+    T(0,yt+27*k,lines[0],13.5*k,'gi-t','middle',700)+T(0,yt+41*k,lines[1],13.5*k,'gi-t','middle',700)+T(0,yt+55*k,row.meta,12*k,'gi-ts','middle',500):
+    T(0,yt+32*k,nm,16*k,'gi-t','middle',700)+T(0,yt+50*k,row.meta,12.5*k,'gi-ts','middle',500);
   if(row.line)face+=T(0,yt+72*k,row.line,15*k,row.need?'gi-tc gi-lit gi-need-line':'gi-tc gi-lit','middle',700);
   let dial='';
   if(o.live){const tx=x+16*k,tl=tw-32*k,f=row.f!=null?row.f:row.dialF??.85,kx=tx+tl*f;

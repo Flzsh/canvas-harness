@@ -29,7 +29,7 @@
    const at=typeof value==='string'&&value.trim()?Date.parse(value):NaN;
    return Number.isFinite(at)?at:Infinity;
  };
- const HOUR=36e5,DAY=864e5,DELIVER=new Set(['test','examples','reading','translate']),validDay=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v);
+ const HOUR=36e5,DAY=864e5,DELIVER=new Set(['test','examples','reading','translate','outline']),validDay=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v);
  // Each card's day is the student's calendar day it was made on: the calendar Daily AI help stamps its runs with.
  const calendars=new Map();
  function dayKey(at,zone){
@@ -147,7 +147,7 @@
  // from the same answer) lap the same way, most important in front. Small and medium cards sit side by side. Ticked
  // cards make one done pile at the end of their day. A stack takes the place of its most important card and the size of
  // its largest; raised (a map of card to size) holds the sizes the band raised so the content fits.
- const PART_FIELDS={test:'questions',examples:'problems'},cardId=c=>String(c.key)+'#'+c.index;
+ const PART_FIELDS={test:'questions',examples:'problems',outline:'sections'},cardId=c=>String(c.key)+'#'+c.index;
  function partViews(data){
    const field=PART_FIELDS[data?.kind],list=field&&Array.isArray(data[field])?data[field]:null;
    if(!list||list.length<2)return null;
@@ -155,7 +155,14 @@
   return typeof Study?.partCards==='function'?
     Study.partCards(data):
     list.map((part,i)=>
-      ({...data,[field]:[part],title:String(part?.title||part?.type||'').trim()||(data.kind==='test'?'Question ':'Problem ')+(i+1),cardTitle:data.title||'',partIndex:i,partCount:list.length}));}
+      ({
+        ...data,
+        [field]:[part],
+        title:String(part?.title||part?.part||part?.type||'').trim()||(data.kind==='test'?'Question ':data.kind==='outline'?'Part ':'Problem ')+(i+1),
+        cardTitle:data.title||'',
+        partIndex:i,
+        partCount:list.length
+      }));}
  function stacksFrom(cards,{raised}={}){const groups=new Map(),add=(group,card)=>{if(!groups.has(group))groups.set(group,[]);groups.get(group).push(card);};
   for(const card of cards.slice().sort(compare)){const up=raised?.get?.(cardId(card));if(up)card.size=bigger(card.size,typeof up==='string'?up:up.size);
    // Big cards lap when they are the same kind about one item (its Canvas item, or the ref the AI gave it), or come from
@@ -284,7 +291,7 @@
   }
  }return out;}
  // The ink the last band read (tone()): a band made while a room's move plays starts with it.
- let lastInk='';
+ let lastInk='',toneKey=null;
  // Pages of four quarters, most important first. When the next card does not fit the room a page has left, a card
  // further on may fill it only if it ranks the same (same tier and kind of work): a less important card never moves
  // ahead of a more important one. narrow: a quarter is too narrow to read (under 280 px), so small cards take half.
@@ -308,7 +315,8 @@
   }
   return pages;
  }
- const AIS=[['chatgpt','ChatGPT'],['claude','Claude'],['gemini','Gemini'],['grok','Grok'],['deepseek','DeepSeek'],['kimi','Kimi'],['qwen','Qwen'],['zai','Z.ai (GLM)']];
+ const EFFORTS={chatgpt:[['instant','Instant'],['medium','Medium'],['high','High'],['extra','Extra high']],claude:[['low','Low'],['medium','Medium'],['high','High'],['extra','Extra']]},
+   AIS=[['chatgpt','ChatGPT'],['claude','Claude'],['gemini','Gemini'],['grok','Grok'],['deepseek','DeepSeek'],['kimi','Kimi'],['qwen','Qwen'],['zai','Z.ai (GLM)']];
  function renderBand(container,aids,{
    env=root,
    scope='',
@@ -317,6 +325,9 @@
    onPrepare,
    aiChoice,
    onAiChoice,
+   effortChoice,
+   onEffortChoice,
+   onAiCheck,
    helpItems,
    onDocsAccess,
    onPrepareSettings,
@@ -420,14 +431,34 @@
   toolbar.append(dayBox);
   const prepareLine=make('div',undefined,'ch-prepare-status'),prepareText=make('span'),prepareButton=button('Open chat',async()=>{
     if(!prepareRun?.id)return;
-    try{
-      if(prepareRun.needsYou?.action==='Read reply'){await env.chrome.runtime.sendMessage({target:'ch-ai-engine',op:'resume',scopeKey:ownerScope,runId:prepareRun.id});return;}
-      if(prepareRun.needsYou?.action==='Try again'){await env.chrome.runtime.sendMessage({target:'ch-ai-engine',op:'retry',scopeKey:ownerScope,runId:prepareRun.id});return;}
-      if(prepareRun.needsYou?.action==='Review settings'&&onPrepareSettings){onPrepareSettings();return;}
-      await env.chrome.runtime.sendMessage({target:'ch-ai-engine',op:'open',scopeKey:ownerScope,runId:prepareRun.id});
-    }catch(error){onError(error);}
-  },'ch-prepare-action');
-  let prepareRun=null,pendingAsk='';
+    const run=prepareRun,action=run.needsYou?.action,send=op=>env.chrome.runtime.sendMessage({target:'ch-ai-engine',op,scopeKey:ownerScope,runId:run.id});
+   // After Open chat, Review draft or Review settings, coming back looks at the chat once (lookBack below). A click always
+   // changes something: when the worker could not act, its reason shows in the line.
+   try{
+     let reply;
+     if(action==='Read reply')
+       reply=await send('resume');
+     else if(action==='Try again')
+       reply=await send('retry');
+     else if(action==='Review settings'&&onPrepareSettings){lookFor=run.id;onPrepareSettings();return;}else{lookFor=action==='Refresh Canvas'?'':run.id;reply=await send('open');}
+    if(reply?.ok===false&&!disposed&&prepareRun===run){
+      prepareText.textContent=String(reply.error||'That did not work. Try again.').slice(0,160);
+      prepareText.classList?.toggle('ch-sr-only',false);
+    }}catch(error){
+      onError(error);
+    }},'ch-prepare-action');
+  // Back from the AI's tab or from settings (the page shown again, or the window in focus): one look at the chat, so what
+  // the student fixed there carries the run on. Once per click; a stop over 30 minutes old is left as it is.
+  let lookFor='';
+  const lookBack=()=>{
+    if(disposed||!lookFor||env.document?.visibilityState==='hidden')return;
+    const run=prepareRun,id=lookFor;
+    lookFor='';
+    if(run?.id!==id||run.state!=='needs-you'||Date.now()-Number(run.needsYou?.at||Date.now())>30*60000)return;
+    Promise.resolve(env.chrome?.runtime?.sendMessage?.({target:'ch-ai-engine',op:'resume',scopeKey:ownerScope,runId:id,look:true})).catch(()=>{});
+  };
+  env.document?.addEventListener?.('visibilitychange',lookBack);env.addEventListener?.('focus',lookBack);
+  let prepareRun=null,pendingAsk='',flippedRun='';
   const cardRuns=new Set(),ownerScope=scope.split('|').slice(0,2).join('|');
   prepareLine.setAttribute('role','status');
   prepareLine.setAttribute('aria-live','polite');
@@ -512,7 +543,7 @@
   function plain(text,cls){const b=make('button');b.className=cls;b.textContent=text;return b;}
   // Typing in a drawer stays in the drawer: Home's keys and the companion never see it.
   const keep=field=>{for(const type of ['keyup','keypress','input','beforeinput','compositionstart','compositionend'])field.addEventListener(type,event=>event.stopPropagation());};
-  const KIND_NAMES={test:'practice tests',examples:'worked examples',reading:'reading breakdowns',translate:'translation help'};
+  const KIND_NAMES={test:'practice tests',examples:'worked examples',reading:'reading breakdowns',translate:'translation help',outline:'outlines'};
   let drawerFor=null,notes=[],sheetKind='';
   const stageOf=run=>run.state==='cards-ready'?[3,1,1]:['queued','scanning'].includes(run.state)||!run.phase?[0,.08,.26]:run.phase==='deliver'?(()=>{
     const step=Array.isArray(run.step)?run.step:[0,1],n=Math.max(1,Number(step[1])||1),i=Math.min(n-1,Math.max(0,Number(step[0])||0));
@@ -531,7 +562,7 @@
   }
   function prepare(value){
     if(disposed||!value||prepareRun?.id===value.id&&prepareRun.revision>value.revision)return;
-    const finished=['cards-ready','cancelled','failed','unchanged','expired','needs-you'],wasBusy=!!prepareRun&&!finished.includes(prepareRun.state);
+    const finished=['cards-ready','cancelled','failed','unchanged','expired','needs-you'],wasBusy=!!prepareRun&&!finished.includes(prepareRun.state),seen=prepareRun?.id===value.id?prepareRun:null;
     prepareRun=value;
     if(pendingAsk&&askStatus===pendingAsk){askStatus=pendingAsk='';status.textContent=pages.length?`${page+1} / ${pages.length}`:'No answers yet';}
     prepareLine.hidden=value.state==='cards-ready'||value.state==='unchanged'&&value.entry==='visit';
@@ -540,7 +571,7 @@
     prepareButton.textContent=value.needsYou?.action||'Open chat';
    // While help is being made (and as it finishes) the track shows the stage; a stop or a question shows its words.
    if(track){
-     const live=!finished.includes(value.state)||value.state==='cards-ready';
+     const live=!value.check&&(!finished.includes(value.state)||value.state==='cards-ready');
      track.toggleAttribute?.('hidden',!live);
      if(live){
        if(track.parentNode!==prepareLine||prepareLine.children?.[0]!==track)prepareLine.insertBefore?.(track,prepareText)??prepareLine.append(track);
@@ -550,17 +581,46 @@
      prepareText.classList?.toggle('ch-sr-only',live);
    }
    if(daily){const busy=!finished.includes(value.state);daily.disabled=busy;if(dailyLabel)dailyLabel.textContent=busy?'Preparing…':'Daily AI help';}
-   // A run this band watched finish says so for a moment and turns to the first page, where the new help sits. A run
-   // started from a card (Ask or Check my work on it, More) lands in that card, on its own day: the band stays there.
+   // A run this band watches turns it to the first page, where the new help sits, once: when its first card is made
+   // (owner, 2026-11-02), or at Ready when the band did not see that card arrive. Later cards and Ready leave the page
+   // the student is on. A run started from a card (Ask or Check my work on it, More) lands in that card, on its own
+   // day: the band stays there.
+   const toFirst=()=>{flippedRun=value.id;following=true;if(dayAt!==0)stepDay(-dayAt);else if(pages.length)flip(0);};
+   if(!cardRuns.has(value.id)&&flippedRun!==value.id&&value.made>0&&seen&&!(seen.made>0)&&!finished.includes(value.state))toFirst();
+   // What the run could not make gets a row of its own under the toolbar until the next run; a visit's run stays quiet.
+   showNotMade(value.check||value.entry==='visit'||!['cards-ready','unchanged'].includes(value.state)?
+     []:
+     [
+       ...(Array.isArray(value.notMade)?value.notMade:[]).map(n=>[String(n?.title||'This item'),String(n?.reason||'').trim()]),
+       ...(value.stopNote?[['',String(value.stopNote)]]:[])
+     ]);
+   if(wasBusy&&value.state==='unchanged'&&value.entry==='band'){
+     env.clearTimeout?.(readyTimer);
+     readyTimer=env.setTimeout?.(()=>{if(!disposed&&prepareRun===value)prepareLine.hidden=true;},10000);
+   }
    if(wasBusy&&value.state==='cards-ready'){
      prepareLine.hidden=false;
      prepareText.textContent=value.progress||'Ready';
      env.clearTimeout?.(readyTimer);
      readyTimer=env.setTimeout?.(()=>{if(!disposed&&prepareRun===value)prepareLine.hidden=true;},10000);
      if(cardRuns.has(value.id)){cardRuns.delete(value.id);return;}
-     following=true;
-     if(dayAt!==0)stepDay(-dayAt);else if(pages.length)flip(0);
+     if(flippedRun!==value.id)toFirst();
    }}
+  // The "Not made" row: one sentence per item left out, the item in ink and then the reason (the AI's own words when it
+  // said what is missing). It eases in with the band's height and stays until the next run.
+  const notMadeRow=make('p',undefined,'ch-band-notmade');notMadeRow.hidden=true;let notMadeKey='[]';
+  function showNotMade(items){const key=JSON.stringify(items);if(key===notMadeKey)return;notMadeKey=key;const h0=drawing?0:holdHeight();
+   notMadeRow.replaceChildren(...items.map(([title,reason])=>{
+     const line=make('span',undefined,'ch-band-notmade-item');
+     if(title)line.append(make('strong','Not made: '+title+(reason?':':'.')));
+     if(reason)line.append(make('span',(title?' ':'')+reason+(/[.!?]$/.test(reason)?'':'.')));
+     return line;
+   }));
+   notMadeRow.hidden=!items.length;
+   measure();
+   if(h0)easeHeight(h0);
+   if(items.length&&!still())notMadeRow.animate?.([{opacity:0,transform:'translateY(-3px)'},{opacity:1,transform:'none'}],{duration:220,easing:SETTLE});
+  }
   const receive=(message,sender)=>{if(message?.target==='ch-ai-run'&&message.scope===ownerScope&&(!sender?.id||sender.id===env.chrome?.runtime?.id))prepare(message.run);};
   env.chrome?.runtime?.onMessage?.addListener(receive);
   if(env.chrome?.runtime?.sendMessage&&UI.storageKey(ownerScope))
@@ -628,16 +688,46 @@
     for(const [id,name] of env.CanvasHarnessProviders?.list?.map(p=>[p.id,p.label])||AIS){const o=make('option',name);o.value=id;pick.append(o);}
     show();
     pick.addEventListener('focus',show);
+    let drawEffort=()=>{};
     pick.addEventListener('change',async()=>{
       pick.disabled=true;
-      try{await onAiChoice(pick.value);}catch(error){show();if(!disposed)onError(error);}finally{if(!disposed)pick.disabled=false;}
+      try{await onAiChoice(pick.value);}catch(error){show();if(!disposed)onError(error);}finally{if(!disposed){pick.disabled=false;drawEffort();}}
     });
     toolbar.append(pick);
-  }
+   if(typeof effortChoice==='function'&&typeof onEffortChoice==='function'){
+     const box=make('select',undefined,'ch-band-ai ch-band-effort');
+     box.setAttribute('aria-label','Thinking effort');
+     box.title='Thinking effort';
+     drawEffort=()=>{
+       const levels=EFFORTS[aiChoice()]||[];
+       box.hidden=!levels.length;
+       box.replaceChildren(...[['','Thinking'],...levels].map(([id,name])=>{const o=make('option',name);o.value=id;return o;}));
+       box.value=levels.some(([id])=>id===effortChoice())?effortChoice():'';
+     };
+     drawEffort();
+     box.addEventListener('change',async()=>{
+       box.disabled=true;
+       try{await onEffortChoice(box.value);}catch(error){drawEffort();if(!disposed)onError(error);}finally{if(!disposed)box.disabled=false;}
+     });
+     toolbar.append(box);
+   }
+   if(typeof onAiCheck==='function'){
+     const test=button('Test',async()=>{
+       test.disabled=true;
+       prepareLine.hidden=false;
+       prepareText.textContent='Testing your AI';
+       prepareButton.hidden=true;
+       try{
+         const run=await onAiCheck();
+         if(!disposed&&run?.id)prepare(run);
+       }catch(error){if(!disposed){prepareText.textContent=String(error.message||error);onError(error);}}finally{if(!disposed)test.disabled=false;}
+     },'ch-band-act ch-band-bar-act');
+     toolbar.append(test);
+   }}
   const undo=button('Undo',restore,'ch-band-undo');
   undo.hidden=true;
-  toolbar.append(status,undo,dots,prev,next);
-  panel.append(toolbar,choice,sheet,prepareLine,stage);
+  toolbar.append(prepareLine,status,undo,dots,prev,next);
+  panel.append(toolbar,choice,notMadeRow,sheet,stage);
   showChoice();
   band.append(panel,tab);
   container.replaceChildren(band);
@@ -659,7 +749,10 @@
        },until+40)||0;
      return;
    }
-   toneNow();
+   const r=band.closest?.('.rd'),
+     key=r?[r.dataset?.theme,r.dataset?.themeKit,r.dataset?.rdDataTheme,r.dataset?.sceneTheme,r.dataset?.surfaceStyle,r.getAttribute?.('style')].join('|'):null;
+   if(key!==null&&key===toneKey&&lastInk){if(band.dataset.ink!==lastInk)band.dataset.ink=lastInk;return;}
+   toneKey=key;toneNow();
   }
   function toneNow(){
     try{
@@ -1064,7 +1157,7 @@
      card.append(chips);
    }
    // The card's actions: Ask, More (tests and worked examples), Check my work (the four kinds of help), Remember, Done.
-   const id=key+'#'+index+(part>=0?'#'+part:''),acts=make('div',undefined,'ch-band-acts'),help=['test','examples','reading','translate'].includes(data.kind);
+   const id=key+'#'+index+(part>=0?'#'+part:''),acts=make('div',undefined,'ch-band-acts'),help=['test','examples','reading','translate','outline'].includes(data.kind);
    if(typeof onAsk==='function'){
      acts.append(drawn(button('Ask',()=>toggleDrawer(id,'ask'),'ch-band-act'),'ask'));
      if(['test','examples'].includes(data.kind)&&aid.itemId)acts.append(drawn(button('More',()=>more(entry,acts),'ch-band-act'),'more'));
@@ -1602,15 +1695,27 @@
   });
   return {element:band,loaded,setOpen,flip,prepare,get state(){
     return {open,page,pages:pages.length,reducedMotion:reduced(),day:model.days[dayAt]||'',days:model.days.slice()};
-  },get pages(){
-    return pages;
-  },stepDay,update(values){
-    showChoice();
-    const wasEmpty=!model.days.length;
-    observer?.disconnect();
-    current=values;
+  },get pages(){return pages;},stepDay,update(values){showChoice();const wasEmpty=!model.days.length;observer?.disconnect();
+    // Help cards arrive one at a time while a run goes on. A card whose saved content did not change keeps its object,
+    // so its built view (open rows, typed text) is kept. An open card, or the page the student moved to, stays in view
+    // when a new card ranks ahead of it (on the newest day's first page new help shows where it lands), and scrolled
+    // boxes keep their place.
+    const old=record(current),same=(a,b)=>{try{return JSON.stringify(a)===JSON.stringify(b);}catch{return false;}};
+    current=values&&typeof values==='object'&&!Array.isArray(values)?Object.fromEntries(Object.entries(values).map(([k,v])=>[k,old[k]&&same(old[k],v)?old[k]:v])):values;
+    const shown=visibleCards(),anchor=shown.find(c=>c.dataset.open==='true')?.dataset.aidKey||(following&&page===0?'':pages[page]?.[0]?.cards?.[0]?.key||''),scrolled=[];
+    for(const c of shown)for(const n of [c,...Array.from(c.querySelectorAll?.('*')||[])])if(n.scrollTop>0)scrolled.push([n,n.scrollTop]);
     askStatus='';
-    reflow(()=>{rebuild();if(wasEmpty&&model.days.length){open=true;interacted=true;}draw();});
+    reflow(()=>{
+      const day=model.days[dayAt];
+      rebuild();
+      if(anchor&&model.days[dayAt]===day){
+        const at=pages.findIndex(stacks=>stacks.some(stack=>stack.cards.some(row=>row.key===anchor)));
+        if(at>=0){page=at;if(dayAt===0)homePage=page;}
+      }
+      if(wasEmpty&&model.days.length){open=true;interacted=true;}
+      draw();
+      for(const [n,top] of scrolled)if(n.isConnected)n.scrollTop=top;
+    });
   },
    // New Canvas data (a due date moved, work handed in) ranks the cards again; the same data costs nothing.
    refresh(){
@@ -1627,6 +1732,8 @@
      stageAnim?.cancel();
      env.clearInterval?.(creepTimer);
      env.chrome?.runtime?.onMessage?.removeListener(receive);
+     env.document?.removeEventListener?.('visibilitychange',lookBack);
+     env.removeEventListener?.('focus',lookBack);
      observer?.disconnect();
      container.replaceChildren();
    }};

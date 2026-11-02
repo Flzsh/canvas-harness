@@ -9,8 +9,8 @@ const {dom,storage}=require('./study-fixture.cjs');
 const scope='https://school.instructure.com|7';
 const ask=headline=>({kind:'ask',title:headline,data:{v:1,kind:'ask',title:headline,headline,size:'s',grid:4,importance:1,points:[{text:headline+' first.',src:'Canvas'}],next:'Open it.',gaps:[]},savedAt:100,progress:{}});
 
-function bandIn({moving=0,color='rgb(20, 20, 20)'}={}){
- const d=dom(),rd=new d.Element('div'),host=new d.Element('div');rd.className='rd';if(moving)rd.dataset.chMoving=String(Date.now()+moving);rd.append(host);
+function bandIn({moving=0,color='rgb(20, 20, 20)',theme=''}={}){
+ const d=dom(),rd=new d.Element('div'),host=new d.Element('div');rd.className='rd';rd.dataset.theme=theme;if(moving)rd.dataset.chMoving=String(Date.now()+moving);rd.append(host);
  // a browser's closest(): the band asks its dashboard (.rd) whether a room's move is playing
  if(!d.Element.prototype.closest)d.Element.prototype.closest=function(sel){for(let n=this;n;n=n.parentNode)if(sel==='.rd'&&String(n.className).split(' ').includes('rd'))return n;return null;};
  const reads=[],timers=[],idles=[];
@@ -30,7 +30,7 @@ test('the Help band reads its ink at once when no room is moving',()=>{
 test('while a room\'s move plays the Help band waits to read its ink, starts with the last band\'s, and reads it after',()=>{
  // a band drawn earlier read light ink (the last band's ink is what a band made in a move starts with)
  const first=bandIn({color:'rgb(240, 240, 240)'});assert.equal(first.band.dataset.ink,'light');first.view.destroy();
- const b=bandIn({moving:600,color:'rgb(20, 20, 20)'});
+ const b=bandIn({moving:600,color:'rgb(20, 20, 20)',theme:'dark'});
  assert.equal(inkReads(b),0,'no style read in the render that swapped the page');
  assert.equal(b.band.dataset.ink,'light','the last ink is kept meanwhile (no flash of the other washes)');
  const wait=b.timers.find(t=>t.fn&&t.ms>=600&&t.ms<=700);assert.ok(wait,'one timer waits for the move to land');

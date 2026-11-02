@@ -65,12 +65,21 @@
       await check();
       const result=await runner.step(run,{save,guard:check,signal:controller.signal,claimProvider:tab=>store.claimProvider(id,epoch,tab)});
       if(result?.waiting){waiting=true;break;}
-      run=await store.get(id);
+      run=await store.get(id);if(run.canvasWaitSince)run=await store.mutate(id,epoch,r=>{delete r.canvasWaitSince;});
      }
     }catch(error){
+     // Canvas signed out, or not answering for 2 minutes: the student refreshes Canvas, and the run goes on from there.
      const current=await store.get(id);
      if(current?.lease.epoch===epoch&&!Store.terminal(current)&&!disposed){
-       if(error.code==='canvas-page-unavailable'){waiting=true;run=await store.mutate(id,epoch,r=>{r.progress='Waiting for Canvas';});}
+       if(error.code==='canvas-signed-out'||error.code==='canvas-page-unavailable'&&now()-Number(current.canvasWaitSince||now())>120000){
+         run=await store.mutate(id,epoch,r=>{
+           r.progress=error.code==='canvas-signed-out'?'Canvas signed you out':'Canvas is not answering';
+           r.needsYou={reason:r.progress,action:'Refresh Canvas',canvas:true,resumeState:r.state};
+           r.state='needs-you';
+           delete r.canvasWaitSince;
+         });
+       }
+       else if(error.code==='canvas-page-unavailable'){waiting=true;run=await store.mutate(id,epoch,r=>{r.progress='Waiting for Canvas';r.canvasWaitSince||=now();});}
        else if(/settings changed|account changed|quiz|privacy changed/i.test(String(error.message||error))){run=await store.cancel(id);}
        else run=await store.mutate(id,epoch,(r,j)=>{
          r.errors.push(String(error.message||error).slice(0,300));
@@ -90,7 +99,7 @@
        const key=[current.state,current.turnIndex,current.turns[current.turnIndex]?.deliveryReceipt?.status].join(':'),
          delay=current.observationKey===key?current.observationDelay||1000:1000;
        await store.mutate(id,epoch,r=>{r.observationKey=key;// While the same step keeps waiting (a long reply), each look comes later, up to every 15 s: ChatGPT rate-limits frequent reads.
- r.observationDelay=delay===1000?2000:delay<5000?5000:Math.min(15000,delay+5000);});schedule(()=>{void execute(id).catch(onError);},delay);}
+ r.observationDelay=delay===1000?2000:delay<5000?5000:Math.min(15000,delay+5000);});schedule(()=>{void execute(id).catch(onError);},current.check?1500:delay);}
      if(current?.nextRunId&&Store.terminal(current)&&!disposed)schedule(()=>{void execute(current.nextRunId).catch(onError);},1000);
      await reconcileAlarms();
     }
@@ -156,7 +165,7 @@
    };
    const accepted=await store.start(prepared);
    // Older runs waiting on the student are retired only when this one was accepted (a capped visit replaces nothing).
-   if(!accepted.skipped)
+   if(!accepted.skipped&&!input.check)
      for(const r of await store.all())
        if(r.id!==accepted.id&&
          r.scope===input.scope&&

@@ -49,3 +49,14 @@ test('the first read after 2.15 moves an untouched Forest to Clay once; a Forest
   assert.deepEqual(await adapter.read(),{accent:'rose'},'another accent is never moved');assert.deepEqual(writes,[{[NativePage.VERSION_KEY]:2}]);
  }finally{delete global.chrome;}
 });
+test('the theme draws: a pen line for buttons, no frame on icon buttons, and nothing pushes Grades sideways',()=>{
+ const css=require('node:fs').readFileSync(require('node:path').join(__dirname,'../extension/native-page.css'),'utf8'),rule=re=>css.split(/\r?\n/).find(line=>re.test(line))||'';
+ assert.match(rule(/\] :is\(\.Button,\.btn\)\{/),/border-image:var\(--rp-pen-line\) 30 \/ 12px/,'buttons take the pen, forms included');
+ assert.doesNotMatch(rule(/\] :is\(\.Button,\.btn\)\{/),/1px solid/,'no ruled box');
+ assert.match(rule(/\] :is\(\.Button--icon-action,\.Button--icon-action-rev/),/border:0;border-image:none;background:none/,'an icon button has no box to hide its white icon');
+ assert.match(rule(/#mobile-header :is\(/),/color:var\(--rp-ink\)/,'the phone header shows its icons');
+ assert.match(rule(/#grades_summary :is\(td\.due,td\.details\)/),/white-space:normal/,'the wide columns wrap');
+ assert.match(rule(/#assignments:has\(>#grades_summary\)/),/overflow-x:auto/,'only the table scrolls');
+ assert.match(rule(/\.item-group-condensed:not\(\.context_module\)\{/),/padding:0;border:0/,'a card has no ruled edge or white strip');
+ assert.match(rule(/\[data-reserve-native-theme=dark\]\{--rp-pen-line/),/D2C8B2/,'the pen turns chalk on the dark theme');
+});

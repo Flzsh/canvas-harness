@@ -332,6 +332,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       state: submissionState(submission, submissionTypes),
       missing: submission ? submission.missing === true : false,
       late: submission ? submission.late === true : false,
+      pointsDeducted: submission ? finiteNumber(submission.points_deducted) : null,
+      secondsLate: submission ? finiteNumber(submission.seconds_late) : null,
       redoRequested: submission ? submission.redo_request === true : false,
       hasSubmission: hasSubmissionEvidence(submission),
       locked: raw.locked_for_user === true || raw.locked === true,
@@ -421,14 +423,20 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   }
   // Prefer distinct requirements over repeated background, while preserving their source order.
   function smartCut(text,max){
-    text=String(text||'');if(text.length<=max)return text;max=Math.max(0,Math.floor(max));if(max<40)return text.slice(0,max);
-    var rows=text.split(/\n+|(?<=[.!?;])\s+/).flatMap(function(t){var out=[];for(var i=0;i<t.length;i+=1500)out.push(t.slice(i,i+1500));return out;}),seen=new Set(),parts=[],used=0,room=max-32;
-    rows.forEach(function(t,i){
+    text=String(text||'').replace(/^(?:\[Excerpts; source shortened\]\n)+/,'');if(text.length<=max)return text;max=Math.max(0,Math.floor(max));if(max<40)return text.slice(0,max);
+    var rows=[],seen=new Set(),parts=[],used=0,room=max-32;
+    text.split(/\n+/).forEach(function(block,b){block.split(/(?<=[.!?;])\s+/).forEach(function(t){for(var i=0;i<t.length;i+=1500)rows.push({t:t.slice(i,i+1500),b:b});});});
+    rows.forEach(function(row,i){
+      var t=row.t;
       if(!t.trim()||max<=40000&&seen.has(t))return;
       seen.add(t);
       var score=(/\b(?:must|required?|deadline|due|rubric|criteria|submit|bring|keep|return|before|after|policy|late|makeup|retake|calibration)\b/i.test(t)?8:0)+(/\d/.test(t)?5:0)+(i===0||i===rows.length-1?4:0);
-      parts.push({i:i,text:t,score:score});
+      parts.push({i:i,b:row.b,text:t,score:score});
     });
+    // (a paragraph of ordinary size that sets out requirements stays whole: the plain sentence between two of them is often one of them)
+    var marked=new Map(),sized=new Map();
+    parts.forEach(function(p){sized.set(p.b,(sized.get(p.b)||0)+1);if(p.score>=5)marked.set(p.b,(marked.get(p.b)||0)+1);});
+    parts.forEach(function(p){if((marked.get(p.b)||0)>=2&&sized.get(p.b)<=12)p.score+=6;});
     var selected=[];
     parts.sort(function(a,b){return b.score-a.score||a.i-b.i;}).forEach(function(p){
       var available=room-used;

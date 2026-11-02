@@ -7,7 +7,7 @@ const settle=async()=>{for(let i=0;i<20;i++)await new Promise(setImmediate);};
 const TASK={title:'Equilibrium worksheet',course:'Chemistry',due:'Fri 11:59 PM',color:'#9CCB8E'};
 const running=(left,minutes=25,sessions=2)=>({minutes,remaining:minutes*60,elapsed:0,endsAt:Date.now()+left*1000,sessions});
 
-function fixture({on=true,quiz=false,reject=false,reduce=false,motion='gentle',theme='light',kit='',market='',kitBg='#1F4F8F',focus=running(600),pony=true}={}){
+function fixture({idle=null,on=true,quiz=false,reject=false,reduce=false,motion='gentle',theme='light',kit='',market='',kitBg='#1F4F8F',focus=running(600),pony=true}={}){
  const document=createDOM(`<html><body><div class="rd" data-theme="${theme}" data-motion-style="${motion}"${kit?` data-theme-kit="${kit}"`:''}${market?` data-rd-data-theme="${market}"`:''}><main class="rd-shell"><section class="rd-widget"><header class="rd-widget-head"><h2>Focus</h2><button type="button" data-rd-action="room-open">Room ↗</button></header><div class="rd-widget-body" id="body"></div></section></main><div class="tk-starframes"></div></div></body></html>`);
  const Element=document.createElement('div').constructor;Object.defineProperty(Element.prototype,'ownerDocument',{configurable:true,get:()=>document});
  const docEvents={};document.fullscreenElement=null;document.visibilityState='visible';
@@ -20,6 +20,7 @@ function fixture({on=true,quiz=false,reject=false,reduce=false,motion='gentle',t
  const env=vm.createContext({console,Date,Math,JSON,Promise,Map,Set,Array,Object,String,Number,
   ReserveFeatures:{enabled:id=>id==='pony'?pony:on},ReserveCore:require('../extension/core.js'),location:{pathname:quiz?'/courses/7/quizzes/8/take':'/'},
   matchMedia:q=>({matches:reduce&&/reduce/.test(q)}),innerWidth:1440,innerHeight:900,setTimeout:(fn,ms)=>setTimeout(fn,Math.min(ms||0,5)),clearTimeout,setInterval:()=>0,clearInterval(){},
+  ...(idle?{requestIdleCallback:(fn,o)=>{if(o?.timeout===2000)idle.push(fn);else setTimeout(fn,0);return idle.length+1;},cancelIdleCallback(){}}:{}),
   addEventListener:(t,fn)=>winEvents[t]=fn,removeEventListener:t=>delete winEvents[t],getComputedStyle:()=>({getPropertyValue:()=>kit||market?kitBg:''})});
  env.globalThis=env;
  vm.runInContext(read('focus-room-art.js'),env,{filename:'focus-room-art.js'});vm.runInContext(read('focus-room.js'),env,{filename:'focus-room.js'});
@@ -233,7 +234,7 @@ test('the light follows the session: the day sky, sun and water change from dawn
  f.data.focus={...f.data.focus,endsAt:Date.now()+30000};f.room.sync();
  assert.ok(dawn&&sky()&&dawn!==sky(),'the sky has moved on');assert.notEqual(water,wet());
  const css=read('focus-room.css');
- assert.match(css,/\.fr-room:not\(\[data-night="true"\]\):not\(\[data-kit="true"\]\) :is\(\.fr-skyl,\.fr-sun,\.fr-skyfade\)\{--c-sky0:var\(--fr-sky0,[^)]*\);[^}]*--c-sun:var\(--fr-sun,[^)]*\)\}/,'the sky reads the session\'s light');assert.match(css,/:is\(\.fr-mid,\.fr-mid2\)\{--c-water:var\(--fr-water,/,'the water too');
+ assert.match(css,/\.fr-room:not\(\[data-night="true"\]\):not\(\[data-kit="true"\]\) \.fr-skyfade\{--c-sky0:var\(--fr-sky0,[^)]*\);[^}]*--c-sun:var\(--fr-sun,[^)]*\)\}/,'the sky reads the session\'s light');assert.match(css,/\.fr-mid2\{--c-water:var\(--fr-water,/,'the water too');
  const A=require('../extension/focus-room-art.js'),rain=A.stage('rain',{night:false}).html,sun=rain.match(/<div class="fr-sun"[\s\S]*?<\/div>/)[0];
  assert.match(rain,/f-raincloud/);assert.doesNotMatch(sun,/class="f-sun"/,'no bright sun with rays over the rain');assert.match(sun,/f-raincloud/,'the sun half hidden by cloud');
  f.done();
@@ -400,3 +401,12 @@ test('round 3: the seal row keeps one height in every mode, the seal\'s word fit
  // the lake's glitter: ten rows on the far water, none over the boat's hull, Biscuit or the lantern
  const lake=A.stage('lake',{night:true}),glint=lake.html.match(/<g class="fr-gl">/g);assert.equal(glint.length,10);
 });
+
+test('the page gets its own layering back after a fold, a double restore and a quick reopen included: a stuck will-change put the dock under the page fade',async()=>{
+ const idle=[],f=fixture({idle}),settle=async()=>{for(let i=0;i<4;i++)await new Promise(r=>setTimeout(r,8));},run=()=>{for(const fn of idle.splice(0))fn();},shell=f.document.querySelector('.rd-shell'),layer=()=>shell.style['will-change']||'';
+ await f.room.open();assert.equal(layer(),'opacity','the page keeps its layer behind the room');
+ await f.room.close();await settle();run();assert.equal(layer(),'','let go after the fold');
+ await f.room.open();await f.room.close();await f.room.open();await f.room.close();await settle();run();assert.equal(layer(),'','a reopen before the layer was let go leaves nothing behind');
+ f.done();
+});
+

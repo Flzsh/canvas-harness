@@ -79,9 +79,9 @@
  --gi-crate:color-mix(in srgb,#C6A57C 50%,var(--rd-bg,#F4EEE2));--gi-cloth:color-mix(in srgb,var(--rd-surface,#FFFDF6) 80%,var(--rd-bg,#F4EEE2));
 }
 .rd[data-theme-kit] .gi-svg .gi-ts{fill:var(--rd-muted)}
-.rd.rd.rd.rd.rd[data-theme-kit] :is(.gi-fold,.gi-show){color:var(--rd-ink)!important}
+.rd.rd.rd.rd.rd[data-theme-kit] .gi-fold, .rd.rd.rd.rd.rd[data-theme-kit] .gi-show{color:var(--rd-ink)!important}
 .rd.rd.rd.rd.rd[data-theme-kit] :is(.gi-fold,.gi-show) .gi-chip-paper{fill:var(--rd-surface)}
-.rd.rd.rd.rd.rd:is([data-theme-kit],[data-rd-data-theme]) :is(.gi-status,.gi-mod-status,.gi-back,.gi-mod-course){color:var(--rd-ink)!important}
+.rd.rd.rd.rd.rd:is([data-theme-kit],[data-rd-data-theme]) .gi-status, .rd.rd.rd.rd.rd:is([data-theme-kit],[data-rd-data-theme]) .gi-mod-status, .rd.rd.rd.rd.rd:is([data-theme-kit],[data-rd-data-theme]) .gi-back, .rd.rd.rd.rd.rd:is([data-theme-kit],[data-rd-data-theme]) .gi-mod-course{color:var(--rd-ink)!important}
 .rd.rd.rd.rd.rd:is([data-theme-kit],[data-rd-data-theme]) .gi-pill{color:var(--gi-tc)!important}
 .rd[data-theme-kit=sea] .gi{--gi-light:color-mix(in srgb,#CFF0F6 20%,transparent);--gi-light2:color-mix(in srgb,#CFF0F6 16%,transparent)}
 .rd[data-theme-kit=starry] .gi,.rd[data-theme-kit=stars] .gi{--gi-light:color-mix(in srgb,#F3D46B 9%,transparent);--gi-light2:color-mix(in srgb,#F3D46B 7%,transparent)}
@@ -138,7 +138,7 @@
 /* after dark there is no sun through the window: no shaft, no bars, nothing where it landed (drawn under the dusk it read
    darker than the wall, a grey smear across the tags); the dusk is warm and light, and the oil lamp's pool carries the room */
 .rd:not([data-theme=dark]) .gi-svg[data-gi-night="1"]{--gi-light:color-mix(in srgb,#CFD8E8 10%,transparent);--gi-light2:color-mix(in srgb,#CFD8E8 8%,transparent);--gi-lightbar:transparent;--gi-mote:#DCE3EE;--gi-dusk:color-mix(in srgb,#3A3350 10%,transparent)}
-.rd:not([data-theme=dark]) .gi-svg[data-gi-night="1"] :is(.gi-l-shaft,.gi-l-land){display:none}
+.rd:not([data-theme=dark]) .gi-svg[data-gi-night="1"] .gi-l-shaft, .rd:not([data-theme=dark]) .gi-svg[data-gi-night="1"] .gi-l-land{display:none}
 .rd .gi-out{pointer-events:none}
 .rd .gi-view{display:none}.rd .gi-view-day{display:inline}
 .rd .gi-svg[data-gi-night="1"] .gi-view-day,.rd[data-theme=dark] .gi-view-day{display:none}
@@ -146,7 +146,7 @@
 .rd[data-theme-kit=sea] .gi-view,.rd[data-theme-kit=starry] .gi-view,.rd[data-theme-kit=stars] .gi-view,.rd[data-theme-kit=blueprint] .gi-view{display:none!important}
 .rd[data-theme-kit=sea] .gi-view-sea,.rd[data-theme-kit=starry] .gi-view-starry,.rd[data-theme-kit=stars] .gi-view-stars,.rd[data-theme-kit=blueprint] .gi-view-blue{display:inline!important}
 .rd .gi-lamp-pool,.rd .gi-flame,.rd .gi-lamp-smoke{display:none}
-.rd .gi-svg[data-gi-night="1"] :is(.gi-lamp-pool,.gi-flame,.gi-lamp-smoke),.rd[data-theme=dark] :is(.gi-lamp-pool,.gi-flame,.gi-lamp-smoke),.rd:is([data-theme-kit=starry],[data-theme-kit=stars]) :is(.gi-lamp-pool,.gi-flame,.gi-lamp-smoke){display:inline}
+.rd .gi-svg[data-gi-night="1"] .gi-lamp-pool, .rd .gi-svg[data-gi-night="1"] .gi-flame, .rd .gi-svg[data-gi-night="1"] .gi-lamp-smoke, .rd[data-theme=dark] .gi-lamp-pool, .rd[data-theme=dark] .gi-flame, .rd[data-theme=dark] .gi-lamp-smoke, .rd:is([data-theme-kit=starry],[data-theme-kit=stars]) .gi-lamp-pool, .rd:is([data-theme-kit=starry],[data-theme-kit=stars]) .gi-flame, .rd:is([data-theme-kit=starry],[data-theme-kit=stars]) .gi-lamp-smoke{display:inline}
 .rd .gi-bird{opacity:0}
 .rd .gi-ghost[data-gi-on="0"]{display:none}
 .rd .gi-wt[data-gi-dial="1"] .gi-face{display:none}.rd .gi-wt:not([data-gi-dial="1"]) .gi-dial{display:none}
@@ -204,19 +204,19 @@
 
 /* Drawn controls: each carries its own small drawing (grade-impact-art.js chip): an offset wash, the paper, and an ink
    outline drawn by hand, stretched to the control. No plain boxes. */
-.rd :is(.gi-fold,.gi-show,.gi-pill,.gi-status,.gi-mod-status){position:relative;isolation:isolate;border:0;background:none}
+.rd .gi-fold, .rd .gi-show, .rd .gi-pill, .rd .gi-status, .rd .gi-mod-status{position:relative;isolation:isolate;border:0;background:none}
 .rd .gi-chip-art{position:absolute;z-index:-1;left:-2px;top:-1px;width:calc(100% + 6px);height:calc(100% + 6px);overflow:visible;pointer-events:none}
 .rd .gi-chip-art path{stroke-linecap:round;stroke-linejoin:round}
 .rd .gi-chip-wash{fill:var(--gi-shadow);stroke:none}
 .rd .gi-chip-paper{fill:var(--gi-tag);stroke:none}
 .rd .gi-chip-ink{fill:none;stroke:var(--gi-ink,var(--rd-ink));stroke-width:1.7px}
-.rd :is(.gi-fold,.gi-show){display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:6px 18px;color:var(--gi-ink,var(--rd-ink));font:650 15px/1 var(--rd-font,inherit);cursor:pointer}
+.rd .gi-fold, .rd .gi-show{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:6px 18px;color:var(--gi-ink,var(--rd-ink));font:650 15px/1 var(--rd-font,inherit);cursor:pointer}
 .rd .gi-show .gi-chip-paper{fill:var(--gi-manila)}
 .rd :is(.gi-fold:hover,.gi-pill:hover) .gi-chip-paper{fill:var(--gi-manila)}
 .rd .gi-show:hover .gi-chip-paper{fill:var(--gi-band-b)}
 .rd .gi-status .gi-chip-paper,.rd .gi-mod-status .gi-chip-paper{fill:var(--gi-slip)}
-.rd :is(.gi-fold,.gi-show,.gi-back,.gi-pill,.gi-pg,.gi-strip-open,.gi-open):focus-visible{outline:2px solid var(--rd-mark,#C96442);outline-offset:3px}
-.rd :is(.gi-fold,.gi-show,.gi-pill):active{transform:translateY(1px)}
+.rd .gi-fold:focus-visible, .rd .gi-show:focus-visible, .rd .gi-back:focus-visible, .rd .gi-pill:focus-visible, .rd .gi-pg:focus-visible, .rd .gi-strip-open:focus-visible, .rd .gi-open:focus-visible{outline:2px solid var(--rd-mark,#C96442);outline-offset:3px}
+.rd .gi-fold:active, .rd .gi-show:active, .rd .gi-pill:active{transform:translateY(1px)}
 
 /* 7. The Home module: no room, the same apparatus at module size. */
 .rd .gi-mod{display:grid;gap:8px;min-width:0}
@@ -246,10 +246,10 @@
 .rd .gi-strip .gi-mod-svg{max-width:100%}
 .rd .gi-door{display:inline-grid;place-items:center;flex:none;width:30px;height:28px;color:var(--rd-ink)}
 /* Up next keeps a 44 px lane for the weight at the right of a row; the reader gives it a slot beside the title. */
-.rd .rd-assignment>.gi-door{width:44px;align-self:center;justify-self:end;margin-inline-start:4px}
+.rd .rd-assignment:has(>.gi-door){position:relative}.rd .rd-assignment>.gi-door{position:absolute;right:8px;bottom:8px;width:44px}
 /* On pointer screens the pin floats at the row's bottom right; a row with a weight keeps it left of the weight's lane. */
 .rd[data-workspace=work] .rd-assignment:has(>.gi-door)>.rd-row-actions{right:62px}
-.rd .rd-reader-heading>.gi-door{width:44px;align-self:center}
+.rd .rd-reader-heading>.gi-door{width:44px;align-self:center;margin-left:auto}
 .rd .gi-mini path{fill:none;stroke:none;stroke-linecap:round;stroke-linejoin:round}
 .rd .gi-mini .gi-k{stroke:var(--gi-ink,var(--rd-ink))}.rd .gi-mini .gi-iron{fill:var(--gi-iron,#6F7F8C)}
 

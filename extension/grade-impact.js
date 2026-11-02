@@ -710,7 +710,11 @@
    title:E(name),
    grade:''
   };
-  const tag=(text,max)=>n=>E(cut(text,Math.min(max,n)));
+  const tag=(text,max)=>{
+    const name=n=>E(cut(text,Math.min(max,n)));
+    name.lines=n=>{if(width(text)<=n)return [E(text)];const first=cut(text,n).replace(/…$/,'');return [E(first),E(cut(text.slice(first.length).replace(/^[\s:;,.·–—-]+/,''),n))];};
+    return name;
+  };
   if(!shown){
    // Hidden: names, due days and categories only. No grade, swing, projection, need or score figure is computed or drawn;
    // the weights are sized by points possible so the heaviest still looks heaviest, but no number says so.
@@ -883,7 +887,7 @@
   // Add assignment stands with the room's other paper controls, on the wall beside Fold; opened, its row is a slip pinned
   // under them (the drawing under it is left as it is).
   const tools=`${vm.hidden?`<button type="button" class="gi-show" data-rd-action="grades-visibility">${chip(2)}Show grades</button>`:''}${vm.state==='ready'?addButton(vm,' gi-add-room'):''}<button type="button" class="gi-fold" data-rd-key="gi-fold" data-gi-action="fold" data-rd-action="course" data-id="all">${chip(3)}Fold<span aria-hidden="true"> ↙</span></button>`;
-  const head=`<header class="gi-head" data-rd-key="gi-head"><button type="button" class="gi-back" data-rd-action="course" data-id="all"><span aria-hidden="true">‹ </span>All courses</button><h1 id="gi-room-title" tabindex="-1">${vm.title}</h1><p class="gi-grade">${vm.hidden?'Grades are hidden':vm.grade}</p><div class="gi-head-tools">${tools}</div>${vm.add?`<div class="gi-room-add" data-rd-key="gi-room-add">${chip(14)}${addRow(vm,'room')}</div>`:''}</header>`;
+  const head=`<header class="gi-head" data-rd-key="gi-head"><button type="button" class="gi-back" data-rd-action="course" data-id="all"><span aria-hidden="true">‹ </span>All courses</button><h1 id="gi-room-title" tabindex="-1">Grades</h1><p class="gi-grade">${vm.hidden?'Grades are hidden':vm.grade}</p><div class="gi-head-tools">${tools}</div>${vm.add?`<div class="gi-room-add" data-rd-key="gi-room-add">${chip(14)}${addRow(vm,'room')}</div>`:''}</header>`;
   const status=vm.status||(!vm.hidden&&vm.state==='ready'&&!vm.rows.length?vm.empty:'');
   const drawing=A?.room?A.room(vm).svg:'';
   // the head comes before the drawing so Tab runs as the eye does: All courses, the title, Fold, then the bands, each

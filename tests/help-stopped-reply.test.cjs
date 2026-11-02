@@ -12,7 +12,8 @@ test('thinking only and a finished stream reads as stopped',async()=>{
  assert.deepEqual(await read({u:user,t:thinking},'COMPLETE'),{stopped:true});
 });
 test('thinking only while the stream is still going keeps waiting',async()=>{
- assert.deepEqual(await read({u:user,t:thinking},'IS_STREAMING'),{});
+ // (begun: the AI is at work, so a closed or sleeping tab is waited for longer; AI plan step 6)
+ assert.deepEqual(await read({u:user,t:thinking},'IS_STREAMING'),{begun:true});
  assert.deepEqual(await read({u:{...user,children:[]}},'COMPLETE'),{},'nothing has begun yet');
 });
 test('an answer that lands between the two reads is kept, not called stopped',async()=>{
@@ -53,7 +54,7 @@ test('a Claude reply is read from Claude\'s chat record; a finished turn with no
  const read=messages=>{const fetch=async url=>({ok:true,json:async()=>url.endsWith('/api/organizations')?[{uuid:'org-aaaaaaaa'}]:conv(messages)});return Delivery.claudeRecord({fetch,conversationURL:'https://claude.ai/chat/75e0f3b7-5e0e-458a?incognito',turnId});};
  assert.deepEqual(await read([human,{uuid:'a1',index:1,sender:'assistant',parent_message_uuid:'h1',stop_reason:'end_turn',content:[{type:'thinking',thinking:'...'},{type:'text',text:fence+'json\n{"cards":[]}\n'+fence}]}]),{reply:fence+'json\n{"cards":[]}\n'+fence});
  assert.deepEqual(await read([human,{uuid:'a1',index:1,sender:'assistant',parent_message_uuid:'h1',stop_reason:'end_turn',content:[{type:'thinking',thinking:'...'}]}]),{stopped:true});
- assert.deepEqual(await read([human,{uuid:'a1',index:1,sender:'assistant',parent_message_uuid:'h1',stop_reason:null,content:[{type:'text',text:'partial'}]}]),{},'still writing');
+ assert.deepEqual(await read([human,{uuid:'a1',index:1,sender:'assistant',parent_message_uuid:'h1',stop_reason:null,content:[{type:'text',text:'partial'}]}]),{begun:true},'still writing');
  assert.deepEqual(await read([{...human,content:[{type:'text',text:'someone else'}]}]),{},'never another chat\'s turn');
 });
 test('ChatGPT dropping ?model= from a new chat\'s address is the same chat, not a moved one',async()=>{

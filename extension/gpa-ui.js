@@ -249,7 +249,7 @@
       if (!visible()) {
         const gate = node('div', 'ch-gpa__privacy');
         gate.append(node('h3', 'ch-gpa__privacy-title', 'Your grades stay private'),
-          node('p', 'ch-gpa__hint', 'Reveal the calculator in this dock for this visit. This does not turn on dashboard grades.'), button('reveal', 'Show GPA here', true));
+          node('p', 'ch-gpa__hint', 'Shows here for this visit only. Your dashboard stays as it is.'), button('reveal', 'Show GPA here', true));
         bodyNode.append(gate);
       } else {
         // The privacy gate is above both calculation and all grade-bearing DOM creation.

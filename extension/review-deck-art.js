@@ -806,7 +806,7 @@
   vw=Math.max(60,Math.min(480,Math.round(+vw)||120));const key=kind+salt+'/'+vw;if(frameCache[key])return frameCache[key];seed(1100+salt*13+kind.length);
   let o;if(kind==='tag'&&vw!==120)o=S('fr-fill',[[10,4],[vw-4,3],[vw-2,37],[10,38],[2,21]],{step:0,k:'K',j:.5,dx:1.6,dy:2})+C(oval(12,21,3,3,8,.2).concat([[15,21]]),'K');
   else if(kind==='tag')o=S('fr-fill',[[10,4],[96,3],[98,37],[10,38],[2,21]],{step:0,k:'K',j:.5,dx:1.6,dy:2})+C(oval(12,21,3,3,8,.2).concat([[15,21]]),'K');
-  else o=S('fr-fill',[[4,4],[60,3],[116,4],[117,36],[60,37],[3,36]],{step:0,k:'K',j:.7,dx:2,dy:2.6});
+  else o=S('fr-fill',[[4,4],[vw/2,3],[vw-4,4],[vw-3,36],[vw/2,37],[3,36]],{step:0,k:'K',j:.7,dx:2,dy:2.6});
   if(kind==='clay')o+=hatch(98,28,5,3,'fr-h');
   return frameCache[key]=`<svg class="rv-frame rv-frame-${kind}" viewBox="0 0 ${vw} 40" preserveAspectRatio="none" focusable="false" aria-hidden="true">${o}</svg>`;
  }

@@ -56,7 +56,7 @@
        turns:[],
        effects:[],
        resultKeys:[],
-       progress:'Reading your question',
+       progress:input.check?'Testing your AI':'Reading your question',
        lease:{epoch:0,expiresAt:0},
        errors:[],
        needsYou:null
@@ -108,8 +108,8 @@
      if(terminal(r)&&r.updatedAt<now()-14*86400000){delete j.runs[id];for(const [k,v]of Object.entries(j.claims))if(v===id)delete j.claims[k];}
    return run;
   });}
-  // Finished runs keep only the Canvas brief (a later Ask reuses it), not their prompts, and leave after two weeks; runs from the old
-  // multi-turn flow that never finished expire after 12 hours.
+  // Finished runs keep only the Canvas brief (a later Ask reuses it), not their prompts or the text they read, and leave
+  // after two weeks; runs from the old multi-turn flow that never finished expire after 12 hours.
   function prune(j){
     const at=now();
     for(const [id,r]of Object.entries(j.runs||{})){
@@ -125,6 +125,9 @@
       if(age>600e3){
         if(r.snapshot&&Object.keys(r.snapshot).some(k=>k!=='brief')){if(r.snapshot.brief)r.snapshot={brief:r.snapshot.brief};else delete r.snapshot;}
         delete r.messages;
+        delete r.reads;
+        delete r.cache;
+        delete r.sourceTexts;
         for(const t of r.turns||[])for(const [k,v]of Object.entries(t))if(k!=='deliveryReceipt'&&(JSON.stringify(v)?.length||0)>2000)delete t[k];
       }
     }

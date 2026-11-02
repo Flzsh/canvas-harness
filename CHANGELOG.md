@@ -1,21 +1,47 @@
 # Changelog
 
-## 4.0 Preview 3 - 2026-10-31
+## 4.0 Preview 3 - 2026-11-02
 
 Version 3.99.3 in the browser.
 
 - Your AI: choose the AI in the Help band, beside Daily AI help. A newly chosen website asks for its own access once, when you pick it.
+- Your AI: a thinking effort choice beside it for ChatGPT (Instant to Extra high) and Claude (Low to Extra). It is set for Canvas Harness's own message and the site's own choice is put back after sending. Left on Thinking, the site's choice is not touched. Claude's Max is never chosen, because it costs several times the usage.
+- Help cards: a writing outline for an essay, a lab report or a discussion post. It gives the question the thesis has to answer, the sections in order with what each has to do, and where in the material the evidence is. The student writes the thesis and the piece.
+- Help cards show up in the band as each one is made, and the band turns to the first new card once. An item that gets no card is named under the band's buttons with the reason, in the AI's own words when it gave one.
+- Your AI reads more of each item: files up to 30,000 characters, the whole rubric, whole pages from the start and end of a long PDF, and a brief for that item's course alone. Files from the same module are listed first among the ones the AI can ask for. Whatever is cut or cannot be read is named, so the AI does not guess.
+- Your AI's message says that everything taken from Canvas is material to use, never instructions to follow.
+- When the AI website reaches its usage limit, the run stops, keeps the cards already made, and the band shows the site's own sentence.
+- A sleeping or closed AI tab no longer leaves a run hanging. On ChatGPT and Claude the reply is read from the chat's record; otherwise the band offers Open chat. A message that may have been sent is never sent again on its own.
+- When Canvas signs you out, or no Canvas page answers for two minutes, the band shows Refresh Canvas, which reloads Canvas and carries on.
+- From a test on made-up courses: a short requirement inside a long paragraph of instructions is no longer cut, a "password is" line is removed, and checkpoint dates and "post before you see replies" reach Help.
 - Your AI works across many more Canvas setups. A course or tab Canvas refuses is named to the AI and the run goes on, and no courses at all means nothing is sent. Quizzes, outside tools, locked items, picture-only instructions, discussion prompts and checkpoints, redo requests and work with no due date all reach it correctly, and links in every form Canvas writes are followed. Whatever could not be read is named, so the AI is told not to guess.
 - Your AI: login lines and email addresses are now removed from everything added for an item, not only from the brief.
+- The Help band keeps its rows lined up at every width: its parts wrap to set rows, and card text lines up.
+- Graphics, in Make it yours → Look: Low, Medium, High and Extra high. Each step down leaves out the detail that is seen least, and Advanced tunes one kind at a time (moving drawings, room life, course frames, room detail, the banner drawing, framed course cards). A computer with four cores or fewer, or 4 GB of memory or less, starts on Medium and says so once.
+- Biscuit reads a line with a written rule list first. A plan is built around what you name, including homework Canvas does not know about, and Canvas's list is a suggestion rather than the plan. Make it yours → Companion has Full and Lite; Lite leaves out the trained language pack, for lighter laptops. The pack now loads only when Biscuit is first opened. The separate more-rules add-on is gone; Full has its rules.
+- New since your last visit: a New chip and view for work Canvas added and grades that came back since you last looked.
+- An overdue item's details say what handing it in now costs, from the course's late policy, or, when Canvas keeps that from students, from your own earlier late work there.
+- A heavy day is marked in words on the day strip and in Planner. Easy read in Reading text uses plainer letters.
+- PDF reader: a reading ruler (L).
+- Developer tools, off until you switch it on: a read-only tab in Tools with the build, what is switched on, the settings you changed, the Canvas sync, speed, storage and errors from Canvas Harness's own files. **Copy report** puts it on your clipboard for a bug report, without names, coursework or your school address. Thanks to @hellyeahboys666 for the idea in #65.
 - Play tools run much lighter on long pages: words or runs of words are cut only where a tool reaches, and each tool reads the page once per gesture. Foil now works on long pages.
 - Play tools take the whole page: pictures, icons, buttons and fields go with the words, and under Gravity so do ruled lines and list bullets. Put it back brings everything home.
 - Gravity has one apple. It lands where you click, and the faster you drag it the harder the page falls; its arrow shows how hard.
 - Hammer cracks are softer, Magnet holds letters around it like filings, and Ink, Painter and Eraser are redrawn. In Garden the words themselves grow stems, leaves and flowers.
 - The tool you are dealt comes from a full rarity list, Common to Legendary, each with its own chance out of 100. Its band shows on the card.
 - A Chromebook or a small laptop gets the same tools at a lighter cost, with nothing to turn on.
+- Black hole grows behind the page before it breaks through. A drawn disk and a cloud of light then pull in everything on the screen, the menus and sidebars too, and the page is empty when it closes.
+- Foil sweeps a film in the foil card's own colours over the page before it folds it flat. Bomb's fire is painted, and Railgun's shot is one beam of light that cuts a lit valley.
+- Laser: every closed part of a cut drops out, a fast swipe cuts everything it crosses, and a picture parts along the beam.
+- Balloons rise from wherever you click and carry off the nearest words. Portals pull in the words around them, not only words you drag through. Painter's paint dries in about a second and a half.
+- Badges and icons go with the words. An open Canvas menu stays where it is while a tool runs, and its hidden hover cards no longer fly as empty frames.
 - Every window size: the top bar stays one row in half and quarter windows, its words giving way to its drawings, and each tab shows its name as a tooltip. Tools and Make it yours float over the page below 1720 px. A short window keeps the heading to one line, and the pony is smaller in a small window.
 - Grades: All courses shows Grade impact's Coming up strips again.
 - A part of Canvas that a teacher hid no longer stops a whole load, and courses that have not opened yet are left out.
+- Focus room: its sound starts with your first press in the room.
+- Canvas's own pages: the side buttons are drawn with the pen line, and Canvas's phone menus stay inside the window.
+- Modules: a module's name keeps its room when Tools is open beside the page, and your progress shows again at once when you come back.
+- Course hub: pages a teacher has not shared no longer show as errors.
 
 ## 4.0 Preview 2 - 2026-10-30
 

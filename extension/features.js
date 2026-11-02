@@ -20,8 +20,7 @@
   feature('arrange','Arrange the workspace','Personalize',['workspace-gestures.js'],[],['dashboard']),
   feature('course-art','Course artwork','Drawings',['subject-art-data.js','subject-art.js','generic-art.js','course-art.js'],['subject-art.css']),
   feature('quick-pack','Local artwork packs','Drawings',['quick-pack.js','quick-upload.js','quick-upload-ui.js'],[],['customization','course-art']),
-  feature('pony','Pony companion','Drawings',['pet-art.js','biscuit-context-selector.js','biscuit-control-request.js','biscuit-controls.js','biscuit-details.js','biscuit-engine.js','biscuit-facts.js','biscuit-inference.js','biscuit-intent.js','biscuit-language.js','biscuit-learn.js','biscuit-parse.js','biscuit-planner.js','biscuit-registry.js','biscuit-replies.js','biscuit-rules.js','biscuit-selection.js','biscuit-semantics.js','biscuit-trees.js','biscuit-values.js','biscuit-workflow.js','pony-brain.js','pony-ask.js','pets.js'],['pet.css'],['planner']),
-  feature('biscuit-more-rules','Biscuit: more rules','Drawings',[],[],['pony']),
+  feature('pony','Pony companion','Drawings',['pet-art.js','biscuit-context-selector.js','biscuit-control-request.js','biscuit-controls.js','biscuit-details.js','biscuit-engine.js','biscuit-facts.js','biscuit-inference.js','biscuit-intent.js','biscuit-language.js','biscuit-learn.js','biscuit-mind.js','biscuit-parse.js','biscuit-planner.js','biscuit-registry.js','biscuit-replies.js','biscuit-rules.js','biscuit-selection.js','biscuit-semantics.js','biscuit-trees.js','biscuit-values.js','biscuit-workflow.js','pony-brain.js','pony-ask.js','pets.js'],['pet.css'],['planner']),
   feature('motion','Living drawings & motion','Drawings',['startup-art.js','motion.js'],['startup-art.css']),
   feature('canvas-nav','Drawn Canvas navigation','Canvas',['canvas-nav.js'],['canvas-nav.css']),
   feature('course-nav','Drawn course menu & modules','Canvas',['course-nav-art.js','course-nav.js','modules-page.js'],['course-nav.css','course-nav-art.css','modules-page.css']),
@@ -32,10 +31,12 @@
   feature('grade-impact','Grade impact','Extras',['grade-impact-art.js','grade-impact.js'],['grade-impact.css'],['grades']),
   feature('play','Play & submission celebrations','Extras',['submit-celebrate.js']),
   feature('ai','Your AI & study aids','Extras',['study-tools.js','study-prompts.js','study-writes.js','math-render.js','study-ui.js','study-band.js','overnight.js','ai-context.js','agent-prompts.js','agent-data.js','agent-actions.js','agent-runtime.js','ai-canvas-bridge.js','agent-client.js','ai-source.js'],['agent.css','study-band.css'],['tools']),
+  feature('developer','Developer tools','Extras',['developer.js'],[],['tools'])
  ];
  // Retained public modules keep their relative order; new helpers precede their consumers.
  const order=[
    "site.js",
+   "developer.js",
    "core.js",
    "api.js",
    "personal-work.js",
@@ -140,6 +141,7 @@
    "biscuit-context-selector.js",
    "biscuit-inference.js",
    "biscuit-facts.js",
+   "biscuit-mind.js",
    "biscuit-engine.js",
    "biscuit-planner.js",
    "pony-brain.js",
@@ -232,7 +234,7 @@
  ];
  const ids=catalogue.map(f=>f.id),known=new Set(ids);
  catalogue.find(f=>f.id==='pony').files.assets=['biscuit-rules/basic.json','biscuit-rules/more.json','biscuit-rules/most.json','biscuit-rules/school-language.json'];
- const optIn=new Set(['biscuit-more-rules','focus-room','review-deck','grade-impact']);
+ const optIn=new Set(['focus-room','review-deck','grade-impact','developer']);
  const presets={full:ids.filter(id=>!optIn.has(id)),lite:['dashboard','planner','grades','math','arrange','tools','gpa','native-appearance']};
  for(const entry of catalogue)entry.presets=[...(presets.full.includes(entry.id)?['full']:[]),...(presets.lite.includes(entry.id)?['lite']:[])];
  const unique=values=>[...new Set(Array.isArray(values)?values.filter(id=>known.has(id)):[])];

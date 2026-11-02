@@ -18,6 +18,7 @@ function fixture({ reduced = false, enabled = true, text = 'Play with words', wi
     remove() { if (this.parentNode) { const i = this.parentNode.children.indexOf(this); if (i >= 0) this.parentNode.children.splice(i, 1); this.parentNode = null; } }
     replaceChild(node, old) { const i = this.children.indexOf(old); if (node.parentNode) node.remove?.(); this.children[i] = node; node.parentNode = this; old.parentNode = null; layout(node, old.rect || old.parentRect || this.rect); }
     replaceWith(node) { this.parentNode.replaceChild(node, this); }
+    insertBefore(node, ref) { if (ref) ref.before(node); else this.append(node); }
     before(node) { const host = this.parentNode; node.remove(); host.children.splice(host.children.indexOf(this), 0, node); node.parentNode = host; }
     after(node) { const host = this.parentNode; node.remove(); host.children.splice(host.children.indexOf(this) + 1, 0, node); node.parentNode = host; }
     matches(selector) { if (selector === '*') return true; if (selector[0] === '#') return this.id === selector.slice(1); if (selector[0] === '.') return selector.slice(1).split('.').every(n => this.classList.contains(n)); return this.tagName === selector.toUpperCase(); }

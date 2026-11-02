@@ -141,7 +141,7 @@ test('a reply that still cannot be read gets one retry told exactly what to fix'
 test('Daily help saves the AI\'s quarter size with grid:4, or the kind\'s usual width when it gave none',async()=>{
  const Runner=require('../extension/ai-runner.js');
  for(const [size,want] of [['m','m'],[undefined,'l'],['<s|m|l|xl>','l']]){
-  let saved=null;const runner=Runner.create({canvas:{reader:()=>({cache:new Map(),read:async req=>({id:req.id,text:'Solve the set.'})}),validate:async()=>{}},results:{saveCards:async(run,cards)=>{saved=cards;return cards.length;}},account:{get:()=>({settings:{timeZone:'UTC'},toolbox:{}}),sync:async()=>{}},adapter:{},now:()=>Date.parse('2026-10-28T16:00:00Z'),uuid:()=>'x'});
+  let saved=null;const runner=Runner.create({canvas:{reader:()=>({cache:new Map(),read:async req=>({id:req.id,text:'Solve the set.'})}),validate:async()=>{}},results:{saveCards:async(run,cards,refs,{at=0}={})=>{saved=[...(at?(saved||[]).slice(0,at):[]),...cards];return cards.length;}},account:{get:()=>({settings:{timeZone:'UTC'},toolbox:{}}),sync:async()=>{}},adapter:{},now:()=>Date.parse('2026-10-28T16:00:00Z'),uuid:()=>'x'});
   const run={id:'run-s',state:'gathering',mode:'prepare',phase:'deliver',picks:[{ref:'A1',make:'examples',focus:'',sources:[]}],pickIndex:0,made:[],errors:[],turns:[],messages:[],refs:{A1:{id:'12',courseId:'7',title:'Homework'}},instructions:{standingText:''},settings:{},snapshot:{index:[['assignment:7:12',{id:'assignment:7:12',what:'assignment',title:'Homework',courseId:'7',item:{courseName:'Course'}}]],snapshot:{items:[]},brief:{text:'brief'}}};
   const ctx={save:async r=>r,guard:async()=>{},signal:new AbortController().signal};
   await runner.step(run,ctx);assert.equal(run.state,'asking');assert.match(run.messages[0].content,/"size":"<s\|m\|l\|xl>"/);
@@ -151,9 +151,9 @@ test('Daily help saves the AI\'s quarter size with grid:4, or the kind\'s usual 
 });
 
 test('the engine fixture still routes every deliver prompt by its first sentence',()=>{
- const src=fs.readFileSync(path.join(__dirname,'ai-engine-fixture.cjs'),'utf8'),route=new RegExp(/a study tool for a \[a-z \]\+ student\\\. Make \(a full practice test\|a breakdown\|line-by-line help\|worked solutions\|the help that saves\)/.source);
- assert.ok(src.includes('/a study tool for a [a-z ]+ student\\. Make (a full practice test|a breakdown|line-by-line help|worked solutions|the help that saves)/'),'the fixture routes on this pattern');
- const pattern=/a study tool for a [a-z ]+ student\. Make (a full practice test|a breakdown|line-by-line help|worked solutions|the help that saves)/;
+ const src=fs.readFileSync(path.join(__dirname,'ai-engine-fixture.cjs'),'utf8'),route=new RegExp(/a study tool for a \[a-z \]\+ student\\\. Make \(a full practice test\|a breakdown\|line-by-line help\|worked solutions\|a rubric-built outline\|the help that saves\)/.source);
+ assert.ok(src.includes('/a study tool for a [a-z ]+ student\\. Make (a full practice test|a breakdown|line-by-line help|worked solutions|a rubric-built outline|the help that saves)/'),'the fixture routes on this pattern');
+ const pattern=/a study tool for a [a-z ]+ student\. Make (a full practice test|a breakdown|line-by-line help|worked solutions|a rubric-built outline|the help that saves)/;
  for(const make of [...S.DELIVER_KINDS,'auto'])assert.match(deliver(make),pattern,make);assert.ok(route);
 });
 

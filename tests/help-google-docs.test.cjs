@@ -47,7 +47,7 @@ test('an assignment read lists the Google Docs its instructions link',async()=>{
 function setup({docs,pasted}){
  const Runner=require('../extension/ai-runner.js'),fence='```';
  const canvas={reader:()=>({cache:new Map(),read:async req=>({id:req.id,text:'TEXT of '+req.id,...(req.id==='assignment:7:12'?{google:[{kind:'document',id:ID,title:'essay prompt'},{kind:'presentation',id:'1AbCdEfGhIjKlMnOpQrStUvWxYz',title:'slides'}]}:{})})}),validate:async()=>{}};
- let saved=null;const results={saveCards:async(run,cards)=>{saved=cards;return cards.length;}};
+ let saved=null;const results={saveCards:async(run,cards,refs,{at=0}={})=>{saved=[...(at?(saved||[]).slice(0,at):[]),...cards];return cards.length;}};
  const runner=Runner.create({canvas,results,docs,account:{get:()=>({settings:{timeZone:'UTC'},toolbox:{}}),sync:async()=>{}},adapter:{},now:()=>Date.parse('2026-10-26T16:00:00Z'),uuid:()=>'x'});
  const run={id:'run-g',kind:'ask',state:'gathering',mode:'prepare',phase:'deliver',picks:[{ref:'H1',make:'auto',focus:'',sources:[]}],pickIndex:0,made:[],errors:[],turns:[],messages:[],refs:{H1:{id:'12',courseId:'7',title:'Analytical Essay'}},instructions:{standingText:''},settings:{},...(pasted?{pasted,pastedTitle:'essay prompt'}:{}),
   snapshot:{index:[['assignment:7:12',{id:'assignment:7:12',what:'assignment',title:'Analytical Essay',courseId:'7',item:{courseName:'English'}}]],snapshot:{items:[]},brief:{text:'brief'}}};
@@ -74,6 +74,17 @@ test('a store install pastes: the Doc stays unread on the card; the pasted text 
  assert.deepEqual(first.run.picks[0].unread.map(u=>[u.title,u.reason]),[['essay prompt','paste'],['slides','paste']]);
  const second=setup({docs,pasted:'Write 1200 words on how two novels use their setting.'});await second.runner.step(second.run,second.ctx);
  const msg=second.run.messages[0].content;assert.match(msg,/Pasted by the student: essay prompt\n?[\s\S]*Write 1200 words/);assert.deepEqual(second.run.picks[0].unread.map(u=>u.title),['slides'],'the pasted Doc is no longer unread');
+});
+test('a paste reaches the AI when its item is already in the brief under an A ref, through the real scan step',async()=>{
+ const Runner=require('../extension/ai-runner.js'),docs={read:async()=>({error:'paste'})};
+ const index=[['assignment:7:12',{id:'assignment:7:12',what:'assignment',title:'Analytical Essay',courseId:'7',canvasId:'12',item:{courseName:'English'}}]];
+ const canvas={scan:async()=>({index,snapshot:{items:[],courses:[{id:'7'}]},brief:{text:'Canvas brief\n[A1] English · Analytical Essay',refs:{A1:{id:'12',courseId:'7',title:'Analytical Essay'}}}}),reader:()=>({cache:new Map(),read:async req=>({id:req.id,text:'TEXT of '+req.id,...(req.id==='assignment:7:12'?{google:[{kind:'document',id:ID,title:'essay prompt'}]}:{})})}),validate:async()=>{}};
+ const runner=Runner.create({canvas,results:{saveCards:async()=>1},docs,account:{get:()=>({settings:{timeZone:'UTC'},toolbox:{}}),sync:async()=>{}},adapter:{},now:()=>Date.parse('2026-10-26T16:00:00Z'),uuid:()=>'x'});
+ const run={id:'run-p',kind:'ask',state:'scanning',make:'auto',question:'Make this help again with the text I pasted.',itemId:'12',courseId:'7',itemTitle:'Analytical Essay',pasted:'Write 1200 words on the free market in two novels.',pastedTitle:'essay prompt',errors:[],turns:[],messages:[],instructions:{standingText:''},settings:{}};
+ const ctx={save:async r=>r,guard:async()=>{},signal:new AbortController().signal};
+ await runner.step(run,ctx);assert.equal(run.state,'gathering');assert.deepEqual(run.picks.map(p=>p.ref),['A1']);
+ await runner.step(run,ctx);assert.equal(run.state,'asking');
+ assert.match(run.messages[0].content,/Pasted by the student: essay prompt\n?[\s\S]*Write 1200 words/);assert.deepEqual(run.picks[0].unread,[],'the pasted Doc is no longer unread');
 });
 test('a long course name never cuts the item off a card\'s headline',async()=>{
  const {runner,run,ctx,reply,saved}=setup({docs:{read:async()=>({text:'The prompt.'})}});run.snapshot.index[0][1].item.courseName='English: World Lit & The City';

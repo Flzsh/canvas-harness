@@ -22,15 +22,10 @@
 .rd[data-theme-kit][data-motion-style="off"] *::before,
 .rd[data-theme-kit][data-motion-style="still"] *::after,
 .rd[data-theme-kit][data-motion-style="off"] *::after { animation:none!important;transition:none!important; }
-.rd[data-theme-kit][data-motion-style="still"] .rd-frame,
-.rd[data-theme-kit][data-motion-style="off"] .rd-frame,
-.rd[data-theme-kit][data-motion-style="still"] :is(.rd-course-information,.rd-work-column,.rd-information)::before,
-.rd[data-theme-kit][data-motion-style="off"] :is(.rd-course-information,.rd-work-column,.rd-information)::before,
-.rd[data-theme-kit][data-motion-style="still"] :is(.rd-course-information,.rd-work-column,.rd-information)::after,
-.rd[data-theme-kit][data-motion-style="off"] :is(.rd-course-information,.rd-work-column,.rd-information)::after { transform:none!important; }
+.rd[data-theme-kit][data-motion-style="still"] .rd-frame, .rd[data-theme-kit][data-motion-style="off"] .rd-frame, .rd[data-theme-kit][data-motion-style="still"] .rd-course-information::before, .rd[data-theme-kit][data-motion-style="still"] .rd-work-column::before, .rd[data-theme-kit][data-motion-style="still"] .rd-information::before, .rd[data-theme-kit][data-motion-style="off"] .rd-course-information::before, .rd[data-theme-kit][data-motion-style="off"] .rd-work-column::before, .rd[data-theme-kit][data-motion-style="off"] .rd-information::before, .rd[data-theme-kit][data-motion-style="still"] .rd-course-information::after, .rd[data-theme-kit][data-motion-style="still"] .rd-work-column::after, .rd[data-theme-kit][data-motion-style="still"] .rd-information::after, .rd[data-theme-kit][data-motion-style="off"] .rd-course-information::after, .rd[data-theme-kit][data-motion-style="off"] .rd-work-column::after, .rd[data-theme-kit][data-motion-style="off"] .rd-information::after { transform:none!important; }
 @media(prefers-reduced-motion:reduce) {
  .rd[data-theme-kit],.rd[data-theme-kit] *,.rd[data-theme-kit] *::before,.rd[data-theme-kit] *::after { animation:none!important;transition:none!important; }
- .rd[data-theme-kit] .rd-frame,.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::before,.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after { transform:none!important; }
+ .rd[data-theme-kit] .rd-frame, .rd[data-theme-kit] .rd-course-information::before, .rd[data-theme-kit] .rd-work-column::before, .rd[data-theme-kit] .rd-information::before, .rd[data-theme-kit] .rd-course-information::after, .rd[data-theme-kit] .rd-work-column::after, .rd[data-theme-kit] .rd-information::after { transform:none!important; }
 }
 /* the dashboard's small drawings give way to the theme's pictures (scene-themes.js sync: .tk-mini) */
 .rd[data-theme-kit] svg.rd-mini:not(.rd-rail-art svg) { position:absolute; opacity:0; pointer-events:none; }

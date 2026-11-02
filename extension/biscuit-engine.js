@@ -126,10 +126,9 @@
  function create({parse,tier,pack}={}){
   let cached=null,revision=-1,index=[],matchCache=new Map(),learnedSnapshot=null,learnedRevision=-1,learnedRows=[];
   function modelFor(s){
-    const selected=s.pet?.knowledge||s.settings?.pet?.knowledge,
-      flags=[s.biscuitMoreRules,Array.isArray(s.features)?s.features.find(row=>row?.id==='biscuit-more-rules')?.on:s.features?.['biscuit-more-rules']].filter(value=>typeof value==='boolean'),
-      on=flags.includes(true)&&!flags.includes(false),
-      choice=tier||(selected?(on?selected:'basic'):null);
+    const selected=s.pet?.knowledge||s.settings?.pet?.knowledge;
+    if(selected==='lite')return null;
+    const choice=tier||selected||null;
     return pack||(choice?load('ReserveBiscuitRules','./biscuit-rules.js')?.get(choice):null);
   }
   function prepareLearned(s){
@@ -232,7 +231,13 @@
    }).filter(Boolean).sort((a,b)=>b.score-a.score||a.id.localeCompare(b.id)).filter(v=>v.score>=1.5).slice(0,3).map(({_title,_body,_aliases,_phrase,...v})=>v);
   }
   function card(action,items,fields,message,extra={}){
-    return {action,items:items.slice(0,3),message,next:{action,fields:fields||{},label:action==='plan'?'Plan today':action==='ai'?'Ask AI':action==='find'?'Open':'Continue'},...extra};
+    return {
+      action,
+      items:items.slice(0,3),
+      message,
+      next:{action,fields:fields||{},label:action==='plan'?'Use this plan':action==='task'?'Add it':action==='ai'?'Ask AI':action==='find'?'Open':'Continue'},
+      ...extra
+    };
   }
   function reference(line,s,session={},options={}){
    const Selection=load('ReserveBiscuitSelection','./biscuit-selection.js'),rows=prepareLearned(s);
@@ -1216,6 +1221,7 @@
   const BARE_TIMER=/^\s*(start\s+(?:a\s+)?)?(?:focus|timer|pomodoro|countdown)\s+(?:for\s+)?(\d{1,4})\s*[.!?]*$/i,FOCUS_ON=/^\s*(start\s+(?:a\s+)?)?focus\s+(?:for\s+)?(\d{1,3})\s+(?!(?:min|mins|minutes?|m|h|hr|hrs|hours?|sec|secs|seconds?|x|times|cycles?|rounds?|pomodoros?|blocks?|sessions?|pm|am|percent)\b|[%:.])(\S.*)$/i;
   // "tmrw", "whats due tomorrow", "tmrw hw", "hw due tmrw" all mean the list "due tmrw" gives (they picked one
   // unrelated item before). Bare "today" keeps its own meaning; only "due today" phrasings join it.
+  const DUE_ON=/^\s*(?:what\s+about|how\s+about|and|what\s+of|anything|anything\s+for|what\s+do\s+i\s+have|what\s+have\s+i\s+got|what\s+do\s+i\s+have\s+on)(?:\s+(?:on|for|due))?\s+(today|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s*[.!?]*$/i,DUE_NOW=/^\s*(?:what(?:'?s|\s+is)\s+due|anything\s+due(?:\s+soon)?|do\s+i\s+have\s+anything\s+due|is\s+anything\s+due)\s*[.!?]*$/i;
   const DUE_TOMORROW=/^\s*(?:(?:what(?:'?s|\s+is)|anything|any)\s+)?(?:(?:hw|homework|assignments?|work)\s+)?(?:due\s+)?(?:for\s+)?(?:tomorrow|tmrw|tmr|tmw|2moro|2morrow)(?:'?s)?(?:\s+(?:hw|homework|assignments?|work))?(?:\s+due)?\s*[.!?]*$/i;
   const FOCUS_WORK=/^\s*(?:(?:i\s+(?:want|need)\s+to|let\s+me|lets|let's)\s+)?(?:start\s+(?:a\s+)?)?focus(?:ing)?\s+(?:on\s+|time\s+(?:for\s+|on\s+)?)?(?:the\s+|my\s+)?((?:[a-z&]+\s+){1,3}(?:hw|homework|lab|essay|quiz|test|exam|project|reading|paper|worksheet|report))(?:\s+(?:now|pls|please|rn))?\s*[.!]*$/i,DUE_TODAY=/^\s*(?:(?:what(?:'?s|\s+is)|anything|any)\s+)?(?:(?:hw|homework|assignments?|work)\s+)?due\s+(?:for\s+)?(?:today|tdy|tonight)\s*[.!?]*$/i;
   function everyday(input){
@@ -1224,6 +1230,7 @@
     {const m=FOCUS_WORK.exec(String(input));if(m&&!/\d/.test(m[1]))input='focus 25 min '+m[1];}
     if(DUE_TOMORROW.test(String(input)))return 'due tmrw';
     if(DUE_TODAY.test(String(input)))return 'due today';
+    {const m=DUE_ON.exec(String(input));if(m)return 'due '+m[1].toLowerCase().replace(/^tomorrow$/,'tmrw');if(DUE_NOW.test(String(input)))return 'due today';}
     if(load('ReserveBiscuitIntent','./biscuit-intent.js')?.literalNoteRequest(input))return String(input);
     const L=load('ReserveBiscuitLanguage','./biscuit-language.js');
     if(typeof L?.everydayTokens!=='function'||typeof L?.words!=='function')return input;
@@ -2125,9 +2132,23 @@
      s,
      session);
   }
-  function evaluate(input,s={},session={}){let original=input;input=everyday(input);
+  // The rule list reads what the student means before anything searches; a line it does not know goes on as before.
+  function mind(input,s,session){
+    const M=load('ReserveBiscuitMind','./biscuit-mind.js');
+    if(!M)return null;
+    let r;
+    try{r=M.think(input,s,session,{card,controlMatch:line=>controlMatch(line,s,session)?.result||null});}catch{return null;}
+    if(!r)return null;
+    if(r.routing)return r;
+    if(r.action==='plan'&&!r.message){const plan=load('ReserveBiscuitPlanner','./biscuit-planner.js')?.build(s,r.next.fields);if(plan)r.message=(r.lead||'')+plan.message;}
+    const said=r.message;
+    const out=routed(r,input,s,session);
+    if(said)out.message=said;
+    return readableTimes(Registry.sanitize(out,s),s);
+  }
+  function evaluate(input,s={},session={}){const minded=mind(input,s,session);if(minded)return minded;let original=input;input=everyday(input);
    // A date question rewritten to "due tmrw"/"due today" is routed as that line, not by its original words.
-   if(input!==original&&(input==='due tmrw'||input==='due today'||FOCUS_ON.test(String(original))))original=input;
+   if(input!==original&&(/^due (?:today|tmrw|sunday|monday|tuesday|wednesday|thursday|friday|saturday)$/.test(input)||FOCUS_ON.test(String(original))))original=input;
    let result=dispatch(input,s,session,original);
    if(!result?.requests){
      const grounded=aiGround(original,input,s,session,result)||
@@ -2211,6 +2232,28 @@
   // Replies are read by students: raw ISO timestamps in the message become local, readable times.
   function readableTimes(result,s){
     if(!result||typeof result.message!=='string')return result;
+    result.message=result.message.replace(/: Due: (.+?) due at: .*$/,' is due at: $1').replace(/\bdue at:\s*/g,'due ').replace(/;\s*missing:\s*false/g,'').replace(
+      /;\s*missing:\s*true/g,
+      ', missing').replace(
+      /\bsubmitted at:\s*/g,
+      'submitted ');
+    result.message=result.message.replace('I couldn’t find that in the loaded workspace. Try a course or item name.','I do not know that one yet. Try "plan tonight", "what should I do", or a course name.').replace('Choose one unambiguous loaded source.','Which one do you mean?').replace('Which loaded course do you mean? Name its course or code.','Which course?').replace(
+      'I cannot safely choose that from the loaded workspace. Open Canvas or name the item and the change you want.',
+      'I am not sure about that one. Name the item and what to change.').replace(
+      'What would you like to change or find?',
+      'Say a bit more? Try "plan tonight" or a course name.').replace(
+      /Make it yours > Features/g,
+      'Make it yours > More').replace(
+      /^(.+?: )?Mark (.+) done locally\.?$/,
+      '$1Mark $2 done on your list.').replace(
+      /^Remind you (?!to |about )(.+)$/,
+      'Remind you to $1').replace(
+      /^(Remind you to .*?)\bmy\b/,
+      '$1your').replace(
+      /^Reminder: (.+) at (\d{1,2}\/\d{1,2}\/\d{4}, \d{1,2}:\d{2}:\d{2} [AP]M)\.?$/,
+      'Remind you to $1, $2.').replace(
+      /\b(\d{1,2})\/(\d{1,2})\/(\d{4}), (\d{1,2}):(\d{2}):\d{2} ([AP]M)\b/g,
+      (all,mo,d,y,h,n,mark)=>new Date(Date.UTC(+y,+mo-1,+d,12)).toLocaleDateString('en-US',{timeZone:'UTC',weekday:'short',month:'short',day:'numeric'})+', '+h+':'+n+' '+mark);
     const zone=s.timeZone||'America/New_York';
     result.message=result.message.replace(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?\b/g,iso=>{
       const at=Date.parse(iso);
@@ -2291,7 +2334,8 @@
      (state.pendingBreak||now-s.focus?.completedAt<5*MIN&&s.focus?.completedAt<=now&&(s.focus?.completedMinutes||s.focus?.minutes)>=25))
      return result('after-focus-'+s.focus?.completedAt,'break','Want a short break?','break',{minutes:5,explicit:true},95);
    if(!night&&can('stretch')&&state.stretchDue&&(s.activity?.active||0)>=45*MIN)return result('stretch-'+local.day,'stretch','Want to stretch for a few minutes?','break',{minutes:5,explicit:true},90);
-   if(!night&&urgent&&can('next'))return result('next-'+urgent.id,'next','Want to open '+urgent.title+'?','open',{itemId:urgent.id,courseId:urgent.courseId},90);
+   if(!night&&urgent&&can('next'))
+     return result('next-'+urgent.id,'next','Want to open '+(urgent.title.length>70?urgent.title.slice(0,67)+'...':urgent.title)+'?','open',{itemId:urgent.id,courseId:urgent.courseId},90);
    const ready=Object.entries(s.studyAids||{}).find(([key,v])=>
      v&&can(v.kind)&&v.overnight&&!v.gradeAccess&&v.savedAt<=now&&now-v.savedAt<DAY&&!list(ledger.items).includes('biscuit:ready-'+key));
    if(!night&&ready&&s.ai!==false)return result('ready-'+ready[0],'ready','Your saved study aid is ready.','ready',{aidKey:ready[0],itemId:ready[1].itemId},88);

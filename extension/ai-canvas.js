@@ -39,6 +39,8 @@
        title:a.name||a.title||'',
        due:a.due_at||n.checkpoints.filter(c=>c.dueAt&&!c.done).map(c=>c.dueAt).sort()[0]||null,
        points:a.points_possible,
+       checkpoints:n.checkpoints.filter(c=>!c.done),
+       postFirst:n.requireInitialPost===true,
        submissionTypes:Array.isArray(a.submission_types)?a.submission_types:[],
        submitted:!redo&&(!!sub.submitted_at||['submitted','pending_review','graded'].includes(state)),
        graded:!redo&&state==='graded',
@@ -64,7 +66,7 @@
     (Array.isArray(u?.announcements)?u.announcements:[]).map(x=>
      ({courseId:u.courseId??courseOf(x.context_code),title:x.title||'',at:x.posted_at||x.created_at||'',text:x.message||''}))),
    events:(calendarEvents||[]).map(e=>({title:e.title||'',at:e.start_at||e.at||e.startAt||'',courseId:e.courseId||courseOf(e.context_code)})),
-   messages:Data.teacherInbox(conversations,people).map(m=>({subject:m.subject,at:m.at,text:m.text})),
+   messages:Data.teacherInbox(conversations,people).map(m=>({courseId:m.courseId,subject:m.subject,at:m.at,text:m.text})),
    // Files and pages Canvas Harness can open for the AI (worksheets, readings, notes), newest first per course.
    resources:[...(index||new Map())].filter(([,r])=>['pdf','page'].includes(r?.what)&&(!r.locked||r.linked===true&&r.hiddenOnly===true)).map(([id,r])=>
     ({id,courseId:r.courseId,title:r.title||'',what:r.what,at:r.updatedAt||r.raw?.updated_at||r.raw?.created_at||''}))};
@@ -182,9 +184,8 @@
    },manifest=[...built.index].map(entryOf);
    if(fetchImpl.unavailable)throw fetchImpl.unavailable;
    await verify(signal);
-   const brief=Brief?
-     Brief.build(briefInput({raw,assignments,aiResources,aiUpdates,calendarEvents,conversations,data,now:now(),index:built.index,staff,user})):
-     {text:'',refs:{}};
+   const input=briefInput({raw,assignments,aiResources,aiUpdates,calendarEvents,conversations,data,now:now(),index:built.index,staff,user}),
+     brief=Brief?Brief.build(input):{text:'',refs:{}};
    // Items the brief lists stay readable even when the agent snapshot trimmed them for size.
    // The item asked about with Help with this is added the same way, found by its id even when the brief left it out.
    const picked=run?.kind!=='ask'?[]:Array.isArray(run.items)&&run.items.length?run.items:run.itemId?[{itemId:run.itemId,courseId:run.courseId}]:[],
@@ -194,14 +195,14 @@
    const wanted=[...Object.values(brief.refs||{}).filter(r=>!r.source),...asked.map(a=>({id:a[1].canvasId,courseId:a[1].courseId}))];
    const indexed=new Set(manifest.map(([id])=>id));
    for(const ref of wanted){
-    const id='assignment:'+ref.courseId+':'+ref.id,meta=built.catalog?.get(id);
-    if(!meta||indexed.has(id))continue;
-    manifest.push(entryOf([id,meta]));
-    indexed.add(id);
-    for(const sub of [...(meta.files||[]),...(meta.pages||[])]){
-     const m=built.catalog.get(sub);
-     if(m&&!indexed.has(sub)){manifest.push(entryOf([sub,m]));indexed.add(sub);}
-    }
+     const id='assignment:'+ref.courseId+':'+ref.id,meta=built.catalog?.get(id);
+     if(!meta||indexed.has(id))continue;
+     manifest.push(entryOf([id,meta]));
+     indexed.add(id);
+     for(const sub of [...(meta.files||[]),...(meta.pages||[]),...(meta.neighbours||[])]){
+       const m=built.catalog.get(sub);
+       if(m&&!indexed.has(sub)){manifest.push(entryOf([sub,m]));indexed.add(sub);}
+     }
    }
    const helped=new Set(wanted.map(r=>String(r.courseId)));
    for(const [id,m] of built.catalog||[])
@@ -212,15 +213,21 @@
     if(['pdf','file','page'].includes(m?.what)&&!m.locked&&m.home!==true&&!m.item?.syllabus&&helped.has(String(m.courseId))&&!indexed.has(id))
      shelf.set(m.courseId,[...(shelf.get(m.courseId)||[]),[id,m]]);
    for(const list of shelf.values())
-    for(const e of list.sort((a,b)=>String(b[1].raw?.updated_at||'').localeCompare(String(a[1].raw?.updated_at||''))).slice(0,40)){manifest.push(entryOf(e));indexed.add(e[0]);}
+     for(const e of list.sort((a,b)=>String(b[1].raw?.updated_at||'').localeCompare(String(a[1].raw?.updated_at||''))).slice(0,40)){manifest.push(entryOf(e));indexed.add(e[0]);}
+   // Help reads one course: a brief of its own for each course with work due soon or asked about (the day's pick keeps the
+   // whole brief). Finished runs drop these with the rest of the snapshot.
+   const courseBriefs={};
+   if(Brief)
+     for(const cid of new Set([...(brief.busy||[]),...asked.map(a=>String(a[1].courseId))].filter(Boolean)))courseBriefs[cid]=Brief.build(input,{course:cid}).text;
    return {
-    ...built,
-    brief,
-    index:manifest,
-    hash:hash(built.text),
-    scanStartedAt,
-    scanFinishedAt:now(),
-    omissions:{items:built.snapshot.omittedItems||0,resources:built.snapshot.omittedResources||0,availability:built.snapshot.availability||[]}
+     ...built,
+     brief,
+     courseBriefs,
+     index:manifest,
+     hash:hash(built.text),
+     scanStartedAt,
+     scanFinishedAt:now(),
+     omissions:{items:built.snapshot.omittedItems||0,resources:built.snapshot.omittedResources||0,availability:built.snapshot.availability||[]}
    };
   }
   // Canvas moves updated_at for more than the words (a grade, a date, a save with no edit), and what is read here is the

@@ -6,8 +6,11 @@
  'use strict';
  // Google Docs, Slides and Sheets the source links, for Help to read or ask the student to paste.
  const googleLinks=html=>{const G=root.CanvasHarnessGoogleDocs||(typeof require==='function'?require('./google-docs.js'):null);return G?G.links(html):[];};
+ // FILE_LIMIT: the most of a file Help may ask for (request.limit, 12,000 to 30,000); a download keeps that much and the
+ // read cuts it to the request.
  const LIMIT=60000,
    READ_LIMIT=12000,
+   FILE_LIMIT=30000,
    TEXT_READ_LIMIT=40000,
    TEXT_BODY_LIMIT=36000,
    MAX_BYTES=2*1024*1024,
@@ -331,7 +334,14 @@
     staffFor=cid=>{
     if(!staff.has(cid))staff.set(cid,courseStaff(context,cid));
     return staff.get(cid);
-  },tasks=object(data.tasks),byOriginal=new Map(),moduleItems=new Map(),incoming={v:1,assignments:{},announcements:{},files:{}},changes=[];
+  },
+  tasks=object(data.tasks),
+  byOriginal=new Map(),
+  byQuiz=new Map(),
+  moduleItems=new Map(),
+  moduleKids=[],
+  incoming={v:1,assignments:{},announcements:{},files:{}},
+  changes=[];
   function put(what,cid,canvasId,raw={},item=null,slug=null,expose=true){
     cid=String(cid??'');
     canvasId=String(canvasId??'');
@@ -419,6 +429,8 @@
       const meta=put('module',cid,m?.id,m);
       if(!meta||meta.locked)continue;
       const rows=[];
+      const kids=[];
+      moduleKids.push({cid,kids});
       for(const child of array(m?.items)){
         if(blocked(child))continue;
         const type=String(child?.type||'').toLowerCase();
@@ -427,6 +439,12 @@
         if(type==='page'&&child.page_url)source=put('page',cid,child.content_id||child.page_url,{title:child.title},null,String(child.page_url));
         if(type==='discussion')source=put('discussion',cid,child.content_id,{title:child.title});
         if(source&&child?.id!=null)moduleItems.set(cid+':'+child.id,source);
+        kids.push({
+          type,
+          contentId:String(child?.content_id??''),
+          source:source?.id||'',
+          shut:object(child?.content_details).locked_for_user===true||object(child?.content_details).locked===true
+        });
         const rule=object(child?.completion_requirement),needs=needsOf(rule);
         rows.push({
           title:plain(child?.title,120),
@@ -492,6 +510,7 @@
     else meta=put('assignment',cid,original,{title,locked:blocked(item)},item,null,false);
     if(!meta)continue;
     byOriginal.set(cid+':'+original,id);
+    if(item.quizId!=null)byQuiz.set(cid+':'+item.quizId,id);
     const feedback=meta.locked||!feedbackOn?[]:comments(item,context.user?.id,grades,staffFor(cid)),commentHashes={};
     for(const c of feedback){
       commentHashes[part(c.key)]=hash(JSON.stringify([c.text,c.createdAt,c.attachment]));
@@ -521,6 +540,16 @@
     if(feedback.length)row.teacherComments=feedback.slice(-8).map(c=>({text:c.text,createdAt:c.createdAt,...(c.attachment?{attachment:true}:{})}));
     all.push({row,item,mine,meta});
   }
+  // An item's neighbours in its modules (pages, files and discussions; nearest first, the ones before it first; at most
+  // 8): Help lists them first among the course files the AI may ask for, since a thin item or a generic quiz is built
+  // from its unit. Nothing is read for this.
+  for(const {cid,kids} of moduleKids)
+    kids.forEach((k,i)=>{
+      const id=k.type==='assignment'?byOriginal.get(cid+':'+k.contentId):k.type==='quiz'?byQuiz.get(cid+':'+k.contentId):null,meta=id&&catalog.get(id);
+      if(!meta)return;
+      const near=kids.map((n,j)=>({n,d:Math.abs(j-i)+(j>i?.5:0)})).filter(x=>x.n.source&&!x.n.shut&&x.n.source!==id).sort((a,b)=>a.d-b.d).map(x=>x.n.source);
+      meta.neighbours=[...new Set([...(meta.neighbours||[]),...near])].slice(0,8);
+    });
   function linked(cid,value,title='Linked document'){
     let url;
     try{url=new URL(value,ORIGIN());if(url.origin!==ORIGIN()||url.username||url.password)return null;}catch{return null;}
@@ -1096,7 +1125,7 @@
        '\n').replace(
        /\n{3,}/g,
        '\n\n').trim();
-     if(!text)throw Error('empty');return text.slice(0,READ_LIMIT);
+     if(!text)throw Error('empty');return text.slice(0,FILE_LIMIT+1);
     }
     at+=46+nameLength+skip;
    }
@@ -1140,7 +1169,7 @@
        result=await parsePDF(bytes,{...(pages!=null?{pages}:{}),signal:controller.signal});
      }
      else if(/^text\/plain(?:;|$)/i.test(response.headers?.get('content-type')||'')&&pages==null)
-       result={text:new TextDecoder().decode(bytes).slice(0,READ_LIMIT)};
+       result={text:new TextDecoder().decode(bytes).slice(0,FILE_LIMIT+1)};
      else if(bytes.length>=4&&
        bytes[0]===0x50&&
        bytes[1]===0x4b&&
@@ -1170,7 +1199,9 @@
       if((blocked(meta)||blocked(meta.item))&&!(what==='pdf'&&meta.linked===true&&meta.hiddenOnly===true&&!blocked(meta.item)))return fail(what,id,'This source is locked or unavailable.');
       if(signal?.aborted)return fail(what,id,'Read cancelled.');
       if(request.pages!=null&&what!=='pdf')return fail(what,id,'Pages can only be selected for a PDF.');
-      const selected=what==='pdf'?pageSelection(request.pages):null;
+      const selected=what==='pdf'?pageSelection(request.pages):null,
+        limit=Number.isFinite(request.limit)?Math.min(FILE_LIMIT,Math.max(READ_LIMIT,Math.floor(request.limit))):READ_LIMIT;
+      let parts=null,info={};
       status('Reading '+str(meta.title,100));
       let value,text='',google=[];
       const options={user,signal,authScope:verifiedScope};
@@ -1186,13 +1217,15 @@
           tool=(root.ReserveCore||(typeof require==='function'?require('./core.js'):null)).normalizeAssignment(value).externalTool||
             (array(value?.submission_types).includes('external_tool')?'an outside tool':'');
         google=googleLinks(html);
-        text=[
-          plain(value?.name||meta.title,180),
-          headTail(plain(html,600000),TEXT_BODY_LIMIT),
-          ...contextText().sourceWarnings(html,origin,meta.courseId).map(w=>'Source not available: '+w),
-          ...(tool?['Source not available: this work is done in '+tool+'; what is there is not in these materials.']:plain(html).trim()?[]:['The teacher posted no instructions for this item in Canvas.']),
-          ...rubric(value?.rubric).map(r=>[r.title,r.description,r.points==null?'':String(r.points)+' possible points',...r.levels.map(l=>l.text)].filter(Boolean).join('\n'))
-        ].filter(Boolean).join('\n\n');
+        const head=plain(value?.name||meta.title,180),
+          body=headTail(plain(html,600000),TEXT_BODY_LIMIT),
+          warnings=[
+            ...contextText().sourceWarnings(html,origin,meta.courseId).map(w=>'Source not available: '+w),
+            ...(tool?['Source not available: this work is done in '+tool+'; what is there is not in these materials.']:plain(html).trim()?[]:['The teacher posted no instructions for this item in Canvas.'])
+          ],
+          rows=rubric(value?.rubric).map(r=>[r.title,r.description,r.points==null?'':String(r.points)+' possible points',...r.levels.map(l=>l.text)].filter(Boolean).join('\n'));
+        text=[head,body,...warnings,...rows].filter(Boolean).join('\n\n');
+        parts={head,warnings,body,rubric:rows.join('\n\n')};
       }
       else if(what==='page'&&meta.item?.syllabus)
         text=headTail(plain(meta.item.description,600000),TEXT_BODY_LIMIT);
@@ -1229,34 +1262,57 @@
         const pageTexts=array(result?.pageTexts),pending=new Map();
         if(pageTexts.length&&!pageTexts.some(p=>typeof p?.text==='string'&&p.text.trim()))throw Error('empty');
         if(pageTexts.length){
-          let remaining=READ_LIMIT;
-          const chunks=[];
+          let remaining=limit;
+          const chunks=[],kept=[],blank=[];
+          let partial=0;
           for(const p of pageTexts){
             if(!Number.isSafeInteger(p?.page)||p.page<1||selected&&!selected.includes(p.page)||typeof p.text!=='string')continue;
             const header='[Page '+p.page+']\n',separator=chunks.length?'\n\n':'',available=remaining-header.length-separator.length;
             if(available<=0)break;
-            let exact=contextText().privateText(p.text,{showGrades:meta.gradeAccess===true,privacy:meta.privacy,personalOnly:true}).slice(0,available);
+            let exact=contextText().privateText(p.text,{showGrades:meta.gradeAccess===true,privacy:meta.privacy,personalOnly:true});
+            const over=exact.length>available;
+            exact=exact.slice(0,available);
             if(/[\uD800-\uDBFF]$/.test(exact))exact=exact.slice(0,-1);
             chunks.push(separator+header+exact);
             pending.set(id+'@'+p.page,exact);
             remaining-=separator.length+header.length+exact.length;
-            if(exact.length<p.text.length)break;
+            kept.push(p.page);
+            if(!exact.trim())blank.push(p.page);
+            if(over){partial=p.page;break;}
           }
           text=chunks.join('');
+          const valid=pageTexts.filter(p=>Number.isSafeInteger(p?.page)&&p.page>=1&&!(selected&&!selected.includes(p.page))&&typeof p.text==='string'),total=num(result?.totalPages);
+          info={
+            pagesRead:kept,
+            ...(partial?{cutPage:partial}:{}),
+            ...(total?{totalPages:total}:{}),
+            ...(blank.length?{blankPages:blank}:{}),
+            truncated:!!partial||kept.length<valid.length||!!total&&!selected&&total>Math.max(0,...valid.map(p=>p.page))
+          };
         }
         else {
           if(selected)throw Error('pages');
-          text=contextText().privateText(str(result?.text,READ_LIMIT),{showGrades:meta.gradeAccess===true,privacy:meta.privacy,personalOnly:true});
+          text=contextText().privateText(str(result?.text,FILE_LIMIT+1),{showGrades:meta.gradeAccess===true,privacy:meta.privacy,personalOnly:true});
+          info={truncated:text.length>limit};
         }
         if(!text.trim())throw Error('empty');
         for(const [key,value]of pending)cache.set(key,value);
-        return {what,id,...(request.pages!=null?{pages:request.pages}:{}),text:text.slice(0,READ_LIMIT)};
+        return {what,id,...(request.pages!=null?{pages:request.pages}:{}),text:text.slice(0,limit),...info};
       }
       else return fail(what,id,'Unsupported source type.');
       if(signal?.aborted)throw Error('aborted');
       text=contextText().privateText(text,{showGrades:meta.gradeAccess===true,privacy:meta.privacy,personalOnly:true});
       text=headTail(text,what==='assignment'||what==='page'?TEXT_READ_LIMIT:READ_LIMIT);
-      return text.trim()?{what,id,text,...(google.length?{google}:{})}:fail(what,id,'No readable text is available.');
+      const own=t=>contextText().privateText(t,{showGrades:meta.gradeAccess===true,privacy:meta.privacy,personalOnly:true});
+      return text.trim()?
+        {
+          what,
+          id,
+          text,
+          ...(google.length?{google}:{}),
+          ...(parts?{parts:{head:own(parts.head),warnings:parts.warnings.map(own),body:own(parts.body),rubric:own(parts.rubric)}}:{})
+        }:
+        fail(what,id,'No readable text is available.');
     }catch(error){
       const code=String(error?.code||error?.message||''),
         message=signal?.aborted||/^(aborted|cancelled)$/.test(code)?
@@ -1271,7 +1327,8 @@
   // Consecutive reads reuse their verified start; each result gets a fresh end check.
   const reads=new Map();
   async function read(request={}){
-    const key=JSON.stringify([request.what,request.id,request.pages??null,known.get(request.id)?.gradeAccess===true]),scoped=typeof client?.createReadScope==='function';
+    const key=JSON.stringify([request.what,request.id,request.pages??null,request.limit??null,known.get(request.id)?.gradeAccess===true]),
+      scoped=typeof client?.createReadScope==='function';
     try{
       if(scoped&&!verifiedScope){
         const found=await client.profile({signal});

@@ -626,33 +626,8 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
   function saveSkill(key,value){
     return save(data=>{const B=root.ReservePonyBrain,p=Pets().clean(data.pet);data.pet={...p,skills:{...B.cleanSkills(p.skills),[key]:value}};});
   }
-  async function playCommand({tool}){
-   const c=ctx(),blocked=()=>ctx().quizTaking===true||/\/quizzes\/[^/]+\/(?:take|resume)(?:\/|$)/.test(root.location?.pathname||c.pathname||'');
-   if(blocked())return {ok:false,message:'Play tools are unavailable while taking a quiz.'};
-   if(!on('play'))return {...unavailable('Play tools'),suggestions:['turn on play tools']};
-   if(!root.ReservePlay){
-     const result=await root.chrome?.runtime?.sendMessage?.({target:'ch-play',op:'load'});
-     if(!result?.ok)return {ok:false,message:'Play tools could not load. Reload Canvas and try again.',reload:true};
-   }
-   if(dead||blocked())return {ok:false,message:'Play tools are unavailable while taking a quiz.'};
-   if(!playTray){
-     playBox=container.ownerDocument.createElement('div');
-     playBox.dataset.rdKeep='true';
-     container.append(playBox);
-     playTray=root.ReservePlay?.mount({
-       box:playBox,
-       all:true,
-       things:false,
-       root:()=>container.querySelector('.rd-workspace')||container,
-       blocks:'.rd-main > *, .rd-workspace > *',
-       ours:'.pet-layer,.chb-box',
-       allowed:()=>!dead&&!blocked()&&on('play')
-     });
-   }
-   if(!playTray?.TOOLS?.some(row=>row[0]===tool))return false;if(!container.contains(playBox))container.append(playBox);
-   const previous=playTray.tool??null;if(previous!==tool)playTray.pick(tool);
-   return {ok:true,undo:()=>{playTray.pick(null);if(previous)playTray.pick(previous);return true;}};
-  }
+  // Gadgets come with a submitted assignment, on its page; the dashboard has none of its own.
+  async function playCommand(){return {ok:false,message:'Gadgets open when you hand in an assignment.'};}
   const agentHome=root.CanvasHarnessAgentHome?.create({
     container,
     store,
@@ -748,7 +723,8 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
          availableValues:root.ReserveBiscuitControls.ENUMS?.[key]||(typeof root.ReserveBiscuitControls.DEFAULTS[key]==='boolean'?[false,true]:[])
        }));
    return {
-     ...sources,
+     ...extra,
+     newWork:c.newWorkIds||[],
      biscuitPlan:data.toolbox?.biscuitPlan,
      companion:{name:root.ReservePetArt?.identity?.(store.get(),getCustomPet())?.name},
      catalogue:getCatalogue(),
@@ -1348,27 +1324,34 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
      'focus-control':request=>focusControl(request),
      'focus-status':()=>focusStatus(),
      reminder:request=>addReminder(request),
-     due:request=>dueWork(request),
-     study:request=>studyWork(request),
-     plan:items=>items?.local||items?.operation!==undefined?localPlan(items):planTonight(items),
-     move:request=>changeLocalPlan(request),
-     remove:request=>changeLocalPlan(request,true),
-     complete:request=>completeLocal(request),
-     chat:()=>true,
-     none:()=>true,
-     break:request=>startBreak(request),
-     stretch:()=>store.get().pet?.skills?.wellbeing!==false?startBreak({minutes:5,explicit:true,stretch:true}):false,
-     review:item=>openReview(item),
-     ready:item=>openReady(item),
-     ai:request=>openAI(request),
-     practice:item=>openStudy('practice',item),
-     lab:item=>openStudy('lab',item),
-     reading:item=>openStudy('reading',item),
-     notes:item=>openStudy('notes',item),
-     rubric:item=>openStudy('rubric',item),
-     fixes:item=>openStudy('fixes',item),
-     inbox:()=>enabled('course-hub')&&skillEnabled('inbox')?announcements():false,
-     settings:()=>{
+     task:request=>addOwnTask(request),
+     'make-it-yours':({tab}={})=>{
+     settingsTab=['look','layout','courses','pet','settings'].includes(tab)?tab:'look';
+     openSettings(settingsTab);
+     rerender();
+     return {ok:true,message:'Opened Make it yours.'};
+   },
+   due:request=>dueWork(request),
+   study:request=>studyWork(request),
+   plan:items=>items?.local||items?.operation!==undefined?localPlan(items):planTonight(items),
+   move:request=>changeLocalPlan(request),
+   remove:request=>changeLocalPlan(request,true),
+   complete:request=>completeLocal(request),
+   chat:()=>true,
+   none:()=>true,
+   break:request=>startBreak(request),
+   stretch:()=>store.get().pet?.skills?.wellbeing!==false?startBreak({minutes:5,explicit:true,stretch:true}):false,
+   review:item=>openReview(item),
+   ready:item=>openReady(item),
+   ai:request=>openAI(request),
+   practice:item=>openStudy('practice',item),
+   lab:item=>openStudy('lab',item),
+   reading:item=>openStudy('reading',item),
+   notes:item=>openStudy('notes',item),
+   rubric:item=>openStudy('rubric',item),
+   fixes:item=>openStudy('fixes',item),
+   inbox:()=>enabled('course-hub')&&skillEnabled('inbox')?announcements():false,
+   settings:()=>{
      if(!enabled('customization'))return false;
      settingsTab='pet';
      openSettings('pet');
@@ -1425,7 +1408,7 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    for(const key of Object.keys(actions))actions[key]=command(actions[key]);
   async function executeBiscuit(action,fields={},options={}){
    if(dead||executorBusy||typeof action!=='string'||!Object.hasOwn(actions,action)||!record(fields))return {ok:false,message:'That action is unavailable in this workspace.'};
-   if(!on('planner')&&['focus','focus-control','focus-status','break','stretch','plan','move','remove','reminder','note','bookmark','module'].includes(action))return unavailable('Planner');
+   if(!on('planner')&&['focus','focus-control','focus-status','break','stretch','plan','move','remove','reminder','task','note','bookmark','module'].includes(action))return unavailable('Planner');
    executorBusy=true;let journal;
    try{
     options.validate?.();
@@ -1693,6 +1676,15 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
     }
     return {ok:true,targetId,original,before:copy(original.reminder),after:copy(row),message:operation==='reschedule'?'Rescheduled the selected reminder.':'Saved the selected reminder.'};
    });
+  }
+  // Work Canvas knows nothing about, in the student's own words.
+  async function addOwnTask({name,day='',estimate=0,at}={}){
+   const title=String(name||'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,200);
+   if(!title||(day&&!validDay(day))||(at!==undefined&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(at)))return false;
+   const ok=await save(Plan().addTask(
+     {name:title,day,estimate:Math.max(0,Math.min(1440,Math.round(Number(estimate)||0))),...(at!==undefined?{at}:{})},
+     {courseId:'personal',id:newId(),nowISO:new Date().toISOString()}));
+   return ok===false?false:{ok:true,message:'Added to your list.'};
   }
   function addReminder(request={}){
    if(request.operation!==undefined)return on('planner')?reminderOperation(request):unavailable('Reminders');
@@ -2132,8 +2124,6 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    else input.value=text;
   }
   function click(event){
-   // "Open" beside Play in the features list: the tray of tools, with none in hand yet.
-   if(event.target.closest?.('[data-rd-action]')?.dataset?.rdAction==='play-open'){void playCommand({tool:null});return true;}
    if(!enabled('planner'))return false;
    if(room?.click(event))return true;
    if(focusClick(event))return true;

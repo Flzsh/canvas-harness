@@ -37,6 +37,10 @@ test('handin renders escaped labels, recoverable undo and all four reasons',()=>
 // Owner, 2026-10-27: "the UI and aesthetic is so bad now". The module is drawn like Up next; these pin its markup.
 test('handin rows read like Up next: course drawing and colour, name, course · due time and a late / today chip',()=>{
  const course={id:'7',name:'Synthetic Biology',shortName:'BioDesign',color:'#2E7D5B'},c={...context([item(1,'2026-10-19T03:59:00Z'),item(2,'2026-10-22T03:59:00Z'),item(3,'2026-10-22T20:00:00Z'),item(4,'2026-10-24T03:59:00Z'),item(5,'2026-10-29T03:59:00Z'),item(6,'2026-10-10T03:59:00Z',{missing:true})]),courseMap:new Map([['7',course]])};
+ // Course art is off here: the suite runs in one process and an earlier file may have loaded course-art.js, so the
+ // global is cleared and put back at the end.
+ const before=globalThis.ReserveCourseArt;delete globalThis.ReserveCourseArt;
+ try{
  // (ICU may put a narrow no-break space before AM/PM.)
  const html=H.render(c,helpers,{action:button}).replace(/ /g,' '),rows=html.match(/<li class="ch-handin-row"[\s\S]*?<\/li>/g);
  assert.equal(rows.length,6);assert.match(html,/^<div class="ch-handin">/);
@@ -51,8 +55,9 @@ test('handin rows read like Up next: course drawing and colour, name, course · 
  assert.equal(chip(5),null);assert.match(row(5),/<span>Oct 28, 11:59 PM<\/span>/);
  assert.deepEqual(chip(6),['danger','12 days late']);
  // With course art on, the row carries the course's own mini drawing in place of the colour dot.
- const before=globalThis.ReserveCourseArt;globalThis.ReserveCourseArt={mini:(course,{place})=>`<svg class="rd-mini" data-place="${place}" data-course="${course.id}"></svg>`};
- try{const drawn=H.render(c,helpers,{action:button});assert.match(drawn,/<svg class="rd-mini" data-place="row" data-course="7"><\/svg><strong>/);assert.doesNotMatch(drawn,/ch-handin-dot/);}finally{if(before===undefined)delete globalThis.ReserveCourseArt;else globalThis.ReserveCourseArt=before;}
+ globalThis.ReserveCourseArt={mini:(course,{place})=>`<svg class="rd-mini" data-place="${place}" data-course="${course.id}"></svg>`};
+ const drawn=H.render(c,helpers,{action:button});assert.match(drawn,/<svg class="rd-mini" data-place="row" data-course="7"><\/svg><strong>/);assert.doesNotMatch(drawn,/ch-handin-dot/);
+ }finally{if(before===undefined)delete globalThis.ReserveCourseArt;else globalThis.ReserveCourseArt=before;}
 });
 test('handin keeps every way it was done and its control labels; the choices sit behind one small word',()=>{
  const calls=[],action=(name,text,attrs,cls)=>{calls.push({name,label:strip(text),cls});return button(name,text,attrs,cls);};

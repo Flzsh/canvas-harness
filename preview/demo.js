@@ -31,5 +31,7 @@
  const shadow=document.getElementById('reserve-preview').attachShadow({mode:'open'});
  for(const [file,style] of [['literata-latin.woff2','normal'],['literata-latin-italic.woff2','italic']])document.fonts.add(new FontFace('Literata',"url('../extension/fonts/"+file+"')",{weight:'200 900',style,display:'swap'}));
  for(const file of ['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','course-links.css','selection.css','responsive-layout.css','gpa.css','widgets.css','pet.css']){const link=document.createElement('link');link.rel='stylesheet';link.href='../extension/'+file;shadow.append(link);}
+ // ?developer: Developer tools on, to see its tab with made-up data (Storage and Errors stay empty here)
+ if(new URLSearchParams(location.search).has('developer'))ReserveFeatures.apply({preset:'custom',custom:[...ReserveFeatures.presets.full,'developer']});
  const area=document.createElement('div');shadow.append(area);ReserveDashboard.mount(area,{snapshot,store,demo:true,refresh:async()=>snapshot,materialClient:client});
 })();

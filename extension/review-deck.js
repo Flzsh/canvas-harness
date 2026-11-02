@@ -186,7 +186,7 @@
     const html=control(name),choice=/^s*<select/.test(html);
     let salt=0;
     for(const ch of name)salt=(salt*31+ch.charCodeAt(0))%97;
-    return `<label class="rv-field"><span>${E(label)}</span><span class="rv-slip${choice?' rv-slip-choice':''}">${frame('paper',120+salt%9)}${html}${choice?CARET:''}</span></label>`;
+    return `<label class="rv-field"><span>${E(label)}</span><span class="rv-slip${choice?' rv-slip-choice':''}">${frame('paper',120+salt%9,480)}${html}${choice?CARET:''}</span></label>`;
   };
   function courseSelect(name,value,all=false){
     const list=courses();
@@ -353,12 +353,12 @@
    const q=appliedQuery.trim().toLowerCase(),
      list=d.cards.filter(c=>(filter==='all'||c.c===filter)&&(!q||(c.f+' '+c.b).toLowerCase().includes(q))),
      ready=new Set(M.queue(d,day,{tests:tests(day),course:filter}).map(e=>e.id));
-   const row=(c,i)=>{const id=E(c.id),open=rowMenu===c.id;return `<li class="rv-row" data-rd-key="review-card-${id}" style="${courseColor(c.c)?`--rv-course:${E(courseColor(c.c))}`:''}"><span class="rv-row-card" aria-hidden="true">${frame('paper',60+i%7)}</span><div class="rv-row-f rd-rich-text">${fmt(c.f)}</div>${c.b?`<div class="rv-row-b rd-rich-text">${fmt(c.b)}</div>`:''}<p class="rv-row-meta">${E(courseName(c.c))} · ${c.paused?'Paused':ready.has(c.id)?'Due':c.s.f.box?'Due '+E(dayWord(c.s.f.due,day)||c.s.f.due):'New'}${c.two?' · Two-way':''}</p><div class="rv-row-act">`
+   const row=(c,i)=>{const id=E(c.id),open=rowMenu===c.id;return `<li class="rv-row" data-rd-key="review-card-${id}" style="${courseColor(c.c)?`--rv-course:${E(courseColor(c.c))}`:''}"><span class="rv-row-card" aria-hidden="true">${frame('paper',60+i%7,480)}</span><div class="rv-row-f rd-rich-text">${fmt(c.f)}</div>${c.b?`<div class="rv-row-b rd-rich-text">${fmt(c.b)}</div>`:''}<p class="rv-row-meta">${E(courseName(c.c))} · ${c.paused?'Paused':ready.has(c.id)?'Due':c.s.f.box?'Due '+E(dayWord(c.s.f.due,day)||c.s.f.due):'New'}${c.two?' · Two-way':''}</p><div class="rv-row-act">`
     +tag('button',`type="button" class="rv-rowpencil" data-rd-key="rv-rowpencil-${id}" data-rd-action="review-deck-edit" data-id="${id}" aria-label="Edit card"${busy?' disabled':''}`,`<span class="rv-pencil-art" aria-hidden="true">${art('pencil')}</span>`)
     +tag('button',`type="button" class="rv-rowtag" data-rd-key="rv-rowtag-${id}" data-rd-action="review-deck-rowmenu" data-id="${id}" aria-expanded="${open}" aria-label="More for this card"${busy?' disabled':''}`,`${frame('tag',70+i%5)}<span aria-hidden="true">···</span>`)
     +(open?`<div class="rv-rowmenu" data-rd-key="rv-rowmenu">${btn('pause',c.paused?'Resume':'Pause',{extra:`data-id="${id}"`,kind:'slip'})}${btn('delete',confirmDelete===c.id?'Delete?':'Delete',{extra:`data-id="${id}"`,kind:confirmDelete===c.id?'again':'slip'})}</div>`:'')+`</div></li>`;};
    // the search is one paper slip with its magnifier drawn at its right end
-   return `<div class="rv-listbar"><div class="rv-search"><span class="rv-search-art" aria-hidden="true">${frame('paper',31)}</span><input type="search" data-rd-field="${PREFIX}query" aria-label="Search cards" placeholder="Search cards" value="${E(query)}">`
+   return `<div class="rv-listbar"><div class="rv-search"><span class="rv-search-art" aria-hidden="true">${frame('paper',31,480)}</span><input type="search" data-rd-field="${PREFIX}query" aria-label="Search cards" placeholder="Search cards" value="${E(query)}">`
     +tag('button',`type="button" class="rv-searchgo" data-rd-key="rv-searchgo" data-rd-action="review-deck-search" aria-label="Search"${busy?' disabled':''}`,LENS)+`</div></div>`
     +(list.length?`<ul class="rv-list">${list.slice(0,limit).map(row).join('')}</ul>${list.length>limit?btn('more','Show more'):''}`:'<p class="rv-empty">No cards.</p>');
   }
@@ -371,7 +371,7 @@
   }
   function drawerView(d,day){
    const at=key=>`aria-controls="review-deck-panel" aria-selected="${tab===key}" tabindex="${tab===key?0:-1}"`;
-   return `<div class="rv-drawer" data-rd-key="rv-drawer" role="region" aria-label="Card files"><span class="rv-drawer-art" aria-hidden="true">${art('drawer')}</span><span class="rv-drawer-front" aria-hidden="true">${art('drawerFront')}<span class="rv-drawer-label">Cards</span></span><div class="rv-drawer-in"><div class="rv-drawer-top">${courseTabs()}${btn('drawer-close','Close',{extra:'aria-keyshortcuts="Escape"'})}</div><nav class="rv-tabs" role="tablist" aria-label="Card files"><button type="button" class="rv-tab" role="tab" data-rd-action="review-deck-tab" data-tab="cards" id="review-deck-tab-cards" ${at('cards')}>${frame('tag',20,tagUnits('Cards',{px:7.4,pad:34,min:94,h:34}))}<span>Cards</span></button><button type="button" class="rv-tab" role="tab" data-rd-action="review-deck-tab" data-tab="add" id="review-deck-tab-add" ${at('add')}>${frame('tag',21,tagUnits(editor().edit?'Edit card':'Add card',{px:7.4,pad:34,min:94,h:34}))}<span>${editor().edit?'Edit card':'Add card'}</span></button><button type="button" class="rv-tab" role="tab" data-rd-action="review-deck-tab" data-tab="import" id="review-deck-tab-import" ${at('import')}>${frame('tag',22,tagUnits('Import',{px:7.4,pad:34,min:94,h:34}))}<span>Import</span></button><button type="button" class="rv-tab" role="tab" data-rd-action="review-deck-tab" data-tab="settings" id="review-deck-tab-settings" ${at('settings')}>${frame('tag',23,tagUnits('Schedule',{px:7.4,pad:34,min:94,h:34}))}<span>Schedule</span></button></nav><div id="review-deck-panel" class="rv-panel" role="tabpanel" aria-labelledby="review-deck-tab-${tab}" data-rd-key="review-deck-panel-${tab}">${tab==='add'?editorView():tab==='import'?importView():tab==='settings'?scheduleView(d):listView(d,day)}</div></div></div>`;
+   return `<div class="rv-drawer" data-rd-key="rv-drawer" role="region" aria-label="Card files"><span class="rv-drawer-art" aria-hidden="true">${art('drawer')}</span><span class="rv-drawer-front" aria-hidden="true">${art('drawerFront')}<span class="rv-drawer-label">Cards</span></span><div class="rv-drawer-in"><div class="rv-drawer-top"><nav class="rv-tabs" role="tablist" aria-label="Card files"><button type="button" class="rv-tab" role="tab" data-rd-action="review-deck-tab" data-tab="cards" id="review-deck-tab-cards" ${at('cards')}>${frame('tag',20,tagUnits('Cards',{px:7.4,pad:34,min:94,h:34}))}<span>Cards</span></button><button type="button" class="rv-tab" role="tab" data-rd-action="review-deck-tab" data-tab="add" id="review-deck-tab-add" ${at('add')}>${frame('tag',21,tagUnits(editor().edit?'Edit card':'Add card',{px:7.4,pad:34,min:94,h:34}))}<span>${editor().edit?'Edit card':'Add card'}</span></button><button type="button" class="rv-tab" role="tab" data-rd-action="review-deck-tab" data-tab="import" id="review-deck-tab-import" ${at('import')}>${frame('tag',22,tagUnits('Import',{px:7.4,pad:34,min:94,h:34}))}<span>Import</span></button><button type="button" class="rv-tab" role="tab" data-rd-action="review-deck-tab" data-tab="settings" id="review-deck-tab-settings" ${at('settings')}>${frame('tag',23,tagUnits('Schedule',{px:7.4,pad:34,min:94,h:34}))}<span>Schedule</span></button></nav>${btn('drawer-close','Close',{extra:'aria-keyshortcuts="Escape"'})}</div>${tab==='cards'?courseTabs():''}<div id="review-deck-panel" class="rv-panel" role="tabpanel" aria-labelledby="review-deck-tab-${tab}" data-rd-key="review-deck-panel-${tab}">${tab==='add'?editorView():tab==='import'?importView():tab==='settings'?scheduleView(d):listView(d,day)}</div></div></div>`;
   }
   const statusLine=()=>`<p class="rv-status" data-review-deck-status role="${failed?'alert':'status'}"${quiet?' data-quiet':''}>${E(status)}</p>`;
 
@@ -380,7 +380,7 @@
   function renderReviewDeck(){
    if(!allowed())return '';try{
     const d=deck(),day=today(),sum=M.stats(d,day,{tests:tests(day)}),mode=pageMode(),s=session;let head,body;
-    const foldBtn=`<button type="button" class="rv-fold" data-rd-key="rv-fold" data-rd-action="review-deck-fold" data-rv-fold aria-label="Back to Home" aria-keyshortcuts="Escape">${frame('paper',9)}${art('arrows',false)}</button>${goButton('work')}`;
+    const foldBtn=`<button type="button" class="rv-fold" data-rd-key="rv-fold" data-rd-action="review-deck-fold" data-rv-fold aria-label="Fold" aria-keyshortcuts="Escape">${frame('paper',9)}<span class="rv-fold-word">Fold <span aria-hidden="true">↙</span></span></button>${goButton('work')}`;
     if(mode==='home'){
      // A count rides in a <small>: read out with the name, but not a part of it.
      const list=boxes(d,day,sum),primary=s&&!finished()?`<button type="button" class="rv-btn rv-btn-clay rv-primary" data-rd-key="rv-primary" data-rd-action="review-deck-resume"${busy?' disabled':''}>${frame('clay')}<span>Carry on<small class="rv-n"> · ${s.list.length-s.index} left</small></span></button>`:sum.due?`<button type="button" class="rv-btn rv-btn-clay rv-primary" data-rd-key="rv-primary" data-rd-action="review-deck-start" data-course="all"${busy?' disabled':''}>${frame('clay')}<span>Study all<small class="rv-n"> · ${sum.due}</small></span></button>`:'';
@@ -445,6 +445,7 @@
   // happen under (nothing moves then), so neither Home nor the room ever blanks out in one frame.
   const SHEET_EDGE='<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path class="rv-sheet-edge" vector-effect="non-scaling-stroke" d="M1.2 1.6Q30 .8 50 1.3T98.6 1.2Q99.3 30 98.8 50T98.7 98.5Q70 99.2 50 98.7T1.4 98.6Q.8 70 1.3 50T1.4 3.4"/></svg>';
   let sheet=null,modRect=null;
+  const SHEET_MS=3000;
   // a move stamps the dashboard with when it ends, so the companion keeps still meanwhile (pets.js)
   const busyFor=ms=>{try{const t=Date.now()+ms;if(!(Number(container.dataset.chMoving)>=t))container.dataset.chMoving=String(t);}catch{}};
   const toward=(from,at)=>`translate(${px(from.left-at.left)},${px(from.top-at.top)}) scale(${n3(from.width/at.width)},${n3(from.height/at.height)})`;
@@ -467,6 +468,7 @@
    const mine=sheet={el,anim:a,from,at,state:'growing'};
    const over=()=>{if(sheet!==mine||mine.state!=='growing')return;mine.state='over';then();};
    if(a)a.finished.then(over,()=>{});else over();
+   win?.setTimeout?.(()=>{if(sheet===mine)dropSheet();},SHEET_MS);
    return mine;
   }
   // the room has been drawn under the sheet: it lifts off (sliding the last pixels onto the page's own box)
@@ -478,6 +480,15 @@
    const gone=()=>s.el.remove();
    if(a)a.finished.then(gone,gone);else gone();
    return true;
+  }
+  function dropSheet(){
+    const s=sheet;
+    if(!s)return;
+    sheet=null;
+    try{s.anim?.commitStyles?.();s.anim?.cancel();}catch{}
+    const a=animate(s.el,[{opacity:0}],{duration:200,easing:FADE(),fill:'forwards'});
+    const gone=()=>s.el.remove();
+    if(a)a.finished.then(gone,gone);else gone();
   }
   // Escape while the sheet is still growing (the room not drawn yet): it shrinks back into the module from where it is
   function retreatSheet(){
@@ -560,7 +571,7 @@
     later(()=>{
       if(dead)return;
       busyFor(700);
-      if(typeof onRoom==='function'&&onRoom(tab))return;
+      if(typeof onRoom==='function'&&onRoom(tab)){schedulePaint();return;}
       const b=container?.querySelector?.(`[data-rv-go="${tab}"]`);
       if(b&&typeof b.click==='function')b.click();else changed();
     });

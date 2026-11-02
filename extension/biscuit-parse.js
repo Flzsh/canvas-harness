@@ -551,7 +551,6 @@
   ['course-art','course-art|course art|course artwork'],
   ['quick-pack','quick-pack|quick pack|local artwork packs|quick upload|artwork packs|artwork packs and quick upload'],
   ['pony','pony|biscuit|pet|pony companion|companion'],
-  ['biscuit-more-rules','biscuit-more-rules|biscuit more rules|more rules'],
   ['motion','motion|animations|living drawings|living drawings and motion'],
   ['canvas-nav','canvas-nav|canvas navigation|drawn canvas navigation'],
   ['course-nav','course-nav|course menu|course navigation|drawn course menu|drawn course menu and modules'],
@@ -562,7 +561,8 @@
   ['focus-room','focus-room|focus room'],
   ['review-deck','review-deck|review deck'],
   ['grade-impact','grade-impact|grade impact'],
-  ['deadline-changes','deadline-changes|deadline changes|due date changes|changed deadlines']
+  ['deadline-changes','deadline-changes|deadline changes|due date changes|changed deadlines'],
+  ['developer','developer|developer tools|dev tools']
  ]);
  const SKILL_NAMES=names([
   ['deadline','deadline|deadline watch|deadline reminders'],['focus','focus buddy|focus help'],['planner','planner help|planner helper'],['quiz','quiz prep|quiz preparation'],['wellbeing','wellbeing|well-being|well being|wellness|stretch reminders'],['labprep','labprep|lab prep|lab preparation'],['reading','reading helper|reading help'],['rubric','rubric helper|rubric help'],['feedback','feedback helper|feedback help'],['inbox','inbox watch'],['reminders','reminders|reminder skill'],['night','night|night owl|night owl guard']

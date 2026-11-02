@@ -148,7 +148,12 @@
 .rd[data-reading-font=interface] { --rd-read: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif; }
 .rd[data-reading-font=interface][data-font=humanist] { --rd-read: Calibri, Candara, "Segoe UI", sans-serif; }
 .rd[data-reading-font=interface][data-font=serif] { --rd-read: "Literata", Georgia, "Times New Roman", serif; }
-
+/* Easy read: what helps most with dyslexia is spacing, more than any one typeface. A plain sans the laptop already has, wider
+   letters and words, more air between lines, an even left edge, and bold in place of italics. */
+.rd[data-reading-font=easy] { --rd-read: Verdana, Tahoma, "Noto Sans", Arimo, Arial, sans-serif; --rd-read-w: 400; }
+.rd[data-reading-font=easy] .rd-rich-text, .rd[data-reading-font=easy] .rd-message-body { letter-spacing: .05em; word-spacing: .16em; line-height: 1.8; text-align: left; hyphens: none; }
+.rd[data-reading-font=easy] :is(.rd-rich-text, .rd-message-body) em, .rd[data-reading-font=easy] :is(.rd-rich-text, .rd-message-body) i { font-style: normal; font-weight: 550; }
+/* The Bookish typeface is the bundled serif too (older layers named Georgia). */
 .rd[data-font=serif] { font-family: "Literata", Georgia, "Times New Roman", serif; }
 
 
@@ -176,7 +181,7 @@
 .rd .rd-toolbar > .rd-tools { margin-left: auto; }
 
 .rd { --rd-search-at: heading; }
-@media (min-width: 1000px) { .rd { --rd-search-at: bar; } }
+@media (min-width: 860px) { .rd { --rd-search-at: bar; } }
 .rd .rd-toolbar > .rd-bar-search { display: none; }
 .rd:not([data-workspace=work]) .rd-workspace-heading > .rd-work-search { display: none; }
 @container style(--rd-search-at: bar) {
@@ -886,6 +891,16 @@
   background: none; color: var(--rd-muted); font-size: 11.5px; font-weight: var(--rd-bold); font-variant-numeric: lining-nums tabular-nums;
 }
 .rd .rd-week .rd-day-filter small:empty { display: none; }
+/* A heavy day: its count in red pen over a hand-drawn line, here and in the Planner. */
+.rd .rd-week .rd-day-filter[data-heavy=true] { position: relative; }
+.rd .rd-week .rd-day-filter[data-heavy=true] small { color: var(--rd-danger); }
+.rd .rd-week .rd-day-filter[data-heavy=true]::after,
+.rd .rd-plan-day[data-heavy=true] > header > small::after {
+  content: ""; position: absolute; left: 10px; right: 10px; bottom: 2px; height: 4px; background: var(--rd-danger);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 5' preserveAspectRatio='none'%3E%3Cpath d='M1 3c3.400-1.900 6-.2 9.200-.1 3.300 0 5.800-1.900 9.100-1.300 3 .5 5.500 2.300 8.800 1.800 3.200-.4 5.800-1.800 9-1.100 2.300.5 4 1 5.900.6' fill='none' stroke='%23000' stroke-width='1.800' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 5' preserveAspectRatio='none'%3E%3Cpath d='M1 3c3.400-1.900 6-.2 9.200-.1 3.300 0 5.800-1.900 9.100-1.300 3 .5 5.500 2.300 8.800 1.800 3.200-.4 5.800-1.800 9-1.100 2.300.5 4 1 5.900.6' fill='none' stroke='%23000' stroke-width='1.800' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+.rd .rd-plan-day[data-heavy=true] > header > small { position: relative; width: fit-content; padding-bottom: 5px; color: var(--rd-danger); }
+.rd .rd-plan-day[data-heavy=true] > header > small::after { left: 0; right: 0; bottom: 0; }
 .rd .rd-week .rd-day-filter:first-child > span { color: var(--rd-ink); font-weight: var(--rd-bold); }
 .rd .rd-week .rd-day-filter:hover { color: var(--rd-ink); }
 .rd .rd-week .rd-day-filter[aria-pressed=true] { background: var(--rd-surface); color: var(--rd-ink); box-shadow: var(--rd-chip); }
@@ -905,7 +920,8 @@
 .rd[data-workspace=work] .rd-course-information { grid-column: 1; grid-row: 1 / -1; min-width: 0; }
 .rd[data-workspace=work] .rd-work-column { grid-column: 2; grid-row: 1; min-width: 0; width: auto; }
 .rd[data-workspace=work] .rd-information { display: block; grid-column: 2; grid-row: 2; min-width: 0; width: auto; order: 0; padding: 0; background: none; box-shadow: none; }
-.rd[data-workspace=work] .rd-course-information > .rd-deck-header { display: flex; margin: 0; padding: 0 0 18px; min-height: 54px; border: 0; }
+/* (no padding of its own: the first section's top margin spaces it, as between every other section; with both, the gap under the header doubled) */
+.rd[data-workspace=work] .rd-course-information > .rd-deck-header { display: flex; margin: 0; padding: 0; min-height: 54px; border: 0; }
 .rd[data-workspace=work] .rd-course-information .rd-course-deck { display: flex; flex-direction: column; gap: 0; }
 .rd[data-workspace=work] .rd-course-information .rd-deck-primary, .rd[data-workspace=work] .rd-course-information .rd-deck-secondary { display: flex; flex-direction: column; gap: 0; order: 0; }
 .rd[data-workspace=work] .rd-information > .rd-reader { margin: 0; border-radius: var(--rd-r-paper); background: var(--rd-surface); box-shadow: var(--rd-paper); }
@@ -913,7 +929,7 @@
 .rd .rd-assignment-empty { padding: 28px; border: 1px dashed var(--rd-line-strong); border-radius: var(--rd-r-paper); }
 .rd .rd-assignment-empty h2 { font: 550 19px var(--rd-display); margin: 0 0 8px; }
 .rd .rd-assignment-empty p { color: var(--rd-muted); margin: 0; font-size: 13px; }
-@container work-area (min-width: 940px) {
+@container work-area (min-width: 1180px) {
   .rd[data-workspace=work][data-layout=split] .rd-main { grid-template-columns: minmax(280px, 1fr) minmax(260px, .92fr) minmax(0, 1.3fr); grid-template-rows: auto; }
   .rd[data-workspace=work][data-layout=split] .rd-course-information { grid-column: 1; grid-row: 1; }
   .rd[data-workspace=work][data-layout=split] .rd-work-column { grid-column: 2; grid-row: 1; }
@@ -924,7 +940,7 @@
 .rd[data-workspace=work][data-layout=list] .rd-main { grid-template-columns: minmax(0, 1fr); }
 .rd[data-workspace=work][data-layout=list] .rd-main > .rd-course-information, .rd[data-workspace=work][data-layout=list] .rd-main > .rd-work-column, .rd[data-workspace=work][data-layout=list] .rd-main > .rd-information { grid-column: 1; grid-row: auto; position: static; }
 @container work-area (max-width: 720px) {
-  .rd[data-workspace=work] .rd-main { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; gap: 24px; }
+  .rd.rd[data-workspace=work] .rd-main { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; gap: 24px; }
   .rd[data-workspace=work] .rd-main > .rd-course-information, .rd[data-workspace=work] .rd-main > .rd-work-column, .rd[data-workspace=work] .rd-main > .rd-information { grid-column: 1; grid-row: auto; position: static; order: 0; }
   .rd[data-workspace=work] .rd-assignment-list { max-height: none; overflow: visible; }
 }
@@ -933,7 +949,7 @@
 .rd[data-workspace=work] .rd-course-information { container: course-context / inline-size; }
 .rd[data-workspace=work] .rd-work-column { container: work-list / inline-size; }
 @container course-context (max-width: 360px) {
-  .rd[data-workspace=work] .rd-course-information > .rd-deck-header { flex-direction: column; align-items: flex-start; gap: 6px; padding-bottom: 8px; }
+  .rd[data-workspace=work] .rd-course-information > .rd-deck-header { flex-direction: column; align-items: flex-start; gap: 6px; padding-bottom: 0; }
   .rd .rd-deck-header .rd-heading-actions { gap: 14px; }
   .rd .rd-course-information .rd-row-kind { white-space: normal; max-width: 65px; font-size: 11px; }
 }
@@ -1105,6 +1121,12 @@
 
 .rd[data-workspace=work] .rd-work:has(> .rd-toast-dock > .rd-toast) > .rd-toast-dock { margin-top: 68px; }
 .rd .rd-toast-dock:empty { display: none; }
+/* The one-time word on a weak laptop: a pen-drawn slip in the page, under the heading, so it covers nothing. */
+.rd .rd-machine-notice {
+  display: flex; align-items: center; gap: 4px; width: fit-content; max-width: 100%; box-sizing: border-box; margin: 0 0 12px; padding: 5px 6px 5px 14px;
+  border: 2px solid transparent; border-image: var(--rd-pen) 30 / 11px / 0 stretch; background: var(--rd-surface); background-clip: padding-box; color: var(--rd-ink);
+}
+.rd .rd-machine-notice > [role=status] > span { font-weight: 550; }
 .rd[data-workspace=work] .rd-completion-notice.rd-toast {
   position: absolute; bottom: 0; right: 0; display: flex; align-items: center; gap: 12px; max-width: min(420px, 100%); margin: 0; padding: 10px 10px 10px 14px;
   border: 0; border-radius: 14px; background: var(--rd-surface); color: var(--rd-ink);
@@ -1179,7 +1201,11 @@
 .rd[data-workspace=work] .rd-reader-actions .rd-button { height: 36px; min-height: 36px; padding: 0 16px; border-radius: var(--rd-r-control); font-size: 13px; font-weight: 450; white-space: nowrap; }
 
 .rd[data-workspace=work] .rd-reader-actions .rd-button--primary { font-weight: 600; }
-
+/* A scene clips this button for its shine, which also lets flex squeeze it below its label. */
+.rd .rd-reader-actions .rd-button--primary { min-width: max-content; }
+/* Narrow phones: each action takes its own row (as it already would), and a
+   label longer than the row ("Check completion in Canvas") wraps inside its
+   button rather than running past the reader. */
 @media (max-width: 380px) {
   .rd[data-workspace=work] .rd-reader-actions .rd-button { flex: 1 1 100%; height: auto; padding-block: 8px; line-height: 1.3; white-space: normal; text-align: center; }
 }
@@ -1519,6 +1545,9 @@
 
 
 .rd .rd-teacher-row { position: relative; display: flex; align-items: center; gap: 4px 12px; min-height: 46px; box-sizing: border-box; margin: 0 -8px; padding: 7px 8px; border-radius: 9px; list-style: none; }
+/* A single-item chapter's title keeps its words whole in a narrow column; the tags drop under it. */
+.rd .rd-chapter-row { flex-wrap: wrap; }
+.rd .rd-chapter-row > .rd-chapter-head { flex: 1 1 130px; min-width: 0; }
 .rd .rd-teacher-row + .rd-teacher-row::before { content: ""; position: absolute; top: 0; left: 8px; right: 8px; border-top: 1px solid var(--rd-line); pointer-events: none; }
 .rd .rd-teacher-row:hover { background: var(--rd-row-hover); }
 .rd .rd-teacher-row--open { background: var(--rd-tint); }
@@ -1730,10 +1759,15 @@
   .rd :is(.rd-art, .rd-mini) .art-key { fill: oklch(from color-mix(in oklab, var(--rd-course, #C96442) 62%, #EBDBBC) clamp(var(--rd-key-lo), l, var(--rd-key-hi)) min(c, var(--rd-key-c)) h); }
   .rd .rd-rail-course[data-own-color] { --rd-course-paint: oklch(from color-mix(in oklab, var(--rd-course) 62%, #EBDBBC) clamp(var(--rd-key-lo), l, var(--rd-key-hi)) min(c, var(--rd-key-c)) h); }
 }
-
-.rd :is(.rd-art, .rd-mini) path { transform-box: fill-box; transform-origin: center; }
-.rd :is(.rd-art, .rd-mini) g.art-loop { transform-box: view-box; transform-origin: 0 0; }
-
+/* A bloom grows each shape from its own centre (at most 3%); a loop turns,
+   moves or breathes a whole part (a group) about a point in the drawing's own
+   (master) units, which its keyframes carry as transform-origin. A path that
+   is itself a loop part (a morph, a drawn line) is never transformed by its
+   loop and keeps the fill-box every path has, so its bloom is still its own. */
+.rd .rd-art path, .rd .rd-mini path { transform-box: fill-box; transform-origin: center; }
+.rd .rd-art g.art-loop, .rd .rd-mini g.art-loop { transform-box: view-box; transform-origin: 0 0; }
+/* Beside 12-13px text (rows, reader, deck, grades, Quick open, composer) the
+   22px drawings soften their ink a little so they never outweigh the words. */
 .rd .rd-mini:not([data-place=rail], [data-place=empty]) .art-ink { stroke: #2E2D2A; }
 
 .rd .rd-art-ghost > .rd-art[data-crop] { width: 100%; height: 100%; max-width: none; aspect-ratio: auto; }
@@ -1883,8 +1917,10 @@
 .rd[data-input=keyboard] :is(.rd-course-rail .rd-rail-title .rd-course-name, .rd-rail-all, .rd-rail-course, .rd-filter, .rd-day-filter, .rd-glance-chip, .t-tab, .rd-reader-tab, .rd-assignment) { transition: none !important; }
 .rd[data-input=keyboard] details::details-content { transition: none; }
 
-
-.rd[data-motion-style=off] *, .rd[data-motion-style=off] *::before, .rd[data-motion-style=off] *::after, .rd[data-motion-style=off] details::details-content { animation: none !important; transition: none !important; }
+/* 11.8 Off, and prefers-reduced-motion: no animation and no transition at all.
+   Motifs render fully drawn and surfaces snap (motion.js treats both as Off). */
+/* data-calm is there only while motion is off: on every other visit the browser rules this out at once */
+.rd[data-calm] *, .rd[data-calm] *::before, .rd[data-calm] *::after, .rd[data-calm] details::details-content { animation: none !important; transition: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .rd *, .rd *::before, .rd *::after, .rd details::details-content { animation: none !important; transition: none !important; }
   .rd .rd-settle-layer { display: none; }
@@ -1951,7 +1987,7 @@
 .rd .rd-dock-resize:hover:not(:focus-visible) { background: transparent; }
 .rd .rd-dock-resize:is([data-resize=height], [data-resize=width]):hover::after { background: var(--rd-faint); opacity: 1; }
 
-.rd .rd-utility-dialog[data-docked=true] .rd-utility-nav.t-tabs { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, max-content)); gap: 2px; flex: 0 1 auto; min-width: 0; margin: 0; padding: 3px; overflow: hidden; border: 0; border-radius: 999px; background: var(--rd-tint); }
+.rd .rd-utility-dialog[data-docked=true] .rd-utility-nav.t-tabs { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, max-content)); gap: 2px; flex: 0 1 auto; min-width: 0; margin: 0; padding: 3px; overflow: hidden; border: 0; border-radius: 999px; background: var(--rd-tint); }
 .rd .rd-utility-dialog[data-docked=true] .rd-utility-nav.t-tabs[hidden] { display: none; }
 .rd .rd-utility-nav .rd-dock-tab { display: flex; flex: none; align-items: center; justify-content: center; gap: 7px; min-width: 0; height: 32px; min-height: 32px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: var(--rd-muted); font-family: inherit; font-size: 12.5px; font-weight: 450; white-space: nowrap; cursor: pointer; transition: color 200ms var(--rd-warm); }
 .rd .rd-utility-nav .rd-dock-tab > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -2060,10 +2096,13 @@
   .rd .rd-utility-dialog[data-docked=true] .rd-utility-body { padding: 8px 10px 10px; }
   .rd .rd-quick-keys { margin-inline: -10px; margin-bottom: -10px; }
 }
-@container toolbox (max-width: 460px) { .rd .rd-utility-nav .rd-dock-tab .rd-icon { display: none; } }
+@container toolbox (max-width: 560px) { .rd .rd-utility-nav .rd-dock-tab .rd-icon { display: none; } }
 .rd .rd-utility-dialog select.rd-dock-size { appearance: none; -webkit-appearance: none; padding: 0 8px; field-sizing: content; }
 
 @container toolbox (max-width: 400px) { .rd .rd-utility-nav .rd-dock-tab { padding: 0 6px; font-size:12px; } }
+/* five tabs (Developer tools on): every name still whole, in a little less room each */
+.rd .rd-utility-nav:has(> [data-tab=developer]) .rd-dock-tab { padding: 0 7px; font-size: 12px; }
+@container toolbox (max-width: 400px) { .rd .rd-utility-nav:has(> [data-tab=developer]) .rd-dock-tab { padding: 0 4px; font-size: 11.5px; letter-spacing: -.01em; } }
 
 
 @container toolbox (max-width: 520px) {
@@ -2499,17 +2538,17 @@
   .rd .rd-toolbar > .rd-tools { flex: none; width: auto; margin-left: auto; }
   .rd .rd-toolbar > .rd-bar-search:not([hidden]) { min-width: 140px; }
 }
-@media (min-width: 601px) and (max-width: 1719.98px) {
+@container commands (min-width: 560px) and (max-width: 1680px) {
   .rd .rd-grade-switch > span:not(.rd-switch-track) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .rd .rd-tools .rd-button.rd-native-switch { width: 32px; min-width: 32px; padding: 0; justify-content: center; border-radius: 999px; }
   .rd .rd-tools .rd-native-switch > span { display: none; }
 }
-@media (min-width: 601px) and (max-width: 1399.98px) {
+@container commands (min-width: 560px) and (max-width: 1360px) {
   .rd .rd-tools .rd-tb-tool > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .rd .rd-toolbox-trigger kbd { display: none; }
 }
-@media (min-width: 601px) and (max-width: 1299.98px) {
-  .rd .rd-toolbar .rd-workspace-tab[aria-selected=false] > span:not(.rd-n):not(.rd-sr-only) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@container commands (min-width: 560px) and (max-width: 1260px) {
+  .rd .rd-toolbar .rd-workspace-tab > span:not(.rd-n):not(.rd-sr-only) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .rd .rd-toolbar .rd-workspace-tabs .t-tab { padding: 0 8px; }
   .rd .rd-tools .rd-toolbox-trigger > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
@@ -2536,4 +2575,223 @@
   .rd .rd-course-heading > .rd-course-select { flex: 0 1 auto !important; min-height: 0; }
   .rd[data-workspace] .rd-course-heading .rd-course-select select { height: 30px; min-height: 0; padding-block: 0; font-size: 17px !important; }
   .rd[data-workspace] .rd-workspace-heading > .rd-work-search { flex-basis: 100%; max-width: none; }
+}
+/* ----------------------------------------------------------------- real pages, real sizes, courses on the strip
+   The page scrolls under the strip (owner, 2026-10-21), never out below it. */
+.rd[data-course-navigation=dock][data-courses=true]:not([data-dock-hide=true]) .rd-shell > .rd-workspace { clip-path: inset(-100vh -100vw 16px -100vw); }
+.rd[data-course-navigation=dock][data-courses=true] .rd-status { position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+/* a gutter between the page and its scrollbar */
+.rd:is([data-course-navigation=dock],[data-course-navigation=topbar]) .rd-shell > .rd-workspace { padding-right: 12px; }
+.rd .rd-materials-header > .rd-heading-actions { flex: none; margin-left: auto; }
+/* one chapter has the whole width, not half of two columns */
+.rd .rd-chapter-flow:has(> .rd-chapter:only-child) { column-count: auto; }
+/* the course search belongs to the work pages */
+.rd[data-workspace]:not([data-workspace=work]) .rd-workspace-heading > .rd-work-search { display: none; }
+.rd .rd-tool-panel { overflow-x: clip; }
+/* a short window: the strip waits below the edge and comes up for the pointer or the keyboard, so the page has the height */
+@media (max-height: 559.98px) {
+  .rd[data-course-navigation=dock] .rd-dock { transition: translate .28s cubic-bezier(.3,1.3,.5,1); translate: -50% calc(100% - var(--rd-dock-headroom,80px) + 22px); }
+  .rd[data-course-navigation=dock] .rd-dock:is([data-near],:focus-within,[data-dragging]) { translate: -50% 0; }
+  .rd[data-course-navigation=dock][data-courses=true] .rd-shell > .rd-workspace { padding-bottom: calc(24px + env(safe-area-inset-bottom)); clip-path: none; }
+}
+@media (max-height: 559.98px) and (max-width: 859.98px) {
+  .rd[data-workspace] .rd-workspace-heading > .rd-work-search { display: none; }
+}
+/* Bookmarks alone on its row: at the left, with no divider to nothing */
+@media (max-width: 859.98px) {
+  .rd .rd-desk-toolbar > .rd-bookmarks { justify-self: start; width: auto; padding-right: 0; border-right: 0; }
+  .rd .rd-desk-toolbar > .rd-bookmarks .rd-bookmarks-heading { margin-inline: 0; }
+}
+/* ----------------------------------------------------------------- the drawn hand on the page's own controls
+   The art skill: nothing ruled. A pen line in place of a ruled box, in both themes; the wash stops at the line. */
+.rd { --rd-pen: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%232B2A27' stroke-width='3.6' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E"); --rd-pen-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23B9B5A8' stroke-width='2.8' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E"); }
+.rd[data-theme=dark] { --rd-pen: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23D2C8B2' stroke-width='3.6' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E"); --rd-pen-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%235F5D55' stroke-width='2.8' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E"); }
+.rd .rd-workspace :is(.rd-button:not(.rd-text-button), .rd-preview-button, .rd-source-select, .ch-band-prev, .ch-band-next, .ch-band-more),
+.rd .rd-workspace select.ch-band-ai,
+.rd .rd-workspace .rd-plan-nav .rd-icon-button {
+  border: 2px solid transparent; border-image: var(--rd-pen) 30 / 11px / 0 stretch; border-radius: 9px; background-clip: padding-box; box-shadow: none;
+}
+.rd .rd-workspace :is(.rd-button:not(.rd-text-button), .rd-preview-button, .rd-source-select, .ch-band-prev, .ch-band-next, .ch-band-more):is(:hover, :focus-visible) { box-shadow: none; }
+.rd[data-workspace] .rd-workspace .rd-quick-add input, .rd .rd-workspace .rd-search:not(.rd-bar-search) {
+  border: 2px solid transparent; border-image: var(--rd-pen) 30 / 12px / 0 stretch; border-radius: 10px; background-clip: padding-box; box-shadow: none;
+}
+/* a planner card: the course's colour as a wash, a soft pen edge; the offset is drawn, not a blur */
+.rd[data-workspace] .rd-plan-card { border: 2px solid transparent; border-image: var(--rd-pen-soft) 30 / 11px / 0 stretch; background: linear-gradient(90deg, color-mix(in srgb, var(--rd-course, var(--rd-accent)) 38%, var(--rd-surface)) 0 6px, var(--rd-surface) 6px) padding-box; }
+.rd[data-workspace] .rd-plan-card:hover { border-color: transparent; box-shadow: 2px 3px 0 rgb(43 42 39 / .1); }
+/* a tray and an empty day: a loose pen outline, not a ruled dash */
+.rd[data-workspace] .rd-plan-tray, .rd[data-workspace] .rd-plan-empty { border: 2px solid transparent; border-image: var(--rd-pen-soft) 30 / 13px / 0 stretch; }
+/* (the pen is drawn inside the box: the field's own input must not paint over it) */
+.rd .rd-workspace .rd-search:not(.rd-bar-search) input { background: none; }
+/* Course hub: a drawn sheet, and its heading the same as every other page's */
+.rd .rd-home-sheet { border: 2px solid transparent; border-image: var(--rd-pen) 30 / 13px / 0 stretch; border-radius: 13px; background-clip: padding-box; box-shadow: none; }
+.rd .rd-hub > .rd-page-heading h2 { font: 550 clamp(25px, 1.1vw + 12px, 30px)/1.16 var(--rd-display); letter-spacing: -.02em; }
+/* Make it yours: a drawn sheet with a drawn offset, its presets and Done in the same hand; the name card is solid, or the scene shows through its words */
+.rd .ch-settings-dock .rd-section-heading .rd-button, .rd .ch-settings-dock .ap-preset.is-on { border: 2px solid transparent; border-image: var(--rd-pen) 30 / 11px / 0 stretch; background-clip: padding-box; box-shadow: none; }
+.rd .ch-settings-dock .ap-preset:not(.is-on) { border: 2px solid transparent; border-image: var(--rd-pen-soft) 30 / 11px / 0 stretch; background-clip: padding-box; box-shadow: none; }
+.rd .ch-settings-dock .cz-pet-hero > div:not(.pet) { background: var(--rd-surface); }
+.rd .ch-settings-dock .cz-group input[type=text] { text-overflow: ellipsis; }
+/* the gliding chip and the chosen day, in the same hand: a paper tag with a pen edge on a flat wash; it still glides */
+.rd .rd-filter-group::before, .rd .rd-reader-tabs::before { box-sizing: border-box; border: 2px solid transparent; border-image: var(--rd-pen) 30 / 10px / 0 stretch; border-radius: 9px; background-clip: padding-box; box-shadow: none; }
+.rd .rd-week .rd-day-filter[aria-pressed=true] { border: 2px solid transparent; border-image: var(--rd-pen) 30 / 10px / 0 stretch; border-radius: 9px; background-clip: padding-box; box-shadow: none; line-height: 26px; }
+.rd[data-workspace=work] .rd-filter-group, .rd[data-workspace=inbox] .rd-filter-group, .rd[data-workspace=work] .rd-desk-toolbar > .rd-week { border-radius: 12px; }
+/* ----------------------------------------------------------------- the independent review, 2026-10-31
+   The strip says which course is open: its card stands up out of the row on the course's own wash. */
+.rd .rd-dock[data-look=cards] .rd-dock-it.on .rd-dock-card { translate: 0 -5px; }
+.rd .rd-dock[data-look=cards] .rd-dock-it.on .rd-dock-card > .rd-frame::before { background: color-mix(in srgb, var(--rd-course, #9A8F7A) 24%, var(--rd-dock-paper)); }
+/* Bookmarks is as wide as its word, so the divider stands beside it */
+.rd .rd-desk-toolbar > .rd-bookmarks { flex: none; width: auto; min-width: max-content; }
+/* a day's count stands apart from the date, not as a second digit of it (still a muted numeral: clay is for the one main action) */
+.rd .rd-week .rd-day-filter small:not(:empty)::before { content: "·"; margin-right: 3px; }
+/* Planner: an empty day is empty, not a box that looks like a field; a narrow window shows all seven days in rows, so today is never off the edge */
+.rd[data-workspace] .rd-plan-empty { border: 0; border-image: none; background: none; }
+@container work-area (max-width: 1099.98px) {
+  .rd.rd .rd-plan-week { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); overflow-x: visible; }
+  .rd .rd-plan-day { min-height: 0; }
+}
+/* the Help row: every control one height */
+.rd .ch-band-toolbar :is(.ch-band-act, .ch-band-bar-act, .ch-band-daily, select.ch-band-ai, .ch-band-tab) { box-sizing: border-box; height: 30px; min-height: 30px; }
+/* one page needs no pager */
+.rd .ch-band-toolbar:has(.ch-band-prev:disabled + .ch-band-next:disabled) > .ch-band-prev, .rd .ch-band-toolbar:has(.ch-band-prev:disabled + .ch-band-next:disabled) > .ch-band-next, .rd .ch-band-toolbar:has(.ch-band-prev:disabled + .ch-band-next:disabled) > .ch-band-dots, .rd .ch-band-toolbar:has(.ch-band-prev:disabled + .ch-band-next:disabled) > .ch-band-status { display: none; }
+/* the one-time choice: the sentence beside its two answers, no row left half empty */
+.rd .ch-band-choice { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; column-gap: 8px; }
+@media (max-width: 759.98px) {
+  .rd .ch-band-choice { grid-template-columns: auto auto minmax(0, 1fr); }
+  .rd .ch-band-choice > :first-child { grid-column: 1 / -1; }
+}
+/* the run's status stands in the bar's free stretch, and a tight bar wraps rather than cutting its last button */
+.rd .ch-band-toolbar { flex-wrap: wrap; }
+.rd .ch-band-toolbar .ch-prepare-status { flex: 1 1 140px; min-width: 0; }
+.rd .ch-band-toolbar .ch-prepare-status > span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* The Help row wraps by design. Too narrow for one row: title and day on the left with Push Help up on the right, then the
+   controls below filling the same width. Narrower still: those controls in two rows of three, so their columns line up. */
+@container (max-width: 960px) {
+  .rd.rd .ch-band-toolbar { height: auto; flex-wrap: wrap; row-gap: 0; }
+  .rd.rd .ch-band-toolbar > .ch-band-title, .rd.rd .ch-band-toolbar > .ch-band-day { order: 1; }
+  .rd.rd .ch-band-toolbar > .ch-prepare-status { order: 2; }
+  .rd.rd .ch-band-toolbar > .ch-band-undo, .rd.rd .ch-band-toolbar > .ch-band-dots, .rd.rd .ch-band-toolbar > .ch-band-prev, .rd.rd .ch-band-toolbar > .ch-band-next { order: 2; }
+  .rd.rd .ch-band-toolbar > .ch-band-tab { order: 3; margin-inline-start: auto; }
+  .rd.rd .ch-band-toolbar::before { content: ""; order: 4; flex: 0 0 100%; height: 6px; }
+  .rd.rd .ch-band-toolbar > .ch-band-daily, .rd.rd .ch-band-toolbar > .ch-band-act, .rd.rd .ch-band-toolbar > select.ch-band-ai { order: 5; flex: 1 1 auto; justify-content: center; min-width: 0; max-width: none; }
+  .rd.rd .ch-band-toolbar > select.ch-band-ai { padding-inline: 24px; text-align: center; text-align-last: center; }
+}
+@container (max-width: 640px) {
+  .rd.rd .ch-band-toolbar { row-gap: 6px; }
+  .rd.rd .ch-band-toolbar::before { height: 0; margin-block-end: -6px; }
+  .rd.rd .ch-band-toolbar > .ch-band-daily, .rd.rd .ch-band-toolbar > .ch-band-act, .rd.rd .ch-band-toolbar > select.ch-band-ai { flex: 1 1 30%; }
+}
+/* A card's title box starts its text on the same line as the text in the boxes under it; when its actions wrap below the
+   title, their first icon sits on that line too (the button's own padding moves out). */
+.rd.rd .ch-help-band .ch-band-head { padding-inline: 13px; }
+@container (max-width: 720px) {
+  .rd.rd .ch-help-band .ch-band-head > .ch-band-acts { margin-inline-start: -4px; justify-content: flex-start; }
+}
+/* a short window: the title stays in its box (the scrim is a row item here and pushed it off the left) */
+@media (max-height: 599.98px) {
+  .rd[data-workspace] .rd-workspace-heading > .rd-course-heading::before, .rd[data-workspace] .rd-workspace-heading > .rd-course-heading::after { display: none !important; }
+  .rd[data-workspace] .rd-workspace-heading, .rd[data-workspace] .rd-workspace-heading > .rd-course-heading { height: auto !important; min-height: 0 !important; }
+  .rd[data-workspace] .rd-workspace-heading > .rd-course-heading { align-items: baseline !important; }
+  .rd[data-workspace] .rd-workspace-heading > .rd-course-heading > h1 { flex: 0 1 auto !important; align-self: baseline !important; width: auto !important; max-width: 100% !important; min-width: 0 !important; }
+}
+/* the Planner heading starts at the left when it stacks */
+@media (max-width: 800px) { .rd .rd-plan-head.rd-page-heading { align-items: flex-start; } }
+/* Planner says what things are by being them: the sentences stay for screen readers only */
+.rd .rd-plan-tip { position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.rd .rd-plan-tray header p { display: none; }
+/* scrollbars: thin and warm, no arrows */
+@supports selector(::-webkit-scrollbar) {
+  .rd:is([data-course-navigation=dock],[data-course-navigation=topbar]) .rd-shell > .rd-workspace { scrollbar-width: auto; scrollbar-color: auto; }
+  .rd .rd-workspace::-webkit-scrollbar, .rd .t-acc-panel::-webkit-scrollbar, .rd .rd-utility-body::-webkit-scrollbar, .rd .rv-panel::-webkit-scrollbar { width: 9px; height: 9px; }
+  .rd .rd-workspace::-webkit-scrollbar-button, .rd .t-acc-panel::-webkit-scrollbar-button, .rd .rd-utility-body::-webkit-scrollbar-button, .rd .rv-panel::-webkit-scrollbar-button { display: none; }
+  .rd .rd-workspace::-webkit-scrollbar-track, .rd .t-acc-panel::-webkit-scrollbar-track, .rd .rd-utility-body::-webkit-scrollbar-track, .rd .rv-panel::-webkit-scrollbar-track { background: none; }
+  .rd .rd-workspace::-webkit-scrollbar-thumb, .rd .t-acc-panel::-webkit-scrollbar-thumb, .rd .rd-utility-body::-webkit-scrollbar-thumb, .rd .rv-panel::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 6px; background: color-mix(in srgb, var(--rd-ink) 26%, transparent) padding-box; }
+  .rd .rd-workspace::-webkit-scrollbar-thumb:hover, .rd .t-acc-panel::-webkit-scrollbar-thumb:hover, .rd .rd-utility-body::-webkit-scrollbar-thumb:hover, .rd .rv-panel::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--rd-ink) 42%, transparent) padding-box; }
+}
+/* ----------------------------------------------------------------- no space going to waste
+   The views and the days share a row unless a selection needs the room; the empty selection slot holds no column open. */
+.rd[data-workspace] .rd-workspace-heading { margin-bottom: 8px; }
+.rd[data-workspace=work] .rd-desk-toolbar:has(.rd-selection-slot:empty) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 8px; }
+.rd[data-workspace=work] .rd-desk-toolbar:has(.rd-selection-slot:empty) > .rd-selection-slot { display: none; }
+.rd[data-workspace=work] .rd-desk-toolbar > .rd-week { justify-self: start; }
+.rd .rd-desk-toolbar > .rd-arrange-guide { flex: 0 1 auto; min-height: 0; margin: 0 0 0 auto; }
+.rd[data-workspace=work]:not([data-panel-frame=none]) .ch-band-host:not(:has(.ch-band-panel[hidden])) { padding: 6px 14px 10px !important; }
+.rd .ch-band-host { margin-block-end: 12px; }
+/* a floating strip wider views: the page fades out just above it, so nothing is cut through a line of words. It is the
+   shell's own, beside the strip, so a layer on the shell can't lift it over the strip, and a room keeps its whole picture */
+@media (min-height: 560px) {
+  .rd[data-course-navigation=dock][data-courses=true]:not([data-dock-hide=true]):is([data-scene-theme=""], :not([data-scene-theme])) > .rd-shell:not([data-in-room])::before { content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: 122px; z-index: 15; pointer-events: none; background: linear-gradient(to top, var(--rd-bg) 62%, transparent); }
+}
+/* every page's title the same size and weight; the buttons beside it centred on it */
+.rd .rd-plan-head h1, .rd .rd-page-heading h1, .rd .rd-materials-header h2 { font: 550 clamp(25px, 1.1vw + 12px, 30px)/1.16 var(--rd-display); letter-spacing: -.02em; }
+.rd .rd-page-heading, .rd .rd-materials-header { align-items: center; }
+/* Planner: the days are drawn sheets, today on a wash, as flat as the rest */
+.rd[data-workspace] .rd-plan-day { border: 2px solid transparent; border-image: var(--rd-pen-soft) 30 / 13px / 0 stretch; background: var(--rd-surface) padding-box; }
+.rd[data-workspace] .rd-plan-day[data-today=true] { border-image: var(--rd-pen) 30 / 13px / 0 stretch; background: color-mix(in srgb, var(--rd-accent) 8%, var(--rd-surface)) padding-box; box-shadow: none; }
+.rd[data-workspace] .rd-plan-card { box-shadow: none; }
+/* the panels: a drawn sheet with a drawn offset, not a soft web box; Help's own button in the same hand */
+.rd .rd-utility-dialog:is([data-docked=true], :not([data-docked])), .rd .rd-appearance.ch-settings-dock.ch-settings-dock { border: 2px solid transparent; border-image: var(--rd-pen) 30 / 14px / 0 stretch; border-radius: 14px; padding: 3px; background-clip: padding-box; box-shadow: 3px 4px 0 rgb(43 42 39 / .1); }
+.rd[data-theme=dark] .rd-utility-dialog:is([data-docked=true], :not([data-docked])), .rd[data-theme=dark] .rd-appearance.ch-settings-dock.ch-settings-dock { box-shadow: 3px 4px 0 rgb(0 0 0 / .35); }
+.rd .ch-settings-dock .ch-eyebrow { display: none; }
+.rd .ch-band-tab { border: 2px solid transparent; border-image: var(--rd-pen) 30 / 11px / 0 stretch; border-radius: 9px; background-clip: padding-box; }
+/* the panel's size control looks like a control */
+.rd .rd-utility-dialog select.rd-dock-size, .rd .rd-utility-dialog select.rd-dock-size:hover { appearance: none; -webkit-appearance: none; padding: 0 20px 0 8px; border: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%232B2A27' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 5px center/9px; cursor: pointer; }
+/* Make it yours keeps its tabs in reach while a long tab scrolls */
+/* an empty day is no taller than it needs to be */
+.rd[data-workspace] .rd-plan-day { min-height: 170px; }
+/* the reader's course line stays one line, its words cut with dots, so a separator is never stranded on a row of its own */
+.rd[data-workspace=work] .rd-reader-course { flex-wrap: nowrap; white-space: nowrap; overflow: hidden; }
+/* an open Review drawer has the whole height: the strip steps down out of its way */
+.rd:has(.rv-room:not([data-rv-drawer=false], [data-rv-drawer=""]))::after { display: none; }
+.rd:has(.rv-room:not([data-rv-drawer=false], [data-rv-drawer=""])) .rd-dock { translate: -50% calc(100% - var(--rd-dock-headroom,80px) + 22px); transition: translate .24s var(--rd-settle, cubic-bezier(.3,.7,.25,1)); }
+/* Grades: on a wide window the short list of courses stays beside the long list of scored work */
+@media (min-width: 1401px) { .rd .rd-grade-layout > .rd-grade-sheet:first-child { position: sticky; top: 8px; } }
+/* ----------------------------------------------------------------- one type scale
+   A page's title, its section titles and their sub-titles read the same on every page. */
+.rd.rd .rd-plan-head h1, .rd.rd .rd-page-heading h1, .rd.rd .rd-hub > .rd-page-heading h2, .rd.rd .rd-materials-header h2, .rd.rd .gi-head h1, .rd.rd .rv-head h2 { font: 550 clamp(25px, 1.1vw + 12px, 30px)/1.16 var(--rd-display); letter-spacing: -.02em; }
+.rd.rd .rd-deck-header h2, .rd.rd .rd-work-heading h2, .rd.rd .rd-sheet-heading h2, .rd.rd .rd-material-group > h3 { font: 600 18px/1.25 var(--rd-display); letter-spacing: -.01em; }
+.rd.rd .rd-sheet-heading h3, .rd.rd .rd-hub-empty h3, .rd.rd .rd-plan-tray h2, .rd.rd .rd-bookmarks-heading h2 { font: 600 15.5px/1.3 var(--rd-display); letter-spacing: -.005em; }
+/* words that act are one size */
+.rd .rd-desk-toolbar .rd-text-button, .rd .rd-deck-header .rd-text-button { font-size: 12.5px; }
+/* the Help row is one family: the same outline, corners, paper offset and height */
+.rd.rd .ch-band-toolbar select.ch-band-ai, .rd.rd .ch-band-toolbar .ch-band-tab { border: 1.4px solid var(--rd-ink); border-image: none; border-radius: 9px 11px 8px 10px; background-color: var(--rd-surface); background-clip: border-box; box-shadow:1px 1.5px 0 color-mix(in srgb,var(--rd-ink,#141413) 14%,transparent); color: var(--rd-ink); font: 600 12px/1 var(--rd-ui-font, system-ui); }
+.rd .ch-band-toolbar .ch-band-bar-act:not(:has(.ch-band-ico)) { padding-inline: 11px; }
+.rd .ch-band-choice .ch-band-act { box-sizing: border-box; height: 30px; min-height: 30px; }
+/* Tools' tabs are words with the drawn line under the open one, like every other set of tabs */
+.rd .rd-utility-dialog[data-docked=true] .rd-utility-nav.t-tabs { padding: 0; border-radius: 0; background: none; overflow: visible; }
+.rd .rd-utility-nav .rd-dock-tab { padding: 0 8px; border-radius: 6px 9px 5px 8px; }
+.rd .rd-utility-nav .rd-dock-tab[aria-selected=true] { font-weight: 650; }
+.rd .rd-utility-nav .t-tabs-pill, .rd[data-theme=dark] .rd-utility-nav .t-tabs-pill { top: auto; bottom: -2px; height: 8px; border-radius: 0; background: var(--rd-accent); box-shadow: none; -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%2010'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M2%206.2C20%204.4%2038%207.4%2055%205.6S84%204.2%2098%205.4'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'2.6'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") center/100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%2010'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M2%206.2C20%204.4%2038%207.4%2055%205.6S84%204.2%2098%205.4'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'2.6'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") center/100% 100% no-repeat; }
+/* a quarter of a laptop screen: the day strip and the arranging words give their row to the work */
+@media (max-height: 419.98px) { .rd .rd-desk-toolbar > .rd-week, .rd .rd-desk-toolbar > .rd-arrange-guide { display: none; } }
+/* the Course hub has its own full row of Canvas links: the two in the line above would only repeat it */
+.rd:has(.rd-hub) .rd-course-heading .rd-heading-links { display: none; }
+/* the calculator says it is on its way until its page arrives */
+.rd .rd-desmos-panel:not([hidden]) { position: relative; background: var(--rd-surface); }
+.rd .rd-desmos-panel:not([hidden])::before { content: "Loading the calculator…"; position: absolute; inset: 0; z-index: 0; display: grid; place-items: center; color: var(--rd-muted); font-size: 13px; }
+.rd .rd-desmos-frame { position: relative; z-index: 1; background: transparent; }
+/* ----------------------------------------------------------------- Graphics
+   Extra high is everything. Each level below it is a set of details (customization-model.js), and Advanced tunes them one by one:
+   what moves in the rooms (life), the beads on the course frames (frames), and how much of a room is drawn (rooms). */
+.rd:is([data-g-life=some], [data-g-life=off]) .rv-world .rv-cloud,
+.rd:is([data-g-life=some], [data-g-life=off]) .rv-world .rv-glints * { animation: none !important; }
+.rd[data-g-life=off] .rv-world .rv-puff,
+.rd[data-g-life=off] .rv-world .rv-wisp { animation: none !important; display: none; }
+.rd:is([data-g-frames=still], [data-g-frames=off]) .rd-frame .o-move { animation: none !important; }
+.rd[data-g-frames=off] .rd-frame-orn { display: none; }
+.rd:is([data-g-rooms=most], [data-g-rooms=simple]) .fr-room .fr-front { display: none; }
+.rd[data-g-panorama=off] .rd-banner-art,
+.rd[data-g-rooms=simple] .rv-world .rv-l-view,
+.rd[data-g-rooms=simple] .rv-world .rv-l-mid,
+.rd[data-g-rooms=simple] .fr-room .fr-mid2,
+.rd[data-g-rooms=simple] .fr-room .fr-near,
+.rd[data-g-rooms=simple] .fr-room .fr-actors,
+.rd[data-g-rooms=simple] .gi-svg .gi-l-far,
+.rd[data-g-rooms=simple] .gi-svg .gi-l-land,
+.rd[data-g-rooms=simple] .gi-svg .gi-l-shaft { display: none; }
+/* a narrow Tools panel: its tabs keep their words; the size control is the one to go */
+@container toolbox (max-width: 430px) { .rd .rd-utility-dialog select.rd-dock-size { display: none; } }
+/* a narrow window: a page's title stays at the left with its buttons beside it, not centered over them */
+@media (max-width: 800px) {
+  .rd .rd-page-heading, .rd .rd-materials-header { flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 8px 16px; }
+  .rd .rd-page-heading > div:first-child, .rd .rd-materials-header > div:first-child { flex: 1 1 280px; }
+  .rd .rd-page-heading > .rd-heading-actions, .rd .rd-materials-header > .rd-heading-actions { flex: none; width: auto; margin-left: auto; }
 }

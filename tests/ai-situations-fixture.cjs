@@ -36,7 +36,7 @@ function harness(spec={}){
  const w=world(spec),client=spec.client||API.createClient({origin,fetchImpl:w.fetchImpl,retryDelays:spec.retryDelays||[],wait:async()=>{},requestLimit:spec.requestLimit});
  const data={settings:{timeZone:spec.zone||'America/New_York',showGrades:false},customTasks:[],tasks:{},toolbox:{agent:{settings:{on:true}},aiTeacherFeedback:false}},store={get:()=>data,sync:async()=>{}};
  const canvas=Canvas.create({client,store,scope,local:{get:async()=>({})},fetchImpl:w.fetchImpl,now:()=>now,parsePDF:spec.parsePDF});let turn=0,saved=null;
- const runner=Runner.create({canvas,account:store,results:{saveCards:async(run,cards)=>{saved=cards;return cards.length;}},adapter:{},docs:{read:async()=>({error:'paste'})},now:()=>now,uuid:()=>'u'+(++turn)});
+ const runner=Runner.create({canvas,account:store,results:{saveCards:async(run,cards,refs,{at=0}={})=>{saved=[...(at?(saved||[]).slice(0,at):[]),...cards];return cards.length;}},adapter:{},docs:{read:async()=>({error:'paste'})},now:()=>now,uuid:()=>'u'+(++turn)});
  const ctx={save:async r=>r,guard:async()=>{},signal:new AbortController().signal};
  // Steps a run to the prompt it would send; a thrown error is the run stopping.
  async function drive(run){for(let n=0;n<200&&run.state!=='awaiting-reply'&&run.state!=='unchanged';n++)await runner.step(run,ctx);return run;}

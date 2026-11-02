@@ -242,7 +242,8 @@ function parse(text) {
   if (hasRead === hasActions) return { ok: false, errors: ['The block must hold either "read" or "actions", not both or neither.'] };
   if (Object.keys(d).some(k => !['v', hasRead ? 'read' : 'actions'].includes(k))) return { ok: false, errors: ['The block has unknown or mixed fields.'] };
   if (hasRead) {
-    const reads = d.read.slice(0, LIMITS.reads).filter(READ_OK);
+    // Only what, id and pages pass: how much of a file is read (limit) is Canvas Harness's choice, never the reply's.
+    const reads = d.read.slice(0, LIMITS.reads).filter(READ_OK).map(r => ({ what: r.what, id: r.id, ...(r.pages != null ? { pages: r.pages } : {}) }));
     return reads.length ?
       { ok: true, kind: 'read', reads, errors: d.read.length > reads.length ? ['Some read requests were not understood and were skipped.'] : [] } :
       { ok: false, errors: ['No usable read request.'] };

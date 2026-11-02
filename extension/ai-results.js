@@ -150,9 +150,13 @@
    if(typeof row?.kind==='string'&&row.kind)out.kind=row.kind.slice(0,24);if(row?.done===true)out.done=true;
    return Object.keys(out).length?out:null;
   }
-  async function saveCards(run,cards,refs={},{ask=false}={}){
+  // at: the cards' place in the run's order. Help saves each card the moment it is made (at = cards made before it); a
+  // step replayed after a restart writes the same key again and keeps what the student already did on that card.
+  async function saveCards(run,cards,refs={},{ask=false,at=0}={}){
    const key=UI.storageKey(run.scope),day=validDay(run.day)?run.day:'',Writes=load('CanvasHarnessStudyWrites','./study-writes.js');
-   const covered=new Set(cards.map(c=>c?.ref&&Object.hasOwn(refs,c.ref)?String(refs[c.ref].id):'').filter(Boolean));
+   const covered=new Set(cards.map(c=>c?.ref&&Object.hasOwn(refs,c.ref)?String(refs[c.ref].id):'').filter(Boolean)),
+     slot=i=>(ask?'ask:':'prepare:')+run.id+':'+(at+i),
+     writing=new Set(cards.map((_,i)=>slot(i)));
    for(let attempt=0;;attempt++){
     const before=await external.get(key),map=structuredClone(before||{});
     // Earlier days' help stays, so each day's help can be found again. A new run replaces only the same day's earlier
@@ -163,31 +167,39 @@
       }
     // Answers to questions stay until archived; beyond twelve in one day the oldest of that day give way.
     else{
-      const asks=Object.entries(map).filter(([,aid])=>aid?.ask===true&&!aid.progress?.archived&&(aid.day||'')===day).sort((a,b)=>(a[1].savedAt||0)-(b[1].savedAt||0));
+      const asks=Object.entries(map).filter(([k,aid])=>aid?.ask===true&&!writing.has(k)&&!aid.progress?.archived&&(aid.day||'')===day).sort((a,b)=>
+        (a[1].savedAt||0)-(b[1].savedAt||0));
       for(const [k] of asks.slice(0,Math.max(0,asks.length+cards.length-12)))delete map[k];
     }
-    // More on a card adds the new questions or problems to that card instead of a card of its own.
+    // More on a card adds the new questions or problems to that card instead of a card of its own, once per run (a
+    // replayed step finds its run already there and adds nothing).
     const more=ask&&run.more===true&&typeof run.cardKey==='string'?map[run.cardKey]:null,
       field=more&&cards.length===1&&more.data?.kind===cards[0].kind?{test:'questions',examples:'problems'}[cards[0].kind]:'';
     if(field&&Array.isArray(more.data[field])&&Array.isArray(cards[0][field])&&cards[0][field].length){
-      map[run.cardKey]={...more,savedAt:now(),data:{...more.data,[field]:[...more.data[field],...cards[0][field]].slice(0,30),added:cards[0][field].length}};
+      if(!(more.moreRuns||[]).includes(run.id))
+        map[run.cardKey]={
+          ...more,
+          savedAt:now(),
+          moreRuns:[...(more.moreRuns||[]),run.id].slice(-10),
+          data:{...more.data,[field]:[...more.data[field],...cards[0][field]].slice(0,30),added:cards[0][field].length}
+        };
     }
     else cards.forEach((card,i)=>{const ref=card.ref&&Object.hasOwn(refs,card.ref)?refs[card.ref]:null,tools=itemTools(card,ref);
-     const facts=factsOf(run,ref),{dueAt,...known}=facts||{};
-     map[(ask?'ask:':'prepare:')+run.id+':'+i]={
+     const facts=factsOf(run,ref),{dueAt,...known}=facts||{},was=map[slot(i)];
+     map[slot(i)]={
        v:1,
        kind:card.kind,
        itemId:ref?String(ref.id):'',
        courseId:ref?String(ref.courseId):'',
        title:card.headline||card.title||'Prepare',
        item:ref?.title||'',
-       savedAt:now()+i,
+       savedAt:was?.runId===run.id&&was.savedAt?was.savedAt:now()+at+i,
        ...(day?{day}:{}),
-       rank:i+1,
+       rank:at+i+1,
        ...(dueAt||card.dueAt?{dueAt:dueAt||card.dueAt}:{}),
        ...(Object.keys(known).length?{facts:known}:{}),
        data:{...card,...(tools.length?{tools}:{})},
-       progress:{},
+       progress:was?.runId===run.id&&was.progress?was.progress:{},
        prepare:true,
        ...(ask?{ask:true,question:String(run.question||'').slice(0,200),...(typeof run.cardKey==='string'&&run.cardKey?{about:run.cardKey}:{})}:{}),
        runId:run.id,
@@ -195,7 +207,7 @@
        ...(run.settings?.grades===true?{gradeAccess:true}:{})
      };});
     // Real help for an item retires that item's older to-do style cards (archived, so they can still be brought back).
-    const helped=new Set(cards.filter(c=>['test','reading','translate','examples'].includes(c.kind)&&c.ref&&refs[c.ref]).map(c=>String(refs[c.ref].id)));
+    const helped=new Set(cards.filter(c=>['test','reading','translate','examples','outline'].includes(c.kind)&&c.ref&&refs[c.ref]).map(c=>String(refs[c.ref].id)));
     for(const [k,old] of Object.entries(map))
       if(old?.runId!==run.id&&old?.itemId&&helped.has(String(old.itemId))&&['ask','steps','summary','plan','study','example'].includes(old.kind)&&!old.progress?.archived)
         map[k]={...old,progress:{...(old.progress||{}),archived:true}};

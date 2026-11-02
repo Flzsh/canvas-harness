@@ -174,11 +174,7 @@
  }
  let featureWrites=Promise.resolve();
  function saveFeatures(value){
-   const F=root.ReserveFeatures,next=F.normalize(value),write=featureWrites.then(async()=>{
-     const reading=F.biscuitRevision;
-     await root.chrome.storage.local.set({[F.KEY]:next});
-     if(F.biscuitRevision===reading)F.applyBiscuitRules?.(next);
-   });
+   const F=root.ReserveFeatures,next=F.normalize(value),write=featureWrites.then(()=>root.chrome.storage.local.set({[F.KEY]:next}));
    featureWrites=write.catch(()=>{});
    return write;
  }
@@ -197,12 +193,12 @@
  }
  const featureLabels={
    dashboard:['Dashboard and assignments','dashboard'],
-   'deadline-changes':['Deadline changes','planner'],
+   'deadline-changes':['Deadline changes','deadline'],
    planner:['Planner and Home modules','planner'],
    grades:['Grades','grades'],
    materials:['Materials library','materials'],
    'course-hub':['Course hub and inbox','hub'],
-   'course-files':['My links & files','materials'],
+   'course-files':['My links & files','links'],
    math:['Math tools','math'],
    gpa:['GPA estimates','gpa'],
    tools:['Quick open and tools','tools'],
@@ -219,12 +215,12 @@
    pdf:['PDF reader','pdf'],
    ai:['Ask AI','ai'],
    play:['Play with this page','play'],
-   'focus-room':['Focus room','planner'],
-   'review-deck':['Review deck','tools'],
+   developer:['Developer tools','developer'],
+   'focus-room':['Focus room','focus'],
+   'review-deck':['Review deck','review'],
    'grade-impact':['Grade impact','grades']
  };
- featureLabels['biscuit-more-rules']=['Biscuit: more rules','pony'];
- function featuresPane(tab){return `<div class="cz-pane" data-pane="features" data-rd-key="features-pane" role="tabpanel" aria-label="Features"${tab==='features'?'':' hidden'}><div id="features-panel" aria-busy="false"></div><p id="features-status" hidden>Loading features\u2026</p><p id="features-error" role="alert" hidden></p><button id="features-retry" type="button" class="rd-text-button" hidden>Retry loading features</button><button id="features-reload" type="button" class="rd-button" hidden>Reload Canvas</button></div>`;}
+  function featuresPane(tab){return `<div class="cz-pane" data-pane="features" data-rd-key="features-pane" role="tabpanel" aria-label="Features"${tab==='features'?'':' hidden'}><div id="features-panel" aria-busy="false"></div><p id="features-status" hidden>Loading features\u2026</p><p id="features-error" role="alert" hidden></p><button id="features-retry" type="button" class="rd-text-button" hidden>Retry loading features</button><button id="features-reload" type="button" class="rd-button" hidden>Reload Canvas</button></div>`;}
  function render(c){
   if(enabled('customization')&&root.ReserveCustomizeUI?.render)return root.ReserveCustomizeUI.render(c);
   const tab=c.customizeTab==='settings'?'settings':'features';
@@ -232,7 +228,7 @@
  }
  // Where each feature that has no place of its own on Home lives: the action that opens it, its data, and whether
  // the settings panel stays open (a settings tab) or closes so the feature can be seen.
- const OPENS={'focus-room':['room-open',{}],'review-deck':['workspace',{tab:'review'}],'grade-impact':['workspace',{tab:'grades'}],play:['play-open',{}],'biscuit-more-rules':['customize-tab',{value:'companion'},true]};
+ const OPENS={'focus-room':['room-open',{}],'review-deck':['workspace',{tab:'review'}],'grade-impact':['workspace',{tab:'grades'}]};
  function createFeatures(container,{store,getCustomPet=()=>null,close=()=>{}}={}){
   const F=root.ReserveFeatures,$=id=>container.querySelector('#'+id),catalogue=F?.catalogue||[],catalog=catalogue.map(({id,group})=>{
     const [name,icon]=featureLabels[id]||[id,'tools'];
@@ -326,15 +322,7 @@
    if(dead)return;
    if(!F||!root.ReserveAddonsPanel){$('features-status').textContent='';error('Features are unavailable. Reload the extension and try again.');draw();return;}
    const turn=++revision;loading=true;ready=false;error();$('features-retry').hidden=true;$('features-status').textContent='Loading features\u2026';draw();
-   try{
-     const data=await root.chrome.storage.local.get(F.KEY);
-     if(dead||turn!==revision)return;
-     prefs=F.normalize(data[F.KEY]);
-     saved=prefs;
-     ready=true;
-     F.applyBiscuitRules?.(prefs);
-     $('features-status').textContent='';
-   }
+   try{const data=await root.chrome.storage.local.get(F.KEY);if(dead||turn!==revision)return;prefs=F.normalize(data[F.KEY]);saved=prefs;ready=true;$('features-status').textContent='';}
    catch{if(!dead&&turn===revision){error('Could not load features. Try again.');$('features-status').textContent='';$('features-retry').hidden=false;}}
    finally{if(!dead&&turn===revision){loading=false;draw();}}
   }
@@ -348,10 +336,7 @@
      pending--;
      if(!dead&&!pending&&refreshAfterSave){
       refreshAfterSave=false;const reading=revision;
-      try{
-        const latest=await root.chrome.storage.local.get(F.KEY);
-        if(!dead&&!pending&&reading===revision){prefs=F.normalize(latest[F.KEY]);saved=prefs;F.applyBiscuitRules?.(prefs);}
-      }
+      try{const latest=await root.chrome.storage.local.get(F.KEY);if(!dead&&!pending&&reading===revision){prefs=F.normalize(latest[F.KEY]);saved=prefs;}}
       catch{if(!dead&&reading===revision){error('Could not confirm saved features. Try again.');$('features-retry').hidden=false;}}
      }
      draw();
@@ -366,7 +351,6 @@
    if(dead||area!=='local'||!F)return;
    if(changes['reserve:packs']||changes['reserve:packs:receipts']||changes[F.KEY])void loadPacks();
    if(!changes[F.KEY])return;
-   F.applyBiscuitRules?.(changes[F.KEY].newValue);
    if(pending){refreshAfterSave=true;return;}
    revision++;prefs=F.normalize(changes[F.KEY].newValue);saved=prefs;ready=true;loading=false;error();$('features-retry').hidden=true;$('features-status').textContent='';draw();
   }

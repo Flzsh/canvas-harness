@@ -48,8 +48,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       gpa:gpa.defaults(),
       toolbox:{scratchpad:'',recent:[],dockSize:{width:0,height:0}},
       gradeImpact:{pretend:{}},
-      focus:{minutes:25,remaining:1500,endsAt:null,itemId:null,sessions:0},
-      pet:{knowledge:'basic',skills:petSkills(),reminders:[],routines:[]}
+      focus:{minutes:25,remaining:1500,endsAt:null,itemId:null,sessions:0,elapsed:0,pausedAt:0,stoppedAt:0},
+      pet:{knowledge:'most',skills:petSkills(),reminders:[],routines:[]}
     });
   const text = (value,max=20000) => typeof value === 'string' ? value.slice(0,max) : '';
   const isRecord = v => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -200,6 +200,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   }
   // Storage loads before the pony modules. Keep its bounded account data independent of them.
   const petField=(value,key)=>isRecord(value)&&Object.hasOwn(value,key)?value[key]:undefined;
+  const petKnowledge=value=>value==='lite'?'lite':'most';
   const petId=value=>typeof value==='string'&&value.trim()&&value.length<=80&&!/[\u0000-\u001f\u007f]/.test(value)&&!['__proto__','constructor','prototype'].includes(value)?value:'';
   const petText=value=>typeof value==='string'?value.replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,240):'';
   const petTime=value=>Number.isFinite(value)&&value>0&&value<=8640000000000000;
@@ -367,8 +368,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       theme:['light','dark','system'],
       accent:['clay','forest','indigo','rose','ocean','amber'],
       motion:['gentle','still','off'],
+      graphics:['low','medium','high','xhigh'],
       livingArt:['on','off'],
-      readingFont:['book','interface'],
+      readingFont:['book','interface','easy'],
       greeting:['on','off'],
       quickOpen:['on','off'],
       density:['comfortable','compact'],
@@ -380,6 +382,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         throw Error(`Invalid ${key} setting in backup.`);
       if (settings[key]) out.settings[key]=settings[key];
     }
+    const detail=customization?.graphicsDetail?.(settings.graphicsDetail);if(detail&&Object.keys(detail).length)out.settings.graphicsDetail=detail;
+    if(settings.graphicsTold===true)out.settings.graphicsTold=true;
     // Older Canvas Harness only had split/list. Keep its chosen layout on first load.
     if(settings.deskOrder===undefined&&out.settings.dashboardLayout==='list')out.settings.deskOrder='stacked';
     out.settings.dashboardLayout=out.settings.deskOrder==='stacked'?'list':'split';
@@ -519,7 +523,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     if(value.pet!==undefined&&value.pet!==null){
       if(!isRecord(value.pet))throw Error('Invalid companion data in backup.');
-      out.pet.knowledge=Object.hasOwn(value.pet,'knowledge')&&['basic','more','most'].includes(value.pet.knowledge)?value.pet.knowledge:'basic';
+      out.pet.knowledge=petKnowledge(Object.hasOwn(value.pet,'knowledge')?value.pet.knowledge:undefined);
       if(isRecord(value.pet.brain))out.pet.brain=petBrain(value.pet.brain);
       out.pet.skills=petSkills(value.pet.skills);out.pet.reminders=petReminders(value.pet.reminders);out.pet.routines=petRoutines(value.pet.routines);
       for(const [key,item] of Object.entries(value.pet).slice(0,32)){
@@ -623,11 +627,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     runtime.onMessage.addListener(handler);accountServers.set(runtime,server);return server;
   }
   function browserAdapter() {
-    if(root.chrome?.storage?.local)return {
-      remote:appearance?.messenger?.(),
-      read:async key=>(await root.chrome.storage.local.get(key))[key],
-      write:async(key,value)=>root.chrome.storage.local.set({[key]:value}),
-      ...(root.chrome.runtime?.id&&root.chrome.runtime.sendMessage?{compareWrite:async(key,value,before)=>{
+    if(root.chrome?.storage?.local)
+      return {
+        bytes:key=>root.chrome.storage.local.getBytesInUse(key),
+        remote:appearance?.messenger?.(),
+        read:async key=>(await root.chrome.storage.local.get(key))[key],
+        write:async(key,value)=>root.chrome.storage.local.set({[key]:value}),
+        ...(root.chrome.runtime?.id&&root.chrome.runtime.sendMessage?{compareWrite:async(key,value,before)=>{
         const reply=await root.chrome.runtime.sendMessage({target:'ch-account-write',key,value,before});
         // Older workers use the existing Canvas-origin lock. Recheck its baseline
         // before falling back; the worker serializer remains authoritative when installed.
@@ -919,6 +925,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     // Optional deadline metadata has its own bounded, account-scoped record. It never rewrites personal notes or cached coursework.
     const deadlineKey=`${key}:deadline-changes`;
+    // bytes in use by fixed area name, for Developer tools: the keys themselves (school and account) never leave this file
+    async function sizes(){
+      const out={};
+      for(const [name,k] of Object.entries({personal:key,cache:`${key}:cache`,materials:materialKey,changes:deadlineKey})){
+        try{const n=await adapter.bytes?.(k);out[name]=Number.isFinite(n)?n:null;}catch{out[name]=null;}
+      }
+      return out;
+    }
     const readDeadlineChanges=()=>adapter.read(deadlineKey);
     function updateDeadlineChanges(change){
       return lock(deadlineKey,async()=>{
@@ -937,6 +951,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       update,
       replace,
       owner,
+      sizes,
       readDeadlineChanges,
       updateDeadlineChanges,
       subscribeDeadlineChanges,

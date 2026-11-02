@@ -7,7 +7,7 @@
 .pet[data-pose=sleep]{--pet-neck:44;--pet-head:18}.pet[data-pose=read]{--pet-neck:29;--pet-head:14}.pet[data-pose=eat]{--pet-neck:60;--pet-head:22}
 .pet-svg{display:block;width:100%;height:100%;overflow:visible;transition:transform .22s ease-in-out}
 .pet[data-face=left] .pet-svg{transform:scaleX(-1)}
-.pet-svg *{transform-box:view-box}
+.pet-svg :where(g,path,rect,circle,ellipse,polygon,line,polyline,use){transform-box:view-box}
 /* parts that only some poses show */
 .pet-book,.pet-oats,.pet-zz,.pet-sparks,.pet-flag,.pet-lid{display:none}
 .pet[data-gear=none] .pet-collar, .pet[data-gear=none] .pet-blanket{display:none}
@@ -118,7 +118,7 @@
 .pet-meter{grid-column:1/-1;height:5px;margin-top:5px;border-radius:9px;background:color-mix(in srgb,var(--rd-ink,#141413) 10%,transparent);overflow:hidden}
 .pet-meter i{display:block;height:100%;border-radius:9px;background:var(--rd-accent,#C96442)}
 .pet-items{display:grid;gap:2px;margin:9px -6px -4px}
-.pet-item{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:34px;padding:6px 9px;border:0;border-radius:9px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.pet-item{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-width:0;min-height:34px;padding:6px 9px;border:0;border-radius:9px;background:none;color:inherit;font:inherit;text-align:left;overflow-wrap:anywhere;cursor:pointer}
 .pet-item:hover:not(:disabled),.pet-item:focus-visible{background:color-mix(in srgb,var(--rd-accent,#C96442) 13%,transparent);outline:none}
 .pet-item:disabled{color:var(--rd-muted,#8a8880);cursor:default}
 .pet-count{min-width:22px;padding:1px 7px;border-radius:99px;background:color-mix(in srgb,var(--rd-ink,#141413) 9%,transparent);font-size:12px;text-align:center}
@@ -142,3 +142,5 @@
 
 .biscuit-row small{display:block;margin-top:3px;font-size:.85em;font-weight:400;line-height:1.35;opacity:.78}
 .biscuit-preview strong{font-weight:800;color:var(--rd-ink,#141413);text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 22%,transparent);text-underline-offset:3px}
+/* Low graphics: Biscuit rests still between walks; these loops repaint a small SVG all day. */
+.rd[data-g-film=off] .pet .pet-tail,.rd[data-g-film=off] .pet .pet-head,.rd[data-g-film=off] .pet .pet-eye,.rd[data-g-film=off] .pet[data-pose=sleep] .pet-neck,.rd[data-g-film=off] .pet[data-pose=sleep] .z1,.rd[data-g-film=off] .pet[data-pose=sleep] .z2{animation:none}

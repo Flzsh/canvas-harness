@@ -16,7 +16,7 @@
    copy:'button:study-ui.js:copy-message:154358af',
    inbox:'workspace:inbox'
  });
- const FEATURE_IDS=Object.freeze(['dashboard','planner','grades','materials','course-hub','course-files','math','gpa','tools','customization','scene-themes','arrange','course-art','quick-pack','pony','motion','canvas-nav','course-nav','native-appearance','pdf','ai','play','biscuit-more-rules','focus-room','review-deck','grade-impact']);
+ const FEATURE_IDS=Object.freeze(['dashboard','planner','grades','materials','course-hub','course-files','math','gpa','tools','customization','scene-themes','arrange','course-art','quick-pack','pony','motion','canvas-nav','course-nav','native-appearance','pdf','ai','play','focus-room','review-deck','grade-impact']);
  const PROMPT=[
   'Tools: {id,args,label:1-4 words}, max 3. Exact IDs/args:',
   IDS.focus+' {action:"start"|"pause"|"resume",minutes?:1..240,courseId?,itemId?}',
