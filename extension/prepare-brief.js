@@ -42,9 +42,11 @@
      /\n\s*\n+/g,
      '\n').trim();
  const clip=(value,n)=>{const text=String(value??'').trim();return text.length>n?text.slice(0,n-1).trimEnd()+'…':text;};
- // "CL Biology-Rivera-Okafor" -> "Biology"; keeps names that have no class/teacher decoration ("Pre-Calculus").
+ // A level tag in front marks a school's decorated name: "AP Chemistry-Rivera-Okafor" -> "Chemistry", the tag and the
+ // teachers' names left out (the tags Biscuit's short names drop). Names without a tag stay whole ("Pre-Calculus").
+ const LEVEL=/^(?:(?:CL|CP|AP|IB|HL|SL|Honors?)\s+)+/i;
  function courseName(name){
-   const raw=String(name||'').trim(),text=/^CL\s/.test(raw)?raw.replace(/^CL\s+/,'').replace(/-[A-Z][a-z'’]+(?:-[A-Z][a-z'’]+)*\s*$/,''):raw;
+   const raw=String(name||'').trim(),text=LEVEL.test(raw)?raw.replace(LEVEL,'').replace(/-[A-Z][a-z'’]+(?:-[A-Z][a-z'’]+)*\s*$/,''):raw;
    return text.replace(/\s+\d{2}-\d{2}\s+(Fall|Spring|Winter|Summer)\s*$/i,'').trim()||String(name||'Course').trim();
  }
  function formatter(timeZone){

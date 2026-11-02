@@ -18,8 +18,8 @@ test('Google links in an assignment are found once each, with their link text, e
 });
 
 test('the text is the document\'s own: paragraphs and list items kept, scripts and page chrome left out, entities decoded',()=>{
- const t=G.text(page('<p class="c1"><span>CL Analytical Essay</span></p><p>You will write a nuanced essay &amp; cite two sources.</p><ul><li>Thesis</li><li>Evidence</li></ul><table><tr><td>A</td><td>B</td></tr></table>'));
- assert.equal(t,'CL Analytical Essay\nYou will write a nuanced essay & cite two sources.\n\n• Thesis\n• Evidence\nA | B');
+ const t=G.text(page('<p class="c1"><span>AP Analytical Essay</span></p><p>You will write a nuanced essay &amp; cite two sources.</p><ul><li>Thesis</li><li>Evidence</li></ul><table><tr><td>A</td><td>B</td></tr></table>'));
+ assert.equal(t,'AP Analytical Essay\nYou will write a nuanced essay & cite two sources.\n\n• Thesis\n• Evidence\nA | B');
  assert.equal(G.text('<html><body><p>Sign in to continue</p></body></html>'),'','a page without the document is not its text');
 });
 

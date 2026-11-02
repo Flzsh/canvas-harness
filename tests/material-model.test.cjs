@@ -107,10 +107,10 @@ test('displayTitle drops extensions, "Copy of" and duplicate markers, tidies sep
     ['AP CHEM-Chapter 14 Lecture.ppt','AP CHEM — Chapter 14 Lecture'],
     ['HW WS 1.pdf','HW WS 1'],
     ['HW WS 1-ANSWER KEY.pdf','HW WS 1 — Answer key'],
-    ['Rate Law Summary.pdf','Rate Law Summary'],
-    ['CL Kinetics WS - Integrated Rate Law (1).docx','CL Kinetics WS — Integrated Rate Law'],
-    ['Integrate Rate Law WS - ANSWER KEY.pdf','Integrate Rate Law WS — Answer key'],
-    ['Crystal Violet Fading Kinetics Lab (1).pdf','Crystal Violet Fading Kinetics Lab'],
+    ['Gas Law Summary.pdf','Gas Law Summary'],
+    ['AP Thermo WS - Integrated Gas Law (1).docx','AP Thermo WS — Integrated Gas Law'],
+    ['Integrate Gas Law WS - ANSWER KEY.pdf','Integrate Gas Law WS — Answer key'],
+    ['Crystal Violet Fading Thermo Lab (1).pdf','Crystal Violet Fading Thermo Lab'],
     ['ENGINEERING DESIGN PROCESS POSTER.pdf','Engineering design process poster'],
     ['UNIT 1A TEST CORRECTIONS FORM.pdf','Unit 1A test corrections form'],
     ['Notes - Copy (2).xlsx','Notes'],['Copy of Copy of Lab Notebook.pages','Lab Notebook'],['HW_WS_3.key','HW WS 3'],
@@ -121,30 +121,30 @@ test('displayTitle drops extensions, "Copy of" and duplicate markers, tidies sep
 });
 
 test('classify adds syllabus and lab kinds; format tags come from the file or what the item is in Canvas',()=>{
-  assert.equal(Materials.classify('CL Robotics Syllabus.pdf','File'),'Syllabus');
+  assert.equal(Materials.classify('AP Robotics Syllabus.pdf','File'),'Syllabus');
   assert.equal(Materials.classify('2026 Daily Syllabus','ExternalUrl'),'Schedule','a daily syllabus is still the schedule');
-  assert.equal(Materials.classify('Crystal Violet Fading Kinetics Lab (1).pdf','File'),'Lab');
+  assert.equal(Materials.classify('Crystal Violet Fading Thermo Lab (1).pdf','File'),'Lab');
   assert.equal(Materials.classify('Lab Answer Key.pdf','File'),'Answer key');
   const f=(title,kind,url)=>Materials.formatOf({title,kind,url});
   assert.deepEqual([f('HW WS 1.pdf','File'),f('Report.docx','File'),f('AP CHEM-Chapter 14 Lecture.ppt','File'),f('Data.xlsx','File'),f('Lecture.mp4','File'),f('Scan','File')],['PDF','Word','Slides','Sheet','Video','File']);
   assert.deepEqual([f('Engineering Associations','Page'),f('Home','FrontPage'),f('What Is Engineering?','ExternalUrl','https://www.nae.edu/'),f('Notes','ExternalUrl','https://docs.google.com/document/d/1/edit'),f('Deck','ExternalUrl','https://docs.google.com/presentation/d/1'),f('Clip','ExternalUrl','https://youtu.be/abc'),f('Syllabus','ExternalTool'),f('Quiz 1','Quiz')],['Page','Page','Link','Doc','Slides','Video','','']);
   const k=(title,kind)=>Materials.kindOf({title,kind,category:Materials.classify(title,kind)});
-  assert.deepEqual([k('HW WS 1-ANSWER KEY.pdf','File'),k('AP CHEM-Chapter 14 Lecture.ppt','File'),k('Lecture slides.pdf','File'),k('Kinetics Lab (1).pdf','File'),k('Copy of Unit 1-2 Syllabus.docx','ExternalTool'),k('Google Assignments','ExternalTool'),k('HW WS 1.pdf','File'),k('Rate Law Summary.pdf','File'),k('Front','FrontPage')],['Answer key','','Slides','Lab','Syllabus','Class tool','','','Home page'],'a kind word only where it adds meaning, never Slides twice or File');
+  assert.deepEqual([k('HW WS 1-ANSWER KEY.pdf','File'),k('AP CHEM-Chapter 14 Lecture.ppt','File'),k('Lecture slides.pdf','File'),k('Thermo Lab (1).pdf','File'),k('Copy of Unit 1-2 Syllabus.docx','ExternalTool'),k('Google Assignments','ExternalTool'),k('HW WS 1.pdf','File'),k('Gas Law Summary.pdf','File'),k('Front','FrontPage')],['Answer key','','Slides','Lab','Syllabus','Class tool','','','Home page'],'a kind word only where it adds meaning, never Slides twice or File');
   assert.match(Materials.searchText({title:'HW WS 1-ANSWER KEY.pdf',kind:'File',category:'Answer key'}),/HW WS 1-ANSWER KEY\.pdf[\s\S]*HW WS 1 — Answer key[\s\S]*PDF/,'search reads the original name, the clean name and the tags');
 });
 
 test('present pairs an answer key with its worksheet when their titles match; unmatched keys stay rows of their own',()=>{
   const item=(id,title)=>({id,title,kind:'File',category:Materials.classify(title,'File'),url:'https://school.instructure.com/courses/7/files/'+id});
-  const rows=Materials.present([item('1','HW WS 1.pdf'),item('2','HW WS 1-ANSWER KEY.pdf'),item('3','Rate Law Summary.pdf'),item('4','Stoichiometry Practice Answer Key.pdf'),item('5','Stoichiometry Practice.docx'),item('6','Integrate Rate Law WS - ANSWER KEY.pdf'),item('7','CL Kinetics WS - Integrated Rate Law (1).docx')]);
+  const rows=Materials.present([item('1','HW WS 1.pdf'),item('2','HW WS 1-ANSWER KEY.pdf'),item('3','Gas Law Summary.pdf'),item('4','Stoichiometry Practice Answer Key.pdf'),item('5','Stoichiometry Practice.docx'),item('6','Integrate Gas Law WS - ANSWER KEY.pdf'),item('7','AP Thermo WS - Integrated Gas Law (1).docx')]);
   assert.deepEqual(rows.map(r=>[r.title,r.format,r.kind,r.key?.item.id||null]),[
-    ['HW WS 1','PDF','','2'],['Rate Law Summary','PDF','',null],['Stoichiometry Practice','Word','','4'],['Integrate Rate Law WS — Answer key','PDF','Answer key',null],['CL Kinetics WS — Integrated Rate Law','Word','',null]
+    ['HW WS 1','PDF','','2'],['Gas Law Summary','PDF','',null],['Stoichiometry Practice','Word','','4'],['Integrate Gas Law WS — Answer key','PDF','Answer key',null],['AP Thermo WS — Integrated Gas Law','Word','',null]
   ]);
   assert.equal(rows[0].original,'HW WS 1.pdf','the original name stays with the row');
 });
 
 test('outline: one chapter per module in Canvas order, then course resources; numbered only when the teacher has not numbered them; single same-title chapters flagged',()=>{
   const it=(id,title,moduleId,moduleName,kind='Page')=>({id,title,kind,moduleId,moduleName,category:Materials.classify(title,kind)});
-  const all=[it('a','Magic 8-Ball','1','Magic 8-Ball'),it('b','Final Project 2026','2','Final Project'),it('c','CL Robotics Syllabus.pdf','3','Course Description and Syllabus','File'),it('d','Engineering Associations','3','Course Description and Syllabus'),it('e','Supply List',null,'')];
+  const all=[it('a','Magic 8-Ball','1','Magic 8-Ball'),it('b','Final Project 2026','2','Final Project'),it('c','AP Robotics Syllabus.pdf','3','Course Description and Syllabus','File'),it('d','Engineering Associations','3','Course Description and Syllabus'),it('e','Supply List',null,'')];
   const book=Materials.outline(all);
   assert.deepEqual(book.map(c=>[c.key,c.name,c.number,c.single,c.items.length]),[['module-1','Magic 8-Ball',1,true,1],['module-2','Final Project',2,false,1],['module-3','Course Description and Syllabus',3,false,2],['resources','Course resources',0,false,1]]);
   const found=Materials.outline(all,[all[3]]);

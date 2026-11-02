@@ -193,7 +193,7 @@ test('outside-tool work names its tool in the brief and says its content is not 
  const unnamed=await harness({assignments:{1:[task({description:'',submission_types:['external_tool']})]}}).help('21');assert.match(SOURCES(unnamed.prompt),/this work is done in an outside tool/);
 });
 test('hyphenated course names stay whole; a name that carries its teachers still shortens',()=>{
- for(const name of ['Pre-Calculus','Pre-Algebra','Anglo-Saxon History','Non-Western Art','Spanish-English Translation'])assert.equal(Brief.courseName(name),name);assert.equal(Brief.courseName('CL Sample-Doe-Roe'),'Sample');
+ for(const name of ['Pre-Calculus','Pre-Algebra','Anglo-Saxon History','Non-Western Art','Spanish-English Translation'])assert.equal(Brief.courseName(name),name);assert.equal(Brief.courseName('AP Sample-Doe-Roe'),'Sample');assert.equal(Brief.courseName('Honors Sample'),'Sample');assert.equal(Brief.courseName('Capstone Seminar'),'Capstone Seminar');
 });
 test('Spanish, Arabic, Hebrew and Chinese text reach the prompt unchanged',async()=>{
  for(const words of ['Escribe un párrafo sobre el río.','اكتب مقالة عن النهر','כתבו חיבור על הנהר','写一篇关于河流的短文']){const h=harness({courses:[sample('1',words)],assignments:{1:[task({name:words,description:'<p>'+words+'</p>'})]}}),{brief}=await h.prepare(),{prompt}=await h.help('21');assert.ok(brief.includes('Instructions: '+words),words);assert.ok(SOURCES(prompt).includes(words),words);}

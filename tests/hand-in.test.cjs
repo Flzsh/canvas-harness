@@ -36,7 +36,7 @@ test('handin renders escaped labels, recoverable undo and all four reasons',()=>
 });
 // Owner, 2026-10-27: "the UI and aesthetic is so bad now". The module is drawn like Up next; these pin its markup.
 test('handin rows read like Up next: course drawing and colour, name, course · due time and a late / today chip',()=>{
- const course={id:'7',name:'Synthetic Biology',shortName:'BioDesign',color:'#2E7D5B'},c={...context([item(1,'2026-10-19T03:59:00Z'),item(2,'2026-10-22T03:59:00Z'),item(3,'2026-10-22T20:00:00Z'),item(4,'2026-10-24T03:59:00Z'),item(5,'2026-10-29T03:59:00Z'),item(6,'2026-10-10T03:59:00Z',{missing:true})]),courseMap:new Map([['7',course]])};
+ const course={id:'7',name:'Marine Biology',shortName:'BioDesign',color:'#2E7D5B'},c={...context([item(1,'2026-10-19T03:59:00Z'),item(2,'2026-10-22T03:59:00Z'),item(3,'2026-10-22T20:00:00Z'),item(4,'2026-10-24T03:59:00Z'),item(5,'2026-10-29T03:59:00Z'),item(6,'2026-10-10T03:59:00Z',{missing:true})]),courseMap:new Map([['7',course]])};
  // Course art is off here: the suite runs in one process and an earlier file may have loaded course-art.js, so the
  // global is cleared and put back at the end.
  const before=globalThis.ReserveCourseArt;delete globalThis.ReserveCourseArt;

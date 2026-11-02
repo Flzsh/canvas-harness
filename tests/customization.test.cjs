@@ -66,13 +66,13 @@ test('title, banner, icon, and frame artwork roundtrip with course names, colors
  for(const key of ['bannerArt','iconArt','borderArt','titleArt'])assert.equal(prefs[key].svg,{bannerArt:banner,iconArt:icon,borderArt:border,titleArt:title}[key].svg);
  assert.equal(prefs.name,'My own biology');assert.equal(prefs.color,'#123456');assert.equal(prefs.image,image);
  assert.deepEqual(storage.validateBackup(store.exportBackup(),store.owner),store.get());
- const decorated={id:'101',name:prefs.name,originalName:'CL Synthetic Biology',shortName:prefs.name,artPrefs:prefs,artMotion:true};
+ const decorated={id:'101',name:prefs.name,originalName:'Honors Marine Biology',shortName:prefs.name,artPrefs:prefs,artMotion:true};
  assert.match(courseArt.scene(decorated),/ch-custom-banner/);
  assert.match(courseArt.mini(decorated),/ch-custom-icon/);
  assert.match(courseArt.frame('biology','101',decorated),/ch-custom-border/);
  assert.match(courseArt.titleFrame(decorated),/ch-custom-title/);
  assert.match(courseArt.titleStyle(decorated),/--rd-name-w:560/);
- const existingTitle={id:'102',name:'CL Physics-Novak-Ortiz',originalName:'CL Physics-Novak-Ortiz',shortName:'Physics',artPrefs:{bannerArt:banner},artMotion:true};
+ const existingTitle={id:'102',name:'AP Physics-Novak-Ortiz',originalName:'AP Physics-Novak-Ortiz',shortName:'Physics',artPrefs:{bannerArt:banner},artMotion:true};
  assert.match(courseArt.titleFrame(existingTitle),/data-crop="title"/,'uploading a banner preserves the original illustrated course title');
  await store.update(data=>{const pref=data.settings.coursePrefs['101'];for(const key of [...require('../extension/customization-model.js').artKeys,'bannerFit','bannerPosition'])delete pref[key];});
  const cleared=store.get();assert.equal(cleared.settings.coursePrefs['101'].name,'My own biology');
