@@ -621,6 +621,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   }
   function browserAdapter() {
     if(root.chrome?.storage?.local)return {
+      bytes:key=>root.chrome.storage.local.getBytesInUse(key),
       remote:appearance?.messenger?.(),
       read:async key=>(await root.chrome.storage.local.get(key))[key],
       write:async(key,value)=>root.chrome.storage.local.set({[key]:value}),
@@ -916,6 +917,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     // Optional deadline metadata has its own bounded, account-scoped record. It never rewrites personal notes or cached coursework.
     const deadlineKey=`${key}:deadline-changes`;
+    // bytes in use by fixed area name, for Developer tools: the keys themselves (school and account) never leave this file
+    async function sizes(){
+      const out={};
+      for(const [name,k] of Object.entries({personal:key,cache:`${key}:cache`,materials:materialKey,changes:deadlineKey})){
+        try{const n=await adapter.bytes?.(k);out[name]=Number.isFinite(n)?n:null;}catch{out[name]=null;}
+      }
+      return out;
+    }
     const readDeadlineChanges=()=>adapter.read(deadlineKey);
     function updateDeadlineChanges(change){
       return lock(deadlineKey,async()=>{
@@ -934,6 +943,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       update,
       replace,
       owner,
+      sizes,
       readDeadlineChanges,
       updateDeadlineChanges,
       subscribeDeadlineChanges,

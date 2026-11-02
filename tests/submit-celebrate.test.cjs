@@ -136,7 +136,7 @@ test('fresh matching record celebrates once, consumes it and mounts the specifie
  const scene=h.scenes()[0];assert.equal(h.status.nextElementSibling,scene);assert.equal(scene.getAttribute('aria-hidden'),'true');
  assert.equal(scene.style.width,'290px');assert.equal(scene.style.maxWidth,'100%');assert.equal(scene.innerHTML,h.context.ReserveSubmitScenes.mailbox);
  const opts=h.mounts[0];assert.equal(opts.all,undefined,'public submissions never request the owner all-tool tray');assert.equal(opts.box,scene.nextElementSibling);assert.equal(opts.box.getAttribute('aria-hidden'),null);assert.equal(opts.root,h.doc.body);
- assert.equal(opts.blocks,'#content > *, #right-side-wrapper > *, #left-side');assert.equal(opts.shake,'#application, #wrapper');assert.equal(opts.ours,'.chs-scene');
+ assert.equal(opts.blocks,'#content > *, #right-side-wrapper > *, #left-side');assert.equal(opts.shake,'#wrapper, #header');assert.equal(opts.ours,'.chs-scene');
  h.mutate();await tick();assert.equal(h.mounts.length,1);assert.ok(h.observers.every(o=>!o.active));
 });
 for(const scope of ['#right-side .details','#sidebar_content','.submission-details','[data-testid="assignment-student-header"]','[data-testid="submission-status"]']){

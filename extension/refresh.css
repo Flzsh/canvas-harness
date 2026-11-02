@@ -876,7 +876,8 @@
 .rd[data-workspace=work] .rd-course-information { grid-column: 1; grid-row: 1 / -1; min-width: 0; }
 .rd[data-workspace=work] .rd-work-column { grid-column: 2; grid-row: 1; min-width: 0; width: auto; }
 .rd[data-workspace=work] .rd-information { display: block; grid-column: 2; grid-row: 2; min-width: 0; width: auto; order: 0; padding: 0; background: none; box-shadow: none; }
-.rd[data-workspace=work] .rd-course-information > .rd-deck-header { display: flex; margin: 0; padding: 0 0 18px; min-height: 54px; border: 0; }
+/* (no padding of its own: the first section's top margin spaces it, as between every other section; with both, the gap under the header doubled) */
+.rd[data-workspace=work] .rd-course-information > .rd-deck-header { display: flex; margin: 0; padding: 0; min-height: 54px; border: 0; }
 .rd[data-workspace=work] .rd-course-information .rd-course-deck { display: flex; flex-direction: column; gap: 0; }
 .rd[data-workspace=work] .rd-course-information .rd-deck-primary, .rd[data-workspace=work] .rd-course-information .rd-deck-secondary { display: flex; flex-direction: column; gap: 0; order: 0; }
 .rd[data-workspace=work] .rd-information > .rd-reader { margin: 0; border-radius: var(--rd-r-paper); background: var(--rd-surface); box-shadow: var(--rd-paper); }
@@ -904,7 +905,7 @@
 .rd[data-workspace=work] .rd-course-information { container: course-context / inline-size; }
 .rd[data-workspace=work] .rd-work-column { container: work-list / inline-size; }
 @container course-context (max-width: 360px) {
-  .rd[data-workspace=work] .rd-course-information > .rd-deck-header { flex-direction: column; align-items: flex-start; gap: 6px; padding-bottom: 8px; }
+  .rd[data-workspace=work] .rd-course-information > .rd-deck-header { flex-direction: column; align-items: flex-start; gap: 6px; padding-bottom: 0; }
   .rd .rd-deck-header .rd-heading-actions { gap: 14px; }
   .rd .rd-course-information .rd-row-kind { white-space: normal; max-width: 65px; font-size: 11px; }
 }
@@ -1922,7 +1923,7 @@
 .rd .rd-dock-resize:hover:not(:focus-visible) { background: transparent; }
 .rd .rd-dock-resize:is([data-resize=height], [data-resize=width]):hover::after { background: var(--rd-faint); opacity: 1; }
 
-.rd .rd-utility-dialog[data-docked=true] .rd-utility-nav.t-tabs { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, max-content)); gap: 2px; flex: 0 1 auto; min-width: 0; margin: 0; padding: 3px; overflow: hidden; border: 0; border-radius: 999px; background: var(--rd-tint); }
+.rd .rd-utility-dialog[data-docked=true] .rd-utility-nav.t-tabs { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, max-content)); gap: 2px; flex: 0 1 auto; min-width: 0; margin: 0; padding: 3px; overflow: hidden; border: 0; border-radius: 999px; background: var(--rd-tint); }
 .rd .rd-utility-dialog[data-docked=true] .rd-utility-nav.t-tabs[hidden] { display: none; }
 .rd .rd-utility-nav .rd-dock-tab { display: flex; flex: none; align-items: center; justify-content: center; gap: 7px; min-width: 0; height: 32px; min-height: 32px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: var(--rd-muted); font-family: inherit; font-size: 12.5px; font-weight: 450; white-space: nowrap; cursor: pointer; transition: color 200ms var(--rd-warm); }
 .rd .rd-utility-nav .rd-dock-tab > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -2035,6 +2036,9 @@
 .rd .rd-utility-dialog select.rd-dock-size { appearance: none; -webkit-appearance: none; padding: 0 8px; field-sizing: content; }
 
 @container toolbox (max-width: 400px) { .rd .rd-utility-nav .rd-dock-tab { padding: 0 6px; font-size:12px; } }
+/* five tabs (Developer tools on): every name still whole, in a little less room each */
+.rd .rd-utility-nav:has(> [data-tab=developer]) .rd-dock-tab { padding: 0 4px; font-size: 11.5px; letter-spacing: -.01em; }
+@container toolbox (max-width: 400px) { .rd .rd-utility-nav:has(> [data-tab=developer]) .rd-dock-tab { padding: 0 2px; font-size: 10.5px; letter-spacing: -.015em; } }
 
 
 @container toolbox (max-width: 520px) {

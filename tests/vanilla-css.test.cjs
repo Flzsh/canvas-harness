@@ -91,8 +91,8 @@ test('other document-level sheets require startup state or the explicitly retain
   'startup-art.css':/^(?:html\.reserve-startup-dark\s+)?#reserve-startup-shell(?=[\s.#[:>+~]|$)/,
   'canvas-nav.css':/^html\.chn-nav(?=[\s.#[:>+~]|$)/,
   'course-nav.css':/^html\.reserve-course-nav(?:\[[^\]]+\])?\s+#section-tabs(?=[\s.#[:>+~]|$)/,
-  // 3.1: Canvas's Modules page, only its module list and the buttons above it
-  'modules-page.css':/^html\.reserve-modules(?:\[[^\]]+\])?\s+(?:#context_modules|:is\(\.header-bar,\.header-bar-right\))(?=[\s.#[:>+~]|$)/
+  // 3.1: Canvas's Modules page, only its module list, the row above it and the holder of both
+  'modules-page.css':/^html\.reserve-modules(?:\[[^\]]+\])?\s+(?:#content\s+)?(?:#context_modules|:is\(\.header-bar,\.header-bar-right\)|\.header-bar:has\(>\.ch-modprog-progress\)|\.header-bar>\.ch-modprog-progress|:is\(\.header-bar:has\(>\.ch-modprog-progress\),\.ch-modprog-progress\)|\.item-group-container)(?=[\s.#[:>+~]|$)/
  };
  for(const [file,scope]of Object.entries(scopes)){
   const parsed=stylesheet(read(file));assert.ok(parsed.rules.length,file+' must have rules to check');

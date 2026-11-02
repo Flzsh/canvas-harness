@@ -175,10 +175,10 @@ test('the moves play once the new state is drawn: a box carried to the table end
 
 test('reduced motion and Motion off keep everything still',async()=>{
  // the stylesheet: every one-off motion of the deck is behind Motion gentle, and off or reduced motion stop all of it
- assert.match(CSS,/\.rd\[data-motion-style=off\] :is\(\.rv,\.rv-fly\) \*,\.rd\[data-motion-style=off\] :is\(\.rv,\.rv-fly,\.rv-grow\),\.rd\[data-feature-motion=off\] :is\(\.rv,\.rv-fly\) \*,\.rd\[data-feature-motion=off\] :is\(\.rv,\.rv-fly,\.rv-grow\)\{animation:none!important;transition:none!important\}/);
+ for(const gate of ['data-motion-style=off','data-feature-motion=off'])for(const part of ['.rv *','.rv-fly *','.rv','.rv-fly','.rv-grow'])assert.ok(CSS.includes(`.rd[${gate}] ${part}`),gate+part);assert.match(CSS,/\.rd\[data-feature-motion=off\] \.rv-grow\{animation:none!important;transition:none!important\}/);
  // the loops that never stop also stop with Living drawings off, like every loop on the dashboard
  for(const name of ['rv-drift','rv-puff','rv-steam','rv-glint','rv-caustic'])for(const m of CSS.matchAll(new RegExp(`([^{}]*)\\{[^{}]*animation:${name} `,'g')))assert.match(m[1],/\.rd\[data-motion-style=gentle\]:not\(\[data-living-art=off\]\)/,`${name} stops with Living drawings off`);
- assert.match(CSS,/@media \(prefers-reduced-motion:reduce\)\{:is\(\.rv,\.rv-fly\) \*,:is\(\.rv,\.rv-fly,\.rv-grow\)\{animation:none!important;transition:none!important\}\}/);
+ assert.match(CSS,/@media \(prefers-reduced-motion:reduce\)\{:is\(\.rv,\.rv-fly\) \*, \.rv, \.rv-fly, \.rv-grow\{animation:none!important;transition:none!important\}\}/);
  for(const name of ['rv-flip','rv-unflip','rv-deal','rv-rise','rv-set','rv-slide','rv-drop','rv-pull','rv-lift','rv-pencil','rv-square','rv-drift','rv-puff','rv-steam','rv-glint'])
   for(const m of CSS.matchAll(new RegExp(`([^{}]*)\\{[^{}]*animation:${name} `,'g')))assert.match(m[1],/data-motion-style=gentle/,`${name} plays only with Motion on`);
  assert.match(CSS,/\.rv-world\[data-paused\] \*/,'the room rests while the page is hidden');

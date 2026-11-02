@@ -557,7 +557,7 @@
   ['course-nav','course-nav|course menu|course navigation|drawn course menu|drawn course menu and modules'],
   ['native-appearance','native-appearance|native appearance|native page appearance'],
   ['pdf','pdf|pdf reader'],
-  ['play','play|play tools|celebrations|submission celebrations|play and submission celebrations'],
+  ['play','play|play tools|celebrations|submission celebrations|play and submission celebrations'],['developer','developer|developer tools|dev tools'],
   ['focus-room','focus-room|focus room'],
   ['review-deck','review-deck|review deck'],
   ['grade-impact','grade-impact|grade impact'],

@@ -1,0 +1,28 @@
+name: Bug report
+description: Something in Canvas Harness does not work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead. Please leave out names and coursework.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps
+      description: How to make it happen again.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Developer tools report
+      description: Tools, then Developer, then Copy report. Switch Developer tools on first under Features in the popup (Custom).
+      render: text

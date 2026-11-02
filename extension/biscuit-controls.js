@@ -101,7 +101,7 @@
    "livingArt":{"yes":"on","no":"off"},
    "quickOpen":{"yes":"on","no":"off"}
  };
- const FEATURES={"arrange":"Arrange the workspace","biscuit-more-rules":"Biscuit: more rules","canvas-nav":"Drawn Canvas navigation","course-art":"Course artwork","course-files":"My links & files","course-hub":"Course hub & inbox","course-nav":"Drawn course menu & modules","customization":"Appearance editor","dashboard":"Dashboard & assignments","deadline-changes":"Deadline changes","focus-room":"Focus room","gpa":"GPA calculator","grade-impact":"Grade impact","grades":"Grades","materials":"Materials library","math":"Math tools","motion":"Living drawings & motion","native-appearance":"Native page appearance","pdf":"PDF reader","planner":"Planner & home widgets","play":"Play & submission celebrations","pony":"Pony companion","quick-pack":"Local artwork packs","review-deck":"Review deck","scene-themes":"Scene themes","tools":"Quick open & study tools"};
+ const FEATURES={"arrange":"Arrange the workspace","biscuit-more-rules":"Biscuit: more rules","canvas-nav":"Drawn Canvas navigation","course-art":"Course artwork","course-files":"My links & files","course-hub":"Course hub & inbox","course-nav":"Drawn course menu & modules","customization":"Appearance editor","dashboard":"Dashboard & assignments","deadline-changes":"Deadline changes","developer":"Developer tools","focus-room":"Focus room","gpa":"GPA calculator","grade-impact":"Grade impact","grades":"Grades","materials":"Materials library","math":"Math tools","motion":"Living drawings & motion","native-appearance":"Native page appearance","pdf":"PDF reader","planner":"Planner & home widgets","play":"Play & submission celebrations","pony":"Pony companion","quick-pack":"Local artwork packs","review-deck":"Review deck","scene-themes":"Scene themes","tools":"Quick open & study tools"};
  const MODULES={"bookmarks":"Bookmarks","clock":"Clock","context":"Course information","grades":"Grades","handin":"To hand in","impact":"Grade impact","messages":"Messages","notes":"Notes","pet":"Paddock","reader":"Assignment details","review":"Review","timer":"Focus timer","today":"Today","week":"This week","work":"Up next"};
  const TABS={
    home:'home',
@@ -247,6 +247,9 @@
   ["panel-button","workspace","workspace: {label}",["Home","workspace: {label}"],null,"request"],
   ["panel-button","workspace","{label}, {count} unread",["Home","{label}, {count} unread"],null,"request"],
   ["panel-button","retry-save","Retry save",["Home","Retry save"],null,"request"],
+  ["panel-button","button","Course",["Home","Course"],null,"request"],
+  ["panel-button","button","Assignment",["Home","Assignment"],null,"request"],
+  ["panel-button","button","Copy report",["Home","Copy report"],null,"request"],
   ["panel-button","button","Winter",["Home","Winter"],null,"request"],
   ["panel-button","button","Fire",["Home","Fire"],null,"request"],
   ["panel-button","button","Quiet",["Home","Quiet"],null,"request"],
@@ -375,7 +378,7 @@
   ["panel-button","preview","Preview",["Workspace","Review","Preview"],null,"request"],
   ["panel-button","review-deck-big","Big card",["Workspace","Review","Big card"],null,"request"],
   ["panel-button","review-deck-edit","Edit",["Workspace","Review","Edit"],null,"request"],
-  ["panel-button","review-deck-fold","Back to Home",["Workspace","Review","Back to Home"],null,"request"],
+  ["panel-button","review-deck-fold","Fold",["Workspace","Review","Fold"],null,"request"],
   ["panel-button","review-deck-grade","Good",["Workspace","Review","Good"],null,"request"],
   ["panel-button","review-deck-grade","Easy",["Workspace","Review","Easy"],null,"request"],
   ["panel-button","review-deck-grade","Next",["Workspace","Review","Next"],null,"request"],
@@ -648,6 +651,7 @@
   ["settings-tab","pet","Pony",["Make it yours","Pony"],null,"request"],
   ["settings-tab","settings","More",["Make it yours","More"],null,"request"],
   ["toolbox","calculator","Calculator",["Tools","Calculator"],null,"request"],
+  ["toolbox","developer","Developer",["Tools","Developer"],null,"request"],
   ["toolbox","gpa","GPA",["Tools","GPA"],null,"request"],
   ["toolbox","quick","Quick open",["Tools","Quick open"],null,"request"],
   ["workspace","review","Review",["Workspace","Review"],null,"request"]

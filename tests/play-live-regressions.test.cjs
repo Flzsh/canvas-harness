@@ -11,15 +11,20 @@ function renderedBounds(body) {
   }
   return { left: Math.min(...points.map(p => p.x)), right: Math.max(...points.map(p => p.x)), top: Math.min(...points.map(p => p.y)), bottom: Math.max(...points.map(p => p.y)) };
 }
+// where the string belongs: the middle of the top of the rendered piece, wherever it has turned
+function renderedTop(body) {
+  const { c, r } = body.parts[0], [, dx, dy, degrees] = c.style.transform.match(/translate\(([-\d.e+]+)px,([-\d.e+]+)px\) rotate\(([-\d.e+]+)deg\)/), [ox, oy] = c.style.transformOrigin.split(' ').map(parseFloat), angle = +degrees * Math.PI / 180;
+  return { x: parseFloat(c.style.left) + ox + +dx + Math.sin(angle) * body.height / 2, y: parseFloat(c.style.top) + oy + +dy - Math.cos(angle) * body.height / 2, r };
+}
 function tether(balloon) {
   assert.equal(balloon.string.style.transformOrigin, '0 50%');
   const [, x, y, degrees] = balloon.string.style.transform.match(/^translate\(([-\d.e+]+)px,([-\d.e+]+)px\) rotate\(([-\d.e+]+)deg\)$/), angle = +degrees * Math.PI / 180;
   const line = balloon.string.querySelector('path'), [, length] = line.getAttribute('d').match(/^M0 0L([-\d.e+]+) 0$/);
-  const bounds = renderedBounds(balloon.body);
+  const top = renderedTop(balloon.body);
   near(+x, balloon.x, 'string starts at the knot x');
   near(+y, balloon.y + 1, 'string starts at the knot y');
-  near(+x + Math.cos(angle) * +length, (bounds.left + bounds.right) / 2, 'string ends at the rendered group centre x');
-  near(+y + Math.sin(angle) * +length, bounds.top, 'string ends at the rendered group top');
+  near(+x + Math.cos(angle) * +length, top.x, 'string ends at the rendered group centre x');
+  near(+y + Math.sin(angle) * +length, top.y, 'string ends at the rendered group top');
   assert.equal(line.getAttribute('vector-effect'), 'non-scaling-stroke');
   assert.equal(line.getAttribute('stroke-linecap'), 'butt', 'the cap must not extend beyond the endpoint');
   assert.equal(line.getAttribute('stroke-width'), '1.3', 'a long string retains a thin stroke');
@@ -42,12 +47,12 @@ test('1: the balloon tether ends at the rendered word bounds after every solver 
 });
 
 test('2: staggered balloons keep independent visible words and unscaled thin tethers above a floor pile', () => {
-  const h = fixture();
+  const h = fixture({ text: 'Play with words and then some more words far along' });
   h.api.pick('balloon');
   h.dispatch('click', h.page, 110, 130, { pointerType: 'mouse' });
   const first = h.api.balloons[0], copies = first.body.parts.map(p => p.c);
   run(h, 160);
-  h.dispatch('click', h.page, 160, 130, { pointerType: 'mouse' });
+  h.dispatch('click', h.page, 420, 130, { pointerType: 'mouse' });
   const second = h.api.balloons[1];
   assert.ok(second);
   assert.notEqual(first.body, second.body);
@@ -61,13 +66,13 @@ test('2: staggered balloons keep independent visible words and unscaled thin tet
       assert.equal(b.body.pile, null, 'a carried word never joins the floor pile');
       const bounds = renderedBounds(b.body);
       assert.ok(bounds.bottom < 600 && bounds.left >= 0 && bounds.right <= 800);
-      if (b.tied) assert.ok(bounds.top > b.y, 'after attachment the word stays under its own balloon');
+      if (b.tied) assert.ok(renderedTop(b.body).y > b.y, 'after attachment the word stays under its own balloon');
       for (const p of b.body.parts) { assert.equal(p.c.isConnected, true); assert.equal(p.c._body, b.body); assert.equal(p.s._c, p.c); assert.notEqual(p.c.style.visibility, 'hidden'); assert.notEqual(p.c.style.opacity, '0'); }
     }
   }
   assert.deepEqual(first.body.parts.map(p => p.c), copies, 'placing a second balloon preserves the first copies');
   assert.equal(first.body.parts.map(p => p.c.textContent).join(''), 'Play');
-  assert.equal(second.body.parts.map(p => p.c.textContent).join(''), 'with');
+  assert.equal(second.body.parts.map(p => p.c.textContent).join(''), 'more');
   h.api.popBalloon(second);
   run(h, 500);
   tether(first);

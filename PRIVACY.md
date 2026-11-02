@@ -24,6 +24,8 @@ Personal backups are files that you choose to export. They can contain private n
 
 Full, Lite and Custom choices are stored once for this extension in this browser, separately from your Canvas account data. Dependencies are included automatically. Turning a feature off changes which packaged modules load on your next Canvas page load; it does not erase notes, artwork, plans, GPA settings or reader annotations. Existing pages keep their loaded selection until reload.
 
+Developer tools, if you switch it on, keeps its numbers in memory on the open page. **Copy report** puts build, feature and setting choices, counts and timings on your clipboard only when you press it, and never includes names, coursework, your school address or your account ID.
+
 The Canvas site's local storage holds a small feature-selection hint for early drawings. It contains preset and feature IDs, with no account or coursework data. The worker keeps the current document's selection in extension session storage across worker restarts and removes its records when the tab closes. An origin that was closed when preferences changed can briefly use its previous hint until the extension confirms the new selection.
 
 ## Pictures and videos

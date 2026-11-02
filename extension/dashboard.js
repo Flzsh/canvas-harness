@@ -381,7 +381,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         sourceFrame=beforePaint(()=>{
           sourceFrame=0;
           sourcing=true;
-          try{render();}catch(error){if(!mounted&&onRenderError)onRenderError(error);else throw error;}finally{sourcing=false;}
+          try{render();}catch(error){if(!mounted&&onRenderError){root.ReserveDeveloper?.caught(error);onRenderError(error);}else throw error;}finally{sourcing=false;}
         });
     }
     function consumeSources(){if(sourceFrame)cancelPaint(sourceFrame);sourceFrame=0;}
@@ -728,6 +728,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       try{renderNow(next);renderedAt=started;}finally{rendering=false;}
       // The page's answer to an input is drawn: drawings held for it go on once it has painted (motion.js busy).
       motion?.answered?.();
+      root.ReserveDeveloper?.rendered(Date.now()-started);
       if(!mounted){mounted=true;onReady();}
       // (the page's patch takes the hiding off the column: it goes back on at once, and the room follows the page)
       if(room){homeColumn()?.style.setProperty('will-change','opacity');hideHome();markRoom();renderRoomNow();}

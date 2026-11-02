@@ -40,14 +40,14 @@
 
 <p align="center"><sub>Every demo is Canvas with Canvas Harness switched on, using made-up courses and assignments.</sub></p>
 
-## New in 3.8
+## New in 3.9
 
-- **Biscuit understands short lines far better**, still on your computer with no AI.
-- **PDF reader fixes**: a text box keeps its words when a file is full of marks, text size and colour apply to the box you are typing in, and a module PDF you read counts as opened.
-- **Lighter when idle**: the page restyles half as often while nothing changes, and drawings keep moving while you scroll.
-- **Mozilla's standard PDF.js build**, so it now needs Chrome or Edge 126 or newer.
+- **Focus room, Review deck and Grade impact**, redrawn as rooms that grow out of their Home modules. They start off: Features in the popup, then Custom.
+- **Play tools take the whole page**: a Black hole that pulls in everything on the screen, Foil's film, painted fire, a Laser that drops every closed part, Balloons from any click, and Portals that pull in the words around them.
+- **Developer tools**, off until you switch it on: a read-only report for bug reports. Thanks to @hellyeahboys666 for the idea in #65.
+- **A reading ruler** in the PDF reader, and Canvas's own pages drawn to match.
 
-Also in 3.7: a course dock you can move and resize, and a Cards look. Thanks to @garywu000 and @HarryX081125 for their contributions. [Every change](CHANGELOG.md)
+Also in 3.8: Biscuit understands short lines far better, still on your computer with no AI. Thanks to @garywu000 and @HarryX081125 for their contributions. [Every change](CHANGELOG.md)
 
 ## Install
 

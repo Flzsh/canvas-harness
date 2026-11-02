@@ -247,6 +247,7 @@
     if(!record(doc)||
      !own(doc,'feature')||
      typeof doc.feature!=='string'||
+     doc.feature==='developer'||
      !F.catalogue.some(f=>f.id===doc.feature)||
      Object.keys(doc).some(k=>k!=='feature'&&(k!=='sceneTheme'||doc.feature!=='scene-themes'))||
      own(doc,'sceneTheme')&&!root.ReserveCustomization.enums.sceneTheme.includes(doc.sceneTheme))

@@ -66,6 +66,10 @@ These three are off until you switch them on: **Features** in the popup, then **
 - **Review deck**: your cards, in a reading room that grows out of its Home module.
 - **Grade impact**: opens from a course on **Grades** or its Home module and shows what the work coming up can do to that course. Pretend assignments stay in this browser.
 
+## Developer tools
+
+Off until you switch it on: **Features** in the popup, then **Custom**, then **Developer tools**. Reload Canvas, open **Tools** and choose **Developer**. It shows the build, what is switched on, the settings you changed, the Canvas sync, speed, storage and errors from Canvas Harness's own files. **Copy report** puts the same rows on your clipboard for a bug report; it never includes names, coursework or your school address.
+
 ## Give a course its own artwork
 
 Canvas Harness includes 22 automatic subject presets and a general fallback. To create something for your own course:

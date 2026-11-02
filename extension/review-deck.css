@@ -126,16 +126,16 @@
 .rd[data-rd-data-theme] .rv{--rv-wall-ink:var(--rd-ink,#141413);--rv-wall-muted:var(--rd-muted,#6B6A64)}
 /* Scene themes colour every teacher's rich text in the page's own ink and every small in a pale muted tone, with strong
    rules: on the deck's cards, tags and plates that is pale on pale. The deck's words keep the colours of their paper. */
-.rd.rd.rd.rd.rd .rv-face :is(.rv-q,.rv-a),.rd.rd.rd.rd.rd .rv-face :is(.rv-q,.rv-a) :is(p,li,ol,ul,span,em,strong,b,td,th,h4,h5,h6){color:var(--rv-ink)!important}
-.rd.rd.rd.rd.rd .rv-face .rv-q2,.rd.rd.rd.rd.rd .rv-face .rv-q2 :is(p,li,ol,ul,span,em,strong,b){color:var(--rv-muted)!important}
+.rd.rd.rd.rd.rd .rv-face .rv-q, .rd.rd.rd.rd.rd .rv-face .rv-a, .rd.rd.rd.rd.rd .rv-face :is(.rv-q,.rv-a) p, .rd.rd.rd.rd.rd .rv-face :is(.rv-q,.rv-a) li, .rd.rd.rd.rd.rd .rv-face :is(.rv-q,.rv-a) ol, .rd.rd.rd.rd.rd .rv-face :is(.rv-q,.rv-a) ul, .rd.rd.rd.rd.rd .rv-face :is(.rv-q,.rv-a) span, .rd.rd.rd.rd.rd .rv-face :is(.rv-q,.rv-a) em, .rd.rd.rd.rd.rd .rv-face :is(.rv-q,.rv-a) strong, .rd.rd.rd.rd.rd .rv-face :is(.rv-q,.rv-a) b, .rd.rd.rd.rd.rd .rv-face :is(.rv-q,.rv-a) td, .rd.rd.rd.rd.rd .rv-face :is(.rv-q,.rv-a) th, .rd.rd.rd.rd.rd .rv-face :is(.rv-q,.rv-a) h4, .rd.rd.rd.rd.rd .rv-face :is(.rv-q,.rv-a) h5, .rd.rd.rd.rd.rd .rv-face :is(.rv-q,.rv-a) h6{color:var(--rv-ink)!important}
+.rd.rd.rd.rd.rd .rv-face .rv-q2, .rd.rd.rd.rd.rd .rv-face .rv-q2 p, .rd.rd.rd.rd.rd .rv-face .rv-q2 li, .rd.rd.rd.rd.rd .rv-face .rv-q2 ol, .rd.rd.rd.rd.rd .rv-face .rv-q2 ul, .rd.rd.rd.rd.rd .rv-face .rv-q2 span, .rd.rd.rd.rd.rd .rv-face .rv-q2 em, .rd.rd.rd.rd.rd .rv-face .rv-q2 strong, .rd.rd.rd.rd.rd .rv-face .rv-q2 b{color:var(--rv-muted)!important}
 .rd.rd.rd.rd.rd .rv-face mark{color:var(--rv-clay)!important}
 /* the card files drawer: each row's question and answer are rich text too, and keep the ink of the row's paper */
-.rd.rd.rd.rd.rd .rv .rv-row-f,.rd.rd.rd.rd.rd .rv .rv-row-f :is(p,li,ol,ul,span,em,strong,b,sup,sub,td,th){color:var(--rv-ink)!important}
-.rd.rd.rd.rd.rd .rv .rv-row-b,.rd.rd.rd.rd.rd .rv .rv-row-b :is(p,li,ol,ul,span,em,strong,b,sup,sub,td,th){color:var(--rv-ink2)!important}
+.rd.rd.rd.rd.rd .rv .rv-row-f, .rd.rd.rd.rd.rd .rv .rv-row-f p, .rd.rd.rd.rd.rd .rv .rv-row-f li, .rd.rd.rd.rd.rd .rv .rv-row-f ol, .rd.rd.rd.rd.rd .rv .rv-row-f ul, .rd.rd.rd.rd.rd .rv .rv-row-f span, .rd.rd.rd.rd.rd .rv .rv-row-f em, .rd.rd.rd.rd.rd .rv .rv-row-f strong, .rd.rd.rd.rd.rd .rv .rv-row-f b, .rd.rd.rd.rd.rd .rv .rv-row-f sup, .rd.rd.rd.rd.rd .rv .rv-row-f sub, .rd.rd.rd.rd.rd .rv .rv-row-f td, .rd.rd.rd.rd.rd .rv .rv-row-f th{color:var(--rv-ink)!important}
+.rd.rd.rd.rd.rd .rv .rv-row-b, .rd.rd.rd.rd.rd .rv .rv-row-b p, .rd.rd.rd.rd.rd .rv .rv-row-b li, .rd.rd.rd.rd.rd .rv .rv-row-b ol, .rd.rd.rd.rd.rd .rv .rv-row-b ul, .rd.rd.rd.rd.rd .rv .rv-row-b span, .rd.rd.rd.rd.rd .rv .rv-row-b em, .rd.rd.rd.rd.rd .rv .rv-row-b strong, .rd.rd.rd.rd.rd .rv .rv-row-b b, .rd.rd.rd.rd.rd .rv .rv-row-b sup, .rd.rd.rd.rd.rd .rv .rv-row-b sub, .rd.rd.rd.rd.rd .rv .rv-row-b td, .rd.rd.rd.rd.rd .rv .rv-row-b th{color:var(--rv-ink2)!important}
 .rd.rd.rd.rd.rd .rv .rv-row-f mark,.rd.rd.rd.rd.rd .rv .rv-row-b mark{color:var(--rv-clay)!important}
 /* the drawer's fields (search, the card editor) write in the paper's ink, their hints in its muted ink */
-.rd.rd.rd.rd.rd .rv :is(input,textarea,select){color:var(--rv-ink)!important}
-.rd.rd.rd.rd.rd .rv :is(input,textarea)::placeholder{color:var(--rv-muted)!important;opacity:1}
+.rd.rd.rd.rd.rd .rv input, .rd.rd.rd.rd.rd .rv textarea, .rd.rd.rd.rd.rd .rv select{color:var(--rv-ink)!important}
+.rd.rd.rd.rd.rd .rv input::placeholder, .rd.rd.rd.rd.rd .rv textarea::placeholder{color:var(--rv-muted)!important;opacity:1}
 .rd.rd.rd.rd.rd .rv-face .rv-side,.rd.rd.rd.rd.rd .rv-ef>span{color:var(--rv-muted)!important}
 .rd.rd.rd.rd.rd .rv :is(.rv-box-name,.rv-drawer-label,.rv-doneface strong,.rv-tab,.rv-row-f,.rv-ctab,.rv-rowtag,.rv-searchgo,.rv-search input){color:var(--rv-ink)!important}
 .rd.rd.rd.rd.rd .rv :is(.rv-doneface span,.rv-row-meta,.rv-cabtag small){color:var(--rv-muted)!important}
@@ -148,7 +148,7 @@
 
 /* ---------- 2 the drawings: fills, then lines; the room's line is pale, the deck's own things keep full ink ---------- */
 .rv-art,.rv-boxart,.rv-paper,.rv-pileart,.rv-sealart,.rv-starart,.rv-frame,.rv-keyart,.rv-pencilart,.rv-arrows,.rv-dotart,.rv-sheetart,.rv-drawerart,.rv-drawerfront,.rv-newart,.rv-shadowart,.rv-sweepart,.rv-riserart{display:block;overflow:visible}
-:is(.rv,.rv-world) svg path{fill:none;stroke:none;stroke-linecap:round;stroke-linejoin:round}
+.rv svg path,.rv-world svg path{fill:none;stroke:none;stroke-linecap:round;stroke-linejoin:round}
 .rv-world .wl{fill:var(--rv-wall)}.rv-world .ww{fill:var(--rv-wall2)}.rv-world .pn{fill:var(--rv-panel)}.rv-world .tr{fill:var(--rv-trim)}.rv-world .tr2{fill:var(--rv-trim2)}
 .rv-world .fl{fill:var(--rv-floor)}.rv-world .rg{fill:var(--rv-rug)}.rv-world .rg2{fill:var(--rv-rug2)}
 .rv-world .wd{fill:var(--rv-wd)}.rv-world .wd2{fill:var(--rv-wd2)}.rv-world .wd3{fill:var(--rv-wd3)}.rv-world .wd4{fill:var(--rv-wd4)}.rv-world .tp{fill:var(--rv-top)}
@@ -165,7 +165,7 @@
 .rv-world .k{stroke:var(--rv-rk);stroke-width:1.3}.rv-world .kf{stroke:var(--rv-rkf);stroke-width:.85}.rv-world .kh{stroke:var(--rv-rkh);stroke-width:1.1}.rv-world .kg{stroke:var(--rv-rkg);stroke-width:.8}
 .rv-world .kp{stroke:var(--rv-rkp);stroke-width:.9}.rv-world .kr{stroke:var(--rv-rkr);stroke-width:1}.rv-world .kb{stroke:var(--rv-rkb);stroke-width:1.3}.rv-world .kt{stroke:var(--rv-rkt);stroke-width:.9}.rv-world .kc{stroke:var(--rv-rkc);stroke-width:1.2}.rv-world .kd2{stroke:var(--rv-rkd2);stroke-width:1.4}
 .rv-world .gl{stroke:var(--rv-glint);stroke-width:1.3}.rv-world .lk2s{stroke:var(--rv-lk2);stroke-width:1.4}.rv-world .sw{stroke:var(--rv-sw);stroke-width:2.2}.rv-world .swd{stroke:var(--rv-swd);stroke-width:3}.rv-world .cau{stroke:var(--rv-cau);stroke-width:1.6}
-.rv-world .rgk{stroke:var(--rv-rgk);stroke-width:1.6}.rv-world .stm{stroke:var(--rv-stm);stroke-width:1.8}.rv-world .bpg{stroke:var(--rv-bpg);stroke-width:.6}.rv-world :is(.K,.Kf){stroke:var(--rv-rk);stroke-width:1.2}
+.rv-world .rgk{stroke:var(--rv-rgk);stroke-width:1.6}.rv-world .stm{stroke:var(--rv-stm);stroke-width:1.8}.rv-world .bpg{stroke:var(--rv-bpg);stroke-width:.6}.rv-world .K, .rv-world .Kf{stroke:var(--rv-rk);stroke-width:1.2}
 .rv-world .o2{opacity:.2}.rv-world .o3{opacity:.3}.rv-world .o4{opacity:.4}.rv-world .o5{opacity:.5}.rv-world .o6{opacity:.6}.rv-world .sd.o3{opacity:.12}.rv-world .sd.o4{opacity:.16}.rv-world .lt.o2{opacity:.38}.rv-world .lt.o3{opacity:.5}
 .rv-world .sw-wash{fill:var(--rv-wall)}.rv-world .sw-edge{stroke:var(--rv-rk);stroke-width:1.4}
 /* the deck's own things */
@@ -187,15 +187,15 @@
 .rv-riserart path{vector-effect:non-scaling-stroke}
 .rv .fr-fill{fill:var(--rv-paper)}.rv .fr-h{stroke:var(--rv-ink);stroke-width:1;opacity:.45}.rv .sl{fill:var(--rv-clay)}.rv .sl2{stroke:var(--rv-clay-ink);stroke-width:1;opacity:.55}
 .rv .ky{fill:var(--rv-paper2)}.rv .dt{fill:var(--rv-paper2)}.rv .rv-pencilart .yl{fill:var(--rv-gold)}.rv .rv-pencilart .pp{fill:var(--rv-paper)}.rv .rv-pencilart .ink{fill:var(--rv-ink)}.rv .rv-pencilart .rd2{fill:var(--rv-rule)}.rv .rv-pencilart .br{fill:var(--rv-brass)}
-:is(.rv-frame,.rv-paper,.rv-sheetart,.rv-drawerart,.rv-newart,.rv-shadowart,.rv-keyart) path{vector-effect:non-scaling-stroke}
+.rv-frame path,.rv-paper path,.rv-sheetart path,.rv-drawerart path,.rv-newart path,.rv-shadowart path,.rv-keyart path{vector-effect:non-scaling-stroke}
 /* scenes show their own parts of the drawing */
-.rv-world :is(.t-night,.t-starry,.t-space,.t-bp){display:none}.rv-world :is(.rv-port,.rv-caustics).t-sea,.rv-world g.t-sea{display:none}
-.rd[data-theme=dark] .rv-world :is(.t-day,.t-sun){display:none}.rd[data-theme=dark] .rv-world .t-night{display:inline}
-.rd[data-theme-kit=starry] .rv-world :is(.t-day,.t-night,.t-sun){display:none}.rd[data-theme-kit=starry] .rv-world .t-starry{display:inline}
-.rd[data-theme-kit=sea] .rv-world :is(.t-arch,.t-curtain,.t-sun,.t-day,.t-night){display:none}.rd[data-theme-kit=sea] .rv-world :is(.rv-port,.rv-caustics).t-sea{display:block}.rd[data-theme-kit=sea] .rv-world g.t-sea{display:inline}
-.rd[data-theme-kit=stars] .rv-world :is(.t-day,.t-land,.t-sun,.t-night){display:none}.rd[data-theme-kit=stars] .rv-world .t-space{display:inline}
-.rd[data-theme-kit=blueprint] .rv-world .t-bp{display:inline}.rd[data-theme-kit=blueprint] .rv-world :is(.t-sun,.rv-motes){display:none}
-.rd[data-theme-kit=blueprint] .rv-world :is(.sd,.lt,.lt2){opacity:0}
+.rv-world .t-night, .rv-world .t-starry, .rv-world .t-space, .rv-world .t-bp{display:none}.rv-world :is(.rv-port,.rv-caustics).t-sea,.rv-world g.t-sea{display:none}
+.rd[data-theme=dark] .rv-world .t-day, .rd[data-theme=dark] .rv-world .t-sun{display:none}.rd[data-theme=dark] .rv-world .t-night{display:inline}
+.rd[data-theme-kit=starry] .rv-world .t-day, .rd[data-theme-kit=starry] .rv-world .t-night, .rd[data-theme-kit=starry] .rv-world .t-sun{display:none}.rd[data-theme-kit=starry] .rv-world .t-starry{display:inline}
+.rd[data-theme-kit=sea] .rv-world .t-arch, .rd[data-theme-kit=sea] .rv-world .t-curtain, .rd[data-theme-kit=sea] .rv-world .t-sun, .rd[data-theme-kit=sea] .rv-world .t-day, .rd[data-theme-kit=sea] .rv-world .t-night{display:none}.rd[data-theme-kit=sea] .rv-world :is(.rv-port,.rv-caustics).t-sea{display:block}.rd[data-theme-kit=sea] .rv-world g.t-sea{display:inline}
+.rd[data-theme-kit=stars] .rv-world .t-day, .rd[data-theme-kit=stars] .rv-world .t-land, .rd[data-theme-kit=stars] .rv-world .t-sun, .rd[data-theme-kit=stars] .rv-world .t-night{display:none}.rd[data-theme-kit=stars] .rv-world .t-space{display:inline}
+.rd[data-theme-kit=blueprint] .rv-world .t-bp{display:inline}.rd[data-theme-kit=blueprint] .rv-world .t-sun, .rd[data-theme-kit=blueprint] .rv-world .rv-motes{display:none}
+.rd[data-theme-kit=blueprint] .rv-world .sd, .rd[data-theme-kit=blueprint] .rv-world .lt, .rd[data-theme-kit=blueprint] .rv-world .lt2{opacity:0}
 
 /* ---------- 3 the room ---------- */
 .rd[data-workspace=review] .rd-workspace-heading{display:none}
@@ -206,13 +206,13 @@
 .rv-stage{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
 .rv-world{position:absolute;right:0;bottom:0;width:calc(var(--u) * 1600);height:calc(var(--u) * 1000);contain:layout}
 .rv-world .rv-l{position:absolute;inset:0;width:100%;height:100%}
-.rv-world :is(.rv-bit,.rv-view,.rv-port){position:absolute}
+.rv-world .rv-bit, .rv-world .rv-view, .rv-world .rv-port{position:absolute}
 .rv-world .rv-bit>svg,.rv-world .rv-view>svg,.rv-world .rv-port>svg{position:absolute;inset:0;width:100%;height:100%}
 .rv-world .rv-view{overflow:hidden;border-radius:50% 50% 0 0 / 30.4% 30.4% 0 0}
 .rv-world .rv-port{overflow:hidden;border-radius:50%}
 .rv-world .rv-cloud{position:absolute;left:-58%;--rv-far:330%}.rv-world .rv-cloud-1{--rv-far:440%}.rv-world .rv-cloud-2{--rv-far:385%}
 .rv-world .rv-cloud>svg,.rv-world .rv-glints>svg{width:100%;height:100%}
-.rv-world :is(.rv-glints,.rv-smoke,.rv-heron){position:absolute}
+.rv-world .rv-glints, .rv-world .rv-smoke, .rv-world .rv-heron{position:absolute}
 .rv-world .rv-puff{position:absolute;left:18%;bottom:0;width:64%;aspect-ratio:1;display:block;opacity:0}
 .rv-world .rv-puff>svg,.rv-world .rv-wisp>svg,.rv-world .rv-heron>svg{width:100%;height:100%}
 .rv-world .rv-wisp{position:absolute;bottom:0;width:34%;height:100%;display:block;opacity:0}.rv-world .rv-wisp-0{left:6%}.rv-world .rv-wisp-1{left:34%}.rv-world .rv-wisp-2{left:60%}
@@ -295,11 +295,11 @@
 .rv-room .rv-newcard{flex:0 1 auto;min-width:0;width:clamp(96px,calc(140 * var(--u)),164px)}
 .rv-room .rv-riser{position:absolute;z-index:0;left:calc(-16 * var(--u));right:calc(-16 * var(--u));bottom:calc(-34 * var(--u));height:calc(44 * var(--u));pointer-events:none}
 .rv-riser>svg{display:block;width:100%;height:100%}
-.rd[data-motion-style=gentle] .rv-room .rv-tier>:is(.rv-box,.rv-newcard){animation:rv-set .3s calc(var(--i,4) * 40ms + 120ms) var(--rd-settle,cubic-bezier(.3,.7,.3,1)) both}
+.rd[data-motion-style=gentle] .rv-room .rv-tier>.rv-box, .rd[data-motion-style=gentle] .rv-room .rv-tier>.rv-newcard{animation:rv-set .3s calc(var(--i,4) * 40ms + 120ms) var(--rd-settle,cubic-bezier(.3,.7,.3,1)) both}
 .rd[data-motion-style=gentle] .rv-room .rv-riser{animation:rv-set .3s 100ms var(--rd-settle,cubic-bezier(.3,.7,.3,1)) both}
 @keyframes rv-set{0%{transform:translateY(-14px) rotate(-1.5deg);opacity:0}60%{transform:translateY(1.5px) scaleY(.985);opacity:1}100%{transform:none;opacity:1}}
 /* studying: the box slides to the table's left end, the card is held up in the window's light, the done pile grows */
-.rv-room :is(.rv-study,.rv-done){position:absolute;inset:0;pointer-events:none}
+.rv-room .rv-study, .rv-room .rv-done{position:absolute;inset:0;pointer-events:none}
 .rv-room :is(.rv-study,.rv-done)>*{pointer-events:auto}
 /* the box you study stands at the table's left end, just past the potted fern (its pot ends at 418, its fronds near 470) */
 .rv-room .rv-sidebox{position:absolute;left:max(16px,calc(var(--x0) + 478 * var(--u)));bottom:calc(292 * var(--u));width:clamp(124px,calc(178 * var(--u)),206px);transform-origin:50% 100%}
@@ -322,8 +322,8 @@
 .rv-room .rv-veil{position:absolute;inset:0;z-index:1;background:var(--rv-wall);opacity:0;pointer-events:none;transition:opacity .32s ease}
 .rd:not([data-motion-style=gentle]) .rv-room .rv-veil{transition:none}
 .rv-room[data-rv-big=true] .rv-veil{opacity:.9;pointer-events:auto}
-.rv-room[data-rv-big=true] :is(.rv-head,.rv-corner){z-index:3}
-.rv-room[data-rv-big=true] :is(.rv-sidebox,.rv-pile-done){z-index:0}
+.rv-room[data-rv-big=true] .rv-head, .rv-room[data-rv-big=true] .rv-corner{z-index:3}
+.rv-room[data-rv-big=true] .rv-sidebox, .rv-room[data-rv-big=true] .rv-pile-done{z-index:0}
 .rv-room[data-rv-big=true] .rv-cardwrap{left:calc(50cqw - var(--bw) / 2);width:var(--bw);bottom:auto;top:var(--bt);z-index:2}
 .rv-room[data-rv-big=true] .rv-study .rv-under{left:calc(50cqw - var(--bw) / 2);width:var(--bw);top:calc(var(--bt) + var(--bw) * .6 + 22px);z-index:2}
 .rv-room[data-rv-big=true] .rv-card{transform:rotate(calc(var(--rv-tilt) * .3))}
@@ -337,7 +337,7 @@
 .rv .rv-bigbtn:hover .rv-big-art{transform:scale(1.08)}.rv .rv-bigbtn:active .rv-big-art{transform:scale(.92);transition-duration:.07s}
 
 /* ---------- 5 controls: a drawn frame and a name ---------- */
-.rv :is(.rv-btn,.rv-box,.rv-newcard,.rv-sidebox,.rv-card,.rv-pencil,.rv-fold,.rv-tab,.rv-cabtag),.rv-grow{-webkit-tap-highlight-color:transparent}
+.rv .rv-btn, .rv .rv-box, .rv .rv-newcard, .rv .rv-sidebox, .rv .rv-card, .rv .rv-pencil, .rv .rv-fold, .rv .rv-tab, .rv .rv-cabtag, .rv-grow{-webkit-tap-highlight-color:transparent}
 .rv .rv-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:40px;padding:0 18px;border:0;margin:0;background:none;color:var(--rv-ink);font:650 14px/1 var(--rd-ui-font,system-ui,sans-serif);cursor:pointer;isolation:isolate;white-space:nowrap;transition:transform .22s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}
 .rv .rv-btn>.rv-frame{position:absolute;inset:0;width:100%;height:100%;z-index:-1;transition:transform .22s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}
 .rv .rv-n{font:inherit;color:inherit}
@@ -356,12 +356,12 @@
 .rv-grow{width:30px;height:30px;margin-left:auto;color:var(--rd-muted,#5E5D59)}.rv-grow:hover{color:var(--rd-ink,#141413)}.rv-grow path{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .rv .rv-field{display:grid;gap:5px;font:600 12.5px/1.2 var(--rd-ui-font,system-ui);color:var(--rv-ink2)}
 .rv .rv-slip{position:relative;display:block;isolation:isolate;color:var(--rv-ink)}.rv .rv-slip>.rv-frame{position:absolute;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none}.rv .rv-slip .fr-fill{fill:var(--rv-paper)}
-.rv .rv-field :is(input,select,textarea){box-sizing:border-box;width:100%;min-height:38px;padding:8px calc(3.4% + 10px);border:0;border-radius:0;background:none;color:var(--rv-ink);font:500 14px/1.4 var(--rd-ui-font,system-ui);appearance:none;-webkit-appearance:none}
-.rv .rv-slip-choice select{padding-right:calc(3.4% + 30px);cursor:pointer}.rv .rv-slip .rv-caret{position:absolute;right:calc(3.4% + 10px);top:50%;width:14px;height:10px;margin-top:-5px;pointer-events:none;color:var(--rv-ink)}
+.rv .rv-field input, .rv .rv-field select, .rv .rv-field textarea{box-sizing:border-box;width:100%;min-height:38px;padding:8px 12px;border:0;border-radius:0;background:none;color:var(--rv-ink);font:500 14px/1.4 var(--rd-ui-font,system-ui);appearance:none;-webkit-appearance:none}
+.rv .rv-slip-choice select{padding-right:32px;cursor:pointer}.rv .rv-slip .rv-caret{position:absolute;right:12px;top:50%;width:14px;height:10px;margin-top:-5px;pointer-events:none;color:var(--rv-ink)}
 .rv .rv-field select option{background:var(--rv-paper);color:var(--rv-ink)}
 .rv .rv-field input[type=file]{padding-block:5px;font-size:13px;color:var(--rv-ink2)}.rv .rv-field input[type=file]::file-selector-button{margin-right:12px;padding:5px 14px 5px 12px;border:0;border-radius:2px 6px 3px 5px;background:var(--rv-kraft3);color:var(--rv-ink);font:650 13px/1.2 var(--rd-ui-font,system-ui);rotate:-1deg;cursor:pointer}
 .rv .rv-field textarea{resize:vertical;font-family:var(--rd-display,Literata,Georgia,serif);font-size:15px}
-.rv .rv-field :is(input,select,textarea):focus-visible{outline:2px dashed var(--rv-clay);outline-offset:2px}
+.rv .rv-field input:focus-visible, .rv .rv-field select:focus-visible, .rv .rv-field textarea:focus-visible{outline:2px dashed var(--rv-clay);outline-offset:2px}
 .rv .rv-check{display:inline-flex;align-items:center;gap:8px;font:600 13px/1 var(--rd-ui-font,system-ui)}.rv .rv-check input{width:18px;height:18px;accent-color:var(--rv-clay)}
 .rv .rv-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .rv .rv-empty{margin:8px 0;color:var(--rv-muted);font:500 14px/1.4 var(--rd-ui-font,system-ui)}
@@ -428,8 +428,8 @@
 :is(.rv-room,.rv-fly) .rv-drawer-front>svg{position:absolute;inset:0;width:100%;height:100%}
 :is(.rv-room,.rv-fly) .rv-drawer-label{position:absolute;left:12.5%;right:12.5%;top:16.5%;height:33%;display:grid;place-items:center;font:600 10.5cqw/1 var(--rd-display,Literata,Georgia,serif);letter-spacing:.02em;color:var(--rv-ink)}
 :is(.rv-room,.rv-fly) .rv-drawer-in{position:absolute;left:5.5%;right:5.5%;top:9.5%;bottom:15.5%;display:flex;flex-direction:column;gap:10px;min-height:0}
-:is(.rv-room,.rv-fly) .rv-drawer-top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}:is(.rv-room,.rv-fly) .rv-drawer-top .rv-field{min-width:200px}
-.rv .rv-tabs{display:flex;gap:4px;align-items:flex-end;border-bottom:1.5px solid var(--rv-ink);padding-left:6px}
+:is(.rv-room,.rv-fly) .rv-drawer-top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:1.5px solid var(--rv-ink)}:is(.rv-room,.rv-fly) .rv-drawer-top .rv-field{min-width:200px}
+.rv .rv-tabs{display:flex;flex:1;min-width:0;gap:4px;align-items:flex-end;padding-left:6px}
 .rv .rv-tab{position:relative;display:inline-grid;place-items:center;min-width:94px;height:34px;padding:0 16px;margin-bottom:-1.5px;border:0;background:none;color:var(--rv-ink2);font:650 13px/1 var(--rd-ui-font,system-ui);cursor:pointer;isolation:isolate;transition:transform .3s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}
 .rv .rv-tab>svg{position:absolute;inset:0;width:100%;height:100%;z-index:-1}.rv .rv-tab .fr-fill{fill:var(--rv-paper2)}
 .rv .rv-tab[aria-selected=true]{transform:translateY(-4px);color:var(--rv-ink)}.rv .rv-tab[aria-selected=true] .fr-fill{fill:var(--rv-kraft3)}
@@ -444,23 +444,23 @@
 .rv .rv-row-act{grid-column:2;grid-row:1 / span 3;display:flex;gap:6px;align-items:center}
 /* The card files (no form boxes): the courses as kraft tabs, the search as a paper slip with its magnifier, each card a
    small index card with a pencil to edit it and a tag that opens Pause and Delete. */
-.rv .rv-ctabs{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:flex-end;flex:1;min-width:0}
-.rv .rv-ctab{position:relative;display:inline-grid;place-items:center;height:30px;padding:0 13px 0 18px;border:0;background:none;color:var(--rv-ink2);font:650 12.5px/1 var(--rd-ui-font,system-ui);white-space:nowrap;cursor:pointer;isolation:isolate;transition:transform .2s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}
+.rv .rv-ctabs{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:flex-end;flex:none;min-width:0}
+.rv .rv-ctab{position:relative;display:inline-block;box-sizing:border-box;max-width:180px;height:30px;padding:0 13px 0 18px;border:0;background:none;color:var(--rv-ink2);font:650 12.5px/30px var(--rd-ui-font,system-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;isolation:isolate;transition:transform .2s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}
 .rv .rv-ctab>svg,.rv .rv-rowtag>svg,.rv .rv-search-art>svg,.rv .rv-row-card>svg{position:absolute;inset:0;width:100%;height:100%;z-index:-1}
 .rv .rv-ctab .fr-fill{fill:var(--rv-paper2)}.rv .rv-ctab[aria-pressed=true]{transform:translateY(-3px);color:var(--rv-ink)}.rv .rv-ctab[aria-pressed=true] .fr-fill{fill:var(--rv-kraft3)}.rv .rv-ctab:hover{transform:translateY(-2px)}
-.rv .rv-search{position:relative;flex:1 1 220px;display:flex;align-items:center;min-width:0;isolation:isolate}.rv .rv-search input{flex:1;min-width:0}.rv .rv-search .rv-searchgo{flex:none;margin-right:calc(3.4% + 2px)}
+.rv .rv-search{position:relative;flex:1 1 220px;display:flex;align-items:center;min-width:0;isolation:isolate}.rv .rv-search input{flex:1;min-width:0}.rv .rv-search .rv-searchgo{flex:none;margin-right:4px}
 /* the magnifier and the caret are inked lines (the room's rule above leaves every path unstroked unless its class strokes it) */
 .rv .rv-searchgo svg path,.rv .rv-slip .rv-caret path{stroke:currentColor;stroke-width:1.9}.rv .rv-search-art{position:absolute;inset:0;z-index:-1}.rv .rv-search-art .fr-fill,.rv .rv-row-card .fr-fill{fill:var(--rv-paper)}
-.rv .rv-search input{box-sizing:border-box;width:100%;min-height:38px;padding:8px calc(3.4% + 10px);border:0;background:none;color:var(--rv-ink);font:500 14px/1.4 var(--rd-ui-font,system-ui)}.rv .rv-search input:focus-visible{outline:2px dashed var(--rv-clay);outline-offset:2px}
+.rv .rv-search input{box-sizing:border-box;width:100%;min-height:38px;padding:8px 12px;border:0;background:none;color:var(--rv-ink);font:500 14px/1.4 var(--rd-ui-font,system-ui)}.rv .rv-search input:focus-visible{outline:2px dashed var(--rv-clay);outline-offset:2px}
 .rv .rv-searchgo{display:inline-grid;place-items:center;width:38px;height:38px;padding:0;border:0;background:none;color:var(--rv-ink);cursor:pointer;transition:transform .2s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}.rv .rv-searchgo:hover{transform:rotate(-8deg)}
 .rv .rv-listbar{align-items:center}
-.rv .rv-list .rv-row{isolation:isolate;margin:0 4px 9px 0;padding:12px calc(3% + 12px) 11px calc(3% + 22px);border-bottom:0}.rv .rv-list .rv-row::before{left:calc(3% + 9px)}.rv .rv-row-card{position:absolute;inset:0;z-index:-1;pointer-events:none}
+.rv .rv-list .rv-row{isolation:isolate;margin:0 4px 9px 0;padding:12px 16px 11px 26px;border-bottom:0}.rv .rv-list .rv-row::before{left:13px}.rv .rv-row-card{position:absolute;inset:0;z-index:-1;pointer-events:none}
 .rv .rv-row::before{left:9px}
 .rv .rv-rowpencil{display:inline-grid;place-items:center;width:46px;height:30px;padding:0;border:0;background:none;cursor:pointer;transition:transform .2s var(--rd-glide,cubic-bezier(.2,.8,.2,1))}.rv .rv-rowpencil .rv-pencilart{width:42px;height:auto}.rv .rv-rowpencil:hover{transform:rotate(-6deg) translateY(-1px)}
 .rv .rv-rowtag{position:relative;display:inline-grid;place-items:center;width:40px;height:28px;padding:0 0 0 9px;border:0;background:none;color:var(--rv-ink);font:800 13px/1 system-ui;letter-spacing:.08em;cursor:pointer;isolation:isolate}.rv .rv-rowtag .fr-fill{fill:var(--rv-paper2)}.rv .rv-rowtag[aria-expanded=true] .fr-fill{fill:var(--rv-kraft3)}
 .rv .rv-rowmenu{display:flex;gap:6px}
 .rv .rv-export{margin-top:6px;padding-top:12px;border-top:1px dashed var(--rv-blue)}
-.rv .rv-editor{display:grid;gap:12px;max-width:640px}.rv .rv-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rv .rv-editor{display:grid;gap:12px}.rv .rv-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .rv .rv-preview{font:500 13px/1.4 var(--rd-ui-font,system-ui)}.rv .rv-preview ul{margin:4px 0;padding-left:18px}
 
 /* ---------- 6 the card: a lined index card, turned over for real ---------- */
@@ -587,7 +587,8 @@
 
 /* ---------- 9 motion: Still keeps fades only; Motion off and reduced motion keep everything still ---------- */
 .rv-world[data-paused] *,.rd[data-art-rest] .rv-world *{animation-play-state:paused!important}
-.rd[data-motion-style=still] :is(.rv,.rv-world) :is(.rv-cardwrap,.rv-box,.rv-riser,.rv-sidebox,.rv-sticker,.rv-donestack,.rv-doneface,.rv-drawer,.rv-grade,.rv-editpencil,.rv-card-edit){animation:rv-fade .22s ease-out both!important}
+.rd[data-motion-style=still] :is(.rv,.rv-world) .rv-cardwrap, .rd[data-motion-style=still] :is(.rv,.rv-world) .rv-box, .rd[data-motion-style=still] :is(.rv,.rv-world) .rv-riser, .rd[data-motion-style=still] :is(.rv,.rv-world) .rv-sidebox, .rd[data-motion-style=still] :is(.rv,.rv-world) .rv-sticker, .rd[data-motion-style=still] :is(.rv,.rv-world) .rv-donestack, .rd[data-motion-style=still] :is(.rv,.rv-world) .rv-doneface, .rd[data-motion-style=still] :is(.rv,.rv-world) .rv-drawer, .rd[data-motion-style=still] :is(.rv,.rv-world) .rv-grade, .rd[data-motion-style=still] :is(.rv,.rv-world) .rv-editpencil, .rd[data-motion-style=still] :is(.rv,.rv-world) .rv-card-edit{animation:rv-fade .22s ease-out both!important}
 .rd[data-motion-style=still] .rv-world :is(.rv-heron,.rv-h-stand,.rv-h-up,.rv-h-down,.rv-leaf,.rv-motes>svg,.rv-chain,.rv-sweep,.rv-l-mid,.rv-l-near){animation:none!important}
-.rd[data-motion-style=off] :is(.rv,.rv-fly) *,.rd[data-motion-style=off] :is(.rv,.rv-fly,.rv-grow),.rd[data-feature-motion=off] :is(.rv,.rv-fly) *,.rd[data-feature-motion=off] :is(.rv,.rv-fly,.rv-grow){animation:none!important;transition:none!important}
-@media (prefers-reduced-motion:reduce){:is(.rv,.rv-fly) *,:is(.rv,.rv-fly,.rv-grow){animation:none!important;transition:none!important}}
+.rd[data-motion-style=off] .rv *, .rd[data-motion-style=off] .rv-fly *, .rd[data-motion-style=off] .rv, .rd[data-motion-style=off] .rv-fly, .rd[data-motion-style=off] .rv-grow, .rd[data-feature-motion=off] .rv *, .rd[data-feature-motion=off] .rv-fly *, .rd[data-feature-motion=off] .rv, .rd[data-feature-motion=off] .rv-fly, .rd[data-feature-motion=off] .rv-grow{animation:none!important;transition:none!important}
+@media (prefers-reduced-motion:reduce){:is(.rv,.rv-fly) *, .rv, .rv-fly, .rv-grow{animation:none!important;transition:none!important}}
+.rv .rv-fold{width:auto;padding:0 13px}.rv .rv-fold-word{font:600 13px/1 var(--rd-ui-font,"Segoe UI",system-ui);white-space:nowrap}

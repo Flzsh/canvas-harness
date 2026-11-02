@@ -1,6 +1,7 @@
 /*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. Third-party components retain their respective attribution. */
 (function(root){
  const paths={
+  braces:'M9 4Q6 4 6 7V10Q6 12 4 12Q6 12 6 14V17Q6 20 9 20M15 4Q18 4 18 7V10Q18 12 20 12Q18 12 18 14V17Q18 20 15 20',
   bookmark:'M6 3.5Q12 2.8 18 3.5V21l-6-4-6 4V3.5ZM9 7h6',
   calculator:"M5 3h14v18H5zM8 6h8v4H8zM8 14h1M12 14h1M16 14h.01M8 18h1M12 18h1M16 18h.01",
   keyboard:"M2 5h20v14H2zM5 9h1M9 9h1M13 9h1M17 9h1M5 13h1M9 13h1M13 13h1M17 13h1M7 16h10",

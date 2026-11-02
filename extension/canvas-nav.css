@@ -161,6 +161,8 @@ html.chn-nav[data-chn-layout=drawer] #header .ic-app-header__secondary-navigatio
 html.chn-nav[data-chn-layout=drawer] #header .ic-app-header__menu-list-link { margin-block: 0; padding-block: 3px; }
 html.chn-nav[data-chn-layout=drawer] #header .ic-app-header__menu-list-item--active > .ic-app-header__menu-list-link { margin-block: 4px 3px; padding-block: 5px; }
 html.chn-nav[data-chn-layout=drawer] #header .chn-ic { width: 29px; height: 29px; }
+/* its rows have no gap, so the hover card reaches past its own row a little: inside the row its bottom edge ran through the name */
+html.chn-nav[data-chn-layout=drawer] #header .ic-app-header__menu-list-item:not(.ic-app-header__menu-list-item--active) > .ic-app-header__menu-list-link > .chn-frames { inset: -3px 0 -4px; }
 html.chn-nav[data-chn-layout=drawer] #header .ic-app-header__logomark-container { padding-bottom: 6px; }
 /* the edge that brings it out, with a small drawn tab so it can be found */
 html.chn-nav .chn-edge { position: fixed; top: 0; bottom: 0; left: 0; width: 10px; z-index: 99; }

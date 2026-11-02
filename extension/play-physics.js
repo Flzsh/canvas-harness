@@ -222,6 +222,8 @@ function create(options = {}) {
     portals = pair.slice(0, 2).map(p => ({ ...p, size: clamp(finite(p.size, 80), 40, 220), angle: finite(p.angle, -Math.PI / 2) }));
     batch(() => { for (const b of bodies) if (!b.portalBlocked) wake(b); });
   }
+  // A portal has two faces and takes what comes at either: whatever goes in leaves the other portal by its front, moving outward. (From the back the turn is a half turn less, so the
+  // way through still points out of the front.) A body in the hand gets longer before it can go back in, or the hand still moving the same way would throw it straight back.
   function teleport(b, oldX, oldY) {
     if (portals.length !== 2 || b.portalBlocked || time < (b.portalUntil || 0)) return;
     for (let i = 0; i < 2; i++) {
@@ -231,27 +233,30 @@ function create(options = {}) {
         px = clamp(a.x, Math.min(width / 2, 4 + b.width / 2), Math.max(width / 2, width - 4 - b.width / 2)),
         py = clamp(a.y, Math.min(height / 2, 4 + b.height / 2), Math.max(height / 2, height - 4 - b.height / 2)),
         before = (oldX - px) * nx + (oldY - py) * ny,
-        after = (b.x - px) * nx + (b.y - py) * ny;
-      if (before < 0 || after > 0 || b.vx * nx + b.vy * ny >= 0) continue;
+        after = (b.x - px) * nx + (b.y - py) * ny,
+        along = b.vx * nx + b.vy * ny,
+        front = before >= 0 && after <= 0 && along < 0;
+      if (!front && !(before <= 0 && after >= 0 && along > 0)) continue;
       const fraction = before / (before - after || 1), tangent = -(oldX + (b.x - oldX) * fraction - a.x) * ny + (oldY + (b.y - oldY) * fraction - a.y) * nx;
       if (Math.abs(tangent) > a.size / 2) continue;
       const out = portals[1 - i],
-        rotation = out.angle - a.angle + Math.PI,
+        rotation = out.angle - a.angle + (front ? Math.PI : 0),
         c = Math.cos(rotation),
         s = Math.sin(rotation),
         vx = b.vx,
         ex = Math.cos(out.angle),
         ey = Math.sin(out.angle),
         clearance = Math.abs(ex) * b.width / 2 + Math.abs(ey) * b.height / 2 + 6,
-        offset = clamp(-tangent, -out.size * .4, out.size * .4);
+        offset = clamp(front ? -tangent : tangent, -out.size * .4, out.size * .4);
+      unpile(b);
       b.vx = vx * c - b.vy * s;
       b.vy = vx * s + b.vy * c;
       b.x = out.x + ex * clearance - ey * offset;
       b.y = out.y + ey * clearance + ex * offset;
       b.angle += rotation * 180 / Math.PI;
-      b.portalUntil = time + .045;
+      b.portalUntil = time + (b.dragged ? .4 : .045);
       b.teleports++;
-      if (!loopers.includes(b)) { loopers.push(b); if (loopers.length > 60) { const oldest = loopers.shift(); oldest.portalBlocked = true; settle(oldest, 'bottom'); } }
+      if (!loopers.includes(b)) { loopers.push(b); while (loopers.length > 60) { const oldest = loopers.shift(); if (oldest.awake) { oldest.portalBlocked = true; settle(oldest, 'bottom'); } } }
       return;
     }
   }

@@ -31,11 +31,13 @@
   feature('review-deck','Review deck','Extras',['review-deck-model.js','review-deck-art.js','review-deck.js'],['review-deck.css'],['dashboard']),
   feature('grade-impact','Grade impact','Extras',['grade-impact-art.js','grade-impact.js'],['grade-impact.css'],['grades']),
   feature('play','Play & submission celebrations','Extras',['submit-celebrate.js']),
+  feature('developer','Developer tools','Extras',['developer.js'],[],['tools']),
   feature('ai','AI context & handoff','Extras',['ai-context.js','ai-source.js'],[],['tools']),
  ];
  // Retained public modules keep their relative order; new helpers precede their consumers.
  const order=[
    "site.js",
+   "developer.js",
    "core.js",
    "api.js",
    "personal-work.js",
@@ -215,7 +217,7 @@
  ];
  const ids=catalogue.map(f=>f.id),known=new Set(ids);
  catalogue.find(f=>f.id==='pony').files.assets=['biscuit-rules/basic.json','biscuit-rules/more.json','biscuit-rules/most.json','biscuit-rules/school-language.json'];
- const optIn=new Set(['biscuit-more-rules','focus-room','review-deck','grade-impact']);
+ const optIn=new Set(['biscuit-more-rules','focus-room','review-deck','grade-impact','developer']);
  const presets={full:ids.filter(id=>!optIn.has(id)),lite:['dashboard','planner','grades','math','arrange','tools','gpa','native-appearance']};
  for(const entry of catalogue)entry.presets=[...(presets.full.includes(entry.id)?['full']:[]),...(presets.lite.includes(entry.id)?['lite']:[])];
  const unique=values=>[...new Set(Array.isArray(values)?values.filter(id=>known.has(id)):[])];

@@ -208,11 +208,13 @@
   };
   function R(a,b){return a+Math.random()*(b-a);}
   function RI(a,b){return Math.floor(R(a,b+1));}
+  // (the rule for every way in, warm() and a room opened by something other than a press: before the page has had a press
+  // or a key the browser will not start audio and logs an error, so nothing is made; the room's first press starts the sound)
   function ensure(){
-   if(!AC)return null;
+   if(!AC||!ctx&&win?.navigator?.userActivation?.hasBeenActive===false)return null;
    try{
      if(!ctx){ctx=new AC();master=ctx.createGain();master.gain.value=0;master.connect(ctx.destination);}
-     if(ctx.state==='suspended')ctx.resume()?.catch?.(()=>{});
+     if(ctx.state==='suspended'&&win?.navigator?.userActivation?.hasBeenActive!==false)ctx.resume()?.catch?.(()=>{});
    }catch{ctx=null;}
    return ctx;
   }
@@ -282,7 +284,7 @@
   // Only once the page has had a press or a key: made before that, the browser will not start it and logs "The
   // AudioContext was not allowed to start" (the owner's extension error page, 2026-10-29). The press on Room itself
   // (pointerdown, which counts as one) still makes it ahead of the click.
-  function warm(){if(!ctx&&AC&&win?.navigator?.userActivation?.hasBeenActive!==false)try{ensure();}catch{}}
+  function warm(){if(!ctx)try{ensure();}catch{}}
   return {play,stop,setLevel,chime,whistle,thin,warm,get playing(){return !!current;},get place(){return current?.place||'';}};
  }
  // ---------------------------------------------------------------- one room per dashboard
@@ -328,17 +330,20 @@
   // 0.11 s, against 6 and 2 ms for the opacity), the off half in the middle of the fold. The room covers the page and
   // takes every press (it is a modal dialog), and its own Tab keeps the keys inside it.
   const HIDE=[['opacity','0'],['will-change','opacity']];
-  let layerTimer=0,layerIdle=0;
+  // (a fold restores twice, as it starts and as it ends, and the room can open again before the layers are let go: letGo
+  // keeps what is waiting, with the values from before the room, so the page's own layering is never left changed)
+  let layerTimer=0,layerIdle=0;const letGo=new Map();
   function restore(){
    for(const [node,value]of hidden){
      if(value.aria===null)node.removeAttribute?.('aria-hidden');else node.setAttribute?.('aria-hidden',value.aria);
      for(const [prop,[was,priority]] of value.props)if(prop!=='will-change'){if(was)node.style?.setProperty?.(prop,was,priority);else node.style?.removeProperty?.(prop);}
    }
-   const back=[...hidden];hidden.clear();
+   for(const [node,value] of hidden)letGo.set(node,value);hidden.clear();
    const free=()=>{
      layerIdle=0;
-     for(const [node,value] of back){
+     for(const [node,value] of letGo){
        if(hidden.has(node))continue;
+       letGo.delete(node);
        const [was,priority]=value.props.get('will-change')||['',''];
        if(was)node.style?.setProperty?.('will-change',was,priority);else node.style?.removeProperty?.('will-change');
      }
@@ -349,11 +354,16 @@
   function hideSiblings(){
    for(const node of Array.from(container.children||[])){
     if(node===panel||node.classList?.contains('tk-starframes'))continue;
-    if(!hidden.has(node))
-      hidden.set(node,{
+    if(!hidden.has(node)){
+      const value={
         aria:node.getAttribute?.('aria-hidden')??null,
         props:new Map(HIDE.map(([prop])=>[prop,[node.style?.getPropertyValue?.(prop)||'',node.style?.getPropertyPriority?.(prop)||'']]))
-      });
+      },
+        waiting=letGo.get(node);
+      if(waiting)value.props.set('will-change',waiting.props.get('will-change'));
+      letGo.delete(node);
+      hidden.set(node,value);
+    }
     if(node.getAttribute?.('aria-hidden')!=='true')node.setAttribute?.('aria-hidden','true');
     for(const [prop,value] of HIDE)if(node.style?.getPropertyValue?.(prop)!==value)node.style?.setProperty?.(prop,value,'important');
    }
@@ -450,7 +460,7 @@
      return shell;
    });
    target.replaceChildren(...shells);
-   let cancelled=false,at=0,parsed=0;const queue=[],marks=[],ready=shells.map(()=>new Promise(r=>marks.push(r)));
+   let cancelled=false,at=0,parsed=0,share=BUDGET;const queue=[],marks=[],ready=shells.map(()=>new Promise(r=>marks.push(r)));
    function expand(i){
     const t=make();t.innerHTML=parts[i];const ground=t.content.firstElementChild;
     for(const child of [...(ground?.childNodes||[])]){
@@ -472,7 +482,15 @@
     let spent=0;
     while(spent<limit){
      if(at>=queue.length){if(parsed>=parts.length)return false;expand(parsed++);spent+=parts[parsed-1].length/6;continue;}
-     const item=queue[at++];if(item.end){shells[item.i]?.removeAttribute('data-fr-filling');marks[item.i]();if(item.i===0&&limit===Infinity)return true;continue;}
+     const item=queue[at++];
+     if(item.end){
+       const shell=shells[item.i];
+       shell?.removeAttribute('data-fr-filling');
+       if(limit!==Infinity&&share>=BUDGET&&motion()==='gentle')shell?.animate?.([{opacity:0},{opacity:1}],{duration:280,easing:'ease-out'});
+       marks[item.i]();
+       if(item.i===0&&limit===Infinity)return true;
+       continue;
+     }
      shells[item.i].append(item.node);spent+=item.w;
     }
     return true;
@@ -480,7 +498,7 @@
    // a stop (a rebuild, the room closing) lets everyone waiting on a ground go on
    const stop=()=>{if(cancelled)return;cancelled=true;for(const shell of shells)shell?.removeAttribute('data-fr-filling');for(const mark of marks)mark();};
    // the share follows the machine: a slow frame halves the next share, a quick one lets it grow back
-   let share=BUDGET,last=0;
+   let last=0;
    const step=t=>{
      if(cancelled)return;
      if(!target.isConnected){stop();return;}
@@ -1301,7 +1319,7 @@
    return false;
   }
   function keydown(event){
-   if(!panel)return false;const target=event.composedPath?.()[0]||event.target;
+   if(!panel)return false;const target=event.composedPath?.()[0]||event.target;if(settled&&!closing&&event.key!=='Escape')startSound(opening);
    if(target?.classList?.contains?.('fr-knob')){
      const step={ArrowUp:.05,ArrowRight:.05,ArrowDown:-.05,ArrowLeft:-.05,PageUp:.2,PageDown:-.2}[event.key];
      if(step!==undefined||event.key==='Home'||event.key==='End'){event.preventDefault?.();setVolume(event.key==='Home'?0:event.key==='End'?1:shared.prefs.volume+step,false);return true;}
@@ -1324,7 +1342,12 @@
   const ready=event=>{if(dead)return;const t=event.composedPath?.()[0]||event.target;
    if(!panel){if(!returning&&t?.closest?.('[data-rd-action="room-open"]')){sound.warm();prebuild();}return;}
    const card=!closing&&pickerOpen?t?.closest?.('[data-fr-act="place"]'):null;if(card&&panel.contains?.(card))prepare(card.dataset.place);};
-  const pressed=event=>{if(dead||panel)return;const t=event.composedPath?.()[0]||event.target;if(t?.closest?.('[data-rd-action="room-open"]'))sound.warm();};
+  const pressed=event=>{
+    if(dead)return;
+    if(panel){if(settled&&!closing)startSound(opening);return;}
+    const t=event.composedPath?.()[0]||event.target;
+    if(t?.closest?.('[data-rd-action="room-open"]'))sound.warm();
+  };
   container.addEventListener?.('pointerover',ready,{passive:true});container.addEventListener?.('focusin',ready);container.addEventListener?.('pointerdown',pressed,{passive:true});
   return {open,close,sync,click,keydown,isOpen:()=>!!panel&&!closing,lastPause:()=>lastPause,
    destroy(){

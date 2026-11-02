@@ -16,6 +16,18 @@
 - A Chromebook or a small laptop gets the same tools at a lighter cost, with nothing to turn on.
 - Every window size: the top bar stays one row in half and quarter windows, and the tabs scroll sideways when it runs out of room. Tools and Make it yours float over the page below 1720 px. A short window keeps the heading to one line, and the pony is smaller in a small window.
 - A part of Canvas that a teacher hid no longer stops a whole load, and courses that have not opened yet are left out.
+- Black hole grows behind the page before it breaks through. A drawn disk and a cloud of light then pull in everything on the screen, the menus and sidebars too, and the page is empty when it closes.
+- Foil sweeps a film in the foil card's own colours over the page before it folds it flat. Bomb's fire is painted, and Railgun's shot is one beam of light that cuts a lit valley.
+- Laser: every closed part of a cut drops out, a fast swipe cuts everything it crosses, and a picture parts along the beam.
+- Balloons rise from wherever you click and carry off the nearest words. Portals pull in the words around them, not only words you drag through.
+- Painter's paint dries in about a second and a half, so the words it wakes stay in view.
+- Badges and icons go with the words. An open Canvas menu stays where it is while a tool runs, and its hidden hover cards no longer fly as empty frames.
+- Focus room: its sound starts with your first press in the room.
+- Canvas's own pages: the side buttons are drawn with the pen line, and Canvas's phone menus stay inside the window.
+- Modules: a module's name keeps its room when Tools is open beside the page, and your progress shows again at once when you come back.
+- PDF reader: a reading ruler (L).
+- Course hub: pages a teacher has not shared no longer show as errors.
+- Developer tools, off until you switch it on: a read-only tab in Tools with the build, what is switched on, the settings you changed, the Canvas sync, speed, storage and errors from Canvas Harness's own files. **Copy report** puts it on your clipboard for a bug report, without names, coursework or your school address. Thanks to @hellyeahboys666 for the idea in #65.
 
 ## 3.8.1 - 2026-10-29
 

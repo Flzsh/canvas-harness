@@ -310,6 +310,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       state: submissionState(submission, submissionTypes),
       missing: submission ? submission.missing === true : false,
       late: submission ? submission.late === true : false,
+      pointsDeducted: submission ? finiteNumber(submission.points_deducted) : null,
+      secondsLate: submission ? finiteNumber(submission.seconds_late) : null,
       redoRequested: submission ? submission.redo_request === true : false,
       hasSubmission: hasSubmissionEvidence(submission),
       locked: raw.locked_for_user === true || raw.locked === true,

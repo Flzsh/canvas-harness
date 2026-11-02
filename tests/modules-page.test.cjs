@@ -375,10 +375,16 @@ test('an Up next slip the progress tracker hides is not shown by the slip style'
 });
 test('module progress has its own room: the bar is spaced, hidden buttons stay hidden, and each tick sits clear of its icon',()=>{
  const css=read('modules-page.css'),rule=re=>css.split('\n').find(line=>re.test(line))||'';
- assert.match(rule(/^html\.reserve-modules :is\(\.header-bar,\.header-bar-right\)\.ch-modprog-progress\{/),/display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px/,'the course line is spaced');
+ assert.match(rule(/^html\.reserve-modules #content :is\(\.header-bar,\.header-bar-right\)\.ch-modprog-progress\{/),/display:flex;flex:1 1 320px;flex-wrap:wrap;align-items:center;gap:8px 12px/,'the course line is spaced');
+ assert.match(rule(/^html\.reserve-modules #content \.header-bar:has\(>\.ch-modprog-progress\)\{/),/background:none\}$/,'the page row has no band: the theme\'s band is beaten by #content');
+ assert.match(rule(/::before,html\.reserve-modules #content/),/\{content:none\}$/,'Canvas\'s clearfix is no row item, so a wrapped line starts level with the first');
+ assert.match(rule(/\.ig-header:has\(\.ch-modprog-module-progress:not\(\[hidden\]\)\)\{/),/background-image:var\(--md-rule\)/,'the drawn hatch gives way to a module\'s progress label');
+ assert.ok(read('modules-page.js').replace(/\s+/g,'').includes("closest?.('.header-bar');if(head)head.prepend(bar)"),'the progress joins Collapse All\'s row');
+ const meter=rule(/\.ch-modprog-meter\{-webkit-appearance/);assert.ok(meter.indexOf('%232B2A27')<meter.indexOf('#9CCB8E'),'the ink is the top layer of the meter, so the fill can never cover the line');assert.match(meter,/calc\(\(100% - 8px\) \* var\(--md-done,0\)\)/,'the fill stops short of the line at either end');
+ assert.match(rule(/\.ch-modprog-meter::-webkit-progress-value/),/\{background:none\}$/,'the bar\'s own fill is off');
  assert.match(rule(/\.ch-modprog-progress \[hidden\]/),/\{display:none!important\}$/,'Retry and Continue stay hidden while the tracker hides them (Canvas .btn would show them)');
  assert.match(rule(/\.ig-row>\.ch-modprog-check\{/),/flex:none;[^}]*width:32px;height:32px;margin:0 8px 0 0;padding:0/,'the tick keeps its own width and a gap before the item icon');
  assert.match(rule(/\.ch-modprog-check i\.icon-unpublished::before\{/),/content:""!important;[^}]*url\("data:image\/svg\+xml/,'not done is a drawn ring, not Canvas\'s unpublished sign');
- assert.match(rule(/\.ch-modprog-hide\[aria-pressed=true\]\{/),/background:#E4F1E7/,'Hide finished looks pressed while it is on');
+ assert.match(rule(/\.ch-modprog-hide\[aria-pressed=true\]::before\{/),/background:#E4F1E7/,'Hide finished looks pressed while it is on');
  assert.match(rule(/\.ch-modprog-module-progress li\{/),/display:inline-flex;align-items:center;gap:8px/,'a module\'s count, bar and Mark all done sit apart');
 });

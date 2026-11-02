@@ -2,19 +2,30 @@
    changes the look: each module a paper card whose name sits on a paper label, ink icons (course-nav-art), pink due
    slips, green stamps for finished items, a drawn padlock for locked ones. Light only, like Canvas's own page.
    Every rule is gated by html.reserve-modules (modules-page.js) and scoped to #context_modules or its header bar. */
-html.reserve-modules #context_modules{--md-ink:#2B2A27;--md-paper:#FFFDF8;--md-line:#E2DED3;--md-hover:#F6F2E8;--md-head:#F2EBDF;--md-wash:#E6C478;--md-muted:#5E5D59;--md-clay:#A9522F;--md-slip:#F7D6CF}
+html.reserve-modules #context_modules,html.reserve-modules :is(.header-bar,.header-bar-right){--md-ink:#2B2A27;--md-paper:#FFFDF8;--md-line:#E2DED3;--md-hover:#F6F2E8;--md-head:#F2EBDF;--md-wash:#E6C478;--md-muted:#5E5D59;--md-clay:#A9522F;--md-slip:#F7D6CF;--md-oat:#E3DACC}
+/* the drawn hand (the art skill's rules): nothing here is a ruled box. An outline is the study cards' pen frame, a wash sits a
+   little off its outline, a rule is one wobbling stroke */
+html.reserve-modules #context_modules,html.reserve-modules :is(.header-bar,.header-bar-right){--md-pen:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23000' stroke-width='3.6' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E");--md-pen-small:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23000' stroke-width='4.8' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E");--md-rule:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 6' preserveAspectRatio='none'%3E%3Cpath fill='none' stroke='%232B2A27' stroke-width='1.7' stroke-linecap='round' vector-effect='non-scaling-stroke' d='M1 3.2C90 2.1 170 4.1 260 3C350 2 430 4.2 520 3.1C552 2.7 578 3.4 599 2.9'/%3E%3C/svg%3E");--md-rule-soft:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 6' preserveAspectRatio='none'%3E%3Cpath fill='none' stroke='%23C9C5BA' stroke-width='1.2' stroke-linecap='round' vector-effect='non-scaling-stroke' d='M1 3.2C90 2.1 170 4.1 260 3C350 2 430 4.2 520 3.1C552 2.7 578 3.4 599 2.9'/%3E%3C/svg%3E")}
+html.reserve-modules #context_modules .context_module::after,html.reserve-modules #context_modules .context_module>.ig-header .name::after,html.reserve-modules :is(.header-bar,.header-bar-right) :is(.btn,button.btn,a.btn)::after,html.reserve-modules #context_modules .ch-modprog-all::after,html.reserve-modules #context_modules .ig-details .due_date_display::after,html.reserve-modules #context_modules .context_module>.ig-header .requirements_message:not(.ch-modprog-module-progress) li::after{content:"";position:absolute;inset:0;border:12px solid transparent;pointer-events:none;background:var(--md-ink);-webkit-mask-box-image:var(--md-pen) 30 30 30 30 stretch;mask-border:var(--md-pen) 30 30 30 30 stretch;-webkit-mask-box-image-width:12px}
+html.reserve-modules #context_modules :is(.ch-modprog-all,.ig-details .due_date_display)::after,html.reserve-modules #context_modules .context_module>.ig-header .requirements_message:not(.ch-modprog-module-progress) li::after{border-width:9px;-webkit-mask-box-image-source:var(--md-pen-small);mask-border-source:var(--md-pen-small);-webkit-mask-box-image-width:9px}
+html.reserve-modules #context_modules .context_module>.ig-header .name::before,html.reserve-modules :is(.header-bar,.header-bar-right) :is(.btn,button.btn,a.btn)::before,html.reserve-modules #context_modules .ch-modprog-all::before,html.reserve-modules #context_modules .ig-details .due_date_display::before,html.reserve-modules #context_modules .context_module>.ig-header .requirements_message:not(.ch-modprog-module-progress) li::before{content:"";position:absolute;inset:3px 1px 1px 3px;z-index:-1;border-radius:4px 7px 5px 6px;background:var(--md-paper)}
 
-/* the module: a paper card with an ink edge and a drawn offset shadow */
-html.reserve-modules #context_modules .context_module{margin:0 0 22px;border:1.6px solid var(--md-ink);border-radius:12px;background:var(--md-paper);box-shadow:3px 4px 0 rgb(43 42 39 / .10);overflow:hidden}
+html.reserve-modules #content .item-group-container{background:none}
+
+/* the module: a paper card with a drawn pen edge and a drawn offset shadow */
+html.reserve-modules #context_modules .context_module{position:relative;margin:0 0 22px;padding:0;border:0;border-radius:13px;background:var(--md-paper);box-shadow:3px 4px 0 rgb(43 42 39 / .10);overflow:hidden}
+html.reserve-modules #context_modules .context_module::after{inset:-1.6px;border-width:14px;-webkit-mask-box-image-width:14px}
 
 /* its header: Canvas's light bar warmed to paper, the name on a label (a wash set off its ink edge, like the menu bar's
    drawings); Canvas's collapse button, name, requirement and status stay */
-html.reserve-modules #context_modules .context_module>.ig-header{position:relative;display:flex;align-items:center;gap:10px;min-height:54px;margin:0;padding:10px 18px 10px 14px;border:0;border-bottom:1.6px solid var(--md-ink);border-radius:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 16'%3E%3Cg fill='none' stroke='%232B2A27' stroke-width='1.6' stroke-linecap='round' opacity='.45'%3E%3Cpath d='M6 14.5l3.4-11'/%3E%3Cpath d='M11.6 14.8l3.2-10.6'/%3E%3Cpath d='M17.2 14.4l3.3-10.9'/%3E%3C/g%3E%3C/svg%3E") no-repeat right 16px bottom 9px/24px 15px,var(--md-head);color:var(--md-ink)}
-html.reserve-modules #context_modules .context_module>.ig-header .name{display:inline-block;flex:0 1 auto;min-width:0;max-width:calc(100% - 20px);box-sizing:border-box;padding:3px 12px 4px;margin-inline-start:4px;border:1.4px solid var(--md-ink);border-radius:5px 7px 4px 6px;background:#FFFDF6;box-shadow:2.5px 3px 0 var(--md-wash);font:700 16px/1.3 Literata,Georgia,serif;letter-spacing:-.01em;color:var(--md-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;transform:rotate(-.6deg)}
+html.reserve-modules #context_modules .context_module>.ig-header{position:relative;display:flex;flex-wrap:nowrap;box-sizing:border-box;align-items:center;gap:10px;min-height:54px;margin:0;padding:8px 18px 8px 14px;border:0;border-radius:0;background:var(--md-rule) no-repeat left bottom/100% 6px,url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 16'%3E%3Cg fill='none' stroke='%232B2A27' stroke-width='1.6' stroke-linecap='round' opacity='.45'%3E%3Cpath d='M6 14.5l3.4-11'/%3E%3Cpath d='M11.6 14.8l3.2-10.6'/%3E%3Cpath d='M17.2 14.4l3.3-10.9'/%3E%3C/g%3E%3C/svg%3E") no-repeat right 16px bottom 9px/24px 15px,var(--md-head);color:var(--md-ink)}
+html.reserve-modules #context_modules .context_module.collapsed_module>.ig-header{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 16'%3E%3Cg fill='none' stroke='%232B2A27' stroke-width='1.6' stroke-linecap='round' opacity='.45'%3E%3Cpath d='M6 14.5l3.4-11'/%3E%3Cpath d='M11.6 14.8l3.2-10.6'/%3E%3Cpath d='M17.2 14.4l3.3-10.9'/%3E%3C/g%3E%3C/svg%3E")}
+html.reserve-modules #context_modules .context_module>.ig-header .name{display:inline-block;flex:0 1 auto;min-width:0;max-width:calc(100% - 20px);box-sizing:border-box;position:relative;padding:5px 15px 6px 14px;margin-inline-start:4px;border:0;background:none;font:700 16px/1.3 Literata,Georgia,serif;letter-spacing:-.01em;color:var(--md-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;transform:rotate(-.6deg)}
 html.reserve-modules #context_modules .context_module>.ig-header :is(.collapse_module_link,.expand_module_link){color:var(--md-ink);position:relative;z-index:1}
+html.reserve-modules #context_modules .context_module>.ig-header .name::before{inset:4px 5px 4px 4px;background:#FFFDF6;box-shadow:2.5px 3px 0 var(--md-wash)}
 /* Canvas's title box is shorter than the label and clips it; the label cuts a long name short itself, so the box may show
    all of it (its width still bounded by the bar) */
-html.reserve-modules #context_modules .context_module>.ig-header :is(.collapse_module_link,.expand_module_link){min-width:0;height:auto;overflow:visible}
+html.reserve-modules #context_modules .context_module>.ig-header :is(.collapse_module_link,.expand_module_link){min-width:0;height:auto;margin:0;overflow:visible}
 /* Canvas's collapse arrow, drawn in ink; it turns to point right when the module is folded */
 html.reserve-modules #context_modules .context_module>.ig-header :is(.collapse_module_link,.expand_module_link) i:is(.icon-mini-arrow-down,.icon-mini-arrow-right,.icon-mini-arrow-end){display:inline-block;width:18px;height:18px;vertical-align:middle;background:center/contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath fill='none' stroke='%232B2A27' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4.2 6.6c1.6 1.5 3.2 3.1 4.9 4.6 1.5-1.6 3-3.1 4.7-4.7'/%3E%3C/svg%3E");transition:transform .18s ease}
 html.reserve-modules #context_modules .context_module>.ig-header :is(.collapse_module_link,.expand_module_link) i:is(.icon-mini-arrow-down,.icon-mini-arrow-right,.icon-mini-arrow-end)::before{content:none}
@@ -22,25 +33,26 @@ html.reserve-modules #context_modules .context_module>.ig-header :is(.collapse_m
 html.reserve-modules #context_modules .context_module>.ig-header .ig-header-admin{display:flex;flex:none;align-items:center;gap:10px;position:relative;z-index:1;white-space:nowrap}
 /* "Complete All Items": a small paper tag */
 html.reserve-modules #context_modules .context_module>.ig-header .requirements_message :is(.pill,ul){margin:0;padding:0;border:0;background:none;list-style:none}
-html.reserve-modules #context_modules .context_module>.ig-header .requirements_message li{display:inline-block;margin:0;padding:2px 9px;border:1.2px solid var(--md-ink);border-radius:4px;background:var(--md-paper);color:var(--md-ink);font:600 11.5px/1.5 "Segoe UI",system-ui,sans-serif;transform:rotate(-1.5deg);box-shadow:1px 2px 0 rgb(20 20 19 / .18)}
+html.reserve-modules #context_modules .context_module>.ig-header .requirements_message li{position:relative;display:inline-block;margin:0;padding:3px 10px;border:0;background:none;color:var(--md-ink);font:600 11.5px/1.5 "Segoe UI",system-ui,sans-serif;transform:rotate(-1.5deg)}
 html.reserve-modules #context_modules .context_module>.ig-header .prerequisites{position:relative;z-index:1;color:var(--md-muted);font-size:12px}
 /* a locked module: the bar greys and its label loses the wash */
-html.reserve-modules #context_modules .context_module.locked>.ig-header{background:#ECEAE4}
-html.reserve-modules #context_modules .context_module.locked>.ig-header .name{box-shadow:2.5px 3px 0 #D6D2C8;color:var(--md-muted)}
+html.reserve-modules #context_modules .context_module.locked>.ig-header{background-color:#ECEAE4}
+html.reserve-modules #context_modules .context_module.locked>.ig-header .name{color:var(--md-muted)}
+html.reserve-modules #context_modules .context_module.locked>.ig-header .name::before{box-shadow:2.5px 3px 0 #D6D2C8}
 
-/* the rows: paper, a dashed rule between them, a warm wash on hover; Canvas's own row layout and indents stay */
+/* the rows: paper, a soft drawn rule between them, a warm wash on hover; Canvas's own row layout and indents stay */
 html.reserve-modules #context_modules .context_module .ig-list{background:transparent}
-html.reserve-modules #context_modules .context_module_item>.ig-row{background:transparent;border:0;border-bottom:1px dashed var(--md-line);border-radius:0;box-shadow:none}
-html.reserve-modules #context_modules .context_module_item:last-child>.ig-row{border-bottom:0}
-html.reserve-modules #context_modules .context_module_item:not(.context_module_sub_header)>.ig-row:hover{background:var(--md-hover)}
+html.reserve-modules #content #context_modules .context_module_item>.ig-row{background:var(--md-rule-soft) no-repeat 14px bottom/calc(100% - 28px) 4px;border:0;border-radius:0;box-shadow:none}
+html.reserve-modules #content #context_modules .context_module_item:last-child>.ig-row{background-image:none}
+html.reserve-modules #content #context_modules .context_module_item:not(.context_module_sub_header)>.ig-row:hover{background-color:var(--md-hover)}
 html.reserve-modules #context_modules .context_module_item .ig-title{color:var(--md-ink);font-weight:600;text-decoration:none}
 html.reserve-modules #context_modules .context_module_item a.ig-title:is(:hover,:focus-visible){color:var(--md-clay);text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px}
 html.reserve-modules #context_modules .context_module_item a.ig-title:focus-visible{outline:2px solid var(--md-clay);outline-offset:3px;border-radius:3px}
 html.reserve-modules #context_modules .context_module_item .locked_title{color:var(--md-muted)}
 
 /* a text heading inside a module: small capitals over an ink rule */
-html.reserve-modules #context_modules .context_module_sub_header>.ig-row{border-bottom:0;padding-top:14px}
-html.reserve-modules #context_modules .context_module_sub_header .title{display:inline-block;padding-bottom:3px;border-bottom:1.6px solid var(--md-ink);color:var(--md-ink);font:700 12px/1.4 "Segoe UI",system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase}
+html.reserve-modules #content #context_modules .context_module_sub_header>.ig-row{background-image:none;padding-top:14px}
+html.reserve-modules #context_modules .context_module_sub_header .title{display:inline-block;padding-bottom:5px;background:var(--md-rule) no-repeat left bottom/100% 5px;color:var(--md-ink);font:700 12px/1.4 "Segoe UI",system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase}
 
 /* the item's type: the drawn icon replaces Canvas's icon glyph (still in the page, hidden from sight only) */
 html.reserve-modules #context_modules .ig-type-icon{position:relative;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px}
@@ -50,7 +62,8 @@ html.reserve-modules #context_modules .ig-type-icon .md-icon>svg{display:block;w
 
 /* details: the due date on a pink slip, points and requirements quiet beside it */
 html.reserve-modules #context_modules .ig-details{color:var(--md-muted)}
-html.reserve-modules #context_modules .ig-details .due_date_display{display:inline-block;padding:0 7px;border:1.2px solid var(--md-ink);border-radius:3px;background:var(--md-slip);color:var(--md-ink);font-weight:600;transform:rotate(-1deg)}
+html.reserve-modules #context_modules .ig-details .due_date_display{position:relative;display:inline-block;margin-inline-end:10px;padding:1px 9px 2px;border:0;background:none;color:var(--md-ink);font-weight:600;transform:rotate(-1deg)}
+html.reserve-modules #context_modules .ig-details .due_date_display::before{background:var(--md-slip)}
 html.reserve-modules #context_modules .ig-details .points_possible_display{color:var(--md-muted)}
 
 /* finished, locked: drawn marks in place of Canvas's glyphs (the glyph's title and the page's words stay) */
@@ -62,9 +75,10 @@ html.reserve-modules #context_modules :is(.module-item-status-icon,.completion_s
 /* in the header the finished stamp sits on a paper disc */
 html.reserve-modules #context_modules .ig-header .completion_status i.icon-check::before{border-radius:50%;background-color:var(--md-paper);box-shadow:0 0 0 2px var(--md-paper)}
 
-/* the page's own buttons above the modules: paper with an ink edge */
-html.reserve-modules :is(.header-bar,.header-bar-right) :is(.btn,button.btn,a.btn){border:1.4px solid var(--md-ink,#141413);border-radius:9px;background:#FFFDF8;color:#141413;box-shadow:2px 2px 0 rgb(20 20 19 / .14)}
-html.reserve-modules :is(.header-bar,.header-bar-right) :is(.btn,button.btn,a.btn):hover{background:#F6F2E8}
+/* the page's own buttons above the modules: paper with a drawn edge */
+html.reserve-modules :is(.header-bar,.header-bar-right) :is(.btn,button.btn,a.btn){position:relative;z-index:0;border:0;background:none;color:#141413;box-shadow:none;text-shadow:none}
+html.reserve-modules :is(.header-bar,.header-bar-right) :is(.btn,button.btn,a.btn)::before{box-shadow:1.5px 2px 0 var(--md-oat)}
+html.reserve-modules :is(.header-bar,.header-bar-right) :is(.btn,button.btn,a.btn):hover::before{background:var(--md-hover)}
 
 /* motion: the icons act once on hover (course-nav-art.css), never with reduced motion or Motion off */
 html.reserve-modules[data-md-motion=off] #context_modules .md-icon svg *{animation:none!important}
@@ -74,24 +88,39 @@ html.reserve-modules #context_modules .ig-details .due_date_display.md-empty,htm
 /* Module progress (modules-page.js, 3.8.1): the course's count, its bar, Hide finished, Continue and Retry spaced on one
    line; each module's count, bar and Mark all done on its label; a drawn ring to tick each item, clear of its icon.
    Canvas's .btn and its icon font are undone here, so nothing is squeezed, overlaps or shows while hidden. */
-html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0;padding:8px 2px 16px;border:0;background:none}
+/* the course's progress shares Canvas's row with Collapse All, on the page itself: the theme's band is taken off both, and
+   Canvas's clearfix too, which is a row item here and pushed the first item off the left edge a wrapped line starts on */
+html.reserve-modules #content .header-bar:has(>.ch-modprog-progress){display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 16px;min-height:0;margin:0 0 14px;padding:0;border:0;background:none}
+html.reserve-modules #content .header-bar:has(>.ch-modprog-progress)>.header-bar-right{flex:none;margin:0 0 0 auto;padding:0}
+html.reserve-modules #content :is(.header-bar,.header-bar-right).ch-modprog-progress{display:flex;flex:1 1 320px;flex-wrap:wrap;align-items:center;gap:8px 12px;min-width:0;min-height:0;margin:0 0 14px;padding:0;border:0;background:none}
+html.reserve-modules #content .header-bar>.ch-modprog-progress{margin:0}
+html.reserve-modules #content :is(.header-bar:has(>.ch-modprog-progress),.ch-modprog-progress)::before,html.reserve-modules #content :is(.header-bar:has(>.ch-modprog-progress),.ch-modprog-progress)::after{content:none}
 html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress [hidden],html.reserve-modules #context_modules .ch-modprog-module-progress [hidden],html.reserve-modules #context_modules .ch-modprog-module-progress[hidden]{display:none!important}
 html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress .ch-modprog-summary{color:#2B2A27;font:650 14px/1.3 "Segoe UI",system-ui,sans-serif;white-space:nowrap}
 html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress .ch-modprog-message{color:#5E5D59;font:500 13px/1.3 "Segoe UI",system-ui,sans-serif}
 html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress .ch-modprog-message:empty{display:none}
-html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress .btn{margin:0;padding:4px 12px;font:600 13px/1.35 "Segoe UI",system-ui,sans-serif;white-space:nowrap}
-html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress .ch-modprog-hide[aria-pressed=true]{border-color:#2E6B45;background:#E4F1E7;color:#2E6B45;box-shadow:inset 1px 2px 0 rgb(43 42 39 / .12)}
+html.reserve-modules #content .header-bar:has(>.ch-modprog-progress) .btn,html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress .btn{box-sizing:border-box;margin:0;padding:4px 12px;font:600 13px/1.35 "Segoe UI",system-ui,sans-serif;white-space:nowrap}
+html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress .ch-modprog-hide[aria-pressed=true]{color:#2E6B45}
+html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress .ch-modprog-hide[aria-pressed=true]::before{background:#E4F1E7}
+html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress .ch-modprog-hide[aria-pressed=true]::after{background:#2E6B45}
 html.reserve-modules :is(.header-bar,.header-bar-right).ch-modprog-progress .ch-modprog-continue{max-width:min(440px,100%);overflow:hidden;text-overflow:ellipsis}
-html.reserve-modules :is(.header-bar,.header-bar-right) .ch-modprog-meter,html.reserve-modules #context_modules .ch-modprog-meter{-webkit-appearance:none;appearance:none;flex:none;box-sizing:border-box;width:150px;height:10px;margin:0 6px 0 0;border:1.4px solid #2B2A27;border-radius:6px;background:#FFFDF8;overflow:hidden;vertical-align:middle}
-html.reserve-modules :is(.header-bar,.header-bar-right) .ch-modprog-meter::-webkit-progress-bar,html.reserve-modules #context_modules .ch-modprog-meter::-webkit-progress-bar{background:#FFFDF8}
-html.reserve-modules :is(.header-bar,.header-bar-right) .ch-modprog-meter::-webkit-progress-value,html.reserve-modules #context_modules .ch-modprog-meter::-webkit-progress-value{background:#6FAF84}
-html.reserve-modules :is(.header-bar,.header-bar-right) .ch-modprog-meter::-moz-progress-bar,html.reserve-modules #context_modules .ch-modprog-meter::-moz-progress-bar{background:#6FAF84}
+html.reserve-modules :is(.header-bar,.header-bar-right) .ch-modprog-meter,html.reserve-modules #context_modules .ch-modprog-meter{-webkit-appearance:none;appearance:none;flex:none;box-sizing:border-box;width:150px;height:12px;margin:0 6px 0 0;border:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 12' preserveAspectRatio='none'%3E%3Cpath fill='none' stroke='%232B2A27' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round' vector-effect='non-scaling-stroke' d='M8 1.4C42 .9 98 1.8 142 1.1C147.6 1.2 148.9 4.4 148.7 6.2C148.8 8.6 147 10.8 142.2 10.8C98 11.3 44 10.3 8 10.9C2.8 10.8 1.1 8.4 1.2 6C1.1 3.2 3.2 1.2 8.4 1.5C10.6 1.4 13 1 15 .8'/%3E%3C/svg%3E") center/100% 100% no-repeat,linear-gradient(#9CCB8E 0 0) 4px 50%/calc((100% - 8px) * var(--md-done,0)) calc(100% - 6px) no-repeat,url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 12' preserveAspectRatio='none'%3E%3Cpath fill='%23FFFDF8' stroke='none' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round' vector-effect='non-scaling-stroke' d='M8 1.4C42 .9 98 1.8 142 1.1C147.6 1.2 148.9 4.4 148.7 6.2C148.8 8.6 147 10.8 142.2 10.8C98 11.3 44 10.3 8 10.9C2.8 10.8 1.1 8.4 1.2 6C1.1 3.2 3.2 1.2 8.4 1.5C10.6 1.4 13 1 15 .8'/%3E%3C/svg%3E") center/100% 100% no-repeat;overflow:hidden;vertical-align:middle}
+html.reserve-modules :is(.header-bar,.header-bar-right) .ch-modprog-meter::-webkit-progress-bar,html.reserve-modules #context_modules .ch-modprog-meter::-webkit-progress-bar,html.reserve-modules :is(.header-bar,.header-bar-right) .ch-modprog-meter::-webkit-progress-value,html.reserve-modules #context_modules .ch-modprog-meter::-webkit-progress-value{background:none}
+html.reserve-modules :is(.header-bar,.header-bar-right) .ch-modprog-meter::-moz-progress-bar,html.reserve-modules #context_modules .ch-modprog-meter::-moz-progress-bar{background:none}
 html.reserve-modules #context_modules .context_module>.ig-header .ch-modprog-module-progress{flex:none;margin:0 0 0 auto}
-html.reserve-modules #context_modules .context_module>.ig-header .ch-modprog-module-progress li{display:inline-flex;align-items:center;gap:8px;padding:4px 5px 4px 11px;white-space:nowrap;transform:none}
-html.reserve-modules #context_modules .ch-modprog-module-progress .ch-modprog-meter{width:84px;height:8px;margin:0}
-html.reserve-modules #context_modules .ch-modprog-all{margin:0;padding:2px 9px;border:1.2px solid var(--md-ink);border-radius:7px;background:var(--md-paper);color:var(--md-ink);box-shadow:none;text-shadow:none;font:600 11.5px/1.4 "Segoe UI",system-ui,sans-serif}
-html.reserve-modules #context_modules .ch-modprog-all:hover:not(:disabled){background:var(--md-hover)}
+/* a narrow column (the Tools panel open beside it) gives the module's name the room: the progress takes a line of its own at the
+   right, and Canvas's empty prerequisite and completion blocks shrink, instead of the name cut to a few letters */
+html.reserve-modules #context_modules .context_module>.ig-header{flex-wrap:wrap;row-gap:4px}
+html.reserve-modules #context_modules .context_module>.ig-header :is(.prerequisites,.module_header_items){flex:0 1 auto;min-width:0}
+/* the bar's drawn hatch sits at its right end, where this label goes */
+html.reserve-modules #context_modules .context_module>.ig-header:has(.ch-modprog-module-progress:not([hidden])){background-image:var(--md-rule)}
+html.reserve-modules #context_modules .context_module.collapsed_module>.ig-header:has(.ch-modprog-module-progress:not([hidden])){background-image:none}
+html.reserve-modules #context_modules .context_module>.ig-header .ch-modprog-module-progress li{display:inline-flex;align-items:center;gap:8px;padding:0;white-space:nowrap;transform:none}
+html.reserve-modules #context_modules .ch-modprog-module-progress .ch-modprog-meter{width:84px;height:11px;margin:0}
+html.reserve-modules #context_modules .ch-modprog-all{position:relative;z-index:0;margin:0;padding:4px 11px 5px;border:0;background:none;color:var(--md-ink);box-shadow:none;text-shadow:none;font:600 11.5px/1.4 "Segoe UI",system-ui,sans-serif;transform:rotate(-1deg)}
+html.reserve-modules #context_modules .ch-modprog-all:hover:not(:disabled)::before{background:var(--md-hover)}
 html.reserve-modules #context_modules .ch-modprog-all:disabled{opacity:.45;cursor:default}
+html.reserve-modules #context_modules.ch-modprog-wait .context_module_item:not(.context_module_sub_header)>.ig-row::before{content:"";flex:none;width:40px}
 html.reserve-modules #context_modules .ig-row>.ch-modprog-check{flex:none;display:inline-grid;place-items:center;box-sizing:border-box;width:32px;height:32px;margin:0 8px 0 0;padding:0;border:0;border-radius:50%;background:none;box-shadow:none;line-height:0;cursor:pointer}
 html.reserve-modules #context_modules .ig-row>.ch-modprog-check:hover:not(:disabled){background:var(--md-hover)}
 html.reserve-modules #context_modules .ig-row>.ch-modprog-check:focus-visible{outline:2px solid var(--md-clay);outline-offset:1px}

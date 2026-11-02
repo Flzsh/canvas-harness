@@ -189,7 +189,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const initialUser=await verifyExpectedUser(accountId,signal);
       const errors=[];
       let modules=[],pages=[],files=[],frontPage=null,syllabusBody='';
-      function record(source,error){errors.push({source,message:String(error?.message||'Canvas could not load this source.')});}
+      function record(source,error){
+        errors.push({source,code:String(error?.code||''),message:String(error?.message||'Canvas could not load this source.'),...(['403','404'].includes(String(error?.code))?{hidden:true}:{})});
+      }
       async function source(sourceName,fn,{ignore404=false}={}){
         try{await fn();}
         catch(error){
@@ -297,7 +299,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const initialUser=await verifyExpectedUser(accountId,signal);
       const errors=[];
       let announcements=[],tabs=[];
-      function record(source,error){errors.push({source,message:String(error?.message||'Canvas could not load this source.')});}
+      function record(source,error){errors.push({source,code:String(error?.code||''),message:String(error?.message||'Canvas could not load this source.')});}
       async function source(sourceName,fn){
         try{await fn();}
         catch(error){if(fatalSourceError(error))throw error;record(sourceName,error);}
@@ -327,7 +329,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         conversations=data.slice(0,100);
       }catch(error){
         if(fatalSourceError(error))throw error;
-        errors.push({source:'conversations',message:String(error?.message||'Canvas could not load inbox summaries.')});
+        errors.push({source:'conversations',code:String(error?.code||''),message:String(error?.message||'Canvas could not load inbox summaries.')});
       }
       await verifyExpectedUser(accountId,signal,initialUser.id);
       return {origin:base.origin,accountId,conversations,errors,truncated,fetchedAt:new Date().toISOString()};
@@ -362,7 +364,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
             for (const row of rows) if (row.published !== false && row.workflow_state !== 'deleted') assignments.push({...row,course_id:course.id});
           } catch(error) {
             if (error.code === 'auth' || error.code === 'cancelled') {fatal=error;throw error;}
-            errors.push({courseId:String(course.id),courseName:String(course.name || 'Course'),message:error.message});
+            errors.push({courseId:String(course.id),courseName:String(course.name || 'Course'),code:String(error?.code||''),message:error.message});
           }
           if(!fatal && !signal?.aborted) onProgress({completed:++completed,total:courses.length,courseName:course.name});
         }

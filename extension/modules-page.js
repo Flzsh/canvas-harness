@@ -105,7 +105,7 @@
  }
  function createProgress({client,createStore,courseId,origin=root.ReserveSite?.origin()||client?.origin,onChange=()=>{},canUse=()=>true}={}){
   const c=id(courseId);if(!c)throw Error('Invalid Canvas course.');
-  let abort=new AbortController(),dead=false,version=0,store=null,unsubscribe=null,loading=null,queue=Promise.resolve();
+  let abort=new AbortController(),dead=false,version=0,store=null,unsubscribe=null,loading=null,queue=Promise.resolve(),held=null;
   let state={ready:false,busy:false,accountId:null,modules:[],subs:new Map(),marks:{},hideFinished:false,error:'',warning:''};
   const get=()=>({...state,marks:{...state.marks}}),emit=()=>{if(!dead)onChange(get());};
   function alive(turn){if(dead||turn!==version||!canUse())throw Object.assign(Error('Modules closed.'),{code:'cancelled'});}
@@ -121,10 +121,11 @@
   }
   function refresh(){
    if(dead)return Promise.resolve();if(loading)return loading;
-   const turn=++version;abort.abort();abort=new AbortController();discard();clear();state.busy=true;state.error='';emit();
+   const turn=++version,last=held;held=null;abort.abort();abort=new AbortController();discard();clear();state.busy=true;state.error='';emit();
    const operation=(async()=>{
     try{
-     const accountId=await verify(null,turn),loaded=await loadCourse(client,c,{signal:abort.signal});alive(turn);
+     const accountId=await verify(null,turn);if(last?.accountId===accountId){state={...state,...last};emit();}
+     const loaded=await loadCourse(client,c,{signal:abort.signal});alive(turn);
      const subs=submissions(loaded.assignments,accountId);store=createStore({accountId,origin});
      const data=await store.load();await verify(accountId,turn);
      state={...state,...saved(data),accountId,modules:loaded.modules,subs,warning:loaded.warning,ready:true};
@@ -167,6 +168,7 @@
     version++;
     abort.abort();
     loading=null;
+    if(state.ready){const {ready,accountId,modules,subs,marks,hideFinished,warning}=state;held={ready,accountId,modules,subs,marks,hideFinished,warning};}
     discard();
     clear();
     state.busy=false;
@@ -229,6 +231,7 @@
  }
  function paint(state=tracker?.get()){
   if(!state||!bar)return;
+  list.classList.toggle('ch-modprog-wait',!state.ready&&state.busy);
   const summary=bar.querySelector('.ch-modprog-summary'),
     meter=bar.querySelector('progress'),
     hide=bar.querySelector('.ch-modprog-hide'),
@@ -254,7 +257,7 @@
       text(all,'Mark all done');
     }
     text(tag.querySelector('.ch-modprog-count'),`${count.done} of ${count.total} done `);
-    const value=tag.querySelector('progress');attr(value,'max',count.total||1);attr(value,'value',count.done);
+    const value=tag.querySelector('progress');attr(value,'max',count.total||1);attr(value,'value',count.done);value.style?.setProperty?.('--md-done',count.total?count.done/count.total:0);
     const all=tag.querySelector('.ch-modprog-all');all.disabled=state.busy||count.done===count.total;all.hidden=count.total===0;tag.hidden=count.total===0;
     conceal(box.querySelector('.content'),state.hideFinished&&count.total>0&&count.done===count.total);
    }
@@ -288,19 +291,24 @@
     for(const element of list.querySelectorAll('.ch-modprog-module-progress,.ch-modprog-check,.ch-modprog-next,.ch-modprog-details'))element.remove();
     for(const element of [...hidden.keys()])conceal(element,false);
   }
-  text(summary,state.ready?`${done} of ${total} done`:state.busy?'Loading modules…':'');attr(meter,'max',total||1);attr(meter,'value',done);meter.hidden=!state.ready;
+  text(summary,state.ready?`${done} of ${total} done`:state.busy?'Loading modules…':'');
+  attr(meter,'max',total||1);
+  attr(meter,'value',done);
+  meter.style?.setProperty?.('--md-done',total?done/total:0);
+  meter.hidden=!state.ready;
   hide.disabled=!state.ready||state.busy;attr(hide,'aria-pressed',state.hideFinished);
-  const href=next?itemURL(next,course(),root.location.origin):null;
-  go.hidden=!href||state.busy;
-  if(href)attr(go,'href',href);else go.removeAttribute('href');
-  text(go,next?`Continue: ${next.title||''}`:'Continue');
+  const href=next?itemURL(next,course(),root.location.origin):null;go.hidden=!href;if(href)attr(go,'href',href);else go.removeAttribute('href');text(go,next?`Continue: ${next.title||''}`:'Continue');
   text(message,state.error||state.warning||(state.ready&&total>0&&done===total?'All caught up':''));retry.hidden=state.busy||!state.error;retry.disabled=state.busy;
  }
  const course=()=>id(/^\/courses\/(\d+)/.exec(root.location?.pathname||'')?.[1]);
  const action=operation=>{Promise.resolve(operation).catch(()=>{});};
  function startProgress(){
   if(!course()||!Core||!root.ReserveAPI?.createClient||!root.ReserveStorage?.createStore)return;
-  bar=node('div','header-bar ch-modprog-progress');attr(bar,'role','region');attr(bar,'aria-label','Module progress');list.parentNode.insertBefore(bar,list);
+  bar=node('div','header-bar ch-modprog-progress');
+  attr(bar,'role','region');
+  attr(bar,'aria-label','Module progress');
+  const head=doc.getElementById?.('expand_collapse_all')?.closest?.('.header-bar');
+  if(head)head.prepend(bar);else list.parentNode.insertBefore(bar,list);
   node('span','ch-modprog-summary',bar);const meter=node('progress','ch-modprog-meter',bar);attr(meter,'aria-label','Course module progress');
   const hide=node('button','btn btn-small ch-modprog-hide',bar);hide.type='button';text(hide,'Hide finished');node('a','btn btn-small ch-modprog-continue',bar);
   const message=node('span','ch-modprog-message',bar);attr(message,'role','status');const retry=node('button','btn btn-small ch-modprog-retry',bar);retry.type='button';text(retry,'Retry');

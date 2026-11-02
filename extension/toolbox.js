@@ -8,6 +8,7 @@
        quick:()=>!!root.ReserveQuickOpen?.entries,
        ai:()=>enabled('ai')&&!!root.CanvasHarnessAISource?.mount,
        gpa:()=>enabled('gpa')&&!!root.CanvasHarnessGPAUI?.create,
+       developer:()=>enabled('developer')&&!!root.ReserveDeveloper?.create,
        calculator:()=>true,
        plan:()=>true
      }[id]?.()??
@@ -16,7 +17,7 @@
  // A failed reminder draft remains protected even after its tool window is closed.
  if(enabled('tools')&&!root.ReserveSite?.vanillaPage(root.location))
    root.addEventListener?.('beforeunload',event=>{if(captureDrafts.size){event.preventDefault();event.returnValue='';}});
- const SECTIONS=[['quick','Quick open','search'],['ai','AI','book'],['calculator','Calculator','calculator'],['gpa','GPA','grades']];
+ const SECTIONS=[['quick','Quick open','search'],['ai','AI','book'],['calculator','Calculator','calculator'],['gpa','GPA','grades'],['developer','Developer','braces']];
  const sections=()=>SECTIONS.filter(([id])=>toolEnabled(id));
  const E=value=>root.ReserveUI.escapeHTML(value),I=name=>root.ReserveIcon(name,'rd-icon');
  const mod=/Mac|iP(hone|ad|od)/.test(root.navigator?.platform||'')?'⌘':'Ctrl';
@@ -24,7 +25,7 @@
   if(!enabled('tools')||root.ReserveSite?.vanillaPage(root.location))return null;
   container.dataset.featureMotion=enabled('motion')?'on':'off';
   const selectedSections=sections();
-  let toolMotion,dockResize,aiPanel,gpaPanel,captureDraft=null,capturing=false,captureUndo=null;
+  let toolMotion,dockResize,aiPanel,gpaPanel,developerPanel,captureDraft=null,capturing=false,captureUndo=null;
   let dialog,tool='quick',trigger,dead=false,collapsed=false,calculatorMode='graphing',query='',index=0,results=[],cacheLoading=false,cacheMessage='',status='';
   let personal=store.get();
   const draftKey=store.owner?.origin+':'+store.owner?.accountId;
@@ -116,7 +117,7 @@
    notifyDock();
    syncTabs(changed&&wasOpen&&!wasCollapsed);
    if(focus&&(changed||!wasOpen||wasCollapsed||!dialog.contains(active)))focusFirst();
-   if(tool==='quick')hydrate();if(tool==='ai')aiPanel?.update();if(tool==='gpa')gpaPanel?.update();
+   if(tool==='quick')hydrate();if(tool==='ai')aiPanel?.update();if(tool==='gpa')gpaPanel?.update();if(tool==='developer')developerPanel?.update();
   }
   // Biscuit hands a question to the same public composer. Opening it never presses Send.
   function askAI(question){
@@ -158,6 +159,7 @@
   function focusFirst(){
     if(tool==='ai'){aiPanel?.focus();return;}
     if(tool==='gpa'){gpaPanel?.focus();return;}
+    if(tool==='developer'){developerPanel?.focus();return;}
     const selector=tool==='quick'?'[data-ui-field="quick"]':tool==='calculator'?'[data-calc-mode="'+calculatorMode+'"]':'[name="title"]';
     body()?.querySelector(selector)?.focus({preventScroll:true});
   }
@@ -193,6 +195,10 @@
     if(!aiPanel)content.textContent='Reload Canvas Harness to use the AI workspace.';
    }
    if(tool==='gpa'&&fresh){gpaPanel=root.CanvasHarnessGPAUI?.create({container:content,store,getContext,onRefresh});if(!gpaPanel)content.textContent='Reload Canvas Harness to use the GPA calculator.';}
+   if(tool==='developer'&&fresh){
+     developerPanel=root.ReserveDeveloper?.create({container:content,page:container,store,getContext});
+     if(!developerPanel)content.textContent='Reload Canvas Harness to use Developer tools.';
+   }
    if(tool==='plan'){content.removeAttribute('aria-labelledby');content.setAttribute('aria-label','New reminder');if(fresh)renderPlan();else renderPlanLists();}
    if(tool==='quick')renderResults();showStatus(status||cacheNotice);
    if(dialog.open&&previousTool!==tool)
@@ -488,7 +494,7 @@
   }
   const unsubscribe=store.subscribe(data=>{personal=data;poolCache=null;if(dialog?.open&&tool==='quick')renderResults();});
   return {open:(next,source)=>open(next,source),askAI,capture,collapse,expand,close,isOpen:()=>!dead&&!!dialog?.open,update(){
-    if(!dead){poolCache=null;aiPanel?.update();gpaPanel?.update();}
+    if(!dead){poolCache=null;aiPanel?.update();gpaPanel?.update();developerPanel?.update();}
   },destroy(){
     if(dead)return;
     rememberCapture();
@@ -497,6 +503,7 @@
     dockResize?.destroy();
     aiPanel?.destroy();
     gpaPanel?.destroy();
+    developerPanel?.destroy();
     toolMotion?.destroy();
     unsubscribe?.();
     dialog?.remove();

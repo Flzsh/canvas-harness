@@ -31,3 +31,10 @@ test('after an earlier press on the page, resting on Room makes it ahead as befo
  const a=setup({activated:true});a.fire('pointerover');assert.equal(a.made.length,1);a.room.destroy?.();
  const b=setup({activated:undefined});b.fire('pointerover');assert.equal(b.made.length,1);b.room.destroy?.();
 });
+
+test('a room opened with no press on the page yet (a script, Biscuit) makes no audio context, and its first press starts the sound',async()=>{
+ const s=setup({activated:false});await s.room.open();assert.equal(s.made.length,0,'no error on the extension page');
+ s.env.navigator.userActivation.hasBeenActive=true;try{s.room.keydown({key:'a',composedPath:()=>[s.room],target:s.room,preventDefault(){}});}catch{}
+ assert.equal(s.made.length,1,'the first key in the room starts it');s.room.destroy?.();
+});
+
