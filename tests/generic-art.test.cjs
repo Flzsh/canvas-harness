@@ -29,7 +29,7 @@ test('exports the complete generic art API to CommonJS and an isolated browser g
 });
 
 test('All courses and personal course names get distinct complete, drawn title SVGs',()=>{
- for(const label of ['All courses','College Counseling','My Lab 27','Making & Doing','AP Study / Lab 2']){
+ for(const label of ['All courses','Career Counseling','My Lab 27','Making & Doing','AP Study / Lab 2']){
   const api=art(),info=api.info(label),svg=api.title(label,{id:'course-17',place:'heading'});
   assert.deepEqual(Object.keys(info).sort(),['cycle','width']);
   assert.ok(info.width>=360&&info.width<=720);
@@ -58,9 +58,9 @@ test('All courses and personal course names get distinct complete, drawn title S
 test('ordinary long multiword names use two or three readable lines with the full label',()=>{
  const labels=[
   'Advanced Interdisciplinary Studies in Environmental Design and Community Research',
-  'American Literature and The Free Market Economy',
+  'Classic Literature and The Global Trade Economy',
   'Social Enterprise, Creative Practice and Community Leadership',
-  'College Counseling and Planning for the Class of 2027'
+  'Career Counseling and Planning for the Class of 2030'
  ];
  for(const label of labels){
   const svg=art().title(label,{id:'long',motion:false}),lines=lineTags(svg);
