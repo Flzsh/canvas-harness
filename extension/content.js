@@ -15,7 +15,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const isDashboard=location.pathname==='/'||/^\/dashboard\/?$/.test(location.pathname);
   const params=new URLSearchParams(location.search);
   const startup=globalThis.ReserveStartup;
-  const build='3.99.3';
+  const build='3.99.4';
   // Local timings contain only milliseconds, never account or course data.
   // They make real startup measurable without delaying or storing the page.
   const stamp=()=>Math.round(globalThis.performance?.now?.()||0);
@@ -165,6 +165,49 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(options.page==='settings')launchAppearance=true;
     dashboard?.destroy();dashboard=null;drawDashboard();
   }
+  // Home's width rules follow the room Home has, not the window: beside the docked PDF reader the page is narrower
+  // than the window, so each (min|max)-width rule in Home's own sheets is switched on or off for that width (pdf-host.js
+  // no longer zooms Home). Without the reader the width is the window's, exactly what the browser itself would use.
+  function pageWidth(){
+    const panel=document.getElementById?.('reserve-pdf-host'),used=panel&&!panel.hidden&&!panel.classList?.contains('is-full')?panel.getBoundingClientRect?.().width||0:0;
+    return Math.max(0,(window.innerWidth||0)-used);
+  }
+  globalThis.ReservePageWidth=pageWidth;
+  function fitMedia(text,width){
+    const kept=[];
+    for(const query of String(text).split(',')){
+      let ok=true;const rest=[];
+      for(const part of query.split(/\band\b/i).map(p=>p.trim()).filter(Boolean)){
+        const m=part.match(/^\(\s*(min|max)-width\s*:\s*([\d.]+)px\s*\)$/i);
+        if(!m){rest.push(part);continue;}
+        if(m[1].toLowerCase()==='min'?width<+m[2]:width>+m[2])ok=false;
+      }
+      if(ok)kept.push(rest.length?rest.join(' and '):'all');
+    }
+    return kept.length?kept.join(', '):'not all';
+  }
+  globalThis.ReserveFitMedia=fitMedia;
+  let fitRules=null,fitAt=-1,fitWatch=null;
+  function fitWidth(fresh){
+    try{fitWidthNow(fresh);}catch{}
+  }
+  function fitWidthNow(fresh){
+    if(!root||typeof root.querySelectorAll!=='function')return;
+    if(fresh||!fitRules){
+      fitRules=[];
+      fitAt=-1;
+      const walk=list=>{
+        for(const rule of list||[]){
+          if(typeof CSSMediaRule==='function'&&rule instanceof CSSMediaRule&&/\b(?:min|max)-width\b/.test(rule.media.mediaText))fitRules.push({rule,text:rule.media.mediaText});
+          if(rule.cssRules)walk(rule.cssRules);
+        }
+      };
+      for(const node of root.querySelectorAll('link[rel=stylesheet]'))try{walk(node.sheet?.cssRules);}catch{}
+    }
+    const width=Math.round(pageWidth());if(width===fitAt)return;fitAt=width;
+    for(const item of fitRules){const next=fitMedia(item.text,width);if(item.rule.media.mediaText!==next)item.rule.media.mediaText=next;}
+    if(!fitWatch&&host&&typeof ResizeObserver==='function'){fitWatch=new ResizeObserver(()=>fitWidth());fitWatch.observe(host);window.addEventListener('resize',()=>fitWidth());}
+  }
   function makeHost(){
     if(host)return;
     const content=document.getElementById('content');if(!content)return;
@@ -178,7 +221,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(!sheets.length){ready=true;mark('styles');}
     for(const file of sheets){
       const link=document.createElement('link');link.rel='stylesheet';link.href=chrome.runtime.getURL(file);
-      link.onload=()=>{if(host===loadingHost&&++loaded===sheets.length){ready=true;mark('styles');reveal();}};
+      link.onload=()=>{if(host===loadingHost&&++loaded===sheets.length){ready=true;mark('styles');fitWidth(true);reveal();}};
       link.onerror=()=>{if(host===loadingHost)showCanvas(false);};root.append(link);
     }
     const css=document.createElement('style');css.textContent=':host([hidden]){display:none!important}.reserve-resume[hidden]{display:none!important}.reserve-workspace[hidden]{display:block!important;content-visibility:hidden!important}.reserve-resume{box-sizing:border-box;min-height:calc(100dvh - 90px);padding:20px clamp(16px,2vw,32px);background:#FAF9F5;color:#3D3D3A;font:14px/1.5 system-ui;color-scheme:light}.reserve-resume header{display:flex;align-items:center;gap:12px;padding-bottom:20px;border-bottom:1px solid #E8E6DC}.reserve-resume img{width:36px;height:36px;object-fit:contain}.reserve-resume strong{font-size:19px;font-weight:600}.reserve-resume button{margin-left:auto;padding:8px 12px;border:1px solid #D9D6CA;border-radius:8px;background:#fff;color:#5E5D59;font:inherit;cursor:pointer}.reserve-resume button:focus-visible{outline:2px solid #C96442;outline-offset:3px}.reserve-resume p{margin:20px 0;color:#78766F}.reserve-resume-grid{display:grid;grid-template-columns:minmax(120px,.7fr) repeat(3,minmax(0,1fr));gap:20px}.reserve-resume-grid>div{min-height:260px;border:1px solid #E8E6DC;border-radius:12px;padding:20px}.reserve-resume-grid i{display:block;max-width:75%;height:9px;margin:12px 0 30px;border-radius:4px;background:#E8E6DC}.reserve-resume-grid i:nth-child(even){max-width:50%}@media(max-width:900px){.reserve-resume-grid{grid-template-columns:140px 1fr}.reserve-resume-grid>div:nth-child(n+3){display:none}}@media(max-width:600px){.reserve-resume-grid{grid-template-columns:1fr}.reserve-resume-grid>div:first-child{display:none}}';root.append(css);

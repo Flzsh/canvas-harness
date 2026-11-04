@@ -112,7 +112,7 @@
       if (normalize(read()) !== normalize(block)) return reply('injected', 'Inserted beside an existing draft. Review and send it yourself so your other text is not sent unexpectedly.');
       const selectors = {
         chatgpt: 'button[data-testid="send-button"], button[type="submit"][aria-label="Send"], button[aria-label="Send prompt"]',
-        claude: 'button[aria-label="Send message"], button[data-testid="send-button"]',
+        claude: 'button[aria-label="Send message"], button[data-testid="send-button"], button[data-testid="chat-input-send"]',
         gemini: 'button.send-button[aria-label="Send message"], button[aria-label="Send message"]',
         grok: 'button[aria-label="Submit"], button[aria-label="Send message"]',
         deepseek: 'button[aria-label="Send message"]', kimi: 'button[aria-label="Send message"]',
@@ -122,7 +122,13 @@
         if (!correctDocument() || authenticationForm() || !usable(editor) || normalize(read()) !== normalize(block))
           return reply('injected', 'Draft inserted. The page changed before sending; review the chat and send manually.');
         if (editor.getAttribute('data-canvas-harness-send') === marker) return reply('send-uncertain', 'Send was already clicked for this draft. Check the chat; Canvas Harness will not click it again.');
-        const buttons = Array.from(new Set(document.querySelectorAll(selectors[id]))).filter(node => visible(node) && !node.disabled && node.getAttribute('aria-disabled') !== 'true');
+        // A Send still fading in reads visibility:hidden, and a background tab never finishes the fade: when none
+        // shows, the one enabled Send with a layout box outside hidden or inert parts counts.
+        const enabled = Array.from(new Set(document.querySelectorAll(selectors[id]))).filter(node => !node.disabled && node.getAttribute('aria-disabled') !== 'true'), shown = enabled.filter(visible);
+        const buttons = shown.length ?
+          shown :
+          enabled.filter(node =>
+            node.isConnected && !node.hidden && !node.closest('[hidden], [inert], [aria-hidden="true"]') && view.getComputedStyle(node).display !== 'none' && node.getClientRects().length > 0);
         if (buttons.length === 1) {
           editor.setAttribute('data-canvas-harness-send', marker);
           try { buttons[0].click(); } catch { return reply('send-uncertain', 'Send could not be confirmed. Check the chat before trying again.'); }
@@ -479,8 +485,13 @@
     const block=marker+'\n'+header+'\n'+guard.text+'\n[[End Canvas Harness context '+key+']]';
     if(!normalize(value))return {status:'waiting',message:'Waiting for the matching student turn'};
     if(normalize(value)!==normalize(block))return {status:'needs-you',message:'Review the existing draft'};
-    const selectors={chatgpt:'button[data-testid="send-button"], button[type="submit"][aria-label="Send"], button[aria-label="Send prompt"]',claude:'button[aria-label="Send message"], button[data-testid="send-button"]',gemini:'button.send-button[aria-label="Send message"], button[aria-label="Send message"]',grok:'button[aria-label="Submit"], button[aria-label="Send message"]',deepseek:'button[aria-label="Send message"]',kimi:'button[aria-label="Send message"]',qwen:'button[aria-label="Send message"], button#send-message-button',zai:'button[aria-label="Send message"], button#send-message-button'};
-    const buttons=Array.from(new Set(document.querySelectorAll(selectors[guard.id]))).filter(n=>visible(n)&&!n.disabled&&n.getAttribute('aria-disabled')!=='true');
+    const selectors={chatgpt:'button[data-testid="send-button"], button[type="submit"][aria-label="Send"], button[aria-label="Send prompt"]',claude:'button[aria-label="Send message"], button[data-testid="send-button"], button[data-testid="chat-input-send"]',gemini:'button.send-button[aria-label="Send message"], button[aria-label="Send message"]',grok:'button[aria-label="Submit"], button[aria-label="Send message"]',deepseek:'button[aria-label="Send message"]',kimi:'button[aria-label="Send message"]',qwen:'button[aria-label="Send message"], button#send-message-button',zai:'button[aria-label="Send message"], button#send-message-button'};
+    // Claude fades Send in (visibility:hidden until a transition ends) and a background tab runs no transitions:
+    // when no Send shows, the one enabled Send with a layout box outside hidden or inert parts counts.
+    const enabled=Array.from(new Set(document.querySelectorAll(selectors[guard.id]))).filter(n=>!n.disabled&&n.getAttribute('aria-disabled')!=='true'),shown=enabled.filter(visible);
+    const buttons=shown.length?
+      shown:
+      enabled.filter(n=>n.isConnected!==false&&!n.hidden&&!n.closest?.('[hidden], [inert], [aria-hidden="true"]')&&document.defaultView.getComputedStyle(n).display!=='none'&&n.getClientRects().length>0);
     if(buttons.length!==1)return {status:'waiting',message:'Waiting for Send'};
     if(guard.mode!=='click')return {status:'ready'};
     if(editor.getAttribute('data-canvas-harness-send')===key)return {status:'waiting'};

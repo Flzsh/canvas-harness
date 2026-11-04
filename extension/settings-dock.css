@@ -412,7 +412,7 @@
 /* Tiles in a row are one height, their names on one line, whichever is picked. */
 .rd .ch-settings-dock .cz-choices{align-items:stretch}
 /* Quick Upload and Course artwork are blocks like every other here. */
-.rd .ch-settings-dock .ch-quick-upload{margin:0 3px 18px 1px;padding:12px 15px 14px;border:2px solid transparent;border-image:var(--rd-pen) 30 / 14px / 0 stretch;border-radius:14px;background:color-mix(in srgb,#EBDBBC 26%,var(--rd-surface)) padding-box}
+.rd .ch-settings-dock .ch-quick-upload{margin:0 3px 18px 1px;padding:12px 15px 14px;border:2px solid transparent;border-image:var(--rd-pen-line) 30 / 14px / 0 stretch;border-radius:14px;background:color-mix(in srgb,#EBDBBC 26%,var(--rd-surface)) padding-box}
 .rd[data-theme=dark] .ch-settings-dock .ch-quick-upload{background:color-mix(in srgb,#EBDBBC 6%,var(--rd-surface)) padding-box}
 .rd .ch-settings-dock .ch-pack-heading{align-items:center;gap:9px;margin-bottom:8px}
 .rd .ch-settings-dock .ch-pack-heading>svg{width:24px;height:24px}
@@ -444,8 +444,8 @@
 .rd .ch-settings-dock .ch-art-slot>[data-rd-action=art-remove]{grid-row:6}
 .rd .ch-settings-dock .ch-art-slot>.ch-make-list,.rd .ch-settings-dock .ch-art-slot>.ch-frame-editor{justify-self:stretch}
 /* One pen for everything here: blocks, cards and buttons all carry the same line the panel does. */
-.rd .ch-settings-dock .cz-group::after,.rd .ch-settings-dock .ch-art-slot::after{box-sizing:border-box;border:2px solid transparent;border-image:var(--rd-pen) 30 / 14px / 0 stretch;background:none;-webkit-mask-box-image:none;opacity:1}
-.rd .ch-settings-dock :is(.cz-group,.ch-art-slot) .rd-button:not(.rd-button-primary,.rd-button--primary){border:2px solid transparent;border-image:var(--rd-pen) 30 / 11px / 0 stretch;background-clip:padding-box;box-shadow:none}
+.rd .ch-settings-dock .cz-group::after,.rd .ch-settings-dock .ch-art-slot::after{box-sizing:border-box;border:2px solid transparent;border-image:var(--rd-pen-line) 30 / 14px / 0 stretch;background:none;-webkit-mask-box-image:none;opacity:1}
+.rd .ch-settings-dock :is(.cz-group,.ch-art-slot) .rd-button:not(.rd-button-primary,.rd-button--primary){border:2px solid transparent;border-image:var(--rd-pen-line) 30 / 11px / 0 stretch;background-clip:padding-box;box-shadow:none}
 .rd .ch-settings-dock :is(.cz-group,.ch-art-slot) .rd-button:not(.rd-button-primary,.rd-button--primary)::before{display:none}
 /* An installed look is a tile like the rest: the same name style, and its two links under it. */
 .rd .ch-settings-dock .ch-make-list [data-rd-action=make-select]{text-decoration:none}
@@ -454,7 +454,7 @@
 .rd .ch-settings-dock .ap-group{margin:16px 2px 6px;color:var(--rd-accent);font-size:11px;font-weight:650;letter-spacing:.09em}
 .rd .ch-settings-dock .ap-list{margin:0 3px 0 1px;background:color-mix(in srgb,#EBDBBC 26%,var(--rd-surface))}
 .rd[data-theme=dark] .ch-settings-dock .ap-list{background:color-mix(in srgb,#EBDBBC 6%,var(--rd-surface))}
-.rd .ch-settings-dock .ap-list::after{inset:0;box-sizing:border-box;border:2px solid transparent;border-image:var(--rd-pen) 30 / 14px / 0 stretch;background:none;-webkit-mask-box-image:none}
+.rd .ch-settings-dock .ap-list::after{inset:0;box-sizing:border-box;border:2px solid transparent;border-image:var(--rd-pen-line) 30 / 14px / 0 stretch;background:none;-webkit-mask-box-image:none}
 .rd .ch-settings-dock [data-art="Daily preferences"] .cz-row{margin-top:10px}
 .rd .ch-settings-dock .ch-make-add{justify-self:start;width:auto;padding-inline:12px}
 /* Graphics > Advanced: closed until asked for; its rows in two columns, drawn like the other fields here. */

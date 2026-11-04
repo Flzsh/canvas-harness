@@ -24,13 +24,13 @@
 </p>
 
 > [!IMPORTANT]
-> **This is the `preview/4.0` branch: Canvas Harness 4.0 Preview 3, a test build.** It is ahead of the Chrome Web Store version and may have rough edges. For everyday use, install the [store version](https://chromewebstore.google.com/detail/bppjpjpbichfcbgajlppkgbbncbfohgd) or the [latest stable release](https://github.com/Flzsh/canvas-harness/releases/latest).
+> **This is the `preview/4.0` branch: Canvas Harness 4.0 Preview 4, a test build.** It is ahead of the Chrome Web Store version and may have rough edges. For everyday use, install the [store version](https://chromewebstore.google.com/detail/bppjpjpbichfcbgajlppkgbbncbfohgd) or the [latest stable release](https://github.com/Flzsh/canvas-harness/releases/latest).
 >
-> **Install the preview.** Download `Canvas-Harness-4.0-Preview-3.zip` from the preview release, unzip it, open `chrome://extensions` (or `edge://extensions`), turn on Developer mode, choose **Load unpacked** and pick the unzipped folder. It shows as version 3.99.3, "4.0 Preview 3", so the real 4.0.0 replaces it later. Remove the store version first, or turn it off, so the two do not both run on Canvas.
+> **Install the preview.** Download `Canvas-Harness-4.0-Preview-4.zip` from the preview release, unzip it, open `chrome://extensions` (or `edge://extensions`), turn on Developer mode, choose **Load unpacked** and pick the unzipped folder. It shows as version 3.99.3, "4.0 Preview 4", so the real 4.0.0 replaces it later. Remove the store version first, or turn it off, so the two do not both run on Canvas.
 >
 > **What is new:** Your AI (Help cards for an assignment, a PDF or a selection, a writing outline among them, each shown as soon as it is made; Today; Prepare; study aids saved beside their work; your AI website with a thinking level, or an API key; an optional overnight run), Biscuit with a written rule list that plans around what you name, hands questions to Your AI and wakes with B, rooms for the Review deck, Grade impact and Focus room over Home, the Big card, a redrawn Focus room with Winter, Grade impact that answers first with pretend assignments and decimal points, Graphics levels for slower computers, Developer tools for bug reports, a drawn top bar, Settings and Features tabs in Make it yours, play tools that take the whole page, and a page that fits every window size. [Every change](CHANGELOG.md)
 >
-> **Found a problem?** [Open an issue](https://github.com/Flzsh/canvas-harness/issues/new) and say it is about 4.0 Preview 3: what you did, what you expected, and your browser. **Want to fix something?** Send a pull request against the `preview/4.0` branch, with `npm test` and `npm run check` passing.
+> **Found a problem?** [Open an issue](https://github.com/Flzsh/canvas-harness/issues/new) and say it is about 4.0 Preview 4: what you did, what you expected, and your browser. **Want to fix something?** Send a pull request against the `preview/4.0` branch, with `npm test` and `npm run check` passing.
 
 <table>
 <tr>

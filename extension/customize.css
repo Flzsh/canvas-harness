@@ -442,7 +442,7 @@
  .rd .rd-dock {padding-inline:14px!important;}
 }
 @media (max-width:600px) {
- .rd .rd-dock {--rd-dock-space:100vw;--rd-dock-headroom:40px;left:50%;width:100vw;max-width:100vw;padding-inline:14px!important;scroll-snap-type:x proximity;}
+ .rd .rd-dock {--rd-dock-space:var(--rd-dock-available,100vw);--rd-dock-headroom:40px;left:var(--rd-dock-center,50%);width:var(--rd-dock-available,100vw);max-width:var(--rd-dock-available,100vw);padding-inline:14px!important;scroll-snap-type:x proximity;}
  .rd .rd-dock-it,.rd .rd-dock-sep {transform:none!important;transition:none;will-change:auto;}
  .rd .rd-dock-it {scroll-snap-align:center;}
  .rd[data-course-navigation=dock] .rd-toolbar {flex-wrap:wrap;}
@@ -519,11 +519,11 @@
 .rd .rd-dock[data-look=cards]{--rd-dock-gap:10px}
 /* Cards keep their own width (up to 300 px) and shrink, down to 120 px, only when the row would not fit the window;
    past that the row scrolls sideways (never off-screen, never a second row over the page). */
-.rd .rd-dock[data-look=cards]{flex-wrap:nowrap;width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;overflow-x:auto;scrollbar-width:none}
-.rd .rd-dock[data-look=cards] .rd-dock-it{flex:0 1 auto;width:auto;min-width:136px;max-width:max(136px,min(300px,calc((var(--rd-dock-space) - 44px) / max(1,var(--rd-dock-n,1)) - var(--rd-dock-gap))))}
+.rd .rd-dock[data-look=cards]{flex-wrap:nowrap;width:max-content;max-width:min(calc(100vw - 32px),calc(var(--rd-dock-available,100vw) - 16px));box-sizing:border-box;overflow-x:auto;scrollbar-width:none}
+.rd .rd-dock[data-look=cards] .rd-dock-it{flex:0 1 auto;width:auto;min-width:min-content;max-width:max(136px,min(300px,calc((var(--rd-dock-space) - 44px) / max(1,var(--rd-dock-n,1)) - var(--rd-dock-gap))))}
 .rd .rd-dock[data-look=cards] .rd-dock-it:has(.rd-dock-all){flex-shrink:0}
 .rd .rd-dock[data-look=cards] .rd-dock-card{width:100%;box-sizing:border-box}
-.rd .rd-dock-card{position:relative;isolation:isolate;display:grid;grid-template-columns:auto minmax(0,auto);align-items:center;gap:8px;height:calc(var(--rd-dock-t) + 6px);max-width:300px;padding:5px 12px 5px 8px;rotate:-.6deg}
+.rd .rd-dock-card{position:relative;isolation:isolate;min-width:136px;box-sizing:border-box;display:grid;grid-template-columns:auto minmax(min-content,auto);align-items:center;gap:8px;height:calc(var(--rd-dock-t) + 6px);max-width:300px;padding:5px 12px 5px 8px;rotate:-.6deg}
 .rd .rd-dock-it:nth-of-type(2n) .rd-dock-card{rotate:.7deg}
 .rd .rd-dock-card:has(.rd-dock-seal){padding-right:12px}
 .rd .rd-dock-card>.rd-frame{position:absolute;inset:0;z-index:-1;color:var(--rd-course,#9A8F7A);--f-wash:.55}
@@ -536,7 +536,7 @@
 .rd .rd-dock-it .rd-dock-words{color:var(--rd-dock-label-ink,var(--rd-ink))}
 .rd .rd-dock-it .rd-dock-words small{color:var(--rd-dock-label-muted,var(--rd-muted))}
 .rd .rd-dock-it .rd-dock-words small[data-late]{color:var(--rd-dock-label-late,var(--rd-danger,#B5452E))}
-.rd .rd-dock-words b{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;font:650 12.5px/1.16 var(--rd-ui-font,"Segoe UI",system-ui);overflow:hidden;overflow-wrap:anywhere}
+.rd .rd-dock-words b{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;font:650 12.5px/1.16 var(--rd-ui-font,"Segoe UI",system-ui);overflow:hidden;overflow-wrap:normal;word-break:normal}
 /* A long single word gets the room it needs, a little smaller, and never breaks in the middle. */
 .rd .rd-dock-words b[data-long=true]{font-size:11.5px;letter-spacing:-.012em}
 .rd .rd-dock-words small{font:500 11.5px/1.3 var(--rd-ui-font,"Segoe UI",system-ui);color:var(--rd-dock-label-muted,var(--rd-muted));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -546,7 +546,7 @@
 .rd[data-dock-lively=true] .rd-dock-it:is(:hover,:focus-visible) .rd-dock-card .rd-dock-tile{translate:none;rotate:none}
 .rd .rd-dock[data-look=cards] .rd-dock-it.on::after{width:60%;bottom:-10px}
 /* Its card (right-click the dock): size slider, shelf and look pictures, switches. */
-.rd .rd-dock-menu{position:fixed;z-index:21;left:calc(var(--rd-dock-center,50%) + var(--rd-dock-shift,0px));bottom:calc(var(--rd-dock-t,54px) + 44px);translate:-50% 0;box-sizing:border-box;width:300px;max-width:calc(100vw - 24px);padding:16px 18px 16px;isolation:isolate;color:var(--rd-ink);font:13px/1.35 var(--rd-ui-font,"Segoe UI",system-ui);animation:rd-dock-pop .22s cubic-bezier(.3,1.5,.5,1)}
+.rd .rd-dock-menu{position:fixed;z-index:21;left:calc(var(--rd-dock-center,50%) + var(--rd-dock-shift,0px));bottom:calc(var(--rd-dock-t,54px) + 44px);translate:-50% 0;box-sizing:border-box;width:300px;max-width:min(calc(100vw - 24px),calc(var(--rd-dock-available,100vw) - 16px));padding:16px 18px 16px;isolation:isolate;color:var(--rd-ink);font:13px/1.35 var(--rd-ui-font,"Segoe UI",system-ui);animation:rd-dock-pop .22s cubic-bezier(.3,1.5,.5,1)}
 .rd .rd-dock-menu::before{content:"";position:absolute;inset:4px;z-index:-2;border-radius:12px;background:var(--rd-dock-shelf,#F3E9DA);translate:3px 3px}
 .rd .rd-dock-menu::after{content:"";position:absolute;inset:0;z-index:-1;border:15px solid transparent;background:var(--rd-ink);-webkit-mask-box-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'90'%20height%3D'90'%20viewBox%3D'0%200%2090%2090'%3E%3Cpath%20d%3D'M24%206.2C34%205.4%2056%206.6%2066%205.8C77%205.6%2084.6%2012%2084.4%2024C85%2036%2083.8%2054%2084.6%2066C84.8%2077.6%2078%2084.6%2066%2084.4C54%2085%2036%2083.8%2024%2084.6C12.4%2084.8%205.4%2078%205.6%2066C5%2054%206.2%2036%205.4%2024C5.2%2012.6%2011.6%206%2021.4%206.4C24%206.3%2027%205.6%2029.6%204.8'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'2.4'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") 30 30 30 30 stretch}
 .rd .rd-dock-menu{background:var(--rd-surface);border-radius:14px}

@@ -534,9 +534,12 @@
     const transition=state.dragging||['off','still'].includes(state.appearance.motion)?'none':'margin-right 220ms ease,margin-left 220ms ease,margin-top 220ms ease';
     // Too narrow for Canvas's own layout, the page shrinks as a whole instead of reflowing (a title one letter per line):
     // what is left keeps a 900px layout, zoomed to fit, never below 40%.
+    // Canvas Harness's own pages (Home, the Course hub) lay out for the room instead (content.js fitWidth), so only
+    // Canvas's pages are zoomed.
+    const ours=!!doc.documentElement?.classList?.contains('reserve-inline-active')&&!!doc.getElementById?.('reserve-companion-host');
     const left=shift==='#wrapper'?(doc.getElementById?.('wrapper')?.getBoundingClientRect?.().left||0):0,
       room=env.innerWidth-state.width-left,
-      fit=room>0&&room<900?Math.max(.4,Math.floor(room/900*1000)/1000):1;
+      fit=!ours&&room>0&&room<900?Math.max(.4,Math.floor(room/900*1000)/1000):1;
     const kids=shift==='#wrapper'?target+'>*':target+'>body>*:not(#reserve-pdf-host)';
     scope.textContent=target+
       '{'+

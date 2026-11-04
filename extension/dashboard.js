@@ -883,6 +883,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let quickPackDraft='',quickPackFileName='',quickPackError='',quickPackLoading=false,quickPackRead=0;
     let pendingReaderScroll={courseId:state.courseId,id:selectedId,top:restoredView.readerScroll};
     const readerLayout=typeof root.ResizeObserver==='function'?new root.ResizeObserver(()=>{if(restoreReaderScroll())remember();}):null;
+    // The reader's text and a Materials page keep the wheel inside them only while they have something to scroll
+    // (refresh.css, data-scrolls): a box that fits lets the page scroll under the pointer.
+    const markScroll=el=>{
+      const scrolls=el.scrollHeight>el.clientHeight+1&&/(auto|scroll)/.test(root.getComputedStyle?.(el)?.overflowY||'');
+      if(scrolls){if(el.dataset.scrolls!=='true')el.dataset.scrolls='true';}else if(el.dataset.scrolls)delete el.dataset.scrolls;
+    };
+    const scrollBoxes=typeof root.ResizeObserver==='function'?new root.ResizeObserver(entries=>{for(const entry of entries)markScroll(entry.target);}):null;
+    const watchScrollBoxes=()=>{scrollBoxes?.disconnect();for(const el of container.querySelectorAll?.('.rd-reader-content,.rd-material-page')||[]){markScroll(el);scrollBoxes?.observe(el);}};
     const explicitWorkspace=initialState?.workspace||savedState?.workspace;
     // Keep an unavailable saved destination until the student chooses a different workspace.
     let workspace=resolveWorkspace(explicitWorkspace==='assignments'?'work':explicitWorkspace),workPage=explicitWorkspace==='assignments'?'assignments':'home';
@@ -2291,7 +2299,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         readerLayout?.disconnect();
         if(!restoreReaderScroll()&&reader&&pendingReaderScroll)readerLayout?.observe(reader);
       }
-      remember();
+      watchScrollBoxes();remember();
       if(focus?.section){Array.from(container.querySelectorAll?.('details[data-rd-section]')||[]).find(el=>el.dataset.rdSection===focus.section)?.querySelector('summary')?.focus({preventScroll:true});}
       if(focus&&!focus.materialTitle&&!focus.section){
         const selector=(focus.field?`[data-rd-field="${focus.field}"]`:`[data-rd-action="${focus.action}"]`)+`${focus.id?`[data-id="${focus.id}"]`:''}${focus.setting?`[data-setting="${focus.setting}"]`:''}${focus.mode?`[data-mode="${focus.mode}"]`:''}${focus.day?`[data-day="${focus.day}"]`:''}${focus.accent?`[data-accent="${focus.accent}"]`:''}${focus.tab?`[data-tab="${focus.tab}"]`:''}${focus.choice!=null?`[data-value=${JSON.stringify(String(focus.choice))}]`:''}${focus.entry!=null?`[data-entry=${JSON.stringify(String(focus.entry))}]`:''}`;
@@ -2338,7 +2346,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         materialFocus=Array.from(container.querySelectorAll?.(list.field?`[data-rd-field="${list.field}"]`:`[data-rd-action="${list.action}"]`)||[]).find(el=>
           el.dataset.course===list.courseId&&el.dataset.place===list.place&&(!list.file||el.dataset.file===list.file));
       // The page glides to a chapter only for a pointer under Gentle motion; keyboard, Still, Off and reduced motion jump at once.
-      if(materialFocus){materialFocus.focus({preventScroll:true});if(requested?.type==='title'&&root.innerWidth<=1200)materialFocus.scrollIntoView({block:'start',behavior:'instant'});
+      if(materialFocus){
+        materialFocus.focus({preventScroll:true});
+        if(requested?.type==='title'&&(root.ReservePageWidth?.()??root.innerWidth)<=1200)materialFocus.scrollIntoView({block:'start',behavior:'instant'});
         if(list?.type==='chapter')
           materialFocus.scrollIntoView({
             block:'start',
@@ -3638,6 +3648,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(sceneActive){root.ReserveSceneThemes?.remove(container);sceneActive=false;}
         personalRevision++;companionTurn++;root.ReserveDataTheme?.remove(container);makeOwn?.destroy();preferences?.destroy();
         readerLayout?.disconnect();
+        scrollBoxes?.disconnect();
         railLayout?.disconnect();
         railAncestors?.disconnect();
         root.clearTimeout(railTimer);

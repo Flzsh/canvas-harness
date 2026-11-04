@@ -2980,10 +2980,14 @@ function drawGravity() {
 let tilt = null, tiltFrame = 0;
 // While the apple is held the pull is how fast it is moving now: quicker pulls harder, slower eases off, stopped is the gentlest pull there is, and letting go keeps what it had
 const pullAt = speed => Math.max(450, Math.min(5600, 2300 * Math.pow(speed / 900, .7)));
+// The way the apple moves aims the pull (owner, 2026-11-02: not where it is on the screen), smoothed over the last few
+// moves; a hand that barely moves keeps the aim it had.
 function paceGravity(i, e) {
   const t = stamp(e), dt = t - (i.paceAt || 0);
   if (i.paceAt && dt < 3) return;
-  if (i.paceAt) gravitySpeed = gravitySpeed * .55 + Math.hypot(e.clientX - i.paceX, e.clientY - i.paceY) / dt * 450;
+  const mx = e.clientX - (i.paceAt ? i.paceX : i.startX), my = e.clientY - (i.paceAt ? i.paceY : i.startY), m = Math.hypot(mx, my);
+  if (i.paceAt) gravitySpeed = gravitySpeed * .55 + m / dt * 450;
+  if (m >= 2) { i.aimX = (i.aimX ?? mx / m) * .45 + mx / m * .55; i.aimY = (i.aimY ?? my / m) * .45 + my / m * .55; }
   i.paceAt = t;
   i.paceX = e.clientX;
   i.paceY = e.clientY;
@@ -2994,9 +2998,10 @@ function aimGravity() {
   cancelAnimationFrame(tiltFrame);
   tiltFrame = 0;
   if (!tilt) return;
-  const dx = tilt[0] - innerWidth / 2, dy = tilt[1] - innerHeight / 2, d = Math.hypot(dx, dy), held = interaction?.kind === 'gravity';
+  const [ax, ay] = tilt, d = Math.hypot(ax, ay), held = interaction?.kind === 'gravity';
   if (held) { gravityPull = pullAt(gravitySpeed); gravitySpeed *= .86; } else tilt = null;
-  if (d >= 8) { gravityX = dx / d * gravityPull; gravityY = dy / d * gravityPull; pullGravity(); }
+  if (d > .01) { gravityX = ax / d * gravityPull; gravityY = ay / d * gravityPull; }
+  pullGravity();
   if (held) tiltFrame = requestAnimationFrame(aimGravity);
 }
 function flipGravity() { gravityY = gravityY < 0 ? gravityPull : -gravityPull; gravityX = 0; pullGravity(); }
@@ -3371,7 +3376,7 @@ listen(document, 'pointermove', e => {
     if (Math.hypot(e.clientX - i.startX, e.clientY - i.startY) > 4) i.moved = true;
     if (i.kind === 'pending' && i.moved) { const body = pieceAt(i.startX, i.startY); i.kind = 'body'; if (body) { i.body = body; physics.dragStart(body, i.startX, i.startY, stamp(e) - 16); } }
     if (i.body) physics.dragMove(i.body, e.clientX, e.clientY, stamp(e));
-    if (i.kind === 'gravity' && i.moved) { gravityHandle._x = e.clientX; gravityHandle._y = e.clientY; paceGravity(i, e); tiltGravity(e.clientX, e.clientY); }
+    if (i.kind === 'gravity' && i.moved) { gravityHandle._x = e.clientX; gravityHandle._y = e.clientY; paceGravity(i, e); tiltGravity(i.aimX ?? gravityX, i.aimY ?? gravityY); }
     if (i.kind === 'portal') {
       const p = i.portal;
       if (i.action === 'rotate')

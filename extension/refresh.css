@@ -339,13 +339,10 @@
   .rd:not([data-course-navigation=topbar]) .rd-shell > .rd-workspace > * { flex-shrink: 0; }
   .rd .rd-course-rail { overscroll-behavior: contain; }
 }
-.rd .rd-workspace .rd-reader-content, .rd .rd-workspace .rd-reader, .rd .rd-workspace .rd-overview-agenda, .rd .rd-workspace .rd-material-page { overscroll-behavior: contain; }
-/* THE COLUMN STAYS WHERE THE STUDENT PUT IT. Right after a course opens the workspace lays its parts out again (the
-   desk toolbar, the arrange guide, the desk are removed and added back), and the browser's scroll anchoring took that
-   for content moving above what was in view: it scrolled the column to "follow" it, often to the very bottom.
-   Measured on a real Canvas: a course scrolled to 700px moved to 1092px, then 2062px (the bottom) within 4 seconds;
-   with anchoring off it stayed at 700px on five courses, also on the first load after a refresh. */
-.rd .rd-workspace, .rd .rd-workspace * { overflow-anchor: none; }
+/* A box keeps the wheel only while it has something to scroll (dashboard.js marks it data-scrolls): Chrome stops the
+   page scrolling over any contained box, even one with nothing to scroll, as the assignment card on Home did. */
+.rd .rd-reader, .rd .rd-reader-content, .rd .rd-material-page { overscroll-behavior: auto; }
+.rd .rd-workspace .rd-reader-content[data-scrolls=true], .rd .rd-workspace .rd-material-page[data-scrolls=true] { overscroll-behavior: contain; }
 
 .rd .rd-rail-heading { flex: none; padding: 4px 10px 10px; font-size: 12px; font-weight: 450; letter-spacing: normal; text-transform: none; color: var(--rd-faint); }
 
@@ -359,11 +356,22 @@
 
 .rd .rd-rail-all[aria-pressed=true] { background: transparent; box-shadow: none; color: var(--rd-ink); transition: background-color 140ms var(--rd-warm), color 240ms var(--rd-warm); }
 
-
+/* Every course row is the same height: the tallest row's content
+   (--rd-rail-row-h, measured by dashboard.js railRows(), so a wrapped name is
+   never cut), so the rows keep one rhythm down the rail. Spare height on a
+   tall display stays below the last course: shared out between a few courses
+   it stretched every card's frame long and empty. Their content is
+   top-aligned, so the drawing, the name, the teacher line and the due line
+   stand at the same places in every row. All courses stays a compact first
+   row. The course button fills its row, so the whole row is one target.
+   Where the rail has reached the viewport's height and the rows still need a
+   little more (nine real courses at 1440x900 and 1280x720, about 40px), every
+   row gives up the same share of its bottom padding, never more than all of
+   it: the rows stay one height, the tallest row's last line still clears its
+   edge, and the ninth course shows without scrolling the rail. */
 .rd .rd-rail-course {
-  /* Share spare sidebar height equally; keep the tallest measured text stack when scrolling. */
-  position: relative; display: flex; flex-direction: column; flex: 1 0 var(--rd-rail-row-h, auto);
-  min-height: var(--rd-rail-row-h, 0px);
+  position: relative; display: flex; flex-direction: column; flex: 0 1 var(--rd-rail-row-h, auto);
+  min-height: calc(var(--rd-rail-row-h, 0px) - var(--rd-rail-pad));
   margin: 1px 0; padding: var(--rd-rail-pad) 10px;
   border: 0; border-radius: var(--rd-r-row); background: transparent; box-shadow: none;
   transition: background-color var(--rd-hover-out) var(--rd-release);
@@ -1124,7 +1132,7 @@
 /* The one-time word on a weak laptop: a pen-drawn slip in the page, under the heading, so it covers nothing. */
 .rd .rd-machine-notice {
   display: flex; align-items: center; gap: 4px; width: fit-content; max-width: 100%; box-sizing: border-box; margin: 0 0 12px; padding: 5px 6px 5px 14px;
-  border: 2px solid transparent; border-image: var(--rd-pen) 30 / 11px / 0 stretch; background: var(--rd-surface); background-clip: padding-box; color: var(--rd-ink);
+  border: 2px solid transparent; border-image: var(--rd-pen-line) 30 / 11px / 0 stretch; background: var(--rd-surface); background-clip: padding-box; color: var(--rd-ink);
 }
 .rd .rd-machine-notice > [role=status] > span { font-weight: 550; }
 .rd[data-workspace=work] .rd-completion-notice.rd-toast {
@@ -2604,16 +2612,16 @@
 }
 /* ----------------------------------------------------------------- the drawn hand on the page's own controls
    The art skill: nothing ruled. A pen line in place of a ruled box, in both themes; the wash stops at the line. */
-.rd { --rd-pen: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%232B2A27' stroke-width='3.6' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E"); --rd-pen-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23B9B5A8' stroke-width='2.8' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E"); }
-.rd[data-theme=dark] { --rd-pen: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23D2C8B2' stroke-width='3.6' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E"); --rd-pen-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%235F5D55' stroke-width='2.8' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E"); }
+.rd { --rd-pen-line: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%232B2A27' stroke-width='3.6' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E"); --rd-pen-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23B9B5A8' stroke-width='2.8' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E"); }
+.rd[data-theme=dark] { --rd-pen-line: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23D2C8B2' stroke-width='3.6' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E"); --rd-pen-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%235F5D55' stroke-width='2.8' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E"); }
 .rd .rd-workspace :is(.rd-button:not(.rd-text-button), .rd-preview-button, .rd-source-select, .ch-band-prev, .ch-band-next, .ch-band-more),
 .rd .rd-workspace select.ch-band-ai,
 .rd .rd-workspace .rd-plan-nav .rd-icon-button {
-  border: 2px solid transparent; border-image: var(--rd-pen) 30 / 11px / 0 stretch; border-radius: 9px; background-clip: padding-box; box-shadow: none;
+  border: 2px solid transparent; border-image: var(--rd-pen-line) 30 / 11px / 0 stretch; border-radius: 9px; background-clip: padding-box; box-shadow: none;
 }
 .rd .rd-workspace :is(.rd-button:not(.rd-text-button), .rd-preview-button, .rd-source-select, .ch-band-prev, .ch-band-next, .ch-band-more):is(:hover, :focus-visible) { box-shadow: none; }
 .rd[data-workspace] .rd-workspace .rd-quick-add input, .rd .rd-workspace .rd-search:not(.rd-bar-search) {
-  border: 2px solid transparent; border-image: var(--rd-pen) 30 / 12px / 0 stretch; border-radius: 10px; background-clip: padding-box; box-shadow: none;
+  border: 2px solid transparent; border-image: var(--rd-pen-line) 30 / 12px / 0 stretch; border-radius: 10px; background-clip: padding-box; box-shadow: none;
 }
 /* a planner card: the course's colour as a wash, a soft pen edge; the offset is drawn, not a blur */
 .rd[data-workspace] .rd-plan-card { border: 2px solid transparent; border-image: var(--rd-pen-soft) 30 / 11px / 0 stretch; background: linear-gradient(90deg, color-mix(in srgb, var(--rd-course, var(--rd-accent)) 38%, var(--rd-surface)) 0 6px, var(--rd-surface) 6px) padding-box; }
@@ -2623,16 +2631,16 @@
 /* (the pen is drawn inside the box: the field's own input must not paint over it) */
 .rd .rd-workspace .rd-search:not(.rd-bar-search) input { background: none; }
 /* Course hub: a drawn sheet, and its heading the same as every other page's */
-.rd .rd-home-sheet { border: 2px solid transparent; border-image: var(--rd-pen) 30 / 13px / 0 stretch; border-radius: 13px; background-clip: padding-box; box-shadow: none; }
+.rd .rd-home-sheet { border: 2px solid transparent; border-image: var(--rd-pen-line) 30 / 13px / 0 stretch; border-radius: 13px; background-clip: padding-box; box-shadow: none; }
 .rd .rd-hub > .rd-page-heading h2 { font: 550 clamp(25px, 1.1vw + 12px, 30px)/1.16 var(--rd-display); letter-spacing: -.02em; }
 /* Make it yours: a drawn sheet with a drawn offset, its presets and Done in the same hand; the name card is solid, or the scene shows through its words */
-.rd .ch-settings-dock .rd-section-heading .rd-button, .rd .ch-settings-dock .ap-preset.is-on { border: 2px solid transparent; border-image: var(--rd-pen) 30 / 11px / 0 stretch; background-clip: padding-box; box-shadow: none; }
+.rd .ch-settings-dock .rd-section-heading .rd-button, .rd .ch-settings-dock .ap-preset.is-on { border: 2px solid transparent; border-image: var(--rd-pen-line) 30 / 11px / 0 stretch; background-clip: padding-box; box-shadow: none; }
 .rd .ch-settings-dock .ap-preset:not(.is-on) { border: 2px solid transparent; border-image: var(--rd-pen-soft) 30 / 11px / 0 stretch; background-clip: padding-box; box-shadow: none; }
 .rd .ch-settings-dock .cz-pet-hero > div:not(.pet) { background: var(--rd-surface); }
 .rd .ch-settings-dock .cz-group input[type=text] { text-overflow: ellipsis; }
 /* the gliding chip and the chosen day, in the same hand: a paper tag with a pen edge on a flat wash; it still glides */
-.rd .rd-filter-group::before, .rd .rd-reader-tabs::before { box-sizing: border-box; border: 2px solid transparent; border-image: var(--rd-pen) 30 / 10px / 0 stretch; border-radius: 9px; background-clip: padding-box; box-shadow: none; }
-.rd .rd-week .rd-day-filter[aria-pressed=true] { border: 2px solid transparent; border-image: var(--rd-pen) 30 / 10px / 0 stretch; border-radius: 9px; background-clip: padding-box; box-shadow: none; line-height: 26px; }
+.rd .rd-filter-group::before, .rd .rd-reader-tabs::before { box-sizing: border-box; border: 2px solid transparent; border-image: var(--rd-pen-line) 30 / 10px / 0 stretch; border-radius: 9px; background-clip: padding-box; box-shadow: none; }
+.rd .rd-week .rd-day-filter[aria-pressed=true] { border: 2px solid transparent; border-image: var(--rd-pen-line) 30 / 10px / 0 stretch; border-radius: 9px; background-clip: padding-box; box-shadow: none; line-height: 26px; }
 .rd[data-workspace=work] .rd-filter-group, .rd[data-workspace=inbox] .rd-filter-group, .rd[data-workspace=work] .rd-desk-toolbar > .rd-week { border-radius: 12px; }
 /* ----------------------------------------------------------------- the independent review, 2026-10-31
    The strip says which course is open: its card stands up out of the row on the course's own wash. */
@@ -2725,13 +2733,13 @@
 .rd .rd-page-heading, .rd .rd-materials-header { align-items: center; }
 /* Planner: the days are drawn sheets, today on a wash, as flat as the rest */
 .rd[data-workspace] .rd-plan-day { border: 2px solid transparent; border-image: var(--rd-pen-soft) 30 / 13px / 0 stretch; background: var(--rd-surface) padding-box; }
-.rd[data-workspace] .rd-plan-day[data-today=true] { border-image: var(--rd-pen) 30 / 13px / 0 stretch; background: color-mix(in srgb, var(--rd-accent) 8%, var(--rd-surface)) padding-box; box-shadow: none; }
+.rd[data-workspace] .rd-plan-day[data-today=true] { border-image: var(--rd-pen-line) 30 / 13px / 0 stretch; background: color-mix(in srgb, var(--rd-accent) 8%, var(--rd-surface)) padding-box; box-shadow: none; }
 .rd[data-workspace] .rd-plan-card { box-shadow: none; }
 /* the panels: a drawn sheet with a drawn offset, not a soft web box; Help's own button in the same hand */
-.rd .rd-utility-dialog:is([data-docked=true], :not([data-docked])), .rd .rd-appearance.ch-settings-dock.ch-settings-dock { border: 2px solid transparent; border-image: var(--rd-pen) 30 / 14px / 0 stretch; border-radius: 14px; padding: 3px; background-clip: padding-box; box-shadow: 3px 4px 0 rgb(43 42 39 / .1); }
+.rd .rd-utility-dialog:is([data-docked=true], :not([data-docked])), .rd .rd-appearance.ch-settings-dock.ch-settings-dock { border: 2px solid transparent; border-image: var(--rd-pen-line) 30 / 14px / 0 stretch; border-radius: 14px; padding: 3px; background-clip: padding-box; box-shadow: 3px 4px 0 rgb(43 42 39 / .1); }
 .rd[data-theme=dark] .rd-utility-dialog:is([data-docked=true], :not([data-docked])), .rd[data-theme=dark] .rd-appearance.ch-settings-dock.ch-settings-dock { box-shadow: 3px 4px 0 rgb(0 0 0 / .35); }
 .rd .ch-settings-dock .ch-eyebrow { display: none; }
-.rd .ch-band-tab { border: 2px solid transparent; border-image: var(--rd-pen) 30 / 11px / 0 stretch; border-radius: 9px; background-clip: padding-box; }
+.rd .ch-band-tab { border: 2px solid transparent; border-image: var(--rd-pen-line) 30 / 11px / 0 stretch; border-radius: 9px; background-clip: padding-box; }
 /* the panel's size control looks like a control */
 .rd .rd-utility-dialog select.rd-dock-size, .rd .rd-utility-dialog select.rd-dock-size:hover { appearance: none; -webkit-appearance: none; padding: 0 20px 0 8px; border: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%232B2A27' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 5px center/9px; cursor: pointer; }
 /* Make it yours keeps its tabs in reach while a long tab scrolls */

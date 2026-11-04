@@ -287,7 +287,11 @@
      }
      if(response.status==='needs-you'&&run.phase==='deliver'&&!response.needsYou?.limit&&(response.needsYou?.action==='Try again'||response.needsYou?.action==='Review draft'&&unsent)){
        run.errors.push((run.picks[run.pickIndex]?.make||'help')+': '+(response.needsYou.reason||'stopped'));
-       notMade(run.picks[run.pickIndex],response.needsYou.manual?String(response.needsYou.reason||'The AI tab was closed').replace(/\.?$/,'.'):'Your AI stopped before making it.');
+       notMade(
+         run.picks[run.pickIndex],
+         response.needsYou.manual?
+           String(response.needsYou.reason||'The AI tab was closed').replace(/\.?$/,'.'):
+           response.needsYou.action==='Review draft'?'The message reached the AI tab but was not sent.':'Your AI stopped before making it.');
        run.pickIndex++;
        run.retries=0;
        run.state='gathering';
