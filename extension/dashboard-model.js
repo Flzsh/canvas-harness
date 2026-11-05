@@ -296,6 +296,11 @@
         };
         var rankLeft = allRank(left), rankRight = allRank(right);
         if (rankLeft !== rankRight) return rankLeft - rankRight;
+        // dated work keeps its days in order, so each date heading stays together; new work leads within its day
+        if (rankLeft === 1) {
+          var dayLeft = localDayKey(left.dueAt, timeZone), dayRight = localDayKey(right.dueAt, timeZone);
+          if (dayLeft !== dayRight) return dayLeft < dayRight ? -1 : 1;
+        }
         var newLeft = !!options.newIds && options.newIds.has(String(left.id)), newRight = !!options.newIds && options.newIds.has(String(right.id));
         if (newLeft !== newRight) return newLeft ? -1 : 1;
         var dueLeft = dateMs(left.dueAt), dueRight = dateMs(right.dueAt);
