@@ -5,7 +5,7 @@
 3.9.0 kept the look of 3.8. This release brings everything from 4.0 Preview 4 except the 4.0 daily AI (the Help band, Prepare, Daily AI help and Overnight). The AI context and handoff in Tools stay as they were in 3.9.0, with the same permissions.
 
 - The top bar is drawn: each tab has its own drawing beside its name, and the search reads Find work. In half and quarter windows the words give way to the drawings, and each tab shows its name as a tooltip. The course dock and the top bar scroll the same way.
-- Make it yours has a Settings tab (time zone, backups, keyboard shortcuts) and a Features tab with drawn switches, and a course's drawing can be chosen from the subject sets.
+- Make it yours is laid out in five tabs: Look, Home, Courses, Companion and More. More holds the drawn feature switches (Full, Lite or Custom) and the daily preferences such as the time zone, and a course's drawing can be chosen from the subject sets.
 - Graphics, in Make it yours → Look: Low, Medium, High and Extra high. Each step down leaves out the detail that is seen least, and Advanced tunes one kind at a time. Slower computers start on Medium.
 - New since your last visit: a New chip and view for work Canvas added and grades that came back since you last looked.
 - An overdue item's details say what handing it in now costs, from the course's late policy, or, when Canvas keeps that from students, from your own earlier late work there.
