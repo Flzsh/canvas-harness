@@ -281,9 +281,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     return enabled('customization')?root.ReserveCustomizeUI?.render({...c,quickUpload,quickPackDraft,quickPackFileName,quickPackError,quickPackLoading})||'':'';
   }
   function courseFilter(){return `<label class="rd-mobile-course rd-field"><span>Course</span><select data-rd-field="course" aria-label="Select course"><option value="all" ${state.courseId==='all'?'selected':''}>All courses</option>${c.courses.map(course=>`<option value="${E(course.id)}" ${state.courseId===course.id?'selected':''}>${E(option(course))}</option>`).join('')}</select></label>`;}
-  const modeNames={
-    new:'New since your last visit',
-    actionable:'Up next',
+  const modeNames={all:'All assignments',new:'New since your last visit',actionable:'Up next',
     today:'Today',
     tomorrow:'Tomorrow',
     week:'This week',
@@ -302,7 +300,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   function workCourseFilter(){return `<label class="rd-course-select"><span class="rd-sr-only">Course filter</span><select aria-label="Course filter" data-rd-field="course"><option value="all">All courses</option>${c.courses.map(x=>`<option value="${x.id}" ${state.courseId===x.id?'selected':''}>${E(state.courseId===x.id?short(x):option(x))}</option>`).join('')}</select></label>`;}
   // One segmented control; each view shows how many items it holds (the same list rules, dashboard.js
   // modeCounts). "More views" is a quiet native select beside it, never squeezed inside the track.
-  function filters(){const modes=[['actionable','Up next'],['today','Today'],['week','Week'],['planned','My plan']],n=c.modeCounts||{};return `<div class="rd-list-toolbar" data-rd-key="filters"><div class="rd-filter-group" role="group" aria-label="Assignment views">${modes.map(([mode,label])=>action('view',`${label}${Number.isFinite(n[mode])?` <span class="rd-n">${n[mode]}</span>`:''}`,`data-mode="${mode}" aria-pressed="${state.mode===mode&&!state.day}"`,'rd-filter')).join('')}</div><span class="rd-more-views rd-select-text"><select data-rd-field="mode" aria-label="More assignment views"><option value="actionable">More views</option>${Object.entries(modeNames).filter(([key])=>!['actionable','today','week','planned','new'].includes(key)).map(([value,label])=>`<option value="${value}" ${state.mode===value?'selected':''}>${label}</option>`).join('')}</select></span></div>`;}
+  function filters(){
+    const modes=[...(c.workPage==='assignments'?[['all','All']]:[]),['actionable','Up next'],['today','Today'],['week','Week'],['planned','My plan']],n=c.modeCounts||{};
+    return `<div class="rd-list-toolbar" data-rd-key="filters"><div class="rd-filter-group" role="group" aria-label="Assignment views">${modes.map(([mode,label])=>action('view',`${label}${Number.isFinite(n[mode])?` <span class="rd-n">${n[mode]}</span>`:''}`,`data-mode="${mode}" aria-pressed="${state.mode===mode&&!state.day}"`,'rd-filter')).join('')}</div><span class="rd-more-views rd-select-text"><select data-rd-field="mode" aria-label="More assignment views"><option value="actionable">More views</option>${Object.entries(modeNames).filter(([key])=>!['all','actionable','today','week','planned','new'].includes(key)).map(([value,label])=>`<option value="${value}" ${state.mode===value?'selected':''}>${label}</option>`).join('')}</select></span></div>`;
+  }
   // "Tue 29": the weekday, a serif numeral and a muted count; today's weekday is ink. The strip always
   // follows the filters in the top row (not only in Week), so each day's count shows without a click.
   // It stays a direct child of the desk toolbar: motion.js snapshots that row's children, so an
@@ -329,7 +330,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     return day===today?'today':day===tomorrow?'tomorrow':'later';
   };
   const stateTone=label=>/missing|redo|resubmission/i.test(label)?'danger':/^(Graded|Submitted|Done)/.test(label)?'success':'neutral';
-  const groupTones={'Past due':'danger','Due today':'warn','Due tomorrow':'info','Planned for today':'accent','Completed work':'success'};
+  const groupTones={'Past due':'danger','Due today':'warn','Due tomorrow':'info','Planned for today':'accent','Completed work':'success','Waiting for a grade':'info','Done':'success'};
+  // All: handed in and not graded yet (the teacher still has it), apart from the done work below it
+  const waitingGrade=item=>!item.personal&&item.state==='submitted'&&!item.missing&&!item.redoRequested&&(item.score===null||item.score===undefined)&&!checked(item);
   // A row's excerpt is plain text: mathematics in it reads in a plain form (a·b = ‖a‖ ‖b‖ cos θ), never as raw TeX
   // (math.js; an equation image gives its TeX first, before the tags go).
   const excerpt=item=>{
@@ -383,8 +386,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // The frame is keyed per course (a mini itself never is): another course's empty state gets a new drawing,
   // which the art film can draw, instead of the old svg patched into the next course's lines.
   const emptyArt=course=>`<span class="rd-empty-art" data-rd-key="empty-art-${E(course?.id||'all')}" aria-hidden="true">${mini(course||{id:'0',name:'Canvas Harness',color:c.accent||'#A9522F'},'empty')}</span>`;
-  const emptyTitles={
-    planned:'Nothing is planned for today',
+  const emptyTitles={all:'No assignments yet',planned:'Nothing is planned for today',
     missing:'Nothing is missing or waiting for a redo',
     ready:'Nothing is waiting for a completion check',
     completed:'No completed work yet',
@@ -411,11 +413,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const selected=c.filtered.items,visible=selected.slice(0,c.visibleLimit);
     let group='';
     const heading=state.day?formatDate(state.day+'T12:00:00Z','UTC',{weekday:'long',month:'short',day:'numeric'}):c.filtered.searching?'Search results':modeNames[state.mode]||'Your work';
-    const groupOf=item=>
-      state.mode==='planned'?
-        'Planned for today':
-        finished(item)?
-          'Completed work':
+    const groupOf=item=>state.mode==='planned'?'Planned for today':finished(item)?state.mode==='all'?waitingGrade(item)?'Waiting for a grade':'Done':'Completed work':
           item.dueAt?
             dayKey(item.dueAt,c.s.timeZone)===today?'Due today':dayKey(item.dueAt,c.s.timeZone)===tomorrow?'Due tomorrow':Number(new Date(item.dueAt))<c.now?'Past due':'Coming up':
             item.personal&&local[item.id]?.plannedDate===today?'Planned for today':'Without a due date';

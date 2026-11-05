@@ -2,7 +2,7 @@
 
 ## 3.9.3 changes
 
-3.9.3 turns on the Focus room, Review deck and Grade impact in Full (they were already in the package, switched off), keeps a course's colour when it is moved, fits the Starfield theme's pictures and sky, and draws the play tools' cards. It adds no permissions, no network requests and no remote code.
+3.9.3 turns on the Focus room, Review deck and Grade impact in Full (they were already in the package, switched off), opens the Assignments page on a list of every assignment (late and due work first, done work kept below), keeps a course's colour when it is moved, fits the Starfield theme's pictures and sky, and draws the play tools' cards. It adds no permissions, no network requests and no remote code.
 
 ## 3.9.2 changes
 
