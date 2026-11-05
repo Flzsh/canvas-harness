@@ -45,7 +45,7 @@
 - **A new look in 3.9.1**: a drawn top bar with a drawing on every tab, Make it yours in five tabs with drawn feature switches, Graphics from Low to Extra high, New since your last visit, and Biscuit planning around what you name.
 - **Focus room, Review deck and Grade impact**, redrawn as rooms that grow out of their Home modules. They start off: Features in the popup, then Custom.
 - **Play tools take the whole page**: a Black hole that pulls in everything on the screen, Foil's film, painted fire, a Laser that drops every closed part, Balloons from any click, and Portals that pull in the words around them.
-- **Developer tools**, off until you switch it on: a read-only report for bug reports. Thanks to @hellyeahboys666 for the idea in #65.
+- **Developer tools**, off until you switch it on: a read-only report for bug reports.
 - **A reading ruler** in the PDF reader, and Canvas's own pages drawn to match.
 
 Also in 3.8: Biscuit understands short lines far better, still on your computer with no AI. Thanks to @garywu000 and @HarryX081125 for their contributions. [Every change](CHANGELOG.md)

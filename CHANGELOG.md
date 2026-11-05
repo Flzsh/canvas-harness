@@ -44,7 +44,7 @@
 - Modules: a module's name keeps its room when Tools is open beside the page, and your progress shows again at once when you come back.
 - PDF reader: a reading ruler (L).
 - Course hub: pages a teacher has not shared no longer show as errors.
-- Developer tools, off until you switch it on: a read-only tab in Tools with the build, what is switched on, the settings you changed, the Canvas sync, speed, storage and errors from Canvas Harness's own files. **Copy report** puts it on your clipboard for a bug report, without names, coursework or your school address. Thanks to @hellyeahboys666 for the idea in #65.
+- Developer tools, off until you switch it on: a read-only tab in Tools with the build, what is switched on, the settings you changed, the Canvas sync, speed, storage and errors from Canvas Harness's own files. **Copy report** puts it on your clipboard for a bug report, without names, coursework or your school address.
 
 ## 3.8.1 - 2026-10-29
 
