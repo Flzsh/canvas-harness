@@ -9,6 +9,7 @@ Version 3.99.4 in the browser.
 - The course dock keeps to the room beside a docked reader, and course names in it no longer break in the middle of a word.
 - The reader's text and a Materials page keep the mouse wheel only while they have something to scroll; otherwise the page under them scrolls.
 - The drawn pen lines around groups in Make it yours are back, and the pen-eased motions (a Review deck card turning, among others) run again.
+- Make it yours → More lists the features you installed from the Market. Before, it said "Could not load installed features."
 - Your AI: Send is found on ChatGPT and Claude even while it is still fading in, in a tab in the background. When the message reached the AI tab but was not sent, the band says so.
 
 ## 4.0 Preview 3 - 2026-11-02
