@@ -33,9 +33,9 @@ test('All lists every piece of work in the course, the old done work and long-la
   assert.equal(all({courseId:'all'}).length,10);
 });
 
-test('late work first (newest late first), then by deadline with new work leading, then undated, waiting, done',()=>{
+test('late work first (newest late first), then by deadline, then undated, waiting, done',()=>{
   assert.deepEqual(all({courseId:'1',newIds:new Set(['later-new'])}),
-    ['late-new','late-old','later-new','soon','later','undated','waiting','graded-new','graded-old']);
+    ['late-new','late-old','soon','later','later-new','undated','waiting','graded-new','graded-old'],'new work never jumps ahead of an earlier day');
   assert.deepEqual(all({courseId:'1'}),['late-new','late-old','soon','later','later-new','undated','waiting','graded-new','graded-old']);
 });
 
@@ -50,4 +50,10 @@ test('the page wiring: the Assignments page opens on All with its own segment; H
   assert.match(dash,/const pageDefault=\(\)=>workspace==='work'&&workPage==='assignments'\?'all':'actionable';/);
   assert.match(dash,/workPage=nextPage;fitPageMode\(\);/);
   assert.match(dash,/state=Model\.cleanState\(next\);fitPageMode\(\);/);
+});
+
+test('new work leads within its own day, so each date heading stays in one piece',()=>{
+  const day=[{id:'a',courseId:'1',dueAt:at(0.2),state:'unsubmitted'},{id:'b',courseId:'1',dueAt:at(0.3),state:'unsubmitted'},{id:'c',courseId:'1',dueAt:at(1.2),state:'unsubmitted'},{id:'d',courseId:'1',dueAt:at(1.1),state:'unsubmitted'}];
+  const ids=Model.filterAssignments(day,{mode:'all',now,timeZone:'America/New_York',courseId:'1',newIds:new Set(['b','c'])}).items.map(x=>x.id);
+  assert.deepEqual(ids,['b','a','c','d']);
 });
