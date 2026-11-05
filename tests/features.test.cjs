@@ -24,7 +24,7 @@ test('Full preserves the complete original main declaration and defaults to Full
  assert.deepEqual(F.resolve().js.filter(file=>original.content_scripts[1].js.includes(file)),original.content_scripts[1].js);
  for(const file of F.resolve().js)assert.ok(fs.existsSync(path.join(ext,file)),file);
  assert.deepEqual(F.resolve({preset:'full'}).enabled,F.presets.full);
- for(const id of ['focus-room','review-deck','grade-impact'])assert.ok(!F.presets.full.includes(id)&&!F.presets.lite.includes(id));
+ for(const id of ['focus-room','review-deck','grade-impact'])assert.ok(F.presets.full.includes(id)&&!F.presets.lite.includes(id));
  assert.deepEqual(F.startupCSS,original.content_scripts[0].css);
 });
 test('every original manifest resource belongs to exactly one feature or core',()=>{

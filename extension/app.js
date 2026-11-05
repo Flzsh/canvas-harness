@@ -89,7 +89,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
          originalName:course.name,
          shortName:custom||label.title||course.name,
          courseDetail:[extra(label.subject),extra(label.teacher),extra(label.sub)].filter(Boolean).join(' · '),
-         color:U.color(pref.color,COLORS[index%COLORS.length])
+         color:U.color(pref.color,COLORS[(course.originalIndex??index)%COLORS.length])
        }
      ];
    }));

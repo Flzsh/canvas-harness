@@ -3216,27 +3216,70 @@ if (!opts.all) try { localStorage.setItem('reserve:last-play-tool', dealt); } ca
 // only the shelves that hold a tool
 const shelf = g => { const on = OFFER.filter(t => t[4] === g); return on.length ? `<div class="chb-shelf" data-group="${g}">${on.map(btnHTML).join('')}</div>` : ''; };
 tray.innerHTML = shelf('weapon') + shelf('play');
+// The dealt card's frame, drawn by hand: points round a rounded rectangle with a little wobble (seeded by the tool, so it
+// is the same each time), joined in soft curves, overshooting where the line began; and where a ray leaves its edge
+const TIERCOL = { common: '#D9CDB8', uncommon: '#A9BC8C', rare: '#9DB4C8', epic: '#DE9A7C', legendary: GOLD };
+const RAYS = { common: 8, uncommon: 10, rare: 12, epic: 14, legendary: 16 }, REACH = { common: 9, uncommon: 12, rare: 15, epic: 18, legendary: 21 };
+const wobble = key => { let s = 7; for (const ch of String(key)) s = (s * 31 + ch.charCodeAt(0)) % 2147483647; return () => ((s = (s * 48271) % 2147483647) / 2147483647 - .5) * 2; };
+const handRect = (x, y, w, h, r, k, j, over) => {
+  const p = [], seg = (x0, y0, x1, y1) => { for (let i = 0; i < 4; i++) { const u = i / 4; p.push([x0 + (x1 - x0) * u + j() * k, y0 + (y1 - y0) * u + j() * k]); } };
+  const arc = (cx, cy, a0) => { for (let i = 0; i < 3; i++) { const a = a0 + i / 3 * 1.5708; p.push([cx + Math.cos(a) * r + j() * k * .6, cy + Math.sin(a) * r + j() * k * .6]); } };
+  seg(x + r, y, x + w - r, y); arc(x + w - r, y + r, -1.5708); seg(x + w, y + r, x + w, y + h - r); arc(x + w - r, y + h - r, 0);
+  seg(x + w - r, y + h, x + r, y + h); arc(x + r, y + h - r, 1.5708); seg(x, y + h - r, x, y + r); arc(x + r, y + r, 3.1416); p.push([x + r + over, y + j() * k]);
+  let d = `M${R(p[0][0])} ${R(p[0][1])}`;
+  for (let i = 1; i < p.length; i++) d += `Q${R(p[i - 1][0])} ${R(p[i - 1][1])} ${R((p[i - 1][0] + p[i][0]) / 2)} ${R((p[i - 1][1] + p[i][1]) / 2)}`;
+  return d + `L${R(p[p.length - 1][0])} ${R(p[p.length - 1][1])}`;
+};
+// how far from the card's centre its rounded edge lies in a direction (half sizes A, B, corner radius r)
+const rim = (a, A, B, r) => {
+  const c = Math.cos(a), s = Math.sin(a), t = Math.min(A / Math.max(1e-6, Math.abs(c)), B / Math.max(1e-6, Math.abs(s))), x = t * c, y = t * s;
+  if (Math.abs(x) <= A - r || Math.abs(y) <= B - r) return t;
+  const qx = Math.sign(x) * (A - r), qy = Math.sign(y) * (B - r), uq = c * qx + s * qy;
+  return uq + Math.sqrt(Math.max(0, uq * uq - (qx * qx + qy * qy - r * r)));
+};
+// the frame over the card's edge: the wash, the ink line, and (moving) the glint that runs round it
+const cardFrame = (b, tier, live) => {
+  const w = b.offsetWidth || 52, h = b.offsetHeight || 63, P = 8, j = wobble((b.dataset?.tool || '') + tier), col = TIERCOL[tier] || TIERCOL.common;
+  const ink = handRect(P, P, w, h, 9, .9, j, 6), wash = handRect(P + 1.6, P + 1.4, w, h, 9, 1.1, j, 0);
+  return `<svg class="chb-frame${live ? ' chb-frame-live' : ''}" viewBox="0 0 ${R(w + 2 * P)} ${R(h + 2 * P)}" aria-hidden="true">`
+    + `<path class="chb-frame-wash" d="${wash}" pathLength="1" fill="none" stroke="${col}" stroke-width="3.2" stroke-linecap="round"/>`
+    + `<path class="chb-frame-ink" d="${ink}" pathLength="1" fill="none" stroke="#141413" stroke-width="1.7" stroke-linecap="round"/>`
+    + (live ? `<path class="chb-frame-glint" d="${ink}" pathLength="1" fill="none" stroke="#FFF6D6" stroke-width="2.4" stroke-linecap="round"/>` : '') + '</svg>';
+};
+// the prize: the frame drawn on, the shine (rare and up), the rays out of the frame's edge, sparkles (epic and up)
+const dealtCard = (b, tier) => {
+  b.classList.add('chb-framed'); b.insertAdjacentHTML('beforeend', cardFrame(b, tier, true));
+  if (tier === 'rare' || tier === 'epic' || tier === 'legendary') b.insertAdjacentHTML('afterbegin', '<i class="chb-shine" aria-hidden="true"></i>');
+  const w = b.offsetWidth || 0, h = b.offsetHeight || 0, cx = (b.offsetLeft || 0) + w / 2, cy = (b.offsetTop || 0) + h / 2;
+  const label = (b.closest?.('.chb-shelf')?.offsetTop || 0) + 14, tw = tray.clientWidth, th = tray.clientHeight;
+  // the room round the card inside the tray, clear of the shelf's label at its top left (the heading above and Canvas's
+  // text below are outside the tray); with no layout yet (a page not shown), the old size
+  let room = tw > 0 && th > 0 ? Math.min(60, cx, tw - cx, cy, th - cy) - 2 : 58;
+  if (tw > 0 && th > 0 && cx - room < 70) room = Math.min(room, cy - label - 2);
+  const A = (w || 52) / 2 + 2, B = (h || 63) / 2 + 2, n = RAYS[tier] || 8, col = TIERCOL[tier] || TIERCOL.common, j = wobble((b.dataset?.tool || '') + 'rays');
+  let rays = '';
+  for (let i = 0; i < n; i++) {
+    const a = i / n * 6.2832 + .2, e = rim(a, A, B, 9) + 1.5, L = Math.min(room, e + (REACH[tier] || 9) * (i % 2 ? .62 : 1) + j() * 2), wa = (i % 2 ? 2.2 : 3.4) / e;
+    if (L - e < 5) continue;
+    const q = (t, d) => `${R(Math.cos(a + d) * t)} ${R(Math.sin(a + d) * t)}`;
+    rays += `<g class="chb-ray" style="transform-origin:${R(room)}px ${R(room)}px;animation-delay:${R(.78 + (i % 4) * .05)}s"><path d="M${q(e, -wa)}L${q(L, 0)}L${q(e, wa)}Z" fill="${col}"/>${inkP(`M${q(e + 1, 0)}L${q(L - 2, 0)}`, 1, .4)}</g>`;
+  }
+  // the rays sit in the tray behind the card (a child would paint over the card's face)
+  if (rays) tray.insertAdjacentHTML('afterbegin', `<svg class="chb-rays chb-rays-edge" viewBox="${R(-room)} ${R(-room)} ${R(room * 2)} ${R(room * 2)}" aria-hidden="true" style="left:${R(cx)}px;top:${R(cy)}px;width:${R(room * 2)}px;height:${R(room * 2)}px;margin:${R(-room)}px 0 0 ${R(-room)}px">${rays}</svg>`);
+  b.style.zIndex = '1';
+  if (tier === 'epic' || tier === 'legendary') for (let i = 0; i < (tier === 'legendary' ? 14 : 8); i++) {
+    const a = Math.random() * 6.2832, d = Math.min(34 + Math.random() * 30, Math.max(24, room)), s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    s.setAttribute('viewBox', '-6 -6 12 12'); s.setAttribute('class', 'chb-spark'); s.setAttribute('aria-hidden', 'true');
+    s.innerHTML = `<path d="M0 -5.4C.6 -1.2 1.2 -.6 5.4 0C1.2 .6 .6 1.2 0 5.4C-.6 1.2 -1.2 .6 -5.4 0C-1.2 -.6 -.6 -1.2 0 -5.4Z" fill="${tier === 'legendary' ? GOLD : '#F2DC8E'}"/>` + inkP('M0 -5.4C.6 -1.2 1.2 -.6 5.4 0C1.2 .6 .6 1.2 0 5.4C-.6 1.2 -1.2 .6 -5.4 0C-1.2 -.6 -.6 -1.2 0 -5.4Z', .8, .7);
+    s.style.setProperty('--dx', R(Math.cos(a) * d) + 'px'); s.style.setProperty('--dy', R(Math.sin(a) * d) + 'px'); s.style.animationDelay = R(.25 + Math.random() * .35) + 's'; b.append(s);
+  }
+};
 // the one tool dealt is revealed like a prize: it pops in; from rare up, drawn rays fan out behind it once and a shine
 // crosses it; epic and legendary throw sparkles; legendary's rays are gold
 if (!opts.all && opts.reveal !== false) {
   const b = tray.querySelector('button'), tier = b?.dataset.tier || 'common';
   if (b && !reduce) { box.querySelector('.chb-box')?.classList.add('chb-dealt'); b.classList.add('chb-reveal');
-  if (tier !== 'common' && tier !== 'uncommon') {
-    const col = { rare: '#9DB4C8', epic: '#DE9A7C', legendary: GOLD }[tier], n = tier === 'legendary' ? 16 : 12, rays = [...Array(n)].map((_, i) => {
-      const a = i / n * 6.2832, a2 = a + 6.2832 / n * .45, r1 = 44 + (i % 2) * 8;
-      return `<path d="M0 0L${R(Math.cos(a) * r1)} ${R(Math.sin(a) * r1)}L${R(Math.cos(a2) * r1)} ${R(Math.sin(a2) * r1)}Z" fill="${col}" opacity=".85"/>` + inkP(`M${R(Math.cos(a) * 14)} ${R(Math.sin(a) * 14)}L${R(Math.cos(a) * r1)} ${R(Math.sin(a) * r1)}`, 1, .35);
-    }).join('');
-   // the rays sit in the tray behind the card (a child would paint over the card's face)
-   b.insertAdjacentHTML('afterbegin', '<i class="chb-shine" aria-hidden="true"></i>'); tray.insertAdjacentHTML('afterbegin', `<svg class="chb-rays" viewBox="-52 -52 104 104" aria-hidden="true" style="left:${b.offsetLeft + b.offsetWidth / 2}px;top:${b.offsetTop + b.offsetHeight * .42}px">${rays}</svg>`); b.style.zIndex = '1';
-   if (tier === 'epic' || tier === 'legendary')
-     for (let i = 0; i < (tier === 'legendary' ? 14 : 8); i++) {
-       const a = Math.random() * 6.2832, d = 34 + Math.random() * 30, s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-       s.setAttribute('viewBox', '-6 -6 12 12');
-       s.setAttribute('class', 'chb-spark');
-       s.setAttribute('aria-hidden', 'true');
-    s.innerHTML = `<path d="M0 -5.4C.6 -1.2 1.2 -.6 5.4 0C1.2 .6 .6 1.2 0 5.4C-.6 1.2 -1.2 .6 -5.4 0C-1.2 -.6 -.6 -1.2 0 -5.4Z" fill="${tier === 'legendary' ? GOLD : '#F2DC8E'}"/>` + inkP('M0 -5.4C.6 -1.2 1.2 -.6 5.4 0C1.2 .6 .6 1.2 0 5.4C-.6 1.2 -1.2 .6 -5.4 0C-1.2 -.6 -.6 -1.2 0 -5.4Z', .8, .7);
-    s.style.setProperty('--dx', R(Math.cos(a) * d) + 'px'); s.style.setProperty('--dy', R(Math.sin(a) * d) + 'px'); s.style.animationDelay = R(.25 + Math.random() * .35) + 's'; b.append(s); } } } }
-let tool = null, down = false;
+  dealtCard(b, tier); } else if (b) { b.classList.add('chb-framed'); b.insertAdjacentHTML('beforeend', cardFrame(b, tier, false)); } }let tool = null, down = false;
 const HOW = Object.fromEntries(TOOLS.map(t => [t[0], t[3]]));
 function pick(name) {
   if (name && (dead || opts.allowed?.() === false)) name = null;

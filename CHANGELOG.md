@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.9.3 - 2026-11-05
+
+- Focus room, Review deck and Grade impact are on from the start, in Full. They were in the package already but switched off until you chose them under Features. Lite still leaves them out, and Custom can switch any of them off.
+- A course keeps its colour when you move it in the course list.
+- Starfield: the course pictures sit inside their rows, and the sky fills the page behind Home.
+- Play tools: a dealt tool's rays stay clear of the words on its card, and every card, of every rarity, gets a drawn outline that draws itself on and catches the light.
+
 ## 3.9.2 - 2026-11-04
 
 Two fixes for 3.9.1.

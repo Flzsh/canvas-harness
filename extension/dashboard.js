@@ -1496,10 +1496,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         return (ai<0?order.length+a._index:ai)-(bi<0?order.length+b._index:bi);
       });
       const allCourses=normalized.map((course,index)=>{
-        // ownColor: the student chose this colour (it tints the paint of the row's frame); the default goes by position.
+        // ownColor: the student chose this colour (it tints the paint of the row's frame); the default goes by the course's
+        // Canvas order, so moving a course never repaints it or the ones it passes.
         const pref=prefs[course.id]||{};
         // Short labels come from the Canvas name; a student's own name is shown as typed.
-        const color=validColor(pref.color,COURSE_COLORS[index%COURSE_COLORS.length]),ownColor=validColor(pref.color,'')!=='';
+        const color=validColor(pref.color,COURSE_COLORS[(course._index??index)%COURSE_COLORS.length]),ownColor=validColor(pref.color,'')!=='';
         // A leading subject ("English: …") leads the line under the title ("Subject · Teacher").
         const label=C.courseLabel?.(course.name)||{title:course.name,teacher:'',sub:'',tag:'',subject:''},custom=pref.name||'';
         const extra=value=>custom&&value&&String(custom).toLowerCase().includes(value.toLowerCase())?'':value;

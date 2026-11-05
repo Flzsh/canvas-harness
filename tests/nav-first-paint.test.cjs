@@ -12,9 +12,10 @@ test('feature lifecycle clears a stale navigation hint even when navigation neve
  vm.runInContext(fs.readFileSync(require.resolve('../extension/features.js'),'utf8'),env);assert.equal(values.has('reserve:navEarly'),false);
  values.set('reserve:navEarly','drawer');env.ReserveFeatures.apply({preset:'custom',custom:['dashboard']});assert.equal(values.has('reserve:navEarly'),false);
 });
-test('Extras are opt in for Full, Lite and default Custom, and load only after explicit selection',()=>{
+// Since 3.9.3 / Preview 6 the three rooms are on in Full and in the default Custom selection (owner, 2026-11-05); Lite leaves them out.
+test('Extras are on in Full and default Custom, out of Lite, and load when chosen',()=>{
  for(const prefs of [undefined,'full','lite',{preset:'custom'}])for(const id of ['focus-room','review-deck','grade-impact']){
-  const feature=Features.catalogue.find(entry=>entry.id===id),selection=Features.resolve(prefs);assert.equal(feature.group,'Extras');assert.equal(selection.enabled.includes(id),false);for(const file of feature.files.js)assert.equal(selection.js.includes(file),false);
+  const feature=Features.catalogue.find(entry=>entry.id===id),selection=Features.resolve(prefs),on=prefs!=='lite';assert.equal(feature.group,'Extras');assert.equal(selection.enabled.includes(id),on);for(const file of feature.files.js)assert.equal(selection.js.includes(file),on);
  }
  for(const id of ['focus-room','review-deck','grade-impact']){const selection=Features.resolve({preset:'custom',custom:[id]});assert.ok(selection.enabled.includes(id));for(const file of Features.catalogue.find(entry=>entry.id===id).files.js)assert.ok(selection.js.includes(file));}
 });
