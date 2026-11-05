@@ -1,5 +1,9 @@
 # Reviewer testing notes
 
+## 3.9.2 changes
+
+3.9.2 fixes two display problems in 3.9.1: Make it yours → More shows its feature switches styled again (a stylesheet was missing from the page-start list), and picking a scene theme no longer shows its picture at full size for a moment before the theme's styles load. It adds no permissions, no network requests and no remote code.
+
 ## 3.9.1 changes
 
 3.9.1 brings the redesigned interface from the 4.0 preview line: a drawn top bar, Make it yours with Settings and Features tabs, a Graphics setting, New since your last visit and Biscuit's rule list. It adds no permissions, no network requests and no remote code, and the 4.0 daily AI is not in it.

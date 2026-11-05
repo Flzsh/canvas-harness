@@ -36,7 +36,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // The eight seconds count only while the page can be seen. A tab opened in the background waits, unseen,
   // for its student; when it is shown it gets its eight seconds again (the CSS release switches restart too).
   const expired=()=>!featuresLoading&&performance.now()>=deadline&&document.visibilityState!=='hidden';
-  const allSheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','course-links.css','focus-room.css','review-deck.css','grade-impact.css'];
+  const allSheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','addons-panel.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','course-links.css','focus-room.css','review-deck.css','grade-impact.css'];
   let sheets=allSheets,state='pending',shell,artNode,observer,timer,preloaded=false,featuresSelected=false,featuresLoading=false;
   // Why Canvas showed: 'student' (Canvas's page used, or "Canvas dashboard" chosen), 'deadline' (eight seconds in view),
   // 'no-cover' (the cover's styles were missing). The last two leave the start running; anything else stops it.

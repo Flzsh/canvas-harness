@@ -524,6 +524,8 @@ function frame(t, advance = true) {
     invisibleState=false,
     drawingPaused=true;
   const link=doc.createElement('link');link.rel='stylesheet';link.setAttribute('href',base+'theme.css');
+  // the sky and pictures show once the theme's own styles are in (scene-themes.css holds them back until then)
+  let sheetReady=false;link.addEventListener('load',()=>{sheetReady=true;if(!dead)rd.setAttribute('data-theme-kit-ready','');});
   const sky=doc.createElement('div');sky.className='tk-sky';sky.setAttribute('aria-hidden','true');sky.setAttribute('data-rd-keep','');
   const media=doc.createElement(id==='stars'?'canvas':'video');
   const poster=doc.createElement('img');poster.className='tk-poster';poster.alt='';poster.setAttribute('src',base+'poster.jpg');
@@ -578,6 +580,7 @@ function frame(t, advance = true) {
    if(dead)return;
    if(link.parentNode!==root)root.append(link);
    if(rd.getAttribute('data-theme-kit')!==id)rd.dataset.themeKit=id;
+   if(sheetReady&&!rd.hasAttribute('data-theme-kit-ready'))rd.setAttribute('data-theme-kit-ready','');
    restMirror();
    // put back only when it is gone: moving a frame reloads it (and its whole sky)
    if(sky.parentNode!==rd){rd.prepend(sky);skyAnimator?.resize();}
@@ -665,7 +668,13 @@ function frame(t, advance = true) {
    if(raf)global.cancelAnimationFrame(raf);
    for(const dispose of disposers)dispose();clearLens();frames?.destroy();
    if(id==='stars')skyAnimator?.destroy();else{media.pause();media.removeAttribute('src');media.load?.();}
-   link.remove();sky.remove();for(const icon of icons.values())icon.remove();icons.clear();for(const icon of minis.values())icon.remove();minis.clear();
+   rd.removeAttribute('data-theme-kit-ready');
+   link.remove();
+   sky.remove();
+   for(const icon of icons.values())icon.remove();
+   icons.clear();
+   for(const icon of minis.values())icon.remove();
+   minis.clear();
    rd.removeAttribute('data-kit-rest');
    if(previousKit===null)rd.removeAttribute('data-theme-kit');else rd.setAttribute('data-theme-kit',previousKit);
    if(previousPause)rd.setAttribute('data-scene-paused','');else rd.removeAttribute('data-scene-paused');

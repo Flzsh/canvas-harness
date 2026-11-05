@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.9.2 - 2026-11-04
+
+Two fixes for 3.9.1.
+
+- Make it yours → More shows its feature switches as drawn rows again. The page-start list of stylesheets left out their styles, so the list showed unstyled, with full-size drawings.
+- Picking a scene theme no longer flashes its picture at full size and pushes Home down for a moment: the sky and the course pictures wait until the theme's own styles have loaded.
+
 ## 3.9.1 - 2026-11-04
 
 3.9.0 kept the look of 3.8. This release brings everything from 4.0 Preview 4 except the 4.0 daily AI (the Help band, Prepare, Daily AI help and Overnight). The AI context and handoff in Tools stay as they were in 3.9.0, with the same permissions.
