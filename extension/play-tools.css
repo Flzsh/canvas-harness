@@ -90,7 +90,7 @@ html.chb-rest #chb-layer *,html.chb-rest .chb-blend *,html.chb-rest .chb-painted
 #chb-tray button[data-tier=common]::after{background:#E3DACC}#chb-tray button[data-tier=uncommon]::after{background:#A9BC8C}#chb-tray button[data-tier=rare]::after{background:#9DB4C8}#chb-tray button[data-tier=epic]::after{background:#DE9A7C}#chb-tray button[data-tier=legendary]::after{background:#E2B865}
 .chb-tier{display:block;font:700 8.5px "Segoe UI";font-style:normal;letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
 #chb-tray button[data-tier=common] .chb-tier{color:#6F6A5E}#chb-tray button[data-tier=uncommon] .chb-tier{color:#5F7A45}#chb-tray button[data-tier=rare] .chb-tier{color:#4F7FA8}#chb-tray button[data-tier=epic] .chb-tier{color:#C96442}#chb-tray button[data-tier=legendary] .chb-tier{color:#A9771F}
-.chb-dealt #chb-tray{overflow:visible}#chb-tray button.chb-reveal{overflow:visible;animation:chb-deal .7s cubic-bezier(.2,1.5,.4,1) .15s backwards}#chb-tray button.chb-reveal>svg:not(.chb-rays):not(.chb-spark),#chb-tray button.chb-reveal>span,#chb-tray button.chb-reveal>em{position:relative;z-index:1}
+.chb-dealt #chb-tray{overflow:visible}#chb-tray button.chb-reveal{overflow:visible;animation:chb-deal .7s cubic-bezier(.2,1.5,.4,1) .15s backwards}#chb-tray button.chb-reveal>svg:not(.chb-rays):not(.chb-spark):not(.chb-frame),#chb-tray button.chb-reveal>span,#chb-tray button.chb-reveal>em{position:relative;z-index:1}
 @keyframes chb-deal{0%{transform:scale(.2) rotate(-14deg);opacity:0}60%{transform:scale(1.16) rotate(3deg);opacity:1}100%{transform:none}}
 #chb-tray svg.chb-rays{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;z-index:0;pointer-events:none;animation:chb-rays 1.6s cubic-bezier(.2,.8,.3,1) .3s backwards;opacity:.9}
 @keyframes chb-rays{0%{transform:scale(.1) rotate(-40deg);opacity:0}50%{opacity:1}100%{transform:none;opacity:.9}}
@@ -123,3 +123,23 @@ html.chb-paused :is(#chb-layer,#chb-aim,.chb-box) *,html.chb-paused :is(#chb-lay
 html.chb-reduced :is(#chb-layer,#chb-aim,.chb-box) *,html.chb-reduced :is(#chb-layer,#chb-aim,.chb-box) *::before{animation:none!important;transition:none!important}
 .chs-scene.chs-paused *{animation-play-state:paused!important}
 .chs-scene.chs-still *{animation-delay:-10s!important;animation-play-state:paused!important}
+
+/* The dealt card stands in the middle of its shelf and is as wide as its tier name; its rays are sized to the tray's
+   room in play-tools.js, so they never reach the heading, the shelf's label or Canvas's text round the tray */
+.chb-dealt .chb-shelf{justify-content:center;padding-top:14px;padding-bottom:20px}
+#chb-tray button.chb-reveal{width:auto;min-width:52px;padding-left:7px;padding-right:7px;white-space:nowrap}
+
+/* The dealt card's drawn frame (play-tools.js cardFrame): over the card's edge, drawn on like a pencil once the card
+   lands, the tier's wash a beat after; the rays grow out of that edge; a glint runs round it now and then for a minute.
+   Under reduced motion the frame is simply there. */
+#chb-tray button.chb-framed:not([aria-pressed=true]){box-shadow:none;background:#FBF6EA}
+#chb-tray button svg.chb-frame{position:absolute;left:-8px;top:-8px;width:calc(100% + 16px);height:calc(100% + 16px);margin:0;z-index:2;pointer-events:none;overflow:visible}
+.chb-frame-live .chb-frame-ink{stroke-dasharray:1;stroke-dashoffset:1;animation:chb-frame-draw .55s cubic-bezier(.6,0,.3,1) .35s forwards}
+.chb-frame-live .chb-frame-wash{stroke-dasharray:1;stroke-dashoffset:1;animation:chb-frame-draw .6s cubic-bezier(.6,0,.3,1) .5s forwards}
+@keyframes chb-frame-draw{to{stroke-dashoffset:0}}
+.chb-frame-glint{stroke-dasharray:.1 .9;stroke-dashoffset:1;opacity:0;animation:chb-frame-glint 4s linear 1.4s 15}
+@keyframes chb-frame-glint{0%{stroke-dashoffset:1;opacity:0}5%{opacity:.95}55%{stroke-dashoffset:0;opacity:.95}60%,100%{stroke-dashoffset:0;opacity:0}}
+#chb-tray svg.chb-rays.chb-rays-edge{animation:none;opacity:1}
+.chb-rays-edge .chb-ray{transform:scale(.25);opacity:0;animation:chb-ray .5s cubic-bezier(.2,1.4,.4,1) forwards}
+@keyframes chb-ray{to{transform:none;opacity:.92}}
+@media (prefers-reduced-motion:reduce){.chb-frame-live path{animation:none!important;stroke-dasharray:none!important}.chb-frame-glint{display:none}.chb-rays-edge .chb-ray{animation:none;transform:none;opacity:.92}}

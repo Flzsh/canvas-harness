@@ -6,8 +6,9 @@ test('3.4 catalogue keeps old Custom choices and leaves new costly and optional 
  assert.deepEqual(F.normalize(old),old);
  const full=F.resolve('full'),lite=F.resolve('lite');
  for(const id of ['scene-themes','play']){assert.ok(full.enabled.includes(id));assert.ok(!lite.enabled.includes(id));}
+ // the three rooms are on in Full since 3.9.3 / Preview 6 (owner, 2026-11-05) and stay out of Lite
  for(const id of ['focus-room','review-deck','grade-impact']){
-  assert.ok(!full.enabled.includes(id)&&!lite.enabled.includes(id));
+  assert.ok(full.enabled.includes(id)&&!lite.enabled.includes(id));
   assert.ok(F.resolve({preset:'custom',custom:[id]}).enabled.includes(id));
  }
  for(const file of ['scene-themes.js','submit-celebrate.js','media-store.js','packs.js','data-theme.js'])assert.ok(!lite.js.includes(file),file);
@@ -38,7 +39,7 @@ test('manifest keeps required permissions and publishes only explicit page resou
 });
 test('release versions and contributor source credits agree',()=>{
  const version=JSON.parse(read('package.json')).version,m=JSON.parse(read('extension/manifest.json'));
- assert.equal(version,'3.99.5');assert.equal(m.version,version);assert.equal(m.version_name,'4.0 Preview 5');
+ assert.equal(version,'3.99.6');assert.equal(m.version,version);assert.equal(m.version_name,'4.0 Preview 6');
  assert.equal(JSON.parse(read('package.json')).versionName,m.version_name);
  assert.match(read('CHANGELOG.md'),/## 4\.0 Preview 1 - 2026-10-\d\d/);
  assert.match(read('CHANGELOG.md'),/## 3\.8\.0 - 2026-10-28/);

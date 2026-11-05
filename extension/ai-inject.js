@@ -525,8 +525,9 @@
       item.focus(); item.dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowRight', code: 'ArrowRight', bubbles: true, cancelable: true}));
       for (let i = 0; i < 20 && !radios.length; i++) { await pause(75); radios = [...document.querySelectorAll('[role="menuitemradio"]')].filter(el => LEVELS.includes(word(el))); }
       const was = word(radios.find(el => el.getAttribute('aria-checked') === 'true') || {innerText: ''}), target = radios.find(el => word(el) === want);
-      if (!target) { await shut(); return {ok: false}; }
-      if (was !== want) press(target);
+      // above: only bring a slower level down (Max), leaving a level at or below it alone
+      if (arg.above && LEVELS.indexOf(was) <= LEVELS.indexOf(arg.above)) { await shut(); return {ok: true, before: null}; }
+      if (!target) { await shut(); return {ok: false}; }if (was !== want) press(target);
       await pause(260); await shut();
       const shown = (button.innerText || '').toLowerCase().split(/\s+/);
       return {ok: shown.includes(want) || !shown.some(v => LEVELS.includes(v)), before: was};
@@ -540,6 +541,12 @@
     for (let i = 0; i < 20 && !slider; i++) { await pause(75); slider = document.querySelector('[role="slider"]'); }
     if (!slider) return {ok: false};
     const level = () => Number(slider.getAttribute('aria-valuenow')), before = level();
+    // above: only bring a slower level down (the slider's last step, Pro), leaving one at or below it alone
+    if (arg.above && before <= levels.indexOf(arg.above)) {
+      slider.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', code: 'Escape', bubbles: true, cancelable: true}));
+      await pause(200);
+      return {ok: true, before: null};
+    }
     for (let i = 0; i < 6 && level() !== want; i++) {
       const key = level() < want ? 'ArrowRight' : 'ArrowLeft';
       slider.dispatchEvent(new KeyboardEvent('keydown', {key, code: key, bubbles: true, cancelable: true}));

@@ -26,13 +26,13 @@ test('the default public tray has one tool and its draw accepts an injected RNG'
  const values=[.975],h=fixture({mountOptions:{all:false,random:()=>values.shift()}}),tray=h.document.getElementById('chb-tray');
  assert.equal(h.api.dealt,'blackhole');assert.equal(tray.querySelectorAll('button').length,1);assert.equal(tray.querySelector('button').dataset.tool,'blackhole');assert.equal(values.length,0);
 });
-for(const [tool,tier,sparks]of [['painter','common',0],['magnet','uncommon',0],['hammer','rare',0],['bomb','epic',8],['blackhole','legendary',14]])test(tier+' reveal happens once, every tool shows its band, and rays are for rare and up',()=>{
+for(const [tool,tier,sparks]of [['painter','common',0],['magnet','uncommon',0],['hammer','rare',0],['bomb','epic',8],['blackhole','legendary',14]])test(tier+' reveal happens once, every tool shows its band, and every tier has its drawn frame and rays',()=>{
  const plain=tier==='common'||tier==='uncommon';
  const h=fixture({mountOptions:{all:false,deal:tool}}),tray=h.document.getElementById('chb-tray'),button=tray.querySelector('button');
  assert.equal(button.dataset.tier,tier);assert.equal(button.classList.contains('chb-reveal'),true);assert.equal(button.querySelectorAll('.chb-spark').length,sparks);
- assert.equal((tray.fragments||[]).filter(html=>html.includes('chb-rays')).length,plain?0:1);assert.equal((button.fragments||[]).filter(html=>html.includes('chb-shine')).length,plain?0:1);
- assert.match(tray.innerHTML,new RegExp('class="chb-tier">'+tier[0].toUpperCase()+tier.slice(1)));
- h.api.pick(tool);h.api.pick(tool);assert.equal((tray.fragments||[]).filter(html=>html.includes('chb-rays')).length,plain?0:1);
+ assert.equal((tray.fragments||[]).filter(html=>html.includes('chb-rays')).length,1);assert.equal((button.fragments||[]).filter(html=>html.includes('chb-shine')).length,plain?0:1);
+ assert.match(tray.innerHTML,new RegExp('class="chb-tier">'+tier[0].toUpperCase()+tier.slice(1)));assert.equal((button.fragments||[]).filter(html=>html.includes('chb-frame chb-frame-live')).length,1);
+ h.api.pick(tool);h.api.pick(tool);assert.equal((tray.fragments||[]).filter(html=>html.includes('chb-rays')).length,1);
 });
 for(const options of [{reduced:true},{mountOptions:{motion:'still'}},{mountOptions:{motion:'off'}}])test('reduced or still play keeps the rare tool label without reveal animation '+JSON.stringify(options),()=>{
  const h=fixture({...options,mountOptions:{...options.mountOptions,all:false,deal:'blackhole'}}),tray=h.document.getElementById('chb-tray');

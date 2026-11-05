@@ -6,7 +6,7 @@
 
 The course dock runs locally with no network requests or new permissions. Drag the shelf to move it, its top edge to resize it, or right-click for its card. Cards look shows course names and next due work; Biscuit can change shelf, motion and name choices. It includes 3.6.0's Make it yours and top-bar redraws, Biscuit settings fixes and workspace-button recovery after leaving a loading tab.
 
-It retains local Biscuit commands, timers and routines; submission play tools; the Starry Night, Under the Sea, Starfield and Blueprint themes; course docks, the Market, Modules progress and To hand in. Focus room, Review deck and Grade impact are opt-in Custom features. Lite excludes scene themes, play and media playback; saved media stays in backups. Public school registration, provider handoff, the feature loader and existing saved data are retained.
+It retains local Biscuit commands, timers and routines; submission play tools; the Starry Night, Under the Sea, Starfield and Blueprint themes; course docks, the Market, Modules progress and To hand in. Focus room, Review deck and Grade impact are on in Full and can be switched off in Custom. Lite excludes scene themes, play and media playback; saved media stays in backups. Public school registration, provider handoff, the feature loader and existing saved data are retained.
 
 The Market host is optional and is requested on its popup click. Only packaged code runs. Pack and asset SHA-256 hashes, schemas, SVG isolation, account separation and exact removal are checked offline. The four scene folders are bundled; dynamically loaded pages and styles are listed explicitly in the manifest. Use your own picture or short video as a banner, framed the way you want. Upload, drop and paste support dashboard and course banners, card art and an optional dimmed background. Images are scaled on the device; large videos are recorded at the slot size. Motion off, reduced motion, hidden tabs and offscreen slots show stills. The frame editor, kits and backups retain framing and media. Nothing is uploaded.
 
@@ -37,7 +37,7 @@ Use a test student account on a supported Canvas site with at least two courses 
 14. Submit harmless work on a test assignment. A new receipt should show one random tool, with stronger tools rarer and a reveal for a rare tool. Put it back must restore the page. Switching Play or On Canvas off must remove its effects.
 15. Choose Starry Night, Under the Sea, Starfield and Blueprint. Check reduced motion, hidden tabs, pause and the Starfield pointer's small reach. Lite must omit these scenes and Play.
 16. Open Market and grant its optional host only if desired. Install and remove each supported data kind; unsupported kinds should be skipped. Import a local artwork pack, kit, theme, pet and preset through Add from a file. Check hash rejection, preview, Planner target week, exact Remove/Undo, backups and Full → Lite → Full persistence.
-17. Verify Modules progress and To hand in. Enable Focus room, Review deck and Grade impact in Custom; they must start off in Full and Lite, stay account-separated and leave Canvas data unchanged.
+17. Verify Modules progress and To hand in. Check Focus room, Review deck and Grade impact: they are on in Full, off in Lite, switch off in Custom, stay account-separated and leave Canvas data unchanged.
 
 ## Optional AI website handoff
 

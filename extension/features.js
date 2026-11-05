@@ -234,7 +234,8 @@
  ];
  const ids=catalogue.map(f=>f.id),known=new Set(ids);
  catalogue.find(f=>f.id==='pony').files.assets=['biscuit-rules/basic.json','biscuit-rules/more.json','biscuit-rules/most.json','biscuit-rules/school-language.json'];
- const optIn=new Set(['focus-room','review-deck','grade-impact','developer']);
+ // The Focus room, Review deck and Grade impact are on from the start; only Developer tools waits to be switched on.
+ const optIn=new Set(['developer']);
  const presets={full:ids.filter(id=>!optIn.has(id)),lite:['dashboard','planner','grades','math','arrange','tools','gpa','native-appearance']};
  for(const entry of catalogue)entry.presets=[...(presets.full.includes(entry.id)?['full']:[]),...(presets.lite.includes(entry.id)?['lite']:[])];
  const unique=values=>[...new Set(Array.isArray(values)?values.filter(id=>known.has(id)):[])];

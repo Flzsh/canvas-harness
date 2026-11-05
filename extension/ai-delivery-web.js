@@ -279,8 +279,10 @@
    // A fresh chat in a background tab can take a while to show its composer (and longer while ChatGPT is busy).
    if(evidence?.status!=='ready'&&now()-receipt.at>(receipt.status==='staged'?90000:45000))return blocked(receipt,evidence?.message||'Review the chat composer','Review draft');
    if(receipt.status!=='staged'){
-    if(run.settings?.effort&&receipt.effortBefore===undefined){
-      const set=await execute(inject.setEffort,{id:run.provider,value:run.settings.effort});
+    // With no effort chosen, a site left on its slowest setting (ChatGPT's Pro, Claude's Max: a quarter of an hour on one
+    // card) is brought down to High for this send and put back after it, like a chosen effort
+    if(receipt.effortBefore===undefined&&(run.settings?.effort||['chatgpt','claude'].includes(run.provider))){
+      const set=await execute(inject.setEffort,run.settings?.effort?{id:run.provider,value:run.settings.effort}:{id:run.provider,value:'high',above:'extra'});
       receipt={...receipt,effortBefore:set?.ok===true&&(Number.isInteger(set.before)||set.before)?set.before:null};
       await checkpoint(receipt);
     }

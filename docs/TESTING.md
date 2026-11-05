@@ -1,6 +1,6 @@
-# Release checks — Canvas Harness 4.0 Preview 5
+# Release checks — Canvas Harness 4.0 Preview 6
 
-A GitHub test build, version 3.99.5 in the browser, not a Chrome Web Store submission. The checks below are the same; the build writes `dist/Canvas-Harness-3.99.5.zip`, renamed `Canvas-Harness-4.0-Preview-5.zip` for the release.
+A GitHub test build, version 3.99.6 in the browser, not a Chrome Web Store submission. The checks below are the same; the build writes `dist/Canvas-Harness-3.99.6.zip`, renamed `Canvas-Harness-4.0-Preview-6.zip` for the release.
 
 Preview 5, November 4, 2026: `npm test` ran 6,740 tests, 6,731 passed and 9 were skipped; `npm run check` passed, and the release audit of the extracted ZIP passed.
 

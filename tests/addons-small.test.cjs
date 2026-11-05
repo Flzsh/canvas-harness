@@ -55,5 +55,5 @@ test('thinking effort: only where the site has it, off by default, and restored 
  assert.match(read('ai-inject.js'),/want === 'max'/,'Claude\'s Max costs several times the usage and is never chosen for the student');
  assert.equal(typeof I.setEffort,'function');
  // (the public tree spreads long lines over several, whitespace only: the code is read without the breaks)
- const web=read('ai-delivery-web.js').replace(/\n[ \t]*/g,'');assert.match(web,/inject\.setEffort,\{id:run\.provider,value:run\.settings\.effort\}/);assert.match(web,/inject\.setEffort,\{id:run\.provider,\.\.\.\(Number\.isInteger\(receipt\.effortBefore\)\?\{index:receipt\.effortBefore\}:\{value:receipt\.effortBefore\}\)\}/);
+ const web=read('ai-delivery-web.js').replace(/\n[ \t]*/g,'');assert.match(web,/inject\.setEffort,run\.settings\?\.effort\?\{id:run\.provider,value:run\.settings\.effort\}/);assert.match(web,/inject\.setEffort,\{id:run\.provider,\.\.\.\(Number\.isInteger\(receipt\.effortBefore\)\?\{index:receipt\.effortBefore\}:\{value:receipt\.effortBefore\}\)\}/);
 });

@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.0 Preview 6 - 2026-11-05
+
+Version 3.99.6 in the browser.
+
+- Focus room, Review deck and Grade impact are on from the start, in Full. They were in the package already but switched off until you chose them under Features. Lite still leaves them out, and Custom can switch any of them off.
+- A course keeps its colour when you move it in the course list.
+- Starfield: the course pictures sit inside their rows, and the sky fills the page behind Home.
+- Play tools: a dealt tool's rays stay clear of the words on its card, and every card, of every rarity, gets a drawn outline that draws itself on and catches the light.
+- A Help card sent through your AI website no longer waits on its slowest thinking level: when you have not chosen a level and the site is set above Extra high (ChatGPT Pro, Claude Max), that send goes at High, and the site's own level comes back after it.
+
 ## 4.0 Preview 5 - 2026-11-04
 
 Version 3.99.5 in the browser. Two fixes for Preview 4.
