@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.0 Preview 5 - 2026-11-04
+
+Version 3.99.5 in the browser. Two fixes for Preview 4.
+
+- Make it yours → More shows its feature switches as drawn rows again. The page-start list of stylesheets left out their styles, so the list showed unstyled, with full-size drawings.
+- Picking a scene theme no longer flashes its picture at full size and pushes Home down for a moment: the sky and the course pictures wait until the theme's own styles have loaded.
+
 ## 4.0 Preview 4 - 2026-11-04
 
 Version 3.99.4 in the browser.
