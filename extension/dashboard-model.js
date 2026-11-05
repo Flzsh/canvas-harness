@@ -21,6 +21,7 @@
   var dayFormatters = new Map();
   var zoneCache = new Map();
   var KNOWN_MODES = {
+    all: true,
     actionable: true,
     new: true,
     upcoming: true,
@@ -171,6 +172,12 @@
     return complete(item) || localItem(local, item).checkedOff === true;
   }
 
+  // Handed in, not graded yet (and not marked done here): the teacher still has it
+  function waitingGrade(item, local) {
+    return !!item && item.personal !== true && item.state === 'submitted' && item.missing !== true && item.redoRequested !== true
+      && (item.score === null || item.score === undefined) && localItem(local, item).checkedOff !== true;
+  }
+
   // What handing this in now costs under the course's late policy, the way Canvas counts it: every started day or hour
   // late takes one deduction, down to the policy's floor. Null when the policy takes nothing or the work is not late.
   function lateCost(item, policy, now) {
@@ -245,6 +252,8 @@
         var due = dateMs(item.dueAt);
         var isComplete = workComplete(item, local);
         if (mode === 'new') return !!options.newIds && options.newIds.has(String(item.id));
+        // All (the Assignments page): every piece of work, done work too, so the history stays
+        if (mode === 'all') return true;
         // Only the day-window modes read the day difference; skipping it elsewhere saves two day keys per item.
         var difference = due === null || (mode !== 'today' && mode !== 'tomorrow' && mode !== 'week') ? null : dayDifference(due, now, timeZone);
 
@@ -276,6 +285,22 @@
     selected.sort(function (left, right) {
       var rankResult = searchRank(left) - searchRank(right);
       if (rankResult !== 0) return rankResult;
+
+      // All: late work, then work by its deadline, then work without one, then work waiting for a grade, then the done
+      // work; new work leads its group; late work and done work go newest first, the rest soonest first
+      if (mode === 'all') {
+        var allRank = function (item) {
+          if (workComplete(item, local)) return waitingGrade(item, local) ? 3 : 4;
+          var due = dateMs(item.dueAt);
+          return due === null ? 2 : due < now ? 0 : 1;
+        };
+        var rankLeft = allRank(left), rankRight = allRank(right);
+        if (rankLeft !== rankRight) return rankLeft - rankRight;
+        var newLeft = !!options.newIds && options.newIds.has(String(left.id)), newRight = !!options.newIds && options.newIds.has(String(right.id));
+        if (newLeft !== newRight) return newLeft ? -1 : 1;
+        var dueLeft = dateMs(left.dueAt), dueRight = dateMs(right.dueAt);
+        if ((rankLeft === 0 || rankLeft >= 3) && dueLeft !== null && dueRight !== null && dueLeft !== dueRight) return dueRight - dueLeft;
+      }
 
       if (mode === 'completed') {
         var leftChecked = localItem(local, left).checkedOff === true;

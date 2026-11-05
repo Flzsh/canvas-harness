@@ -894,6 +894,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const explicitWorkspace=initialState?.workspace||savedState?.workspace;
     // Keep an unavailable saved destination until the student chooses a different workspace.
     let workspace=resolveWorkspace(explicitWorkspace==='assignments'?'work':explicitWorkspace),workPage=explicitWorkspace==='assignments'?'assignments':'home';
+    // The Assignments page opens on All, Home on Up next: each page's own first view, set on the way in (a view chosen on
+    // the page stays while it is open)
+    const pageDefault=()=>workspace==='work'&&workPage==='assignments'?'all':'actionable';
+    function fitPageMode(){if(state.day)return;if(pageDefault()==='all'&&state.mode==='actionable')state.mode='all';else if(pageDefault()!=='all'&&state.mode==='all')state.mode='actionable';}
+    fitPageMode();
     // the Review deck is a room over Home, never a page of its own: a link to it opens Home with the room over it
     if(workspace==='review'){bootRoom='review';workspace='work';workPage='home';}
     let savedWorkspace=['plan','materials','hub','inbox','grades','review'].includes(explicitWorkspace)&&workspace!==explicitWorkspace?explicitWorkspace:null;
@@ -1152,7 +1157,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const order=['home','work','assignments','plan','hub','materials','inbox','grades','review'],
           place=(w,p)=>order.indexOf(w==='work'&&p==='assignments'?'assignments':w),
           direction=place(nextWorkspace,nextPage)>=place(workspace,workPage)?1:-1;
-        savedWorkspace=null;captureCourseView();workspace=nextWorkspace;workPage=nextPage;if(workPage==='assignments')board?.close();
+        savedWorkspace=null;captureCourseView();workspace=nextWorkspace;workPage=nextPage;fitPageMode();if(workPage==='assignments')board?.close();
         if(workspace==='inbox')hub?.setCourse?.('all');
         if(workspace==='materials'||workspace==='hub'){
           const ctx=buildContext();switchCourse(button.dataset.id||(state.courseId==='all'?String(ctx.selected?.courseId||ctx.courses[0]?.id||'all'):state.courseId));
@@ -1580,8 +1585,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const overviewItems=workspace==='home'?Model.filterAssignments(items,{mode:overviewMode,query:overviewQuery,courseId:'all',now,timeZone:s.timeZone,local}).items:[];
       // Each view filter shows the count its list would show once chosen (the same rules, the same search).
       const deckCourse=courses.find(course=>course.id===(state.courseId==='all'?String(selected?.courseId||''):state.courseId))||courses[0]||null;
-      const modeCounts=workspace==='work'?
-        Object.fromEntries(['actionable','today','week','planned'].map(mode=>
+      const modeCounts=workspace==='work'?Object.fromEntries([...(workPage==='assignments'?['all']:[]),'actionable','today','week','planned'].map(mode=>
           [mode,mode===state.mode&&!state.day?filtered.items.length:Model.filterAssignments(items,{...state,mode,day:'',now,timeZone:s.timeZone,local}).items.length])):
         {};
       return {
@@ -1824,7 +1828,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(id!=='all'&&!normalizeData(settings()).courses.some(course=>course.id===id))return false;
       if(rememberCurrent)captureCourseView();
       const next=courseMemory.recall(id,{...state,courseId:id,query:'',limit:60});
-      state=Model.cleanState(next);visibleLimit=next.limit;selectedId=next.selectedId;readerTab=next.readerTab;readerOpen=next.readerOpen;
+      state=Model.cleanState(next);fitPageMode();visibleLimit=next.limit;selectedId=next.selectedId;readerTab=next.readerTab;readerOpen=next.readerOpen;
       pendingReaderScroll={courseId:id,id:selectedId,top:next.readerScroll};return true;
     }
     function navigationState(preserveDisabled=false){
@@ -3066,7 +3070,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const mode=['overdue','today','tomorrow','new'].includes(button.dataset.mode)?button.dataset.mode:'actionable';
         const fromOtherWorkspace=workspace!=='work';
         if(fromOtherWorkspace){captureCourseView();workspace='work';workPage='assignments';board?.close();}
-        readerOpen=false;state.mode=!fromOtherWorkspace&&state.mode===mode&&!state.day?'actionable':mode;state.day='';visibleLimit=60;
+        readerOpen=false;state.mode=!fromOtherWorkspace&&state.mode===mode&&!state.day?pageDefault():mode;state.day='';visibleLimit=60;
         if(state.mode==='new'){newShown=new Set();const c=buildContext();newShown=new Set(c.newWorkIds);markSeen(c.items);}
         render({tabMotion:event.detail>0,motionTarget:fromOtherWorkspace?'.rd-workspace':'.rd-work',motionKind:fromOtherWorkspace?'workspace':'filter',snapshot,resetWorkspaceScroll:fromOtherWorkspace});
         return;

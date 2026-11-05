@@ -5,6 +5,7 @@
 Version 3.99.6 in the browser.
 
 - Focus room, Review deck and Grade impact are on from the start, in Full. They were in the package already but switched off until you chose them under Features. Lite still leaves them out, and Custom can switch any of them off.
+- The Assignments page opens on All: every assignment in the course, late work first (newest first), then work by its deadline with new work leading, then work without a date, work waiting for a grade, and the done work kept as history, newest first. Up next, Today, Week and My plan are still there, and Home still opens on Up next.
 - A course keeps its colour when you move it in the course list.
 - Starfield: the course pictures sit inside their rows, and the sky fills the page behind Home.
 - Play tools: a dealt tool's rays stay clear of the words on its card, and every card, of every rarity, gets a drawn outline that draws itself on and catches the light.
