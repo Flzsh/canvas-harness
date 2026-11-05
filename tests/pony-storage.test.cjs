@@ -1,7 +1,8 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const S=require('../extension/storage.js'),NOW=Date.now(),DAY=86400000;
-const SKILLS={deadline:true,focus:true,planner:true,wellbeing:true,inbox:true,reminders:true,night:true};
+// 4.0 keeps the study skills (quiz, lab prep, reading, rubric, feedback) beside the day's skills: Your AI ships.
+const SKILLS={deadline:true,focus:true,planner:true,quiz:true,wellbeing:true,labprep:true,reading:true,rubric:true,feedback:true,inbox:true,reminders:true,night:true};
 const clean=(pet,storage=S)=>storage.validateBackup({format:'reserve-backup',version:1,data:{pet}}).pet;
 const reminder=(id='reminder-1',extra={})=>({id,text:'Bring the lab notebook',at:NOW+DAY,createdAt:NOW-1000,...extra});
 const routine=(id='routine-1',extra={})=>({id,name:'After class',days:[1,2,3,4,5],minute:960,action:'focus',data:{minutes:25},createdAt:NOW-1000,last:'',...extra});
@@ -28,7 +29,7 @@ test('new and legacy accounts get independent enabled skills and empty schedules
 
 test('skills keep own public boolean values and hostile backup keys are rejected',()=>{
  const skills=JSON.parse('{"deadline":false,"focus":"false","planner":0,"quiz":false,"labprep":false,"reading":"false","inbox":false,"reminders":true,"night":null,"extra":false,"__proto__":{"focus":false},"constructor":false,"prototype":true}');
- assert.throws(()=>clean({skills}),/unsafe key/i);assert.deepEqual(clean({skills:{deadline:false,focus:'false',planner:0,quiz:false,labprep:false,reading:'false',inbox:false,reminders:true,night:null,extra:false}}).skills,{...SKILLS,deadline:false,inbox:false});
+ assert.throws(()=>clean({skills}),/unsafe key/i);assert.deepEqual(clean({skills:{deadline:false,focus:'false',planner:0,quiz:false,labprep:false,reading:'false',inbox:false,reminders:true,night:null,extra:false}}).skills,{...SKILLS,deadline:false,quiz:false,labprep:false,inbox:false});
  assert.deepEqual(clean({skills:Object.create({deadline:false,focus:false})}).skills,SKILLS);
  assert.equal(Object.prototype.focus,undefined);
 });
@@ -151,7 +152,7 @@ test('skills and schedules reload and round-trip only in their own account and C
   const reload=S.createStore({accountId:'1',adapter});
   try{
    const loaded=(await reload.load()).pet,backup=S.validateBackup(reload.exportBackup(),reload.owner).pet;
-   assert.deepEqual(loaded.skills,{...SKILLS,focus:false,night:false,inbox:false});assert.deepEqual(loaded.reminders,[reminder()]);assert.deepEqual(loaded.routines,[routine()]);
+   assert.deepEqual(loaded.skills,{...SKILLS,focus:false,night:false,labprep:false,reading:false,rubric:false,feedback:false,inbox:false});assert.deepEqual(loaded.reminders,[reminder()]);assert.deepEqual(loaded.routines,[routine()]);
    assert.deepEqual(backup,loaded);
    assert.throws(()=>S.validateBackup(reload.exportBackup(),b.owner),/different Canvas account/);
    assert.throws(()=>S.validateBackup(reload.exportBackup(),other.owner),/different Canvas account/);
@@ -171,6 +172,4 @@ test('queued edits to skills and schedules preserve one another',async()=>{
  }finally{store.destroy();}
 });
 
-test('public wellbeing and inbox switches survive standalone storage while study-only skills are discarded',()=>{
- const disabled={wellbeing:false,labprep:false,reading:false,rubric:false,feedback:false,inbox:false};assert.deepEqual(json(clean({skills:disabled},browserStorage())).skills,{...SKILLS,wellbeing:false,inbox:false});assert.deepEqual(Object.keys(SKILLS),Object.keys(require('../extension/pony-brain.js').SKILLS));
-});
+// 4.0: study skills are kept in 4.0 (see SKILLS above).

@@ -15,13 +15,12 @@
   feature('math','Math tools','Study',['math.js']),
   feature('gpa','GPA calculator','Study',['gpa-ui.js'],['gpa.css'],['tools']),
   feature('tools','Quick open & study tools','Study',['quick-open.js','toolbox-resize.js','toolbox.js','toolbox-session.js','native-tools.js']),
-  feature('customization','Appearance editor','Personalize',['market-site.js','media-store.js','media-frame.js','frame-editor.js','custom-kits.js','pack-common.js','theme-pack.js','pet-pack.js','preset-pack.js','data-theme.js','packs.js','make-your-own.js','customize-ui.js','settings-dock.js'],['media-frame.css','frame-editor.css','settings-dock.css'],['dashboard']),
+  feature('customization','Appearance editor','Personalize',['market-site.js','media-store.js','media-frame.js','frame-editor.js','custom-kits.js','pack-common.js','theme-pack.js','pet-pack.js','preset-pack.js','data-theme.js','packs.js','make-your-own.js','customize-ui.js'],['media-frame.css','frame-editor.css'],['dashboard']),
   feature('scene-themes','Scene themes','Personalize',['scene-themes.js'],['scene-themes.css'],['dashboard']),
   feature('arrange','Arrange the workspace','Personalize',['workspace-gestures.js'],[],['dashboard']),
   feature('course-art','Course artwork','Drawings',['subject-art-data.js','subject-art.js','generic-art.js','course-art.js'],['subject-art.css']),
   feature('quick-pack','Local artwork packs','Drawings',['quick-pack.js','quick-upload.js','quick-upload-ui.js'],[],['customization','course-art']),
-  feature('pony','Pony companion','Drawings',['pet-art.js','agent-clock.js','biscuit-context-selector.js','biscuit-control-request.js','biscuit-controls.js','biscuit-details.js','biscuit-engine.js','biscuit-facts.js','biscuit-inference.js','biscuit-intent.js','biscuit-language.js','biscuit-learn.js','biscuit-parse.js','biscuit-planner.js','biscuit-registry.js','biscuit-replies.js','biscuit-rules.js','biscuit-selection.js','biscuit-semantics.js','biscuit-trees.js','biscuit-values.js','biscuit-workflow.js','pony-brain.js','pony-ask.js','pets.js'],['pet.css'],['planner']),
-  feature('biscuit-more-rules','Biscuit: more rules','Drawings',[],[],['pony']),
+  feature('pony','Pony companion','Drawings',['pet-art.js','biscuit-context-selector.js','biscuit-control-request.js','biscuit-controls.js','biscuit-details.js','biscuit-engine.js','biscuit-facts.js','biscuit-inference.js','biscuit-intent.js','biscuit-language.js','biscuit-learn.js','biscuit-mind.js','biscuit-parse.js','biscuit-planner.js','biscuit-registry.js','biscuit-replies.js','biscuit-rules.js','biscuit-selection.js','biscuit-semantics.js','biscuit-trees.js','biscuit-values.js','biscuit-workflow.js','pony-brain.js','pony-ask.js','pets.js'],['pet.css'],['planner']),
   feature('motion','Living drawings & motion','Drawings',['startup-art.js','motion.js'],['startup-art.css']),
   feature('canvas-nav','Drawn Canvas navigation','Canvas',['canvas-nav.js'],['canvas-nav.css']),
   feature('course-nav','Drawn course menu & modules','Canvas',['course-nav-art.js','course-nav.js','modules-page.js'],['course-nav.css','course-nav-art.css','modules-page.css']),
@@ -31,8 +30,8 @@
   feature('review-deck','Review deck','Extras',['review-deck-model.js','review-deck-art.js','review-deck.js'],['review-deck.css'],['dashboard']),
   feature('grade-impact','Grade impact','Extras',['grade-impact-art.js','grade-impact.js'],['grade-impact.css'],['grades']),
   feature('play','Play & submission celebrations','Extras',['submit-celebrate.js']),
-  feature('developer','Developer tools','Extras',['developer.js'],[],['tools']),
   feature('ai','AI context & handoff','Extras',['ai-context.js','ai-source.js'],[],['tools']),
+  feature('developer','Developer tools','Extras',['developer.js'],[],['tools'])
  ];
  // Retained public modules keep their relative order; new helpers precede their consumers.
  const order=[
@@ -85,6 +84,7 @@
    "media-frame.js",
    "frame-editor.js",
    "agent-clock.js",
+   "study-kind.js",
    "pony-ask.js",
    "custom-kits.js",
    "pack-common.js",
@@ -127,6 +127,7 @@
    "biscuit-context-selector.js",
    "biscuit-inference.js",
    "biscuit-facts.js",
+   "biscuit-mind.js",
    "biscuit-engine.js",
    "biscuit-planner.js",
    "pony-brain.js",
@@ -136,6 +137,8 @@
    "focus-room-art.js",
    "focus-room.js",
    "widgets.js",
+   "addons-art.js",
+   "addons-panel.js",
    "settings-dock.js",
    "scene-themes.js",
    "dashboard.js",
@@ -149,12 +152,12 @@
    "submit-celebrate.js",
    "content.js"
  ];
- const dashboardCSS=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','course-links.css','focus-room.css','review-deck.css','grade-impact.css'];
+ const dashboardCSS=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','addons-panel.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','course-links.css','focus-room.css','review-deck.css','grade-impact.css'];
  const startupCSS=['startup.css','startup-art.css','canvas-nav.css','course-nav.css'];
  const nativeCSS=['app.css','dashboard.css','workspace.css','refresh.css','gpa.css'];
  // customize.css and widgets.css are core: besides the editor and the widgets they hold the dashboard's setting-driven layout (hidden columns, card styles,
  // arrange grips), which every preset needs. Only the editor's scripts belong to the Appearance editor.
- const core={js:['features.js','site.js','core.js','api.js','personal-work.js','custom-art.js','workspace-arrange.js','media-reference.js','customization-model.js','backup-media.js','gpa-model.js','page-preferences.js','storage.js','ui-utils.js','icons.js','session.js','material-model.js','content.js','startup.js','feature-loader.js'],css:['startup.css','app.css','dashboard.css','workspace.css','refresh.css','customize.css','selection.css','responsive-layout.css','widgets.css']};
+ const core={js:['features.js','site.js','agent-clock.js','core.js','api.js','study-kind.js','personal-work.js','custom-art.js','workspace-arrange.js','media-reference.js','customization-model.js','backup-media.js','gpa-model.js','page-preferences.js','storage.js','ui-utils.js','icons.js','session.js','material-model.js','content.js','startup.js','feature-loader.js','addons-art.js','addons-panel.js','settings-dock.js'],css:['startup.css','app.css','dashboard.css','workspace.css','refresh.css','customize.css','addons-panel.css','settings-dock.css','selection.css','responsive-layout.css','widgets.css']};
  // Prepaint drawings must not wait for the worker. Other mandatory files stay
  // interleaved with optional files in the original main declaration's order.
  const staticJS=['startup-art.js','site.js','core.js','api.js','personal-work.js','custom-art.js','workspace-arrange.js','canvas-nav.js','course-nav-art.js','course-nav.js'];
@@ -217,7 +220,7 @@
  ];
  const ids=catalogue.map(f=>f.id),known=new Set(ids);
  catalogue.find(f=>f.id==='pony').files.assets=['biscuit-rules/basic.json','biscuit-rules/more.json','biscuit-rules/most.json','biscuit-rules/school-language.json'];
- const optIn=new Set(['biscuit-more-rules','focus-room','review-deck','grade-impact','developer']);
+ const optIn=new Set(['focus-room','review-deck','grade-impact','developer']);
  const presets={full:ids.filter(id=>!optIn.has(id)),lite:['dashboard','planner','grades','math','arrange','tools','gpa','native-appearance']};
  for(const entry of catalogue)entry.presets=[...(presets.full.includes(entry.id)?['full']:[]),...(presets.lite.includes(entry.id)?['lite']:[])];
  const unique=values=>[...new Set(Array.isArray(values)?values.filter(id=>known.has(id)):[])];

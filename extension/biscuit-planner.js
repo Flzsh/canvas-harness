@@ -237,9 +237,12 @@
   else if(Number.isInteger(t.minute)&&t.endMinute===undefined&&/\b\d{1,2}(?::\d{2}|\s*(?:am|pm))\b/i.test(text))minute=t.minute;
   if(unresolved&&start===undefined&&minute===null)return {error:'What time does '+clean(unresolved)+' end?',now,timeZone:zone,start:null,end:null,unresolvedEvent:clean(unresolved)};
   if(day<today||day>addDays(today,366))return {error:'Choose a valid future start time.',now,timeZone:zone,start:null,end:null};
-  if(day>today&&start===undefined&&minute===null&&/\b(?:morning|afternoon|evening|tonight)\b/i.test(text))minute=/\bmorning\b/i.test(text)?480:/\bafternoon\b/i.test(text)?780:1080;
+  if(start===undefined&&minute===null&&(day>today&&/\b(?:morning|afternoon)\b/i.test(text)||/\b(?:evening|tonight)\b/i.test(text)&&(day>today||local(now).minute<930)))
+    minute=/\bmorning\b/i.test(text)?480:/\bafternoon\b/i.test(text)?780:1080;
   if(start===undefined){
-    if(minute===null)start=day===today?now:C.wall(day,480,zone);else start=C.wall(day,minute,zone,day===today?now-1:-Infinity)??C.wall(day,minute,zone);
+    if(minute===null)
+      start=day===today?now:C.wall(day,[0,6].includes(new Date(day+'T12:00Z').getUTCDay())?600:930,zone);
+    else start=C.wall(day,minute,zone,day===today?now-1:-Infinity)??C.wall(day,minute,zone);
   }
   const bedtime=readClock(validTime(settings.bedtime)?settings.bedtime:'22:30'),bed=bedStamp(day,local(start??now).minute,bedtime,C,zone,day===today?now-1:-Infinity);
   let boundary=bed;
@@ -432,6 +435,26 @@
    plan.overloaded=plan.remainingMinutes>0;
    return plan;
  }
+ // What a plan asked for in words takes in. Canvas's list is what exists, not what the student wants to do: their own work comes
+ // first, then what is due soon, then what slipped this week. Work long overdue stays out unless they ask ("catch up"), and a
+ // plan stops at three hours; nobody studies seventeen.
+ const PLAN_MINUTES=180,OLD_DAYS=7,SOON_DAYS=3,CATCH_UP=/\b(?:catch(?:ing)?\s*up|overdue|missing|late|old|behind)\b/i;
+ function choose(list,w,text,s,order=[]){
+  const not=[...String(text).toLowerCase().matchAll(/\b(?:not|except|without|no|skip)\s+(?:my\s+|the\s+)?([a-z]{3,})/g)].map(v=>v[1].slice(0,4)),named=v=>{
+    const c=array(s.courses).find(x=>id(x?.id)===id(v.courseId));
+    return (clean(c?.shortName)+' '+clean(c?.name)+' '+v.title).toLowerCase().replace(/\bcl\s+/,'');
+  };
+  if(not.length)list=list.filter(v=>!not.some(w=>new RegExp('\\b'+w).test(named(v))));
+  const own=v=>v.courseId==='personal'||v.personal===true||v.localOnly===true,wantsOld=CATCH_UP.test(text),old=v=>!own(v)&&v.dueAt!==null&&v.dueAt<w.start-OLD_DAYS*DAY;
+  const group=v=>own(v)?0:v.dueAt===null?3:v.dueAt>=w.start?(v.dueAt<=w.start+SOON_DAYS*DAY?1:3):wantsOld?1:2;
+  const place=v=>{const i=order.indexOf(id(v.courseId));return i<0?order.length:i;};
+  const kept=list.filter(v=>wantsOld||!old(v)).sort((a,b)=>place(a)-place(b)||group(a)-group(b)||(a.dueAt??Infinity)-(b.dueAt??Infinity));
+  const room=Math.min(PLAN_MINUTES,w.limit||PLAN_MINUTES,Math.floor((w.end-w.start)/MIN)),taken=[];let sum=0;
+  // a short window takes what can be finished in it
+  if(room<60)kept.sort((a,b)=>Number(b.estimate<=room)-Number(a.estimate<=room));
+  for(const row of kept){if(taken.length&&sum+row.estimate>room)break;taken.push(row);sum+=row.estimate;}
+  return {list:taken,oldOut:list.length-kept.length,later:kept.length-taken.length};
+ }
  function build(snapshot,request={}){
   const s=object(snapshot),
     raw=typeof request==='string'?{text:request}:object(request),
@@ -469,13 +492,21 @@
     if(w.unresolvedEvent){plan.unresolvedEvent=w.unresolvedEvent;plan.needsTime=true;}
     return finish(plan);
   }
-  const all=rows(s,r,w),candidates=all.filter(v=>v.target&&!v.done&&!v.manual);
+  const all=rows(s,r,w);
+  let candidates=all.filter(v=>v.target&&!v.done&&!v.manual);
+  if(!w.exact&&r.itemId===undefined&&!Array.isArray(r.itemIds)&&r.courseId===undefined&&clean(r.text||r.line)){
+    const chosen=choose(candidates,w,clean(r.text||r.line),s,array(r.order).map(id));
+    candidates=chosen.list;
+    plan.oldOut=chosen.oldOut;
+    plan.later=chosen.later;
+  }
   if(w.exact){
     const keep=new Set(all.filter(v=>v.isOwned&&!v.target).map(v=>v.id)),old=previous(s);
     plan.keptBlocks=clone([...array(old?.blocks),...array(old?.keptBlocks)].filter(block=>block.itemId&&keep.has(block.itemId)));
     if(plan.keptBlocks.length>MAX_BLOCKS){plan.window.start=null;plan.message='Too many saved blocks to retain safely. Choose a smaller local plan.';return finish(plan);}
   }
   plan.busy=busy(s,all,w,C,w.exact);
+  for(const v of array(r.avoid)){const start=stamp(v?.start),end=stamp(v?.end);if(start!==null&&end!==null&&end>start)plan.busy.push({start,end,kind:'excluded'});}
   for(const interval of array(r.excludeIntervals))
     plan.busy.push({start:interval.startAt,end:interval.endAt,kind:'excluded',...(interval.eventId?{eventId:interval.eventId}:{})});
   plan.busy.sort((a,b)=>a.start-b.start||a.end-b.end);
@@ -558,26 +589,22 @@
  }
  function restoreFields(task,fields){for(const k of FIELDS){if(fields[k]?.had)task[k]=fields[k].value;else delete task[k];}}
  function defaultTask(){return {pinned:false,checkedOff:false,progress:'not-started',notes:'',estimate:0,plannedDate:'',checklist:[]};}
+ // A plan reads like something a person would say: when, then the work, once each, with how long.
  function summary(plan){
    if(!plan.blocks.length)return plan.message;
-   const local=clock().calendar(plan.timeZone||ZONE),
-     day=local(plan.blocks[0].start).day,
+   const zone=plan.timeZone||ZONE,
+     local=clock().calendar(zone),
+     first=plan.blocks[0],
+     day=local(first.start).day,
      today=local(plan.now).day,
-     when=day===today?'today':day===addDays(today,1)?'tomorrow':new Date(day+'T12:00Z').toLocaleDateString('en-US',{timeZone:'UTC',weekday:'short'}),
-     end=new Date(plan.blocks.at(-1).end).toLocaleTimeString('en-US',{timeZone:plan.timeZone||ZONE,hour:'numeric',minute:'2-digit'}),
-     parts=plan.blocks.slice(0,6).map(v=>(v.kind==='break'?'break':v.title)+' '+v.minutes+' min');
-   return plan.blocks.length+
-     ' block'+
-     (plan.blocks.length===1?'':'s')+
-     ' '+
-     when+
-     ' until '+
-     end+
-     ': '+
-     parts.join(', ')+
-     (plan.blocks.length>6?', '+(plan.blocks.length-6)+' more blocks':'')+
-     (plan.remainingMinutes?'; '+plan.remainingMinutes+' min still need another window':'')+
-     '.';
+     clockAt=at=>new Date(at).toLocaleTimeString('en-US',{timeZone:zone,hour:'numeric',minute:'2-digit'}),
+     when=day===today?(local(first.start).minute>=1020?'Tonight':'Today'):day===addDays(today,1)?'Tomorrow':new Date(day+'T12:00Z').toLocaleDateString('en-US',{timeZone:'UTC',weekday:'long'}),
+     length=n=>n<60?n+' min':n%60?Math.floor(n/60)+' h '+n%60+' min':n/60+' h',
+     work=new Map();
+   for(const v of plan.blocks)if(v.kind!=='break'){const row=work.get(v.itemId)||{title:v.title,minutes:0};row.minutes+=v.minutes;work.set(v.itemId,row);}
+   const list=[...work.values()],named=list.slice(0,4).map(v=>v.title+' ('+length(v.minutes)+')').join(', '),notes=[],over=plan.remaining.filter(v=>v.minutes>0);
+   if(over.length)notes.push(over.length===1?over[0].title+' needs more time.':over[0].title+' and '+(over.length-1)+' more need more time.');else if(plan.later)notes.push('The rest can wait.');
+   return [when+' '+clockAt(first.start)+' to '+clockAt(plan.blocks.at(-1).end)+': '+named+(list.length>4?', and '+(list.length-4)+' more':'')+'.',...notes].join(' ');
  }
  function apply(data,plan){
   if(!data||typeof data!=='object'||Array.isArray(data)||plan?.source!=='biscuit'||plan.version!==1)return failure('invalid','Choose a local Biscuit plan.');

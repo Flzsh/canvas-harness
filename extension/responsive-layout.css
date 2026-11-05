@@ -51,8 +51,32 @@
 }
 .rd[data-workspace]:not([data-banner-size=compact], [data-banner-size=large]) .rd-workspace-heading,
 .rd:not([data-banner-size=compact], [data-banner-size=large]) .rd-course-banner {
-  --rd-band-h: clamp(118px, 12cqi, 420px);
+  /* The window's height caps it too (owner, 2026-10-27: on a wide screen 12% of the width took a quarter of the
+     screen): never more than 12% of the window's height, whatever the layout. */
+  --rd-band-h: clamp(96px, min(10cqi, 12vh), 180px);
 }
+
+/* Under the banner, two lines in all (owner, 2026-10-27: four rows took too much height). The at-a-glance chips end
+   the date line instead of taking a line of their own, so the empty-chips stand-in line is gone too; Bookmarks open the
+   filter row, without the empty-state sentence. */
+.rd .rd-course-heading > p > .rd-glance { display: inline-flex; flex: none; align-items: center; gap: 6px; margin: 0 0 0 .3em; }
+.rd .rd-course-heading::after { content: none !important; }
+/* The filter row is a grid (selection.css): Bookmarks take the first area of the same row. */
+.rd[data-workspace=work] .rd-desk-toolbar:has(> .rd-bookmarks) { grid-template-columns: auto auto auto minmax(300px, 1fr); grid-template-areas: "bookmarks views dates selection"; }
+.rd .rd-desk-toolbar > .rd-bookmarks { grid-area: bookmarks; }
+@container work-area (max-width: 1200px) {
+  .rd[data-workspace=work] .rd-desk-toolbar:has(> .rd-bookmarks) { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "bookmarks views views" "dates dates selection"; }
+}
+@container work-area (max-width: 760px) {
+  .rd[data-workspace=work] .rd-desk-toolbar:has(> .rd-bookmarks) { grid-template-columns: minmax(0, 1fr); grid-template-areas: "bookmarks" "views" "dates" "selection"; }
+}
+.rd[data-workspace=work] .rd-desk-toolbar > .rd-bookmarks { flex: 0 1 auto; align-items: center; gap: 8px; min-width: 0; max-width: min(42%, 560px); margin: 0; padding: 0 14px 0 0; border: 0; border-right: 1px solid var(--rd-line-strong); }
+.rd[data-workspace=work] .rd-desk-toolbar > .rd-bookmarks .rd-bookmarks-art,
+.rd[data-workspace=work] .rd-desk-toolbar > .rd-bookmarks .rd-bookmarks-art .rd-mini { width: 26px; height: 26px; }
+.rd[data-workspace=work] .rd-desk-toolbar > .rd-bookmarks h2 { font-size: 14.5px; }
+.rd[data-workspace=work] .rd-desk-toolbar > .rd-bookmarks .rd-bookmark-list { display: flex; flex-wrap: nowrap; gap: 6px; min-width: 0; margin: 0; padding: 0; overflow-x: auto; scrollbar-width: none; }
+.rd[data-workspace=work] .rd-desk-toolbar > .rd-bookmarks .rd-bookmark-open small { display: none; }
+.rd[data-workspace=work] .rd-desk-toolbar > .rd-bookmarks .rd-bookmark-open strong { display: block; max-width: 170px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
 /* A real title frame, rather than a viewport or sidebar preference, decides
    which title is visible. The semantic heading stays in the accessibility

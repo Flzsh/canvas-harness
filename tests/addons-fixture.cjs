@@ -179,4 +179,89 @@ function createDOM(html) {
   return document;
 }
 
-module.exports = { read, plain, settle, deferred, createDOM };
+async function fixture(t, { saved = {}, preferences = {}, realPreferences = false, readError = false, readGate = null, features, panel = true, packsAPI, surface = 'popup' } = {}) {
+  const document = createDOM(surface==='popup'?read('popup.html'):surface==='launcher'?'<html><body><div id="settings-slot"></div></body></html>':'<html><body><div class="rd"><div class="rd-toolbar"><button data-rd-action="settings">Make it yours</button></div><div id="settings-slot"></div></div></body></html>'), handlers = new Map(), events = new Set(), timers = new Set();
+  const reads = [], writes = [], effects = [], opened = [], mounts = [], data = structuredClone(saved);
+  const state = { readError, readGate, writeError: false, failWrites: 0, writeGate: null, petDraws: 0, preferenceDestroy: 0, appearanceDestroy: 0, packCalls: [] };
+  const KEY = 'reserve:features';
+  const chrome = {
+    runtime: { getManifest: () => ({ name: 'Canvas Harness', version: '3.2', optional_host_permissions: [] }), getURL: file => 'chrome-extension://test/' + file, reload() { effects.push('extension reload'); } },
+    tabs: { async query() { return []; }, async create(options) { effects.push('tab create'); opened.push(structuredClone(options)); }, async reload() { effects.push('tab reload'); }, async sendMessage() { effects.push('tab message'); } },
+    storage: {
+      onChanged: { addListener: fn => events.add(fn), removeListener: fn => events.delete(fn) },
+      local: {
+        async get(keys) {
+          reads.push(structuredClone(keys)); const list = Array.isArray(keys) ? keys : [keys];
+          // Capture before the gate, just like an initial read which becomes stale.
+          const result = Object.fromEntries(list.map(key => [key, structuredClone(data[key])]));
+          if (list.includes(KEY)) { if (state.readGate) await state.readGate; if (state.readError) throw Error('Read failed'); }
+          return result;
+        },
+        async set(values) {
+          writes.push(structuredClone(values)); if (state.writeGate) await state.writeGate;
+          if (state.writeError || state.failWrites > 0) { if (state.failWrites > 0) state.failWrites--; throw Error('Disk full'); }
+          Object.assign(data, structuredClone(values));
+          const changes = Object.fromEntries(Object.entries(values).map(([key, value]) => [key, { newValue: structuredClone(value) }]));
+          for (const fn of [...events]) fn(changes, 'local');
+        }
+      }
+    }
+  };
+  let current = { theme: 'light', motion: 'gentle', nightArt: 0, pet: true, sceneTheme: '', ...preferences }, subscription;
+  const pagePreferences = { get: () => structuredClone(current), async load() { return this.get(); }, subscribe(fn) { subscription = fn; }, async set(patch) { Object.assign(current, patch); subscription?.(this.get()); return this.get(); }, destroy() { state.preferenceDestroy++; } };
+  const context = vm.createContext({
+    document, chrome, URL, structuredClone, console,
+    ReservePagePreferences: { create: () => pagePreferences },
+    ReserveSchool: { async list() { return []; }, async saved() { return 'https://school.instructure.com'; } },
+    ReserveSite: { supported: () => false, vanillaPage: () => false, origin: () => '' },
+    ReservePetArt: { ...require('../extension/pet-art.js'), drawing(...args) { state.petDraws++; return require('../extension/pet-art.js').drawing(...args); }, observe(listener,options) { return require('../extension/pet-art.js').observe(listener,{...options,runtime:{...chrome.runtime,async sendMessage(message){if(message.type==='ch-companion'&&message.op==='read')return {ok:true,data:{pet:{name:'Biscuit'},settings:{makeYourOwn:{pet:null,installed:{}}}},pack:null};if(message.type==='ch-look'&&message.op==='read')return {ok:true,look:null};throw Error('Unexpected display request');}},events:chrome.storage.onChanged}); } },
+    ReserveNativePage: { browserAdapter: () => ({}) },
+    ReserveNativeAppearance: { create({ apply }) { const prefs = { theme: 'original', readingWidth: 'comfortable', textSize: 'standard', accent: 'clay' }; return { async start() { apply(prefs); }, async set(value) { Object.assign(prefs, value); apply(prefs); }, get: () => prefs, destroy() { state.appearanceDestroy++; } }; } },
+    matchMedia: () => ({ matches: false }),
+    setTimeout(fn, delay) { const timer = { fn, delay }; timers.add(timer); return timer; }, clearTimeout: timer => timers.delete(timer),
+    addEventListener: (name, fn) => handlers.set(name, fn), removeEventListener: (name, fn) => { if (handlers.get(name) === fn) handlers.delete(name); }
+  });
+  context.window = context;context.location={reload(){effects.push('canvas reload');}};if(packsAPI)context.ReservePacks=packsAPI;
+  if(realPreferences)vm.runInContext(read('page-preferences.js'),context,{filename:'page-preferences.js'});
+  vm.runInContext(read('features.js'), context, { filename: 'features.js' });
+  if (features !== undefined) context.ReserveFeatures = features;
+  vm.runInContext(read('addons-art.js'), context, { filename: 'addons-art.js' });
+  vm.runInContext(read('addons-panel.js'), context, { filename: 'addons-panel.js' });
+  if (panel) {
+    // Observe lifecycle/adapter contracts while forwarding every mount and update
+    // to the actual panel; its event delegation and generated DOM remain intact.
+    const realMount = context.ReserveAddonsPanel.mount;
+    context.ReserveAddonsPanel.mount = (box, options) => {
+      const entry = { box, options, updates: [], calls: [] }, observed = { ...options };
+      for (const name of ['onPreset', 'onToggle', 'onPack']) if (options[name]) observed[name] = (...args) => { entry.calls.push({ name, args }); return options[name](...args); };
+      const instance = realMount(box, observed); mounts.push(entry);
+      return entry.instance = { update(next) { entry.updates.push(next); return instance.update(next); } };
+    };
+  } else context.ReserveAddonsPanel = null;
+  if(surface==='popup')vm.runInContext(read('popup.js'), context, { filename: 'popup.js' });
+  else{
+    for(const file of ['workspace-arrange.js','customization-model.js','settings-dock.js','customize-ui.js'])vm.runInContext(read(file),context,{filename:file});
+    context.ReserveFeatures?.apply(saved[KEY]);
+    const c={s:{},courses:[],allCourses:[],customizeOpen:true,customizeTab:'features'},container=document.querySelector('.rd');
+    if(surface==='launcher'){const launcher=context.ReserveSettingsDock.mountLauncher(document.getElementById('settings-slot'));handlers.set('pagehide',()=>launcher.destroy());}
+    else{document.getElementById('settings-slot').innerHTML=context.ReserveSettingsDock.render(c);
+    const dock=context.ReserveSettingsDock.createDock({container});
+    container.addEventListener('click',event=>{const action=event.target.closest('[data-rd-action]')?.dataset.rdAction;if(action==='settings')dock.toggle(event.target);if(action==='settings-close')dock.close();});
+    document.addEventListener('keydown',event=>dock.handleKeydown(event));handlers.set('pagehide',()=>dock.destroy());}
+  }
+  let closed = false;
+  const close = () => { if (!closed) { closed = true; handlers.get('pagehide')?.(); } };
+  t.after(close); await settle();
+  const get = selector => { const node = document.querySelector(selector); assert.ok(node, 'DOM control exists: ' + selector); return node; };
+  const click = (selector, descendant) => { const button = get(selector), target = descendant ? button.querySelector(descendant) : button; assert.ok(target, 'click target exists: ' + (descendant || selector)); target.click(); return target; };
+  async function open(detail='features') { click(surface==='popup'?'button.setting-row[data-detail="'+detail+'"]':'[data-rd-action="settings"]'); await settle(); return get('#'+detail+'-panel'); }
+  async function preset(name) { click(`#features-panel button[data-preset="${name}"]`, 'b'); await settle(); }
+  const switches = () => document.querySelectorAll('#features-panel button.ap-toggle');
+  const checked = id => get(`#features-panel button[data-id="${id}"]`).getAttribute('aria-checked') === 'true';
+  async function toggle(id, on) { assert.notEqual(checked(id), on, id + ' actually changes'); click(`#features-panel button[data-id="${id}"]`, '.ap-track'); await settle(); }
+  function change(value, area = 'local') { if (area === 'local') data[KEY] = structuredClone(value); for (const fn of [...events]) fn({ [KEY]: { newValue: structuredClone(value) } }, area); }
+  function escape() { document.dispatchEvent({ type: 'keydown', key: 'Escape', preventDefault() { this.defaultPrevented = true; } }); }
+  return { document, context, features: context.ReserveFeatures, state, data, reads, writes, effects, opened, events, mounts, timers, get, click, open, preset, switches, checked, toggle, change, escape, close };
+}
+
+module.exports = { read, plain, settle, deferred, createDOM, fixture };

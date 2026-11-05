@@ -4,8 +4,8 @@ const model=(labels,bias)=>({labels,scale:1,weights:{bias}}),pack=(action,extra=
 test('learned decisions run through the real engine and select item using model features',()=>{
  const Engine=require('../extension/biscuit-engine.js'),p=pack('open/find');p.models.item.weights={'title':[3],'relatedPage':[2]};const r=Engine.create({pack:p}).evaluate('the two narrators',s());assert.equal(r.next.fields.itemId,'work');assert.equal(r.route,'local');assert.ok(r.understanding?.learned);
 });
-test('a learned AI-only route resolves to the public local source instead of a handoff',()=>{
- const Engine=require('../extension/biscuit-engine.js'),p=pack('ai');p.models.context.weights={page:[10],bias:[-5]};const r=Engine.create({pack:p}).evaluate('prepare notes using this assignment',s());assert.equal(r.route,'local');assert.equal(r.next.fields.itemId,'work');assert.equal(r.handoff,undefined);assert.equal(r.ai,undefined);
+test('AI context selection uses exact selected sources and study prompt construction',()=>{
+ const Engine=require('../extension/biscuit-engine.js'),p=pack('ai');p.models.context.weights={page:[10],bias:[-5]};const r=Engine.create({pack:p}).evaluate('prepare notes using this assignment',s());assert.equal(r.route,'ai');assert.deepEqual(r.handoff.contextIds,['work']);assert.equal(r.handoff.kind,'notes');assert.ok(r.handoff.prompt.includes('Compare both voices.'));assert.ok(!r.handoff.prompt.includes('Evidence: quote both narrators.'));
 });
 test('a learned mutation cannot override negation or disabled AI',()=>{
  const Engine=require('../extension/biscuit-engine.js');assert.notEqual(Engine.create({pack:pack('complete')}).evaluate("do not mark this complete",s()).action,'complete');const world=s();world.ai=false;assert.notEqual(Engine.create({pack:pack('ai')}).evaluate('write a summary',world).route,'ai');
@@ -20,6 +20,6 @@ test('parser rejections and negated feature commands cannot become learned write
  const Engine=require('../extension/biscuit-engine.js'),p=pack('feature',{'detail:feature':model(['{"id":"ai","on":true}'],[10])}),E=Engine.create({pack:p});
  for(const line of ["don't enable AI",'do not disable motion','what if I enable AI?'])assert.notEqual(E.evaluate(line,s()).action,'feature');
 });
-test('an AI-only model cannot expose hidden earned totals through the public fallback',()=>{
- const Engine=require('../extension/biscuit-engine.js'),world=s(),p=pack('ai');world.settings.showGrades=false;world.assignments=[];world.rubrics=[];world.courseGrades=[{id:'total',title:'Chemistry 82%',courseId:'c',currentPercent:82}];world.selectedItemId='total';p.models.context.weights={bias:[10]};const r=Engine.create({pack:p}).evaluate('prepare study notes',world);assert.equal(r.route,'local');assert.equal(r.handoff,undefined);assert.ok(!JSON.stringify(r.items).includes('82'));assert.ok(!r.message.includes('82'));
+test('earned totals never enter AI source labels or instructional prompt metadata',()=>{
+ const Engine=require('../extension/biscuit-engine.js'),world=s(),p=pack('ai');world.assignments=[];world.rubrics=[];world.courseGrades=[{id:'total',title:'Chemistry 82%',courseId:'c',currentPercent:82}];world.selectedItemId='total';p.models.context.weights={bias:[10]};const r=Engine.create({pack:p}).evaluate('prepare study notes',world);assert.equal(r.route,'ai');assert.ok(!JSON.stringify(r.handoff).includes('82'));
 });

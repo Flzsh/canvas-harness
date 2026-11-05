@@ -1,5 +1,9 @@
 # Reviewer testing notes
 
+## 3.9.1 changes
+
+3.9.1 brings the redesigned interface from the 4.0 preview line: a drawn top bar, Make it yours with Settings and Features tabs, a Graphics setting, New since your last visit and Biscuit's rule list. It adds no permissions, no network requests and no remote code, and the 4.0 daily AI is not in it.
+
 ## 3.9.0 changes
 
 3.9.0 redraws the opt-in Focus room, Review deck and Grade impact, makes the play tools lighter and lets them act on the whole page, and fits the page to every window size. It adds no permissions, no network requests and no remote code; all three stay off until switched on under Features → Custom.

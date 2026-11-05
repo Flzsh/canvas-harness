@@ -24,8 +24,8 @@
 .rd .ch-art-heading .rd-field { max-width: 65%; }
 .rd .ch-hint { color: var(--rd-muted); font-size: 11px; line-height: 1.6; margin: 12px 0; }
 .rd .ch-art-slots { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin: 16px 0; }
-.rd .ch-art-slot:has(.ch-frame-editor) { grid-column:1/-1; }
 .rd .ch-art-slot { min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 9px; padding: 10px; border: 1px solid var(--rd-line); border-radius: 12px; }
+.rd .ch-art-slot:has(.ch-frame-editor) { grid-column:1/-1; }
 .rd .ch-art-preview { position: relative; display: grid; place-items: center; height: 76px; padding: 7px; background: var(--rd-bg); border-radius: 7px; overflow: hidden; pointer-events: none; }
 .rd .ch-art-preview > svg, .rd .ch-art-preview > picture, .rd .ch-art-preview > img { width: 100%; height: 100%; position: static; transform: none; }
 .rd .ch-art-preview > svg:is(.rd-art,.rd-mini) { height: 62px; min-height: 0; max-height: 62px; }
@@ -95,8 +95,10 @@
   width: min(100%,calc(140px * var(--rd-name-w,480) / 240)); height: 140px; max-width: 100%; align-self: flex-start; margin: 0;
  }
 }
-.rd[data-banner-size=compact] { --ch-banner-h: 80px; --rd-band-h: clamp(90px,7cqi,120px); }
-.rd[data-banner-size=large] { --ch-banner-h: 220px; --rd-band-h: clamp(230px,17cqi,320px); }
+/* Banner sizes: each grows with the page and is capped by the window height too (owner, 2026-10-27). */
+.rd:not([data-banner-size=compact],[data-banner-size=large]) { --ch-banner-h: min(140px, 12vh); }
+.rd[data-banner-size=compact] { --ch-banner-h: min(80px, 8vh); --rd-band-h: clamp(72px,min(7cqi,8vh),110px); }
+.rd[data-banner-size=large] { --ch-banner-h: min(220px, 20vh); --rd-band-h: clamp(130px,min(17cqi,20vh),300px); }
 /* as specific as refresh.css's rail-art rule, which otherwise keeps the icons showing */
 .rd[data-show-course-icons=false] .rd-course-rail .rd-rail-art,
 .rd[data-show-course-icons=false] .rd-course-rail :is(.rd-rail-title .rd-course-name, .rd-rail-all) > .rd-rail-art { display: none; }
@@ -112,15 +114,16 @@
 .rd[data-surface-style=contrast][data-theme=light] { --rd-bg:#FFF; --rd-sidebar:#F4F4F4; --rd-ink:#111; --rd-muted:#444; --rd-faint:#505050; --rd-line:#BABABA; --rd-line-strong:#888; --rd-control-line:#777; }
 .rd[data-surface-style=contrast][data-theme=dark] { --rd-ink:#FFF; --rd-muted:#E0E0E0; --rd-faint:#DDD; --rd-line:#686868; --rd-line-strong:#999; --rd-control-line:#AAA; }
 @media(min-width:601px) {
- .rd[data-course-navigation=topbar][data-courses=true] .rd-shell { grid-template-columns: minmax(0,1fr); gap: 22px; }
-.rd[data-course-navigation=topbar] .rd-shell > .rd-course-rail { top: 0; }
-.rd[data-course-navigation=topbar] .rd-shell > .rd-workspace-heading { margin-bottom: 0; }
+ .rd:is([data-course-navigation=topbar],[data-course-navigation=dock])[data-courses=true] .rd-shell { grid-template-columns: minmax(0,1fr); gap: 22px; }
  /* above the heading below it, whose top otherwise paints over the cards' lower edge */
 .rd[data-course-navigation=topbar][data-courses=true] .rd-course-rail { z-index: 1; }
 .rd[data-course-navigation=topbar][data-courses=true] .rd-course-rail { --rd-rail-pad: 8px; position: relative; display: flex; flex-direction: row; flex-wrap: nowrap; width: 100%; height: auto; min-height: 0; max-height: none; padding: 10px; gap: 8px; overflow-x: auto; overflow-y: hidden; align-items: stretch; }
  .rd[data-course-navigation=topbar][data-density=compact] .rd-course-rail { --rd-rail-pad: 6px; }
  .rd[data-course-navigation=topbar] .rd-course-rail > .rd-rail-heading, .rd[data-course-navigation=topbar] .rd-course-rail > .rd-rail-foot { display: none; }
  .rd[data-course-navigation=topbar] .rd-course-rail > .rd-rail-course, .rd[data-course-navigation=topbar] .rd-course-rail > .rd-rail-all { position: relative; flex: 0 0 225px; margin: 0; }
+ /* across the top the strip sits right under the heading: no sidebar sticky offset, no gap under the heading */
+ .rd[data-course-navigation=topbar] .rd-shell > .rd-course-rail { top: 0; }
+ .rd[data-course-navigation=topbar] .rd-shell > .rd-workspace-heading { margin-bottom: 0; }
  .rd[data-course-navigation=topbar] .rd-course-rail > .rd-rail-course { min-height: 84px; }
  .rd[data-course-navigation=topbar] .rd-course-rail > .rd-rail-all { align-self: center; min-height: 44px; }
  .rd[data-course-navigation=topbar] .rd-rail-text > .rd-rail-sub, .rd[data-course-navigation=topbar] .rd-rail-text > .rd-rail-next { -webkit-line-clamp: 1; white-space: nowrap; }
@@ -170,11 +173,12 @@
 .rd {--rd-overview-thickness:52px;}
 .rd[data-text-size=large] {--rd-overview-thickness:60px;}
 .rd[data-course-navigation=sidebar] .rd-course-rail > .rd-rail-all {height:var(--rd-overview-thickness);min-height:var(--rd-overview-thickness);max-height:var(--rd-overview-thickness);box-sizing:border-box;}
-.rd[data-workspace=work] .rd-main.rd-desk {
+/* The arranged grid only where the Arrange add-on runs: without it nothing sets --rd-layout-columns and the plain layouts apply. */
+.rd[data-arrange=on][data-workspace=work] .rd-main.rd-desk {
  display:grid!important;grid-template-columns:var(--rd-layout-columns,repeat(3,minmax(0,1fr)))!important;
  grid-template-rows:var(--rd-layout-rows,auto)!important;gap:32px;align-items:start;
 }
-.rd[data-workspace=work] .rd-main.rd-desk > [data-arrange-key] {
+.rd[data-arrange=on][data-workspace=work] .rd-main.rd-desk > [data-arrange-key] {
  grid-area:auto!important;grid-column:var(--rd-panel-column,auto)!important;grid-row:var(--rd-panel-row,auto)!important;
  order:0!important;position:relative!important;inset:auto!important;min-width:0;width:100%;margin-top:0!important;align-self:start;transform-origin:top left;
 }
@@ -273,7 +277,7 @@
 .rd .rd-rail-heading .rd-arrange-tools {margin-left:auto;}
 .rd .rd-rail-heading .rd-arrange-grip {width:32px;min-width:32px;height:34px;}
 @media(min-width:601px){
- .rd[data-course-navigation=topbar][data-courses=true] .rd-shell {display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:14px!important;}
+ .rd:is([data-course-navigation=topbar],[data-course-navigation=dock])[data-courses=true] .rd-shell {display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:14px!important;}
  .rd[data-course-navigation=topbar][data-courses=true] .rd-course-rail {--rd-top-card-height:108px;display:flex!important;flex-direction:row!important;align-items:stretch!important;flex-wrap:nowrap!important;gap:9px!important;width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;padding:10px 8px!important;overflow-x:auto!important;overflow-y:hidden!important;position:relative!important;scroll-padding-inline:10px;}
  .rd[data-course-navigation=topbar] .rd-course-rail > .rd-rail-heading {display:flex!important;flex:0 0 76px;flex-direction:column;justify-content:center;gap:6px;align-items:center;padding:0 2px!important;margin:0!important;}
  .rd[data-course-navigation=topbar] .rd-rail-heading .rd-arrange-tools {margin:0;}
@@ -298,18 +302,25 @@
 .rd:is([data-motion-style=off],[data-motion-style=still])[data-arranging=true] :is(.rd-main > [data-arrange-key],.rd-course-rail > [data-arrange-course]){box-shadow:0 4px 14px #30281918}
 .rd:is([data-motion-style=off],[data-motion-style=still]) [data-hold=true]::after{animation:none;clip-path:none;opacity:.8}
 
-/* Dragging starts on the panel or course. Keyboard users retain a visible
-   grip when focused so they can place a panel without using a pointer. */
+/* Hold the actual heading or course to move it. Keep keyboard controls in the
+   tab order, revealed as a plain label only while keyboard-focused. */
 .rd .rd-arrange-grip > svg {display:none;}
 .rd .rd-arrange-grip:not(:focus-visible) {
-  position:absolute;width:1px;height:1px;min-width:0;padding:0;margin:-1px;
-  overflow:hidden;clip:rect(0,0,0,0);clip-path:inset(50%);white-space:nowrap;
-  border:0;pointer-events:none;
+ position:absolute;width:1px;height:1px;min-width:0;padding:0;margin:-1px;
+ overflow:hidden;clip:rect(0,0,0,0);clip-path:inset(50%);white-space:nowrap;
+ border:0;pointer-events:none;
 }
 .rd .rd-arrange-grip:focus-visible {width:auto;min-width:44px;height:36px;padding:0 8px;opacity:1;transition:none;}
 .rd .rd-arrange-grip:focus-visible::after {content:"Move";font:500 12px/1.2 var(--rd-ui-font);}
 
+
 .rd .ch-palette-label{margin:18px 0 10px;font-size:13px;color:var(--rd-muted)}
+
+/* Static elevation still identifies movable items when motion is disabled. */
+@media(prefers-reduced-motion:reduce){.rd .rd-main > [data-arrange-key]::before,.rd .rd-shell .rd-course-rail > [data-arrange-course]::before,.rd .rd-shell .rd-course-rail > [data-arrange-course] > .rd-frame {animation:none!important;transition:none!important;scale:none!important;}}
+.rd:is([data-motion-style=off],[data-motion-style=still]) .rd-main > [data-arrange-key]::before,
+.rd:is([data-motion-style=off],[data-motion-style=still]) .rd-shell .rd-course-rail > [data-arrange-course]::before,
+.rd:is([data-motion-style=off],[data-motion-style=still]) .rd-shell .rd-course-rail > [data-arrange-course] > .rd-frame {animation:none!important;transition:none!important;scale:none!important;}
 
 /* A complete theme has one review surface, with safe, isolated image previews. */
 .rd .ch-quick-upload{margin:0 0 28px;padding:20px;border:1px solid var(--rd-line);border-radius:16px;background:var(--rd-bg);font-size:14px;line-height:1.55;}
@@ -356,12 +367,6 @@
 .rd .ch-pack-progress{color:var(--rd-muted);font-size:14px;}
 @media(max-width:600px){.rd .ch-quick-upload{padding:14px}.rd .ch-pack-drop{align-items:flex-start;flex-direction:column}.rd .ch-pack-piece{grid-template-columns:70px minmax(0,1fr) 20px;gap:8px}.rd .ch-pack-heading h4{font-size:18px}}
 @media(prefers-reduced-motion:reduce){.rd .ch-pack-drop{transition:none}}
-
-/* Static elevation still identifies movable items when motion is disabled. */
-@media(prefers-reduced-motion:reduce){.rd .rd-main > [data-arrange-key]::before,.rd .rd-shell .rd-course-rail > [data-arrange-course]::before,.rd .rd-shell .rd-course-rail > [data-arrange-course] > .rd-frame {animation:none!important;transition:none!important;scale:none!important;}}
-.rd:is([data-motion-style=off],[data-motion-style=still]) .rd-main > [data-arrange-key]::before,
-.rd:is([data-motion-style=off],[data-motion-style=still]) .rd-shell .rd-course-rail > [data-arrange-course]::before,
-.rd:is([data-motion-style=off],[data-motion-style=still]) .rd-shell .rd-course-rail > [data-arrange-course] > .rd-frame {animation:none!important;transition:none!important;scale:none!important;}
 /* Artwork at night: the slider row */
 .rd .cz-night { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 10px; font-size: 12.5px; color: var(--rd-muted); }
 .rd .cz-night input[type=range] { width: 100%; accent-color: var(--rd-accent); }
@@ -370,6 +375,14 @@
 .rd .cz-scenes .cz-choice-art {aspect-ratio:16/9;min-height:0;overflow:hidden;}
 .rd .cz-scenes .cz-scene-poster {display:block;width:100%;height:100%;object-fit:cover;}
 
+/* Local photos share the existing artwork frames. */
+.rd .ch-media { display: block; width: 100%; height: 100%; pointer-events: none; }
+.rd .ch-art-preview > .ch-media { max-width: 100%; max-height: 100%; object-fit: contain; }
+.rd .ch-art-controls[aria-busy=true] { cursor: progress; }
+.rd .ch-kit-list .cz-row { justify-content: flex-start; gap: 8px; flex-wrap: wrap; }
+.rd .ch-kit-list .cz-row > span { flex: 1; overflow-wrap: anywhere; }
+
+.rd[data-theme-kit] .rd-course-heading > .rd-heading-art:has(> .ch-custom-banner) { display: block !important; position: relative !important; inset: auto !important; z-index: 0 !important; -webkit-mask-image: none !important; mask-image: none !important; }
 
 /* Course dock: the draft's paper masks and motion, with the dashboard owning theme and available width. */
 .rd[data-course-navigation=dock][data-courses=true] {padding-bottom:calc(112px + env(safe-area-inset-bottom));}
@@ -429,7 +442,7 @@
  .rd .rd-dock {padding-inline:14px!important;}
 }
 @media (max-width:600px) {
- .rd .rd-dock {--rd-dock-space:100vw;--rd-dock-headroom:40px;left:50%;width:100vw;max-width:100vw;padding-inline:14px!important;scroll-snap-type:x proximity;}
+ .rd .rd-dock {--rd-dock-space:var(--rd-dock-available,100vw);--rd-dock-headroom:40px;left:var(--rd-dock-center,50%);width:var(--rd-dock-available,100vw);max-width:var(--rd-dock-available,100vw);padding-inline:14px!important;scroll-snap-type:x proximity;}
  .rd .rd-dock-it,.rd .rd-dock-sep {transform:none!important;transition:none;will-change:auto;}
  .rd .rd-dock-it {scroll-snap-align:center;}
  .rd[data-course-navigation=dock] .rd-toolbar {flex-wrap:wrap;}
@@ -439,16 +452,6 @@
  .rd[data-course-navigation=dock][data-drawer=open] .rd-shell::after {display:none;}
 }
 
-/* Local kit artwork uses the existing isolated media renderer. */
-.rd .ch-media {display:block;width:100%;height:100%;pointer-events:none;}
-.rd .ch-art-preview > .ch-media {max-width:100%;max-height:100%;object-fit:contain;}
-.rd .ch-art-controls[aria-busy=true] {cursor:progress;}
-.rd .ch-kit-list .cz-row {justify-content:flex-start;gap:8px;flex-wrap:wrap;}
-.rd .ch-kit-list .cz-row > span {flex:1;overflow-wrap:anywhere;}
-
-.rd[data-course-navigation=dock][data-courses=true] .rd-shell {grid-template-columns:minmax(0,1fr);gap:22px;}
-@media (max-width:800px) {.rd[data-course-navigation=dock][data-courses=true] .rd-shell {display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:14px!important;}}
-
 /* <x:generated> Course dock 3.7 (gen-dock-css.cjs, owner 2026-10-27): shelves, size and place, motion, cards, its card. */
 /* Size: the tile follows the size slider (or the shelf's top edge); the drawings grow with it. Place: the middle of the
    workspace plus the shift the dock was dragged to. */
@@ -456,9 +459,16 @@
 .rd .rd-dock{left:calc(var(--rd-dock-center,50%) + var(--rd-dock-shift,0px))}
 .rd .rd-dock-tile .rd-mini{height:calc(var(--rd-dock-t) - 8px);max-width:calc(var(--rd-dock-t) - 2px)}
 .rd .rd-dock-tile>:is(.ch-custom-icon,.tk-icon.tk-mini){width:calc(var(--rd-dock-t) - 8px);height:calc(var(--rd-dock-t) - 8px)}
-/* Shelves: kraft (the default), paper, or none at all. */
-.rd[data-dock-shelf=kraft] .rd-dock{--rd-dock-shelf:color-mix(in srgb,#D4A27F 40%,#FFFDF8);--rd-dock-paper:#FFFDF8}
-.rd[data-theme=dark][data-dock-shelf=kraft] .rd-dock{--rd-dock-shelf:color-mix(in srgb,#D4A27F 22%,var(--rd-surface))}
+/* Shelves: kraft (the default), paper, or none at all. Kraft is a real shelf with paper labels in every theme: its
+   labels stay paper with dark ink, and the light shelf keeps dark ink too (owner, 2026-10-27: a dark or scene theme
+   wrote its pale text onto the white labels). Only a dark page darkens the shelf itself. */
+.rd[data-dock-shelf=kraft] .rd-dock{--rd-dock-shelf:color-mix(in srgb,#D4A27F 40%,#FFFDF8);--rd-dock-paper:#FFFDF8;--rd-dock-ink:#2B2A27;--rd-dock-shelf-ink:#141413;--rd-dock-label-ink:#141413;--rd-dock-label-muted:#5E5D59;--rd-dock-label-late:#B5452E}
+.rd[data-theme=dark][data-dock-shelf=kraft] .rd-dock{--rd-dock-shelf:color-mix(in srgb,#D4A27F 22%,var(--rd-surface));--rd-dock-ink:var(--rd-ink-2);--rd-dock-shelf-ink:var(--rd-ink)}
+/* A theme kit draws its own cards: they take its page colour and its ink, on any shelf. */
+.rd[data-theme-kit][data-dock-shelf] .rd-dock{--rd-dock-paper:var(--rd-bg);--rd-dock-label-ink:var(--rd-ink);--rd-dock-label-muted:var(--rd-muted);--rd-dock-label-late:var(--rd-danger,#B5452E)}
+/* ...and the course drawing (ink lines) sits on its own small paper patch there, so a dark theme card keeps it visible. */
+.rd[data-theme-kit] .rd-dock-card .rd-dock-tile::before{display:block;background:color-mix(in srgb,var(--rd-course,#9A8F7A) 16%,#FFFDF8)}
+.rd .rd-dock-it .rd-dock-name{color:var(--rd-dock-shelf-ink,var(--rd-ink,#141413))}
 .rd[data-dock-shelf=none] .rd-dock::before,.rd[data-dock-shelf=none] .rd-dock::after,.rd[data-dock-shelf=none] .rd-dock-ink{opacity:0}
 .rd[data-dock-shelf=none] .rd-dock-ink::before{opacity:1}
 /* The open course: a line drawn under it in the accent instead of a dot. */
@@ -509,28 +519,34 @@
 .rd .rd-dock[data-look=cards]{--rd-dock-gap:10px}
 /* Cards keep their own width (up to 300 px) and shrink, down to 120 px, only when the row would not fit the window;
    past that the row scrolls sideways (never off-screen, never a second row over the page). */
-.rd .rd-dock[data-look=cards]{flex-wrap:nowrap;width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;overflow-x:auto;scrollbar-width:none}
-.rd .rd-dock[data-look=cards] .rd-dock-it{flex:0 1 auto;width:auto;min-width:120px;max-width:300px}
+.rd .rd-dock[data-look=cards]{flex-wrap:nowrap;width:max-content;max-width:min(calc(100vw - 32px),calc(var(--rd-dock-available,100vw) - 16px));box-sizing:border-box;overflow-x:auto;scrollbar-width:none}
+.rd .rd-dock[data-look=cards] .rd-dock-it{flex:0 1 auto;width:auto;min-width:min-content;max-width:max(136px,min(300px,calc((var(--rd-dock-space) - 44px) / max(1,var(--rd-dock-n,1)) - var(--rd-dock-gap))))}
 .rd .rd-dock[data-look=cards] .rd-dock-it:has(.rd-dock-all){flex-shrink:0}
 .rd .rd-dock[data-look=cards] .rd-dock-card{width:100%;box-sizing:border-box}
-.rd .rd-dock-card{position:relative;isolation:isolate;display:grid;grid-template-columns:auto minmax(0,auto);align-items:center;gap:8px;height:calc(var(--rd-dock-t) + 6px);max-width:300px;padding:5px 12px 5px 8px;rotate:-.6deg}
+.rd .rd-dock-card{position:relative;isolation:isolate;min-width:136px;box-sizing:border-box;display:grid;grid-template-columns:auto minmax(min-content,auto);align-items:center;gap:8px;height:calc(var(--rd-dock-t) + 6px);max-width:300px;padding:5px 12px 5px 8px;rotate:-.6deg}
 .rd .rd-dock-it:nth-of-type(2n) .rd-dock-card{rotate:.7deg}
-.rd .rd-dock-card:has(.rd-dock-seal){padding-right:28px}
+.rd .rd-dock-card:has(.rd-dock-seal){padding-right:12px}
 .rd .rd-dock-card>.rd-frame{position:absolute;inset:0;z-index:-1;color:var(--rd-course,#9A8F7A);--f-wash:.55}
 .rd .rd-dock-card>.rd-frame::before{content:"";position:absolute;inset:3px;z-index:-1;border-radius:9px;background:var(--rd-dock-paper)}
 .rd .rd-dock-card .rd-dock-tile{width:calc(var(--rd-dock-t) - 10px);height:calc(var(--rd-dock-t) - 10px)}
 .rd .rd-dock-card .rd-dock-tile::before,.rd .rd-dock-card .rd-dock-tile::after{display:none}
 .rd .rd-dock-card .rd-dock-tile .rd-mini{height:calc(var(--rd-dock-t) - 14px)}
-.rd .rd-dock-words{display:grid;min-width:0;text-align:left;color:var(--rd-ink)}
-.rd .rd-dock-words b{font:650 12.5px/1.2 var(--rd-ui-font,"Segoe UI",system-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rd .rd-dock-words small{font:500 11.5px/1.3 var(--rd-ui-font,"Segoe UI",system-ui);color:var(--rd-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rd .rd-dock-words small[data-late]{color:var(--rd-danger,#B5452E);font-weight:650}
-.rd .rd-dock-card .rd-dock-seal{top:5px;right:5px}
+.rd .rd-dock-words{display:grid;min-width:0;text-align:left;color:var(--rd-dock-label-ink,var(--rd-ink))}
+/* A theme sets its text to inherit (.rd[data-theme-kit] :is(span,b,small...)); the label keeps its own ink. */
+.rd .rd-dock-it .rd-dock-words{color:var(--rd-dock-label-ink,var(--rd-ink))}
+.rd .rd-dock-it .rd-dock-words small{color:var(--rd-dock-label-muted,var(--rd-muted))}
+.rd .rd-dock-it .rd-dock-words small[data-late]{color:var(--rd-dock-label-late,var(--rd-danger,#B5452E))}
+.rd .rd-dock-words b{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;font:650 12.5px/1.16 var(--rd-ui-font,"Segoe UI",system-ui);overflow:hidden;overflow-wrap:normal;word-break:normal}
+/* A long single word gets the room it needs, a little smaller, and never breaks in the middle. */
+.rd .rd-dock-words b[data-long=true]{font-size:11.5px;letter-spacing:-.012em}
+.rd .rd-dock-words small{font:500 11.5px/1.3 var(--rd-ui-font,"Segoe UI",system-ui);color:var(--rd-dock-label-muted,var(--rd-muted));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rd .rd-dock-words small[data-late]{color:var(--rd-dock-label-late,var(--rd-danger,#B5452E));font-weight:650}
+.rd .rd-dock-card .rd-dock-seal{top:-6px;right:-5px}
 .rd[data-dock-lively=true] .rd-dock-it:is(:hover,:focus-visible) .rd-dock-card{translate:0 -5px;rotate:-1.6deg;transition:translate .26s cubic-bezier(.3,1.7,.5,1),rotate .26s}
 .rd[data-dock-lively=true] .rd-dock-it:is(:hover,:focus-visible) .rd-dock-card .rd-dock-tile{translate:none;rotate:none}
 .rd .rd-dock[data-look=cards] .rd-dock-it.on::after{width:60%;bottom:-10px}
 /* Its card (right-click the dock): size slider, shelf and look pictures, switches. */
-.rd .rd-dock-menu{position:fixed;z-index:21;left:calc(var(--rd-dock-center,50%) + var(--rd-dock-shift,0px));bottom:calc(var(--rd-dock-t,54px) + 44px);translate:-50% 0;box-sizing:border-box;width:300px;max-width:calc(100vw - 24px);padding:16px 18px 16px;isolation:isolate;color:var(--rd-ink);font:13px/1.35 var(--rd-ui-font,"Segoe UI",system-ui);animation:rd-dock-pop .22s cubic-bezier(.3,1.5,.5,1)}
+.rd .rd-dock-menu{position:fixed;z-index:21;left:calc(var(--rd-dock-center,50%) + var(--rd-dock-shift,0px));bottom:calc(var(--rd-dock-t,54px) + 44px);translate:-50% 0;box-sizing:border-box;width:300px;max-width:min(calc(100vw - 24px),calc(var(--rd-dock-available,100vw) - 16px));padding:16px 18px 16px;isolation:isolate;color:var(--rd-ink);font:13px/1.35 var(--rd-ui-font,"Segoe UI",system-ui);animation:rd-dock-pop .22s cubic-bezier(.3,1.5,.5,1)}
 .rd .rd-dock-menu::before{content:"";position:absolute;inset:4px;z-index:-2;border-radius:12px;background:var(--rd-dock-shelf,#F3E9DA);translate:3px 3px}
 .rd .rd-dock-menu::after{content:"";position:absolute;inset:0;z-index:-1;border:15px solid transparent;background:var(--rd-ink);-webkit-mask-box-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'90'%20height%3D'90'%20viewBox%3D'0%200%2090%2090'%3E%3Cpath%20d%3D'M24%206.2C34%205.4%2056%206.6%2066%205.8C77%205.6%2084.6%2012%2084.4%2024C85%2036%2083.8%2054%2084.6%2066C84.8%2077.6%2078%2084.6%2066%2084.4C54%2085%2036%2083.8%2024%2084.6C12.4%2084.8%205.4%2078%205.6%2066C5%2054%206.2%2036%205.4%2024C5.2%2012.6%2011.6%206%2021.4%206.4C24%206.3%2027%205.6%2029.6%204.8'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'2.4'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E") 30 30 30 30 stretch}
 .rd .rd-dock-menu{background:var(--rd-surface);border-radius:14px}

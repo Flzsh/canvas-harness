@@ -17,7 +17,7 @@
  const ink=(d,w=2.1,extra='')=>`<path d="${d}" fill="none" stroke="${INK}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"${extra}/>`;
  const fill=(d,paint,w=2.1,extra='')=>`<path d="${d}" fill="${paint}" stroke="${INK}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"${extra}/>`;
  const leg=(cls,x,top,foot,bend)=>`<g class="pet-leg ${cls}" style="transform-origin:${x}px ${top}px"><path d="M${x} ${top}C${x+bend} ${top+6} ${foot-bend*.4} ${top+11} ${foot} 57.4" fill="none" stroke="${INK}" stroke-width="4.8" stroke-linecap="round"/><path d="M${x} ${top}C${x+bend} ${top+6} ${foot-bend*.4} ${top+11} ${foot} 57.4" fill="none" stroke="var(--pet-coat)" stroke-width="2.3" stroke-linecap="round"/><path d="M${foot-1.9} 58.6h4.2" fill="none" stroke="${INK}" stroke-width="2.8" stroke-linecap="round"/></g>`;
- function svg({title='Your pony'}={}){
+ function svg({title='Your companion'}={}){
   // 72 x 64 box; the ground is y = 60; the pony faces right. Mirroring is done by the wrapper, never here.
   return `<svg class="pet-svg" viewBox="0 0 72 64" role="img" aria-label="${String(title).replace(/[<>&"]/g,'')}" focusable="false">
 <path class="pet-shadow" d="M14 60.6C24 62.6 44 62.6 54 60.4C44 59.2 24 59.2 14 60.6z" fill="${INK}" opacity=".13"/>
@@ -61,6 +61,180 @@
  <g class="pet-sparks" fill="#E2B865" stroke="${INK}" stroke-width="1.1" stroke-linejoin="round"><path class="s1" d="M10 14l1.6 3.4L15 19l-3.4 1.6L10 24l-1.6-3.4L5 19l3.4-1.6z"/><path class="s2" d="M66 26l1.1 2.3L69.4 29.4L67.1 30.5L66 32.8L64.9 30.5L62.6 29.4L64.9 28.3z"/><path class="s3" d="M30 6l1 2.1L33.1 9.1L31 10.1L30 12.2L29 10.1L26.9 9.1L29 8.1z"/></g>
 </g></svg>`;
  }
- const api={COATS,HARNESS,POSES,svg};
+ const object=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{},
+   text=v=>typeof v==='string'?v.replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g,' ').replace(/\s+/g,' ').trim().slice(0,120):'',
+   escape=v=>String(v).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+ const FALLBACKS={trot:'walk',lie:'sleep',read:'stand',eat:'stand',cheer:'stand',flag:'stand',fall:'stand',held:'stand'},
+   media=new WeakMap(),
+   hydrations=new WeakMap(),
+   effective=new WeakMap(),
+   originals=new WeakMap();
+ const original=pack=>originals.get(pack)||pack;
+ function selectedLayer(own,id){const layers=object(own.adjustments),key='pack:'+id;return Object.hasOwn(layers,key)?object(layers[key]):{};}
+ function effectivePack(pack,layer){
+  const flags=object(layer.poses),
+    disabled=POSES.filter(pose=>pose!=='stand'&&Object.hasOwn(flags,pose)&&flags[pose]===false&&Object.hasOwn(pack.poses,pose)),
+    key=disabled.join('|');
+  if(!key)return pack;
+  const cached=effective.get(pack);if(cached?.key===key)return cached.pack;
+  const poses={...pack.poses};for(const pose of disabled)delete poses[pose];
+  const value={...pack,poses};originals.set(value,pack);effective.set(pack,{key,pack:value});return value;
+ }
+ function identity(data={},hydratedPack=null){
+  const d=object(data),
+    pet=object(d.pet&&typeof d.pet==='object'?d.pet:d),
+    settings=object(d.settings),
+    own=object(settings.makeYourOwn),
+    active=object(own.pet),
+    installed=object(own.installed),
+    row=Object.hasOwn(installed,active.id)?object(installed[active.id]):{},
+    wrapped=object(hydratedPack),
+    candidate=object(original(object(wrapped.pack||hydratedPack))),
+    scoped=Object.hasOwn(d,'settings'),
+    layer=scoped?selectedLayer(own,active.id):{};
+  const selected=scoped?
+    typeof active.id==='string'&&/^[a-z0-9][a-z0-9._-]{0,99}$/i.test(active.id)&&!['__proto__','constructor','prototype'].includes(active.id)&&row.kind==='pet'&&row.id===active.id&&!!text(row.name):
+    candidate.format==='chpet',
+    valid=selected&&
+      candidate.format==='chpet'&&
+      Array.isArray(candidate.size)&&
+      candidate.size.length===2&&
+      candidate.size.every(n=>Number.isFinite(n)&&n>0)&&
+      !!object(candidate.assets)[object(candidate.poses).stand]&&
+      (!wrapped.id||!scoped||wrapped.id===row.id)&&
+      (!scoped||text(candidate.name)===text(row.name)),
+    pack=valid?candidate:null;
+  const sourceName=selected?text(scoped?row.name:candidate.name):'',name=selected?text(object(layer.pet).name)||sourceName||'Biscuit':active.id?'Biscuit':text(pet.name)||'Biscuit';
+  return {
+    name,
+    sourceName,
+    id:selected&&scoped?row.id:null,
+    kind:selected?'companion':'pony',
+    custom:!!pack,
+    pack:pack?effectivePack(pack,layer):null,
+    motion:selected&&['gentle','still','off'].includes(layer.motion)?layer.motion:'gentle',
+    enabled:pet.enabled!==false,
+    coat:Object.hasOwn(COATS,pet.coat)?pet.coat:'oat',
+    harness:Object.hasOwn(HARNESS,pet.harness)?pet.harness:'red',
+    gear:['full','collar','none'].includes(pet.gear)?pet.gear:'full'
+  };
+ }
+ function customPose(pack,value='stand'){
+   const poses=object(pack?.poses);
+   return Object.hasOwn(poses,value)?value:Object.hasOwn(FALLBACKS,value)&&Object.hasOwn(poses,FALLBACKS[value])?FALLBACKS[value]:'stand';
+ }
+ function customDrawing(pack,value='stand',face='right',still=false){
+  if(!pack||!Array.isArray(pack.size)||pack.size.length!==2||!pack.size.every(n=>Number.isFinite(n)&&n>0))return null;
+  let pose=customPose(pack,value),asset=object(pack.assets)[object(pack.poses)[pose]];if(!asset||typeof asset!=='object')return null;
+  if(still&&asset.animated&&!asset.svg){pose='stand';asset=object(pack.assets)[object(pack.poses).stand];if(!asset||typeof asset!=='object')return null;}
+  let urls=media.get(asset);
+  if(!urls){
+    let moving;
+    if(typeof asset.svg==='string'&&asset.svg)
+      moving='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(asset.svg);
+    else if(/^image\/(?:png|webp|gif)$/.test(asset.type)&&typeof asset.data==='string'&&/^[A-Za-z0-9+/=\s]+$/.test(asset.data))moving='data:'+asset.type+';base64,'+asset.data;else return null;
+    urls={
+      moving,
+      still:asset.svg?
+        'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(asset.still||asset.svg):
+        (/^(?:data:image\/(?:png|webp|gif);base64,[A-Za-z0-9+/=\s]+|data:image\/svg\+xml;charset=utf-8,%3[cC]svg(?:%20|%3[eE])[^\s]*)$/.test(asset.firstFrame||''))?asset.firstFrame:moving
+    };
+    media.set(asset,urls);
+  }
+  return {pose,src:still?urls.still:urls.moving,width:pack.size[0],height:pack.size[1],ground:pack.ground,mirror:face!==pack.faces};
+ }
+ function drawing(data={},hydratedPack=null,{pose='stand',face='right',still=true}={}){
+  const p=identity(data,hydratedPack),custom=customDrawing(p.pack,pose,face,still||p.motion!=='gentle');
+  if(custom)return `<img class="pet-svg" src="${escape(custom.src)}" width="${custom.width}" height="${custom.height}" alt="${escape(p.name)}" draggable="false" decoding="async" style="width:100%;height:100%;object-fit:contain;transform:scaleX(${custom.mirror?-1:1})">`;
+  if(p.kind==='companion')return placeholder();
+  const coat=COATS[p.coat],paint=Object.entries(coat).filter(([key])=>key!=='label').map(([key,value])=>'--pet-'+key+':'+value).join(';')+';--pet-harness:'+HARNESS[p.harness];
+  return svg({title:p.name}).replace('<svg ',`<svg style="${paint}" `);
+ }
+ function placeholder(){return '<svg class="pet-svg" viewBox="0 0 72 64" role="img" aria-label="Companion" focusable="false"><circle cx="36" cy="30" r="22" fill="#E5E3DE" stroke="#8A8880" stroke-width="1.5"/><g fill="#8A8880"><circle cx="27" cy="30" r="2"/><circle cx="36" cy="30" r="2"/><circle cx="45" cy="30" r="2"/></g></svg>';}
+ function lookMode(state={},preferred='light'){
+  const ready=state.lookStatus==='ready',
+    look=object(state.look),
+    wanted=preferred==='dark'?'dark':'light',
+    custom=look.kind==='theme',
+    modes=!ready?[]:custom?[...new Set((Array.isArray(look.modes)?look.modes:[]).filter(value=>['light','dark'].includes(value)))]:['light','dark'];
+  return {
+    ready,
+    modes,
+    mode:!ready?null:!custom?wanted:modes.includes(wanted)?wanted:modes.includes(look.mode)?look.mode:modes[0]||(['light','dark'].includes(look.mode)?look.mode:null)
+  };
+ }
+ const clearHydration=store=>{if(store&&typeof store==='object')hydrations.delete(store);};
+ async function hydrate(data,{store,read=root.ReservePacks?.readLocal,runtime=root.chrome?.runtime}={}){
+  const p=identity(data);
+  if(!p.id||!store?.owner){clearHydration(store);return null;}
+  const key=JSON.stringify([store.owner.origin,store.owner.accountId,p.id,p.sourceName]),current=()=>{
+    const selected=identity(store.get?store.get():data);
+    return selected.id===p.id&&selected.sourceName===p.sourceName&&JSON.stringify([store.owner?.origin,store.owner?.accountId,p.id,p.sourceName])===key;
+  };
+  let cached=hydrations.get(store);
+  if(!cached||cached.key!==key){
+    cached={key,pending:null};
+    hydrations.set(store,cached);
+    cached.pending=(async()=>{
+      let pack;
+      if(typeof read==='function'){const result=await read(p.id,{store});pack=result?.id===p.id&&result?.kind==='pet'?identity(data,result).pack:null;}
+      else if(typeof runtime?.sendMessage==='function'){
+        const reply=await runtime.sendMessage({type:'ch-companion',op:'read',owner:store.owner}),selected=reply?.ok===true?identity(reply.data,reply.pack):null;
+        pack=selected?.id===p.id?identity(data,reply.pack).pack:null;
+      }
+      return pack||null;
+    })();
+  }
+  let pack;
+  try{pack=await cached.pending;}catch(error){if(hydrations.get(store)===cached)hydrations.delete(store);throw error;}
+  if(!pack||!current()||hydrations.get(store)!==cached){if(hydrations.get(store)===cached)hydrations.delete(store);return null;}
+  return original(pack);
+ }
+ function observe(listener,{runtime=root.chrome?.runtime,events=root.chrome?.storage?.onChanged,look=false}={}){
+  let dead=false,revision=0;const emit=value=>{if(!dead)listener(value);};
+  async function refresh(){
+   const turn=++revision,empty={status:'loading',lookStatus:look?'loading':'idle',data:null,pack:null,look:null};emit(empty);
+   if(typeof runtime?.sendMessage!=='function'){emit({...empty,status:'error',lookStatus:look?'error':'idle'});return;}
+   const replies=await Promise.allSettled([
+     Promise.resolve().then(()=>runtime.sendMessage({type:'ch-companion',op:'read'})),
+     ...(look?[Promise.resolve().then(()=>runtime.sendMessage({type:'ch-look',op:'read'}))]:[])
+   ]);
+   if(dead||turn!==revision)return;
+   const reply=replies[0].status==='fulfilled'?replies[0].value:null,result={...empty,status:'error',lookStatus:look?'error':'idle'};
+   if(reply?.ok===true&&reply.data?.pet&&typeof reply.data.pet==='object'&&!Array.isArray(reply.data.pet)){
+     const p=identity(object(reply.data),reply.pack),
+       row=p.id?{id:p.id,name:p.sourceName,kind:'pet'}:null,
+       flags=object(selectedLayer(object(object(reply.data.settings).makeYourOwn),p.id).poses),
+       poses={};
+     for(const pose of POSES)if(pose!=='stand'&&Object.hasOwn(flags,pose)&&flags[pose]===false)poses[pose]=false;
+     result.status='ready';
+     result.data={
+       pet:{name:p.name,enabled:p.enabled,coat:p.coat,harness:p.harness,gear:p.gear},
+       settings:{makeYourOwn:{pet:row,installed:row?{[row.id]:row}:{},adjustments:row?{['pack:'+row.id]:{pet:{name:p.name},poses,motion:p.motion}}:{}}}
+     };
+     result.pack=p.pack?original(p.pack):null;
+   }
+   const label=replies[1]?.status==='fulfilled'?replies[1].value:null;
+   if(label?.ok===true&&Object.hasOwn(label,'look')&&(label.look===null||label.look&&typeof label.look==='object'&&!Array.isArray(label.look)&&['builtin','theme','scene'].includes(label.look.kind))){
+     result.lookStatus='ready';
+     if(label.look)
+       result.look={
+         id:text(label.look.id),
+         name:text(label.look.name),
+         kind:label.look.kind,
+         preview:typeof label.look.preview==='string'?label.look.preview:'',
+         modes:[...new Set((Array.isArray(label.look.modes)?label.look.modes:[]).filter(mode=>['light','dark'].includes(mode)))],
+         mode:['light','dark'].includes(label.look.mode)?label.look.mode:null
+       };
+   }
+   emit(result);
+  }
+  const changed=(changes,area)=>{
+    if(area==='local'&&Object.keys(changes).some(key=>key.startsWith('reserve:v1:')||['reserve:packs','reserve:packs:receipts',...(look?['reserve:appearance']:[])].includes(key)))void refresh();
+  },message=value=>{if(value?.type==='ch-companion-changed')void refresh();};
+  events?.addListener(changed);runtime?.onMessage?.addListener(message);void refresh();
+  return {refresh,destroy(){dead=true;revision++;events?.removeListener(changed);runtime?.onMessage?.removeListener(message);}};
+ }
+ const api={COATS,HARNESS,POSES,svg,identity,drawing,placeholder,lookMode,customPose,customDrawing,hydrate,clearHydration,observe};
  root.ReservePetArt=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

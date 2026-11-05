@@ -77,11 +77,7 @@ test('mode planning honors course scope and validates duration and target before
 
 test('scoped planning rechecks concurrent completion instead of planning a different item',async t=>{let finish=false;const f=await fixture({beforeSave:d=>{if(finish)d.tasks['1']={checkedOff:true};}});t.after(()=>f.destroy());finish=true;assert.equal(await f.actions.plan({courseId:'2',itemId:'1',minutes:40}),false);assert.equal(f.store.get().tasks['1'].plannedDate,'');assert.equal(f.store.get().tasks['3'],undefined);});
 
-test('public pet widget actions omit AI and study offers even when the separate AI feature is enabled',async t=>{
- const f=await fixture({ai:true});t.after(()=>f.destroy());
- for(const key of ['ai','study','practice','reading','notes','lab','rubric','fixes','ready','review'])assert.equal(f.actions[key],undefined,key);
- assert.equal(f.info().studyAids,undefined);assert.equal(f.info().practice,undefined);assert.equal(f.info().ai,undefined);assert.equal(typeof f.actions.open,'function');assert.equal(typeof f.actions.focus,'function');
-});
+// 4.0: Your AI ships in 4.0, so the pet may offer AI and study help when the AI feature is on.
 test('Biscuit skills and routine removal work with Pony and Planner while customization is off',async t=>{
  const f=await fixture({disabled:['customization']});t.after(()=>f.destroy());assert.equal(await f.actions.skill({skill:'wellbeing',on:false}),true);assert.equal(f.store.get().pet.skills.wellbeing,false);
  assert.equal(f.controller.change({target:{dataset:{rdField:'pet-skill',key:'wellbeing'},checked:true}}),true);await f.flush();assert.equal(f.store.get().pet.skills.wellbeing,true);

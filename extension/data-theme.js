@@ -281,7 +281,11 @@
       ';}');
   }
   if(state.background||state.bannerSource)rules.push(scope+' .rd-data-theme-background > [hidden],'+scope+' .rd-data-theme-tile > [hidden],'+scope+' .rd-data-theme-banner > [hidden]{display:none!important;}');
-  if(state.frames.panel)rules.push(frameRule(scope,'.rd-widget,.rd-course-information,.rd-work-column,.rd-information,[role="tabpanel"]',state.frames.panel));
+  // The panel frame is for the modules and their tab panels; the workspace (also a tab panel) is the page itself.
+  if(state.frames.panel){
+    rules.push(frameRule(scope,'.rd-widget,.rd-course-information,.rd-work-column,.rd-information,[role="tabpanel"]:not(.rd-workspace)',state.frames.panel));
+    rules.push(scope+' .rd-information:not(.ch-custom-frame) > .rd-reader,'+scope+' .rd-information:not(.ch-custom-frame) > .rd-assignment-empty{border:0!important;box-shadow:none!important;}');
+  }
   if(state.frames.card){
     rules.push(frameRule(scope,'.rd-rail-all > .rd-frame,.rd-rail-course > .rd-frame,.rd-course-card',state.frames.card));
     rules.push(scope+' .rd-rail-all > .rd-frame > *,'+scope+' .rd-rail-course > .rd-frame > *{display:none!important;}');

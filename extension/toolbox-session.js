@@ -92,7 +92,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           const finalId=accountId(finalUser);
           if(finalId!==initialId)throw auth('Your Canvas account changed while the toolbox was loading.');
 
-          return {user:finalUser,store,snapshot:cached||emptySnapshot(finalUser)};
+          const snapshot=cached||emptySnapshot(finalUser);
+          void root.CanvasHarnessAISource?.visit?.({
+            snapshot,
+            store,
+            client,
+            user:finalUser,
+            canPrepare:!!cached&&!cached.partial&&Date.now()-Date.parse(cached.fetchedAt)>=0&&Date.now()-Date.parse(cached.fetchedAt)<300000
+          });
+          return {user:finalUser,store,snapshot};
         }catch(error){
           const failure=normalizeFailure(error);
           if(failure?.code==='auth')discardStore();

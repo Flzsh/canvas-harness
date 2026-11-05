@@ -4,11 +4,11 @@
  const arrange=root.ReserveWorkspaceArrange||(typeof module==='object'&&module.exports?require('./workspace-arrange.js'):null);
  const enums={
    sceneTheme:['','starry','sea','stars','blueprint'],
+   pageTint:['paper','accent','sky','sage','lilac','blush','sand','snow'],
+   courseNavigation:['sidebar','topbar','dock'],
    dockSize:['small','medium','large'],
    dockShelf:['kraft','paper','none'],
    dockStyle:['tiles','cards'],
-   pageTint:['paper','accent','sky','sage','lilac','blush','sand','snow'],
-   courseNavigation:['sidebar','topbar','dock'],
    deskOrder:['context-first','work-first','stacked'],
    surfaceStyle:['paper','clean','contrast'],
    courseCardStyle:['sketch','rounded','minimal'],
@@ -17,6 +17,9 @@
  };
  const defaults={
    sceneTheme:'',
+   nightArt:0,
+   pageTint:'paper',
+   courseNavigation:'sidebar',
    dockSize:'medium',
    dockShelf:'kraft',
    dockStyle:'tiles',
@@ -26,9 +29,6 @@
    dockHide:false,
    dockScale:1,
    dockShift:0,
-   nightArt:0,
-   pageTint:'paper',
-   courseNavigation:'sidebar',
    deskOrder:'context-first',
    surfaceStyle:'paper',
    courseCardStyle:'sketch',
@@ -38,6 +38,7 @@
    showBookmarks:true,
    showCourseInformation:true,
    showCourseStrip:true,
+   showHelp:true,
    showRecentGrades:false,
    bedtime:'22:30',
    biscuitOffers:true,
@@ -62,6 +63,9 @@
    if(value[key]!==undefined&&!allowed.includes(value[key]))throw Error(`Invalid ${key} setting in backup.`);
    if(value[key])out[key]=value[key];
   }
+  // The drawing a student chose for a course (course-art.js choices): kept as a plain name; a name this build does not
+  // draw is ignored there, never an error here.
+  if(typeof value.subjectArt==='string'&&/^[a-z][a-z-]{1,30}[a-z]$/.test(value.subjectArt))out.subjectArt=value.subjectArt;
   for(const key of artKeys)if(value[key]!=null){
    const art=root.ReserveCustomArt||(typeof module==='object'&&module.exports?require('./custom-art.js'):null);
    if(!art)throw Error('Artwork support is unavailable. Reload Canvas Harness and try again.');
@@ -92,6 +96,7 @@
   }
   if(settings.bedtime!==undefined&&(typeof settings.bedtime!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(settings.bedtime)))throw Error('Choose a bedtime as HH:MM.');
   out.bedtime=settings.bedtime||'22:30';
+  if(settings.biscuitOffers!==undefined&&typeof settings.biscuitOffers!=='boolean')throw Error('Choose whether Biscuit may offer help.');out.biscuitOffers=settings.biscuitOffers!==false;
   // The dock's size (a factor of its tile) and its place (-1 at the left edge, 0 in the middle, 1 at the right).
   for(const [key,min,max] of [['dockScale',.7,1.5],['dockShift',-1,1]])
     if(settings[key]!==undefined){const n=Number(settings[key]);if(!Number.isFinite(n)||n<min||n>max)throw Error(`Invalid ${key} setting in backup.`);out[key]=Math.round(n*100)/100;}
@@ -107,7 +112,31 @@
     0);
   if(total>(root.ReserveCustomArt?.limits.totalBytes||2097152))throw Error('Course artwork is full. Remove an unused upload to stay below 2 MiB.');
  }
- const api={enums,defaults,artKeys,presets,cleanAppearance,cleanSettings,checkBudget};
+ // Graphics: each level is a set of details. Extra high keeps all of them; each step down lets go of what is seen least.
+ const GRAPHICS={
+   xhigh:{film:'full',life:'full',frames:'full',panorama:'on',rooms:'full',cards:'on'},
+   high:{film:'calm',life:'some',frames:'full',panorama:'on',rooms:'full',cards:'on'},
+   medium:{film:'slow',life:'off',frames:'still',panorama:'on',rooms:'most',cards:'on'},
+   low:{film:'off',life:'off',frames:'off',panorama:'off',rooms:'simple',cards:'off'}
+ };
+ const GRAPHICS_CHOICES={film:['full','calm','slow','off'],life:['full','some','off'],frames:['full','still','off'],panorama:['on','off'],rooms:['full','most','simple'],cards:['on','off']};
+ function graphicsDetail(value){
+   const out={};
+   for(const [key,allowed] of Object.entries(GRAPHICS_CHOICES))if(allowed.includes(value?.[key]))out[key]=value[key];
+   return out;
+ }
+ function graphicsPlan(level,detail){return {...(GRAPHICS[level]||GRAPHICS.high),...graphicsDetail(detail)};}
+
+ const api={enums,defaults,artKeys,presets,cleanAppearance,cleanSettings,checkBudget,graphicsPlan,graphicsDetail};
  root.ReserveCustomization=api;
  if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);
+
+(function(R){
+  if(!R)return;
+  R.register(
+    'settings',
+    s=>
+      Object.entries(s.settings||{}).filter(([,v])=>typeof v!=='object').map(([key,value])=>
+        ({id:key,title:key.replace(/([a-z])([A-Z])/g,'$1 $2'),kind:'setting',key,value,values:globalThis.ReserveCustomization?.enums[key],text:String(value),action:'settings',fields:{key}})));
+})(globalThis.ReserveBiscuitRegistry);

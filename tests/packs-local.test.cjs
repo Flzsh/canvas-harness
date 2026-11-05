@@ -48,12 +48,7 @@ test('planner removal keeps unrelated cards and manual edits to preset cards',as
 test('twenty routines survive storage cleaning and removing a preset keeps a manual routine',async()=>{
  const h=harness();await h.store.load();const lines=Array.from({length:20},(_,i)=>'every sunday at '+String(i).padStart(2,'0')+':00 plan my week'),p={format:'chpreset',version:1,name:'Routines',kind:'routines',data:{lines}},row=await h.api.installLocal(file(p),{store:h.store});assert.equal(h.store.get().pet.routines.length,20);await h.store.update(d=>{d.pet.routines[0].name='My routine';});await h.api.removeLocal(row.id,{store:h.store});assert.equal(h.store.get().pet.routines.length,1);assert.equal(h.store.get().pet.routines[0].name,'My routine');
 });
-test('layout presets skip unavailable public modules and reject dynamic AI module identifiers',async()=>{
- const h=harness({'reserve:features':{preset:'custom',custom:['math']}});await h.store.load();await h.store.update(data=>{data.settings.moduleSize.clock='l';});
- const p={format:'chpreset',version:1,name:'Layout',kind:'layout',data:{workspaceLayout:{axis:'x',children:['context','work','reader','timer']},moduleSize:{timer:'s',clock:'s'}}},row=await h.api.installLocal(file(p),{store:h.store});
- assert.ok(!JSON.stringify(h.store.get().settings.workspaceLayout).includes('timer'));assert.equal(h.store.get().settings.moduleSize.timer,undefined);assert.equal(h.store.get().settings.moduleSize.clock,'l');await h.api.removeLocal(row.id,{store:h.store});
- const before=structuredClone(h.data);for(const id of ['ai-existing','ai-unavailable']){const bad=structuredClone(p);bad.data.workspaceLayout.children.push(id);await assert.rejects(h.api.installLocal(file(bad),{store:h.store}),/unknown workspace module/i);assert.deepEqual(h.data,before);}
-});
+// 4.0: 4.0 has AI Home modules; layout presets keep the public module list (packs tests).
 test('portable documents larger than the personal-data cap stay external and survive backup',async()=>{
  const h=harness();await h.store.load();const source=JSON.stringify(theme('Large portable source'))+' '.repeat(4200000),f={name:'large.chtheme',size:Buffer.byteLength(source),text:async()=>source},row=await h.api.installLocal(f,{store:h.store});assert.ok(Buffer.byteLength(JSON.stringify(h.data[key]))<10000);const backup=await h.store.exportBackupWithPacks();assert.equal(backup.packs[0].source,source);assert.equal((await h.api.readLocal(row.id,{store:h.store})).pack.name,'Large portable source');await h.api.removeLocal(row.id,{store:h.store});
 });

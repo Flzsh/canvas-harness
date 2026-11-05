@@ -31,7 +31,7 @@
   return ()=>{if(providers.get(id)===provider){providers.delete(id);revision++;}};
  }
  function source(id,field,kind,transform){return register(id,s=>list(s[field]).map((v,i)=>({...v,id:String(v.id??id+'-'+i),kind,...(transform?transform(v,s):{})})));}
- const factFields=['dueAt','replyDueAt','availableFrom','availableUntil','startAt','endAt','location','room','status','submittedAt','attempt','attemptsAllowed','attemptsUsed','attemptsLeft','attemptsRemaining','pointsPossible','possible','currentPercent','percent','missing','late','submissionTypes','allowedExtensions','notesAllowed','calculatorAllowed','formulaSheetAllowed','scoringPolicy','email','price','installed','enabled','members','groupName','meetingTime','approvedDueAt','weekdays'],
+ const factFields=['dueAt','replyDueAt','availableFrom','availableUntil','startAt','endAt','location','room','status','submittedAt','attempt','attemptsAllowed','attemptsUsed','attemptsRemaining','pointsPossible','possible','currentPercent','percent','missing','late','submissionTypes','allowedExtensions','notesAllowed','calculatorAllowed','formulaSheetAllowed','scoringPolicy','email','price','installed','enabled','members','groupName','meetingTime','approvedDueAt','weekdays'],
   factLabel=k=>k.replace(/([a-z])([A-Z])/g,'$1 $2').toLowerCase(),
   facts=v=>
    factFields.filter(k=>v[k]!==undefined).map(k=>factLabel(k)+': '+(Array.isArray(v[k])?v[k].filter(x=>typeof x!=='object').join(', '):typeof v[k]==='object'?'':String(v[k]))).join('; ');
@@ -54,12 +54,7 @@
    ].map(text).filter(Boolean))
   ].join(' ');
  function normalize(v,s){
-  if(!v||
-   typeof v!=='object'||
-   ['ai','study','ready'].includes(v.action)||
-   ['aid','study-aid'].includes(v.kind)||
-   ['setting','feature','action'].includes(v.kind)&&/^(?:ai(?:[A-Z._-]|$)|study[A-Z._-]|agent[A-Z._-])/.test(String(v.key||v.id||'')))
-   return null;
+  if(!v||typeof v!=='object')return null;
   const kind=v.kind==='grade'&&v.scope==='course-total'?'course-grade':v.kind||v.type||'item',
    grades=s.showGrades!==false&&s.settings?.showGrades!==false&&(s.showGrades===true||s.settings?.showGrades===true)&&s.privacy?.grades!==false,
    feedback=s.teacherFeedback!==false&&s.settings?.teacherFeedback!==false&&s.privacy?.teacherFeedback!==false&&s.privacy?.feedback!==false;
@@ -162,6 +157,7 @@
  source('work','workItems','assignment');
   source('events','events','event');
   source('course-totals','courseTotals','course-grade');
+ register('study-aids',s=>Object.entries(s.studyAids||{}).map(([key,v])=>({...v,id:key,title:v.title||v.kind+' study aid',kind:'aid',action:'ready',fields:{aidKey:key,itemId:v.itemId}})));
  register(
   'settings',
   s=>
@@ -172,7 +168,7 @@
   s=>
    (Array.isArray(s.features)?s.features:Object.entries(s.features||{}).map(([id,on])=>({id,name:id,on}))).map(v=>
     ({id:v.id,title:v.title||v.name||v.id,text:v.description||'',kind:'feature',action:'settings',fields:{id:v.id}})));
- register('home',s=>list(s.homeModules).map(v=>({id:v.id,title:v.title||v.name||v.id,text:v.shows||'',kind:'home-module',action:'module',fields:{action:'show',key:v.id}})));
+ register('home',s=>list(s.homeModules).filter(v=>v.id!=='today').map(v=>({id:v.id,title:v.title||v.name||v.id,text:v.shows||'',kind:'home-module',action:'module',fields:{action:'show',key:v.id}})));
  register('tabs',s=>list(s.tabs).map(v=>typeof v==='string'?{id:v,title:v,kind:'tab',action:'navigate',fields:{tab:v}}:{...v,kind:'tab',action:'navigate',fields:{tab:v.id}}));
  function execute(name,fields,context={}){
   for(const provider of providers.values()){

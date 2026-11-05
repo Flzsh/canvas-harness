@@ -34,6 +34,20 @@
   if(/^cf-[\w-]{4,60}$|^remote-[a-f0-9]{64}$/.test(String(fileId)))return legacyStorageKey(origin,'0').slice(0,-1)+String(accountId)+':'+String(fileId);
   return legacyStorageKey(origin,fileId).replace(/:(\d+)$/,':'+String(accountId)+':$1');
  }
+ function migrateAnnotations(saved,legacy){
+  const value=createAnnotations(saved).serialise(),records=new Map(value.annotations.map(a=>[a.id,a]));
+  const same=(a,b)=>JSON.stringify({...a,id:''})===JSON.stringify({...b,id:''});
+  for(const record of createAnnotations(legacy).annotations){
+   let id=record.id;
+   if(records.has(id)){
+    if(same(records.get(id),record))continue;
+    let suffix=0;do{id=('legacy-'+record.id).slice(0,90)+(suffix?'-'+suffix:'');suffix++;}while(records.has(id)&&!same(records.get(id),record));
+    if(records.has(id))continue;
+   }
+   const copy={...record,id};value.annotations.push(copy);records.set(id,copy);
+  }
+  return createAnnotations(value).serialise();
+ }
  function mergeAnnotations(saved,before,after){
   const current=new Map(createAnnotations(saved).annotations.map(a=>[a.id,a])),erased=new Map();
   for(const [previousValue,nextValue]of after===undefined?before:[[before,after]]){
@@ -67,6 +81,29 @@
   const a=viewportToPdf(viewport,[x1,y1]),b=viewportToPdf(viewport,[x2,y2]);
   return [Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[0],b[0]),Math.max(a[1],b[1])];
  }
+ /* Locate literal quotes with UTF-16 offsets into strings or {text,join,breakBefore} chunks. Only chunk boundaries may supply implicit whitespace. */
+ function locateQuote(parts,quote){
+  if(!Array.isArray(parts)||parts.length>100000||typeof quote!=='string'||quote.length>300||quote.includes('\0'))return null;
+  const needle=quote.replace(/\s+/g,' ').trim();
+  if(!needle)return null;
+  const chars=[],positions=[],append=(char,position)=>{
+    if(/\s/.test(char)){if(chars.at(-1)===' ')return;if(chars.at(-1)==='\0'){chars.pop();positions.pop();}char=' ';}
+    chars.push(char);
+    positions.push(position);
+  };
+  for(let index=0;index<parts.length&&chars.length<1000000;index++){
+    const part=parts[index],text=typeof part==='string'?part:typeof part?.text==='string'?part.text:'';
+    if(!text)continue;
+    if(chars.length&&part?.breakBefore)append(' ',null);else if(chars.length&&!part?.join&&![' ','\0'].includes(chars.at(-1))){chars.push('\0');positions.push(null);}
+    for(let offset=0;offset<text.length&&chars.length<1000000;offset++)if(text[offset]!=='\0')append(text[offset],{index,offset});
+  }
+  const escape=value=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),
+    pattern=needle.split(' ').map(word=>word.split('').map(escape).join('\0*')).join('[ \0]+'),
+    match=new RegExp(pattern).exec(chars.join(''));
+  if(!match)return null;
+  const start=positions[match.index],end=positions[match.index+match[0].length-1];
+  return start&&end?{start:{index:start.index,offset:start.offset},end:{index:end.index,offset:end.offset+1}}:null;
+ }
  const TYPES=['highlight','underline','strike','note','pen','text','shape'],SHAPES=['rect','ellipse','arrow','line'];
  function normalize(value,retainId=false){
   if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid PDF annotation.');
@@ -79,13 +116,14 @@
   const rects=value.rects??[],points=value.points??[],point=value.point??null;
   if(!Array.isArray(rects)||rects.length>10000||!Array.isArray(points)||points.length>20000)throw Error('Too many PDF coordinates.');
   if((type==='note'||type==='text')&&point==null)throw Error('A note or text box needs a PDF point.');
-  if((type==='highlight'||type==='underline'||type==='strike')&&!rects.length)throw Error('A text mark needs a PDF rectangle.');
+  if(value.quote!=null&&(typeof value.quote!=='string'||value.quote.length<8||value.quote.length>300||type!=='highlight'))throw Error('Invalid annotation quote.');
+  if((type==='highlight'||type==='underline'||type==='strike')&&!rects.length&&!value.quote)throw Error('A text mark needs a PDF rectangle.');
   if(type==='pen'&&points.length<2)throw Error('A pen stroke needs at least two PDF points.');
   if(type==='shape'&&(points.length!==2||!SHAPES.includes(value.shape)))throw Error('A shape needs a kind and two PDF points.');
   const result={
    id:retainId?value.id:(root.crypto?.randomUUID?.()||'pdf-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)),
    type,page,color,rects:Array.from(rects,rect=>coordinates(rect,4,'Rectangle')),
-   text:value.text??'',point:point==null?null:coordinates(point,2,'Point'),points:Array.from(points,p=>coordinates(p,2,'Point'))
+   text:value.text??'',point:point==null?null:coordinates(point,2,'Point'),points:Array.from(points,p=>coordinates(p,2,'Point')),...(value.quote?{quote:value.quote}:{})
   };
   if(value.width!=null){if(!finite(value.width)||value.width<.2||value.width>60)throw Error('Invalid stroke width.');result.width=value.width;}
   if(value.opacity!=null){if(!finite(value.opacity)||value.opacity<.05||value.opacity>1)throw Error('Invalid opacity.');result.opacity=value.opacity;}
@@ -164,7 +202,20 @@
     annotations.splice(0,annotations.length,...next);
   },serialise:()=>clone(checkSize(annotations)),get annotations(){return clone(annotations);}};
  }
- const api=Object.freeze({clampWidth,renderWindow,storageKey,legacyStorageKey,mergeAnnotations,createAnnotations,viewportToPdf,pdfToViewport,rectToPdf,theme});
+ const api=Object.freeze({
+   clampWidth,
+   renderWindow,
+   storageKey,
+   legacyStorageKey,
+   migrateAnnotations,
+   mergeAnnotations,
+   createAnnotations,
+   viewportToPdf,
+   pdfToViewport,
+   rectToPdf,
+   locateQuote,
+   theme
+ });
  root.ReservePdfModel=api;
  if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

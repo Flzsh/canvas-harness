@@ -74,7 +74,9 @@ const SCENES={"home":("<g class=\"art-ground\"><path fill=\"#EFEAE0\" d=\"M-4 20
 const subjects=root.ReserveSubjectArt||(typeof module==='object'&&module.exports?require('./subject-art.js'):null),presets=subjects?.data||{};
 const kinds=Object.freeze(['home','bookmarks',...(subjects?.kinds||[])]),
   safe=value=>String(value??'').replace(/[^\w-]/g,''),
-  kind=course=>course?.id==='folio-bookmarks'?'bookmarks':subjects?.kind(course)||'home';
+  // A drawing the student chose for the course in Make it yours (artPrefs.subjectArt) wins over the automatic match.
+  chosen=course=>{const id=course?.artPrefs?.subjectArt;return typeof id==='string'&&Object.hasOwn(presets,id)?id:null;},
+  kind=course=>course?.id==='folio-bookmarks'?'bookmarks':chosen(course)||subjects?.kind(course)||'home';
 const crop=k=>presets[k]?'1260 0 420 240':CROPS[k]||CROPS.home,
   width=k=>presets[k]?1680:WIDTHS[k]||WIDTHS.home,
   cycle=(k,part='scene')=>presets[k]?presets[k][part==='mini'?'mini':'scene'].cycle:(CYCLES[k]||CYCLES.home)[part==='mini'?'mini':'scene'];
@@ -192,6 +194,9 @@ function titleFrame(course,{place='heading'}={}){
   return t?'<span class="rd-title-art" data-rd-key="title-art" aria-hidden="true" style="--rd-name-w:'+t.width+'">'+title(course,{place})+'</span>':'';
 }
 const titleStyle=course=>{const t=titled(course);return t?'--rd-name-w:'+t.width+';--rd-room-w:'+width(t.kind):'';};
-const api={kinds,kind,crop,width,cycle,scene,mini,frame,frameKind:k=>presets[k]?k:'home',mirrored:()=>false,titled,title,titleFrame,titleStyle};
+// The drawings a student may choose for a course, by name (Make it yours > Courses > Drawing).
+const label=k=>String(k).split('-').map(w=>/^(?:ap|us|ab|bc)$/.test(w)?w.toUpperCase():w.replace(/^./,c=>c.toUpperCase()).replace(/(\D)(\d)$/,'$1 $2')).join(' ');
+const choices=()=>Object.keys(presets).map(id=>({id,name:label(id)})).sort((x,y)=>x.name.localeCompare(y.name));
+const api={choices,label,kinds,kind,crop,width,cycle,scene,mini,frame,frameKind:k=>presets[k]?k:'home',mirrored:()=>false,titled,title,titleFrame,titleStyle};
 root.ReserveCourseArt=api;if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(globalThis);

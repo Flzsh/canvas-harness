@@ -1,6 +1,6 @@
-// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 /*! @preserve Canvas Harness original creator: Flzsh. Project: org.flzsh.canvas-harness. Third-party components retain their respective attribution. */
 if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./site.js');
+// Adapted from Gary Wu's pull request #47 to Canvas Harness.
 (function(root,factory){
   'use strict';
   const api=factory(root);
@@ -12,26 +12,38 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const CANVAS_ORIGIN=(globalThis.ReserveSite.origin());
   const DAY=86400000;
   const SVG_NS='http://www.w3.org/2000/svg';
-  const COURSE_COLORS=['#286452','#315f8f','#76549a','#a05252','#9a6a24','#34737a','#6c7443','#8a5573'];
   // Clay is the default (2.15). Light clay #A9522F carries text at 4.6:1 or better on every
+  const COURSE_COLORS=['#286452','#315f8f','#76549a','#a05252','#9a6a24','#34737a','#6c7443','#8a5573'];
   // surface and white text on it at 5.3:1; dark clay #E08A6A reads at 5:1 or better.
   const ACCENTS={clay:'#A9522F',forest:'#367964',indigo:'#5f5ccc',rose:'#9e4c6c',ocean:'#2f7185',amber:'#956821'};
   const DARK_ACCENTS={clay:'#E08A6A',forest:'#9bd1b4',indigo:'#bec8ff',rose:'#efb0c0',ocean:'#a3d4e5',amber:'#e8c68b'};
-  const MOTION_STYLES=['gentle','still','off'];
   // Pointer actions whose render may animate: each takes a read-only snapshot first.
+  const MOTION_STYLES=['gentle','still','off'];
   const MOTION_ACTIONS=new Set(['course','workspace','open-materials','open-hub','course-section','overview-view','overview-all','grades','reader-tab','preview','glance','view','day','check-off','undo-check-off']);
   const Model=root.ReserveDashboardModel||(typeof module==='object'&&module.exports?require('./dashboard-model.js'):null);
   const View=root.ReserveDashboardView||(typeof module==='object'&&module.exports?require('./dashboard-view.js'):null);
   const Work=root.ReserveWorkModel||(typeof module==='object'&&module.exports?require('./work-model.js'):null);
   const Arrange=root.ReserveWorkspaceArrange||(typeof module==='object'&&module.exports?require('./workspace-arrange.js'):null);
+  // 3.9 ships no 4.0 Help: both stay null and Home has no Help band
+  const StudyUI=root.CanvasHarnessStudyUI||null;
+  const Band=root.CanvasHarnessStudyBand||null;
 
-  const enabled=id=>!root.ReserveFeatures||root.ReserveFeatures.enabled(id);
+  const enabled=id=>!globalThis.ReserveFeatures||globalThis.ReserveFeatures.enabled(id);
   const workspaceEnabled=name=>View.workspaceEnabled(name);
   const resolveWorkspace=name=>workspaceEnabled(name)?name:'work';
-  const stringValue=value=>value==null?'':String(value);
-  const dateMs=value=>{if(value==null||value==='')return null;const ms=typeof value==='number'?value:Date.parse(value);return Number.isFinite(ms)?ms:null;};
 
+  const stringValue=value=>value==null?'':String(value);
+  function pinHomeCommand(data,command){
+    const keys=command?.type==='restore-context'?
+      ['context']:
+      ['add','move','shift','dock','swap'].includes(command?.type)?[command.key,...(command.type==='swap'?[command.target]:[])]:command?.type==='mode'?Arrange.PANELS:[];
+    if(!keys.length)return;
+    const pins=new Set(Array.isArray(data.toolbox?.agentPins)?data.toolbox.agentPins:[]);
+    for(const key of keys)if(Arrange.isKey(key))pins.add(key);
+    data.toolbox={...data.toolbox,agentPins:[...pins]};
+  }
   // Reconcile owned UI in place: focus, selection, scrolling and CSS transitions
+  const dateMs=value=>{if(value==null||value==='')return null;const ms=typeof value==='number'?value:Date.parse(value);return Number.isFinite(ms)?ms:null;};
   // belong to the existing nodes. Teacher HTML is an opaque, sanitized fragment.
   // Inside a preserved heading only the search field and the at-a-glance chips follow the state.
   function patchLive(heading,next){
@@ -42,9 +54,43 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       else if(now)now.remove();
       else if(wanted){
         if(selector===search)heading.append(wanted);
-        else{const after=body?.querySelector(':scope>p');if(after)after.after(wanted);else body?.append(wanted);}
+        else{const line=body?.querySelector(':scope>p');if(line)line.append(wanted);else body?.append(wanted);}
       }
     }
+  }
+  // Same rule as storage.js same(): plain objects and arrays by value, anything else by its JSON; no JSON copies of
+  // large notes or artwork.
+  function sameData(a,b){
+    if(a===b)return true;
+    if(!a||!b||typeof a!=='object'||typeof b!=='object'||Array.isArray(a)!==Array.isArray(b))return false;
+    if(Array.isArray(a)&&a.length!==b.length)return false;
+    const kind=Object.prototype.toString.call(a);
+    if(kind!==Object.prototype.toString.call(b))return false;
+    if(kind!=='[object Object]'&&kind!=='[object Array]')return JSON.stringify(a)===JSON.stringify(b);
+    const keys=Object.keys(a);return keys.length===Object.keys(b).length&&keys.every(key=>Object.hasOwn(b,key)&&sameData(a[key],b[key]));
+  }
+  // The AI engine rewrites the Prepare status on every visit (4.0's Prepare), often changing only its revision
+  // counter. Nothing the dashboard draws reads that status, so a change confined to the counter needs no render
+  // (perf interaction-2). Progress, state, phase or step changes differ here and go to prepareStatusOnly below; any
+  // other change renders.
+  function prepareRevisionOnly(before,after){
+    const x=before?.toolbox?.agent?.prepareStatus,y=after?.toolbox?.agent?.prepareStatus;
+    if(!x||!y||typeof x!=='object'||typeof y!=='object'||x.revision===y.revision)return false;
+    const mask=d=>({...d,toolbox:{...d.toolbox,agent:{...d.toolbox.agent,prepareStatus:{...d.toolbox.agent.prepareStatus,revision:0}}}});
+    return sameData(mask(before),mask(after));
+  }
+  // A running Prepare or Help question saves its progress, state, phase and step in the account record at every step
+  // (4.0's Prepare). Only the AI panel's status line shows it (4.0's agent client, refreshed by
+  // toolbox.update()); the Help band follows the run through 'ch-ai-run'. So a change confined to that status refreshes
+  // the toolbox instead of redrawing the whole dashboard (perf leaks-2). Keys may come back in any order.
+  function prepareStatusOnly(before,after){
+    const a=before?.toolbox?.agent,b=after?.toolbox?.agent;
+    if(!a||!b||typeof a!=='object'||typeof b!=='object'||sameData(a.prepareStatus,b.prepareStatus))return false;
+    const sameBut=(x,y,skip)=>{
+      const keys=Object.keys(x).filter(key=>key!==skip);
+      return keys.length===Object.keys(y).filter(key=>key!==skip).length&&keys.every(key=>Object.hasOwn(y,key)&&sameData(x[key],y[key]));
+    };
+    return sameBut(before,after,'toolbox')&&sameBut(before.toolbox,after.toolbox,'agent')&&sameBut(a,b,'prepareStatus');
   }
   function patchUI(current,next){
     const nextValue=next.value;
@@ -52,13 +98,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const compatible=(a,b)=>a&&a.nodeType===b.nodeType&&a.nodeName===b.nodeName&&key(a)===key(b);
     if(current.nodeType!==1){if(current.nodeValue!==next.nodeValue)current.nodeValue=next.nodeValue;return;}
     // A drawing that already is the wanted one (same attributes, same children in order) would be walked to change
-    // nothing: rail frames, minis and icons are most of a render's nodes. Any difference, including one other code
-    // wrote on it, still takes the full patch below.
+    // nothing: rail frames, minis and icons are most of a render's nodes (perf interaction-4). Any difference, including
+    // one other code wrote on it, still takes the full patch below.
     if(current.localName==='svg'&&current.namespaceURI===SVG_NS&&current.isEqualNode?.(next))return;
+    if(current.hasAttribute('data-help-band')&&next.hasAttribute('data-help-band'))return;
     // Only hydrated media owns its children; editor wrappers share the frame id attribute.
+    // The placeholder retains the connected heading and its running art film.
     const framedMedia=current.hasAttribute('data-ch-frame')&&next.hasAttribute('data-ch-frame')&&current.dataset.chFrameId&&current.dataset.chFrameId===next.dataset.chFrameId;
-    // The view emits only this placeholder for an unchanged, connected heading.
-    // Do not walk its SVG or touch attributes owned by the running art film.
     if(next.hasAttribute('data-rd-preserve-heading')&&current.classList.contains('rd-workspace-heading')){patchLive(current,next);return;}
     // Placement belongs to the layout controller; retain it on keyed nodes so unchanged renders need no layout pass.
     const desk=current.classList.contains('rd-desk')&&next.classList.contains('rd-desk'),panel=current.getAttribute('data-arrange-key');
@@ -91,9 +137,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(current.tagName==='DETAILS'&&attr.name==='open')continue;
       if(current.getAttribute(attr.name)!==attr.value)current.setAttribute(attr.name,attr.value);
     }
+    // Feature controls own their connected subtree across dashboard refreshes and tab changes.
     if(framedMedia)return;
     // A feature's own drawn place (data-rd-own) keeps the subtree it hung there; only its attributes follow the render.
     if(current.hasAttribute('data-rd-own')&&current.getAttribute('data-rd-own')===next.getAttribute('data-rd-own'))return;
+    if(current.getAttribute('data-rd-key')==='features-pane'||current.hasAttribute('data-agent-viewer')&&current.getAttribute('data-agent-viewer')===next.getAttribute('data-agent-viewer'))return;
     if(current.tagName==='INPUT'){if(current.value!==next.value)current.value=next.value;current.checked=next.checked;return;}
     if(current.tagName==='TEXTAREA'){if(current.value!==next.value)current.value=next.value;return;}
     if(current.classList.contains('rd-rich-text')){if(current.innerHTML!==next.innerHTML)current.innerHTML=next.innerHTML;return;}
@@ -110,59 +158,6 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(current.tagName==='SELECT'&&current.value!==nextValue)current.value=nextValue;
   }
 
-  function sameOriginLink(value,fallback='/'){
-    try{
-      const url=new URL(value||fallback,CANVAS_ORIGIN+'/');
-      if(url.origin!==CANVAS_ORIGIN||url.username||url.password)return CANVAS_ORIGIN+fallback;
-      return `${CANVAS_ORIGIN}${url.pathname}${url.search}${url.hash}`;
-    }catch{return CANVAS_ORIGIN+fallback;}
-  }
-
-  function assignmentFallback(item){
-    return `/courses/${encodeURIComponent(stringValue(item?.courseId))}/assignments/${encodeURIComponent(stringValue(item?.id))}`;
-  }
-
-  function assignmentLink(item){
-    return sameOriginLink(item?.url,assignmentFallback(item));
-  }
-
-  function gradePeriodLabel(course){
-    if(course?.scoreScope==='hidden')return 'Grade hidden';
-    if(course?.scoreScope==='current-period')return course.gradingPeriodTitle?`${course.gradingPeriodTitle} grade`:'Current period grade';
-    return 'Overall grade';
-  }
-
-  function complete(item){
-    if(root.ReserveCore?.isComplete)return root.ReserveCore.isComplete(item);
-    if(item?.state==='excused')return true;
-    if(item?.missing===true||item?.redoRequested===true)return false;
-    return item?.state==='submitted'||item?.state==='graded';
-  }
-
-  function safeCourseImage(value){
-    if(typeof value!=='string'||!value.trim())return '';
-    const text=value.trim();
-    if(/^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(text)&&text.length<400000)return text;
-    try{
-      const url=new URL(text,CANVAS_ORIGIN+'/');
-      return url.protocol==='https:'&&!url.username&&!url.password?url.href:'';
-    }catch{return '';}
-  }
-
-  function statusLabel(snapshot,externalStatus='',transientStatus='',now=Date.now()){
-    if(transientStatus)return String(transientStatus);
-    if(externalStatus)return String(externalStatus);
-    const fetched=dateMs(snapshot?.fetchedAt);
-    if(fetched===null)return 'Update time unavailable';
-    const diff=Math.max(0,now-fetched);
-    if(diff<60000)return 'Updated just now';
-    if(diff<3600000)return `Updated ${Math.floor(diff/60000)} min ago`;
-    if(diff<DAY)return `Updated ${Math.floor(diff/3600000)} hr ago`;
-    return `Updated ${Math.floor(diff/DAY)} d ago`;
-  }
-
-  // onNative (content.js): shows Canvas's own dashboard; with it the command bar ends in a quiet
-  // "Canvas dashboard" switch (the phone drawer lists it), so the host needs no row of its own.
   function createCourseDock(container,{env=root,save=()=>{},menu=()=>{}}={}){
     let dock=null,items=[],tabId='',observer=null,drag=null,nearFrame=0;
     const num=(v,d)=>{const n=Number(v);return Number.isFinite(n)?n:d;};
@@ -246,7 +241,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     };
     // Hide until near: the dock waits below the window's edge until the pointer comes within reach of it.
     const near=ev=>{
-      if(container.dataset.dockHide!=='true'||!dock||nearFrame)return;
+      if(container.dataset.dockHide!=='true'&&(env.innerHeight||0)>=560||!dock||nearFrame)return;
       nearFrame=env.requestAnimationFrame?.(()=>{
         nearFrame=0;
         const show=ev.clientY>(env.innerHeight||0)-110||dock.contains?.(container.getRootNode?.().activeElement);
@@ -322,6 +317,59 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     return {sync,keydown,destroy:detach};
   }
 
+  function sameOriginLink(value,fallback='/'){
+    try{
+      const url=new URL(value||fallback,CANVAS_ORIGIN+'/');
+      if(url.origin!==CANVAS_ORIGIN||url.username||url.password)return CANVAS_ORIGIN+fallback;
+      return `${CANVAS_ORIGIN}${url.pathname}${url.search}${url.hash}`;
+    }catch{return CANVAS_ORIGIN+fallback;}
+  }
+
+  function assignmentFallback(item){
+    return `/courses/${encodeURIComponent(stringValue(item?.courseId))}/assignments/${encodeURIComponent(stringValue(item?.id))}`;
+  }
+
+  function assignmentLink(item){
+    return sameOriginLink(item?.url,assignmentFallback(item));
+  }
+
+  function gradePeriodLabel(course){
+    if(course?.scoreScope==='hidden')return 'Grade hidden';
+    if(course?.scoreScope==='current-period')return course.gradingPeriodTitle?`${course.gradingPeriodTitle} grade`:'Current period grade';
+    return 'Overall grade';
+  }
+
+  function complete(item){
+    if(root.ReserveCore?.isComplete)return root.ReserveCore.isComplete(item);
+    if(item?.state==='excused')return true;
+    if(item?.missing===true||item?.redoRequested===true)return false;
+    return item?.state==='submitted'||item?.state==='graded';
+  }
+
+  function safeCourseImage(value){
+    if(typeof value!=='string'||!value.trim())return '';
+    const text=value.trim();
+    if(/^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(text)&&text.length<400000)return text;
+    try{
+      const url=new URL(text,CANVAS_ORIGIN+'/');
+      return url.protocol==='https:'&&!url.username&&!url.password?url.href:'';
+    }catch{return '';}
+  }
+
+  function statusLabel(snapshot,externalStatus='',transientStatus='',now=Date.now()){
+    if(transientStatus)return String(transientStatus);
+    if(externalStatus)return String(externalStatus);
+    const fetched=dateMs(snapshot?.fetchedAt);
+    if(fetched===null)return 'Update time unavailable';
+    const diff=Math.max(0,now-fetched);
+    if(diff<60000)return 'Updated just now';
+    if(diff<3600000)return `Updated ${Math.floor(diff/60000)} min ago`;
+    if(diff<DAY)return `Updated ${Math.floor(diff/3600000)} hr ago`;
+    return `Updated ${Math.floor(diff/DAY)} d ago`;
+  }
+
+  // onNative (content.js): shows Canvas's own dashboard; with it the command bar ends in a quiet
+  // "Canvas dashboard" switch (the phone drawer lists it), so the host needs no row of its own.
   function mount(target,{
     snapshot,
     store,
@@ -350,28 +398,78 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const container=document.createElement('section');
     container.className='rd';
     // A write of an unchanged value still queues a MutationRecord, and every observer of the dashboard wakes for it (the
-    // pony re-measured the whole page after each render). A render writes only the values that change.
+    // pony re-measured the whole page after each render: 15-25 ms). A render writes only the values that change.
     const setAttr=(el,name,value)=>{value=String(value);if(el&&el.getAttribute(name)!==value)el.setAttribute(name,value);};
     const setData=(key,value)=>{value=String(value);if(container.dataset[key]!==value)container.dataset[key]=value;};
     const setVar=(name,value)=>{value=String(value);if(container.style.getPropertyValue?.(name)!==value)container.style.setProperty(name,value);};
     const setProp=(el,name,value)=>{if(el&&el[name]!==value)el[name]=value;};
     if(!personalVerified)container.dataset.chLinksPending='true';
-    container.setAttribute('aria-label','Canvas Harness Canvas dashboard');
     // One short staggered entrance per mount. CSS skips it for reduced motion.
-    if(enabled('motion'))container.dataset.entrance='true';
-    const entranceTimer=enabled('motion')?setTimeout(()=>{delete container.dataset.entrance;},1200):0;
+    container.setAttribute('aria-label','Canvas Harness Canvas dashboard');
+    container.dataset.entrance='true';
+    const entranceTimer=setTimeout(()=>{delete container.dataset.entrance;},1200);
     target.append(container);
 
     let currentSnapshot=snapshot;
     let externalStatus=stringValue(status);
     let transientStatus='';
     let refreshing=false;
-    let destroyed=false,rendering=false,mounted=false,sourceFrame=0,pendingRender=null,shownPage='';
+    let destroyed=false,rendering=false,mounted=false,sourceFrame=0,pendingRender=null,agentController=null,shownPage='';
     // When the last whole render read the clock, and the next moment the clock alone changes the page (updateFreshness).
     let renderedAt=0,timeBoundary=null;
+    const studyScope=store.owner?store.owner.origin+'|'+store.owner.accountId:'';
+    const studyStore=enabled('ai')&&enabled('tools')&&StudyUI&&root.chrome?.storage?.local?StudyUI.createStore(root):null;
+    const studyKey=studyStore?.key(studyScope)||'';
+    // studyBandSignature: the Help cards' content (no progress), made once per study read; render never stringifies cards.
+    let studyAids={},studyRevision=0,studySignature='[]',studyBandSignature='',helpBand=null,helpBandHost=null,helpBandSignature='',askHelpNow=null,
+      // Ask the AI about one assignment (and any selected text); Help shows the progress, then the cards.
+      helpWithItem=context=>{
+        if(!askHelpNow||!helpBand)return toolbox?.helpWith(context);
+        const picked=String(context?.selectedText||'').replace(/\s+/g,' ').trim().slice(0,600);
+        helpBand.setOpen?.(true);
+        helpBand.element?.scrollIntoView?.({block:'nearest',behavior:'smooth'});
+        return askHelpNow(picked?'Help me with this part: "'+picked+'"':'Make the help for this item.',context?.itemId?{itemId:String(context.itemId),...(picked?{}:{make:'auto'})}:{}).then(result=>{
+          if(result?.run)helpBand?.prepare?.(result.run);else if(result?.ok===false){transientStatus=result.message;updateStatus();}
+          return result?.ok===true;
+        });
+      };
+    function readStudy(){
+      if(destroyed||!studyKey)return;
+      const revision=++studyRevision;
+      studyStore.list(studyScope).then(aids=>{
+        if(destroyed||revision!==studyRevision)return;
+        const signature=JSON.stringify(Object.entries(aids).flatMap(([key,aid])=>{
+          const label=StudyUI.tagLabel(aid),review=aid?.kind==='practice'&&aid.review;
+          return [
+            ...(Band&&aid?.data?[[key,{...aid,progress:undefined}]]:[]),
+            ...(label&&(aid.itemId||review)?
+              [
+                [
+                  key,
+                  String(aid.itemId||''),
+                  aid.courseId?String(aid.courseId):'',
+                  label,
+                  ...(review?[aid.title,review,Object.entries(aid.progress?.practice?.answers||{}).filter(([,a])=>a?.correct===false).map(([i])=>i)]:[])
+                ]
+              ]:
+              [])
+          ];
+        }));
+        studyAids=aids;studyBandSignature=Band?JSON.stringify(Object.entries(aids).filter(([,aid])=>aid?.data).map(([key,aid])=>[key,{...aid,progress:undefined}])):'';
+        if(signature===studySignature)return;
+        studySignature=signature;scheduleRender();
+      }).catch(()=>{});
+    }
+    function studyChanged(changes,area){if(area==='local'&&studyKey&&Object.hasOwn(changes||{},studyKey))readStudy();}
+    root.chrome?.storage?.onChanged?.addListener?.(studyChanged);
     const beforePaint=fn=>root.requestAnimationFrame?root.requestAnimationFrame(fn):root.setTimeout(fn,0);
     const cancelPaint=id=>root.requestAnimationFrame?root.cancelAnimationFrame?.(id):root.clearTimeout(id);
-    function sourceChange(){scheduleRender();}
+    // A failed visit only changes the status line (and the refresh button's title): written in place, no whole render.
+    function visitAgent(){
+      if(destroyed||!agentController)return;
+      void agentController.visit().catch(error=>{if(!destroyed){transientStatus=error?.message||'Your AI could not run.';updateStatus();}});
+    }
+    function sourceChange(){scheduleRender();visitAgent();}
     // (a render asked for by data or a timer, not by the student's own press: while a room is up it waits, see below)
     let sourcing=false;
     function scheduleRender(options=null){
@@ -390,6 +488,24 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // has folded away, when the browser is idle. A whole-dashboard render in the middle of the room's moves was each
     // move's longest frame.
     let roomHeld=false;
+    // the Help band host's height, kept current by a ResizeObserver (never read in a render), for the hold above
+    let bandHeight=0,bandWatch=null,bandWatched=null;
+    // (one observer for the dashboard's life, moved to each new host: never one more per page swap)
+    function watchBand(host){
+      if(!host||host===bandWatched||typeof root.ResizeObserver!=='function')return;
+      bandWatch??=new root.ResizeObserver(entries=>{
+        for(const e of entries){
+          if(e.target!==bandWatched||e.target.style?.minHeight)continue;
+          const h=Math.round(e.borderBoxSize?.[0]?.blockSize??e.contentRect?.height??0);
+          if(h>0)bandHeight=h;
+        }
+      });
+      if(bandWatched)bandWatch.unobserve?.(bandWatched);bandWatched=host;bandWatch.observe(host,{box:'border-box'});
+    }
+    function holdBand(host){
+      const free=()=>{if(!destroyed&&host.isConnected)host.style.removeProperty('min-height');};
+      root.setTimeout(()=>{if(typeof root.requestIdleCallback==='function')root.requestIdleCallback(free,{timeout:1000});else free();},1500);
+    }
     function holdForRoom(options){
       consumeSources();if(options)pendingRender={...pendingRender,...options};
       if(!roomHeld&&typeof root.MutationObserver==='function'){
@@ -413,6 +529,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         ctx.theme=effectiveTheme(ctx.s);
         container.dataset.theme=ctx.theme;
         container.dataset.motionStyle=MOTION_STYLES.includes(ctx.s.motion)?ctx.s.motion:'gentle';
+        container.toggleAttribute?.('data-calm',container.dataset.motionStyle==='off');
         container.dataset.featureMotion=enabled('motion')?'on':'off';
         container.dataset.livingArt=ctx.s.livingArt==='off'?'off':'on';
       }catch{}
@@ -538,6 +655,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // its course (Grade impact's), as they did when the room was a page: only those few attributes change, never
     // data-workspace or the page's markup; when the room goes, the page's own marks come back.
     function markRoom(){
+      const shellNow=container.querySelector(':scope > .rd-shell');if(shellNow&&shellNow.hasAttribute('data-in-room')!==!!room)shellNow.toggleAttribute('data-in-room',!!room);
       const pageTab=workspace==='work'&&workPage==='assignments'?'assignments':workspace,
         tabNow=room?(room.kind==='review'?'review':'grades'):pageTab,
         courseNow=room?.kind==='impact'?room.course:state.courseId;
@@ -665,6 +783,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const s=settings();
         container.dataset.theme=effectiveTheme(s);
         container.dataset.motionStyle=MOTION_STYLES.includes(s.motion)?s.motion:'gentle';
+        container.toggleAttribute?.('data-calm',container.dataset.motionStyle==='off');
         container.dataset.featureMotion=enabled('motion')?'on':'off';
         container.dataset.livingArt=s.livingArt==='off'?'off':'on';
       }catch{}
@@ -735,7 +854,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // a link to the Review deck opens its room over Home once Home is drawn
       if(bootRoom&&!destroyed){const kind=bootRoom;bootRoom=null;openRoom(kind,'',{fade:true});}
     }
-    let focusTimer=0,focusSettling=false,focusDoneUntil=0;// syncFocus
+    // syncFocus
+    let focusTimer=0,focusSettling=false,focusDoneUntil=0;
     const stateKey=store.owner?`reserve:dashboard:${store.owner.origin}:${store.owner.accountId}`:'';
     let savedState;
     try{if(stateKey)savedState=JSON.parse(root.sessionStorage?.getItem(stateKey)||'null');}catch{}
@@ -743,13 +863,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let state=Model.cleanState(bootState);
     const courseMemory=Model.createCourseMemory(bootState.courseViews),restoredView=Model.cleanCourseView(bootState,state.courseId);
     let visibleLimit=state.limit;
-    let personal=store.get()||{};
-    let normalizedCache=null,
+    let personal=store.get()||{},personalRevision=0,companionPack=null,companionKey='',companionTurn=0;
+    let bandFactsMemo=[null,null,null],
+      normalizedCache=null,
       gradeVisibilityOverride=(initialState?.gradeVisibilityOverride??savedState?.gradeVisibilityOverride)===false?false:null,
       gradeSaveVersion=0;
     let selectedId=restoredView.selectedId;
-    let readerTab=restoredView.readerTab,
-      customizeTab='look',
+    let heldDock=null,
+      readerTab=restoredView.readerTab,
+      customizeTab='all',
       customizeOpen=false,
       canvasNav='drawn',
       customizeCourseId='all',
@@ -762,7 +884,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let quickPackDraft='',quickPackFileName='',quickPackError='',quickPackLoading=false,quickPackRead=0;
     let pendingReaderScroll={courseId:state.courseId,id:selectedId,top:restoredView.readerScroll};
     const readerLayout=typeof root.ResizeObserver==='function'?new root.ResizeObserver(()=>{if(restoreReaderScroll())remember();}):null;
+    // The reader's text and a Materials page keep the wheel inside them only while they have something to scroll
+    // (refresh.css, data-scrolls): a box that fits lets the page scroll under the pointer.
+    const markScroll=el=>{
+      const scrolls=el.scrollHeight>el.clientHeight+1&&/(auto|scroll)/.test(root.getComputedStyle?.(el)?.overflowY||'');
+      if(scrolls){if(el.dataset.scrolls!=='true')el.dataset.scrolls='true';}else if(el.dataset.scrolls)delete el.dataset.scrolls;
+    };
+    const scrollBoxes=typeof root.ResizeObserver==='function'?new root.ResizeObserver(entries=>{for(const entry of entries)markScroll(entry.target);}):null;
+    const watchScrollBoxes=()=>{scrollBoxes?.disconnect();for(const el of container.querySelectorAll?.('.rd-reader-content,.rd-material-page')||[]){markScroll(el);scrollBoxes?.observe(el);}};
     const explicitWorkspace=initialState?.workspace||savedState?.workspace;
+    // Keep an unavailable saved destination until the student chooses a different workspace.
     let workspace=resolveWorkspace(explicitWorkspace==='assignments'?'work':explicitWorkspace),workPage=explicitWorkspace==='assignments'?'assignments':'home';
     // the Review deck is a room over Home, never a page of its own: a link to it opens Home with the room over it
     if(workspace==='review'){bootRoom='review';workspace='work';workPage='home';}
@@ -770,6 +901,37 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let deckCourseRequested='';
     const headingCache={};
     let overviewMode='actionable',overviewQuery='',checkOffNotice=null,dockMenu=false;
+    // New since the last look: work Canvas added and grades that came back. The mark moves when the student opens the view.
+    let seenCache=null,newShown=null,seenStarted=false;
+    const gradedBack=x=>!x.personal&&x.state==='graded'&&Number.isFinite(x.score);
+    const seenKey=()=>'reserve:seen-work:'+String(currentSnapshot.user?.id||'');
+    function readSeen(){
+      if(seenCache)return seenCache;
+      let v=null;
+      try{v=JSON.parse(root.localStorage?.getItem(seenKey())||'null');}catch{}
+      return seenCache=v&&Array.isArray(v.ids)?{ids:new Set(v.ids),graded:new Set(v.graded)}:null;
+    }
+    function newWorkIds(items,s){
+      if(!readSeen())return [];
+      const out=[];
+      for(const x of items){
+        const id=String(x.id);
+        if(x.personal)continue;
+        if(!seenCache.ids.has(id)&&!root.ReserveCore?.isComplete?.(x))out.push(id);else if(s.showGrades===true&&gradedBack(x)&&!seenCache.graded.has(id))out.push(id);
+      }
+      return out;
+    }
+    function markSeen(items){
+      const ids=items.filter(x=>!x.personal).map(x=>String(x.id)).slice(0,3000),graded=items.filter(gradedBack).map(x=>String(x.id)).slice(0,3000);
+      seenCache={ids:new Set(ids),graded:new Set(graded)};
+      try{root.localStorage?.setItem(seenKey(),JSON.stringify({ids,graded}));}catch{}
+    }
+    function lateCostFor(ctx){
+      const item=ctx.selected;
+      if(!item||item.personal||!item.dueAt||!(Date.parse(item.dueAt)<ctx.now))return null;
+      const past=Model.lateHistory(ctx.items,item.courseId);
+      return past?.policy?Model.lateCost(item,past.policy,ctx.now):past?.clean?{clean:true}:null;
+    }
     const checkingOff=new Set();
     const selectionIds=new Set();let archiveUndo=null,archiving=false;
     const selectionOptions={isSelected:id=>selectionIds.has(id)};
@@ -778,20 +940,20 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const stepDrafts=new Map();
     let draftTimer;
     const formatters=new Map();
-    const resourceClient=materialClient||(!demo?root.ReserveAPI?.createClient():null);
     const reviewDeck=root.ReserveFeatures?.enabled('review-deck')===true?
       root.ReserveReviewDeck?.create({
         container,
         store,
         getContext:()=>({...buildContext(),user:currentSnapshot.user,origin:currentSnapshot.origin}),
         onChange:()=>roomChanged('review'),
-        isEnabled:()=>root.ReserveFeatures?.enabled('review-deck')===true,
+        isEnabled:()=>enabled('review-deck'),
         isSelected:()=>room?.kind==='review',
         onAuthError,
         onRoom:tab=>tab==='review'&&openRoom('review','',{fade:!container.querySelector('.rv-fly .rv-flysheet')}),
         onGrow:()=>buildSpare('review')
       }):
       null;
+    const resourceClient=materialClient||(!demo?root.ReserveAPI?.createClient():null);
     const gradeImpact=root.ReserveFeatures?.enabled('grade-impact')===true?
       root.ReserveGradeImpact?.create({
         client:resourceClient,
@@ -809,6 +971,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         store,
         user:snapshot.user,
         client:resourceClient,
+        getAssignments:()=>currentSnapshot.assignments,
         ...selectionOptions,
         onChange:sourceChange,
         onAuthError,
@@ -833,14 +996,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))
       }):
       null;
-    const quickUpload=enabled('quick-pack')?root.CanvasHarnessQuickUpload?.create({store,getCourses:()=>normalizeData(settings()).allCourses,onChange:sourceChange}):null;
-    // Deadline changes (PR #52): moved, added or removed due dates seen across refreshes; optional, Lite leaves it out.
-    const deadlineChanges=enabled('deadline-changes')?root.ReserveDeadlineChanges?.create({container,store,onChange:sourceChange,getTimeZone:()=>settings().timeZone}):null;
-    let customKits=[],kitName='',kitsLoaded=false,sceneActive=false,frameWrites=Promise.resolve();
-    const mediaStore=store.owner&&enabled('customization')?root.ReserveMedia?.createStore(store.owner):null;
-    const mediaController=mediaStore?root.ReserveMedia?.createController(container,mediaStore,{motion:()=>enabled('motion')&&settings().motion==='gentle',onError:error=>{
+    let customKits=[],kitName='',kitsLoaded=false,frameWrites=Promise.resolve(),makeWrites=Promise.resolve();
+    const mediaStore=store.owner&&root.ReserveMedia?root.ReserveMedia.createStore(store.owner):null;
+    const mediaController=mediaStore?root.ReserveMedia.createController(container,mediaStore,{motion:()=>enabled('motion')&&settings().motion==='gentle',onError:error=>{
       customizeStatus=error.message;
-      sourceChange();
+      scheduleRender();
     }}):null;
     const frameController=mediaStore?root.ReserveMediaFrame?.createController(container,mediaStore,{motion:()=>enabled('motion')&&settings().motion==='gentle',onError:error=>{
       customizeStatus=error.message;
@@ -854,36 +1014,92 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       frameWrites=task;
       return task;
     },shape:frameShape,onError:error=>{customizeStatus=error.message;scheduleRender();}});
-    const makeOwn=enabled('customization')?root.ReserveMakeYourOwn?.create({store,quickPack:quickUpload?file=>{
-      customizeTab='courses';
-      return uploadQuickPack(file);
-    }:null,kitImport:mediaStore&&root.ReserveCustomKits?file=>{customizeTab='courses';return runKit('kit-import',{dataset:{},files:[file]});}:null,onChange:sourceChange}):null;
+    const quickUpload=enabled('quick-pack')&&enabled('customization')&&enabled('course-art')?
+      root.CanvasHarnessQuickUpload?.create({store,getCourses:()=>normalizeData(settings()).allCourses,onChange:sourceChange}):
+      null;
+    // Deadline changes (PR #52): moved, added or removed due dates seen across refreshes; optional, Lite leaves it out.
+    const deadlineChanges=enabled('deadline-changes')?root.ReserveDeadlineChanges?.create({container,store,onChange:sourceChange,getTimeZone:()=>settings().timeZone}):null;
+    const makeOwn=enabled('customization')?
+      root.ReserveMakeYourOwn?.create({
+        store,
+        quickPack:quickUpload?file=>uploadQuickPack(file):null,
+        kitImport:file=>runKit('kit-import',{dataset:{},files:[file]}),
+        onChange:sourceChange
+      }):
+      null;
+    const preferences=root.ReserveSettingsDock?.createPreferences?.({store,flush:async()=>{
+      const drafts=await flushDrafts();
+      if(drafts.includes(false))return false;
+      return board?.flush?.();
+    },onChange:sourceChange,calendar:()=>{
+      const c=buildContext();
+      return c.items.filter(item=>!root.ReserveCore.isWorkComplete(item,c.local[item.id])&&item.dueAt&&Date.parse(item.dueAt)>=Date.now()).map(item=>{
+        const text=document.createElement('template');
+        text.innerHTML=item.description||'';
+        return {...item,description:text.content?.textContent||'',url:item.personal?(root.ReservePersonalWork.safeSource(item.source)?.url||CANVAS_ORIGIN+'/'):item.url};
+      });
+    }});
+    const motion=enabled('motion')?root.ReserveMotion?.create(container):null;
     const courseDock=createCourseDock(container,{save:patch=>savePersonal(data=>{Object.assign(data.settings,patch);}),menu:open=>{
       if(dockMenu===open)return;
       dockMenu=open;
       render();
     }});
-    const motion=enabled('motion')?root.ReserveMotion?.create(container):null;
-    const settingsDock=enabled('customization')&&root.ReserveCustomizeUI?.render?root.ReserveSettingsDock?.createDock({container,
+    const settingsDock=root.ReserveSettingsDock?.createDock({container,store,getCustomPet:()=>makeOwn?.state.pet||companionPack,
       onOpen:()=>{if(drawerOpen())setDrawer(false,{focus:false});toolbox?.close({restoreFocus:false});customizeCourseId=state.courseId;},
-      onChange:open=>{customizeOpen=open;render();}
-    }):null;
+      onChange:open=>{customizeOpen=open;makeOwn?.setOpen?.(open);if(!open)preferences?.cancel();render();}
+    });
     const arrange=enabled('arrange')&&(!root.ReserveFeatures||root.ReserveWorkspaceGestures?.create)?
       Arrange?.createController({container,getSettings:settings,getCourseIds:()=>normalizeData(settings()).allCourses.map(course=>String(course.id)),
-      onChange:command=>savePersonal(data=>{Arrange.change(data.settings,command);}),
+      onChange:command=>savePersonal(data=>{Arrange.change(data.settings,command);pinHomeCommand(data,command);}),
       onModeChange:open=>{
         if(open){settingsDock?.close({restoreFocus:false});toolbox?.close({restoreFocus:false});workspace='work';}
         render();
       }
+    // Added Home modules (week, timer, clock, notes...) and the companion: widgets.js draws and runs them.
     }):null;
-    // Added Home modules (today, week, timer, clock, notes...) and the companion: widgets.js draws and runs them.
-    const board=enabled('planner')?
-      root.ReserveWidgets?.create({container,store,getCustomPet:()=>makeOwn?.state.pet,save:change=>savePersonal(change),rerender:()=>render(),getContext:()=>{
+    const board=(enabled('planner')||enabled('ai')&&enabled('tools'))?
+      root.ReserveWidgets?.create({
+        container,
+        store,
+        previewSize:(key,size)=>arrange?.previewSize?.(key,size)===true,
+        getCustomPet:()=>makeOwn?.state.pet||companionPack,
+        getCatalogue:packCatalogue,
+        loadCatalogue:async()=>{
+      await makeOwn?.loadCatalogue?.();
+      return packCatalogue();
+    },installed:installedCommand,studyStore,studyScope,openHelp:()=>{
+      goWorkspace('work');
+      render();
+      helpBand?.setOpen(true);
+      container.querySelector('[data-help-band]')?.scrollIntoView?.({block:'nearest'});
+      return !!helpBand;
+    },save:change=>savePersonal(change),rerender:()=>render(),getContext:()=>{
       const c=buildContext();
       return {
         ...c,
+        studyAids,
         pageKind:room?room.kind==='impact'?'course':'dashboard':readerOpen?'assignment':state.courseId!=='all'?'course':'dashboard',
-        unreadAnnouncements:c.courses.reduce((n,course)=>n+(hub?.getCourse(course.id)?.announcements||[]).filter(x=>x.unread).length,0)
+        biscuitData:{
+          courseId:hereCourse(),
+          itemId:!room&&readerOpen?selectedId:null,
+          files:c.courses.flatMap(course=>materials?.getItems(course.id)||[]),
+          pages:[...(materials?.getPages?.()||[]),...c.courses.flatMap(course=>{
+        const x=hub?.getCourse(course.id);
+        const raw=materials?.getCourse(course.id)?.raw;
+        return [
+          ...(raw?.pages||[]).map(p=>({...p,id:p.page_id||p.url||p.title,courseId:course.id})),
+          ...(raw?.frontPage?[{...raw.frontPage,id:'front:'+course.id,courseId:course.id}]:[]),
+          ...(raw?.syllabusBody?[{id:'syllabus:'+course.id,title:course.name+' syllabus',body:raw.syllabusBody,courseId:course.id,url:'/courses/'+course.id+'/assignments/syllabus'}]:[])
+        ];
+      })],
+      modules:c.courses.flatMap(course=>
+        (materials?.getCourse(course.id)?.raw?.modules||[]).flatMap(m=>
+          [{...m,courseId:course.id,text:(m.items||[]).map(i=>i.title).join(' ')},...(m.items||[]).map(i=>({...i,courseId:course.id}))])),
+      announcements:c.courses.flatMap(course=>(hub?.getCourse(course.id)?.announcements||[]).map(a=>({...a,courseId:course.id}))),
+      messages:hub?.getMessages?.()||[]
+        },
+      unreadAnnouncements:c.courses.reduce((n,course)=>n+(hub?.getCourse(course.id)?.announcements||[]).filter(x=>x.unread).length,0)
       };
     },
       helpers:()=>({E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete}),
@@ -891,15 +1107,23 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       layoutPreset:({preset})=>saveLayoutPreset(preset),
       navigate:request=>navigateBiscuit(request),
       bookmark:request=>bookmarkItem(request.itemId,true),
-      preview:id=>{const undo=rememberBiscuitView();workspace='work';showPreview(String(id),{detail:0,target:container,preventDefault(){}});return {ok:true,undo};},
+      openCourseFile:(course,id)=>courseFileOpen?.open(course,id,container.querySelector(':focus')),preview:id=>{
+        const undo=rememberBiscuitView();
+        workspace='work';
+        showPreview(String(id),{detail:0,target:container,preventDefault(){}});
+        return {ok:true,undo};
+      },
       openSettings:tab=>{
-        if(tab)customizeTab=tab;
+        customizeTab=tab||'all';
         settingsDock?.open();
       },
       startTick:()=>syncFocus(),
       go:tab=>goWorkspace(tab),
       closeSettings:()=>settingsDock?.close({restoreFocus:false}),
-      askAI:question=>toolbox?.askAI?.(question),
+      askAI:(question,handoff)=>toolbox?.askAI(question,handoff),
+      helpWith:context=>helpWithItem(context),
+      studyAI:(kind,itemId)=>toolbox?.studyAI(kind,itemId),
+      openAid:(key,options)=>toolbox?.openAid(key,options),
       announcements:()=>{
         const course=buildContext().courses.find(c=>(hub?.getCourse(c.id)?.announcements||[]).some(x=>x.unread));
         if(!course||!workspaceEnabled('hub'))return false;
@@ -946,13 +1170,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     function selectDashboardCourse(id,event={},snapshot){
         // The snapshot only reads, so an early return needs no undo.
+        // A switch from deep in a long list starts the new course at its heading.
         if(room)dropRoom();
         if(!switchCourse(id))return;
         if(state.courseId==='all'&&!['home','grades','inbox','review'].includes(workspace))workspace='work';
         if(workspace==='inbox')hub?.setCourse?.(state.courseId);
         materials?.activate(state.courseId);
         render({tabMotion:event.detail>0,motionTarget:'.rd-workspace',motionKind:'course',snapshot});
-        // A switch from deep in a long list starts the new course at its heading.
         const heading=container.querySelector('.rd-workspace-heading, .rd-page-heading, .rd-materials-header');
         if(heading&&above(heading.getBoundingClientRect()))heading.scrollIntoView({block:'start',behavior:'instant'});
         if(workspace==='materials')materials?.load(state.courseId);if(workspace==='hub')hub?.loadCourse(state.courseId);return;
@@ -974,6 +1198,76 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function bookmarkItem(id,on){
       id=String(id);if(!buildContext().items.some(item=>String(item.id)===id))return false;
       return savePersonal(data=>{data.tasks[id]={...data.tasks[id],pinned:on===undefined?!data.tasks[id]?.pinned:on};});
+    }
+    function syncCompanion(){
+      const A=root.ReservePetArt;
+      if(!enabled('pony')||!A?.identity||!A?.hydrate||container.dataset.chLinksPending)return;
+      const selected=A.identity(personal),key=JSON.stringify([selected.id,selected.name]);
+      if(key===companionKey)return;
+      companionKey=key;
+      companionPack=null;
+      const turn=++companionTurn;
+      if(!selected.id||A.identity(personal,makeOwn?.state.pet).pack)return;
+      Promise.resolve(A.hydrate(personal,{store})).then(pack=>{
+        if(destroyed||turn!==companionTurn||container.dataset.chLinksPending)return;
+        if(!pack){companionKey='';return;}
+        companionPack=pack;
+        scheduleRender();
+      }).catch(()=>{
+        if(!destroyed&&turn===companionTurn)companionKey='';
+      });
+    }
+    function packCatalogue(){
+      const s=settings(),data=store.get(),P=root.ReservePacks,rows=makeOwn?.state.catalogue||Object.values(s.makeYourOwn?.installed||{}),out=rows.map(row=>{
+        const options={target:state.courseId},
+          current=row.kind==='course-art'&&Array.isArray(row.pieces)?
+            row.pieces.some(piece=>P?.isCurrent?.(row,data,{...options,piece:piece.id,slot:piece.slot})):
+            P?.isCurrent?.(row,data,options)??(row.current||['pet','theme'].includes(row.kind)&&s.makeYourOwn?.[row.kind]?.id===row.id);
+        return {id:row.key||row.id,name:row.name,kind:row.kind==='feature'&&row.sceneTheme?'scene':row.kind==='course-art'?'art':row.kind,current,installed:true};
+      });
+      const builtins=[
+        {id:'builtin:pet',name:personal.pet?.name||'Biscuit',kind:'pet',current:!s.makeYourOwn?.pet},
+        ...['light','dark'].map(id=>({id:'builtin:mode:'+id,name:({light:'Light',dark:'Dark'})[id],kind:'theme',current:!s.makeYourOwn?.theme&&!s.sceneTheme&&(s.theme==='dark'?'dark':'light')===id})),
+        ...['starry','sea','stars','blueprint'].map(id=>
+          ({id:'builtin:scene:'+id,name:({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint'})[id],kind:'scene',current:!s.makeYourOwn?.theme&&s.sceneTheme===id})),
+        ...['studio','study','focus'].map(id=>({id:'builtin:layout:'+id,name:id[0].toUpperCase()+id.slice(1)+' layout',kind:'preset'}))
+      ];
+      return [...out,...builtins.filter(row=>!out.some(item=>item.kind===row.kind&&item.name.toLowerCase()===row.name.toLowerCase()))];
+    }
+    async function installedCommand(request={}){
+      const revision=personalRevision;if(destroyed||container.dataset.chLinksPending)return {ok:false,message:'Wait for Canvas to verify this account.'};
+      if(makeOwn?.loadCatalogue)await makeOwn.loadCatalogue({previews:request.action==='use'});
+      if(destroyed||revision!==personalRevision||container.dataset.chLinksPending)return {ok:false,message:'Wait for Canvas to verify this account.'};
+      const rows=packCatalogue(),fits=row=>!request.kind||row.kind===request.kind||request.kind==='theme'&&row.kind==='scene';
+      if(request.action==='list')return {ok:true,message:rows.filter(row=>row.installed&&fits(row)).map(row=>row.name).join(', ')||'No matching packs are installed. Use Get more in Make it yours.'};
+      if(request.action==='name'){
+        const active=rows.filter(row=>row.current&&fits(row));
+        return {ok:true,message:request.kind==='pet'?(root.ReservePetArt?.identity?.(store.get(),makeOwn?.state.pet)?.name||'Biscuit'):active.map(row=>row.name).join(', ')||'The built-in choice is active.'};
+      }
+      if(!enabled('customization'))return {ok:false,message:'Appearance editor is off. Turn it on in Make it yours → Features.'};
+      const row=rows.find(row=>row.id===request.id&&fits(row));if(request.action!=='use'||!row)return {ok:false,message:'That choice is no longer installed.'};
+      const builtin=async pending=>{const ok=await pending;return {ok:!!ok,message:ok?'Using '+row.name+'.':'Could not change '+row.name+'.'};};
+      if(row.id==='builtin:pet')return builtin(savePersonal(data=>{data.settings.makeYourOwn.pet=null;}));
+      if(row.id.startsWith('builtin:mode:')){
+        if(root.ReservePacks?.useInstalled)await root.ReservePacks.useInstalled('builtin:theme',{store});
+        if(destroyed||revision!==personalRevision||container.dataset.chLinksPending)return {ok:false,message:'Wait for Canvas to verify this account.'};
+        return builtin(savePersonal(data=>{data.settings.makeYourOwn.theme=null;data.settings.sceneTheme='';data.settings.theme=row.id.slice(13);}));
+      }
+      if(row.id.startsWith('builtin:scene:'))return builtin(saveAppearance('sceneTheme',row.id.slice(14)));
+      if(row.id.startsWith('builtin:layout:'))return builtin(saveLayoutPreset(row.id.slice(15)));
+      const pack=makeOwn?.state.catalogue?.find(item=>(item.key||item.id)===row.id);
+      if(pack?.pack?.format==='chpreset'&&pack.pack.kind==='planner'&&!makeOwn.state.week){
+        customizeTab='layout';
+        settingsDock?.open();
+        await makeOwn.action('use',row.id);
+        return {ok:true,message:'Choose a week and review '+row.name+' in Make it yours before applying it.'};
+      }
+      if(!root.ReservePacks?.useInstalled)return {ok:false,message:'Pack selection is unavailable. Reload Canvas Harness.'};
+      await root.ReservePacks.useInstalled(row.id,{store,target:state.courseId||'all',week:makeOwn?.state.week});
+      makeOwn?.sync();
+      if(makeOwn?.loadCatalogue)await makeOwn.loadCatalogue();
+      render();
+      return {ok:true,message:'Using '+row.name+'.'};
     }
     function navigateBiscuit(request){
       const tab={planner:'plan',messages:'inbox','course-hub':'hub',assignments:'work',home:'work',materials:'materials',grades:'grades'}[request.tab];
@@ -1027,11 +1321,24 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       render({motionTarget:'.rd-workspace'});
       container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});
     }
-    const toolbox=enabled('tools')?root.ReserveToolbox?.create({container,store,materials,aiConfig:{client:resourceClient,user:snapshot.user,demo},getContext:()=>{
-      const ctx=buildContext();return {...ctx,courseId:hereCourse(),aiAssignmentId:!room&&workspace==='work'&&readerOpen?selectedId:null,aiSelectedIds:[...selectionIds],
+    const aiContext=()=>{
+      if(destroyed)return null;
+      const ctx=buildContext();
+      return {
+        ...ctx,
+        agentAssignments:currentSnapshot.assignments,
+        agentCourses:currentSnapshot.courses,
+        courseId:hereCourse(),
+        aiAssignmentId:!room&&workspace==='work'&&readerOpen?selectedId:null,
+        aiSelectedIds:selectionIds.size?[...selectionIds]:undefined,
+        biscuitContext:board?.biscuitContext?.(),
+        pageKind:room?here():readerOpen?readerTab==='plan'?'notes':'assignment':workspace,
+        now:Date.now(),
         aiResources:ctx.courses.map(c=>materials?.getCourse(c.id)?.raw).filter(Boolean),
         aiUpdates:ctx.courses.map(c=>({courseId:c.id,announcements:hub?.getCourse(c.id)?.announcements||[]}))};
-    },
+    };
+    if(enabled('ai')&&enabled('tools'))agentController=root.CanvasHarnessAgentClient?.ensure({getContext:aiContext,store,client:resourceClient,user:snapshot.user,demo})||null;
+    const toolbox=enabled('tools')?root.ReserveToolbox?.create({container,store,materials,aiConfig:{client:resourceClient,user:snapshot.user,demo},getContext:aiContext,
       onDockChange:({open,collapsed})=>{
         if(open)settingsDock?.close({restoreFocus:false});
         container.dataset.toolbox=open?(collapsed?'collapsed':'open'):'closed';
@@ -1053,10 +1360,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         showPreview(id,{detail:0});
       },
       onPlanner:options=>openPlanner(options),onRefresh:()=>runRefresh({reportError:true}),onCustomize:()=>settingsDock?.open()
-    }):null;
-
-
     // A running focus session turns "your week" into Home, where its card lives,
+    }):null;
     // for the toolbar button and the Tools dock (Quick open's Planner) alike.
     function openPlanner(options){
       if(options?.page==='week'&&!enabled('planner')||options?.page==='grades'&&!enabled('grades')||options?.page==='settings'&&!enabled('customization'))return;
@@ -1064,17 +1369,27 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       onPlanner({...options,...(options?.page==='week'&&personal.focus?.endsAt?{page:'home'}:{}),hideGrades:settings().showGrades!==true});
     }
 
+    // Graphics: the student's choice, or what suits the machine. Every level draws the same page; lower ones leave out detail.
+    function graphicsLevel(){const saved=personal.settings?.graphics;return ['low','medium','high','xhigh'].includes(saved)?saved:enabled('motion')&&root.ReserveMotion?.art?.weakMachine?'medium':'high';}
     function settings(){
-      return {...personal.settings,...(gradeVisibilityOverride===null?{}:{showGrades:gradeVisibilityOverride}),
-       ...(!enabled('grades')?{showGrades:false}:{}),...(!enabled('motion')?{motion:'off',livingArt:'off'}:{}),
-       ...(!enabled('course-hub')?{showCourseInformation:false}:{}),...(!enabled('course-art')?{courseCardStyle:'rounded',showCourseIcons:false}:{})};
+      return {
+        ...personal.settings,
+        graphics:graphicsLevel(),
+        graphicsPlan:root.ReserveCustomization?.graphicsPlan?.(graphicsLevel(),personal.settings?.graphicsDetail)||{},
+        ...(gradeVisibilityOverride===null?{}:{showGrades:gradeVisibilityOverride}),
+        ...(!enabled('grades')?{showGrades:false}:{}),
+        ...(!enabled('motion')?{motion:'off',livingArt:'off'}:{}),
+        ...(!enabled('course-hub')?{showCourseInformation:false}:{}),
+        ...(!enabled('course-art')&&!(enabled('scene-themes')&&['starry','sea','stars','blueprint'].includes(personal.settings.sceneTheme))?{courseCardStyle:'rounded',showCourseIcons:false}:{})
+      };
     }
 
     // Saved dark/system preferences render in the original light palette.
     // Course drawings retain their authored colors.
     // Dark only when chosen in Make it yours (never from the system: the user, 2026-10). 'system' from older saves is light.
     function effectiveTheme(s){
-      return s.theme==='dark'?'dark':'light';
+      const wanted=s.theme==='dark'?'dark':'light',colors=makeOwn?.state.theme?.colors,adjusted=s.makeYourOwn?.adjustments?.['pack:'+s.makeYourOwn?.theme?.id]?.colors;
+      return colors&&!colors[wanted]&&!adjusted?.[wanted]?(colors.light?'light':'dark'):wanted;
     }
     // ARTWORK AT NIGHT (dark theme): 0-49 the drawings are chalk on the dark page (brightest at 0), 50-100 they stay on
     // paper, dimmed (least at 100). Sets data-night and the numbers refresh.css reads; light mode carries none of it.
@@ -1090,6 +1405,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       else{const k=(v-50)/50;const b=0.46+0.24*k;setData('night','paper');setVar('--rd-chalk','#A89F8C');setVar('--rd-night-b',String(+b.toFixed(3)));}
     }
 
+    let sceneActive=false;
+
     function validColor(value,fallback){
       return /^#[0-9a-f]{6}$/i.test(value||'')?value:fallback;
     }
@@ -1097,7 +1414,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let railTimer=0,railRetry=false,railSelectionFrame=0,railTop='',railBelow='',railDirty=true,railSignature='',railNodes=[],railStatusInline=true;
     const railWatched=new Set(),railSizes=new WeakMap();
     function queueRail(){
-      if(destroyed)return;railDirty=true;
+      if(destroyed)return;
+      railDirty=true;
       if(railRetry&&railTimer){root.clearTimeout(railTimer);railTimer=0;}
       railRetry=false;
       if(!railTimer)railTimer=root.setTimeout(()=>{railTimer=0;measureRail();keepFocusVisible();sheetCover();},0);
@@ -1121,7 +1439,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const nodes=[container.querySelector('.rd-course-rail'),container.querySelector('.rd-shell'),container.querySelector('.rd-shell > .rd-workspace')];
       if(nodes.some((node,i)=>node!==railNodes[i])){railNodes=nodes;railDirty=true;}
       if(!railLayout)return;
-      const next=new Set([container,...container.querySelectorAll('.rd-toolbar,.rd-appearance,.rd-shell,.rd-workspace,.rd-course-rail,.rd-course-name,.rd-rail-text,.rd-status')]);
+      const next=new Set([container,...(container.querySelectorAll?.('.rd-toolbar,.rd-appearance,.rd-shell,.rd-workspace,.rd-course-rail,.rd-course-name,.rd-rail-text,.rd-status')||[])]);
       for(let node=container.parentElement||container.getRootNode?.()?.host;node?.nodeType===1;node=node.parentElement||node.getRootNode?.()?.host)next.add(node);
       for(const node of railWatched)if(!next.has(node)){railLayout.unobserve?.(node);railWatched.delete(node);}
       for(const node of next)if(!railWatched.has(node)){railWatched.add(node);railLayout.observe(node);}
@@ -1133,8 +1451,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(railAncestors)
       for(let node=container.parentElement||container.getRootNode?.()?.host;node?.nodeType===1;node=node.parentElement||node.getRootNode?.()?.host)
         railAncestors.observe(node,{attributes:true,attributeOldValue:true,childList:true,attributeFilter:['class','style','hidden']});
-    root.addEventListener?.('resize',queueRail);document.fonts?.addEventListener?.('loadingdone',queueRail);
     // Phones: the open reader sheet (refresh.css section 16) covers the workspace below the command bar.
+    root.addEventListener?.('resize',queueRail);document.fonts?.addEventListener?.('loadingdone',queueRail);
     // What it covers is inert, so Tab never lands behind it; the sheet stays non-modal (the bar above it,
     // Esc and Back to list still work). Every render and every resize past 600px sets or clears it (patchUI
     // strips attributes the markup does not carry, so it is re-applied after each patch).
@@ -1168,20 +1486,20 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(normalizedCache)return normalizedCache;
       const order=Array.isArray(s.courseOrder)?s.courseOrder.map(String):[];
       const prefs=s.coursePrefs&&typeof s.coursePrefs==='object'?s.coursePrefs:{};
+      // Hidden by hand, or not a class (name tools, counseling groups) and never shown by hand (ReserveCore.hiddenCourseIds).
       const normalized=(currentSnapshot.courses||[]).map((raw,index)=>
         ({...C.normalizeCourse(raw),defaultView:raw.default_view||raw.defaultView||'',_index:index})).filter(course=>
         /^\d+$/.test(course.id));
-      // Hidden by hand, or not a class (name tools, counseling groups) and never shown by hand (ReserveCore.hiddenCourseIds).
       const hidden=C.hiddenCourseIds(normalized,s);
       normalized.sort((a,b)=>{
         const ai=order.indexOf(a.id),bi=order.indexOf(b.id);
         return (ai<0?order.length+a._index:ai)-(bi<0?order.length+b._index:bi);
       });
       const allCourses=normalized.map((course,index)=>{
-        const pref=prefs[course.id]||{};
         // ownColor: the student chose this colour (it tints the paint of the row's frame); the default goes by position.
-        const color=validColor(pref.color,COURSE_COLORS[index%COURSE_COLORS.length]),ownColor=validColor(pref.color,'')!=='';
+        const pref=prefs[course.id]||{};
         // Short labels come from the Canvas name; a student's own name is shown as typed.
+        const color=validColor(pref.color,COURSE_COLORS[index%COURSE_COLORS.length]),ownColor=validColor(pref.color,'')!=='';
         // A leading subject ("English: …") leads the line under the title ("Subject · Teacher").
         const label=C.courseLabel?.(course.name)||{title:course.name,teacher:'',sub:'',tag:'',subject:''},custom=pref.name||'';
         const extra=value=>custom&&value&&String(custom).toLowerCase().includes(value.toLowerCase())?'':value;
@@ -1209,8 +1527,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const course=courseMap.get(courseId);
         if(!course||hidden.has(courseId))return null;
         return {...C.normalizeAssignment(raw,course),courseSearch:course.courseSearch};
-      }).filter(Boolean);
       // Search keeps the full Canvas name (teacher, cohort) even after a rename.
+      }).filter(Boolean);
       items.push(...(root.ReservePersonalWork?.normalize(personal,courses)||[]).map(item=>
         ({...item,courseSearch:courseMap.get(String(item.courseId))?.courseSearch||''})));
       return normalizedCache={courses,allCourses,courseMap,items};
@@ -1222,7 +1540,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const next=area==='local'?changes?.['reserve:canvasNav']?.newValue:undefined;
       if(next===undefined)return;
       const value=NAV_CHOICES.includes(next)?next:'drawn';
-      if(value!==canvasNav){canvasNav=value;if(customizeOpen&&!destroyed)render();}
+      if(value!==canvasNav){canvasNav=value;if(customizeOpen&&!destroyed)sourceChange();}
     }
     try{
       root.chrome?.storage?.local?.get?.('reserve:canvasNav')?.then?.(saved=>navChanged({'reserve:canvasNav':{newValue:saved?.['reserve:canvasNav']??'drawn'}},'local'))?.catch?.(()=>{});
@@ -1235,20 +1553,24 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(state.courseId!=='all'&&!courses.some(x=>x.id===state.courseId))switchCourse('all',{rememberCurrent:false});
       const now=Date.now();
       const local=personal.tasks||{};
-      const filtered=Model.filterAssignments(items,{...state,now,timeZone:s.timeZone,local,prioritizePins:false});
+      // The New view only lives while it is open: a saved or restored view never comes back to it.
+      if(state.mode==='new'&&!newShown)state.mode='actionable';if(state.mode!=='new')newShown=null;
+      const newIds=newWorkIds(items,s);
+      if(!seenStarted&&!readSeen()&&items.length&&currentSnapshot.partial!==true&&!demo){seenStarted=true;markSeen(items);}
+      const filtered=Model.filterAssignments(items,{...state,now,timeZone:s.timeZone,local,prioritizePins:false,newIds:newShown||new Set(newIds)});
       const palette=effectiveTheme(s)==='dark'?DARK_ACCENTS:ACCENTS;
       const accent=/^#[\da-f]{6}$/i.test(s.accent)?s.accent:palette[s.accent]||palette.clay;
       const retained=readerOpen?items.find(x=>x.id===selectedId&&x.personal&&(state.courseId==='all'||state.courseId===x.courseId)):null;
       const selected=retained||filtered.items.find(x=>x.id===selectedId)||filtered.items[0]||null;
       if(workspace==='work'&&selectedId!==(selected?.id||null)){selectedId=selected?.id||null;readerTab=selected?.personal?'plan':'details';readerOpen=false;}
-      const insights=Work.insights(items,local,{now,timeZone:s.timeZone,courseId:state.courseId});
       // Rail badges and the heading summary reuse the Up next rules, so every
+      const insights=Work.insights(items,local,{now,timeZone:s.timeZone,courseId:state.courseId});
       // number matches the list a student sees after choosing it.
       const courseLoad=new Map(),glance={overdue:0,today:0,tomorrow:0};
       for(const item of Model.filterAssignments(items,{mode:'actionable',courseId:'all',now,timeZone:s.timeZone,local}).items){
         const id=String(item.courseId),due=dateMs(item.dueAt),load=courseLoad.get(id)||{open:0,overdue:0,next:null,then:null};
-        load.open++;if(due!==null&&due<now)load.overdue++;courseLoad.set(id,load);
         // The rail's two earliest items come from the same list, so they agree with the count.
+        load.open++;if(due!==null&&due<now)load.overdue++;courseLoad.set(id,load);
         const sooner=other=>!other||due!==null&&(dateMs(other.dueAt)??Infinity)>due;
         if(sooner(load.next)){load.then=load.next;load.next=item;}else if(sooner(load.then))load.then=item;
         if(due===null||(state.courseId!=='all'&&state.courseId!==id))continue;
@@ -1256,13 +1578,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(due<now)glance.overdue++;if(distance===0)glance.today++;if(distance===1)glance.tomorrow++;
       }
       const overviewItems=workspace==='home'?Model.filterAssignments(items,{mode:overviewMode,query:overviewQuery,courseId:'all',now,timeZone:s.timeZone,local}).items:[];
-      const deckCourse=courses.find(course=>course.id===(state.courseId==='all'?String(selected?.courseId||''):state.courseId))||courses[0]||null;
       // Each view filter shows the count its list would show once chosen (the same rules, the same search).
+      const deckCourse=courses.find(course=>course.id===(state.courseId==='all'?String(selected?.courseId||''):state.courseId))||courses[0]||null;
       const modeCounts=workspace==='work'?
         Object.fromEntries(['actionable','today','week','planned'].map(mode=>
           [mode,mode===state.mode&&!state.day?filtered.items.length:Model.filterAssignments(items,{...state,mode,day:'',now,timeZone:s.timeZone,local}).items.length])):
         {};
       return {
+        newWorkIds:newIds,
+        newCount:state.mode==='new'?(newShown||new Set(newIds)).size:newIds.length,
+        machineNotice:enabled('motion')&&root.ReserveMotion?.art?.weakMachine===true&&enabled('customization')&&!personal.settings?.graphics&&!personal.settings?.graphicsTold,
         dockMenu,
         s,
         courses,
@@ -1304,8 +1629,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     let railRowH='';
     function railRows(rail,css,top){
       const rows=rail?.querySelectorAll?.(':scope > .rd-rail-course');if(destroyed||!rows?.length||!root.getComputedStyle)return false;
-      const px=(style,...names)=>names.reduce((sum,name)=>sum+(parseFloat(style[name])||0),0);let tallest=0;
       // Both the button and its children may be static-positioned under the row; their offsetParent can
+      const px=(style,...names)=>names.reduce((sum,name)=>sum+(parseFloat(style[name])||0),0);let tallest=0;
       // be the row instead of the button. Accumulate offsets to the layout root and subtract them.
       const offsets=new Map(),layoutTop=node=>{
         if(offsets.has(node))return offsets.get(node);
@@ -1319,16 +1644,19 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const rs=css(row),bs=css(button),top=layoutTop(button);if(top===null)continue;let bottom=top;
         for(const child of button.children){const cs=css(child);if(cs.position==='absolute'||!child.getClientRects().length)continue;
           const y=layoutTop(child),height=child.offsetHeight;if(y!==null&&Number.isFinite(height))bottom=Math.max(bottom,y+height+(parseFloat(cs.marginBottom)||0));}
-        const content=bottom-top+px(bs,'paddingBottom','borderBottomWidth');
+        // A course set's rail inset (course-sets.js, --rd-set-inset: padding that keeps its text off its frame's drawing)
+        // is that row's own: it never sets the height the rows share, nor whether they share one. The row holds it
+        // itself (its floor is its own content, scripts/course-sets.cjs railCss).
+        const content=bottom-top+px(bs,'paddingBottom','borderBottomWidth')-(parseFloat(bs.getPropertyValue?.('--rd-set-inset'))||0);
         tallest=Math.max(tallest,rs.boxSizing==='border-box'?content+px(rs,'paddingTop','paddingBottom','borderTopWidth','borderBottomWidth'):content);
       }
-      if(!tallest)return false;
       // Rows share one height only while they all fit on the first screen. When they cannot, each row keeps
+      if(!tallest)return false;
       // its own height ('auto'), so one long course name does not make every course tall and push the rest
       // out of view. Only content heights, the window and the rail's other rows are read: never the rows'
       // own (grown) height, so the choice cannot feed back into itself.
       const railStyle=css(rail);let others=0,gaps=0;
-      for(const child of rail.children){
+      for(const child of Array.from(rail.children||[])){
         if(child.matches?.('.rd-rail-course')){gaps+=px(css(child),'marginTop','marginBottom');continue;}
         if(child.getClientRects?.().length&&css(child).position!=='absolute')others+=child.offsetHeight||0;
       }
@@ -1340,14 +1668,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // A hidden host has no boxes and a loading rail is not yet a flex column:
     // neither is measured (a 0 or partial offset would stick); retry briefly.
     function measureRail(tries=0,syncSelection=true){
-      if(destroyed||!railDirty)return;if(railTimer)root.clearTimeout(railTimer);railTimer=0;railRetry=false;railDirty=false;
       // One read phase; even Canvas's document class waits until every style and box has been read.
+      if(destroyed||!railDirty)return;if(railTimer)root.clearTimeout(railTimer);railTimer=0;railRetry=false;railDirty=false;
       const styles=new Map(),css=node=>{if(!styles.has(node))styles.set(node,root.getComputedStyle(node));return styles.get(node);};
-      const fitted=['topbar','dock'].includes(container.dataset.courseNavigation);
-      const column=container.querySelector?.('.rd-shell > .rd-workspace');
-      const fits=!!column&&typeof root.getComputedStyle==='function'&&
-        (/(auto|scroll)/.test(css(column)?.overflowY||'')||fitted&&css(column)?.overflowY==='hidden');
-      const classes=root.document?.documentElement?.classList;
+      const fitted=['dock','topbar'].includes(container.dataset.courseNavigation),
+        column=container.querySelector?.('.rd-shell > .rd-workspace'),
+        fits=!!column&&typeof root.getComputedStyle==='function'&&(/(auto|scroll)/.test(css(column)?.overflowY||'')||fitted&&css(column)?.overflowY==='hidden'),
+        classes=root.document?.documentElement?.classList;
       const rail=container.querySelector('.rd-shell .rd-course-rail'),display=rail&&typeof root.getComputedStyle==='function'?css(rail).display:'none';
       const anchor=fitted?container.querySelector('.rd-shell'):rail;
       const status=container.querySelector('.rd-status');railStatusInline=!!status&&(typeof root.getComputedStyle!=='function'||css(status).position!=='absolute');
@@ -1355,8 +1682,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(anchor&&(fitted||display!=='none')&&typeof anchor.getClientRects==='function'){
         if(!anchor.getClientRects().length||!fitted&&display!=='flex')retry=true;
         else{
-          top=Math.max(0,Math.round((fitted?anchor:anchor.parentElement).getBoundingClientRect().top+(root.scrollY||0)))+'px';
-          if(!fitted)rowHeight=railRows(rail,css,top);
+          top=Math.max(0,Math.round((fitted?anchor:anchor.parentElement).getBoundingClientRect().top+(root.scrollY||0)))+'px';if(!fitted)rowHeight=railRows(rail,css,top);
           const edge=(node,...sides)=>{const style=css(node);return sides.reduce((sum,side)=>sum+(parseFloat(style[side])||0),0);};
           let height=railStatusInline?status.getBoundingClientRect().height+edge(status,'marginTop','marginBottom'):0;
           for(let node=container;node?.nodeType===1;node=node.parentElement||node.getRootNode?.()?.host)height+=edge(node,'paddingBottom','borderBottomWidth','marginBottom');
@@ -1368,55 +1694,44 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const rowsChanged=!!rowHeight&&rowHeight!==railRowH;if(rowsChanged)container.style.setProperty('--rd-rail-row-h',railRowH=rowHeight);
       if(top&&top!==railTop)container.style.setProperty('--rd-rail-top',railTop=top);
       if(status&&below&&below!==railBelow)container.style.setProperty('--rd-status-h',railBelow=below);
-      if(rowsChanged&&syncSelection&&!railSelectionFrame)railSelectionFrame=beforePaint(()=>{railSelectionFrame=0;if(!destroyed)motion?.syncTabs(false);});
       // Ordinary renders leave a pending hidden/loading retry alone; only that retry or an invalidation reads again.
-      if(retry&&tries<20){
-        railRetry=true;
-        railTimer=root.setTimeout(()=>{railTimer=0;railRetry=false;railDirty=true;measureRail(tries+1);},100);
-      }
+      if(rowsChanged&&syncSelection&&!railSelectionFrame)railSelectionFrame=beforePaint(()=>{railSelectionFrame=0;if(!destroyed)motion?.syncTabs(false);});
+      if(retry&&tries<20){railRetry=true;railTimer=root.setTimeout(()=>{railTimer=0;railRetry=false;railDirty=true;measureRail(tries+1);},100);}
     }
 
     function readingContent(item){
       if(!item?.description)return {html:'',links:[]};
       if(contentCache.has(item.id))return contentCache.get(item.id);
-      // Preserve filename and Download intent before the rich-text sanitizer drops attributes.
-      const sourceTemplate=document.createElement('template'),evidence=new Map();
-      sourceTemplate.innerHTML=item.description;
+      const sourceTemplate=document.createElement('template'),evidence=new Map();sourceTemplate.innerHTML=item.description;
       for(const anchor of sourceTemplate.content.querySelectorAll('a[href]')){
         try{
           const url=new URL(anchor.getAttribute('href'),CANVAS_ORIGIN+'/');
           if(url.username||url.password||!['https:','http:'].includes(url.protocol))continue;
-          const names=['download','data-filename','data-file-name','data-pdf-name','title','aria-label']
-            .map(name=>anchor.getAttribute(name)).concat(anchor.textContent.trim());
-          const filename=names.find(name=>/\.pdf$/i.test(String(name||'').trim()));
-          const mime=['type','data-content-type','data-mime-type','data-mime','data-pdf-mime']
-            .some(name=>/^application\/pdf(?:\s*;|$)/i.test(String(anchor.getAttribute(name)||'').trim()));
-          const download=anchor.hasAttribute('download')||
-            ['title','aria-label'].map(name=>anchor.getAttribute(name)).concat(anchor.textContent)
-              .some(label=>/^\s*download(?:\s|$)/i.test(String(label||'')))||
-            /(?:^|[\s_-])download(?:[\s_-]|$)/i.test(anchor.getAttribute('class')||'');
+          const names=['download','data-filename','data-file-name','data-pdf-name','title','aria-label'].map(name=>anchor.getAttribute(name)).concat(anchor.textContent.trim()),
+            filename=names.find(name=>/\.pdf$/i.test(String(name||'').trim())),
+            mime=['type','data-content-type','data-mime-type','data-mime','data-pdf-mime'].some(name=>/^application\/pdf(?:\s*;|$)/i.test(String(anchor.getAttribute(name)||'').trim())),
+            download=anchor.hasAttribute('download')||
+              ['title','aria-label'].map(name=>anchor.getAttribute(name)).concat(anchor.textContent).some(label=>/^\s*download(?:\s|$)/i.test(String(label||'')))||
+              /(?:^|[\s_-])download(?:[\s_-]|$)/i.test(anchor.getAttribute('class')||'');
           const records=evidence.get(url.href)||[];
           records.push({name:filename||names.find(name=>String(name||'').trim())||'',pdf:!!filename||mime,download});
           evidence.set(url.href,records);
         }catch{}
       }
-      const template=document.createElement('template');template.innerHTML=U.safeRichHTML(item.description);
+      const html=U.safeRichHTML(item.description);
+      const template=document.createElement('template');template.innerHTML=html;
       const urls=new Set(),links=[];
       for(const anchor of template.content.querySelectorAll('a[href]')){
         try{
           const url=new URL(anchor.getAttribute('href'));
           if(url.username||url.password||!['https:','http:'].includes(url.protocol))continue;
-          const source=evidence.get(url.href)?.shift();
-          const label=anchor.textContent.trim()||url.pathname.split('/').filter(Boolean).pop()||url.hostname;
-          const file=url.origin===CANVAS_ORIGIN&&url.pathname.match(/^\/(?:courses\/(\d+)\/)?files\/(\d+)(?:\/(?:download|preview))?\/?$/);
-          const courseId=file?.[1]||String(item.courseId||'');
-          const pdf=enabled('pdf')&&file&&/^\d+$/.test(courseId)&&(source?.pdf||/\.pdf$/i.test(label))
-            ?{fileId:file[2],courseId,name:source?.name||label}:null;
+          const source=evidence.get(url.href)?.shift(),
+            label=anchor.textContent.trim()||url.pathname.split('/').filter(Boolean).pop()||url.hostname,
+            file=url.origin===CANVAS_ORIGIN&&url.pathname.match(/^\/(?:courses\/(\d+)\/)?files\/(\d+)(?:\/(?:download|preview))?\/?$/),
+            courseId=file?.[1]||String(item.courseId||''),
+            pdf=file&&/^\d+$/.test(courseId)&&(source?.pdf||/\.pdf$/i.test(label))?{fileId:file[2],courseId,name:source?.name||label}:null;
           if(source?.download)anchor.setAttribute('data-pdf-download','true');
-          if(pdf)for(const [name,value] of [['file-id',pdf.fileId],['course-id',pdf.courseId],['name',pdf.name],['mime','application/pdf']]){
-            anchor.setAttribute('data-pdf-'+name,value);
-          }
-          // Annotate every inline occurrence, including duplicates and links beyond the summary limit.
+          if(pdf)for(const [name,value] of [['file-id',pdf.fileId],['course-id',pdf.courseId],['name',pdf.name],['mime','application/pdf']])anchor.setAttribute('data-pdf-'+name,value);
           if(urls.has(url.href)||links.length>=12)continue;
           urls.add(url.href);
           links.push({url:url.href,label,...(source?.download?{download:true}:{}),...(pdf?{pdf}:{})});
@@ -1497,8 +1812,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function restoreReaderScroll(){
       if(destroyed||workspace!=='work'||!pendingReaderScroll)return false;
       if(pendingReaderScroll.courseId!==state.courseId||pendingReaderScroll.id!==selectedId){pendingReaderScroll=null;return false;}
-      const reader=container.querySelector('.rd-reader-content');
       // First mount may precede stylesheet loading or Canvas revealing the host.
+      const reader=container.querySelector('.rd-reader-content');
       // Keep the requested position until the pane has a real, styled layout.
       if(!reader?.getClientRects().length||!root.getComputedStyle(container).getPropertyValue('--rd-line').trim())return false;
       reader.scrollTop=pendingReaderScroll.top;pendingReaderScroll=null;
@@ -1532,6 +1847,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function viewArgs(ctx,assignmentContent,panel=false){
       return {
         ...ctx,
+        lateCost:lateCostFor(ctx),
         state,
         workspace,
         workPage:workspace==='work'?workPage:'',
@@ -1547,6 +1863,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         customizeTab,
         canvasNav,
         personal:{focus:personal.focus,pet:personal.pet,toolbox:personal.toolbox},
+        studyAids,
         hasLayoutUndo:!!ctx.s.workspaceUndo,
         deckHeader:!panel&&workspace==='work'?hub?.renderDeckHeader?.(ctx.deckCourse,{arrange:enabled('arrange')})||'':'',
         deckContent:!panel&&workspace==='work'?hub?.renderDeck?.(ctx.deckCourse,{header:false})||'':'',
@@ -1561,7 +1878,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         customizeDrafts,
         customKits,
         kitName,
-        makeOwn:makeOwn?.state,
+        preferences:preferences?.state,
+        makeOwn:makeOwn?{...makeOwn.state,pet:makeOwn.state.pet||companionPack}:companionPack?{pet:companionPack}:null,
         quickUpload:quickUpload?.state,
         quickPackDraft,
         quickPackFileName,
@@ -1594,7 +1912,6 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // What a whole render does for the panel after its patch: media and frame previews, saved kits, the Features
       // mount, unsaved text and open sections.
       mediaController?.sync();frameController?.sync();frameEditor?.sync();
-      // The saved kits are drawn only in the Make it yours panel: when they arrive, the panel alone is redrawn.
       if(customizeOpen&&!kitsLoaded&&mediaStore){
         kitsLoaded=true;
         mediaStore.listKits().then(kits=>{if(!destroyed){customKits=kits;if(!renderPanel())scheduleRender();}}).catch(error=>{
@@ -1671,16 +1988,17 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         // (siblings that differ only by data-value or data-entry, like All | Unread or two Read more buttons, never trade places).
         if(focus&&!focus.materialTitle&&!focus.section)focus.node=active;
       }
-      const ctx=buildContext();
+      syncCompanion();
       // Read synchronous deck/material state before markup. Notifications here are already represented below.
-      const deckId=workspace==='work'?ctx.deckCourse?.id||'':'';
+      const ctx=buildContext();
+      const deckId=enabled('course-hub')&&hub&&workspace==='work'?ctx.deckCourse?.id||'':'';
       if(deckId!==deckCourseRequested){deckCourseRequested=deckId;if(deckId)hub?.loadDeck?.(deckId);ctx.unread=hub?.unreadCount?.()||0;}
-      consumeSources();
       // Later notifications (including any microtask chain) share one rAF after the task, before paint.
+      consumeSources();
       setData('featureMotion',enabled('motion')?'on':'off');setData('arrange',arrange?'on':'off');
       const dataTheme=enabled('customization')&&!ctx.s.sceneTheme?makeOwn?.state.theme:null;
       const scene=!dataTheme&&enabled('scene-themes')&&root.ReserveSceneThemes&&['starry','sea','stars','blueprint'].includes(ctx.s.sceneTheme)?ctx.s.sceneTheme:'';
-      setData('theme',scene?'light':ctx.theme);applyNight(ctx.s.nightArt);
+      setData('theme',ctx.theme);applyNight(ctx.s.nightArt);
       setData('density',ctx.s.density==='compact'?'compact':'comfortable');
       setData('font',['humanist','serif'].includes(ctx.s.font)?ctx.s.font:'system');
       setData('textSize',ctx.s.textSize||'standard');
@@ -1692,13 +2010,21 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(shown===null||typeof shown!=='object')setData(key,String(shown));
       }
       setVar('--rd-dock-scale',String(Number(ctx.s.dockScale)||1));
-      setData('boardEditing',String(!!board?.editing()));
       // Gentle (default), Still or Off; motion.js also treats a reduced-motion device as Off.
-      setData('motionStyle',MOTION_STYLES.includes(ctx.s.motion)?ctx.s.motion:'gentle');
+      setData('boardEditing',String(!!board?.editing()));
       // Living drawings (default On): the course drawings keep moving once drawn (Gentle only).
-      setData('livingArt',ctx.s.livingArt==='off'?'off':'on');
+      setData('motionStyle',MOTION_STYLES.includes(ctx.s.motion)?ctx.s.motion:'gentle');
       // Teacher text, announcements and messages: the book serif (default) or the interface sans.
-      setData('readingFont',ctx.s.readingFont==='interface'?'interface':'book');
+      const detail=ctx.s.graphicsPlan||{};
+      if(container.dataset.graphics!==ctx.s.graphics)try{root.localStorage?.setItem('reserve:graphics',ctx.s.graphics);}catch{}
+      setData('graphics',ctx.s.graphics);
+      setData('gFilm',detail.film||'full');
+      setData('gLife',detail.life||'full');
+      setData('gFrames',detail.frames||'full');
+      setData('gRooms',detail.rooms||'full');
+      setData('gPanorama',detail.panorama||'on');
+      setData('livingArt',ctx.s.livingArt==='off'||detail.film==='off'?'off':'on');
+      setData('readingFont',['interface','easy'].includes(ctx.s.readingFont)?ctx.s.readingFont:'book');
       setData('readerOpen',String(readerOpen));
       setData('courses',String(ctx.s.showCourseStrip!==false));
       if(scene||dataTheme){if(container.style.getPropertyValue?.('--rd-accent')!=='')container.style.removeProperty('--rd-accent');}else setVar('--rd-accent',ctx.accent);
@@ -1706,7 +2032,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
        const markup=View.render(
          viewArgs(ctx,assignmentContent),
          {E,icon,assignmentLink,formatDate,dueText,scoreText,gradePeriodLabel,dayKey,complete},
-         {headingCache,reuseHeading:container.querySelector('.rd-workspace-heading')?.getAttribute('data-rd-key')===`heading-${headingCache.revision}`});
+         {headingCache,reuseHeading:!!container.querySelector('.rd-shell > .rd-workspace-heading, .rd-shell > .rd-workspace > .rd-workspace-heading')?.isConnected});
       const toolbar=container.querySelector('.rd-toolbar'),appearance=container.querySelector('.rd-appearance');
       // A swapped page starts at its top: the column's scroll is reset while the old page is still laid out. Read after
       // the swap, the offset laid the whole new page out inside the render, before the room's own measuring did it again.
@@ -1715,12 +2041,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(toolbar){
         // Keep the actual transitioning nodes connected through data renders.
         const template=document.createElement('template');template.innerHTML=markup;
+        if(Object.keys(studyAids).length)StudyUI?.renderTags(template.content,studyAids,{env:root});
         const nextToolbar=template.content.querySelector('.rd-toolbar'),nextAppearance=template.content.querySelector('.rd-appearance');
+        // The live region and its observed box stay connected across data renders too.
         const shell=container.querySelector('.rd-shell'),
           nextShell=template.content.querySelector('.rd-shell'),
           footer=container.querySelector('.rd-status'),
           nextFooter=template.content.querySelector('.rd-status');
-        // The live region and its observed box stay connected across data renders too.
         if(footer&&nextFooter){patchUI(footer,nextFooter);nextFooter.remove();}
         if(shell&&nextShell){
           const workspaceNode=shell.querySelector('.rd-workspace'),nextWorkspace=nextShell.querySelector('.rd-workspace');
@@ -1729,14 +2056,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
             if(heading&&heading.getAttribute('data-rd-key')===nextHeading.getAttribute('data-rd-key')){
               patchUI(heading,nextHeading);
               if(heading.parentElement!==shell||shell.firstElementChild!==heading)shell.prepend(heading);
-            }else{
-              heading?.remove();shell.prepend(nextHeading);
             }
-          }else if(heading?.parentElement===shell)workspaceNode.prepend(heading);
+            else{heading?.remove();shell.prepend(nextHeading);}
+          }
+          else if(heading?.parentElement===shell)workspaceNode.prepend(heading);
           patchUI(workspaceNode,nextWorkspace);
           const rail=shell.querySelector('.rd-course-rail,.rd-dock'),nextRail=nextShell.querySelector('.rd-course-rail,.rd-dock');
-          if(rail&&nextRail&&rail.nodeName===nextRail.nodeName)patchUI(rail,nextRail);
-          else{rail?.remove();if(nextRail)shell.insertBefore(nextRail,workspaceNode);}
+          if(rail&&nextRail&&rail.nodeName===nextRail.nodeName)patchUI(rail,nextRail);else{rail?.remove();if(nextRail)shell.insertBefore(nextRail,workspaceNode);}
           // The dock's card (right-click the dock) sits beside the dock.
           const dockCard=shell.querySelector(':scope > .rd-dock-menu'),nextDockCard=nextShell.querySelector(':scope > .rd-dock-menu');
           if(dockCard&&nextDockCard)
@@ -1749,8 +2075,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const deadlineButton=tools.querySelector('[data-rd-action="deadline-changes"]'),nextDeadline=nextToolbar?.querySelector('[data-rd-action="deadline-changes"]');
         if(deadlineButton&&nextDeadline)patchUI(deadlineButton,nextDeadline);else if(nextDeadline)tools.prepend(nextDeadline);else deadlineButton?.remove();
         const gradeSwitch=tools.querySelector('[data-setting="showGrades"]');if(gradeSwitch)gradeSwitch.checked=ctx.s.showGrades===true;
-        setAttr(tools.querySelector('[data-rd-action="settings"]'),'aria-expanded',String(customizeOpen));
         // While syncing, the refresh glyph gives way to the dotted ring (CSS on aria-busy).
+        setAttr(tools.querySelector('[data-rd-action="settings"]'),'aria-expanded',String(customizeOpen));
         {
           const refreshButton=tools.querySelector('[data-rd-action="refresh"]');
           for(const name of ['aria-disabled','aria-busy'])if(refreshing)setAttr(refreshButton,name,'true');else refreshButton.removeAttribute(name);
@@ -1760,8 +2086,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           const unread=ctx.unread||0,badge=toolbar.querySelector('[data-rd-unread]'),said=toolbar.querySelector('[data-rd-unread-sr]');
           if(badge){setProp(badge,'textContent',unread?String(unread):'');setProp(badge,'hidden',!unread);}
           if(said)setProp(said,'textContent',unread?`, ${unread} unread`:'');
-         setAttr(toolbar.querySelector('.rd-drawer-button'),'aria-expanded',String(container.dataset.drawer==='open'));
          // The command bar's search belongs to Assignments; it keeps the list's query (typed here or in the heading's copy).
+         setAttr(toolbar.querySelector('.rd-drawer-button'),'aria-expanded',String(container.dataset.drawer==='open'));
          {const bar=toolbar.querySelector('.rd-bar-search'),field=bar?.querySelector('input');if(bar)setProp(bar,'hidden',workspace!=='work');if(field&&field.value!==state.query)field.value=state.query;}
          // The phone reader sheet (refresh.css section 16) covers Canvas's chrome, as the dock does.
          container.getRootNode?.()?.host?.toggleAttribute?.('data-reserve-sheet',readerOpen&&workspace==='work');}
@@ -1771,11 +2097,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           setAttr(tab,'aria-selected',String(active));
           setProp(tab,'tabIndex',active?0:-1);
         }
-        if(appearance&&nextAppearance){
-        const inner=appearance.querySelector('.t-acc-panel-inner'),nextInner=nextAppearance.querySelector('.t-acc-panel-inner');
-        // The closed shell leaves outgoing controls connected until its dock transition ends.
-        if(!customizeOpen&&nextInner?.getAttribute('data-rd-key')==='customize-content')inner?.setAttribute('data-rd-key','customize-content');
-        else patchUI(inner,nextInner);
+        if(appearance&&nextAppearance){patchUI(appearance.querySelector('.t-acc-panel-inner'),nextAppearance.querySelector('.t-acc-panel-inner'));
         setAttr(appearance,'data-open',String(customizeOpen));
         const panel=appearance.querySelector('.t-acc-panel');setProp(panel,'inert',!customizeOpen);
         if(customizeOpen)panel.removeAttribute('aria-hidden');else setAttr(panel,'aria-hidden','true');
@@ -1800,12 +2122,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         }
         if(shell)for(const warning of Array.from(template.content.querySelectorAll('.rd-warning')))container.insertBefore(warning,shell);
         container.append(template.content);
-      }else container.innerHTML=markup;
+      }else{container.innerHTML=markup;if(Object.keys(studyAids).length)StudyUI?.renderTags(container,studyAids,{env:root});}
       setData('courseId',state.courseId);setData('workspace',workspace);setData('workPage',workspace==='work'?workPage:'');
       if(enabled('review-deck')&&reviewDeck||gradeImpact)roomShell();
-      if(scene){root.ReserveSceneThemes.apply(container.getRootNode?.()||target,container,scene,{motionStyle:container.dataset.motionStyle});sceneActive=true;}
+       if(scene){
+         root.ReserveSceneThemes.apply(container.getRootNode?.()||
+           target,container,scene,{motionStyle:container.dataset.motionStyle,theme:ctx.theme,adjustments:lookSelection(ctx.s).layer});
+         sceneActive=true;
+       }
       else if(sceneActive){root.ReserveSceneThemes?.remove(container);sceneActive=false;}
-      if(dataTheme)root.ReserveDataTheme?.apply(container.getRootNode?.()||target,container,dataTheme,{theme:ctx.theme,motionStyle:container.dataset.motionStyle});
+       if(dataTheme)
+         root.ReserveDataTheme?.apply(container.getRootNode?.()||
+           target,container,dataTheme,{theme:ctx.theme,motionStyle:container.dataset.motionStyle,adjustments:lookSelection(ctx.s).layer});
       else root.ReserveDataTheme?.remove(container);
       mediaController?.sync();frameController?.sync();frameEditor?.sync();
       // The saved kits are drawn only in the Make it yours panel: when they arrive, the panel alone is redrawn.
@@ -1818,11 +2146,121 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       settingsDock?.sync();
       if(ctx.s.courseNavigation==='dock'&&container.dataset.drawer==='open')setDrawer(false,{focus:false});
       courseDock.sync();
+      // The Help band keeps its last height across a page swap: a new host (Home drawn again after a room folds) starts at
+      // that height in its first frame, so the module row under it does not jump 24 px when the band's content comes in
+      // a moment later; the hold is let go once the band has had time to fill (idle, after 1.5 s)
+      {
+        const host=container.querySelector('[data-help-band]');
+        if(host&&host!==helpBandHost&&bandHeight>0&&!host.hidden&&!host.style?.minHeight){host.style.minHeight=bandHeight+'px';holdBand(host);}
+        watchBand(host);
+      }
       arrange?.sync();
       board?.sync();
+      const bandHost=container.querySelector('[data-help-band]');
+      // What the band ranks by: live items with the student's own done marks (checked off, progress done), kept while
+      // neither the items nor the marks change.
+      const bandFacts=()=>{
+        const items=normalizeData(settings()).items,tasks=personal?.tasks||{};
+        if(bandFactsMemo[0]===items&&bandFactsMemo[1]===tasks)return bandFactsMemo[2];
+        const out=items.map(it=>{const t=tasks[it?.id];return t&&(t.checkedOff===true||t.progress==='done')?{...it,checkedOff:t.checkedOff===true,progress:t.progress}:it;});
+        bandFactsMemo=[items,tasks,out];
+        return out;
+      };
+      if(bandHost&&Band){
+        const agent=personal.toolbox?.agent,grades=ctx.s.showGrades===true&&agent?.settings?.grades===true;
+        // The band's signature: the study read's (made once per read), whether grade cards show, and the agent runs' ids,
+        // states and action outcomes. Card bodies are not stringified on every render.
+        const runs=(agent?.runs||[]).filter(run=>grades||!run?.grades),
+          cards={...Object.fromEntries(Object.entries(studyAids).filter(([,aid])=>grades||!aid?.gradeAccess)),...Band.agentAids({...agent,runs})},
+          signature=(grades?'g':'')+'|'+studyBandSignature+'|'+runs.map(run=>String(run?.id)+':'+String(run?.status)+':'+(run?.actions||[]).map(e=>String(e?.outcome||'')).join(',')).join(';');
+        setProp(bandHost,'hidden',ctx.s.showHelp===false);
+        // One question, one answer: the engine reuses today's Canvas brief and saves the answer as Help cards.
+        const askHelp=askHelpNow=async(text,extra={})=>{const runtime=root.chrome?.runtime;if(!runtime?.sendMessage||!studyScope)return {ok:false,message:'Help needs a signed-in Canvas page.'};
+         const items=buildContext().items||[],
+           open=workspace==='work'&&readerOpen&&selectedId?items.find(x=>String(x.id)===String(selectedId)):null,
+           item=extra.itemId?items.find(x=>String(x.id)===String(extra.itemId))||null:open;
+         const plain=v=>
+           String(v||'').replace(/<(br|p|li|div|h\d|tr)\b[^>]*>/gi,'\n').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/[ \t]+/g,' ').replace(/\n\s*\n+/g,'\n').trim();
+         let day;
+         try{day=new Intl.DateTimeFormat('en-CA',{timeZone:settings().timeZone||undefined,year:'numeric',month:'2-digit',day:'2-digit'}).format(Date.now());}catch{day=new Date().toISOString().slice(0,10);}
+         const card=extra.card?(String(extra.card.headline||'')+'\n'+String(extra.card.text||'')).trim().slice(0,6000):'',
+           about=item?
+             {itemId:String(item.id),courseId:String(item.courseId),itemTitle:String(item.name||'').slice(0,300),itemText:plain(item.description).slice(0,6000)}:
+             extra.itemId?
+               {itemId:String(extra.itemId),courseId:String(extra.courseId||''),itemTitle:String(extra.itemTitle||'').slice(0,300)}:
+               state.courseId&&state.courseId!=='all'?{courseId:String(state.courseId)}:{};
+         const reply=await Promise.resolve(runtime.sendMessage({
+           target:'ch-ai-engine',
+           op:'ask',
+           scopeKey:studyScope,
+           requestId:String(root.crypto?.randomUUID?.()||Date.now()).replace(/[^\w-]/g,''),
+           day,
+           question:text,
+           ...about,
+           ...(card?{card}:{}),
+           ...(card&&/^[\w:.-]{1,120}$/.test(String(extra.card.key||''))?{cardKey:String(extra.card.key)}:{}),
+           ...(typeof extra.pasted==='string'&&extra.pasted.trim()?{pasted:extra.pasted.slice(0,30000),pastedTitle:String(extra.pastedTitle||'').slice(0,160)}:{}),
+           ...(['auto','test','reading','translate','examples'].includes(extra.make)&&(about.itemId||Array.isArray(extra.items)&&extra.items.length)?{make:extra.make}:{}),
+           ...(extra.more===true?{more:true}:{}),
+           ...(Array.isArray(extra.items)&&extra.items.length?
+             {items:extra.items.slice(0,3).map(it=>({itemId:String(it.itemId||''),courseId:String(it.courseId||''),itemTitle:String(it.itemTitle||'').slice(0,300)}))}:
+             {})
+         })).catch(error=>
+           ({ok:false,error:String(error?.message||error)}));
+         return reply?.ok?{ok:true,status:'Asking your AI',run:reply.result||null}:{ok:false,message:reply?.error||'Help is unavailable here. Your question is kept.'};};
+        if(bandHost!==helpBandHost){
+          helpBand?.destroy();
+          helpBandHost=bandHost;
+          helpBandSignature=signature;
+          helpBand=Band.renderBand(bandHost,cards,{env:root,scope:studyScope,store:studyStore,timeZone:()=>settings().timeZone,itemFacts:bandFacts,onPrepare:()=>{
+            if(!agentController?.prepareNow)throw Error('Turn on Your AI in Tools first.');
+            return agentController.prepareNow();
+          },onPrepareSettings:()=>toolbox?.open('ai'),aiChoice:()=>{
+            const a=personal?.toolbox?.agent?.settings;
+            return !agentController||demo||a?.on===false||(a?.way&&a.way!=='web')?'':a?.provider||'chatgpt';
+          },effortChoice:()=>personal?.toolbox?.agent?.settings?.effort||'',onEffortChoice:async effort=>{
+            if(!agentController?.settings)throw Error('Turn on Your AI in Tools first.');
+            await agentController.settings({effort});
+          },onAiChoice:async provider=>{
+            if(!agentController?.settings)throw Error('Turn on Your AI in Tools first.');
+            await agentController.settings({provider});
+            await root.chrome?.runtime?.sendMessage?.({target:'ch-ai-engine',op:'ai-access',scopeKey:studyScope,provider});
+          },onAiCheck:async()=>{
+            let day;
+            try{day=new Intl.DateTimeFormat('en-CA',{timeZone:settings().timeZone||undefined,year:'numeric',month:'2-digit',day:'2-digit'}).format(Date.now());}catch{day=new Date().toISOString().slice(0,10);}
+            const reply=await root.chrome?.runtime?.sendMessage?.({target:'ch-ai-engine',op:'check',scopeKey:studyScope,requestId:root.crypto.randomUUID(),day});
+            if(!reply?.ok)throw Error(reply?.error||'The test could not start.');
+            return reply.result;
+          },prepareChoice:()=>{
+            const a=personal?.toolbox?.agent;
+            return {show:!!agentController&&!demo&&a?.settings?.on!==false&&a?.everyDayChosen!==true,cap:a?.settings?.dailyCap??3};
+          },onPrepareChoice:everyDay=>{
+            if(!agentController?.settings)throw Error('Turn on Your AI in Tools first.');
+            return agentController.settings({everyDay});
+          },onPrepareReply:run=>toolbox?.openPrepareReply(run),onAsk:(text,extra)=>askHelp(text,extra),helpItems:()=>{
+            const s=settings(),{courses,items}=normalizeData(s),now=Date.now(),day=new Intl.DateTimeFormat('en-US',{weekday:'short',timeZone:s.timeZone||undefined});
+            return Model.filterAssignments(items,{mode:'actionable',courseId:'all',now,timeZone:s.timeZone,local:personal.tasks||{}}).items.filter(i=>!i.personal&&/^[\w:.-]{1,60}$/.test(String(i.id))).slice(
+              0,
+              14).map(i=>
+              ({
+                id:String(i.id),
+                courseId:String(i.courseId),
+                title:String(i.name||''),
+                course:String(courses.find(c=>String(c.id)===String(i.courseId))?.name||''),
+                when:dateMs(i.dueAt)!==null?day.format(dateMs(i.dueAt)):''
+              }));
+          },onDocsAccess:()=>Promise.resolve(root.chrome?.runtime?.sendMessage({target:'ch-ai-engine',op:'docs-access',scopeKey:studyScope})).catch(()=>{}),onProgress:async(key,progress)=>{
+            const saved=await studyStore.progress(studyScope,key,progress);
+            if(saved)studyAids[key]=saved;
+          },onTool:tool=>root.CanvasHarnessStudyTools.execute(tool,{scopeKey:studyScope,context:buildContext(),snapshot:buildContext()}),onError:error=>{
+            transientStatus=String(error.message||error);
+            updateStatus();
+          }});
+        }
+        else if(signature!==helpBandSignature){helpBandSignature=signature;helpBand.update(cards);}else helpBand.refresh?.();
+      }else if(helpBand){helpBand.destroy();helpBand=null;helpBandHost=null;helpBandSignature='';}
+      // Reset before motion measures the shared column.
       gradeImpact?.ensure({...ctx,workspace,workPage:workspace==='work'?workPage:'',state,user:currentSnapshot.user,gradeImpactRevision:currentSnapshot.fetchedAt});
-      // Preserve the column node; a newly chosen tab still starts at its top.
-      // Reset before motion reads visibility, including when the old body was scrolled.
       if(resetWorkspaceScroll&&!scrollReset){const column=container.querySelector('.rd-shell > .rd-workspace');if(column?.scrollTop)column.scrollTop=0;}
       // Arrange has now installed the final layout. Measure its layout before motion paints a drag spring
       // and before the next timer/frame, so course rows cannot linger at a compressed intermediate size.
@@ -1862,7 +2300,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         readerLayout?.disconnect();
         if(!restoreReaderScroll()&&reader&&pendingReaderScroll)readerLayout?.observe(reader);
       }
-      remember();
+      watchScrollBoxes();remember();
       if(focus?.section){Array.from(container.querySelectorAll?.('details[data-rd-section]')||[]).find(el=>el.dataset.rdSection===focus.section)?.querySelector('summary')?.focus({preventScroll:true});}
       if(focus&&!focus.materialTitle&&!focus.section){
         const selector=(focus.field?`[data-rd-field="${focus.field}"]`:`[data-rd-action="${focus.action}"]`)+`${focus.id?`[data-id="${focus.id}"]`:''}${focus.setting?`[data-setting="${focus.setting}"]`:''}${focus.mode?`[data-mode="${focus.mode}"]`:''}${focus.day?`[data-day="${focus.day}"]`:''}${focus.accent?`[data-accent="${focus.accent}"]`:''}${focus.tab?`[data-tab="${focus.tab}"]`:''}${focus.choice!=null?`[data-value=${JSON.stringify(String(focus.choice))}]`:''}${focus.entry!=null?`[data-entry=${JSON.stringify(String(focus.entry))}]`:''}`;
@@ -1895,10 +2333,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(materialPage)materialPage.scrollTop=materials?.pageScroll(materialPage.dataset.materialCourse,materialPage.dataset.materialResource)||0;
       const requested=materials?.takeFocusRequest();let materialFocus;
       if(requested?.type==='title'||focus?.materialTitle)materialFocus=container.querySelector('#rd-material-title');
+      // Teacher-material lists (Materials, the Course hub and its deck copy): a chapter link lands on its
       if(requested?.type==='resource')
         materialFocus=Array.from(container.querySelectorAll?.('[data-rd-action="material-read"]')||[]).find(el=>el.dataset.resource===requested.id&&el.dataset.course===requested.courseId)||
           container.querySelector('[data-rd-field="material-query"]');
-      // Teacher-material lists (Materials, the Course hub and its deck copy): a chapter link lands on its
       // chapter's head, "Show all" on the first item it revealed, "Show fewer" back on its own control.
       const hubRequest=hub?.takeFocusRequest?.(),list=['chapter','row','more'].includes(requested?.type)?requested:hubRequest;
       if(list?.type==='chapter')materialFocus=Array.from(container.querySelectorAll?.('.rd-chapter-head[data-chapter]')||[]).find(el=>el.dataset.chapter===list.id&&el.dataset.course===list.courseId);
@@ -1908,8 +2346,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(list?.type==='own')
         materialFocus=Array.from(container.querySelectorAll?.(list.field?`[data-rd-field="${list.field}"]`:`[data-rd-action="${list.action}"]`)||[]).find(el=>
           el.dataset.course===list.courseId&&el.dataset.place===list.place&&(!list.file||el.dataset.file===list.file));
-      if(materialFocus){materialFocus.focus({preventScroll:true});if(requested?.type==='title'&&root.innerWidth<=1200)materialFocus.scrollIntoView({block:'start',behavior:'instant'});
-        // The page glides to a chapter only for a pointer under Gentle motion; keyboard, Still, Off and reduced motion jump at once.
+      // The page glides to a chapter only for a pointer under Gentle motion; keyboard, Still, Off and reduced motion jump at once.
+      if(materialFocus){
+        materialFocus.focus({preventScroll:true});
+        if(requested?.type==='title'&&(root.ReservePageWidth?.()??root.innerWidth)<=1200)materialFocus.scrollIntoView({block:'start',behavior:'instant'});
         if(list?.type==='chapter')
           materialFocus.scrollIntoView({
             block:'start',
@@ -1928,7 +2368,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const button=container.querySelector('[data-rd-action="refresh"]'),
         synced=/^Updated (.+)$/.exec(text),
         failed=/^Refresh failed/.test(text),
-        title=refreshing?'Syncing with Canvas?':synced?'Synced with Canvas ? '+synced[1]:failed?text+' ? click to try again':text||'Refresh Canvas data';
+        title=refreshing?'Syncing with Canvas…':synced?'Synced with Canvas · '+synced[1]:failed?text+' · click to try again':text||'Refresh Canvas data';
       if(button){
         if(button.getAttribute('title')!==title)button.setAttribute('title',title);
         if(failed&&!refreshing){if(button.getAttribute('data-tone')!=='danger')button.setAttribute('data-tone','danger');}else if(button.hasAttribute('data-tone'))button.removeAttribute('data-tone');
@@ -1936,13 +2376,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
 
     // On Home and the course pages the clock alone changes what is drawn only at known moments: an hour turning in the
-    // account's zone or this computer's (the greeting, and every calendar day: Today, Tomorrow, the week, plans), 24 hours
-    // before a due time (Due within 24 hours), just after it (Overdue, Up next, the clock's next due), 14 days after it
-    // (the work leaves the list) and a minute before an "Updated" date. Between those moments the minute tick only
-    // rewrites the status line: a whole render there froze the banner for a moment every minute on a slow computer. The
-    // clock's time and countdown keep their own 15 s tick (widgets.js) and the focus clock its 1 s tick (syncFocus). No
-    // page goes longer than FRESH_MS without a whole render, for anything these moments miss; the other workspaces
-    // (Materials' "Saved 5 min ago", the Planner's two-minute undo list) render every minute as before.
+    // account's zone or this computer's (the greeting, and every calendar day: Today, Tomorrow, the week, plans, "Updated
+    // yesterday"), 24 hours before a due time (Due within 24 hours), just after it (Overdue, Up next, the clock's next
+    // due), 14 days after it (the work leaves the list) and a minute before an "Updated" date. Between those moments the
+    // minute tick only rewrites the status line: a whole render there froze the banner for 0.3-0.7 s every minute on a
+    // real Canvas page (owner's Edge, 2026-10-28; perf loops-2). The clock's time and countdown keep their own 15 s tick
+    // (widgets.js) and the focus clock its 1 s tick (syncFocus). No page goes longer than FRESH_MS without a whole render,
+    // for anything these moments miss; the other workspaces (Materials' "Saved 5 min ago", the Planner's two-minute undo
+    // list) render every minute as before.
     const FRESH_MS=600000;
     // Zones sit whole minutes from UTC, so a local hour turns when the local minute count reaches 60. A minute that
     // cannot be read counts as now: the next tick renders, as before.
@@ -1997,8 +2438,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const text=running?C.focusClock?.(f,now)||'':focusDoneUntil?'Done':'',clock=container.querySelector('[data-rd-focus-clock]');
       if(clock&&clock.textContent!==text){clock.textContent=text;clock.hidden=!text;clock.parentElement?.setAttribute('aria-label',running?'Planner, focus session running':'Planner');}
       if(running&&now>=f.endsAt&&!focusSettling&&C.settleFocus){
-        focusSettling=true;let settled=false;const ended=f.endsAt;
         // A session that ended long before this page opened is recorded quietly.
+        focusSettling=true;let settled=false;const ended=f.endsAt;
         store.update(data=>{settled=C.settleFocus(data,Date.now());}).then(()=>{
           if(settled&&!destroyed&&Date.now()-ended<60000){board?.finished('focus');focusDoneUntil=Date.now()+8000;if(!transientStatus){transientStatus=note;render();}else syncFocus();}
         }).catch(()=>{}).finally(()=>{
@@ -2016,7 +2457,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       render();
       try{
         const result=await refresh();
-        if(result&&Array.isArray(result.courses)&&Array.isArray(result.assignments)){currentSnapshot=result;normalizedCache=null;contentCache.clear();}
+        if(result&&Array.isArray(result.courses)&&Array.isArray(result.assignments)){currentSnapshot=result;normalizedCache=null;contentCache.clear();visitAgent();}
         transientStatus='';
       }catch(error){
         transientStatus=`Refresh failed${error?.message?`: ${error.message}`:''}`;
@@ -2029,12 +2470,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     function fieldEnabled(target){
       const field=target?.dataset?.rdField,key=target?.dataset?.setting;
+      if(container.dataset.chLinksPending&&(field?.startsWith('preferences-')||field?.startsWith('make-')))return false;
       if(field?.startsWith('hub-own-'))return !container.dataset.chLinksPending&&enabled('course-files')&&enabled('course-hub');
-      if(field==='setting'){
-        if(key==='showGrades')return enabled('grades');if(!enabled('customization'))return false;
+      if(field?.startsWith('make-'))return enabled('customization');
+      if(field==='legacy-image')return !container.dataset.chLinksPending&&enabled('customization')&&enabled('course-art');
+      if(field==='setting'){if(key==='showGrades')return enabled('grades');if(!enabled('customization'))return false;
         const feature={
           sceneTheme:'scene-themes',
-          dockSize:'arrange',
           motion:'motion',
           livingArt:'motion',
           nightArt:'course-art',
@@ -2045,22 +2487,20 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           showRecentGrades:'grades',
           deskOrder:'arrange',
           dashboardLayout:'arrange',
-          courseNavigation:'arrange'
+          courseNavigation:'arrange',
+          dockSize:'arrange'
         }[key];
-        return (!feature||enabled(feature))&&(key!=='livingArt'||enabled('course-art'));
+        return !feature||enabled(feature);
       }
-      if(field?.startsWith('make-'))return enabled('customization');
-      if(field?.startsWith('kit-'))return enabled('customization')&&enabled('course-art');
-      if(field?.startsWith('review-deck-'))return root.ReserveFeatures?.enabled('review-deck')===true;
-      if(field?.startsWith('quick-pack'))return enabled('quick-pack');
-      if(field?.startsWith('art-')||field==='customize-course')return enabled('customization')&&enabled('course-art');
+      if(field?.startsWith('quick-pack-'))return enabled('customization')&&enabled('course-art')&&enabled('quick-pack');
+      if(field?.startsWith('kit-')||field?.startsWith('art-')||field==='customize-course')return enabled('customization')&&enabled('course-art');
       if(field==='pet')return enabled('customization')&&enabled('pony');
+      if(field==='graphics-detail')return enabled('customization');
       if(['course-name','course-color','course-visible'].includes(field))return enabled('customization');
       if(field==='canvas-nav')return enabled('customization')&&enabled('canvas-nav');
       if(field?.startsWith('hub-'))return enabled('course-hub');
       if(field?.startsWith('material-'))return enabled('materials');
       if(field==='grade-query')return enabled('grades');
-      if(field?.startsWith('plan-')||field==='widget-notes')return enabled('planner');
       return true;
     }
     function onInput(event){
@@ -2073,11 +2513,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }
       const field=event.target?.dataset?.rdField;
       if(field==='hub-own-files')return;
+      if(field==='make-week'){makeOwn?.week(event.target.value);return;}
       if(board?.input(event))return;
       if(field?.startsWith('review-deck-')){reviewDeck?.input(event);return;}
-      if(field==='make-week'){makeOwn?.week(event.target.value);return;}
-      if(field==='kit-name'){kitName=event.target.value.slice(0,40);return;}
       if(field==='quick-pack-source'){quickPackDraft=event.target.value.slice(0,3145728);quickPackFileName='';quickPackError='';return;}
+      if(field==='kit-name'){kitName=event.target.value.slice(0,40);return;}
       if(field==='art-source'){
         const {course,kind}=event.target.dataset;
         if(validArtTarget(course)&&['banner','card','background','icon','border','title'].includes(kind))customizeDrafts[course+':'+kind]=event.target.value.slice(0,262144);
@@ -2087,7 +2527,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(field?.startsWith('material-')){materials?.input(field,event.target.value);return;}
       if(field==='new-step'&&/^(?:\d+|local-[\w-]+)$/.test(event.target.dataset.id||'')){stepDrafts.set(event.target.dataset.id,event.target.value.slice(0,300));return;}
       // A search keeps its query at once and draws the list before the next paint (focus and caret are restored then),
-      // so keys that queued behind a long render share one render instead of one each.
+      // so keys that queued behind a long render share one render instead of one each (perf interaction-3).
       if(field==='overview-query'){overviewQuery=event.target.value.slice(0,200);scheduleRender();return;}
       if(field==='grade-query'){gradeQuery=event.target.value.slice(0,200);gradeLimit=40;scheduleRender();return;}
       if(field!=='query'){
@@ -2106,11 +2546,34 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function onChange(event){
       if(!fieldEnabled(event.target))return;
       const field=event.target?.dataset?.rdField;
+      if(field==='preferences-backup'){const file=event.target.files?.[0];event.target.value='';void preferences?.change(file);return;}
+      if(field==='preferences-timezone'){void preferences?.setting('timeZone',event.target.value);return;}
       if(field==='hub-own-files'){const files=Array.from(event.target.files||[]);event.target.value='';void hub?.input(field,files,event.target.dataset);return;}
-      if(board?.change(event))return;
       if(field==='make-file'){const file=event.target.files?.[0];event.target.value='';void makeOwn?.choose(file);return;}
       if(field==='make-week'){makeOwn?.week(event.target.value);return;}
-      if(field==='kit-import'){void runKit('kit-import',event.target);return;}
+      if(field==='legacy-image'){const file=event.target.files?.[0];event.target.value='';void replaceLegacyImage(event.target.dataset.id,file);return;}
+      if(['make-color','make-part','make-motion','make-pose'].includes(field)){
+        const node=event.target,
+          patch=field==='make-color'?
+            {colors:{[node.dataset.mode]:{[node.dataset.color]:node.value}}}:
+            field==='make-part'?
+              {
+                parts:{
+                  [node.dataset.part]:node.checked,
+                  ...(node.dataset.part==='frames'?{panel:node.checked,card:node.checked}:['panel','card'].includes(node.dataset.part)&&node.checked?{frames:true}:{})
+                }
+              }:
+              field==='make-pose'?{poses:{[node.dataset.pose]:node.checked}}:{motion:node.value},
+          id=node.dataset.id;
+        makeWrites=makeWrites.catch(()=>{}).then(()=>makeOwn?.action('adjust',id,{patch}));return;
+      }
+      if(field==='pet'&&event.target.dataset.key==='name'){const value=event.target.value;void savePersonal(data=>{data.pet.name=value;},'name');return;}
+      if((field==='pet'||field==='pet-skill')&&(!board||!enabled('planner'))){
+        const key=event.target.dataset.key,value=event.target.type==='checkbox'?event.target.checked:event.target.value;
+        if(field==='pet-skill'&&Object.hasOwn(root.ReservePonyBrain?.SKILLS||{},key))void savePersonal(data=>{data.pet.skills={...data.pet.skills,[key]:value===true};});
+        else if(['enabled','name','knowledge','size','roam','nudges','coat','harness','gear'].includes(key))void savePersonal(data=>{data.pet[key]=value;});return;
+      }
+      if(board?.change(event))return;
       if(field?.startsWith('review-deck-')){reviewDeck?.change(event);return;}
       const id=event.target?.dataset?.id;
       if(/^local-[\w-]+$/.test(id||'')&&['progress','check-step','personal-name','personal-due','planned-date','estimate','notes'].includes(field)){selectedId=id;readerOpen=true;}
@@ -2124,10 +2587,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(field==='quick-pack-course'){try{quickUpload?.choose(event.target.dataset.group,event.target.value||null);}catch(error){quickPackError=error.message;render();}return;}
       if(field==='quick-pack-group'){quickUpload?.includeGroup(event.target.dataset.group,event.target.checked);return;}
       if(field==='quick-pack-part'){quickUpload?.includePart(Number(event.target.dataset.index),event.target.checked);return;}
+      if(field==='kit-import'){void runKit('kit-import',event.target);return;}
       if(field==='art-upload'){void uploadArtwork(event.target);return;}
       if(field==='art-setting'){
         const key=event.target.dataset.setting,value=event.target.value;
-        if(['bannerFit','bannerPosition','titlePlacement'].includes(key)&&validArtTarget(id))savePersonal(data=>{appearanceFor(data,id)[key]=value;});return;
+        if(['bannerFit','bannerPosition','titlePlacement'].includes(key)&&validArtTarget(id))savePersonal(data=>{appearanceFor(data,id)[key]=value;});
+        // A course's drawing (course-art.js choices); Automatic ('') goes back to the one its name picks.
+        else if(key==='subjectArt'&&id!=='all'&&id!=='theme'&&validArtTarget(id)&&(value===''||root.ReserveCourseArt?.choices?.().some(x=>x.id===value)))
+          savePersonal(data=>{const pref=appearanceFor(data,id);if(value)pref.subjectArt=value;else delete pref.subjectArt;});
+        return;
       }
       // Canvas's menu bar is stored where canvas-nav.js and the popup read it; every open Canvas page follows at once.
       if(field==='canvas-nav'){
@@ -2137,12 +2605,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         root.chrome?.storage?.local?.set?.({'reserve:canvasNav':value})?.catch?.(()=>{});
         return;
       }
+      if(field==='graphics-detail'){
+        const key=event.target.dataset.detail,value=event.target.value;
+        void savePersonal(data=>{data.settings.graphicsDetail=root.ReserveCustomization.graphicsDetail({...data.settings.graphicsDetail,[key]:value});});
+        return;
+      }
       if(field==='setting'){
         const key=event.target.dataset.setting;
         if(![
           'theme',
           'accent',
           'motion',
+          'graphics',
           'livingArt',
           'readingFont',
           'greeting',
@@ -2194,17 +2668,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }
     }
 
-    let tabAt=0;   // when Tab was last pressed (onKeydown): a focus loss right after it is the student tabbing on
+    // when Tab was last pressed (onKeydown): a focus loss right after it is the student tabbing on
+    let tabAt=0;
     function onFocusout(event){
       // Some input methods report input and blur without a change event.
       if(['course-name','estimate','planned-date','notes','personal-name','personal-due'].includes(event.target?.dataset?.rdField))onChange(event);
-      onHeaderFocusout(event);
       // Phones: Tab or Shift+Tab out of the open drawer closes it (it is non-modal), so focus never sits
+      onHeaderFocusout(event);
       // under its scrim. Only a real destination counts: a lost window focus (no relatedTarget) keeps it open.
       const next=event.relatedTarget;
+      // The reader sheet makes the Canvas Harness parts it covers inert, but Tab past its last control leaves Canvas Harness for the
       if(next&&drawerOpen()&&event.target?.closest?.('.rd-course-rail')&&!container.querySelector('.rd-shell .rd-course-rail')?.contains?.(next)&&!next.closest?.('.rd-drawer-button'))
         setDrawer(false,{focus:false});
-      // The reader sheet makes the Canvas Harness parts it covers inert, but Tab past its last control leaves Canvas Harness for the
       // page around it (Canvas's own links, which the sheet may cover) or for the browser: that closes the sheet, and
       // focus stays where Tab put it. Without a destination only a Tab counts (a lost window focus keeps it open).
       else if(readerOpen&&workspace==='work'&&phone()&&event.target?.closest?.('.rd-reader')&&(next?!container.contains?.(next):Date.now()-tabAt<400)){
@@ -2285,8 +2760,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }
       selectedId=String(id);readerOpen=true;readerTab=item.personal?'plan':'details';
       render({tabMotion:event.detail>0,motionTarget:'.rd-reader-content',motionKind:'reader',snapshot});
-      const panel=container.querySelector('.rd-reader'),rect=panel?.getBoundingClientRect?.();
       // A desktop preview stays beside the list. Only reveal an offscreen pane.
+      const panel=container.querySelector('.rd-reader'),rect=panel?.getBoundingClientRect?.();
       if(rect&&(rect.top<0||rect.top>root.innerHeight-100))panel.scrollIntoView({block:'start',behavior:'instant'});
       if(!event.detail)container.querySelector('#rd-reader-title')?.focus({preventScroll:true});
     }
@@ -2317,23 +2792,23 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     async function checkOff(id,done,event,snapshot=null){
       const item=buildContext().items.find(item=>item.id===id);
       if(!item||checkingOff.has(id))return;
-      checkingOff.add(id);checkOffNotice=null;
       // A pointer check-off that removes the row plays its exit first, because
+      checkingOff.add(id);checkOffNotice=null;
       // the store update re-renders the list synchronously.
       const ctx=buildContext();
       const leaves=done&&
         !Model.filterAssignments(ctx.items,{...state,now:ctx.now,timeZone:ctx.s.timeZone,local:{...ctx.local,[id]:{...ctx.local[id],checkedOff:true}}}).items.some(x=>
           x.id===id);
-      const exit=leaves&&event.detail>0&&container.dataset.input==='pointer'?motion?.leave?.(container.querySelector(`.rd-assignment[data-preview-id="${id}"]`)):null;
       // The row that slides up under a resting cursor must not show a hover tick it never earned.
+      const exit=leaves&&event.detail>0&&container.dataset.input==='pointer'?motion?.leave?.(container.querySelector(`.rd-assignment[data-preview-id="${id}"]`)):null;
       if(exit)container.dataset.hoverHold='true';
       if(exit)await exit.finished;
       const saved=await savePersonal(data=>{data.tasks[id]={...data.tasks[id],checkedOff:done};});
       checkingOff.delete(id);
       if(!saved||destroyed){exit?.cancel();return;}
       checkOffNotice=done?{id,name:item.name}:null;
-      if(done)board?.finished('done',id);
       // A departed row already closed its gap; a row that stays or returns
+      if(done)board?.finished('done',id);
       // gets a short entrance of its own instead of replaying the whole list.
       render(exit?{}:{tabMotion:event.detail>0,motionTarget:`.rd-assignment[data-preview-id="${id}"]`,motionKind:'filter',snapshot});
       exit?.cancel();
@@ -2349,8 +2824,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function setDrawer(open,{focus=true}={}){
       const trigger=container.querySelector('.rd-drawer-button'),within=container.querySelector('.rd-shell .rd-course-rail')?.contains?.(container.getRootNode?.()?.activeElement);
       if(open)container.dataset.drawer='open';else delete container.dataset.drawer;
-      trigger?.setAttribute('aria-expanded',String(open));queueRail();
       // Like the Tools dock, the open drawer lifts the host's paint isolation so it covers Canvas's own chrome.
+      trigger?.setAttribute('aria-expanded',String(open));queueRail();
       container.getRootNode?.()?.host?.toggleAttribute?.('data-reserve-drawer',open);
       if(focus&&open)container.querySelector('.rd-drawer-close')?.focus({preventScroll:true});
       else if(focus&&(within||!container.contains?.(container.getRootNode?.()?.activeElement)))trigger?.focus({preventScroll:true});
@@ -2371,58 +2846,49 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
 
     function actionEnabled(action,button){
+      if(container.dataset.chLinksPending&&(action?.startsWith('preferences-')||action?.startsWith('make-')))return false;
       if(action?.startsWith('hub-own-'))return !container.dataset.chLinksPending&&enabled('course-files')&&enabled('course-hub');
+      if(action?.startsWith('make-'))return enabled('customization');
       const feature={
         'deadline-changes':'deadline-changes',
         planner:'planner',
         grades:'grades',
         'more-grades':'grades',
         'grades-visibility':'grades',
-        settings:'customization',
-        'settings-close':'customization',
         'hidden-courses':'customization',
-        'customize-tab':'customization',
-        'advanced-settings':'customization',
-        'reset-appearance':'customization',
         accent:'customization',
         theme:'customization',
         'course-up':'customization',
         'course-down':'customization',
+        'layout-preset':'arrange',
+        'layout-reset':'arrange',
         toolbox:'tools',
         capture:'tools',
         'selection-ai':'ai',
         'select-source':'ai',
         'open-hub':'course-hub',
-        'open-materials':'materials',
-        'timer-toggle':'planner',
-        'timer-reset':'planner',
-        'timer-minutes':'planner',
-        'timer-focus':'planner'
+        'open-materials':'materials'
       }[action];
       if(feature&&!enabled(feature))return false;
-      if(action?.startsWith('make-'))return enabled('customization');
-      if(action?.startsWith('kit-'))return enabled('customization')&&enabled('course-art');
-      if(action?.startsWith('review-deck-'))return root.ReserveFeatures?.enabled('review-deck')===true;
-      if(action==='room-open'||action==='room-close')return root.ReserveFeatures?.enabled('focus-room')===true;
-      if(action?.startsWith('quick-pack'))return enabled('quick-pack');
+      if(action==='customize-tab')return ['features','settings'].includes(button?.dataset.value)||enabled('customization')&&(root.ReserveCustomizeUI?.tabs()||[]).some(([key])=>key===button?.dataset.value);
       if(action?.startsWith('layout-'))return enabled('customization')&&enabled('arrange');
       if(action?.includes('capture')&&!enabled('tools'))return false;
       if(['selection-ai','capture','toolbox'].includes(action)&&!enabled('tools'))return false;
-      if(action?.startsWith('art-')||action==='course-reset')return enabled('customization')&&enabled('course-art')&&!!root.ReserveCustomArt;
+      if(action?.startsWith('quick-pack-'))return enabled('customization')&&enabled('course-art')&&enabled('quick-pack');
+      if(action?.startsWith('kit-')||action?.startsWith('art-')||action==='course-reset')return enabled('customization')&&enabled('course-art')&&!!root.ReserveCustomArt;
       if(action?.startsWith('hub-'))return enabled('course-hub');
       if(action?.startsWith('material-'))return enabled('materials');
       if(action?.startsWith('arrange-'))return enabled('arrange');
-      if(action?.startsWith('pet-'))return enabled('pony')&&enabled('planner');
-      if(action?.startsWith('plan-')||action?.startsWith('board-')||action?.startsWith('widget-'))return enabled('planner');
-      if(action?.startsWith('module-'))return enabled('planner')&&enabled('arrange');
+      if(action==='open-aid')return enabled('ai')&&enabled('tools');
       if(action==='workspace'||action==='course-section')return workspaceEnabled(button.dataset.tab);
       return true;
     }
     function onClick(event){
       const candidate=event.target.closest?.('[data-rd-action]');
       if(candidate&&!actionEnabled(candidate.dataset.rdAction,candidate))return;
+      if(candidate?.dataset.rdAction?.startsWith('preferences-')){void preferences?.action(candidate.dataset.rdAction.slice(12));return;}
       if(candidate?.dataset.rdAction==='customize-tab'){
-        customizeTab=candidate.dataset.value||'look';
+        customizeTab=candidate.dataset.value||'layout';
         if(!renderPanel())render();
         container.querySelector('.cz-tab[aria-selected="true"]')?.focus({preventScroll:true});
         return;
@@ -2430,11 +2896,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(candidate?.dataset.rdAction==='hidden-courses')customizeTab='courses';
       if(arrange?.click(event))return;
       if(board?.click(event))return;
-      const button=event.target.closest?.('[data-rd-action]');
       // FIRST for pointer motion: a read-only snapshot of what is painted, taken
+      const button=event.target.closest?.('[data-rd-action]');
       // before any state changes and handed to render. Keyboard clicks (detail 0) take none.
-      const take=()=>event.detail>0?motion?.snapshot?.(event.target)||null:null;
       // Phones: the rail is a drawer. A click outside it (on the scrim) only closes it; a pick
+      const take=()=>event.detail>0?motion?.snapshot?.(event.target)||null:null;
       // inside closes it too and hands focus back to its trigger, never to a hidden tab.
       if(drawerOpen()){
         const inside=event.target.closest?.('.rd-course-rail');
@@ -2457,7 +2923,6 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // a way to another page from outside a room closes the room first
       if(room&&!room.layer.contains(button)&&['open-materials','open-hub','overview-all','grades','preview','course-section','native'].includes(action))dropRoom();
       if(arrange?.action(button))return;
-      if(action==='deadline-changes'){deadlineChanges?.open(button);return;}
       if(action==='drawer'){setDrawer(!button.dataset.close&&container.dataset.drawer!=='open');return;}
       // Grades' inline "Show grades" runs the same path as the toolbar switch.
       if(action==='grades-visibility'){
@@ -2476,7 +2941,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(action==='select-source'){const id=button.dataset.source;if(typeof id==='string'&&/^(?:assignment|page|file|home|syllabus|announcement):/.test(id))toggleSelection(id);return;}
       if(action==='selection-clear'){selectionIds.clear();render();toolbox?.update();return;}
       if(action==='selection-ai'){toolbox?.open('ai',button);return;}
+      if(action==='deadline-changes'){deadlineChanges?.open(button);return;}
+      if(action==='help-this'){helpWithItem({itemId:button.dataset.id,page:readerTab==='plan'?'notes':'assignment',selectedText:root.getSelection?.()?.toString()||''});return;}
+      if(action==='open-aid'){toolbox?.openAid(button.dataset.aidKey);return;}
       if(action==='selection-archive'||action==='selection-undo'){void archiveSelection(action==='selection-undo');return;}
+      if(action==='machine-low'||action==='machine-keep'){
+        void savePersonal(data=>{data.settings.graphicsTold=true;if(action==='machine-low'){data.settings.graphics='low';delete data.settings.graphicsDetail;data.pet.knowledge='lite';}});
+        return;
+      }
       if(action==='check-off'||action==='undo-check-off'){checkOff(String(button.dataset.id),action==='check-off',event,snapshot);return;}
       if(action==='overview-view'){
         overviewMode=button.dataset.mode==='completed'?'completed':'actionable';
@@ -2497,7 +2969,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(action==='course-section'){
         const id=String(button.dataset.id),next=button.dataset.tab;
         if(!normalizeData(settings()).courses.some(course=>course.id===id)||!['work','hub','materials','inbox'].includes(next))return;
-        savedWorkspace=null;captureCourseView();switchCourse(id);workspace=next;
+        captureCourseView();switchCourse(id);workspace=next;
         if(next==='work'){state.query='';state.mode='actionable';state.day='';readerOpen=false;}
         materials?.activate(id);
         if(next==='inbox')hub?.setCourse?.(id);
@@ -2505,7 +2977,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(next==='hub')hub?.loadCourse(id);if(next==='materials')materials?.load(id);if(next==='inbox')hub?.loadInbox();
         container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});
         const heading=container.querySelector('.rd-page-heading, .rd-workspace-heading'),rect=heading?.getBoundingClientRect?.();
-        if(rect&&(above(rect)||rect.top>root.innerHeight-100))heading.scrollIntoView({block:'start',behavior:'instant'});return;
+        if(rect&&(above(rect)||rect.top>root.innerHeight-100))heading.scrollIntoView({block:'start',behavior:'instant'});
+        return;
       }
       if(action==='workspace'||action==='open-materials'||action==='open-hub'){selectWorkspace(action,button,event,snapshot);return;}
       if(action==='capture'){toolbox?.open('plan',button);return;}
@@ -2529,8 +3002,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(section){section.open=true;section.querySelector?.('summary')?.focus?.();section.scrollIntoView?.({block:'nearest'});}
         return;
       }
-      if(action==='accent'){const accent=button.dataset.accent;if(Object.hasOwn(ACCENTS,accent)||/^#[\da-f]{6}$/i.test(accent))savePersonal(data=>{data.settings.accent=accent;});return;}
-      if(action==='advanced-settings'){openPlanner({page:'settings'});return;}
+       if(action==='accent'){const accent=button.dataset.accent;if(Object.hasOwn(ACCENTS,accent)||/^#[\da-f]{6}$/i.test(accent))void saveAppearance('accent',accent);return;}
       if(action==='grades'){workspace='grades';render({tabMotion:event.detail>0,motionTarget:'.rd-workspace',snapshot});return;}
       if(action==='more-grades'){gradeLimit+=40;render();return;}
       if(action==='course'){
@@ -2576,7 +3048,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(action==='pin'){
         const id=String(button.dataset.id);
         if(!/^(?:\d+|local-[\w-]+)$/.test(id))return;
-        savePersonal(data=>{data.tasks[id]={...data.tasks[id],pinned:!data.tasks[id]?.pinned};});return;
+        void bookmarkItem(id);return;
       }
       if(action==='reset'){
         captureCourseView();
@@ -2591,10 +3063,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }
       if(action==='glance'){
         // A summary chip filters to its view; choosing it again returns to Up next.
-        const mode=['overdue','today','tomorrow'].includes(button.dataset.mode)?button.dataset.mode:'actionable';
+        const mode=['overdue','today','tomorrow','new'].includes(button.dataset.mode)?button.dataset.mode:'actionable';
         const fromOtherWorkspace=workspace!=='work';
         if(fromOtherWorkspace){captureCourseView();workspace='work';workPage='assignments';board?.close();}
         readerOpen=false;state.mode=!fromOtherWorkspace&&state.mode===mode&&!state.day?'actionable':mode;state.day='';visibleLimit=60;
+        if(state.mode==='new'){newShown=new Set();const c=buildContext();newShown=new Set(c.newWorkIds);markSeen(c.items);}
         render({tabMotion:event.detail>0,motionTarget:fromOtherWorkspace?'.rd-workspace':'.rd-work',motionKind:fromOtherWorkspace?'workspace':'filter',snapshot,resetWorkspaceScroll:fromOtherWorkspace});
         return;
       }
@@ -2723,7 +3196,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     function packDropTarget(event){
       if(!enabled('customization'))return null;
-      return event.target?.closest?.('[data-make-drop]')||(enabled('quick-pack')?event.target?.closest?.('[data-quick-pack-drop]'):null);
+      return event.target?.closest?.('[data-make-drop]')||(enabled('course-art')&&enabled('quick-pack')?event.target?.closest?.('[data-quick-pack-drop]'):null);
     }
     function onPackDragover(event){
       const art=artworkTarget(event);if(art&&Array.from(event.dataTransfer?.types||[]).includes('Files')){event.preventDefault();event.dataTransfer.dropEffect='copy';return;}
@@ -2758,12 +3231,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
             kit=await root.ReserveCustomKits.capture(kitName,selected,{accent:s.accent,font:s.font,bannerSize:s.bannerSize},mediaStore);
           if(destroyed)return;
           await mediaStore.saveKit(kit,mediaOptions());
+          await root.ReservePacks?.registerKit?.(kit.id,{store});
           kitName='';
         }
         else if(action==='kit-import'){
           const imported=await root.ReserveCustomKits.importKit(file);
           if(destroyed)return;
           await mediaStore.putMany(imported.media,{...mediaOptions(),kit:imported.kit});
+          await root.ReservePacks?.registerKit?.(imported.kit.id,{store});
         }
         else{const kit=customKits.find(k=>k.id===button.dataset.kit);if(!kit)return;
           if(action==='kit-remove')await mediaStore.removeKit(kit.id);
@@ -2785,9 +3260,38 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }catch(error){customizeStatus=error?.message||'This kit could not be read.';}
       finally{if(hold)await mediaStore.release(hold).catch(()=>{});customizeBusy=false;if(!destroyed)render();else mediaStore.close();}
     }
+    async function replaceLegacyImage(id,file){
+      if(!file||customizeBusy||!/^\d+$/.test(id||'')||!validArtTarget(id))return;customizeBusy=true;customizeStatus='';render();let bitmap;
+      try{
+        if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>12000000)throw Error('Choose a PNG, JPG or WebP image up to 12 MB.');
+        bitmap=await root.createImageBitmap(file);
+        if(destroyed||container.dataset.chLinksPending)return;
+        const canvas=document.createElement('canvas'),ratio=Math.min(1,900/bitmap.width,600/bitmap.height);
+        canvas.width=Math.max(1,Math.round(bitmap.width*ratio));
+        canvas.height=Math.max(1,Math.round(bitmap.height*ratio));
+        canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);
+        let image=canvas.toDataURL('image/jpeg',.82);
+        if(image.length>=400000)image=canvas.toDataURL('image/jpeg',.55);
+        if(image.length>=400000)throw Error('This image is too detailed. Choose a smaller image.');
+        await savePersonal(data=>{appearanceFor(data,id).image=image;});
+      }
+      catch(error){if(!destroyed)customizeStatus=error.message||'Could not save image.';}
+      finally{bitmap?.close();customizeBusy=false;if(!destroyed)render();}
+    }
 
     function handleCustomizeAction(action,button){
-      if(action.startsWith('make-')){void makeOwn?.action(action.slice(5),button.dataset.id);return true;}
+      if(!board&&enabled('pony')&&action==='pet-routine-remove'){void savePersonal(data=>{data.pet.routines=(data.pet.routines||[]).filter(r=>r.id!==button.dataset.id);});return true;}
+      if(!board&&enabled('pony')&&action==='pet-reset-learning'){void savePersonal(data=>{data.pet.brain=null;});return true;}
+      if(!board&&action==='board-frame'){void saveAppearance('panelFrame',button.dataset.value);return true;}
+      if(action==='legacy-image-remove'){
+        if(!customizeBusy&&!container.dataset.chLinksPending&&enabled('customization')&&enabled('course-art')&&/^\d+$/.test(button.dataset.id||'')&&validArtTarget(button.dataset.id))
+          void savePersonal(data=>{delete appearanceFor(data,button.dataset.id).image;});
+        return true;
+      }
+      if(action.startsWith('make-')){
+        void makeOwn?.action(action.slice(5),button.dataset.id,{target:button.dataset.target,piece:button.dataset.piece,slot:button.dataset.slot});
+        return true;
+      }
       if(action.startsWith('kit-')){void runKit(action,button);return true;}
       if(customizeBusy&&(action.startsWith('art-')||action==='course-reset'))return true;
       const id=button.dataset.id,kind=button.dataset.kind;
@@ -2820,11 +3324,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         customizeStatus='Course artwork reset. Your name, color and other preferences are kept.';
         void savePersonal(data=>{
           const pref=appearanceFor(data,id);
-          for(const key of [...(root.ReserveCustomization?.artKeys||[]),'bannerFit','bannerPosition','titlePlacement'])delete pref[key];
+          for(const key of [...(root.ReserveCustomization?.artKeys||[]),'bannerFit','bannerPosition','titlePlacement','subjectArt'])delete pref[key];
         });return true;
       }
-      if(action==='reset-appearance'){void savePersonal(data=>{data.settings.theme='light';data.settings.accent='clay';data.settings.density='comfortable';data.settings.font='system';});return true;}
-      if(action==='layout-preset'||action==='layout-reset'){void saveLayoutPreset(action==='layout-reset'?'studio':button.dataset.value);return true;}
+      if(action==='layout-preset'||action==='layout-reset'){
+        void saveLayoutPreset(action==='layout-reset'?'studio':button.dataset.value);return true;
+      }
       if(action==='course-up'||action==='course-down'){
         const order=normalizeData(settings()).allCourses.map(course=>course.id),from=order.indexOf(id),to=from+(action==='course-up'?-1:1);
         if(from>=0&&to>=0&&to<order.length){[order[from],order[to]]=[order[to],order[from]];void savePersonal(data=>{data.settings.courseOrder=order;});}return true;
@@ -2832,8 +3337,35 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       return false;
     }
 
+    function lookSelection(s=settings()){
+      if(root.ReserveMakeYourOwn?.activeLook)return root.ReserveMakeYourOwn.activeLook(makeOwn?.state,s);
+      const own=s.makeYourOwn||{},id=!s.sceneTheme&&own.theme?.id,key=id?'pack:'+id:s.sceneTheme?'builtin:scene:'+s.sceneTheme:null;return {key,layer:own.adjustments?.[key]||{}};
+    }
     function saveAppearance(key,value){
       if(!fieldEnabled({dataset:{rdField:'setting',setting:key}}))return Promise.resolve(false);
+      if(key==='theme'&&['light','dark'].includes(value)&&makeOwn?.state.theme&&!makeOwn.state.theme.colors?.[value]){
+        if(!makeOwn.action)return Promise.resolve(false);
+        const look=lookSelection();
+        makeWrites=makeWrites.catch(()=>{}).then(async()=>{
+          if(!look.layer.colors?.[value])await makeOwn.action('adjust',look.key,{patch:{colors:{[value]:{bg:value==='dark'?'#1f1e1d':'#faf9f5',accent:value==='dark'?DARK_ACCENTS.clay:ACCENTS.clay}}}});
+          if(!settings().makeYourOwn?.adjustments?.[look.key]?.colors?.[value])return false;
+          return savePersonal(data=>{data.settings.theme=value;});
+        });
+        return makeWrites;
+      }
+      const look=lookSelection();
+      if(key==='accent'&&look.key){
+        const color=Object.hasOwn(ACCENTS,value)?ACCENTS[value]:value,mode=settings().theme==='dark'?'dark':'light';
+        makeWrites=makeWrites.catch(()=>{}).then(()=>makeOwn?.action('adjust',look.key,{patch:{colors:{[mode]:{accent:color}}}}));
+        return makeWrites;
+      }
+      if(key==='sceneTheme'&&root.ReservePacks?.useInstalled)
+        return root.ReservePacks.useInstalled(value?'builtin:scene:'+value:'builtin:theme',{store}).then(()=>{makeOwn?.sync();render();return true;}).catch(error=>{
+          transientStatus='Could not save: '+(error?.message||'Please try again.');
+          render();
+          return false;
+        });
+        if(key==='graphics')return savePersonal(data=>{data.settings.graphics=value;delete data.settings.graphicsDetail;});
         if(key==='showGrades'){
           const version=++gradeSaveVersion;gradeVisibilityOverride=value===true;motion?.cancel();render();
           return savePersonal(data=>{data.settings.showGrades=value===true;}).then(saved=>{
@@ -2851,12 +3383,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           }
           const before=Arrange.snapshot(data.settings);
           if(key==='courseNavigation'){Arrange.change(data.settings,{type:'navigation',value});return;}
-          if(key==='showCourseInformation'){const command={type:value?'restore-context':'hide-context'};Arrange.change(data.settings,command);return;}
+          if(key==='showCourseInformation'){const command={type:value?'restore-context':'hide-context'};Arrange.change(data.settings,command);pinHomeCommand(data,command);return;}
           data.settings[key]=value;
           if(key==='deskOrder'||key==='dashboardLayout'){
             if(key==='dashboardLayout')data.settings.deskOrder=value==='list'?'stacked':'context-first';
             data.settings.dashboardLayout=data.settings.deskOrder==='stacked'?'list':'split';
             Arrange.resetCore(data.settings,before.layout);
+            pinHomeCommand(data,{type:'mode'});
             if(JSON.stringify(Arrange.snapshot(data.settings))!==JSON.stringify(before))data.settings.workspaceUndo=before;
           }
         });
@@ -2864,8 +3397,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function saveLayoutPreset(name){
       if(!enabled('customization')||!enabled('arrange'))return Promise.resolve(false);
         const model=root.ReserveCustomization;
-        const preset=model?.presets[name];
         // Presets control layout only. Recent grades, spacing, AI and course art
+        const preset=model?.presets[name];
         // remain the user's explicit choices until they edit those settings.
         const keys=['courseNavigation','dockSize','deskOrder','surfaceStyle','courseCardStyle','bannerSize','showCourseIcons','showDeadlinePreview','showBookmarks','showCourseInformation','showCourseStrip'];
         if(preset)return savePersonal(data=>{
@@ -2874,20 +3407,43 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           data.settings.dashboardLayout=data.settings.deskOrder==='stacked'?'list':'split';
           if(Arrange){
             Arrange.resetCore(data.settings,before.layout);
+            pinHomeCommand(data,{type:'mode'});
             if(JSON.stringify(Arrange.snapshot(data.settings))!==JSON.stringify(before))data.settings.workspaceUndo=before;
           }
         });return Promise.resolve(false);
     }
 
-    async function savePersonal(change){
+    async function savePersonal(change,petField){
       // The store stays silent when a save leaves the data as it was (storage.js update), so a control the store
       // cleaned back to the saved value still gets its redraw here: a fresh notify replaces `personal`.
       const personalBefore=personal;
-      try{
-        await store.update(change);
-        if(personal===personalBefore&&typeof store.subscribe==='function')scheduleRender();
-        if(!drafts.size&&transientStatus.startsWith('Could not save:')){transientStatus='';render();}
-        return true;
+      try{await store.update(data=>{
+        const previous=JSON.parse(JSON.stringify(data.pet||{})),
+          shownName=root.ReservePetArt?.identity?.(data,makeOwn?.state.pet)?.name||previous.name,
+          s=data.settings,
+          old={font:s.font,panelFrame:s.panelFrame,courseCardStyle:s.courseCardStyle},
+          look=lookSelection(s),
+          petId=s.makeYourOwn?.pet?.id;
+        change(data);
+        const layer=key=>{
+          const own=data.settings.makeYourOwn||(data.settings.makeYourOwn={theme:null,pet:null,installed:{}});
+          own.adjustments??={};
+          return own.adjustments[key]??={};
+        };
+        // A pack can display a different name even when the personal name is unchanged.
+        if(petId&&data.settings.makeYourOwn?.pet?.id===petId)
+          for(const key of ['name','size','roam','nudges','enabled','skills','routines','coat','harness','gear'])
+            if(JSON.stringify(previous[key])!==JSON.stringify(data.pet?.[key])||key==='name'&&petField==='name'&&shownName!==data.pet?.name){
+              const custom=layer('pack:'+petId);
+              custom.pet??={};
+              custom.pet[key]=data.pet[key];
+            }
+        if(look.key&&lookSelection(data.settings).key===look.key)
+          for(const [key,part]of [['font','title'],['panelFrame','panel'],['courseCardStyle','card']])if(old[key]!==data.settings[key]){const custom=layer(look.key);custom.parts??={};custom.parts[part]=false;}
+      });
+      if(personal===personalBefore&&typeof store.subscribe==='function')scheduleRender();
+      if(!drafts.size&&transientStatus.startsWith('Could not save:')){transientStatus='';render();}
+      return true;
       }
       catch(error){transientStatus=`Could not save: ${error?.message||'Please try again.'}`;render();return false;}
     }
@@ -2924,15 +3480,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     function onKeydown(event){
       if(destroyed||!container.getClientRects?.().length)return;
-      pointerTurn++;
+      const input=event.composedPath?.()[0]||event.target;pointerTurn++;
       if(roomTab(event))return;
+      if(input?.closest?.('.ch-band-drawer, .ch-band-sheet'))return;
       // The Focus room covers everything while it is open (data-ch-room): its keys are its own, and nothing under it
       // (the Review deck's Space and 1/2/3, its Escape) may hear them, even when a click on the scene left focus on the body.
       // Escape alone, the key that closes a room, never marks keyboard use: marking it restyles every element on the page
       // (.rd[data-input=keyboard] *), some 0.17 s on its own even once the fold has landed (0.67 s at 4x CPU). Tab and the
       // other keys still mark it, a moment later.
       if(container.dataset.chRoom){if(event.key==='Tab')tabAt=Date.now();if(event.key!=='Escape')keyboardLater();board?.keydown(event);return;}
-      if(!container.dataset.chLinksPending&&enabled('course-files')&&hub?.keydown?.(event))return;
+      if(!container.dataset.chLinksPending&&hub?.keydown?.(event))return;
       motion?.activity?.();motion?.busy?.();if(event.key==='Tab')tabAt=Date.now();
       // The first key after the mouse marks keyboard use and restyles the tabs (some five thousand elements). While a
       // full-page room (Grade impact, the Review deck) is up, its own key (Escape folds it) goes first and the restyle waits
@@ -2946,9 +3503,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(arrange?.keydown(event))return;
       if(reviewDeck?.keydown(event))return;
       if(board?.keydown(event))return;
-      if(courseDock.keydown(event))return;
       if(settingsDock?.handleKeydown(event))return;
       // Esc closes the phone drawer, then the phone reader sheet (focus returns to its row).
+      if(courseDock.keydown(event))return;
       if(event.key==='Escape'&&drawerOpen()){event.preventDefault();setDrawer(false);return;}
       if(event.key==='Escape'&&phone()&&readerOpen&&workspace==='work'&&(event.composedPath?.()[0]||event.target)?.dataset?.rdField!=='query'){
         event.preventDefault();
@@ -2967,6 +3524,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const target=event.composedPath?.()[0]||event.target;
       if(event.key==='Enter'&&target?.dataset?.rdField==='new-step'){event.preventDefault();addStep(target.dataset.id);return;}
       const typing=target?.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName||'');
+      if(event.key==='?'&&!typing&&!event.ctrlKey&&!event.metaKey&&!event.altKey){event.preventDefault();customizeTab='settings';settingsDock?.open();return;}
+      if(event.key.toLowerCase()==='b'&&!typing&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&board?.askPet?.()){event.preventDefault();return;}
       if((event.key==='/'&&!typing&&!event.ctrlKey&&!event.metaKey&&!event.altKey)||((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'&&!typing&&enabled('tools'))){
         // Assignments' search is rendered in the command bar and in the heading; the one on screen takes focus.
         event.preventDefault();
@@ -2977,9 +3536,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }else if(event.key==='Escape'&&target?.dataset?.rdField==='query'&&state.query){event.preventDefault();state.query='';visibleLimit=60;render();}
     }
 
+    // A revision-only change keeps `personal` as it is (equal in everything the dashboard reads), so savePersonal still
+    // sees that no notify replaced it and redraws a control the store cleaned back. Any other Prepare-status-only change
+    // does the same and refreshes the AI panel's status line instead; the refresh waits a microtask so every store
+    // subscriber (the AI client clears its cached state in one) has run first.
     // A grade the reading room draws itself (it saves, then brings its own page up to date) needs no whole-page render.
     const unsubscribe=typeof store.subscribe==='function'?store.subscribe(data=>{
-      personal=data||store.get()||{};
+      const next=data||store.get()||{};
+      if(prepareRevisionOnly(personal,next))return;
+      if(mounted&&prepareStatusOnly(personal,next)){Promise.resolve().then(()=>{if(!destroyed)toolbox?.update();});return;}
+      personal=next;
       normalizedCache=null;
       const quietDeck=reviewDeck?.takeQuietSave?.(),quietImpact=gradeImpact?.takeQuietSave?.();
       if(quietDeck||quietImpact)return;
@@ -3031,48 +3597,73 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       onArrangeContext=event=>arrange?.contextmenu(event);
     container.addEventListener('pointerup',onArrangePointerUp);
     container.addEventListener('pointercancel',onArrangePointerCancel);
-    container.addEventListener('contextmenu',onArrangeContext);
     // Any real pointer movement ends the hover hold set by a check-off. (The course
+    container.addEventListener('contextmenu',onArrangeContext);
     // drawings need no hover: they live on their own, motion.js.)
     const onPointermove=event=>{if(container.dataset.hoverHold)delete container.dataset.hoverHold;motion?.activity?.();arrange?.pointermove(event);};
     container.addEventListener('pointermove',onPointermove);
-    document.addEventListener('keydown',onKeydown);
     // Capture the last scroll on normal navigation/reload without saving on
+    document.addEventListener('keydown',onKeydown);
     // every scroll event or delaying departure from the page.
     root.addEventListener?.('pagehide',remember);
-    const freshnessTimer=setInterval(updateFreshness,60000);
     // Synchronous cache/loading notifications are already included in the first complete markup.
+    const freshnessTimer=setInterval(updateFreshness,60000);
+    readStudy();
     if(workspace==='materials')materials?.load(state.courseId);
     if(workspace==='hub')hub?.loadCourse(state.courseId);
     if(workspace==='inbox')hub?.loadInbox();
-    // All startup data delivered in this task/microtask chain joins one complete pre-paint frame.
+    // Startup notifications share one complete pre-paint frame.
+    visitAgent();
     if(root.requestAnimationFrame)scheduleRender();else render();
 
     return {
       isReady(){return mounted;},
       getState(){return navigationState(true);},
-      closePersonalFiles(){container.dataset.chLinksPending='true';courseFileOpen?.close();},
-      resumePersonalFiles(){delete container.dataset.chLinksPending;},
+      closePersonalFiles({forget=false}={}){
+        heldDock=forget?null:customizeOpen?{top:container.querySelector('.ch-settings-dock .t-acc-panel')?.scrollTop||0}:heldDock;
+        personalRevision++;
+        companionTurn++;
+        companionKey='';
+        companionPack=null;
+        container.dataset.chLinksPending='true';
+        preferences?.cancel();
+        settingsDock?.close({restoreFocus:false});
+        makeOwn?.setOpen?.(false);
+        courseFileOpen?.close();
+      },
+      resumePersonalFiles(){delete container.dataset.chLinksPending;makeOwn?.setOpen?.(customizeOpen);scheduleRender();
+        // the same account came back: Make it yours is where the student left it
+        const held=heldDock;
+        heldDock=null;
+        if(held&&!customizeOpen){settingsDock?.open();root.requestAnimationFrame?.(()=>{const panel=container.querySelector('.ch-settings-dock .t-acc-panel');if(panel)panel.scrollTop=held.top;});}
+      },
       destroy(){
         if(destroyed)return;
         remember();
         flushDrafts();
-        destroyed=true;consumeSources();pendingRender=null;root.chrome?.storage?.onChanged?.removeListener?.(navChanged);
+        destroyed=true;
+        consumeSources();
+        pendingRender=null;
+        root.chrome?.storage?.onChanged?.removeListener?.(navChanged);
+        root.chrome?.storage?.onChanged?.removeListener?.(studyChanged);
+        if(sceneActive){root.ReserveSceneThemes?.remove(container);sceneActive=false;}
+        personalRevision++;companionTurn++;root.ReserveDataTheme?.remove(container);makeOwn?.destroy();preferences?.destroy();
         readerLayout?.disconnect();
+        scrollBoxes?.disconnect();
         railLayout?.disconnect();
         railAncestors?.disconnect();
         root.clearTimeout(railTimer);
         if(railSelectionFrame)cancelPaint(railSelectionFrame);
         root.removeEventListener?.('resize',queueRail);document.fonts?.removeEventListener?.('loadingdone',queueRail);
-        if(sceneActive){root.ReserveSceneThemes?.remove(container);sceneActive=false;}
-        root.ReserveDataTheme?.remove(container);makeOwn?.destroy();frameEditor?.destroy();frameController?.destroy();mediaController?.destroy();courseDock.destroy();
+        frameEditor?.destroy();frameController?.destroy();mediaController?.destroy();courseDock.destroy();
         if(!customizeBusy)mediaStore?.close();
         for(const type of ROOM_PRESSES)roomScope?.removeEventListener?.(type,throughRoom,true);
         roomScope?.removeEventListener?.('pointerover',roomWayIn,true);
         roomScope?.removeEventListener?.('focusin',roomWayIn,true);
         for(const k of [...spares.keys()])dropSpare(k);if(roomFrame)cancelPaint(roomFrame);room=null;
-        reviewDeck?.destroy();gradeImpact?.destroy();
         ++quickPackRead;
+        reviewDeck?.destroy();
+        gradeImpact?.destroy();
         deadlineChanges?.destroy();
         quickUpload?.destroy();
         arrange?.destroy();
@@ -3086,6 +3677,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         motion?.destroy();
         toolbox?.destroy();
         clearInterval(freshnessTimer);clearInterval(focusTimer);clearTimeout(entranceTimer);
+        // The Help band's runtime message listener would otherwise keep it, its host and this whole detached dashboard
+        // alive (about 9,900 nodes per remount, perf leaks-7).
+        helpBand?.destroy();helpBand=null;helpBandHost=null;helpBandSignature='';
         unsubscribe?.();
         container.removeEventListener('dragover',onPackDragover);
         container.removeEventListener('dragleave',onPackDragleave);
@@ -3098,16 +3692,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         container.removeEventListener('toggle',onDisclosure,true);
         container.removeEventListener('pointerdown',onPointerdown);container.removeEventListener('wheel',onWheel,{passive:true});container.removeEventListener('pointermove',onPointermove);
         container.removeEventListener('pointerup',onArrangePointerUp);container.removeEventListener('pointercancel',onArrangePointerCancel);container.removeEventListener('contextmenu',onArrangeContext);
-        document.removeEventListener('keydown',onKeydown);
+        document.removeEventListener('keydown',onKeydown);bandWatch?.disconnect();
         root.removeEventListener?.('pagehide',remember);
         container.remove();
       },
       updateSnapshot(next){
         if(destroyed)return;
-        // The same snapshot again (a tab shown again) keeps its caches: only the clock can have moved, and the page is
-        // redrawn only when that changes what it shows (updateFreshness).
-        if(next&&next===currentSnapshot){if(!timeSettled())scheduleRender();return;}
-        if(next&&Array.isArray(next.courses)&&Array.isArray(next.assignments)){currentSnapshot=next;normalizedCache=null;contentCache.clear();}
+        // The same snapshot again keeps its caches and AI visit; only the clock can have moved (updateFreshness).
+        // A companion drawing whose first read failed is still asked for again here (it returns at once otherwise).
+        if(next&&next===currentSnapshot){syncCompanion();if(!timeSettled())scheduleRender();return;}
+        if(next&&Array.isArray(next.courses)&&Array.isArray(next.assignments)){currentSnapshot=next;normalizedCache=null;contentCache.clear();visitAgent();}
         scheduleRender();
       },
       setStatus(text){
@@ -3124,6 +3718,17 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
   return {
     mount,
-    helpers:{patchUI,createCourseDock,sameOriginLink,assignmentLink,gradePeriodLabel,filterAssignments:Model.filterAssignments,safeCourseImage,statusLabel,dateMs}
+    helpers:{
+      patchUI,
+      createCourseDock,
+      sameOriginLink,
+      assignmentLink,
+      gradePeriodLabel,
+      filterAssignments:Model.filterAssignments,
+      safeCourseImage,
+      statusLabel,
+      dateMs,
+      pinHomeCommand
+    }
   };
 });

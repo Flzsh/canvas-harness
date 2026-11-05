@@ -2,17 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict');
 require('../extension/site.js');
 const A=require('../extension/workspace-arrange.js'),C=require('../extension/customization-model.js');
 const fresh=()=>({...structuredClone(C.defaults),courseOrder:[]});
-test('a module can be added, moved beside a panel, and removed without losing the three panels',()=>{
- const s=fresh();
- assert.equal(A.change(s,{type:'add',key:'timer'}),true);assert.deepEqual(A.snapshot(s).order,['timer','context','work','reader']);
- assert.equal(A.change(s,{type:'add',key:'timer'}),false,'adding twice changes nothing');
- A.change(s,{type:'add',key:'today'});assert.deepEqual(A.leaves(s.workspaceLayout.children[0]),['timer','today'],'added modules share a row above the panels');
- assert.deepEqual(s.workspaceOrder,['context','work','reader'],'the saved order still names only the three panels');
- A.change(s,{type:'dock',key:'timer',target:'reader',edge:'bottom'});assert.ok(A.snapshot(s).order.indexOf('timer')>A.snapshot(s).order.indexOf('reader'));
- assert.equal(A.change(s,{type:'remove',key:'work'}),false,'Up next cannot be removed');
- A.change(s,{type:'remove',key:'timer'});A.change(s,{type:'remove',key:'today'});assert.deepEqual(A.snapshot(s).order,['context','work','reader']);
- A.change(s,{type:'undo'});assert.ok(A.snapshot(s).order.includes('today'),'one step of undo brings a removed module back');
-});
+// 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
 test('presets and the panel-order choice keep added modules; saved layouts with modules pass validation',()=>{
  const s=fresh();A.change(s,{type:'add',key:'clock'});A.change(s,{type:'add',key:'notes'});
  const before=A.snapshot(s);s.deskOrder='work-first';A.resetCore(s,before.layout);

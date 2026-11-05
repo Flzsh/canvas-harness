@@ -17,8 +17,11 @@
  * API references: https://mozilla.github.io/pdf.js/examples/
  * https://mozilla.github.io/pdf.js/api/draft/api.js.html
  *
- * extract(data, {signal, maxPages=20, maxChars=60000, timeoutMs=15000})
- *   -> {text, pages, totalPages, truncated, warnings}
+ * extract(data, {signal, pages, maxPages=20, maxChars=60000, timeoutMs=15000})
+ *   -> {text, pages, totalPages, truncated, warnings, pageTexts:[{page,text}]}
+ * Selected pages are a range or a sorted list of at most 20 document page numbers.
+ * Default result enumeration is preserved; pageTexts is accessible on that result
+ * and explicitly serialized by the offscreen bridge. Selected results enumerate it.
  * `pages` is the number of pages visited (including blank/image-only pages).
  * Text is in PDF content order with two newlines between nonempty pages.
  * Character counts are UTF-16 code units, including separators. Limits can be
@@ -69,6 +72,18 @@
     if (value === undefined) return ceiling;
     if (!Number.isSafeInteger(value) || value < 1) throw error('PDF limits must be positive integers.', 'options');
     return Math.min(value, ceiling);
+  }
+  function selectedPages(value,maxPages){
+    if(value===undefined)return null;
+    let pages;
+    if(typeof value==='string'&&/^\d{1,9}(?:-\d{1,9})?$/.test(value)){
+      const [first,last=first]=value.split('-').map(Number);
+      if(first<1||last<first||last-first>=maxPages)throw error('Choose at most 20 valid PDF pages.','options');
+      pages=Array.from({length:last-first+1},(_,i)=>first+i);
+    }
+    else if(Array.isArray(value)&&value.length>0&&value.length<=maxPages)pages=value.slice();else throw error('Choose at most 20 valid PDF pages.','options');
+    if(pages.some(page=>!Number.isSafeInteger(page)||page<1)||new Set(pages).size!==pages.length)throw error('Choose distinct positive PDF page numbers.','options');
+    return pages.sort((a,b)=>a-b);
   }
   function inputSize(data) {
     let size;
@@ -148,7 +163,7 @@
         const range = section.exec(table);
         if (!range) throw corrupt();
         const start = Number(range[1]), count = Number(range[2]);
-        if (!Number.isSafeInteger(start) || !Number.isSafeInteger(count) || count < 1 || count > bytes.length / 18 || !Number.isSafeInteger(start + count)) throw corrupt();
+        if (!Number.isSafeInteger(start) || !Number.isSafeInteger(count) || count < 0 || count > bytes.length / 18 || !Number.isSafeInteger(start + count)) throw corrupt();
         cursor = section.lastIndex;
         for (let index = 0; index < count; index++) {
           entry.lastIndex = cursor;
@@ -218,8 +233,9 @@
       if (!options || typeof options !== 'object') throw error('Invalid PDF extraction options.', 'options');
       const {signal} = options;
       const maxPages = limit(options.maxPages, MAX_PAGES), maxChars = limit(options.maxChars, MAX_CHARS), timeoutMs = limit(options.timeoutMs, MAX_TIMEOUT);
+      const requestedPages=selectedPages(options.pages,maxPages);
       if (signal && (typeof signal.addEventListener !== 'function' || typeof signal.removeEventListener !== 'function' || typeof signal.aborted !== 'boolean'))
-       throw error('Invalid PDF abort signal.', 'options');
+        throw error('Invalid PDF abort signal.', 'options');
       if (signal?.aborted) throw error('PDF extraction cancelled.', 'aborted', 'AbortError');
       inputSize(data); // Reject oversize input before copying bytes or importing.
 
@@ -314,9 +330,10 @@
         // and where an invalid/missing permission entry would otherwise be null.
         if (metadata?.info?.EncryptFilterName != null || permissions != null) throw encrypted();
         const totalPages = document.numPages;
+        if(requestedPages?.some(page=>page>totalPages))throw error('A selected page is outside this PDF.','options');
         let text = '', pages = 0, charLimit = false;
-        const pageLimit = Math.min(totalPages, maxPages);
-        for (let number = 1; number <= pageLimit; number++) {
+        const pageNumbers=requestedPages||Array.from({length:Math.min(totalPages,maxPages)},(_,i)=>i+1),pageTexts=[];
+        for (const number of pageNumbers) {
           ensureActive();
           const page = await guard(() => Promise.resolve(document.getPage(number)).then(value => {
             // A cancelled dependency can still resolve. Dispose that late page
@@ -327,7 +344,7 @@
             return value;
           }));
           pageState = {page, cleaned: false}; pages++;
-          let hasText = false, separator = '';
+          let hasText = false, separator = '',pageText='';
           try {
             const reader = page.streamTextContent({includeMarkedContent: false, disableNormalization: false}).getReader();
             readerState = {reader, done: false, cancelled: false};
@@ -348,7 +365,7 @@
                   const piece = prefix + clean;
                   let taken = piece.slice(0, remaining);
                   if (/[\uD800-\uDBFF]$/.test(taken)) taken = taken.slice(0, -1);
-                  text += taken; hasText = true;
+                  text += taken;pageText+=hasText?taken:taken.slice(prefix.length);hasText = true;
                   if (piece.length > remaining) charLimit = true;
                 }
                 if (item.str.length > sample.length) charLimit = true;
@@ -363,11 +380,14 @@
             try { readerState?.reader.releaseLock(); } catch (_) { /* A cancelled read may still be settling. */ }
             readerState = undefined; cleanPage(); pageState = undefined;
           }
-          if (charLimit || (text.length >= maxChars && pages < totalPages)) { charLimit = true; break; }
+          pageTexts.push({page:number,text:pageText});
+          if (charLimit || (text.length >= maxChars && pages < (requestedPages?pageNumbers.length:totalPages))) { charLimit = true; break; }
         }
-        if (totalPages > maxPages) warnings.push(`The page limit is ${maxPages}; this PDF contains ${totalPages} pages.`);
+        if (!requestedPages&&totalPages > maxPages) warnings.push(`The page limit is ${maxPages}; this PDF contains ${totalPages} pages.`);
         if (charLimit) warnings.push(`Text was truncated at the ${maxChars}-character limit.`);
-        return {text, pages, totalPages, truncated: charLimit || pages < totalPages, warnings};
+        const result={text,pages,totalPages,truncated:charLimit||pages<(requestedPages?pageNumbers.length:totalPages),warnings};
+        Object.defineProperty(result,'pageTexts',{value:pageTexts,enumerable:!!requestedPages});
+        return result;
       } catch (failure) {
         if (stoppedError) throw stoppedError;
         if (failure instanceof PDFContextError) throw failure;

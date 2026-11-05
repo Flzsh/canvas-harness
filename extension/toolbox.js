@@ -6,8 +6,9 @@
    enabled('tools')&&
      ({
        quick:()=>!!root.ReserveQuickOpen?.entries,
-       ai:()=>enabled('ai')&&!!root.CanvasHarnessAISource?.mount,
-       gpa:()=>enabled('gpa')&&!!root.CanvasHarnessGPAUI?.create,
+       ai:()=>enabled('ai')&&(!root.ReserveFeatures||!!root.CanvasHarnessAISource?.mount),
+       gpa:()=>enabled('gpa')&&(!root.ReserveFeatures||!!root.CanvasHarnessGPAUI?.create),
+       play:()=>enabled('play'),
        developer:()=>enabled('developer')&&!!root.ReserveDeveloper?.create,
        calculator:()=>true,
        plan:()=>true
@@ -187,7 +188,7 @@
    }
    for(const [id,panel] of panels)panel.hidden=id!==tool;
    // A borderless query row (Esc closes), grouped results, and one strip of key hints.
-   if(tool==='quick'&&fresh)content.innerHTML=`<label class="rd-quick-search">${I('search')}<input type="search" data-ui-field="quick" role="combobox" aria-label="Quick open search" aria-autocomplete="list" aria-expanded="true" aria-controls="rd-quick-results" autocomplete="off" placeholder="Search courses, assignments and documents" value="${E(query)}"><kbd aria-hidden="true">Esc</kbd></label><div id="rd-quick-results" class="rd-quick-results" role="listbox" aria-label="Quick open results"></div><p class="rd-utility-hint" data-quick-coverage hidden></p><p class="rd-quick-keys">${[['↵','open'],[mod+' ↵','new tab'],['Alt ↵','preview']].map(([key,label])=>`<span><kbd>${E(key)}</kbd> ${label}</span>`).join('')}</p>`;
+   if(tool==='quick'&&fresh)content.innerHTML=`<label class="rd-quick-search">${I('search')}<input type="search" data-ui-field="quick" role="combobox" aria-label="Quick open search" aria-autocomplete="list" aria-expanded="true" aria-controls="rd-quick-results" autocomplete="off" placeholder="Search courses and work" value="${E(query)}"><kbd aria-hidden="true">Esc</kbd></label><div id="rd-quick-results" class="rd-quick-results" role="listbox" aria-label="Quick open results"></div><p class="rd-utility-hint" data-quick-coverage hidden></p><p class="rd-quick-keys">${[['↵','open'],[mod+' ↵','new tab'],['Alt ↵','preview']].map(([key,label])=>`<span><kbd>${E(key)}</kbd> ${label}</span>`).join('')}</p>`;
    if(tool==='calculator'){if(fresh)renderCalculator();selectCalculatorMode(calculatorMode);}
    if(tool==='ai'&&fresh){
     content.setAttribute('aria-label','AI study workspace');
@@ -493,23 +494,48 @@
    }
   }
   const unsubscribe=store.subscribe(data=>{personal=data;poolCache=null;if(dialog?.open&&tool==='quick')renderResults();});
-  return {open:(next,source)=>open(next,source),askAI,capture,collapse,expand,close,isOpen:()=>!dead&&!!dialog?.open,update(){
-    if(!dead){poolCache=null;aiPanel?.update();gpaPanel?.update();developerPanel?.update();}
-  },destroy(){
-    if(dead)return;
-    rememberCapture();
-    dead=true;
-    if(leaving)root.clearTimeout(leaving);
-    dockResize?.destroy();
-    aiPanel?.destroy();
-    gpaPanel?.destroy();
-    developerPanel?.destroy();
-    toolMotion?.destroy();
-    unsubscribe?.();
-    dialog?.remove();
-    panels.clear();
-    notifyDock();
-  }};
+   return {open:(next,source)=>open(next,source),helpWith(context={}){
+     if(dead||!toolEnabled('ai'))return false;
+     open('ai');
+     if(context.itemId&&context.page==='assignment'&&!String(context.selectedText||'').trim()&&aiPanel?.helpItem)return aiPanel.helpItem(context)===true;
+     return aiPanel?.helpWith?.(context)===true;
+   },askAI(question,handoff){
+     if(dead||!toolEnabled('ai'))return false;
+     open('ai');
+     return aiPanel?.setQuestion?.(question,handoff)===true;
+   },openPrepareReply(run){
+     if(dead||!toolEnabled('ai'))return false;
+     open('ai');
+     return aiPanel?.openPrepareReply?.(run)??false;
+   },openAgentLog(){
+     if(dead||!toolEnabled('ai'))return false;
+     open('ai');
+     return aiPanel?.openAgentLog?.()===true;
+   },studyAI(kind,itemId){
+     if(dead||!toolEnabled('ai')||!['practice','reading','lab','rubric','fixes','notes','steps','outline','message','summary','flashcards'].includes(kind))return false;
+     open('ai');
+     return aiPanel?.setStudy?.({kind,itemId})===true;
+   },openAid(key,options){
+     if(dead||!toolEnabled('ai'))return false;
+     open('ai');
+     return aiPanel?.openAid?.(key,options)===true;
+   },capture,collapse,expand,close,isOpen:()=>!dead&&!!dialog?.open,update(){
+     if(!dead){poolCache=null;aiPanel?.update();gpaPanel?.update();developerPanel?.update();}
+   },destroy(){
+     if(dead)return;
+     rememberCapture();
+     dead=true;
+     if(leaving)root.clearTimeout(leaving);
+     dockResize?.destroy();
+     aiPanel?.destroy();
+     gpaPanel?.destroy();
+     developerPanel?.destroy();
+     toolMotion?.destroy();
+     unsubscribe?.();
+     dialog?.remove();
+     panels.clear();
+     notifyDock();
+   }};
  }
  root.ReserveToolbox={create,sections};if(typeof module!=='undefined'&&module.exports)module.exports=root.ReserveToolbox;
 })(globalThis);

@@ -22,6 +22,7 @@
   var zoneCache = new Map();
   var KNOWN_MODES = {
     actionable: true,
+    new: true,
     upcoming: true,
     today: true,
     tomorrow: true,
@@ -170,6 +171,34 @@
     return complete(item) || localItem(local, item).checkedOff === true;
   }
 
+  // What handing this in now costs under the course's late policy, the way Canvas counts it: every started day or hour
+  // late takes one deduction, down to the policy's floor. Null when the policy takes nothing or the work is not late.
+  function lateCost(item, policy, now) {
+    if (!item || !policy || policy.late_submission_deduction_enabled !== true) return null;
+    var each = Number(policy.late_submission_deduction), points = Number(item.points), due = dateMs(item.dueAt);
+    if (!(each > 0) || !(points > 0) || due === null || !(now > due)) return null;
+    var unit = policy.late_submission_interval === 'hour' ? 3600000 : 86400000, steps = Math.ceil((now - due) / unit);
+    var floor = policy.late_submission_minimum_percent_enabled === true && Number.isFinite(Number(policy.late_submission_minimum_percent)) ?
+      Number(policy.late_submission_minimum_percent) :
+      0;
+    var limit = Math.max(0, 100 - floor), percent = Math.min(limit, Math.round(steps * each * 100) / 100), next = Math.min(limit, Math.round((steps + 1) * each * 100) / 100);
+    return { percent: percent, best: Math.round(points * (100 - percent)) / 100, points: points, nextPercent: next > percent ? next : null, nextAt: next > percent ? due + steps * unit : null };
+  }
+
+  // Canvas keeps a course's late policy from students (403), so this reads it from their own late work: each piece that lost
+  // points gives a rate per started day, or per hour when the days do not agree. Late work that lost nothing says so.
+  function lateHistory(items, courseId) {
+    var late = (items || []).filter(function (x) { return String(x.courseId) === String(courseId) && x.late === true && Number(x.points) > 0; });
+    var taken = late.filter(function (x) { return x.pointsDeducted > 0 && x.secondsLate > 0; });
+    if (!late.length) return null;
+    if (!taken.length) return { clean: late.some(function (x) { return x.pointsDeducted === 0 || x.score !== null; }) };
+    var rate = function (x, unit) { return x.pointsDeducted / x.points * 100 / Math.ceil(x.secondsLate / unit); };
+    var agree = function (unit) { var first = rate(taken[0], unit); return taken.every(function (x) { return Math.abs(rate(x, unit) - first) <= .5; }) ? Math.round(first * 10) / 10 : null; };
+    var days = agree(86400), hours = days === null ? agree(3600) : null;
+    if (days === null && hours === null) return null;
+    return { policy: { late_submission_deduction_enabled: true, late_submission_deduction: days === null ? hours : days, late_submission_interval: days === null ? 'hour' : 'day' } };
+  }
+
   function filterAssignments(items, options) {
     options = options || {};
     var source = Array.isArray(items) ? items : [];
@@ -215,6 +244,7 @@
       selected = scoped.filter(function (item) {
         var due = dateMs(item.dueAt);
         var isComplete = workComplete(item, local);
+        if (mode === 'new') return !!options.newIds && options.newIds.has(String(item.id));
         // Only the day-window modes read the day difference; skipping it elsewhere saves two day keys per item.
         var difference = due === null || (mode !== 'today' && mode !== 'tomorrow' && mode !== 'week') ? null : dayDifference(due, now, timeZone);
 
@@ -389,6 +419,8 @@
 
   return {
     filterAssignments: filterAssignments,
+    lateCost: lateCost,
+    lateHistory: lateHistory,
     summary: summary,
     cleanState: cleanState,
     cleanCourseView: cleanCourseView,

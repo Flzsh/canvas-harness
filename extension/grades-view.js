@@ -29,8 +29,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // A course opened on Grades with Grade impact on is the weighing room: it is the whole page, hidden grades included
     // (it then draws names and days only). All courses keeps this page with the compact strips under it.
     const room=c.state.courseId!=='all'&&c.gradeImpact?root.ReserveGradeImpact?.render?.(c,h,c.gradeImpact)||'':'';
-    if(room)return room;
     const impact=visible&&c.gradeImpact?root.ReserveGradeImpact?.render?.(c,h,c.gradeImpact)||'':'';
+    if(room)return room;
     // The line under the title says where the numbers come from; its quiet button runs the toolbar switch.
     // Its words name what it will do (Show / Hide grades), so it is a plain button, not a pressed toggle.
     return `<div class="rd-page-heading"><div><h1>Grades</h1><p class="rd-grade-privacy">${c.state.courseId==='all'?'Your courses':E(short(courses[0])||'Your course')} · As reported by Canvas${!visible?' · Grades are hidden':''} <button type="button" class="rd-text-button" data-rd-action="grades-visibility">${visible?'Hide grades':'Show grades'}</button></p></div><a class="rd-button rd-button--outline" href="${globalThis.ReserveSite.origin()}/grades">Canvas gradebooks <span aria-hidden="true">↗</span></a></div>

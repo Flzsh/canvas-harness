@@ -197,7 +197,7 @@ test('audit: selected assignments archive and undo without losing material selec
 test('audit: failed batch archive keeps exact AI selection and retries once storage is available',async t=>{
  const f=await dashboardFixture(t);f.click('select-item',{id:'1'});f.click('select-item',{id:'2'});const selected=copy(f.getContext().aiSelectedIds),before=f.store.get();
  f.disk.control.failNext=true;f.click('selection-archive');await f.idle();assert.deepEqual(f.store.get(),before);assert.deepEqual(copy(f.getContext().aiSelectedIds),selected);
- f.click('selection-archive');await f.idle();assert.equal(f.store.get().tasks['1'].checkedOff,true);assert.equal(f.store.get().tasks['2'].checkedOff,true);assert.deepEqual(copy(f.getContext().aiSelectedIds),[]);
+ f.click('selection-archive');await f.idle();assert.equal(f.store.get().tasks['1'].checkedOff,true);assert.equal(f.store.get().tasks['2'].checkedOff,true);assert.deepEqual(copy(f.getContext().aiSelectedIds||[]),[]);
 });
 
 test('audit regression: archive undo restores the state read by its transaction, including an earlier queued completion',async t=>{

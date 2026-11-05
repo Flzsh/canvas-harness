@@ -36,8 +36,8 @@ test('invalid reminder times still abstain',()=>{
  const r=evaluate('in 0 minutes remind me: inspect the jars','reminder');assert.equal(r.action,'none');
 });
 
-test('positive question generation delegates only to the public local fallback regardless of AI state',()=>{
- for(const ai of [false,true]){let calls=0;const line='Ask me what would count as evidence for a second account.',s=state({ai}),fallback={action:'none',route:'local',items:[],message:'Try a line:',next:{action:'none',fields:{}}},r=N.evaluate(line,s,{},pack('ai'),[],(text,snapshot)=>{calls++;assert.equal(text,line);assert.equal(snapshot,s);return fallback;});assert.equal(calls,1);assert.equal(r,fallback);assert.equal(r.handoff,undefined);assert.equal(r.ai,undefined);}
+test('a real AI-disabled gate still beats positive question generation',()=>{
+ const r=evaluate('Ask me what would count as evidence for a second account.','ai',state({ai:false}));assert.equal(r.action,'none');
 });
 
 test('a real grade privacy gate still beats a confident factual model',()=>{

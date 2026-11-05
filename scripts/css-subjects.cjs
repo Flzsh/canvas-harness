@@ -9,13 +9,13 @@
 // It rewrites a selector only when nothing can change: the `:is()` is the whole subject or the subject's first part,
 // every argument is one compound (no combinators, no nesting of its own lists), the arguments all have the same
 // specificity (so each spelled-out selector keeps the specificity `:is()` gave the rule), there is no pseudo-element, and
-// the result stays at most 16 selectors long. Everything else is left as written.
+// the result stays at most 96 selectors long. Everything else is left as written.
 //
 // `node scripts/css-subjects.cjs` rewrites extension/*.css in place and reports; `--check` fails if a file still has a
 // selector it would rewrite (npm run check).
 const fs = require('node:fs'), path = require('node:path');
 const ext = path.join(__dirname, '..', 'extension');
-const FILES = ['app.css', 'dashboard.css', 'workspace.css', 'refresh.css', 'customize.css', 'settings-dock.css', 'gpa.css', 'selection.css', 'responsive-layout.css', 'widgets.css', 'pet.css', 'subject-art.css'];
+const FILES = ['app.css', 'dashboard.css', 'workspace.css', 'refresh.css', 'customize.css', 'settings-dock.css', 'gpa.css', 'selection.css', 'responsive-layout.css', 'widgets.css', 'pet.css', 'subject-art.css', 'review-deck.css', 'focus-room.css', 'grade-impact.css', 'scene-themes.css', 'agent.css', 'addons-panel.css', 'course-links.css', 'media-frame.css', 'frame-editor.css'];
 
 // Split on a separator at depth 0 (outside (), [] and strings).
 function splitTop(text, sep) {
@@ -110,7 +110,7 @@ function rewriteRules(css) {
     if (!inDecls && text && !text.trim().startsWith('@') && !/^(from|to|\d+%)/.test(text.trim())) {
       const sels = splitTop(text, ','), next = sels.flatMap(expand);
       const joined = next.join(', ');
-      if (next.length > sels.length && next.length <= 16) { changed += next.length - sels.length; out += lead + joined + (/\s$/.test(text) ? ' ' : ''); }
+      if (next.length > sels.length && next.length <= 96) { changed += next.length - sels.length; out += lead + joined + (/\s$/.test(text) ? ' ' : ''); }
       else out += prelude;
       stack.push('rule');
     } else { out += prelude; stack.push(text.trim().startsWith('@') ? 'at' : 'rule'); }

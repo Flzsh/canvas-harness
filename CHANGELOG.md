@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.9.1 - 2026-11-04
+
+3.9.0 kept the look of 3.8. This release brings everything from 4.0 Preview 4 except the 4.0 daily AI (the Help band, Prepare, Daily AI help and Overnight). The AI context and handoff in Tools stay as they were in 3.9.0, with the same permissions.
+
+- The top bar is drawn: each tab has its own drawing beside its name, and the search reads Find work. In half and quarter windows the words give way to the drawings, and each tab shows its name as a tooltip. The course dock and the top bar scroll the same way.
+- Make it yours has a Settings tab (time zone, backups, keyboard shortcuts) and a Features tab with drawn switches, and a course's drawing can be chosen from the subject sets.
+- Graphics, in Make it yours → Look: Low, Medium, High and Extra high. Each step down leaves out the detail that is seen least, and Advanced tunes one kind at a time. Slower computers start on Medium.
+- New since your last visit: a New chip and view for work Canvas added and grades that came back since you last looked.
+- An overdue item's details say what handing it in now costs, from the course's late policy, or, when Canvas keeps that from students, from your own earlier late work there.
+- A heavy day is marked in words on the day strip and in Planner. Easy read in Reading text uses plainer letters.
+- Biscuit reads a line with a written rule list first. A plan is built around what you name, including homework Canvas does not know about, and Canvas's list is a suggestion rather than the plan. Make it yours → Companion has Full and Lite. Biscuit wakes with the B key.
+- When Biscuit hands a question to an AI, scores you earned are taken out of the text unless grades are shared, as in 4.0.
+- Sidebar: each course row is as tall as its own content needs. With only a few courses the spare height stays below the last one instead of stretching every card's frame long and empty.
+- Home and the Course hub beside the docked PDF reader lay themselves out for the room they have instead of being shrunk to fit; Canvas's own pages are still zoomed. The course dock keeps to that room, and course names in it no longer break in the middle of a word.
+- The reader's text and a Materials page keep the mouse wheel only while they have something to scroll; otherwise the page under them scrolls.
+- The drawn pen lines around groups in Make it yours are back, and the pen-eased motions (a Review deck card turning, among others) run again.
+
 ## 3.9.0 - 2026-10-31
 
 - Review deck: redrawn as a reading room that grows out of its Home module and folds back into it. The module comes in three sizes, and the large one lets you study right there.

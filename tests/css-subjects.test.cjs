@@ -14,8 +14,8 @@ test('only style-rule selectors change: at-rules, keyframes, declarations and co
   const out=rewrite(css);assert.equal(out.changed,1);
   assert.equal(out.css,'/* :is(.x, .y) */\n@media (min-width:1px){.rd .a, .rd .b{color:red}}\n@keyframes k{from{opacity:0}to{opacity:1}}\n.p{background:url("x:is(.a,.b)")}');
 });
-test('a list that would grow past 16 selectors is left alone',()=>{
-  const args=Array.from({length:17},(_,i)=>'.a'+i).join(', ');
+test('a list that would grow past 96 selectors is left alone',()=>{
+  const args=Array.from({length:97},(_,i)=>'.a'+i).join(', ');
   assert.equal(rewrite(`.rd :is(${args}){color:red}`).changed,0);
 });
 test('a block another script generated is left exactly as written',()=>{

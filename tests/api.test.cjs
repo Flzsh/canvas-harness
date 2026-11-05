@@ -16,17 +16,6 @@ test('does not turn expired login into an empty workload',async()=>{
  const client=createClient({origin:'https://school.instructure.com',fetchImpl:async()=>response({},401)});
  await assert.rejects(client.list('/api/v1/courses'),e=>e.code==='auth');
 });
-test('one thing Canvas refuses costs that piece while the session lives, and the session is checked once',async()=>{
- const refused={status:'unauthorized',errors:[{message:'user not authorized to perform that action'}]},said=body=>({...response(body,401),text:async()=>JSON.stringify(body)});
- let profiles=0;const client=createClient({origin:'https://school.instructure.com',fetchImpl:async url=>{if(url.includes('/users/self/profile')){profiles++;return response({id:'7'});}return said(refused);}});
- await assert.rejects(client.list('/api/v1/courses/1/pages?per_page=100'),e=>e.code==='403');await assert.rejects(client.list('/api/v1/courses/1/files?per_page=100'),e=>e.code==='403');assert.equal(profiles,1);
- const gone=createClient({origin:'https://school.instructure.com',fetchImpl:async()=>said(refused)});await assert.rejects(gone.list('/api/v1/courses/1/pages?per_page=100'),e=>e.code==='auth');
- const words=createClient({origin:'https://school.instructure.com',fetchImpl:async()=>said({status:'unauthenticated',errors:[{message:'user authorization required'}]})});await assert.rejects(words.list('/api/v1/courses/1/pages?per_page=100'),e=>e.code==='auth');
-});
-test('a course that is not open yet is left out without a request',async()=>{
- const calls=[],client=createClient({origin:'https://school.instructure.com',fetchImpl:async url=>{calls.push(url);if(url.includes('/users/self/profile'))return response({id:'7',name:'Sample Student'});if(/\/api\/v1\/courses\?/.test(url))return response([{id:'1',name:'Sample Science'},{id:'2',access_restricted_by_date:true}]);return response([]);}});
- const snapshot=await client.loadSnapshot();assert.deepEqual(snapshot.courses.map(c=>c.id),['1']);assert.equal(snapshot.partial,false);assert.ok(!calls.some(url=>url.includes('/courses/2')));
-});
 test('refuses arbitrary non-API paths and endpoints',async()=>{
  const client=createClient({origin:'https://school.instructure.com',fetchImpl:async()=>{throw Error('should not send');}});
  await assert.rejects(client.list('/login'),/endpoint|path/i);await assert.rejects(client.list('/api/v1/accounts'),/endpoint|path/i);

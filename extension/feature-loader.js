@@ -3,7 +3,12 @@
  'use strict';
  if(window.top!==window||globalThis.ReserveFeatureLoad||!globalThis.ReserveSite?.supported(location.href))return;
  let revision=0;
- function hint(selection){try{localStorage.setItem('reserve:features-hint',JSON.stringify({preset:selection.preset,enabled:selection.enabled}));}catch{}}
+ function hint(selection){
+  try{
+   localStorage.setItem('reserve:features-hint',JSON.stringify({preset:selection.preset,enabled:selection.enabled}));
+   if(!selection.enabled.includes('canvas-nav'))localStorage.removeItem('reserve:navEarly');
+  }catch{}
+ }
  // Keep the next document's prepaint selection current without changing this
  // document's snapshot. A pending worker reply must not restore an older hint.
  globalThis.chrome?.storage?.onChanged?.addListener((changes,area)=>{

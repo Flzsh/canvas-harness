@@ -564,9 +564,9 @@
    // (a swap that did not happen leaves nothing dipped)
    if(dip)wait(900,()=>{if(node.isConnected)try{dip.cancel();}catch{}});
   }
-  // (the swap itself is part of the move: the dashboard holds back its work that can wait and the companion keeps still,
-  // until the room's entrance or the module's landing has played, even on a slow machine where the swap comes long after
-  // the press)
+  // (the swap itself is part of the move: the dashboard holds back its work that can wait, the companion keeps still and
+  // the Help band's ink read waits, until the room's entrance or the module's landing has played, even on a slow machine
+  // where the swap comes long after the press)
   function go(tab){
     later(()=>{
       if(dead)return;

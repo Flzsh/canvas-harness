@@ -26,7 +26,13 @@
   const privateRow=privateKinds.has(row.kind)||row.gradeAccess===true;
   return (!privateRow||grades(s))&&(!(['grade','feedback'].includes(row.kind)||row.gradeAccess===true)||feedback(s));
  }
- function materialText(row){return privateKinds.has(row.kind)||row.gradeAccess===true?'':String(row.text??row.body??row.description??row.instructions??'');}
+ function materialText(row){
+  if(privateKinds.has(row.kind)||row.gradeAccess===true){
+   const Context=load('CanvasHarnessContext','./ai-context.js');
+   return typeof Context?.withoutScores==='function'?String(Context.withoutScores(String(row.feedback||row.teacherComments||row.aiText||row.text||''))):'';
+  }
+  return String(row.aiText??row.text??row.body??row.description??row.instructions??'');
+ }
  function material(row,text){
   return !!id(row.id)&&
    typeof row.kind==='string'&&

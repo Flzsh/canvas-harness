@@ -27,7 +27,7 @@
   if(current.accountId!==owner.accountId)throw Error('Canvas account changed.');
  }
  chrome.runtime.onMessage.addListener((message,sender,reply)=>{
-  if(!['market-open','market-install','market-installed','market-list','market-remove','market-kit-remove','market-media-hold','market-media-migrate','market-local'].includes(message?.type))return;
+  if(!['market-open','market-install','market-installed','market-list','market-remove','market-kit-remove','market-media-hold','market-media-migrate','market-local','market-catalogue'].includes(message?.type))return;
   (async()=>{
    await root.ReserveMarketSite.ready();
    if(message.type==='market-open'){
@@ -85,6 +85,20 @@
      return {ok:true};
     }
     await root.ReserveMarketHolds.handle(message,sender);return {ok:true};
+   }
+   // Make it yours (More) lists the features installed from the Market: asked by Canvas's page for its own account
+   if(message.type==='market-catalogue'){
+    const owner=message.owner;
+    if(!owner||
+     typeof owner.accountId!=='string'||
+     !/^\d+$/.test(owner.accountId)||
+     !await canvas(sender,owner)||
+     message.kind!==undefined&&message.kind!=='feature'||
+     Object.keys(message).some(k=>!['type','kind','owner'].includes(k)))
+     throw Error('Invalid pack catalogue request.');
+    await account(owner);
+    const packs=await root.ReservePacks.installed({owner});
+    return {ok:true,packs:packs.filter(pack=>!message.kind||pack.kind===message.kind).map(({id,name,kind})=>({id,name,kind,source:'market',current:false}))};
    }
    if(message.type==='market-remove'){if(!popup(sender)||typeof message.id!=='string')throw Error('Invalid pack removal.');await root.ReservePacks.remove(message.id);return {ok:true};}
    if(!market(sender)||!await chrome.permissions?.contains({origins:['https://flzsh.github.io/*']}))throw Error('Market access is unavailable.');

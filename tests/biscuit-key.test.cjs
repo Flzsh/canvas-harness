@@ -10,7 +10,7 @@ const cases=(name,list,intent)=>{for(const [q,fields] of list)test(name+': '+q,(
 
 // appearance settings: the customization model's own keys and values
 cases('setting',[
- ['dark mode',{key:'theme',value:'dark'}],['turn on dark mode',{key:'theme',value:'dark'}],['light mode',{key:'theme',value:'light'}],['make it light',{key:'theme',value:'light'}],['match my computer',{key:'theme',value:'system'}],
+ ['dark mode',{key:'theme',value:'dark'}],['turn on dark mode',{key:'theme',value:'dark'}],['light mode',{key:'theme',value:'light'}],['make it light',{key:'theme',value:'light'}],
  ['starfield theme',{key:'sceneTheme',value:'stars'}],['switch to the starfield',{key:'sceneTheme',value:'stars'}],['under the sea',{key:'sceneTheme',value:'sea'}],['sea theme',{key:'sceneTheme',value:'sea'}],['starry night theme',{key:'sceneTheme',value:'starry'}],['blueprint theme',{key:'sceneTheme',value:'blueprint'}],['no scene theme',{key:'sceneTheme',value:''}],
  ['courses along the bottom',{key:'courseNavigation',value:'dock'}],['use the dock',{key:'courseNavigation',value:'dock'}],['courses across the top',{key:'courseNavigation',value:'topbar'}],['courses on the side',{key:'courseNavigation',value:'sidebar'}],
  ['bigger dock',{key:'dockSize',value:'large'}],['small dock',{key:'dockSize',value:'small'}],

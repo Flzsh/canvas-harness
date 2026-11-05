@@ -10,7 +10,7 @@
 .rd[data-theme-kit] :is(small,p,.rd-heading-date,.rd-rail-next){color:var(--rd-muted)!important}
 .rd[data-theme-kit] .rd-heading-date,.rd[data-theme-kit] .rd-bookmarks :is(p,small){color:#E4F8FF!important}
 .rd[data-theme-kit] :is(.rd-text-button,.rd-grade-switch,.rd-board-edit,.rd-toolbox-trigger){color:var(--rd-ink)!important}
-.rd[data-theme-kit] :is(.rd-rail-next b,.rd-reader-facts span:first-child,[class*=due],[class*=time]){color:#FFD48A!important}
+.rd[data-theme-kit] :is(.rd-rail-next b,.rd-reader-facts span:first-child,[class*=due]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-]),[class*=time]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-])){color:#FFD48A!important}
 .rd[data-theme-kit] .rd-reader-facts span:not(:first-child){color:var(--rd-muted)!important}
 .rd[data-theme-kit] .rd-rich-text,.rd[data-theme-kit] .rd-rich-text :is(p,li,ol,ul,span,em,strong,b,td,th,h4,h5,h6){color:var(--rd-ink)!important}
 /* the scene: the drawing across the top, fading into the paper */
@@ -37,9 +37,9 @@
 .rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::before,.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::after,.rd[data-theme-kit] .rd-rail-art::after{display:none!important}
 .rd[data-theme-kit] .rd-rail-art > svg{display:none!important}
 .rd[data-theme-kit] .tk-icon{width:116%;height:116%;margin:-8%;object-fit:contain}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information){background:rgba(15,54,104,.87)!important;border-radius:18px!important;backdrop-filter:none}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{-webkit-mask-box-image:none!important;mask:none!important;background:none!important;border:0!important;border-radius:18px!important;inset:0!important;box-shadow:inset 0 0 0 1px rgba(226,238,255,.26),inset 0 2px 0 rgba(240,247,255,.4),0 18px 40px rgba(6,24,52,.4)!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::before{display:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget){background:rgba(15,54,104,.87)!important;border-radius:18px!important;backdrop-filter:none}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{-webkit-mask-box-image:none!important;mask:none!important;background:none!important;border:0!important;border-radius:18px!important;inset:0!important;box-shadow:inset 0 0 0 1px rgba(226,238,255,.26),inset 0 2px 0 rgba(240,247,255,.4),0 18px 40px rgba(6,24,52,.4)!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::before{display:none!important}
 .rd[data-theme-kit] :is(.rd-announcement,.rd-reader,.rd-work-item,.rd-deck-section){background:transparent!important}
 .rd[data-theme-kit] .rd-bookmarks{border-bottom:1px solid rgba(226,238,255,.2)!important}
 .rd[data-theme-kit] .rd-assignment-list::before,.rd[data-theme-kit] .rd-assignment-list::after{background:rgba(207,230,255,.12)!important;box-shadow:inset 0 0 0 1px rgba(226,238,255,.45)!important}
@@ -69,24 +69,24 @@
 .rd[data-theme-kit] .rd-frame{border:20px solid transparent!important;border-image:url(blueprint-card.png) 50 round!important;background-clip:padding-box!important;box-shadow:none!important;border-radius:0!important}
 .rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame{box-shadow:none!important}
 .rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame::after,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame::after{inset:-14px!important;border-radius:16px!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{box-shadow:none!important;border-radius:0!important;border:36px solid transparent!important;border-image:url(blueprint-panel.png) 90 round!important;inset:-20px!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{box-shadow:none!important;border-radius:0!important;border:36px solid transparent!important;border-image:url(blueprint-panel.png) 90 round!important;inset:-20px!important}
 .rd[data-theme-kit] .rd-course-rail{box-shadow:none!important}
 .rd[data-theme-kit] .rd-course-rail::after{content:"";position:absolute;inset:-20px;border:36px solid transparent;border-image:url(blueprint-panel.png) 90 round;pointer-events:none}
 /* the frame carries the pane: no rectangle of background inside or outside the drawn line */
 .rd[data-theme-kit] .rd-frame{border-width:18px!important;border-image:url(blueprint-card.png) 50 fill round!important;background:none!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail){background:transparent!important;backdrop-filter:none!important;isolation:isolate}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::after{display:none!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::before{display:block!important;content:""!important;position:absolute!important;inset:-20px!important;z-index:-1!important;border:36px solid transparent!important;border-image:url(blueprint-panel.png) 90 fill round!important;background:none!important;pointer-events:none!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::before{-webkit-mask-box-image:none!important;-webkit-mask:none!important;mask:none!important;opacity:1!important;filter:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail){background:transparent!important;backdrop-filter:none!important;isolation:isolate}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail)::after{display:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail)::before{display:block!important;content:""!important;position:absolute!important;inset:-20px!important;z-index:-1!important;border:36px solid transparent!important;border-image:url(blueprint-panel.png) 90 fill round!important;background:none!important;pointer-events:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail)::before{-webkit-mask-box-image:none!important;-webkit-mask:none!important;mask:none!important;opacity:1!important;filter:none!important}
 .rd[data-theme-kit] .rd-course-rail::before{inset:0!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-reader,.rd-work,.rd-course-deck,.rd-course-rail){border-color:transparent!important;box-shadow:none!important;outline:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-reader,.rd-work,.rd-course-deck,.rd-course-rail){border-color:transparent!important;box-shadow:none!important;outline:none!important}
 /* each theme its own frame (blueprint: a ruled sheet with ruler ticks, registration marks and instruments in the corners) */
 .rd[data-theme-kit] .rd-frame{border-width:22px!important;border-image:url(blueprint-card.png) 50 fill round!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::before{border-width:36px!important;border-image:url(blueprint-panel.png) 90 fill round!important;inset:-18px!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail)::before{border-width:36px!important;border-image:url(blueprint-panel.png) 90 fill round!important;inset:-18px!important}
 .rd[data-theme-kit] .rd-course-rail::before{inset:0!important}
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-course-rail)::before{box-shadow:none!important;outline:none!important;border-radius:0!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail)::before{box-shadow:none!important;outline:none!important;border-radius:0!important}
 /* the frames are alive: a dash-dot centre line runs slowly down each side of the sheet, the two sides out of step */
-.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information)::after{display:block!important;content:""!important;position:absolute!important;inset:-6px!important;border:0!important;box-shadow:none!important;border-radius:0!important;pointer-events:none!important;z-index:2!important;
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{display:block!important;content:""!important;position:absolute!important;inset:-6px!important;border:0!important;box-shadow:none!important;border-radius:0!important;pointer-events:none!important;z-index:2!important;
   background:repeating-linear-gradient(180deg,rgba(236,244,255,.55) 0 14px,transparent 14px 19px,rgba(236,244,255,.55) 19px 21px,transparent 21px 26px) 0 0/1px 100% no-repeat,repeating-linear-gradient(180deg,rgba(236,244,255,.55) 0 14px,transparent 14px 19px,rgba(236,244,255,.55) 19px 21px,transparent 21px 26px) 100% 9px/1px 100% no-repeat!important;
   -webkit-mask-image:linear-gradient(180deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(180deg,transparent,#000 14%,#000 86%,transparent);animation:tk-draft 9s linear infinite!important;will-change:background-position}
 .rd[data-theme-kit] .rd-work-column::after{animation-duration:11s!important}.rd[data-theme-kit] .rd-information::after{animation-duration:7.5s!important}
@@ -103,3 +103,6 @@
 .rd[data-theme-kit] .rd-workspace{padding-inline:26px!important;margin-inline:-26px!important}
 /* every colour the interface uses, so nothing falls back to paper (beats page tint and page style) */
 .rd.rd.rd.rd[data-theme-kit]{--rd-control:#A9C6E8;--rd-control-line:rgba(226,238,255,.32);--rd-line-strong:rgba(226,238,255,.36);--rd-tint:rgba(226,238,255,.12);--rd-row-hover:rgba(226,238,255,.09);--rd-sidebar:#154580;--rd-sidebar-hover:#1A4F90;--rd-sidebar-sel:#205AA0;--rd-surface-3:#2463AE;--rd-mark:#FFD48A;--rd-deadline-soon:#FFD9A0;--rd-danger-soft:rgb(255 181 154/.16);--rd-info:#CFE6FF;--rd-info-soft:rgb(207 230 255/.15);--rd-success:#8FE3B4;--rd-success-soft:rgb(143 227 180/.15);--rd-warn:#FFD98A;--rd-warn-soft:rgb(255 217 138/.15);--rd-switch-on:#F3C654}
+/* A Home module shorter than its row is drawn down to the row's foot like every other panel (the dashboard extends a
+   panel's frame by --rd-panel-grow), so a row of modules reads as one row of panels */
+.rd[data-theme-kit] .rd-main.rd-desk > .rd-widget::before{bottom:calc(-18px - var(--rd-panel-grow,0px))!important}

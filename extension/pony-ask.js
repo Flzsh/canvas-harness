@@ -133,7 +133,7 @@
    return choices.length?{...choices[0],intent:'installed',...(choices.length>1?{choices}:{})}:{action:'fallback',message:'No matching installed choice. Check your installed packs.'};
   }
   for(const spec of INTENTS)if(spec.patterns.some(p=>p.test(v))){const result=spec.action(v,snapshot);if(result)return {...result,intent:spec.name};break;}
-  return {action:'fallback',message:FALLBACK};
+  return snapshot.ai===true?{action:'ai',label:'Ask AI',data:{question:v}}:{action:'fallback',message:FALLBACK};
  }
  function routine(input,snapshot){
   const v=text(input),m=v.match(/^every\s+(weekday|day|night|sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b\s*(.*)$/i);
@@ -162,6 +162,7 @@
     text:text(v.text),
     at:v.at,
     createdAt:v.createdAt,
+    ...(v.agent===true?{agent:true}:{}),
     ...(typeof v.delivered==='string'&&stamp(Number(v.delivered))&&String(Number(v.delivered))===v.delivered?{delivered:v.delivered}:{})
    });
   }
@@ -192,11 +193,13 @@
  function due(pet,snapshot,state={}){
   const s=object(snapshot),p=object(pet),now=s.now,B=root.ReservePonyBrain,local=calendar(s.timeZone),clock=stamp(now)?local(now):null;
   if(!clock)return null;
-  if(p.skills?.reminders===false||s.focus?.running||state.typing||state.dragging||state.hidden||(p.brain?.hiddenUntil>now||p.brain?.quietUntil>now))return null;
-  const reminder=cleanReminders(p.reminders,now).filter(v=>
-   v.at<=now&&v.delivered!==String(v.at)&&!(Array.isArray(state.seen)&&state.seen.includes(JSON.stringify(['reminder',v.id,String(v.at)])))).sort((a,b)=>
-   a.at-b.at)[0];
-  if(reminder)return {type:'reminder',id:reminder.id,occurrence:String(reminder.at),label:reminder.text,action:'remind',data:{text:reminder.text}};
+  if(p.skills?.reminders===false||s.focus?.running||state.typing||state.dragging||state.hidden||p.brain?.hiddenUntil>now)return null;
+  const quiet=p.nudges!=='helpful'||p.skills?.night!==false&&(clock.minute>=1320||clock.minute<420)||p.brain?.nudges?.day===clock.day&&p.brain.nudges.count>=3,
+   reminder=cleanReminders(p.reminders,now).filter(v=>
+    v.at<=now&&v.delivered!==String(v.at)&&(!v.agent||!quiet)&&!(Array.isArray(state.seen)&&state.seen.includes(JSON.stringify(['reminder',v.id,String(v.at)])))).sort((a,b)=>
+    a.at-b.at)[0];
+  if(reminder)
+   return {type:'reminder',id:reminder.id,occurrence:String(reminder.at),label:reminder.text,action:'remind',data:{text:reminder.text},...(reminder.agent?{agent:true}:{})};
   if(p.nudges!=='helpful')return null;
   for(const r of cleanRoutines(p.routines)){
    const at=wall(clock.day,r.minute,s.timeZone),isReminder=r.action==='remind',kind={focus:'focus',break:'break',plan:'plan',remind:'reminder'}[r.action];
@@ -221,18 +224,20 @@
   return null;
  }
  function markOffer(pet,offer,snapshot){
-  const reminder=offer.type==='reminder'?cleanReminders(pet.reminders,0).find(r=>r.id===offer.id&&String(r.at)===offer.occurrence):null;
-  if(offer.type==='reminder')
-   return !reminder||reminder.delivered===offer.occurrence?
-    pet:
-    {...pet,reminders:cleanReminders(pet.reminders,0).map(r=>r.id===reminder.id?{...r,delivered:offer.occurrence}:r)};
-  if(offer.type!=='routine'||!validDay(offer.occurrence)||!cleanRoutines(pet.routines).some(r=>r.id===offer.id&&r.last<offer.occurrence))return pet;
-  const routines=cleanRoutines(pet.routines).map(r=>r.id===offer.id?{...r,last:offer.occurrence}:r),brain={...pet.brain,nudges:{...pet.brain?.nudges}};
-  if(offer.action!=='remind'){
-   if(brain.nudges.day!==offer.occurrence)brain.nudges={...brain.nudges,day:offer.occurrence,count:0};
+  const agent=offer.type==='reminder'&&offer.agent===true,
+   s=object(snapshot),
+   reminder=offer.type==='reminder'?cleanReminders(pet.reminders,0).find(r=>r.id===offer.id&&String(r.at)===offer.occurrence):null;
+  if(offer.type==='reminder'&&(!reminder||reminder.delivered===offer.occurrence)||offer.type!=='reminder'&&offer.type!=='routine'||agent&&!stamp(s.now))return pet;
+  if(offer.type==='routine'&&!cleanRoutines(pet.routines).some(r=>r.id===offer.id&&r.last<offer.occurrence))return pet;
+  const day=agent?calendar(s.timeZone)(s.now).day:offer.occurrence,
+   routines=offer.type==='routine'?cleanRoutines(pet.routines).map(r=>r.id===offer.id?{...r,last:offer.occurrence}:r):pet.routines,
+   brain={...pet.brain,nudges:{...pet.brain?.nudges}},
+   reminders=reminder?cleanReminders(pet.reminders,0).map(r=>r.id===reminder.id?{...r,delivered:offer.occurrence}:r):pet.reminders;
+  if(agent||offer.type==='routine'&&offer.action!=='remind'){
+   if(brain.nudges.day!==day)brain.nudges={...brain.nudges,day,count:0};
    brain.nudges.count=Math.min(3,(brain.nudges.count||0)+1);
   }
-  return {...pet,routines,brain};
+  return {...pet,...(reminder?{reminders}:{routines}),...(agent||offer.type==='routine'?{brain}:{})};
  }
  async function claimOffer(store,offer,snapshot,state={}){
   let claimed=null;
