@@ -1,0 +1,144 @@
+/* Wisteria Watch: the dashboard in a wisteria grove at golden hour, where three young slayers rest by a stone lantern
+   before the night's watch. The sunlit grove across the top; below it the shade under the trellis where you read. Cards
+   and panels are a wisteria trellis of cedar beams lashed with red cord, wisteria hanging from its corners; headings are
+   set in a calm book serif, the chosen tab is a pressed wisteria petal and the main button indigo haori cloth with a
+   wave-scale weave; the course pictures are the watch and what it waits for (a slayer, the moon over the dark trees with
+   two eyes in them, a trainee's swing, a raceme of wisteria, the messenger crow, the lantern being lit). */
+.rd.rd.rd.rd[data-theme-kit]{--rd-bg:#161E1B;--rd-surface:#1E2824;--rd-surface-2:#25302B;--rd-ink:#F3EEDF;--rd-muted:#C4BFAA;--rd-ink-2:#E6E0CE;--rd-faint:#A19F8B;--rd-line:rgba(226,214,180,.18);--rd-accent:#C6B2EF;--rd-soft:rgba(198,178,239,.14);--rd-course:#C6B2EF;--rd-danger:#FF9D86;
+  /* the shade under the trellis: the meadow's green where the grove fades out (66-100% of its 1600:440 height), then the
+     deep moss. The stops follow the grove's height, which follows the page's width. */
+  background:linear-gradient(180deg,#56634b 0,#5a674e 17vw,#3e4d41 23vw,#2a3832 29vw,#1d2925 36vw,#171f1c 48vw,#121916 100%)!important;color:var(--rd-ink)!important;position:relative;isolation:isolate;overflow:hidden}
+.rd[data-theme-kit] :is(h1,h2,h3,.rd-rail-name,.rd-rail-heading){font-family:"Literata","Iowan Old Style","Sitka Heading","Source Serif 4",Charter,Georgia,Cambria,serif!important;font-weight:700!important;letter-spacing:.012em;color:#F7F2E4!important;font-optical-sizing:auto}
+.rd[data-theme-kit] h1{font-weight:800!important;font-size:44px!important;letter-spacing:-.004em;text-shadow:0 2px 0 rgba(10,16,13,.5),0 0 24px rgba(10,16,13,.72)}
+.rd[data-theme-kit] .rd-rail-heading,.rd[data-theme-kit] .rd-heading-date,.rd[data-theme-kit] .rd-board-edit,.rd[data-theme-kit] .rd-bookmarks :is(p,small,h2){text-shadow:0 1px 4px rgba(10,16,13,.9)}
+.rd[data-theme-kit] :is(button,label,span,b,strong,small,em,time,li,td,th,dt,dd){color:inherit}
+.rd[data-theme-kit] :is(small,p,.rd-heading-date,.rd-rail-next){color:var(--rd-muted)!important}
+.rd[data-theme-kit] .rd-heading-date,.rd[data-theme-kit] .rd-bookmarks :is(p,small){color:#F3EEDF!important}
+.rd[data-theme-kit] :is(.rd-text-button,.rd-grade-switch,.rd-board-edit,.rd-toolbox-trigger){color:var(--rd-ink)!important}
+.rd[data-theme-kit] :is(.rd-rail-next b,.rd-reader-facts span:first-child,[class*=due]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-]),[class*=time]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-])){color:#F5BD6E!important}
+.rd[data-theme-kit] .rd-reader-facts span:not(:first-child){color:var(--rd-muted)!important}
+.rd[data-theme-kit] .rd-rich-text,.rd[data-theme-kit] .rd-rich-text :is(p,li,ol,ul,span,em,strong,b,td,th,h4,h5,h6){color:var(--rd-ink)!important}
+/* the scene: the whole picture across the top, settling into the shade */
+.rd[data-theme-kit] > .tk-sky{position:absolute;left:0;right:0;top:0;aspect-ratio:1600/440;z-index:0;pointer-events:none;
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 66%,rgba(0,0,0,.4) 86%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 66%,rgba(0,0,0,.4) 86%,transparent 100%)}
+.rd[data-theme-kit] > .tk-sky video{width:100%;height:100%;object-fit:contain;object-position:50% 0;display:block}
+.rd[data-theme-kit] > .rd-shell{position:relative;z-index:1}
+.rd[data-theme-kit] .rd-heading-art{display:none!important}
+.rd[data-theme-kit] .rd-course-heading h1::before{background:none!important}
+.rd[data-theme-kit] .rd-course-heading{position:relative}
+/* the greeting stands in a pool of leaf shade, so the white words read on the bright haze (the workspace clips 26px
+   left of the heading, so the pool has faded out by then); the date line carries a dark
+   halo of its own */
+.rd[data-theme-kit] .rd-course-heading::before{position:absolute!important;inset:-40px auto -40px -26px!important;width:820px!important;height:auto!important;z-index:-1!important;background:radial-gradient(farthest-side at 47% 54%,rgba(16,26,22,.64) 0,rgba(16,26,22,.5) 42%,rgba(16,26,22,.22) 74%,rgba(16,26,22,0))!important}
+.rd[data-theme-kit] .rd-course-heading .rd-heading-date{text-shadow:0 0 3px rgba(12,20,17,.95),0 0 9px rgba(12,20,17,.85),0 0 18px rgba(12,20,17,.65)!important}
+/* plates: the tab bars are dark moss with a thin line of warm light */
+.rd[data-theme-kit] .rd-toolbar{background:transparent!important}
+.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week,.rd-reader-tabs){background:rgba(19,27,24,.8)!important;box-shadow:inset 0 0 0 1px rgba(226,214,180,.24),inset 0 1px 0 rgba(255,240,214,.12)!important;backdrop-filter:none}
+.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter,.rd-reader-tab){color:#EEE8D6!important}
+/* the chosen tab or chip: a pressed wisteria petal, lit from above, its lower lip deeper violet */
+.rd[data-theme-kit] :is(.rd-workspace-tab[aria-selected=true],.cz-tab[aria-selected=true],.rd-filter[aria-pressed=true],.rd-day-filter[aria-pressed=true],.rd-reader-tab[aria-pressed=true],.rd-reader-tab[aria-selected=true]),.rd[data-theme-kit] .rd-glance-chip{background:linear-gradient(180deg,#ece3fa 0,#d2c1f1 45%,#b39cdf 100%)!important;color:#25163C!important;font-weight:700;box-shadow:inset 0 0 0 1px rgba(76,52,124,.55),inset 0 1px 0 rgba(255,251,255,.85),inset 0 -3px 0 rgba(88,60,140,.32),0 2px 6px rgba(6,10,8,.45),0 0 14px rgba(198,178,239,.24)!important;text-shadow:0 1px 0 rgba(255,250,255,.45)}
+.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter)::before,.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week,.rd-reader-tabs)::before{background:transparent!important;box-shadow:none!important}
+/* the search field: a slot cut in dark cedar */
+.rd[data-theme-kit] .rd-search input{background:linear-gradient(180deg,rgba(11,17,15,.9),rgba(25,33,30,.86))!important;color:var(--rd-ink)!important;border:1px solid rgba(226,214,180,.3)!important;box-shadow:inset 0 2px 4px rgba(0,0,0,.45),0 1px 0 rgba(255,240,214,.08)!important}
+.rd[data-theme-kit] .rd-search input::placeholder{color:#BDB8A2}
+.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course,.rd-course-name){background:transparent!important;box-shadow:none!important;outline:none!important}
+.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::before,.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::after,.rd[data-theme-kit] .rd-rail-art::after{display:none!important}
+.rd[data-theme-kit] .rd-rail-art > svg{display:none!important}
+.rd[data-theme-kit] .tk-icon{width:116%;height:116%;margin:-8%;object-fit:contain}
+.rd[data-theme-kit] :is(.rd-announcement,.rd-reader,.rd-work-item,.rd-deck-section){background:transparent!important}
+.rd[data-theme-kit] .rd-bookmarks{border-bottom:1px solid rgba(226,214,180,.18)!important}
+.rd[data-theme-kit] .rd-assignment-list::before,.rd[data-theme-kit] .rd-assignment-list::after{background:rgba(170,140,220,.1)!important;box-shadow:inset 0 0 0 1px rgba(198,178,239,.45)!important}
+.rd[data-theme-kit] .rd-assignment--selected{background:transparent!important;box-shadow:none!important}
+/* the main button: indigo haori cloth woven with fine wave scales, a row of stitches inside the hem, light thread
+   lettering; a slow sheen crosses it now and then like light over silk */
+.rd[data-theme-kit] .rd-button--primary{background:linear-gradient(180deg,rgba(255,255,255,.07) 0,rgba(255,255,255,0) 50%,rgba(0,0,0,.14) 100%),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='10'%3E%3Cg fill='%23303b66' stroke='%23b8c1ea' stroke-opacity='.2' stroke-width='.7'%3E%3Ccircle cx='10' cy='0' r='9.6'/%3E%3Ccircle cx='10' cy='0' r='6.6'/%3E%3Ccircle cx='10' cy='0' r='3.6'/%3E%3Ccircle cx='0' cy='5' r='9.6'/%3E%3Ccircle cx='0' cy='5' r='6.6'/%3E%3Ccircle cx='0' cy='5' r='3.6'/%3E%3Ccircle cx='20' cy='5' r='9.6'/%3E%3Ccircle cx='20' cy='5' r='6.6'/%3E%3Ccircle cx='20' cy='5' r='3.6'/%3E%3Ccircle cx='10' cy='10' r='9.6'/%3E%3Ccircle cx='10' cy='10' r='6.6'/%3E%3Ccircle cx='10' cy='10' r='3.6'/%3E%3C/g%3E%3C/svg%3E") 0 0/20px 10px,#303b66!important;color:#F8F4E8!important;border:1px solid #1c2242!important;font-weight:700;text-shadow:0 1px 1px rgba(12,14,30,.65);box-shadow:inset 0 1px 0 rgba(196,206,244,.3),inset 0 -2px 0 rgba(12,14,34,.42),0 3px 10px rgba(6,10,8,.45)!important;position:relative;overflow:hidden;isolation:isolate}
+.rd[data-theme-kit] .rd-button--primary:hover{background:linear-gradient(180deg,rgba(255,255,255,.09) 0,rgba(255,255,255,0) 50%,rgba(0,0,0,.12) 100%),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='10'%3E%3Cg fill='%23384574' stroke='%23b8c1ea' stroke-opacity='.2' stroke-width='.7'%3E%3Ccircle cx='10' cy='0' r='9.6'/%3E%3Ccircle cx='10' cy='0' r='6.6'/%3E%3Ccircle cx='10' cy='0' r='3.6'/%3E%3Ccircle cx='0' cy='5' r='9.6'/%3E%3Ccircle cx='0' cy='5' r='6.6'/%3E%3Ccircle cx='0' cy='5' r='3.6'/%3E%3Ccircle cx='20' cy='5' r='9.6'/%3E%3Ccircle cx='20' cy='5' r='6.6'/%3E%3Ccircle cx='20' cy='5' r='3.6'/%3E%3Ccircle cx='10' cy='10' r='9.6'/%3E%3Ccircle cx='10' cy='10' r='6.6'/%3E%3Ccircle cx='10' cy='10' r='3.6'/%3E%3C/g%3E%3C/svg%3E") 0 0/20px 10px,#384574!important;color:#FFFBF0!important}
+.rd[data-theme-kit] .rd-button--primary::before{content:"";position:absolute;inset:3px;border:1px dashed rgba(214,222,250,.42);border-radius:inherit;pointer-events:none;z-index:-1}
+.rd[data-theme-kit] .rd-button--primary::after{content:"";position:absolute;top:0;bottom:0;left:0;width:45%;background:linear-gradient(100deg,transparent,rgba(222,228,252,.2) 45%,rgba(250,248,255,.28) 50%,rgba(222,228,252,.2) 55%,transparent);transform:translateX(-130%);animation:tk-sheen 11s cubic-bezier(.45,0,.25,1) infinite;will-change:transform;pointer-events:none;z-index:-1}
+@keyframes tk-sheen{0%,8%{transform:translateX(-130%)}52%,100%{transform:translateX(330%)}}
+/* every other button: a plate of dark cedar with a lit upper edge */
+.rd[data-theme-kit] .rd-button:not(.rd-button--primary){background:linear-gradient(180deg,#4a3527 0,#3c2b21 55%,#33241b 100%)!important;color:var(--rd-ink)!important;border:1px solid rgba(226,190,140,.32)!important;box-shadow:inset 0 1px 0 rgba(255,226,180,.14),inset 0 -2px 0 rgba(0,0,0,.28),0 2px 6px rgba(6,10,8,.35)!important}
+.rd[data-theme-kit] .rd-button:not(.rd-button--primary):hover{background:linear-gradient(180deg,#553e2e 0,#463326 55%,#3a2a1f 100%)!important;border-color:rgba(198,178,239,.55)!important}
+.rd[data-theme-kit] a{color:#CDBDF2}
+/* life: a soft wisteria glow round the chosen card, the motifs each in their own small motion */
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame::after,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame::after{content:"";position:absolute;inset:-14px;border-radius:16px;box-shadow:0 0 18px 1px rgba(198,178,239,.4),inset 0 0 0 1px rgba(214,196,246,.3);opacity:.75;animation:tk-glowop 9s ease-in-out infinite;will-change:opacity;pointer-events:none}
+@keyframes tk-glowop{0%,100%{opacity:.5}50%{opacity:.9}}
+/* the slayer draws a slow, steady breath; the moon sinks and rises behind the trees and the eyes in them come and go; the
+   trainee leans into the swing; the wisteria sways from its stem; the crow cocks its head; the lantern's flame flickers.
+   Frozen they stand at rest. */
+@keyframes tk-slayer{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-1px) scale(1.03)}}
+@keyframes tk-moon{0%,100%{transform:translateY(0);opacity:1}50%{transform:translateY(-2px);opacity:.88}}
+@keyframes tk-trainee{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+@keyframes tk-wisteria{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+@keyframes tk-crow{0%,38%,100%{transform:rotate(0)}46%,62%{transform:rotate(-4deg)}70%,86%{transform:rotate(3deg)}}
+@keyframes tk-lantern{0%,100%{opacity:1;transform:scale(1)}18%{opacity:.86}32%{opacity:.97;transform:scale(1.01)}55%{opacity:.9}74%{opacity:1;transform:scale(1)}88%{opacity:.93}}
+.rd[data-theme-kit] .tk-icon[data-motif=slayer]{transform-origin:50% 96%;animation:tk-slayer 6s ease-in-out infinite}
+.rd[data-theme-kit] .tk-icon[data-motif=moon]{transform-origin:50% 90%;animation:tk-moon 9s ease-in-out infinite}
+.rd[data-theme-kit] .tk-icon[data-motif=trainee]{transform-origin:50% 100%;animation:tk-trainee 7s ease-in-out infinite}
+.rd[data-theme-kit] .tk-icon[data-motif=wisteria]{transform-origin:50% 4%;animation:tk-wisteria 8s ease-in-out infinite}
+.rd[data-theme-kit] .tk-icon[data-motif=crow]{transform-origin:50% 100%;animation:tk-crow 9s ease-in-out infinite}
+.rd[data-theme-kit] .tk-icon[data-motif=lantern]{transform-origin:50% 100%;animation:tk-lantern 5s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.rd[data-theme-kit] *,.rd[data-theme-kit] *::before,.rd[data-theme-kit] *::after{animation:none!important}}
+/* the last labels in the original face follow the theme title face */
+.rd[data-theme-kit] :is(.rd-rail-heading,.rd-rail-heading *,.rd-rail-all > span,.rd-day-filter strong,.rd-day-filter b){font-family:"Literata","Iowan Old Style","Sitka Heading",Charter,Georgia,serif!important;font-weight:700!important}
+/* drawn frames, never a plain rectangle: the cards and the panels are framed in the cedar trellis */
+.rd[data-theme-kit] .rd-frame > *{display:none!important}
+.rd[data-theme-kit] .rd-frame{border:24px solid transparent!important;border-image:url(wisteria-card.png) 56 fill round!important;background:none!important;background-clip:padding-box!important;box-shadow:none!important;border-radius:0!important}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame{box-shadow:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail){background:transparent!important;backdrop-filter:none!important;isolation:isolate}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail)::before{display:block!important;content:""!important;position:absolute!important;inset:-18px!important;z-index:-1!important;border:40px solid transparent!important;border-image:url(wisteria-panel.png) 100 fill round!important;background:none!important;pointer-events:none!important;
+  -webkit-mask-box-image:none!important;-webkit-mask:none!important;mask:none!important;opacity:1!important;filter:none!important;box-shadow:none!important;outline:none!important;border-radius:0!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-reader,.rd-work,.rd-course-deck,.rd-course-rail){border-color:transparent!important;box-shadow:none!important;outline:none!important}
+/* one border only: the course cards wear the trellis, the rail round them wears none */
+.rd[data-theme-kit] .rd-course-rail::before,.rd[data-theme-kit] .rd-course-rail::after{display:none!important}
+.rd[data-theme-kit] .rd-course-rail{background:transparent!important;box-shadow:none!important;backdrop-filter:none!important}
+/* the trellis is alive: now and then a few wisteria petals drift down past the beams and fade, the panels out of step.
+   Frozen (Still, Off, reduced motion, idle rest) they are gone. */
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{display:block!important;content:""!important;position:absolute!important;inset:-14px!important;border:0!important;box-shadow:none!important;border-radius:0!important;pointer-events:none!important;z-index:2!important;
+  -webkit-mask-box-image:none!important;-webkit-mask:none!important;
+  background:radial-gradient(ellipse 4.4px 2.8px at 50% 50%,#f3ecfc 0 25%,rgba(200,176,240,.85) 55%,rgba(170,140,220,0) 100%) 1px 18%/12px 12px no-repeat,
+             radial-gradient(ellipse 3.6px 2.4px at 50% 50%,#e7dcf8 0 25%,rgba(184,160,232,.8) 55%,rgba(160,130,214,0) 100%) 6px 46%/12px 12px no-repeat,
+             radial-gradient(ellipse 4.4px 2.8px at 50% 50%,#f3ecfc 0 25%,rgba(200,176,240,.85) 55%,rgba(170,140,220,0) 100%) calc(100% - 1px) 12%/12px 12px no-repeat,
+             radial-gradient(ellipse 3.6px 2.4px at 50% 50%,#e7dcf8 0 25%,rgba(184,160,232,.8) 55%,rgba(160,130,214,0) 100%) calc(100% - 6px) 40%/12px 12px no-repeat,
+             radial-gradient(ellipse 4px 2.6px at 50% 50%,#efe6fb 0 25%,rgba(196,170,238,.8) 55%,rgba(170,140,220,0) 100%) calc(100% - 2px) 70%/12px 12px no-repeat!important;
+  -webkit-mask-image:linear-gradient(180deg,transparent,#000 12%,#000 84%,transparent)!important;mask-image:linear-gradient(180deg,transparent,#000 12%,#000 84%,transparent)!important;
+  opacity:.6;animation:tk-petal 14s cubic-bezier(.4,.1,.6,1) infinite!important;will-change:transform,opacity}
+.rd[data-theme-kit] .rd-work-column::after{animation-duration:17s!important;animation-delay:-5s!important}
+.rd[data-theme-kit] .rd-information::after{animation-duration:12s!important;animation-delay:-8s!important}
+.rd[data-theme-kit] .rd-widget::after{animation-duration:15.5s!important;animation-delay:-3s!important}
+@keyframes tk-petal{0%{opacity:0;transform:translate(0,-26px) rotate(0)}16%{opacity:.95}40%{transform:translate(-3px,6px) rotate(40deg)}64%{opacity:.7;transform:translate(3px,30px) rotate(-20deg)}100%{opacity:0;transform:translate(-2px,60px) rotate(30deg)}}
+@media (prefers-reduced-motion:reduce){.rd[data-theme-kit] *::after{animation:none!important}}
+/* the petals rule above outranks scene-themes.css's stop rules, so it stops itself; standing still the petals are gone
+   (frozen petals read as stray dots on the gutters) */
+.rd[data-theme-kit]:is([data-motion-style=still],[data-motion-style=off]) :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{animation:none!important;opacity:0!important}
+.rd[data-theme-kit]:is([data-kit-rest],[data-scene-paused]) :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{animation-play-state:paused!important}
+@media (prefers-reduced-motion:reduce){.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{animation:none!important;opacity:0!important}}
+/* the Help band keeps the page's pen outline, drawn in weathered cedar instead of the accent */
+.rd[data-theme-kit][data-panel-frame=pen] .ch-band-host::after{background:rgba(214,184,140,.42)!important}
+/* small things in the grove's language: tick circles are little rings of turned cedar, section headings stand on a
+   twisted red cord like the trellis lashings */
+.rd[data-theme-kit] .rd-check-off{border:0!important;background:radial-gradient(circle at 50% 50%,rgba(10,16,14,.18) 0 46%,rgba(28,38,34,.9) 47.5%,#c99a67 51%,#e6c393 54%,#a57a51 59%,#5b4231 64%,rgba(28,38,34,.85) 67%,rgba(28,38,34,0) 71%)!important;box-shadow:none!important}
+.rd[data-theme-kit] .rd-check-off:hover{background:radial-gradient(circle at 50% 50%,rgba(198,178,239,.32) 0 46%,rgba(28,38,34,.9) 47.5%,#d6aa75 51%,#f0d2a4 54%,#b58a5e 59%,#5b4231 64%,rgba(28,38,34,.85) 67%,rgba(28,38,34,0) 71%)!important}
+.rd[data-theme-kit] :is(.rd-sheet-heading h3,.rd-deck-header h2,.rd-work-heading h2){padding-bottom:8px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='9'%3E%3Cg fill='none' stroke-width='1.3' stroke-linecap='round'%3E%3Cpath d='M0 5.5Q3 2.5 6 5.5T12 5.5' stroke='%23c4673f' stroke-opacity='.85'/%3E%3Cpath d='M0 5.5Q3 8.5 6 5.5T12 5.5' stroke='%23e39a6c' stroke-opacity='.7'/%3E%3C/g%3E%3C/svg%3E") 0 100%/12px 9px repeat-x}
+/* room for the frames: the workspace clips what spills past its sides, so widen its box without moving anything in it */
+.rd[data-theme-kit] .rd-workspace{padding-inline:26px!important;margin-inline:-26px!important}
+/* every colour the interface uses, so nothing falls back to paper (beats page tint and page style) */
+.rd.rd.rd.rd[data-theme-kit]{--rd-control:#A29E86;--rd-control-line:rgba(226,214,180,.3);--rd-line-strong:rgba(226,214,180,.34);--rd-tint:rgba(226,214,180,.1);--rd-row-hover:rgba(226,214,180,.07);--rd-sidebar:#19221F;--rd-sidebar-hover:#202B27;--rd-sidebar-sel:#2A3631;--rd-surface-3:#2E3A35;--rd-mark:#F5BD6E;--rd-deadline-soon:#F6C88E;--rd-danger-soft:rgb(255 157 134/.16);--rd-info:#B8C8E8;--rd-info-soft:rgb(184 200 232/.14);--rd-success:#A6D69C;--rd-success-soft:rgb(166 214 156/.15);--rd-warn:#F2C46E;--rd-warn-soft:rgb(242 196 110/.15);--rd-switch-on:#6E58A8}
+/* A Home module shorter than its row is drawn down to the row's foot like every other panel (the dashboard extends a
+   panel's frame by --rd-panel-grow), so a row of modules reads as one row of panels */
+.rd[data-theme-kit] .rd-main.rd-desk > .rd-widget::before{bottom:calc(-18px - var(--rd-panel-grow,0px))!important}
+
+/* The rail's pictures and counts sit inside the trellis, not on it: at the card's corner the icon would cross the
+   beams and the count sit on the top rail (the same fix Starfield got in Preview 6) */
+.rd[data-theme-kit] .rd-course-rail .rd-course-name > .rd-rail-art{left:13px!important;bottom:13px!important;width:34px!important;height:34px!important}
+.rd[data-theme-kit] .rd-course-rail .rd-course-name > .rd-rail-art > .tk-icon{width:100%!important;height:100%!important;margin:0!important}
+.rd[data-theme-kit] .rd-course-rail .rd-rail-count{transform:translate(-7px,5px)}
+/* All courses stands in the same trellis. Its frame is made tall enough for the 34px picture with beams above and below
+   it, the slayer stands on its lower rail where the course pictures stand (the wisteria hangs free left of her), the
+   name starts where the course names start, and the gap below it is the courses' own 8px step (which pays for most of
+   the new height: the rail grows by 4px) */
+.rd[data-theme-kit][data-course-navigation=sidebar]:not([data-show-course-icons=false]) .rd-course-rail > .rd-rail-all:has(> .rd-frame){--rd-overview-thickness:63px;margin-bottom:3px!important;padding-left:51px!important}
+.rd[data-theme-kit][data-course-navigation=sidebar]:not([data-show-course-icons=false]) .rd-course-rail > .rd-rail-all:has(> .rd-frame) > .rd-rail-art{position:absolute!important;left:13px!important;bottom:13px!important;width:34px!important;height:34px!important;margin:0!important}
+.rd[data-theme-kit][data-course-navigation=sidebar]:not([data-show-course-icons=false]) .rd-course-rail > .rd-rail-all:has(> .rd-frame) > .rd-rail-art > .tk-icon{width:100%!important;height:100%!important;margin:0!important}
+/* without course pictures the name stays off the beams, where the course names stand */
+.rd[data-theme-kit][data-course-navigation=sidebar][data-show-course-icons=false] .rd-course-rail > .rd-rail-all:has(> .rd-frame){padding-left:24px!important}

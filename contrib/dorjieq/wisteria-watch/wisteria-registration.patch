@@ -1,0 +1,509 @@
+diff --git a/extension/biscuit-controls.js b/extension/biscuit-controls.js
+index 6b09665..d536e9c 100644
+--- a/extension/biscuit-controls.js
++++ b/extension/biscuit-controls.js
+@@ -25,7 +25,7 @@
+    "panelFrame":["pen","stitch","card","line","none"],
+    "quickOpen":["on","off"],
+    "readingFont":["book","interface","easy"],
+-   "sceneTheme":["","starry","sea","stars","blueprint","walls"],
++   "sceneTheme":["","starry","sea","stars","blueprint","walls","wisteria"],
+    "surfaceStyle":["paper","clean","contrast"],
+    "textSize":["standard","large"],
+    "theme":["light","dark"]
+@@ -832,7 +832,7 @@
+      choices=rows.length?
+        rows.map(v=>({label:v.label,action:scene?'setting':'none',fields:scene&&ENUMS.sceneTheme.includes(v.value)?{key:'sceneTheme',value:v.value}:{}})):
+        scene?
+-         [['None',''],['Starry Night','starry'],['Under the Sea','sea'],['Starfield','stars'],['Blueprint','blueprint'],['Beyond the Walls','walls']].map(([label,value])=>
++         [['None',''],['Starry Night','starry'],['Under the Sea','sea'],['Starfield','stars'],['Blueprint','blueprint'],['Beyond the Walls','walls'],['Wisteria Watch','wisteria']].map(([label,value])=>
+            ({label,action:'setting',fields:{key:'sceneTheme',value}})):
+          [{label:'Default theme',action:'none',fields:{}}];
+    return ui(['Make it yours','Look',scene?'Scene':'Theme'],'Which '+(scene?'scene':'theme')+' would you like? Choose None or another choice.',{clarify:true,choices});
+diff --git a/extension/biscuit-parse.js b/extension/biscuit-parse.js
+index 52043e0..3541ca6 100644
+--- a/extension/biscuit-parse.js
++++ b/extension/biscuit-parse.js
+@@ -606,7 +606,7 @@
+  ]);
+  const SETTING_ENUMS={
+    theme:['dark','light'],
+-   sceneTheme:['','starry','sea','stars','blueprint','walls'],
++   sceneTheme:['','starry','sea','stars','blueprint','walls','wisteria'],
+    pageTint:['paper','accent','sky','sage','lilac','blush','sand','snow'],
+    courseNavigation:['sidebar','topbar','dock'],
+    dockSize:['small','medium','large'],
+@@ -655,7 +655,7 @@
+      ...APPEARANCE_NAMES.keys(),
+      ...Object.values(SETTING_ENUMS).flat(),
+      ...SIZE_NAMES.keys(),
+-     ...'dark light mode theme scene starfield starry night under sea beyond walls match computer courses navigation menu bar strip along bottom across top side left bigger smaller large small compact banner clean look high contrast background page screen tab view homepage rounded minimal stitched frames turn switch enable disable stop start show hide move put bring first position spot make wide wider widen width full go navigate open bookmark save later undo revert previous last change action edit take roll send back help quiet until write down add note self plant garden let paint reset restore layout preset study focus studio full lite everything on off use apply set clear remove no module widget panel to as be it the my a an me of for is bit little much slightly even'.split(' ')
++     ...'dark light mode theme scene starfield starry night under sea beyond walls wisteria watch match computer courses navigation menu bar strip along bottom across top side left bigger smaller large small compact banner clean look high contrast background page screen tab view homepage rounded minimal stitched frames turn switch enable disable stop start show hide move put bring first position spot make wide wider widen width full go navigate open bookmark save later undo revert previous last change action edit take roll send back help quiet until write down add note self plant garden let paint reset restore layout preset study focus studio full lite everything on off use apply set clear remove no module widget panel to as be it the my a an me of for is bit little much slightly even'.split(' ')
+    ].flatMap(value=>
+      value.match(/[a-z]+/g)||[]))
+  ],
+@@ -699,7 +699,7 @@
+    }
+    if(key==='sceneTheme'){
+      const scene=bare(value.replace(/\s+(?:scene(?:\s+theme)?|theme)$/,''));
+-     return /^(?:none|no|off|default)$/.test(scene)?'':/^(?:under\s+(?:the\s+)?)?sea$/.test(scene)?'sea':/^(?:starfield|stars)$/.test(scene)?'stars':/^starry(?:\s+night)?$/.test(scene)?'starry':/^(?:beyond\s+(?:the\s+)?)?walls$/.test(scene)?'walls':scene;
++     return /^(?:none|no|off|default)$/.test(scene)?'':/^(?:under\s+(?:the\s+)?)?sea$/.test(scene)?'sea':/^(?:starfield|stars)$/.test(scene)?'stars':/^starry(?:\s+night)?$/.test(scene)?'starry':/^(?:beyond\s+(?:the\s+)?)?walls$/.test(scene)?'walls':/^wisteria(?:\s+watch)?$/.test(scene)?'wisteria':scene;
+    }
+    if(key==='courseNavigation')return {bottom:'dock',top:'topbar',side:'sidebar',left:'sidebar','top bar':'topbar','side bar':'sidebar'}[value]||value;
+    if(key==='panelFrame')return {stitched:'stitch',no:'none'}[value]||value;
+@@ -723,7 +723,7 @@
+   if((m=/^(dark|light)(?:\s+(?:mode|theme))?$/.exec(style)))return setting('theme',m[1],m[1]==='dark'?'Dark mode':'Light mode');
+   if(/^(?:system(?:\s+(?:mode|theme))?|match\s+(?:(?:my|the)\s+)?(?:computer|system|device))$/.test(style))return [];
+   if(/^(?:no\s+scene(?:\s+theme)?|(?:remove|clear)\s+(?:the\s+)?scene(?:\s+theme)?)$/.test(style))return setting('sceneTheme','','No scene theme');
+-  if((m=/^(starfield|stars|starry(?:\s+night)?|(?:under\s+(?:the\s+)?)?sea|blueprint|(?:beyond\s+(?:the\s+)?)?walls)(?:\s+(?:scene(?:\s+theme)?|theme))?$/.exec(style)))return setting('sceneTheme',settingValue('sceneTheme',m[1]),'Scene · '+m[1]);
++  if((m=/^(starfield|stars|starry(?:\s+night)?|(?:under\s+(?:the\s+)?)?sea|blueprint|(?:beyond\s+(?:the\s+)?)?walls|wisteria(?:\s+watch)?)(?:\s+(?:scene(?:\s+theme)?|theme))?$/.exec(style)))return setting('sceneTheme',settingValue('sceneTheme',m[1]),'Scene · '+m[1]);
+   if((m=/^(?:courses?|course\s+(?:navigation|menu|bar|strip|dock))\s+(?:(?:along|across|on|at|to)\s+)?(?:the\s+)?(bottom|top|side|left)(?:\s+of\s+(?:the\s+)?(?:page|screen))?$/.exec(style)))return setting('courseNavigation',settingValue('courseNavigation',m[1]),'Courses · '+m[1]);
+   if((m=/^(?:course\s+)?(dock|topbar|top bar|sidebar|side bar)$/.exec(style)))return setting('courseNavigation',m[1].replace(/ /g,''),'Courses · '+m[1]);
+   if((m=SIZE_RE.exec(style))){const key=(m[2]||m[3])+'Size',value=settingValue(key,m[1]||m[4]);return setting(key,value,(key==='dockSize'?'Dock':'Banner')+' · '+value);}
+diff --git a/extension/customization-model.js b/extension/customization-model.js
+index 8b98752..b460e4b 100644
+--- a/extension/customization-model.js
++++ b/extension/customization-model.js
+@@ -3,7 +3,7 @@
+  'use strict';
+  const arrange=root.ReserveWorkspaceArrange||(typeof module==='object'&&module.exports?require('./workspace-arrange.js'):null);
+  const enums={
+-   sceneTheme:['','starry','sea','stars','blueprint','walls'],
++   sceneTheme:['','starry','sea','stars','blueprint','walls','wisteria'],
+    pageTint:['paper','accent','sky','sage','lilac','blush','sand','snow'],
+    courseNavigation:['sidebar','topbar','dock'],
+    dockSize:['small','medium','large'],
+diff --git a/extension/customize-ui.js b/extension/customize-ui.js
+index eae2d80..6be3e4c 100644
+--- a/extension/customize-ui.js
++++ b/extension/customize-ui.js
+@@ -157,18 +157,19 @@
+       button('board-frame',`<i data-frame="${value}"></i>${E(name)}`,`role="radio" data-value="${value}" aria-checked="${!(ownTheme?.frames?.panel||sceneActive)||layer.parts?.frames===false||layer.parts?.panel===false?(s.panelFrame||'pen')===value:false}" title="${E(hint)}"`,'rd-frame-choice')).join('');
+ 
+   const night=Math.max(0,Math.min(100,Math.round(Number(s.nightArt)||0))),
+-    sceneActive=enabled('scene-themes')&&['starry','sea','stars','blueprint','walls'].includes(s.sceneTheme),
++    sceneActive=enabled('scene-themes')&&['starry','sea','stars','blueprint','walls','wisteria'].includes(s.sceneTheme),
+     installedScene=(c.makeOwn?.catalogue||[]).find(row=>
+       row.kind==='feature'&&row.sceneTheme!==undefined&&(root.ReservePacks?.isCurrent?root.ReservePacks.isCurrent(row,{settings:s}):row.current));
+   const ownTheme=!sceneActive&&s.makeYourOwn?.theme?c.makeOwn?.theme:null,
+     ownedPalette=sceneActive||!!s.makeYourOwn?.theme,
+-    ownerName=s.makeYourOwn?.theme?.name||installedScene?.name||({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',walls:'Beyond the Walls'})[s.sceneTheme]||'The selected theme',
++    ownerName=s.makeYourOwn?.theme?.name||installedScene?.name||({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',walls:'Beyond the Walls',wisteria:'Wisteria Watch'})[s.sceneTheme]||'The selected theme',
+     look=root.ReserveMakeYourOwn?.activeLook?.(c.makeOwn,s)||{},
+     layer=look.layer||{};
+   const ownedMode=ownTheme&&!ownTheme.colors?.[s.theme==='dark'?'dark':'light']&&!layer.colors?.[s.theme==='dark'?'dark':'light']?(ownTheme.colors?.light?'light':'dark'):s.theme==='dark'?'dark':'light',
+     modeArt=(mode,bg,line,ink)=>
+       swatch(layer.colors?.[mode]?.bg||ownTheme?.colors?.[mode]?.bg||bg,ownTheme?.colors?.[mode]?.line||line,ownTheme?.colors?.[mode]?.ink||ink);
+-  const sceneColors=({starry:{bg:'#141b3d',accent:'#f2c94c'},sea:{bg:'#05345e',accent:'#7fe6f2'},stars:{bg:'#04060c',accent:'#a9c2ff'},blueprint:{bg:'#174a88',accent:'#cfe6ff'},walls:{bg:'#1b1a1f',accent:'#8fcf9c'}})[s.sceneTheme];
++  const sceneColors=({starry:{bg:'#141b3d',accent:'#f2c94c'},sea:{bg:'#05345e',accent:'#7fe6f2'},stars:{bg:'#04060c',accent:'#a9c2ff'},
++    blueprint:{bg:'#174a88',accent:'#cfe6ff'},walls:{bg:'#1b1a1f',accent:'#8fcf9c'},wisteria:{bg:'#161e1b',accent:'#c6b2ef'}})[s.sceneTheme];
+   const colorFields=key=>`<div class="cz-pair">${['light','dark'].map(mode=>{
+     const p=ownTheme?.colors?.[mode]||sceneColors||{},value=layer.colors?.[mode]?.[key]||p[key]||(key==='accent'?'#a9522f':mode==='dark'?'#1f1e1d':'#faf9f5');
+     return `<label class="rd-field"><span>${mode==='light'?'Light':'Dark'}</span><input type="color" data-rd-field="make-color" data-id="${E(look.key)}" data-mode="${mode}" data-color="${key}" value="${E(value)}" aria-label="${mode==='light'?'Light':'Dark'} ${key==='bg'?'page':'accent'} color"${c.makeOwn?.busy?' disabled':''}></label>`;
+@@ -187,7 +188,8 @@
+    ['sea','Under the Sea','',poster('sea')],
+    ['stars','Starfield','',poster('stars')],
+    ['blueprint','Blueprint','',poster('blueprint')],
+-   ['walls','Beyond the Walls','',poster('walls')]
++   ['walls','Beyond the Walls','',poster('walls')],
++   ['wisteria','Wisteria Watch','',poster('wisteria')]
+    ],{value:s.makeYourOwn?.theme?'own:'+s.makeYourOwn.theme.id:installedScene?'installed:'+installedScene.id:s.sceneTheme,cols:2,className:'cz-scenes'})+
+    picker({kinds:['feature'],scenes:true,label:'Installed scenes',more:false})+
+    picker({kinds:['theme'],label:'Installed themes'})+
+diff --git a/extension/dashboard-view.js b/extension/dashboard-view.js
+index 8b6f2cc..51e8b00 100644
+--- a/extension/dashboard-view.js
++++ b/extension/dashboard-view.js
+@@ -123,7 +123,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
+   }
+   function bookmarks(){
+     const items=bookmarkItems(c);
+-    return `<section class="rd-bookmarks" data-rd-key="bookmarks" aria-labelledby="rd-bookmarks-title"><div class="rd-bookmarks-heading">${(art=>art||enabled('scene-themes')&&['starry','sea','stars','blueprint','walls'].includes(c.s.sceneTheme)?`<span class="rd-bookmarks-art rd-rail-art" aria-hidden="true">${art}</span>`:'')(mini(bookmarkArt,'bookmarks'))}<h2 id="rd-bookmarks-title">Bookmarks</h2>${items.length?`<span class="rd-bookmarks-count">${items.length}</span>`:''}</div>${items.length?`<ul class="rd-bookmark-list">${items.map(item=>{const course=c.courseMap.get(item.courseId),label=`<small>${E(short(course)||'Personal')} · ${E(item.kind==='assignment'?'Assignment':item.category)}</small><strong>${E(item.title)}</strong>`;return `<li class="rd-bookmark" data-rd-key="bookmark-${E(item.kind+'-'+item.courseId+'-'+item.id)}" style="${tone(course?.color||'#C96442')}">${item.kind==='assignment'?action('preview',label,`data-id="${E(item.id)}" aria-label="Preview bookmarked assignment: ${E(item.title)}"`,'rd-bookmark-open'):`<a class="rd-bookmark-open" href="${E(item.url)}" target="_blank" rel="noopener noreferrer">${label}</a>`}${action(item.kind==='assignment'?'pin':'bookmark-remove-resource',icon('close'),`data-id="${E(item.id)}" data-course="${E(item.courseId)}" aria-label="Remove bookmark: ${E(item.title)}" title="Remove bookmark"`,'rd-icon-button rd-bookmark-remove')}</li>`;}).join('')}</ul>`:''}</section>`;
++    return `<section class="rd-bookmarks" data-rd-key="bookmarks" aria-labelledby="rd-bookmarks-title"><div class="rd-bookmarks-heading">${(art=>art||enabled('scene-themes')&&['starry','sea','stars','blueprint','walls','wisteria'].includes(c.s.sceneTheme)?`<span class="rd-bookmarks-art rd-rail-art" aria-hidden="true">${art}</span>`:'')(mini(bookmarkArt,'bookmarks'))}<h2 id="rd-bookmarks-title">Bookmarks</h2>${items.length?`<span class="rd-bookmarks-count">${items.length}</span>`:''}</div>${items.length?`<ul class="rd-bookmark-list">${items.map(item=>{const course=c.courseMap.get(item.courseId),label=`<small>${E(short(course)||'Personal')} · ${E(item.kind==='assignment'?'Assignment':item.category)}</small><strong>${E(item.title)}</strong>`;return `<li class="rd-bookmark" data-rd-key="bookmark-${E(item.kind+'-'+item.courseId+'-'+item.id)}" style="${tone(course?.color||'#C96442')}">${item.kind==='assignment'?action('preview',label,`data-id="${E(item.id)}" aria-label="Preview bookmarked assignment: ${E(item.title)}"`,'rd-bookmark-open'):`<a class="rd-bookmark-open" href="${E(item.url)}" target="_blank" rel="noopener noreferrer">${label}</a>`}${action(item.kind==='assignment'?'pin':'bookmark-remove-resource',icon('close'),`data-id="${E(item.id)}" data-course="${E(item.courseId)}" aria-label="Remove bookmark: ${E(item.title)}" title="Remove bookmark"`,'rd-icon-button rd-bookmark-remove')}</li>`;}).join('')}</ul>`:''}</section>`;
+   }
+   function selectionBar(){
+     const count=c.selectionIds?.size||0,assignments=c.items.filter(x=>c.selectionIds?.has('assignment:'+x.courseId+':'+x.id)).length;
+diff --git a/extension/dashboard.js b/extension/dashboard.js
+index 5c67be4..672060a 100644
+--- a/extension/dashboard.js
++++ b/extension/dashboard.js
+@@ -1237,8 +1237,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
+       const builtins=[
+         {id:'builtin:pet',name:personal.pet?.name||'Biscuit',kind:'pet',current:!s.makeYourOwn?.pet},
+         ...['light','dark'].map(id=>({id:'builtin:mode:'+id,name:({light:'Light',dark:'Dark'})[id],kind:'theme',current:!s.makeYourOwn?.theme&&!s.sceneTheme&&(s.theme==='dark'?'dark':'light')===id})),
+-        ...['starry','sea','stars','blueprint','walls'].map(id=>
+-          ({id:'builtin:scene:'+id,name:({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',walls:'Beyond the Walls'})[id],kind:'scene',current:!s.makeYourOwn?.theme&&s.sceneTheme===id})),
++        ...['starry','sea','stars','blueprint','walls','wisteria'].map(id=>
++          ({id:'builtin:scene:'+id,name:({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',walls:'Beyond the Walls',wisteria:'Wisteria Watch'})[id],kind:'scene',current:!s.makeYourOwn?.theme&&s.sceneTheme===id})),
+         ...['studio','study','focus'].map(id=>({id:'builtin:layout:'+id,name:id[0].toUpperCase()+id.slice(1)+' layout',kind:'preset'}))
+       ];
+       return [...out,...builtins.filter(row=>!out.some(item=>item.kind===row.kind&&item.name.toLowerCase()===row.name.toLowerCase()))];
+@@ -1389,7 +1389,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
+         ...(!enabled('grades')?{showGrades:false}:{}),
+         ...(!enabled('motion')?{motion:'off',livingArt:'off'}:{}),
+         ...(!enabled('course-hub')?{showCourseInformation:false}:{}),
+-        ...(!enabled('course-art')&&!(enabled('scene-themes')&&['starry','sea','stars','blueprint','walls'].includes(personal.settings.sceneTheme))?{courseCardStyle:'rounded',showCourseIcons:false}:{})
++        ...(!enabled('course-art')&&!(enabled('scene-themes')&&['starry','sea','stars','blueprint','walls','wisteria'].includes(personal.settings.sceneTheme))?{courseCardStyle:'rounded',showCourseIcons:false}:{})
+       };
+     }
+ 
+@@ -2006,7 +2006,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
+       consumeSources();
+       setData('featureMotion',enabled('motion')?'on':'off');setData('arrange',arrange?'on':'off');
+       const dataTheme=enabled('customization')&&!ctx.s.sceneTheme?makeOwn?.state.theme:null;
+-      const scene=!dataTheme&&enabled('scene-themes')&&root.ReserveSceneThemes&&['starry','sea','stars','blueprint','walls'].includes(ctx.s.sceneTheme)?ctx.s.sceneTheme:'';
++      const scene=!dataTheme&&enabled('scene-themes')&&root.ReserveSceneThemes&&['starry','sea','stars','blueprint','walls','wisteria'].includes(ctx.s.sceneTheme)?ctx.s.sceneTheme:'';
+       setData('theme',ctx.theme);applyNight(ctx.s.nightArt);
+       setData('density',ctx.s.density==='compact'?'compact':'comfortable');
+       setData('font',['humanist','serif'].includes(ctx.s.font)?ctx.s.font:'system');
+diff --git a/extension/features.js b/extension/features.js
+index f41eb97..3e1ac44 100644
+--- a/extension/features.js
++++ b/extension/features.js
+@@ -242,7 +242,18 @@
+    "themes/walls/sky.mp4",
+    "themes/walls/theme.css",
+    "themes/walls/walls-card.png",
+-   "themes/walls/walls-panel.png"
++   "themes/walls/walls-panel.png",
++   "themes/wisteria/icon-crow.png",
++   "themes/wisteria/icon-lantern.png",
++   "themes/wisteria/icon-moon.png",
++   "themes/wisteria/icon-slayer.png",
++   "themes/wisteria/icon-trainee.png",
++   "themes/wisteria/icon-wisteria.png",
++   "themes/wisteria/poster.jpg",
++   "themes/wisteria/sky.mp4",
++   "themes/wisteria/theme.css",
++   "themes/wisteria/wisteria-card.png",
++   "themes/wisteria/wisteria-panel.png"
+  ];
+  const ids=catalogue.map(f=>f.id),known=new Set(ids);
+  catalogue.find(f=>f.id==='pony').files.assets=['biscuit-rules/basic.json','biscuit-rules/more.json','biscuit-rules/most.json','biscuit-rules/school-language.json'];
+diff --git a/extension/focus-room.js b/extension/focus-room.js
+index f780f55..b1cb661 100644
+--- a/extension/focus-room.js
++++ b/extension/focus-room.js
+@@ -369,7 +369,7 @@
+    }
+   }
+   // Theme: dark theme and the Fire place are night; a theme kit lends the room its own colours. Scene themes (sea,
+-  // starry, stars, blueprint, walls) mark the dashboard with data-theme-kit; Market theme kits with data-rd-data-theme.
++  // starry, stars, blueprint, walls, wisteria) mark the dashboard with data-theme-kit; Market theme kits with data-rd-data-theme.
+   function themeOf(){
+    const scene=container.getAttribute?.('data-theme-kit')||'',market=container.getAttribute?.('data-rd-data-theme')||'';
+    const kitOn=!!container.hasAttribute?.('data-theme-kit')||!!market,key=scene+'|'+market+'|'+(container.dataset?.theme||'')+'|'+(container.dataset?.night||'');
+diff --git a/extension/grade-impact.css b/extension/grade-impact.css
+index cbdc3d8..70d3887 100644
+--- a/extension/grade-impact.css
++++ b/extension/grade-impact.css
+@@ -70,6 +70,7 @@
+ .rd[data-theme-kit=sea] .gi{--gi-wall:#0F5D87;--gi-wall2:#13698F;--gi-oat:#126590;--gi-board:#126590;--gi-bench:#246A80;--gi-benchf:#1F5E73;--gi-benchd:#1A5263;--gi-floor:#0B4C6E;--gi-cab:#1F5E73;--gi-cabd:#1A5263;--gi-cloth:#1A6A84;--gi-crate:#246A80}
+ .rd[data-theme-kit=stars] .gi{--gi-wall:#0C1020;--gi-wall2:#11162A;--gi-oat:#0F1426;--gi-board:#0F1426;--gi-bench:#1E2438;--gi-benchf:#191E30;--gi-benchd:#151A2A;--gi-floor:#090C18;--gi-cab:#191E30;--gi-cabd:#151A2A;--gi-cloth:#1A1F34;--gi-crate:#1E2438}
+ .rd[data-theme-kit=walls] .gi{--gi-wall:#2B2826;--gi-wall2:#322E2B;--gi-oat:#36302A;--gi-board:#36302A;--gi-bench:#4B3B2B;--gi-benchf:#433427;--gi-benchd:#3A2D21;--gi-floor:#1F1C1A;--gi-cab:#433427;--gi-cabd:#3A2D21;--gi-cloth:#34433A;--gi-crate:#4B3B2B}
++.rd[data-theme-kit=wisteria] .gi{--gi-wall:#223029;--gi-wall2:#28372F;--gi-oat:#2E3B33;--gi-board:#2E3B33;--gi-bench:#4A3527;--gi-benchf:#412F23;--gi-benchd:#38281E;--gi-floor:#18211D;--gi-cab:#412F23;--gi-cabd:#38281E;--gi-cloth:#3E3360;--gi-crate:#4A3527}
+ /* a Market kit: its paper with a little of its ink for the walls and the floor, a fixed kraft on its paper for the wood
+    (the accent stays in the small marks: the pills, the clay of the poise) */
+ .rd[data-rd-data-theme] .gi{
+@@ -88,6 +89,7 @@
+ .rd[data-theme-kit=starry] .gi,.rd[data-theme-kit=stars] .gi{--gi-light:color-mix(in srgb,#F3D46B 9%,transparent);--gi-light2:color-mix(in srgb,#F3D46B 7%,transparent)}
+ .rd[data-theme-kit=blueprint] .gi{--gi-light:color-mix(in srgb,#DCE9F8 10%,transparent);--gi-light2:color-mix(in srgb,#DCE9F8 8%,transparent)}
+ .rd[data-theme-kit=walls] .gi{--gi-light:color-mix(in srgb,#F6B46B 9%,transparent);--gi-light2:color-mix(in srgb,#F6B46B 7%,transparent)}
++.rd[data-theme-kit=wisteria] .gi{--gi-light:color-mix(in srgb,#F5BD6E 9%,transparent);--gi-light2:color-mix(in srgb,#F5BD6E 7%,transparent)}
+ 
+ /* 2. The drawing's classes. Strokes are ink at different strengths; fills are washes. */
+ .rd .gi-svg{display:block;overflow:visible}
+@@ -146,10 +148,11 @@
+ .rd .gi-svg[data-gi-night="1"] .gi-view-day,.rd[data-theme=dark] .gi-view-day{display:none}
+ .rd .gi-svg[data-gi-night="1"] .gi-view-night,.rd[data-theme=dark] .gi-view-night{display:inline}
+ .rd[data-theme-kit=walls] .gi-view-day{display:none}.rd[data-theme-kit=walls] .gi-view-night{display:inline}
++.rd[data-theme-kit=wisteria] .gi-view-day{display:none}.rd[data-theme-kit=wisteria] .gi-view-night{display:inline}
+ .rd[data-theme-kit=sea] .gi-view,.rd[data-theme-kit=starry] .gi-view,.rd[data-theme-kit=stars] .gi-view,.rd[data-theme-kit=blueprint] .gi-view{display:none!important}
+ .rd[data-theme-kit=sea] .gi-view-sea,.rd[data-theme-kit=starry] .gi-view-starry,.rd[data-theme-kit=stars] .gi-view-stars,.rd[data-theme-kit=blueprint] .gi-view-blue{display:inline!important}
+ .rd .gi-lamp-pool,.rd .gi-flame,.rd .gi-lamp-smoke{display:none}
+-.rd .gi-svg[data-gi-night="1"] .gi-lamp-pool, .rd .gi-svg[data-gi-night="1"] .gi-flame, .rd .gi-svg[data-gi-night="1"] .gi-lamp-smoke, .rd[data-theme=dark] .gi-lamp-pool, .rd[data-theme=dark] .gi-flame, .rd[data-theme=dark] .gi-lamp-smoke, .rd:is([data-theme-kit=starry],[data-theme-kit=stars],[data-theme-kit=walls]) .gi-lamp-pool, .rd:is([data-theme-kit=starry],[data-theme-kit=stars],[data-theme-kit=walls]) .gi-flame, .rd:is([data-theme-kit=starry],[data-theme-kit=stars],[data-theme-kit=walls]) .gi-lamp-smoke{display:inline}
++.rd .gi-svg[data-gi-night="1"] .gi-lamp-pool, .rd .gi-svg[data-gi-night="1"] .gi-flame, .rd .gi-svg[data-gi-night="1"] .gi-lamp-smoke, .rd[data-theme=dark] .gi-lamp-pool, .rd[data-theme=dark] .gi-flame, .rd[data-theme=dark] .gi-lamp-smoke, .rd:is([data-theme-kit=starry],[data-theme-kit=stars],[data-theme-kit=walls],[data-theme-kit=wisteria]) .gi-lamp-pool, .rd:is([data-theme-kit=starry],[data-theme-kit=stars],[data-theme-kit=walls],[data-theme-kit=wisteria]) .gi-flame, .rd:is([data-theme-kit=starry],[data-theme-kit=stars],[data-theme-kit=walls],[data-theme-kit=wisteria]) .gi-lamp-smoke{display:inline}
+ .rd .gi-bird{opacity:0}
+ .rd .gi-ghost[data-gi-on="0"]{display:none}
+ .rd .gi-wt[data-gi-dial="1"] .gi-face{display:none}.rd .gi-wt:not([data-gi-dial="1"]) .gi-dial{display:none}
+diff --git a/extension/manifest.json b/extension/manifest.json
+index 23c1683..b431bcc 100644
+--- a/extension/manifest.json
++++ b/extension/manifest.json
+@@ -179,6 +179,17 @@
+         "themes/walls/theme.css",
+         "themes/walls/walls-card.png",
+         "themes/walls/walls-panel.png",
++        "themes/wisteria/icon-crow.png",
++        "themes/wisteria/icon-lantern.png",
++        "themes/wisteria/icon-moon.png",
++        "themes/wisteria/icon-slayer.png",
++        "themes/wisteria/icon-trainee.png",
++        "themes/wisteria/icon-wisteria.png",
++        "themes/wisteria/poster.jpg",
++        "themes/wisteria/sky.mp4",
++        "themes/wisteria/theme.css",
++        "themes/wisteria/wisteria-card.png",
++        "themes/wisteria/wisteria-panel.png",
+         "biscuit-rules/basic.json",
+         "biscuit-rules/more.json",
+         "biscuit-rules/most.json",
+@@ -285,6 +296,17 @@
+         "themes/walls/theme.css",
+         "themes/walls/walls-card.png",
+         "themes/walls/walls-panel.png",
++        "themes/wisteria/icon-crow.png",
++        "themes/wisteria/icon-lantern.png",
++        "themes/wisteria/icon-moon.png",
++        "themes/wisteria/icon-slayer.png",
++        "themes/wisteria/icon-trainee.png",
++        "themes/wisteria/icon-wisteria.png",
++        "themes/wisteria/poster.jpg",
++        "themes/wisteria/sky.mp4",
++        "themes/wisteria/theme.css",
++        "themes/wisteria/wisteria-card.png",
++        "themes/wisteria/wisteria-panel.png",
+         "biscuit-rules/basic.json",
+         "biscuit-rules/more.json",
+         "biscuit-rules/most.json",
+diff --git a/extension/page-preferences.js b/extension/page-preferences.js
+index 47dda55..c7e9f65 100644
+--- a/extension/page-preferences.js
++++ b/extension/page-preferences.js
+@@ -4,7 +4,7 @@
+ // (serve), which applies them one at a time: two pages saving at once cannot undo each other.
+ (function(root){
+  'use strict';
+- const KEY='reserve:appearance',TARGET='ch-appearance',FIELDS=['theme','motion','nightArt','pet','sceneTheme'],SCENES=['','starry','sea','stars','blueprint','walls'],clone=value=>structuredClone(value);
++ const KEY='reserve:appearance',TARGET='ch-appearance',FIELDS=['theme','motion','nightArt','pet','sceneTheme'],SCENES=['','starry','sea','stars','blueprint','walls','wisteria'],clone=value=>structuredClone(value);
+  const defaults=()=>({theme:'light',motion:'gentle',nightArt:0,pet:true,sceneTheme:''});
+  let pending=Promise.resolve();
+  function queue(fn){const next=pending.catch(()=>{}).then(fn);pending=next;return next;}
+diff --git a/extension/review-deck.css b/extension/review-deck.css
+index 029ce17..dc5fb49 100644
+--- a/extension/review-deck.css
++++ b/extension/review-deck.css
+@@ -20,7 +20,7 @@
+  --rv-again:#F6D6CE;--rv-good:#DCE9D4;--rv-easy:#D5E3EE;--rv-shadow:#3A2C1E;--rv-tab-ink:#FFFDF6;--rv-course-ink:#FFFDF6;
+  color:var(--rv-ink);
+ }
+-.rd[data-theme=dark] .rv,.rd[data-theme-kit=walls] .rv{
++.rd[data-theme=dark] .rv,.rd[data-theme-kit=walls] .rv,.rd[data-theme-kit=wisteria] .rv{
+  --rv-wall:#2E2924;--rv-wall2:#342E28;--rv-panel:#312B25;--rv-trim:#3B332B;--rv-trim2:#40372E;--rv-floor:#241F1B;--rv-rug:#3A2C26;--rv-rug2:#45342C;
+  --rv-wd:#3F352C;--rv-wd2:#463B31;--rv-wd3:#352C24;--rv-wd4:#3A3129;--rv-top:#463B31;
+  --rv-sky:#1A2033;--rv-sky2:#1D2438;--rv-sky3:#212A40;--rv-sun:#3A3A40;--rv-moon:#E3D3A8;--rv-star:#D9C79A;
+@@ -192,6 +192,7 @@
+ .rv-world .t-night, .rv-world .t-starry, .rv-world .t-space, .rv-world .t-bp{display:none}.rv-world :is(.rv-port,.rv-caustics).t-sea,.rv-world g.t-sea{display:none}
+ .rd[data-theme=dark] .rv-world .t-day, .rd[data-theme=dark] .rv-world .t-sun{display:none}.rd[data-theme=dark] .rv-world .t-night{display:inline}
+ .rd[data-theme-kit=walls] .rv-world .t-day, .rd[data-theme-kit=walls] .rv-world .t-sun{display:none}.rd[data-theme-kit=walls] .rv-world .t-night{display:inline}
++.rd[data-theme-kit=wisteria] .rv-world .t-day, .rd[data-theme-kit=wisteria] .rv-world .t-sun{display:none}.rd[data-theme-kit=wisteria] .rv-world .t-night{display:inline}
+ .rd[data-theme-kit=starry] .rv-world .t-day, .rd[data-theme-kit=starry] .rv-world .t-night, .rd[data-theme-kit=starry] .rv-world .t-sun{display:none}.rd[data-theme-kit=starry] .rv-world .t-starry{display:inline}
+ .rd[data-theme-kit=sea] .rv-world .t-arch, .rd[data-theme-kit=sea] .rv-world .t-curtain, .rd[data-theme-kit=sea] .rv-world .t-sun, .rd[data-theme-kit=sea] .rv-world .t-day, .rd[data-theme-kit=sea] .rv-world .t-night{display:none}.rd[data-theme-kit=sea] .rv-world :is(.rv-port,.rv-caustics).t-sea{display:block}.rd[data-theme-kit=sea] .rv-world g.t-sea{display:inline}
+ .rd[data-theme-kit=stars] .rv-world .t-day, .rd[data-theme-kit=stars] .rv-world .t-land, .rd[data-theme-kit=stars] .rv-world .t-sun, .rd[data-theme-kit=stars] .rv-world .t-night{display:none}.rd[data-theme-kit=stars] .rv-world .t-space{display:inline}
+@@ -218,7 +219,7 @@
+ .rv-world .rv-puff>svg,.rv-world .rv-wisp>svg,.rv-world .rv-heron>svg{width:100%;height:100%}
+ .rv-world .rv-wisp{position:absolute;bottom:0;width:34%;height:100%;display:block;opacity:0}.rv-world .rv-wisp-0{left:6%}.rv-world .rv-wisp-1{left:34%}.rv-world .rv-wisp-2{left:60%}
+ .rv-world .rv-heron .K{stroke:var(--rv-rk);stroke-width:1.2}.rv-world .rv-h-up,.rv-world .rv-h-down{opacity:0}
+-.rv-world .rv-glow{opacity:0}.rd[data-theme=dark] .rv-world .rv-glow,.rd[data-theme-kit=stars] .rv-world .rv-glow,.rd[data-theme-kit=walls] .rv-world .rv-glow{opacity:1}
++.rv-world .rv-glow{opacity:0}.rd[data-theme=dark] .rv-world .rv-glow,.rd[data-theme-kit=stars] .rv-world .rv-glow,.rd[data-theme-kit=walls] .rv-world .rv-glow,.rd[data-theme-kit=wisteria] .rv-world .rv-glow{opacity:1}
+ .rv-world .rv-chain,.rv-world .rv-leaf{transform-origin:50% 0}.rv-world .rv-leaf{transform-origin:0 100%}
+ .rv-world .rv-sweep{position:absolute;inset:-2% -8% -2% -104%;transform:translateX(112%);pointer-events:none}.rv-world:not([data-rv-enter]) .rv-sweep{display:none}.rv-world .rv-sweep>svg{width:100%;height:100%}
+ /* things that never stop: clouds drift, chimney smoke and tea steam rise, the lake glints, the sea's light moves.
+diff --git a/extension/scene-themes.css b/extension/scene-themes.css
+index 9ab6ec2..3f1a852 100644
+--- a/extension/scene-themes.css
++++ b/extension/scene-themes.css
+@@ -44,6 +44,7 @@
+ .rd[data-theme-kit][data-theme-kit=stars] { --rd-toolbar-plate:rgba(14,20,38,.8); --rd-toolbar-line:rgba(157,184,255,.3); }
+ .rd[data-theme-kit][data-theme-kit=blueprint] { --rd-toolbar-plate:rgba(16,58,112,.8); --rd-toolbar-line:rgba(226,238,255,.35); }
+ .rd[data-theme-kit][data-theme-kit=walls] { --rd-toolbar-plate:rgba(27,26,31,.82); --rd-toolbar-line:rgba(240,214,170,.32); }
++.rd[data-theme-kit][data-theme-kit=wisteria] { --rd-toolbar-plate:rgba(19,27,24,.82); --rd-toolbar-line:rgba(226,214,180,.32); }
+ .rd[data-theme-kit] .rd-toolbar .rd-tools > :is(.rd-button,.rd-icon-button,.rd-grade-switch,.rd-demo,.rd-focus-indicator:has(> .rd-focus-clock:not([hidden]))),
+ .rd[data-theme-kit] .rd-toolbar > .rd-drawer-button { background:var(--rd-toolbar-plate)!important; color:var(--rd-ink)!important; border:1px solid var(--rd-toolbar-line)!important; border-radius:var(--rd-r-control)!important; box-shadow:inset 0 0 0 1px var(--rd-control-line); }
+ .rd[data-theme-kit] .rd-toolbar .rd-focus-indicator > .rd-focus-clock { background:transparent; color:inherit; }
+diff --git a/extension/scene-themes.js b/extension/scene-themes.js
+index cc41464..945f697 100644
+--- a/extension/scene-themes.js
++++ b/extension/scene-themes.js
+@@ -1,8 +1,8 @@
+ /*! Canvas Harness — packaged dashboard scenes. Original creator: Flzsh. */
+ (function(global){
+  'use strict';
+- const motifs={starry:['moon','star','swirl','cypress','cottage','sunflower'],sea:['turtle','fish','coral','jelly','shell','ray'],stars:['giant','binary','galaxy','redgiant','cluster','nebula'],blueprint:['gear','divider','pendulum','rocket','orbit','bulb'],walls:['salute','giant','captain','hand','lookout','flare']};
+- const names=Object.freeze({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',walls:'Beyond the Walls'});
++ const motifs={starry:['moon','star','swirl','cypress','cottage','sunflower'],sea:['turtle','fish','coral','jelly','shell','ray'],stars:['giant','binary','galaxy','redgiant','cluster','nebula'],blueprint:['gear','divider','pendulum','rocket','orbit','bulb'],walls:['salute','giant','captain','hand','lookout','flare'],wisteria:['slayer','moon','trainee','wisteria','crow','lantern']};
++ const names=Object.freeze({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',walls:'Beyond the Walls',wisteria:'Wisteria Watch'});
+  let active=null;
+  // The dashboard draws Starfield directly; its packaged document reuses the same renderer.
+  function starSky(cv,doc,win){
+diff --git a/tests/biscuit-controls.test.cjs b/tests/biscuit-controls.test.cjs
+index 5316f65..1562fe7 100644
+--- a/tests/biscuit-controls.test.cjs
++++ b/tests/biscuit-controls.test.cjs
+@@ -12,9 +12,9 @@ test('grade visibility phrases have the actual setting payload, with no item or
+ 
+ test('standalone none always asks; scene and theme pickers offer safe choices without applying one',()=>{
+  for(const s of [snapshot(),snapshot({selectedItemId:'task'})]){const r=expect('none','none',{},s);assert.equal(r.clarify,true);assert.match(r.message,/which|choice/i);}
+- const r=Controls.propose('none',snapshot(),{picker:{kind:'scene',open:true}});assert.equal(r.action,'none');assert.equal(r.clarify,true);assert.ok(r.choices.some(v=>v.label==='None'&&v.fields.key==='sceneTheme'&&v.fields.value===''));assert.ok(r.choices.some(v=>v.fields.value==='sea'));assert.ok(r.choices.some(v=>v.label==='Beyond the Walls'&&v.fields.value==='walls'));assert.deepEqual(r.next.fields,{});
++ const r=Controls.propose('none',snapshot(),{picker:{kind:'scene',open:true}});assert.equal(r.action,'none');assert.equal(r.clarify,true);assert.ok(r.choices.some(v=>v.label==='None'&&v.fields.key==='sceneTheme'&&v.fields.value===''));assert.ok(r.choices.some(v=>v.fields.value==='sea'));assert.ok(r.choices.some(v=>v.label==='Beyond the Walls'&&v.fields.value==='walls'));assert.ok(r.choices.some(v=>v.label==='Wisteria Watch'&&v.fields.value==='wisteria'));assert.deepEqual(r.next.fields,{});
+  const theme=Controls.propose('none',snapshot({picker:{kind:'theme',open:true}}));assert.equal(theme.action,'none');assert.deepEqual(theme.next.fields,{});assert.ok(theme.ui.path.includes('Theme'));
+- expect('set scene theme to none','setting',{key:'sceneTheme',value:''});expect('no scene','setting',{key:'sceneTheme',value:''});expect('set scene theme to beyond the walls','setting',{key:'sceneTheme',value:'walls'});
++ expect('set scene theme to none','setting',{key:'sceneTheme',value:''});expect('no scene','setting',{key:'sceneTheme',value:''});expect('set scene theme to beyond the walls','setting',{key:'sceneTheme',value:'walls'});expect('set scene theme to wisteria watch','setting',{key:'sceneTheme',value:'wisteria'});
+ });
+ 
+ test('single-word junk is guarded while known names, commands and selected context pass through',()=>{
+diff --git a/tests/biscuit-key.test.cjs b/tests/biscuit-key.test.cjs
+index 145740c..9a4c496 100644
+--- a/tests/biscuit-key.test.cjs
++++ b/tests/biscuit-key.test.cjs
+@@ -11,7 +11,7 @@ const cases=(name,list,intent)=>{for(const [q,fields] of list)test(name+': '+q,(
+ // appearance settings: the customization model's own keys and values
+ cases('setting',[
+  ['dark mode',{key:'theme',value:'dark'}],['turn on dark mode',{key:'theme',value:'dark'}],['light mode',{key:'theme',value:'light'}],['make it light',{key:'theme',value:'light'}],
+- ['starfield theme',{key:'sceneTheme',value:'stars'}],['switch to the starfield',{key:'sceneTheme',value:'stars'}],['under the sea',{key:'sceneTheme',value:'sea'}],['sea theme',{key:'sceneTheme',value:'sea'}],['starry night theme',{key:'sceneTheme',value:'starry'}],['blueprint theme',{key:'sceneTheme',value:'blueprint'}],['walls theme',{key:'sceneTheme',value:'walls'}],['beyond the walls',{key:'sceneTheme',value:'walls'}],['switch to beyond the walls theme',{key:'sceneTheme',value:'walls'}],['no scene theme',{key:'sceneTheme',value:''}],
++ ['starfield theme',{key:'sceneTheme',value:'stars'}],['switch to the starfield',{key:'sceneTheme',value:'stars'}],['under the sea',{key:'sceneTheme',value:'sea'}],['sea theme',{key:'sceneTheme',value:'sea'}],['starry night theme',{key:'sceneTheme',value:'starry'}],['blueprint theme',{key:'sceneTheme',value:'blueprint'}],['walls theme',{key:'sceneTheme',value:'walls'}],['beyond the walls',{key:'sceneTheme',value:'walls'}],['switch to beyond the walls theme',{key:'sceneTheme',value:'walls'}],['wisteria theme',{key:'sceneTheme',value:'wisteria'}],['wisteria watch',{key:'sceneTheme',value:'wisteria'}],['switch to the wisteria watch theme',{key:'sceneTheme',value:'wisteria'}],['no scene theme',{key:'sceneTheme',value:''}],
+  ['courses along the bottom',{key:'courseNavigation',value:'dock'}],['use the dock',{key:'courseNavigation',value:'dock'}],['courses across the top',{key:'courseNavigation',value:'topbar'}],['courses on the side',{key:'courseNavigation',value:'sidebar'}],
+  ['bigger dock',{key:'dockSize',value:'large'}],['small dock',{key:'dockSize',value:'small'}],
+  ['compact banner',{key:'bannerSize',value:'compact'}],['large banner',{key:'bannerSize',value:'large'}],
+diff --git a/tests/customization-scenes.test.cjs b/tests/customization-scenes.test.cjs
+index 9e63b01..468a74f 100644
+--- a/tests/customization-scenes.test.cjs
++++ b/tests/customization-scenes.test.cjs
+@@ -4,7 +4,7 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+ const storage=require('../extension/storage.js');
+ const {createDOM}=require('./addons-fixture.cjs');
+ const read=file=>fs.readFileSync(path.join(__dirname,'../extension',file),'utf8');
+-const ids=['','starry','sea','stars','blueprint','walls'];
++const ids=['','starry','sea','stars','blueprint','walls','wisteria'];
+ function makeStore(){
+  const data={};return storage.createStore({accountId:'42',origin:'https://school.instructure.com',adapter:{read:async key=>structuredClone(data[key]),write:async(key,value)=>{data[key]=structuredClone(value);}}});
+ }
+@@ -46,12 +46,12 @@ test('unknown or malformed scenes reject backups and saves without changing exis
+  }
+ });
+ 
+-test('Look offers six named native radio choices and only packaged decorative poster thumbnails',()=>{
++test('Look offers seven named native radio choices and only packaged decorative poster thumbnails',()=>{
+  const {document,urls}=editor(),group=document.querySelector('[role="radiogroup"][aria-label="Scene"]');
+  assert.ok(group,'Scene is a labeled radio group in Look');
+  const radios=group.querySelectorAll('input');
+  assert.deepEqual(radios.map(input=>input.value),ids);
+- assert.deepEqual(radios.map(input=>input.closest('label').querySelector('strong').textContent),['None','Starry Night','Under the Sea','Starfield','Blueprint','Beyond the Walls']);
++ assert.deepEqual(radios.map(input=>input.closest('label').querySelector('strong').textContent),['None','Starry Night','Under the Sea','Starfield','Blueprint','Beyond the Walls','Wisteria Watch']);
+  for(const input of radios){
+   assert.equal(input.type,'radio');assert.equal(input.getAttribute('name'),'cz-sceneTheme');
+   assert.equal(input.dataset.rdField,'setting');assert.equal(input.dataset.setting,'sceneTheme');
+@@ -60,8 +60,8 @@ test('Look offers six named native radio choices and only packaged decorative po
+  }
+  assert.deepEqual(radios.filter(input=>input.checked).map(input=>input.value),['']);
+  assert.equal(radios[0].closest('label').querySelector('img'),null,'None keeps the plain page illustration');
+- assert.deepEqual(urls,['themes/starry/poster.jpg','themes/sea/poster.jpg','themes/stars/poster.jpg','themes/blueprint/poster.jpg','themes/walls/poster.jpg']);
+- const images=group.querySelectorAll('img');assert.equal(images.length,5);
++ assert.deepEqual(urls,['themes/starry/poster.jpg','themes/sea/poster.jpg','themes/stars/poster.jpg','themes/blueprint/poster.jpg','themes/walls/poster.jpg','themes/wisteria/poster.jpg']);
++ const images=group.querySelectorAll('img');assert.equal(images.length,6);
+  for(const [index,img]of images.entries()){
+   assert.equal(img.getAttribute('src'),'chrome-extension://test/'+urls[index]);
+   assert.equal(img.getAttribute('alt'),'');assert.equal(img.getAttribute('aria-hidden'),'true');
+@@ -97,6 +97,6 @@ test('disabled scenes are absent and do not lock saved appearance or resolve pos
+ 
+ test('the picker remains usable without an extension runtime and avoids school-relative image requests',()=>{
+  const {document}=editor({runtime:false}),group=document.querySelector('[aria-label="Scene"]');
+- assert.ok(group);assert.equal(group.querySelectorAll('input[type="radio"]').length,6);
++ assert.ok(group);assert.equal(group.querySelectorAll('input[type="radio"]').length,7);
+  assert.equal(group.querySelector('img'),null);
+ });
+diff --git a/tests/customize-performance.test.cjs b/tests/customize-performance.test.cjs
+index 1e408dd..0a4f984 100644
+--- a/tests/customize-performance.test.cjs
++++ b/tests/customize-performance.test.cjs
+@@ -72,7 +72,7 @@ test('opening and switching named tabs builds only the selected content and its
+   if(tab==='pet'){const locked=document.querySelectorAll('.cz-choice[data-locked="true"]');assert.ok(locked.length);for(const choice of document.querySelectorAll('.cz-choice')){if(choice.dataset.locked==='true'){assert.equal(choice.querySelector('input').disabled,true);assert.match(choice.querySelector('small').textContent,/^Level \d+$/);}else assert.equal(choice.querySelector('small'),null);}assert.equal(document.querySelector('[data-pane="pet"]').querySelectorAll('h3').at(-1).textContent,'Saved routines');}
+   assert.equal(f.work.archivedScans,tab==='courses'?1:0,'only Courses scans archived course preferences');
+   assert.equal(f.work.frames,tab==='look'?1:0,'only Look builds module frame choices');
+-  assert.equal(f.work.posters.length,tab==='look'?5:0,'only Look resolves scene posters');
++  assert.equal(f.work.posters.length,tab==='look'?6:0,'only Look resolves scene posters');
+   assert.deepEqual(f.work.previews,tab==='courses'?['render','scene','mini','frame','title']:tab==='pet'?['drawing','drawing','svg']:[]);
+  }
+ });
+diff --git a/tests/grade-impact.test.cjs b/tests/grade-impact.test.cjs
+index b6bf561..4bf19dd 100644
+--- a/tests/grade-impact.test.cjs
++++ b/tests/grade-impact.test.cjs
+@@ -427,7 +427,7 @@ test('the drawings are the same on every render, take their colours from classes
+  const {loader}=await live();loader.control.measure('room',1280,860);const a=G.render(roomOf(),helpers,loader),b=G.render(roomOf(),helpers,loader);assert.equal(a,b,'no line boil: the same pen draws the same line');
+  assert.doesNotMatch(a,/Gradient|<filter|filter=|drop-shadow|fill="#|stroke="#/);
+  const css=fs.readFileSync(path.join(__dirname,'../extension/grade-impact.css'),'utf8');assert.doesNotMatch(css,/gradient\(|box-shadow|drop-shadow|filter:(?!none)/);
+- for(const theme of ['data-theme=dark','data-theme-kit=sea','data-theme-kit=starry','data-theme-kit=stars','data-theme-kit=blueprint','data-theme-kit=walls','.rd[data-theme-kit] .gi{'])assert.ok(css.includes(theme),theme);
++ for(const theme of ['data-theme=dark','data-theme-kit=sea','data-theme-kit=starry','data-theme-kit=stars','data-theme-kit=blueprint','data-theme-kit=walls','data-theme-kit=wisteria','.rd[data-theme-kit] .gi{'])assert.ok(css.includes(theme),theme);
+  loader.destroy();
+ });
+ 
+diff --git a/tests/scene-manifest.test.cjs b/tests/scene-manifest.test.cjs
+index 26ffc35..5b64f08 100644
+--- a/tests/scene-manifest.test.cjs
++++ b/tests/scene-manifest.test.cjs
+@@ -1,13 +1,13 @@
+ 'use strict';
+ const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+-const extension=path.join(__dirname,'../extension'),ids=['starry','sea','stars','blueprint','walls'];
++const extension=path.join(__dirname,'../extension'),ids=['starry','sea','stars','blueprint','walls','wisteria'];
+ const resources=ids.flatMap(id=>fs.readdirSync(path.join(extension,'themes',id)).map(file=>'themes/'+id+'/'+file)).sort();
+-test('only the five public scene directories ship and every local stylesheet reference exists',()=>{
++test('only the six public scene directories ship and every local stylesheet reference exists',()=>{
+  assert.deepEqual(fs.readdirSync(path.join(extension,'themes')).sort(),[...ids].sort());
+  for(const id of ids){const css=fs.readFileSync(path.join(extension,'themes',id,'theme.css'),'utf8');for(const match of css.matchAll(/url\(([^)]+)\)/g)){
+   const ref=match[1].replace(/^["']|["']$/g,'');if(ref.startsWith('data:')||ref.startsWith('#'))continue;assert.doesNotMatch(ref,/^(?:https?:)?\/\//);assert.ok(fs.existsSync(path.join(extension,'themes',id,ref)),id+': '+ref);
+  }}
+- assert.equal(resources.length,63);assert.ok(resources.includes('themes/stars/sky.html'));assert.ok(resources.includes('themes/stars/sky.js'));
++ assert.equal(resources.length,74);assert.ok(resources.includes('themes/stars/sky.html'));assert.ok(resources.includes('themes/stars/sky.js'));
+ });
+ test('scene assets have exact fixed and dynamic resource entries while the sky script stays private',()=>{
+  const manifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json'),'utf8')),F=require('../extension/features.js');
+diff --git a/tests/scene-themes.test.cjs b/tests/scene-themes.test.cjs
+index 2d43741..71be665 100644
+--- a/tests/scene-themes.test.cjs
++++ b/tests/scene-themes.test.cjs
+@@ -34,9 +34,9 @@ test('None and a disabled Scene feature create no scene assets or observers',()=
+  const h=fixture(),before=h.shadow.innerHTML;h.apply('');assert.equal(h.shadow.innerHTML,before);assert.equal(h.observers.length,0);assert.equal(h.frames.size,0);assert.equal(h.timers.size,0);
+  h.env.ReserveFeatures={enabled:()=>false};h.apply('sea');assert.equal(h.shadow.innerHTML,before);assert.equal(h.observers.length,0);
+ });
+-test('visible names are exact and the five packaged styles and motifs are independent',()=>{
+- const h=fixture();assert.deepEqual(plain(h.api.names),{starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',walls:'Beyond the Walls'});
+- for(const [id,motifs]of Object.entries({starry:['moon','star','swirl','cypress','cottage','sunflower'],sea:['turtle','fish','coral','jelly','shell','ray'],stars:['giant','binary','galaxy','redgiant','cluster','nebula'],blueprint:['gear','divider','pendulum','rocket','orbit','bulb'],walls:['salute','giant','captain','hand','lookout','flare']})){
++test('visible names are exact and the six packaged styles and motifs are independent',()=>{
++ const h=fixture();assert.deepEqual(plain(h.api.names),{starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',walls:'Beyond the Walls',wisteria:'Wisteria Watch'});
++ for(const [id,motifs]of Object.entries({starry:['moon','star','swirl','cypress','cottage','sunflower'],sea:['turtle','fish','coral','jelly','shell','ray'],stars:['giant','binary','galaxy','redgiant','cluster','nebula'],blueprint:['gear','divider','pendulum','rocket','orbit','bulb'],walls:['salute','giant','captain','hand','lookout','flare'],wisteria:['slayer','moon','trainee','wisteria','crow','lantern']})){
+   h.rd.innerHTML=Array.from({length:6},()=>'<span class="rd-rail-art"><svg></svg></span>').join('');h.apply(id);h.apply(id);
+   assert.equal(h.shadow.querySelectorAll('link').length,1);assert.equal(h.shadow.querySelector('link').getAttribute('href'),'chrome-extension://scene-test/themes/'+id+'/theme.css');
+   assert.equal(h.rd.firstChild.className,'tk-sky');assert.deepEqual(h.rd.querySelectorAll('.tk-icon').map(icon=>icon.dataset.motif),motifs);
+@@ -44,7 +44,7 @@ test('visible names are exact and the five packaged styles and motifs are indepe
+  }
+  h.api.remove();assert.equal(h.listeners.size,0);assert.equal(h.frames.size,0);assert.ok(h.observers.every(o=>o.disconnected));
+ });
+-for(const id of ['starry','sea','blueprint','walls'])test(id+' video is local, muted and lazy; hidden and reduced motion show the poster',()=>{
++for(const id of ['starry','sea','blueprint','walls','wisteria'])test(id+' video is local, muted and lazy; hidden and reduced motion show the poster',()=>{
+  const h=fixture({hidden:true});h.apply(id);const video=h.rd.querySelector('video'),poster=h.rd.querySelector('.tk-poster');
+  assert.equal(video.muted,true);assert.equal(video.loop,true);assert.equal(video.playsInline,true);assert.equal(video.getAttribute('src'),null);assert.equal(h.plays,0);assert.equal(poster.hidden,false);
+  h.host.hidden=false;h.mutate();h.settle();assert.equal(video.getAttribute('src'),'chrome-extension://scene-test/themes/'+id+'/sky.mp4');assert.equal(h.plays,1);assert.equal(poster.hidden,true);
+@@ -53,7 +53,7 @@ for(const id of ['starry','sea','blueprint','walls'])test(id+' video is local, m
+  h.api.remove();assert.equal(h.frames.size,0);assert.equal(h.timers.size,0);assert.equal(h.listeners.size,0);assert.equal(h.rd.hasAttribute('data-scene-paused'),false);
+ });
+ for(const motion of ['still','off'])test(motion+' does not start scene media or pointer animation',()=>{
+- const h=fixture({motion});for(const id of ['starry','sea','blueprint','stars','walls']){h.apply(id);assert.equal(h.plays,0);assert.equal(h.rd.querySelector('.tk-poster').hidden,false);h.raf();h.pointer(100,50);assert.equal(h.frames.size,0);}h.api.remove();
++ const h=fixture({motion});for(const id of ['starry','sea','blueprint','stars','walls','wisteria']){h.apply(id);assert.equal(h.plays,0);assert.equal(h.rd.querySelector('.tk-poster').hidden,false);h.raf();h.pointer(100,50);assert.equal(h.frames.size,0);}h.api.remove();
+ });
+ test('Starfield uses a local canvas, coalesces pointer work and pauses both drawing chains',()=>{
+  const h=fixture();h.apply('stars');assert.equal(h.rd.querySelector('iframe'),null);assert.ok(h.rd.querySelector('.tk-sky canvas'));assert.ok(h.rd.querySelector('.tk-starframes'));h.raf();assert.ok(h.draws>0);
+diff --git a/tests/vanilla-css.test.cjs b/tests/vanilla-css.test.cjs
+index ccb6d3f..ce76fd8 100644
+--- a/tests/vanilla-css.test.cjs
++++ b/tests/vanilla-css.test.cjs
+@@ -5,7 +5,7 @@ const read=file=>fs.readFileSync(path.join(__dirname,'..','extension',file),'utf
+ 
+ // Static isolation checks, not a substitute for browser rendering or the route/DOM tests.
+ // These sheets are linked inside extension shadow roots, never into Canvas's document.
+-const shadowSheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','course-links.css','addons-panel.css','agent.css','study-band.css','focus-room.css','review-deck.css','grade-impact.css','themes/starry/theme.css','themes/sea/theme.css','themes/stars/theme.css','themes/blueprint/theme.css','themes/walls/theme.css'];
++const shadowSheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','course-links.css','addons-panel.css','agent.css','study-band.css','focus-room.css','review-deck.css','grade-impact.css','themes/starry/theme.css','themes/sea/theme.css','themes/stars/theme.css','themes/blueprint/theme.css','themes/walls/theme.css','themes/wisteria/theme.css'];
+ const globalSheets=['startup.css','startup-art.css','native-page.css','canvas-nav.css','course-nav.css','modules-page.css'];
+ const grouping=/^@(media|supports|container|layer|scope|starting-style)\b/i;
+ 
