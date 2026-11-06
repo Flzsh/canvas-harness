@@ -1,0 +1,317 @@
+diff --git a/docs/portable-packs.md b/docs/portable-packs.md
+index 607f40e..cd2ebe3 100644
+--- a/docs/portable-packs.md
++++ b/docs/portable-packs.md
+@@ -66,6 +66,8 @@ Banner and background layers may carry `focus: {x,y}` (0?1), `zoom` (1?4), `heig
+ 
+ Replace the two placeholders with actual SVG bytes and their hash. Size is a drawing box of 32–128 CSS pixels per side; ground lies within its height. Required poses are `stand`, `walk`, and `sleep`. Optional poses are `trot`, `lie`, `read`, `eat`, `cheer`, `flag`, `fall`, and `held`. Missing trot/lie fall back to walk/sleep; the others fall back to stand. Art may be SVG, PNG, WebP, or GIF. Raster poses are at most 2 MiB and at most four times the drawing box's dimensions; animated raster stills are derived from the stand pose. Installing changes the drawing while retaining Biscuit's existing name and behavior.
+ 
++A packaged scene can bring a drawing of this kind for Biscuit: `themes/<scene>/companion.chpet`, named in `scene-themes.js`. It is read from the extension's own files once a page, checked like an installed pack (so only with the Appearance editor on), and drawn while that scene is on and no companion pack is chosen.
++
+ ## Data add-ons and utilities: `.chpreset`
+ 
+ ```json
+diff --git a/extension/dashboard.js b/extension/dashboard.js
+index 31a5262..5c67be4 100644
+--- a/extension/dashboard.js
++++ b/extension/dashboard.js
+@@ -1206,11 +1206,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
+     function syncCompanion(){
+       const A=root.ReservePetArt;
+       if(!enabled('pony')||!A?.identity||!A?.hydrate||container.dataset.chLinksPending)return;
+-      const selected=A.identity(personal),key=JSON.stringify([selected.id,selected.name]);
++      // With no pack of the student's chosen, the scene on show may dress Biscuit in a drawing of its own, read once a page
++      // (pet-art.js scenePack). It is keyed by its file alone, so renaming Biscuit keeps it.
++      const selected=A.identity(personal),scene=personal.settings?.sceneTheme,
++        file=!selected.id&&enabled('scene-themes')&&root.ReserveSceneThemes?.companion?.(scene)||'',
++        key=JSON.stringify(file?[file]:[selected.id,selected.name]);
+       if(key===companionKey)return;
+       companionKey=key;
+       companionPack=null;
+       const turn=++companionTurn;
++      if(file){Promise.resolve(A.scenePack?.(scene,file)).then(pack=>{if(pack&&!destroyed&&turn===companionTurn){companionPack=pack;scheduleRender();}});return;}
+       if(!selected.id||A.identity(personal,makeOwn?.state.pet).pack)return;
+       Promise.resolve(A.hydrate(personal,{store})).then(pack=>{
+         if(destroyed||turn!==companionTurn||container.dataset.chLinksPending)return;
+diff --git a/extension/features.js b/extension/features.js
+index d2c2c15..f41eb97 100644
+--- a/extension/features.js
++++ b/extension/features.js
+@@ -231,6 +231,7 @@
+    "themes/stars/stars-card.png",
+    "themes/stars/stars-panel.png",
+    "themes/stars/theme.css",
++   "themes/walls/companion.chpet",
+    "themes/walls/icon-captain.png",
+    "themes/walls/icon-flare.png",
+    "themes/walls/icon-giant.png",
+diff --git a/extension/manifest.json b/extension/manifest.json
+index 3364453..23c1683 100644
+--- a/extension/manifest.json
++++ b/extension/manifest.json
+@@ -167,6 +167,7 @@
+         "themes/stars/stars-card.png",
+         "themes/stars/stars-panel.png",
+         "themes/stars/theme.css",
++        "themes/walls/companion.chpet",
+         "themes/walls/icon-captain.png",
+         "themes/walls/icon-flare.png",
+         "themes/walls/icon-giant.png",
+@@ -272,6 +273,7 @@
+         "themes/stars/stars-card.png",
+         "themes/stars/stars-panel.png",
+         "themes/stars/theme.css",
++        "themes/walls/companion.chpet",
+         "themes/walls/icon-captain.png",
+         "themes/walls/icon-flare.png",
+         "themes/walls/icon-giant.png",
+diff --git a/extension/pet-art.js b/extension/pet-art.js
+index 31e24a6..dfb0bee 100644
+--- a/extension/pet-art.js
++++ b/extension/pet-art.js
+@@ -68,7 +68,9 @@
+    media=new WeakMap(),
+    hydrations=new WeakMap(),
+    effective=new WeakMap(),
+-   originals=new WeakMap();
++   originals=new WeakMap(),
++   sceneReads=new Map(),
++   scenePacks=new WeakMap();
+  const original=pack=>originals.get(pack)||pack;
+  function selectedLayer(own,id){const layers=object(own.adjustments),key='pack:'+id;return Object.hasOwn(layers,key)?object(layers[key]):{};}
+  function effectivePack(pack,layer){
+@@ -91,11 +93,12 @@
+     wrapped=object(hydratedPack),
+     candidate=object(original(object(wrapped.pack||hydratedPack))),
+     scoped=Object.hasOwn(d,'settings'),
+-    layer=scoped?selectedLayer(own,active.id):{};
++    layer=scoped?selectedLayer(own,active.id):{},
++    scene=scenePacks.get(candidate);
+   const selected=scoped?
+     typeof active.id==='string'&&/^[a-z0-9][a-z0-9._-]{0,99}$/i.test(active.id)&&!['__proto__','constructor','prototype'].includes(active.id)&&row.kind==='pet'&&row.id===active.id&&!!text(row.name):
+-    candidate.format==='chpet',
+-    valid=selected&&
++    candidate.format==='chpet'&&!scene,
++    valid=selected&&!scene&&
+       candidate.format==='chpet'&&
+       Array.isArray(candidate.size)&&
+       candidate.size.length===2&&
+@@ -111,7 +114,9 @@
+     id:selected&&scoped?row.id:null,
+     kind:selected?'companion':'pony',
+     custom:!!pack,
+-    pack:pack?effectivePack(pack,layer):null,
++    // A pack read for a scene (scenePack) dresses the built-in companion while that scene is saved and no pack of the
++    // student's is chosen: its kind, name, motion and settings stay Biscuit's, and custom stays false (no pose switches).
++    pack:pack?effectivePack(pack,layer):!selected&&scene&&scene===settings.sceneTheme?candidate:null,
+     motion:selected&&['gentle','still','off'].includes(layer.motion)?layer.motion:'gentle',
+     enabled:pet.enabled!==false,
+     coat:Object.hasOwn(COATS,pet.coat)?pet.coat:'oat',
+@@ -190,6 +195,21 @@
+   if(!pack||!current()||hydrations.get(store)!==cached){if(hydrations.get(store)===cached)hydrations.delete(store);return null;}
+   return original(pack);
+  }
++ // A scene's own companion drawing (ReserveSceneThemes.companion): a .chpet among the extension's own files, read once a page
++ // when the browser is idle after the first paint and checked like an installed pack, so only with the Appearance editor
++ // (it brings the checker). Anything that goes wrong leaves the pony.
++ function scenePack(id,file){
++  const check=root.ReservePetPack?.validate,
++    idle=done=>typeof root.requestIdleCallback==='function'?root.requestIdleCallback(done,{timeout:1500}):root.setTimeout(done,400);
++  if(!sceneReads.has(id))
++   sceneReads.set(id,!check?Promise.resolve(null):new Promise(idle)
++     .then(()=>fetch(root.chrome.runtime.getURL(file)))
++     .then(response=>{if(!response.ok)throw Error('Scene companion could not load');return response.text();})
++     .then(check)
++     .then(({pack})=>{scenePacks.set(pack,id);return pack;})
++     .catch(()=>null));
++  return sceneReads.get(id);
++ }
+  function observe(listener,{runtime=root.chrome?.runtime,events=root.chrome?.storage?.onChanged,look=false}={}){
+   let dead=false,revision=0;const emit=value=>{if(!dead)listener(value);};
+   async function refresh(){
+@@ -235,6 +255,6 @@
+   events?.addListener(changed);runtime?.onMessage?.addListener(message);void refresh();
+   return {refresh,destroy(){dead=true;revision++;events?.removeListener(changed);runtime?.onMessage?.removeListener(message);}};
+  }
+- const api={COATS,HARNESS,POSES,svg,identity,drawing,placeholder,lookMode,customPose,customDrawing,hydrate,clearHydration,observe};
++ const api={COATS,HARNESS,POSES,svg,identity,drawing,placeholder,lookMode,customPose,customDrawing,hydrate,clearHydration,scenePack,observe};
+  root.ReservePetArt=api;if(typeof module==='object'&&module.exports)module.exports=api;
+ })(globalThis);
+diff --git a/extension/scene-themes.js b/extension/scene-themes.js
+index 4f7a4d9..cc41464 100644
+--- a/extension/scene-themes.js
++++ b/extension/scene-themes.js
+@@ -681,5 +681,8 @@ function frame(t, advance = true) {
+   }};
+   sync();
+  }
+- const api={apply,remove,names,createStarSky:starSky};global.ReserveSceneThemes=api;if(typeof module==='object'&&module.exports)module.exports=api;
++ // A scene may dress the built-in companion in a drawing of its own: a .chpet in its folder, named here and listed with the
++ // folder's other files (features.js and both manifest resource lists). pet-art.js scenePack reads it; dashboard.js offers it.
++ const companions=Object.freeze({walls:'companion.chpet'}),companion=id=>Object.hasOwn(companions,id)?'themes/'+id+'/'+companions[id]:'';
++ const api={apply,remove,names,companion,createStarSky:starSky};global.ReserveSceneThemes=api;if(typeof module==='object'&&module.exports)module.exports=api;
+ })(globalThis);
+diff --git a/tests/scene-frame-performance.test.cjs b/tests/scene-frame-performance.test.cjs
+index 8f4fc24..57c7a65 100644
+--- a/tests/scene-frame-performance.test.cjs
++++ b/tests/scene-frame-performance.test.cjs
+@@ -1,7 +1,7 @@
+ 'use strict';
+ const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),{read}=require('./scene-dom-fixture.cjs');
+ function fixture(){const pending=new Map(),clears=[],draws=[];let seq=0,time=100,reads=0,resized;
+- const context=()=>({globalAlpha:1,createRadialGradient:()=>({addColorStop(){}}),setTransform(){},fillRect(){},drawImage(...a){draws.push(a);},clearRect(...a){clears.push(a);},save(){},restore(){},beginPath(){},rect(){},clip(){},moveTo(){},lineTo(){},stroke(){}}),doc={createElement(){const ctx=context();return {style:{},setAttribute(){},getContext:()=>ctx,getBoundingClientRect(){reads++;return {left:0,top:0};},remove(){}};}},frame={getBoundingClientRect(){reads++;return {left:100,top:80,width:600,height:240};},closest:()=>null},rd={querySelectorAll:selector=>selector.includes('rd-rail-all')?[frame]:[]},win={innerWidth:1200,innerHeight:800,devicePixelRatio:1,performance:{now:()=>time},requestAnimationFrame:fn=>{pending.set(++seq,fn);return seq;},cancelAnimationFrame:id=>pending.delete(id),ResizeObserver:class{constructor(fn){resized=fn;}observe(){}disconnect(){}}},env=vm.createContext({});vm.runInContext(read('scene-themes.js').replace('const api={apply,remove,names,createStarSky:starSky}', 'const api={apply,remove,names,createStarSky:starSky,starFrames}'),env);const api=env.ReserveSceneThemes.starFrames(rd,doc,win,()=>false);
++ const context=()=>({globalAlpha:1,createRadialGradient:()=>({addColorStop(){}}),setTransform(){},fillRect(){},drawImage(...a){draws.push(a);},clearRect(...a){clears.push(a);},save(){},restore(){},beginPath(){},rect(){},clip(){},moveTo(){},lineTo(){},stroke(){}}),doc={createElement(){const ctx=context();return {style:{},setAttribute(){},getContext:()=>ctx,getBoundingClientRect(){reads++;return {left:0,top:0};},remove(){}};}},frame={getBoundingClientRect(){reads++;return {left:100,top:80,width:600,height:240};},closest:()=>null},rd={querySelectorAll:selector=>selector.includes('rd-rail-all')?[frame]:[]},win={innerWidth:1200,innerHeight:800,devicePixelRatio:1,performance:{now:()=>time},requestAnimationFrame:fn=>{pending.set(++seq,fn);return seq;},cancelAnimationFrame:id=>pending.delete(id),ResizeObserver:class{constructor(fn){resized=fn;}observe(){}disconnect(){}}},env=vm.createContext({});vm.runInContext(read('scene-themes.js').replace('const api={apply,remove,names,companion,createStarSky:starSky}', 'const api={apply,remove,names,companion,createStarSky:starSky,starFrames}'),env);const api=env.ReserveSceneThemes.starFrames(rd,doc,win,()=>false);
+  return {api,pending,clears,draws,get reads(){return reads;},tick(){time+=1000/60;const tasks=[...pending.values()];pending.clear();for(const fn of tasks)fn();},settle(){let count=0;while(pending.size&&count++<720)this.tick();assert.ok(count<720,'the stars must come to rest (a slow ease back takes about 6 s)');return count;},resized:()=>resized()};}
+ test('frame stars follow a moving pointer, stop with a resting one, reuse geometry and restart on movement',()=>{const h=fixture();h.api.dirty();h.settle();const reads=h.reads;h.api.aim(160,90,true);h.tick();h.api.aim(200,110,true);assert.ok(h.settle()>10);assert.equal(h.reads,reads,'animation never queries layout');assert.equal(h.pending.size,0);const paints=h.clears.length;h.api.aim(200,110,true);h.tick();assert.equal(h.clears.length,paints);h.api.aim(220,120,true);assert.equal(h.pending.size,1);h.settle();h.api.aim(null);h.settle();assert.equal(h.pending.size,0);assert.ok(h.clears.slice(1).every(([, ,w,h])=>w<1200&&h<800),'pointer frames only clear the affected region');h.api.destroy();});
+ test('layout invalidation and resize rebuild frame geometry once then return to rest',()=>{const h=fixture();h.api.dirty();h.settle();const reads=h.reads;h.api.dirty();h.api.dirty();assert.equal(h.pending.size,1);h.settle();assert.ok(h.reads>reads);const before=h.reads;h.resized();h.settle();assert.ok(h.reads>before);h.api.destroy();assert.equal(h.pending.size,0);});
+diff --git a/tests/scene-manifest.test.cjs b/tests/scene-manifest.test.cjs
+index 80e8902..26ffc35 100644
+--- a/tests/scene-manifest.test.cjs
++++ b/tests/scene-manifest.test.cjs
+@@ -7,7 +7,7 @@ test('only the five public scene directories ship and every local stylesheet ref
+  for(const id of ids){const css=fs.readFileSync(path.join(extension,'themes',id,'theme.css'),'utf8');for(const match of css.matchAll(/url\(([^)]+)\)/g)){
+   const ref=match[1].replace(/^["']|["']$/g,'');if(ref.startsWith('data:')||ref.startsWith('#'))continue;assert.doesNotMatch(ref,/^(?:https?:)?\/\//);assert.ok(fs.existsSync(path.join(extension,'themes',id,ref)),id+': '+ref);
+  }}
+- assert.equal(resources.length,62);assert.ok(resources.includes('themes/stars/sky.html'));assert.ok(resources.includes('themes/stars/sky.js'));
++ assert.equal(resources.length,63);assert.ok(resources.includes('themes/stars/sky.html'));assert.ok(resources.includes('themes/stars/sky.js'));
+ });
+ test('scene assets have exact fixed and dynamic resource entries while the sky script stays private',()=>{
+  const manifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json'),'utf8')),F=require('../extension/features.js');
+diff --git a/tests/scene-companion.test.cjs b/tests/scene-companion.test.cjs
+new file mode 100644
+index 0000000..b9600e3
+--- /dev/null
++++ b/tests/scene-companion.test.cjs
+@@ -0,0 +1,132 @@
++'use strict';
++// A scene's own companion drawing (scene-themes.js companion, pet-art.js scenePack and identity, dashboard.js syncCompanion):
++// read from the extension's own files once a page after the first paint, checked like an installed pack, and drawn for the
++// built-in companion only while that scene is on and no pack of the student's is chosen. Anything else keeps the pony.
++const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),{createHash}=require('node:crypto');
++const Pet=require('../extension/pet-pack.js'),{fixture}=require('./dashboard-heading-fixture.cjs'),{fixture:pony}=require('./pony-fixture.cjs'),{pack:installed,personal,settle}=require('./companion-fixture.cjs');
++const read=file=>fs.readFileSync(path.join(__dirname,'../extension',file),'utf8'),plain=v=>JSON.parse(JSON.stringify(v));
++const asset=b=>({type:'image/webp',data:b.toString('base64'),sha256:createHash('sha256').update(b).digest('hex')});
++const chunk=(tag,b)=>{const n=Buffer.alloc(4);n.writeUInt32LE(b.length);return Buffer.concat([Buffer.from(tag),n,b,Buffer.alloc(b.length%2)]);},riff=b=>{const n=Buffer.alloc(4);n.writeUInt32LE(b.length+4);return Buffer.concat([Buffer.from('RIFF'),n,Buffer.from('WEBP'),b]);};
++const frame=chunk('VP8 ',Buffer.from([0x30,1,0,0x9d,1,0x2a,1,0,1,0])),animated=loops=>riff(Buffer.concat([chunk('VP8X',Buffer.from([2,0,0,0,0,0,0,0,0,0])),chunk('ANIM',Buffer.from([0,0,0,0,loops,0])),chunk('ANMF',Buffer.concat([Buffer.alloc(16),frame]))]));
++// Animated WebP poses in the shape of the first scene pack: a 58 x 72 box standing on 68, facing right.
++const horse=JSON.stringify({format:'chpet',version:1,name:'Scene horse',size:[58,72],ground:68,faces:'right',poses:{stand:'stand',walk:'walk',sleep:'stand'},assets:{stand:asset(animated(0)),walk:asset(animated(1))}});
++const SEA='themes/sea/companion.chpet',builtin=(sceneTheme='sea',makeYourOwn={pet:null,installed:{}})=>({pet:{name:'Peanut',enabled:true},settings:{sceneTheme,makeYourOwn}});
++// pet-art.js on a page of its own: the extension's files, the pack checker and the browser's idle time are stand-ins.
++function page(files={[SEA]:horse},extra={}){
++ const fetched=[],idle=[],logs=[],log=(...a)=>logs.push(a);
++ const env=vm.createContext({console:{log,warn:log,error:log,info:log},chrome:{runtime:{getURL:file=>'chrome-extension://scene/'+file}},requestIdleCallback:fn=>{idle.push(fn);},
++  fetch:async url=>{fetched.push(url);const body=files[url.replace('chrome-extension://scene/','')];return {ok:body!==undefined,text:async()=>body};},ReservePetPack:{validate:text=>Pet.validate(text)},...extra});
++ vm.runInContext(read('pet-art.js'),env,{filename:'pet-art.js'});
++ return {env,A:env.ReservePetArt,fetched,logs,idle(){while(idle.length)idle.shift()();}};
++}
++test('Beyond the Walls is the one packaged scene with a companion, and a declared one is a file in that scene\'s own folder',()=>{
++ const load=source=>{const env=vm.createContext({});vm.runInContext(source,env,{filename:'scene-themes.js'});return env.ReserveSceneThemes;},shipped=load(read('scene-themes.js'));
++ assert.equal(shipped.companion('walls'),'themes/walls/companion.chpet');
++ for(const id of [...Object.keys(shipped.names).filter(id=>id!=='walls'),'','__proto__','constructor',undefined])assert.equal(shipped.companion(id),'',String(id));
++ const declared=load(read('scene-themes.js').replace(/companions=Object\.freeze\(\{[^}]*\}\)/,"companions=Object.freeze({sea:'companion.chpet'})"));
++ assert.equal(declared.companion('sea'),SEA);assert.equal(declared.companion('stars'),'');assert.equal(declared.companion('walls'),'');
++});
++test('the walls companion ships: the scout\'s horse passes the pack check with all eleven poses and is listed for the content script',async()=>{
++ const file='themes/walls/companion.chpet',{pack}=await Pet.validate(read(file));
++ assert.deepEqual([pack.name,pack.size,pack.ground,pack.faces],['Scout\'s horse',[58,72],68,'right']);
++ for(const pose of ['stand','walk','trot','lie','sleep','read','eat','cheer','flag','fall','held']){
++  const a=pack.assets[pack.poses[pose]];assert.equal(a.type,'image/webp',pose);assert.equal(a.animated,true,pose);assert.match(a.firstFrame,/^data:image\//,pose);
++ }
++ const F=require('../extension/features.js'),manifest=JSON.parse(read('manifest.json'));
++ assert.ok(F.catalogue.find(feature=>feature.id==='scene-themes').files.assets.includes(file));
++ for(const entry of manifest.web_accessible_resources)assert.ok(entry.resources.includes(file));
++});
++test('a scene pack is read once after the first paint, checked like an installed pack and drawn under the companion\'s own name',async()=>{
++ const {A,fetched,idle}=page(),d=builtin(),loading=A.scenePack('sea',SEA);
++ assert.equal(A.scenePack('sea',SEA),loading);await settle();assert.deepEqual(fetched,[],'nothing is read before the browser is idle');
++ idle();const pack=await loading,stand=pack.assets[pack.poses.stand];assert.deepEqual(fetched,['chrome-extension://scene/'+SEA]);
++ assert.equal(stand.type,'image/webp');assert.equal(stand.animated,true);assert.match(stand.firstFrame,/^data:image\/webp;base64,/);
++ const p=A.identity(d,pack);assert.equal(p.pack,pack);assert.deepEqual([p.name,p.sourceName,p.id,p.kind,p.custom,p.motion],['Peanut','',null,'pony',false,'gentle']);
++ const walk=A.customDrawing(p.pack,'walk','right'),still=A.customDrawing(p.pack,'walk','left',true);
++ assert.equal(walk.src,'data:image/webp;base64,'+pack.assets.walk.data);assert.deepEqual([walk.width,walk.height,walk.ground,walk.mirror],[58,72,68,false]);
++ assert.deepEqual([still.pose,still.src,still.mirror],['stand',stand.firstFrame,true]);
++ assert.match(A.drawing(d,pack),/^<img class="pet-svg" src="data:image\/webp;base64,[^"]+" width="58" height="72" alt="Peanut"/);
++ for(let i=0;i<3;i++){A.identity(d,pack);assert.equal(await A.scenePack('sea',SEA),pack);}assert.equal(fetched.length,1);
++});
++test('a scene pack is drawn only while its own scene is saved and no pack of the student\'s is chosen',async()=>{
++ const {A,idle}=page(),loading=A.scenePack('sea',SEA);idle();const pack=await loading;
++ for(const other of [builtin(''),builtin('stars'),{pet:{name:'Peanut'}},{name:'Peanut'}]){const p=A.identity(other,pack);assert.equal(p.pack,null);assert.equal(p.name,'Peanut');assert.match(A.drawing(other,pack),/^<svg /);}
++ assert.equal(A.identity(builtin(),plain(pack)).pack,null,'only the pack read for the scene is trusted');
++ const own={...personal(),settings:{...personal().settings,sceneTheme:'sea'}};
++ assert.equal(A.identity(own,pack).pack,null);assert.equal(A.drawing(own,pack),A.placeholder(),'the student\'s own pack shows as loading, never as the scene\'s');
++ assert.equal(A.identity(own,installed()).name,'Maple');assert.equal(A.identity(own,installed()).custom,true);
++ const row={id:'local-horse',name:'Scene horse',kind:'pet'};assert.equal(A.identity(builtin('sea',{pet:row,installed:{[row.id]:row}}),pack).pack,null,'not even under the same name');
++ const gone=builtin('sea',{pet:{id:'gone',name:'Gone',kind:'pet'},installed:{},adjustments:{'pack:gone':{poses:{walk:false},pet:{name:'Gone'},motion:'off'}}}),p=A.identity(gone,pack);
++ assert.equal(p.pack,pack,'a chosen pack that is no longer installed leaves the scene drawing whole');assert.deepEqual([p.name,p.motion],['Biscuit','gentle']);
++});
++test('a missing, cut short or failing scene pack, or no pack checker, leaves the pony quietly and is not read again',async()=>{
++ const files={'themes/stars/companion.chpet':'{"format":"chpet"','themes/starry/companion.chpet':fs.readFileSync(path.join(__dirname,'fixtures/make-your-own/invalid/missing.chpet'),'utf8')},{A,fetched,logs,idle}=page(files);
++ for(const id of ['stars','starry','blueprint']){const file='themes/'+id+'/companion.chpet',loading=A.scenePack(id,file);idle();assert.equal(await loading,null,id);assert.equal(await A.scenePack(id,file),null);}
++ assert.equal(fetched.length,3);assert.deepEqual(logs,[]);
++ for(const extra of [{ReservePetPack:undefined},{chrome:undefined},{fetch:async()=>{throw TypeError('Failed to fetch');}}]){
++  const h=page(undefined,extra),loading=h.A.scenePack('sea',SEA);h.idle();assert.equal(await loading,null);assert.deepEqual(h.logs,[]);if(!extra.fetch)assert.deepEqual(h.fetched,[]);
++ }
++ const waits=[],h=page(undefined,{requestIdleCallback:undefined,setTimeout:(fn,ms)=>{waits.push(ms);fn();}});
++ assert.equal((await h.A.scenePack('sea',SEA)).name,'Scene horse');assert.deepEqual(waits,[400],'without idle callbacks it waits a moment instead');
++});
++test('the walking companion wears the scene drawing under its own name, keeps still with Still, Off or reduced motion and is the pony on another scene',async t=>{
++ const f=pony({initialPet:{enabled:false}});f.controller.destroy();let seq=0;
++ f.Element.prototype.replaceChildren=function(...nodes){for(const child of [...this.childNodes])child.remove();for(const child of nodes)this.append(child);};
++ const schedule=(fn,delay=0,repeat=0)=>{const id=--seq;f.timers.set(id,{fn,at:f.clock+Math.max(0,delay),repeat,kind:'task'});return id;};
++ const h=page(undefined,{document:f.doc,setTimeout:(fn,ms)=>schedule(fn,ms),clearTimeout:id=>f.timers.delete(id),setInterval:(fn,ms)=>schedule(fn,ms,ms),clearInterval:id=>f.timers.delete(id)});
++ const loading=h.A.scenePack('sea',SEA);h.idle();const pack=await loading;vm.runInContext(read('pets.js'),h.env,{filename:'pets.js'});
++ let d=builtin(),pet={enabled:true,roam:'page',name:'Peanut'};const media={matches:false,addEventListener:(type,fn)=>{media.change=fn;}};f.win.matchMedia=()=>media;
++ const controller=h.env.ReservePets.create({container:f.container,getPet:()=>pet,getCustomPet:()=>pack,getData:()=>d,savePet:value=>{pet=value;},now:()=>f.epoch+f.clock});t.after(()=>controller.destroy());
++ const image=()=>f.node.children.length===1&&f.node.children[0].className==='pet-svg'&&typeof f.node.children[0].src==='string'?f.node.children[0]:null;
++ assert.equal(image().src,'data:image/webp;base64,'+pack.assets.stand.data);assert.deepEqual([f.node.style.width,f.node.style.height],['58px','72px']);assert.match(f.node.attrs['aria-label'],/^Peanut, your companion/);
++ const moving='data:image/webp;base64,'+pack.assets.stand.data,still=pack.assets.stand.firstFrame,
++  motion=style=>{f.container.dataset.motionStyle=style;f.mutate([{type:'attributes',attributeName:'data-motion-style',target:f.container}]);return image().src;};
++ assert.deepEqual(['still','off','gentle'].map(motion),[still,still,moving],'Still and Off show the first frame, Moving plays it');
++ media.matches=true;media.change();assert.equal(image().src,still,'reduced motion keeps it still');media.matches=false;media.change();assert.equal(image().src,moving);
++ assert.equal(motion('still'),still);
++ d=builtin('stars');controller.sync();assert.equal(image(),null);assert.ok(f.node.querySelector('.pet-up'));assert.equal(f.node.style.width,'');
++ d=builtin('sea');controller.sync();assert.equal(image().src,pack.assets.stand.firstFrame);assert.equal(h.fetched.length,1);
++});
++// The dashboard with Make it yours → Companion open; 'sea' stands in for a scene that ships a companion (the packaged ones do not).
++const checked=Pet.validate(horse);
++function dashboard(settings,{own=null,fail='',open=true,features=id=>id!=='planner'}={}){
++ const calls={fetch:[],validate:0,renders:0};
++ const h=fixture({setup({env,store}){
++  for(const file of ['workspace-arrange.js','customization-model.js','study-kind.js','pony-brain.js','pet-art.js','pets.js','settings-dock.js','customize-ui.js'])vm.runInContext(read(file),env,{filename:file});
++  env.ReserveFeatures={enabled:features};Object.assign(store.get().settings,plain(settings));store.get().pet={name:'Biscuit'};
++  env.ReserveMakeYourOwn={activeLook:()=>({key:null,layer:{}}),picker:()=>'',render:()=>'',create:()=>({state:{pet:own},destroy(){}})};
++  env.ReserveSceneThemes={apply:()=>{calls.renders++;},remove(){},companion:id=>id==='sea'?SEA:''};
++  env.chrome={runtime:{getURL:file=>'chrome-extension://scene/'+file}};
++  env.fetch=async url=>{calls.fetch.push(url);return {ok:fail!=='read',text:async()=>horse};};
++  env.ReservePetPack={validate:async()=>{calls.validate++;if(fail==='check')throw Error('Invalid pack');return checked;}};
++ }});
++ if(open){h.click('settings');h.container.querySelector('[data-rd-action="customize-tab"][data-value="pet"]').click();}
++ return {h,calls,hero:()=>h.container.querySelector('.cz-pet-hero .pet').innerHTML,arrive:async()=>{await checked;h.tick(400);await settle();}};
++}
++test('Biscuit wears the scene\'s drawing one render after it is read, keeps it through a rename and is the pony at once on another scene',async t=>{
++ const {h,calls,hero,arrive}=dashboard({sceneTheme:'sea'});t.after(()=>h.dashboard.destroy());
++ assert.match(hero(),/^<svg/);assert.deepEqual(calls.fetch,[],'nothing is read before the first paint');
++ await arrive();const renders=calls.renders,pack=(await checked).pack;h.tick(0);assert.equal(calls.renders,renders+1,'one render when the drawing arrives');
++ assert.match(hero(),/^<img class="pet-svg"[^>]* alt="Biscuit"/);assert.ok(hero().includes(pack.assets.stand.firstFrame),'a still preview: the stand pose\'s first frame');
++ assert.equal(h.container.querySelector('[data-key="name"]').value,'Biscuit');assert.equal(h.container.querySelectorAll('[data-rd-field="make-pose"]').length,0);assert.match(h.container.querySelector('[data-id="pet"]').textContent,/Current/);
++ assert.deepEqual(calls.fetch,['chrome-extension://scene/'+SEA]);assert.equal(calls.validate,1);
++ await h.store.update(data=>{data.pet.name='Peanut';});h.tick(0);assert.match(hero(),/^<img [^>]*alt="Peanut"/);
++ await h.store.update(data=>{data.settings.sceneTheme='stars';});h.tick(0);assert.match(hero(),/^<svg/,'the pony is back in the same render');
++ await h.store.update(data=>{data.settings.sceneTheme='sea';});h.tick(0);await settle();h.tick(0);assert.match(hero(),/^<img/);
++ await h.store.update(data=>{data.settings.sceneTheme='';});h.tick(0);assert.match(hero(),/^<svg/);assert.equal(calls.fetch.length,1);assert.equal(calls.validate,1);
++});
++test('the student\'s own installed companion wins and the scene\'s is never read',async t=>{
++ const row={id:'clover',kind:'pet',name:'Clover'},{h,calls,hero,arrive}=dashboard({sceneTheme:'sea',makeYourOwn:{pet:row,installed:{clover:row}}},{own:installed('Clover')});
++ t.after(()=>h.dashboard.destroy());await arrive();h.tick(0);assert.match(hero(),/alt="Clover"/);assert.deepEqual(calls.fetch,[]);
++});
++for(const fail of ['read','check'])test('a scene pack whose '+fail+' fails leaves the pony and is not asked for again',async t=>{
++ const {h,calls,hero,arrive}=dashboard({sceneTheme:'sea'},{fail});t.after(()=>h.dashboard.destroy());await arrive();h.tick(0);
++ await h.store.update(data=>{data.settings.bedtime='21:00';});h.tick(0);h.dashboard.updateSnapshot(h.snapshot);await arrive();h.tick(0);
++ assert.match(hero(),/^<svg/);assert.equal(calls.fetch.length,1);assert.equal(calls.validate,fail==='read'?0:1);
++});
++test('without the companion or Scene themes nothing is read',async t=>{
++ for(const off of ['pony','scene-themes']){
++  const {h,calls,arrive}=dashboard({sceneTheme:'sea'},{open:false,features:id=>!['planner',off].includes(id)});t.after(()=>h.dashboard.destroy());
++  await arrive();h.tick(0);assert.deepEqual(calls.fetch,[],off);
++ }
++});
