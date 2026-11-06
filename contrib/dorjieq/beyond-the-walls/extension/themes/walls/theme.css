@@ -1,0 +1,143 @@
+/* Beyond the Walls: the dashboard at dusk inside the last walled town. The burning sky and the wall across the top; below
+   it the evening settles into a deep slate where you read. Cards and panels are dressed stone with iron fittings, headings
+   are cut in a heavy book serif, the chosen tab is a warm brass plate and the main button a green travelling cloak; the
+   course pictures are the corps and what watches it from beyond the wall (a recruit's salute, a giant in the haze, the
+   captain's advance, a giant's hand rising out of the steam, the lookout, a signal flare). */
+.rd.rd.rd.rd[data-theme-kit]{--rd-bg:#1B1A1F;--rd-surface:#24222C;--rd-surface-2:#2C2934;--rd-ink:#F4EAD8;--rd-muted:#C9BBA3;--rd-ink-2:#E8DCC6;--rd-faint:#A89C88;--rd-line:rgba(240,214,170,.18);--rd-accent:#8FCF9C;--rd-soft:rgba(143,207,156,.14);--rd-course:#8FCF9C;--rd-danger:#FF9D7A;
+  /* the dusk under the banner: the town's evening colour where the sky fades out (66-100% of its 1600:440 height), then
+     the slate. The stops follow the sky's height, which follows the page's width. */
+  background:linear-gradient(180deg,#3a2f3d 0,#43353f 17vw,#3a2f37 23vw,#2a2329 29vw,#1f1c22 36vw,#1b1a1f 48vw,#14141a 100%)!important;color:var(--rd-ink)!important;position:relative;isolation:isolate;overflow:hidden}
+.rd[data-theme-kit] :is(h1,h2,h3,.rd-rail-name,.rd-rail-heading){font-family:"Literata","Iowan Old Style","Sitka Heading","Source Serif 4",Charter,Georgia,Cambria,serif!important;font-weight:750!important;letter-spacing:.006em;color:#F7EEDC!important;font-optical-sizing:auto}
+.rd[data-theme-kit] h1{font-weight:800!important;font-size:44px!important;letter-spacing:-.004em;text-shadow:0 2px 0 rgba(20,14,22,.55),0 0 24px rgba(20,14,22,.75)}
+.rd[data-theme-kit] .rd-rail-heading,.rd[data-theme-kit] .rd-heading-date,.rd[data-theme-kit] .rd-board-edit,.rd[data-theme-kit] .rd-bookmarks :is(p,small,h2){text-shadow:0 1px 4px rgba(20,14,22,.9)}
+.rd[data-theme-kit] :is(button,label,span,b,strong,small,em,time,li,td,th,dt,dd){color:inherit}
+.rd[data-theme-kit] :is(small,p,.rd-heading-date,.rd-rail-next){color:var(--rd-muted)!important}
+.rd[data-theme-kit] .rd-heading-date,.rd[data-theme-kit] .rd-bookmarks :is(p,small){color:#F4EAD8!important}
+.rd[data-theme-kit] :is(.rd-text-button,.rd-grade-switch,.rd-board-edit,.rd-toolbox-trigger){color:var(--rd-ink)!important}
+.rd[data-theme-kit] :is(.rd-rail-next b,.rd-reader-facts span:first-child,[class*=due]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-]),[class*=time]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-])){color:#F6B46B!important}
+.rd[data-theme-kit] .rd-reader-facts span:not(:first-child){color:var(--rd-muted)!important}
+.rd[data-theme-kit] .rd-rich-text,.rd[data-theme-kit] .rd-rich-text :is(p,li,ol,ul,span,em,strong,b,td,th,h4,h5,h6){color:var(--rd-ink)!important}
+/* the scene: the whole picture across the top, settling into the evening */
+.rd[data-theme-kit] > .tk-sky{position:absolute;left:0;right:0;top:0;aspect-ratio:1600/440;z-index:0;pointer-events:none;
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 66%,rgba(0,0,0,.4) 86%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 66%,rgba(0,0,0,.4) 86%,transparent 100%)}
+.rd[data-theme-kit] > .tk-sky video{width:100%;height:100%;object-fit:contain;object-position:50% 0;display:block}
+.rd[data-theme-kit] > .rd-shell{position:relative;z-index:1}
+.rd[data-theme-kit] .rd-heading-art{display:none!important}
+.rd[data-theme-kit] .rd-course-heading h1::before{background:none!important}
+.rd[data-theme-kit] .rd-course-heading{position:relative}
+/* the greeting stands in a pool of evening shade, so the white words read on the bright sky (the workspace clips 26px
+   left of the heading, so the pool has faded out by then); the date line carries a dark
+   halo of its own */
+.rd[data-theme-kit] .rd-course-heading::before{position:absolute!important;inset:-40px auto -40px -26px!important;width:820px!important;height:auto!important;z-index:-1!important;background:radial-gradient(farthest-side at 47% 54%,rgba(28,21,32,.66) 0,rgba(28,21,32,.52) 42%,rgba(28,21,32,.24) 74%,rgba(28,21,32,0))!important}
+.rd[data-theme-kit] .rd-course-heading .rd-heading-date{text-shadow:0 0 3px rgba(24,18,28,.95),0 0 9px rgba(24,18,28,.85),0 0 18px rgba(24,18,28,.65)!important}
+/* plates: the tab bars are dark slate with a thin line of warm stone light */
+.rd[data-theme-kit] .rd-toolbar{background:transparent!important}
+.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week,.rd-reader-tabs){background:rgba(27,26,31,.8)!important;box-shadow:inset 0 0 0 1px rgba(240,214,170,.26),inset 0 1px 0 rgba(255,236,205,.12)!important;backdrop-filter:none}
+.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter,.rd-reader-tab){color:#EFE3CC!important}
+/* the chosen tab or chip: a warm brass plate, lit from above, its lower lip darker */
+.rd[data-theme-kit] :is(.rd-workspace-tab[aria-selected=true],.cz-tab[aria-selected=true],.rd-filter[aria-pressed=true],.rd-day-filter[aria-pressed=true],.rd-reader-tab[aria-pressed=true],.rd-reader-tab[aria-selected=true]),.rd[data-theme-kit] .rd-glance-chip{background:linear-gradient(180deg,#f0cf8c 0,#dcb064 45%,#c2924a 100%)!important;color:#2A1C0C!important;font-weight:700;box-shadow:inset 0 0 0 1px rgba(110,74,28,.55),inset 0 1px 0 rgba(255,244,214,.85),inset 0 -3px 0 rgba(120,80,30,.35),0 2px 6px rgba(10,8,12,.45),0 0 14px rgba(246,180,107,.22)!important;text-shadow:0 1px 0 rgba(255,236,196,.45)}
+.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter)::before,.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week,.rd-reader-tabs)::before{background:transparent!important;box-shadow:none!important}
+/* the search field: a slot cut in dark stone */
+.rd[data-theme-kit] .rd-search input{background:linear-gradient(180deg,rgba(16,15,19,.9),rgba(30,28,35,.86))!important;color:var(--rd-ink)!important;border:1px solid rgba(240,214,170,.3)!important;box-shadow:inset 0 2px 4px rgba(0,0,0,.45),0 1px 0 rgba(255,236,205,.08)!important}
+.rd[data-theme-kit] .rd-search input::placeholder{color:#C9BBA3}
+.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course,.rd-course-name){background:transparent!important;box-shadow:none!important;outline:none!important}
+.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::before,.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::after,.rd[data-theme-kit] .rd-rail-art::after{display:none!important}
+.rd[data-theme-kit] .rd-rail-art > svg{display:none!important}
+.rd[data-theme-kit] .tk-icon{width:116%;height:116%;margin:-8%;object-fit:contain}
+.rd[data-theme-kit] :is(.rd-announcement,.rd-reader,.rd-work-item,.rd-deck-section){background:transparent!important}
+.rd[data-theme-kit] .rd-bookmarks{border-bottom:1px solid rgba(240,214,170,.18)!important}
+.rd[data-theme-kit] .rd-assignment-list::before,.rd[data-theme-kit] .rd-assignment-list::after{background:rgba(201,154,78,.1)!important;box-shadow:inset 0 0 0 1px rgba(226,184,112,.45)!important}
+.rd[data-theme-kit] .rd-assignment--selected{background:transparent!important;box-shadow:none!important}
+/* the main button: green cloak cloth. A fine twill, a row of stitches inside the hem, light thread lettering; a slow sheen
+   crosses it now and then like light over wool */
+.rd[data-theme-kit] .rd-button--primary{background:repeating-linear-gradient(45deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px),repeating-linear-gradient(-45deg,rgba(0,0,0,.06) 0 1px,transparent 1px 3px),linear-gradient(180deg,#477551 0,#3f6b4a 50%,#345a3e 100%)!important;color:#F8F2E2!important;border:1px solid #23392a!important;font-weight:700;text-shadow:0 1px 1px rgba(14,28,18,.6);box-shadow:inset 0 1px 0 rgba(190,230,190,.28),inset 0 -2px 0 rgba(14,30,18,.4),0 3px 10px rgba(8,10,10,.45)!important;position:relative;overflow:hidden;isolation:isolate}
+.rd[data-theme-kit] .rd-button--primary:hover{background:repeating-linear-gradient(45deg,rgba(255,255,255,.04) 0 1px,transparent 1px 3px),repeating-linear-gradient(-45deg,rgba(0,0,0,.06) 0 1px,transparent 1px 3px),linear-gradient(180deg,#4d7d58 0,#447250 50%,#38603f 100%)!important;color:#FFF9EA!important}
+.rd[data-theme-kit] .rd-button--primary::before{content:"";position:absolute;inset:3px;border:1px dashed rgba(226,240,210,.42);border-radius:inherit;pointer-events:none;z-index:-1}
+.rd[data-theme-kit] .rd-button--primary::after{content:"";position:absolute;top:0;bottom:0;left:0;width:45%;background:linear-gradient(100deg,transparent,rgba(232,248,220,.2) 45%,rgba(255,250,232,.28) 50%,rgba(232,248,220,.2) 55%,transparent);transform:translateX(-130%);animation:tk-sheen 11s cubic-bezier(.45,0,.25,1) infinite;will-change:transform;pointer-events:none;z-index:-1}
+@keyframes tk-sheen{0%,8%{transform:translateX(-130%)}52%,100%{transform:translateX(330%)}}
+/* every other button: a dark stone plate with a lit upper edge */
+.rd[data-theme-kit] .rd-button:not(.rd-button--primary){background:linear-gradient(180deg,#403c47 0,#34313b 55%,#2c2932 100%)!important;color:var(--rd-ink)!important;border:1px solid rgba(217,198,165,.32)!important;box-shadow:inset 0 1px 0 rgba(255,238,210,.12),inset 0 -2px 0 rgba(0,0,0,.28),0 2px 6px rgba(8,8,10,.35)!important}
+.rd[data-theme-kit] .rd-button:not(.rd-button--primary):hover{background:linear-gradient(180deg,#4a4651 0,#3c3843 55%,#322f38 100%)!important;border-color:rgba(226,184,112,.5)!important}
+.rd[data-theme-kit] a{color:#A9DDB2}
+/* life: a lantern's glow round the chosen card, the motifs each in their own small motion */
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame::after,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame::after{content:"";position:absolute;inset:-14px;border-radius:16px;box-shadow:0 0 18px 1px rgba(246,180,107,.38),inset 0 0 0 1px rgba(246,196,120,.28);opacity:.75;animation:tk-glowop 9s ease-in-out infinite;will-change:opacity;pointer-events:none}
+@keyframes tk-glowop{0%,100%{opacity:.5}50%{opacity:.9}}
+/* the recruit draws a slow proud breath; the giant rises and sinks in its steam; the captain leans into the advance;
+   the hand reaches; the lookout scans the plain; the flare climbs quickly and settles. Frozen they stand at rest. */
+@keyframes tk-salute{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-1px) scale(1.03)}}
+@keyframes tk-giant{0%,100%{transform:translateY(0);opacity:1}50%{transform:translateY(-2px);opacity:.9}}
+@keyframes tk-captain{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+@keyframes tk-hand{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-2px) rotate(-1.5deg)}}
+@keyframes tk-lookout{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+@keyframes tk-flare{0%{transform:translateY(0);animation-timing-function:cubic-bezier(.2,.8,.3,1)}14%{transform:translateY(-3px);animation-timing-function:ease-in-out}62%,100%{transform:translateY(0)}}
+.rd[data-theme-kit] .tk-icon[data-motif=salute]{transform-origin:50% 96%;animation:tk-salute 6s ease-in-out infinite}
+.rd[data-theme-kit] .tk-icon[data-motif=giant]{transform-origin:50% 90%;animation:tk-giant 9s ease-in-out infinite}
+.rd[data-theme-kit] .tk-icon[data-motif=captain]{transform-origin:50% 100%;animation:tk-captain 7s ease-in-out infinite}
+.rd[data-theme-kit] .tk-icon[data-motif=hand]{transform-origin:50% 92%;animation:tk-hand 8s ease-in-out infinite}
+.rd[data-theme-kit] .tk-icon[data-motif=lookout]{transform-origin:50% 100%;animation:tk-lookout 9s ease-in-out infinite}
+.rd[data-theme-kit] .tk-icon[data-motif=flare]{transform-origin:50% 100%;animation:tk-flare 5s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.rd[data-theme-kit] *,.rd[data-theme-kit] *::before,.rd[data-theme-kit] *::after{animation:none!important}}
+/* the last labels in the original face follow the theme title face */
+.rd[data-theme-kit] :is(.rd-rail-heading,.rd-rail-heading *,.rd-rail-all > span,.rd-day-filter strong,.rd-day-filter b){font-family:"Literata","Iowan Old Style","Sitka Heading",Charter,Georgia,serif!important;font-weight:700!important}
+/* drawn frames, never a plain rectangle: the cards wear a slab of dressed stone, the panels a stretch of wall */
+.rd[data-theme-kit] .rd-frame > *{display:none!important}
+.rd[data-theme-kit] .rd-frame{border:24px solid transparent!important;border-image:url(walls-card.png) 56 fill round!important;background:none!important;background-clip:padding-box!important;box-shadow:none!important;border-radius:0!important}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame{box-shadow:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail){background:transparent!important;backdrop-filter:none!important;isolation:isolate}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail)::before{display:block!important;content:""!important;position:absolute!important;inset:-18px!important;z-index:-1!important;border:40px solid transparent!important;border-image:url(walls-panel.png) 100 fill round!important;background:none!important;pointer-events:none!important;
+  -webkit-mask-box-image:none!important;-webkit-mask:none!important;mask:none!important;opacity:1!important;filter:none!important;box-shadow:none!important;outline:none!important;border-radius:0!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-reader,.rd-work,.rd-course-deck,.rd-course-rail){border-color:transparent!important;box-shadow:none!important;outline:none!important}
+/* one border only: the course cards wear the stone, the rail round them wears none */
+.rd[data-theme-kit] .rd-course-rail::before,.rd[data-theme-kit] .rd-course-rail::after{display:none!important}
+.rd[data-theme-kit] .rd-course-rail{background:transparent!important;box-shadow:none!important;backdrop-filter:none!important}
+/* the walls are alive: now and then a few embers from the lanterns drift up beside the stone and go out, the panels out of
+   step. Frozen (Still, Off, reduced motion, idle rest) they stay as faint warm glints on the rim. */
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{display:block!important;content:""!important;position:absolute!important;inset:-14px!important;border:0!important;box-shadow:none!important;border-radius:0!important;pointer-events:none!important;z-index:2!important;
+  -webkit-mask-box-image:none!important;-webkit-mask:none!important;
+  background:radial-gradient(circle,#fff0cc 0 1.3px,rgba(250,170,90,.7) 2px,rgba(246,140,60,0) 5px) 1px 31%/12px 12px no-repeat,
+             radial-gradient(circle,#ffe2ae 0 1px,rgba(246,160,80,.6) 1.6px,rgba(246,140,60,0) 4px) 5px 64%/12px 12px no-repeat,
+             radial-gradient(circle,#fff0cc 0 1.4px,rgba(250,170,90,.7) 2.1px,rgba(246,140,60,0) 5.2px) calc(100% - 1px) 22%/12px 12px no-repeat,
+             radial-gradient(circle,#ffe2ae 0 1px,rgba(246,160,80,.6) 1.6px,rgba(246,140,60,0) 4px) calc(100% - 5px) 52%/12px 12px no-repeat,
+             radial-gradient(circle,#fff0cc 0 1.1px,rgba(250,170,90,.65) 1.8px,rgba(246,140,60,0) 4.4px) calc(100% - 2px) 81%/12px 12px no-repeat!important;
+  -webkit-mask-image:linear-gradient(180deg,transparent,#000 14%,#000 86%,transparent)!important;mask-image:linear-gradient(180deg,transparent,#000 14%,#000 86%,transparent)!important;
+  opacity:.55;animation:tk-ember 13s cubic-bezier(.3,.1,.5,1) infinite!important;will-change:transform,opacity}
+.rd[data-theme-kit] .rd-work-column::after{animation-duration:16s!important;animation-delay:-5s!important}
+.rd[data-theme-kit] .rd-information::after{animation-duration:11s!important;animation-delay:-8s!important}
+.rd[data-theme-kit] .rd-widget::after{animation-duration:14.5s!important;animation-delay:-3s!important}
+@keyframes tk-ember{0%{opacity:0;transform:translate(0,18px)}18%{opacity:.95}45%{transform:translate(2px,-14px)}70%{opacity:.55}100%{opacity:0;transform:translate(-1px,-52px)}}
+@media (prefers-reduced-motion:reduce){.rd[data-theme-kit] *::after{animation:none!important}}
+/* the embers rule above outranks scene-themes.css's stop rules, so it stops itself; standing still the embers go out
+   (frozen sparks read as stray dots on the gutters) */
+.rd[data-theme-kit]:is([data-motion-style=still],[data-motion-style=off]) :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{animation:none!important;opacity:0!important}
+.rd[data-theme-kit]:is([data-kit-rest],[data-scene-paused]) :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{animation-play-state:paused!important}
+@media (prefers-reduced-motion:reduce){.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{animation:none!important;opacity:0!important}}
+/* the Help band keeps the page's pen outline, drawn in weathered stone instead of the green accent */
+.rd[data-theme-kit][data-panel-frame=pen] .ch-band-host::after{background:rgba(217,198,165,.4)!important}
+/* small things in the town's language: tick circles are little rings of dressed stone, section headings stand on a
+   battlement line */
+.rd[data-theme-kit] .rd-check-off{border:0!important;background:radial-gradient(circle at 50% 50%,rgba(16,15,20,.18) 0 46%,rgba(40,37,46,.9) 47.5%,#cdb996 51%,#e2d1b0 54%,#a8977f 59%,#6c6570 64%,rgba(40,37,46,.85) 67%,rgba(40,37,46,0) 71%)!important;box-shadow:none!important}
+.rd[data-theme-kit] .rd-check-off:hover{background:radial-gradient(circle at 50% 50%,rgba(143,207,156,.3) 0 46%,rgba(40,37,46,.9) 47.5%,#d9c6a5 51%,#efe0c2 54%,#b8a68c 59%,#6c6570 64%,rgba(40,37,46,.85) 67%,rgba(40,37,46,0) 71%)!important}
+.rd[data-theme-kit] :is(.rd-sheet-heading h3,.rd-deck-header h2,.rd-work-heading h2){padding-bottom:8px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='9'%3E%3Cpath d='M0 7.4H7V3.6H13V7.4H20' fill='none' stroke='%23c99a4e' stroke-width='1.3' stroke-opacity='.78'/%3E%3C/svg%3E") 0 100%/20px 9px repeat-x}
+/* room for the frames: the workspace clips what spills past its sides, so widen its box without moving anything in it */
+.rd[data-theme-kit] .rd-workspace{padding-inline:26px!important;margin-inline:-26px!important}
+/* every colour the interface uses, so nothing falls back to paper (beats page tint and page style) */
+.rd.rd.rd.rd[data-theme-kit]{--rd-control:#A8977F;--rd-control-line:rgba(240,214,170,.3);--rd-line-strong:rgba(240,214,170,.34);--rd-tint:rgba(240,214,170,.1);--rd-row-hover:rgba(240,214,170,.07);--rd-sidebar:#211F26;--rd-sidebar-hover:#2A2730;--rd-sidebar-sel:#34303B;--rd-surface-3:#36323E;--rd-mark:#F6B46B;--rd-deadline-soon:#F6C48A;--rd-danger-soft:rgb(255 157 122/.16);--rd-info:#B8C8E8;--rd-info-soft:rgb(184 200 232/.14);--rd-success:#8FCF9C;--rd-success-soft:rgb(143 207 156/.15);--rd-warn:#F2C46E;--rd-warn-soft:rgb(242 196 110/.15);--rd-switch-on:#3F6B4A}
+/* A Home module shorter than its row is drawn down to the row's foot like every other panel (the dashboard extends a
+   panel's frame by --rd-panel-grow), so a row of modules reads as one row of panels */
+.rd[data-theme-kit] .rd-main.rd-desk > .rd-widget::before{bottom:calc(-18px - var(--rd-panel-grow,0px))!important}
+
+/* The rail's pictures and counts sit inside the stone, not on it: at the card's corner the icon crossed the frame's
+   blocks and the count sat on the top course (the same fix Starfield got in Preview 6) */
+.rd[data-theme-kit] .rd-course-rail .rd-course-name > .rd-rail-art{left:13px!important;bottom:13px!important;width:34px!important;height:34px!important}
+.rd[data-theme-kit] .rd-course-rail .rd-course-name > .rd-rail-art > .tk-icon{width:100%!important;height:100%!important;margin:0!important}
+.rd[data-theme-kit] .rd-course-rail .rd-rail-count{transform:translate(-7px,5px)}
+/* All courses stands on the same stone. Its slab was shorter than the recruit, so she crossed the top and bottom stone
+   and met the pennant hanging at its corner: the slab is made tall enough for the 34px picture with stone above and
+   below her, she stands on its lower stone where the course pictures stand (the pennant hangs free left of her hair),
+   the name starts where the course names start, and the gap below it is the courses' own 8px step (which pays for most
+   of the new height: the rail grows by 4px) */
+.rd[data-theme-kit][data-course-navigation=sidebar]:not([data-show-course-icons=false]) .rd-course-rail > .rd-rail-all:has(> .rd-frame){--rd-overview-thickness:63px;margin-bottom:3px!important;padding-left:51px!important}
+.rd[data-theme-kit][data-course-navigation=sidebar]:not([data-show-course-icons=false]) .rd-course-rail > .rd-rail-all:has(> .rd-frame) > .rd-rail-art{position:absolute!important;left:13px!important;bottom:13px!important;width:34px!important;height:34px!important;margin:0!important}
+.rd[data-theme-kit][data-course-navigation=sidebar]:not([data-show-course-icons=false]) .rd-course-rail > .rd-rail-all:has(> .rd-frame) > .rd-rail-art > .tk-icon{width:100%!important;height:100%!important;margin:0!important}
+/* without course pictures the name stays off the stone, where the course names stand */
+.rd[data-theme-kit][data-course-navigation=sidebar][data-show-course-icons=false] .rd-course-rail > .rd-rail-all:has(> .rd-frame){padding-left:24px!important}
