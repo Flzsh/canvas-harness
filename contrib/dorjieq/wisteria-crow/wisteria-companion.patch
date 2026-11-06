@@ -1,0 +1,95 @@
+diff --git a/extension/features.js b/extension/features.js
+index 3e1ac44..2540100 100644
+--- a/extension/features.js
++++ b/extension/features.js
+@@ -243,6 +243,7 @@
+    "themes/walls/theme.css",
+    "themes/walls/walls-card.png",
+    "themes/walls/walls-panel.png",
++   "themes/wisteria/companion.chpet",
+    "themes/wisteria/icon-crow.png",
+    "themes/wisteria/icon-lantern.png",
+    "themes/wisteria/icon-moon.png",
+diff --git a/extension/manifest.json b/extension/manifest.json
+index b431bcc..5e3edb8 100644
+--- a/extension/manifest.json
++++ b/extension/manifest.json
+@@ -179,6 +179,7 @@
+         "themes/walls/theme.css",
+         "themes/walls/walls-card.png",
+         "themes/walls/walls-panel.png",
++        "themes/wisteria/companion.chpet",
+         "themes/wisteria/icon-crow.png",
+         "themes/wisteria/icon-lantern.png",
+         "themes/wisteria/icon-moon.png",
+@@ -296,6 +297,7 @@
+         "themes/walls/theme.css",
+         "themes/walls/walls-card.png",
+         "themes/walls/walls-panel.png",
++        "themes/wisteria/companion.chpet",
+         "themes/wisteria/icon-crow.png",
+         "themes/wisteria/icon-lantern.png",
+         "themes/wisteria/icon-moon.png",
+diff --git a/extension/scene-themes.js b/extension/scene-themes.js
+index 945f697..d924371 100644
+--- a/extension/scene-themes.js
++++ b/extension/scene-themes.js
+@@ -683,6 +683,6 @@ function frame(t, advance = true) {
+  }
+  // A scene may dress the built-in companion in a drawing of its own: a .chpet in its folder, named here and listed with the
+  // folder's other files (features.js and both manifest resource lists). pet-art.js scenePack reads it; dashboard.js offers it.
+- const companions=Object.freeze({walls:'companion.chpet'}),companion=id=>Object.hasOwn(companions,id)?'themes/'+id+'/'+companions[id]:'';
++ const companions=Object.freeze({walls:'companion.chpet',wisteria:'companion.chpet'}),companion=id=>Object.hasOwn(companions,id)?'themes/'+id+'/'+companions[id]:'';
+  const api={apply,remove,names,companion,createStarSky:starSky};global.ReserveSceneThemes=api;if(typeof module==='object'&&module.exports)module.exports=api;
+ })(globalThis);
+diff --git a/tests/scene-companion.test.cjs b/tests/scene-companion.test.cjs
+index b9600e3..4f20efe 100644
+--- a/tests/scene-companion.test.cjs
++++ b/tests/scene-companion.test.cjs
+@@ -19,12 +19,12 @@ function page(files={[SEA]:horse},extra={}){
+  vm.runInContext(read('pet-art.js'),env,{filename:'pet-art.js'});
+  return {env,A:env.ReservePetArt,fetched,logs,idle(){while(idle.length)idle.shift()();}};
+ }
+-test('Beyond the Walls is the one packaged scene with a companion, and a declared one is a file in that scene\'s own folder',()=>{
++test('Beyond the Walls and Wisteria Watch are the packaged scenes with a companion, and a declared one is a file in that scene\'s own folder',()=>{
+  const load=source=>{const env=vm.createContext({});vm.runInContext(source,env,{filename:'scene-themes.js'});return env.ReserveSceneThemes;},shipped=load(read('scene-themes.js'));
+- assert.equal(shipped.companion('walls'),'themes/walls/companion.chpet');
+- for(const id of [...Object.keys(shipped.names).filter(id=>id!=='walls'),'','__proto__','constructor',undefined])assert.equal(shipped.companion(id),'',String(id));
++ assert.equal(shipped.companion('walls'),'themes/walls/companion.chpet');assert.equal(shipped.companion('wisteria'),'themes/wisteria/companion.chpet');
++ for(const id of [...Object.keys(shipped.names).filter(id=>id!=='walls'&&id!=='wisteria'),'','__proto__','constructor',undefined])assert.equal(shipped.companion(id),'',String(id));
+  const declared=load(read('scene-themes.js').replace(/companions=Object\.freeze\(\{[^}]*\}\)/,"companions=Object.freeze({sea:'companion.chpet'})"));
+- assert.equal(declared.companion('sea'),SEA);assert.equal(declared.companion('stars'),'');assert.equal(declared.companion('walls'),'');
++ assert.equal(declared.companion('sea'),SEA);assert.equal(declared.companion('stars'),'');assert.equal(declared.companion('walls'),'');assert.equal(declared.companion('wisteria'),'');
+ });
+ test('the walls companion ships: the scout\'s horse passes the pack check with all eleven poses and is listed for the content script',async()=>{
+  const file='themes/walls/companion.chpet',{pack}=await Pet.validate(read(file));
+@@ -36,6 +36,16 @@ test('the walls companion ships: the scout\'s horse passes the pack check with a
+  assert.ok(F.catalogue.find(feature=>feature.id==='scene-themes').files.assets.includes(file));
+  for(const entry of manifest.web_accessible_resources)assert.ok(entry.resources.includes(file));
+ });
++test('the wisteria companion ships: the messenger crow passes the pack check with all eleven poses and is listed for the content script',async()=>{
++ const file='themes/wisteria/companion.chpet',{pack}=await Pet.validate(read(file));
++ assert.deepEqual([pack.name,pack.size,pack.ground,pack.faces],['Messenger crow',[58,72],68,'right']);
++ for(const pose of ['stand','walk','trot','lie','sleep','read','eat','cheer','flag','fall','held']){
++  const a=pack.assets[pack.poses[pose]];assert.equal(a.type,'image/webp',pose);assert.equal(a.animated,true,pose);assert.match(a.firstFrame,/^data:image\//,pose);
++ }
++ const F=require('../extension/features.js'),manifest=JSON.parse(read('manifest.json'));
++ assert.ok(F.catalogue.find(feature=>feature.id==='scene-themes').files.assets.includes(file));
++ for(const entry of manifest.web_accessible_resources)assert.ok(entry.resources.includes(file));
++});
+ test('a scene pack is read once after the first paint, checked like an installed pack and drawn under the companion\'s own name',async()=>{
+  const {A,fetched,idle}=page(),d=builtin(),loading=A.scenePack('sea',SEA);
+  assert.equal(A.scenePack('sea',SEA),loading);await settle();assert.deepEqual(fetched,[],'nothing is read before the browser is idle');
+diff --git a/tests/scene-manifest.test.cjs b/tests/scene-manifest.test.cjs
+index 5b64f08..46ff5dd 100644
+--- a/tests/scene-manifest.test.cjs
++++ b/tests/scene-manifest.test.cjs
+@@ -7,7 +7,7 @@ test('only the six public scene directories ship and every local stylesheet refe
+  for(const id of ids){const css=fs.readFileSync(path.join(extension,'themes',id,'theme.css'),'utf8');for(const match of css.matchAll(/url\(([^)]+)\)/g)){
+   const ref=match[1].replace(/^["']|["']$/g,'');if(ref.startsWith('data:')||ref.startsWith('#'))continue;assert.doesNotMatch(ref,/^(?:https?:)?\/\//);assert.ok(fs.existsSync(path.join(extension,'themes',id,ref)),id+': '+ref);
+  }}
+- assert.equal(resources.length,74);assert.ok(resources.includes('themes/stars/sky.html'));assert.ok(resources.includes('themes/stars/sky.js'));
++ assert.equal(resources.length,75);assert.ok(resources.includes('themes/stars/sky.html'));assert.ok(resources.includes('themes/stars/sky.js'));
+ });
+ test('scene assets have exact fixed and dynamic resource entries while the sky script stays private',()=>{
+  const manifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json'),'utf8')),F=require('../extension/features.js');
