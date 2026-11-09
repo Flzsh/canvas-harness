@@ -184,9 +184,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
      area=document.createElement('div');
      area.className='rd rd-native-tools';
      area.dataset.input=keyboard?'keyboard':'pointer';
+     if(keyboard)area.dataset.kb='';
      dockRoot.append(area);
      appearance();
-     area.addEventListener('pointerdown',()=>{area.dataset.input='pointer';},{passive:true});
+     area.addEventListener('pointerdown',()=>{area.dataset.input='pointer';delete area.dataset.kb;},{passive:true});
      toolbox=root.ReserveToolbox.create({container:area,store:data.store,aiConfig:{client,user:data.user},onDockChange:state=>{
        layout.update({...state,motion:area.dataset.motionStyle,input:area.dataset.input,resizing:area.dataset.resizing});
        button.hidden=state.open;

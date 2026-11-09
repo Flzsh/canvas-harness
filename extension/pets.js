@@ -214,9 +214,12 @@
   const hostInfo=info;let syncInfo=null;info=()=>syncInfo?syncInfo.data||(syncInfo.data=hostInfo()):hostInfo();
   // The engine indexes a snapshot once (prepare() keeps the last one by identity). Offers reuse one object while the
   // brain's thought is unchanged, refreshed with the current values, so a render does not rebuild the whole index.
-  let offerSnap=null,offerVersion=-1;
+  // The engine indexes every item once per snapshot object (biscuit-engine.js prepare), so the object is kept while what he
+  // knows is the same: a new one only when the data changed (dataVersion), not for the minute-old re-think (thoughtVersion),
+  // which re-indexed everything on the first click after each quiet minute.
+  let offerSnap=null,offerVersion=-1,dataVersion=0,thinkWait=0,thinkLearned=false;
   const offerSnapshot=()=>{
-    if(!offerSnap||offerVersion!==thoughtVersion||!Brain()){offerVersion=thoughtVersion;offerSnap={};}
+    if(!offerSnap||offerVersion!==dataVersion||!Brain()){offerVersion=dataVersion;offerSnap={};}
     return Object.assign(offerSnap,snapshot,{now:now()});
   };
   const knowledgeChoice=()=>pet.knowledge;
@@ -288,6 +291,7 @@
     dirty=true,
     layoutFrame=0,
     layoutTimer=0,
+    layoutIdle=0,
     layoutVersion=0,
     resizeWatch=null,
     layoutWatch=null,
@@ -645,6 +649,7 @@
     if(layoutFrame){if(win.requestAnimationFrame)win.cancelAnimationFrame?.(layoutFrame);else clearTimeout(layoutFrame);}
     clearTimeout(layoutTimer);
     clearTimeout(follow);
+    if(layoutIdle){win.cancelIdleCallback?.(layoutIdle);layoutIdle=0;}
     layoutFrame=layoutTimer=follow=0;
   }
   // Let the changed click frame paint before reading its layout. Decisions and movement keep using the snapshot.
@@ -656,22 +661,25 @@
     dirty=true;
     if(menuOpen&&!['scroll','resize'].includes(event?.type))return;
     if(doc.hidden||layoutFrame||layoutTimer)return;
-    const version=++layoutVersion,afterFrame=()=>{
-      if(version!==layoutVersion||!node||dead||doc.hidden)return;
-      layoutFrame=0;
-      layoutTimer=setTimeout(()=>{if(version===layoutVersion)refreshPlaces();},0);
-    };
-    layoutFrame=win.requestAnimationFrame?win.requestAnimationFrame(afterFrame):setTimeout(afterFrame,16);
+    const version=++layoutVersion,afterFrame=()=>{if(version!==layoutVersion||!node||dead||doc.hidden)return;layoutFrame=0;
+   // Speed (2026-11-05): the places are measured when the browser is idle (at most 0.4 s on), not in the task right after
+   // the frame: that read laid the page out and hit-tested it (elementsFromPoint) in the frames that answer a click.
+   const go=()=>{if(version!==layoutVersion)return;layoutIdle=0;refreshPlaces();};
+   if(typeof win.requestIdleCallback==='function'){layoutTimer=-1;layoutIdle=win.requestIdleCallback(go,{timeout:400});}else layoutTimer=setTimeout(go,0);};
+   layoutFrame=win.requestAnimationFrame?win.requestAnimationFrame(afterFrame):setTimeout(afterFrame,16);
   }
   // While a room covers the page (the Focus room) or one of the rooms' moves is playing (they stamp data-ch-moving with
   // when it ends), the companion keeps still: its measuring, deciding and reel reading took the frames the move needed.
   // It catches up once the move is over, when the browser is idle.
   // (the Review deck's and Grade impact's full pages count as rooms too: the pony keeps still over them and while they fold)
-  const roomBusy=()=>{
-    try{
-      return !!container.hasAttribute?.('data-ch-room')||Number(container.dataset?.chMoving||0)>Date.now()||!!container.querySelector?.('.gi-room:not([data-gi-away]), [data-review-deck]');
-    }catch{return false;}
-  };
+  // Asked on every frame the pony draws: a room is open when Grade impact's room is there and not away, or the Review
+  // deck (always section.rv-room, review-deck.js) is. The browser's live lists of those two classes are read instead of
+  // searching the whole dashboard each time (2026-11-05: that search was ~11 ms a second at 2x CPU on Materials).
+  let giRooms=null,rvRooms=null;
+  const roomBusy=()=>{try{if(container.hasAttribute?.('data-ch-room')||Number(container.dataset?.chMoving||0)>Date.now())return true;
+    if(!giRooms&&typeof container.getElementsByClassName==='function'){giRooms=container.getElementsByClassName('gi-room');rvRooms=container.getElementsByClassName('rv-room');}
+    if(giRooms){for(const n of giRooms)if(!n.hasAttribute('data-gi-away'))return true;for(const n of rvRooms)if(n.hasAttribute('data-review-deck'))return true;return false;}
+    return !!container.querySelector?.('.gi-room:not([data-gi-away]), [data-review-deck]');}catch{return false;}};
   let placesLater=0;
   function refreshLater(){
     if(placesLater||dead)return;
@@ -1097,6 +1105,7 @@
      const kinds=Object.entries(pet.brain?.kinds||{}).map(([k,v])=>[k,v.used,v.streak]),
        key=JSON.stringify({...snapshot,now:0,kinds,activity:{...snapshot.activity,active:Math.floor(snapshot.activity.active/60000)}});
      if(!force&&key===thoughtKey&&now()-thoughtAt<60000)return;
+     if(key!==thoughtKey)dataVersion++;
      thoughtKey=key;
      thoughtAt=now();
      thoughtVersion++;
@@ -1574,8 +1583,28 @@
    if(dead)return;const before=pet.knowledge,roam=pet.roam;pet=clean(getPet());personal=getData();hydrateCustom();void loadKnowledge();
    if(!visible()){unmount();scheduleReturn();return;}
     if(!layer)mount();else{dress();if(!container.contains(layer)){container.append(layer);rig=null;resetReels();}if(!moveForRoam(roam))invalidate();}
+   thinkLater(before!==pet.knowledge);
+  }
+  // HIS THINKING WAITS FOR THE PAGE (2026-11-05): what he knows (refreshBrain: the whole page's data, compared as one text)
+  // and what he offers (the engine's index of every item) were worked out inside the render a click starts, before its
+  // answer could paint: 20-30% of a Home click. Now they run when the browser is next idle (0.4 s at most), once for
+  // however many renders came first; with no idle callback (tests), at once as before.
+  function thinkLater(learned){
+   thinkLearned=thinkLearned||learned;if(thinkWait)return;
+   const go=()=>{
+     thinkWait=0;
+     const knew=thinkLearned;
+     thinkLearned=false;
+     if(dead||!visible())return;
+     const outer=syncInfo;
+     syncInfo={data:null};
+     try{think(knew);}finally{syncInfo=outer;}
+   };
+   if(typeof win.requestIdleCallback==='function')thinkWait=win.requestIdleCallback(go,{timeout:400})||0;else go();
+  }
+  function think(learned){
    refreshBrain();
-   if(before!==pet.knowledge){const input=bubble?.querySelector('[data-pet-question]');if(input?.value?.trim())previewAsk({target:input,flush:true});}
+   if(learned){const input=bubble?.querySelector('[data-pet-question]');if(input?.value?.trim())previewAsk({target:input,flush:true});}
    offerBreak();
    offerStretch();
    maybeNudge();
@@ -1599,7 +1628,18 @@
     }
     if(was!==focusing&&layer&&!grab){if(focusing){goal=null;speed=0;if(!menuOpen){closeBubble();settle('read',20000);}}else if(!menuOpen)plan(400);}
   }
-  function destroy(){dead=true;clearTimeout(syncWait);hydrationRevision++;catalogueTurn++;submitTurn++;knowledgeTurn++;clearTimeout(hideTimer);unmount();}
+  function destroy(){
+    dead=true;
+    clearTimeout(syncWait);
+    if(thinkWait)win.cancelIdleCallback?.(thinkWait);
+    thinkWait=0;
+    hydrationRevision++;
+    catalogueTurn++;
+    submitTurn++;
+    knowledgeTurn++;
+    clearTimeout(hideTimer);
+    unmount();
+  }
   hydrateCustom();if(visible())mount();else scheduleReturn();
   return {sync,celebrate,setFocus,say,treat,ask,destroy,get pet(){return pet;}};
  }

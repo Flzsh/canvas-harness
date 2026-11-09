@@ -56,5 +56,9 @@ test('engine offers reuse one indexed snapshot while the thought is unchanged, w
  data.courses.push({id:'2',name:'Engineering'});f.controller.sync();
  assert.equal(indexed,builds+1,'changed data rebuilds the index once');assert.notEqual(offers.at(-1).s,offers[first-1].s);
  assert.deepEqual(offers.at(-1).s.courses.map(c=>c.id),['1','2'],'the offer sees the new data');
- const after=indexed;f.advance(61000);f.controller.sync();assert.ok(indexed>after,'the brain\'s minute refresh rebuilds it too');
+ // The minute refresh thinks again with the new time, but keeps the index: nothing in it depends on the time (time-worded
+ // data such as "in 3 hours" is part of what he knows, so it changes the data and rebuilds above). 2026-11-05: the
+ // rebuild cost the first click after every quiet minute 40-65 ms.
+ const after=indexed,thoughts=offers.length;f.advance(61000);f.controller.sync();assert.equal(indexed,after,'the brain\'s minute refresh keeps the index');
+ assert.ok(offers.length>thoughts,'and still asks for an offer');assert.equal(offers.at(-1).now,f.epoch+f.clock,'with the current time');
 });

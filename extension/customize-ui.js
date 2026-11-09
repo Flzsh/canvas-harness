@@ -104,7 +104,7 @@
     return `<details class="cz-advanced" data-rd-section="graphics-advanced"><summary>Advanced</summary><div class="cz-advanced-rows">${rows.map(([key,name,options])=>`<label class="rd-field"><span>${E(name)}</span><select data-rd-field="graphics-detail" data-detail="${key}" aria-label="${E(name)}">${options.map(([v,label])=>`<option value="${v}"${plan[key]===v?' selected':''}>${E(label)}</option>`).join('')}</select></label>`).join('')}</div></details>`;
   };
   const choices=(key,title,options,{value=s[key],cols=3,field='setting',data='setting',className=''}={})=>
-    settingEnabled(key)?`<div class="cz-choices${className?' '+E(className):''}" role="radiogroup" aria-label="${E(title)}" style="--cz-cols:${cols}">${options.map(([v,name,hint,art,locked])=>`<label class="cz-choice"${locked?' data-locked="true"':''}><input type="radio" name="cz-${key}" data-rd-field="${field}" data-${data}="${key}" value="${E(v)}" ${v===value?'checked':''} ${locked?'disabled':''}><span class="cz-choice-art">${art||''}</span><strong>${E(name)}</strong>${hint&&locked?`<small>${E(hint)}</small>`:''}</label>`).join('')}</div>`:'';
+    settingEnabled(key)?`<div class="cz-choices${className?' '+E(className):''}" role="radiogroup" aria-label="${E(title)}" data-cols="${cols}" style="--cz-cols:${cols}">${options.map(o=>o&&o.head?`<h4 class="cz-subhead cz-choice-head">${E(o.head)}</h4>`:o).map(o=>typeof o==='string'?o:(([v,name,hint,art,locked])=>`<label class="cz-choice"${locked?' data-locked="true"':''}><input type="radio" name="cz-${key}" data-rd-field="${field}" data-${data}="${key}" value="${E(v)}" ${v===value?'checked':''} ${locked?'disabled':''}><span class="cz-choice-art">${art||''}</span><strong>${E(name)}</strong>${hint&&locked?`<small>${E(hint)}</small>`:''}</label>`)(o)).join('')}</div>`:'';
   // A switch is its name; `warn` keeps a line that protects the student (shared computers).
   const toggle=(key,name,hint,{checked=s[key]!==false,field='setting',data='setting',warn=false}={})=>
     settingEnabled(key)?`<label class="cz-toggle"><span><strong>${E(name)}</strong>${warn&&hint?`<small>${E(hint)}</small>`:''}</span><input type="checkbox" role="switch" data-rd-field="${field}" data-${data}="${key}" ${checked?'checked':''}><i aria-hidden="true"></i></label>`:'';
@@ -157,18 +157,25 @@
       button('board-frame',`<i data-frame="${value}"></i>${E(name)}`,`role="radio" data-value="${value}" aria-checked="${!(ownTheme?.frames?.panel||sceneActive)||layer.parts?.frames===false||layer.parts?.panel===false?(s.panelFrame||'pen')===value:false}" title="${E(hint)}"`,'rd-frame-choice')).join('');
 
   const night=Math.max(0,Math.min(100,Math.round(Number(s.nightArt)||0))),
-    sceneActive=enabled('scene-themes')&&['starry','sea','stars','blueprint'].includes(s.sceneTheme),
+    sceneActive=enabled('scene-themes')&&['starry','sea','stars','blueprint','maple','thanksgiving'].includes(s.sceneTheme),
     installedScene=(c.makeOwn?.catalogue||[]).find(row=>
       row.kind==='feature'&&row.sceneTheme!==undefined&&(root.ReservePacks?.isCurrent?root.ReservePacks.isCurrent(row,{settings:s}):row.current));
   const ownTheme=!sceneActive&&s.makeYourOwn?.theme?c.makeOwn?.theme:null,
     ownedPalette=sceneActive||!!s.makeYourOwn?.theme,
-    ownerName=s.makeYourOwn?.theme?.name||installedScene?.name||({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint'})[s.sceneTheme]||'The selected theme',
+    ownerName=s.makeYourOwn?.theme?.name||installedScene?.name||({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving'})[s.sceneTheme]||'The selected theme',
     look=root.ReserveMakeYourOwn?.activeLook?.(c.makeOwn,s)||{},
     layer=look.layer||{};
   const ownedMode=ownTheme&&!ownTheme.colors?.[s.theme==='dark'?'dark':'light']&&!layer.colors?.[s.theme==='dark'?'dark':'light']?(ownTheme.colors?.light?'light':'dark'):s.theme==='dark'?'dark':'light',
     modeArt=(mode,bg,line,ink)=>
       swatch(layer.colors?.[mode]?.bg||ownTheme?.colors?.[mode]?.bg||bg,ownTheme?.colors?.[mode]?.line||line,ownTheme?.colors?.[mode]?.ink||ink);
-  const sceneColors=({starry:{bg:'#141b3d',accent:'#f2c94c'},sea:{bg:'#05345e',accent:'#7fe6f2'},stars:{bg:'#04060c',accent:'#a9c2ff'},blueprint:{bg:'#174a88',accent:'#cfe6ff'}})[s.sceneTheme];
+  const sceneColors=({
+    starry:{bg:'#141b3d',accent:'#f2c94c'},
+    sea:{bg:'#05345e',accent:'#7fe6f2'},
+    stars:{bg:'#04060c',accent:'#a9c2ff'},
+    blueprint:{bg:'#174a88',accent:'#cfe6ff'},
+    maple:{bg:'#FBF3E4',accent:'#B9432A'},
+    thanksgiving:{bg:'#F7EFDF',accent:'#8A2433'}
+  })[s.sceneTheme];
   const colorFields=key=>`<div class="cz-pair">${['light','dark'].map(mode=>{
     const p=ownTheme?.colors?.[mode]||sceneColors||{},value=layer.colors?.[mode]?.[key]||p[key]||(key==='accent'?'#a9522f':mode==='dark'?'#1f1e1d':'#faf9f5');
     return `<label class="rd-field"><span>${mode==='light'?'Light':'Dark'}</span><input type="color" data-rd-field="make-color" data-id="${E(look.key)}" data-mode="${mode}" data-color="${key}" value="${E(value)}" aria-label="${mode==='light'?'Light':'Dark'} ${key==='bg'?'page':'accent'} color"${c.makeOwn?.busy?' disabled':''}></label>`;
@@ -183,6 +190,13 @@
   const poster=scene=>root.chrome?.runtime?.getURL?`<img class="cz-scene-poster" src="${E(root.chrome.runtime.getURL(`themes/${scene}/poster.jpg`))}" alt="" aria-hidden="true" width="160" height="90" loading="lazy">`:ART.still;
   const sceneChoices=()=>enabled('scene-themes')?group('Scene','',choices('sceneTheme','Scene',[
    ['','None','',swatch('#FAF9F5','#E8E6DC','#3D3D3A')],
+   // sorted into packs (owner 2026-11-09: one long list was hard to find things in; "like holiday pack, seasonal pack"),
+   // still one radio group; new holidays (Christmas, New Year...) join the Holiday pack
+   {head:'Holiday pack'},
+   ['thanksgiving','Thanksgiving','',poster('thanksgiving')],
+   {head:'Seasonal pack'},
+   ['maple','Maple Wind','',poster('maple')],
+   {head:'Everyday pack'},
    ['starry','Starry Night','',poster('starry')],
    ['sea','Under the Sea','',poster('sea')],
    ['stars','Starfield','',poster('stars')],

@@ -1,17 +1,21 @@
 /*! Canvas Harness — packaged dashboard scenes. Original creator: Flzsh. */
 (function(global){
  'use strict';
- const motifs={starry:['moon','star','swirl','cypress','cottage','sunflower'],sea:['turtle','fish','coral','jelly','shell','ray'],stars:['giant','binary','galaxy','redgiant','cluster','nebula'],blueprint:['gear','divider','pendulum','rocket','orbit','bulb']};
- const names=Object.freeze({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint'});
+ const motifs={starry:['moon','star','swirl','cypress','cottage','sunflower'],sea:['turtle','fish','coral','jelly','shell','ray'],stars:['giant','binary','galaxy','redgiant','cluster','nebula'],blueprint:['gear','divider','pendulum','rocket','orbit','bulb'],maple:['maple','acorn','pumpkin','pinecone','oak','apple'],thanksgiving:['turkey','horn','pie','lantern','corn','squash']};
+ const names=Object.freeze({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving'});
  let active=null;
  // The dashboard draws Starfield directly; its packaged document reuses the same renderer.
  function starSky(cv,doc,win){
 const document = doc, W = 1600, H = 440, g = cv.getContext?.('2d'); if (!g) return null;
-// Logical coordinates stay at the original banner size; the backing store matches its displayed size.
-let scaleX = 1, scaleY = 1, vignette, sceneTime = 0;
+// Logical coordinates stay at the original banner size: the scene is W x H units. The sky is as tall as the band above the
+// widgets and as wide as the dashboard, at one scale both ways (never a stretched galaxy): a wider band shows more sky to the
+// left of the scene (OX units of it; logical x runs from -OX to W), a narrower one crops the scene's left (OX < 0), and the
+// galaxy keeps its place at the right. The backing store matches the box's shape exactly, with at most H rows as before.
+let scale = 1, LW = W, OX = 0, vignette, sceneTime = 0;
 function sizeCanvas() { const box = cv.getBoundingClientRect(), dpr = Math.min(2, Math.max(1, win.devicePixelRatio || 1));
-  const w = Math.max(1, Math.min(W, Math.round((box.width || win.innerWidth || W) * dpr))), h = Math.max(1, Math.min(H, Math.round((box.height || H) * dpr)));
-  cv.width = w; cv.height = h; scaleX = w / W; scaleY = h / H; vignette = null; }
+  const bw = Math.max(1, (box.width || win.innerWidth || W) * dpr), bh = Math.max(1, (box.height || H) * dpr);
+  const aspect = bw / bh, rows = Math.max(1, Math.round(Math.min(H, bh)));
+  cv.width = Math.max(1, Math.round(rows * aspect)); cv.height = rows; scale = rows / H; LW = H * aspect; OX = LW - W; vignette = null; }
 sizeCanvas();
 let s = 61803; const rnd = () => (s = (s * 48271) % 2147483647) / 2147483647, gauss = () => { let u = 0; for (let i = 0; i < 6; i++) u += rnd(); return (u - 3) * Math.SQRT2; };
 const perm = (() => { const p = [...Array(256).keys()]; for (let i = 255; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [p[i], p[j]] = [p[j], p[i]]; } return [...p, ...p]; })();
@@ -84,10 +88,10 @@ const BACK = document.createElement('canvas'), backSeed = s;
 function backdrop() {
   const seed = s;
   s = backSeed;
-  BACK.width = cv.width;
+  BACK.width = Math.max(1, Math.ceil(W * scale));
   BACK.height = cv.height;
   const b = BACK.getContext('2d');
-  b.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+  b.setTransform(scale, 0, 0, scale, 0, 0);
   b.globalCompositeOperation = 'lighter';
   const blob = (x, y, r, rgb, a) => {
     const gr = b.createRadialGradient(x, y, 0, x, y, r);
@@ -130,17 +134,17 @@ backdrop();
 // EASE_BACK seconds). A grid of offsets (CELL px) is stepped at 60 Hz; only the cells near a moving pointer or still
 // settling are visited, and nothing at all is computed once everything is still. A star is drawn at its place plus the
 // offset there. The dashboard supplies normalized pointer coordinates; the reach remains small.
-const CELL = 10, GW = Math.ceil(W / CELL) + 2, GH = Math.ceil(H / CELL) + 2, FX = new Float32Array(GW * GH), FY = new Float32Array(GW * GH);
+const CELL = 10, GOX = 4400, GW = Math.ceil((W + GOX) / CELL) + 2, GH = Math.ceil(H / CELL) + 2, FX = new Float32Array(GW * GH), FY = new Float32Array(GW * GH);
 const DRAG = .38, REACH = 20, MAXOFF = 12, EASE_BACK = 1.2, SETTLE = 1 - Math.exp(-1 / (60 * EASE_BACK));   // how much of the pointer's step a star follows, its reach (px), the most a star is moved, and how slowly it returns
 let QX = null, QY = null, LX = null, LY = null, live = false, lastT = -1, A0 = 1e9, A1 = -1, B0 = 1e9, B1 = -1;   // the pointer's place and where the field last saw it, the cells still settling
 function spring() {
   const s2 = 2 * REACH * REACH, far = 9 * REACH * REACH, R = Math.ceil(3 * REACH / CELL); let a0 = A0, a1 = A1, b0 = B0, b1 = B1;
   const mx = QX !== null && LX !== null ? QX - LX : 0, my = QX !== null && LY !== null ? QY - LY : 0, moved = Math.abs(mx) + Math.abs(my) > .01; LX = QX; LY = QY;
-  if (moved) { const ci = Math.round(QX / CELL), cj = Math.round(QY / CELL); a0 = Math.min(a0, ci - R); a1 = Math.max(a1, ci + R); b0 = Math.min(b0, cj - R); b1 = Math.max(b1, cj + R); }
+  if (moved) { const ci = Math.round((QX + GOX) / CELL), cj = Math.round(QY / CELL); a0 = Math.min(a0, ci - R); a1 = Math.max(a1, ci + R); b0 = Math.min(b0, cj - R); b1 = Math.max(b1, cj + R); }
   a0 = Math.max(0, a0); b0 = Math.max(0, b0); a1 = Math.min(GW - 1, a1); b1 = Math.min(GH - 1, b1); A0 = B0 = 1e9; A1 = B1 = -1;
   for (let j = b0; j <= b1; j++) for (let i = a0, n = j * GW + a0; i <= a1; i++, n++) {
     if (moved) {
-      const ex = i * CELL - QX, ey = j * CELL - QY, d2 = ex * ex + ey * ey;
+      const ex = i * CELL - GOX - QX, ey = j * CELL - QY, d2 = ex * ex + ey * ey;
       if (d2 < far) { const w = Math.exp(-d2 / s2); FX[n] += mx * DRAG * w; FY[n] += my * DRAG * w; const m = Math.hypot(FX[n], FY[n]); if (m > MAXOFF) { FX[n] *= MAXOFF / m; FY[n] *= MAXOFF / m; } }
     }
     FX[n] -= FX[n] * SETTLE; FY[n] -= FY[n] * SETTLE;
@@ -153,8 +157,8 @@ const aim = (x, y, inside) => { if (inside) { QX = x; QY = y; } else QX = QY = L
 // A reused result and a cell bounds check keep the lens work local to the pointer.
 const lensed = new Float64Array(3);
 const lens = (x, y) => { lensed[0] = x; lensed[1] = y; lensed[2] = 1;
-  if (!live || x < (A0 - 1) * CELL || x > (A1 + 1) * CELL || y < (B0 - 1) * CELL || y > (B1 + 1) * CELL) return lensed;
-  const gx = x / CELL, gy = y / CELL, i = Math.floor(gx), j = Math.floor(gy); if (i < 0 || j < 0 || i >= GW - 1 || j >= GH - 1) return lensed;
+  if (!live || x + GOX < (A0 - 1) * CELL || x + GOX > (A1 + 1) * CELL || y < (B0 - 1) * CELL || y > (B1 + 1) * CELL) return lensed;
+  const gx = (x + GOX) / CELL, gy = y / CELL, i = Math.floor(gx), j = Math.floor(gy); if (i < 0 || j < 0 || i >= GW - 1 || j >= GH - 1) return lensed;
   const u = gx - i, v = gy - j, n = j * GW + i, a = (1 - u) * (1 - v), b = u * (1 - v), c = (1 - u) * v, d = u * v;
   lensed[0] += FX[n] * a + FX[n + 1] * b + FX[n + GW] * c + FX[n + GW + 1] * d; lensed[1] += FY[n] * a + FY[n + 1] * b + FY[n + GW] * c + FY[n + GW + 1] * d; return lensed; };
 // Parallax moves x only. Flux, y, sprite, size and colour never change for a foreground star.
@@ -188,20 +192,26 @@ for (const p of G) {
   p.dim = p.kind === 'bulge' || p.kind === 'bar' ? .5 : 1;
 }
 function frame(t, advance = true) {
-  sceneTime = t; g.setTransform(scaleX, 0, 0, scaleY, 0, 0);
-  g.globalCompositeOperation = 'source-over'; g.fillStyle = '#020307'; g.fillRect(0, 0, W, H);
+  sceneTime = t; g.setTransform(scale, 0, 0, scale, OX * scale, 0);
+  g.globalCompositeOperation = 'source-over'; g.fillStyle = '#020307'; g.fillRect(-OX, 0, LW, H);
   g.globalCompositeOperation = 'lighter';
   if (advance) { step(lastT < 0 ? 0 : t - lastT); lastT = t; }
   const tg = t * 1.1, tp = OMP * tg, camX = t * 1.4;                            // galactic time (fast), the pattern's turn, the camera's drift (pc)
-  g.globalAlpha = 1; g.drawImage(BACK, -((camX * .02) % W), 0, W, H); g.drawImage(BACK, W - ((camX * .02) % W), 0, W, H);
+  g.globalAlpha = 1;
+  {
+    const o = (camX * .02) % W;
+    for (let x = -o - Math.ceil(Math.max(0, OX) / W) * W; x <= W; x += W) if (x + W > -OX) g.drawImage(BACK, x, 0, W, H);
+  }   // the far galaxies, tiled left to right across the whole width
   // the field, behind and in front alike: parallax from the drift, inverse-square light
+  // (the field repeats every W + 400 units, so a wider sky to the left shows it again, one copy after another)
   for (const p of field) { const sx = W / 2 + (p.X - camX) / p.Z * FOC, wx = ((sx + 200) % (W + 400) + W + 400) % (W + 400) - 200;
-    if (wx + p.extent + MAXOFF < 0 || wx - p.extent - MAXOFF > W) continue;
-    const [lx, ly] = lens(wx, p.sy); if (lx + p.extent < 0 || lx - p.extent > W) continue;
-    g.globalAlpha = p.alpha;
-    if (p.pin) { g.fillStyle = p.colour; g.fillRect(lx - p.z / 2, ly - p.z / 2, p.z, p.z); }
-    else { g.drawImage(p.sprite, lx - p.z / 2, ly - p.z / 2, p.z, p.z);
-      if (p.spike) { g.globalAlpha = p.spikeAlpha; g.fillStyle = p.colour; g.fillRect(lx - p.spike, ly - .5, p.spike * 2, 1); g.fillRect(lx - .5, ly - p.spike, 1, p.spike * 2); } } }
+    for (let tx = wx; tx + p.extent + MAXOFF >= -OX; tx -= W + 400) {
+      if (tx - p.extent - MAXOFF > W) continue;
+      const [lx, ly] = lens(tx, p.sy); if (lx + p.extent < -OX || lx - p.extent > W) continue;
+      g.globalAlpha = p.alpha;
+      if (p.pin) { g.fillStyle = p.colour; g.fillRect(lx - p.z / 2, ly - p.z / 2, p.z, p.z); }
+      else { g.drawImage(p.sprite, lx - p.z / 2, ly - p.z / 2, p.z, p.z);
+        if (p.spike) { g.globalAlpha = p.spikeAlpha; g.fillStyle = p.colour; g.fillRect(lx - p.spike, ly - .5, p.spike * 2, 1); g.fillRect(lx - .5, ly - p.spike, 1, p.spike * 2); } } } }
   // the galaxy's unresolved light: the bulge and the bar
   {
     const [bx0, by0] = project(0, 0, 0), [bx, by] = lens(bx0, by0);
@@ -236,14 +246,14 @@ function frame(t, advance = true) {
   g.globalCompositeOperation = 'source-over';
   g.globalAlpha = 1;
   if (!vignette) {
-    vignette = g.createLinearGradient(0, 0, W, 0);
+    vignette = g.createLinearGradient(-OX, 0, W, 0);
     vignette.addColorStop(0, 'rgba(2,3,7,.45)');
     vignette.addColorStop(.15, 'rgba(2,3,7,0)');
     vignette.addColorStop(.9, 'rgba(2,3,7,0)');
     vignette.addColorStop(1, 'rgba(2,3,7,.4)');
   }
   g.fillStyle = vignette;
-  g.fillRect(0, 0, W, H);
+  g.fillRect(-OX, 0, LW, H);
 }
 
   let dead = false, paused = true, raf = 0, lastNow = null, lastDraw = -Infinity, elapsed = 0, needsSize = false;
@@ -259,7 +269,7 @@ function frame(t, advance = true) {
       if (paused) { if (raf) win.cancelAnimationFrame(raf); raf = 0; forget(); }
       else if (!raf) { if(needsSize){sizeCanvas();backdrop();needsSize=false;}lastDraw = -Infinity; raf = win.requestAnimationFrame(tick); }
     },
-    aim(x, y, inside) { if (!paused && !dead) aim(x * W, y * H, inside); },
+    aim(x, y, inside) { if (!paused && !dead) aim(-OX + x * LW, y * H, inside); },
     resize() { if (dead) return; if(paused){needsSize=true;return;}sizeCanvas(); backdrop(); frame(elapsed, false); },
     destroy() { dead = true; if (raf) win.cancelAnimationFrame(raf); raf = 0; forget(); }
   };
@@ -532,6 +542,26 @@ function frame(t, advance = true) {
   if(id==='stars')media.setAttribute('aria-hidden','true');
   else{media.muted=true;media.loop=true;media.playsInline=true;media.autoplay=false;media.preload='none';media.poster=base+'poster.jpg';}
   sky.append(media,poster);
+  // The band: the strip of sky above the widgets. Home's header is taller or shorter with Edit Home and the window's width,
+  // so the sky is sized to reach just where the first widget starts (theme.css: --tk-band) and a scene is painted to be seen
+  // whole in that strip. Written on the sky alone: a variable on the root would restyle the whole dashboard. Measured on each
+  // sync (DOM changes, debounced) and when the window's size changes. The desk (.rd-main) starts exactly where its first
+  // widget does; its panels themselves are never read.
+  const BAND='.rd-main';
+  let bandPx=0;
+  function measureBand(){
+   let px=0;
+   try{
+    const top=rd.getBoundingClientRect?.().top;
+    if(Number.isFinite(top)){
+     let first=Infinity;
+     const scope=rd.getRootNode?.(),within=scope&&typeof scope.querySelectorAll==='function'?scope:rd;
+     for(const el of within.querySelectorAll(BAND)){const r=el.getBoundingClientRect?.();if(r&&r.width>200&&r.top-top>80)first=Math.min(first,r.top-top);}
+     if(Number.isFinite(first))px=Math.round(Math.max(200,Math.min(560,first)));
+    }
+   }catch{px=0;}
+   if(px!==bandPx){bandPx=px;if(px)sky.style.setProperty('--tk-band',px+'px');else sky.style.removeProperty('--tk-band');}
+  }
   const frames=id==='stars'?starFrames(rd,doc,global,()=>invisibleState||doc.hidden||doc.visibilityState==='hidden'||rd.isConnected===false):null;
   function listen(target,type,fn,options){target?.addEventListener?.(type,fn,options);disposers.push(()=>target?.removeEventListener?.(type,fn,options));}
   function animated(){return (rd.dataset.motionStyle??options.motionStyle??'gentle')==='gentle'&&!reduced?.matches;}
@@ -584,6 +614,7 @@ function frame(t, advance = true) {
    restMirror();
    // put back only when it is gone: moving a frame reloads it (and its whole sky)
    if(sky.parentNode!==rd){rd.prepend(sky);skyAnimator?.resize();}
+   measureBand();
    if(frames){if(frames.canvas.parentNode!==rd)rd.append(frames.canvas);frames.dirty();}
    const arts=[...rd.querySelectorAll('.rd-rail-art')],present=new Set(arts);
    for(const [art,icon]of icons)if(!present.has(art)){icon.remove();icons.delete(art);}
@@ -652,6 +683,8 @@ function frame(t, advance = true) {
   const watched=new Set();
   for(const start of [rd.parentElement,root.host])
     for(let el=start;el;el=el.parentElement){if(watched.has(el))continue;watched.add(el);observer?.observe(el,{attributes:true,attributeFilter:['hidden','style','class','aria-hidden']});}
+  // A wider or narrower window moves the widgets without changing the page's elements: measure the band again.
+  listen(global,'resize',schedule,{passive:true});
   const visibility=typeof global.IntersectionObserver==='function'?new global.IntersectionObserver(entries=>{
     for(const entry of entries){if(entry.target===rd)intersecting=entry.isIntersecting;else if(entry.target===sky)skyInView=entry.isIntersecting;}
     syncMedia();

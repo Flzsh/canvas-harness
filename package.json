@@ -1,7 +1,7 @@
 {
   "name": "canvas-harness",
-  "version": "3.9.3",
-  "versionName": "3.9.3",
+  "version": "3.10.0",
+  "versionName": "3.10.0",
   "license": "GPL-3.0-only",
   "private": true,
   "description": "For students on Canvas LMS: your courses, assignments, planner and PDFs redrawn as one calm page you arrange yourself.",

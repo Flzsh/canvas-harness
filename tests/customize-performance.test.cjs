@@ -72,7 +72,7 @@ test('opening and switching named tabs builds only the selected content and its 
   if(tab==='pet'){const locked=document.querySelectorAll('.cz-choice[data-locked="true"]');assert.ok(locked.length);for(const choice of document.querySelectorAll('.cz-choice')){if(choice.dataset.locked==='true'){assert.equal(choice.querySelector('input').disabled,true);assert.match(choice.querySelector('small').textContent,/^Level \d+$/);}else assert.equal(choice.querySelector('small'),null);}assert.equal(document.querySelector('[data-pane="pet"]').querySelectorAll('h3').at(-1).textContent,'Saved routines');}
   assert.equal(f.work.archivedScans,tab==='courses'?1:0,'only Courses scans archived course preferences');
   assert.equal(f.work.frames,tab==='look'?1:0,'only Look builds module frame choices');
-  assert.equal(f.work.posters.length,tab==='look'?4:0,'only Look resolves scene posters');
+  assert.equal(f.work.posters.length,tab==='look'?6:0,'only Look resolves scene posters (six scenes, one poster each)');
   assert.deepEqual(f.work.previews,tab==='courses'?['render','scene','mini','frame','title']:tab==='pet'?['drawing','drawing','svg']:[]);
  }
 });

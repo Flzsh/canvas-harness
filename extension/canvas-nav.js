@@ -119,15 +119,23 @@
  const VARS={accent:'--rd-accent',sidebar:'--rd-sidebar',sidebarSel:'--rd-sidebar-sel',ink:'--rd-ink',ink2:'--rd-ink-2',page:'--rd-bg',font:'--rd-ui-font'};
  const NAMES={accent:'--chn-accent',sidebar:'--chn-sidebar',sidebarSel:'--chn-sidebar-sel',ink:'--chn-ink',ink2:'--chn-ink2',font:'--chn-font'};
  const safe=value=>typeof value==='string'&&value.length<200&&!/[;{}<>]|url\(/i.test(value);
- function applyPalette(palette){
+ function applyPalette(palette,rd){
   const style=root.document.documentElement.style;
   for(const [key,name] of Object.entries(NAMES))if(safe(palette?.[key]))style.setProperty(name,palette[key]);
   root.document.documentElement.dataset.chnMotion=root.ReserveFeatures?.enabled('motion')===false||palette?.motion==='off'||palette?.motion==='still'?'off':'on';
+  // Beside the dashboard (rd given) the bar's column takes the workspace's own page, its colour and its gradient, so no
+  // white strip runs down the left of a themed dashboard (owner, 2026-11-06: "fix the sidebar"). Other Canvas pages keep
+  // their own background; a dark workspace lends none (the bar stays light).
+  if(rd){const page=palette?.page,ok=safe(page)&&!/rgba\(0, 0, 0, 0\)|transparent/.test(page),html=root.document.documentElement;
+   if(ok)style.setProperty('--chn-dash',page);else style.removeProperty('--chn-dash');
+   if(ok&&safe(palette?.pageImage))style.setProperty('--chn-dash-image',palette.pageImage);else style.removeProperty('--chn-dash-image');
+   if(ok)html.dataset.chnDash='';else delete html.dataset.chnDash;}
  }
  function workspace(){return root.document.getElementById('reserve-companion-host')?.shadowRoot?.querySelector('.rd')||null;}
  function readPalette(rd){
   const cs=root.getComputedStyle(rd),palette={};
   for(const [key,name] of Object.entries(VARS)){const value=cs.getPropertyValue(name).trim();if(value)palette[key]=value;}
+  const image=String(cs.backgroundImage||'');if(rd.dataset.theme!=='dark'&&/^linear-gradient\(/.test(image)&&safe(image))palette.pageImage=image;
   palette.motion=rd.dataset.motionStyle||rd.dataset.motion||'gentle';
   // Canvas's own pages stay light, so a dark workspace lends the bar only its accent and motion.
   if(rd.dataset.theme==='dark')for(const key of ['sidebar','sidebarSel','ink','ink2','page'])delete palette[key];
@@ -328,7 +336,7 @@
      const palette=readPalette(rd),text=JSON.stringify(palette);
      if(text!==lastPalette){
        lastPalette=text;
-       applyPalette(palette);
+       applyPalette(palette,rd);
        if(text!==JSON.stringify(saved[PALETTE]))store.set({[PALETTE]:palette}).then(()=>{saved[PALETTE]=palette;}).catch(()=>{});
      }
      // Read both edges before writing either: a write on <html> between the two reads restyles the whole page twice.

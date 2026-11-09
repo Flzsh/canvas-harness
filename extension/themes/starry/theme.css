@@ -8,10 +8,10 @@
 .rd[data-theme-kit] :is(small,p,.rd-heading-date,.rd-rail-next){color:var(--rd-muted)!important}
 /* the toolbar and the search */
 .rd[data-theme-kit] .rd-toolbar{background:transparent!important}
-.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week){background:url(pill.png) center/100% 100% no-repeat!important;box-shadow:none!important}
+.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-tools,.rd-filter-group,.rd-week){background:url(pill.png) center/100% 100% no-repeat!important;box-shadow:none!important}
 .rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter){color:#D7DCF2!important}
-.rd[data-theme-kit] :is(.rd-workspace-tab[aria-selected=true],.cz-tab[aria-selected=true],.rd-filter[aria-pressed=true],.rd-day-filter[aria-pressed=true]){background:url(pill-on.png) center/100% 100% no-repeat!important;color:#1B2350!important;font-weight:700}
-.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter)::before,.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week)::before{background:transparent!important;box-shadow:none!important}
+.rd[data-theme-kit] :is(.rd-workspace-tab[aria-selected=true],.rd-filter[aria-pressed=true],.rd-day-filter[aria-pressed=true]){background:url(pill-on.png) center/100% 100% no-repeat!important;color:#1B2350!important;font-weight:700}
+.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter)::before,.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-tools,.rd-filter-group,.rd-week)::before{background:transparent!important;box-shadow:none!important}
 .rd[data-theme-kit] .rd-search input{background:rgba(20,27,61,.7)!important;color:var(--rd-ink)!important;border:1px solid rgba(143,182,238,.35)!important}
 /* the heading: the painted sky behind the greeting, falling into the ground at its left */
 .rd[data-theme-kit] .rd-heading-art{display:block!important;inset:0 0 auto 0;height:100%;z-index:-2;-webkit-mask-image:linear-gradient(90deg,rgba(0,0,0,.25),#000 34%);mask-image:linear-gradient(90deg,rgba(0,0,0,.25),#000 34%)}
@@ -53,7 +53,7 @@
 .rd[data-theme-kit] .rd-frame{border-width:9px;border-image:url(frame-card.png) 30 round;background:#1A2350 padding-box}
 .rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget){background:#19224D!important}
 .rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::after{border-width:16px!important;border-image:url(frame-panel.png) 48 round!important;inset:-8px!important}
-.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week){background:rgba(26,35,80,.92)!important;box-shadow:inset 0 0 0 1px rgba(143,182,238,.22)!important}
+.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-tools,.rd-filter-group,.rd-week){background:rgba(26,35,80,.92)!important;box-shadow:inset 0 0 0 1px rgba(143,182,238,.22)!important}
 .rd[data-theme-kit] h1{text-shadow:0 2px 6px rgba(8,12,40,.9)}
 .rd[data-theme-kit] .rd-bookmarks{background-size:600px 10px}
 /* the sliding highlight under the chosen assignment */
@@ -70,11 +70,13 @@
 .rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::before,.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::after{display:none!important}
 .rd[data-theme-kit] .rd-frame{background:#1A2350 border-box!important;border-radius:6px}
 .rd[data-theme-kit] .rd-rail-art::before,.rd[data-theme-kit] .rd-rail-art::after{display:none!important}
-/* the large sky: across the whole top, behind the toolbar, the rail's head and the greeting; it melts into the ground */
+/* the large sky: across the whole top, behind the toolbar, the rail's head and the greeting, down to the widgets: the band,
+   the strip above the widgets (scene-themes.js measures it as --tk-band); the scene reaches just under the widgets' top
+   edge and melts into the ground there; a narrower window crops it from the left, where the scene keeps its quiet side */
 .rd.rd.rd.rd[data-theme-kit]{position:relative;isolation:isolate;overflow:hidden}
-.rd[data-theme-kit] > .tk-sky{position:absolute;left:0;right:0;top:0;height:560px;z-index:0;pointer-events:none;
-  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 46%,rgba(0,0,0,.45) 70%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 46%,rgba(0,0,0,.45) 70%,transparent 100%)}
-.rd[data-theme-kit] > .tk-sky video{width:100%;height:100%;object-fit:cover;object-position:50% 30%;display:block}
+.rd[data-theme-kit] > .tk-sky{position:absolute;left:0;right:0;top:0;height:calc(var(--tk-band,330px) + 28px);z-index:0;pointer-events:none;
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 56px),rgba(0,0,0,.4) calc(100% - 26px),transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 56px),rgba(0,0,0,.4) calc(100% - 26px),transparent 100%)}
+.rd[data-theme-kit] > .tk-sky video,.rd[data-theme-kit] > .tk-sky .tk-poster{width:100%;height:100%;object-fit:cover;object-position:100% 50%;display:block}
 .rd[data-theme-kit] > .rd-shell{position:relative;z-index:1}
 .rd[data-theme-kit] .rd-heading-art{display:none!important}
 .rd[data-theme-kit] .rd-rail-heading{text-shadow:0 1px 4px rgba(8,12,40,.9)}
@@ -138,10 +140,6 @@
 .rd[data-theme-kit] .rd-rail-art::before{animation-duration:7s!important;animation-timing-function:ease-in-out!important}
 @keyframes tk-glowop{0%,100%{opacity:.55}50%{opacity:.85}}
 .rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame::after,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame::after{animation-duration:7s!important}
-/* the whole painting shows: the sky is as wide as the dashboard and as tall as its own proportions allow, never cropped */
-.rd[data-theme-kit] > .tk-sky{height:auto!important;aspect-ratio:1600/440;
-  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 62%,rgba(0,0,0,.4) 84%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 62%,rgba(0,0,0,.4) 84%,transparent 100%)}
-.rd[data-theme-kit] > .tk-sky video{object-fit:contain;object-position:50% 0}
 /* the last labels in the original serif follow the theme title face */
 .rd[data-theme-kit] :is(.rd-rail-heading,.rd-rail-heading *,.rd-rail-all > span,.rd-day-filter strong,.rd-day-filter b){font-family:"Caveat Brush",cursive!important;font-weight:400!important}
 /* small things in the painting's language: tick circles are painted gold rings, section headings sit on a brush stroke */
@@ -162,3 +160,6 @@
    panel's frame by --rd-panel-grow), so a row of modules reads as one row of panels */
 .rd[data-theme-kit] .rd-main.rd-desk > .rd-widget{background:transparent!important}
 .rd[data-theme-kit] .rd-main.rd-desk > .rd-widget::after{bottom:calc(-8px - var(--rd-panel-grow,0px))!important;background:linear-gradient(#19224D,#19224D) center/calc(100% - 16px) calc(100% - 16px) no-repeat border-box border-box!important}
+/* the dock's cards: the frame's wide border left the card's inner paper as a bar across the words; the frame's own fill
+   is the card (2026-11-06) */
+.rd[data-theme-kit] .rd-dock-card>.rd-frame::before{display:none!important}

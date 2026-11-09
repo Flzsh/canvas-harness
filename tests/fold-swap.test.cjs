@@ -114,3 +114,16 @@ test('while a room\'s move plays, the companion\'s upkeep in a render waits for 
  f.container.dataset.chMoving='';f.advance(700);assert.ok(calls>0,'caught up once the move has landed');
  const after=calls;f.advance(2000);f.controller.sync();assert.ok(calls>after,'and at once again after');
 });
+
+// ---- speed (2026-11-05): pointer mode before the click
+test('the first real mouse movement puts the page in pointer mode while it is idle, before any click',()=>{
+ const f=dashboard({courseId:'all'});f.container.dataset.input='keyboard';
+ const move=(x,y)=>f.container.events.get('pointermove')({pointerType:'mouse',clientX:x,clientY:y,target:f.container,composedPath:()=>[f.container]});
+ move(100,100);move(110,104);f.tick(2000);assert.equal(f.container.dataset.input,'keyboard','a few pixels of movement change nothing');
+ move(140,120);f.tick(2000);f.tick(2000);assert.equal(f.container.dataset.input,'pointer','a real movement switches, in idle time');
+});
+test('a pen or touch movement leaves the input mode to the press',()=>{
+ const f=dashboard({courseId:'all'});f.container.dataset.input='keyboard';
+ const move=(x,y)=>f.container.events.get('pointermove')({pointerType:'touch',clientX:x,clientY:y,target:f.container,composedPath:()=>[f.container]});
+ move(100,100);move(200,200);f.tick(2000);f.tick(2000);assert.equal(f.container.dataset.input,'keyboard');
+});
