@@ -10,6 +10,7 @@
 - Faster: a tab, view or course in the dock looks chosen the moment you press it, the drawings keep moving when you click, Biscuit waits until the page has drawn before he thinks, and Home no longer grows in memory as you click around. On battery, the drawings update less often.
 - With the course menu as a drawer, the page beside it on a themed Home takes the theme's colour instead of white.
 - Make it yours → More: Reload Canvas is a drawn button.
+- Thanks to @DorjieQ for Biscuit's language training rounds 7 and 8 (#68).
 
 ## 3.9.3 - 2026-11-05
 
