@@ -43,6 +43,16 @@
 .rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::before{display:none!important}
 .rd[data-theme-kit] :is(.rd-announcement,.rd-reader,.rd-work-item,.rd-deck-section){background:transparent!important}
 .rd[data-theme-kit] .rd-bookmarks{border-bottom:1px solid rgba(226,238,255,.2)!important}
+/* the sheet's drafted notes and its scale fall under the date and Bookmarks at some widths: each on a pane of the sheet's
+   own blue, so words never lie on words; a spread, not padding, so nothing in the row moves */
+.rd[data-theme-kit] .rd-course-heading > p > :is(.rd-heading-detail,.rd-heading-date),.rd[data-theme-kit] .rd-heading-links > a{background:rgba(18,62,120,.9);box-shadow:0 0 0 4px rgba(18,62,120,.9);border-radius:3px}
+.rd[data-theme-kit] .rd-bookmarks{background:rgba(18,62,120,.88);border-radius:8px}
+/* the filter strip and the week lie across the title block's lettering at 1024 and 1440: denser panes there, so words
+   never sit on words. More views ends the strip with no pane of its own: the same pane, and its list on the sheet's blue */
+.rd[data-theme-kit] :is(.rd-filter-group,.rd-week){background:rgba(16,58,112,.9)!important}
+.rd[data-theme-kit] .rd-more-views > select{background:rgba(16,58,112,.9);box-shadow:inset 0 0 0 1px rgba(226,238,255,.28);color:#E2EEFC}
+.rd[data-theme-kit] .rd-more-views > select:hover{background:rgba(24,74,138,.95);color:#F2F8FF}
+.rd[data-theme-kit] .rd-more-views option{background:#123E78;color:#F2F8FF}
 .rd[data-theme-kit] .rd-assignment-list::before,.rd[data-theme-kit] .rd-assignment-list::after{background:rgba(207,230,255,.12)!important;box-shadow:inset 0 0 0 1px rgba(226,238,255,.45)!important}
 .rd[data-theme-kit] .rd-assignment--selected{background:transparent!important;box-shadow:none!important}
 .rd[data-theme-kit] .rd-button--primary{background:linear-gradient(180deg,#ffe9a6,#f3c654)!important;color:#3a2a06!important;border:0!important;font-weight:700;box-shadow:inset 0 -3px 0 rgba(150,110,20,.35),inset 0 1px 0 rgba(255,250,230,.9),0 4px 14px rgba(10,30,70,.35)!important;position:relative;overflow:hidden}

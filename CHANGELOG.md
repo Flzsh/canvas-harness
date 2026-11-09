@@ -15,6 +15,7 @@ Version 3.99.7 in the browser. Everything in 3.10.0 on the Chrome Web Store, wit
 - Help band: opening Help no longer zooms or slides the scene above it. The scene stops where the Help band starts, the same as with Help closed.
 - Help band: going to another tab and back to Home keeps the band and its cards as they were, instead of building them again. It also no longer reads the page's colours again each time a panel opens or the course dock moves, so Home opens sooner.
 - Under Thanksgiving and Maple Wind, the Help band sits on paper, never on the painted picture.
+- Under Thanksgiving and Blueprint, the date, a course's links and More views each sit on their own slip of paper or pane, so the words stay readable over the picture. Blueprint's filter strip and week are denser for the same reason.
 - Thanks to @DorjieQ for Biscuit's language training rounds 7 and 8 (#68).
 
 ## 4.0 Preview 6 - 2026-11-05
