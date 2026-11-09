@@ -1127,7 +1127,7 @@
 
 .rd .rd-toast-dock { position: sticky; bottom: 16px; z-index: 3; height: 0; margin: 0 12px; }
 
-.rd[data-workspace=work] .rd-work:has(> .rd-toast-dock > .rd-toast) > .rd-toast-dock { margin-top: 68px; }
+.rd[data-workspace=work] .rd-work > .rd-toast-dock.rd-toast-dock:has(> .rd-toast) { margin-top: 68px; }
 .rd .rd-toast-dock:empty { display: none; }
 /* The one-time word on a weak laptop: a pen-drawn slip in the page, under the heading, so it covers nothing. */
 .rd .rd-machine-notice {
@@ -1920,9 +1920,9 @@
 .rd[data-motion-style=still][data-input=pointer] .rd-button:active, .rd[data-motion-style=still][data-input=pointer] .rd-text-button:active, .rd[data-motion-style=still][data-input=pointer] .rd-glance-chip:active, .rd[data-motion-style=still][data-input=pointer] .rd-filter:active, .rd[data-motion-style=still][data-input=pointer] .rd-icon-button:active, .rd[data-motion-style=still][data-input=pointer] .rd-check-off:active, .rd[data-motion-style=still][data-input=pointer] .rd-day-filter:active, .rd[data-motion-style=still][data-input=pointer] .rd-swatch:active { scale: none; box-shadow: inset 0 0 0 999px rgb(20 20 19 / .04); }
 
 
-.rd[data-input=keyboard] :is(.rd-deck-section, .rd-announcement, .rd-message, .rd-home-body, .rd-home-module, .rd-chapter, .rd-teacher-row, .rd-document-link, .rd-thread-message, .rd-warning, .rd-toast, .rd-toast .rd-icon, .rd-utility-dialog, .rd-week) { animation: none !important; }
-.rd[data-input=keyboard][data-entrance] :is(.rd-toolbar, .rd-course-rail, .rd-course-rail > *, .rd-workspace-heading, .rd-page-heading, .rd-materials-header, .rd-desk-toolbar, .rd-work, .rd-reader, .rd-deck-section, .rd-hub-grid > *, .rd-material-group, .rd-message-list, .rd-grade-sheet, .rd-assignment-list > *) { animation: none !important; }
-.rd[data-input=keyboard] :is(.rd-course-rail .rd-rail-title .rd-course-name, .rd-rail-all, .rd-rail-course, .rd-filter, .rd-day-filter, .rd-glance-chip, .t-tab, .rd-reader-tab, .rd-assignment) { transition: none !important; }
+.rd[data-kb] :is(.rd-deck-section, .rd-announcement, .rd-message, .rd-home-body, .rd-home-module, .rd-chapter, .rd-teacher-row, .rd-document-link, .rd-thread-message, .rd-warning, .rd-toast, .rd-toast .rd-icon, .rd-utility-dialog, .rd-week) { animation: none !important; }
+.rd[data-kb][data-entrance] :is(.rd-toolbar, .rd-course-rail, .rd-course-rail > *, .rd-workspace-heading, .rd-page-heading, .rd-materials-header, .rd-desk-toolbar, .rd-work, .rd-reader, .rd-deck-section, .rd-hub-grid > *, .rd-material-group, .rd-message-list, .rd-grade-sheet, .rd-assignment-list > *) { animation: none !important; }
+.rd[data-kb] :is(.rd-course-rail .rd-rail-title .rd-course-name, .rd-rail-all, .rd-rail-course, .rd-filter, .rd-day-filter, .rd-glance-chip, .t-tab, .rd-reader-tab, .rd-assignment) { transition: none !important; }
 .rd[data-input=keyboard] details::details-content { transition: none; }
 
 /* 11.8 Off, and prefers-reduced-motion: no animation and no transition at all.
@@ -2748,8 +2748,8 @@
 /* the reader's course line stays one line, its words cut with dots, so a separator is never stranded on a row of its own */
 .rd[data-workspace=work] .rd-reader-course { flex-wrap: nowrap; white-space: nowrap; overflow: hidden; }
 /* an open Review drawer has the whole height: the strip steps down out of its way */
-.rd:has(.rv-room:not([data-rv-drawer=false], [data-rv-drawer=""]))::after { display: none; }
-.rd:has(.rv-room:not([data-rv-drawer=false], [data-rv-drawer=""])) .rd-dock { translate: -50% calc(100% - var(--rd-dock-headroom,80px) + 22px); transition: translate .24s var(--rd-settle, cubic-bezier(.3,.7,.25,1)); }
+.rd[data-rv-drawer=open]::after { display: none; }
+.rd[data-rv-drawer=open] .rd-dock { translate: -50% calc(100% - var(--rd-dock-headroom,80px) + 22px); transition: translate .24s var(--rd-settle, cubic-bezier(.3,.7,.25,1)); }
 /* Grades: on a wide window the short list of courses stays beside the long list of scored work */
 @media (min-width: 1401px) { .rd .rd-grade-layout > .rd-grade-sheet:first-child { position: sticky; top: 8px; } }
 /* ----------------------------------------------------------------- one type scale
@@ -2771,7 +2771,7 @@
 /* a quarter of a laptop screen: the day strip and the arranging words give their row to the work */
 @media (max-height: 419.98px) { .rd .rd-desk-toolbar > .rd-week, .rd .rd-desk-toolbar > .rd-arrange-guide { display: none; } }
 /* the Course hub has its own full row of Canvas links: the two in the line above would only repeat it */
-.rd:has(.rd-hub) .rd-course-heading .rd-heading-links { display: none; }
+.rd[data-workspace=hub]:not([data-course-id=all]) .rd-course-heading .rd-heading-links { display: none; }
 /* the calculator says it is on its way until its page arrives */
 .rd .rd-desmos-panel:not([hidden]) { position: relative; background: var(--rd-surface); }
 .rd .rd-desmos-panel:not([hidden])::before { content: "Loading the calculator…"; position: absolute; inset: 0; z-index: 0; display: grid; place-items: center; color: var(--rd-muted); font-size: 13px; }
@@ -2803,3 +2803,49 @@
   .rd .rd-page-heading > div:first-child, .rd .rd-materials-header > div:first-child { flex: 1 1 280px; }
   .rd .rd-page-heading > .rd-heading-actions, .rd .rd-materials-header > .rd-heading-actions { flex: none; width: auto; margin-left: auto; }
 }
+
+.rd .rd-assignment { content-visibility: auto; contain-intrinsic-size: auto 92px; }
+
+.rd [data-art-wait] { visibility: hidden !important; }
+
+.rd .rd-workspace-tabs .t-tab[data-pressing] { color: var(--rd-ink); }
+.rd .rd-workspace-tabs .t-tab[data-pressing]::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 2px; height: 8px; background: var(--rd-accent); -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%2010'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M2%206.2C20%204.4%2038%207.4%2055%205.6S84%204.2%2098%205.4'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'2.6'%20stroke-linecap%3D'round'%2F%3E%3Cpath%20d%3D'M8%208.4C30%207.1%2060%208.8%2092%207.4'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.2'%20stroke-linecap%3D'round'%20opacity%3D'.55'%2F%3E%3C%2Fsvg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%2010'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M2%206.2C20%204.4%2038%207.4%2055%205.6S84%204.2%2098%205.4'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'2.6'%20stroke-linecap%3D'round'%2F%3E%3Cpath%20d%3D'M8%208.4C30%207.1%2060%208.8%2092%207.4'%20fill%3D'none'%20stroke%3D'%23000'%20stroke-width%3D'1.2'%20stroke-linecap%3D'round'%20opacity%3D'.55'%2F%3E%3C%2Fsvg%3E") center / 100% 100% no-repeat; pointer-events: none; }
+.rd .rd-workspace-tabs[data-pressing] .t-tab[aria-selected=true]:not([data-pressing])::after { opacity: 0; }
+.rd .rd-filter[data-pressing] { color: var(--rd-ink); background: color-mix(in srgb, #F6DE9A 38%, transparent); }
+.rd .rd-filter[data-pressing] > .rd-n { color: var(--rd-ink-2); }
+.rd .rd-dock[data-look=cards] .rd-dock-it[data-pressing] .rd-dock-card { translate: 0 -5px; }
+.rd .rd-utility-dialog.rd-deadline-dialog { width: min(560px, calc(100vw - 32px)); max-height: min(80vh, 720px); padding: 22px 24px 20px; border: 2px solid transparent; border-image: var(--rd-pen-line) 30 / 14px / 0 stretch; border-radius: 14px; background: var(--rd-surface) padding-box; box-shadow: none; filter: drop-shadow(6px 7px 0 rgb(43 42 39 / .16)); overflow: auto; }
+.rd .rd-deadline-dialog .rd-deadline-head { display: flex; align-items: center; gap: 12px; margin: 0 40px 14px 2px; }
+.rd .rd-deadline-dialog .rd-deadline-head h2 { margin: 0; font: 600 22px/1.25 var(--rd-display, Literata, Georgia, serif); letter-spacing: -.012em; color: var(--rd-ink); }
+.rd .rd-deadline-dialog .rd-deadline-new { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 4px; background: #C96442; color: #FFFDF8; font: 600 11.5px/1 var(--rd-ui-font, system-ui, sans-serif); letter-spacing: .02em; rotate: -2.5deg; box-shadow: 2px 2px 0 rgb(43 42 39 / .2); }
+.rd .rd-deadline-dialog .rd-deadline-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.rd .rd-deadline-dialog .rd-deadline-entry { position: relative; margin: 0; padding: 11px 15px 12px; border: 2px solid transparent; border-image: var(--rd-pen-soft) 30 / 11px / 0 stretch; border-radius: 10px; background: var(--rd-surface) padding-box; }
+.rd .rd-deadline-dialog .rd-deadline-entry[data-unread] { background: color-mix(in srgb, var(--rd-accent, #A9522F) 7%, var(--rd-surface)) padding-box; }
+.rd .rd-deadline-dialog .rd-deadline-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 2px; }
+.rd .rd-deadline-dialog .rd-deadline-course { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--rd-muted); }
+.rd .rd-deadline-dialog .rd-deadline-seen { flex: none; font-size: 11px; color: var(--rd-faint, var(--rd-muted)); }
+.rd .rd-deadline-dialog .rd-deadline-entry > a { display: block; font: 600 16px/1.35 var(--rd-display, Literata, Georgia, serif); color: var(--rd-ink); text-decoration: none; overflow-wrap: anywhere; }
+.rd .rd-deadline-dialog .rd-deadline-entry > a:hover { color: var(--rd-accent); text-decoration: underline; text-underline-offset: 3px; }
+.rd .rd-deadline-dialog .rd-deadline-move { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 7px 0 0; font-size: 13px; line-height: 1.4; }
+.rd .rd-deadline-dialog .rd-deadline-from { color: var(--rd-muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--rd-muted) 75%, transparent); }
+.rd .rd-deadline-dialog .rd-deadline-from[data-none] { text-decoration: none; }
+.rd .rd-deadline-dialog .rd-deadline-to { color: var(--rd-ink); font-weight: 600; }
+.rd .rd-deadline-dialog .rd-deadline-to[data-none] { color: var(--rd-deadline-soon, #A9522F); }
+.rd .rd-deadline-dialog .rd-deadline-arrow { flex: none; width: 26px; height: 12px; background: var(--rd-accent, #A9522F); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 52 24'%3E%3Cpath fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' d='M3 13.4C14.2 11.7 27.8 12.8 45.6 11.7M36.8 4.6C40.6 7.9 44.2 10.3 47.6 11.8C44 13.9 40.4 16.7 37.6 20.2'/%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 52 24'%3E%3Cpath fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' d='M3 13.4C14.2 11.7 27.8 12.8 45.6 11.7M36.8 4.6C40.6 7.9 44.2 10.3 47.6 11.8C44 13.9 40.4 16.7 37.6 20.2'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
+.rd .rd-deadline-dialog .rd-deadline-empty { margin: 4px 2px 2px; font-size: 13.5px; color: var(--rd-muted); }
+.rd .rd-deadline-dialog .rd-deadline-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
+.rd .rd-deadline-dialog .rd-button { min-height: 34px; padding: 6px 15px; border: 2px solid transparent; border-image: var(--rd-pen-line) 30 / 11px / 0 stretch; border-radius: 9px; background: var(--rd-surface) padding-box; box-shadow: none; font: 600 13px/1.2 var(--rd-ui-font, system-ui, sans-serif); color: var(--rd-ink); cursor: pointer; }
+.rd .rd-deadline-dialog .rd-button:hover { background: color-mix(in srgb, var(--rd-accent, #A9522F) 9%, var(--rd-surface)) padding-box; }
+.rd .rd-deadline-dialog .rd-deadline-close { position: absolute; top: 15px; right: 15px; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--rd-ink-2, var(--rd-ink)); cursor: pointer; }
+.rd .rd-deadline-dialog .rd-deadline-close::before { content: ''; position: absolute; inset: 8px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' d='M4.8 5.4C10 10.4 14.6 15 19.4 19.8M19.2 4.6C14.6 9.6 9.8 14.6 4.4 19.6'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' d='M4.8 5.4C10 10.4 14.6 15 19.4 19.8M19.2 4.6C14.6 9.6 9.8 14.6 4.4 19.6'/%3E%3C/svg%3E") center / contain no-repeat; }
+.rd .rd-deadline-dialog .rd-deadline-close:hover { background: color-mix(in srgb, var(--rd-ink) 7%, transparent); }
+.rd .rd-toolbar .rd-tools .rd-deadline-trigger { display: inline-flex; align-items: center; gap: 6px; height: 32px; min-height: 32px; margin-left: 0; padding: 0 7px; border: 0; border-radius: 6px 9px 5px 8px; background: none; box-shadow: none; color: var(--rd-ink); font-size: 13px; font-weight: 450; }
+.rd .rd-toolbar .rd-tools .rd-deadline-trigger:hover { background: color-mix(in srgb, #F6DE9A 38%, transparent); }
+.rd.rd.rd[data-theme-kit] .rd-toolbar > .rd-tools { padding: 3px 5px; border-radius: 999px; gap: 2px; }
+.rd.rd.rd[data-theme-kit] .rd-toolbar > .rd-tools :is(.rd-button:not(.rd-button--primary), .rd-icon-button, .rd-tb-tool, .rd-toolbox-trigger, .rd-deadline-trigger, .rd-grade-switch) { background: transparent !important; border-color: transparent !important; box-shadow: none !important; }
+.rd.rd.rd[data-theme-kit] .rd-toolbar > .rd-tools :is(.rd-button:not(.rd-button--primary), .rd-icon-button, .rd-tb-tool, .rd-toolbox-trigger, .rd-deadline-trigger):hover { background: color-mix(in srgb, var(--rd-accent) 12%, transparent) !important; }
+.rd .rd-toolbar .rd-tools .rd-deadline-trigger .rd-n:not([hidden]) { display: inline-grid; place-items: center; min-width: 16px; height: 16px; margin-left: 4px; padding: 0 4px; background: #C96442; color: #FFF8EC; font-size: 10.5px; font-weight: 700; line-height: 1; rotate: -6deg; clip-path: polygon(0 12%, 100% 0, 96% 100%, 4% 90%); }
+.rd .rd-toolbar .rd-refresh-button[aria-busy=true] > .rd-sync-ring { display: none !important; }
+.rd .rd-toolbar .rd-refresh-button[aria-busy=true] > .rd-tb-ic { animation: rd-spin 1.1s linear infinite; transform-origin: 50% 50%; }
+.rd:is([data-input=keyboard], [data-motion-style=still]) .rd-toolbar .rd-refresh-button[aria-busy=true] > .rd-tb-ic { animation: none; }
+@media (prefers-reduced-motion: reduce) { .rd .rd-toolbar .rd-refresh-button[aria-busy=true] > .rd-tb-ic { animation: none; } }

@@ -3,7 +3,7 @@
  'use strict';
  const arrange=root.ReserveWorkspaceArrange||(typeof module==='object'&&module.exports?require('./workspace-arrange.js'):null);
  const enums={
-   sceneTheme:['','starry','sea','stars','blueprint'],
+   sceneTheme:['','starry','sea','stars','blueprint','maple','thanksgiving'],
    pageTint:['paper','accent','sky','sage','lilac','blush','sand','snow'],
    courseNavigation:['sidebar','topbar','dock'],
    dockSize:['small','medium','large'],

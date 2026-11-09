@@ -1,6 +1,6 @@
 # Canvas Harness privacy
 
-Applies to Canvas Harness 3.6.0 through 4.0 Preview 3, which the browser shows as version 3.99.3. Last updated November 2, 2026.
+Applies to Canvas Harness 3.6.0 through 4.0 Preview 7, which the browser shows as version 3.99.7. Last updated November 2, 2026.
 
 Canvas Harness is a browser extension maintained by Flzsh. It displays information from the Canvas account already signed in on your school's website. It has no developer-operated account service, analytics collector or tracking endpoint in the extension code for this release. From 4.0 Preview 1, **Your AI** can send Canvas text to an AI service that you choose; see [Your AI](#your-ai-what-goes-where).
 

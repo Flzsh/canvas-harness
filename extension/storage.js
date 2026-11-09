@@ -4,7 +4,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 (function (root) {
   'use strict';
   const clone = value => structuredClone(value);
-  const gpa=root.CanvasHarnessGPA||(typeof module==='object'&&module.exports?require('./gpa-model.js'):null);
+  // Page-start models (gpa-model.js, personal-work.js) are looked up when first used, not while this file loads: Edge
+  // can run the registered add-ons before the page-start group (after a Windows restart), and a model taken at load
+  // stays null for the whole page.
+  let gpaFound=null;const gpaModel=()=>gpaFound||(gpaFound=root.CanvasHarnessGPA||(typeof module==='object'&&module.exports?require('./gpa-model.js'):null));
   const customization=root.ReserveCustomization||(typeof module==='object'&&module.exports?require('./customization-model.js'):null);
   const layoutDefaults=customization?.defaults||{};
   const appearance=root.ReservePagePreferences||(typeof module==='object'&&module.exports?require('./page-preferences.js'):null);
@@ -45,7 +48,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       courseFiles:{},
       resourcePins:[],
       customTasks:[],
-      gpa:gpa.defaults(),
+      gpa:gpaModel().defaults(),
       toolbox:{scratchpad:'',recent:[],dockSize:{width:0,height:0}},
       gradeImpact:{pretend:{}},
       focus:{minutes:25,remaining:1500,endsAt:null,itemId:null,sessions:0,elapsed:0,pausedAt:0,stoppedAt:0},
@@ -135,7 +138,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }if(list.length)out[course]=list;
     }return out;
   }
-  const personalWork = root.ReservePersonalWork || (typeof module === 'object' && module.exports && typeof require === 'function' ? require('./personal-work.js') : null);
+  let personalFound=null;
+  const personalWork=()=>
+    personalFound||(personalFound=root.ReservePersonalWork || (typeof module === 'object' && module.exports && typeof require === 'function' ? require('./personal-work.js') : null));
   const queues = new Map();
   const accountServers = new WeakMap();
   const bytes = value => new TextEncoder().encode(typeof value==='string'?value:JSON.stringify(value)).length;
@@ -177,7 +182,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   }
   function taskSource(value) {
     if(value==null)return null;
-    const clean=personalWork?.safeSource?.(value);
+    const clean=personalWork()?.safeSource?.(value);
     if(!clean)throw Error('Invalid personal task source. Use a supported HTTP(S) link and source kind.');
     return clean;
   }
@@ -356,7 +361,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const out = defaults(), settings=value.settings || {},sameSettings=previous&&same(settings,previous.settings);
     out.moduleProgress=previous&&same(value.moduleProgress,previous.moduleProgress)?previous.moduleProgress:cleanModuleProgress(value.moduleProgress);
     out.courseFiles=previous&&same(value.courseFiles,previous.courseFiles)?previous.courseFiles:cleanCourseFiles(value.courseFiles);
-    out.gpa=previous&&same(value.gpa,previous.gpa)?previous.gpa:gpa.cleanPreferences(value.gpa);
+    out.gpa=previous&&same(value.gpa,previous.gpa)?previous.gpa:gpaModel().cleanPreferences(value.gpa);
     out.gradeImpact=previous&&same(value.gradeImpact,previous.gradeImpact)?previous.gradeImpact:cleanGradeImpact(value.gradeImpact);
     if (!isRecord(settings) || (value.tasks && !isRecord(value.tasks)) || (value.customTasks && !Array.isArray(value.customTasks))) throw Error('Backup data has an invalid structure.');
     // Validate every restored SVG before returning data or committing a save.

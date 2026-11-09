@@ -9,9 +9,7 @@ test('all seven workspace tabs retain heading, SVGs, title and date without rege
  const heading=f.container.querySelector('.rd-workspace-heading'),svg=heading.querySelector('.rd-art'),title=heading.querySelector('h1'),date=heading.querySelector('.rd-heading-date'),column=heading.parentNode;
  const films=f.animations.filter(a=>heading.contains(a.node));assert.ok(films.some(a=>a.options.id==='rd-art-loop'),'the real film controller starts living loops');
  f.tick(5000);const loops=films.filter(a=>a.options.id==='rd-art-loop'),observerCount=f.observers.length,timerCount=f.timers.size;
- // motion.js holds the drawings from a press until the frame after the render that answers it has painted, and for
- // ART_BUSY_MS at most (3.8 decisions); then they go on from the frame they held.
- const ART_BUSY_MS=300;
+ // A press holds nothing (owner, 2026-11-05): the loops play on through a tab click on the film's own time.
  const pony=f.document.createElement('aside');pony.className='pet-layer';f.container.append(pony);
  for(const tab of ['assignments','plan','hub','materials','inbox','grades','work']){
   column.scrollTop=350;const times=loops.map(a=>a.currentTime);
@@ -23,12 +21,9 @@ test('all seven workspace tabs retain heading, SVGs, title and date without rege
   assert.equal(column.scrollTop,0,'the existing tab scroll-to-top behavior survives');
   assert.strictEqual(f.container.querySelector('.pet-layer'),pony,'the companion layer survives');
   assert.deepEqual(f.animations.filter(a=>heading.contains(a.node)),films,'no replacement film, draw-in or heading fade');
-  assert.ok(loops.every(a=>!a.cancelled),'the interaction pause keeps every existing loop');
-  assert.deepEqual(loops.map(a=>a.currentTime),times,'existing loops hold their frame during tab interaction');
-  f.tick(ART_BUSY_MS-100+1);assert.deepEqual(loops.map(a=>a.currentTime),times,'release, by the busy cap at the latest, preserves the held frame and film origin');
-  // tick runs each due timer once; the film clock created at release needs a separate turn.
-  f.tick(100);assert.deepEqual(loops.map(a=>a.currentTime),times.map(time=>time+100),'the same loops resume from their held frame');
-  assert.deepEqual(f.animations.filter(a=>heading.contains(a.node)),films,'resuming does not replace or restart a film');assert.ok(loops.every(a=>!a.cancelled));
+  assert.ok(loops.every(a=>!a.cancelled),'a tab click keeps every existing loop');
+  f.tick(100);assert.ok(loops.every((a,i)=>a.currentTime>times[i]),'the same loops play on through the click');
+  assert.deepEqual(f.animations.filter(a=>heading.contains(a.node)),films,'playing on does not replace or restart a film');assert.ok(loops.every(a=>!a.cancelled));
   assert.equal(f.observers.length,observerCount,'no observer is added per tab');
   assert.ok(f.timers.size<=timerCount,'tab switching does not accumulate timers');
  }

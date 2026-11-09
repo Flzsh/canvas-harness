@@ -5,7 +5,7 @@ const read=file=>fs.readFileSync(path.join(__dirname,'..','extension',file),'utf
 
 // Static isolation checks, not a substitute for browser rendering or the route/DOM tests.
 // These sheets are linked inside extension shadow roots, never into Canvas's document.
-const shadowSheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','course-links.css','addons-panel.css','agent.css','study-band.css','focus-room.css','review-deck.css','grade-impact.css','themes/starry/theme.css','themes/sea/theme.css','themes/stars/theme.css','themes/blueprint/theme.css'];
+const shadowSheets=['app.css','dashboard.css','workspace.css','refresh.css','subject-art.css','customize.css','media-frame.css','frame-editor.css','settings-dock.css','gpa.css','selection.css','responsive-layout.css','widgets.css','pet.css','scene-themes.css','course-links.css','addons-panel.css','agent.css','study-band.css','focus-room.css','review-deck.css','grade-impact.css','themes/starry/theme.css','themes/sea/theme.css','themes/stars/theme.css','themes/blueprint/theme.css','themes/maple/theme.css','themes/thanksgiving/theme.css'];
 const globalSheets=['startup.css','startup-art.css','native-page.css','canvas-nav.css','course-nav.css','modules-page.css'];
 const grouping=/^@(media|supports|container|layer|scope|starting-style)\b/i;
 
@@ -103,7 +103,9 @@ test('other document-level sheets require startup state or the explicitly retain
     assert.ok(target,'Retained navigation CSS must stay on global chrome: '+selector);
     if(target==='#wrapper'||target==='body'){
      // The drawer/top menu may reserve space, but must not recolor or restyle coursework.
-     const allowed=target==='body'?['overflow-x']:['margin-left','margin-top','transition','animation'];
+     // Beside the CH dashboard only (html[data-chn-dash], set by canvas-nav.js applyPalette when the workspace covers the
+     // page), the page behind the pushed #wrapper may take the workspace's paper: never on a vanilla Canvas page.
+     const allowed=target==='body'?(/^html\.chn-nav\[data-chn-dash\] body$/.test(selector)?['overflow-x','background']:['overflow-x']):['margin-left','margin-top','transition','animation'];
      for(const declaration of body.split(';').filter(s=>s.trim()))assert.ok(allowed.includes(declaration.split(':')[0].trim()),'Navigation changes page appearance: '+selector+' { '+declaration+' }');
     }
    }

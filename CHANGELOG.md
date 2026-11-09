@@ -1,5 +1,22 @@
 # Changelog
 
+## 4.0 Preview 7 - 2026-11-09
+
+Version 3.99.7 in the browser. Everything in 3.10.0 on the Chrome Web Store, with the AI.
+
+- Two new scenes in Make it yours → Look → Scene: Thanksgiving, a carved block print of a harvest evening on the farm, and Maple Wind, an autumn wood in the wind. The scenes are sorted into packs: Holiday, Seasonal and Everyday.
+- Every scene fits the strip above Home's first widget at any window size, instead of being cut in half by the widgets. Under the Sea, Starry Night and Blueprint are repainted wide for it, and Starfield's sky keeps its shape as the window changes.
+- Deadline changes is redrawn: each change is a small card with the course, the assignment, the old date struck through and the new one, and the day it was seen. Mark all read, and a drawn x to close.
+- Under a scene, the tools on the right of the top bar sit together in one band like the tabs on the left, and are easier to see. The Changes count is a small tag.
+- Refresh turns its own arrows while it syncs, instead of widening the button.
+- Faster: a tab, view or course in the dock looks chosen the moment you press it, the drawings keep moving when you click, Biscuit waits until the page has drawn before he thinks, and Home no longer grows in memory as you click around. On battery, the drawings update less often.
+- With the course menu as a drawer, the page beside it on a themed Home takes the theme's colour instead of white.
+- Make it yours → More: Reload Canvas is a drawn button.
+- Help band: opening Help no longer zooms or slides the scene above it. The scene stops where the Help band starts, the same as with Help closed.
+- Help band: going to another tab and back to Home keeps the band and its cards as they were, instead of building them again. It also no longer reads the page's colours again each time a panel opens or the course dock moves, so Home opens sooner.
+- Under Thanksgiving and Maple Wind, the Help band sits on paper, never on the painted picture.
+- Thanks to @DorjieQ for Biscuit's language training rounds 7 and 8 (#68).
+
 ## 4.0 Preview 6 - 2026-11-05
 
 Version 3.99.6 in the browser.

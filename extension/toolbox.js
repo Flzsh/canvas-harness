@@ -459,7 +459,7 @@
    }catch(error){capturing=false;for(const field of form.querySelectorAll('input,select,button,textarea'))field.disabled=false;showStatus(error.message,true);}
   }
   function keydown(event){
-   event.stopPropagation();container.dataset.input='keyboard';toolMotion?.cancel();if(event.isComposing)return;
+   event.stopPropagation();container.dataset.input='keyboard';container.dataset.kb='';toolMotion?.cancel();if(event.isComposing)return;
    if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();open('quick');return;}
    if(event.key==='Escape'){event.preventDefault();close({restoreFocus:true});return;}
    // Tabs follow the ARIA pattern: arrows move and select; Tab moves into the panel.

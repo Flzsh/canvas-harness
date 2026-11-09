@@ -194,3 +194,17 @@ test('card text for follow-ups keeps the useful words and leaves out tools and s
  const text=Band.cardText({kind:'practice',headline:'Chem: quiz practice',items:[{q:'Which change speeds up reactions?',answer:1,why:'Faster collisions.',src:'Canvas'}],tools:[{label:'Open'}]});
  assert.match(text,/Chem: quiz practice/);assert.match(text,/Which change speeds up reactions\?/);assert.match(text,/Faster collisions/);assert.ok(!/Canvas|Open/.test(text));
 });
+
+// Speed (2026-11-05): Home drawn again (another tab and back) moves the band into the new host instead of building it again.
+test('the band moves into a new host with its cards and keeps working there',()=>{
+ const f=band({a:aid(ask('Chemistry: Lab'))});const before=f.find('ch-band-card').length;assert.ok(before>=1);
+ const band0=f.host.firstElementChild||f.host.children?.[0];const next=new f.Element('div');
+ assert.equal(f.view.rehost(next),true);
+ assert.equal((next.firstElementChild||next.children?.[0]),band0,'the same band, not a new one');
+ assert.equal(descendants(next).filter(n=>String(n.className||'').split(' ').includes('ch-band-card')).length,before,'every card came along');
+ assert.equal(f.host.children.length,0,'nothing is left in the old host');
+ f.view.update({a:aid(ask('Chemistry: Lab')),b:aid(ask('Physics: Forces'))});
+ assert.ok(descendants(next).filter(n=>String(n.className||'').split(' ').includes('ch-band-card')).length>before,'updates draw into the new host');
+ f.view.destroy();assert.equal(next.children.length,0,'destroy empties the host it lives in now');
+ assert.equal(f.view.rehost(new f.Element('div')),false,'a destroyed band is never moved');
+});

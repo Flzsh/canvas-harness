@@ -4,7 +4,9 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const storage=require('../extension/storage.js');
 const {createDOM}=require('./addons-fixture.cjs');
 const read=file=>fs.readFileSync(path.join(__dirname,'../extension',file),'utf8');
-const ids=['','starry','sea','stars','blueprint'];
+const ids=['','starry','sea','stars','blueprint','maple','thanksgiving'];
+// Look shows them sorted into packs (None, Holiday, Seasonal, Everyday), still one radio group (owner 2026-11-09).
+const shown=['','thanksgiving','maple','starry','sea','stars','blueprint'];
 function makeStore(){
  const data={};return storage.createStore({accountId:'42',origin:'https://school.instructure.com',adapter:{read:async key=>structuredClone(data[key]),write:async(key,value)=>{data[key]=structuredClone(value);}}});
 }
@@ -46,12 +48,12 @@ test('unknown or malformed scenes reject backups and saves without changing exis
  }
 });
 
-test('Look offers five named native radio choices and only packaged decorative poster thumbnails',()=>{
+test('Look offers seven named native radio choices and only packaged decorative poster thumbnails',()=>{
  const {document,urls}=editor(),group=document.querySelector('[role="radiogroup"][aria-label="Scene"]');
  assert.ok(group,'Scene is a labeled radio group in Look');
  const radios=group.querySelectorAll('input');
- assert.deepEqual(radios.map(input=>input.value),ids);
- assert.deepEqual(radios.map(input=>input.closest('label').querySelector('strong').textContent),['None','Starry Night','Under the Sea','Starfield','Blueprint']);
+ assert.deepEqual(radios.map(input=>input.value),shown);assert.deepEqual(group.querySelectorAll('h4').map(h=>h.textContent),['Holiday pack','Seasonal pack','Everyday pack']);
+ assert.deepEqual(radios.map(input=>input.closest('label').querySelector('strong').textContent),['None','Thanksgiving','Maple Wind','Starry Night','Under the Sea','Starfield','Blueprint']);
  for(const input of radios){
   assert.equal(input.type,'radio');assert.equal(input.getAttribute('name'),'cz-sceneTheme');
   assert.equal(input.dataset.rdField,'setting');assert.equal(input.dataset.setting,'sceneTheme');
@@ -60,8 +62,8 @@ test('Look offers five named native radio choices and only packaged decorative p
  }
  assert.deepEqual(radios.filter(input=>input.checked).map(input=>input.value),['']);
  assert.equal(radios[0].closest('label').querySelector('img'),null,'None keeps the plain page illustration');
- assert.deepEqual(urls,['themes/starry/poster.jpg','themes/sea/poster.jpg','themes/stars/poster.jpg','themes/blueprint/poster.jpg']);
- const images=group.querySelectorAll('img');assert.equal(images.length,4);
+ assert.deepEqual(urls,shown.slice(1).map(id=>'themes/'+id+'/poster.jpg'));
+ const images=group.querySelectorAll('img');assert.equal(images.length,6);
  for(const [index,img]of images.entries()){
   assert.equal(img.getAttribute('src'),'chrome-extension://test/'+urls[index]);
   assert.equal(img.getAttribute('alt'),'');assert.equal(img.getAttribute('aria-hidden'),'true');
@@ -97,6 +99,6 @@ test('disabled scenes are absent and do not lock saved appearance or resolve pos
 
 test('the picker remains usable without an extension runtime and avoids school-relative image requests',()=>{
  const {document}=editor({runtime:false}),group=document.querySelector('[aria-label="Scene"]');
- assert.ok(group);assert.equal(group.querySelectorAll('input[type="radio"]').length,5);
+ assert.ok(group);assert.equal(group.querySelectorAll('input[type="radio"]').length,7);
  assert.equal(group.querySelector('img'),null);
 });

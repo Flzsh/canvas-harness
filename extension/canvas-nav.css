@@ -10,7 +10,7 @@ html.chn-nav #header {
  /* the frame rules below read the workspace's names */
  --rd-ink: var(--chn-ink-c); --rd-ink-2: var(--chn-ink2-c); --rd-sidebar: var(--chn-sidebar-c); --rd-sidebar-sel: var(--chn-sel-c);
  --rd-accent: var(--chn-accent-c); --rd-release: cubic-bezier(.33, 0, .67, 1); --rd-warm: cubic-bezier(.25, .1, .25, 1);
- background: var(--chn-page, #FFFFFF) !important; background-image: none !important; box-shadow: none !important; border: 0 !important;
+ background: var(--chn-dash, var(--chn-page, #FFFFFF)) !important; background-image: var(--chn-dash-image, none) !important; box-shadow: none !important; border: 0 !important;
  color: var(--chn-ink2-c);
 }
 /* the paper panel against the window's left edge, and the modules' pen line on its other three sides, like "]"
@@ -144,6 +144,8 @@ html.chn-nav[data-chn-motion=off] #header * { animation: none !important; }
 
 /* ---- the drawer (canvas-nav.js drawer()): off the left edge until the pointer reaches it, then a card in the middle of
    the edge, only as tall as its items. Canvas's page takes the whole width meanwhile. ---- */
+/* beside the dashboard the page behind the pushed #wrapper wears the workspace's own paper (canvas-nav.js applyPalette) */
+html.chn-nav[data-chn-dash] body { background: var(--chn-dash-image, none) 0 0 / 100% 100vh no-repeat fixed, var(--chn-dash, #FFFFFF) !important; }
 html.chn-nav[data-chn-layout=drawer] #wrapper { margin-left: var(--chn-push, 0px) !important; transition: margin-left 260ms cubic-bezier(.25, .8, .3, 1); }
 html.chn-nav[data-chn-layout=drawer][data-chn-motion=off] #wrapper { transition: none; }
 @media (prefers-reduced-motion: reduce) { html.chn-nav[data-chn-layout=drawer] #wrapper { transition: none; } }

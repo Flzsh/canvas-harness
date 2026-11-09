@@ -606,7 +606,7 @@
  ]);
  const SETTING_ENUMS={
    theme:['dark','light'],
-   sceneTheme:['','starry','sea','stars','blueprint'],
+   sceneTheme:['','starry','sea','stars','blueprint','maple','thanksgiving'],
    pageTint:['paper','accent','sky','sage','lilac','blush','sand','snow'],
    courseNavigation:['sidebar','topbar','dock'],
    dockSize:['small','medium','large'],
@@ -655,7 +655,7 @@
      ...APPEARANCE_NAMES.keys(),
      ...Object.values(SETTING_ENUMS).flat(),
      ...SIZE_NAMES.keys(),
-     ...'dark light mode theme scene starfield starry night under sea match computer courses navigation menu bar strip along bottom across top side left bigger smaller large small compact banner clean look high contrast background page screen tab view homepage rounded minimal stitched frames turn switch enable disable stop start show hide move put bring first position spot make wide wider widen width full go navigate open bookmark save later undo revert previous last change action edit take roll send back help quiet until write down add note self plant garden let paint reset restore layout preset study focus studio full lite everything on off use apply set clear remove no module widget panel to as be it the my a an me of for is bit little much slightly even'.split(' ')
+     ...'dark light mode theme scene starfield starry night under sea maple wind thanksgiving match computer courses navigation menu bar strip along bottom across top side left bigger smaller large small compact banner clean look high contrast background page screen tab view homepage rounded minimal stitched frames turn switch enable disable stop start show hide move put bring first position spot make wide wider widen width full go navigate open bookmark save later undo revert previous last change action edit take roll send back help quiet until write down add note self plant garden let paint reset restore layout preset study focus studio full lite everything on off use apply set clear remove no module widget panel to as be it the my a an me of for is bit little much slightly even'.split(' ')
    ].flatMap(value=>
      value.match(/[a-z]+/g)||[]))
  ],
@@ -699,7 +699,13 @@
    }
    if(key==='sceneTheme'){
      const scene=bare(value.replace(/\s+(?:scene(?:\s+theme)?|theme)$/,''));
-     return /^(?:none|no|off|default)$/.test(scene)?'':/^(?:under\s+(?:the\s+)?)?sea$/.test(scene)?'sea':/^(?:starfield|stars)$/.test(scene)?'stars':/^starry(?:\s+night)?$/.test(scene)?'starry':scene;
+     return /^(?:none|no|off|default)$/.test(scene)?
+       '':
+       /^(?:under\s+(?:the\s+)?)?sea$/.test(scene)?
+         'sea':
+         /^(?:starfield|stars)$/.test(scene)?
+           'stars':
+           /^starry(?:\s+night)?$/.test(scene)?'starry':/^maple(?:\s+wind)?$/.test(scene)?'maple':/^thanksgiving$/.test(scene)?'thanksgiving':scene;
    }
    if(key==='courseNavigation')return {bottom:'dock',top:'topbar',side:'sidebar',left:'sidebar','top bar':'topbar','side bar':'sidebar'}[value]||value;
    if(key==='panelFrame')return {stitched:'stitch',no:'none'}[value]||value;
@@ -723,7 +729,7 @@
   if((m=/^(dark|light)(?:\s+(?:mode|theme))?$/.exec(style)))return setting('theme',m[1],m[1]==='dark'?'Dark mode':'Light mode');
   if(/^(?:system(?:\s+(?:mode|theme))?|match\s+(?:(?:my|the)\s+)?(?:computer|system|device))$/.test(style))return [];
   if(/^(?:no\s+scene(?:\s+theme)?|(?:remove|clear)\s+(?:the\s+)?scene(?:\s+theme)?)$/.test(style))return setting('sceneTheme','','No scene theme');
-  if((m=/^(starfield|stars|starry(?:\s+night)?|(?:under\s+(?:the\s+)?)?sea|blueprint)(?:\s+(?:scene(?:\s+theme)?|theme))?$/.exec(style)))return setting('sceneTheme',settingValue('sceneTheme',m[1]),'Scene · '+m[1]);
+  if((m=/^(starfield|stars|starry(?:\s+night)?|(?:under\s+(?:the\s+)?)?sea|blueprint|maple(?:\s+wind)?|thanksgiving)(?:\s+(?:scene(?:\s+theme)?|theme))?$/.exec(style)))return setting('sceneTheme',settingValue('sceneTheme',m[1]),'Scene · '+m[1]);
   if((m=/^(?:courses?|course\s+(?:navigation|menu|bar|strip|dock))\s+(?:(?:along|across|on|at|to)\s+)?(?:the\s+)?(bottom|top|side|left)(?:\s+of\s+(?:the\s+)?(?:page|screen))?$/.exec(style)))return setting('courseNavigation',settingValue('courseNavigation',m[1]),'Courses · '+m[1]);
   if((m=/^(?:course\s+)?(dock|topbar|top bar|sidebar|side bar)$/.exec(style)))return setting('courseNavigation',m[1].replace(/ /g,''),'Courses · '+m[1]);
   if((m=SIZE_RE.exec(style))){const key=(m[2]||m[3])+'Size',value=settingValue(key,m[1]||m[4]);return setting(key,value,(key==='dockSize'?'Dock':'Banner')+' · '+value);}

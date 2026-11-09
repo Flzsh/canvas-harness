@@ -256,7 +256,25 @@
     !token?
       fallback:
       LOOP_EASES[token]||(/^(steps|cubic-bezier|linear)\(/.test(token)||/^(ease|ease-in|ease-out|ease-in-out|step-start|step-end)$/.test(token)?token.replace(/^steps\((\d+)\)$/,'steps($1, end)'):fallback);
-  const pathLength=node=>{try{const L=node?.getTotalLength?.();return Number.isFinite(L)?L:0;}catch{return 0;}};
+  // A stroke's length by its shape (the attributes that make its geometry): getTotalLength() first brings the page's style
+  // and layout up to date, so measuring each part of a drawing while its animations were being made cost a style pass per
+  // path. A length is kept once known (never a 0: a part not ready yet is measured again next time).
+  const LENGTHS=new Map();
+  const shapeOf=node=>{const tag=String(node?.tagName||'').toLowerCase(),a=n=>node.getAttribute?.(n)??'';
+    const g=tag==='path'?
+      a('d'):
+      tag==='circle'?
+        a('r'):
+        tag==='ellipse'?
+          a('rx')+' '+a('ry'):
+          tag==='line'?[a('x1'),a('y1'),a('x2'),a('y2')].join(' '):tag==='polyline'||tag==='polygon'?a('points'):tag==='rect'?[a('width'),a('height'),a('rx'),a('ry')].join(' '):'';
+    return String(g).trim()?tag+':'+g:null;};
+  const pathLength=node=>{
+    const key=shapeOf(node);
+    if(key&&LENGTHS.has(key))return LENGTHS.get(key);
+    let L=0;
+    try{const v=node?.getTotalLength?.();L=Number.isFinite(v)?v:0;}catch{}
+    if(key&&L>0){if(LENGTHS.size>=6000)LENGTHS.clear();LENGTHS.set(key,L);}return L;};
   // Every part that names its rig (data-rig), by name: the first in document order wins.
   function rigsOf(svg){
     const map=new Map(),walk=node=>{
@@ -409,11 +427,12 @@
   // the next tick is drawn on this one, and the page draws one frame for both (31-35 a second). Only one clock hands its
   // ticks on, the fastest running, so a second view's clock (the toolbox has one) can never double the pony's frames.
   const FILM_TICKS=new Set(),filmBus={owner:null,fps:0};
-  // A PRESS OR A KEY HOLDS THE DRAWINGS until the page's answer to it has painted: the render it starts (answered(),
-  // dashboard.js) and the frame that shows it, so that answer has the main thread to itself; ART_BUSY_MS at most, for a
-  // press that changes nothing. Then they go on from the frame they held. A wheel turn or a scroll never holds them:
-  // the drawings keep playing while the page scrolls.
-  const ART_BUSY_MS=300;
+  // A PRESS OR A KEY HOLDS NOTHING (owner, 2026-11-05: "why did animation stop when I use left click"). From 3.8 a press
+  // held every drawing until its answer had painted (300 ms at most), so each click and each key froze the page's motion
+  // and read as a stall. Since 3.10 a film frame restyles only its own parts (no :has() up the page), so an answer
+  // loses next to nothing to it. Kept: the tick after a render that answers an input writes nothing (answered()). A
+  // wheel turn or a scroll never held them either.
+  const ART_BUSY_MS=0;
   // A SCROLL HOLDS THE FRAME BEADS, not the drawings: the course-row frames' loops stand where they are while the page
   // scrolls and go on from there ART_SCROLL_MS after the last scroll. Measured at 4x CPU (3.8), their frames doubled a
   // scroll's slow frames (5.6% -> 13.8%); the scenes and minis keep playing.
@@ -427,6 +446,11 @@
   try{
     root.navigator?.getBattery?.().then(battery=>{const sync=()=>{onBattery=!battery.charging;};sync();battery.addEventListener?.('chargingchange',sync);}).catch(()=>{});
   }catch{}
+  // ON BATTERY THE FILM RUNS AT HALF RATE (owner, 2026-11-05: "yes switch on battery"). Unplugged, Extra high and High
+  // play their drawings on the slow film (scenes 12, minis 6), Medium already does, Low has none; everything else
+  // stays as chosen. Plugged in again, the next tick is back at the chosen rate (wake() reads it on every tick).
+  const batteryFilm=(level,battery)=>battery&&(!level||level==='full'||level==='calm')?'slow':level;
+  const filmLevelOf=container=>batteryFilm(container?.dataset?.gFilm,onBattery);
 
   function create(container,{
     media=root.matchMedia?.('(prefers-reduced-motion: reduce)'),
@@ -723,7 +747,7 @@
           for(const p of svg.querySelectorAll('path')){
             const pc=css(p);if(!pc)continue;const last=fin&&!!p.closest?.('.a-fin');
             if(filled(pc))bloom(p,pc.opacity,t0+A.bloomDelay,last?A.fin:A.bloom,last?A.finEasing:A.bloomEasing,last?.3:.6);
-            else if(stroked(pc)){let len=0;try{len=p.getTotalLength();}catch{}pen(p,len,t0+Math.min(j,3)*A.stagger,last?A.fin:A.ornament);j++;}
+            else if(stroked(pc)){const len=pathLength(p);pen(p,len,t0+Math.min(j,3)*A.stagger,last?A.fin:A.ornament);j++;}
           }
         }
         // 5. A part caught in its hover one-shot settles.
@@ -866,11 +890,7 @@
     function ink(svg,{delay=0,budget=400}={}){
       if(!svg||dead||reduced())return [];
       const strokes=[];
-      for(const node of svg.querySelectorAll?.('path,circle,line,polyline')||[]){
-        let length=0;
-        try{length=Math.ceil(node.getTotalLength()+1);}catch{}
-        if(length>0&&Number.isFinite(length))strokes.push({node,length});
-      }
+      for(const node of svg.querySelectorAll?.('path,circle,line,polyline')||[]){const L=pathLength(node),length=L>0?Math.ceil(L+1):0;if(length>0)strokes.push({node,length});}
       const plan=penPlan(strokes.map(s=>s.length),{start:delay,budget}),list=[];
       strokes.forEach((s,i)=>{if(!plan[i])return;const dash=`${s.length} ${s.length}`;
         play(
@@ -1011,7 +1031,7 @@
       // (when it was held), then ([end, next]: a first swing hands over to its steady swing when its time
       // passes end)}.
       // The rate of the fastest drawing that is going: 24 while a scene plays, 12 where only minis do.
-      const fpsOf=f=>(FILM_LEVELS[container.dataset?.gFilm]||FILM_FPS)[f.scene?'scene':'mini'];
+      const fpsOf=f=>(FILM_LEVELS[filmLevelOf(container)]||FILM_FPS)[f.scene?'scene':'mini'];
       function rate(){
         let fps=0;
         for(const r of runs.values())if(r.at==null&&!r.unseen)fps=Math.max(fps,fpsOf(r.f));
@@ -1118,11 +1138,14 @@
       }
       function frameLoops(t){
         if(railOff){if(t-railPeek<2000)return;railPeek=t;const rail=container.querySelector?.('.rd-course-rail')||null;if(rail===railSeen)return;watchRail(rail);loopsSeen=-Infinity;}
-        const step=1000/(FILM_LEVELS[container.dataset?.gFilm]||FILM_FPS).mini,gap=t-loopsAt;if(gap<step-4)return;loopsAt=t;
+        const step=1000/(FILM_LEVELS[filmLevelOf(container)]||FILM_FPS).mini,gap=t-loopsAt;if(gap<step-4)return;loopsAt=t;
         try{
           if(t-loopsSeen>=2000){
             loopsSeen=t;const live=new Set(),rail=container.querySelector?.('.rd-course-rail');watchRail(rail||null);
-            for(const a of rail?.getAnimations?.({subtree:true})||[]){
+            // The dock's course cards carry the same frames (Make it yours > Layout > course dock): their loops are the
+            // clock's too. Left to CSS they ran on every display refresh (24 loops on Home), which the rail's never did.
+            const dock=container.querySelector?.('.rd-dock');
+            for(const a of [...(rail?.getAnimations?.({subtree:true})||[]),...(dock?.getAnimations?.({subtree:true})||[])]){
               if(!String(a.animationName||'').startsWith('rd-fl-')||a.playState==='idle')continue;live.add(a);
               if(!loops.has(a)){
                 const twin=cssTwin(a);
@@ -1153,9 +1176,10 @@
         // A drawing slower than the clock (a mini while a scene lives) takes every second tick: its turn comes
         // when its own frame time has passed (less half a tick, for a timer that fires a little early).
         const turn=f=>{let ok=turns.get(f);if(ok===undefined){ok=!clock||fpsOf(f)>=clock||t-f.shown>=1000/fpsOf(f)-500/clock;if(ok)f.shown=t;turns.set(f,ok);}return ok;};
-        for(const [x,r] of [...runs])if(r.at==null&&!r.unseen&&turn(r.f))frame(x,r,t);
+        const quietTick=answerTick;answerTick=false;
+        if(!quietTick)for(const [x,r] of [...runs])if(r.at==null&&!r.unseen&&turn(r.f))frame(x,r,t);
         // This frame is the one they hold, so the next input goes on from exactly here.
-        if(!busyHeld&&t>=scrollUntil)frameLoops(t);else loopsHeld=true;
+        if(quietTick){}else if(t>=scrollUntil)frameLoops(t);else loopsHeld=true;
         if(t-lastInput>=Math.min(ART_IDLE_LEVELS[container.dataset?.gFilm]??ART_IDLE_MS,onBattery?30000:ART_IDLE_MS)){
           idle=true;
           rest(true);
@@ -1171,26 +1195,10 @@
       }
       // A scroll anywhere on the page (ART_SCROLL_MS): the frame beads hold until it has stopped.
       function scrolling(){scrollUntil=now()+ART_SCROLL_MS;}
-      // A press or a key (ART_BUSY_MS): held from the input until the frame after the render that answers it, or the cap.
-      let busyTimer=0,busyFrame=0,busyHeld=false;
-      const later=(fn,ms)=>root.setTimeout?root.setTimeout(fn,ms):0,unlater=id=>{if(id)root.clearTimeout?.(id);};
-      function unbusy(){
-        unlater(busyTimer);busyTimer=0;if(busyFrame&&root.cancelAnimationFrame)root.cancelAnimationFrame(busyFrame);busyFrame=0;
-        if(!busyHeld)return;busyHeld=false;if(!dead)for(const f of films.values())release(f);
-      }
-      function busy(){
-        if(dead)return;
-        if(!busyHeld){busyHeld=true;for(const f of films.values())hold(f);}
-        unlater(busyTimer);busyTimer=later(unbusy,ART_BUSY_MS);busyTimer?.unref?.();
-        if(!busyTimer)unbusy();
-      }
-      // The render that answers the input has run: they go on once the frame that shows it has painted (a frame, then the
-      // task after it).
-      function answered(){
-        if(dead||!busyHeld||busyFrame)return;
-        const after=()=>{busyFrame=0;later(unbusy,0);};
-        busyFrame=root.requestAnimationFrame?root.requestAnimationFrame(after):(later(after,16),0);
-      }
+      // A render that answers an input has run (dashboard.js): the next tick writes nothing, so the frame that shows the
+      // answer carries the answer alone. Nothing is held: the tick after it draws on from the film's own time.
+      let answerTick=false;
+      function answered(){if(!dead)answerTick=true;}
       // A new part joins the clock paused, at its first frame (a part of a held drawing joins held).
       function run(f,x,{origin=now(),then=null,part=null,span}={}){
         if(!x)return null;x.pause?.();const r={f,origin,at:f.held?now():null,then,part,span,unseen:false,rests:restsOf(x),rest:-1};runs.set(x,r);
@@ -1199,7 +1207,7 @@
       }
       function hold(f,at){if(f.held)return;f.held=true;const t=at??now();for(const r of runs.values())if(r.f===f&&r.at==null)r.at=t;wake();}
       function release(f){
-        if(dead||idle||busyHeld||f.offscreen||hidden()||!f.held)return;
+        if(dead||idle||f.offscreen||hidden()||!f.held)return;
         f.held=false;const t=now();for(const r of runs.values())if(r.f===f&&r.at!=null){r.origin+=t-r.at;r.at=null;}
         wake();
       }
@@ -1380,7 +1388,7 @@
         pending=[];
         for(const [svg,f] of [...films])if(svg.isConnected===false)stop(svg);else gate(svg,f);
         if(waiting.length)settle();
-        for(const svg of container.querySelectorAll?.(ART_FRAMES)||[])if(!seen.has(svg)&&!waiting.includes(svg))pending.push(svg);
+        for(const svg of container.querySelectorAll?.(ART_FRAMES)||[])if(!seen.has(svg)&&!waiting.includes(svg)&&!soonSet.has(svg))pending.push(svg);
         if(!mounted&&shellOf()){mounted=true;entrance();}
         afterRender();
       }
@@ -1433,37 +1441,59 @@
         if(dead||reduced()||!pointer()||!pending.length)return;
         const mine=pending.filter(svg=>element===container||element.contains?.(svg));
         pending=pending.filter(svg=>!mine.includes(svg));
+        const later=[];
         for(const svg of mine){
-          seen.add(svg);
           const key=sceneKey(svg),frame=svg.parentNode;
           if(isScene(svg)){
-            if(kind==='course')reveal(svg,ART_T.course);
-            else if(kind==='workspace'&&!(key&&appeared.has(key)))reveal(svg,ART_T.workspace);
-            else if(key)appeared.add(key);
-          }else if(frame?.matches?.('.rd-empty-art')&&['course','filter','workspace'].includes(kind)&&style()==='gentle')reveal(svg,ART_T.empty);
+            if(kind==='course')later.push([svg,ART_T.course]);
+            else if(kind==='workspace'&&!(key&&appeared.has(key)))later.push([svg,ART_T.workspace]);
+            else{seen.add(svg);if(key)appeared.add(key);}
+          }else if(frame?.matches?.('.rd-empty-art')&&['course','filter','workspace'].includes(kind)&&style()==='gentle')later.push([svg,ART_T.empty]);
+          else seen.add(svg);
         }
         // What it did not reveal (a banner seen before) is drawn and lives from rest.
         ensure();
+        if(later.length)revealSoon(later);
       }
+      // THE REVEAL WAITS ONE FRAME (speed, 2026-11-05). Making a drawing's reveal (a heading scene's pen strokes, blooms
+      // and the loops after them: hundreds of animations) was most of a course click before anything painted. The page
+      // now paints first with the drawings it will reveal hidden (data-art-wait, refresh.css), and the reveal is made in
+      // the task after that frame. A reveal starts from an empty drawing, so nothing is seen drawn and then undrawn.
+      // A drawing a later render took away is skipped; cancel() (a key, a resize, a setting) shows them drawn.
+      let soon=[],soonQueued=false;const soonSet=new WeakSet();
+      function revealSoon(list){
+        for(const [svg] of list){svg.setAttribute?.('data-art-wait','');soonSet.add(svg);}
+        soon.push(...list);if(soonQueued)return;soonQueued=true;
+        const go=()=>{soonQueued=false;const now=soon;soon=[];
+          for(const [svg] of now){svg.removeAttribute?.('data-art-wait');soonSet.delete(svg);}
+          if(dead)return;
+          for(const [svg,t0] of now){if(svg.isConnected===false||seen.has(svg))continue;seen.add(svg);try{reveal(svg,t0);}catch{}}
+          ensure();};
+        // (no frames to wait for: at once)
+        if(typeof root.requestAnimationFrame!=='function'||typeof root.setTimeout!=='function'){go();return;}
+        root.requestAnimationFrame(()=>root.setTimeout(go,0));
+      }
+      // (cancel, destroy: what was waiting is simply drawn, and lives from rest)
+      function showSoon(){const now=soon;soon=[];for(const [svg] of now){svg.removeAttribute?.('data-art-wait');soonSet.delete(svg);if(!dead)see(svg);}}
       // Keyboard entry, resize, a setting: a drawing still being drawn is simply
       // drawn and lives on from rest; a loop that is already running keeps
       // running. Destroy: everything stops and the drawings rest as authored.
       function cancel(){
         const t=now();
         for(const [svg,f] of [...films]){if(dead)stop(svg);else if(f.until>t){endReveal(f);endLoops(f);}}
-        for(const svg of waiting)see(svg);waiting=[];
-        if(dead){unbusy();io?.disconnect?.();io=null;railSeen=null;pending=[];runs.clear();park();rest(false);freeLoops();return;}
+        for(const svg of waiting)see(svg);waiting=[];showSoon();
+        if(dead){answerTick=false;io?.disconnect?.();io=null;railSeen=null;pending=[];runs.clear();park();rest(false);freeLoops();return;}
         for(const [svg,f] of films)gate(svg,f);// a resize may have brought more of a panorama into view, or cut more away
         ensure();
       }
-      return {sync,claim,cancel,visibility,activity,busy,answered,scrolling,snapshot(){
+      return {sync,claim,cancel,visibility,activity,answered,scrolling,snapshot(){
         const out={};
         for(const [role,selector] of ART_ROLES){
           const svg=container.querySelector?.(selector),rect=svg?.getBoundingClientRect?.();if(!svg||!inView(rect))continue;
           // Where each living part stands right now, so the ghost lets go from that pose, not from rest.
           const poses=Array.from(svg.querySelectorAll?.('.art-loop')||[]).map(g=>{const cs=root.getComputedStyle?.(g);return cs?[cs.transform,cs.transformOrigin,cs.opacity]:null;});
           out[role]={
-            html:svg.outerHTML,
+            html:svg.outerHTML.replace(' data-art-wait=""',''),
             key:attr(svg,'data-rd-key'),
             rect,
             poses,
@@ -1795,7 +1825,7 @@
     root.document?.addEventListener?.('visibilitychange',onVisibility);
     return {syncTabs,snapshot,reveal,leave,place,ink,clearGhosts,cancel:cancelAll,activity:()=>{
       if(!dead)art.activity();
-    },busy:()=>{if(!dead)art.busy?.();},answered:()=>{if(!dead)art.answered?.();},scrolling:onScroll,
+    },answered:()=>{if(!dead)art.answered?.();},scrolling:onScroll,
       destroy(){
         dead=true;
         cancelAll();
@@ -1810,7 +1840,7 @@
       }};
   }
   // limits: the budgets the tests pin (every UI duration 420ms or less; the art film is decorative and tracked apart).
-  root.ReserveMotion={create,onFilmTick:fn=>{
+  root.ReserveMotion={create,batteryFilm,onFilmTick:fn=>{
     if(typeof fn!=='function')return ()=>{};
     FILM_TICKS.add(fn);
     return ()=>{FILM_TICKS.delete(fn);};

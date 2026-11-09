@@ -749,8 +749,21 @@
        },until+40)||0;
      return;
    }
-   const r=band.closest?.('.rd'),
-     key=r?[r.dataset?.theme,r.dataset?.themeKit,r.dataset?.rdDataTheme,r.dataset?.sceneTheme,r.dataset?.surfaceStyle,r.getAttribute?.('style')].join('|'):null;
+   // The page's inline style is mostly layout (where the dock sits, the rail's top, the status line's height, a panel's
+   // size), written at load and whenever a panel opens; none of it colours the text, so it is left out of the key, or
+   // each such write read the page's colours again, a whole style pass (2026-11-06: 86 ms of the first load at 2x CPU).
+   const layoutVar=/^\s*--rd-(dock|rail|status|panel|layout)-/,
+     r=band.closest?.('.rd'),
+     key=r?
+       [
+         r.dataset?.theme,
+         r.dataset?.themeKit,
+         r.dataset?.rdDataTheme,
+         r.dataset?.sceneTheme,
+         r.dataset?.surfaceStyle,
+         String(r.getAttribute?.('style')||'').split(';').filter(d=>!layoutVar.test(d)).join(';')
+       ].join('|'):
+       null;
    if(key!==null&&key===toneKey&&lastInk){if(band.dataset.ink!==lastInk)band.dataset.ink=lastInk;return;}
    toneKey=key;toneNow();
   }
@@ -1718,12 +1731,14 @@
     });
   },
    // New Canvas data (a due date moved, work handed in) ranks the cards again; the same data costs nothing.
-   refresh(){
-     showChoice();
-     if(disposed||factsPrint(readFacts())===builtPrint)return false;
-     reflow(()=>{rebuild();draw();});
+   refresh(){showChoice();if(disposed||factsPrint(readFacts())===builtPrint)return false;reflow(()=>{rebuild();draw();});return true;},measure,
+   // Speed (2026-11-05): the band moves into the page's new host when Home is drawn again (another tab and back), so
+   // its cards are not built and measured again; what it observes is its own band and the page root, which move with it.
+   rehost(next){
+     if(disposed||!next||typeof next.replaceChildren!=='function')return false;
+     if(next!==container){band.remove?.();next.replaceChildren(band);container=next;}
      return true;
-   },measure,grow:(key,value=true)=>grow(visibleCards().find(c=>c.dataset.aidKey===key),value),destroy(){
+   },grow:(key,value=true)=>grow(visibleCards().find(c=>c.dataset.aidKey===key),value),destroy(){
      disposed=true;
      env.clearTimeout?.(ahead);
      env.clearTimeout?.(toneWait);
