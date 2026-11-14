@@ -13,10 +13,11 @@
 .rd[data-theme-kit] :is(.rd-rail-next b,.rd-reader-facts span:first-child,[class*=due]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-]),[class*=time]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-])){color:#FFD48A!important}
 .rd[data-theme-kit] .rd-reader-facts span:not(:first-child){color:var(--rd-muted)!important}
 .rd[data-theme-kit] .rd-rich-text,.rd[data-theme-kit] .rd-rich-text :is(p,li,ol,ul,span,em,strong,b,td,th,h4,h5,h6){color:var(--rd-ink)!important}
-/* the scene: the drawing across the top, fading into the paper */
-.rd[data-theme-kit] > .tk-sky{position:absolute;left:0;right:0;top:0;aspect-ratio:1600/440;z-index:0;pointer-events:none;
-  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 66%,rgba(0,0,0,.4) 86%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 66%,rgba(0,0,0,.4) 86%,transparent 100%)}
-.rd[data-theme-kit] > .tk-sky video{width:100%;height:100%;object-fit:contain;object-position:50% 0;display:block}
+/* the band, the strip above the widgets (scene-themes.js measures it as --tk-band): the scene reaches just under the
+   widgets' top edge and fades into the paper there; a narrower window crops it from the left, where the scene keeps its quiet side */
+.rd[data-theme-kit] > .tk-sky{position:absolute;left:0;right:0;top:0;height:calc(var(--tk-band,330px) + 28px);z-index:0;pointer-events:none;
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 56px),rgba(0,0,0,.4) calc(100% - 26px),transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 56px),rgba(0,0,0,.4) calc(100% - 26px),transparent 100%)}
+.rd[data-theme-kit] > .tk-sky video,.rd[data-theme-kit] > .tk-sky .tk-poster{width:100%;height:100%;object-fit:cover;object-position:100% 50%;display:block}
 .rd[data-theme-kit] > .rd-shell{position:relative;z-index:1}
 .rd[data-theme-kit] .rd-heading-art{display:none!important}
 .rd[data-theme-kit] .rd-course-heading h1::before{background:none!important}
@@ -24,10 +25,10 @@
 .rd[data-theme-kit] .rd-course-heading::before{position:absolute!important;inset:-30px auto -20px -50px!important;width:620px!important;height:auto!important;z-index:-1!important;background:radial-gradient(closest-side,rgba(16,56,108,.55),rgba(16,56,108,0))!important}
 /* panes of blueprint: a deeper blue sheet, a white hairline along the top edge */
 .rd[data-theme-kit] .rd-toolbar{background:transparent!important}
-.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week,.rd-reader-tabs){background:rgba(16,58,112,.72)!important;box-shadow:inset 0 0 0 1px rgba(226,238,255,.28)!important;backdrop-filter:none}
+.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-tools,.rd-filter-group,.rd-week,.rd-reader-tabs){background:rgba(16,58,112,.72)!important;box-shadow:inset 0 0 0 1px rgba(226,238,255,.28)!important;backdrop-filter:none}
 .rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter,.rd-reader-tab){color:#E2EEFC!important}
-.rd[data-theme-kit] :is(.rd-workspace-tab[aria-selected=true],.cz-tab[aria-selected=true],.rd-filter[aria-pressed=true],.rd-day-filter[aria-pressed=true],.rd-reader-tab[aria-pressed=true],.rd-reader-tab[aria-selected=true]),.rd[data-theme-kit] .rd-glance-chip{background:linear-gradient(180deg,#f6faff,#d3e5f8)!important;color:#12304f!important;font-weight:700;box-shadow:inset 0 -3px 0 rgba(0,80,120,.25),inset 0 1px 0 rgba(255,255,255,.8),0 0 14px rgba(207,230,255,.35)!important}
-.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter)::before,.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week,.rd-reader-tabs)::before{background:transparent!important;box-shadow:none!important}
+.rd[data-theme-kit] :is(.rd-workspace-tab[aria-selected=true],.rd-filter[aria-pressed=true],.rd-day-filter[aria-pressed=true],.rd-reader-tab[aria-pressed=true],.rd-reader-tab[aria-selected=true]),.rd[data-theme-kit] .rd-glance-chip{background:linear-gradient(180deg,#f6faff,#d3e5f8)!important;color:#12304f!important;font-weight:700;box-shadow:inset 0 -3px 0 rgba(0,80,120,.25),inset 0 1px 0 rgba(255,255,255,.8),0 0 14px rgba(207,230,255,.35)!important}
+.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter)::before,.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-tools,.rd-filter-group,.rd-week,.rd-reader-tabs)::before{background:transparent!important;box-shadow:none!important}
 .rd[data-theme-kit] .rd-search input{background:rgba(15,54,104,.82)!important;color:var(--rd-ink)!important;border:1px solid rgba(226,238,255,.35)!important}
 .rd[data-theme-kit] .rd-search input::placeholder{color:#B8CFEA}
 .rd[data-theme-kit] .rd-course-rail{background:rgba(15,54,104,.82)!important;border-radius:18px!important;box-shadow:inset 0 0 0 1px rgba(226,238,255,.22),inset 0 2px 0 rgba(236,244,255,.35),0 18px 40px rgba(6,24,52,.4)!important;backdrop-filter:none}
@@ -106,3 +107,6 @@
 /* A Home module shorter than its row is drawn down to the row's foot like every other panel (the dashboard extends a
    panel's frame by --rd-panel-grow), so a row of modules reads as one row of panels */
 .rd[data-theme-kit] .rd-main.rd-desk > .rd-widget::before{bottom:calc(-18px - var(--rd-panel-grow,0px))!important}
+/* the dock's cards: the frame's wide border left the card's inner paper as a bar across the words; the frame's own fill
+   is the card (2026-11-06) */
+.rd[data-theme-kit] .rd-dock-card>.rd-frame::before{display:none!important}

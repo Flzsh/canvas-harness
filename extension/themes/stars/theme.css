@@ -11,19 +11,20 @@
 .rd[data-theme-kit] :is(.rd-rail-next b,.rd-reader-facts span:first-child,[class*=due]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-]),[class*=time]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-])){color:#FFC9A8!important}
 .rd[data-theme-kit] .rd-reader-facts span:not(:first-child){color:var(--rd-muted)!important}
 .rd[data-theme-kit] .rd-rich-text,.rd[data-theme-kit] .rd-rich-text :is(p,li,ol,ul,span,em,strong,b,td,th,h4,h5,h6){color:var(--rd-ink)!important}
-/* the sky: the whole picture across the top, melting into the dark */
-.rd[data-theme-kit] > .tk-sky{position:absolute;left:0;right:0;top:0;aspect-ratio:1600/440;z-index:0;pointer-events:none;
-  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 62%,rgba(0,0,0,.4) 84%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 62%,rgba(0,0,0,.4) 84%,transparent 100%)}
-.rd[data-theme-kit] > .tk-sky video{width:100%;height:100%;object-fit:contain;object-position:50% 0;display:block}
+/* the band, the strip above the widgets (scene-themes.js measures it as --tk-band): the scene reaches just under the
+   widgets' top edge and melts into the dark there; a narrower window crops it from the left, where the scene keeps its quiet side */
+.rd[data-theme-kit] > .tk-sky{position:absolute;left:0;right:0;top:0;height:calc(var(--tk-band,330px) + 28px);z-index:0;pointer-events:none;
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 56px),rgba(0,0,0,.4) calc(100% - 26px),transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 56px),rgba(0,0,0,.4) calc(100% - 26px),transparent 100%)}
+.rd[data-theme-kit] > .tk-sky video,.rd[data-theme-kit] > .tk-sky .tk-poster{width:100%;height:100%;object-fit:cover;object-position:100% 50%;display:block}
 .rd[data-theme-kit] > .rd-shell{position:relative;z-index:1}
 .rd[data-theme-kit] .rd-heading-art{display:none!important}
 .rd[data-theme-kit] .rd-course-heading h1::before,.rd[data-theme-kit] .rd-course-heading::before{background:none!important}
 /* glass: every card and panel, a hairline of starlight round it */
 .rd[data-theme-kit] .rd-toolbar{background:transparent!important}
-.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week,.rd-reader-tabs){background:rgba(12,18,36,.74)!important;box-shadow:inset 0 0 0 1px rgba(157,184,255,.2)!important;backdrop-filter:none}
+.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-tools,.rd-filter-group,.rd-week,.rd-reader-tabs){background:rgba(12,18,36,.74)!important;box-shadow:inset 0 0 0 1px rgba(157,184,255,.2)!important;backdrop-filter:none}
 .rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter,.rd-reader-tab){color:#C9D2E8!important}
-.rd[data-theme-kit] :is(.rd-workspace-tab[aria-selected=true],.cz-tab[aria-selected=true],.rd-filter[aria-pressed=true],.rd-day-filter[aria-pressed=true],.rd-reader-tab[aria-pressed=true],.rd-reader-tab[aria-selected=true]),.rd[data-theme-kit] .rd-glance-chip{background:radial-gradient(120% 140% at 50% 0%,rgba(190,210,255,.42),rgba(120,150,255,.16))!important;color:#F4F7FF!important;box-shadow:inset 0 0 0 1px rgba(190,210,255,.45),0 0 14px rgba(120,150,255,.25)!important}
-.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter)::before,.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-filter-group,.rd-week,.rd-reader-tabs)::before{background:transparent!important;box-shadow:none!important}
+.rd[data-theme-kit] :is(.rd-workspace-tab[aria-selected=true],.rd-filter[aria-pressed=true],.rd-day-filter[aria-pressed=true],.rd-reader-tab[aria-pressed=true],.rd-reader-tab[aria-selected=true]),.rd[data-theme-kit] .rd-glance-chip{background:radial-gradient(120% 140% at 50% 0%,rgba(190,210,255,.42),rgba(120,150,255,.16))!important;color:#F4F7FF!important;box-shadow:inset 0 0 0 1px rgba(190,210,255,.45),0 0 14px rgba(120,150,255,.25)!important}
+.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter)::before,.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-tools,.rd-filter-group,.rd-week,.rd-reader-tabs)::before{background:transparent!important;box-shadow:none!important}
 .rd[data-theme-kit] .rd-search input{background:rgba(10,14,28,.78)!important;color:var(--rd-ink)!important;border:1px solid rgba(157,184,255,.28)!important}
 .rd[data-theme-kit] .rd-search input::placeholder{color:#AEB8D2}
 .rd[data-theme-kit] .rd-course-rail{background:rgba(9,13,26,.82)!important;border-radius:18px!important;box-shadow:inset 0 0 0 1px rgba(157,184,255,.16),0 20px 50px rgba(0,0,0,.5)!important;backdrop-filter:none}

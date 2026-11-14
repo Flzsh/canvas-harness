@@ -4,7 +4,11 @@
 // (serve), which applies them one at a time: two pages saving at once cannot undo each other.
 (function(root){
  'use strict';
- const KEY='reserve:appearance',TARGET='ch-appearance',FIELDS=['theme','motion','nightArt','pet','sceneTheme'],SCENES=['','starry','sea','stars','blueprint'],clone=value=>structuredClone(value);
+ const KEY='reserve:appearance',
+  TARGET='ch-appearance',
+  FIELDS=['theme','motion','nightArt','pet','sceneTheme'],
+  SCENES=['','starry','sea','stars','blueprint','maple','thanksgiving'],
+  clone=value=>structuredClone(value);
  const defaults=()=>({theme:'light',motion:'gentle',nightArt:0,pet:true,sceneTheme:''});
  let pending=Promise.resolve();
  function queue(fn){const next=pending.catch(()=>{}).then(fn);pending=next;return next;}

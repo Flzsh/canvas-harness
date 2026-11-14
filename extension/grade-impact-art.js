@@ -1144,6 +1144,8 @@
   const host=()=>container.closest?.('.rd')||container;
   const off=()=>!!media?.matches||host().dataset?.motionStyle==='off'||host().dataset?.featureMotion==='off';
   let pageDir=0;const watched=new Set();
+   // Everything kept per element is kept weakly (lastApp too, 2026-11-06): a Home render makes a new module each time it
+   // comes back, and a Map keyed by the module held every old one with its whole drawing (72 nodes a click, without end).
    const seen=new WeakSet(),
      arrived=new WeakSet(),
      outside=new WeakMap(),
@@ -1153,7 +1155,7 @@
      hiddenRoom=new WeakMap(),
      memo=new WeakMap(),
      stale=[];
-   let drag=null,raf=0,dead=false,io=null,ro=null,lastApp=new Map(),revision=null,pending=0,hourTimer=0,hourDue=0;
+   let drag=null,raf=0,dead=false,io=null,ro=null,lastApp=new WeakMap(),revision=null,pending=0,hourTimer=0,hourDue=0;
   // Still (the house meaning, motion.js): things fade in where they land and nothing travels.
   const still=()=>!off()&&host().dataset?.motionStyle==='still';
   // a move stamps the dashboard with when it ends, so the companion keeps still meanwhile (pets.js)

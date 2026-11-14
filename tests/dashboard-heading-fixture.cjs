@@ -33,6 +33,8 @@ function fixture({courseId='10',assignments=[],initialState={},setup=()=>{}}={})
   get parentElement(){return this.parentNode?.nodeType===1?this.parentNode:null;}get nextSibling(){return this.parentNode?.childNodes[this.parentNode.childNodes.indexOf(this)+1]||null;}
   get isConnected(){return this===document.documentElement||!!this.parentNode?.isConnected;}
   get hidden(){return this.hasAttribute('hidden');}set hidden(v){this.toggleAttribute('hidden',v);}
+  // tabIndex reflects the tabindex attribute, as in a browser (buttons, links and fields default to 0, the rest to -1)
+  get tabIndex(){const v=this.attrs.tabindex;return v==null?(['BUTTON','A','INPUT','SELECT','TEXTAREA','SUMMARY'].includes(this.nodeName)?0:-1):Number(v);}set tabIndex(v){this.attrs.tabindex=String(v);}
   get textContent(){return this.nodeType===3?this.nodeValue:this.childNodes.map(n=>n.textContent).join('');}set textContent(value){this.replaceChildren();if(value)this.append(text(String(value)));}
   get innerHTML(){return this.childNodes.map(n=>n.outerHTML).join('');}set innerHTML(value){this.replaceChildren();const target=this.nodeName==='TEMPLATE'?this.content:this;parse(String(value),target);for(const select of target.querySelectorAll('select'))select.value=select.querySelector('option[selected]')?.value||select.querySelector('option')?.value||'';}
   get outerHTML(){return this.nodeType===3?this.nodeValue:`<${this.nodeName.toLowerCase()}${this.attributes.map(a=>` ${a.name}="${a.value}"`).join('')}>${this.innerHTML}</${this.nodeName.toLowerCase()}>`;}

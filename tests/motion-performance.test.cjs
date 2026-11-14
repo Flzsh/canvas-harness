@@ -173,7 +173,7 @@ function fakeTimers(){
 }
 test('a scene on screen plays at 24 a second with or without recent input and rests only after two minutes without any',()=>{
  const f=fixture({vars:true}),{svg}=f.art({loop:true});f.controller.syncTabs();f.flush();f.tick(4000);
- assert.equal(f.Motion.art.filmFps.scene,24);assert.equal(f.Motion.art.filmFps.mini,12);assert.equal(f.Motion.art.idleMs,120000);assert.equal(f.Motion.art.busyMs,300);assert.equal(f.Motion.art.briskMs,undefined,'no brisk window');
+ assert.equal(f.Motion.art.filmFps.scene,24);assert.equal(f.Motion.art.filmFps.mini,12);assert.equal(f.Motion.art.idleMs,120000);assert.equal(f.Motion.art.busyMs,0,'a press holds nothing');assert.equal(f.Motion.art.briskMs,undefined,'no brisk window');
  assert.deepEqual(f.rate(),[1000/24]);
  for(let i=0;i<11;i++)f.tick(10000);
  assert.deepEqual(f.rate(),[1000/24],'still 24 a second 114 s after the last input');
@@ -182,21 +182,21 @@ test('a scene on screen plays at 24 a second with or without recent input and re
  const held=loop.currentTime;f.controller.activity();f.flush();assert.deepEqual(f.rate(),[1000/24],'the next input lets it go on at 24');
  f.tick(1000/24);assert.ok(loop.currentTime>=held,'from the frame it held');assert.ok(svg);f.controller.destroy();
 });
-test('a press holds the drawings until the frame showing its answer has painted, and 300 ms at most',()=>{
+test('a press or a key holds nothing: the drawings play on, and only the tick after the answering render writes nothing',()=>{
  const timers=fakeTimers(),f=fixture({vars:true,timers}),{svg}=f.art({loop:true});f.controller.syncTabs();f.flush();f.tick(4000);
  const loop=played(f,'rd-art-loop')[0],writes=()=>f.events.filter(e=>e.kind==='write'&&e.type==='time'&&e.node===loop.node.name).length;
- f.controller.busy();f.reset();f.tick(100);assert.equal(writes(),0,'held while the page answers the press');
- assert.deepEqual([...timers.queue.values()].map(t=>t.ms),[300],'with a 300 ms cap, never a fixed 700 ms');
- f.controller.answered();f.tick(42);assert.equal(writes(),0,'still held until the answer has painted');
- timers.paint();timers.run(0);assert.equal(timers.queue.size,0,'the cap is cleared');f.reset();f.tick(1000/24);assert.ok(writes()>0,'going on once the answer has painted');
- f.controller.busy();f.reset();f.tick(100);assert.equal(writes(),0);
- timers.run(300);f.reset();f.tick(1000/24);assert.ok(writes()>0,'a press that changes nothing holds them 300 ms at most');
- f.controller.answered();assert.equal(timers.frames.size,0,'an answer with nothing held waits for nothing');assert.ok(svg);f.controller.destroy();
+ assert.equal(f.controller.busy,undefined,'there is no press hold any more (owner, 2026-11-05)');
+ f.controller.activity();f.reset();f.tick(100);assert.ok(writes()>0,'a press is input and leaves the drawings playing');
+ assert.equal(timers.queue.size,0,'no hold timer');assert.equal(timers.frames.size,0,'nothing waits on a frame');
+ f.controller.answered();f.reset();f.tick(1000/24);assert.equal(writes(),0,'the tick after the answering render writes nothing');
+ f.reset();f.tick(1000/24);assert.ok(writes()>0,'and the next tick draws on');
+ assert.deepEqual(f.rate(),[1000/24],'the clock never stopped');assert.ok(svg);f.controller.destroy();
 });
-test('the dashboard holds the drawings for a press or a key, never for a wheel turn or a scroll',()=>{
+test('the dashboard holds the drawings for nothing: a press, a key, a wheel turn and a scroll are input only',()=>{
  const dash=fs.readFileSync(path.join(__dirname,'../extension/dashboard.js'),'utf8').replace(/\n[ \t]*/g,'');
  assert.match(dash,/const onWheel=\(\)=>\{motion\?\.activity\?\.\(\);\};/,'a wheel turn is input (it ends an idle rest) and holds nothing');
- assert.match(dash,/const onPointerdown=event=>\{[^}]*motion\?\.busy\?\.\(\);/);
+ assert.match(dash,/const onPointerdown=event=>\{[^}]*motion\?\.activity\?\.\(\);/,'a press is input');
+ assert.doesNotMatch(dash,/motion\?\.busy/,'a press or a key holds nothing');
  assert.match(dash,/try\{renderNow\(next\);renderedAt=started;\}finally\{rendering=false;\}(?:\/\/.{0,200}?)?motion\?\.answered\?\.\(\);/,'every render tells motion.js its answer is drawn');
 });
 

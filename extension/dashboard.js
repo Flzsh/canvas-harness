@@ -8,6 +8,17 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   if(typeof module==='object'&&module.exports)module.exports=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
   'use strict';
+  // Speed (2026-11-05): reading el.tabIndex makes Chrome bring the page's style up to date first (focusability depends on
+  // style), so comparing a tab's tabIndex inside a render cost a whole style pass each time (8-11 ms on a large Home).
+  // The tabindex attribute says the same without that. It is never read even when there is none yet: a render takes
+  // the attribute off (the markup has none), so that read came every render and cost a style pass each time (measured
+  // 2026-11-05 at 2x CPU: 22-53 ms of a tab click). Writing the attribute only queues a small restyle.
+  const setTabIndex=(el,value)=>{
+    if(!el)return;
+    const want=String(value);
+    if(el.getAttribute?.('tabindex')===want)return;
+    if(typeof el.setAttribute==='function')el.setAttribute('tabindex',want);else el.tabIndex=value;
+  };
 
   const CANVAS_ORIGIN=(globalThis.ReserveSite.origin());
   const DAY=86400000;
@@ -128,6 +139,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       for(const [name,value] of [['transform','var(--rd-tf)'],['opacity','var(--rd-op)']])
         if(current.style.getPropertyValue(name)===value&&!next.style.getPropertyValue(name))next.style.setProperty(name,value);
     }
+    // A part that already is the wanted one, attributes and every child (the toolbar, the dock, a row that did not change),
+    // is left as it is: walking it changed nothing and was about half of a tab click's patch (2026-11-05). Not where a
+    // field lives: a typed value is not an attribute, so a field the render empties (a quick-add after it is sent) would
+    // look the same and keep its text.
+    if(current.firstElementChild&&current.localName!=='select'&&current.localName!=='textarea'&&current.isEqualNode?.(next)&&!current.querySelector?.('input,textarea,select'))return;
     for(const attr of Array.from(current.attributes)){
       if(attr.name==='data-motion'||current.tagName==='DETAILS'&&attr.name==='open')continue;
       if(['src','poster'].includes(attr.name)&&current.dataset?.chMedia&&current.dataset.chMedia===next.dataset?.chMedia)continue;
@@ -170,13 +186,20 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         w=dock?.getBoundingClientRect?.().width||0;
       return {left,right,half:Math.max(0,(right-left-w)/2-8)};
     };
-    const place=shift=>{const {half}=room();container.style.setProperty('--rd-dock-shift',Math.round(shift*half)+'px');};
+    // The dock's place lives in custom properties on .rd, which every element inherits: a write there restyles the whole
+    // page. So a value is written only when it changed, and the boxes are read once, before any write. A dock in the
+    // middle (shift 0, the usual) needs no second read; one moved aside reads its own new width after the first write,
+    // as before. (Measured 2026-11-05: opening Make it yours at 2x CPU read the page's boxes again right after the
+    // write, a whole style and layout pass of its own: 0.37 s in a profile.)
+    const dockVar=(name,value)=>{if(container.style.getPropertyValue(name)!==value)container.style.setProperty(name,value);};
+    const place=shift=>{const {half}=room();dockVar('--rd-dock-shift',Math.round(shift*half)+'px');};
     const layout=()=>{
       if(!dock)return;
       const {left,right}=room();
-      container.style.setProperty('--rd-dock-center',(left+right)/2+'px');
-      container.style.setProperty('--rd-dock-available',Math.max(36,right-left)+'px');
-      place(drag?.shift??num(container.dataset.dockShift,0));
+      dockVar('--rd-dock-center',(left+right)/2+'px');
+      dockVar('--rd-dock-available',Math.max(36,right-left)+'px');
+      const shift=drag?.shift??num(container.dataset.dockShift,0);
+      if(shift)place(shift);else dockVar('--rd-dock-shift','0px');
     };
     // Pressing the empty shelf moves the dock along the bottom (it settles in the middle when let go near it); the
     // shelf's top edge resizes it. Arrows show where the press would grab, only while the pointer is there.
@@ -249,7 +272,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       })||0;
     };
     const resize=()=>layout();
-    const rove=el=>{if(!items.includes(el))return;tabId=el.dataset.id;for(const item of items){const index=item===el?0:-1;if(item.tabIndex!==index)item.tabIndex=index;}};
+    const rove=el=>{if(!items.includes(el))return;tabId=el.dataset.id;for(const item of items)setTabIndex(item,item===el?0:-1);};
     const focus=ev=>rove(ev.target.closest?.('.rd-dock-it'));
     const click=ev=>rove(ev.target.closest?.('.rd-dock-it'));
     const listeners={focusin:focus,click,pointermove:hover,pointerdown:down,pointerup:up,pointercancel:up,contextmenu:context,pointerover:play};
@@ -397,6 +420,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     const container=document.createElement('section');
     container.className='rd';
+    // Keyboard input also marks the dashboard with a bare data-kb (2026-11-05): the keyboard-only rules that reach every
+    // element (.rd[data-kb] *, refresh.css 11.7) name an attribute only keyboard input puts there, so on every other visit
+    // Chrome rules them out at once, as it does data-calm. Written as [data-input=keyboard] they were tried on every
+    // element of every style pass (Chrome's selector stats: the costliest selectors on Home, 29 ms over three clicks).
+    const inputMode=mode=>{
+      container.dataset.input=mode;
+      if(mode==='keyboard'){if(!('kb' in container.dataset))container.dataset.kb='';}else if('kb' in container.dataset)delete container.dataset.kb;
+    };
     // A write of an unchanged value still queues a MutationRecord, and every observer of the dashboard wakes for it (the
     // pony re-measured the whole page after each render: 15-25 ms). A render writes only the values that change.
     const setAttr=(el,name,value)=>{value=String(value);if(el&&el.getAttribute(name)!==value)el.setAttribute(name,value);};
@@ -662,7 +693,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       for(const tab of container.querySelector(':scope > .rd-toolbar')?.querySelectorAll('.rd-workspace-tabs .t-tab')||[]){
         const on=tab.dataset.tab===tabNow;
         if(tab.getAttribute('aria-selected')!==String(on))tab.setAttribute('aria-selected',String(on));
-        if(tab.tabIndex!==(on?0:-1))tab.tabIndex=on?0:-1;
+        setTabIndex(tab,on?0:-1);
       }
       const rail=container.querySelector(':scope > .rd-shell > .rd-course-rail');if(!rail)return;
       for(const row of rail.querySelectorAll('.rd-rail-course[data-arrange-course]')){
@@ -845,7 +876,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // again on the next minute tick, never skipped (updateFreshness). A render that throws leaves no time on record.
       const started=Date.now();renderedAt=0;timeBoundary=null;
       try{renderNow(next);renderedAt=started;}finally{rendering=false;}
-      // The page's answer to an input is drawn: drawings held for it go on once it has painted (motion.js busy).
+      // The page has drawn its answer: the film skips its next tick so the frame that shows it carries it alone (motion.js).
       motion?.answered?.();
       root.ReserveDeveloper?.rendered(Date.now()-started);
       if(!mounted){mounted=true;onReady();}
@@ -1233,8 +1264,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const builtins=[
         {id:'builtin:pet',name:personal.pet?.name||'Biscuit',kind:'pet',current:!s.makeYourOwn?.pet},
         ...['light','dark'].map(id=>({id:'builtin:mode:'+id,name:({light:'Light',dark:'Dark'})[id],kind:'theme',current:!s.makeYourOwn?.theme&&!s.sceneTheme&&(s.theme==='dark'?'dark':'light')===id})),
-        ...['starry','sea','stars','blueprint'].map(id=>
-          ({id:'builtin:scene:'+id,name:({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint'})[id],kind:'scene',current:!s.makeYourOwn?.theme&&s.sceneTheme===id})),
+        ...['starry','sea','stars','blueprint','maple','thanksgiving'].map(id=>
+          ({
+            id:'builtin:scene:'+id,
+            name:({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving'})[id],
+            kind:'scene',
+            current:!s.makeYourOwn?.theme&&s.sceneTheme===id
+          })),
         ...['studio','study','focus'].map(id=>({id:'builtin:layout:'+id,name:id[0].toUpperCase()+id.slice(1)+' layout',kind:'preset'}))
       ];
       return [...out,...builtins.filter(row=>!out.some(item=>item.kind===row.kind&&item.name.toLowerCase()===row.name.toLowerCase()))];
@@ -1385,7 +1421,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         ...(!enabled('grades')?{showGrades:false}:{}),
         ...(!enabled('motion')?{motion:'off',livingArt:'off'}:{}),
         ...(!enabled('course-hub')?{showCourseInformation:false}:{}),
-        ...(!enabled('course-art')&&!(enabled('scene-themes')&&['starry','sea','stars','blueprint'].includes(personal.settings.sceneTheme))?{courseCardStyle:'rounded',showCourseIcons:false}:{})
+        ...(!enabled('course-art')&&!(enabled('scene-themes')&&['starry','sea','stars','blueprint','maple','thanksgiving'].includes(personal.settings.sceneTheme))?
+          {courseCardStyle:'rounded',showCourseIcons:false}:
+          {})
       };
     }
 
@@ -1453,6 +1491,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(records.some(record=>record.attributeName!=='class'||(record.oldValue||'').replace(/\breserve-fit\b/g,'').trim()!==(record.target.getAttribute('class')||'').replace(/\breserve-fit\b/g,'').trim()))
         queueRail();
     }):null;
+    // THE REVIEW DRAWER ON THE ROOT (speed, 2026-11-05). While the Review deck's card files are open the dock steps aside
+    // and the page's corner mark hides (refresh.css). That was asked of the root with :has(), which made Chrome re-check
+    // the root, and restyle the whole page, for every node any animation put into it. The root now carries it itself:
+    // the same test as that :has() (a Review room whose data-rv-drawer is neither false nor empty), kept by an observer
+    // whatever draws the room (the dashboard, the room layer, a fold).
+    const drawerMark=()=>{if(destroyed)return;const open=Array.from(container.querySelectorAll?.('.rv-room')||[]).some(n=>{const v=n.getAttribute?.('data-rv-drawer');return v!=='false'&&v!=='';});
+      if(open!==(container.dataset.rvDrawer==='open')){if(open)container.dataset.rvDrawer='open';else delete container.dataset.rvDrawer;}};
+    const drawerWatch=typeof root.MutationObserver==='function'?new root.MutationObserver(drawerMark):null;
+    drawerWatch?.observe?.(container,{subtree:true,childList:true,attributes:true,attributeFilter:['data-rv-drawer']});
     if(railAncestors)
       for(let node=container.parentElement||container.getRootNode?.()?.host;node?.nodeType===1;node=node.parentElement||node.getRootNode?.()?.host)
         railAncestors.observe(node,{attributes:true,attributeOldValue:true,childList:true,attributeFilter:['class','style','hidden']});
@@ -2002,7 +2049,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       consumeSources();
       setData('featureMotion',enabled('motion')?'on':'off');setData('arrange',arrange?'on':'off');
       const dataTheme=enabled('customization')&&!ctx.s.sceneTheme?makeOwn?.state.theme:null;
-      const scene=!dataTheme&&enabled('scene-themes')&&root.ReserveSceneThemes&&['starry','sea','stars','blueprint'].includes(ctx.s.sceneTheme)?ctx.s.sceneTheme:'';
+      const scene=!dataTheme&&enabled('scene-themes')&&root.ReserveSceneThemes&&['starry','sea','stars','blueprint','maple','thanksgiving'].includes(ctx.s.sceneTheme)?ctx.s.sceneTheme:'';
       setData('theme',ctx.theme);applyNight(ctx.s.nightArt);
       setData('density',ctx.s.density==='compact'?'compact':'comfortable');
       setData('font',['humanist','serif'].includes(ctx.s.font)?ctx.s.font:'system');
@@ -2041,6 +2088,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const toolbar=container.querySelector('.rd-toolbar'),appearance=container.querySelector('.rd-appearance');
       // A swapped page starts at its top: the column's scroll is reset while the old page is still laid out. Read after
       // the swap, the offset laid the whole new page out inside the render, before the room's own measuring did it again.
+      // The tab bar is set first, while the page is still the one already laid out (the tabs are kept, never rebuilt): a
+      // new tabindex on the focused tab (the one just clicked) makes Chrome check there and then that it can still take
+      // focus, a style and layout pass. After the patch that pass laid the whole new page out in the middle of the render
+      // (2026-11-05: 32 ms of a Home click at 2x CPU); before it, there is nothing new to lay out.
+      if(toolbar)
+        for(const tab of toolbar.querySelectorAll('.t-tab')){
+          const active=tab.dataset.tab===(workspace==='work'&&workPage==='assignments'?'assignments':workspace);
+          setAttr(tab,'aria-selected',String(active));
+          setTabIndex(tab,active?0:-1);
+        }
       const swapped=releasePageFocus();let scrollReset=false;
       if(swapped&&resetWorkspaceScroll){const column=container.querySelector('.rd-shell > .rd-workspace');if(column?.scrollTop)column.scrollTop=0;scrollReset=true;}
       if(toolbar){
@@ -2097,11 +2154,6 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
          // The phone reader sheet (refresh.css section 16) covers Canvas's chrome, as the dock does.
          container.getRootNode?.()?.host?.toggleAttribute?.('data-reserve-sheet',readerOpen&&workspace==='work');}
         nextToolbar.remove();
-        for(const tab of toolbar.querySelectorAll('.t-tab')){
-          const active=tab.dataset.tab===(workspace==='work'&&workPage==='assignments'?'assignments':workspace);
-          setAttr(tab,'aria-selected',String(active));
-          setProp(tab,'tabIndex',active?0:-1);
-        }
         if(appearance&&nextAppearance){patchUI(appearance.querySelector('.t-acc-panel-inner'),nextAppearance.querySelector('.t-acc-panel-inner'));
         setAttr(appearance,'data-open',String(customizeOpen));
         const panel=appearance.querySelector('.t-acc-panel');setProp(panel,'inert',!customizeOpen);
@@ -2293,6 +2345,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // read over the whole new page in the fold's long frame.
       if(!tabMotion&&moving)syncTabsLater();else motion?.syncTabs(tabMotion,false,snapshot);
       if(motionTarget)motion?.reveal(container.querySelector(motionTarget),{animate:tabMotion&&container.dataset.input==='pointer',kind:motionKind,direction,snapshot});
+      pressClear();
       for(const draft of drafts.values()){const field=container.querySelector(`[data-rd-field="${draft.field}"][data-id="${draft.id}"]`);if(field)field.value=draft.value;}
       for(const [id,value] of stepDrafts){const field=container.querySelector(`[data-rd-field="new-step"][data-id="${id}"]`);if(field)field.value=value;}
       for(const el of container.querySelectorAll?.('details[data-rd-section]')||[]){if(disclosures.has(el.dataset.rdSection))setProp(el,'open',disclosures.get(el.dataset.rdSection));}
@@ -3477,7 +3530,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(until>0){keyboardWait=root.setTimeout(()=>{keyboardWait=idle(go);},until+40);return;}
        keyboardWait=0;
        if((container.dataset.input||'')!==asked||container.dataset.input==='keyboard')return;
-       container.dataset.input='keyboard';
+       inputMode('keyboard');
        motion?.cancel({preserveArt:true});
        motion?.syncTabs(false,true);
       };
@@ -3495,7 +3548,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // other keys still mark it, a moment later.
       if(container.dataset.chRoom){if(event.key==='Tab')tabAt=Date.now();if(event.key!=='Escape')keyboardLater();board?.keydown(event);return;}
       if(!container.dataset.chLinksPending&&hub?.keydown?.(event))return;
-      motion?.activity?.();motion?.busy?.();if(event.key==='Tab')tabAt=Date.now();
+      motion?.activity?.();if(event.key==='Tab')tabAt=Date.now();
       // The first key after the mouse marks keyboard use and restyles the tabs (some five thousand elements). While a
       // full-page room (Grade impact, the Review deck) is up, its own key (Escape folds it) goes first and the restyle waits
       // until the browser is idle after the move.
@@ -3503,7 +3556,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // key, never marks keyboard use at all (as with the Focus room above).
       if(container.dataset.input!=='keyboard'){
         if(room||container.querySelector('.gi-room:not([data-gi-away]), [data-review-deck]')||Number(container.dataset.chMoving||0)>Date.now()){if(event.key!=='Escape')keyboardLater();}
-        else{container.dataset.input='keyboard';motion?.cancel({preserveArt:true});motion?.syncTabs(false,true);}
+        else{inputMode('keyboard');motion?.cancel({preserveArt:true});motion?.syncTabs(false,true);}
       }
       if(arrange?.keydown(event))return;
       if(reviewDeck?.keydown(event))return;
@@ -3583,7 +3636,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(destroyed||turn!==pointerTurn)return;
         const until=movingLeft();
         if(until>0){root.setTimeout(()=>idle(go),until+40);return;}
-        if(container.dataset.input!=='pointer')container.dataset.input='pointer';
+        if(container.dataset.input!=='pointer')inputMode('pointer');
       };
       idle(go);
     }
@@ -3591,9 +3644,35 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(container.dataset.input==='pointer')return;const t=event.composedPath?.()[0]||event.target;
       if(room||movingLeft()>0||t?.closest?.('.rd-roomlayer,[data-rv-grow],[data-rd-action="review-deck-open"],[data-gi-open],[data-rd-action="room-open"],.rd-workspace-tab[data-tab="review"]'))
         pointerLater();
-      else{pointerTurn++;container.dataset.input='pointer';}
+      else{pointerTurn++;inputMode('pointer');}
     }
-    const onPointerdown=event=>{pointerUse(event);motion?.activity?.();motion?.busy?.();arrange?.pointerdown(event);};
+    // INSTANT PRESS (owner, 2026-11-05: "do 1"). The tab, view or dock course a press lands on is drawn chosen at once
+    // (data-pressing, refresh.css), before the click that opens its page: a press lasts about a tenth of a second, so the
+    // choice shows while the button is still held, and the page follows with the click as before. The render clears it,
+    // or 0.9 s on when the press led nowhere (dragged away, let go elsewhere). What is chosen already is left alone.
+    var pressed=null,pressTimer=0;// (var: the first render clears presses before these lines run)
+    const PRESS='.rd-workspace-tab,.rd-filter,.rd-dock-it';
+    function pressClear(){
+      if(pressTimer){root.clearTimeout(pressTimer);pressTimer=0;}
+      if(!pressed)return;
+      const el=pressed,group=el.parentElement;
+      pressed=null;
+      if(el.dataset)delete el.dataset.pressing;
+      if(group?.dataset)delete group.dataset.pressing;
+    }
+    function pressMark(event){
+      if(event.button!==0||destroyed)return;const t=event.composedPath?.()[0]||event.target,el=t?.closest?.(PRESS);
+      if(!el||
+        !container.contains?.(el)||
+        el.disabled||
+        el.getAttribute?.('aria-disabled')==='true'||
+        el.getAttribute?.('aria-selected')==='true'||
+        el.getAttribute?.('aria-pressed')==='true'||
+        el.classList?.contains('on'))
+        return;
+      pressClear();pressed=el;el.dataset.pressing='true';if(el.parentElement?.dataset)el.parentElement.dataset.pressing='true';pressTimer=root.setTimeout(pressClear,900);
+    }
+    const onPointerdown=event=>{pressMark(event);pointerUse(event);motion?.activity?.();arrange?.pointerdown(event);};
     // Scrolling is input too, but it never holds the drawings: they keep playing while the page scrolls.
     const onWheel=()=>{motion?.activity?.();};
     container.addEventListener('pointerdown',onPointerdown);container.addEventListener('wheel',onWheel,{passive:true});
@@ -3605,7 +3684,23 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     // Any real pointer movement ends the hover hold set by a check-off. (The course
     container.addEventListener('contextmenu',onArrangeContext);
     // drawings need no hover: they live on their own, motion.js.)
-    const onPointermove=event=>{if(container.dataset.hoverHold)delete container.dataset.hoverHold;motion?.activity?.();arrange?.pointermove(event);};
+    // The first mouse movement (about 24 px of it) puts the page in pointer mode while the browser is idle (pointerLater),
+    // so the whole-page restyle that switching modes costs is done before the click, not inside it. A press still switches
+    // at once (pointerUse) when no movement came first; asked at most every two seconds.
+    let moveFrom=null,pointerAskedAt=-Infinity;
+    const askPointer=event=>{
+      if(container.dataset.input==='pointer'||(event.pointerType&&event.pointerType!=='mouse')){moveFrom=null;return;}
+      const t=root.performance?.now?.()??Date.now();if(t-pointerAskedAt<2000)return;
+      if(!moveFrom){moveFrom=[event.clientX,event.clientY];return;}
+      if(Math.hypot((event.clientX||0)-moveFrom[0],(event.clientY||0)-moveFrom[1])<24)return;
+      moveFrom=null;pointerAskedAt=t;pointerLater();
+    };
+    const onPointermove=event=>{
+      if(container.dataset.hoverHold)delete container.dataset.hoverHold;
+      motion?.activity?.();
+      arrange?.pointermove(event);
+      askPointer(event);
+    };
     container.addEventListener('pointermove',onPointermove);
     // Capture the last scroll on normal navigation/reload without saving on
     document.addEventListener('keydown',onKeydown);
@@ -3657,6 +3752,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         scrollBoxes?.disconnect();
         railLayout?.disconnect();
         railAncestors?.disconnect();
+        drawerWatch?.disconnect?.();
         root.clearTimeout(railTimer);
         if(railSelectionFrame)cancelPaint(railSelectionFrame);
         root.removeEventListener?.('resize',queueRail);document.fonts?.removeEventListener?.('loadingdone',queueRail);

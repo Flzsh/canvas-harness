@@ -1,5 +1,9 @@
 # Reviewer testing notes
 
+## 3.10.0 changes
+
+3.10.0 adds two packaged scene themes (Thanksgiving and Maple Wind: a looping video, a poster, frames and icons each, inside the package), sizes every scene to the strip above Home's first widget with repainted Under the Sea, Starry Night and Blueprint videos, redraws the Deadline changes panel and the top bar's right side, and makes clicks faster. It adds no permissions, no network requests and no remote code, and the 4.0 daily AI is not in it.
+
 ## 3.9.3 changes
 
 3.9.3 turns on the Focus room, Review deck and Grade impact in Full (they were already in the package, switched off), opens the Assignments page on a list of every assignment (late and due work first, done work kept below), keeps a course's colour when it is moved, fits the Starfield theme's pictures and sky, and draws the play tools' cards. It adds no permissions, no network requests and no remote code.

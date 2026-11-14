@@ -1,4 +1,5 @@
-/* One local search and judgment path for the Ask line, offers and planning. */
+/* One local search and judgment path for the Ask line, offers and planning.
+   Training rounds 7 and 8 (short and normal requests, the sealed set of 600 lines) by DorjieQ, issue #68. */
 (function(root){
  'use strict';
  const load=(name,file)=>root[name]||(typeof module==='object'&&module.exports?(()=>{try{return require(file);}catch{return null;}})():null),

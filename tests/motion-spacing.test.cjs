@@ -93,7 +93,7 @@ test('public motion CSS fades initial content uniformly without moving it or rep
     assert.doesNotMatch(body,/animation-delay:|rd-lift|translate|transform:/);
   }
   assert.doesNotMatch(main,/\[data-motion=entering\][^{}]*\{[^{}]*animation-duration:\s*0s/);
-  assert.match(main,/\.rd\[data-input=keyboard\]\[data-entrance\]/);
+  assert.match(main,/\.rd\[data-kb\]\[data-entrance\]/);
   assert.match(main,/prefers-reduced-motion:\s*reduce/);
   assert.match(main,/overflow-y:\s*auto;\s*display:\s*none;\s*opacity:\s*0;\s*pointer-events:\s*none/,'a closed phone reader does not leave invisible contents in the accessibility tree');
   assert.match(app,/@keyframes toast-in\{\s*from\{opacity:0\}\s*to\{opacity:1\}\s*\}/);

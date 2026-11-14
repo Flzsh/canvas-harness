@@ -1,0 +1,95 @@
+/* Thanksgiving (Block Print), round 2: the dashboard as a hand-carved linocut of the harvest gathering, printed in a few
+   inks on cream paper (key brown-black, cranberry, deep red, olive, sage, harvest gold, a little peach and rust). Across
+   the top, evening on the farm: the long table set out between the barn (its doors rolled open, lit inside) and the
+   farmhouse, lights strung over it, the family's truck in, geese going over, a crescent moon; the lights twinkle, the
+   chimney smokes, steam rises off the turkey, wild turkeys forage. Below, the print's cream paper where you read, in the
+   key ink; cards and panels framed in a carved line with a cranberry rule inside it, cranberries and sage, wheat, squash
+   and a gourd stamped in their corners; titles in the book serif; the motifs are the table's things (the roast, a horn
+   of plenty, the pie, a lantern, corn, squash). Its red is cranberry, not Maple Wind's rust. Everything flat (no gloss,
+   no glow); what moves moves by transform or opacity only. */
+.rd.rd.rd.rd[data-theme-kit]{--rd-bg:#F7EFDF;--rd-surface:#FBF4E4;--rd-surface-2:#F3E7CF;--rd-ink:#2B1E17;--rd-muted:#6F5B48;--rd-ink-2:#45322A;--rd-faint:#9C8771;--rd-line:rgba(43,30,23,.2);--rd-accent:#8A2433;--rd-soft:rgba(138,36,51,.1);--rd-course:#8A2433;--rd-danger:#86291F;
+  background:linear-gradient(180deg,#F4E9D3 0,#F5ECD9 22%,#F7EFDF 44%,#F7EFDF 100%)!important;color:var(--rd-ink)!important;position:relative;isolation:isolate;overflow:hidden}
+.rd[data-theme-kit] :is(h1,h2,h3,.rd-rail-name,.rd-rail-heading){font-family:Literata,Georgia,"Palatino Linotype",serif!important;font-weight:700!important;letter-spacing:0;color:#2B1E17!important}
+.rd[data-theme-kit] h1{font-weight:800!important;font-size:44px!important;text-shadow:0 1px 0 rgba(251,244,228,.85),0 0 20px rgba(244,233,211,.95)}
+.rd[data-theme-kit] .rd-rail-heading,.rd[data-theme-kit] .rd-heading-date,.rd[data-theme-kit] .rd-bookmarks :is(p,small,h2){text-shadow:0 1px 0 rgba(251,244,228,.85)}
+.rd[data-theme-kit] :is(button,label,span,b,strong,small,em,time,li,td,th,dt,dd){color:inherit}
+.rd[data-theme-kit] :is(small,p,.rd-heading-date,.rd-rail-next){color:var(--rd-muted)!important}
+.rd[data-theme-kit] .rd-heading-date,.rd[data-theme-kit] .rd-bookmarks :is(p,small){color:#54402F!important}
+.rd[data-theme-kit] :is(.rd-text-button,.rd-grade-switch,.rd-board-edit,.rd-toolbox-trigger){color:var(--rd-ink)!important}
+.rd[data-theme-kit] :is(.rd-rail-next b,.rd-reader-facts span:first-child,[class*=due]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-]),[class*=time]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-])){color:#8A2433!important}
+.rd[data-theme-kit] .rd-reader-facts span:not(:first-child){color:var(--rd-muted)!important}
+.rd[data-theme-kit] .rd-rich-text,.rd[data-theme-kit] .rd-rich-text :is(p,li,ol,ul,span,em,strong,b,td,th,h4,h5,h6){color:var(--rd-ink)!important}
+/* the scene: the carved farm (an 8:1 print, 4096 x 512) across the whole top, as tall as the band (the strip above the
+   widgets, --tk-band from scene-themes.js), so the whole print shows; a narrower window crops it from the left, where the
+   print is plain paper and far fields; it fades into the paper just under the widgets' top edge */
+.rd[data-theme-kit] > .tk-sky{position:absolute;left:0;right:0;top:0;height:calc(var(--tk-band,330px) + 28px);z-index:0;pointer-events:none;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.5) 8%,#000 25%,#000 97%,transparent 100%),linear-gradient(180deg,#000 0,#000 calc(100% - 56px),rgba(0,0,0,.4) calc(100% - 26px),transparent 100%);-webkit-mask-composite:source-in;
+  mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.5) 8%,#000 25%,#000 97%,transparent 100%),linear-gradient(180deg,#000 0,#000 calc(100% - 56px),rgba(0,0,0,.4) calc(100% - 26px),transparent 100%);mask-composite:intersect}
+.rd[data-theme-kit] > .tk-sky video,.rd[data-theme-kit] > .tk-sky .tk-poster{width:100%;height:100%;object-fit:cover;object-position:100% 50%;display:block}
+.rd[data-theme-kit] > .rd-shell{position:relative;z-index:1}
+.rd[data-theme-kit] .rd-heading-art{display:none!important}
+.rd[data-theme-kit] .rd-course-heading h1::before{background:none!important}
+.rd[data-theme-kit] .rd-course-heading{position:relative}
+.rd[data-theme-kit] .rd-course-heading::before{position:absolute!important;inset:-30px auto -20px -50px!important;width:640px!important;height:auto!important;z-index:-1!important;background:radial-gradient(closest-side,rgba(244,233,211,.7),rgba(244,233,211,0))!important}
+/* the rows over the scene's lower edge read on paper, never on the carved field */
+.rd[data-theme-kit] :is(.rd-bookmarks,.rd-heading-links){background:rgba(244,233,211,.82);border-radius:8px}
+/* Edit Home and Undo move end the row, over the print's lower corner: on paper */
+.rd[data-theme-kit] .rd-arrange-guide > div:not(:empty){padding:0 8px;border-radius:8px;background:rgba(244,233,211,.9);box-shadow:inset 0 0 0 1px rgba(43,30,23,.18)}
+/* bars and choices: paper strips with a carved edge; the chosen one in rust ink */
+.rd[data-theme-kit] .rd-toolbar{background:transparent!important}
+.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-tools,.rd-filter-group,.rd-week,.rd-reader-tabs){background:rgba(251,244,228,.9)!important;box-shadow:inset 0 0 0 1.5px rgba(43,30,23,.32)!important;backdrop-filter:none}
+.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter,.rd-reader-tab){color:#45322A!important}
+.rd[data-theme-kit] :is(.rd-workspace-tab[aria-selected=true],.rd-filter[aria-pressed=true],.rd-day-filter[aria-pressed=true],.rd-reader-tab[aria-pressed=true],.rd-reader-tab[aria-selected=true]),.rd[data-theme-kit] .rd-glance-chip{background:#8A2433!important;color:#FBF4E4!important;font-weight:700;box-shadow:inset 0 -2px 0 rgba(43,30,23,.28)!important}
+.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter)::before,.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-tools,.rd-filter-group,.rd-week,.rd-reader-tabs)::before{background:transparent!important;box-shadow:none!important}
+.rd[data-theme-kit] .rd-search input{background:#FDF8EC!important;color:var(--rd-ink)!important;border:1.5px solid rgba(43,30,23,.35)!important}
+.rd[data-theme-kit] .rd-search input::placeholder{color:#8E7A65}
+/* the course cards wear the carved frame, their own drawing kept out of the way; the motif stands in for it */
+.rd[data-theme-kit] .rd-frame > *{display:none!important}
+.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course,.rd-course-name){background:transparent!important;box-shadow:none!important;outline:none!important}
+.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::before,.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::after,.rd[data-theme-kit] .rd-rail-art::after{display:none!important}
+.rd[data-theme-kit] .rd-rail-art > svg{display:none!important}
+.rd[data-theme-kit] .tk-icon{width:116%;height:116%;margin:-8%;object-fit:contain}
+.rd[data-theme-kit] .rd-frame{border:22px solid transparent!important;border-image:url(thanksgiving-card.png) 56 fill round!important;background:none!important;box-shadow:none!important;border-radius:0!important}
+/* the dock's cards: the carved line is drawn just outside the card, so the words keep the card's whole room; the paper
+   fills the whole inside of the frame (no strip across the middle), and the open course is warmed like the course list's */
+.rd[data-theme-kit] .rd-dock-card>.rd-frame{inset:-6px!important;border-width:18px!important}
+.rd[data-theme-kit] .rd-dock-card>.rd-frame::before{inset:-9px!important;border-radius:3px!important;background:transparent!important}
+.rd[data-theme-kit] .rd-dock .rd-dock-it.on .rd-dock-card>.rd-frame::before{background:rgba(217,160,64,.18)!important}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame{filter:none}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame::after,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame::after{content:"";position:absolute;inset:-10px;border-radius:12px;background:rgba(217,160,64,.16);animation:tk-warm 8s ease-in-out infinite;will-change:opacity;pointer-events:none}
+@keyframes tk-warm{0%,100%{opacity:.55}50%{opacity:1}}
+/* panels: cream paper inside the larger carved frame; no rectangle of background inside or outside the carved line */
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail){background:transparent!important;backdrop-filter:none!important;isolation:isolate;border-radius:0!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail)::after{display:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::before{display:block!important;content:""!important;position:absolute!important;inset:-18px!important;z-index:-1!important;border:40px solid transparent!important;border-image:url(thanksgiving-panel.png) 100 fill round!important;background:none!important;pointer-events:none!important;-webkit-mask-box-image:none!important;-webkit-mask:none!important;mask:none!important;opacity:1!important;filter:none!important;box-shadow:none!important;outline:none!important;border-radius:0!important}
+.rd[data-theme-kit] .rd-course-rail::before{display:none!important}
+.rd[data-theme-kit] .rd-course-rail{box-shadow:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-reader,.rd-work,.rd-course-deck,.rd-course-rail){border-color:transparent!important;box-shadow:none!important;outline:none!important}
+.rd[data-theme-kit] :is(.rd-announcement,.rd-reader,.rd-work-item,.rd-deck-section){background:transparent!important}
+.rd[data-theme-kit] .rd-bookmarks{border-bottom:1px solid rgba(43,30,23,.2)!important}
+.rd[data-theme-kit] .rd-assignment-list::before,.rd[data-theme-kit] .rd-assignment-list::after{background:rgba(217,160,64,.12)!important;box-shadow:inset 0 0 0 1px rgba(43,30,23,.32)!important}
+.rd[data-theme-kit] .rd-assignment--selected{background:transparent!important;box-shadow:none!important}
+.rd[data-theme-kit] .rd-button--primary{background:#8A2433!important;color:#FBF4E4!important;border:0!important;font-weight:700;box-shadow:inset 0 -2px 0 rgba(43,30,23,.3)!important}
+.rd[data-theme-kit] .rd-button:not(.rd-button--primary){background:#FBF4E4!important;color:var(--rd-ink)!important;border:1.5px solid rgba(43,30,23,.35)!important}
+.rd[data-theme-kit] a{color:#8A2433}
+/* small things in the print's language: tick circles are carved rings, section headings sit on a carved line with a sprig of cranberries */
+.rd[data-theme-kit] .rd-check-off{border:0!important;background:radial-gradient(circle at 50% 50%,#FBF4E4 0 46%,#4A3326 50% 60%,transparent 64%)!important;box-shadow:none!important}
+.rd[data-theme-kit] .rd-check-off:hover{background:radial-gradient(circle at 50% 50%,rgba(217,160,64,.3) 0 46%,#4A3326 50% 60%,transparent 64%)!important}
+.rd[data-theme-kit] :is(.rd-sheet-heading h3,.rd-deck-header h2,.rd-work-heading h2){padding-bottom:8px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='9'%3E%3Cpath d='M1 5.5c9-1.6 18 1.4 27 0s17-1.8 26-.4 7 .9 9 .6' fill='none' stroke='%232b1e17' stroke-width='1.5' stroke-linecap='round' stroke-opacity='.75'/%3E%3Cpath d='M44.5 2.6l3 1.4m0 0l2.6-.9' fill='none' stroke='%232b1e17' stroke-width='.8' stroke-linecap='round'/%3E%3Ccircle cx='44.6' cy='4.7' r='1.9' fill='%238a2433'/%3E%3Ccircle cx='48.4' cy='5.6' r='1.7' fill='%238a2433'/%3E%3Ccircle cx='50.9' cy='3.6' r='1.5' fill='%238a2433'/%3E%3C/svg%3E") 0 100%/64px 9px repeat-x}
+/* the motifs sway or bob a little, by transform only (the compositor carries it; the page does not repaint): the corn
+   and the horn sway from their foot, the lantern swings from its bail, the roast, the pie and the squash bob */
+@keyframes tk-sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+@keyframes tk-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.rd[data-theme-kit] .tk-icon:is([data-motif=horn],[data-motif=corn]){transform-origin:50% 90%;animation:tk-sway 7s ease-in-out infinite}
+.rd[data-theme-kit] .tk-icon:is([data-motif=squash],[data-motif=pie],[data-motif=turkey]){animation:tk-bob 6s ease-in-out infinite}
+.rd[data-theme-kit] .tk-icon[data-motif=lantern]{transform-origin:50% 8%;animation:tk-sway 9s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.rd[data-theme-kit] *,.rd[data-theme-kit] *::before,.rd[data-theme-kit] *::after{animation:none!important}}
+/* the last labels in the original serif follow the theme title face */
+.rd[data-theme-kit] :is(.rd-rail-heading,.rd-rail-heading *,.rd-rail-all > span,.rd-day-filter strong,.rd-day-filter b){font-family:Literata,Georgia,serif!important;font-weight:700!important}
+/* room for the frames: the workspace clips what spills past its sides, so widen its box without moving anything in it */
+.rd[data-theme-kit] .rd-workspace{padding-inline:26px!important;margin-inline:-26px!important}
+/* every colour the interface uses, so nothing falls back (beats page tint and page style) */
+.rd.rd.rd.rd[data-theme-kit]{--rd-control:#C9A26A;--rd-control-line:rgba(43,30,23,.35);--rd-line-strong:rgba(43,30,23,.36);--rd-tint:rgba(217,160,64,.12);--rd-row-hover:rgba(217,160,64,.10);--rd-sidebar:#F3E7CF;--rd-sidebar-hover:#EEDDBF;--rd-sidebar-sel:#E8D2AA;--rd-surface-3:#EFE0C2;--rd-mark:#D9A040;--rd-deadline-soon:#8A2433;--rd-danger-soft:rgb(134 41 31/.12);--rd-info:#707B46;--rd-info-soft:rgb(112 123 70/.14)}
+/* A Home module shorter than its row is drawn down to the row's foot like every other panel (the dashboard extends a
+   panel's frame by --rd-panel-grow), so a row of modules reads as one row of panels */
+.rd[data-theme-kit] .rd-main.rd-desk > .rd-widget::before{bottom:calc(-18px - var(--rd-panel-grow,0px))!important}

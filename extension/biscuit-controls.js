@@ -25,7 +25,7 @@
    "panelFrame":["pen","stitch","card","line","none"],
    "quickOpen":["on","off"],
    "readingFont":["book","interface","easy"],
-   "sceneTheme":["","starry","sea","stars","blueprint"],
+   "sceneTheme":["","starry","sea","stars","blueprint","maple","thanksgiving"],
    "surfaceStyle":["paper","clean","contrast"],
    "textSize":["standard","large"],
    "theme":["light","dark"]
@@ -804,7 +804,8 @@
      choices=rows.length?
        rows.map(v=>({label:v.label,action:scene?'setting':'none',fields:scene&&ENUMS.sceneTheme.includes(v.value)?{key:'sceneTheme',value:v.value}:{}})):
        scene?
-         [['None',''],['Starry Night','starry'],['Under the Sea','sea'],['Starfield','stars'],['Blueprint','blueprint']].map(([label,value])=>({label,action:'setting',fields:{key:'sceneTheme',value}})):
+         [['None',''],['Starry Night','starry'],['Under the Sea','sea'],['Starfield','stars'],['Blueprint','blueprint'],['Maple Wind','maple'],['Thanksgiving','thanksgiving']].map(([label,value])=>
+           ({label,action:'setting',fields:{key:'sceneTheme',value}})):
          [{label:'Default theme',action:'none',fields:{}}];
    return ui(['Make it yours','Look',scene?'Scene':'Theme'],'Which '+(scene?'scene':'theme')+' would you like? Choose None or another choice.',{clarify:true,choices});
  }
