@@ -30,7 +30,7 @@
   feature('review-deck','Review deck','Extras',['review-deck-model.js','review-deck-art.js','review-deck.js'],['review-deck.css'],['dashboard']),
   feature('grade-impact','Grade impact','Extras',['grade-impact-art.js','grade-impact.js'],['grade-impact.css'],['grades']),
   feature('play','Play & submission celebrations','Extras',['submit-celebrate.js']),
-  feature('ai','Your AI & study aids','Extras',['study-tools.js','study-prompts.js','study-writes.js','math-render.js','study-ui.js','study-band.js','overnight.js','ai-context.js','agent-prompts.js','agent-data.js','agent-actions.js','agent-runtime.js','ai-canvas-bridge.js','agent-client.js','ai-source.js'],['agent.css','study-band.css'],['tools']),
+  feature('ai','AI help','Extras',['study-tools.js','study-prompts.js','study-writes.js','math-render.js','study-ui.js','study-band.js','overnight.js','ai-context.js','agent-prompts.js','agent-data.js','agent-actions.js','agent-runtime.js','ai-canvas-bridge.js','agent-client.js','ai-source.js'],['agent.css','study-band.css'],['tools']),
   feature('developer','Developer tools','Extras',['developer.js'],[],['tools'])
  ];
  // Retained public modules keep their relative order; new helpers precede their consumers.
@@ -261,11 +261,58 @@
  const presets={full:ids.filter(id=>!optIn.has(id)),lite:['dashboard','planner','grades','math','arrange','tools','gpa','native-appearance']};
  for(const entry of catalogue)entry.presets=[...(presets.full.includes(entry.id)?['full']:[]),...(presets.lite.includes(entry.id)?['lite']:[])];
  const unique=values=>[...new Set(Array.isArray(values)?values.filter(id=>known.has(id)):[])];
+ // AI help is packaged but locked. It is a feature only after the student added the AI help add-on from the Market and
+ // agreed to its notice; that page alone asks the worker for this record (background.js, 'ch-ai-notice'). Without the
+ // record 'ai' is in no selection and in no list a student sees, whatever the saved choices say.
+ const LOCKED='ai';
+ function unlockRecord(value){
+  if(!value||typeof value!=='object'||Array.isArray(value)||value.version!==1||value.notice!==1||typeof value.acceptedAt!=='string'||value.acceptedAt.length>40||
+    !/^\d{4}-\d\d-\d\dT[\d:.]+Z$/.test(value.acceptedAt)||!Number.isFinite(Date.parse(value.acceptedAt)))
+    return null;
+  return {version:1,acceptedAt:value.acceptedAt,notice:1};
+ }
+ const unlocked=prefs=>!!unlockRecord(prefs&&typeof prefs==='object'&&!Array.isArray(prefs)?prefs.aiUnlock:null);
  function normalize(prefs){
   if(typeof prefs==='string')prefs={preset:prefs.toLowerCase()};
   prefs=prefs&&typeof prefs==='object'?prefs:{};
-  const preset=['full','lite','custom'].includes(String(prefs.preset).toLowerCase())?String(prefs.preset).toLowerCase():'full';
-  return {preset,custom:unique(prefs.custom??prefs.enabled??presets.full)};
+  const preset=['full','lite','custom'].includes(String(prefs.preset).toLowerCase())?String(prefs.preset).toLowerCase():'full',record=unlockRecord(prefs.aiUnlock);
+  return {preset,custom:unique(prefs.custom??prefs.enabled??presets.full),...(record?{aiUnlock:record}:{})};
+ }
+ // Every ordinary write keeps the record it found and never makes one.
+ function carry(next,before){
+  const clean=normalize(next),record=unlockRecord(before&&typeof before==='object'?before.aiUnlock:null);
+  delete clean.aiUnlock;
+  return record?{...clean,aiUnlock:record}:clean;
+ }
+ // Turning AI help off, or removing its add-on, locks it again: the record goes and 'ai' leaves the saved choices.
+ function lockAI(prefs){
+  const clean=normalize(prefs);
+  delete clean.aiUnlock;
+  clean.custom=clean.custom.filter(id=>id!==LOCKED);
+  return clean;
+ }
+ // The notice's Agree: the record, and AI help on (a Lite choice becomes Custom with AI help added).
+ function unlockAI(prefs,acceptedAt=new Date().toISOString()){
+  const record=unlockRecord({version:1,acceptedAt,notice:1});if(!record)throw Error('Invalid acceptance time.');
+  const clean=normalize(prefs);
+  delete clean.aiUnlock;
+  if(clean.preset==='custom')clean.custom=unique([...clean.custom,LOCKED]);
+  else if(!presets[clean.preset].includes(LOCKED)){
+   const open=resolve({...clean,aiUnlock:record}).enabled;
+   clean.preset='custom';clean.custom=unique([...open,LOCKED]);
+  }
+  return {...clean,aiUnlock:record};
+ }
+ // A write that leaves AI help off (its switch, a switch it needs, or a preset without it) locks it again: AI help is
+ // unlocked exactly while it is on, and coming back to it goes through the notice again.
+ function settle(next,before){
+  const out=carry(next,before);
+  return out.aiUnlock&&!resolve(out).enabled.includes(LOCKED)?lockAI(out):out;
+ }
+ function lockedIds(){
+  const out=new Set([LOCKED]);let size;
+  do{size=out.size;for(const row of catalogue)if(row.needs.some(id=>out.has(id)))out.add(row.id);}while(size!==out.size);
+  return out;
  }
  function resolve(prefs){
   const clean=normalize(prefs),selected=new Set(),visit=id=>{
@@ -273,12 +320,14 @@
    selected.add(id);for(const dep of catalogue.find(f=>f.id===id).needs)visit(dep);
   };
   for(const id of clean.preset==='custom'?clean.custom:presets[clean.preset])visit(id);
+  const open=unlocked(clean);
+  if(!open)for(const id of lockedIds())selected.delete(id);
   const enabled=ids.filter(id=>selected.has(id));
   const files={js:new Set(core.js),css:new Set(core.css)};
   for(const f of catalogue)if(selected.has(f.id))for(const type of ['js','css'])for(const file of f.files[type])files[type].add(file);
   if(selected.has('customization'))for(const file of ['planner-model.js','pet-art.js','agent-clock.js','pony-ask.js'])files.js.add(file);
   const cssOrder=[...new Set([...startupCSS,...dashboardCSS,...catalogue.flatMap(f=>f.files.css)])];
-  return {preset:clean.preset,enabled,js:order.filter(f=>files.js.has(f)),css:cssOrder.filter(f=>files.css.has(f)),startupJS:selected.has('motion')?['startup-art.js']:[]};
+  return {preset:clean.preset,enabled,aiUnlocked:open,js:order.filter(f=>files.js.has(f)),css:cssOrder.filter(f=>files.css.has(f)),startupJS:selected.has('motion')?['startup-art.js']:[]};
  }
  function readHint(){
   try{
@@ -300,6 +349,9 @@
   return current;
  }
  function enabled(id){return current.enabled.includes(id);}
+ // The features a student may see: AI help only once it is unlocked (by the saved choice given, else this page's).
+ function aiUnlocked(prefs){return prefs===undefined?current.aiUnlocked===true:unlocked(normalize(prefs));}
+ function listed(prefs){const open=aiUnlocked(prefs);return catalogue.filter(f=>open||!lockedIds().has(f.id));}
  function early(id,start,stop){
   let started=false;
   const reconcile=(selection,motionChanged=false)=>{
@@ -342,7 +394,8 @@
   if(!load||load===confirmedLoad)return;
   confirmedLoad=load;
   Promise.resolve(load).then(reply=>{
-   if(reply?.ok&&typeof reply.preset==='string'&&Array.isArray(reply.enabled))apply({preset:reply.preset,enabled:reply.enabled});
+   if(reply?.ok&&typeof reply.preset==='string'&&Array.isArray(reply.enabled))
+     apply({preset:reply.preset,enabled:reply.enabled,...(reply.aiUnlock?{aiUnlock:reply.aiUnlock}:{})});
   }).catch(()=>{});
   });
  }
@@ -363,6 +416,7 @@
   if(request.id?!known.has(request.id)||typeof request.on!=='boolean'||request.preset!==undefined:!['full','lite'].includes(request.preset)||request.on!==undefined)
     throw Error('Invalid feature choice.');
   let next;
+  if(request.id===LOCKED&&request.on&&!unlocked(before))throw Error('Invalid feature choice.');
   if(request.id){
    if(keepPony&&request.id==='pony'&&!request.on)throw Error('The Pony switch is in the extension popup → Pony.');
    const selected=new Set(before.preset==='custom'?before.custom:resolve(before).enabled);
@@ -374,15 +428,15 @@
      do{size=removed.size;for(const row of catalogue)if(row.needs.some(id=>removed.has(id)))removed.add(row.id);}while(size!==removed.size);
      for(const id of removed)selected.delete(id);
    }
-   next=normalize({preset:'custom',custom:[...selected]});
-  }else next=normalize({...before,preset:request.preset});
+   next=settle({preset:'custom',custom:[...selected]},before);
+  }else next=settle({...before,preset:request.preset},before);
   if(keepPony&&request.id&&!resolve(next).enabled.includes('pony'))throw Error('That also turns Biscuit off. Use Make it yours Features for that switch.');
   return next;
  }
  async function mutate(message){return run(async()=>{
   const local=root.chrome.storage.local,before=normalize((await local.get(KEY))[KEY]);
   if(Object.hasOwn(message,'expected')&&JSON.stringify(before)!==JSON.stringify(normalize(message.expected)))throw conflict();
-  const value=message.op==='change'?command(before,message.request,message.keepPony===true):normalize(message.value);
+  const value=message.op==='change'?command(before,message.request,message.keepPony===true):settle(message.value,before);
   await local.set({[KEY]:value});return {before,value};
  });}
  async function sendWrite(message){
@@ -424,6 +478,12 @@
    nativeCSS,
    normalize,
    resolve,
+   carry,
+   settle,
+   lockAI,
+   unlockAI,
+   aiUnlocked,
+   listed,
    apply,
    enabled,
    early,

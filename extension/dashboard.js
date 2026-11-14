@@ -2222,7 +2222,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         bandFactsMemo=[items,tasks,out];
         return out;
       };
-      if(bandHost&&Band){
+      if(bandHost&&Band&&enabled('ai')){
         const agent=personal.toolbox?.agent,grades=ctx.s.showGrades===true&&agent?.settings?.grades===true;
         // The band's signature: the study read's (made once per read), whether grade cards show, and the agent runs' ids,
         // states and action outcomes. Card bodies are not stringified on every render.
@@ -2320,7 +2320,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         }
         else if(signature!==helpBandSignature){helpBandSignature=signature;helpBand.update(cards);}else helpBand.refresh?.();
       // a page without the band (another tab) keeps it aside for the next Home; with Help gone it is destroyed
-      }else if(helpBand&&(!Band||!helpBand.rehost)){helpBand.destroy();helpBand=null;helpBandHost=null;helpBandSignature='';}
+      }else if(helpBand&&(!Band||!helpBand.rehost||!enabled('ai'))){helpBand.destroy();helpBand=null;helpBandHost=null;helpBandSignature='';}
       // Reset before motion measures the shared column.
       gradeImpact?.ensure({...ctx,workspace,workPage:workspace==='work'?workPage:'',state,user:currentSnapshot.user,gradeImpactRevision:currentSnapshot.fetchedAt});
       if(resetWorkspaceScroll&&!scrollReset){const column=container.querySelector('.rd-shell > .rd-workspace');if(column?.scrollTop)column.scrollTop=0;}

@@ -1,5 +1,6 @@
 // Adapted from Gary Wu's pull request #47 to Canvas Harness.
 'use strict';
+const Unlocked=require('./ai-unlocked.cjs'),AI_FILES=['ai-context.js','ai-source.js'];
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const ext=path.join(__dirname,'../extension'),read=file=>fs.readFileSync(path.join(ext,file),'utf8');
 const F=require('../extension/features.js'),original=require('./fixtures/addons-original-manifest.json');
@@ -21,9 +22,12 @@ test('media banners use the Appearance selection and Lite retains only pure back
 function catalogue(){const env=vm.createContext({TextEncoder,TextDecoder,structuredClone,});vm.runInContext(read('features.js'),env);return env.ReserveFeatures;}
 test('Full preserves the complete original main declaration and defaults to Full',()=>{
  for(const [before,after]of [['deadline-model.js','deadline-changes.js'],['deadline-changes.js','session.js']])assert.ok(F.resolve().js.indexOf(before)<F.resolve().js.indexOf(after));
- assert.deepEqual(F.resolve().js.filter(file=>original.content_scripts[1].js.includes(file)),original.content_scripts[1].js);
+ // AI help (the old handoff included) is locked until its add-on is agreed to; agreed, the original declaration is whole
+ assert.deepEqual(F.resolve().js.filter(file=>original.content_scripts[1].js.includes(file)),original.content_scripts[1].js.filter(file=>!AI_FILES.includes(file)));
+ assert.deepEqual(F.resolve(Unlocked.prefs()).js.filter(file=>original.content_scripts[1].js.includes(file)),original.content_scripts[1].js);
  for(const file of F.resolve().js)assert.ok(fs.existsSync(path.join(ext,file)),file);
- assert.deepEqual(F.resolve({preset:'full'}).enabled,F.presets.full);
+ assert.deepEqual(F.resolve({preset:'full'}).enabled,F.presets.full.filter(id=>id!=='ai'));
+ assert.deepEqual(F.resolve(Unlocked.prefs()).enabled,F.presets.full);
  for(const id of ['focus-room','review-deck','grade-impact'])assert.ok(F.presets.full.includes(id)&&!F.presets.lite.includes(id));
  assert.deepEqual(F.startupCSS,original.content_scripts[0].css);
 });
@@ -93,7 +97,7 @@ test('Full worker excludes early-paint files and preserves the remaining origina
  const staticMain=main.js.filter(file=>original.content_scripts[1].js.includes(file));
  assert.deepEqual(staticMain,original.content_scripts[1].js.filter(file=>staticMain.includes(file)));
  assert.deepEqual(loaded,F.resolve().js.filter(file=>!staticMain.includes(file)));
- assert.deepEqual(loaded.filter(file=>original.content_scripts[1].js.includes(file)),original.content_scripts[1].js.filter(file=>!staticMain.includes(file)));
+ assert.deepEqual(loaded.filter(file=>original.content_scripts[1].js.includes(file)),original.content_scripts[1].js.filter(file=>!staticMain.includes(file)&&!AI_FILES.includes(file)));
  const full=[...staticMain,...loaded];
  assert.equal(new Set(full).size,full.length);assert.deepEqual(full.slice().sort(),F.resolve().js.slice().sort());
  assert.equal(manifest.content_scripts.flatMap(entry=>entry.js).filter(file=>file==='features.js').length,1,'the shared early-selection state is not reset by the main entry');
@@ -356,7 +360,7 @@ test('feature storage changes immediately resolve the hint for the very next sta
  f.change({'reserve:features':{newValue:{preset:'lite'}}},'sync');
  f.change({'reserve:unrelated':{newValue:{preset:'lite'}}});
  assert.equal(f.values.get('reserve:features-hint'),initial);
- for(const [prefs,preset,enabled]of [[{preset:'lite'},'lite',liteEnabled],[{preset:'custom',custom:['pony']},'custom',['dashboard','planner','pony']],[undefined,'full',F.presets.full]]){
+ for(const [prefs,preset,enabled]of [[{preset:'lite'},'lite',liteEnabled],[{preset:'custom',custom:['pony']},'custom',['dashboard','planner','pony']],[undefined,'full',F.presets.full.filter(id=>id!=='ai')]]){
   f.change({'reserve:features':{newValue:prefs}});
   const hint=f.values.get('reserve:features-hint');assert.deepEqual(JSON.parse(hint),{preset,enabled});
   assert.equal(f.env.ReserveFeatures.current.preset,'full','active document keeps its feature snapshot');

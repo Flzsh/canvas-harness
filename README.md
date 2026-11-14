@@ -23,15 +23,6 @@
   <a href="PRIVACY.md">Privacy</a>
 </p>
 
-> [!IMPORTANT]
-> **This is the `preview/4.0` branch: Canvas Harness 4.0 Preview 7, a test build.** It is ahead of the Chrome Web Store version and may have rough edges. For everyday use, install the [store version](https://chromewebstore.google.com/detail/bppjpjpbichfcbgajlppkgbbncbfohgd) or the [latest stable release](https://github.com/Flzsh/canvas-harness/releases/latest).
->
-> **Install the preview.** Download `Canvas-Harness-4.0-Preview-7.zip` from the preview release, unzip it, open `chrome://extensions` (or `edge://extensions`), turn on Developer mode, choose **Load unpacked** and pick the unzipped folder. It shows as version 3.99.7, "4.0 Preview 7", so the real 4.0.0 replaces it later. Remove the store version first, or turn it off, so the two do not both run on Canvas.
->
-> **What is new:** Your AI (Help cards for an assignment, a PDF or a selection, a writing outline among them, each shown as soon as it is made; Today; Prepare; study aids saved beside their work; your AI website with a thinking level, or an API key; an optional overnight run), Biscuit with a written rule list that plans around what you name, hands questions to Your AI and wakes with B, rooms for the Review deck, Grade impact and Focus room over Home, the Big card, a redrawn Focus room with Winter, Grade impact that answers first with pretend assignments and decimal points, Graphics levels for slower computers, Developer tools for bug reports, a drawn top bar, Settings and Features tabs in Make it yours, play tools that take the whole page, a page that fits every window size, and since Preview 7 the Thanksgiving and Maple Wind scenes, scenes that fit above your widgets, Deadline changes redrawn and faster clicks. [Every change](CHANGELOG.md)
->
-> **Found a problem?** [Open an issue](https://github.com/Flzsh/canvas-harness/issues/new) and say it is about 4.0 Preview 7: what you did, what you expected, and your browser. **Want to fix something?** Send a pull request against the `preview/4.0` branch, with `npm test` and `npm run check` passing.
-
 <table>
 <tr>
 <td width="50%" valign="top"><img src="docs/media/home.gif" width="100%" alt="Switching on Home modules and dragging one into a full-width row"><br><b>Your Canvas Home, rebuilt</b><br><sub>Pick the modules you want and drag them into place.</sub></td>
@@ -49,14 +40,12 @@
 
 <p align="center"><sub>Every demo is Canvas with Canvas Harness switched on, using made-up courses and assignments.</sub></p>
 
-## New in 3.8
+## New in 4.0
 
-- **Biscuit understands short lines far better**, still on your computer with no AI.
-- **PDF reader fixes**: a text box keeps its words when a file is full of marks, text size and colour apply to the box you are typing in, and a module PDF you read counts as opened.
-- **Lighter when idle**: the page restyles half as often while nothing changes, and drawings keep moving while you scroll.
-- **Mozilla's standard PDF.js build**, so it now needs Chrome or Edge 126 or newer.
+- **AI help, an optional add-on.** It is in the package but off, and nothing of it shows, until you add it from the Market and agree to a short notice. Then: Help cards for an assignment, a PDF or a selection (practice tests, reading breakdowns, worked examples, writing outlines), Daily AI help, a Today list and study aids, from the AI website you pick or your own API key. Biscuit can hand it a question. Switch it off, or remove the add-on, and it locks again. [How it works](AI.md)
+- **Easier to read over the scenes**: under Thanksgiving and Blueprint the date, a course's links and More views sit on their own paper or pane.
 
-Also in 3.7: a course dock you can move and resize, and a Cards look. Thanks to @garywu000 and @HarryX081125 for their contributions. [Every change](CHANGELOG.md)
+Also in 3.10: the Thanksgiving and Maple Wind scenes, scenes that fit above your widgets at any window size, Deadline changes redrawn and faster clicks. In 3.9: Focus room, Review deck and Grade impact as rooms that grow out of their Home modules, a drawn top bar, Graphics from Low to Extra high, play tools that take the whole page, Developer tools and a reading ruler in the PDF reader. Thanks to @garywu000 and @HarryX081125 for their contributions. [Every change](CHANGELOG.md)
 
 ## Install
 

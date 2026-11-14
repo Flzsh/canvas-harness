@@ -66,7 +66,7 @@
    else if(nominal&&(m=/^(.+?\s+feature)\s+(on|off)$/.exec(n))){target=m[1];value=m[2];}else return null;
    target=target.replace(/^(?:the|my)\s+/,'').replace(/^installed\s+/,'').replace(/\s+feature$/,'');
    const catalogue=load('ReserveFeatures','./features.js')?.catalogue||[],
-     features=[...catalogue,...(Array.isArray(s.features)?s.features:[])].filter(v=>typeof v?.id==='string'&&typeof v?.name==='string'),
+     features=[...catalogue,...(Array.isArray(s.features)?s.features:[])].filter(v=>typeof v?.id==='string'&&typeof v?.name==='string'&&(v.id!=='ai'||s.ai!==false)),
      named=features.filter(v=>[v.id,v.name,v.name.replace(/&/g,' and '),String(v.id).replace(/([a-z])([A-Z])/g,'$1 $2')].some(name=>norm(name)===target)),
      ids=new Set(named.map(v=>v.id));
    if(!ids.size&&/^(?:it|that|this)$/.test(target)&&catalogue.some(v=>v.id===detail.id))ids.add(detail.id);

@@ -1,4 +1,5 @@
 'use strict';
+const Unlocked=require('./ai-unlocked.cjs');
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const read=file=>fs.readFileSync(path.join(__dirname,'../extension',file),'utf8');
 const tick=()=>new Promise(setImmediate);
@@ -6,7 +7,7 @@ function event(){const listeners=[];return {addListener:fn=>listeners.push(fn),r
 function port(name,sender){return {name,sender,sent:[],onMessage:event(),onDisconnect:event(),postMessage(value){this.sent.push(value);},disconnect(){this.disconnected=true;this.onDisconnect.emit();}};}
 function worker(){
  const imports=[],runtime={id:'extension-id',getURL:file=>'chrome-extension://extension-id/'+file,onConnect:event(),onMessage:event()};let installing=true;
- const chrome={runtime,storage:{local:{get:async()=>({})}},tabs:{get:async id=>({id,url:'https://school.instructure.com/'})}};
+ const chrome={runtime,storage:{local:{get:async key=>Object.hasOwn(Unlocked.storage(),key)?{[key]:Unlocked.storage()[key]}:({})}},tabs:{get:async id=>({id,url:'https://school.instructure.com/'})}};
  const env=vm.createContext({TextEncoder,TextDecoder,structuredClone,chrome,URL,setTimeout,clearTimeout});
  env.importScripts=(...files)=>{if(!installing)throw Error('MV3 prohibits late importScripts');imports.push(...files);for(const file of files)vm.runInContext(read(file),env,{filename:file});};
  vm.runInContext(read('background.js'),env,{filename:'background.js'});installing=false;

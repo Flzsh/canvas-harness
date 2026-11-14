@@ -1,8 +1,23 @@
 # Changelog
 
-## 4.0 Preview 7 - 2026-11-09
+## 4.0.0 - 2026-11-14
 
-Version 3.99.7 in the browser. Everything in 3.10.0 on the Chrome Web Store, with the AI.
+The first 4.0 release. From now on the Chrome Web Store and GitHub get the same package. Everything in 3.10.0 is in it, and AI help, which stays off and out of sight until you add it.
+
+- AI help, as an add-on you choose: add **AI help** from the Market (extension popup → Market). It stays off, and nothing of it shows, until you add it.
+- Adding it opens a short notice. Tick **I understand and agree** and choose **Turn on AI help**; **Not now** leaves it off, and **Use** on the add-on in Make it yours → More → Features shows the notice again.
+- With AI help on: the Help band on Home with Help cards (practice tests, reading breakdowns, worked examples, writing outlines and more), Help with this on an assignment, a PDF or a selection, Daily AI help, Ask your AI and study aids in Tools → AI, through the AI website you pick or your own API key. Biscuit can hand it a question.
+- Switching AI help off in Features, choosing Lite, or removing the add-on locks it again: whatever it was doing stops, and the notice asks again next time.
+- The older AI handoff in Tools is now part of AI help. A saved choice that had it on stays off until you add AI help.
+- Compared with 3.10.0 there is one more browser permission, alarms: while an AI help run is unfinished it keeps one alarm, so the run can go on. API sites (Anthropic, OpenAI, Google) are asked for only if you add your own key.
+- Help band: opening Help no longer zooms or slides the scene above it. The scene stops where the Help band starts, the same as with Help closed.
+- Help band: going to another tab and back to Home keeps the band and its cards as they were, instead of building them again. It also no longer reads the page's colours again each time a panel opens or the course dock moves, so Home opens sooner.
+- Under Thanksgiving and Maple Wind, the Help band sits on paper, never on the painted picture.
+- Under Thanksgiving and Blueprint, the date, a course's links and More views each sit on their own slip of paper or pane, so the words stay readable over the picture. Blueprint's filter strip and week are denser for the same reason.
+- From a 4.0 Preview: Your AI is now AI help and starts off. Add it from the Market and agree to its notice to use it again. Everything in 3.10.0 (below) is new to the previews too. The browser shows version 4.0.0, which replaces 3.99.x.
+- Thanks to @DorjieQ for Biscuit's language training rounds 7 and 8 (#68).
+
+## 3.10.0 - 2026-11-09
 
 - Two new scenes in Make it yours → Look → Scene: Thanksgiving, a carved block print of a harvest evening on the farm, and Maple Wind, an autumn wood in the wind. The scenes are sorted into packs: Holiday, Seasonal and Everyday.
 - Every scene fits the strip above Home's first widget at any window size, instead of being cut in half by the widgets. Under the Sea, Starry Night and Blueprint are repainted wide for it, and Starfield's sky keeps its shape as the window changes.
@@ -12,10 +27,6 @@ Version 3.99.7 in the browser. Everything in 3.10.0 on the Chrome Web Store, wit
 - Faster: a tab, view or course in the dock looks chosen the moment you press it, the drawings keep moving when you click, Biscuit waits until the page has drawn before he thinks, and Home no longer grows in memory as you click around. On battery, the drawings update less often.
 - With the course menu as a drawer, the page beside it on a themed Home takes the theme's colour instead of white.
 - Make it yours → More: Reload Canvas is a drawn button.
-- Help band: opening Help no longer zooms or slides the scene above it. The scene stops where the Help band starts, the same as with Help closed.
-- Help band: going to another tab and back to Home keeps the band and its cards as they were, instead of building them again. It also no longer reads the page's colours again each time a panel opens or the course dock moves, so Home opens sooner.
-- Under Thanksgiving and Maple Wind, the Help band sits on paper, never on the painted picture.
-- Under Thanksgiving and Blueprint, the date, a course's links and More views each sit on their own slip of paper or pane, so the words stay readable over the picture. Blueprint's filter strip and week are denser for the same reason.
 - Thanks to @DorjieQ for Biscuit's language training rounds 7 and 8 (#68).
 
 ## 4.0 Preview 6 - 2026-11-05
@@ -28,6 +39,14 @@ Version 3.99.6 in the browser.
 - Starfield: the course pictures sit inside their rows, and the sky fills the page behind Home.
 - Play tools: a dealt tool's rays stay clear of the words on its card, and every card, of every rarity, gets a drawn outline that draws itself on and catches the light.
 - A Help card sent through your AI website no longer waits on its slowest thinking level: when you have not chosen a level and the site is set above Extra high (ChatGPT Pro, Claude Max), that send goes at High, and the site's own level comes back after it.
+
+## 3.9.3 - 2026-11-05
+
+- Focus room, Review deck and Grade impact are on from the start, in Full. They were in the package already but switched off until you chose them under Features. Lite still leaves them out, and Custom can switch any of them off.
+- The Assignments page opens on All: every assignment in the course, late work first (newest first), then work by its deadline with new work leading, then work without a date, work waiting for a grade, and the done work kept as history, newest first. Up next, Today, Week and My plan are still there, and Home still opens on Up next.
+- A course keeps its colour when you move it in the course list.
+- Starfield: the course pictures sit inside their rows, and the sky fills the page behind Home.
+- Play tools: a dealt tool's rays stay clear of the words on its card, and every card, of every rarity, gets a drawn outline that draws itself on and catches the light.
 
 ## 4.0 Preview 5 - 2026-11-04
 
@@ -47,6 +66,30 @@ Version 3.99.4 in the browser.
 - The drawn pen lines around groups in Make it yours are back, and the pen-eased motions (a Review deck card turning, among others) run again.
 - Make it yours → More lists the features you installed from the Market. Before, it said "Could not load installed features."
 - Your AI: Send is found on ChatGPT and Claude even while it is still fading in, in a tab in the background. When the message reached the AI tab but was not sent, the band says so.
+
+## 3.9.2 - 2026-11-04
+
+Two fixes for 3.9.1.
+
+- Make it yours → More shows its feature switches as drawn rows again. The page-start list of stylesheets left out their styles, so the list showed unstyled, with full-size drawings.
+- Picking a scene theme no longer flashes its picture at full size and pushes Home down for a moment: the sky and the course pictures wait until the theme's own styles have loaded.
+
+## 3.9.1 - 2026-11-04
+
+3.9.0 kept the look of 3.8. This release brings everything from 4.0 Preview 4 except the 4.0 daily AI (the Help band, Prepare, Daily AI help and Overnight). The AI context and handoff in Tools stay as they were in 3.9.0, with the same permissions.
+
+- The top bar is drawn: each tab has its own drawing beside its name, and the search reads Find work. In half and quarter windows the words give way to the drawings, and each tab shows its name as a tooltip. The course dock and the top bar scroll the same way.
+- Make it yours is laid out in five tabs: Look, Home, Courses, Companion and More. More holds the drawn feature switches (Full, Lite or Custom) and the daily preferences such as the time zone, and a course's drawing can be chosen from the subject sets.
+- Graphics, in Make it yours → Look: Low, Medium, High and Extra high. Each step down leaves out the detail that is seen least, and Advanced tunes one kind at a time. Slower computers start on Medium.
+- New since your last visit: a New chip and view for work Canvas added and grades that came back since you last looked.
+- An overdue item's details say what handing it in now costs, from the course's late policy, or, when Canvas keeps that from students, from your own earlier late work there.
+- A heavy day is marked in words on the day strip and in Planner. Easy read in Reading text uses plainer letters.
+- Biscuit reads a line with a written rule list first. A plan is built around what you name, including homework Canvas does not know about, and Canvas's list is a suggestion rather than the plan. Make it yours → Companion has Full and Lite. Biscuit wakes with the B key.
+- When Biscuit hands a question to an AI, scores you earned are taken out of the text unless grades are shared, as in 4.0.
+- Sidebar: each course row is as tall as its own content needs. With only a few courses the spare height stays below the last one instead of stretching every card's frame long and empty.
+- Home and the Course hub beside the docked PDF reader lay themselves out for the room they have instead of being shrunk to fit; Canvas's own pages are still zoomed. The course dock keeps to that room, and course names in it no longer break in the middle of a word.
+- The reader's text and a Materials page keep the mouse wheel only while they have something to scroll; otherwise the page under them scrolls.
+- The drawn pen lines around groups in Make it yours are back, and the pen-eased motions (a Review deck card turning, among others) run again.
 
 ## 4.0 Preview 3 - 2026-11-02
 
@@ -90,6 +133,35 @@ Version 3.99.3 in the browser.
 - Canvas's own pages: the side buttons are drawn with the pen line, and Canvas's phone menus stay inside the window.
 - Modules: a module's name keeps its room when Tools is open beside the page, and your progress shows again at once when you come back.
 - Course hub: pages a teacher has not shared no longer show as errors.
+
+## 3.9.0 - 2026-10-31
+
+- Review deck: redrawn as a reading room that grows out of its Home module and folds back into it. The module comes in three sizes, and the large one lets you study right there.
+- Grade impact: redrawn as a weighing room for one course, opened from Grades or its Home module. Pretend assignments you add stay in this browser and are never sent to Canvas.
+- Focus room: redrawn with four drawn places and their sounds. Its Home module has the seal, +5, Finish and Break.
+- Those three stay off until you switch them on: Features in the popup, then Custom.
+- Play tools run much lighter on long pages: words or runs of words are cut only where a tool reaches, and each tool reads the page once per gesture. Bomb, railgun and black hole still break into letters.
+- Foil now works on long pages: it smears the letters nearest its line and whole words beyond them.
+- Marks and physics rest after 2 minutes without input, like the rest of the drawings.
+- Play tools take the whole page: pictures, icons, buttons and fields go with the words, and under Gravity so do ruled lines and list bullets. Put it back brings everything home.
+- Gravity has one apple. It lands where you click, and the faster you drag it the harder the page falls; its arrow shows how hard.
+- Hammer cracks are softer, Magnet holds letters around it like filings, and Ink, Painter and Eraser are redrawn. In Garden the words themselves grow stems, leaves and flowers.
+- The tool you are dealt comes from a full rarity list, Common to Legendary, each with its own chance out of 100. Its band shows on the card.
+- A Chromebook or a small laptop gets the same tools at a lighter cost, with nothing to turn on.
+- Every window size: the top bar stays one row in half and quarter windows, and the tabs scroll sideways when it runs out of room. Tools and Make it yours float over the page below 1720 px. A short window keeps the heading to one line, and the pony is smaller in a small window.
+- A part of Canvas that a teacher hid no longer stops a whole load, and courses that have not opened yet are left out.
+- Black hole grows behind the page before it breaks through. A drawn disk and a cloud of light then pull in everything on the screen, the menus and sidebars too, and the page is empty when it closes.
+- Foil sweeps a film in the foil card's own colours over the page before it folds it flat. Bomb's fire is painted, and Railgun's shot is one beam of light that cuts a lit valley.
+- Laser: every closed part of a cut drops out, a fast swipe cuts everything it crosses, and a picture parts along the beam.
+- Balloons rise from wherever you click and carry off the nearest words. Portals pull in the words around them, not only words you drag through.
+- Painter's paint dries in about a second and a half, so the words it wakes stay in view.
+- Badges and icons go with the words. An open Canvas menu stays where it is while a tool runs, and its hidden hover cards no longer fly as empty frames.
+- Focus room: its sound starts with your first press in the room.
+- Canvas's own pages: the side buttons are drawn with the pen line, and Canvas's phone menus stay inside the window.
+- Modules: a module's name keeps its room when Tools is open beside the page, and your progress shows again at once when you come back.
+- PDF reader: a reading ruler (L).
+- Course hub: pages a teacher has not shared no longer show as errors.
+- Developer tools, off until you switch it on: a read-only tab in Tools with the build, what is switched on, the settings you changed, the Canvas sync, speed, storage and errors from Canvas Harness's own files. **Copy report** puts it on your clipboard for a bug report, without names, coursework or your school address.
 
 ## 4.0 Preview 2 - 2026-10-30
 

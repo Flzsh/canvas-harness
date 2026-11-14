@@ -173,13 +173,19 @@
   return {state,action,change,setting,cancel(){const had=!!pending||!!state.summary;clear();if(had)notify();},destroy(){dead=true;clear();}};
  }
  let featureWrites=Promise.resolve();
+ // Writes keep the AI help record they find (and drop it when AI help ends up off); the value written is returned.
  function saveFeatures(value){
-   const F=root.ReserveFeatures,next=F.normalize(value),write=featureWrites.then(()=>root.chrome.storage.local.set({[F.KEY]:next}));
+   const F=root.ReserveFeatures,write=featureWrites.then(async()=>{
+     const current=(await root.chrome.storage.local.get(F.KEY))[F.KEY],next=F.settle?F.settle(value,current):F.normalize(value);
+     await root.chrome.storage.local.set({[F.KEY]:next});
+     return next;
+   });
    featureWrites=write.catch(()=>{});
    return write;
  }
  function toggleFeatures(prefs,id,on){
   const F=root.ReserveFeatures;if(!F.catalogue.some(f=>f.id===id)||typeof on!=='boolean')throw Error('Unknown feature.');
+  if(id==='ai'&&on&&!F.aiUnlocked?.(prefs))throw Error('Unknown feature.');
   const selected=new Set(prefs.preset==='custom'?prefs.custom:F.resolve(prefs).enabled);
   if(on)
     selected.add(id);
@@ -189,7 +195,7 @@
     do{size=removed.size;for(const item of F.catalogue)if(item.needs?.some(need=>removed.has(need)))removed.add(item.id);}while(size!==removed.size);
     for(const key of removed)selected.delete(key);
   }
-  return F.normalize({preset:'custom',custom:[...selected]});
+  return F.settle?F.settle({preset:'custom',custom:[...selected]},prefs):F.normalize({preset:'custom',custom:[...selected]});
  }
  const featureLabels={
    dashboard:['Dashboard and assignments','dashboard'],
@@ -213,7 +219,7 @@
    'course-nav':['Drawn course menu','coursemenu'],
    'native-appearance':['Canvas pages','native'],
    pdf:['PDF reader','pdf'],
-   ai:['Ask AI','ai'],
+   ai:['AI help','ai'],
    play:['Play with this page','play'],
    developer:['Developer tools','developer'],
    'focus-room':['Focus room','focus'],
@@ -230,10 +236,12 @@
  // the settings panel stays open (a settings tab) or closes so the feature can be seen.
  const OPENS={'focus-room':['room-open',{}],'review-deck':['workspace',{tab:'review'}],'grade-impact':['workspace',{tab:'grades'}]};
  function createFeatures(container,{store,getCustomPet=()=>null,close=()=>{}}={}){
-  const F=root.ReserveFeatures,$=id=>container.querySelector('#'+id),catalogue=F?.catalogue||[],catalog=catalogue.map(({id,group})=>{
-    const [name,icon]=featureLabels[id]||[id,'tools'];
-    return {id,name,group,icon};
-  });
+  const F=root.ReserveFeatures,$=id=>container.querySelector('#'+id),
+    // AI help is listed only once its add-on is in and agreed to (features.js listed)
+    shown=()=>(prefs&&F?.listed?F.listed(prefs):(F?.catalogue||[]).filter(f=>f.id!=='ai')).map(({id,group})=>{
+      const [name,icon]=featureLabels[id]||[id,'tools'];
+      return {id,name,group,icon};
+    });
   let dead=false,
     ready=false,
     loading=false,
@@ -264,11 +272,11 @@
      const turn=++companionTurn;
      if(data&&A?.hydrate)Promise.resolve(A.hydrate(data,{store})).then(value=>{if(!dead&&turn===companionTurn){companionPack=value;draw();}}).catch(()=>{});
    }
-   const state={
+   const catalog=shown(),state={
      catalog:catalog.map(row=>row.id==='pony'&&data&&A?.drawing?{...row,preview:A.drawing(data,pack)}:row),
      installed:packRows,
      packPending:[...packPending],
-     prefs:{preset:prefs.preset,on:Object.fromEntries(catalogue.map(({id})=>[id,effective.includes(id)]))},
+     prefs:{preset:prefs.preset,on:Object.fromEntries(catalog.map(({id})=>[id,effective.includes(id)]))},
      changed
    };
    state.opens=Object.keys(OPENS);state.live=F.current?.enabled||[];
@@ -305,6 +313,12 @@
   async function packAction(op,id){
    if(dead||packPending.has(id)||!packRows.some(row=>row.id===id))return;packPending.add(id);error();draw();
    try{
+     // AI help: "Use" opens its notice again (it turns on only from there); Remove locks it again
+     if(packRows.find(row=>row.id===id)?.feature==='ai'&&op!=='remove'){
+       const reply=await root.chrome.runtime.sendMessage({type:'ch-ai-notice',op:'open'});
+       if(reply?.ok!==true)throw Error(reply?.error||'Could not open AI help.');
+       return;
+     }
      if(op==='reset'&&typeof root.ReservePacks?.resetInstalled==='function')
        await root.ReservePacks.resetInstalled(id,{store});
      else{
@@ -344,7 +358,7 @@
    });return writes;
   }
   function toggle(id,on){
-   if(!ready||dead||!catalogue.some(f=>f.id===id))return;
+   if(!ready||dead||!shown().some(f=>f.id===id))return;
    return save(toggleFeatures(prefs,id,on));
   }
   function changed(changes,area){
@@ -471,7 +485,7 @@
     for(const link of links)link.remove();
   }};
  }
- const api={createDock,render,featuresPane,preferencesPane,createPreferences,mountLauncher,saveFeatures,toggleFeatures};
+ const api={createDock,render,featuresPane,preferencesPane,createPreferences,createFeatures,mountLauncher,saveFeatures,toggleFeatures};
  root.ReserveSettingsDock=api;
  if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

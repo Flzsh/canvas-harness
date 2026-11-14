@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Canvas Harness",
   "short_name": "Canvas Harness",
-  "version": "3.99.7",
+  "version": "4.0.0",
   "description": "For students on Canvas LMS: every course, assignment and deadline on one calm page, with a planner, study rooms and themes.",
   "minimum_chrome_version": "126",
   "permissions": [
@@ -325,5 +325,5 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'; worker-src 'self'"
   },
-  "version_name": "4.0 Preview 7"
+  "version_name": "4.0.0"
 }

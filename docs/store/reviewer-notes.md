@@ -1,5 +1,31 @@
 # Reviewer testing notes
 
+## 4.0.0 changes
+
+4.0.0 is 3.10.0 with AI help added as an optional add-on, and two readability fixes for the Thanksgiving and Blueprint scenes. AI help is packaged but off: no AI control appears anywhere (no Help band, no Help with this, no AI tab in Tools, no AI tile in Edit Home, no AI replies from Biscuit) until the student opens the Market from the popup (the Market row), adds "AI help" and accepts the packaged notice (`ai-notice.html`, "Before you turn on AI help": use it to learn, follow the school's rules on AI, the student is responsible for academic honesty). The Market add-on is a data file (`{"feature":"ai"}`) that only switches packaged code on; it turns nothing on by itself. Removing the add-on, switching AI help off or choosing Lite locks it again, stops a run in progress and clears its alarm.
+
+With AI help on, the student picks an AI chat site they are signed in to (ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Qwen or Z.ai; each site is asked for separately as an optional host permission) or saves their own API key (Anthropic, OpenAI, Google, or an HTTPS address they enter). On ChatGPT and Claude it reads the reply to its own message from the site's record of that chat, using the student's signed-in session; the token stays in memory for that read and is never saved or sent anywhere else. New since 3.10.0: the `alarms` permission (one alarm only while an AI help run is unfinished) and the optional API hosts for Anthropic, OpenAI and Google. All JavaScript is packaged; there is no remote code.
+
+## 3.10.0 changes
+
+3.10.0 adds two packaged scene themes (Thanksgiving and Maple Wind: a looping video, a poster, frames and icons each, inside the package), sizes every scene to the strip above Home's first widget with repainted Under the Sea, Starry Night and Blueprint videos, redraws the Deadline changes panel and the top bar's right side, and makes clicks faster. It adds no permissions, no network requests and no remote code, and the 4.0 daily AI is not in it.
+
+## 3.9.3 changes
+
+3.9.3 turns on the Focus room, Review deck and Grade impact in Full (they were already in the package, switched off), opens the Assignments page on a list of every assignment (late and due work first, done work kept below), keeps a course's colour when it is moved, fits the Starfield theme's pictures and sky, and draws the play tools' cards. It adds no permissions, no network requests and no remote code.
+
+## 3.9.2 changes
+
+3.9.2 fixes two display problems in 3.9.1: Make it yours → More shows its feature switches styled again (a stylesheet was missing from the page-start list), and picking a scene theme no longer shows its picture at full size for a moment before the theme's styles load. It adds no permissions, no network requests and no remote code.
+
+## 3.9.1 changes
+
+3.9.1 brings the redesigned interface from the 4.0 preview line: a drawn top bar, Make it yours with Settings and Features tabs, a Graphics setting, New since your last visit and Biscuit's rule list. It adds no permissions, no network requests and no remote code, and the 4.0 daily AI is not in it.
+
+## 3.9.0 changes
+
+3.9.0 redraws the opt-in Focus room, Review deck and Grade impact, makes the play tools lighter and lets them act on the whole page, and fits the page to every window size. It adds no permissions, no network requests and no remote code; since 3.9.3 all three are on in Full and can be switched off under Features → Custom.
+
 ## 3.8.0 Chrome Web Store submission scope
 
 3.8.0 is a Chrome Web Store submission of `dist/Canvas-Harness-3.8.0.zip`. It replaces 3.7.0, which was not published. The PDF reader now uses PDF.js 6.4.299's unmodified modern build from the official npm package (`vendor/pdfjs`, SHA-256 hashes in `pdf-context.js`) instead of the legacy build, whose bundled core-js code was reported as obfuscated. `pdf-library.mjs` and `pdf-worker.mjs` first load `pdf-polyfills.js`, a short readable file that adds the few newer standard built-ins PDF.js calls; the minimum Chrome version is 126. PDF.js still runs with eval and WebAssembly off. `vendor/pdfjs/README.md` explains two upstream spots kept byte for byte: `pdf.worker.mjs` line 9180 is the RFC 7932 Brotli dictionary stored as text (data, not code), and `pdf.mjs` line 16224 builds a wrapper for a worker hosted on another site, which is never reached because the extension gives PDF.js its packaged worker. Biscuit's local language rules are updated, the PDF reader has four fixes (a refused text box keeps its draft, text size and colour apply to the box being typed, a marked copy is never saved after the reader is hidden or closed, and module PDFs count as opened), and the dashboard does less work while nothing changes. No permission, host or network request is added.

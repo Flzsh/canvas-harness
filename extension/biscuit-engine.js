@@ -124,7 +124,7 @@
  }
  const timeText=(at,s)=>new Date(at).toLocaleTimeString('en-US',{timeZone:s.timeZone||'America/New_York',hour:'numeric',minute:'2-digit'}),
    dayText=day=>new Date(day+'T12:00Z').toLocaleDateString('en-US',{timeZone:'UTC',weekday:'short'});
- function create({parse,tier,pack}={}){
+ function build({parse,tier,pack}={}){
   let cached=null,revision=-1,index=[],matchCache=new Map(),learnedSnapshot=null,learnedRevision=-1,learnedRows=[];
   function modelFor(s){
     const selected=s.pet?.knowledge||s.settings?.pet?.knowledge;
@@ -2356,6 +2356,36 @@
   }
 
   return {register:Registry.register,prepare,search,evaluate,offer,normalizeInput:everyday};
+ }
+ // Every engine's replies pass the AI help check below.
+ function create(options){
+  const engine=build(options);
+  return {...engine,evaluate:(input,s={},session={})=>quietAI(engine.evaluate(input,s,session),s)};
+ }
+ // AI help locked or off (s.ai===false): no reply offers the AI, names it or points at one of its controls; a line that
+ // would need it gets what Biscuit can do instead.
+ const AI_TEXT=/\b(?:your ai|ask ai|ai panel|ai workspace|ai help|help band|study aids?)\b/i,
+   AI_HOME=new Set(['Help','Help with this','Help with…','Ask','Check my work','Choose an option','Choose {title}','Done','More','Next card','Next day',
+     'Next page','Open chat','Paste','Previous card','Previous day','Previous page','Push Help up','Read','Remember','Remembered','Remove','Save and redo',
+     'Show all','Test','Undo','Choose folder','Copy','Allow the prep folder']);
+ function aiPlace(path){
+  const p=Array.isArray(path)?path.map(v=>String(v)):[];
+  return p.some(v=>/^(?:AI|Ask AI|Your AI|AI help|AI workspace)$/i.test(v))||p[0]==='Home'&&AI_HOME.has(p[1]);
+ }
+ function quietAI(result,s){
+  if(s?.ai!==false||!result||typeof result!=='object')return result;
+  const fields=result.next?.fields||{},
+    ai=result.action==='ai'||
+      result.next?.action==='ai'||
+      AI_TEXT.test(String(result.message||''))||
+      aiPlace(result.ui?.path)||
+      (Array.isArray(result.items)?result.items:[]).some(v=>aiPlace(v?.ui?.path))||
+      ['module','setting'].includes(result.action)&&(fields.key==='help'||fields.key==='showHelp')||
+      result.action==='feature'&&fields.id==='ai';
+  const out=Object.hasOwn(result,'ai')?{...result,ai:null}:result;
+  if(!ai)return out;
+  const message=result.ui||['module','setting','feature'].includes(result.action)?'I could not find that here.':'I can find and open your Canvas work, but not write or explain it.';
+  return {action:'none',items:[],message,next:{action:'none',fields:{},label:'Continue'},understanding:result.understanding,routing:result.routing,execution:result.execution};
  }
  Parse();Clock();
  const shared=create(),

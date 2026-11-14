@@ -1,4 +1,5 @@
 'use strict';
+const Unlocked=require('./ai-unlocked.cjs');
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const Site=require('../extension/site.js');
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
@@ -7,7 +8,7 @@ function port(name,sender){return {name,sender,sent:[],onMessage:event(),onDisco
 function harness(){
  const ext='a'.repeat(32),url='chrome-extension://'+ext+'/',origin='https://school.instructure.com';
  const native=port('native',{}),runtime={id:ext,onConnect:event(),onMessage:event(),getURL:f=>url+f,connectNative:()=>{runtime.connects++;return native;},connects:0};
- const web=[],fake={chrome:{runtime,storage:{local:{get:async()=>({})}},tabs:{get:async id=>({id,url:origin+'/'})}},ReserveFeatures:require('../extension/features.js'),ReserveSite:Site,CanvasHarnessWeb:{handle:async(m,s)=>{web.push({m,s});return {status:'injected'};}},importScripts:()=>{},crypto:crypto.webcrypto,TextEncoder,AbortSignal,URL,setTimeout,clearTimeout,fetch:async()=>({ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:'7'})})};
+ const web=[],fake={chrome:{runtime,storage:{local:{get:async key=>Object.hasOwn(Unlocked.storage(),key)?{[key]:Unlocked.storage()[key]}:({})}},tabs:{get:async id=>({id,url:origin+'/'})}},ReserveFeatures:require('../extension/features.js'),ReserveSite:Site,CanvasHarnessWeb:{handle:async(m,s)=>{web.push({m,s});return {status:'injected'};}},importScripts:()=>{},crypto:crypto.webcrypto,TextEncoder,AbortSignal,URL,setTimeout,clearTimeout,fetch:async()=>({ok:true,headers:{get:()=> 'application/json'},json:async()=>({id:'7'})})};
  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../extension/background.js'),'utf8'),fake);
  const source=port('ch-ai-source',{id:ext,frameId:0,tab:{id:1},url:origin+'/'});runtime.onConnect.emit(source);
  source.onMessage.emit({kind:'catalog',data:{scopeKey:origin+'|7|10|1',sources:[],courses:[]}});

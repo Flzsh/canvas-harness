@@ -1,6 +1,6 @@
 # Install Canvas Harness
 
-Canvas Harness 4.0 Preview 7: use Features in the popup for Full, Lite or Custom. The optional Market asks for its own site access on first use; Make it yours → More → Add from a file imports artwork, kits, themes, pets and presets. Modules progress and To hand in are included; Focus room, Review deck and Grade impact are on in Full. Your school's own Canvas address is still added through the popup.
+Canvas Harness 4.0.0: use Features in the popup for Full, Lite or Custom. The optional Market asks for its own site access on first use; Make it yours → More → Add from a file imports artwork, kits, themes, pets and presets. Modules progress and To hand in are included; Focus room, Review deck and Grade impact are on in Full. AI help is in the package but off, and nothing of it shows, until you add it from the Market and agree to its notice; see [Study with AI](AI.md). Your school's own Canvas address is still added through the popup.
 
 Canvas Harness is a browser extension for your signed-in Canvas courses, assignments, bookmarks, artwork and study tools. It is designed for desktop Chrome and Edge, version 126 or newer.
 
@@ -18,9 +18,9 @@ The easiest way: open [Canvas Harness on the Chrome Web Store](https://chromeweb
 
 Keep the installed folder where it is. Moving or deleting it can break an unpacked installation. If your managed browser blocks unpacked extensions, ask your school's IT team which installation methods are allowed.
 
-## Version 4.0 Preview 7 feature choices
+## Version 4.0.0 feature choices
 
-Open **Features** in the popup and choose Full, Lite or Custom. Full is the default. Custom switches include dependencies automatically and remember your selection when you try another preset. Reload Canvas to apply. Turning features off preserves their saved data. Local artwork packs appear with Drawings; they are on in Full and in the default Custom selection and include the artwork editor they need.
+Open **Features** in the popup and choose Full, Lite or Custom. Full is the default. Custom switches include dependencies automatically and remember your selection when you try another preset. Focus room, Review deck and Grade impact are on in Full; Custom can switch any of them off. AI help is not in any preset: it is listed in Features only after you add it from the Market and agree to its notice. Reload Canvas to apply. Turning features off preserves their saved data. Local artwork packs appear with Drawings; they are on in Full and in the default Custom selection and include the artwork editor they need.
 
 Canvas Harness requires the browser's `scripting` permission to inject only the selected packaged modules into supported Canvas pages. School and AI website access is still requested one site at a time.
 
@@ -30,7 +30,7 @@ Open **Appearance settings** to choose the layout, rename or hide courses locall
 
 On Home, hold a course or panel heading until it lifts, then drag and release. You can reorder courses and place sections beside or below one another. Every move requires a separate hold; releasing returns to normal use. Keyboard controls are explained in the [README](https://github.com/Flzsh/canvas-harness#move-courses-and-panels-directly).
 
-Use **Tools → GPA** for local 4.0/4.3 estimates and what-if grades, **Tools → Calculator** for external Desmos calculators, and **Tools → AI** to review selected coursework and paste it into a provider website. AI provider access is optional. See [Study with AI](AI.md) before sending any coursework.
+Use **Tools → GPA** for local 4.0/4.3 estimates and what-if grades and **Tools → Calculator** for external Desmos calculators. **Tools → AI**, to review selected coursework and send it to an AI website, appears only after you add AI help and agree to its notice. AI provider access is optional. See [Study with AI](AI.md) before sending any coursework.
 
 The popup can detect the current Canvas tab or accept your school's Canvas URL. Supported sites are HTTPS Canvas subdomains of `*.instructure.com`. If your school runs Canvas on its own address (for example `canvas.your-school.edu`), enter that address in the extension's popup and click **Open Canvas dashboard**. Your browser asks to allow that one site; nothing else is added. You can remove it from the popup or from the browser's extension site settings. School Canvas settings may affect which information is available.
 
@@ -40,7 +40,7 @@ The popup can detect the current Canvas tab or accept your school's Canvas URL. 
 - Course information and fetched Canvas data can be cached in local browser storage. Personal settings, notes, bookmarks, checked-off work, imported art and GPA preferences are stored locally per Canvas site and account. Grades are hidden by default in the interface but may still exist in the local cache.
 - Checking off work in Canvas Harness does not submit an assignment or change Canvas grades.
 - Opening Desmos loads an external site. Canvas Harness does not send Canvas context to it.
-- **Tools → AI** opens an AI website. Clicking **Send** inserts your question and the chosen course text into that provider's draft; optional automatic submission can also send the message. On first use, the browser may ask for that provider's optional site permission. You can always use **Copy** and paste manually. Grades and local GPA data are excluded from AI context.
+- With AI help on, **Tools → AI** opens an AI website. Clicking **Send** inserts your question and the chosen course text into that provider's draft; optional automatic submission can also send the message. On first use, the browser may ask for that provider's optional site permission. You can always use **Copy** and paste manually. Grades and local GPA data are excluded from AI context.
 - The package contains shared extension files, not the developer's private classes, assignments, grades, notes, account data or imported artwork. Never share your personal backup or private SVGs with a public release.
 
 Read the full [Privacy notice](PRIVACY.md) before using third-party AI tools.

@@ -55,7 +55,13 @@
    if(!record(p)||!printable(p.id,100)||!printable(p.name,120)||!MARKET_KINDS.includes(p.kind))return false;
    const r=receipts[p.id];return r?.kind==='feature'&&!r.owner||identity&&(r?.owner&&same(r.owner,identity)||r?.key===accountKey(identity));
   }).map(({id,name,kind,installedAt,catalogueId})=>
-   ({id:options.marketOnly?catalogueId||id:id,name,kind,...(Number.isSafeInteger(installedAt)?{installedAt}:{})}));
+   ({
+     id:options.marketOnly?catalogueId||id:id,
+     name,
+     kind,
+     ...(Number.isSafeInteger(installedAt)?{installedAt}:{}),
+     ...(kind==='feature'&&typeof receipts[id]?.feature==='string'?{feature:receipts[id].feature}:{})
+   }));
   if(!identity)return legacy;const pool=root.ReserveMedia.createPackStore(identity);
   try{
    const portable=[];
@@ -98,7 +104,11 @@
      selection=same(current,featureAction.expected)?enableFeature(current,featureAction.feature):current;
      featureAction.receipt.previous=F.resolve(current.value).enabled.includes(featureAction.feature);
      featureAction.receipt.preferences={before:clone(current),after:clone(selection),...(!same(current,featureAction.expected)?{skipped:true}:{})};
-    }else selection=featureUndo(featureAction.receipt,featureAction.later,saved);
+    }else{
+     selection=featureUndo(featureAction.receipt,featureAction.later,saved);
+     // Removing the AI help add-on locks AI help again in this same write: its record goes, and 'ai' with it.
+     if(featureAction.receipt?.feature==='ai'&&selection.present)selection={present:true,value:F.lockAI(selection.value)};
+    }
     if(!same(selection,current)){if(selection.present)values[F.KEY]=selection.value;else removed.push(F.KEY);}
    }
    const change={values:clone(values),drop:[...new Set(removed)],previous:saved,features};
@@ -114,8 +124,9 @@
  const preferenceState=(saved,key)=>({present:own(saved,key),...(own(saved,key)?{value:clone(saved[key])}:{})});
  function enableFeature(state,feature){
   const F=root.ReserveFeatures,prefs=F.normalize(state.value),enabled=F.resolve(prefs).enabled;
-  if(enabled.includes(feature))return clone(state);
-  return {present:true,value:{preset:'custom',custom:[...new Set([...(prefs.preset==='custom'?prefs.custom:enabled),feature])]}};
+  // The AI help add-on turns nothing on by itself: its notice (ai-notice.html) does, once the student agrees.
+  if(feature==='ai'||enabled.includes(feature))return clone(state);
+  return {present:true,value:F.carry({preset:'custom',custom:[...new Set([...(prefs.preset==='custom'?prefs.custom:enabled),feature])]},prefs)};
  }
  function featureUndo(receipt,later,saved){
   const F=root.ReserveFeatures,current=preferenceState(saved,F.KEY);if(receipt.devicePreferences===false)return current;
@@ -123,7 +134,7 @@
    // Compatibility for older receipts: avoid overriding a later preset choice.
    const prefs=F.normalize(current.value),next=later.find(p=>p.kind==='feature'&&p.feature===receipt.feature);if(next)next.previous=receipt.previous;
    if(next||receipt.previous||prefs.preset!=='custom')return current;
-   return {present:true,value:{preset:'custom',custom:prefs.custom.filter(id=>id!==receipt.feature)}};
+   return {present:true,value:F.carry({preset:'custom',custom:prefs.custom.filter(id=>id!==receipt.feature)},prefs)};
   }
   let old=clone(receipt.preferences.after),next=clone(receipt.preferences.before);
   // Replay only a continuous chain of extension-owned choices. A different
@@ -274,6 +285,8 @@
      });
     }
     else{if(bound)await confirmOwner(bound);await publish(r,{},[],featureAction);}
+    // AI help: the add-on is in, still off; its notice opens for the student to read and agree (or not now)
+    if(doc.feature==='ai')await Promise.resolve(root.ReserveOpenAINotice?.()).catch(()=>{});
    }else if(entry.kind==='kit'){
     const imported=await root.ReserveCustomKits.importKit({name:'market.chkit',size:entry.size,text:async()=>source},{media:{prepare:importMedia}}),
      store=root.ReserveMedia.createPackStore(identity);

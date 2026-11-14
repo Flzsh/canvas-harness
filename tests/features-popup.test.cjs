@@ -4,7 +4,8 @@ const read=file=>fs.readFileSync(path.join(__dirname,'../extension',file),'utf8'
 const plain=value=>value===undefined?undefined:JSON.parse(JSON.stringify(value));
 const settle=async()=>{for(let i=0;i<12;i++)await new Promise(resolve=>setImmediate(resolve));};
 const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done;});return {promise,resolve};};
-const IDS=require('../extension/features.js').presets.full;
+// Full without AI help: it stays locked until its add-on is added and its notice agreed to
+const IDS=require('../extension/features.js').presets.full.filter(id=>id!=='ai');
 const LITE=['dashboard','planner','grades','math','gpa','tools','arrange','native-appearance'];
 
 // A DOM/storage boundary fixture: real popup and catalogue, no browser launch.
@@ -108,7 +109,7 @@ async function fixture(t,{saved={},readGate=null,failReads=0,missingAPI=false,la
 
 test('popup keeps author and branding, shows the version name, and loads the catalogue before its controls',()=>{
  const html=read('popup.html'),scripts=[...html.matchAll(/<script\b[^>]*src="([^"]+)"/g)].map(match=>match[1]);
- assert.match(html,/<meta name="author" content="Flzsh">/);assert.match(html,/id="version"[^>]*>4.0 Preview 7</);
+ assert.match(html,/<meta name="author" content="Flzsh">/);assert.match(html,/id="version"[^>]*>4.0.0</);
  assert.ok(scripts.indexOf('features.js')>=0&&scripts.indexOf('features.js')<scripts.indexOf('popup.js'));
  assert.match(html,/id="welcome-tour" href="welcome.html" target="_blank" rel="noopener"/);
  assert.match(read('popup.js'),/@preserve Canvas Harness original creator: Flzsh/);
@@ -171,9 +172,9 @@ test('Pony enables its requirements and disabling Planner removes its transitive
 
 test('artwork and Tools dependencies turn off predictably while unrelated Custom choices survive',async t=>{
  const h=await fixture(t,{saved:{'reserve:features':{preset:'custom',custom:['customization','course-art','math','ai','gpa','unknown','math']}}});await h.open();
- assert.deepEqual(h.checked(),['dashboard','math','gpa','tools','customization','course-art','ai']);
+ assert.deepEqual(h.checked(),['dashboard','math','gpa','tools','customization','course-art']);
  await h.toggle('customization',false);assert.deepEqual(h.data['reserve:features'].custom,['course-art','math','ai','gpa']);
- assert.deepEqual(h.checked(),['math','gpa','tools','course-art','ai']);
+ assert.deepEqual(h.checked(),['math','gpa','tools','course-art']);
  await h.toggle('tools',false);assert.deepEqual(h.checked(),['math','course-art']);assert.deepEqual(h.data['reserve:features'].custom,['course-art','math']);
 });
 

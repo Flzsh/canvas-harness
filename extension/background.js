@@ -29,6 +29,8 @@ globalThis.ReservePagePreferences?.serve();
  async function requireFeature(id,sender){
   const prefs=await documentPrefs(sender);
   if(!ReserveFeatures.resolve(prefs).enabled.includes(id))throw Error('This add-on is off. Reload Canvas to apply your add-ons.');
+  // AI help also answers to the saved choice now: a page loaded before it was locked again gets no AI work done.
+  if(id==='ai'&&!ReserveFeatures.resolve(await featurePrefs()).enabled.includes('ai'))throw Error('This add-on is off. Reload Canvas to apply your add-ons.');
  }
  async function loadFeatures(sender){
   await ready;
@@ -55,7 +57,7 @@ globalThis.ReservePagePreferences?.serve();
    // Prepaint JS/CSS already belongs to document_start; never evaluate it twice.
    const files=[...selection.startupJS,...selection.js].filter(file=>!ReserveFeatures.staticJS.includes(file));
    await chrome.scripting.executeScript({target,world:'ISOLATED',injectImmediately:true,files});
-   return {ok:true,preset:selection.preset,enabled:selection.enabled};
+   return {ok:true,preset:selection.preset,enabled:selection.enabled,...(selection.aiUnlocked?{aiUnlock:ReserveFeatures.normalize(prefs).aiUnlock}:{})};
   })();
   featureLoads.set(key,task);
   if(featureLoads.size>300)featureLoads.delete(featureLoads.keys().next().value);
@@ -547,6 +549,73 @@ globalThis.ReservePagePreferences?.serve();
    await live();return result;
   }finally{task.busy=false;}
  }
+ // AI help (4.0): off and out of sight until the student adds the AI help add-on from the Market and agrees to its notice
+ // (ai-notice.html). Only that page asks for the unlock; removing the add-on, or switching AI help off, locks it again.
+ const NOTICE='ai-notice.html',RECEIPTS='reserve:packs:receipts';
+ const aiOn=async()=>ReserveFeatures.resolve(await featurePrefs()).enabled.includes('ai');
+ const noticeSender=sender=>{
+   if(sender?.id!==chrome.runtime.id||typeof sender.url!=='string')return false;
+   try{const url=new URL(sender.url);return url.href===chrome.runtime.getURL(NOTICE)&&!url.search&&!url.hash;}catch{return false;}
+ };
+ async function aiPack(){
+   const receipts=(await chrome.storage.local.get(RECEIPTS))[RECEIPTS];
+   return !!receipts&&typeof receipts==='object'&&Object.values(receipts).some(r=>r?.kind==='feature'&&r.feature==='ai');
+ }
+ async function openNotice(tab){
+   // an open notice is brought forward rather than opened twice
+   const url=chrome.runtime.getURL(NOTICE),open=(await chrome.runtime.getContexts?.({contextTypes:['TAB'],documentUrls:[url]})?.catch?.(()=>[])||[]).find(c=>c.tabId>=0);
+   if(open){await chrome.tabs.update(open.tabId,{active:true});await chrome.windows?.update?.(open.windowId,{focused:true})?.catch?.(()=>{});return open;}
+   return chrome.tabs.create({url,...(Number.isInteger(tab?.index)?{index:tab.index+1}:{})});
+ }
+ globalThis.ReserveOpenAINotice=openNotice;
+ // Removing the add-on by any road locks AI help again (packs.js also does it in the same write).
+ async function reconcileLock(){
+   const F=ReserveFeatures,saved=(await chrome.storage.local.get(F.KEY))[F.KEY];
+   if(!F.aiUnlocked(saved)||await aiPack())return;
+   await F.run(async()=>{
+     const before=(await chrome.storage.local.get(F.KEY))[F.KEY];
+     if(F.aiUnlocked(before)&&!await aiPack())await chrome.storage.local.set({[F.KEY]:F.lockAI(before)});
+   });
+ }
+ // Locked again: every AI job of this worker stops and the AI pages lose their connection.
+ let aiWasOn=null;
+ async function followLock(){
+   const on=await aiOn();if(on===aiWasOn)return;aiWasOn=on;if(on)return;
+   for(const scope of [...agentJobs.keys()])stopAgent(scope);
+   for(const panel of [...panels])try{panel.disconnect();}catch{}
+   for(const [,entry]of [...channels])try{entry.port.disconnect();}catch{}
+   for(const jobs of apiJobs.values())for(const job of jobs.values())job.abort();
+ }
+ chrome.storage.onChanged?.addListener((changes,area)=>{
+   if(area!=='local')return;
+   if(changes[ReserveFeatures.KEY])void followLock().catch(()=>{});
+   if(changes[RECEIPTS])void reconcileLock().catch(()=>{});
+ });
+ void ready.then(reconcileLock).then(followLock).catch(()=>{});
+ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
+  if(message?.type!=='ch-ai-notice')return;
+  (async()=>{
+    if(!['state','agree','open'].includes(message.op)||Object.keys(message).some(k=>!['type','op'].includes(k)))throw Error('Invalid AI help request.');
+    const F=ReserveFeatures;
+    if(message.op==='open'){
+      // "Use" on the installed add-on, from Make it yours (a Canvas page) or the extension popup
+      const popup=sender?.id===chrome.runtime.id&&!sender.tab&&sender.url===chrome.runtime.getURL('popup.html');
+      if(!canvasSender(sender)&&!popup)throw Error('Invalid AI help request.');
+      if(!await aiPack())throw Error('Add AI help from the Market first.');
+      await openNotice(sender.tab);return {};
+    }
+    if(!noticeSender(sender))throw Error('Invalid AI help request.');
+    if(message.op==='state')return {installed:await aiPack(),on:await aiOn()};
+    // Agree: only with the add-on installed, and only from the notice page
+    if(!await aiPack())throw Error('Add AI help from the Market first.');
+    await F.run(async()=>{
+      const before=(await chrome.storage.local.get(F.KEY))[F.KEY];
+      await chrome.storage.local.set({[F.KEY]:F.unlockAI(before)});
+    });
+    return {on:await aiOn()};
+  })().then(result=>reply({ok:true,...result}),error=>reply({ok:false,error:String(error?.message||error)}));
+  return true;
+ });
  chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   if(message?.target==='ch-agent'){
     agentRequest(message,sender).then(result=>reply({ok:true,result}),error=>reply({ok:false,error:String(error?.message||error)}));
@@ -555,6 +624,7 @@ globalThis.ReservePagePreferences?.serve();
   if(message?.target==='ch-overnight-updated'){
    (async()=>{
      if(!overnight||sender.id!==chrome.runtime.id||sender.url?.split('#')[0]!==chrome.runtime.getURL('overnight.html'))throw Error('Open prep folder settings.');
+     if(!await aiOn())throw Error('This add-on is off. Reload Canvas to apply your add-ons.');
      const data=await overnight.status(message.scopeKey);
      for(const panel of panels)if(sourceFor(panel)?.catalog?.scopeKey.split('|').slice(0,2).join('|')===message.scopeKey.split('|').slice(0,2).join('|'))post(panel,{kind:'overnight',data});
      return {};

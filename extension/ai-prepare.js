@@ -36,7 +36,23 @@
           Array.isArray(a)===Array.isArray(b)&&
           Object.keys(a).length===Object.keys(b).length&&
           Object.keys(a).every(k=>Object.hasOwn(b,k)&&sameValue(a[k],b[k]));
+  // AI help locked again (its add-on removed, or switched off): no run goes on, none starts, the alarm goes.
+  const aiLocked=async()=>{
+    const F=root.ReserveFeatures;if(!F)return false;
+    return !F.resolve((await chrome.storage.local.get(F.KEY))[F.KEY]).enabled.includes('ai');
+  };
+  const lockedError=()=>Error('AI help is off. Prepare settings changed.');
+  let stopping=null;
+  function stopAll(){
+    return stopping||=(async()=>{
+      try{
+        for(const r of await journal.all())if(!root.CanvasHarnessRunStore.terminal(r))await engine.cancel(r.id).catch(()=>{});
+        await chrome.alarms?.clear('ch-ai-recovery');
+      }finally{stopping=null;}
+    })();
+  }
   async function checkLocal(run){
+   if(await aiLocked())throw lockedError();
    if(!run||!/^https:\/\/[a-z0-9.-]+\|\d+$/i.test(run.scope)||!root.ReserveSite?.supported?.(run.scope.split('|')[0]))throw Error('A verified Canvas account is required.');
    const tab=await chrome.tabs.get(run.sourceTab).catch(()=>null);if(tab&&root.CanvasHarnessAgentActions.quiz(tab.url))throw Error('Prepare is unavailable while taking a quiz.');
    const saved=(await chrome.storage.local.get(keyFor(run.scope)))[keyFor(run.scope)],settings=saved?.toolbox?.agent?.settings;
@@ -143,6 +159,7 @@
         })()))
         throw Error('Invalid study owner.');
       if(tab&&root.CanvasHarnessAgentActions.quiz(tab.url))throw Error('Study storage is unavailable on quiz-taking pages.');
+      if(await aiLocked())throw Error('AI help is off.');
       if(!folder)await requireFeature('ai',{...sender,frameId:0,url:tab.url});
       const scope=match[1]+'|'+match[2],
         fetcher=root.CanvasHarnessAICanvas.createFetch({chrome,run:{scope,...(!folder?{sourceTab:tab.id}:{})}}),
@@ -155,6 +172,7 @@
 
    if(message?.target==='ch-ai-engine-permit'){
     (async()=>{
+      if(await aiLocked())throw Error('AI help is off.');
       const r=await journal.get(message.runId),turn=r?.turns[r.turnIndex],receipt=turn?.deliveryReceipt;
       if(sender.id!==chrome.runtime.id||
         sender.frameId!==0||
@@ -170,6 +188,7 @@
    }
    if(message?.target!=='ch-ai-engine')return;
    (async()=>{
+    if(await aiLocked()){if(message.op==='cancel')await stopAll();throw Error('AI help is off.');}
     if(!canvasSender(sender)||message.scopeKey!==new URL(sender.url).origin+'|'+message.scopeKey?.split('|')[1]||!/^\d+$/.test(message.scopeKey?.split('|')[1]))throw Error('Open a verified Canvas page.');
     const scope=message.scopeKey,all=await journal.all(),watching=['get','subscribe'].includes(message.op);
     // The status line follows one-shot runs only; a finished or stuck one drops out after 12 hours.
@@ -283,9 +302,12 @@
     throw Error('Unknown engine operation.');
    })().then(result=>reply({ok:true,result}),error=>reply({ok:false,error:String(error.message||error)}));return true;
   });
-  chrome.alarms?.onAlarm.addListener(alarm=>{if(alarm.name==='ch-ai-recovery')void engine.recover().catch(()=>{});});
+  chrome.alarms?.onAlarm.addListener(alarm=>{
+    if(alarm.name==='ch-ai-recovery')void aiLocked().then(locked=>locked?stopAll():engine.recover()).catch(()=>{});
+  });
   chrome.storage.onChanged?.addListener((changes,area)=>{
     if(area!=='local')return;
+    if(root.ReserveFeatures&&changes[root.ReserveFeatures.KEY])void aiLocked().then(locked=>{if(locked)return stopAll();}).catch(()=>{});
     void(async()=>{
       for(const r of await journal.all()){
         const c=changes[keyFor(r.scope)];
@@ -298,7 +320,8 @@
     })().catch(()=>{});
   });
   // New worker instance: persisted epochs invalidate any callbacks from its predecessor.
-  void engine.recover({workerStart:true}).catch(()=>{});return engine;
+  // A locked worker resumes nothing: runs left from before the lock are stopped instead.
+  void aiLocked().then(locked=>locked?stopAll():engine.recover({workerStart:true})).catch(()=>{});return engine;
  }
  root.CanvasHarnessPrepare={serve};if(typeof module==='object'&&module.exports)module.exports={serve};
 })(globalThis);

@@ -13,8 +13,9 @@ const sha=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 const escapeRE=value=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 const term=parts=>escapeRE(parts.join(''));
 // Keep policy strings assembled so this tool can pass the same content scan.
-// 4.0 ships Your AI (agent-*, study-*, ai-api*, overnight*), so the 3.x rules that kept those runtime modules out of the
-// package are retired; private names, development switches and debugging hooks stay barred.
+// 4.0 packages the AI (agent-*, study-*, ai-api*, overnight*) as AI help, locked until its Market add-on is agreed to,
+// so the 3.x rules that kept those runtime modules out of the package are retired; the lock itself is audited below
+// (lockAudit and the rendered lock test). Private names, development switches and debugging hooks stay barred.
 const RULES=[
  ['R04',term(['reserve:','de','v'])+'[a-z0-9:_-]*'],
  ['R05','\\b'+term(['w','ra','.instructure','.com'])+'\\b'],
@@ -187,6 +188,23 @@ function featureReferences(api){
  for(const feature of api.catalogue)visit(api.resolve({preset:'custom',custom:[feature.id]}));return [...refs].sort();
 }
 
+// AI help is locked: without the notice record no preset or saved choice loads it and no student-facing list shows it;
+// with the record it loads. Runs inside a vm on the packaged features.js.
+function lockAudit(api){
+ const problems=[],AI=/^(?:agent-(?!clock\.|home\.)|study-(?!kind\.)|ai-(?:api|canvas|context|delivery|engine|prepare|results|run|runner|source)|overnight|prepare-brief|google-docs|math-render)/;
+ if(typeof api.listed!=='function'||typeof api.unlockAI!=='function'||typeof api.aiUnlocked!=='function')return JSON.stringify(['the lock API is missing']);
+ const all=api.catalogue.map(f=>f.id),forged={version:1,acceptedAt:'not a time',notice:1};
+ for(const prefs of [undefined,'full','lite',{preset:'full'},{preset:'custom',custom:all},{preset:'custom',custom:['ai','tools']},{preset:'full',aiUnlock:forged},{preset:'full',aiUnlock:{version:2,acceptedAt:'2026-11-09T12:00:00.000Z',notice:1}}]){
+  const label=JSON.stringify(prefs)||'no saved choice',r=api.resolve(prefs);
+  if(r.enabled.includes('ai'))problems.push('AI help is on without the notice record: '+label);
+  for(const file of r.js.filter(file=>AI.test(file)))problems.push(file+' loads without the notice record: '+label);
+  if(api.listed(prefs).some(f=>f.id==='ai'))problems.push('a feature list shows AI help without the notice record: '+label);
+ }
+ if(api.listed().some(f=>f.id==='ai'))problems.push('the default feature list shows AI help');
+ const open=api.resolve(api.unlockAI('full','2026-11-09T12:00:00.000Z'));
+ if(!open.enabled.includes('ai')||!open.js.includes('ai-source.js')||!open.js.includes('study-band.js'))problems.push('the notice record does not turn AI help on');
+ return JSON.stringify(problems);
+}
 function auditRelease({unpackedDir,manifestPath=path.join(ROOT,'dist/release-manifest.json'),sourceRoot=ROOT,packageName,outputPath}={}){
  ensure(unpackedDir,'an unpacked directory is required');unpackedDir=path.resolve(unpackedDir);manifestPath=path.resolve(manifestPath);sourceRoot=path.resolve(sourceRoot);
  const errors=[],attempt=(label,fn)=>{try{return fn();}catch(error){errors.push(label+': '+error.message);return null;}},check=(value,message)=>{if(!value)errors.push(message);};
@@ -266,14 +284,33 @@ function auditRelease({unpackedDir,manifestPath=path.join(ROOT,'dist/release-man
     return JSON.parse(new vm.Script(code,{filename:'features.js'}).runInContext(context,{timeout:2000}));
    });
    if(refs)for(const ref of refs)requireAsset('features.js',ref,'feature');
+   const lock=attempt('AI help lock',()=>{
+    const context=vm.createContext(Object.create(null),{codeGeneration:{strings:false,wasm:false}}),code='var module={exports:{}};\n'+texts.get('features.js')+'\n('+lockAudit.toString()+')(module.exports);';
+    return JSON.parse(new vm.Script(code,{filename:'features.js'}).runInContext(context,{timeout:2000}));
+   });
+   if(lock){summary.aiLock={catalogue:lock.length===0,rendered:null};for(const problem of lock)errors.push('AI help lock: '+problem);}
   }
   if(unpacked)for(const [name,absolute] of unpacked)if(/\.[cm]?js$/i.test(name)){
    summary.counts.jsAttempted++;const result=spawnSync(process.execPath,['--check',absolute],{encoding:'utf8',timeout:30000,maxBuffer:1024*1024,windowsHide:true,env:{...process.env,NODE_OPTIONS:''}});
    if(result.error){errors.push('node --check could not run for '+name+': '+result.error.message);break;}
    if(result.status===0)summary.counts.jsChecked++;else errors.push('node --check failed for '+name+': '+(result.stderr||result.stdout||'exit '+result.status).trim().slice(0,4000));
   }
+  // The lock, rendered: Home, Tools, Quick open, the Features lists, Edit Home and Biscuit show no AI while it is locked
+  // and show it with the notice record (tests/ai-help-lock.test.cjs). It runs on the source files, so every packaged
+  // script, page and sheet must be the same bytes as its source.
+  const lockTest=path.join(sourceRoot,'tests','ai-help-lock.test.cjs');
+  if(unpacked&&!fs.existsSync(lockTest))errors.push('AI help lock test is missing: tests/ai-help-lock.test.cjs');
+  else if(unpacked){
+   const untrusted=[...entries.keys()].filter(name=>/\.(?:[cm]?js|html?|css|json)$/i.test(name)&&source?.has(name)&&!trusted.has(name));
+   if(untrusted.length)errors.push('AI help lock test needs packaged files identical to their source: '+untrusted.slice(0,5).join(', '));
+   else{
+    const run=spawnSync(process.execPath,['--test','--test-reporter=dot',lockTest],{cwd:sourceRoot,encoding:'utf8',timeout:180000,maxBuffer:8*1024*1024,windowsHide:true,env:{...process.env,NODE_OPTIONS:'',TZ:'America/New_York'}});
+    if(summary.aiLock)summary.aiLock.rendered=run.status===0;
+    if(run.status!==0)errors.push('AI help lock test failed: '+String(run.stdout||run.stderr||run.error?.message||'exit '+run.status).trim().slice(-2000));
+   }
+  }
  }
- summary.ok=errors.length===0;const version=summary.version||'3.99.7',destination=path.resolve(outputPath||path.join(path.dirname(manifestPath),'audit-'+version+'.json'));
+ summary.ok=errors.length===0;const version=summary.version||'4.0.0',destination=path.resolve(outputPath||path.join(path.dirname(manifestPath),'audit-'+version+'.json'));
  const same=(a,b)=>process.platform==='win32'?a.toLowerCase()===b.toLowerCase():a===b,outputRelative=path.relative(unpackedDir,destination);
  ensure(!same(destination,manifestPath),'summary output must not overwrite the release manifest');
  if(summary.inputs.archive)ensure(!same(destination,summary.inputs.archive),'summary output must not overwrite the archive');
@@ -294,4 +331,4 @@ function main(args=process.argv.slice(2)){
  else{console.error('Release audit failed ('+result.errors.length+' findings). '+result.outputPath);for(const error of result.errors.slice(0,30))console.error('- '+error);if(result.errors.length>30)console.error('See the summary JSON for all findings.');}return result.ok?0:1;
 }
 if(require.main===module){try{process.exitCode=main();}catch(error){console.error('Release audit failed: '+error.message);process.exitCode=1;}}
-module.exports={auditRelease,parseZip,scanTokens,main};
+module.exports={auditRelease,parseZip,scanTokens,lockAudit,main};

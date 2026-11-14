@@ -7,6 +7,8 @@
  const available=key=>
    key!=='today'&&
      enabled('planner')&&
+     // the modules AI help makes ('ai-…') show only while it is on
+     (!/^ai-/.test(String(key))||enabled('ai'))&&
      (!['context','messages'].includes(key)||enabled('course-hub'))&&
      (key!=='grades'||enabled('grades'))&&
      (key!=='pet'||enabled('pony'))&&
@@ -240,12 +242,15 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
     executionValidation=null,
     unregisterExecutor=null;
   save=change=>persist(recording?recordChange(change,recording):change);
-  const on=id=>enabled(id)&&(!requestedFeatures||requestedFeatures.includes(id)),unavailable=name=>({ok:false,message:name+' is off. Turn it on in Make it yours → Features.'});
+  const on=id=>enabled(id)&&(!requestedFeatures||requestedFeatures.includes(id)),
+    // AI help that is locked or off is not named: Biscuit says it found nothing there
+    notHere={ok:false,message:'I could not find that here.'},
+    unavailable=name=>/\bAI\b/.test(String(name))&&!on('ai')?notHere:{ok:false,message:name+' is off. Turn it on in Make it yours → Features.'};
    // A navigation answer: a promise settles to its own answer; false or a reply object stays as it is, anything else is done.
    function opened(result){return typeof result?.then==='function'?Promise.resolve(result).then(opened):result===false||record(result)?result:true;}
   // Companion schedule and offers need valid values and the Pony switch.
   function appearanceCommand(request){
-    if(request.key==='showHelp'&&typeof request.value==='boolean'){if(!on('ai'))return unavailable('Your AI');return save(data=>{Arrange().change(data.settings,{type:'help',value:request.value});});}
+    if(request.key==='showHelp'&&typeof request.value==='boolean'){if(!on('ai'))return notHere;return save(data=>{Arrange().change(data.settings,{type:'help',value:request.value});});}
     if(request.key==='pet.nudges'&&['helpful','quiet'].includes(request.value)||request.key==='pet.enabled'&&typeof request.value==='boolean')
       return save(data=>{data.pet={...Pets().clean(data.pet),[request.key.slice(4)]:request.value};});
     const feature={
@@ -427,13 +432,15 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
    const validate=executionValidation;
    const F=root.ReserveFeatures,D=root.ReserveSettingsDock;if(!F||!D?.saveFeatures||!root.chrome?.storage?.local)return {ok:false,message:'Features are unavailable. Reload Canvas.'};
     if(request.id==='pony'&&!request.on)return {ok:false,message:'The Companion switch is in the extension popup → Companion.'};
+    // AI help is switched on only from its notice; while locked, Biscuit does not know it
+    if(request.id==='ai'&&(request.on||!F.aiUnlocked?.()))return request.on&&F.aiUnlocked?.()?{ok:false,message:'AI help is on.'}:notHere;
    const saved=(await root.chrome.storage.local.get(F.KEY))[F.KEY],before=F.normalize(saved);
    let next=request.id?D.toggleFeatures(before,request.id,request.on):F.normalize({preset:request.preset});
    if(!F.resolve(next).enabled.includes('pony')){
      if(request.id)return {ok:false,message:'That also turns '+(root.ReservePetArt?.identity?.(store.get())?.name||'Biscuit')+' off. Use Make it yours → Features for that switch.'};
     next=F.normalize({preset:'custom',custom:[...F.resolve(next).enabled,'pony']});
    }
-   validate?.();await D.saveFeatures(next);requestedFeatures=F.resolve(next).enabled;
+   validate?.();next=(await D.saveFeatures(next))||next;requestedFeatures=F.resolve(next).enabled;
     return {
       ok:true,
       message:request.preset==='lite'?'Lite mode, keeping '+(root.ReservePetArt?.identity?.(store.get())?.name||'Biscuit')+' on. Reload Canvas to apply.':'Saved. Reload Canvas to apply.',
@@ -448,7 +455,7 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
   }
   function moduleCommand({action,key}){
    if(key==='help'){
-     if(!on('ai'))return unavailable('Your AI');
+     if(!on('ai'))return notHere;
      if(!['show','hide'].includes(action))return {ok:false,message:'Help stays above the Home modules; use its switch in Edit Home.'};
      return Promise.resolve(save(data=>{Arrange().change(data.settings,{type:'help',value:action==='show'});})).then(async ok=>{
        if(ok===false)return false;
@@ -738,6 +745,8 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
      local:data.tasks||{},
      pet:Pets()?.clean(data.pet)||data.pet,
      features:(root.ReserveFeatures?.catalogue||[]).filter(v=>v.id!=='ai').map(v=>({...v,on:on(v.id)})),
+     // Biscuit offers, names and opens AI help only while it is on (biscuit-engine.js quietAI)
+     ai:enabled('ai')&&typeof askAI==='function',
      homeModules:(Arrange()?.ALL||[]).filter(available).map(id=>({id,title:Arrange().LABELS[id],shows:INFO[id]?.hint||''})),
      tabs:['home','assignments',...(on('planner')?['planner']:[]),...(on('materials')?['materials']:[]),...(on('course-hub')?['messages','course-hub']:[]),...(on('grades')?['grades']:[])],
      controls:[...controls,...(Array.isArray(sources.controls)?sources.controls:[])],

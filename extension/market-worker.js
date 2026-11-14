@@ -22,6 +22,10 @@
   if(!response.ok||response.redirected||!response.headers.get('content-type')?.includes('json'))throw Error('Canvas account changed.');
   return root.ReserveMarketSite.owner({origin,accountId:String((await response.json())?.id)});
  }
+ async function featurePack(id){
+  const receipts=(await chrome.storage.local.get('reserve:packs:receipts'))['reserve:packs:receipts'];
+  return receipts?.[id]?.kind==='feature'&&!receipts[id].owner;
+ }
  async function account(value){
   const owner=root.ReserveMarketSite.owner(value),current=await profile(owner.origin);
   if(current.accountId!==owner.accountId)throw Error('Canvas account changed.');
@@ -98,9 +102,19 @@
      throw Error('Invalid pack catalogue request.');
     await account(owner);
     const packs=await root.ReservePacks.installed({owner});
-    return {ok:true,packs:packs.filter(pack=>!message.kind||pack.kind===message.kind).map(({id,name,kind})=>({id,name,kind,source:'market',current:false}))};
+    return {
+     ok:true,
+     packs:packs.filter(pack=>!message.kind||pack.kind===message.kind).map(({id,name,kind,feature})=>
+      ({id,name,kind,...(feature?{feature}:{}),source:'market',current:false}))
+    };
    }
-   if(message.type==='market-remove'){if(!popup(sender)||typeof message.id!=='string')throw Error('Invalid pack removal.');await root.ReservePacks.remove(message.id);return {ok:true};}
+   if(message.type==='market-remove'){
+    if(typeof message.id!=='string')throw Error('Invalid pack removal.');
+    // Make it yours > Features (a Canvas page of the account) removes a feature add-on as the popup does
+    if(!popup(sender)&&!(message.owner&&await canvas(sender,message.owner)&&await featurePack(message.id)))throw Error('Invalid pack removal.');
+    if(!popup(sender))await account(message.owner);
+    await root.ReservePacks.remove(message.id);return {ok:true};
+   }
    if(!market(sender)||!await chrome.permissions?.contains({origins:['https://flzsh.github.io/*']}))throw Error('Market access is unavailable.');
    const owner=await root.ReserveMarketSite.bound(sender.tab.id);
    if(message.type==='market-installed'){await account(owner);return {ok:true,installed:(await root.ReservePacks.installed({marketOnly:true,owner})).map(pack=>pack.id)};}

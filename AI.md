@@ -1,12 +1,24 @@
 # Study with AI
 
-Canvas Harness 4.0 Preview 7 has **Your AI**. It reads your Canvas the way the rest of Canvas Harness does, writes a message for an AI, and turns the reply into Help cards, a Today list and study aids on your page. Canvas Harness has no AI of its own and no server. The answer comes from an AI you choose, reached in one of three ways:
+Canvas Harness 4.0 has **AI help**, an optional add-on. It reads your Canvas the way the rest of Canvas Harness does, writes a message for an AI, and turns the reply into Help cards, a Today list and study aids on your page. Canvas Harness has no AI of its own and no server. The answer comes from an AI you choose, reached in one of three ways:
 
 - **Web AI** (the default): the AI's own website, in a browser tab where you are signed in. ChatGPT, Claude and Gemini are listed first; Grok, DeepSeek, Kimi, Qwen and Z.ai (GLM) are under **More**.
 - **API**: your own API key for Anthropic, OpenAI, Google or an OpenAI-compatible service. The provider bills you for each request.
 - **Overnight**: Canvas Harness writes the message as a file in a folder you pick, and an AI tool that you run yourself writes its answer into the same folder.
 
-Choose the way in **Tools → AI → ··· → Way**. Your AI is part of the Full preset, which is the default, and is left out of Lite. Its main switch, **Your AI**, is in the same ··· menu and starts **on**. **Prepare every day**, beside it, starts **off**, also for anyone who used an earlier preview: until you turn it on, Your AI sends nothing unless you press one of its buttons.
+## Turn it on
+
+AI help is in the package but off, and nothing of it shows, until you add it and agree to its notice. Until then nothing is sent.
+
+1. Open the extension popup and choose **Market** (or **Installed add-ons**, then **Browse the Market**), and **Add** **AI help**.
+2. The notice opens: **Before you turn on AI help**. Read it, tick **I understand and agree** and choose **Turn on AI help**. **Not now** leaves it off; **Use** on AI help in **Make it yours → More → Features** shows the notice again.
+3. Reload Canvas. AI help then appears in Features as a switch, and **Your AI** in Tools → AI.
+
+Switching AI help off in Features, choosing Lite or removing the add-on locks it again: the record of your agreement is deleted, a run in progress stops, and the notice asks again next time.
+
+## The way it reaches an AI
+
+Choose the way in **Tools → AI → ··· → Way**. Its main switch, **Your AI**, is in the same ··· menu and starts **on**. **Prepare every day**, beside it, starts **off**: until you turn it on, Your AI sends nothing unless you press one of its buttons.
 
 ## What it makes
 
@@ -38,7 +50,7 @@ Your AI does not run on a quiz-taking page. Changing any Your AI setting, **Show
 1. In **Tools → AI**, or in the Help band beside Daily AI help, choose the website. **Open website / sign in** opens it in a normal tab. Opening it sends nothing.
 2. Press **Send** in Tools → AI once with that website. Your browser asks to allow Canvas Harness on that one site. Choosing a new website in the Help band asks for that site right then. Otherwise Prepare, Help cards and Ask your AI wait until it is allowed; they do not ask on their own. They use the website you picked, which is ChatGPT until you pick another. On ChatGPT and Claude, **Thinking** beside the website sets how hard the AI thinks for the messages Canvas Harness sends there (ChatGPT: Instant, Medium, High, Extra high; Claude: Low, Medium, High, Extra). The site's own choice is put back after each send, and left on **Thinking** it is not touched. Claude's Max is never chosen.
 3. For Prepare and Help cards, Canvas Harness opens the site in a background tab beside Canvas, starts a new chat for each request, puts the message in the chat box, presses the site's Send button and waits for the reply. On ChatGPT these are temporary chats and on Claude incognito chats, which those sites keep out of your chat history; the other sites use normal chats. **Ask your AI** does the same in the website tab Canvas Harness opened from this Canvas tab (or a new one), brings that tab to the front, and uses a normal chat.
-4. It reads the reply from the page. For Prepare and Help cards on ChatGPT and Claude, it can also read the reply from the site's own record of that chat, using your signed-in session, so it finds the answer while the tab sleeps. To find a new ChatGPT chat whose address the tab has not shown yet, it lists your six newest chats (their names and times, not their messages) and reads only the one created when its message was sent. On Claude it looks up your account's organizations to reach the chat it started. It keeps only the reply that follows its own message and does not open your other chats. Your session token is used for these reads and not saved.
+4. It reads the reply from the page. For Prepare and Help cards on ChatGPT and Claude, it can also read the reply from the site's own record of that chat, using your signed-in session, so it finds the answer while the tab sleeps. To find a new ChatGPT chat whose address the tab has not shown yet, it lists your six newest chats (their names and times, not their messages) and reads only the one created when its message was sent. On Claude it looks up your account's organizations to reach the chat it started. It keeps only the reply that follows its own message and does not open your other chats. In short: with AI help on, on ChatGPT and Claude, Canvas Harness reads the reply to its own message from the site's record of that chat using your signed-in session; the session token is held in memory for that read, never saved and never sent anywhere else; it lists only your newest chats' names and times to find its own chat and opens no other chats.
 5. If the site needs you (a sign-in, a dialog, an error, or text already in the chat box), Canvas Harness stops and the Help band shows a button such as **Open chat** or **Review draft**. A message that may already have been sent is never sent again automatically. **Try again** starts a fresh chat. If the website says you reached its usage limit, the run stops, keeps the cards already made and the band shows the site's own sentence. If the AI tab is closed, or the browser puts it to sleep on a site whose record Canvas Harness cannot read, the band shows **Open chat**.
 
 With **Send** in Tools → AI, the text goes into the chat box and you check it and submit it there. **Send automatically** (off by default) also presses the site's Send button. **Bring answers back** (on by default) lets Canvas Harness read the reply back into the panel. The website receives the text as soon as it is in its chat box, even before you submit. **Copy** puts the prepared text on your clipboard instead and needs no website access.
@@ -120,7 +132,7 @@ In **Tools → AI → ···**:
 - Choose **Only when I ask**, or turn **Prepare every day** off. Nothing runs on its own; the buttons still work.
 - Switch **Your AI** off. Nothing runs and Help cards stop.
 - Set **Daily cap** to 0 to keep only the requests you click.
-- In the popup's **Features**, turn off **Your AI & study aids**, or choose Lite. Its code is not loaded after you reload Canvas.
+- Switch **AI help** off in Features (Make it yours → More, or the popup), choose Lite, or remove the AI help add-on. Each locks it again: runs stop, and its code is not loaded after you reload Canvas.
 - Remove a website's or API address's access in your browser's extension site settings. Without it, nothing is sent there. Use **Remove key** to delete an API key.
 - For Overnight, change **Way** back to Web AI or API, or turn **Your AI** off; no more files are written. Files already in the folder stay until you delete them.
 
