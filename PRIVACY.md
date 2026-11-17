@@ -1,6 +1,6 @@
 # Canvas Harness privacy
 
-Applies to Canvas Harness 3.6.0 through 4.0.0, and to the 4.0 Preview test builds published on GitHub before 4.0.0. Last updated November 14, 2026.
+Applies to Canvas Harness 3.6.0 through 4.0.0, and to the 4.0 Preview test builds published on GitHub before 4.0.0. Last updated November 17, 2026.
 
 Canvas Harness is a browser extension maintained by Flzsh. It displays information from the Canvas account already signed in on your school's website. It has no developer-operated account service, analytics collector or tracking endpoint in the extension code for this release. From 4.0.0, **AI help** can send Canvas text to an AI service that you choose. It is an optional add-on: it stays off, and nothing of it shows, until you add it from the Market and agree to its notice; see [AI help](#ai-help-what-goes-where). In the 4.0 Preview test builds the same AI was called **Your AI** and was on in Full.
 
@@ -24,6 +24,8 @@ Personal backups are files that you choose to export. They can contain private n
 ## Feature choices
 
 Full, Lite and Custom choices are stored once for this extension in this browser, separately from your Canvas account data. While AI help is on, the same record holds its notice record: that you agreed, and when. It holds no account or coursework data. Dependencies are included automatically. Turning a feature off changes which packaged modules load on your next Canvas page load; it does not erase notes, artwork, plans, GPA settings or reader annotations. Existing pages keep their loaded selection until reload.
+
+**Start-up record.** On the Dashboard address, each start of the page is noted as step names with their times (milliseconds since the page began), which way it took and what failed, by code. It holds no names, coursework, addresses or account IDs. The last eight starts stay in extension storage on this device so Tools → Developer can show them; they are never sent anywhere.
 
 Developer tools, if you switch it on, keeps its numbers in memory on the open page. **Copy report** puts build, feature and setting choices, counts and timings on your clipboard only when you press it, and never includes names, coursework, your school address or your account ID.
 
@@ -73,6 +75,8 @@ Once it is on, its main switch, **Your AI** in **Tools → AI → ···**, star
 - **When you click** **Daily AI help**, **Help with this**, **Help with…**, **Ask**, **More** or **Check my work** on a Help card, or **Ask your AI** in Tools → AI. These send without a separate review step.
 - **When you press Send in Tools → AI** for a study aid, a PDF's pages or a question from Biscuit. **Review text to share** shows the text first. With an AI website, the text is put in its chat box, and **the website receives it there even before you submit the chat**; you submit it unless **Send automatically** (off by default) is on. With an API key, Send sends it.
 
+AI help keeps its own limits on this device: Daily AI help starts by itself at most once an hour and three times a day; at most 20 messages an hour and 60 a day go into AI websites, from all Canvas tabs together; after a problem, runs that start by themselves wait two hours, and after **Stop** they wait until the next day. A click still runs.
+
 Your AI does not run on a quiz-taking page. Changing a Your AI setting, **Show grades** or **Teacher feedback** stops a run in progress.
 
 ### What is sent
@@ -87,6 +91,7 @@ Your AI does not run on a quiz-taking page. Changing a Your AI setting, **Show g
 ### Where it goes
 
 - **An AI website** (ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Qwen or Z.ai): the message goes into a chat in your own account there, under that provider's terms. For Prepare and Help cards, Canvas Harness opens the site in a background tab beside Canvas, starts a new chat, puts the message in the chat box and presses the site's Send button. Those chats are opened as temporary chats on ChatGPT and incognito chats on Claude, which those sites keep out of your chat history; on the other sites they are normal chats. Ask your AI puts its message, and presses Send, in the website tab Canvas Harness opened from that Canvas tab (or opens one), brings that tab to the front, and uses a normal chat. Canvas Harness reads the reply from the page. For Prepare and Help cards on ChatGPT and Claude, it can also read the reply from the site's record of that chat with your signed-in session; on ChatGPT, when the tab has not shown the chat's address yet, it lists your six newest chats (their names and times, not their messages) and reads only the one created when its message was sent; on Claude it looks up your account's organizations to reach the chat it started. It keeps only the reply after its own message and does not open your other chats. The session token is used for these reads and not saved.
+- **The sign-in check.** Before AI help starts a new chat on an AI website, it checks once that you are signed in there: on ChatGPT whether the site's session exists, on Claude whether your organizations answer, and on the other websites whether the chat page it opened shows a sign-in or a usage-limit message. The session token read for the ChatGPT check is held in memory only for it. If the site is signed out, AI help says so, and remembers on this device only that that site was found signed out, so help that starts by itself waits until you sign in.
 - **Reading the reply on ChatGPT and Claude.** With AI help on, Canvas Harness reads the reply to its own message from that site's record of the chat, using your signed-in session on the site. The session token is held in memory only for that read: it is never saved and never sent anywhere else. To find its own chat it lists only your newest chats' names and times, and it opens no other chats. Canvas Harness does not read your passwords or cookies. On ChatGPT and Claude, a **Thinking** level you choose beside Your AI is set in the site's own menu for that send, and the site's earlier choice is put back afterwards.
 - **An API provider**: Anthropic, OpenAI, Google, or the HTTPS address you entered for an OpenAI-compatible service. The extension's background worker sends the message straight to that address with your key in the request header and no cookies. The provider bills you for each request. **Estimate** with Anthropic sends the message to Anthropic's token-counting service; other providers' estimates are made on this device. OpenAI requests ask OpenAI not to store the response. **Daily limit** (20 a day unless you change it) caps answer requests per Canvas account.
 - **Your Overnight folder**: a folder you picked with the browser's folder picker and allowed for reading and writing. **Prepare now** writes `prep-YYYY-MM-DD.json`, with the study message for each assignment due in the next two days. With this way, **Ask your AI** writes `agent-YYYY-MM-DD.json`, with its snapshot; a Canvas visit writes one too if you chose **Every day**. Canvas Harness reads the answer files your own AI tool writes there (`…answers.json`, `…actions.json`). It never uploads or deletes these files. What your tool does with them is up to that tool and its provider.
@@ -107,6 +112,7 @@ Your AI changes only Canvas Harness's own data on this device: the Today list, p
 - **Your AI's history** in your account's Canvas Harness data: settings, the last 14 days of runs with the Canvas snapshot text each used and what it changed, Today, memory and questions. Included in personal backups.
 - **Overnight**: the folder access, the path you typed (used only to fill in the instruction you can copy) and a record of the files written and read. Not in personal backups.
 - **Session storage**: which browser tab holds the AI chat, with no message text. Cleared when the browser closes.
+- **AI help's limits record**, in extension storage: the times of recent messages and of runs that started by themselves, counted for each AI website, and whether a site was found signed out. No message text.
 - The question you are typing and PDF text you attach in Tools → AI stay in the open panel's memory and are not saved as a conversation or put in a personal backup. Provider chat history follows that provider's own rules.
 
 ## Browser permissions

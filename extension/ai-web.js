@@ -290,7 +290,7 @@
         }
         let last = reply('no-editor', 'The chat is not ready. Finish signing in, then return to Canvas Harness and click Send again.');
         const attempts = typeof root.setTimeout === 'function' ? 40 : 1;
-        let focused=false,answerTarget=null;
+        let focused=false,answerTarget=null,outSeen=0;
         for (let attempt = 0; attempt < attempts; attempt++) {
           if (!canShare()||signal?.aborted||pin?.invalid) return reply('error', 'The Canvas selection or agent conversation changed. Nothing more was inserted.');
           const target = continuing?await conversationTarget(chrome,pin):await storedTarget(chrome, key, source, provider);
@@ -383,6 +383,16 @@
             if (!result || !['injected', 'sent', 'send-uncertain', 'no-editor', 'error'].includes(result.status) || typeof result.message !== 'string')
               return reply('error', 'The provider page did not confirm insertion. Review the page before retrying.');
             last = reply(result.status, result.message);
+            // Signed out, or at its usage limit, on whichever AI website: said with its name, and nothing was typed. A Log
+            // in button alone must still show a moment later, so a page that is only starting is not taken for signed out.
+            if(result.status==='no-editor'&&result.signedOut&&(result.signedOut!=='control'||outSeen&&Date.now()-outSeen>=1000))
+              return reply('no-editor','You are signed out of '+provider.label+'. Sign in there in this browser, then click Send again. Or choose another AI.');
+            if(result.status==='no-editor'&&result.signedOut==='control')outSeen||=Date.now();
+            if(result.status==='no-editor'&&result.limit===true)
+              return reply(
+                'no-editor',
+                (result.said?provider.label+' says: '+String(result.said).slice(0,160).replace(/[.!?。！]?$/,'.'):provider.label+' is at its usage limit.')+
+                  ' Nothing was typed. Try again later, or choose another AI.');
             if (result.status !== 'no-editor' || !result.retryable) {
               if(answerTarget&&canShare()&&!signal?.aborted&&!pin?.invalid&&['injected','sent','send-uncertain'].includes(result.status)){
                 if(pin){pinConversation(chrome,owner,pin);last.conversationToken=pin.token;}

@@ -169,7 +169,7 @@ function canvasPage(hint,{lateLayout=false}={}){
  const badge={textContent:'',dataset:{}};
  const link={id:'global_nav_dashboard_link',querySelector:selector=>selector==='.menu-item-icon-container'?box:selector==='.chn-ic'?nodes.find(node=>node.markup.includes('chn-ic')):selector===':scope > .chn-frames'?nodes.find(node=>node.markup.includes('chn-frames')):null,
   querySelectorAll:selector=>selector==='.menu-item__badge'?[badge]:[],insertAdjacentHTML:(_position,markup)=>insert(markup)};
- const header={dataset:{},style:{setProperty(){}},querySelector:selector=>selector==='.ic-app-header__menu-list-link'?link:null,
+ const header={dataset:{},style:{setProperty(){}},addEventListener(){},removeEventListener(){},getBoundingClientRect:()=>({left:0,top:0,right:84,bottom:600,width:84,height:600}),querySelector:selector=>selector==='.ic-app-header__menu-list-link'?link:null,
   querySelectorAll:selector=>selector==='.ic-app-header__menu-list-link'?[link]:selector==='.chn-ic, .chn-frames, .chn-logo-art'?[...nodes]:selector==='.chn-drawn'&&boxClasses.has('chn-drawn')?[box]:selector==='[data-chn-empty]'&&'chnEmpty' in badge.dataset?[badge]:[]};
  f.env.document.getElementById=id=>id==='header'?header:null;
  Object.assign(f.env,{addEventListener:(_type,fn)=>windowListeners.add(fn),removeEventListener:(_type,fn)=>windowListeners.delete(fn),
@@ -274,9 +274,9 @@ test('equivalent worker replies leave already-confirmed early objects intact',as
 test('stale Canvas bar hints reconcile actual decorations, including a late layout reply',async()=>{
  for(const [hint,truth,lateLayout] of [['lite','full',false],['full','lite',false],['full','lite',true]]){
   const f=canvasPage(hint,{lateLayout});f.run('canvas-nav.js');await new Promise(setImmediate);
-  assert.equal(f.nodes.length,hint==='full'&&!lateLayout?2:0,'frames and icon follow the first guess');
+  assert.equal(f.nodes.length,hint==='full'&&!lateLayout?1:0,'the drawing follows the first guess (no frame: the selected mark is drawn by CSS)');
   f.finish({preset:truth});await new Promise(setImmediate);f.layout();await new Promise(setImmediate);
-  assert.equal(f.classes.has('chn-nav'),truth==='full');assert.equal(f.nodes.length,truth==='full'?2:0);
+  assert.equal(f.classes.has('chn-nav'),truth==='full');assert.equal(f.nodes.length,truth==='full'?1:0);
   assert.equal(f.boxClasses.has('chn-drawn'),truth==='full');assert.equal('chnEmpty' in f.badge.dataset,truth==='full');
   if(truth==='lite'){
    assert.equal(f.env.ReserveCanvasNav,undefined);assert.deepEqual(Object.keys(f.header.dataset),[]);
@@ -319,15 +319,15 @@ test('content loader mirrors the received selection in page localStorage on ever
  }
 });
 
-test('Full adds frames to every menu link when course art arrives after static Canvas navigation',async()=>{
+test('the menu bar adds no frames to Canvas\'s links, before or after course art arrives (the current page is drawn by CSS)',async()=>{
  for(const choice of ['shown','original']){
   const f=earlyPage(JSON.stringify({preset:'full'})),links=Array.from({length:5},(_,index)=>({
    id:'canvas-link-'+index,markup:[],
    querySelector(selector){return selector===':scope > .chn-frames'&&this.markup.length?this.markup[0]:null;},
    querySelectorAll:()=>[],insertAdjacentHTML(position,markup){assert.equal(position,'afterbegin');this.markup.push(markup);}
   }));
-  const header={dataset:{},style:{setProperty(){}},querySelector:selector=>selector==='.ic-app-header__menu-list-link'?links[0]:null,querySelectorAll:selector=>{
-   assert.equal(selector,'.ic-app-header__menu-list-link');return links;
+  const header={dataset:{},style:{setProperty(){}},addEventListener(){},removeEventListener(){},getBoundingClientRect:()=>({left:0,top:0,right:84,bottom:600,width:84,height:600}),querySelector:selector=>selector==='.ic-app-header__menu-list-link'?links[0]:null,querySelectorAll:selector=>{
+   assert.ok(['.ic-app-header__menu-list-link','.chn-frames','.chn-logo-art','.chn-ic, .chn-frames, .chn-logo-art','.chn-drawn','.chn-drawn-link','[data-chn-empty]','.chn-more, .chn-more-menu'].includes(selector),selector);return selector==='.ic-app-header__menu-list-link'?links:[];
   }};
   f.env.document.getElementById=id=>id==='header'?header:null;
   Object.assign(f.env,{addEventListener(){},setInterval(){},requestAnimationFrame:fn=>fn(),getComputedStyle:()=>({position:'fixed',backgroundColor:'rgb(255, 255, 255)',getPropertyValue:()=>''})});
@@ -344,11 +344,11 @@ test('Full adds frames to every menu link when course art arrives after static C
   f.run('feature-loader.js');await new Promise(setImmediate);assert.equal(ready,0);
   inject();await f.env.ReserveFeatureLoad;
   const counts=()=>links.map(link=>(link.markup.join('').match(/class="(?:[^"]*\s)?rd-frame(?:\s|")/g)||[]).length);
-  assert.deepEqual(counts(),choice==='shown'?[2,2,2,2,2]:[0,0,0,0,0]);
+  assert.deepEqual(counts(),[0,0,0,0,0],'no frames');
   assert.equal(ready,1,'completion is announced after deferred scripts finish');
   f.run('feature-loader.js');await f.env.ReserveFeatureLoad;assert.equal(ready,1,'bootstrap announces once');
   f.env.document.dispatchEvent(new Event('reserve:features-ready'));
-  assert.deepEqual(counts(),choice==='shown'?[2,2,2,2,2]:[0,0,0,0,0],'no duplicate frames or activation of the original bar');
+  assert.deepEqual(counts(),[0,0,0,0,0],'still no frames, and the original bar is never decorated');
  }
 });
 

@@ -52,7 +52,7 @@
 
  // One list of everything that can be planned. `items` are the workspace's normalised assignments and personal
  // tasks; `local` is the student's own record for each (planned day, done, length, steps).
- function entries(items,local={},{dayOf,isDone=()=>false}={}){
+ function entries(items,local={},{dayOf,isDone=()=>false,colorOf=()=>''}={}){
   return items.map(item=>{
    const mine=local[item.id]||{},steps=Array.isArray(mine.checklist)?mine.checklist:[];
    return {
@@ -60,7 +60,7 @@
     title:item.name,
     courseId:String(item.courseId),
     course:item.courseName||'',
-    color:item.courseColor||item.color||'',
+    color:item.courseColor||item.color||colorOf(item)||'',
     personal:!!item.personal,
     url:item.url||'',
     dueAt:item.dueAt||null,

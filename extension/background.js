@@ -7,7 +7,7 @@ importScripts('features.js','site.js','core.js','market-site.js','ai-providers.j
  // Your AI (4.0): providers by API key, Google Docs text, study aids, the Today and overnight runs and their records.
  'ai-api-provider.js','ai-api.js','google-docs.js','study-kind.js','study-prompts.js','study-writes.js','study-ui.js','overnight.js','api.js','study-band.js','ai-context.js',
  'agent-prompts.js','agent-data.js','agent-actions.js','agent-runtime.js','agent-client.js','ai-run-store.js','study-tools.js','prepare-brief.js','ai-canvas-bridge.js','ai-canvas.js',
- 'ai-delivery-web.js','ai-delivery-api.js','ai-results.js','ai-runner.js','ai-engine.js','ai-prepare.js');
+ 'ai-guard.js','ai-delivery-web.js','ai-delivery-api.js','ai-results.js','ai-runner.js','ai-engine.js','ai-prepare.js');
 // Appearance changes from every page are applied here, one at a time (page-preferences.js).
 globalThis.ReservePagePreferences?.serve();
 (function(){

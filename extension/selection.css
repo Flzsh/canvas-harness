@@ -1,5 +1,6 @@
 /* Canvas Harness — deliberate selection, independent of completion. */
-.rd .rd-selection-bar {display:flex;align-items:center;gap:8px;padding:4px 6px 4px 12px;border:1px solid var(--rd-line,#d8d4c9);border-radius:999px;background:var(--rd-surface,#fff);box-shadow:0 2px 8px rgb(60 48 24 / .04);font-size:13px;white-space:nowrap;animation:rd-selection-in 160ms ease-out}
+/* the selection bar is the change note's sibling: the same paper, ink edge and drawn offset (no grey shadow) */
+.rd .rd-selection-bar {display:flex;align-items:center;gap:8px;padding:4px 5px 4px 12px;border:1.6px solid var(--rd-ink);border-radius:13px 11px 14px 10px/11px 14px 10px 13px;background:var(--rd-surface,#fff);box-shadow:2px 3px 0 color-mix(in srgb,var(--rd-ink) 14%,transparent);font-size:13px;white-space:nowrap;animation:rd-selection-in 160ms ease-out}
 .rd .rd-selection-bar>span {font-weight:650}
 .rd .rd-selection-bar>div {display:flex;gap:4px;align-items:center}
 .rd .rd-check-off[data-selected="true"],.rd .rd-source-select[aria-pressed="true"] {background:var(--rd-mark,#a9522f)!important;border-color:var(--rd-mark,#a9522f)!important;color:white!important}
@@ -14,23 +15,104 @@
 .rd[data-motion="off"] .rd-selection-bar {animation:none}
 .rd[data-motion="off"] .rd-source-select {transition:none}
 
-/* Selection occupies a stable slot beside the date strip, never above the banner. */
-.rd[data-workspace=work] .rd-desk-toolbar {display:grid;grid-template-columns:auto auto minmax(340px,1fr);grid-template-areas:"views dates selection";align-items:center;gap:8px 16px;min-height:44px}
-.rd .rd-desk-toolbar>.rd-list-toolbar {grid-area:views}
-.rd .rd-desk-toolbar>.rd-week {grid-area:dates;min-width:0;max-width:100%;overflow-x:auto}
-.rd .rd-selection-slot {grid-area:selection;display:flex;justify-content:flex-end;align-items:center;min-width:0;min-height:44px}
+/* The selection never takes room in the desk's toolbar (owner, 2026-11-16: "when I select a course to either use in ai or
+   archive, the banner theme shrinks then extend for no reason"). Selecting used to turn the row into a grid with a
+   selection area: the row grew 47 to 60 px while anything was selected or the Archive notice showed, the desk moved down,
+   and every theme's band, measured to where the desk starts, grew and shrank with it. The row keeps the one look it has
+   with nothing selected; the bar hangs over it, just above its right end, in the heading's lower corner (with the
+   courses across the top, where the course strip is above the row, over the row's own right end). */
+.rd[data-workspace=work] .rd-desk-toolbar {position:relative;min-height:44px}
+.rd .rd-desk-toolbar>.rd-week {min-width:0;max-width:100%;overflow-x:auto}
+.rd .rd-selection-slot {position:absolute;right:0;bottom:calc(100% + 6px);z-index:8;display:flex;justify-content:flex-end;align-items:center;min-width:0;max-width:100%;pointer-events:none}
+.rd[data-course-navigation=topbar] .rd-selection-slot {top:0;bottom:auto}
+.rd .rd-selection-slot:empty {display:none}
+.rd .rd-selection-slot>* {pointer-events:auto}
 .rd .rd-selection-bar>.rd-button,.rd .rd-selection-bar>div>.rd-button {min-height:32px;padding:0 10px;border-radius:999px;font-size:13px}
 .rd .rd-selection-bar>div>.rd-text-button {min-height:32px;padding:0 8px;font-size:13px}
 .rd .rd-selection-bar>span {font-variant-numeric:tabular-nums}
 .rd .rd-selection-other {position:sticky;top:8px;z-index:7;height:0;display:flex;justify-content:flex-end}
 .rd .rd-selection-other>.rd-selection-bar {position:absolute;right:0;top:0}
-@container work-area (max-width:1200px) {
- .rd[data-workspace=work] .rd-desk-toolbar {grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"views views" "dates selection"}
-}
+/* On the coursework desk the bar lives in the toolbar; once that has scrolled out of sight, this copy follows the window. */
+.rd .rd-selection-float {display:none}
+.rd[data-selection-away][data-workspace=work] .rd-selection-float {display:flex}
+.rd .rd-selection-float>.rd-selection-bar {box-shadow:3px 4px 0 color-mix(in srgb,var(--rd-ink) 16%,transparent)}
 @container work-area (max-width:760px) {
- .rd[data-workspace=work] .rd-desk-toolbar {grid-template-columns:minmax(0,1fr);grid-template-areas:"views" "dates" "selection"}
- .rd .rd-selection-slot {min-height:44px}
  .rd .rd-selection-bar {gap:6px;max-width:100%;padding-left:10px;font-size:12px}
  .rd .rd-selection-bar>div {gap:2px}
  .rd .rd-selection-other>.rd-selection-bar {top:0}
 }
+
+/* ---- The change note (dashboard.js drawNote, dashboard-view.js noteHTML; owner 2026-11-16 "revamp the UI here").
+   After Archive or Mark done: what Canvas Harness changed, each thing with its course and day, Put back one, Undo all. It comes as
+   one line (so it lies over none of the page's controls); Show opens the list, which folds again when left alone. A paper slip
+   in the lower right corner, in the hand of Biscuit's answer cards (ink edge with uneven corners, a drawn offset, no grey
+   shadow); an overlay of its own at the dashboard's root, so it never moves the page; its own paper and ink, so it reads
+   on any band or scene. In the DOM Undo all comes before the rows (first in the tab order); the grid draws it last. */
+.rd .rd-note {position:fixed;right:20px;bottom:20px;z-index:1090;width:min(348px,calc(100vw - 32px));contain:layout style;color:var(--rd-ink);font:500 13px/1.4 var(--rd-ui-font,system-ui);font-variant-numeric:tabular-nums;--rd-note-pen:cubic-bezier(.45,.05,.25,1)}
+.rd[data-course-navigation=dock] .rd-note {bottom:122px}
+.rd .rd-note[hidden] {display:none}
+/* while the slip shows, Biscuit and its bubble lie under it (and under the drawers): the slip's words and buttons are never
+   covered and always take the press (the pony stood on Undo and took the press meant for it, 4.0.169) */
+.rd[data-note-on] .pet-layer {z-index:1080}
+.rd .rd-note p,.rd .rd-note ul {margin:0;padding:0}
+.rd .rd-note ul {list-style:none}
+.rd .rd-note button:not(.rd-button) {font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+.rd .rd-note button[aria-disabled=true] {cursor:progress;opacity:.6}
+.rd .rd-note button:focus-visible {outline:2px solid var(--rd-mark,#C96442);outline-offset:2px}
+.rd .rd-note .rd-icon {width:15px;height:15px;stroke-width:1.9}
+.rd .rd-note-paper {display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"head close" "list list" "all all";align-items:center;padding:10px 10px 10px 12px;border:1.6px solid var(--rd-ink);border-radius:15px 13px 16px 12px/13px 16px 12px 15px;background:var(--rd-surface,#FFFDF8);box-shadow:3px 4px 0 color-mix(in srgb,var(--rd-ink) 14%,transparent)}
+.rd .rd-note-head {grid-area:head;display:flex;align-items:center;gap:8px;min-width:0}
+.rd .rd-note-acts {display:contents}
+.rd .rd-note-mark {flex:none;display:grid;place-items:center;width:24px;height:24px;color:var(--rd-mark,#C96442)}
+.rd .rd-note-mark .rd-icon {width:20px;height:20px;stroke-width:1.8}
+.rd .rd-note-title {flex:1;min-width:0;font:650 15px/1.25 var(--rd-display,Georgia,serif);letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rd .rd-note-title small {font:500 12px/1 var(--rd-ui-font,system-ui);color:var(--rd-muted);letter-spacing:0}
+.rd .rd-note-count {display:inline-block;font-weight:700}
+.rd .rd-note-close,.rd .rd-note-open {flex:none;display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 6px!important;border-radius:7px!important;color:var(--rd-muted)!important;font-size:12px!important}
+.rd .rd-note-close {grid-area:close}
+.rd .rd-note-close:hover,.rd .rd-note-open:hover {background:var(--rd-tint,#F0EEE6)!important;color:var(--rd-ink)!important}
+.rd .rd-note-list {grid-area:list;max-height:min(232px,40vh);margin:8px -10px 0 -12px;padding:0 10px 0 12px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;border-top:1px solid color-mix(in srgb,var(--rd-ink) 34%,transparent)}
+.rd .rd-note-row {display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--rd-line,#E8E6DC)}
+.rd .rd-note-row:first-child {border-top:0}
+.rd .rd-note-row::before {content:"";flex:none;align-self:stretch;width:4px;margin:2px 0;border-radius:3px 2px 3px 2px;background:color-mix(in srgb,var(--rd-note-c,var(--rd-muted)) 70%,var(--rd-surface,#FFFDF8))}
+.rd .rd-note-what {flex:1;min-width:0;display:flex;flex-direction:column}
+.rd .rd-note-name {font-weight:600;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.rd .rd-note-meta {display:flex;flex-wrap:wrap;gap:0 6px;color:var(--rd-muted);font-size:12px}
+.rd .rd-note-meta>*+*::before {content:"·";margin-right:6px;opacity:.6}
+.rd .rd-note-course {color:color-mix(in srgb,var(--rd-note-c,var(--rd-muted)) 72%,var(--rd-ink));font-weight:600}
+.rd .rd-note-put {flex:none;display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 7px!important;border-radius:8px 7px 9px 7px/7px 9px 7px 8px!important;color:var(--rd-ink-2,var(--rd-ink))!important;font-size:12px!important;font-weight:600!important}
+.rd .rd-note-put:hover {background:var(--rd-tint,#F0EEE6)!important}
+/* Undo all is the page's own primary button (each theme draws its primary: clay in Light, its own in Dark and the scenes,
+   so its words always read), with the drawn edge and hard offset of Biscuit's main act */
+.rd .rd-note-all {grid-area:all;justify-self:end;display:inline-flex;align-items:center;gap:6px;height:32px;min-height:32px;margin-top:8px;padding:0 14px 0 11px;border-radius:10px 8px 11px 9px/9px 11px 8px 10px;font:650 13px/1 var(--rd-ui-font,system-ui);cursor:pointer;box-shadow:2px 2px 0 color-mix(in srgb,var(--rd-ink) 70%,transparent);transition:translate 90ms,box-shadow 90ms}
+.rd .rd-note-all:active {translate:1px 1px;box-shadow:1px 1px 0 color-mix(in srgb,var(--rd-ink) 70%,transparent)}
+/* folded: one line, Undo all, Show and Close on it */
+.rd .rd-note[data-state=folded] {width:auto;max-width:min(540px,calc(100vw - 32px))}
+.rd .rd-note-one {margin-left:6px;font:500 13px/1.25 var(--rd-ui-font,system-ui);letter-spacing:0;color:var(--rd-muted)}
+.rd .rd-note[data-state=folded] .rd-note-paper {grid-template-columns:minmax(0,1fr) auto auto auto;grid-template-areas:"head all open close";column-gap:6px;padding:6px 6px 6px 10px}
+.rd .rd-note[data-state=folded] .rd-note-all {height:28px;min-height:28px;margin:0;padding:0 10px 0 8px}
+.rd .rd-note-open {grid-area:open}
+.rd .rd-note[data-state=done] .rd-note-paper {grid-template-areas:"head head"}
+@media (max-width:600px) {
+ /* a phone: across the foot of the screen, above the phone's composer bar (as the toast dock sat) */
+ .rd .rd-note {left:12px;right:12px;width:auto;bottom:calc(80px + env(safe-area-inset-bottom))}
+ .rd .rd-note[data-state=folded] {left:auto;max-width:calc(100vw - 24px)}
+}
+/* -- motion: it rises in, a thing that joins slides in on a wash that fades, the count ticks, folding settles, it drops
+   away. Still: fades only. Off, reduced motion and keyboard mode: it just appears and goes (dashboard.js hides it at once) */
+.rd .rd-note[data-enter] .rd-note-paper {animation:rd-note-in 220ms var(--rd-note-pen) both}
+.rd .rd-note[data-state=leaving] .rd-note-paper {animation:rd-note-out 180ms var(--rd-note-pen) both}
+.rd .rd-note-row[data-new] {animation:rd-note-join 900ms var(--rd-note-pen) both}
+.rd .rd-note-count[data-bump] {animation:rd-note-bump 260ms var(--rd-note-pen)}
+.rd .rd-note[data-state=done] .rd-note-paper {animation:rd-note-fade 160ms ease-out both}
+.rd .rd-note[data-turn] .rd-note-paper {animation:rd-note-settle 200ms var(--rd-note-pen) both}
+@keyframes rd-note-in {from{opacity:0;translate:0 14px}to{opacity:1;translate:none}}
+@keyframes rd-note-out {from{opacity:1;translate:none}to{opacity:0;translate:0 10px}}
+@keyframes rd-note-fade {from{opacity:0}to{opacity:1}}
+@keyframes rd-note-settle {from{opacity:.35;translate:0 6px}to{opacity:1;translate:none}}
+@keyframes rd-note-join {0%{opacity:0;translate:0 -6px;background-color:color-mix(in srgb,#F6DE9A 70%,transparent)}25%{opacity:1;translate:none}100%{background-color:transparent}}
+@keyframes rd-note-bump {0%{scale:1}45%{scale:1.22}100%{scale:1}}
+.rd[data-motion-style=still] .rd-note .rd-note-paper,.rd[data-motion-style=still] .rd-note .rd-note-row,.rd[data-motion-style=still] .rd-note .rd-note-count {animation-name:rd-note-fade!important;animation-duration:140ms!important}
+.rd[data-motion-style=still] .rd-note[data-state=leaving] .rd-note-paper {animation-direction:reverse!important}
+@media (prefers-reduced-motion:reduce) {.rd .rd-note,.rd .rd-note * {animation:none!important;transition:none!important}}
+.rd:is([data-motion-style=off],[data-kb]) .rd-note,.rd:is([data-motion-style=off],[data-kb]) .rd-note * {animation:none!important;transition:none!important}

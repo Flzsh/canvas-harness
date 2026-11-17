@@ -56,6 +56,16 @@
  const mmss=seconds=>{const n=Math.max(0,Math.ceil(seconds));return `${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;};
  const duration=(value,fallback)=>value===undefined?fallback:Number.isFinite(value)&&value>0&&Number.isFinite(value*60000)?value:null;
  const validDay=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&Number.isFinite(Date.parse(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;
+ // Keeps a module the student placed or resized in the list of modules Home must keep (toolbox.agentPins), so an AI
+ // action that tidies Home leaves it alone. Ported from the development build (widgets.js), where the size menu and Pin call it; the
+ // public file called it without defining it, so Narrow / Normal / Wide failed with "pinModule is not defined".
+ function pinModule(data,key,on=true){
+   if(!Arrange()?.isKey(key))return false;
+   const pins=new Set(Array.isArray(data.toolbox?.agentPins)?data.toolbox.agentPins.filter(id=>Arrange().isKey(id)):[]),before=pins.has(key);
+   if(on)pins.add(key);else pins.delete(key);
+   data.toolbox={...data.toolbox,agentPins:[...pins]};
+   return before!==on;
+ }
  function focusState(focus,now){
   if(root.ReserveCore?.focusState)return root.ReserveCore.focusState(focus,now);
   const f=focus||{},minutes=duration(f.minutes,25)||25,total=minutes*60,running=!!f.endsAt,remaining=Number.isFinite(f.remaining)?Math.max(0,f.remaining):total;
@@ -73,7 +83,8 @@
  function plan(c,h){
   if(c.__plan)return c.__plan;
   const tz=c.s.timeZone,dayOf=value=>h.dayKey(value,tz),done=(item,mine)=>h.complete(item)||mine.checkedOff===true;
-  const list=Plan().entries(c.items,c.local,{dayOf,isDone:done}),today=h.dayKey(c.now,tz);
+  // (Canvas work carries no colour of its own: each card, week dot and the clock's next due take its course's)
+  const list=Plan().entries(c.items,c.local,{dayOf,isDone:done,colorOf:item=>c.courseMap?.get?.(String(item.courseId))?.color}),today=h.dayKey(c.now,tz);
   return c.__plan={list,today,board:Plan().board(list,today,0)};
  }
  // The next open thing with a due time, for the clock and the pony.
@@ -250,8 +261,13 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
    function opened(result){return typeof result?.then==='function'?Promise.resolve(result).then(opened):result===false||record(result)?result:true;}
   // Companion schedule and offers need valid values and the Pony switch.
   function appearanceCommand(request){
+    if(request.key==='pet.knowledge'){
+      if(!['lite','most'].includes(request.value))return clarify('Choose Full or Lite.');
+      if(!on('pony'))return unavailable('Pony companion');
+      return save(data=>{data.pet={...Pets().clean(data.pet),knowledge:request.value};});
+    }
     if(request.key==='showHelp'&&typeof request.value==='boolean'){if(!on('ai'))return notHere;return save(data=>{Arrange().change(data.settings,{type:'help',value:request.value});});}
-    if(request.key==='pet.nudges'&&['helpful','quiet'].includes(request.value)||request.key==='pet.enabled'&&typeof request.value==='boolean')
+    if(request.key==='pet.nudges'&&['helpful','quiet','off'].includes(request.value)||request.key==='pet.enabled'&&typeof request.value==='boolean')
       return save(data=>{data.pet={...Pets().clean(data.pet),[request.key.slice(4)]:request.value};});
     const feature={
       showGrades:'grades',
@@ -282,6 +298,19 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
     return appearance?appearance(request):false;
   }
   function navigateCommand(request){
+    if(request.tool){
+      if(!['calculator','gpa','quick'].includes(request.tool))return clarify('That tool is not in Tools.');
+      if(!on('tools'))return unavailable('Quick open and study tools');
+      if(request.tool==='gpa'&&!on('gpa'))return unavailable('GPA calculator');
+      return navigate?navigate(request):false;
+    }
+    if(request.tab==='focus-room'){
+      if(!on('focus-room')||!room)return unavailable('Focus room');
+      return Promise.resolve(room.open()).then(opened=>opened===false?clarify('The Focus room could not open here.'):{ok:true,message:'Opened the Focus room.',undo:()=>{room.close();return true;}});
+    }
+    if(request.tab==='review'){if(!on('review-deck'))return unavailable('Review deck');return navigate?navigate(request):false;}
+    if(request.tab==='impact'&&request.courseId){if(!on('grade-impact'))return unavailable('Grade impact');return navigate?navigate(request):false;}
+    if(request.tab==='assignments'&&request.view){if(!on('dashboard'))return unavailable('Dashboard');return navigate?navigate(request):false;}
     const A=Arrange(),homeKey=A?.EXTRA?.includes(request.tab)&&!['grades','messages'].includes(request.tab)?request.tab:null;
     if(homeKey){if(Object.keys(request).some(key=>key!=='tab'))return clarify('Open this Home module without an additional course or destination.');return openHomeModule(homeKey);}
     const feature={planner:'planner',messages:'course-hub','course-hub':'course-hub',materials:'materials',grades:'grades'}[request.tab]||'dashboard';
@@ -1335,7 +1364,8 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
      reminder:request=>addReminder(request),
      task:request=>addOwnTask(request),
      'make-it-yours':({tab}={})=>{
-     settingsTab=['look','layout','courses','pet','settings'].includes(tab)?tab:'look';
+     const named={companion:'pet',biscuit:'pet',home:'layout',more:'settings'}[tab]||tab;
+     settingsTab=['look','layout','courses','pet','settings'].includes(named)?named:'look';
      openSettings(settingsTab);
      rerender();
      return {ok:true,message:'Opened Make it yours.'};
@@ -2340,6 +2370,6 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
      if(editing){editing=false;rerender();}
    }};
  }
- const api={INFO,FRAMES,glyph,render,gallery,create,focusState,howLong,nextDue,plan};
+ const api={INFO,FRAMES,glyph,render,gallery,create,focusState,howLong,nextDue,plan,pinModule};
  root.ReserveWidgets=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

@@ -195,7 +195,14 @@
     });
    }fallback();
   }
-  const mutation=typeof root.MutationObserver==='function'?new root.MutationObserver(update):null;
+  // Only a change that can hide or still a frame is heard: on the container, on one of its ancestors, or on an ancestor of a
+  // frame. (Every style written anywhere inside used to run update: the pet's walk alone writes 24 a second.)
+  const holds=(a,b)=>typeof a?.contains==='function'?a.contains(b):true,touches=records=>{
+    if(!nodes.size)return false;
+    for(const r of records){const t=r.target;if(t===container||!holds(container,t))return true;for(const node of nodes.keys())if(t===node||holds(t,node))return true;}
+    return false;
+  };
+  const mutation=typeof root.MutationObserver==='function'?new root.MutationObserver(records=>{if(!records?.length||touches(records))update();}):null;
   for(let el=container;el;el=el.parentElement||el.getRootNode?.()?.host)
     mutation?.observe(el,{attributes:true,subtree:el===container,attributeFilter:['hidden','aria-hidden','class','style','data-motion-style','data-art-rest']});
   listen(doc,'visibilitychange',update);

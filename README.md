@@ -43,6 +43,12 @@
 ## New in 4.0
 
 - **AI help, an optional add-on.** It is in the package but off, and nothing of it shows, until you add it from the Market and agree to a short notice. Then: Help cards for an assignment, a PDF or a selection (practice tests, reading breakdowns, worked examples, writing outlines), Daily AI help, a Today list and study aids, from the AI website you pick or your own API key. Biscuit can hand it a question. Switch it off, or remove the add-on, and it locks again. [How it works](AI.md)
+- **Biscuit understands far more.** Name a tool and it opens; ask about tests and it lists the ones ahead; his answers are cards and lists with buttons, and a question never changes anything.
+- **Canvas's menu as one tidy bar**, across the top or down the side, at every window size and zoom; extra items fold into More.
+- **A slip after Archive or Mark done** says what changed, with Put back for each item and Undo all.
+- **Home modules keep their shape** when you move or resize them, and a move can be undone.
+- **Maple Wind paints the whole page**, and the banner no longer jumps when you select work.
+- **Fixes** from a check of every page, theme and setting, including the dashboard right after a school sign-in.
 - **Easier to read over the scenes**: under Thanksgiving and Blueprint the date, a course's links and More views sit on their own paper or pane.
 
 Also in 3.10: the Thanksgiving and Maple Wind scenes, scenes that fit above your widgets at any window size, Deadline changes redrawn and faster clicks. In 3.9: Focus room, Review deck and Grade impact as rooms that grow out of their Home modules, a drawn top bar, Graphics from Low to Extra high, play tools that take the whole page, Developer tools and a reading ruler in the PDF reader. Thanks to @garywu000 and @HarryX081125 for their contributions. [Every change](CHANGELOG.md)

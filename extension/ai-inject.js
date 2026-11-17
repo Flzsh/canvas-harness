@@ -56,7 +56,7 @@
     }
     if (!correctDocument()) return reply('error', 'The provider page changed. Open it again, then explicitly insert your draft.');
     if (/(?:^|\/)(?:auth|login|log-in|signin|sign-in|signup|sign-up|register|oauth)(?:\/|$)/i.test(location.pathname)) {
-      return reply('no-editor', 'Sign in on the provider website, then return to Canvas and click Send again.');
+      return {...reply('no-editor', 'Sign in on the provider website, then return to Canvas and click Send again.'), signedOut: 'address'};
     }
     const view = document.defaultView;
     function visible(node) {
@@ -71,8 +71,71 @@
       return Array.from(document.querySelectorAll('input[type="password"], input[type="email"], input[autocomplete="username"], input[autocomplete="one-time-code"], input[autocomplete="current-password"], input[autocomplete="new-password"]')).some(visible);
     }
     if (authenticationForm()) {
-      return reply('no-editor', 'Finish signing in, then return to Canvas and explicitly insert the draft.');
+      return {...reply('no-editor', 'Finish signing in, then return to Canvas and explicitly insert the draft.'), signedOut: 'form'};
     }
+    // Signed out (the site's own Log in / Sign in beside its chat box), or at its usage limit, on whichever AI website:
+    // nothing is typed. The same reading as pageState below (siteSigns is kept word for word in both; a test holds the
+    // two copies equal). A Log in button alone may be a page still starting, so the caller looks again before saying so.
+    function siteSigns(){
+      const view=document.defaultView,plain=v=>String(v||'').replace(/\s+/g,' ').trim();
+      const visible=n=>!!n&&n.isConnected!==false&&!n.hidden&&!n.closest?.('[hidden], [inert], [aria-hidden="true"]')&&(()=>{
+        const s=view.getComputedStyle(n);
+        return s.display!=='none'&&s.visibility!=='hidden'&&s.visibility!=='collapse'&&n.getClientRects().length>0;
+      })();
+      // A sign-in page (Claude's /login, DeepSeek's /sign_in, Qwen's /auth...), or sign-in fields shown over the chat.
+      if(/(?:^|\/)(?:auth|login|log-in|signin|sign-in|sign_in|signup|sign-up|sign_up|register|oauth)(?:\/|$)/i.test(location.pathname))return {state:'signed-out',by:'address'};
+      if(Array.from(document.querySelectorAll('input[type="password"], input[type="email"], input[autocomplete="username"], input[autocomplete="one-time-code"], input[autocomplete="current-password"], input[autocomplete="new-password"]')).some(visible))return {state:'signed-out',by:'form'};
+      // The chat transcript and the chat box are never read.
+      const words='[data-message-author-role], [data-conversation-role], [data-turn], [data-testid="user-message"], [data-testid="assistant-message"], user-query, model-response, .user-query, .human-message, [data-role="user"], [data-role="assistant"], [data-message-role], .user-message, .ds-message, .segment-assistant, [contenteditable="true"], textarea';
+      // The site's own Log in / Sign in / Sign up control (signed-out ChatGPT, Gemini, Grok, Kimi, Qwen and Z.ai show
+      // their chat box beside one), or a link to Google's, X's or OpenAI's sign-in page.
+      const named=/^(?:log ?in|sign ?in|sign ?up|sign up for free|log in or sign up|sign in or sign up|登录|登入|注册|登录\/注册)$/i;
+      const away=n=>{
+        try{
+          const u=new URL(n.getAttribute('href')||'',location.href);
+          return /^(?:accounts\.google\.com|accounts\.x\.ai|auth\.openai\.com)$/.test(u.hostname)&&/(?:ServiceLogin|signin|sign-in|sign-up|log-in|create-account)/i.test(u.pathname);
+        }catch{return false;}
+      };
+      // (a chat in the side bar is never read as a control, whatever the student called it)
+      const chat=n=>{try{return n.tagName==='A'&&/^\/(?:c|chat|app|a\/chat\/s|chat\/s)\//.test(new URL(n.getAttribute('href')||'',location.href).pathname);}catch{return false;}};
+      if(Array.from(document.querySelectorAll('button, a[href], [role="button"]')).some(n=>
+        visible(n)&&
+          !n.closest?.(words)&&
+          !chat(n)&&
+          (named.test(plain(n.textContent))||named.test(plain(n.getAttribute('aria-label')))||/^(?:login|signup)-button$/i.test(n.getAttribute('data-testid')||'')||n.tagName==='A'&&away(n))))
+        return {state:'signed-out',by:'control'};
+      // A usage limit (or too many requests) in the site's own notice: an alert, a banner, a toast, a dialog, or the
+      // lines right around the chat box (where Claude and ChatGPT say it).
+      const limit=/you['’]ve (?:reached|hit|used up|run out of)|you have (?:reached|hit|used up|run out of)|reached (?:your|the|our) [^.!?]{0,40}?(?:limit|cap|quota)|(?:usage|message|rate|daily|hourly) (?:limit|cap|quota) (?:reached|exceeded|hit)|\b(?:limit|quota) (?:reached|exceeded)|out of free (?:messages|queries|chats)|too many requests|已达(?:到)?(?:使用|对话|今日|每日)?(?:次数)?上限|次数已用完|额度已用完/i;
+      // (the side bar, the header and buttons are left out: a chat titled "Too many requests" is not a limit)
+      const aside='nav, aside, header, button, [role="navigation"], [role="banner"], [role="complementary"]';
+      const own=n=>{
+        let text='';
+        const walk=node=>{
+          if(text.length>2000)return;
+          if(node.nodeType===3){text+=' '+(node.textContent||'');return;}
+          if(node.nodeType!==1||!visible(node)||node.matches?.(words)||node!==n&&node.matches?.(aside))return;
+          for(const child of Array.from(node.childNodes||[]))walk(child);
+        };
+        walk(n);
+        return plain(text);
+      };
+      const near=[];
+      for(const box of document.querySelectorAll('textarea, [contenteditable="true"]'))
+        if(visible(box))for(let p=box.parentElement,i=0;p&&i<4&&!/^(?:MAIN|BODY|HTML)$/.test(p.tagName);p=p.parentElement,i++)near.push(p);
+      for(const n of new Set([...document.querySelectorAll('[role="alert"], [role="status"], [role="dialog"], [aria-live], [data-testid*="limit"], [data-testid*="error"], [data-testid*="banner"], [class*="limit"], [class*="error"], [class*="banner"], [class*="toast"], [class*="notice"], [class*="warning"]'),...near])){
+        if(!visible(n)||n.closest?.(words)||n.closest?.('nav, aside, [role="navigation"]'))continue;const text=own(n),match=text.length<=2000?limit.exec(text):null;if(!match)continue;
+        const from=Math.max(text.lastIndexOf('. ',match.index),text.lastIndexOf('! ',match.index),text.lastIndexOf('? ',match.index)),end=text.slice(match.index).search(/[.!?。！](?:\s|$)/);
+        return {state:'limit',said:text.slice(from<0?0:from+2,end<0?undefined:match.index+end+1).trim().slice(0,300)};
+      }
+      const box=Array.from(document.querySelectorAll('textarea, [contenteditable="true"][role="textbox"], #prompt-textarea, .ProseMirror[contenteditable="true"], rich-textarea .ql-editor[contenteditable="true"], .chat-input-editor[contenteditable="true"], #chat-input[contenteditable="true"]')).some(n=>
+        visible(n)&&!n.disabled&&!n.readOnly&&n.getAttribute('aria-disabled')!=='true'&&!n.closest?.('[role="search"], [role="dialog"]'));
+      return {state:box?'ready':'unknown'};
+    }
+    let signs = null;
+    try { signs = siteSigns(); } catch (_) { /* A page this cannot read is no answer: insertion goes on as before. */ }
+    if (signs?.state === 'signed-out') return {...reply('no-editor', 'Sign in on the provider website, then return to Canvas and click Send again.'), signedOut: signs.by, retryable: signs.by === 'control'};
+    if (signs?.state === 'limit') return {...reply('no-editor', 'The AI website is at its usage limit. Try again later.'), limit: true, said: signs.said};
     function usable(node) {
       if (!visible(node) || node.disabled || node.readOnly || node.getAttribute('aria-disabled') === 'true' || node.getAttribute('aria-readonly') === 'true') return false;
       if (node.closest('[role="search"], [role="dialog"], form[action*="login"], form[action*="signin"], [data-testid*="login"], [data-testid*="signin"]')) return false;
@@ -352,15 +415,21 @@
       if(open>=0&&close>open){
         try{const data=JSON.parse(raw.slice(open,close+1));if(Array.isArray(data?.cards))return {status:'answer',text:raw.slice(open,close+1),...meta};}catch{}
       }
-      const problem=String(text||'').length<=300?String(text||'').match(/Connection interrupted|Something went wrong|network error|An error occurred|There was an error generating a response|Too many requests|You['’]ve reached|usage limit/i):null;
+      // (every site's words: Claude's "out of free messages", DeepSeek's "server is busy", the Chinese sites' 上限 too)
+      const problem=String(text||'').length<=300?String(text||'').match(/Connection interrupted|Something went wrong|network error|An error occurred|There was an error generating a response|Too many requests|server is busy|You['’]ve reached|usage limit|out of free messages|limit (?:reached|exceeded)|服务器繁忙|已达(?:到)?上限/i):null;
       // A usage limit comes back with the AI's own sentence (at most 300 characters), for the band to say why the run stopped.
       if(problem)
-        return {status:'provider-error',message:problem[0],...(/You['’]ve reached|usage limit/i.test(problem[0])?{limit:true,text:String(text||'').replace(/\s+/g,' ').trim().slice(0,300)}:{}),...meta};
+        return {
+          status:'provider-error',
+          message:problem[0],
+          ...(/You['’]ve reached|usage limit|out of free messages|limit (?:reached|exceeded)|上限/i.test(problem[0])?{limit:true,text:String(text||'').replace(/\s+/g,' ').trim().slice(0,300)}:{}),
+          ...meta
+        };
       // A finished reply that is not cards is handed over once it stops changing, so CH can ask the student to read it.
       state.still=state.text===state.lastPrepareText?(state.still||0)+1:0;state.lastPrepareText=state.text;
       return text&&state.still>=4?{status:'answer',text:String(text),...meta}:{status:'waiting',...meta};
     }
-    const errorPattern=/Connection interrupted|Something went wrong|network error|An error occurred|There was an error generating a response|Too many requests|You['\u2019]ve reached|usage limit/i;
+    const errorPattern=/Connection interrupted|Something went wrong|network error|An error occurred|There was an error generating a response|Too many requests|server is busy|You['\u2019]ve reached|usage limit|out of free messages|limit (?:reached|exceeded)|\u670d\u52a1\u5668\u7e41\u5fd9|\u5df2\u8fbe(?:\u5230)?\u4e0a\u9650/i;
     const errorMessage=value=>{const match=String(value||'').match(errorPattern);return match?match[0]:null;};
     const answer=(value,extra={})=>{if(conversation)conversation.assign=false;return {status:'answer',text:value,...meta,...extra};};
     if(guard.kind==='agent'){
@@ -437,6 +506,75 @@
       state.banner=banner;state.errorRevision=state.revision;return {status:'provider-error',message:banner,...meta};
     }
     return waiting();
+  }
+
+  // Signed out, or at its usage limit? Asked on every AI website before anything is typed and while a sent message
+  // waits, so a student hears that instead of a hang. Reads only the site's address, its sign-in fields, its own
+  // Log in / Sign in controls and its notices outside the chat transcript and the chat box: never what anyone wrote.
+  // {state:'signed-out'|'limit'|'ready'|'unknown', by, said}
+  function pageState(guard){
+    'use strict';
+    const origins={chatgpt:'https://chatgpt.com',claude:'https://claude.ai',gemini:'https://gemini.google.com',grok:'https://grok.com',deepseek:'https://chat.deepseek.com',kimi:'https://www.kimi.com',qwen:'https://chat.qwen.ai',zai:'https://chat.z.ai'};
+    try{if(top!==self||!Object.hasOwn(origins,guard?.id)||location.origin!==origins[guard.id])return {state:'unknown'};}catch{return {state:'unknown'};}
+    // (siteSigns is kept word for word in insertDraft too; a test holds the two copies equal)
+    function siteSigns(){
+      const view=document.defaultView,plain=v=>String(v||'').replace(/\s+/g,' ').trim();
+      const visible=n=>!!n&&n.isConnected!==false&&!n.hidden&&!n.closest?.('[hidden], [inert], [aria-hidden="true"]')&&(()=>{
+        const s=view.getComputedStyle(n);
+        return s.display!=='none'&&s.visibility!=='hidden'&&s.visibility!=='collapse'&&n.getClientRects().length>0;
+      })();
+      // A sign-in page (Claude's /login, DeepSeek's /sign_in, Qwen's /auth...), or sign-in fields shown over the chat.
+      if(/(?:^|\/)(?:auth|login|log-in|signin|sign-in|sign_in|signup|sign-up|sign_up|register|oauth)(?:\/|$)/i.test(location.pathname))return {state:'signed-out',by:'address'};
+      if(Array.from(document.querySelectorAll('input[type="password"], input[type="email"], input[autocomplete="username"], input[autocomplete="one-time-code"], input[autocomplete="current-password"], input[autocomplete="new-password"]')).some(visible))return {state:'signed-out',by:'form'};
+      // The chat transcript and the chat box are never read.
+      const words='[data-message-author-role], [data-conversation-role], [data-turn], [data-testid="user-message"], [data-testid="assistant-message"], user-query, model-response, .user-query, .human-message, [data-role="user"], [data-role="assistant"], [data-message-role], .user-message, .ds-message, .segment-assistant, [contenteditable="true"], textarea';
+      // The site's own Log in / Sign in / Sign up control (signed-out ChatGPT, Gemini, Grok, Kimi, Qwen and Z.ai show
+      // their chat box beside one), or a link to Google's, X's or OpenAI's sign-in page.
+      const named=/^(?:log ?in|sign ?in|sign ?up|sign up for free|log in or sign up|sign in or sign up|登录|登入|注册|登录\/注册)$/i;
+      const away=n=>{
+        try{
+          const u=new URL(n.getAttribute('href')||'',location.href);
+          return /^(?:accounts\.google\.com|accounts\.x\.ai|auth\.openai\.com)$/.test(u.hostname)&&/(?:ServiceLogin|signin|sign-in|sign-up|log-in|create-account)/i.test(u.pathname);
+        }catch{return false;}
+      };
+      // (a chat in the side bar is never read as a control, whatever the student called it)
+      const chat=n=>{try{return n.tagName==='A'&&/^\/(?:c|chat|app|a\/chat\/s|chat\/s)\//.test(new URL(n.getAttribute('href')||'',location.href).pathname);}catch{return false;}};
+      if(Array.from(document.querySelectorAll('button, a[href], [role="button"]')).some(n=>
+        visible(n)&&
+          !n.closest?.(words)&&
+          !chat(n)&&
+          (named.test(plain(n.textContent))||named.test(plain(n.getAttribute('aria-label')))||/^(?:login|signup)-button$/i.test(n.getAttribute('data-testid')||'')||n.tagName==='A'&&away(n))))
+        return {state:'signed-out',by:'control'};
+      // A usage limit (or too many requests) in the site's own notice: an alert, a banner, a toast, a dialog, or the
+      // lines right around the chat box (where Claude and ChatGPT say it).
+      const limit=/you['’]ve (?:reached|hit|used up|run out of)|you have (?:reached|hit|used up|run out of)|reached (?:your|the|our) [^.!?]{0,40}?(?:limit|cap|quota)|(?:usage|message|rate|daily|hourly) (?:limit|cap|quota) (?:reached|exceeded|hit)|\b(?:limit|quota) (?:reached|exceeded)|out of free (?:messages|queries|chats)|too many requests|已达(?:到)?(?:使用|对话|今日|每日)?(?:次数)?上限|次数已用完|额度已用完/i;
+      // (the side bar, the header and buttons are left out: a chat titled "Too many requests" is not a limit)
+      const aside='nav, aside, header, button, [role="navigation"], [role="banner"], [role="complementary"]';
+      const own=n=>{
+        let text='';
+        const walk=node=>{
+          if(text.length>2000)return;
+          if(node.nodeType===3){text+=' '+(node.textContent||'');return;}
+          if(node.nodeType!==1||!visible(node)||node.matches?.(words)||node!==n&&node.matches?.(aside))return;
+          for(const child of Array.from(node.childNodes||[]))walk(child);
+        };
+        walk(n);
+        return plain(text);
+      };
+      const near=[];
+      for(const box of document.querySelectorAll('textarea, [contenteditable="true"]'))
+        if(visible(box))for(let p=box.parentElement,i=0;p&&i<4&&!/^(?:MAIN|BODY|HTML)$/.test(p.tagName);p=p.parentElement,i++)near.push(p);
+      for(const n of new Set([...document.querySelectorAll('[role="alert"], [role="status"], [role="dialog"], [aria-live], [data-testid*="limit"], [data-testid*="error"], [data-testid*="banner"], [class*="limit"], [class*="error"], [class*="banner"], [class*="toast"], [class*="notice"], [class*="warning"]'),...near])){
+        if(!visible(n)||n.closest?.(words)||n.closest?.('nav, aside, [role="navigation"]'))continue;const text=own(n),match=text.length<=2000?limit.exec(text):null;if(!match)continue;
+        const from=Math.max(text.lastIndexOf('. ',match.index),text.lastIndexOf('! ',match.index),text.lastIndexOf('? ',match.index)),end=text.slice(match.index).search(/[.!?。！](?:\s|$)/);
+        return {state:'limit',said:text.slice(from<0?0:from+2,end<0?undefined:match.index+end+1).trim().slice(0,300)};
+      }
+      const box=Array.from(document.querySelectorAll('textarea, [contenteditable="true"][role="textbox"], #prompt-textarea, .ProseMirror[contenteditable="true"], rich-textarea .ql-editor[contenteditable="true"], .chat-input-editor[contenteditable="true"], #chat-input[contenteditable="true"]')).some(n=>
+        visible(n)&&!n.disabled&&!n.readOnly&&n.getAttribute('aria-disabled')!=='true'&&!n.closest?.('[role="search"], [role="dialog"]'));
+      return {state:box?'ready':'unknown'};
+    }
+    // A page this cannot read (an odd document, a site mid-change) is "unknown": the run goes on as before.
+    try{return siteSigns();}catch{return {state:'unknown'};}
   }
 
   // Serialized separately: the worker journals send-intent before invoking mode=click.
@@ -557,7 +695,7 @@
     await pause(200);
     return {ok, before};
   }
-  const api = Object.freeze({insertDraft,readStudyBlock,inspectTurn,setEffort});
+  const api = Object.freeze({insertDraft,readStudyBlock,inspectTurn,setEffort,pageState});
   root.CanvasHarnessInject = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(globalThis);

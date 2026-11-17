@@ -61,16 +61,8 @@
    filter row, without the empty-state sentence. */
 .rd .rd-course-heading > p > .rd-glance { display: inline-flex; flex: none; align-items: center; gap: 6px; margin: 0 0 0 .3em; }
 .rd .rd-course-heading::after { content: none !important; }
-/* The filter row is a grid (selection.css): Bookmarks take the first area of the same row. */
-.rd[data-workspace=work] .rd-desk-toolbar:has(> .rd-bookmarks) { grid-template-columns: auto auto auto minmax(300px, 1fr); grid-template-areas: "bookmarks views dates selection"; }
-.rd .rd-desk-toolbar > .rd-bookmarks { grid-area: bookmarks; }
-@container work-area (max-width: 1200px) {
-  .rd[data-workspace=work] .rd-desk-toolbar:has(> .rd-bookmarks) { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "bookmarks views views" "dates dates selection"; }
-}
-@container work-area (max-width: 760px) {
-  .rd[data-workspace=work] .rd-desk-toolbar:has(> .rd-bookmarks) { grid-template-columns: minmax(0, 1fr); grid-template-areas: "bookmarks" "views" "dates" "selection"; }
-}
-.rd[data-workspace=work] .rd-desk-toolbar > .rd-bookmarks { flex: 0 1 auto; align-items: center; gap: 8px; min-width: 0; max-width: min(42%, 560px); margin: 0; padding: 0 14px 0 0; border: 0; border-right: 1px solid var(--rd-line-strong); }
+/* The filter row is one wrapping row (refresh.css, selection.css): Bookmarks open it. */
+.rd[data-workspace=work] .rd-desk-toolbar > .rd-bookmarks { flex: 0 1 auto; align-items: center; gap: 8px; min-width: 0; max-width: 560px; margin: 0; padding: 0 14px 0 0; border: 0; border-right: 1px solid var(--rd-line-strong); }
 .rd[data-workspace=work] .rd-desk-toolbar > .rd-bookmarks .rd-bookmarks-art,
 .rd[data-workspace=work] .rd-desk-toolbar > .rd-bookmarks .rd-bookmarks-art .rd-mini { width: 26px; height: 26px; }
 .rd[data-workspace=work] .rd-desk-toolbar > .rd-bookmarks h2 { font-size: 14.5px; }

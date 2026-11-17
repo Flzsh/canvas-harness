@@ -192,8 +192,10 @@
  }
  function observe(listener,{runtime=root.chrome?.runtime,events=root.chrome?.storage?.onChanged,look=false}={}){
   let dead=false,revision=0;const emit=value=>{if(!dead)listener(value);};
-  async function refresh(){
-   const turn=++revision,empty={status:'loading',lookStatus:look?'loading':'idle',data:null,pack:null,look:null};emit(empty);
+  // quiet: a change of this browser's appearance record (Light/Dark, scene, motion...) cannot change whose companion or
+  // look it is, so what was verified stays shown until the new answer replaces it (no "loading", no disabled controls)
+  async function refresh(quiet=false){
+   const turn=++revision,empty={status:'loading',lookStatus:look?'loading':'idle',data:null,pack:null,look:null};if(quiet!==true)emit(empty);
    if(typeof runtime?.sendMessage!=='function'){emit({...empty,status:'error',lookStatus:look?'error':'idle'});return;}
    const replies=await Promise.allSettled([
      Promise.resolve().then(()=>runtime.sendMessage({type:'ch-companion',op:'read'})),
@@ -230,7 +232,9 @@
    emit(result);
   }
   const changed=(changes,area)=>{
-    if(area==='local'&&Object.keys(changes).some(key=>key.startsWith('reserve:v1:')||['reserve:packs','reserve:packs:receipts',...(look?['reserve:appearance']:[])].includes(key)))void refresh();
+    if(area!=='local')return;
+    const keys=Object.keys(changes);
+    if(keys.some(key=>key.startsWith('reserve:v1:')||['reserve:packs','reserve:packs:receipts'].includes(key)))void refresh();else if(look&&keys.includes('reserve:appearance'))void refresh(true);
   },message=value=>{if(value?.type==='ch-companion-changed')void refresh();};
   events?.addListener(changed);runtime?.onMessage?.addListener(message);void refresh();
   return {refresh,destroy(){dead=true;revision++;events?.removeListener(changed);runtime?.onMessage?.removeListener(message);}};

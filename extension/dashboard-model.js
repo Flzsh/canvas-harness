@@ -7,7 +7,9 @@
     Core = require('./core.js');
   }
 
-  var api = factory(Core || {});
+  // Edge can run this file before core.js (a registration it kept across a restart runs first): then the helper is looked
+  // up when used, so complete() still follows ReserveCore (personal tasks too) once core.js has run.
+  var api = factory(Core || { get isComplete() { return root.ReserveCore && root.ReserveCore.isComplete; } });
   root.ReserveDashboardModel = api;
 
   if (typeof module === 'object' && module.exports) {
@@ -423,7 +425,7 @@
     var value=input&&typeof input==='object'&&!Array.isArray(input)?input:{};
     var state=cleanState(Object.assign({},value,{courseId:courseId}));
     return Object.assign(state,{
-      selectedId:typeof value.selectedId==='string'&&/^(?:\d{1,30}|local-[\w-]{1,100})$/.test(value.selectedId)?value.selectedId:null,
+      selectedId:typeof value.selectedId==='string'&&/^(?:\d{1,30}|quiz-\d{1,30}|local-[\w-]{1,100})$/.test(value.selectedId)?value.selectedId:null,
       readerTab:value.readerTab==='plan'?'plan':'details',
       readerOpen:value.readerOpen===true,
       readerScroll:typeof value.readerScroll==='number'&&Number.isFinite(value.readerScroll)?Math.max(0,Math.min(1000000,value.readerScroll)):0

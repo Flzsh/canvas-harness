@@ -13,7 +13,12 @@
     if(answer?.status!=='answer')throw Error(answer?.message||'The API did not return an answer.');
     return {status:'reply',receipt:{...receipt,status:'sent'},reply:answer.text};
   }
-  catch(error){return {status:'needs-you',receipt,needsYou:{reason:receipt?'The API request may have been sent. Review or import its reply.':String(error.message||error),action:'Review settings'}};}
+  catch(error){
+    const said=String(error?.message||error||'The API request failed.');
+    // The provider answered with a refusal (key, billing, model, size, rate limit, declined, cut off): say its reason.
+    const answered=/^(?:API key problem\.|Check API billing\.|Model not available\.|The request is too large\.|The provider is rate limited\.|The AI declined this request|The answer was cut off)/.test(said);
+    return {status:'needs-you',receipt,needsYou:{reason:receipt&&!answered?'The API request may have been sent. Review or import its reply.':said,action:'Review settings'}};
+  }
  }return {deliver:step,observe:step,recover:step,cancel:async()=>({stoppedLocally:true,remoteMayContinue:true})};}};
  root.CanvasHarnessDeliveryAPI=api;
  if(typeof module==='object'&&module.exports)module.exports=api;

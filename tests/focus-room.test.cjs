@@ -144,7 +144,10 @@ test('reduced motion, Still and Motion off: nothing moves, and the end shows its
  still.room.click({target:still.panel.querySelector('[data-fr-seal]')});assert.equal(still.animations.filter(a=>a.node.classList.contains('fr-seal-art')).length,0,'Still: the seal does not bounce');still.done();
  const css=read('focus-room.css');
  assert.match(css,/@media \(prefers-reduced-motion:reduce\) \{ \.fr-room \*,\.fr-mod \* \{ animation:none!important;transition:none!important; \} \}/);
- assert.match(css,/\.fr-room:not\(\[data-motion="gentle"\]\) \*/);
+ // the rule is keyed on the room's own mark (data-fr-gentle, written beside its data-motion), never on data-motion with a
+ // universal subject: that would make every data-motion change in the dashboard restyle a whole subtree
+ assert.match(css,/\.fr-room:not\(\[data-fr-gentle\]\) \*/);assert.doesNotMatch(css,/\[data-motion(?!-)[^\]]*\][^,{]* \*/,'no universal subject after a data-motion compound');
+ {const off=fixture({motion:'off'});off.renderModule();await off.room.open();assert.equal(off.panel.hasAttribute('data-fr-gentle'),false);const on=fixture({});on.renderModule();await on.room.open();assert.equal(on.panel.getAttribute('data-motion'),'gentle');assert.equal(on.panel.hasAttribute('data-fr-gentle'),true,'a gentle room carries the mark');}
  assert.match(css,/\.fr-room\[data-hidden="true"\] \* \{ animation-play-state:paused!important; \}/,'hidden pages pause everything');
  assert.doesNotMatch(css,/gradient|filter:|drop-shadow|blur\(|box-shadow/i,'house style: flat washes, no gradients, glows or filters');
 });

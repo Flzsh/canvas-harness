@@ -1,8 +1,8 @@
 # Changelog
 
-## 4.0.0 - 2026-11-14
+## 4.0.0 - 2026-11-17
 
-The first 4.0 release. From now on the Chrome Web Store and GitHub get the same package. Everything in 3.10.0 is in it, and AI help, which stays off and out of sight until you add it.
+The first 4.0 release. From now on the Chrome Web Store and GitHub get the same package. Everything in 3.10.0 is in it, with a much smarter Biscuit, Canvas's menu bar redrawn for every window, a slip that undoes Archive and Mark done, Home modules that keep their shape, faster pages and many fixes, and AI help, which stays off and out of sight until you add it.
 
 - AI help, as an add-on you choose: add **AI help** from the Market (extension popup → Market). It stays off, and nothing of it shows, until you add it.
 - Adding it opens a short notice. Tick **I understand and agree** and choose **Turn on AI help**; **Not now** leaves it off, and **Use** on the add-on in Make it yours → More → Features shows the notice again.
@@ -13,6 +13,19 @@ The first 4.0 release. From now on the Chrome Web Store and GitHub get the same 
 - Help band: opening Help no longer zooms or slides the scene above it. The scene stops where the Help band starts, the same as with Help closed.
 - Help band: going to another tab and back to Home keeps the band and its cards as they were, instead of building them again. It also no longer reads the page's colours again each time a panel opens or the course dock moves, so Home opens sooner.
 - Under Thanksgiving and Maple Wind, the Help band sits on paper, never on the painted picture.
+- AI help asks the AI website much less: at most 20 messages an hour and 60 a day from all Canvas tabs together, Daily AI help on its own at most once an hour and three times a day, and a chat record read at most every 30 seconds. **Stop** ends a run everywhere (the AI tab, its timers, the worker) and keeps Daily AI help from starting by itself again that day; a click still runs it.
+- AI help checks once that you are signed in to the AI website before it starts a chat, and on all eight AI websites it says plainly when you are signed out or have reached the site's usage limit, with a way back. A laptop that slept in the middle of a run no longer leaves it half done: the run waits for **Continue** and sends nothing more by itself.
+- The Help band's **Stop** is a drawn button that stays beside its words at every width.
+- Biscuit understands far more: a tool named alone opens it ("calculator"), "any tests this week" lists the tests ahead, "did I turn in ..." with several matches lists them, and his answers are cards and lists you can act on (open, plan, mark done, undo). A question never changes anything.
+- Canvas's own menu bar is one tidy bar across the top or a rail down the side, at every window size and zoom: the selected item is a tinted pad, badges sit on their item and extra items fold into **More**. Over a scene it is on its own paper.
+- Archive and Mark done leave a small slip that says what changed, with **Put back** for each item and **Undo all**. It comes folded to one line, opens with **Show**, and lies above Biscuit.
+- Selecting work no longer makes the banner shrink and grow.
+- Home modules keep their shape when you move or resize them, snap to their neighbours, and **Undo move** puts back the place and the width.
+- Maple Wind paints the whole page below the banner, not only the banner. Starfield's stars follow the pointer from further away.
+- With the Canvas menu as a drawer beside a scene, the scene stays under it and only the dashboard moves aside.
+- Right after a school sign-in the dashboard opens by itself instead of leaving Canvas's own cards: Canvas Harness tries again quietly when Canvas still says "not signed in" or the network is waking, and checks again when you come back to the tab.
+- Faster: Tools and Home keep their date formatters, pictures and frames ignore style changes that cannot hide them, and the page reads before it writes when it reveals new content. The selection bar follows the window on a long list, and a selection can hold 200 items.
+- Fixes from a check of every page, theme and setting, among them: practice quizzes can be bookmarked and planned, the New chip counts only the chosen course, the Assignments page's day filter returns to All, the PDF reader opens a PDF whose header is not its first byte, Grade impact names a pretend quiz "Quiz", the Market says when a pack needs a newer Canvas Harness, the module size menu saves again, the Bookmarks shelf shows its names, the Grades sheet no longer slides over Grade impact, and Biscuit no longer fails on help lines while AI help is locked.
 - Under Thanksgiving and Blueprint, the date, a course's links and More views each sit on their own slip of paper or pane, so the words stay readable over the picture. Blueprint's filter strip and week are denser for the same reason.
 - From a 4.0 Preview: Your AI is now AI help and starts off. Add it from the Market and agree to its notice to use it again. Everything in 3.10.0 (below) is new to the previews too. The browser shows version 4.0.0, which replaces 3.99.x.
 - Thanks to @DorjieQ for Biscuit's language training rounds 7 and 8 (#68).

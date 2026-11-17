@@ -3,7 +3,7 @@
    framed in a drawn twig with a sprig of leaves in two corners; titles in the book serif; the motifs are autumn things,
    painted like the scene. Everything flat (no gloss, no glow); what moves moves by transform or opacity only. */
 .rd.rd.rd.rd[data-theme-kit]{--rd-bg:#FBF3E4;--rd-surface:#FFF9EE;--rd-surface-2:#F7EBD6;--rd-ink:#3A2A1E;--rd-muted:#7E6A55;--rd-ink-2:#4E3B2C;--rd-faint:#A08C76;--rd-line:rgba(122,84,38,.22);--rd-accent:#B9432A;--rd-soft:rgba(185,67,42,.11);--rd-course:#B9432A;--rd-danger:#A73A26;
-  background:linear-gradient(180deg,#F6E3C2 0,#F9EDD6 22%,#FBF3E4 44%,#FBF3E4 100%)!important;color:var(--rd-ink)!important;position:relative;isolation:isolate;overflow:hidden}
+  background:#F1D7AC url(ground.jpg) 0 0/1536px 1024px repeat!important;color:var(--rd-ink)!important;position:relative;isolation:isolate;overflow:hidden}
 .rd[data-theme-kit] :is(h1,h2,h3,.rd-rail-name,.rd-rail-heading){font-family:Literata,Georgia,"Palatino Linotype",serif!important;font-weight:700!important;letter-spacing:0;color:#3A2A1E!important}
 .rd[data-theme-kit] h1{font-weight:800!important;font-size:44px!important;text-shadow:0 1px 0 rgba(255,248,236,.85),0 0 20px rgba(255,244,226,.95)}
 .rd[data-theme-kit] .rd-rail-heading,.rd[data-theme-kit] .rd-heading-date,.rd[data-theme-kit] .rd-bookmarks :is(p,small,h2){text-shadow:0 1px 0 rgba(255,248,236,.85)}

@@ -2,7 +2,7 @@
 
 One package for the Chrome Web Store and GitHub releases. The build writes `dist/Canvas-Harness-4.0.0.zip`; the same file is uploaded to the store and attached to the GitHub release.
 
-4.0.0, November 14, 2026: `node scripts/test.cjs` ran 6,792 tests, 6,783 passed, 0 failed and 9 were skipped; `npm run check` passed, and the release audit of the extracted ZIP passed with 326 files, including its AI help lock checks (the packaged catalogue and the rendered lock test, `tests/ai-help-lock.test.cjs`).
+4.0.0, November 17, 2026: `node scripts/test.cjs` ran 7,074 tests, 7,046 passed, 0 failed and 28 were skipped (9 as before; 13 workflow audits of the old AI handoff, skipped by that file; 6 browser-only layout tests of the Canvas menu bar and the Help band, which skip in Node); `npm run check` passed, and the release audit of the extracted ZIP passed with 330 files and the AI help lock checks.
 
 Preview 7, November 9, 2026: `npm test` ran 6,769 tests, 6,760 passed and 9 were skipped; `npm run check` passed, and the release audit of the extracted ZIP passed with 323 files.
 

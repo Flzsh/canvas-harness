@@ -139,8 +139,6 @@
 /* The one-time Every day / Only when I ask choice takes the same slim line under the toolbar, with the bar's drawn buttons. */
 .ch-band-choice{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;padding:2px 2px 4px;font-size:12px;line-height:18px;color:var(--rd-muted,#73726C)}
 .ch-band-choice[hidden]{display:none}
-.rd .ch-prepare-action{height:22px;padding:0 8px;border:1px solid color-mix(in srgb,var(--rd-accent) 45%,var(--rd-line));border-radius:999px;background:color-mix(in srgb,var(--rd-accent) 8%,var(--rd-surface));color:var(--rd-accent);font:inherit;font-size:12px;cursor:pointer}
-.rd .ch-prepare-action:is(:hover,:focus-visible){background:color-mix(in srgb,var(--rd-accent) 16%,var(--rd-surface))}
 /* The picked card wears the accent: its drawn frame takes the theme accent instead of the widget line. */
 .rd .ch-band-card[data-follow=true]::after{background:var(--rd-accent)}
 .rd:is([data-panel-frame=stitch],[data-panel-frame=card],[data-panel-frame=line],[data-panel-frame=none]) .ch-band-card[data-follow=true]::after{border-color:var(--rd-accent)}
@@ -776,5 +774,36 @@
 }
 /* Reduced motion and Motion off: tabs and arrows change at once. */
 @media (prefers-reduced-motion:reduce){.ch-help-band :is(.ch-band-lap-tab,.ch-band-lap-prev,.ch-band-lap-next,.ch-band-lap-prev *,.ch-band-lap-next *){transition:none!important;animation:none!important}}
-.rd[data-motion=reduced] .ch-band-lap-tab,.rd[data-motion=reduced] .ch-band-lap-prev,.rd[data-motion=reduced] .ch-band-lap-next,.rd[data-motion=reduced] .ch-band-lap-prev *,.rd[data-motion=reduced] .ch-band-lap-next *,.ch-help-band[data-reduced-motion=true] .ch-band-lap-tab,.ch-help-band[data-reduced-motion=true] .ch-band-lap-prev,.ch-help-band[data-reduced-motion=true] .ch-band-lap-next,.ch-help-band[data-reduced-motion=true] .ch-band-lap-prev *,.ch-help-band[data-reduced-motion=true] .ch-band-lap-next *{transition:none!important;animation:none!important}
+.ch-help-band[data-reduced-motion=true] .ch-band-lap-tab,.ch-help-band[data-reduced-motion=true] .ch-band-lap-prev,.ch-help-band[data-reduced-motion=true] .ch-band-lap-next,.ch-help-band[data-reduced-motion=true] .ch-band-lap-prev *,.ch-help-band[data-reduced-motion=true] .ch-band-lap-next *{transition:none!important;animation:none!important}
 /* ---- end quarters and lapped stacks ---- */
+/* ---- the run strip (owner, 2026-11-16: "the stop button is not aesthetic ... in smaller display it pops into the
+   below row and overlapping other elements"). The run's words and its action are one group that never comes apart:
+   the words, then the action, 8 px between. A short row shortens the words first (ellipsis); when even that does not
+   fit, the whole group takes a line of its own at the end of the band's bar and the band grows with it. The bar is
+   never a fixed height, so nothing it holds is ever laid over the cards. ---- */
+.rd .ch-help-band.ch-help-band .ch-band-toolbar{height:auto;min-height:var(--ch-band-toolbar-height);flex-wrap:wrap;row-gap:6px}
+/* the narrow bar's line break (refresh.css) adds no gap of its own on top of the rows' 6 px */
+.rd .ch-help-band.ch-help-band .ch-band-toolbar::before{height:0;margin-block-end:-6px}
+.rd .ch-help-band.ch-help-band .ch-band-toolbar>.ch-prepare-status{order:40;display:flex;flex-wrap:nowrap;align-items:center;gap:8px;flex:1 1 10em;min-width:0;max-width:max-content;min-height:30px;padding:0;font-size:12px;line-height:18px}
+.rd .ch-help-band.ch-help-band .ch-band-toolbar>.ch-prepare-status[hidden]{display:none}
+.rd .ch-help-band.ch-help-band .ch-prepare-words{flex:0 1 auto;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:var(--rd-muted,#5E5D59)}
+/* a run with its ink track (Daily AI help): the track (never under 420 px, or its stage names are too small to read) and
+   its action side by side; the action goes under the track only where even that does not fit (a phone) */
+.rd .ch-help-band.ch-help-band .ch-band-toolbar>.ch-prepare-status:has(>.ch-progress:not([hidden])){flex:1 1 560px;max-width:760px;flex-wrap:wrap;row-gap:4px}
+.rd .ch-help-band.ch-help-band .ch-prepare-status>.ch-progress{flex:1 1 480px;min-width:min(100%,420px);max-width:640px;width:auto}
+/* the action: a drawn control of the band's family, the same height and baseline as its neighbours */
+.rd .ch-help-band .ch-prepare-action{--act-ink:var(--rd-ink,#141413);flex:none;display:inline-flex;align-items:center;gap:5px;box-sizing:border-box;height:30px;min-height:30px;margin:0;padding:1px 10px 1px 6px;border:1.4px solid var(--act-ink);border-radius:9px 11px 8px 10px;background:var(--rd-surface,#FFFDF8);color:var(--act-ink);font:600 12px/1 var(--rd-ui-font,system-ui,"Segoe UI",sans-serif);white-space:nowrap;cursor:pointer;box-shadow:1px 1.5px 0 color-mix(in srgb,var(--act-ink) 16%,transparent);transition:transform .16s ease,box-shadow .16s ease,background-color .16s ease}
+.rd .ch-help-band .ch-prepare-action[hidden]{display:none}
+.rd .ch-help-band .ch-prepare-action .ch-band-ico{width:18px;height:18px}
+.rd .ch-help-band .ch-prepare-action .ch-band-ico .ink, .rd .ch-help-band .ch-prepare-action .ch-band-ico .dot{stroke:var(--act-ink)}
+.rd .ch-help-band .ch-prepare-action:hover{transform:translateY(-1px);box-shadow:1.5px 2.5px 0 color-mix(in srgb,var(--act-ink) 20%,transparent);background:color-mix(in srgb,var(--act-ink) 6%,var(--rd-surface,#FFFDF8))}
+.rd .ch-help-band .ch-prepare-action:active{transform:translateY(1px) scale(.97);box-shadow:none}
+.rd .ch-help-band .ch-prepare-action:focus-visible{outline:2px solid var(--act-ink);outline-offset:2px}
+.rd .ch-help-band .ch-prepare-action:is(:hover,:focus-visible) .wash{transform:translate(1.6px,1.6px)}
+/* Stop: one step quieter than the band's primary (Daily AI help, filled clay): clay ink and edge on paper */
+.rd .ch-help-band .ch-prepare-action[data-act=stop]{--act-ink:#A4472A}
+:is(.rd[data-theme=dark] .ch-help-band,.ch-help-band[data-ink=light]) .ch-prepare-action[data-act=stop]{--act-ink:#E9A083}
+.rd .ch-help-band .ch-prepare-action[data-act=stop]:is(:hover,:focus-visible) .ch-band-ico{transform:scale(.9)}
+@media (prefers-reduced-motion:reduce){.rd .ch-help-band .ch-prepare-action,.rd .ch-help-band .ch-prepare-action *{transition:none!important;transform:none!important}}
+.ch-help-band[data-reduced-motion=true] .ch-prepare-action,.ch-help-band[data-reduced-motion=true] .ch-prepare-action *{transition:none!important;transform:none!important}
+/* ---- end of the run strip ---- */

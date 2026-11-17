@@ -34,6 +34,8 @@
   studio:'<path d="M7.4 8.4h26.4v18H7.4z" fill="#B7CBA5"/><path d="M8 28.8h25v4H8z" fill="#2B2A27" opacity=".14"/><path class="k" d="M6.2 7.6c9.2-.3 18.4-.3 27.6 0 .3 6.2.3 12.2 0 18.4-9.2.3-18.4.3-27.6 0-.3-6.2-.3-12.2 0-18.4z"/><path class="h" d="M8.6 10.2h1.6M8.6 13.4h1.6M8.6 16.6h1.6M8.6 19.8h1.6M8.6 23h1.6M29.8 10.2h1.6M29.8 13.4h1.6M29.8 16.6h1.6M29.8 19.8h1.6M29.8 23h1.6"/><g class="x-play"><path d="M17 12.4l7.4 4.4-7.4 4.4z" fill="#DE9A7C" stroke="#2B2A27" stroke-width="1.2" stroke-linejoin="round"/></g><path class="k" d="M7.6 29.4c8.4-.3 16.8-.3 25.2 0"/><path class="h" d="M11 31.6h3.4M17 31.6h8M27.6 31.6h2.8"/><path class="k" d="M20 26v3.2M14 35.4l6-6.2 6 6.2"/>',
   help:'<path class="x-glow" d="M14.4 6.8c5.6-2.4 12.6.2 13.6 6.6.6 4-1.6 6.4-3 8.2-.8 1-1 2-1 3.4h-7.4c0-1.6-.4-2.6-1.4-3.6-1.6-1.8-3.4-4-3-7.6.4-3.4 1.4-5.6 2.2-7z" fill="#F2DC8E"/><path class="k" d="M16.6 24.6c0-1.6-.6-2.8-1.8-4-1.8-1.8-3.2-4-3-7.2.3-4.8 4-8.2 8.4-8.2 4.6 0 8.2 3.6 8.2 8.2 0 3-1.4 5.2-3.2 7-1.2 1.2-1.6 2.6-1.6 4.2"/><path class="k" d="M16.6 26.2c2.4.2 4.6.2 7 0M17 28.6c2.2.2 4.2.2 6.2 0M18.4 31c1.2.2 2.4.2 3.6 0"/><path d="M17.6 11.6c.4-1.6 1.6-2.4 3-2.4 1.6.1 2.6 1.2 2.6 2.6-.1 1.4-1.2 2-2 2.6-.6.4-.8.9-.8 1.6" fill="none" stroke="#2B2A27" stroke-width="1.3" stroke-linecap="round"/><circle class="d" cx="20.4" cy="18.6" r=".9"/><path class="x-rays" d="M6.4 12.6l2.4.4M9 5.6l1.8 1.8M33.6 12.6l-2.4.4M31 5.6l-1.8 1.8M20.2 1.6v2.2" fill="none" stroke="#C96442" stroke-width="1.1" stroke-linecap="round"/>'
  };
+ // More: a stack of sheets with three dots on the top one (the items that did not fit are under it)
+ const MORE_ART='<path d="M7.4 14.6h25.4v18.2H7.4z" fill="#E6C478"/><path class="k" d="M6.6 13.8c9-.3 18-.3 27 0 .3 6.4.3 12.8 0 19.2-9 .3-18 .3-27 0-.3-6.4-.3-12.8 0-19.2z"/><path class="h" d="M9.4 10.4c7-.3 14.2-.3 21.2 0M12.4 7.2c5-.2 10.2-.2 15.2 0"/><g class="x-dots"><circle class="d" cx="13.6" cy="23.6" r="1.7"/><circle class="d" cx="20.1" cy="23.6" r="1.7"/><circle class="d" cx="26.6" cy="23.6" r="1.7"/></g>';
  const LINKS={
    global_nav_profile_link:'account',
    global_nav_dashboard_link:'dashboard',
@@ -76,7 +78,12 @@
  function readLogo(url){
   return new Promise(resolve=>{
    const img=new root.Image();img.crossOrigin='anonymous';img.decoding='async';
-   const done=kind=>{clearTimeout(timer);resolve(kind);},timer=setTimeout(()=>done('plate'),4000);
+   // its kind, and its shape (width / height), so the bar can give the picture its own width at the items' height
+   const done=kind=>{
+     clearTimeout(timer);
+     const aspect=img.naturalWidth&&img.naturalHeight?Math.round(img.naturalWidth/img.naturalHeight*100)/100:0;
+     resolve({kind,aspect});
+   },timer=setTimeout(()=>done('plate'),4000);
    img.onerror=()=>done('plate');
    img.onload=()=>{
     try{
@@ -90,14 +97,11 @@
   });
  }
 
- function frames(){
-  const Art=root.ReserveCourseArt;if(!Art?.frame)return '';
-  return '<span class="chn-frames" aria-hidden="true">'+Art.frame('home','folio-home',{id:'folio-home',name:'All courses'})+Art.frame('home','chn-item',{id:'chn-item',name:'Canvas'})+'</span>';
- }
+ // The selected item is a tinted pad with a drawn stroke, all inside the bar (canvas-nav.css); nothing is added to the
+ // links but the drawings. A frame left by an older build is taken off.
  function decorate(header){
-  const frame=frames();
+  for(const old of header.querySelectorAll('.chn-frames'))old.remove();
   for(const link of header.querySelectorAll('.ic-app-header__menu-list-link')){
-   if(frame&&!link.querySelector(':scope > .chn-frames'))link.insertAdjacentHTML('afterbegin',frame);
    for(const badge of link.querySelectorAll('.menu-item__badge'))if(!/\d/.test(badge.textContent||''))badge.dataset.chnEmpty='';else delete badge.dataset.chnEmpty;
    const kind=kindOf(link),box=link.querySelector('.menu-item-icon-container'),bare=!box&&link.querySelector(':scope > .menu-item__icon');
    if(!DRAWINGS[kind]||!box&&!bare||link.querySelector('.chn-ic')||kind==='account'&&!defaultAvatar(link))continue;
@@ -113,6 +117,113 @@
   for(const node of header.querySelectorAll('.chn-drawn'))node.classList.remove('chn-drawn');
   for(const node of header.querySelectorAll('.chn-drawn-link'))node.classList.remove('chn-drawn-link');
   for(const node of header.querySelectorAll('[data-chn-empty]'))delete node.dataset.chnEmpty;
+  fold(header,0);for(const node of header.querySelectorAll('.chn-more, .chn-more-menu'))node.remove();
+ }
+
+ // MORE: when the items do not fit (the top bar on a narrow window, the rail or the drawer on a short one) the last
+ // ones fold into one More item, a drawing and its name, which opens a small menu of them. Canvas's own links stay
+ // where they are (hidden while folded), so their trays and keys stay Canvas's: an entry presses the link it stands for.
+ function items(header){
+  const list=header.querySelector('.ic-app-header__main-navigation .ic-app-header__menu-list');
+  return list?[...list.children].filter(li=>li.tagName==='LI'&&!li.hidden&&li.style.display!=='none'):[];
+ }
+ function moreBox(header){
+  const nav=header.querySelector('.ic-app-header__main-navigation');if(!nav)return null;
+  let box=nav.querySelector(':scope > .chn-more');
+  if(!box){
+   box=root.document.createElement('div');box.className='chn-more';box.hidden=true;
+   box.innerHTML='<button type="button" class="chn-more-link" aria-haspopup="menu" aria-expanded="false" title="More"><span class="chn-more-icon"><svg class="chn-ic" viewBox="0 0 40 40" aria-hidden="true" focusable="false">'+MORE_ART+'</svg></span><span class="chn-more-text">More</span></button>';
+   nav.append(box);
+  }
+  return box;
+ }
+ function fold(header,count){
+  const list=items(header),box=count>0?moreBox(header):header.querySelector('.chn-more');
+  const k=Math.max(0,Math.min(count|0,list.length-1));
+  list.forEach((li,i)=>{const folded=i>=list.length-k;if(folded!==('chnFolded' in li.dataset)){if(folded)li.dataset.chnFolded='';else delete li.dataset.chnFolded;}});
+  if(box){
+    if(box.hidden!==!k)box.hidden=!k;
+    const current=k>0&&list.slice(list.length-k).some(li=>li.classList.contains('ic-app-header__menu-list-item--active'));
+    if(current!==box.hasAttribute('data-chn-current'))box.toggleAttribute('data-chn-current',current);
+  }
+  if(k){if(header.dataset.chnFolded!==String(k))header.dataset.chnFolded=String(k);}else if('chnFolded' in header.dataset){delete header.dataset.chnFolded;closeMore(header);}
+  return k;
+ }
+ function closeMore(header,focus){
+  const menu=header.querySelector(':scope > .chn-more-menu');if(menu){menu.hidden=true;menu.replaceChildren();}
+  const button=header.querySelector('.chn-more-link');button?.setAttribute('aria-expanded','false');
+  delete header.dataset.chnMoreOpen;delete root.document.documentElement.dataset.chnMoreOpen;
+  if(focus)button?.focus();
+ }
+ function openMore(header){
+  const doc=root.document,button=header.querySelector('.chn-more-link');if(!button)return;
+  let menu=header.querySelector(':scope > .chn-more-menu');
+  if(!menu){menu=doc.createElement('div');menu.className='chn-more-menu';menu.setAttribute('role','menu');menu.setAttribute('aria-label','More of Canvas');menu.hidden=true;header.append(menu);}
+  const entries=items(header).filter(li=>'chnFolded' in li.dataset).map(li=>{
+   const link=li.querySelector('.ic-app-header__menu-list-link');if(!link)return null;
+   const name=String(link.querySelector('.menu-item__text')?.textContent||link.title||link.getAttribute('aria-label')||'').trim();
+   const press=link.getAttribute('role')==='button'||!link.getAttribute('href');
+   const entry=doc.createElement(press?'button':'a');entry.className='chn-more-entry';entry.setAttribute('role','menuitem');entry.tabIndex=-1;
+   if(press)entry.type='button';else entry.href=link.href;
+   const art=link.querySelector('.chn-ic')||link.querySelector('.ic-avatar, .menu-item-icon-container > svg, .menu-item__icon');
+   const pic=doc.createElement('span');pic.className='chn-more-entry-icon';pic.setAttribute('aria-hidden','true');if(art)pic.append(art.cloneNode(true));entry.append(pic);
+   const label=doc.createElement('span');label.className='chn-more-entry-text';label.textContent=name;entry.append(label);
+   const count=/\d+/.exec([...link.querySelectorAll('.menu-item__badge')].map(b=>b.textContent).join(' '));
+   if(count){const badge=doc.createElement('span');badge.className='chn-more-badge';badge.textContent=count[0];entry.append(badge);}
+   if(li.classList.contains('ic-app-header__menu-list-item--active'))entry.setAttribute('aria-current','page');
+   entry.addEventListener('click',event=>{closeMore(header);if(press){event.preventDefault();link.click();}});
+   return entry;
+  }).filter(Boolean);
+  menu.replaceChildren(...entries);menu.hidden=false;button.setAttribute('aria-expanded','true');header.dataset.chnMoreOpen='';doc.documentElement.dataset.chnMoreOpen='';
+  // beside the More item, inside the window: under it in the top bar, to its right in the rail and the drawer
+  const top=doc.documentElement.dataset.chnLayout==='top',
+    hb=header.getBoundingClientRect(),
+    bb=button.getBoundingClientRect(),
+    mw=menu.offsetWidth,
+    mh=menu.offsetHeight,
+    W=root.innerWidth,
+    H=root.innerHeight;
+  let x,y;if(top){x=Math.min(bb.right-mw,W-8-mw);y=hb.bottom+8;}else{x=hb.right+10;y=Math.min(bb.top,H-8-mh);}
+  x=Math.max(8,x);y=Math.max(8,y);menu.style.left=Math.round(x-hb.left)+'px';menu.style.top=Math.round(y-hb.top)+'px';
+  entries[0]?.focus();
+ }
+ // the More item's own keys and presses (once per bar)
+ function moreKeys(header,listen){
+  if(header.dataset.chnMoreKeys)return;header.dataset.chnMoreKeys='true';
+  listen(header,'click',event=>{
+    const button=event.target.closest?.('.chn-more-link');
+    if(!button||!header.contains(button))return;
+    event.preventDefault();
+    if(header.dataset.chnMoreOpen!==undefined)closeMore(header);else openMore(header);
+  });
+  listen(header,'keydown',event=>{
+   const menu=header.querySelector(':scope > .chn-more-menu');if(!menu||menu.hidden)return;
+   const list=[...menu.querySelectorAll('.chn-more-entry')],at=list.indexOf(root.document.activeElement);
+   if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeMore(header,true);}
+   else if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();const next=list[(at+(event.key==='ArrowDown'?1:-1)+list.length)%list.length];next?.focus();}
+   else if(event.key==='Home'||event.key==='End'){event.preventDefault();(event.key==='Home'?list[0]:list.at(-1))?.focus();}
+   else if(event.key==='Tab')closeMore(header);
+  });
+  listen(root.document,'pointerdown',event=>{if(header.dataset.chnMoreOpen!==undefined&&!event.target.closest?.('.chn-more-menu, .chn-more-link'))closeMore(header);},true);
+ }
+ // The rail and the drawer: fold from the end until the last item's foot is inside the bar's paper (and the window).
+ function railFits(header){
+  const boxes=items(header).filter(li=>!('chnFolded' in li.dataset)).map(li=>li.getBoundingClientRect()).filter(r=>r.height>0);
+  const more=header.querySelector('.chn-more:not([hidden])');if(more)boxes.push(more.getBoundingClientRect());
+  if(!boxes.length)return true;
+  const foot=Math.max(...boxes.map(r=>r.bottom)),second=header.querySelector('.ic-app-header__secondary-navigation'),hb=header.getBoundingClientRect();
+  const secondTop=second&&second.getClientRects().length&&second.getBoundingClientRect().height?second.getBoundingClientRect().top:Infinity;
+  const inset=parseFloat(root.getComputedStyle(header,'::before').bottom)||0;
+  return foot<=Math.min(secondTop,hb.bottom-inset,hb.top+root.innerHeight)-4;
+ }
+ // Where a name is not shown (the narrowest forms) each link still says it: its title, and the hidden name for screen readers.
+ function named(header){
+   for(const link of header.querySelectorAll('.ic-app-header__menu-list-link'))if(!link.title){const name=link.querySelector('.menu-item__text')?.textContent.trim();if(name)link.title=name;}
+ }
+ function fitRail(header){
+  const n=items(header).length;let k=0;fold(header,0);
+  while(k<n-2&&!railFits(header))fold(header,++k);
+  return k;
  }
  // The workspace's colours (accent, page colour, ink, motion) as the dashboard last showed them, so every Canvas page
  // matches; the dashboard refreshes them whenever they change.
@@ -166,10 +277,6 @@
    if(stopped)return;
    saved=values;if(values['reserve:enabled']===false){apply('original');return;}
    if(values[KEY]!=='original')enable(values[KEY]);else apply('original');
-   // Course frames arrive through the deferred loader after this static script.
-   listen(root.document,'reserve:features-ready',()=>{
-    if(header&&html.classList.contains('chn-nav')&&[...header.querySelectorAll('.ic-app-header__menu-list-link')].some(link=>!link.querySelector(':scope > .chn-frames')))decorate(header);
-   },{once:true});
    // Chosen again in Make it yours or the popup: the bar changes on this page at once.
    const changed=(changes,area)=>{if(area==='local'&&changes[KEY])apply(changes[KEY].newValue);};
    root.chrome?.storage?.onChanged?.addListener?.(changed);
@@ -179,7 +286,7 @@
   // frames, which then showed unstyled for a moment on every page change. It is scoped to html.chn-nav, so it is inert until then.
   function enable(choice){
    html.classList.add('chn-nav');layout(choice);applyPalette(saved[PALETTE]);
-   if(header){decorate(header);setLogo();drawer();topBar();}else watch();
+   if(header){decorate(header);setLogo();drawer();topBar();rail();}else watch();
   }
   function layout(choice){
     html.dataset.chnLayout=LAYOUTS[choice]||'drawer';
@@ -198,7 +305,7 @@
    }
    html.dataset.chnSwitching='true';
    if(!html.classList.contains('chn-nav'))enable(choice);
-   else{for(const step of undo.splice(0))try{step();}catch{}layout(choice);if(header){drawer();topBar();}}
+   else{for(const step of undo.splice(0))try{step();}catch{}layout(choice);if(header){drawer();topBar();rail();}}
    root.requestAnimationFrame(()=>root.requestAnimationFrame(()=>{delete html.dataset.chnSwitching;}));
   }
 
@@ -231,7 +338,7 @@
    observer?.disconnect();
    observer=new MutationObserver(()=>{if(queued)return;queued=true;root.requestAnimationFrame(()=>{queued=false;if(html.classList.contains('chn-nav'))decorate(header);});});
    observer.observe(header,{childList:true,subtree:true});
-   setLogo();followWorkspace();drawer();topBar();
+   moreKeys(header,listen);setLogo();followWorkspace();drawer();topBar();rail();
   }
   // THE DRAWER (the default; the user, 2026-10-15): the bar is used now and then, so it waits off the left edge and
   // Canvas's page takes the whole width. Reaching the window's left edge with the pointer, or tabbing into it, brings it
@@ -258,7 +365,11 @@
    const open=()=>{root.clearTimeout(timer);if(html.dataset.chnDrawer!=='open'){html.dataset.chnDrawer='open';push(true);}};
    const close=(ms=420)=>{
      root.clearTimeout(timer);
-     timer=root.setTimeout(()=>{if(header.matches(':hover')||header.contains(doc.activeElement)||trayOpen())return;html.dataset.chnDrawer='closed';push(false);},ms);
+     timer=root.setTimeout(()=>{
+       if(header.matches(':hover')||header.contains(doc.activeElement)||trayOpen()||header.dataset.chnMoreOpen!==undefined)return;
+       html.dataset.chnDrawer='closed';
+       push(false);
+     },ms);
    };
    edge.addEventListener('pointerenter',open,{signal});
    header.addEventListener('pointerenter',open,{signal});header.addEventListener('pointerleave',()=>close(),{signal});
@@ -277,13 +388,17 @@
    if(html.dataset.chnLayout!=='top'||header.dataset.chnTop)return;header.dataset.chnTop='true';
    // Wait for the workspace only where Dashboard is enabled and requested.
    const dashboard=/^\/?$/.test(root.location?.pathname||'')&&root.ReserveFeatures?.enabled?.('dashboard')!==false&&new URLSearchParams(root.location?.search||'').get('reserve')!=='native';
-   for(const link of header.querySelectorAll('.ic-app-header__menu-list-link'))if(!link.title){const name=link.querySelector('.menu-item__text')?.textContent.trim();if(name)link.title=name;}
+   named(header);
    const waitUntil=Date.now()+(dashboard?9000:0),set=(name,value)=>html.style.setProperty(name,value);
    let queued=0,watched=null,sizes=null;
    const visible=node=>!!node&&node.getClientRects().length>0&&node.getBoundingClientRect().width>0;
-   function fit(width){
-    // measured with anything that still spills out of the bar, so a school's own Canvas styles cannot fool it
-    for(const kind of ['full','icons','bare']){header.dataset.chnFit=kind;if(Math.max(header.offsetWidth,header.scrollWidth)<=width)return true;}
+   // measured with anything that still spills out of the bar, so a school's own Canvas styles cannot fool it
+   const wide=()=>Math.max(header.offsetWidth,header.scrollWidth);
+   function fit(width,more){
+    for(const kind of ['full','stack']){header.dataset.chnFit=kind;fold(header,0);if(wide()<=width)return true;}
+    if(!more)return false;
+    const n=items(header).length;
+    for(const kind of ['stack','icons']){header.dataset.chnFit=kind;for(let k=1;k<=n-2;k++){fold(header,k);if(wide()<=width)return true;}}
     return false;
    }
    function place(){
@@ -295,14 +410,14 @@
      if(before&&visible(tools)){
       const a=before.getBoundingClientRect(),b=tools.getBoundingClientRect(),left=a.right+16,room=b.left-16-left;
       html.dataset.chnPlace='toolbar';
-      if(room>120&&fit(room)){
+      if(room>120&&fit(room,false)){
        set('--chn-bar-x',Math.round(left+(room-header.offsetWidth)/2+root.scrollX)+'px');
        set('--chn-bar-y',Math.round(a.top+a.height/2+root.scrollY)+'px');return;
       }
      }
     }
     if(dashboard&&!rd&&Date.now()<waitUntil){html.dataset.chnPlace='wait';root.setTimeout(later,600);return;}
-    html.dataset.chnPlace='strip';fit(root.innerWidth-40);
+    html.dataset.chnPlace='strip';fit(root.innerWidth-32,true);
    }
    function later(){if(!queued)queued=root.requestAnimationFrame(place);}   // -1 once undone: nothing more is placed
    place();
@@ -310,21 +425,50 @@
    root.addEventListener('resize',later,{passive:true});root.addEventListener('load',later,{once:true});
    undo.push(()=>{
     classes.disconnect();sizes?.disconnect();root.removeEventListener('resize',later);if(queued)root.cancelAnimationFrame?.(queued);queued=-1;
-    delete html.dataset.chnPlace;delete header.dataset.chnFit;delete header.dataset.chnTop;html.style.removeProperty('--chn-bar-x');html.style.removeProperty('--chn-bar-y');
+    delete html.dataset.chnPlace;delete header.dataset.chnFit;delete header.dataset.chnTop;html.style.removeProperty('--chn-bar-x');html.style.removeProperty('--chn-bar-y');fold(header,0);
    });
   }
-  // A logo that keeps its own look (framed, or on the school's plate) hangs in a drawn frame from a nail.
-  function logoArt(){
-    const mark=header.querySelector('.ic-app-header__logomark');
-    if(mark&&!mark.querySelector(':scope > .chn-logo-art'))mark.insertAdjacentHTML('beforeend','<span class="chn-logo-art" aria-hidden="true"><svg class="chn-logo-hang" viewBox="0 0 40 14"><path d="M9 13.4L20 3l11 10.4" fill="none" stroke="#2B2A27" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="2.6" r="1.7" fill="#2B2A27"/></svg><svg class="chn-logo-edge" viewBox="0 0 100 60" preserveAspectRatio="none"><path vector-effect="non-scaling-stroke" d="M4.2 4.4C30 3.2 70 4.6 96.2 3.6C97 20 96.4 40 97 56.6C70 57.6 30 56.2 3.6 57.2C2.8 40 3.8 20 3.2 5.6"/><path class="re" vector-effect="non-scaling-stroke" d="M8 7.4C36 6.6 64 7.8 92 7"/><path class="re" vector-effect="non-scaling-stroke" d="M90 54C93 53.6 94.4 52 94.6 49"/></svg></span>');
+  // THE RAIL (Full height) and THE DRAWER: on a short window the last items fold into More rather than run off the
+  // bar; measured again when the window, the bar or its list changes size (Canvas's own collapse included).
+  function rail(){
+   const layout=html.dataset.chnLayout;if(layout!=='column'&&layout!=='drawer'||header.dataset.chnRail)return;header.dataset.chnRail='true';
+   // What the fit depends on: the bar's width (Canvas's collapse), the window's height, the paper's insets (lined up with
+   // Home), the logo (its picture arrives late). A fold changes the list's own size (and the drawer's), so watching that
+   // directly made every fold schedule the next one; it is measured again only when this key changes.
+   let queued=0,fitted='';
+   const key=()=>{
+     const b=root.getComputedStyle(header,'::before');
+     return [header.offsetWidth,root.innerHeight,b.top,b.bottom,header.dataset.chnLogo||'',items(header).length].join('|');
+   };
+   const fitNow=()=>{
+     queued=0;
+     if(stopped||!header.dataset.chnRail)return;
+     const narrow=header.offsetWidth>0&&header.offsetWidth<70;
+     if(narrow!==('chnNarrow' in header.dataset)){if(narrow)header.dataset.chnNarrow='';else delete header.dataset.chnNarrow;}
+     if(narrow)named(header);
+     fitRail(header);
+     fitted=key();
+   };
+   const later=()=>{if(!queued&&!stopped&&header.dataset.chnRail&&key()!==fitted)queued=root.requestAnimationFrame(fitNow);};
+   let sizes=null;try{sizes=new root.ResizeObserver(later);sizes.observe(header);}catch{}
+   root.addEventListener('resize',later,{passive:true});fitNow();
+   undo.push(()=>{
+     sizes?.disconnect();
+     root.removeEventListener('resize',later);
+     if(queued)root.cancelAnimationFrame?.(queued);
+     queued=0;
+     delete header.dataset.chnRail;
+     delete header.dataset.chnNarrow;
+     fold(header,0);
+   });
   }
   function setLogo(){
-   logoArt();
+   for(const old of header.querySelectorAll('.chn-logo-art'))old.remove();
    const url=logoURL(header);if(!url){header.dataset.chnLogo='none';return;}
-   const known=saved[LOGO];
-   if(known?.url===url&&['ink','dark','framed','plate'].includes(known.kind)){header.dataset.chnLogo=known.kind;return;}
+   const known=saved[LOGO],shape=aspect=>{if(aspect>0)header.style.setProperty('--chn-logo-aspect',String(Math.max(.5,Math.min(4,aspect))));};
+   if(known?.url===url&&['ink','dark','framed','plate'].includes(known.kind)&&known.aspect!==undefined){header.dataset.chnLogo=known.kind;shape(known.aspect);return;}
    header.dataset.chnLogo='wait';
-   readLogo(url).then(kind=>{if(stopped)return;header.dataset.chnLogo=kind;store.set({[LOGO]:{url,kind}}).catch(()=>{});});
+   readLogo(url).then(({kind,aspect})=>{if(stopped)return;header.dataset.chnLogo=kind;shape(aspect);store.set({[LOGO]:{url,kind,aspect}}).catch(()=>{});});
   }
   // On the dashboard: take the workspace's colours, and line the bar's top up with the workspace's top row.
   function followWorkspace(){
@@ -347,6 +491,9 @@
      const gap=rail&&root.scrollY===0&&rail.getClientRects().length?Math.round(root.innerHeight-rail.getBoundingClientRect().bottom):NaN;
      if(top>=8&&top<=140)html.style.setProperty('--chn-top',top+'px');
      if(gap>=4&&gap<=80)html.style.setProperty('--chn-bottom',gap+'px');
+     // With a theme kit the scene runs on under the drawer, and only the dashboard's own content moves aside
+     // (canvas-nav.css data-chn-scene, scene-themes.css); written only when it changes.
+     const scene=!!rd.dataset?.themeKit;if(scene!==('chnScene' in html.dataset)){if(scene)html.dataset.chnScene='';else delete html.dataset.chnScene;}
     };
     const later=()=>{if(!stopped&&!workspaceQueued)workspaceQueued=root.setTimeout(()=>{workspaceQueued=0;watch();sync();},400);};
     // The dashboard writes only values that changed, so this follows the settings that recolour or re-font .rd (font,
@@ -370,7 +517,7 @@
   }
  }
 
- if(typeof module==='object'&&module.exports)module.exports={kindOf,logoKind,DRAWINGS,rememberLayout,earlyLayout};
+ if(typeof module==='object'&&module.exports)module.exports={kindOf,logoKind,DRAWINGS,rememberLayout,earlyLayout,fold,items,fitRail};
  else start();
  }
  if(root.ReserveFeatures)root.ReserveFeatures.early('canvas-nav',load,()=>stop());else load();

@@ -21,6 +21,7 @@
    [/ (?:cant|can t) /g,' can not '],
    [/ (?:wont|won t) /g,' will not '],
    [/ (?:whats|what s|wats|wut is) /g,' what is '],
+   [/ (?:wat|wut) /g,' what '],
    [/ (?:hows|how s) /g,' how is '],
    [/ (?:ive|i ve) /g,' i have '],
    [/ (?:tmrw|tmr|tmw|tomo|2moro|2mrw) /g,' tomorrow '],
@@ -57,7 +58,7 @@
     if(!id||seen.has(id))continue;
     seen.add(id);
     const my=mine[id]||{};
-    if(v.done||v.completed||v.submitted||my.checkedOff||my.progress==='done')continue;
+    if(v.done||v.completed||v.submitted||my.checkedOff||my.progress==='done'||['submitted','graded','pending_review','complete'].includes(String(v.state||'')))continue;
    const title=String(v.title||v.name||'').trim();if(!title)continue;const text=title+' '+String(v.kind||'');
    out.push({
      ...v,
@@ -118,9 +119,22 @@
  }
  // The open item a line names, by its words.
  function named(text,s){
-   const words=String(text).split(' ').filter(w=>w.length>3&&!/^(?:this|that|with|from|have|done|thing|work|homework|tomorrow|tonight|today|already|please|mark|finished|completed|submitted|turned|handed|what|does|need|about|sunday|monday|tuesday|wednesday|thursday|friday|saturday)$/.test(w));
-   let best=null,score=0;
-   for(const v of open(s)){const title=v.title.toLowerCase(),n=words.filter(w=>title.includes(w)).length;if(n>score){best=v;score=n;}}
+   const only=courseOfLine(text,s),kind=kindOf(text);
+   const words=String(text).split(' ').filter(w=>(w.length>3||w==='lab')&&!/^(?:this|that|with|from|have|done|thing|work|homework|tomorrow|tonight|today|already|please|mark|finished|completed|submitted|turned|handed|what|does|need|about|sunday|monday|tuesday|wednesday|thursday|friday|saturday|submit|upload)$/.test(w));
+   let best=null,score=0,seen=0;
+   const kindWords=/^(?:quiz|quizzes|test|exam|essay|paper|project|reading|report|homework|problem|worksheet|lab)$/;
+   for(const v of open(s)){
+     if(only&&String(v.courseId)!==String(only.id))continue;
+     if(kind&&!isKind(v,kind))continue;
+     seen++;
+     const title=v.title.toLowerCase(),n=words.filter(w=>title.includes(w)).length,now=stamp(s.now)||Date.now(),soon=x=>x.dueAt===null?2:x.dueAt>=now?0:1;
+     if(n>score||n===score&&n>0&&best&&(soon(v)<soon(best)||soon(v)===soon(best)&&soon(v)===0&&v.dueAt<best.dueAt)){best=v;score=n;}
+   }
+   if(!best&&only&&kind&&seen===1)best=open(s).find(v=>String(v.courseId)===String(only.id)&&isKind(v,kind))||null;
+   if(best&&!only){
+     const hit=words.filter(w=>best.title.toLowerCase().includes(w));
+     if(hit.length&&hit.every(w=>kindWords.test(w))&&words.some(w=>!kindWords.test(w)&&!hit.includes(w)))return null;
+   }
    return best;
  }
  const dueOn=(day,c)=>{const cal=local(c.s);return cal?open(c.s).filter(v=>v.dueAt!==null&&cal(v.dueAt).day===day).sort((a,b)=>a.dueAt-b.dueAt):[];};
@@ -162,11 +176,832 @@
  const cleanName=t=>t.replace(/ (?:please|for me|today|tonight|tomorrow|this (?:evening|afternoon|morning|week)|on (?:sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)[a-z]*|(?:by|next|this) (?:sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)[a-z]*|(?:sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)(?:day|sday|nesday|rsday|urday)|at \d{1,2}(?::\d{2})? ?(?:am|pm)?|\d{1,2}(?::\d{2})? ?(?:am|pm)|morning|afternoon|evening|for (?:an?|one|half an?) (?:hour|hr)|for \d+(?:\.\d+)? ?(?:hours?|hrs?|h|minutes?|mins?|m)|\d+(?:\.\d+)? ?(?:hours?|hrs?|minutes?|mins?)|due)(?= |$)/gi,' ').replace(/\s+/g,' ').trim().replace(/ (?:for|by|on|at|due|in)$/i,'');
 
  // Where things live in Make it yours.
- const WHERE=[[/ (?:banner|course (?:art|picture|drawing)|course image) /,'Courses > Banner','courses'],[/ (?:course name|rename|nickname) /,'Courses > Course list','courses'],[/ (?:graphics|quality|lag|laggy|slow|faster|smoother) /,'Look > Graphics','look'],[/ (?:dark|light mode|night mode|theme) /,'Look > Light or dark','look'],[/ (?:scene|background|wallpaper) /,'Look > Scene','look'],[/ (?:accent|colou?r) /,'Look > Accent color','look'],[/ (?:font|text size|bigger text|smaller text|letters) /,'Look > Type','look'],[/ (?:strip|dock|rail|sidebar|where my courses|move my courses) /,'Home > Where your courses are','layout'],[/ (?:layout|home page|modules|widgets|rearrange) /,'Home','layout'],[/ (?:biscuit|pony|pet|companion|horse) /,'Companion','pet']];
+ const WHERE=[[/ (?:bedtime|bed time) /,'Companion > Planning > Bedtime','pet'],[/ biscuits? /,'Companion','pet'],[/ (?:hide|unhide|show) (?:a |my |the |one )?(?:course|class|subject) /,'Courses > Course list','courses'],[/ (?:banner|course (?:art|picture|drawing)|course image) /,'Courses > Banner','courses'],[/ (?:course name|rename|nickname) /,'Courses > Course list','courses'],[/ (?:graphics|quality|lag|laggy|slow|faster|smoother) /,'Look > Graphics','look'],[/ (?:dark|light mode|night mode|theme) /,'Look > Light or dark','look'],[/ (?:scene|background|wallpaper) /,'Look > Scene','look'],[/ (?:accent|colou?r) /,'Look > Accent color','look'],[/ (?:font|text size|bigger text|smaller text|letters) /,'Look > Type','look'],[/ (?:strip|dock|rail|sidebar|where my courses|move my courses) /,'Home > Where your courses are','layout'],[/ (?:layout|home page|modules|widgets|rearrange) /,'Home','layout'],[/ (?:biscuit|pony|pet|companion|horse) /,'Companion','pet']];
  // Each rule: {id, when(q, line, ctx), answer(match, ctx)}.
  const say=(c,message,extra={})=>c.card('chat',[],{},message,{understanding:{step:'understanding',reason:'mind'},...extra});
+
+ // Round 9 helpers: a feature switch, the one course a line names (the engine's course reader), and the app's own words.
+ function featureOn(s,id){
+   const f=s?.features;
+   if(Array.isArray(f)){const row=f.find(v=>v&&v.id===id);return row?row.on!==false:false;}
+   if(f&&typeof f==='object')return f[id]===true;
+   return false;
+ }
+ function courseOfLine(line,s){
+   const L=load('ReserveBiscuitLanguage','./biscuit-language.js');
+   let r=null;
+   try{r=L?.resolveCourses?.(String(line||''),s);}catch{return null;}
+   const id=r&&!r.ambiguous&&r.courseId?String(r.courseId):'';
+   if(id)return list(s.courses).find(v=>String(v.id)===id)||null;
+   return r?.ambiguous?null:misspeltCourse(line,s);
+ }
+ // one or two letters off a course's nickname, short name or a word of its name; only when one course fits
+ function editsWithin(a,b,max){
+   if(Math.abs(a.length-b.length)>max)return false;
+   const d=[];
+   for(let i=0;i<=a.length;i++){d[i]=[i];for(let j=1;j<=b.length;j++)d[i][j]=i?0:j;}
+   for(let i=1;i<=a.length;i++)
+     for(let j=1;j<=b.length;j++){
+       const cost=a[i-1]===b[j-1]?0:1;
+       d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+cost);
+       if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])d[i][j]=Math.min(d[i][j],d[i-2][j-2]+1);
+     }
+   return d[a.length][b.length]<=max;
+ }
+ const COMMON_WORD=/^(?:homework|quiz|quizzes|test|tests|essay|project|reading|lab|labs|grade|grades|class|course|teacher|today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|please|what|when|where|which|study|notes|focus|timer|plan|week|done|turn|open|show|hide|mark|remind|bookmark|calendar|inbox|messages|biscuit|graphics|scene|theme|module|widget|review|impact|room|files|slides|guide|unit|syllabus|policy|late|missing|answer|answers|about|there|their|would|could|should)$/;
+ function misspeltCourse(line,s){
+   const said=String(line||'').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').split(/\s+/).filter(w=>w.length>=4&&!COMMON_WORD.test(w));
+   if(!said.length)return null;
+   const hits=new Set();
+   for(const c of list(s.courses)){
+     const names=[c.nickname,c.shortName,c.course_code,...String(c.name||'').split(/[\s:\-]+/)].filter(Boolean).map(v=>String(v).toLowerCase()).filter(v=>v.length>=4&&/^[a-z]+$/.test(v));
+     for(const w of said)for(const n of names)if(w!==n&&editsWithin(w,n,n.length>=6?2:1))hits.add(c);
+   }
+   return hits.size===1?[...hits][0]:null;
+ }
+ const R9_CH_THING=/ (?:pretend|clock|focus timer|to hand in|this week|bookmarks?|grade impact|paddock|course information|widgets?|modules?|my courses|courses (?:at|on|to)|cards? per day|new cards|pretend assignment|what ifs?|review deck|focus room|graphics|scene|dark mode|light mode|dock|layout|calculator) /;
+ const R9_REFUSE=/ (?:answers? (?:to|for|of) |answer key|the answers |give me (?:the |all the )?answers?|tell me (?:the |all the )?answers?|solve (?:number |question |problem |q |no )?#? ?\d+ (?:on|in|for|of) |(?:do|take|finish|complete) (?:my|the|this) (?:quiz|test|exam)(?: for me)? |(?:change|fix|raise|bump|hack|edit) (?:my )?(?:grade|grades|score) |cheat on )/;
+ const GADGETS=[
+   ['hammer',/ hammer /,'Hammer'],
+   ['laser',/ laser /,'Laser'],
+   ['bomb',/ bomb /,'Bomb'],
+   ['railgun',/ rail ?gun /,'Railgun'],
+   ['blackhole',/ black ?hole /,'Black hole'],
+   ['foil',/ foil /,'Foil'],
+   ['painter',/ (?:painter|paint) /,'Painter'],
+   ['garden',/ garden /,'Garden'],
+   ['balloon',/ balloons? /,'Balloons'],
+   ['gravity',/ gravity /,'Gravity'],
+   ['portal',/ portals? /,'Portals'],
+   ['eraser',/ eraser /,'Eraser'],
+   ['magnet',/ magnet /,'Magnet'],
+   ['ink',/ ink /,'Ink']
+ ];
+ const GADGET_RE=/^ (?:(?:open|use|try|start|launch|do|play|play with|give me|turn on)(?: the| a)? )?(?:hammer|laser|bomb|rail ?gun|black ?hole|foil|painter|garden|balloons?|gravity|portals?|eraser|magnet|ink)(?: gadget| tool| mode| thing)?(?: please)? $|^ (?:play with (?:this|the) page|play tools?|gadgets?|the gadgets|play mode|open (?:the )?gadgets|play tray) $/;
+ const MODULE_KEYS=[['impact',/ grade impact /,'Grade impact'],['handin',/ (?:to )?hand ?in /,'To hand in'],['week',/ (?:this )?week /,'This week'],['timer',/ (?:focus )?timer /,'Focus timer'],['clock',/ clock /,'Clock'],['notes',/ notes? /,'Notes'],['bookmarks',/ bookmarks? /,'Bookmarks'],['grades',/ grades? /,'Grades'],['messages',/ messages? /,'Messages'],['pet',/ paddock /,'Paddock'],['review',/ review /,'Review'],['context',/ course info(?:rmation)? /,'Course information']];
+ const MODULE_ADD=/^ (?:(?:add|put|show|bring back|get|give me|i want|turn on)(?: the| a| my)? )?(?:grade impact|(?:to )?hand ?in|this week|week|focus timer|timer|clock|notes?|bookmarks?|grades?|messages?|paddock|review|course info(?:rmation)?)(?: (?:widget|module|box|panel))?(?: (?:on|to) (?:my |the )?home(?: page)?)?(?: please)? $/;
+ const VIEW_RE=/^ (?:show (?:me )?|open |go to |switch to |see |view )?(?:the |my )?(?:(?:week|weekly|all|up ?next|my plan|plan) (?:view|tab|list|page)|(?:today|todays) view|up ?next|all (?:my )?ass?ignm?e?n?t?s|every assignment|all (?:of )?my work)(?: please)? $|^ (?:switch|change|set|put) (?:the |my )?ass?ignm?e?n?t?s(?: page| view| list)? to (?:the )?(?:week|weekly|all|up ?next|today|my plan|plan)(?: view)? $/;
+
+ const R9_SETTINGS=[
+  [/ (?:bigger|larger|large|big) (?:text|letters|font|words)| (?:text|font|letters) (?:bigger|larger|large|big) /,'textSize',()=>'large','Text size: Larger.'],
+  [/ (?:smaller|normal|standard|regular|small) (?:text|letters|font size)| (?:text|font|letters) (?:smaller|normal size|standard|regular) /,'textSize',()=>'standard','Text size: Standard.'],
+  [/ (?:easy ?read|easier to read|dyslexi[a-z]*) (?:font|text|reading)?| reading (?:font|text) (?:easy|easy read) /,'readingFont',()=>'easy','Reading text: Easy read.'],
+  [/ (?:book serif|serif) (?:reading|for reading)| reading (?:font|text) (?:book|serif|book serif) /,'readingFont',()=>'book','Reading text: Book serif.'],
+  [/^ (?:motion|animations?|movement) (?:off|still|on|gentle|fades?(?: only)?)(?: please)? $|^ (?:turn )?(?:off|stop) (?:all )?(?:the )?(?:motion|animations?)(?: please)? $|^ (?:no|less) (?:motion|animations?) $/,'motion',q=>/ (?:on|gentle) /.test(q)?'gentle':/ (?:fades?|less|still) /.test(q)?'still':'off','Motion set.'],
+  [/^(?!.* (?:enable|disable|feature|motion|allow|active|mute|away) ).* (?:living drawings|drawings (?:moving|move|keep moving)|stop the drawings|still drawings|drawings still|moving drawings) /,'livingArt',q=>/ (?:stop|off|still|no|turn off|hide) /.test(q)?'off':'on','Living drawings set.'],
+  [/ (?:night art|artwork at night|art at night|night artwork) /,'nightArt',q=>{const n=/ (\d{1,3}) ?(?:%|percent)? /.exec(q);return n&&+n[1]<=100?+n[1]:/ paper /.test(q)?100:/ chalk /.test(q)?0:null;},'Artwork at night set.'],
+  [/ (?:pen|pen line|stitched|stitch|card|thin rule|rule|no|none) (?:module )?(?:outline|outlines|frame|frames|border|borders) | (?:module )?(?:outline|outlines|module frame) (?:pen|pen line|stitched|stitch|card|thin rule|rule|line|none|no) /,'panelFrame',q=>/ stitch/.test(q)?'stitch':/ (?:thin rule|rule|line) /.test(q)&&!/ pen line /.test(q)?'line':/ card /.test(q)?'card':/ (?:no|none) /.test(q)?'none':'pen','Module outline set.'],
+  [/ banner (?:size )?(?:tall|taller|big|bigger|large|small|smaller|short|compact|medium|normal)| (?:tall|taller|big|bigger|large|small|smaller|short|compact|medium) banners? /,'bannerSize',q=>/ (?:tall|taller|big|bigger|large) /.test(q)?'large':/ (?:small|smaller|short|compact) /.test(q)?'compact':'standard','Banner size set.']
+ ];
+ const R9_SKILLS=[['quiz',/ quiz prep /],['labprep',/ lab prep /],['reading',/ reading helper /],['rubric',/ rubric helper /],['feedback',/ feedback helper /],['deadline',/ deadline watch /],['planner',/ planner help /],['focus',/ focus buddy /],['wellbeing',/ wellbeing /],['night',/ night owl(?: guard)? /],['inbox',/ inbox watch /]];
+
+ // Round 9: the kind of work a line names, read against the item's title and kind
+ const R9_KINDS=[[/ (?:homework|hw|problem set|pset|worksheet) /,/\b(?:problem set|homework|practice set|worksheet|hw)\b/i,'homework'],[/ (?:quiz|quizzes) /,/\bquiz/i,'quiz'],[/ (?:test|exam|midterm|final) /,/\b(?:test|exam|midterm|final)\b/i,'test'],[/ (?:lab|lab report|labs) /,/\blab\b/i,'lab'],[/ (?:essay|paper) /,/\b(?:essay|paper)\b/i,'essay'],[/ (?:project|proj) /,/\bproject/i,'project'],[/ (?:reading|rdg|chapter|packet) /,/\b(?:reading|chapter|packet)\b/i,'reading']];
+ function kindOf(text){const t=' '+String(text).trim()+' ';return R9_KINDS.find(([said])=>said.test(t))||null;}
+ let KIND_GROUPS=new Map();
+ const groupOf=v=>
+   String(v.assignmentGroup?.name||v.assignmentGroupName||v.groupName||KIND_GROUPS.get(String(v.assignmentGroupId??v.assignment_group_id??''))||'').replace(/(\w)s\b/g,'$1');
+ const isKind=(v,k)=>!k||k[1].test(String(v.title||v.name||''))||String(v.workKind||v.kind||v.genre||'').toLowerCase()===k[2]||!!groupOf(v)&&k[1].test(groupOf(v));
+ // Which items a line means: title words first (in the named course when the line names one), else that course's items of the named kind.
+ function pickByKind(c,stop){
+   const only=courseOfLine(c.line,c.s),
+     kind=kindOf(c.q),
+     all=[...list(c.s.assignments),...list(c.s.workItems)].filter((v,i,a)=>v&&a.findIndex(w=>String(w.id)===String(v.id))===i),
+     title=v=>String(v.title||v.name||'').toLowerCase(),
+     courseWord=w=>!!only&&[only.shortName,only.nickname,only.name].filter(Boolean).some(n=>String(n).toLowerCase().includes(w)),
+     words=c.q.split(' ').filter(w=>w.length>3&&!stop.test(w)&&!courseWord(w)&&!(kind&&kind[0].test(' '+w+' '))),
+     inCourse=v=>!only||String(v.courseId)===String(only.id),
+     titled=words.length?all.filter(v=>words.every(w=>title(v).includes(w))&&isKind(v,kind)):[],
+     here=titled.filter(inCourse),
+     mine=titled.length?(here.length?here:titled):only&&kind?all.filter(v=>inCourse(v)&&isKind(v,kind)):[],
+     own=mine.filter(v=>title(v).split(/[^a-z0-9]+/).filter(w=>w.length>3).some(w=>words.includes(w)));
+   return {only,kind,pick:own.length===1?own:mine};
+ }
+ const isTurnedIn=v=>v.submitted===true||['submitted','graded','pending_review','complete'].includes(String(v.state||''));
+ const isGraded=v=>String(v.state||'')==='graded'||stamp(v.gradedAt)!==null;
+ // "due Sat" for what is ahead, "was due Oct 31" for what is past
+ function dueWord(v,s){
+   const now=stamp(s.now)||Date.now(),at=stamp(v.dueAt),zone=s.timeZone||'America/New_York';
+   return at===null?
+     'no due date':
+     at>=now?'due '+new Date(at).toLocaleDateString('en-US',{timeZone:zone,weekday:'short'}):'was due '+new Date(at).toLocaleDateString('en-US',{timeZone:zone,month:'short',day:'numeric'});
+ }
+ // open (not yet X) first: ahead before past, nearest due first; the done ones after, in due order
+ function openFirst(rows,isDone,s){
+   const now=stamp(s.now)||Date.now(),at=v=>stamp(v.dueAt),rank=v=>at(v)===null?2:at(v)>=now?0:1;
+   return {
+     waiting:rows.filter(v=>!isDone(v)).sort((a,b)=>rank(a)-rank(b)||(at(a)??Infinity)-(at(b)??Infinity)),
+     done:rows.filter(isDone).sort((a,b)=>(at(a)??0)-(at(b)??0))
+   };
+ }
+ const kindWords=(kind,n)=>!kind?(n===1?'item':'items'):n===1?kind[2]:({quiz:'quizzes',homework:'homework sets'}[kind[2]]||kind[2]+'s');
+
+ const R10_HELP=[[/ (?:mock|practice|fake|sample|drills?|prep for|quiz me|test me|study for) /,'practice'],[/ (?:polish|proofread|edit|fix up|improve|clean up) /,'fixes'],[/ (?:outline|structure|organi[sz]e|plan out) /,'outline'],[/ (?:flash ?cards|study cards) /,'flashcards'],[/ (?:summary|summari[sz]e|tldr|gist|sum up) /,'summary'],[/ (?:step by step|walk me through|walkthrough) /,'steps'],[/ (?:help with|help me with|stuck on|stuck|lost on|lost|confused|confusing|confuses me|dont get|do not get|no idea how|how do i start|how to start|dont know how to start|do not know how to start|makes no sense) /,'ask']];
+
+ const R10_PAGES=[
+   ['bookmarks',c=>c.card('navigate',[],{tab:'bookmarks'},'Bookmarks.')],
+   ['calendar',c=>c.card('navigate',[],{tab:'calendar'},'Calendar.')],
+   ['grades',c=>c.card('navigate',[],{tab:'grades'},'Grades.')],
+   ['materials',c=>c.card('navigate',[],{tab:'materials'},'Materials.')],
+   ['planner',c=>c.card('navigate',[],{tab:'planner'},'Planner.')],
+   ['inbox',c=>c.card('navigate',[],{tab:'messages'},'Inbox.')],
+   ['calculator',c=>c.card('none',[],{},'Open Tools > Calculator.',{ui:{path:['Tools','Calculator']}})]
+ ];
+ const R10_REFUSE=/^ (?:(?:can|could|will|would) (?:you|u) (?:just |please )?|please |pls |just |(?:i need|i want) (?:you|u) to )?(?:write|do|finish|fill (?:in|out)|complete|take|answer|solve) (?:the |my |this |all (?:the |my )?)?(?:\S+ ){0,3}?(?:for me|essay|dbq|write ?up|lab report|report|worksheet|discussion post|quiz|test|exam|hw|homework|problems?|questions?|assignment|paper|project)(?: for me)?(?: please| pls| now)? $| (?:if you just|can you just|just) (?:write|do|finish) (?:the |my |this )?/;
+ const R10_ERRAND=/ (?:post (?:this|it|that) (?:on|to) (?:my )?(?:insta|instagram|tiktok|snap|snapchat|twitter|x|facebook)|book (?:a |an |me a |me an )?(?:dentist|doctor|haircut|appointment|table|flight)|order (?:me )?(?:an? )?(?:uber|lyft|ride|food|pizza|coffee)|score of the (?:game|match)|who won the (?:game|match)|weather (?:today|tomorrow|tonight)) /;
+ const R10_RULES=/ (?:(?:give|add) me (?:\d+ )?(?:extra credit|free) points|extra credit points|make my (?:late|missing) \S+ (?:say|look|show) (?:on time|submitted|done)|(?:delete|remove|erase|hide) (?:all )?my (?:missing|late|zero) (?:assignments|work|grades)|change (?:my )?(?:late|missing) .* to on time) /;
+ // T2 (2026-11-16): a tool by its name, and the tests ahead. General readings over the words a line is made of; the
+ // first is "a tool named alone or with open / show / use", the second "a line made only of test words, time words,
+ // question words and a course name (or a test's own name words)".
+ const T2_TOOLS=[
+  ['calculator','graphing',/^(?:desmos(?: graphing| graph)?(?: calc(?:ulator)?s?)?|graphing (?:calc(?:ulator)?s?|tool)|graph(?:ing)? calc(?:ulator)?s?|grapher|graphing)$/],
+  ['calculator','scientific',/^(?:sci(?:entific)? calc(?:ulator)?s?|desmos sci(?:entific)?(?: calc(?:ulator)?s?)?|scientific)$/],
+  ['calculator','',/^(?:calculator|calculators|calc|calcs|calculater|calulator|calcualtor|calcuator|caculator|calc tool|calculator tool)$/],
+  ['gpa','',/^(?:gpa|gpa calc(?:ulator)?|gpa tool|grade point average(?: calc(?:ulator)?)?)$/],
+  ['quick','',/^(?:quick ?open|quick search|ctrl k|command k|cmd k)$/]
+ ];
+ const T2_TOOL_LABEL={calculator:{graphing:'Graphing calculator',scientific:'Scientific calculator','':'Calculator'},gpa:{'':'GPA calculator'},quick:{'':'Quick open'}};
+ const T2_TOOL_PLACE={calculator:'Calculator',gpa:'GPA',quick:'Quick open'};
+ function t2ToolOf(text){let t=String(text).trim();
+  for(let i=0;i<3;i++)t=t.replace(/^(?:(?:can|could|would|will) (?:you|i) (?:please )?|please |hey |yo |ok |okay |biscuit |i (?:need|want)(?: to (?:use|open|see|get))? |let me (?:use|open|see|get) |lemme (?:use|open|see|get) )/,'');
+  t=t.replace(/^(?:open|show|use|pull up|bring up|get|launch|start|give me|grab|go to|take me to|switch to|bring)(?: me)?(?: up)? /,'').replace(/^(?:the|a|an|my|up the|up) /,'');
+  for(let i=0;i<2;i++)t=t.replace(/ (?:please|now|right now|thanks|real quick|for me|again|quick|thx)$/,'');
+  for(const [tool,mode,re] of T2_TOOLS)if(re.test(t))return {tool,mode,said:t};return null;}
+ const T2_TOOL_WHERE=/^ (?:where (?:is|are|s|do i find|can i find|do i get|can i get|do i open|can i open|would i find)|how (?:do|can|could|would|should) (?:i|you) (?:open|use|get to|find|get|pull up|bring up|access|see|reach)|how to (?:open|use|find|get to|get)|whereabouts is|where would) (.+?) $/;
+ // on when no feature list is given; off only when the list says so
+ function t2On(s,id){
+   const f=s?.features;
+   if(Array.isArray(f)){const row=f.find(v=>v&&v.id===id);return row?row.on!==false:true;}
+   if(f&&typeof f==='object'&&Object.hasOwn(f,id))return f[id]!==false;
+   return true;
+ }
+ function t2ToolAnswer(t,c,where){
+  const label=T2_TOOL_LABEL[t.tool][t.mode||'']||T2_TOOL_LABEL[t.tool][''],
+    path=['Tools',T2_TOOL_PLACE[t.tool],...(t.mode?[t.mode==='scientific'?'Scientific':'Graphing']:[])],
+    fields={tool:t.tool,...(t.mode?{mode:t.mode}:{})};
+  const fname=id=>String((Array.isArray(c.s.features)?c.s.features.find(f=>f?.id===id)?.name:'')||{tools:'Quick open & study tools',gpa:'GPA calculator'}[id]),
+    off=!t2On(c.s,'tools')?fname('tools'):t.tool==='gpa'&&!t2On(c.s,'gpa')?fname('gpa'):'';
+  if(off)return c.card('none',[],{},label+' is in '+path.join(' > ')+', and '+off+' is off. Turn it on in Make it yours > More.',{ui:{path:['Make it yours','More',off]}});
+  if(where)return c.card('none',[],{},path.join(' > ')+'. Open it from the Tools button, or press Open.',{ui:{path},open:{label:'Open',intent:'navigate',fields}});
+  return c.card('navigate',[],fields,(t.tool==='calculator'?'Open the '+label.toLowerCase():'Open '+label)+'.',{tool:{...fields,label}});
+ }
+ // "calc" alone is a course when one is called that (Calc, Calculus); then the tool waits for "calculator"
+ function t2CalcIsCourse(said,line,s){
+   if(!/^calcs?$/.test(said))return false;
+   if(courseOfLine(line,s))return true;
+   return list(s.courses).some(v=>[v.nickname,v.shortName,v.course_code,v.name].filter(Boolean).some(n=>String(n).toLowerCase().split(/[^a-z0-9]+/).some(w=>/^calc/.test(w))));
+ }
+
+ // ---- tests ahead
+ const T2_TEST_WORD=/^(?:tests?|tst|quiz(?:z?es)?|quizz|quizes|qz|exams?|exm|midterms?|mid ?terms?|finals?|assessments?|assesments?)$/;
+ // the kind a title, kind field, assignment group or Canvas quiz gives; corrections, reviews and study guides are not tests
+ function t2TestKind(v,groupName=''){
+  const title=String(v?.title||v?.name||''),m=/\b(midterms?|mid-terms?|finals?|exams?|exm|tests?|quiz(?:z?es)?|quizz|qz|assessments?)\b/i.exec(title);
+  if(m){const w=m[1].toLowerCase(),after=title.slice(m.index+m[0].length);
+   if(/^finals?$/.test(w)&&/^\s*[:\-]?\s*(?:draft|project|essay|paper|presentation|grade|copy|version|reflection|submission|portfolio|lab|report|product|piece|revision|round|answer|outline|proposal|performance|video|recording)\b/i.test(after))return null;
+   if(/\b(?:corrections?|review|study guide|prep|preparation|reflection|wrapper|analysis|answer key|notes|sign ?up|feedback|results?|make ?up form|retake form|redo form)\b/i.test(after)||/\b(?:corrections?|study guide|answer key|wrapper|reflection|sign ?up)\b/i.test(title))return null;
+   return /^mid/.test(w)?'midterm':/^final/.test(w)?'final':/^(?:exams?|exm)$/.test(w)?'exam':/^(?:quiz|qz)/.test(w)?'quiz':'test';}
+  const k=String(v?.workKind||v?.kind||v?.genre||'').toLowerCase();if(['quiz','test','exam','midterm','final'].includes(k))return k;
+  // a group says test only for work whose title names no other kind (an essay outline in a "Tests" group is an essay)
+  const g=String(v?.assignmentGroup?.name||v?.assignmentGroupName||v?.groupName||groupName||'');
+  if(/\b(?:tests?|quiz(?:z?es)?|exams?|assessments?|summatives?)\b/i.test(g)&&!/\b(?:essay|outline|lab|project|paper|presentation|worksheet|homework|hw|problem set|practice|reading|analysis|journal|report|draft|discussion|reflection|poster|portfolio|video|recording|notes|investigation|set|dialogue|build)\b/i.test(title))return /quiz/i.test(g)&&!/test|exam|assess/i.test(g)?'quiz':/exam/i.test(g)&&!/test|quiz|assess/i.test(g)?'exam':'test';
+  if((v?.quizId||v?.quiz||list(v?.submissionTypes).includes('online_quiz'))&&!/survey/i.test(String(v?.quiz?.quizType||v?.quiz?.quiz_type||'')))return 'quiz';
+  return null;
+ }
+ const T2_MONTHS=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'],T2_DAYS=['sun','mon','tue','wed','thu','fri','sat'];
+ const t2Plain=v=>String(v||'').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/\s+/g,' ').trim();
+ // the one day a sentence of an announcement names, read against the day it was posted; null when it names none or two
+ function t2AnnouncedDay(sentence,postedDay){
+  const low=' '+sentence.toLowerCase().replace(/[,.!?;()]/g,' ')+' ';let explicit=null;
+  const md=/ (jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]* (\d{1,2})(?:st|nd|rd|th)? /.exec(low),num=/ (\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))? /.exec(low);
+  const pick=(mo,d,y)=>{
+    if(mo<1||mo>12||d<1||d>31)return null;
+    const py=+postedDay.slice(0,4);
+    for(const year of y?[y<100?2000+y:y]:[py,py+1,py-1]){
+      const day=year+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0'),diff=(Date.parse(day+'T12:00Z')-Date.parse(postedDay+'T12:00Z'))/DAY;
+      if(!Number.isFinite(diff)||new Date(day+'T12:00Z').getUTCDate()!==d)continue;
+      if(y||diff>=-3&&diff<=200)return day;
+    }
+    return null;
+  };
+  if(md)explicit=pick(T2_MONTHS.indexOf(md[1].slice(0,3))+1,+md[2],null);
+  if(num){const n=pick(+num[1],+num[2],num[3]?+num[3]:null);if(explicit&&n&&n!==explicit)return null;explicit=explicit||n;}
+  const wd=/ (?:on |this |next )?(sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tue|tues|wed|weds|thu|thur|thurs|fri|sat) /.exec(low),rel=/ (today|tomorrow) /.exec(low);
+  let weekday=null;
+  if(wd){
+    const want=T2_DAYS.findIndex(d=>wd[1].startsWith(d)),from=new Date(postedDay+'T12:00Z').getUTCDay();
+    if(/ next (?:sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tue|tues|wed|weds|thu|thur|thurs|fri|sat) /.test(low)&&!explicit)return null;
+    weekday=explicit?null:addDays(postedDay,((want-from+7)%7)||7);
+    if(explicit&&new Date(explicit+'T12:00Z').getUTCDay()!==want)return null;
+  }
+  const relative=rel?addDays(postedDay,rel[1]==='today'?0:1):null;
+  const days=[explicit,weekday,relative].filter(Boolean);return days.length&&days.every(d=>d===days[0])?days[0]:null;
+ }
+ function t2AnnouncedClock(sentence){
+   const m=/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)/i.exec(sentence);
+   if(!m||+m[1]>12)return null;
+   let h=+m[1]%12;
+   if(/^p/i.test(m[3]))h+=12;
+   return h*60+(+m[2]||0);
+ }
+ // what a student sits as a test, from Canvas work, their own list, calendar events and recent announcements
+ function t2Tests(s){
+  const out=[],
+    seen=new Set(),
+    mine=s.local?.tasks||s.local||{},
+    cal=local(s),
+    now=stamp(s.now)||Date.now(),
+    groups=new Map(list(s.assignmentGroups).map(g=>[String(g.id),String(g.name||'')]));
+  for(const v of [...list(s.assignments),...list(s.workItems),...list(s.quizzes),...list(s.personalTasks),...list(s.customTasks)]){
+    const id=String(v?.id??'');
+    if(!id||seen.has(id))continue;
+    seen.add(id);
+    const my=mine[id]||{};
+    if(v.done||v.completed||v.submitted===true||my.checkedOff||my.progress==='done'||['submitted','graded','pending_review','complete'].includes(String(v.state||'')))continue;
+    const kind=t2TestKind(v,groups.get(String(v.assignmentGroupId??v.assignment_group_id??''))||'');
+    if(!kind)continue;
+    out.push({
+      ...v,
+      id,
+      title:String(v.title||v.name||'').trim(),
+      dueAt:stamp(v.dueAt??v.due),
+      testKind:kind,
+      testSource:v.courseId==='personal'||v.personal===true||v.localOnly===true?'own':'canvas'
+    });
+  }
+  for(const e of [...list(s.events),...list(s.calendarEvents),...list(s.calendar)]){
+    const id=String(e?.id??'');
+    if(!id||seen.has(id))continue;
+    seen.add(id);
+    const kind=t2TestKind({title:e.title||e.name});
+    if(!kind)continue;
+    const at=stamp(e.start??e.startAt??e.start_at);
+    out.push({
+      id,
+      title:String(e.title||e.name).trim(),
+      name:String(e.title||e.name).trim(),
+      courseId:e.courseId!=null?String(e.courseId):undefined,
+      dueAt:at,
+      url:e.url||e.html_url,
+      location:e.location,
+      kind:'event',
+      testKind:kind,
+      testSource:'event'
+    });
+  }
+  if(cal)
+    for(const a of list(s.announcements)){
+      const posted=stamp(a?.postedAt??a?.posted_at??a?.createdAt??a?.created_at);
+      if(posted===null||posted>now||now-posted>21*DAY)continue;
+      const postedDay=cal(posted).day,text=t2Plain(a.title)+'. '+t2Plain(a.body||a.message||a.description||'');
+   for(const sentence of text.split(/(?<=[.!?])\s+/)){
+     const kind=t2TestKind({title:sentence});
+     if(!kind)continue;
+     const day=t2AnnouncedDay(sentence,postedDay);
+     if(!day)continue;
+     const minute=t2AnnouncedClock(sentence),wall=load('CanvasHarnessAgentClock','./agent-clock.js')?.wall,at=wall?wall(day,minute??720,s.timeZone||'America/New_York'):null;
+     if(!Number.isFinite(at))continue;
+    const named=/((?:(?:unit|chapter|ch|module|lesson|section|part|week)\s*\d+[a-z]?\s+)?(?:[a-z]+\s+)?(?:test|quiz|exam|midterm|final))/i.exec(sentence)?.[1]||kind;
+    const title=named.charAt(0).toUpperCase()+named.slice(1);
+    out.push({
+      id:String(a.id),
+      title,
+      name:title,
+      courseId:a.courseId!=null?String(a.courseId):undefined,
+      dueAt:at,
+      dayOnly:minute===null,
+      url:a.url||a.html_url,
+      kind:'announcement',
+      testKind:kind,
+      testSource:'announcement',
+      from:t2Plain(a.title)
+    });
+    break;
+   }}
+  // a calendar event or an announcement that repeats a Canvas test of the same course and day is that test
+  const dayOf=at=>cal&&at!==null?cal(at).day:'';
+  return out.filter(v=>
+    v.testSource==='canvas'||
+      v.testSource==='own'||
+      !out.some(w=>(w.testSource==='canvas'||w.testSource==='own')&&String(w.courseId)===String(v.courseId)&&w.dueAt!==null&&v.dueAt!==null&&dayOf(w.dueAt)===dayOf(v.dueAt)));
+ }
+ const T2_FILLER=new Set('upcoming up coming comin ahead soon next any anything when wen whens what whats which is are s day days date dates time do does did i have got gotten there how many much list all my the a an our this that week wk weekend tomorrow today tonight morning afternoon evening later left scheduled on for in of at until till before by show me see check tell get please biscuit again still yet so far rest remaining else other more we will be am it its going to ive ok okay hey hi um like kinda due class course classes courses or and lined planned set'.split(' '));
+ const T2_DAYWORD=/^(?:sun|sunday|mon|monday|tue|tues|tuesday|wed|weds|wednesday|thu|thur|thurs|thursday|fri|friday|sat|saturday)$/;
+ const T2_NOT=/ (?:quiz me|test me|drill me|quiz us|test us|practice (?:test|quiz|exam|questions?)|practise|study|studying|prep|prepare|preparing|review|revise|revising|flash ?cards?|help|explain|teach|make|write|create|generate|mock|sample|answers?|answer key|cheat|solve|need on|need to get|get on|got on|score|scored|grade|graded|grades|points|worth|weight|weighted|percent|average|what if|finished|done with|took|taking|did i|submit|submitted|turn in|turned in|hand in|handed in|retake|corrections?|remind|reminder|bookmark|pin|plan|schedule it|move|time limit|how long is|how long will|how many questions|attempts?|tries|rubric|feedback|results|nervous|scared|worried|stressed|failed|fail|pass|passed) /;
+ // the words of a line that are not filler, time, test or course words: they must name a test (its own title words)
+ function t2Reading(q,line,c){
+  if(/^ (?:i|we) (?:have|got|have got|ve got) /.test(q)||/^ (?:take|open|start|begin|redo|launch|focus|plan|remind|mark|bookmark) /.test(q)||/^ do (?!i |we |you )/.test(q)||T2_NOT.test(q))return null;
+  const words=q.trim().split(' ').filter(Boolean);if(!words.length||words.length>12)return null;
+  const testWords=words.filter(w=>T2_TEST_WORD.test(w));if(!testWords.length)return null;
+  const found=t2Course(line,c.s);if(found.ambiguous)return null;const course=found.course||null,courseWords=new Set();
+  if(course)
+    for(const n of [course.nickname,course.shortName,course.course_code,course.name,...list(course.aliases)].filter(Boolean))
+      for(const w of String(n).toLowerCase().split(/[^a-z0-9]+/))if(w)courseWords.add(w);
+  const rest=words.filter(w=>
+    !T2_TEST_WORD.test(w)&&
+      !T2_FILLER.has(w)&&
+      !T2_DAYWORD.test(w)&&
+      !courseWords.has(w)&&
+      !(course&&[...courseWords].some(n=>n.length>=4&&(n.startsWith(w)&&w.length>=3||editsWithin(w,n,n.length>=6?2:1)))));
+  // a line that names a course the resolver could not read (or another word) fires only when a test's title has the word
+  const tests=t2Tests(c.s),named=rest;
+  let subject='';
+  if(named.length&&!tests.some(v=>named.every(w=>new RegExp('\\b'+w.replace(/[^a-z0-9]/g,'')+'\\b','i').test(v.title)))){
+    const L=load('ReserveBiscuitLanguage','./biscuit-language.js');
+    let refs=[];
+    try{refs=list(L?.analyze?.(String(line))?.references).filter(x=>list(x.targets).length).map(x=>String(x.phrase).toLowerCase());}catch{refs=[];}
+    const said=new Set(refs.flatMap(x=>x.split(/\s+/)));
+    if(course||found.weak||!named.every(w=>said.has(w)))return null;
+    subject=named.join(' ');
+  }
+  const kinds=new Set(testWords.map(w=>/^(?:quiz|qz)/.test(w)?'quiz':/^mid/.test(w)?'midterm':/^final/.test(w)?'final':/^(?:exam|exm)/.test(w)?'exam':'test'));
+  // "final exam", "midterm test": the final, the midterm
+  if(kinds.has('final')||kinds.has('midterm')){kinds.delete('exam');kinds.delete('test');}
+  // "my chem test" (one course, the word test said once) means its tests and exams when it has any, not its quizzes
+  const one=!!course&&testWords.length===1&&/^(?:test|tst)$/.test(testWords[0]);
+  return {course,named:subject?[]:named,subject,kinds,tests,one};
+ }
+ // a course the line names by its name, nickname, code or subject (not by words that only appear in its items)
+ // two courses that carry the word the line says as a nickname, short name or code ("geo": Geography's nickname and
+ // Geometry's code): Biscuit asks which, as before
+ function t2AliasCollision(line,s){
+   const said=' '+String(line||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()+' ';
+   let n=0;
+   for(const v of list(s.courses)){
+     const names=[v.nickname,v.shortName,v.course_code,...list(v.aliases)].filter(Boolean).map(x=>String(x).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()).filter(x=>x.length>=3);
+     if(names.some(x=>said.includes(' '+x+' ')))n++;
+   }
+   return n>1;
+ }
+ function t2Course(line,s){
+   if(t2AliasCollision(line,s))return {ambiguous:true};
+   const L=load('ReserveBiscuitLanguage','./biscuit-language.js');
+   let r=null;
+   try{r=L?.resolveCourses?.(String(line||''),s);}catch{r=null;}
+   const named=m=>m&&(m.nameMatch>0||m.nameExact>0||m.abbreviation>0);
+   if(r&&!r.ambiguous&&r.courseId){
+     const m=list(r.matches).find(v=>String(v.courseId??v.id)===String(r.courseId));
+     if(named(m))return {course:list(s.courses).find(v=>String(v.id)===String(r.courseId))||null};
+   }
+   if(r?.ambiguous||list(r?.matches).filter(named).length>1)return {ambiguous:true};
+   const miss=misspeltCourse(line,s);
+   return {course:miss,weak:!miss&&list(r?.matches).length>0};
+ }
+ function t2Window(q,s){
+  const cal=local(s),now=stamp(s.now)||Date.now();if(!cal)return {from:now,to:now+14*DAY,label:'in the next two weeks',span:'ahead'};
+  const today=cal(now).day,
+    wall=(day,minute)=>load('CanvasHarnessAgentClock','./agent-clock.js')?.wall?.(day,minute,s.timeZone||'America/New_York'),
+    start=day=>wall(day,0),
+    end=day=>wall(addDays(day,1),0),
+    dow=new Date(today+'T12:00Z').getUTCDay();
+  if(/ (?:today|tonight) /.test(q))return {from:now,to:end(today),label:'today',span:'day',day:today};
+  if(/ tomorrow /.test(q)){const d=addDays(today,1);return {from:start(d),to:end(d),label:'tomorrow',span:'day',day:d};}
+  const wd=/ (?:on |this |next )?(sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tue|tues|wed|weds|thu|thur|thurs|fri|sat) /.exec(q);
+  if(wd&&!/ (?:week|wk) /.test(q)){
+    const want=T2_DAYS.findIndex(d=>wd[1].startsWith(d)),ahead=(want-dow+7)%7,d=addDays(today,ahead===0&&/ next /.test(q)?7:ahead),also=ahead===0&&!/ next /.test(q)?addDays(today,7):null;
+    return {from:d===today?now:start(d),to:end(d),label:dayName(d),span:'day',day:d,also};
+  }
+  // a week runs Monday to Sunday; at the weekend "this week" and "next week" mean the coming one
+  const weekend=dow===0||dow===6,monday=addDays(today,dow===0?1:dow===6?2:1-dow);
+  if(/ next (?:week|wk) /.test(q)){const m=weekend?monday:addDays(monday,7);return {from:start(m),to:end(addDays(m,6)),label:'next week',span:'week'};}
+  if(/ (?:this|the) (?:week|wk) | (?:week|wk) $/.test(q))return {from:now,to:end(addDays(monday,6)),label:'this week',span:'week'};
+  return {from:now,to:now+14*DAY,label:'in the next two weeks',span:'ahead'};
+ }
+ const T2_KIND_WORD={quiz:['quiz','quizzes'],exam:['exam','exams'],midterm:['midterm','midterms'],final:['final','finals'],test:['test','tests']};
+ function t2KindFits(kinds,v){
+   if(kinds.has('test'))return true;
+   if(kinds.has('quiz')&&v.testKind==='quiz')return true;
+   if(kinds.has('exam')&&['exam','midterm','final','test'].includes(v.testKind))return true;
+   if(kinds.has('midterm')&&v.testKind==='midterm')return true;
+   if(kinds.has('final')&&v.testKind==='final')return true;
+   return false;
+ }
+ function t2When(v,s,{year=false}={}){
+   if(v.dueAt===null)return '';
+   const zone=s.timeZone||'America/New_York',
+     cal=local(s),
+     now=stamp(s.now)||Date.now(),
+     today=cal?cal(now).day:'',
+     day=cal?cal(v.dueAt).day:'',
+     diff=today&&day?Math.round((Date.parse(day+'T12:00Z')-Date.parse(today+'T12:00Z'))/DAY):null;
+  const name=diff===0?'today':diff===1?'tomorrow':new Date(v.dueAt).toLocaleDateString('en-US',{timeZone:zone,weekday:'long',month:'short',day:'numeric',...(year?{year:'numeric'}:{})});
+  return name+(v.dayOnly?'':' at '+new Date(v.dueAt).toLocaleTimeString('en-US',{timeZone:zone,hour:'numeric',minute:'2-digit'}));}
+ function t2Name(v,s){
+   const c=courseOf(v,s),short=c?.shortName||c?.nickname||c?.name||'';
+   return v.title+(short&&!v.title.toLowerCase().includes(String(short).toLowerCase())?' ('+short+')':'');
+ }
+ function t2TestsAnswer(r,c){
+  const s=c.s,win=t2Window(c.q,s),now=stamp(s.now)||Date.now(),courseName=r.course?(r.course.shortName||r.course.nickname||r.course.name):r.subject||'';
+  const fits=v=>
+    !r.subject&&
+      t2KindFits(r.kinds,v)&&
+      (!r.course||String(v.courseId)===String(r.course.id))&&
+      (!r.named.length||r.named.every(w=>new RegExp('\\b'+w.replace(/[^a-z0-9]/g,'')+'\\b','i').test(v.title)));
+  const prefer=v=>v.testKind!=='quiz',narrow=l=>r.one&&l.some(prefer)?l.filter(prefer):l;
+  let all=r.tests.filter(fits);
+  const inWin=(from,to)=>narrow(all.filter(v=>v.dueAt!==null&&v.dueAt>=from&&v.dueAt<to).sort((a,b)=>a.dueAt-b.dueAt));
+  let rows=inWin(win.from,win.to),label=win.label;
+  if(!rows.length&&win.also){
+    const end=load('CanvasHarnessAgentClock','./agent-clock.js')?.wall?.(addDays(win.also,1),0,s.timeZone||'America/New_York');
+    rows=inWin(load('CanvasHarnessAgentClock','./agent-clock.js')?.wall?.(win.also,0,s.timeZone||'America/New_York'),end);
+    if(rows.length)label=new Date(win.also+'T12:00Z').toLocaleDateString('en-US',{timeZone:'UTC',weekday:'long',month:'short',day:'numeric'});
+  }
+  const generic=r.kinds.has('test')||r.kinds.size>1,
+    kindWord=generic?'test':[...r.kinds][0],
+    plural=kindWord==='quiz'?'quizzes':kindWord+'s',
+    noun=generic&&!r.course&&!r.named.length?'tests, quizzes or exams':plural,
+    count=generic&&!r.one?'tests and quizzes':kindWord==='exam'?'tests and exams':plural;
+  const from=v=>
+    v.testSource==='announcement'?
+      ' (from a'+((courseOf(v,s)?.shortName||courseOf(v,s)?.name)?' '+(courseOf(v,s).shortName||courseOf(v,s).name):'n')+' announcement)':
+      v.testSource==='event'?' (calendar)':v.testSource==='own'?' (your list)':'';
+  const kindTitle=generic?'tests':plural,
+    extra={answerKind:'mind',listRows:rows,listTitle:(courseName?courseName+' '+kindTitle:kindTitle.charAt(0).toUpperCase()+kindTitle.slice(1))+(win.span==='ahead'?' ahead':' '+label)};
+  if(rows.length>1){
+    const shown=rows.slice(0,3).map(v=>t2Name(v,s)+', '+t2When(v,s)+from(v)).join('; ');
+    return c.card('find',rows.slice(0,3),{},rows.length+' '+count+' '+label+'. Nearest: '+shown+(rows.length>3?'; and '+(rows.length-3)+' more':'')+'.',extra);
+  }
+  // an announcement's or a calendar event's test opens that announcement or event (its own entry), not a work item
+  const fieldsOf=v=>
+    v.testSource==='announcement'||v.testSource==='event'?
+      {itemId:String(v.id),entryId:String(v.id),kind:v.testSource,...(v.url?{url:String(v.url)}:{})}:
+      {itemId:String(v.id),...(v.courseId?{courseId:String(v.courseId)}:{})};
+  if(rows.length===1){const v=rows[0],when=t2When(v,s);return c.card('find',[v],fieldsOf(v),t2Name(v,s)+' is '+when+(v.dayOnly?' (no time given)':'')+from(v)+'.',extra);}
+  // none in the window: the named one when it is the only one of its name (past, later or with no date), else say so
+  all=narrow(all);
+  const later=all.filter(v=>v.dueAt!==null&&v.dueAt>=win.to&&v.dueAt<win.to+60*DAY).sort((a,b)=>a.dueAt-b.dueAt),undated=all.filter(v=>v.dueAt===null);
+  // one test of that kind with no date at all: that one, saying it has no date (no day is stated)
+  if(win.span==='ahead'&&!later.length&&undated.length===1){const v=undated[0];return c.card('find',[v],fieldsOf(v),t2Name(v,s)+' has no date in Canvas yet.',{...extra,listRows:[v]});}
+  if(r.course&&all.length===1&&!/ (?:any|anything|tests|quizzes|exams|midterms|finals|next|upcoming) /.test(c.q)){
+    const v=all[0];
+    if(v.dueAt===null)return c.card('find',[v],{itemId:String(v.id),...(v.courseId?{courseId:String(v.courseId)}:{})},t2Name(v,s)+' has no date in Canvas yet.',{...extra,listRows:[v]});
+    if(v.dueAt>=win.to&&win.span==='ahead')
+      return c.card('find',[v],{itemId:String(v.id),...(v.courseId?{courseId:String(v.courseId)}:{})},t2Name(v,s)+' is '+t2When(v,s)+from(v)+'.',{...extra,listRows:[v]});
+    if(v.dueAt<now&&win.span==='ahead')
+      return c.card(
+        'find',
+        [v],
+        {itemId:String(v.id),...(v.courseId?{courseId:String(v.courseId)}:{})},
+        t2Name(v,s)+' was '+t2When(v,s,{year:true})+'. No other '+kindWord+' for '+courseName+' in the next two weeks.',
+        {...extra,listRows:[v]});
+  }
+  const none='No '+
+    (r.course||r.subject?kindWord:noun==='tests, quizzes or exams'?noun:plural)+
+    ' found'+
+    (courseName?' for '+courseName+' '+(win.span==='day'&&!/^(?:today|tomorrow)$/.test(label)?'on ':'')+label:(win.span==='day'?' for ':' ')+label)+
+    '.';
+  const next=later[0]||null,
+    nextText=next?
+      (win.span==='ahead'?' The next one is ':' After '+label+', the next is ')+t2Name(next,s)+', '+t2When(next,s)+from(next)+'.':
+      undated.length&&win.span==='ahead'?' '+t2Name(undated[0],s)+' has no date in Canvas yet.':'';
+  return c.card('none',[],{},none+
+    nextText,{
+      answerKind:'mind',
+      listRows:[],
+      offerCourse:r.course?String(r.course.id):undefined,
+      follow:[
+        r.course?'what is due in '+(r.course.shortName||r.course.name).toLowerCase():'what is due this week',
+        'plan tonight',
+        ...(win.span==='day'?['i have a '+kindWord+' '+(label==='tomorrow'?'tomorrow':label.toLowerCase())]:[])
+      ]
+    });
+ }
+
+ // the features by name (the page's list, else the catalogue); a name "A & B" is also called by A when A is two words or more
+ const T2_SWITCH_ON=/ (?:allow|allowed|active|activate|enable|enabled|unmute|back on|turn on|switch on|work again|working again|bring back) /,T2_SWITCH_OFF=/ (?:mute|muted|away|disable|disabled|shut off|shut|turn off|switch off|no more|kill|deactivate) /;
+ const T2_SWITCH_FILLER=new Set('could you u please pls plz make the my features feature again back it its can let me so is are want have would like to i need be on off can t'.split(' '));
+ function t2FeatureSwitch(q,s){
+   const on=T2_SWITCH_ON.test(q),off=T2_SWITCH_OFF.test(q);
+   if(on===off)return null;
+   const rows=Array.isArray(s.features)&&s.features.some(f=>f&&f.name)?s.features:list(load('ReserveFeatures','./features.js')?.catalogue);
+   let best=null;
+  for(const f of rows){
+    if(!f?.id||!f.name)continue;
+    const name=String(f.name).toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim(),
+      head=String(f.name).includes('&')?String(f.name).split('&')[0].toLowerCase().replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim():'';
+    for(const said of [name,head])if(said&&said.split(' ').length>=2&&q.includes(' '+said+' ')&&(!best||said.length>best.said.length))best={id:f.id,name:f.name,said};
+  }
+  if(!best)return null;
+  const rest=q.replace(' '+best.said+' ',' ').replace(/ (?:allow|allowed|active|activate|enable|enabled|unmute|back on|turn on|switch on|work again|working again|bring back|mute|muted|away|disable|disabled|shut off|shut|turn off|switch off|no more|kill|deactivate) /g,' ').trim().split(' ').filter(w=>
+    w&&!T2_SWITCH_FILLER.has(w));
+  return rest.length?null:{...best,on};
+ }
  const RULES=[
   {id:'crisis',when:q=>/ (?:kill myself|want to die|wanna die|end my life|end it all|hurt myself|harm myself|suicid|do not want to (?:be here|live|exist)|no reason to live) /.test(q),answer:(m,c)=>say(c,'I am really glad you told me. Please talk to someone right now: a parent, a counselor, or call or text 988 (Suicide and Crisis Lifeline, US). You matter, and you do not have to carry this alone.')},
+  // T2: a tool named alone or with open / show / use opens it; "where is" / "how do i open" says its place first.
+  {id:'t2-tool',when:(q,line,c)=>{
+    const w=T2_TOOL_WHERE.exec(q),t=w?t2ToolOf(' '+w[1]+' '):t2ToolOf(q);
+    if(!t||t2CalcIsCourse(t.said,line,c.s))return false;
+    return {t,where:!!w};
+  },answer:(m,c)=>t2ToolAnswer(m.t,c,m.where)},
+  // T2: the tests, quizzes and exams ahead, listed nearest first (one: that one with its day; none: said plainly).
+  {id:'tests-ahead',when:(q,line,c)=>t2Reading(q,line,c),answer:(m,c)=>t2TestsAnswer(m,c)},
+  // T2: a feature switched by its name and an on / off word, nothing else ("allow pdf reader", "mute review deck")
+  {id:'t2-feature-switch',when:(q,line,c)=>t2FeatureSwitch(q,c.s),answer:(m,c)=>c.card('feature',[],{id:m.id,on:m.on},(m.on?'Turn on ':'Turn off ')+m.name+'.')},
+  // Round 9: lines Biscuit must not act on, and Canvas Harness's own places and settings, read before the rest.
+  {id:'r9-setting-words',when:q=>R9_SETTINGS.some(([re])=>re.test(q))&&!/ (?:how|where) /.test(q),answer:(m,c)=>{
+    const [,,key,value,said]=[0,...R9_SETTINGS.find(([re])=>re.test(c.q))];
+    const v=value(c.q);
+    if(v===null||v===undefined)return null;
+    return c.card('setting',[],{key,value:v},said);
+  }},
+  {id:'r9-skills',when:q=>R9_SKILLS.some(([,re])=>re.test(q))&&/ (?:off|on|disable|enable|stop|start|mute|unmute|no more|turn|switch) /.test(q),answer:(m,c)=>{
+    const [skill]=R9_SKILLS.find(([,re])=>re.test(c.q)),on=!/ (?:off|disable|stop|mute|no more) /.test(c.q);
+    return c.card('skill',[],{skill,on},(on?'Turn on ':'Turn off ')+c.q.match(R9_SKILLS.find(([k])=>k===skill)[1])[0].trim()+'.');
+  }},
+  {id:'r9-inbox',when:q=>/^ (?:open |go to |show (?:me )?|check )?(?:my |the )?(?:inbox|messages|msgs|conversations|canvas inbox|canvas messages)(?: page| tab)?(?: please)? $/.test(q)&&!/^ open (?:the )?messages /.test(q),answer:(m,c)=>c.card('navigate',[],{tab:'messages'},'Inbox.')},
+  {id:'r9-materials',when:q=>/^ (?:open |go to |show (?:me )?)?(?:the |my )?(?:materials|materials (?:tab|page|library)|files (?:tab|page)|class files|course files tab)(?: please)? $/.test(q),answer:(m,c)=>c.card('navigate',[],{tab:'materials'},'Materials.')},
+  {id:'r9-scene-names',when:q=>/^ (?:use |switch to |turn on |put on )?(?:the )?(?:starfield|starry night|under the sea|blueprint|maple wind|thanksgiving)(?: theme| scene)?(?: please)? $/.test(q),answer:(m,c)=>{
+    const v=/ starfield /.test(c.q)?
+      'stars':
+      / starry /.test(c.q)?
+        'starry':
+        / sea /.test(c.q)?'sea':/ blueprint /.test(c.q)?'blueprint':/ maple /.test(c.q)?'maple':'thanksgiving';
+    return c.card('setting',[],{key:'sceneTheme',value:v},'Scene · '+c.q.trim().replace(/^(?:use|switch to|turn on|put on) /,'').replace(/^the /,'').replace(/ (?:theme|scene|please)$/,''));
+  }},
+  {
+    id:'r9-export-cal',
+    when:q=>/ (?:export|download|save|sync) (?:my |the )?(?:cal|calendar|calender|deadlines)(?: file| ics)? /.test(q)&&!/ (?:google|phone|feed|link|subscribe) /.test(q),
+    answer:(m,c)=>c.card('none',[],{},'Open Make it yours > Settings > Export calendar.',{ui:{path:['Make it yours','Settings','Export calendar']}})
+  },
+  {id:'r9-new-annc',when:q=>/^ (?:any |show (?:me )?|see |check |read )?(?:new|unread|latest|recent) (?:announcements?|anncs?|posts|updates)(?: please)? $/.test(q),answer:(m,c)=>{
+    const rows=list(c.s.announcements).filter(v=>v.unread!==false).sort((a,b)=>(stamp(b.postedAt)||0)-(stamp(a.postedAt)||0));
+    if(!rows.length)return say(c,'No new announcements.');
+    return c.card('find',rows.slice(0,5),rows.length===1?{itemId:rows[0].id}:{},rows.length+' new: '+rows.slice(0,3).map(v=>v.title).join(', ')+(rows.length>3?', and more':'')+'.',{answerKind:'mind'});
+  }},
+  {id:'r9-discussion',when:(q,line,c)=>/ (?:reply|respond|post|answer) (?:to|in|on) (?:the |my )?(?:\S+ ){0,2}discussion /.test(q)||/ discussion (?:reply|post|board) /.test(q),answer:(m,c)=>{
+    const course=courseOfLine(c.line,c.s),rows=list(c.s.discussions).filter(v=>!course||String(v.courseId)===String(course.id));
+    return rows.length===1||course&&rows[0]?c.card('open',[rows[0]],{itemId:rows[0].id},rows[0].title+'.'):null;
+  }},
+  {
+    id:'r9-rubric',
+    when:(q,line,c)=>
+      / rubric /.test(q)&&!/ (?:check|grade|does|hit|meet|improve|help|against|with the|fix|feedback|helper|rate|score|mark|judge|review|evaluate|pass) /.test(q)&&q.trim().split(' ').length<=6&&!!courseOfLine(line,c.s),
+    answer:(m,c)=>{
+    const course=courseOfLine(c.line,c.s),
+      kind=/ lab /.test(c.q)?/\blab/i:/ project /.test(c.q)?/\bproject/i:/\bessay|paper/i,
+      row=open(c.s).find(v=>String(v.courseId)===String(course.id)&&kind.test(v.title));
+    return row?c.card('open',[row],{itemId:row.id},row.title+': rubric.'):null;
+  }},
+  {id:'r9-what-day',when:q=>/ (?:what day|which day|what date|what time) (?:is|s|are) (?:the |my |our )?\S/.test(q)&&!/ (?:today|it now|tomorrow) /.test(q),answer:(m,c)=>{
+    const hit=named(c.q,c.s);
+    if(!hit||hit.dueAt===null)return null;
+    const cal=local(c.s),day=cal?cal(hit.dueAt).day:'';
+    return c.card('open',[hit],{itemId:hit.id,answerField:'dueAt',dueAt:hit.dueAt},hit.title+' is due '+(day?dayName(day)+' ':'')+clockText(hit.dueAt,c.s)+'.');
+  }},
+  {
+    id:'r9-modules-page',
+    when:q=>/ (?:hide|show) (?:the )?(?:finished|done|completed) (?:modules?|module items|items) | (?:mark|check off) (?:this |the |a |my )?module(?: item)? (?:as )?(?:done|complete|finished) | module (?:item )?(?:done|progress) /.test(q),
+    answer:(m,c)=>c.card('none',[],{},'Open the course\u2019s Modules page: '+(/ hide|show /.test(c.q)?'Hide finished':'the check beside each item')+'.',{ui:{path:['Modules page',/ hide|show /.test(c.q)?'Hide finished':'Mark as done']}})
+  },
+  {id:'r9-welcome',when:q=>/ (?:welcome tour|the tour|intro tour|tour again|tutorial|onboarding) /.test(q),answer:(m,c)=>c.card('none',[],{},'Open Canvas Harness extension popup > Welcome tour.',{ui:{path:['Canvas Harness extension popup','Welcome tour']}})},
+  {id:'r9-ch-off',when:q=>/ (?:turn off|disable|pause|stop|switch off|shut off|uninstall|remove) (?:ch|ch plus|canvas harness|harness|the extension|this extension|the whole extension|everything on canvas) /.test(q),answer:(m,c)=>c.card('none',[],{},'Open Canvas Harness extension popup > On Canvas.',{ui:{path:['Canvas Harness extension popup','On Canvas']}})},
+  {id:'r9-canvas-pages',when:q=>/ canvas pages? .*(?:theme|light|original|look|text|width|accent|link)| (?:reading width|rdg width|link accent|line length) /.test(q),answer:(m,c)=>c.card('none',[],{},'Open Canvas Harness extension popup > Canvas pages.',{ui:{path:['Canvas Harness extension popup','Canvas pages']}})},
+  {id:'r9-grades-how',when:q=>/ how (?:do|can|could) i (?:see|view|check|find|get to|look at|show) (?:my |all my |the )?(?:grades|scores|marks) /.test(q),answer:(m,c)=>c.card('none',[],{},'Open Workspace > Grades. With grades hidden, use Show grades in the top bar.',{ui:{path:['Workspace','Grades']}})},
+  {id:'r9-gadget-undo',when:q=>/ (?:get rid of|undo|clean up|clear|fix|stop|reset|put back) (?:the |all the |this )?(?:gravity|gadgets?|black ?hole|hammer|bomb|laser|mess|page)(?: mess)? /.test(q)&&/ (?:gravity|gadget|gadgets|black ?hole|hammer|bomb|laser|mess|put back) /.test(q),answer:(m,c)=>c.card('none',[],{},'Press Put it back on the play tray. Esc puts a tool down.',{ui:{path:['Play with this page','Put it back']}})},
+  {
+    id:'r9-teacher-email',
+    when:(q,line,c)=>/ (?:email|e mail|email address|contact|office hours|office hrs) $/.test(q)&&q.trim().split(' ').length<=4&&!/ (?:help|write|draft|send|reply|from) /.test(q),
+    answer:(m,c)=>{
+    const word=c.q.trim().split(' ')[0],t=list(c.s.teachers).filter(v=>String(v.name||v.title||'').toLowerCase().split(/\s+/).includes(word));
+    return t.length===1?c.card('open',[t[0]],{itemId:String(t[0].id)},String(t[0].title||t[0].name)+': '+String(t[0].email||t[0].officeHours||t[0].body||'').slice(0,120)):null;
+  }},
+  {id:'r10-focus-for',when:q=>/ (?:set|start|run|begin)(?: a| the| my)? (?:focus )?(?:timer|focus|pomodoro)(?: session)? (?:for|on) (?:my |the )?\S/.test(q),answer:(m,c)=>{
+    const hit=named(c.q,c.s),n=/ (\d{1,3}) ?min/.exec(c.q),minutes=n&&+n[1]>=5&&+n[1]<=180?+n[1]:25;
+    return hit?c.card('focus',[hit],{itemId:hit.id,minutes},'Focus on '+hit.title+' for '+minutes+' min.'):null;
+  }},
+  {
+    id:'r10-group',
+    when:(q,line,c)=>/ (?:teammates|team mates|groupmates|group mates|group members|lab partners|partners|my group|our group|project group|group page|who is in my group|who am i (?:with|paired with)) /.test(q)&&!/ (?:documents?|docs?|files?|shared|collab\w*) /.test(q)&&!!courseOfLine(line,c.s),
+    answer:(m,c)=>{
+    const course=courseOfLine(c.line,c.s),
+      row=list(c.s.pages).find(v=>String(v.courseId)===String(course.id)&&/group/i.test(String(v.title||v.name)))||
+        list(c.s.groups).find(v=>String(v.courseId)===String(course.id));
+    return row?c.card('open',[row],{itemId:String(row.id)},String(row.title||row.name)+'.'):null;
+  }},
+  {id:'r10-account',when:q=>/ (?:my profile|profile page|profile settings|display name|my pronouns|pronoun settings|change my name|edit my profile) /.test(q),answer:(m,c)=>{
+    const row=list(c.s.pages).find(v=>/account|profile/i.test(String(v.id)+' '+String(v.title||v.name)));
+    return row?c.card('open',[row],{itemId:String(row.id)},String(row.title||row.name)+'.'):null;
+  }},
+  {id:'r10-review-day',when:(q,line,c)=>/ review (?:day|session|sesh|date|class|time) /.test(q)&&!/ (?:deck|cards|flash) /.test(q)&&!!courseOfLine(line,c.s),answer:(m,c)=>{
+    const course=courseOfLine(c.line,c.s),
+      rows=[...list(c.s.calendar),...list(c.s.events)].filter(v=>String(v.courseId)===String(course.id)&&/review/i.test(String(v.title||v.name)));
+    return rows.length?c.card('open',[rows[0]],{itemId:String(rows[0].id)},String(rows[0].title||rows[0].name)+'.'):null;
+  }},
+  {id:'r10-late-turn-in',when:(q,line,c)=>/ (?:turn in late|turning in late|hand in late|late (?:work|policy|penalty|rules)|lose points .*late|late .*lose points) /.test(q)&&!!courseOfLine(line,c.s),answer:(m,c)=>{
+    const course=courseOfLine(c.line,c.s),
+      row=list(c.s.syllabi).find(v=>String(v.courseId)===String(course.id))||
+        list(c.s.pages).find(v=>String(v.courseId)===String(course.id)&&/syllabus|late/i.test(String(v.title||v.name)));
+    return row?c.card('open',[row],{itemId:String(row.id)},String(row.title||row.name)+'.'):null;
+  }},
+  {
+    id:'r10-help-kind',
+    when:(q,line,c)=>
+      !!kindOf(q)&&!!courseOfLine(line,c.s)&&R10_HELP.some(([re])=>re.test(q))&&!/ (?:when|due|points|worth|rubric|grade|submit|turn in|bookmark|remind|focus|open|done|finished|mark|where) /.test(q),
+    answer:(m,c)=>{
+    const [,kindName]=R10_HELP.find(([re])=>re.test(c.q)),
+      course=courseOfLine(c.line,c.s),
+      kind=kindOf(c.q),
+      item=open(c.s).find(v=>String(v.courseId)===String(course.id)&&isKind(v,kind));
+    return item?c.card('ai',[item],{itemId:item.id,text:c.line},'Your AI can help with '+item.title+' ('+kindName+').'):null;
+  }},
+  {id:'r10-pages',when:(q)=>{
+    const ws=q.trim().replace(/ page$/,'').replace(/^(?:open|go to|my|the) /,'').split(' ');
+    return ws.length===1&&ws[0].length>=5&&R10_PAGES.some(([w])=>w!==ws[0]&&editsWithin(ws[0],w,ws[0].length>=6?2:1));
+  },answer:(m,c)=>{const w=c.q.trim().replace(/ page$/,'').replace(/^(?:open|go to|my|the) /,'');return R10_PAGES.find(([p])=>editsWithin(w,p,w.length>=6?2:1))[1](c);}},
+  {id:'r10-refuse',when:q=>R10_REFUSE.test(q)&&!/ (?:help me|how do i|how to|check|explain|practice|plan|remind|when|where|bookmark|open) /.test(q),answer:(m,c)=>c.card('none',[],{},'I will not do graded work for you, but I can help you get it done: a plan, a first step, or practice like it.')},
+  {id:'r10-errand',when:q=>R10_ERRAND.test(q),answer:(m,c)=>say(c,'That is not something I can do. I can help with Canvas and your work.')},
+  {id:'r10-rules',when:q=>R10_RULES.test(q),answer:(m,c)=>c.card('none',[],{},'I cannot change grades or what Canvas recorded. Your teacher can; Grade impact shows what a score would do.')},
+  {id:'r10-miy-tab',when:q=>/ make it yours .*(?:look|home|courses?|companion|biscuit|more) (?:tab|page|section)| (?:home layout|look|companion|courses?) settings /.test(q)&&!/ (?:how|where) /.test(q),answer:(m,c)=>{
+    const tab=/ (?:companion|biscuit) /.test(c.q)?'pet':/ look /.test(c.q)?'look':/ courses? /.test(c.q)?'courses':/ home /.test(c.q)?'layout':'settings';
+    return c.card('find',[],{},'Make it yours.',{next:{action:'make-it-yours',fields:{tab},label:'Open it'}});
+  }},
+  {id:'r10-ext-preset',when:q=>/ (?:to |use |switch (?:to )?|turn on |go )?(?:the )?(lite|full) (?:mode|preset|version) /.test(q)&&!/ biscuit|companion|pony /.test(q),answer:(m,c)=>{
+    const preset=/ lite /.test(c.q)?'lite':'full';
+    return c.card('features',[],{preset},'Features · '+preset);
+  }},
+  {id:'r10-commands',when:q=>/ (?:what are you (?:even )?for|(?:your|ur) commands|what commands|list (?:your|ur|you are) commands|you are commands|what do you even do|what are your commands) /.test(q),answer:(m,c)=>say(c,'Try "plan tonight", "I have to read 30 pages tomorrow", "what should I do first", "soccer at 5 tomorrow, plan around it", or a course name.')},
+  {id:'r10-undo',when:q=>/^ (?:wait |oops |no |ugh )?(?:undo|take (?:that|it) back|reverse (?:that|it)|revert(?: that)?|go back)(?: that| it| the| last| thing| my| change)*(?: please| pls)? $/.test(q),answer:(m,c)=>c.card('undo',[],{},'Undo last change')},
+  {id:'r10-it-done',when:q=>/^ (?:ok |okay |yeah )?(?:i am|im) (?:done|finished) with (?:it|that|this)(?: one)? $/.test(q),answer:(m,c)=>{
+    const v=lastOf(c);
+    return v?c.card('complete',[v],{itemId:v.id},'Mark '+v.title+' done on your list.'):null;
+  }},
+  {id:'r10-remind-before',when:(q,line,c)=>!!(c.session?.lastItemId)&&/ remind (?:me )?(?:about (?:it|that|this) )?(?:one |a |an |\d+ )?(?:day|hour|hr|min|minutes|days|hours) (?:before|ahead|early|earlier|prior)/.test(q),answer:(m,c)=>{
+    const v=list(c.s.assignments).concat(list(c.s.workItems)).find(x=>String(x.id)===String(c.session.lastItemId));
+    const due=v&&stamp(v.dueAt??v.due);
+    if(!v||due===null)return null;
+    const n=+((/ (\d+) /.exec(c.q)||[])[1]||1),unit=/ (?:hour|hr|hours) /.test(c.q)?3600000:/ (?:min|minutes) /.test(c.q)?60000:DAY,at=due-n*unit;
+    return c.card('reminder',[v],{operation:'create',title:v.title||v.name,at,itemId:String(v.id)},'Remind you about '+(v.title||v.name)+', '+clockText(at,c.s)+'.');
+  }},
+  {
+    id:'r10-no-timer',
+    when:(q,line,c)=>/ (?:pause|stop|resume|end|cancel|kill) (?:the |my )?(?:timer|focus|focus timer|pomodoro) /.test(q)&&!c.s.focus?.running&&!(c.s.focus?.endsAt>(stamp(c.s.now)||0)),
+    answer:(m,c)=>say(c,'No timer is running.')
+  },
+  {id:'r10-market',when:q=>/ (?:get|find|download|buy|install|browse|more|new) (?:new |more |some )?(?:scenes?|themes?|packs?|companions?|skins?|looks?)(?: and (?:scenes?|themes?|packs?))? /.test(q)&&!/ (?:remove|uninstall|delete|reset) /.test(q),answer:(m,c)=>{
+    const row=list(c.s.pages).find(v=>/market/i.test(String(v.id)+' '+String(v.kind)+' '+String(v.title)));
+    return row?
+      c.card('open',[row],{itemId:String(row.id)},String(row.title)+'.'):
+      c.card('none',[],{},'Open Canvas Harness extension popup > Market.',{ui:{path:['Canvas Harness extension popup','Market']}});
+  }},
+  {id:'r10-passing',when:(q,line,c)=>/ am i (?:passing|failing|doing (?:ok|okay|well|good|bad|badly|fine)) /.test(q)&&!!courseOfLine(line,c.s),answer:(m,c)=>{
+    const course=courseOfLine(c.line,c.s),row=list(c.s.grades).find(v=>String(v.courseId)===String(course.id));
+    return row?c.card('open',[row],{itemId:String(row.id)},String(row.title||row.name)+'.'):null;
+  }},
+  {id:'r10-grade-needed',when:(q,line,c)=>/ (?:grade|score|percent) needed | (?:need|needed) (?:on|for) (?:the |my )?\S+ (?:test|quiz|exam|final) /.test(q)&&!!courseOfLine(line,c.s),answer:(m,c)=>{
+    if(!featureOn(c.s,'grade-impact'))return null;
+    const course=courseOfLine(c.line,c.s);
+    return c.card('navigate',[],{tab:'impact',courseId:String(course.id)},'Grade impact for '+(course.shortName||course.name)+'.');
+  }},
+  {id:'r10-tour',when:q=>/ (?:redo|retake|replay|restart|do) (?:the )?tour | tour (?:again|pls|please) /.test(q),answer:(m,c)=>c.card('none',[],{},'Open Canvas Harness extension popup > Welcome tour.',{ui:{path:['Canvas Harness extension popup','Welcome tour']}})},
+  {id:'r10-course-bar',when:q=>/ (?:course|class|courses|classes) (?:bar|list|menu|sidebar|strip) .*(?:top|bottom|side|left|dock)/.test(q)&&/ (?:want|put|move|make|across|on|at|to) /.test(q),answer:(m,c)=>{
+    const v=/ (?:bottom|dock) /.test(c.q)?'dock':/ top /.test(c.q)?'topbar':'sidebar';
+    return c.card('setting',[],{key:'courseNavigation',value:v},'Courses · '+{dock:'dock',topbar:'top',sidebar:'side'}[v]);
+  }},
+  {id:'r10-gadget-use',when:q=>/ (?:let me use|i want to use|can i use|i wanna use|use) (?:the )?(?:hammer|laser|bomb|rail ?gun|black ?hole|foil|painter|garden|balloons?|gravity|portals?|eraser|magnet|ink)(?: gadget| tool)? /.test(q),answer:(m,c)=>{
+    const g=GADGETS.find(([,re])=>re.test(c.q));
+    return g?c.card('play',[],{tool:g[0]},'Play · '+g[2]+'.'):null;
+  }},
+  {id:'r10-gadgets-off',when:q=>/ (?:turn off|disable|remove|hide|stop|switch off|get rid of) (?:all )?(?:the )?(?:gadgets?|play tools?|play with this page|play feature) /.test(q),answer:(m,c)=>c.card('feature',[],{id:'play',on:false},'Disable Play & submission celebrations. Reload Canvas after saving.')},
+  {id:'r10-ch-off',when:q=>/ (?:turn|switch|shut) (?:ch|ch plus|canvas harness|harness|the extension|this extension) off /.test(q),answer:(m,c)=>c.card('none',[],{},'Open Canvas Harness extension popup > On Canvas.',{ui:{path:['Canvas Harness extension popup','On Canvas']}})},
+  {id:'r10-course-name',when:(q,line,c)=>/ (?:what (?:my |the )?\S+ (?:course|class) is called|change the name of|rename (?:a |my |the )?(?:course|class)|course name|class name) /.test(q),answer:(m,c)=>c.card('none',[],{},'Open Make it yours > Courses > Course list.',{ui:{path:['Make it yours','Courses','Course list']}})},
+  {id:'r10-class-files',when:q=>/ (?:my |the )?(?:class|course) files /.test(q)&&!/ (?:how|where) /.test(q),answer:(m,c)=>c.card('navigate',[],{tab:'materials'},'Materials.')},
+  {id:'r10-calculator',when:q=>/^ (?:the |a |my )?(?:calculator|calc tool)(?: (?:tool|thing|button|tab|page|settings?|app))? $/.test(q),answer:(m,c)=>c.card('none',[],{},'Open Tools > Calculator.',{ui:{path:['Tools','Calculator']}})},
+  {
+    id:'r10-pdf',
+    when:q=>/ (?:pdf reader|reading rul+er|pdf marks|pdf highlights|pdf notes|marks from (?:the|my) pdf) /.test(q)&&!/ (?:enable|disable|turn on|turn off|switch on|switch off|feature|allow|mute|active|away) /.test(q),
+    answer:(m,c)=>c.card('none',[],{},'Open a PDF from Materials: the PDF reader has the reading ruler (L) and Marks > Download .md.',{ui:{path:['Materials','Open the PDF','PDF reader']}})
+  },
+  {id:'r10-daily-ai',when:q=>/ (?:every ?day|daily) (?:ai|help|prep)| ai (?:every ?day|daily) | prepare (?:every day|daily) /.test(q),answer:(m,c)=>c.card('none',[],{},'Open Tools > AI > Prepare every day (or the Help band: Every day).',{ui:{path:['Tools','AI','Prepare every day']}})},
+  {id:'r10-finished',when:(q,line,c)=>/^ (?:finished|completed|done) (?:my |the |with )?\S/.test(q)&&!/ (?:what|when|how) /.test(q),answer:(m,c)=>{
+    const hit=named(c.q,c.s);
+    return hit?c.card('complete',[hit],{itemId:hit.id},'Mark '+hit.title+' done on your list.'):null;
+  }},
+  {id:'r10-rearrange',when:q=>/ (?:rearrange|reorganize|reorganise|arrange|customi[sz]e|edit) (?:my |the )?(?:home|home page|homepage|dashboard) /.test(q),answer:(m,c)=>c.card('none',[],{},'Open Home > Edit Home.',{ui:{path:['Home','Done editing / Edit Home']}})},
+  {id:'r10-turned-in',when:(q,line)=>/\?\s*$/.test(String(line))&&(/^ (?:turned in|submitted|handed in) (?:the |my )?\S/.test(q)||/ (?:turned in|submitted|handed in) $/.test(q)),answer:(m,c)=>{
+    const only=courseOfLine(c.line,c.s),
+      kind=kindOf(c.q),
+      done=list(c.s.assignments).filter(v=>v.submitted&&(!only||String(v.courseId)===String(only.id))&&isKind(v,kind)),
+      hit=named(c.q,c.s);
+    if(done.length===1&&(!hit||!only))return c.card('open',[done[0]],{itemId:String(done[0].id)},'Yes, '+(done[0].title||done[0].name)+' is in.');
+    return hit?c.card('open',[hit],{itemId:hit.id},'Not yet. '+hit.title+'.'):null;
+  }},
+  {id:'r10-scene-off',when:q=>/ (?:turn off|remove|no|hide|clear|get rid of) (?:the |my )?scene(?: background| theme| picture)? /.test(q),answer:(m,c)=>c.card('setting',[],{key:'sceneTheme',value:''},'Set scene to None.')},
+  {id:'r11-that-one',when:(q,line,c)=>/^ (?:that|this|the first|the) one(?: please| pls)? $|^ (?:that|this) (?:one )?(?:please|pls)? ?$/.test(q)&&!!c.session?.lastItemId,answer:(m,c)=>{
+    const v=list(c.s.assignments).concat(list(c.s.workItems),list(c.s.files),list(c.s.pages)).find(x=>String(x.id)===String(c.session.lastItemId));
+    return v?c.card('find',[v],{itemId:String(v.id),...(v.courseId?{courseId:String(v.courseId)}:{})},(v.title||v.name)+'.'):null;
+  }},
+  {id:'r11-squeeze',when:q=>/ (?:squeeze|fit|put|slot|work) (?:the |my )?(?:\S+ ){1,3}into (?:my |the )?(?:schedule|plan|week|day|evening|night|afternoon) /.test(q),answer:(m,c)=>c.card('plan',[],{local:true,line:c.line},'')},
+  {id:'r11-card-names',when:q=>/ course cards? .*(?:called|names?|nicknames?|colou?rs?)|(?:rename|recolou?r|nickname) (?:my )?course cards? /.test(q),answer:(m,c)=>{
+    const row=list(c.s.pages).find(v=>/dashcards|card colou?rs|nicknames/i.test(String(v.id)+' '+String(v.title)));
+    return row?c.card('open',[row],{itemId:String(row.id)},String(row.title)+'.'):null;
+  }},
+  {id:'r11-break-down',when:q=>/ break (?:it |this |that )?down /.test(q),answer:(m,c)=>{
+    const topic=c.q.replace(/^.* break (?:it |this |that )?down /,' ').replace(/ (?:for me|please|pls|again|simply|a bit|for us) /g,' ').trim(),ws=topic.split(' ').filter(w=>w.length>3);
+    if(!ws.length)return null;
+    const rows=[...list(c.s.workItems).filter(v=>/reading|packet|chapter/i.test(String(v.title))),...list(c.s.files),...list(c.s.workItems)],
+      hit=rows.find(v=>ws.every(w=>String(v.title||v.name||'').toLowerCase().includes(w)));
+    return hit?c.card('ai',[hit],{itemId:String(hit.id),text:c.line},'Your AI can explain '+topic+' with '+(hit.title||hit.name)+'.'):c.card('ai',[],{text:c.line},'Your AI can explain '+topic+'.');
+  }},
+  {
+    id:'r9-refuse',
+    when:q=>R9_REFUSE.test(q)&&!/ (?:practice|practise|check|explain|how do i|how to|help me understand|where is|where are) /.test(q),
+    answer:(m,c)=>/ (?:grade|grades|score) /.test(c.q)&&/ (?:change|fix|raise|bump|hack|edit) /.test(c.q)?c.card('none',[],{},'I cannot change grades. Grade impact shows what a score would do.'):c.card('none',[],{},'I can’t give you the answer, but I can help you understand the question or practise one like it.')
+  },
+  {id:'r9-submit-for-me',when:q=>/ (?:submit|turn in|hand in|upload) (?:my |the |this )?.*for me /.test(q)||/ (?:can|could|will) you (?:submit|turn in|hand in) /.test(q),answer:(m,c)=>{
+    const hit=named(c.q,c.s);
+    return hit?c.card('open',[hit],{itemId:hit.id},'I can’t hand it in for you. Here it is: '+hit.title+'.'):c.card('none',[],{},'I can’t hand work in for you. Open the assignment and use Submit.');
+  }},
+  {id:'r9-not-mine',when:q=>/^ (?:please )?(?:order|buy|get me|book) (?:a |an |some |me )?(?:pizza|food|lunch|dinner|coffee|uber|ride|tickets?|shoes) /.test(q)||/^ (?:play|put on) (?:some |a |my )?(?:music|song|songs|spotify|playlist|youtube|video|movie) /.test(q)||/^ (?:text|call|message|dm|facetime) (?:my )?(?:mom|mum|dad|mother|father|friend|friends|bro|sister|brother|parents|girlfriend|boyfriend|grandma|grandpa) /.test(q),answer:(m,c)=>say(c,'That is not something I can do. I can help with Canvas and your work.')},
+  {
+    id:'r9-graphics',
+    when:q=>/ (?:graphics?|graphic quality|visual quality) /.test(q)&&!/ (?:calculator|graphing|class|course|homework|design|card|cards) /.test(q)&&/ (?:low|lowest|potato|min|minimum|medium|med|mid|normal|high|higher|highest|extra|xhigh|max|maximum|ultra|best|lower|up|down) /.test(q)||/ (?:laggy|lagging|lags|choppy|stutter|stuttering|so slow|is slow|runs slow|running slow|very slow|super slow|frame ?rate|freezing|freezes) /.test(q)&&/ (?:laptop|computer|pc|chromebook|canvas|page|site|screen|dashboard|browser|tab|it|everything|harness) /.test(q)&&!/ (?:wifi|internet|teacher|grading) /.test(q),
+    answer:(m,c)=>{
+    const q=c.q,v=/ (?:extra high|extra|xhigh|max|maximum|ultra|best|highest) /.test(q)?'xhigh':/ (?:high|higher|up) /.test(q)&&!/ (?:low|lower|down) /.test(q)?'high':/ (?:medium|med|mid|normal) /.test(q)?'medium':'low';
+    return c.card('setting',[],{key:'graphics',value:v},'Graphics: '+{low:'Low',medium:'Medium',high:'High',xhigh:'Extra high'}[v]+'.');
+  }},
+  {id:'r9-impact',when:q=>/ (?:grade impact|what ifs?|(?:what )?if i (?:get|got|score|scored|make|made|fail|bomb)|what (?:do|would|will) i need (?:to get |to score )?on|what do i need to get|what (?:grade|score|percent) do i need|how (?:much|well) do i need to do|to keep (?:my |an? )?[abcd] |to get (?:an? )?[abcd] in|bring my grade up|pull my grade up) /.test(q)&&/ (?:\d+|[abcdf]|grade|grades|test|quiz|exam|final|midterm|essay|project|score|percent|impact|ifs?) /.test(q)&&!/ (?:clear|remove|reset|delete|add|pretend|turn on|turn off|enable|disable|where is|how do i|how does|module|widget|feature) /.test(q),answer:(m,c)=>{
+    if(!featureOn(c.s,'grade-impact'))return null;
+    const course=courseOfLine(c.line,c.s);
+    return c.card('navigate',[],course?{tab:'impact',courseId:String(course.id)}:{tab:'impact'},'Grade impact'+(course?' for '+(course.shortName||course.name):'')+'.');
+  }},
+  {id:'r9-room-how',when:q=>/ (?:how (?:do|can|could) i (?:use|open|get to|find|start|see)|where (?:is|are|do i find|can i find|do i open)|wheres|how does|how do you use) (?:the |my )?(?:review deck|grade impact|focus room|flash ?cards|what ifs?) /.test(q),answer:(m,c)=>{
+    const room=/ (?:review deck|flash ?cards) /.test(c.q)?['Home','Review']:/ (?:grade impact|what ifs?) /.test(c.q)?['Workspace','Grades','Open grade impact']:['Home','Focus room'];
+    return c.card('none',[],{},'Open '+room.join(' > ')+'.',{ui:{path:room}});
+  }},
+  {id:'r9-review-settings',when:q=>/ (?:new cards? (?:a |per )day|cards? (?:a |per )day|reviews? (?:a |per )day|daily (?:card )?limits?|big card|pause (?:a |this |the |that )?card|unpause (?:a |this |the )?card|card files|test date|exam date) /.test(q)&&!/ (?:canvas|calendar|due) /.test(q),answer:(m,c)=>{
+    const path=/ big card /.test(c.q)?['Workspace','Review','Big card']:/ (?:test|exam) date /.test(c.q)?['Workspace','Review','Save test date']:/ pause|unpause /.test(c.q)?['Workspace','Review','Card files','Pause']:['Workspace','Review','Card files','Schedule'];
+    return c.card('none',[],{},'Open '+path.join(' > ')+'.',{ui:{path}});
+  }},
+  {id:'r9-pet-where',when:q=>/ (?:rename|name|call) (?:biscuit|the companion|my companion|the pony|my pony|my pet|the pet|him) | (?:biscuit|companion|pony|pet)(?:s)? (?:name|coat|colou?r|harness|size|blanket|collar) /.test(q),answer:(m,c)=>{
+    const part=/ coat|colou?r /.test(c.q)?'Coat':/ harness /.test(c.q)?'Harness':/ size /.test(c.q)?'Size':/ blanket|collar /.test(c.q)?'Harness':'Name';
+    return c.card('none',[],{},'Open Make it yours > Companion > '+part+'.',{ui:{path:['Make it yours','Companion',part]}});
+  }},
+  {
+    id:'r9-review',
+    when:(q,line,c)=>/ (?:review deck|rvw deck|review cards|my flash ?cards|study (?:my )?flash ?cards|study cards|flash ?card deck|card deck|flash ?cards|review room) /.test(q)&&!/ (?:make|create|art|artwork|quiz|test|exam|new cards|per day|big card|test date|pause|turn on|turn off|enable|disable|where|wheres|how) /.test(q)&&!courseOfLine(line,c.s),
+    answer:(m,c)=>featureOn(c.s,'review-deck')?c.card('navigate',[],{tab:'review'},'Review deck.'):null
+  },
+  {id:'r9-focus-place',when:q=>/ (?:lake|stream|river|rain|rainy|fire|fireplace|campfire|winter|snowy|snow) /.test(q)&&/ (?:focus room|sounds?|ambience|ambient|noise|room|place|switch to|change to) /.test(q)&&!/ (?:outside|weather|forecast|tomorrow|today|homework|essay) /.test(q)||/ (?:mute|unmute|volume|quiet|louder|softer) (?:the |in the )?focus room | focus room (?:volume|sound|sounds|quiet|mute) /.test(q),answer:(m,c)=>{
+    const place=/ lake /.test(c.q)?'Lake':/ (?:stream|river) /.test(c.q)?'Stream':/ (?:rain|rainy) /.test(c.q)?'Rain':/ (?:fire|fireplace|campfire) /.test(c.q)?'Fire':/ (?:winter|snow|snowy) /.test(c.q)?'Winter':null,
+      path=place?['Home','Focus room','Place',place]:/ (?:mute|quiet) /.test(c.q)?['Home','Focus room','Place','Quiet']:['Home','Focus room','Place'];
+    return c.card('none',[],{},'Open '+path.join(' > ')+'.',{ui:{path}});
+  }},
+  {
+    id:'r9-focus-room',
+    when:q=>/ (?:focus room|study room) /.test(q)&&!/ (?:volume|quiet|mute|unmute|sound|sounds|turn on|turn off|enable|disable|where|how|feature) /.test(q),
+    answer:(m,c)=>featureOn(c.s,'focus-room')?c.card('navigate',[],{tab:'focus-room'},'Focus room.'):null
+  },
+  {id:'r9-views',when:q=>VIEW_RE.test(q),answer:(m,c)=>{
+    const v=/ (?:week|weekly) /.test(c.q)?'week':/ (?:all|every) /.test(c.q)?'all':/ up ?next /.test(c.q)?'next':/ plan /.test(c.q)?'plan':'today';
+    return c.card('navigate',[],{tab:'assignments',view:v},'Assignments: '+{week:'Week',all:'All',next:'Up next',plan:'My plan',today:'Today'}[v]+'.');
+  }},
+  {id:'r9-home',when:q=>/^ (?:home|homepage|home page|main page|go to home|back home|back to home|dashboard|my dashboard) $/.test(q),answer:(m,c)=>c.card('navigate',[],{tab:'home'},'Home.')},
+  {id:'r9-pet-home',when:q=>/ (?:go home|go to (?:your )?paddock|back to (?:your )?paddock|stay in (?:your |the )?paddock|stay home|go to your spot) /.test(q)&&/ (?:biscuit|pony|horse|buddy|boy|paddock|you|companion|pet) /.test(q),answer:(m,c)=>c.card('pet',[],{action:'home'},'Send home')},
+  {id:'r9-gadgets',when:q=>GADGET_RE.test(q),answer:(m,c)=>{const g=GADGETS.find(([,re])=>re.test(c.q));return c.card('play',[],g?{tool:g[0]}:{},'Play'+(g?' · '+g[2]:'')+'.');}},
+  {id:'r9-tools',when:q=>/^ (?:open |use |show |pull up |get )?(?:the |a |my )?(?:desmos|graphing calculator|graphing calc|scientific calculator|graphing tool)(?: please)? $/.test(q),answer:(m,c)=>c.card('none',[],{},'Open Tools > Calculator.',{ui:{path:['Tools','Calculator']}})},
+  {id:'r9-late',when:q=>/^ (?:show (?:me )?(?:my |all (?:my )?|only (?:my )?|the )?|see (?:my )?|list (?:my )?|my |all (?:my )?|only (?:my )?|any |do i have any |i have )?(?:missing|late|overdue|past due)(?: work| assignments?| homework| stuff| things| ones| items| tasks)?(?: only| list| please)? $/.test(q)||/^ (?:what is|what are|which (?:ones|assignments) are|anything|is anything) (?:late|overdue|missing|past due) $/.test(q),answer:(m,c)=>{
+    const now=stamp(c.s.now)||Date.now(),late=open(c.s).filter(v=>v.dueAt!==null&&v.dueAt<now).sort((a,b)=>b.dueAt-a.dueAt);
+    return late.length?c.card('find',late.slice(0,5),{},late.length+' late: '+late.slice(0,3).map(v=>v.title).join(', ')+(late.length>3?', and more':'')+'.',{answerKind:'mind'}):say(c,'Nothing overdue.');
+  }},
+  {
+    id:'r9-start-timer',
+    when:q=>/^ (?:start|begin|set|run)(?: a| the| my)? (?:timer|focus timer|pomodoro|focus session|study timer)(?: please)? $|^ start focusing $/.test(q),
+    answer:(m,c)=>c.s.focus?.running?null:c.card('focus',[],{minutes:25},'Focus for 25 min.')
+  },
+  {
+    id:'r9-course-pref',
+    when:(q,line,c)=>/ (?:hide|unhide|rename|recolou?r|colou?r|nickname|change the name of|change (?:its |the )?name|picture|image|banner|icon) /.test(q)&&!/ (?:accent|page colou?r|tint|card|cards|grade|grades|scene|theme|biscuit|companion|pet|homework|quiz|test|lab|essay|reading|project|assignment|announcement|message|messages|clock|widget|module) /.test(q)&&!!courseOfLine(line,c.s),
+    answer:(m,c)=>{
+    const course=courseOfLine(c.line,c.s),art=/ (?:picture|image|banner|icon) /.test(c.q),path=art?['Make it yours','Courses','Course artwork']:['Make it yours','Courses','Course list'];
+    return c.card('none',[],{},'Open '+path.join(' > ')+': '+(course.shortName||course.name)+'.',{ui:{path}});
+  }},
+  {
+    id:'r9-edit-home',
+    when:q=>/^ (?:edit|customi[sz]e|rearrange|arrange|organi[sz]e) (?:my |the )?(?:home|home page|homepage|dashboard)(?: layout| page)? $/.test(q)||/ (?:add|get|put) (?:a |more |new )?(?:widgets?|modules?)(?: to| on)?(?: my| the)?(?: home| home page| dashboard)? $/.test(q)&&/^ (?:how|where|can i|i want to|add|get|put) /.test(q),
+    answer:(m,c)=>c.card('none',[],{},'Open Home > Edit Home.',{ui:{path:['Home','Done editing / Edit Home']}})
+  },
+  {id:'r9-module-add',when:q=>MODULE_ADD.test(q)&&(/^ (?:add|put|bring back|give me|i want|turn on) /.test(q)||/ (?:widget|module|box|panel|home) /.test(q)),answer:(m,c)=>{
+    const hit=MODULE_KEYS.find(([,re])=>re.test(c.q));
+    return hit?c.card('module',[],{key:hit[0],action:'show'},'Show '+hit[2]+' on Home.'):null;
+  }},
+  {id:'r9-course-nav',when:q=>/ (?:courses?|course list|class list|classes)(?: list)? (?:on|at|to|along|across|down) (?:the )?(?:top|bottom|side|left|dock|sidebar) /.test(q)&&!/ (?:homework|grade|due) /.test(q),answer:(m,c)=>{
+    const v=/ (?:bottom|dock) /.test(c.q)?'dock':/ top /.test(c.q)?'topbar':'sidebar';
+    return c.card('setting',[],{key:'courseNavigation',value:v},'Courses · '+{dock:'dock',topbar:'top',sidebar:'side'}[v]);
+  }},
+  {id:'r9-dock',when:q=>/ dock /.test(q)&&/ (?:names?|counts?|lively|hide|hides|hidden|until near|auto ?hide|always show|show always) /.test(q),answer:(m,c)=>{
+    const q=c.q,off=/ (?:off|no|without|stop showing|do not show) /.test(q);
+    if(/ names? /.test(q))return c.card('setting',[],{key:'dockNamesAlways',value:!off},'Dock names '+(off?'on hover only':'always')+'.');
+    if(/ counts? /.test(q))return c.card('setting',[],{key:'dockCounts',value:!off},'Dock counts '+(off?'off':'on')+'.');
+    if(/ lively /.test(q))return c.card('setting',[],{key:'dockLively',value:!off},'Dock lively '+(off?'off':'on')+'.');
+    const hide=/ (?:hide|hides|hidden|until near|auto ?hide) /.test(q)&&!/ (?:always show|show always|stop hiding|do not hide|never hide) /.test(q);
+    return c.card('setting',[],{key:'dockHide',value:hide},hide?'The dock waits below the edge.':'The dock stays up.');
+  }},
+  {id:'r9-miy-tab',when:q=>/^ (?:open |show |go to )?(?:the |my )?(?:companion|biscuit|pony|look|courses?|more) (?:settings|options|preferences)(?: please)? $/.test(q),answer:(m,c)=>{
+    const tab=/ (?:companion|biscuit|pony) /.test(c.q)?'pet':/ look /.test(c.q)?'look':/ courses? /.test(c.q)?'courses':'settings';
+    if(tab==='pet'&&list(c.s.pages).some(v=>v&&v.kind==='pet-settings'))return null;
+    return c.card('find',[],{},'Make it yours.',{next:{action:'make-it-yours',fields:{tab},label:'Open it'}});
+  }},
   {id:'small-talk',when:q=>/^ (?:how (?:are you|is it going)|what is up|sup|hows life|you good|how you doing) $/.test(q),answer:(m,c)=>say(c,['Doing well. What are you working on?','Good, thanks. Anything on your mind?'][c.turn%2])},
   {id:'who',when:q=>/^ (?:what are you|are you (?:a )?(?:horse|pony|ai|real)) $/.test(q),answer:(m,c)=>say(c,'I am '+c.name+'. I plan your time, keep your list, and find anything in Canvas.')},
   {id:'can-do',when:q=>/^ (?:what can you do|what do you do|how do you work|how do i use you|what can i ask(?: you)?) $/.test(q),answer:(m,c)=>say(c,'Try "plan tonight", "I have to read 30 pages tomorrow", "what should I do first", "soccer at 5 tomorrow, plan around it", or a course name.')},
@@ -203,6 +1038,7 @@
   }},
   // one word lines: what a student types when they are in a hurry
   {id:'bare-next',when:(q,line,c)=>/^ (?:next|todo|to do|to-do|my list|list|homework|assignments|work|tasks|stuff|hw) $/.test(q)&&fresh(c)&&open(c.s).length>1,answer:(m,c)=>{
+    if(c.q===' next ')return nextUp(c.s,c);
     const rows=ranked(c.s),top=rows[0];
     if(!top)return say(c,'Nothing on your list right now.');
     return c.card('plan',rows.slice(0,3),{local:true,line:'plan tonight'},top.title+' is next, because '+whyNow(top,c.s)+'.'+(rows[1]?' Then '+rows.slice(1,3).map(v=>v.title).join(', then ')+'.':''));
@@ -280,7 +1116,7 @@
     const r=rangeIn(c.q),day=dayIn(c.q,c.s)||c.today;
     return c.card('plan',[],{local:true,line:'plan',date:day,start:hhmm(r[0]),minutes:r[1]-r[0]},'');
   }},
-  {id:'plan-hours',when:q=>/^ plan (?:for )?(?:about )?(?:\d+(?:\.\d+)?|an?) ?(?:hours?|hrs?|h|min|mins|minutes)(?: tonight| today| tomorrow)? $/.test(q),answer:(m,c)=>{
+  {id:'plan-hours',when:q=>/^ plan (?:(?:for )?(?:tonight|today|tomorrow) )?(?:for )?(?:about )?(?:\d+(?:\.\d+)?|an?) ?(?:hours?|hrs?|h|min|mins|minutes)(?: tonight| today| tomorrow)? $/.test(q),answer:(m,c)=>{
     const minutes=/ an? (?:hour|hr) /.test(c.q)?60:minutesIn(c.q.replace(/ (\d+(?:\.\d+)?) ?(?:hours?|hrs?) /,' $1 hour ').replace(/ (\d+) ?(?:minutes|mins) /,' $1 min ')),day=dayIn(c.q,c.s);
     return c.card('plan',[],{local:true,line:/tonight/.test(c.q)?'plan tonight':'plan',minutes,...(day?{date:day}:{})},'');
   }},
@@ -299,7 +1135,7 @@
       'Add to your list: '+firstUp(kind)+', '+whenWords(day,null,c.s)+'. Study time goes before it.',
       {understanding:{step:'understanding',reason:'own-work'}});
   }},
-  {id:'after-event',when:q=>/ after (?:dinner|practice|school|work|class|the game|lunch) /.test(q)&&!/ (?:move|push|bump|shift|reschedule|put|note|remind) /.test(q),answer:(m,c)=>{
+  {id:'after-event',when:q=>/ after (?:dinner|practice|school|work|class|the game|lunch) /.test(q)&&!/ (?:move|push|bump|shift|reschedule|put|note|remind|calendar|anything on|what is on|what is due|due) /.test(q),answer:(m,c)=>{
     const hour=/dinner/.test(c.q)?19:/lunch/.test(c.q)?13:/practice|work|game/.test(c.q)?18:16,day=dayIn(c.q,c.s)||c.today;
     return c.card('plan',[],{local:true,line:'plan',date:day,after:String(hour).padStart(2,'0')+':00'},'');
   }},
@@ -350,12 +1186,45 @@
     const first=rows[0],when=whyNow(first,c.s).replace(/^it /,'').replace(/^is /,'');
     return c.card('open',rows.slice(0,3),{itemId:first.id},first.title+', '+when+'.'+(rows.length>1?' '+(rows.length-1)+' more after that.':''));
   }},
+  {id:'graded',when:q=>/^ (?:is|was|has|have|are|were|did|does|do) /.test(q)&&/ (?:graded|been graded|marked|scored|got a grade|get a grade|grade back) /.test(q),answer:(m,c)=>{
+    const {only,kind,pick}=pickByKind(c,/^(?:graded|grade|been|back|marked|scored|have|has|was|were|does|did|turn|submit|hand|finish|the|my|yet)$/),name=v=>v.title||v.name;
+    if(!pick.length){if(only&&kind)return say(c,'No '+kindWords(kind,1)+' in '+(only.shortName||only.name)+' that I can see.');const hit=named(c.q,c.s);if(!hit)return null;pick.push(hit);}
+    if(pick.length===1){
+      const v=pick[0],t=name(v);
+      return c.card(
+        'open',
+        [v],
+        {itemId:String(v.id)},
+        isGraded(v)?'Yes, '+t+' is graded.':isTurnedIn(v)?'Not yet. '+t+' is turned in and waiting for a grade.':'Not yet. '+t+' is not turned in'+(stamp(v.dueAt)!==null?', '+dueWord(v,c.s):'')+'.');
+    }
+    const {waiting,done}=openFirst(pick,isGraded,c.s),rows=[...waiting,...done],course=only?(only.shortName||only.name)+' ':'';
+    const head=waiting.length===1?
+      name(waiting[0])+', '+dueWord(waiting[0],c.s)+': not graded yet'+(isTurnedIn(waiting[0])?' (turned in).':', not turned in.'):
+      waiting.length>1?
+        'Not graded yet: '+waiting.map(v=>name(v)+' ('+dueWord(v,c.s)+')').join(', ')+'.':
+        'Yes, '+(done.length===2?'both ':'all '+done.length+' ')+course+kindWords(kind,2)+' are graded: '+done.map(name).join(', ')+'.';
+    return c.card('find',rows.slice(0,3),{},head+(waiting.length&&done.length?' Graded: '+done.map(name).join(', ')+'.':''),{answerKind:'mind',listRows:rows,listTitle:'Graded?'});
+  }},
   {id:'turned-in',when:q=>/ did i (?:turn in|submit|hand in|finish|do) /.test(q),answer:(m,c)=>{
+    const {only,kind,pick}=pickByKind(c,/^(?:turn|submit|hand|finish|did|the|my)$/),name=v=>v.title||v.name;
+    if(pick.length===1){
+      const v=pick[0],t=name(v);
+      return isTurnedIn(v)?
+        c.card('open',[v],{itemId:String(v.id)},'Yes, '+t+' is in.'):
+        c.card('open',[v],{itemId:String(v.id)},'Not yet. '+t+(stamp(v.dueAt)!==null?', '+whyNow({...v,dueAt:stamp(v.dueAt)},c.s).replace(/^it /,'').replace(/^is /,''):'')+'.');
+    }
+    if(pick.length>1){
+      const {waiting,done}=openFirst(pick,isTurnedIn,c.s),rows=[...waiting,...done],course=only?(only.shortName||only.name)+' ':'';
+      const head=waiting.length===1?
+        name(waiting[0])+', '+dueWord(waiting[0],c.s)+': not turned in yet.':
+        waiting.length>1?
+          'Not turned in yet: '+waiting.map(v=>name(v)+' ('+dueWord(v,c.s)+')').join(', ')+'.':
+          'Yes, '+(done.length===2?'both ':'all '+done.length+' ')+course+kindWords(kind,2)+' are in: '+done.map(name).join(', ')+'.';
+      return c.card('find',rows.slice(0,3),{},head+(waiting.length&&done.length?' Turned in: '+done.map(name).join(', ')+'.':''),{answerKind:'mind',listRows:rows,listTitle:'Turned in?'});
+    }
     const hit=named(c.q,c.s);
     if(hit)return c.card('open',[hit],{itemId:hit.id},'Not yet. '+hit.title+(hit.dueAt!==null?', '+whyNow(hit,c.s).replace(/^it /,'').replace(/^is /,''):'')+'.');
-    const words=c.q.split(' ').filter(w=>w.length>3&&!/^(?:turn|submit|hand|finish)$/.test(w)),
-      gone=list(c.s.assignments).find(v=>v.submitted&&words.some(w=>String(v.title||v.name||'').toLowerCase().includes(w)));
-    return gone?say(c,'Yes, '+(gone.title||gone.name)+' is in.'):null;
+    return null;
   }},
   {id:'next-test',when:q=>/ (?:when is|when are|what is|whats|do i have) (?:my |the |a |an |any )?(?:next )?(?:tests?|quiz|quizzes|exams?|midterm|finals?)\b/.test(q),answer:(m,c)=>{
     const now=stamp(c.s.now)||Date.now(),
@@ -410,7 +1279,7 @@
       c.card('find',rows.slice(0,3),{},rows.slice(0,5).map(v=>day(v)+': '+v.title).join('. ')+'.'+(rows.length>5?' And '+(rows.length-5)+' more.':''),{answerKind:'mind'}):
       say(c,'Nothing due '+(next?'next':'this')+' week.');
   }},
-  {id:'late-count',when:q=>/ (?:how many|is anything|anything|what is) .*(?:overdue|late|missing) /.test(q),answer:(m,c)=>{
+  {id:'late-count',when:q=>/ (?:how many|is anything|anything|what is) .*(?:overdue|late|missing) /.test(q)&&!/ (?:policy|penalty|rules|accept|allowed|lose points) /.test(q),answer:(m,c)=>{
     const now=stamp(c.s.now)||Date.now(),late=open(c.s).filter(v=>v.dueAt!==null&&v.dueAt<now).sort((a,b)=>b.dueAt-a.dueAt);
     return late.length?c.card('find',late.slice(0,3),{},late.length+' overdue. Newest: '+late[0].title+'.',{answerKind:'mind'}):say(c,'Nothing overdue.');
   }},
@@ -457,10 +1326,14 @@
     return c.card('plan',[],{local:true,line:c.q.trim(),...(day?{date:day}:{})},'');
   }},
   // places
-  {id:'review-cards',when:q=>/ (?:review my cards|my flashcards|my cards|study my cards|add a card|new card|flashcard) /.test(q)&&!/ (?:make|art|artwork) /.test(q),answer:(m,c)=>c.card('navigate',[],{tab:'review'},'Review deck.')},
+  {
+    id:'review-cards',
+    when:q=>/ (?:review my cards|my flashcards|my cards|study my cards|add a card|new card|flashcard) /.test(q)&&!/ (?:make|art|artwork) /.test(q),
+    answer:(m,c)=>featureOn(c.s,'review-deck')?c.card('navigate',[],{tab:'review'},'Review deck.'):null
+  },
   {
     id:'email',
-    when:q=>/ (?:email|message|text|contact) (?:my |the )?(?:teacher|mr|mrs|ms|dr|tutor|counselor) /.test(q),
+    when:q=>/ (?:email|message|text|contact) (?:my |the )?(?:teacher|mr|mrs|ms|dr|tutor|counselor) /.test(q)&&!/^ (?:remind|note|add|put) /.test(q),
     answer:(m,c)=>c.card('find',[],{},'Open Canvas Inbox to write to them.',{next:{action:'navigate',fields:{tab:'messages'},label:'Open Messages'}})
   },
   {id:'canvas-places',when:q=>/ (?:go to|open|where are|where is|take me to) (?:my |the )?(?:modules|files|syllabus|people|pages) /.test(q),answer:(m,c)=>c.card('navigate',[],{tab:'course-hub'},'Those are in the Course hub, one course at a time.')},
@@ -499,8 +1372,13 @@
     if(hit)return c.card('plan',[hit],{local:true,line:'plan',date:day,itemId:hit.id},'');
     return course?c.card('plan',[],{local:true,line:'plan',date:day,courseId:String(course.id)},''):null;
   }},
-  {id:'study-course',when:(q,line,c)=>/^ (?:study|studying|study for|work on|do|focus on|time for) /.test(q)&&q.trim().split(' ').length<=4&&!!c.courseIn(q),answer:(m,c)=>{
-    const course=c.courseIn(c.q),top=ranked(c.s).find(v=>String(v.courseId)===String(course.id)),name=course.shortName||course.name;
+  {
+    id:'study-course',
+    when:(q,line,c)=>
+      /^ (?:study|studying|study for|work on|do|focus on|time for) /.test(q)&&!/ (?:layout|view|mode|theme|flash ?cards|cards|deck|room) /.test(q)&&q.trim().split(' ').length<=4&&!!c.courseIn(q),
+    answer:(m,c)=>{
+    const course=c.courseIn(c.q),kind=kindOf(c.q),top=ranked(c.s).find(v=>String(v.courseId)===String(course.id)&&isKind(v,kind)),name=course.shortName||course.name;
+    if(kind&&!top)return null;
     return top?c.card('focus',[top],{itemId:top.id,minutes:25},'25 minutes on '+top.title+'.'):c.card('focus',[],{minutes:25},'25 minutes on '+name+'.');
   }},
   {id:'study-bare',when:q=>/^ (?:help me study|time to study|study|i need to study|i should study) $/.test(q),answer:(m,c)=>{
@@ -514,15 +1392,20 @@
   {id:'pomodoro',when:q=>/^ (?:pomodoro|pomo) $/.test(q),answer:(m,c)=>c.card('focus',[],{minutes:25},'Focus for 25 min.')},
   {id:'stuck',when:q=>/^ (?:this is (?:too |so |really )?(?:hard|impossible|confusing)|too hard|so hard|i am stuck|i am lost|i do not get (?:this|it)|i do not understand(?: this| it)?) $/.test(q),answer:(m,c)=>c.card('ai',[],{text:c.line},'Stuck happens. Tell your AI which part and it will walk through it with you.')},
   {id:'gpa',when:q=>/ (?:my )?gpa /.test(q)&&!/ (?:turn|show|hide|open|enable|disable|feature|calculator|where|tools) /.test(q),answer:(m,c)=>say(c,'Tools > GPA works that out.')},
-  {id:'bedtime',when:q=>/ (?:sleep|bed|asleep) (?:by|at|around) /.test(q)||/ bedtime (?:is|at) /.test(q),answer:(m,c)=>{
-    let at=clockIn(c.q);
-    if(at===null)return null;
+  {id:'bedtime',when:q=>/ (?:sleep|bed|asleep) (?:by|at|around) /.test(q)||/ bedtime (?:is|at) /.test(q)||/ bedtime (?:to |= )?\d/.test(q),answer:(m,c)=>{
+    const hm=/ (?:bedtime|bed|sleep|asleep)(?: is| at| to| by| around| =)? (\d{1,2})[ :](\d{2})(?: ?(?:am|pm))? /.exec(c.q);
+    let at=hm&&+hm[1]<=23&&+hm[2]<=59?+hm[1]*60+(+hm[2]):clockIn(c.q);
+    if(hm&&/ pm /.test(c.q)&&at<720)at+=720;
+    if(at===null){const b=/ bedtime (?:to |= )?(\d{1,2})(?::(\d{2}))? /.exec(c.q);if(!b||+b[1]>23||+(b[2]||0)>59)return null;at=+b[1]*60+(+(b[2]||0));}
     if(at<720)at=at===0?at:at+720;
     if(at>=1440)at-=1440;
     const value=hhmm(at);
     return c.card('setting',[],{key:'bedtime',value},'Bedtime '+clockAt(at)+'. Plans stop there.');
   }},
-  {id:'lite',when:q=>/ (?:biscuit lite|lite biscuit|lighter biscuit) /.test(q),answer:(m,c)=>c.card('make-it-yours',[],{tab:'companion'},'Biscuit Lite is in Make it yours > Companion.')},
+  {id:'lite',when:q=>(/ (?:biscuit|companion|pony) (?:lite|light|lighter)(?: mode| version)? /.test(q)||/ (?:lite|lighter) (?:biscuit|companion|pony) /.test(q))&&!/ light (?:mode|theme) /.test(q)||/ (?:full|smarter|smart|all rules) (?:biscuit|companion|pony) | (?:biscuit|companion|pony) (?:full|smarter|full knowledge) /.test(q),answer:(m,c)=>{
+    const lite=!/ (?:full|smarter|smart|more rules|all rules) /.test(c.q)||/ (?:mute|away|off|disable|block|shut|less|fewer|no more) /.test(c.q);
+    return c.card('setting',[],{key:'pet.knowledge',value:lite?'lite':'most'},lite?'Biscuit Lite.':'Biscuit Full.');
+  }},
   {id:'wake',when:q=>/ wake me /.test(q),answer:(m,c)=>say(c,'I can not wake you from a browser tab. A phone alarm will do it.')},
   {id:'bigger',when:q=>/^ (?:make (?:it|this|everything|the text|text) (?:bigger|larger|smaller)|bigger text|smaller text|text size) $/.test(q),answer:(m,c)=>c.card('make-it-yours',[],{tab:'look'},'Text size is in Make it yours > Look.')},
   {id:'go-away',when:q=>/^ (?:go away|hide|hide yourself|stop talking|be quiet|shut up|leave me alone) $/.test(q),answer:(m,c)=>c.card('setting',[],{key:'pet.enabled',value:false},'Hide the companion. Treats and level are kept.')},
@@ -559,10 +1442,11 @@
     when:q=>/ (?:catch(?:ing)? up|old homework|missing work|overdue work|late work) /.test(q)&&!/ (?:what|how many|how much) /.test(q),
     answer:(m,c)=>c.card('plan',[],{local:true,line:c.line+' catch up',...(dayIn(c.q,c.s)?{date:dayIn(c.q,c.s)}:{})},'Plan your missing work.')
   },
-  {id:'hardest',when:q=>(/ (?:hardest|biggest|toughest|longest|worst|most important|heaviest|main) (?:thing|one|task|assignment|work|homework)?/.test(q)||/ (?:worth the most|worth most|most points) /.test(q))&&/ (?:what|which|whats) /.test(q),answer:(m,c)=>{
+  {id:'hardest',when:q=>(/ (?:hardest|biggest|toughest|longest|worst|most important|heaviest|main) (?:thing|one|task|assignment|work|homework)?/.test(q)||/ (?:worth the most|worth most|most points) /.test(q))&&(/ (?:what|which|whats) /.test(q)||/^ (?:my |the )?(?:biggest|hardest|heaviest|longest|toughest) /.test(q)),answer:(m,c)=>{
     const now=stamp(c.s.now)||Date.now(),
       soon=open(c.s).filter(v=>v.dueAt===null||v.dueAt>=now&&v.dueAt-now<=8*DAY),
-      top=soon.sort((a,b)=>(Number(b.points)||0)-(Number(a.points)||0)||b.minutes-a.minutes)[0];
+      pts=v=>Number(v.points??v.pointsPossible)||0,
+      top=soon.sort((a,b)=>pts(b)-pts(a)||b.minutes-a.minutes)[0];
     return top?
       c.card('open',[top],{itemId:top.id},top.title+' looks biggest'+(top.points?', '+top.points+' points':'')+'. About '+length(top.minutes)+', and '+whyNow(top,c.s)+'.'):
       say(c,'Nothing big is coming up.');
@@ -605,7 +1489,8 @@
     }
     return c.card('focus',[fit[0]],{itemId:fit[0].id,minutes:fit[0].minutes},fit[0].title+' fits, about '+length(fit[0].minutes)+'.'+(fit[1]?' Or '+fit[1].title+'.':''));
   }},
-  {id:'what-now',when:q=>/ (?:what should i (?:do|work on|start)|what do i (?:do|work on|start)|what (?:is|to do) next|where (?:do|should) i start|i do not know (?:where to start|what to do)|what first|help me (?:start|get started|decide)|what now|where to start|what is first|what should i (?:do )?(?:next|first|now)|what is worth doing|what is worth doing first|(?:which one|what) matters most|what is most urgent) /.test(q),answer:(m,c)=>{
+  {id:'what-now',when:q=>/ (?:what should i (?:do|work on|start)|what do i (?:do|work on|start)|what (?:is |to do )?next|where (?:do|should) i start|i do not know (?:where to start|what to do)|what first|help me (?:start|get started|decide)|what now|where to start|what is first|what should i (?:do )?(?:next|first|now)|what is worth doing|what is worth doing first|(?:which one|what) matters most|what is most urgent) /.test(q),answer:(m,c)=>{
+    if(!/ (?:do|doing|work|start|begin|tackle|plan|schedule|study|focus|get started|decide) /.test(c.q))return nextUp(c.s,c);
     const when=dayIn(c.q,c.s);
     if(when&&when!==c.today)return c.card('plan',[],{local:true,line:'plan',date:when},'');
     const rows=ranked(c.s),top=rows[0];
@@ -619,13 +1504,14 @@
   }},
   // their own work, Canvas knows nothing about it
   {id:'own-work',when:(q,line,c)=>{
-    const add=/^ (?:add|put|new task|new|todo|to do|remember to do)[: ]+\S/.test(q)&&!/^ add \d+ ?(?:min|hour) to /.test(q)&&!/^ add a card /.test(q)&&!/ (?:module|widget|feature|to home|on home|first|last|note|notes) /.test(q),
+    if(R9_CH_THING.test(q))return false;
+    const add=/^ (?:task|add|put|new task|new todo|todo|to do|remember to do)[: ]+\S/.test(q)&&!/^ add \d+ ?(?:min|hour) to /.test(q)&&!/^ add a card /.test(q)&&!/ (?:module|widget|feature|to home|on home|first|last|note|notes) /.test(q),
       said=!ASKS.test(q)&&new RegExp('(?:^| )(?:i (?:have|need|want|got|should|must|am going) to|i have got to|need to|have to|want to|going to|i will|i should|i plan to|i must) (?:'+STUDY+') ').test(q),
-      gave=new RegExp(' (?:my )?(?:tutor|coach|mom|dad|parent|teacher|counselor|sat|act|ap) ').test(q)&&new RegExp(' (?:'+THINGS+') ').test(q);
+      gave=!/ due (?:on |by |this )?sat /.test(q)&&new RegExp(' (?:my )?(?:tutor|coach|mom|dad|parent|teacher|counselor|sat|act|ap) ').test(q)&&new RegExp(' (?:'+THINGS+') ').test(q);
     return add||said||gave||HAVE.test(q)&&!/ (?:grade|plan) /.test(q)||CHORE.test(q)&&!named(q,c.s)&&!c.courseIn(q);
   },answer:(m,c)=>{
     const typed=' '+String(c.line).replace(/[.!?]+$/,'').replace(/\s+/g,' ').trim()+' ',low=text=>text.toLowerCase();
-    let text=typed.trim().replace(/^(?:add|put|new task|new|todo|to do|remember to do|write down)[: ]+/i,'').replace(/^(?:also )?(?:i (?:have|need|want|got|should|must|am going) to|i have got to|i've got to|need to|have to|gotta|want to|wanna|going to|i will|i should|i plan to|i must)\s+/i,'').replace(/^(?:i have|i got|i've got|we have|we got)\s+/i,'').replace(/ (?:to my (?:list|plan|planner|schedule|todo)|on my (?:list|plan|planner))\b/i,'').replace(
+    let text=typed.trim().replace(/^(?:task|add (?:a )?task|add|put|new task|new|todo|to do|remember to do|write down)[: ]+/i,'').replace(/^(?:also )?(?:i (?:have|need|want|got|should|must|am going) to|i have got to|i've got to|need to|have to|gotta|want to|wanna|going to|i will|i should|i plan to|i must)\s+/i,'').replace(/^(?:i have|i got|i've got|we have|we got)\s+/i,'').replace(/ (?:to my (?:list|plan|planner|schedule|todo)|on my (?:list|plan|planner))\b/i,'').replace(
       /^(?:my\s+)?(?:\w+\s+)?(?:gave|assigned|set|told)\s+(?:me\s+|us\s+)?(?:to\s+)?(?:a|an|some|the)?\s*/i,
       '').replace(
       /\s+(?:that|which|it)\s+(?:is not|isn't|isnt)\s+(?:on|in)\s+canvas\b/i,
@@ -705,7 +1591,7 @@
   }},
   {id:'how-to',when:q=>/ (?:how (?:do|can|could|would) i|how to|where (?:do|can|is|are) (?:i|the|my)?|can i) /.test(q)&&!/ where can i change /.test(q)&&WHERE.some(([re])=>re.test(q)),answer:(m,c)=>{
     const [,path,tab]=WHERE.find(([re])=>re.test(c.q));
-    return c.card('find',[],{},'Make it yours > '+path+'.',{next:{action:'make-it-yours',fields:{tab},label:'Open it'}});
+    return c.card('none',[],{},'Make it yours > '+path+'.',{choices:[{label:'Open it',action:'make-it-yours',fields:{tab}}]});
   }},
   // course questions
   {
@@ -718,8 +1604,11 @@
     const course=c.courseIn(c.q),
       bare=c.q.trim().split(' ').length===1,
       now=stamp(c.s.now)||Date.now(),
-      rows=open(c.s).filter(v=>String(v.courseId)===String(course.id)&&(v.dueAt===null||v.dueAt>=now-7*DAY)).sort((a,b)=>(a.dueAt??Infinity)-(b.dueAt??Infinity)),
+      kind=kindOf(c.q),
+      rows=open(c.s).filter(v=>String(v.courseId)===String(course.id)&&isKind(v,kind)&&(v.dueAt===null||v.dueAt>=now-7*DAY)).sort((a,b)=>
+        (a.dueAt??Infinity)-(b.dueAt??Infinity)),
       name=course.shortName||course.name;
+    if(kind&&!rows.length)return null;
     if(!rows.length){
       const old=open(c.s).filter(v=>String(v.courseId)===String(course.id)).length,word=old?'Nothing new in '+name+'. '+old+' older item'+(old===1?'':'s')+' still open.':'Nothing open in '+name+'.';
       return bare?c.card('navigate',[{id:String(course.id),title:course.name,kind:'course',courseId:String(course.id)}],{tab:'course',courseId:String(course.id)},word):say(c,word);
@@ -728,11 +1617,11 @@
     const line=name+': '+first.title+(when?', '+when:'')+'.'+(rows.length>1?' '+(rows.length-1)+' more after that.':'');
     return bare?
       c.card('navigate',[{id:String(course.id),title:course.name,kind:'course',courseId:String(course.id)},...rows.slice(0,2)],{tab:'course',courseId:String(course.id)},line):
-      c.card('open',rows.slice(0,3),{itemId:first.id},line);
+      c.card('open',rows.slice(0,3),kind&&/ (?:when|due) /.test(c.q)&&first.dueAt!==null?{itemId:first.id,answerField:'dueAt',dueAt:first.dueAt}:{itemId:first.id},line);
   }},
  ];
 
- function think(line,s,session={},tools={}){
+ function think(line,s,session={},tools={}){KIND_GROUPS=new Map(list(s?.assignmentGroups).map(g=>[String(g.id),String(g.name||'')]));
   const q=spell(line);if(q.length>220)return null;if(/^\s*(?:note\b|notes\b|write down\b|(?:put|add|save|write|keep)\b[^:]{0,30}\bnotes?\b)/i.test(String(line)))return null;
   const cal=local(s),now=stamp(s.now)||Date.now(),part=cal?cal(now):null,courseIn=text=>{
     for(const v of list(s.courses)){
@@ -777,5 +1666,28 @@
   }
   return null;
  }
- const api={think,spell,ranked,RULES};root.ReserveBiscuitMind=api;if(typeof module==='object'&&module.exports)module.exports=api;
+ function nextUp(s,c){
+   const now=stamp(s.now)||Date.now(),
+     rows=open(s).filter(v=>v.dueAt!==null&&v.dueAt>=now).sort((a,b)=>a.dueAt-b.dueAt),
+     late=open(s).filter(v=>v.dueAt!==null&&v.dueAt<now&&v.dueAt>=now-7*DAY);
+   if(!rows.length)
+     return c.card(
+       'none',
+       [],
+       {},
+       'Nothing is due ahead right now.'+(late.length?' '+late.length+' still open from the past week.':''),
+       {answerKind:'mind',understanding:{step:'understanding',reason:'mind:next-up'}});
+  const when=v=>{
+    const zone=s.timeZone||'America/New_York',cal=local(s),d=cal?Math.round((Date.parse(cal(v.dueAt).day+'T12:00Z')-Date.parse(cal(now).day+'T12:00Z'))/DAY):null;
+    return (d===0?'today':d===1?'tomorrow':new Date(v.dueAt).toLocaleDateString('en-US',{timeZone:zone,weekday:'long',month:'short',day:'numeric'}))+
+      ' at '+
+      new Date(v.dueAt).toLocaleTimeString('en-US',{timeZone:zone,hour:'numeric',minute:'2-digit'});
+  },nm=v=>v.title+(courseName(v,s)?' ('+courseName(v,s)+')':''),top=rows.slice(0,3);
+  return c.card(
+    'find',
+    top,
+    {},
+    'Next: '+nm(top[0])+', '+when(top[0])+'.'+(top.length>1?' Then '+top.slice(1).map(v=>nm(v)+', '+when(v)).join('; ')+'.':'')+(late.length?' Also still open: '+late.length+' from the past week.':''),
+    {answerKind:'mind',listRows:top,listTitle:'Next up',understanding:{step:'understanding',reason:'mind:next-up'}});}
+ const api={think,spell,ranked,RULES,nextUp};root.ReserveBiscuitMind=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

@@ -2,15 +2,16 @@
 // Adapted from Gary Wu's pull request #45 to Canvas Harness.
 (function(root){
  'use strict';
- const Core=root.ReserveCore||(typeof module==='object'&&module.exports?require('./core.js'):null);
+ // core.js is a page-start file; Edge can run this one first (a registration it kept across a restart): it is looked up when used.
+ const core=()=>root.ReserveCore||(typeof module==='object'&&module.exports?require('./core.js'):null);
  const DROPBOX=['online_upload','online_text_entry','online_url','media_recording','student_annotation'];
  const REASONS=[['class','Done in class'],['paper','Handed in on paper'],['none','No submission needed'],['teacher','Talked to the teacher']];
  const cleanReason=value=>REASONS.some(([key])=>key===value)?value:'';
  const reasonText=value=>REASONS.find(([key])=>key===value)?.[1]||'Marked done';
  const addDay=(key,n)=>{const date=new Date(key+'T12:00:00Z');date.setUTCDate(date.getUTCDate()+n);return date.toISOString().slice(0,10);};
  function weekEnds(today){const thisWeek=addDay(today,(7-new Date(today+'T12:00:00Z').getUTCDay())%7);return {thisWeek,nextWeek:addDay(thisWeek,7)};}
- function lists(c,{dayOf,complete=Core.isComplete}={}){
-  dayOf=dayOf||(value=>Core.dayKey(value,c.s?.timeZone||'America/New_York'));
+ function lists(c,{dayOf,complete=core().isComplete}={}){
+  dayOf=dayOf||(value=>core().dayKey(value,c.s?.timeZone||'America/New_York'));
   const ends=weekEnds(dayOf(c.now)),missing=[],overdue=[],thisWeek=[],nextWeek=[],hidden=[],scope=String(c.state?.courseId||'all');
   for(const item of c.items||[]){
    if(!item||item.personal||String(item.id).startsWith('local-')||scope!=='all'&&String(item.courseId)!==scope)continue;
@@ -24,7 +25,7 @@
      Number.isFinite(due)&&
      day<=ends.nextWeek;
    if(!isMissing&&!dropbox)continue;
-   if(Core.isWorkComplete(item,mine)){if(mine.checkedOff)hidden.push({item,reason:cleanReason(mine.doneReason)});continue;}
+   if(core().isWorkComplete(item,mine)){if(mine.checkedOff)hidden.push({item,reason:cleanReason(mine.doneReason)});continue;}
    (isMissing?missing:due<c.now?overdue:day<=ends.thisWeek?thisWeek:nextWeek).push(item);
   }
   const byDue=(a,b)=>(Date.parse(a.dueAt||'')||0)-(Date.parse(b.dueAt||'')||0)||String(a.id).localeCompare(String(b.id));
@@ -61,7 +62,7 @@
   const row=(item,group)=>{
    const course=c.courseMap?.get(String(item.courseId)),
     color=course?.color||'#69758b',
-    ink=Core?.courseInk?.(color)||color,
+    ink=core()?.courseInk?.(color)||color,
     d=due(item,group,c,h),
     name=course?.shortName||course?.name||'';
    return `<li class="ch-handin-row" data-rd-key="handin-${E(item.id)}" style="--rd-course:${E(color)};--rd-course-ink:${E(ink)}">${action('preview',`${courseArt(course)||DOT}<strong>${E(item.name)}</strong><small>${name?`<span>${E(name)}</span>`:''}<span>${E(d.when)}</span></small>${d.chip?`<span class="ch-handin-chip" data-tone="${d.tone}">${E(d.chip)}</span>`:''}`,`data-id="${E(item.id)}"`,'ch-handin-open')}<details class="ch-handin-menu"><summary>Done another way</summary><div class="ch-handin-reasons" role="group" aria-label="Done another way">${REASONS.map(([key,label])=>action('handin-dismiss',`<span class="ch-handin-glyph" aria-hidden="true"></span>${E(label)}`,`data-id="${E(item.id)}" data-value="${key}"`,'ch-handin-reason')).join('')}</div></details></li>`;};

@@ -178,7 +178,8 @@
   if(size<5)throw Error('Canvas returned an empty or invalid PDF.');
   const bytes=new Uint8Array(size);let cursor=0;
   for(const chunk of chunks){bytes.set(chunk,cursor);cursor+=chunk.byteLength;}
-  if(String.fromCharCode(...bytes.subarray(0,5))!=='%PDF-')throw Error('The downloaded file is not a PDF. Opening it in Canvas.');
+  // (PDF readers and PDF.js find the header anywhere in the first kilobyte, as the reader's own download does)
+  if(!String.fromCharCode(...bytes.subarray(0,1024)).includes('%PDF-'))throw Error('The downloaded file is not a PDF. Opening it in Canvas.');
   return bytes.buffer;
  }
  function create({root:env=root}={}){
@@ -471,7 +472,7 @@
     await verifyAccount(task);
     const bytes=await blob.arrayBuffer();
     if(task.abort.signal.aborted||dead||sequence!==localReadSequence)return false;
-    if(bytes.byteLength!==blob.size||String.fromCharCode(...new Uint8Array(bytes,0,5))!=='%PDF-')throw Error('The saved file is not a PDF.');
+    if(bytes.byteLength!==blob.size||!String.fromCharCode(...new Uint8Array(bytes,0,Math.min(1024,bytes.byteLength))).includes('%PDF-'))throw Error('The saved file is not a PDF.');
     return Boolean(await open({...info,bytes,openSignal:task.abort.signal}));
    }finally{env.clearTimeout?.(timer);task.abort.abort();pending.delete(task);}
   }

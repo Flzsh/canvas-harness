@@ -6,7 +6,9 @@
   const journal=root.CanvasHarnessRunStore.create(),
     serial=(key,fn)=>root.ReserveAccountWrites.run(key,fn),
     keyFor=scope=>'reserve:v1:'+scope.replace('|',':'),
-    copy=v=>structuredClone(v);
+    copy=v=>structuredClone(v),
+    // A school's own Canvas address is trusted only once a fresh worker has read the saved sites (background.js ready).
+    sites=()=>Promise.resolve(root.ReserveMarketReady?.()).catch(()=>{});
   const projection=r=>
     r?
       {
@@ -42,11 +44,41 @@
     return !F.resolve((await chrome.storage.local.get(F.KEY))[F.KEY]).enabled.includes('ai');
   };
   const lockedError=()=>Error('AI help is off. Prepare settings changed.');
+  // Request limits, one run at a time, pauses and sleep (ai-guard.js; all its numbers are in its LIMITS).
+  const aiGuard=root.CanvasHarnessAIGuard?.create({storage:chrome.storage.local})||null;
+  // A chat's own address on each AI website: ChatGPT, Grok, Qwen and Z.ai /c/…, Claude and Kimi /chat/…, Gemini /app/…,
+  // DeepSeek /a/chat/s/….
+  const chatPath=/^\/(?:c|chat|app|a\/chat\/s|chat\/s)\/[\w-]{6,}\/?$/;
+  // A Stop (or the AI feature turned off) closes the AI chat tabs its runs opened while they still show that run's chat
+  // or the AI's start page, so nothing goes on in them; a tab the student took elsewhere is left alone. A message just
+  // sent from the start page moves the tab to its new chat's address before the run has seen it: that chat is the run's.
+  async function closeChats(runs){
+    const tabs=new Map();
+    for(const r of runs)for(const t of r?.turns||[]){
+      const rc=t?.deliveryReceipt;
+      if(rc?.tabId!=null&&rc.origin)tabs.set(rc.tabId,[...(tabs.get(rc.tabId)||[]),rc]);
+    }
+    for(const [id,receipts]of tabs){
+      const tab=await chrome.tabs.get(id).catch(()=>null);let ours=false;
+      const start=path=>['','/','/new','/app'].includes(path.replace(/\/$/,''))||/^\/c\/local-/.test(path);
+      try{
+        const u=new URL(tab?.url||'');
+        ours=receipts.some(rc=>{
+          if(u.origin!==rc.origin)return false;
+          if(tab.url===rc.conversationURL||start(u.pathname))return true;
+          let from='';
+          try{from=new URL(rc.conversationURL).pathname;}catch{}
+          return (rc.status==='send-intent'||rc.status==='sent'&&Date.now()-Number(rc.sentAt||0)<120000)&&start(from)&&chatPath.test(u.pathname);
+        });
+      }catch{}
+      if(ours)await chrome.tabs.remove(id).catch(()=>{});
+    }
+  }
   let stopping=null;
   function stopAll(){
     return stopping||=(async()=>{
       try{
-        for(const r of await journal.all())if(!root.CanvasHarnessRunStore.terminal(r))await engine.cancel(r.id).catch(()=>{});
+        for(const r of await journal.all())if(!root.CanvasHarnessRunStore.terminal(r))await engine.cancel(r.id,{close:true}).catch(()=>{});
         await chrome.alarms?.clear('ch-ai-recovery');
       }finally{stopping=null;}
     })();
@@ -124,11 +156,11 @@
      await guard();
      return result;
    },modules:data=>root.CanvasHarnessAgentClient.modules(data)});
-   const delivery=run.way==='api'?root.CanvasHarnessDeliveryAPI.create({api}):root.CanvasHarnessDeliveryWeb.create(),
+   const delivery=run.way==='api'?root.CanvasHarnessDeliveryAPI.create({api}):root.CanvasHarnessDeliveryWeb.create({aiGuard}),
      results=root.CanvasHarnessAIResults.create({store:account,external,url:()=>origin+'/',guard:()=>!signal.aborted});
    return root.CanvasHarnessAIRunner.create({canvas,account,results,adapter:delivery});
   }
-  const engine=root.CanvasHarnessAIEngine.create({store:journal,authorize,checkLocal,runnerFor,alarm:chrome.alarms,notify:async run=>{
+  const engine=root.CanvasHarnessAIEngine.create({store:journal,authorize,checkLocal,runnerFor,alarm:chrome.alarms,aiGuard,onStopped:closeChats,notify:async run=>{
    // A broadcast that leaves the saved status as it is writes nothing: every account write makes each open Canvas tab
    // reload and clean the whole record (pages follow the run itself through 'ch-ai-run' below).
    const key=keyFor(run.scope);
@@ -188,6 +220,7 @@
    }
    if(message?.target!=='ch-ai-engine')return;
    (async()=>{
+    await sites();
     if(await aiLocked()){if(message.op==='cancel')await stopAll();throw Error('AI help is off.');}
     if(!canvasSender(sender)||message.scopeKey!==new URL(sender.url).origin+'|'+message.scopeKey?.split('|')[1]||!/^\d+$/.test(message.scopeKey?.split('|')[1]))throw Error('Open a verified Canvas page.');
     const scope=message.scopeKey,all=await journal.all(),watching=['get','subscribe'].includes(message.op);
@@ -196,9 +229,15 @@
     let run=message.runId?
       all.find(r=>r.id===message.runId&&r.scope===scope):
       all.filter(r=>r.scope===scope&&(!watching||current(r))).sort((a,b)=>b.createdAt-a.createdAt)[0];
-    if(!['start','importReply','resume'].includes(message.op)){
-      const fetcher=root.CanvasHarnessAICanvas.createFetch({chrome,run:{scope,sourceTab:sender.tab.id}}),profile=await fetcher(scope.split('|')[0]+'/api/v1/users/self/profile',{method:'GET'});
-      if(!profile.ok||String((await profile.json()).id)!==scope.split('|')[1])throw Error('Your Canvas account changed.');
+    // Stop needs no Canvas answer: it only ends this account's runs, so it works offline or signed out of Canvas too.
+    if(!['start','importReply','resume','cancel'].includes(message.op)){
+      const fetcher=root.CanvasHarnessAICanvas.createFetch({chrome,run:{scope,sourceTab:sender.tab.id}}),
+        profile=await fetcher(scope.split('|')[0]+'/api/v1/users/self/profile',{method:'GET'}).catch(()=>null);
+      // Offline, asleep, signed out or rate-limited Canvas is not an account change: say which it is.
+      if(!profile)throw Error('Canvas is not answering. Check your connection, then try again.');
+      if(profile.status===401)throw Error('Canvas signed you out. Refresh Canvas.');
+      if(!profile.ok)throw Error('Canvas is not answering. Try again in a minute.');
+      if(String((await profile.json().catch(()=>({})))?.id)!==scope.split('|')[1])throw Error('Your Canvas account changed.');
     }
     // A card's Read on a Google Doc: the access page opens beside Canvas (GitHub installs; store installs paste).
     if(message.op==='docs-access'){await chrome.tabs.create({url:chrome.runtime.getURL('ai-permission.html?source=google-docs'),index:(sender.tab.index??0)+1});return {opened:true};}
@@ -269,11 +308,13 @@
       if(!turn)throw Error('No reply turn is available.');
       return {runId:run.id,turnId:turn.id,kind:turn.expectedKind,text:turn.reply||'',scope:run.scope};
     }
-    if(message.op==='cancel')return projection(await engine.cancel(run.id));
+    // Stop: every run of this account ends, its AI chat tabs close, and Daily AI help does not start on its own again today.
+    if(message.op==='cancel')return projection(await engine.cancel(run.id,{pause:true,close:true}));
     if(message.op==='importReply')return projection(await engine.importReply(run.id,message.turnId,message.text));
    if(message.op==='retry')return projection(await engine.retry(run.id));
     const resume=async()=>{
-      await authorize(run);
+      // A run Canvas stopped goes back to its own wait (up to 2 minutes for the reloaded page) instead of failing this click.
+      if(!run.needsYou?.canvas)await authorize(run);
       await journal.mutate(run.id,null,r=>{if(r.state==='needs-you'){r.state=r.needsYou.resumeState;r.needsYou=null;r.lease={epoch:r.lease.epoch+1,expiresAt:0};}});
       void engine.execute(run.id);
       return projection(await journal.get(run.id));
@@ -281,11 +322,15 @@
     // Back to where the run waits: Canvas reloaded (a run Canvas stopped then goes on), or the AI chat brought forward; a
     // closed chat opens again at its own address (else the AI's start page). A run stopped by a sleeping tab goes on.
     if(message.op==='open'){
-      if(run.needsYou?.action==='Refresh Canvas'){await chrome.tabs.reload(run.sourceTab);return run.needsYou.canvas?resume():projection(run);}
+      if(run.needsYou?.action==='Refresh Canvas'){
+        // The tab whose band was clicked is reloaded, never another Canvas tab the student may be typing in.
+        if(run.sourceTab!==sender.tab.id)await journal.mutate(run.id,null,r=>{r.sourceTab=sender.tab.id;});
+        await chrome.tabs.reload(sender.tab.id);return run.needsYou.canvas?resume():projection(run);
+      }
       const turn=run.turns[run.turnIndex],receipt=turn?.deliveryReceipt,open=receipt?.tabId?await chrome.tabs.get(receipt.tabId).catch(()=>null):null;
       let same=false,real=false;
       try{same=!!open?.url&&new URL(open.url).origin===receipt.origin;}catch{}
-      try{real=/^\/(?:c|chat)\/(?!local-)[\w-]{8,}/.test(new URL(receipt.conversationURL).pathname);}catch{}
+      try{const p=new URL(receipt.conversationURL).pathname;real=chatPath.test(p)&&!/^\/c\/local-/.test(p);}catch{}
      // The chat may have moved to its real address since; bring the tab forward as it is.
      if(same){await chrome.tabs.update(open.id,{active:true});await chrome.windows.update(open.windowId,{focused:true}).catch(()=>{});}
      else if(open)
@@ -303,7 +348,7 @@
    })().then(result=>reply({ok:true,result}),error=>reply({ok:false,error:String(error.message||error)}));return true;
   });
   chrome.alarms?.onAlarm.addListener(alarm=>{
-    if(alarm.name==='ch-ai-recovery')void aiLocked().then(locked=>locked?stopAll():engine.recover()).catch(()=>{});
+    if(alarm.name==='ch-ai-recovery')void sites().then(aiLocked).then(locked=>locked?stopAll():engine.recover()).catch(()=>{});
   });
   chrome.storage.onChanged?.addListener((changes,area)=>{
     if(area!=='local')return;
@@ -321,7 +366,7 @@
   });
   // New worker instance: persisted epochs invalidate any callbacks from its predecessor.
   // A locked worker resumes nothing: runs left from before the lock are stopped instead.
-  void aiLocked().then(locked=>locked?stopAll():engine.recover({workerStart:true})).catch(()=>{});return engine;
+  void sites().then(aiLocked).then(locked=>locked?stopAll():engine.recover({workerStart:true})).catch(()=>{});return engine;
  }
  root.CanvasHarnessPrepare={serve};if(typeof module==='object'&&module.exports)module.exports={serve};
 })(globalThis);

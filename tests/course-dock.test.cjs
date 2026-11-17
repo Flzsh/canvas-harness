@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const {fixture}=require('./dashboard-heading-fixture.cjs');
-function setup({motion='gentle',reduced=false,narrow=false,motionEnabled=true,arrangeEnabled=true,dockSize='medium'}={}){
+function setup({motion='gentle',reduced=false,narrow=false,motionEnabled=true,arrangeEnabled=true,dockSize='medium',resizeObserver=null}={}){
  const frames=new Map(),listeners=new Map(),media=new Map();let seq=0,reads=0,widthReads=0;
  const f=fixture({assignments:[{id:'1',course_id:'10',name:'Late lab',due_at:'2026-10-16T10:00:00Z'},{id:'2',course_id:'20',name:'Next reading',due_at:'2026-10-18T10:00:00Z'},{id:'3',course_id:'30',name:'Hidden',due_at:'2026-10-16T10:00:00Z'}],setup({env,store,snapshot}){
   env.ReserveWorkspaceArrange={...require('../extension/workspace-arrange.js'),controls:()=>''};
@@ -10,6 +10,7 @@ function setup({motion='gentle',reduced=false,narrow=false,motionEnabled=true,ar
   env.requestAnimationFrame=fn=>{const id=++seq;frames.set(id,fn);return id;};env.cancelAnimationFrame=id=>frames.delete(id);
   env.addEventListener=(name,fn)=>listeners.set(name,fn);env.removeEventListener=(name,fn)=>{if(listeners.get(name)===fn)listeners.delete(name);};
   env.matchMedia=q=>{if(!media.has(q))media.set(q,{matches:/reduced-motion/.test(q)?reduced:narrow,events:new Map(),addEventListener(name,fn){this.events.set(name,fn);},removeEventListener(name){this.events.delete(name);}});return media.get(q);};
+  if(resizeObserver)env.ResizeObserver=resizeObserver;
   env.innerWidth=narrow?390:1400;store.update(data=>{Object.assign(data.settings,{courseNavigation:'dock',dockSize,motion,courseOrder:['20','30','10','40'],hiddenCourses:['30']});});
   snapshot.courses=[{id:'10',name:'Chemistry studio'},{id:'20',name:'History seminar'},{id:'30',name:'Hidden course'},{id:'40',name:'Ethics seminar'}];
   env.ReserveCourseArt.mini=(course,{place})=>`<svg class="rd-mini" data-place="${place}" data-course="${course.id}"></svg>`;
@@ -69,4 +70,23 @@ test('layout switches and destruction remove dock listeners without installing b
 });
 test('course clicks only rove focus and never bounce or force tile width reads, including on phones',t=>{
  for(const options of [{},{reduced:true},{motion:'still'},{motion:'off'},{motionEnabled:false},{narrow:true}]){const s=setup(options);t.after(()=>s.f.dashboard.destroy());const it=s.items()[1];s.event('click',{target:it});assert.equal(it.tabIndex,0);assert.equal(s.items().filter(item=>item.tabIndex===0).length,1);assert.equal(s.reads,0);assert.ok(s.items().every(item=>!item.classList.contains('go')));s.f.click('course',{id:'20'});assert.equal(s.items()[1],it);assert.equal(it.getAttribute('aria-pressed'),'true');assert.equal(s.widthReads,0);assert.ok(s.items().every(item=>!item.classList.contains('go')));}
+});
+test('draft stays outside both shipped archives',()=>{const build=fs.readFileSync(require.resolve('../scripts/build.cjs'),'utf8');assert.doesNotMatch(build,/DOCK-DRAFT/);assert.equal(fs.existsSync(require('node:path').join(__dirname,'../extension/DOCK-DRAFT.html')),false);});
+
+// 4.0.165: beside a scene the Canvas menu drawer narrows the content column (.rd-shell) and not the dashboard, so the dock
+// watches the column too and stays centred over it, as it did when the drawer pushed the whole page. A width change of the
+// dashboard itself is handled exactly as before.
+test('the dock stays centred over the content when only the content column narrows',t=>{
+ const observers=[];class RO{constructor(fn){this.fn=fn;this.els=[];observers.push(this);}observe(el){this.els.push(el);}unobserve(){}disconnect(){this.els=[];}}
+ const s=setup({resizeObserver:RO});t.after(()=>s.f.dashboard.destroy());
+ const shell=s.f.container.querySelector('.rd-shell'),o=observers.findLast(x=>x.els.length===2&&x.els[0]===s.f.container);
+ assert.ok(o,'the dock watches the dashboard, as before');assert.equal(o.els[1],shell,'and its content column');
+ let rect={left:24,right:1376,width:1352,top:100,bottom:900};shell.getBoundingClientRect=()=>rect;
+ o.fn([{target:s.f.container,contentRect:{width:1352}},{target:shell,contentRect:{width:1352}}]);s.flush();
+ assert.equal(s.f.container.style.getPropertyValue('--rd-dock-center'),'700px');
+ rect={left:159,right:1376,width:1217,top:100,bottom:900};o.fn([{target:shell,contentRect:{width:1217}}]);s.flush();
+ assert.equal(s.f.container.style.getPropertyValue('--rd-dock-center'),'767.5px','re-centred over the narrowed column');
+ assert.equal(s.f.container.style.getPropertyValue('--rd-dock-available'),'1217px');
+ const writes=s.f.container.style.getPropertyValue('--rd-dock-center');o.fn([{target:shell,contentRect:{width:1217}}]);s.flush();
+ assert.equal(s.f.container.style.getPropertyValue('--rd-dock-center'),writes,'an unchanged width does nothing');
 });

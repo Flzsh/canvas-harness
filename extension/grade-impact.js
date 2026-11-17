@@ -198,7 +198,7 @@
  function singular(name){
    const n=String(name||'').trim();
    if(n.length<4||!/s$/i.test(n)||/ss$/i.test(n))return n;
-   if(/zzes$/i.test(n))return n.slice(0,-2);
+   if(/zzes$/i.test(n))return n.slice(0,-3);
    if(/ies$/i.test(n))return n.slice(0,-3)+'y';
    if(/(?:ches|shes|xes|sses)$/i.test(n))return n.slice(0,-2);
    return n.slice(0,-1);

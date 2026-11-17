@@ -34,8 +34,8 @@
  // Sessions finished today, counted from the planner's running total.
  function tally(focus,now){
   const p=shared.prefs,day=new Date(now).toDateString(),sessions=Number.isInteger(focus?.sessions)?focus.sessions:0;
-  if(p.day!==day){p.day=day;p.base=Math.max(0,sessions-(focus?.completedAt&&new Date(focus.completedAt).toDateString()===day?1:0));}
-  if(sessions<p.base)p.base=sessions;
+  if(p.day!==day){p.day=day;p.base=Math.max(0,sessions-(focus?.completedAt&&new Date(focus.completedAt).toDateString()===day?1:0));shared.dirty=true;}
+  if(sessions<p.base){p.base=sessions;shared.dirty=true;}
   return sessions-p.base;
  }
  // What the session looks like right now, for both modes.
@@ -814,6 +814,8 @@
   }
   function sync(){
    if(dead)return;const focus=store.get()?.focus,now=Date.now(),v=view(focus,now),n=tally(focus,now);
+   // (the tally's day and base live with the other prefs, so a page load keeps today's count)
+   if(shared.dirty){shared.dirty=false;savePrefs(store);}
    if(v.mode==='running'&&!v.rest&&!v.open&&[25,50].includes(v.minutes)&&shared.prefs.length!==v.minutes){shared.prefs.length=v.minutes;savePrefs(store);}
    const grew=lastSessions!==null&&v.sessions>lastSessions;lastSessions=v.sessions;
    // on a dark page (the dark theme, a dark scene or kit) the module's drawing takes the night palette, as the room does
@@ -836,7 +838,7 @@
       else swapping=washTo(place).catch(()=>{});
     }
     else buildStage();}
-   panel.dataset.motion=motion();
+   panel.dataset.motion=motion();if(panel.dataset.motion==='gentle')panel.setAttribute('data-fr-gentle','');else panel.removeAttribute('data-fr-gentle');
    const turn=settled&&motion()==='gentle'&&panel.dataset.mode&&panel.dataset.mode!==v.mode?shelf():null;
    apply(panel,v,n);if(turn)restack(turn);transitions(v);light(v);
   }
@@ -985,7 +987,7 @@
    night=look.dark;kit=look.kit;settled=false;afterEnd=v.mode==='done';last=null;builtKey='';pickerOpen=false;
    const place=shared.prefs.place,key=place+(night||place==='fire'?':n':':d'),ready=spare&&spare.key===key&&spare.kit===kit&&spare.dark===night&&spare.p.isConnected?spare:null;
    if(ready){spare=null;win.clearTimeout?.(spareTimer);panel=ready.p;}else{dropSpare();panel=makePanel(v);}
-   panel.dataset.motion=motion();markKit();if(afterEnd)panel.dataset.frAfter='end';
+   panel.dataset.motion=motion();if(panel.dataset.motion==='gentle')panel.setAttribute('data-fr-gentle','');else panel.removeAttribute('data-fr-gentle');markKit();if(afterEnd)panel.dataset.frAfter='end';
    stageEl=q('[data-fr-stage]');skyKey='';scaleNow='';sizeNow='';tagNow=0;swapping=Promise.resolve();
    container.dataset.chRoom='open';host()?.setAttribute?.('data-ch-room','');
    // a room built while the pointer rested on the way in is only shown (its place went in over those idle frames)

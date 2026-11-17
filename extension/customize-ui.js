@@ -150,8 +150,12 @@
    const ART=artDiagrams();
   const swatch=(bg,line,ink)=>`<svg viewBox="0 0 72 48" width="72" height="48" aria-hidden="true"><rect x="3" y="4" width="66" height="40" rx="5" fill="${bg}" stroke="${line}" stroke-width="1.5"/><path d="M10 14h30M10 22h44M10 30h36" stroke="${ink}" stroke-width="2.4" stroke-linecap="round"/></svg>`;
   const letters=family=>`<span class="cz-letters" style="font-family:${family}">Aa</span>`;
-  const accentButtons=[['clay','Clay','#A9522F'],['forest','Forest','#367964'],['indigo','Iris','#5f5ccc'],['rose','Rose','#9e4c6c'],['ocean','Ocean','#2f7185'],['amber','Amber','#956821']].map(([key,name,color])=>
-    button('accent',`<i aria-hidden="true" style="background:${color}"></i><span>${name}</span>`,`data-accent="${key}" aria-label="${name} accent" title="${name} accent" aria-pressed="${s.accent===key}"`,'rd-swatch ch-accent-choice')).join('');
+  // With a theme or scene the pick lives in its palette for this mode (light or dark colour, dashboard.js saveAppearance)
+  const accentButtons=()=>{
+    const owned=ownedPalette&&String(layer.colors?.[ownedMode]?.accent||'').toLowerCase();
+    return [['clay','Clay','#A9522F','#E08A6A'],['forest','Forest','#367964','#9bd1b4'],['indigo','Iris','#5f5ccc','#bec8ff'],['rose','Rose','#9e4c6c','#efb0c0'],['ocean','Ocean','#2f7185','#a3d4e5'],['amber','Amber','#956821','#e8c68b']].map(([key,name,color,dark])=>
+      button('accent',`<i aria-hidden="true" style="background:${color}"></i><span>${name}</span>`,`data-accent="${key}" aria-label="${name} accent" title="${name} accent" aria-pressed="${ownedPalette?[color,dark].some(c=>c.toLowerCase()===owned):s.accent===key}"`,'rd-swatch ch-accent-choice')).join('');
+  };
   const frames=()=>
     (enabled('planner')?root.ReserveWidgets?.FRAMES||[]:[]).map(([value,name,hint])=>
       button('board-frame',`<i data-frame="${value}"></i>${E(name)}`,`role="radio" data-value="${value}" aria-checked="${!(ownTheme?.frames?.panel||sceneActive)||layer.parts?.frames===false||layer.parts?.panel===false?(s.panelFrame||'pen')===value:false}" title="${E(hint)}"`,'rd-frame-choice')).join('');
@@ -162,8 +166,13 @@
       row.kind==='feature'&&row.sceneTheme!==undefined&&(root.ReservePacks?.isCurrent?root.ReservePacks.isCurrent(row,{settings:s}):row.current));
   const ownTheme=!sceneActive&&s.makeYourOwn?.theme?c.makeOwn?.theme:null,
     ownedPalette=sceneActive||!!s.makeYourOwn?.theme,
-    ownerName=s.makeYourOwn?.theme?.name||installedScene?.name||({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving'})[s.sceneTheme]||'The selected theme',
-    look=root.ReserveMakeYourOwn?.activeLook?.(c.makeOwn,s)||{},
+    ownerName=s.makeYourOwn?.theme?.name||
+      installedScene?.name||
+      ({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving'})[s.sceneTheme]||
+      'The selected theme',
+    // (the look the dashboard saves into, dashboard.js lookSelection: an own theme's pack, else the scene's built-in key)
+    look=root.ReserveMakeYourOwn?.activeLook?.(c.makeOwn,s)||(key=>({key,layer:key?s.makeYourOwn?.adjustments?.[key]||{}:{}}))(
+     !s.sceneTheme&&s.makeYourOwn?.theme?.id?'pack:'+s.makeYourOwn.theme.id:s.sceneTheme?'builtin:scene:'+s.sceneTheme:null),
     layer=look.layer||{};
   const ownedMode=ownTheme&&!ownTheme.colors?.[s.theme==='dark'?'dark':'light']&&!layer.colors?.[s.theme==='dark'?'dark':'light']?(ownTheme.colors?.light?'light':'dark'):s.theme==='dark'?'dark':'light',
     modeArt=(mode,bg,line,ink)=>
@@ -177,7 +186,9 @@
     thanksgiving:{bg:'#F7EFDF',accent:'#8A2433'}
   })[s.sceneTheme];
   const colorFields=key=>`<div class="cz-pair">${['light','dark'].map(mode=>{
-    const p=ownTheme?.colors?.[mode]||sceneColors||{},value=layer.colors?.[mode]?.[key]||p[key]||(key==='accent'?'#a9522f':mode==='dark'?'#1f1e1d':'#faf9f5');
+    // a colour box takes only #rrggbb: a saved Page colour name ("paper", "accent") falls back to the scene's or the default colour
+    const hex=v=>typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v)?v:'';
+    const p=ownTheme?.colors?.[mode]||sceneColors||{},value=hex(layer.colors?.[mode]?.[key])||hex(p[key])||(key==='accent'?'#a9522f':mode==='dark'?'#1f1e1d':'#faf9f5');
     return `<label class="rd-field"><span>${mode==='light'?'Light':'Dark'}</span><input type="color" data-rd-field="make-color" data-id="${E(look.key)}" data-mode="${mode}" data-color="${key}" value="${E(value)}" aria-label="${mode==='light'?'Light':'Dark'} ${key==='bg'?'page':'accent'} color"${c.makeOwn?.busy?' disabled':''}></label>`;
   }).join('')}</div>`;
   const part=(key,name)=>`<label class="cz-toggle"><span>${E(name)}</span><input type="checkbox" role="switch" data-rd-field="make-part" data-id="${E(look.key)}" data-part="${key}"${layer.parts?.[key]!==false?' checked':''}${c.makeOwn?.busy?' disabled':''}><i aria-hidden="true"></i></label>`;
@@ -226,7 +237,7 @@
           ],
           {value:ownedMode,cols:2}))
    +(sceneActive?'':(ownedMode==='dark'?group('Artwork at night','How the drawings look on the dark page: chalk on the board at one end, the paper kept and dimmed at the other.',`<label class="cz-night"><span>Chalk</span><input type="range" min="0" max="100" step="5" data-rd-field="setting" data-setting="nightArt" value="${night}" aria-label="Artwork at night: chalk at 0, paper at 100" aria-valuetext="${night<50?'Chalk':'Paper'}, ${night}%"><span>Paper</span><output>${night}%</output></label>`):''))
-   +group('Accent color','Buttons, links and highlights. Course drawings keep their own colors.',(ownedPalette?colorFields('accent'):'')+`<div class="ch-accent-actions cz-accents" role="group" aria-label="Accent color">${accentButtons}</div>`)
+   +group('Accent color','Buttons, links and highlights. Course drawings keep their own colors.',(ownedPalette?colorFields('accent'):'')+`<div class="ch-accent-actions cz-accents" role="group" aria-label="Accent color">${accentButtons()}</div>`)
    +
    group(
      'Page color',
@@ -307,7 +318,7 @@
   const kits=()=>{
     const installed=c.makeOwn?.catalogue?.filter(row=>row.kind==='kit')||[],ids=new Set(installed.map(row=>row.kit?.id));
     return group('Kits','',`<div class="cz-row"><label class="rd-field"><span>Kit name</span><input type="text" data-rd-field="kit-name" maxlength="40" value="${E(c.kitName||'')}" ${c.customizeBusy?'disabled':''}></label>${button('kit-save','Save as kit',`data-id="${E(id)}" ${c.customizeBusy?'disabled':''}`)}${c.makeOwn?'':`<label class="rd-button ch-upload">Import<input type="file" accept=".chkit,application/json" data-rd-field="kit-import" ${c.customizeBusy?'disabled':''}></label>`}</div>${picker({kinds:['kit'],target:id,label:'Installed kits'})}<div class="ch-kit-list">${(c.customKits||[]).filter(kit=>!ids.has(kit.id)).map(kit=>{
-      const current=!!root.ReservePacks?.isCurrent({kind:'kit',kit},{settings:s},{target:id});
+      const current=!!root.ReservePacks?.isCurrent?.({kind:'kit',kit},{settings:s},{target:id});
       return `<div class="cz-row" data-pack-id="${E(kit.id)}" data-current="${current}"><span class="ch-pack-preview" aria-hidden="true">${root.ReserveMakeYourOwn?.thumbnail({kind:'kit',kit})||''}</span><span><strong>${E(kit.name)}</strong><small>From a file${current?' · Current':''}</small></span>${button('kit-use','Use',`data-kit="${E(kit.id)}" data-id="${E(id)}" aria-pressed="${current}" ${c.customizeBusy?'disabled':''}`,'rd-text-button')}${[['kit-export','Export'],['kit-remove','Remove']].map(([action,label])=>button(action,label,`data-kit="${E(kit.id)}" data-id="${E(id)}" aria-label="${label} ${E(kit.name)}" ${c.customizeBusy?'disabled':''}`,'rd-text-button')).join('')}</div>`;
     }).join('')}${installed.filter(row=>row.kit).map(row=>button('kit-export','Export '+E(row.name),`data-kit="${E(row.kit.id)}" data-id="${E(id)}"`,'rd-text-button')).join('')}</div>`);
   };

@@ -18,6 +18,7 @@
    "dockShelf":["kraft","paper","none"],
    "dockStyle":["tiles","cards"],
    "font":["system","humanist","serif"],
+   "graphics":["low","medium","high","xhigh"],
    "greeting":["on","off"],
    "livingArt":["on","off"],
    "motion":["gentle","still","off"],
@@ -150,6 +151,7 @@
   ["panel-button","remove-pack","Remove",["Home","Remove"],null,"request"],
   ["panel-button","reset-pack","Reset to how it came",["Home","Reset to how it came"],null,"request"],
   ["panel-button","use-pack","Use",["Home","Use"],null,"request"],
+  ["panel-button","button","More",["Home","More"],null,"request"],
   ["panel-button","button","Canvas Harness",["Home","Canvas Harness"],null,"request"],
   ["panel-button","button","Canvas dashboard",["Home","Canvas dashboard"],null,"request"],
   ["panel-button","capture-announcement","Add to my plan",["Workspace","Course hub","Add to my plan"],null,"request"],
@@ -235,6 +237,9 @@
   ["panel-button","more","Show more assignments",["Home","Show more assignments"],null,"request"],
   ["panel-button","native","Canvas dashboard",["Home","Canvas dashboard"],null,"request"],
   ["panel-button","native","Canvas dashboard",["Home","Canvas dashboard"],null,"request"],
+  ["panel-button","note-close","Close",["Home","Close"],null,"request"],
+  ["panel-button","note-open","Show",["Home","Show"],null,"request"],
+  ["panel-button","note-undo","Put back",["Home","Put back"],null,"request"],
   ["panel-button","open-hub","Open course hub",["Home","Open course hub"],null,"request"],
   ["panel-button","pin","Bookmarked / Bookmark",["Home","Bookmarked / Bookmark"],null,"request"],
   ["panel-button","planner","Planner",["Home","Planner"],null,"request"],
@@ -252,7 +257,7 @@
   ["panel-button","schedule","In today’s plan / Plan for today",["Home","In today’s plan / Plan for today"],null,"request"],
   ["panel-button","selection-archive","Archive",["Home","Archive"],null,"request"],
   ["panel-button","selection-clear","Clear",["Home","Clear"],null,"request"],
-  ["panel-button","selection-undo","Undo",["Home","Undo"],null,"request"],
+  ["panel-button","selection-undo","Undo all / Undo",["Home","Undo all / Undo"],null,"request"],
   ["panel-button","settings","Make it yours",["Home","Make it yours"],null,"request"],
   ["panel-button","show-dated","{count} older dated items · Browse archive",["Home","{count} older dated items · Browse archive"],null,"request"],
   ["panel-button","toolbox","Tools",["Home","Tools"],null,"request"],
@@ -482,58 +487,6 @@
   ["toolbox-action","run","run",["Tools","Quick open","run"],null,"request"],
   ["toolbox-action","tool","tool: {label}",["Tools","Quick open","tool: {label}"],null,"request"],
   ["toolbox-action","undo-capture","Undo clear",["Tools","Quick open","Undo clear"],null,"request"],
-  ["panel-button","accent","accent: {name}",["Home","accent: {name}"],null,"request"],
-  ["panel-button","${action}","Choose {title}",["Home","Choose {title}"],null,"request"],
-  ["panel-button","button","Review backup",["Home","Review backup"],null,"request"],
-  ["panel-button","button","Add checklist step",["Home","Add checklist step"],null,"request"],
-  ["panel-button","button","Add task",["Home","Add task"],null,"request"],
-  ["panel-button","button","Save course",["Home","Save course"],null,"request"],
-  ["panel-button","check-off","Mark not done / Mark done",["Home","Mark not done / Mark done"],null,"request"],
-  ["panel-button","choose-focus","{name} / Choose a task to focus on",["Home","{name} / Choose a task to focus on"],null,"request"],
-  ["panel-button","clear-filters","Clear filters",["Home","Clear filters"],null,"request"],
-  ["panel-button","clear-scratchpad","Clear scratchpad",["Home","Clear scratchpad"],null,"request"],
-  ["panel-button","close-overlay","Cancel",["Home","Cancel"],null,"request"],
-  ["panel-button","command","Search anything",["Home","Search anything"],null,"request"],
-  ["panel-button","confirm-import","Restore workspace",["Home","Restore workspace"],null,"request"],
-  ["panel-button","copy-scratchpad","Copy text",["Home","Copy text"],null,"request"],
-  ["panel-button","course-filter","Assignments",["Home","Assignments"],null,"request"],
-  ["panel-button","customize","Customize",["Home","Customize"],null,"request"],
-  ["panel-button","day","{date} {color}",["Home","{date} {color}"],null,"request"],
-  ["panel-button","delete-task","Delete personal task",["Home","Delete personal task"],null,"request"],
-  ["panel-button","detail","detail: {name}",["Home","detail: {name}"],null,"request"],
-  ["panel-button","detail","detail: {name}",["Home","detail: {name}"],null,"request"],
-  ["panel-button","detail","detail",["Home","detail"],null,"request"],
-  ["panel-button","detail","detail: {name}",["Home","detail: {name}"],null,"request"],
-  ["panel-button","detail","Open my plan",["Home","Open my plan"],null,"request"],
-  ["panel-button","detail","{name} — / /",["Home","{name} — / /"],null,"request"],
-  ["panel-button","detail","detail",["Home","detail"],null,"request"],
-  ["panel-button","duration","m",["Home","m"],null,"request"],
-  ["panel-button","exit","Back to Canvas",["Home","Back to Canvas"],null,"request"],
-  ["panel-button","export-backup","Export my backup",["Home","Export my backup"],null,"request"],
-  ["panel-button","export-backup","Export current backup",["Home","Export current backup"],null,"request"],
-  ["panel-button","export-calendar","Export calendar",["Home","Export calendar"],null,"request"],
-  ["panel-button","filter-nav","{count} In progress",["Home","{count} In progress"],null,"request"],
-  ["panel-button","filter-nav","{count} Past due",["Home","{count} Past due"],null,"request"],
-  ["panel-button","filter-nav","{count} Next 7 days",["Home","{count} Next 7 days"],null,"request"],
-  ["panel-button","filter-nav","{count} Due today",["Home","{count} Due today"],null,"request"],
-  ["panel-button","filter","filter: {option}",["Home","filter: {option}"],null,"request"],
-  ["panel-button","focus","Focus",["Home","Focus"],null,"request"],
-  ["panel-button","focus","Focus on this",["Home","Focus on this"],null,"request"],
-  ["panel-button","import-backup","Import backup",["Home","Import backup"],null,"request"],
-  ["panel-button","navigate","navigate: {label}",["Home","navigate: {label}"],null,"request"],
-  ["panel-button","navigate","View all",["Home","View all"],null,"request"],
-  ["panel-button","navigate","Arrange courses",["Home","Arrange courses"],null,"request"],
-  ["panel-button","new-task","Add a task",["Home","Add a task"],null,"request"],
-  ["panel-button","pin","pin",["Home","pin"],null,"request"],
-  ["panel-button","pin","Bookmarked / Bookmark",["Home","Bookmarked / Bookmark"],null,"request"],
-  ["panel-button","recover-backup","Undo last restore",["Home","Undo last restore"],null,"request"],
-  ["panel-button","refresh","Try again",["Home","Try again"],null,"request"],
-  ["panel-button","reset-appearance","Reset appearance",["Home","Reset appearance"],null,"request"],
-  ["panel-button","run-command","run command: {title}",["Home","run command: {title}"],null,"request"],
-  ["panel-button","shortcuts","Keyboard shortcuts",["Home","Keyboard shortcuts"],null,"request"],
-  ["panel-button","shortcuts","Shortcuts",["Home","Shortcuts"],null,"request"],
-  ["panel-button","timer-toggle","Pause / Start focus",["Home","Pause / Start focus"],null,"request"],
-  ["panel-button","week-today","This week",["Home","This week"],null,"request"],
   ["panel-button","back","Back",["Home","Back"],null,"request"],
   ["panel-button","button","Full height",["Home","Full height"],null,"request"],
   ["panel-button","button","Light mode",["Home","Light mode"],null,"request"],
@@ -707,10 +660,6 @@
   ["setting-value","canvasNav","Canvas menu bar = original",["Make it yours","Home","Canvas menu bar","original"],"original","set"],
   ["setting-value","canvasNav","Canvas menu bar = shown",["Make it yours","Home","Canvas menu bar","shown"],"shown","set"],
   ["setting-value","canvasNav","Canvas menu bar = top",["Make it yours","Home","Canvas menu bar","top"],"top","set"],
-  ["setting-value","graphics","Graphics = high",["Make it yours","Look","Graphics","high"],"high","set"],
-  ["setting-value","graphics","Graphics = low",["Make it yours","Look","Graphics","low"],"low","set"],
-  ["setting-value","graphics","Graphics = medium",["Make it yours","Look","Graphics","medium"],"medium","set"],
-  ["setting-value","graphics","Graphics = xhigh",["Make it yours","Look","Graphics","xhigh"],"xhigh","set"],
   ["setting","accent","Accent color",["Make it yours","Look","Accent color"],null,"inspect"],
   ["setting","bannerSize","Banner size",["Make it yours","Courses","Banner size"],null,"inspect"],
   ["setting","bedtime","bedtime",["Make it yours","Companion","bedtime"],null,"inspect"],
@@ -759,6 +708,13 @@
        uiCatalogue??=UI.map(([family,key,label,path,value,operation])=>
          ({family,key,label,ui:{path},value,operation,n: norm(label),keyWords:words(key),prefixNorm:norm(path.slice(0,-1).join(' > '))}));
    if(!source&&!/^(?:where|help|find|show|open|go|choose|switch|use|apply|turn|stop|reset|restore|remove|uninstall|replace|clear|upload|set|change|hide|enable|disable|unhide|start|no|without|artwork)\b/.test(text))return null;
+   {/* a quoted name is the control with exactly that label */
+     const said=/["\u201c]([^"\u201d]+)["\u201d]/.exec(String(options.raw||''))?.[1];
+     if(said){
+       const exact=rows.find(c=>c.ui?.path&&c.label===said&&[('where is '),('help me use ')].some(lead=>text===lead+(c.n??norm(c.label))+' in '+(c.prefixNorm??norm(c.ui.path.slice(0,-1).join(' > ')))));
+       if(exact)return ui(exact.ui.path);
+     }
+   }
    for(const c of rows){
      if(!c.ui?.path)continue;
      const n=c.n??norm(c.label),key=c.keyWords??words(c.key),prefix=c.prefixNorm??norm(c.ui.path.slice(0,-1).join(' > ')),phrases=list(c.wordings).map(norm);
@@ -813,13 +769,14 @@
  const ui=(path,message,extra={})=>card('none',{},message||'Open '+path.join(' > ')+'.',{ui:{path},...extra}),
    clarify=message=>card('none',{},message||'What would you like to change or find?',{clarify:true});
  function setting(key,value){
+   if(value===undefined&&!own(DEFAULTS,key))return ui(['Make it yours','Look',label(key)]);
    if(key==='theme'&&value==='system')return ui(['Make it yours','Look','Light or dark'],'Choose Light or Dark in Make it yours > Look > Light or dark. System is a legacy saved value.');
    if(own(ENUMS,key)&&!ENUMS[key].includes(value)||
      typeof DEFAULTS[key]==='boolean'&&typeof value!=='boolean'||
      key==='nightArt'&&(!Number.isInteger(value)||value<0||value>100)||
      key==='bedtime'&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(value))
      return clarify('Choose a valid value for '+label(key)+'.');
-   if(!own(DEFAULTS,key))return null;
+   if(!own(DEFAULTS,key)&&!own(ENUMS,key))return null;
    return card('setting',{key,value},(key==='showGrades'?(value?'Show grades.':'Hide grades.'):'Set '+label(key)+' to '+(value===''?'None':String(value))+'.'));
  }
  function picker(s,session){
@@ -961,7 +918,7 @@
   if(/^(?:reset|restore default) bedtime$/.test(text))return setting('bedtime','22:30');
   const bed=/^(?:set |change )?bedtime(?: to)? (\d{1,2}):(\d{2})(?: (am|pm))?$/.exec(text);
   if(bed){let h=Number(bed[1]);if(bed[3]&&(h<1||h>12))return clarify('Choose a valid bedtime.');if(bed[3])h=h%12+(bed[3]==='pm'?12:0);return setting('bedtime',String(h).padStart(2,'0')+':'+bed[2]);}
-  const sourceUI=uiControlMore(text,options);if(sourceUI)return sourceUI;
+  const sourceUI=uiControlMore(text,{...options,raw:input});if(sourceUI)return sourceUI;
   const navigation=/^(?:open|go to|show me|take me to) (?:the |my )?(.+?)(?: workspace| tab)?$/.exec(text);
   if(navigation){
     const tab=TABS[navigation[1]];
@@ -1069,5 +1026,83 @@
   }
   return null;
  }
- const api={propose,evaluate:propose,names,ENUMS,DEFAULTS,MODULES};root.ReserveBiscuitControls=api;if(typeof module==='object'&&module.exports)module.exports=api;
+ /* Round 9: the engine's controlMatch asks this. A line that names a control from the generated UI catalogue (its label,
+    with the place words of its path) is matched by its words, not by a fixed sentence: full = every word of the control's
+    name is in the line, strong = full and every other content word of the line names its place, ambiguous = another
+    control in a different place fits as well. A setting value names a change; anything else says where it is. */
+ const MATCH_STOP=new Set('a an the my me i im to in on of for is are am be it its this that these those there here where wheres whats what which how do does did can could would will should you u your please pls plz thx thanks button btn buttons tab tabs page pages setting settings option options thing things find show open go goes going get take see look looking use using need want wanna help with at from into about up just now rn again also so some any one ok okay hey biscuit change turn set make put switch adjust modify toggle'.split(' '));
+ const MATCH_GENERIC=new Set('add remove clear close undo copy save cancel back next done start stop reset apply edit more less delete preview import export choose change replace upload paste default none on off yes no all course courses home look today week new old keep move pin unpin hide review grade quiz note files file message messages calendar plan planner help name size cards card list view mode play focus assignment assignments work homework overdue late missing due open send submit ask try run continue ok okay yes skip retry refresh reload download print share copy paste go back next'.split(' ')),
+   MATCH_PLACEHOLDER=/\{[^}]*\}/g,
+   matchStem=w=>w.length>4&&w.endsWith('s')&&!w.endsWith('ss')?w.slice(0,-1):w;
+ let matchRows=null;const MATCH_SETTINGS=new Set([...Object.keys(DEFAULTS),'graphics','timeZone','canvasNav','aiLevel']);
+ function matchCatalogue(){
+   if(matchRows)return matchRows;
+   const seen=new Set();
+   matchRows=[];
+   const direct=['graphics'].flatMap(key=>UI.some(r=>r[0]==='setting-value'&&r[1]===key)?[]:list(ENUMS[key]).map(v=>['setting-value',key,key+' = '+v,['Make it yours','Look',key,v],v,'set']));
+   for(const [family,key,label,path,value,operation] of [...UI,...direct]){
+     if(!Array.isArray(path)||!path.length||typeof label!=='string'||label.includes('{')||family==='home-module'||family==='setting'&&!MATCH_SETTINGS.has(key))continue;
+     const id=family+'|'+JSON.stringify(path)+'|'+String(value);
+     if(seen.has(id))continue;
+     seen.add(id);
+     const name=norm(label.replace(MATCH_PLACEHOLDER,' ').replace(/=/g,' ')).split(' ').filter(w=>w&&!MATCH_STOP.has(w)).map(matchStem),
+       place=norm(path.slice(0,-1).join(' ')).split(' ').filter(w=>w&&!MATCH_STOP.has(w)).map(matchStem);
+     if(!name.length||name.length>6)continue;
+     matchRows.push({family,key,label,path,value,operation,name:[...new Set(name)],place:new Set(place)});
+   }
+   return matchRows;
+ }
+ function match(line,s={},session={}){
+  const text=norm(line);if(!text||text.length>160)return null;
+  const said=[...new Set(text.split(' ').filter(w=>w&&!MATCH_STOP.has(w)).map(matchStem))];
+  if(!said.length||said.length>8)return null;
+  const giving=/\b(?:true|false|on|off|yes|no|enable|enabled|disable|disabled|allow|active|activate|mute|unmute|block|away)\b/.test(text);
+  const same=(a,b)=>a===b||a.length>=5&&b.length>=5&&(a.startsWith(b)||b.startsWith(a));
+  let best=null,second=null;
+  for(const c of matchCatalogue()){
+   const hit=c.name.filter(w=>said.some(v=>same(v,w))).length;
+   if(!hit)continue;
+   const full=hit===c.name.length;
+   if(!full&&hit<2)continue;
+   const generic=c.name.length===1&&MATCH_GENERIC.has(c.name[0]);
+   const extra=said.filter(v=>!c.name.some(w=>same(v,w))&&![...c.place].some(w=>same(v,w))).length,
+     placeHit=said.filter(v=>!c.name.some(w=>same(v,w))&&[...c.place].some(w=>same(v,w))).length;
+   const score=hit*3+(full?3:0)+placeHit-extra*3-(c.name.length-hit)*2;
+   if(extra>(full&&c.name.length>1?1:0)||generic&&(extra>0||!placeHit)||giving&&!['setting-value','appearance-value','pet-value','setting','feature'].includes(c.family))continue;
+   const row={c,hit,full,extra,score};
+   if(!best||score>best.score||score===best.score&&c.name.length<best.c.name.length){second=best;best=row;}else if(!second||score>second.score)second=row;
+  }
+  if(!best||best.score<3)return null;
+  /* a preset named bare ("focus layout", "lite") is the preset itself, as before; only other wordings say where it is */
+  if(['layout-preset','feature-preset'].includes(best.c.family)&&text===norm(best.c.label))return null;
+  const c=best.c,
+    ambiguous=!!second&&
+      second.score===best.score&&
+      JSON.stringify(second.c.path)!==JSON.stringify(c.path)&&
+      !(second.c.family===c.family&&second.c.key===c.key&&second.c.value===c.value);
+  const asking=/^(?:what|whats|what's|when|is|are|do|does|did|which|how much|how many)\b/.test(text),
+    strong=!asking&&best.full&&best.extra===0&&(c.name.length>=2||c.name[0].length>=6&&said.length===1&&!MATCH_GENERIC.has(c.name[0]));
+  let result=null;
+  if(['setting-value','appearance-value'].includes(c.family)&&c.operation==='set'){
+    const v=c.value==='true'?true:c.value==='false'?false:/^-?\d+$/.test(String(c.value))&&typeof DEFAULTS[c.key]==='number'?Number(c.value):c.value;
+    const made=own(DEFAULTS,c.key)||own(ENUMS,c.key)?setting(c.key,v):null;
+    if(made&&made.action==='setting')result={...made,ui:{path:c.path}};
+  }
+  if(!result&&c.family==='setting'&&(own(DEFAULTS,c.key)||own(ENUMS,c.key))){
+    const ws=text.split(' '),
+      reset=/\b(?:unset|reset|original|default|restore)\b/.test(text),
+      bool=typeof DEFAULTS[c.key]==='boolean',
+      pickBool=ws.find(w=>/^(?:on|off|true|false|yes|no|show|hide|shown|hidden)$/.test(w)),
+      pickEnum=own(ENUMS,c.key)?ws.find(w=>w&&ENUMS[c.key].includes(w)):undefined,
+      value=reset?DEFAULTS[c.key]:bool&&pickBool?/^(?:on|true|yes|show|shown)$/.test(pickBool):pickEnum;
+    if(value!==undefined){const made=setting(c.key,value);if(made?.action==='setting')result=made;}
+  }
+  if(!result){
+    const human=c.family==='setting'&&c.path.at(-1)===c.key?UI.find(r=>r[0]==='setting-value'&&r[1]===c.key&&Array.isArray(r[3])&&r[3].at(-1)!==c.key)?.[3]:null;
+    result=ui(human||c.path);
+  }
+  result={...result,routing:{route:'local',reason:'control-match'},understanding:{step:'understanding',reason:'control-match'}};
+  return {result,strong,full:best.full&&!asking,names:best.hit,ambiguous,controlId:c.family+':'+c.key};
+ }
+ const api={propose,evaluate:propose,names,match,ENUMS,DEFAULTS,MODULES};root.ReserveBiscuitControls=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

@@ -7,7 +7,7 @@ test('only the six public scene directories ship and every local stylesheet refe
  for(const id of ids){const css=fs.readFileSync(path.join(extension,'themes',id,'theme.css'),'utf8');for(const match of css.matchAll(/url\(([^)]+)\)/g)){
   const ref=match[1].replace(/^["']|["']$/g,'');if(ref.startsWith('data:')||ref.startsWith('#'))continue;assert.doesNotMatch(ref,/^(?:https?:)?\/\//);assert.ok(fs.existsSync(path.join(extension,'themes',id,ref)),id+': '+ref);
  }}
- assert.equal(resources.length,73);assert.ok(resources.includes('themes/stars/sky.html'));assert.ok(resources.includes('themes/stars/sky.js'));
+ assert.equal(resources.length,74,'73 + the Autumn page ground (ground.jpg)');assert.ok(resources.includes('themes/maple/ground.jpg'));assert.ok(resources.includes('themes/stars/sky.html'));assert.ok(resources.includes('themes/stars/sky.js'));
 });
 test('scene assets have exact fixed and dynamic resource entries while the sky script stays private',()=>{
  const manifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json'),'utf8')),F=require('../extension/features.js');

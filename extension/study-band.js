@@ -429,14 +429,17 @@
   dayBox.append(dayPrev,dayLabel,dayNext);
   dayBox.hidden=true;
   toolbar.append(dayBox);
-  const prepareLine=make('div',undefined,'ch-prepare-status'),prepareText=make('span'),prepareButton=button('Open chat',async()=>{
+  const prepareLine=make('div',undefined,'ch-prepare-status'),prepareText=make('span',undefined,'ch-prepare-words'),prepareButton=button('Open chat',async()=>{
     if(!prepareRun?.id)return;
     const run=prepareRun,action=run.needsYou?.action,send=op=>env.chrome.runtime.sendMessage({target:'ch-ai-engine',op,scopeKey:ownerScope,runId:run.id});
    // After Open chat, Review draft or Review settings, coming back looks at the chat once (lookBack below). A click always
    // changes something: when the worker could not act, its reason shows in the line.
    try{
      let reply;
-     if(action==='Read reply')
+     // While help is being made the same button is Stop: the run ends everywhere (worker, AI tab, its timers).
+     if(run.state!=='needs-you'&&!['cards-ready','cancelled','failed','unchanged','expired'].includes(run.state))
+       reply=await send('cancel');
+     else if(action==='Read reply'||action==='Continue')
        reply=await send('resume');
      else if(action==='Try again')
        reply=await send('retry');
@@ -458,7 +461,15 @@
     Promise.resolve(env.chrome?.runtime?.sendMessage?.({target:'ch-ai-engine',op:'resume',scopeKey:ownerScope,runId:id,look:true})).catch(()=>{});
   };
   env.document?.addEventListener?.('visibilitychange',lookBack);env.addEventListener?.('focus',lookBack);
-  let prepareRun=null,pendingAsk='',flippedRun='';
+  // The run's action is a control like the band's others: its drawing and its name (Stop is a drawn stop square).
+  const ACTION_ART={'Stop':'stop','Try again':'again','Refresh Canvas':'again','Continue':'fwd','Read reply':'ask','Open chat':'ask','Review draft':'list','Review settings':'list'};
+  function actionAs(name){
+    if(prepareButton.dataset.label===name)return;
+    prepareButton.dataset.label=name;
+    prepareButton.dataset.act=ACTION_ART[name]||'ask';
+    prepareButton.replaceChildren(icon(ACTION_ART[name]||'ask'),make('span',name,'ch-band-act-label'));
+  }
+  let prepareRun=null,pendingAsk='',flippedRun='';const liveAtStart=!!env.chrome?.runtime?.id;
   const cardRuns=new Set(),ownerScope=scope.split('|').slice(0,2).join('|');
   prepareLine.setAttribute('role','status');
   prepareLine.setAttribute('aria-live','polite');
@@ -526,6 +537,8 @@
    back:[['wash','M11 4.4c3.7-.1 6.7 2.9 6.6 6.6 0 3.7-3 6.6-6.7 6.6-3.6-.1-6.5-3-6.5-6.7.1-3.6 3-6.5 6.6-6.5z','#F6DE9A'],['ink','M13 6.1c-1.5 1.6-3 3.2-4.5 4.8 1.5 1.6 3.1 3.2 4.6 4.9',1.7]],
    fwd:[['wash','M11 4.4c3.7-.1 6.7 2.9 6.6 6.6 0 3.7-3 6.6-6.7 6.6-3.6-.1-6.5-3-6.5-6.7.1-3.6 3-6.5 6.6-6.5z','#F6DE9A'],['ink','M9 6.1c1.5 1.6 3 3.2 4.5 4.8-1.5 1.6-3.1 3.2-4.6 4.9',1.7]],
    top:[['wash','M5.6 4.2c3.2-1.2 5.6 1.4 9-.1-.6 2.4-.5 4.5.3 6.5-3.4 1.3-5.8-1.3-9 .1z','#DE9A7C'],['ink','M5 19.2c.2-5 .1-10.2-.3-15.2M5.2 4.4c3.2-1.3 5.7 1.3 9.1-.2-.6 2.4-.5 4.6.3 6.6-3.4 1.4-5.8-1.3-9.1 0',1.5]],
+   stop:[['wash','M6.2 6.2h9.8v9.8H6.2z','#E8B4A0'],['ink stop-edge','M5.6 5.9c3.6-.4 7.3-.3 10.9 0 .3 3.6.3 7.1 0 10.6-3.6.4-7.3.3-10.9 0-.3-3.5-.3-7 0-10.6z',1.6]],
+   again:[['wash','M11 4.6c3.6 0 6.4 2.9 6.4 6.4s-2.8 6.4-6.4 6.4-6.4-2.8-6.4-6.4','#F6DE9A'],['ink','M16.6 8.2c-1.1-2.4-3.2-3.8-5.7-3.8-3.6.1-6.4 2.9-6.4 6.6.1 3.6 2.9 6.5 6.5 6.5 2.7 0 4.9-1.6 5.9-4',1.6],['ink','M16.9 4.4l-.2 4-3.9-.4',1.6]],
    sun:[['wash','M11 5.4a5.4 5.4 0 1 1 0 10.8 5.4 5.4 0 0 1 0-10.8z','#F6C94A'],['ink','M11 6.6c2.5-.1 4.5 2 4.4 4.5-.1 2.4-2.1 4.4-4.5 4.3-2.4 0-4.3-2-4.3-4.4.1-2.4 2-4.3 4.4-4.4z'],['ink rays','M11 1.8v2.3M11.1 17.9v2.3M1.8 11h2.3M17.9 11.1h2.3M4.5 4.6l1.6 1.6M15.9 15.9l1.6 1.6M4.6 17.5l1.6-1.6M15.9 6.1l1.6-1.6']]};
   function icon(name){
    if(!svg)return make('span','','ch-band-ico');const g=svg('svg',{class:'ch-band-ico ch-band-ico-'+name,viewBox:'0 0 22 22','aria-hidden':'true',focusable:'false'});
@@ -558,7 +571,15 @@
    env.clearInterval?.(creepTimer);creepTimer=0;
    // A long wait still moves: the fill creeps toward the next stage without reaching it.
    if(stage<3&&typeof env.setInterval==='function')
-     creepTimer=env.setInterval(()=>{if(disposed){env.clearInterval?.(creepTimer);return;}creep=Math.min(cap,creep+(cap-creep)*.06);show();},1500);
+     creepTimer=env.setInterval(()=>{
+       if(disposed){env.clearInterval?.(creepTimer);return;}
+       // Canvas Harness reloaded or updated under this page: it can no longer hear the run, so it says so instead of moving on.
+       if(liveAtStart&&!env.chrome?.runtime?.id){
+         env.clearInterval?.(creepTimer);creepTimer=0;track.toggleAttribute?.('hidden',true);
+         prepareText.classList?.toggle('ch-sr-only',false);prepareText.textContent='Canvas Harness was updated. Reload Canvas to follow this help.';
+         prepareButton.hidden=true;return;
+       }
+       creep=Math.min(cap,creep+(cap-creep)*.06);show();},1500);
   }
   function prepare(value){
     if(disposed||!value||prepareRun?.id===value.id&&prepareRun.revision>value.revision)return;
@@ -567,8 +588,9 @@
     if(pendingAsk&&askStatus===pendingAsk){askStatus=pendingAsk='';status.textContent=pages.length?`${page+1} / ${pages.length}`:'No answers yet';}
     prepareLine.hidden=value.state==='cards-ready'||value.state==='unchanged'&&value.entry==='visit';
     prepareText.textContent=value.needsYou?.reason||value.progress||'Checking Canvas';
-    prepareButton.hidden=value.state!=='needs-you';
-    prepareButton.textContent=value.needsYou?.action||'Open chat';
+    const working=!finished.includes(value.state);
+    prepareButton.hidden=value.state!=='needs-you'&&!working;
+    actionAs(working?'Stop':value.needsYou?.action||'Open chat');
    // While help is being made (and as it finishes) the track shows the stage; a stop or a question shows its words.
    if(track){
      const live=!value.check&&(!finished.includes(value.state)||value.state==='cards-ready');

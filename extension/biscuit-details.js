@@ -203,7 +203,7 @@ function planReference(raw,s,session,blocks,named=[]){
  return mine.length===1?mine[0]:null;
 }
  function timing(input){
-   return !load('ReserveBiscuitValues','./biscuit-values.js').normalize(input).replace(/\b(?:at|by|for|in|on|around|from|now|later|to|the|and|a|an|half|quarter|past|today|tonight|tomorrow|next|this|morning|afternoon|evening|noon|midnight|am|pm|minutes?|mins?|m|hours?|hrs?|h|seconds?|secs?|s|days?|school|weekday|weekdays|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\b/g,'').replace(/[\d\s:.,;!?+\-\/]/g,'').trim();
+   return !load('ReserveBiscuitValues','./biscuit-values.js').normalize(input).replace(/(\d)\s*(am|pm)\b/gi,'$1 $2').replace(/\b(?:at|by|for|in|on|around|from|now|later|to|the|and|a|an|half|quarter|past|today|tonight|tomorrow|next|this|morning|afternoon|evening|noon|midnight|am|pm|minutes?|mins?|m|hours?|hrs?|h|seconds?|secs?|s|days?|school|weekday|weekdays|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\b/g,'').replace(/[\d\s:.,;!?+\-\/]/g,'').trim();
  }
  function reminderTitle(raw,session){
    const named=/\b(?:titled|named|called|with (?:the )?(?:exact )?words)\s*[:,-]?\s*(.+)$/i.exec(raw),cue=/\b(?:remind(?:er)?(?:\s+me)?|ping(?:\s+me)?|nudge(?:\s+me)?|notify(?:\s+me)?|notification|alert|warning|rappel(?:le-moi)?|av[i\u00ed]same|recuerdame)(?![\p{L}\p{N}])(?:\s+(?:please|pls|me))?\s*[:,-]?\s*/iu.exec(raw)||/\u63d0\u9192\u6211[\uff1a:]?\s*/u.exec(raw),chosen=/\bI chose\s+(.+?)\.\s*What time/i.exec(session.query||'');
@@ -212,14 +212,21 @@ function planReference(raw,s,session,blocks,named=[]){
    {
      const lead=/^\s*(?:in\s+)?\d+\s*(?:m|min|mins|minutes?|h|hr|hrs|hours?)\b(?!\s+(?:before|after|early|earlier|ahead|prior|later)\b)\s*(?:from\s+now\b\s*)?[,:-]?\s*(?:(?:to|about)\b\s*)?/i.exec(body);
      if(lead&&/[a-z]/i.test(body.slice(lead[0].length)))body=body.slice(lead[0].length);
+   }/* "remind me tmrw 8pm call mom": leading day and clock words are the time, not the title */
+   {
+     const words=body.trim().split(/\s+/);
+     let k=0;
+     for(let i=1;i<words.length;i++){const prefix=words.slice(0,i).join(' ');if(!timing(prefix))break;if(/[a-z]/i.test(prefix))k=i;}
+     if(k&&/[a-z]{2}/i.test(words.slice(k).join(' '))&&!timing(words.slice(k).join(' ')))body=words.slice(k).join(' ');
    }
+   const typedTime=body;
    const quote=/^\s*(?:"([^"\n]*)"|\u201c([^\u201d\n]*)\u201d)/.exec(body);
    if(quote)return {title:quote[1]??quote[2],literal:true};
    body=body.replace(/\s+(?:using the time zone|which should|so (?:that|i)|because|followed by|after that|before i|when i|i only need)\b.*$/i,'');
    for(const m of body.matchAll(/\bto\s+/gi))if(timing(body.slice(0,m.index))){body=body.slice(m.index+m[0].length);break;}
    for(const m of body.matchAll(/\s+(?=(?:at|for|in|on|by|today|tonight|tomorrow|tmrw|tmr|next|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\d{1,2}:\d{2}\b)/gi))
      if(timing(body.slice(m.index).replace(/\s+(?:please|pls)\b.*$/i,''))){body=body.slice(0,m.index);break;}
-   if(timing(body))body='';
+   if(timing(body))body=timing(typedTime)&&/\d(?:am|pm)\b/i.test(typedTime)?typedTime.trim():'';
    const previous=session.lastResult?.next?.fields?.title??session.lastResult?.fields?.title??session.lastAction?.fields?.title,
      retained=!cue&&!named&&typeof previous==='string'&&previous.trim()&&previous.length<=200?previous:'';
    return {title:body.replace(/\s+(?:please|pls|porfa)\s*[.!?]*$/i,'').replace(/^[\s:;,]+|[\s;,.!?]+$/g,'').trim()||retained||chosen?.[1]||'',literal:!!named,owned:!!cue||!!named};

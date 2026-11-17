@@ -19,10 +19,16 @@
    uuid=()=>root.crypto.randomUUID(),
    schedule=(fn,delay)=>setTimeout(fn,delay),
    executor='worker-'+uuid(),
-   onError=()=>{}
+   onError=()=>{},
+   // ai-guard.js (the worker passes one): request limits, one run at a time, pauses, sleep; without it nothing changes.
+   aiGuard=null,
+   // The runs a Stop ended (the worker closes their AI chat tabs).
+   onStopped=async()=>{}
  }={}){
-  const active=new Map(),controllers=new Map(),listeners=new Set();let disposed=false;
+  const active=new Map(),controllers=new Map(),listeners=new Set();let disposed=false,starting=Promise.resolve();
   const broadcast=async run=>{
+    // Daily AI help that started on its own and stopped on a problem: the next automatic run waits (ai-guard.js).
+    if(aiGuard&&run?.entry==='visit'&&['failed','needs-you'].includes(run.state))await aiGuard.pause('problem').catch(onError);
     for(const listener of listeners)try{Promise.resolve(listener(clone(run))).catch(onError);}catch{}
     try{await notify(run);}catch(error){onError(error);}
   };
@@ -49,8 +55,13 @@
       void store.mutate(id,epoch,r=>{r.lease={...r.lease,expiresAt:now()+60000};}).then(()=>{if(beating)schedule(beat,20000);},()=>{beating=false;});
     };
     schedule(beat,20000);
+    // A long silence between two saves of one step: the computer slept mid-step (ai-guard.js sleepGap).
+    let lastSave=now();
+    const sentAwaiting=r=>{const t=r?.turns?.[r.turnIndex];return !!t&&!t.reply&&['send-intent','sent'].includes(t.deliveryReceipt?.status);};
     const check=()=>guard(id,epoch),save=async value=>{
       await check();
+      if(aiGuard&&now()-lastSave>aiGuard.limits.sleepGap&&!sentAwaiting(value))throw Object.assign(Error(aiGuard.MESSAGES.slept),{code:'slept'});
+      lastSave=now();
       const next=await store.mutate(id,epoch,r=>{const lease=r.lease;Object.assign(r,clone(value));r.lease={...lease,expiresAt:now()+60000};});
       value.revision=next.revision;
       value.updatedAt=next.updatedAt;
@@ -59,11 +70,32 @@
       return next;
     };
     try{
-     await check();const runner=await runnerFor(run,{guard:check,signal:controller.signal});
+     await check();
+     if(aiGuard){
+       // A look that came far later than it was set for: the computer slept (or the browser stopped the worker). The run
+       // reads a reply it already sent for, but sends nothing new by itself; anything else waits for Continue.
+       const late=!!run.nextLookAt&&now()-run.nextLookAt>aiGuard.limits.sleepGap,first=run.entry==='visit'&&run.kind!=='ask'&&!run.autoCounted;
+       // Daily AI help that started on its own is counted (and may be refused) when it first starts working.
+       const gate=first?await aiGuard.takeAutoRun(run.provider):{ok:true};
+       if(late||first||run.nextLookAt)run=await store.mutate(id,epoch,r=>{
+         delete r.nextLookAt;
+         if(!gate.ok){r.state='unchanged';r.progress=gate.message;return;}
+         if(first)r.autoCounted=true;
+         if(!late)return;
+         r.retries=Math.max(Number(r.retries||0),aiGuard.limits.maxAutoRetries);
+         r.sleptAt=now();
+         if(sentAwaiting(r))return;
+         r.progress=aiGuard.MESSAGES.slept;
+         r.needsYou={reason:r.progress,action:'Continue',resumeState:r.state,at:now(),slept:true};
+         r.state='needs-you';
+       });
+       if(Store.terminal(run)||run.state==='needs-you'){await broadcast(run);return;}
+     }
+     const runner=await runnerFor(run,{guard:check,signal:controller.signal});
      while(!disposed&&!Store.terminal(run)&&run.state!=='needs-you'){
       await authorize(run);
       await check();
-      const result=await runner.step(run,{save,guard:check,signal:controller.signal,claimProvider:tab=>store.claimProvider(id,epoch,tab)});
+      const result=await runner.step(run,{save,guard:check,signal:controller.signal,claimProvider:tab=>store.claimProvider(id,epoch,tab),limits:aiGuard?.limits});
       if(result?.waiting){waiting=true;break;}
       run=await store.get(id);if(run.canvasWaitSince)run=await store.mutate(id,epoch,r=>{delete r.canvasWaitSince;});
      }
@@ -71,7 +103,13 @@
      // Canvas signed out, or not answering for 2 minutes: the student refreshes Canvas, and the run goes on from there.
      const current=await store.get(id);
      if(current?.lease.epoch===epoch&&!Store.terminal(current)&&!disposed){
-       if(error.code==='canvas-signed-out'||error.code==='canvas-page-unavailable'&&now()-Number(current.canvasWaitSince||now())>120000){
+       if(error.code==='slept')run=await store.mutate(id,epoch,r=>{
+         r.progress=String(error.message);
+         r.needsYou={reason:r.progress,action:'Continue',resumeState:r.state,at:now(),slept:true};
+         r.state='needs-you';
+         r.retries=Math.max(Number(r.retries||0),aiGuard.limits.maxAutoRetries);
+       });
+       else if(error.code==='canvas-signed-out'||error.code==='canvas-page-unavailable'&&now()-Number(current.canvasWaitSince||now())>120000){
          run=await store.mutate(id,epoch,r=>{
            r.progress=error.code==='canvas-signed-out'?'Canvas signed you out':'Canvas is not answering';
            r.needsYou={reason:r.progress,action:'Refresh Canvas',canvas:true,resumeState:r.state};
@@ -98,8 +136,10 @@
      if(waiting&&!disposed&&current?.lease.epoch===epoch&&!Store.terminal(current)&&current.state!=='needs-you'){
        const key=[current.state,current.turnIndex,current.turns[current.turnIndex]?.deliveryReceipt?.status].join(':'),
          delay=current.observationKey===key?current.observationDelay||1000:1000;
+       // The connection test looks every 1.5 s for its first minute only (with ai-guard.js), then like any other run.
+       const wait=current.check&&(!aiGuard||now()-Number(current.createdAt||0)<60000)?1500:delay;
        await store.mutate(id,epoch,r=>{r.observationKey=key;// While the same step keeps waiting (a long reply), each look comes later, up to every 15 s: ChatGPT rate-limits frequent reads.
- r.observationDelay=delay===1000?2000:delay<5000?5000:Math.min(15000,delay+5000);});schedule(()=>{void execute(id).catch(onError);},current.check?1500:delay);}
+ r.observationDelay=delay===1000?2000:delay<5000?5000:Math.min(15000,delay+5000);if(aiGuard)r.nextLookAt=now()+wait;});schedule(()=>{void execute(id).catch(onError);},wait);}
      if(current?.nextRunId&&Store.terminal(current)&&!disposed)schedule(()=>{void execute(current.nextRunId).catch(onError);},1000);
      await reconcileAlarms();
     }
@@ -110,7 +150,14 @@
     const unfinished=(await store.all()).some(r=>!Store.terminal(r)&&r.state!=='needs-you');
     if(unfinished)await alarm.create('ch-ai-recovery',{delayInMinutes:1});else await alarm.clear('ch-ai-recovery');
   }
-  async function start(input){
+  // With ai-guard.js, starts are taken one at a time, so two Canvas tabs never both start a run at once.
+  function start(input){
+    if(!aiGuard)return begin(input);
+    const work=starting.catch(()=>{}).then(()=>begin(input));
+    starting=work;
+    return work;
+  }
+  async function begin(input){
    if(!input||
      !/^run-[\w-]{1,90}$/.test(input.id)||
      !/^https:\/\/[a-z0-9.-]+\|\d+$/i.test(input.scope)||
@@ -127,6 +174,14 @@
    const notes=(Array.isArray(consent.notes)?consent.notes:[]).filter(n=>n&&typeof n.text==='string'&&n.text.length<=400&&['card','kind','all'].includes(n.scope)).slice(-40).map(n=>
      ({scope:n.scope,kind:String(n.kind||''),itemId:String(n.itemId||''),text:n.text}));
    const ask=input.kind==='ask';
+   // One run at a time across every Canvas tab: a question waits for any run at work, Daily AI help for a question at
+   // work (a second Daily AI help joins the queue as before). Daily AI help that would start on its own also waits
+   // while the AI site is signed out, after Stop or a problem, and past its hourly and daily counts (ai-guard.js).
+   if(aiGuard&&!await store.get(input.id)){
+     const automatic=!ask&&input.entry!=='manual',busy=(await store.all()).filter(r=>!Store.terminal(r)&&r.state!=='needs-you');
+     if(ask?busy.length:busy.some(r=>r.kind==='ask')){if(automatic)return {skipped:'busy'};throw Error(aiGuard.MESSAGES.busy);}
+     if(automatic){const gate=await aiGuard.takeAutoRun(settings.provider||'chatgpt',{dry:true});if(!gate.ok)return {skipped:gate.reason};}
+   }
    if(ask){
      const id=v=>v===undefined||v===''||typeof v==='string'&&/^[\w:.-]{1,60}$/.test(v);
      if(typeof input.question!=='string'||
@@ -195,18 +250,22 @@
    }
    return accepted;
   }
-  async function cancel(id){
+  // pause: the student pressed Stop (automatic runs wait, ai-guard.js); close: their AI chat tabs go too (onStopped).
+  async function cancel(id,{pause=false,close=false}={}){
     const target=await store.get(id);
     if(!target)throw Error('Run not found.');
-    let run=target;
+    let run=target;const ended=[];
     for(const pending of await store.all())
       if(pending.scope===target.scope&&!Store.terminal(pending)){
         const stopped=await store.cancel(pending.id);
         controllers.get(pending.id)?.abort();
+        ended.push(stopped);
         await broadcast(stopped);
         if(pending.id===id)run=stopped;
       }
     await reconcileAlarms();
+    if(pause&&aiGuard)await aiGuard.pause('stopped').catch(onError);
+    if(close)await onStopped(ended.length?ended:[target]).catch(onError);
     return run;
   }
   async function recover({workerStart=false}={}){for(const r of await store.all())if(!Store.terminal(r)&&r.state!=='needs-you'){

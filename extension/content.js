@@ -7,9 +7,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   if(window.top!==window)return;
   // Edge runs the scripts the worker registers (this one) and the manifest's own (site.js, startup.js, feature-loader.js)
   // in no fixed order: after a browser restart this file can run first. Wait a task for them instead of failing.
-  let tries=0;
+  let tries=0,ranFirst=false;
   (function boot(){
-  if(!globalThis.ReserveSite){if(++tries<=80)setTimeout(boot,tries<4?0:25);else console.warn('Canvas Harness: its page scripts did not load; reload Canvas.');return;}
+  if(!globalThis.ReserveSite){ranFirst=true;if(++tries<=80)setTimeout(boot,tries<4?0:25);else console.warn('Canvas Harness: its page scripts did not load; reload Canvas.');return;}
   if(globalThis.ReserveSite.vanillaPage(location)||globalThis.ReserveContentStarted||document.getElementById('reserve-companion-dock'))return;
   globalThis.ReserveContentStarted=true;
   const isDashboard=location.pathname==='/'||/^\/dashboard\/?$/.test(location.pathname);
@@ -20,6 +20,68 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // They make real startup measurable without delaying or storing the page.
   const stamp=()=>Math.round(globalThis.performance?.now?.()||0);
   const timing={bootstrap:Math.round(startup?.startedAt||0),controller:stamp()};
+  // A private start-up record (Dashboard address only): this page's start as step names with their times (ms since the
+  // page began), the path it took and what failed, by code. No names, course data or addresses. The last eight starts
+  // stay on this device (chrome.storage.local, written when a start settles) for Tools > Developer, so a start that
+  // ended on Canvas's own page can be read and copied afterwards.
+  const RECORD='reserve:startup-record';
+  const record=isDashboard?
+    {id:Math.random().toString(36).slice(2,8),at:localMinute(),nav:navigationKind(),via:arrivedVia(),order:'',seen:document.visibilityState==='hidden'?'hidden':'visible',steps:[],outcome:''}:
+    null;
+  let recordSaved='',recordSaving=null;
+  function localMinute(){
+    const d=new Date(),two=n=>String(n).padStart(2,'0');
+    return d.getFullYear()+'-'+two(d.getMonth()+1)+'-'+two(d.getDate())+' '+two(d.getHours())+':'+two(d.getMinutes());
+  }
+  function navigationKind(){
+    try{
+      if(document.prerendering)return 'prerender';
+      const type=String(globalThis.performance?.getEntriesByType?.('navigation')?.[0]?.type||'');
+      return /^(navigate|reload|back_forward|prerender)$/.test(type)?type:'';
+    }catch{return '';}
+  }
+  // 'sign-in': Canvas's login_success mark, or a sign-in site sent the page here; 'other-site': another site did. Only the kind is kept.
+  function arrivedVia(){
+    try{
+      if(params.has('login_success'))return 'sign-in';
+      const from=document.referrer?new URL(document.referrer):null;
+      if(!from||from.origin===location.origin)return '';
+      return /(^|\.)(microsoftonline\.com|microsoft\.com|live\.com|okta\.com|google\.com)$|^(login|sso|auth|adfs)\./i.test(from.hostname)?'sign-in':'other-site';
+    }catch{return '';}
+  }
+  function step(code){
+    if(!record||record.steps.length>=48)return;
+    const text=String(code).slice(0,24),last=record.steps[record.steps.length-1];
+    if(!last||last[1]!==text)record.steps.push([stamp(),text]);
+  }
+  function settle(outcome){if(!record||record.outcome)return;record.outcome=outcome;step(outcome);saveRecord();}
+  function saveRecord(){
+    if(!record)return Promise.resolve();
+    // which order Edge ran the scripts in: add-ons before the page-start groups, the two page-start groups swapped, or
+    // add-ons loaded by the worker; 'normal' otherwise
+    record.order=record.order||
+      [globalThis.ReserveFeatureOrder||(ranFirst?'add-ons-first':''),globalThis.ReserveFeatureOrderSwapped?'swapped':'',globalThis.ReserveFeatureSource==='worker'?'worker':''].filter(Boolean).join('+')||
+      'normal';
+    const copy=JSON.stringify(record);if(copy===recordSaved)return recordSaving||Promise.resolve();recordSaved=copy;
+    try{
+      return recordSaving=Promise.resolve(chrome.storage.local.get(RECORD)).then(found=>{
+        const list=(Array.isArray(found?.[RECORD])?found[RECORD]:[]).filter(row=>row?.id!==record.id);
+        list.push(JSON.parse(copy));
+        return chrome.storage.local.set({[RECORD]:list.slice(-8)});
+      }).catch(()=>{});
+    }catch{return Promise.resolve();}
+  }
+  // Self-healing start (Dashboard address only). A first start that fails tries again by itself: Canvas answered "not
+  // signed in" (right after a sign-in the session can lag, or another tab is still signing in), the network was still
+  // waking, Canvas had a passing server error, or the first drawing failed. Each try runs its own account check, so
+  // nothing shows before Canvas confirms the account; whatever cover shows stays while it waits (1.5, then 4, then 10 s;
+  // a failed first drawing gets one try). Still failing: Canvas's page shows, as before; coming back to the tab (shown
+  // again, back from the cache, back online, focused) checks once more, at most three times and ten seconds apart; and a
+  // start that failed for any reason but "signed out" or a refusal gets the one page reload per visit, in view and online.
+  // Nothing polls: every try is one timer or one event.
+  const WAITS=[1500,4000,10000],ONE_TRY={render:1};
+  const heal={tries:0,kinds:{},timer:0,code:'',gaveUp:false,events:0,lastEvent:-Infinity,attemptAt:-Infinity};
+  let shownOnce=false,initialized=false,launchReady=false;
   let host,root,area,resumeCover,dashboard,session,snapshot,store,ready=false,wanted=true;
   let authorized=false,personalVerified=false,pendingDashboard=null,suspended=false,resumeGeneration=0,resumePending,verifiedAt=-Infinity,verifiedWall=-Infinity;
   let launchObserver,launchAttempt,bootStopped=false,pageLeft=false;
@@ -30,6 +92,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     try{Promise.resolve(chrome.storage.local.get(HINT_KEY)).then(found=>{const id=String(found?.[HINT_KEY]??'');if(/^\d+$/.test(id))ownerHint={id};}).catch(()=>{});}catch{}
   function mark(phase){
     if(timing[phase]===undefined)timing[phase]=stamp();
+    step(phase);
     // Network milestones distinguish time spent waiting for Canvas from local
     // rendering. Only numeric, page-local timing values are exposed.
     try{
@@ -96,10 +159,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     document.documentElement.classList.add('reserve-inline-active');
     coverWorkspace(false);
-    host.hidden=false;dock.hidden=true;mark('visible');
+    host.hidden=false;dock.hidden=true;mark('visible');healed();
   }
   function showCanvas(remember=true){
-    globalThis.ReserveStartupNote?.('showCanvas');
+    globalThis.ReserveStartupNote?.('showCanvas');step('canvas');
     authorized=false;personalVerified=false;pendingDashboard=null;resumeGeneration++;
     dashboard?.closePersonalFiles?.({forget:true});
     wanted=false;
@@ -108,6 +171,93 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     session?.destroy();session=null;
   }
   function setStatus(message){dashboard?.setStatus(message);}
+  const loginForm=()=>!!document.querySelector?.('#login_form, #new_login, .ic-Login');
+  const healable=()=>isDashboard&&wanted&&!canvasChoice&&!bootStopped&&params.get('reserve')!=='native'&&!loginForm();
+  const shownNow=()=>!!(host&&!host.hidden&&dashboard&&authorized);
+  // A failure's code, for the record and the retry rule: 'signed-out' (Canvas's 401, a page where data was asked for), a
+  // network or server code, 'render', or 'other-<code>' (an account that changed, a refusal: never retried by itself).
+  function failCode(error){
+    const code=String(error?.code||'');
+    if(error?.signedOut===true)return 'signed-out';
+    if(/^(network|timeout|data|rate|pagination)$/.test(code)||/^5\d\d$/.test(code))return code;
+    return code?'other-'+code.replace(/[^\w-]/g,'').slice(0,10):'error';
+  }
+  const retriable=code=>code==='signed-out'||code==='render'||/^(network|timeout|data|rate|pagination|5\d\d)$/.test(code);
+  function retryLater(code){
+    heal.code=code;
+    if(!healable()||!retriable(code))return false;
+    // (several reads can fail together, the session's and a module's: the try already waiting covers them all)
+    if(heal.timer)return true;
+    if(heal.tries>=WAITS.length||(ONE_TRY[code]&&(heal.kinds[code]||0)>=ONE_TRY[code]))return false;
+    heal.kinds[code]=(heal.kinds[code]||0)+1;
+    const wait=WAITS[heal.tries++];step('retry '+code);
+    globalThis.clearTimeout?.(heal.timer);
+    heal.timer=globalThis.setTimeout?.(()=>{heal.timer=0;if(healable()&&!suspended&&!shownNow())restart();},wait)||0;
+    return true;
+  }
+  // A quiet fresh start: whatever cover shows stays, the student's view is kept, and the new session checks the account.
+  function restart(){
+    step('restart');
+    try{if(dashboard)dashboardState=dashboard.getState();}catch{}
+    session?.destroy();
+    session=null;
+    dashboard?.destroy();
+    dashboard=null;
+    snapshot=null;
+    store=null;
+    authorized=false;
+    personalVerified=false;
+    resumeGeneration++;
+    resumePending=null;
+    if(host&&(!ready||host.isConnected===false)){host.remove();host=null;ready=false;}
+    return start();
+  }
+  // Canvas said "not signed in". Before Canvas Harness showed, the opening cover stays; after, the place is kept under the "Checking
+  // your Canvas session" cover; either way a fresh start tries again. false: retries spent, give up as before.
+  function lostSignIn(error){
+    if(error?.signedOut!==true||!healable())return false;
+    const covering=shownOnce&&host&&!host.hidden;
+    if(!retryLater('signed-out'))return false;
+    authorized=false;personalVerified=false;dashboard?.closePersonalFiles?.({forget:true});
+    if(covering)coverWorkspace(true);
+    return true;
+  }
+  function healed(){
+    // (a page that had shown, then failed or fell back to Canvas's page, and came back: the record keeps the way back)
+    const back=shownOnce&&(heal.gaveUp||heal.tries>0||heal.code!=='');
+    if(heal.timer){globalThis.clearTimeout?.(heal.timer);heal.timer=0;}
+    heal.tries=0;heal.kinds={};heal.code='';heal.gaveUp=false;
+    if(!shownOnce){shownOnce=true;settle('shown');try{sessionStorage.removeItem(RELOADED);}catch{}}
+    else if(back){step('shown');saveRecord();}
+  }
+  // Retries spent, or none fit: Canvas's page shows, as before. Coming back to the tab may check again (recheck); any
+  // failure but "signed out" or a refusal also gets the one page reload per visit.
+  function gaveUp(code){
+    heal.gaveUp=true;heal.code=code;
+    if(!(code!=='signed-out'&&!code.startsWith('other-')&&lastResort(code)))settle('canvas');
+    // (a page that had opened and lost its session later keeps "shown" as its outcome; its later steps are saved too)
+    saveRecord();
+  }
+  // One automatic reload per visit (the flag clears once Canvas Harness shows), only for the Dashboard, in view, online, and never
+  // after the student chose or used Canvas's page. The record is saved first (at most 0.4 s).
+  function lastResort(code){
+    if(!isDashboard||canvasChoice||bootStopped||params.get('reserve')==='native'||loginForm())return false;
+    if(document.visibilityState==='hidden'||globalThis.navigator?.onLine===false)return false;
+    try{if(sessionStorage.getItem(RELOADED))return false;sessionStorage.setItem(RELOADED,'1');}catch{return false;}
+    step('reload '+code);if(record&&!record.outcome)record.outcome='reload';
+    const go=()=>{try{if(!bootStopped)location.reload();}catch{}};
+    Promise.race([saveRecord(),new Promise(done=>globalThis.setTimeout?.(done,400))]).then(go,go);
+    return true;
+  }
+  // After giving up: coming back to the tab checks once more (the student may have signed in elsewhere, or the network
+  // came back). At most three times a page, ten seconds apart, never after the student chose or used Canvas's page.
+  function recheck(why){
+    if(!heal.gaveUp||heal.code.startsWith('other-')||shownNow()||!isDashboard||!initialized||canvasChoice||bootStopped||params.get('reserve')==='native'||loginForm())return;
+    if(document.visibilityState==='hidden'||heal.events>=3||stamp()-heal.lastEvent<10000)return;
+    heal.events++;heal.lastEvent=stamp();heal.gaveUp=false;heal.tries=WAITS.length-1;heal.kinds={};step('recheck '+why);
+    noRetry=false;wanted=true;manualOpen=true;suspended=false;
+    restart();
+  }
   function resumePersonalFiles(){
     personalVerified=true;
     dashboard?.resumePersonalFiles?.();
@@ -123,16 +273,23 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     dashboard?.destroy();
     dashboard=ReserveDashboard.mount(area,{snapshot,store,personalVerified,initialState:dashboardState,onPlanner:openDashboard,onNative:()=>{
       canvasChoice=true;
+      step('student');
+      settle('student');
       showCanvas();
-    },refresh:()=>session.refresh(),onAuthError:()=>{
+    },refresh:()=>session.refresh({report:true}),onAuthError:error=>{
+      step('fail '+failCode(error));
+      if(lostSignIn(error))return;
       noRetry=true;
       dashboard?.destroy();
       dashboard=null;
       showCanvas();
+      gaveUp(failCode(error));
     },onReady:()=>{
       openAppearance();
       reveal();
     },onRenderError:error=>{
+      step('fail render');
+      if(retryLater('render')){try{if(dashboard)dashboardState=dashboard.getState();}catch{}dashboard?.destroy();dashboard=null;return;}
       noRetry=true;
       dashboard?.destroy();
       dashboard=null;
@@ -140,12 +297,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       setStatus(error.message);
       dockBusy(false);
       dockRoot.querySelector('button').title=error.message+' Click to retry.';
+      gaveUp('render');
     }});
     mark('mounted');
     reveal();
     if(restoreScroll){restoreScroll=false;requestAnimationFrame(()=>window.scrollTo({top:dashboardScroll,behavior:'instant'}));}
   }
-  const validItem=id=>/^(?:\d{1,30}|local-[\w-]{1,100})$/.test(id||'');
+  const validItem=id=>/^(?:\d{1,30}|quiz-\d{1,30}|local-[\w-]{1,100})$/.test(id||'');
   function dashboardDestination(page){
     const workspace={week:'plan',assignments:'assignments',grades:'grades'}[page]||'work';
     return globalThis.ReserveFeatures?globalThis.ReserveFeatures.workspace(workspace):workspace;
@@ -222,7 +380,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     for(const file of sheets){
       const link=document.createElement('link');link.rel='stylesheet';link.href=chrome.runtime.getURL(file);
       link.onload=()=>{if(host===loadingHost&&++loaded===sheets.length){ready=true;mark('styles');fitWidth(true);reveal();}};
-      link.onerror=()=>{if(host===loadingHost)showCanvas(false);};root.append(link);
+      link.onerror=()=>{if(host===loadingHost){step('fail style');showCanvas(false);gaveUp('style');}};root.append(link);
     }
     const css=document.createElement('style');css.textContent=':host([hidden]){display:none!important}.reserve-resume[hidden]{display:none!important}.reserve-workspace[hidden]{display:block!important;content-visibility:hidden!important}.reserve-resume{box-sizing:border-box;min-height:calc(100dvh - 90px);padding:20px clamp(16px,2vw,32px);background:#FAF9F5;color:#3D3D3A;font:14px/1.5 system-ui;color-scheme:light}.reserve-resume header{display:flex;align-items:center;gap:12px;padding-bottom:20px;border-bottom:1px solid #E8E6DC}.reserve-resume img{width:36px;height:36px;object-fit:contain}.reserve-resume strong{font-size:19px;font-weight:600}.reserve-resume button{margin-left:auto;padding:8px 12px;border:1px solid #D9D6CA;border-radius:8px;background:#fff;color:#5E5D59;font:inherit;cursor:pointer}.reserve-resume button:focus-visible{outline:2px solid #C96442;outline-offset:3px}.reserve-resume p{margin:20px 0;color:#78766F}.reserve-resume-grid{display:grid;grid-template-columns:minmax(120px,.7fr) repeat(3,minmax(0,1fr));gap:20px}.reserve-resume-grid>div{min-height:260px;border:1px solid #E8E6DC;border-radius:12px;padding:20px}.reserve-resume-grid i{display:block;max-width:75%;height:9px;margin:12px 0 30px;border-radius:4px;background:#E8E6DC}.reserve-resume-grid i:nth-child(even){max-width:50%}@media(max-width:900px){.reserve-resume-grid{grid-template-columns:140px 1fr}.reserve-resume-grid>div:nth-child(n+3){display:none}}@media(max-width:600px){.reserve-resume-grid{grid-template-columns:1fr}.reserve-resume-grid>div:first-child{display:none}}';root.append(css);
     area=document.createElement('div');area.className='reserve-workspace';
@@ -259,13 +417,17 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     reveal();
   }
   function start(){
-    makeHost();
+    makeHost();heal.attemptAt=stamp();
     if(session)return session.start();
     session=ReserveSession.createSession({
       client:ReserveAPI.createClient(),
       createStore:ReserveStorage.createStore,
       ...(ownerHint?{prefetchedProfile:ownerHint,quickOpen}:{}),
       onSnapshot:receive,onStatus:setStatus,onTiming:mark,onError:(error,{clear})=>{
+      const code=failCode(error);step('fail '+code);
+      // "Not signed in" may pass (just after a sign-in), and so may a network or server error while nothing shows yet.
+      if(clear&&lostSignIn(error))return;
+      if(!clear&&!dashboard&&retryLater(code))return;
       if(clear){
         noRetry=true;
         if(ownerHint){ownerHint=null;try{Promise.resolve(chrome.storage.local.remove(HINT_KEY)).catch(()=>{});}catch{}}
@@ -280,6 +442,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }
       else if(!dashboard)showCanvas(false);
       dockBusy(false);dockRoot.querySelector('button').title=error.message+' Click to retry.';
+      if(clear||!dashboard)gaveUp(code);
     }});
     return session.start();
   }
@@ -288,7 +451,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(chrome.runtime&&!chrome.runtime.id){location.reload();return;}
     dockBusy(true);
     if(!isDashboard){location.assign(globalThis.ReserveSite.origin()+'/?reserve=open');return;}
-    globalThis.clearTimeout?.(startWatch);canvasChoice=false;noRetry=false;openAfresh();
+    globalThis.clearTimeout?.(startWatch);
+    globalThis.clearTimeout?.(heal.timer);
+    heal.timer=0;
+    heal.tries=0;
+    heal.kinds={};
+    heal.gaveUp=false;
+    step('button');
+    canvasChoice=false;
+    noRetry=false;
+    openAfresh();
     // Still not shown 15 s after the click, with the tab in view: reload the page once.
     const attempt=session;
     setTimeout(()=>{if(attempt&&session===attempt&&wanted&&!suspended&&!bootStopped&&host?.hidden&&document.visibilityState!=='hidden')location.reload();},15000);
@@ -306,9 +478,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // Do not move a Canvas control out from under a student who has started using it: a click on Canvas's page, or
   // typing into one of its fields, before Canvas Harness shows.
   function useCanvas(event){
+    // (after a start gave up, using Canvas's page also stops the check on returning to the tab: recheck)
+    if(heal.gaveUp&&!shownNow()&&!event.composedPath().includes(dock)&&(event.type!=='keydown'||event.target?.isContentEditable||/^(input|textarea|select)$/i.test(event.target?.tagName||''))){
+      canvasChoice=true;
+      step('student');
+      return;
+    }
     if(!wanted||startup?.active||(ready&&snapshot)||event.composedPath().includes(dock))return;
     if(event.type==='keydown'){const t=event.target;if(!(t?.isContentEditable||/^(input|textarea|select)$/i.test(t?.tagName||'')))return;}
-    canvasChoice=true;showCanvas(false);
+    canvasChoice=true;step('student');settle('student');showCanvas(false);
   }
   document.addEventListener('pointerdown',useCanvas,{passive:true});
   document.addEventListener('keydown',useCanvas,true);
@@ -322,10 +500,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(keepPlace){if(!leaving)coverWorkspace(true);dock.hidden=true;}
     else{if(host)host.hidden=true;coverWorkspace(false);restoreNative();dock.hidden=false;}
     if(snapshot)session?.suspend();else{session?.destroy();session=null;}
-    startup?.release();
+    // (a reason, so a start this pause interrupted carries on when the tab is back: initialize, resumeWorkspace)
+    step(leaving?'leave':'hidden');startup?.release('hidden');
   }
   function resumeWorkspace(){
     globalThis.ReserveStartupNote?.('resume'+(suspended?' suspended':'')+(host?'':' nohost')+(wanted?'':' unwanted'));
+    if(heal.gaveUp){recheck('visible');return;}
     if(resumePending)return resumePending;
     if(!isDashboard||!wanted||!host||bootStopped||document.visibilityState==='hidden')return;
     if(!!document.querySelector('#login_form, #new_login, .ic-Login')||!(location.pathname==='/'||/^\/dashboard\/?$/.test(location.pathname))){showCanvas(false);return;}
@@ -343,7 +523,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(!snapshot||!session){session?.destroy();session=null;return start();}
       const verified=await session.verify();
       if(epoch!==resumeGeneration||!wanted||suspended||bootStopped||document.visibilityState==='hidden')return;
-      if(!verified){showCanvas(false);return;}
+      if(!verified){if(!heal.timer)showCanvas(false);return;}
       // The reopened files' render is the one redraw a return needs: it draws the current time, and the check above
       // already reloaded the account record (a change there renders through the store) and fetches newer Canvas data
       // when the saved copy is old (that arrives through receive). Handing the dashboard the same snapshot again only
@@ -364,15 +544,34 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     stopWaiting();
     pauseWorkspace(!event.persisted);
     globalThis.CanvasHarnessAgentClient?.stopAll();
-    if(!event.persisted){pageLeft=true;dashboard?.destroy();session?.destroy();nativeTools?.destroy();pageAppearance?.destroy();featureSettings?.destroy();}
+    if(!event.persisted){
+      pageLeft=true;
+      if(record&&!record.outcome){record.outcome=globalThis.ReserveFeatureOrderHeal?'reload':'left';step(record.outcome);}
+      dashboard?.destroy();
+      session?.destroy();
+      nativeTools?.destroy();
+      pageAppearance?.destroy();
+      featureSettings?.destroy();
+    }
+    if(record&&(record.outcome!=='shown'||heal.code))saveRecord();
   });
-  window.addEventListener('pageshow',event=>{if(event.persisted){bootStopped=false;resumeWorkspace();}});
+  // Back from the back-forward cache: a start that was cut short before it could begin is armed again (resumeWorkspace
+  // picks up one that had begun).
+  window.addEventListener('pageshow',event=>{if(event.persisted){bootStopped=false;step('back');if(!initialized&&launchReady)armLaunch();else resumeWorkspace();}});
+  // Back online while a try waits: try now instead of at the end of the wait.
+  window.addEventListener('online',()=>{
+    if(heal.timer&&healable()&&!suspended&&!shownNow()){globalThis.clearTimeout?.(heal.timer);heal.timer=0;step('online');restart();}else recheck('online');
+  });
+  window.addEventListener('focus',()=>recheck('focus'));
   // The cover's eight seconds ran out (or it could not cover Canvas) with the start still under way: Canvas shows
   // meanwhile and Canvas Harness still opens when its checked data arrives, unless the student starts using Canvas's page first
   // (owner, 2026-10-27: Canvas's own dashboard stayed, with Canvas Harness's menu bar and button working).
   startup?.onNative(reason=>{
-    if(suspended)return;
-    if(reason==='student')canvasChoice=true;
+    // 'leave': the page is being hidden for good or kept for Back; pagehide above takes care of it (wanted stays, so a
+    // page restored from the back-forward cache can still open).
+    if(suspended||reason==='leave')return;
+    step('cover '+(reason||'released'));
+    if(reason==='student'){canvasChoice=true;settle('student');}
     if((reason==='deadline'||reason==='no-cover')&&wanted&&!canvasChoice&&!bootStopped){
       globalThis.ReserveStartupNote?.('late start continues');manualOpen=true;Promise.resolve().then(reveal);return;
     }
@@ -380,6 +579,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   });
   function initialize(){
     if(globalThis.ReserveSite.vanillaPage(location))return;
+    initialized=true;step('initialize');
     if(params.get('reserve')==='open'||params.has('plan')){
       const requested=params.get('workspace'),
         page=params.get('plan'),
@@ -412,7 +612,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       return;
     }
     try{
-      const late=['deadline','no-cover'].includes(startup?.releasedBy);
+      // (also 'hidden'/'leave': a pause or a trip to the back-forward cache released the cover before this ran)
+      const late=['deadline','no-cover','hidden','leave'].includes(startup?.releasedBy);
       wanted=wanted&&params.get('reserve')!=='native'&&(!!startup?.canReveal()||(late&&!canvasChoice));
       if(wanted&&late)manualOpen=true;
     }catch{wanted=false;startup?.release();}
@@ -430,25 +631,28 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(host&&!host.hidden){try{sessionStorage.removeItem(RELOADED);}catch{}return;}
       if(document.visibilityState==='hidden'){const shown=()=>{document.removeEventListener('visibilitychange',shown);watchStart(tries);};document.addEventListener('visibilitychange',shown);return;}
       if(document.querySelector('#login_form, #new_login, .ic-Login'))return;
-      globalThis.ReserveStartupNote?.('start watch '+tries);
+      // A failure that was reported belongs to the quick retries above (and their own last resort); this watch is for a
+      // start that neither shows nor fails. A retry still running gets its own time first.
+      if(heal.gaveUp||heal.code==='signed-out'||heal.code.startsWith('other-'))return;
+      if(heal.timer||stamp()-heal.attemptAt<15000){watchStart(tries);return;}
+      globalThis.ReserveStartupNote?.('start watch '+tries);step('stall '+tries);
       if(tries===0){openAfresh();watchStart(1);return;}
       // A page that still cannot start stays on Canvas, with the Canvas Harness button to try again.
       try{if(sessionStorage.getItem(RELOADED))return;sessionStorage.setItem(RELOADED,'1');}catch{return;}
-      location.reload();
+      step('reload stall');if(record&&!record.outcome)record.outcome='reload';
+      Promise.race([saveRecord(),new Promise(done=>globalThis.setTimeout?.(done,400))]).then(()=>location.reload(),()=>location.reload());
     },20000);
   }
-  Promise.all([startup?.preferences||chrome.storage.local.get('reserve:enabled'),globalThis.ReserveFeatureLoad]).then(([saved,loaded])=>{
-    mark('enabledPreference');
-    if(saved['reserve:enabled']===false||loaded?.ok===false||bootStopped)return;
-    // Canvas's remaining scripts and markup do not need to block a verified
-    // dashboard. Native course tools still initialize after parsing completes.
+  // Canvas's remaining scripts and markup do not need to block a verified
+  // dashboard. Native course tools still initialize after parsing completes.
+  function armLaunch(){
     launchAttempt=()=>{
       if(bootStopped)return;
       if(!document.head||!document.body||(isDashboard&&!document.getElementById('content'))||(!isDashboard&&document.readyState==='loading'))return;
       stopWaiting();
       // A page on the domain without a Canvas layout (an Instructure website, a school page on its own address) is left untouched.
       if(!globalThis.ReserveSite.canvasPage?.(document)){startup?.release();return;}
-      try{initialize();}catch{showCanvas(false);}
+      try{initialize();}catch{step('fail initialize');showCanvas(false);}
     };
     document.addEventListener('DOMContentLoaded',launchAttempt,{once:true});
     if(typeof MutationObserver==='function'){
@@ -456,6 +660,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       launchObserver.observe(document.documentElement||document,{childList:true,subtree:true});
     }
     launchAttempt();
-  }).catch(()=>showCanvas(false));
+  }
+  Promise.all([startup?.preferences||chrome.storage.local.get('reserve:enabled'),globalThis.ReserveFeatureLoad]).then(([saved,loaded])=>{
+    mark('enabledPreference');
+    if(saved['reserve:enabled']===false){settle('off');return;}
+    // The add-ons could not load (the worker refused or never answered, after feature-loader.js's own tries): nothing
+    // here can start, so the Dashboard gets its one reload per visit.
+    if(loaded?.ok===false){step('fail features');if(isDashboard&&!lastResort('features'))settle('canvas');return;}
+    launchReady=true;
+    if(bootStopped)return;
+    armLaunch();
+  }).catch(()=>{step('fail launch');showCanvas(false);});
   })();
 })();

@@ -229,6 +229,15 @@
   return exclusive(async()=>{
    const entry=metadata(value),source=await verified(entry,input);let feature,beforeFeature;if(entry.kind==='feature'){
     try{feature=JSON.parse(source);}catch{fail('Invalid feature pack.');}const F=root.ReserveFeatures;
+    // A well-formed feature or scene this version does not have yet comes from a newer Canvas Harness: say so, as for a new kind.
+    const name=v=>typeof v==='string'&&/^[a-z][a-z0-9-]{0,40}$/.test(v);
+    if(record(feature)&&
+     name(feature.feature)&&
+     feature.feature!=='developer'&&
+     Object.keys(feature).every(k=>k==='feature'||k==='sceneTheme')&&
+     (!F.catalogue.some(f=>f.id===feature.feature)||
+       feature.feature==='scene-themes'&&name(feature.sceneTheme)&&!root.ReserveCustomization.enums.sceneTheme.includes(feature.sceneTheme)))
+     fail(UPDATE);
     if(!record(feature)||
      !own(feature,'feature')||
      typeof feature.feature!=='string'||
@@ -397,12 +406,13 @@
   if(!api?.validate)fail('Pack validation is unavailable. Reload Canvas Harness.');
   return api;
  }
- async function validateSource(source,kind){
+ // stored: a pack this account already added (its media were decoded then); reading it again checks it without decoding again
+ async function validateSource(source,kind,stored=false){
   if(typeof source!=='string'||sizeOf(source)>MAX)fail('Pack exceeds 40 MB.');
   let wire;
   try{wire=JSON.parse(source);}catch{fail('Invalid pack JSON.');}
   if(!kind||formats[wire?.format]!==kind)fail('Pack format does not match its kind.');
-  return validator(kind).validate(source,{media:{prepare:importMedia}});
+  return validator(kind).validate(source,{media:stored?false:{prepare:importMedia}});
  }
  async function target(options){
   const identity=optionsOwner(options);
@@ -745,7 +755,7 @@
    const before=await documents(t.pool),docs=clone(before),r=await registry(),doc=docs.find(p=>p.id===id);
    if(!doc)fail('Unknown pack.');
    docs.forEach(d=>cleanReceipt(d.receipt,d.kind));
-   const imported=await validateSource(doc.source,doc.kind),previous=t.store.get();
+   const imported=await validateSource(doc.source,doc.kind,true),previous=t.store.get();
    let data=applyPack(previous,doc,imported.pack,{...options,modules:options.modules||await availableModules(previous)},history(docs,r,t.identity));
    makeState(data).installed[id]=rowOf(doc);
    await publishLocal(t,before,docs,data);
@@ -789,7 +799,7 @@
   if(!validId(id))fail('Invalid pack id.');
   if(!await root.ReserveMarketSite.allowed(identity.origin))fail('Canvas site is not allowed.');
   const pool=root.ReserveMedia.createPackStore(identity);
-  try{const doc=await pool.getPack(id);if(!doc)fail('Unknown pack.');return {...rowOf(doc),pack:(await validateSource(doc.source,doc.kind)).pack};}finally{pool.close();}
+  try{const doc=await pool.getPack(id);if(!doc)fail('Unknown pack.');return {...rowOf(doc),pack:(await validateSource(doc.source,doc.kind,true)).pack};}finally{pool.close();}
  }
  const accountReceipt=(receipt,identity)=>record(receipt)&&(receipt.key===accountKey(identity)||record(receipt.owner)&&same(receipt.owner,identity));
  function fields(value,allowed,label){if(!record(value)||Object.keys(value).some(key=>!allowed.includes(key)))fail('Invalid '+label+'.');}

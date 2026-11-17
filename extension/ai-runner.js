@@ -93,7 +93,10 @@
   return {sources:list.filter(s=>s.text.trim()||s.role==='brief'),cuts};
  }
  function create({canvas,results,account,adapter,docs=load('CanvasHarnessGoogleDocs','./google-docs.js'),now=()=>Date.now(),uuid=()=>root.crypto.randomUUID()}={}){
-  async function step(run,{save,guard,signal,claimProvider}){
+  async function step(run,{save,guard,signal,claimProvider,limits=null}){
+   // The automatic retry in a fresh chat (at most limits.maxAutoRetries) waits limits.retryWait first, doubling (ai-guard.js).
+   const most=limits?.maxAutoRetries??1,
+     hold=t=>{if(limits){run.holdTurn=t.id;run.holdUntil=now()+limits.retryWait*2**Math.max(0,(run.retries||1)-1);}};
    await guard();const reader=run.snapshot?canvas.reader(run,signal):null;
    // A deliverable is saved the moment it is made, at its place in the run's order, so Stop, a settings change or a newer
    // run never loses it; a step replayed after a restart writes the same card to the same key.
@@ -241,6 +244,7 @@
    }
    if(run.state==='awaiting-reply'){
     const turn=run.turns[run.turnIndex];
+    if(!turn.reply&&!turn.deliveryReceipt&&run.holdTurn===turn.id&&Number(run.holdUntil)>now())return {waiting:true};
     if(!turn.reply){
       const response=await adapter.deliver(turn,async receipt=>{
         turn.deliveryReceipt=receipt;
@@ -259,20 +263,20 @@
        return save(run);
      }
      // (manual: a closed or sleeping chat, or a usage limit: nothing is sent again on its own)
-     if(response.status==='needs-you'&&response.needsYou?.action==='Try again'&&!response.needsYou.manual&&!(run.retries>=1)){
+     if(response.status==='needs-you'&&response.needsYou?.action==='Try again'&&!response.needsYou.manual&&!(run.retries>=most)){
        run.retries=(run.retries||0)+1;
        run.turns.push({id:'turn-'+uuid(),requestHash:turn.requestHash,text:turn.text,messages:turn.messages,expectedKind:turn.expectedKind,fresh:true});
-       run.turnIndex=run.turns.length-1;
+       run.turnIndex=run.turns.length-1;hold(run.turns.at(-1));
        run.progress='Asking again';
        return save(run);
      }
      // A deliverable the AI stops on twice is left out; the day's other picks still get made.
      // Daily help: a deliverable whose chat never took the message (nothing was sent) gets one fresh chat; after that it is left out.
      const unsent=['target','staged'].includes(response.receipt?.status||turn.deliveryReceipt?.status);
-     if(response.status==='needs-you'&&run.phase==='deliver'&&response.needsYou?.action==='Review draft'&&unsent&&!(run.retries>=1)){
+     if(response.status==='needs-you'&&run.phase==='deliver'&&response.needsYou?.action==='Review draft'&&unsent&&!(run.retries>=most)){
        run.retries=(run.retries||0)+1;
        run.turns.push({id:'turn-'+uuid(),requestHash:turn.requestHash,text:turn.text,messages:turn.messages,expectedKind:turn.expectedKind,fresh:true});
-       run.turnIndex=run.turns.length-1;
+       run.turnIndex=run.turns.length-1;hold(run.turns.at(-1));
        run.progress='Asking again';
        return save(run);
      }
