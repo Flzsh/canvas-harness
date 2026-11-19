@@ -53,21 +53,64 @@
 .rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter)::before,.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-tools,.rd-filter-group,.rd-week,.rd-reader-tabs)::before{background:transparent!important;box-shadow:none!important}
 .rd[data-theme-kit] .rd-search input{background:#FFFFFF!important;color:var(--rd-ink)!important;border:1.5px solid rgba(27,30,69,.35)!important}
 .rd[data-theme-kit] .rd-search input::placeholder{color:#8C96BE}
-/* the course cards wear the timber frame, their own drawing kept out of the way; the motif stands in for it */
+/* Behind the timber frame lie flat strips of its own colours (paper, the inner ink line, the beams, the posts, the
+   outline, the snow's lowest row), each wholly under opaque pixels of the picture. A frame picture is drawn in nine
+   pieces, and at a 150 % screen scale their edges fall on half pixels and let a quarter of what is behind show through
+   as hairlines; with the same colour behind, nothing shows. */
+/* the course cards, in each of the three card styles, the scene's own way. A card keeps its whole room for its words:
+   - Hand-drawn (the default): a thin timber frame, snow lying along its top, holly in a corner. The frame stands 12 px
+     above the card and 2 px outside its other edges (border 18 12 12, cut the same), so the beam's inner line ends 2 px
+     inside the card and the course name starts under it; the cards stand 16 px apart so one card's snow clears the next.
+     Its edge tiles are short (32 px along, 4 px down), so stretching them to fit ("round") keeps the pixels nearly even.
+   - Rounded: the card's own paper, a pixel outline one step outside it, snow on its top edge, a hard shadow under it.
+   - Minimal: the card's own paper and a string of lights for its bottom edge.
+   Rounded and Minimal are painted on the card itself (a border picture with an outset; no layout changes), not on
+   .rd-frame, so the card's own colours for hover and for the chosen course stay, and "card frames off" puts the plain
+   card back (the scene script's rule sets the card's border again, which drops the picture). Their two small pictures
+   are written here, not kept as files. */
 .rd[data-theme-kit] .rd-frame > *{display:none!important}
 .rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course,.rd-course-name){background:transparent!important;box-shadow:none!important;outline:none!important}
 .rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::before,.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::after,.rd[data-theme-kit] .rd-rail-art::after{display:none!important}
 .rd[data-theme-kit] .rd-rail-art > svg{display:none!important}
 .rd[data-theme-kit] .tk-icon{width:116%;height:116%;margin:-8%;object-fit:contain;image-rendering:pixelated}
-.rd[data-theme-kit] .rd-frame{border:24px solid transparent!important;border-image:url(christmas-card.png) 24 fill round!important;image-rendering:pixelated;background:none!important;box-shadow:none!important;border-radius:0!important}
-/* the dock's cards: the frame is drawn just outside the card, so the words keep the card's whole room; the paper
-   fills the whole inside of the frame (no strip across the middle), and the open course is warmed like the course list's */
-.rd[data-theme-kit] .rd-dock-card>.rd-frame{inset:-12px!important;border-width:24px!important}
-.rd[data-theme-kit] .rd-dock-card>.rd-frame::before{inset:-9px!important;border-radius:3px!important;background:transparent!important}
-.rd[data-theme-kit] .rd-dock .rd-dock-it.on .rd-dock-card>.rd-frame::before{background:rgba(255,191,85,.18)!important}
+.rd[data-theme-kit] .rd-frame{border:solid transparent!important;border-width:18px 12px 12px!important;border-image:url(christmas-card.png) 18 12 12 fill round!important;image-rendering:pixelated;background:linear-gradient(#171532,#171532) left 6px top 12px/calc(100% - 12px) 2px no-repeat,linear-gradient(#171532,#171532) left 6px bottom 6px/calc(100% - 12px) 2px no-repeat,linear-gradient(#171532,#171532) left 6px top 12px/2px calc(100% - 18px) no-repeat,linear-gradient(#171532,#171532) right 6px top 12px/2px calc(100% - 18px) no-repeat,linear-gradient(#CB8E57,#CB8E57) left 2px top 8px/calc(100% - 4px) 2px no-repeat,linear-gradient(#9C5E3D,#9C5E3D) left 2px top 10px/calc(100% - 4px) 2px no-repeat,linear-gradient(#9C5E3D,#9C5E3D) left 2px bottom 4px/calc(100% - 4px) 2px no-repeat,linear-gradient(#703D35,#703D35) left 2px bottom 2px/calc(100% - 4px) 2px no-repeat,linear-gradient(#CB8E57,#CB8E57) left 2px top 8px/2px calc(100% - 10px) no-repeat,linear-gradient(#9C5E3D,#9C5E3D) left 4px top 10px/2px calc(100% - 14px) no-repeat,linear-gradient(#CB8E57,#CB8E57) right 4px top 10px/2px calc(100% - 14px) no-repeat,linear-gradient(#9C5E3D,#9C5E3D) right 2px top 8px/2px calc(100% - 10px) no-repeat,linear-gradient(#171532,#171532) left 0 top 8px/2px calc(100% - 10px) no-repeat,linear-gradient(#171532,#171532) right 0 top 8px/2px calc(100% - 10px) no-repeat,linear-gradient(#171532,#171532) left 2px bottom 0/calc(100% - 4px) 2px no-repeat,linear-gradient(#FFFFFF,#FFFFFF) left 2px top 6px/calc(100% - 4px) 2px no-repeat,linear-gradient(#F8FBFF,#F8FBFF) left 8px top 14px/calc(100% - 16px) calc(100% - 22px) no-repeat!important;background-origin:border-box!important;background-clip:border-box!important;box-shadow:none!important;border-radius:0!important}
+.rd[data-theme-kit] .rd-course-rail .rd-frame:not(.ch-custom-frame){inset:-12px -2px -2px!important}
+/* across the top the bar's own 10 px of room above the cards is 2 short of the snow */
+.rd[data-theme-kit][data-course-navigation=topbar] .rd-course-rail{padding-top:12px!important}
+.rd[data-theme-kit]:not([data-course-navigation=topbar]) .rd-course-rail :is(.rd-rail-all,.rd-rail-course){margin-top:8px!important;margin-bottom:8px!important}
+/* a card is never shorter than its small picture and the frame need (when one very long course name stops the rows
+   sharing a height, the app lets a one-line row fall to about 30 px) */
+.rd[data-theme-kit] .rd-course-rail .rd-rail-course:has(> .rd-frame){min-height:56px!important}
+/* the small picture stands inside the frame, clear of the bottom beam (and of the lights in Minimal); on a short window the
+   grade keeps clear of it too */
+.rd[data-theme-kit] .rd-course-rail .rd-rail-course:has(> .rd-frame) .rd-course-name > .rd-rail-art{left:8px!important;bottom:7px!important}
+.rd[data-theme-kit] .rd-course-rail .rd-rail-course:has(> .rd-frame) > .rd-grade{bottom:7px!important}
 .rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame{filter:none}
-.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame::after,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame::after{content:"";position:absolute;inset:-10px;border-radius:12px;background:rgba(255,191,85,.16);animation:tk-warm 8s ease-in-out infinite;will-change:opacity;pointer-events:none}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame::after,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame::after{content:"";position:absolute;inset:-4px;background:rgba(255,191,85,.2);animation:tk-warm 8s ease-in-out infinite;will-change:opacity;pointer-events:none}
+@media (hover:hover){.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course):not(:has([aria-pressed=true])):not([aria-pressed=true]):hover .rd-frame::after{content:"";position:absolute;inset:-4px;background:rgba(255,191,85,.1);pointer-events:none}}
+.rd[data-theme-kit][data-course-card-style=rounded] .rd-course-rail :is(.rd-rail-all,.rd-rail-course){border:1px solid transparent!important;border-radius:0!important;border-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAiCAYAAAAKyxrjAAABPUlEQVR42mNkQAPiokb/kfkvX59jZMAC0NWhA1z6iDWHkH5i3cnEMMwBC3qIKBTpMjAwMDC8vvkOIr6V4T9yCMHUvXh1Fq/BEmLG/7GFLHrI4zKHkH50fbjUD/sYZISFCLe3NIrEXW45BgYGBgYLmS8MDAwMDA/6LjMQE3NYYoKBmBijVD9M3YiLQXge/Hr/IySEdCB5cP/pc5C8+FWEATlvooOP31D5z97+ROHffHAWqzguc0jVj27/iCtFGTFKNy0eBgYGBgZuRX4UhbAYZrj2ZVB7aOSVosS2TEhtoQwUgPkD5s6RUw8O9pghNyaHfQyOenDUg6MeHPXgqAdHPTjqwVEPjnpw1IOjHhz1IJV69EO9Xwjzx9yNe0ZYDJI6NjNYASzmfKyEGEfWyDYD2qjZlmPv/jOMlqKDHwAAuR6KTZJMNrsAAAAASUVORK5CYII=) 16 12 14 / 16px 12px 14px / 10px 2px 4px round!important;image-rendering:pixelated}
+.rd[data-theme-kit][data-course-card-style=minimal] .rd-course-rail :is(.rd-rail-all,.rd-rail-course){background:#F8FBFF!important;border:solid transparent!important;border-width:0 0 1px!important;border-radius:0!important;border-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAICAYAAAC/K3xHAAAAVklEQVR42mO0to/7z4AEjh5cxMiAB6CrRwf01s/EMMQB42APYUL6h18MwMA+M0uUkHA6dZyRFIOVEnxR9N9bsJkk/Z82eaHo5/PbhlX/kI+BUQ8MNAAAV3cl5T0TfDQAAAAASUVORK5CYII=) 0 0 8 / 0 0 8px / 0 0 4px round!important;image-rendering:pixelated}
+.rd[data-theme-kit]:not([data-course-navigation=topbar])[data-course-card-style=minimal] .rd-course-rail :is(.rd-rail-all,.rd-rail-course){margin-top:3px!important;margin-bottom:3px!important}
+.rd[data-theme-kit]:not([data-course-navigation=topbar])[data-course-card-style=rounded] .rd-course-rail :is(.rd-rail-all,.rd-rail-course){margin-top:8px!important;margin-bottom:8px!important}
+.rd[data-theme-kit] :where([data-course-card-style] .rd-course-rail :is(.rd-rail-all,.rd-rail-course)) > *{image-rendering:auto}
+.rd[data-theme-kit][data-course-card-style=rounded] .rd-shell .rd-course-rail > :is(.rd-rail-all,.rd-rail-course):is([aria-current],[aria-pressed=true],[data-selected=true],:has([aria-current],[aria-pressed=true])){box-shadow:inset 0 0 0 2px var(--rd-accent)!important}
+.rd[data-theme-kit][data-course-card-style=minimal] .rd-shell .rd-course-rail > :is(.rd-rail-all,.rd-rail-course):is([aria-current],[aria-pressed=true],[data-selected=true],:has([aria-current],[aria-pressed=true])){box-shadow:inset 4px 0 0 var(--rd-accent)!important}
+/* the dock: its shelf is the same timber frame with snow along its top (the tiles and their course drawings are the
+   courses' own and stay); in the card look each card wears the frame, level (a turned pixel picture breaks up), and the
+   shelf is plain paper with the string of lights. "No shelf" still hides it. */
+.rd[data-theme-kit] .rd-dock{padding-bottom:19px!important}
+.rd[data-theme-kit] .rd-dock::after{background:linear-gradient(#171532,#171532) left 6px top 12px/calc(100% - 12px) 2px no-repeat,linear-gradient(#171532,#171532) left 6px bottom 6px/calc(100% - 12px) 2px no-repeat,linear-gradient(#171532,#171532) left 6px top 12px/2px calc(100% - 18px) no-repeat,linear-gradient(#171532,#171532) right 6px top 12px/2px calc(100% - 18px) no-repeat,linear-gradient(#CB8E57,#CB8E57) left 2px top 8px/calc(100% - 4px) 2px no-repeat,linear-gradient(#9C5E3D,#9C5E3D) left 2px top 10px/calc(100% - 4px) 2px no-repeat,linear-gradient(#9C5E3D,#9C5E3D) left 2px bottom 4px/calc(100% - 4px) 2px no-repeat,linear-gradient(#703D35,#703D35) left 2px bottom 2px/calc(100% - 4px) 2px no-repeat,linear-gradient(#CB8E57,#CB8E57) left 2px top 8px/2px calc(100% - 10px) no-repeat,linear-gradient(#9C5E3D,#9C5E3D) left 4px top 10px/2px calc(100% - 14px) no-repeat,linear-gradient(#CB8E57,#CB8E57) right 4px top 10px/2px calc(100% - 14px) no-repeat,linear-gradient(#9C5E3D,#9C5E3D) right 2px top 8px/2px calc(100% - 10px) no-repeat,linear-gradient(#171532,#171532) left 0 top 8px/2px calc(100% - 10px) no-repeat,linear-gradient(#171532,#171532) right 0 top 8px/2px calc(100% - 10px) no-repeat,linear-gradient(#171532,#171532) left 2px bottom 0/calc(100% - 4px) 2px no-repeat,linear-gradient(#FFFFFF,#FFFFFF) left 2px top 6px/calc(100% - 4px) 2px no-repeat,linear-gradient(#F8FBFF,#F8FBFF) left 8px top 14px/calc(100% - 16px) calc(100% - 22px) no-repeat!important;background-origin:border-box!important;background-clip:border-box!important;-webkit-mask-box-image:none!important;mask-border:none!important;border:solid transparent!important;border-width:18px 12px 12px!important;border-image:url(christmas-card.png) 18 12 12 fill round!important;image-rendering:pixelated;inset:calc(var(--rd-dock-headroom) - 12px) 0 0 0!important}
+.rd[data-theme-kit] .rd-dock::before,.rd[data-theme-kit] .rd-dock .rd-dock-ink{opacity:0!important}
+.rd[data-theme-kit] .rd-dock[data-look=cards]::after{background:#F8FBFF!important;background-clip:border-box!important;border-width:0 0 1px!important;border-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAICAYAAAC/K3xHAAAAVklEQVR42mO0to/7z4AEjh5cxMiAB6CrRwf01s/EMMQB42APYUL6h18MwMA+M0uUkHA6dZyRFIOVEnxR9N9bsJkk/Z82eaHo5/PbhlX/kI+BUQ8MNAAAV3cl5T0TfDQAAAAASUVORK5CYII=) 0 0 8 / 0 0 8px / 0 round!important;inset:calc(var(--rd-dock-headroom) - 4px) 0 0 0!important}
+.rd[data-theme-kit] .rd-dock-card{rotate:none!important}
+.rd[data-theme-kit] .rd-dock-card>.rd-frame{inset:-12px -4px -4px!important}
+.rd[data-theme-kit] .rd-dock-card>.rd-frame::before{inset:-4px!important;border-radius:0!important;background:transparent!important}
+.rd[data-theme-kit] .rd-dock .rd-dock-it.on .rd-dock-card>.rd-frame::before{background:rgba(255,191,85,.2)!important}
 @keyframes tk-warm{0%,100%{opacity:.55}50%{opacity:1}}
+/* a course's drawn title lies on the night sky. Most are a paper tag with dark lettering; a few are bare line drawings in
+   the course's colour, faint on the sky. So the piece gets a soft slip of the page's paper behind it, as it has on the
+   plain page (a student's own title picture is left as it is). */
+.rd[data-theme-kit] .rd-title-art:not(:has(.ch-custom-title)){background:rgba(244,247,253,.92);box-shadow:0 0 14px 10px rgba(244,247,253,.92);border-radius:14px}
 /* panels: snow paper inside the heavier timber frame; no rectangle of background inside or outside it */
 .rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail){background:transparent!important;backdrop-filter:none!important;isolation:isolate;border-radius:0!important}
 .rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail)::after{display:none!important}
