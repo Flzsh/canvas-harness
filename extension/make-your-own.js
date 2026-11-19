@@ -101,8 +101,17 @@
       if(state.draft.id&&P.useLocal)await P.useLocal(state.draft.id,{store,week:state.week});else await P.installLocal(state.draft.file,{store,week:state.week});
       state.draft=null;
     }
+    // "Use default theme" (Look) and the built-in companion (Companion): back to the built-in look or Biscuit; the
+    // pack stays installed. The theme's choice also clears a scene, as the built-in looks in Biscuit's list do.
+    else if(name==='clear'){
+      if(!['theme','pet'].includes(id))return;
+      await store.update(data=>{
+        if(data.settings.makeYourOwn)data.settings.makeYourOwn[id]=null;
+        if(id==='theme')data.settings.sceneTheme='';
+      });
+    }
     else return;
-    state.status=name==='remove'?'Removed':'Added';
+    state.status=({remove:'Removed',clear:'Selected'})[name]||'Added';
    }catch(error){state.status=error?.message||'Could not save';}
    finally{state.busy=false;notify();}
   }

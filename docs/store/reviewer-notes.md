@@ -2,7 +2,7 @@
 
 ## 4.1.0 changes
 
-4.1.0 is 4.0.0 with one more packaged scene theme (Christmas: a looping video, a poster, frames, a page ground and icons, inside the package), band support for theme packs (a theme pack, a data file, can carry a band picture or short video with drawn moving pieces and a companion; the extension draws them with packaged code), the Market's choice of a theme's band copy (the same Market host and the same size and SHA-256 checks as before), and AI help messages fitted to Gemini's chat box. It adds no permissions, no new kind of network request and no remote code. AI help stays packaged but off, exactly as in 4.0.0, until the student adds it from the Market and accepts its notice.
+4.1.0 is 4.0.0 with one more packaged scene theme (Christmas: a looping video, a poster, frames, a page ground and icons, inside the package), band support for theme packs (a theme pack, a data file, can carry a band picture or short video with drawn moving pieces and a companion; the extension draws them with packaged code), the Market's choice of a theme's band copy (the same Market host and the same size and SHA-256 checks as before), AI help messages fitted to Gemini's chat box, and a fix for Make it yours' "Use default theme" and built-in companion buttons, which did nothing. It adds no permissions, no new kind of network request and no remote code. AI help stays packaged but off, exactly as in 4.0.0, until the student adds it from the Market and accepts its notice.
 
 ## 4.0.0 changes
 
