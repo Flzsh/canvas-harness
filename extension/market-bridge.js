@@ -23,10 +23,46 @@
  }
  let initial;try{initial=safeURL(location.href);}catch{return;}
  const post=message=>window.postMessage({ch:'market',...message},location.origin);
+ /* The band gate (one Market card, two files). A theme row may carry "bands": [{level, file, size, sha256}], copies of the
+    same theme with a band. Versions before 4.1 keep only {id, name, kind, file, size, sha256} and install the plain
+    "file"; this one installs the highest band copy whose level its band kit reads, and the plain file whenever no copy
+    fits or a copy's fields are not usable. BAND is band-kit.js's level, written here so a click never waits on the
+    worker (a test keeps the two equal). */
+ const BAND=2;
+ function banded(raw,item,base){
+  let best=item,top=0;if(item.kind!=='theme'||!Array.isArray(raw?.bands))return item;
+  for(const b of raw.bands.slice(0,8)){
+   try{
+    if(!b||
+     typeof b!=='object'||
+     Array.isArray(b)||
+     !Number.isInteger(b.level)||
+     b.level<1||
+     b.level>BAND||
+     b.level<=top||
+     !Number.isSafeInteger(b.size)||
+     b.size<1||
+     b.size>MAX_PACK||
+     typeof b.sha256!=='string'||
+     !/^[0-9a-f]{64}$/.test(b.sha256))
+     continue;
+    safeURL(b.file,base);
+    best={...item,file:b.file,size:b.size,sha256:b.sha256};
+    top=b.level;
+   }catch{}
+  }
+  return best;
+ }
  async function installed(){
   try{
    const reply=await chrome.runtime.sendMessage({type:'market-installed'});
-   if(reply?.ok===true&&Array.isArray(reply.installed)&&safeURL(location.href).href===initial.href)post({installed:[...new Set(reply.installed.filter(validId))]});
+   if(reply?.ok===true&&Array.isArray(reply.installed)&&safeURL(location.href).href===initial.href){
+    // what this version's band kit reads (its level and block names), so the page can say when a band needs a later version
+    const band=reply.band&&typeof reply.band==='object'&&!Array.isArray(reply.band)&&Number.isInteger(reply.band.level)&&reply.band.level>0?
+     JSON.parse(JSON.stringify(reply.band)):
+     null;
+    post({installed:[...new Set(reply.installed.filter(validId))],...(band?{band}:{})});
+   }
   }catch{}
  }
  async function download(url,limit){
@@ -75,7 +111,7 @@
    if(!item){if(raw.id===id)unsupported=true;continue;}
    if(ids.has(item.id))throw Error('Duplicate market pack id');
    ids.add(item.id);
-   if(item.id===id)entry=item;
+   if(item.id===id)entry=banded(raw,item,catalogURL);
   }
   if(!entry)throw Error(unsupported?UPDATE:'Market pack not found');
   const bytes=await download(safeURL(entry.file,catalogURL),entry.size);

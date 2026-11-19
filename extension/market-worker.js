@@ -117,7 +117,16 @@
    }
    if(!market(sender)||!await chrome.permissions?.contains({origins:['https://flzsh.github.io/*']}))throw Error('Market access is unavailable.');
    const owner=await root.ReserveMarketSite.bound(sender.tab.id);
-   if(message.type==='market-installed'){await account(owner);return {ok:true,installed:(await root.ReservePacks.installed({marketOnly:true,owner})).map(pack=>pack.id)};}
+   // The Market page is also told what this version's band kit reads (its level and block names), so it can say when a
+   // theme's band needs a later Canvas Harness.
+   if(message.type==='market-installed'){
+     await account(owner);
+     return {
+       ok:true,
+       installed:(await root.ReservePacks.installed({marketOnly:true,owner})).map(pack=>pack.id),
+       ...(root.ReserveBandKit?.capabilities?{band:root.ReserveBandKit.capabilities()}:{})
+     };
+   }
    await root.ReservePacks.install(message.entry,message.bytes,{owner});return {ok:true};
   })().then(reply,error=>reply({ok:false,reason:String(error?.message||'Pack request failed.').slice(0,240)}));return true;
  });
