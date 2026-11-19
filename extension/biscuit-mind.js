@@ -711,12 +711,12 @@
   }},
   {id:'r9-inbox',when:q=>/^ (?:open |go to |show (?:me )?|check )?(?:my |the )?(?:inbox|messages|msgs|conversations|canvas inbox|canvas messages)(?: page| tab)?(?: please)? $/.test(q)&&!/^ open (?:the )?messages /.test(q),answer:(m,c)=>c.card('navigate',[],{tab:'messages'},'Inbox.')},
   {id:'r9-materials',when:q=>/^ (?:open |go to |show (?:me )?)?(?:the |my )?(?:materials|materials (?:tab|page|library)|files (?:tab|page)|class files|course files tab)(?: please)? $/.test(q),answer:(m,c)=>c.card('navigate',[],{tab:'materials'},'Materials.')},
-  {id:'r9-scene-names',when:q=>/^ (?:use |switch to |turn on |put on )?(?:the )?(?:starfield|starry night|under the sea|blueprint|maple wind|thanksgiving)(?: theme| scene)?(?: please)? $/.test(q),answer:(m,c)=>{
+  {id:'r9-scene-names',when:q=>/^ (?:use |switch to |turn on |put on )?(?:the )?(?:starfield|starry night|under the sea|blueprint|maple wind|thanksgiving|christmas|xmas)(?: theme| scene)?(?: please)? $/.test(q),answer:(m,c)=>{
     const v=/ starfield /.test(c.q)?
       'stars':
       / starry /.test(c.q)?
         'starry':
-        / sea /.test(c.q)?'sea':/ blueprint /.test(c.q)?'blueprint':/ maple /.test(c.q)?'maple':'thanksgiving';
+        / sea /.test(c.q)?'sea':/ blueprint /.test(c.q)?'blueprint':/ maple /.test(c.q)?'maple':/ christmas | xmas /.test(c.q)?'christmas':'thanksgiving';
     return c.card('setting',[],{key:'sceneTheme',value:v},'Scene · '+c.q.trim().replace(/^(?:use|switch to|turn on|put on) /,'').replace(/^the /,'').replace(/ (?:theme|scene|please)$/,''));
   }},
   {
