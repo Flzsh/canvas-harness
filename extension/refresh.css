@@ -2715,10 +2715,11 @@
   .rd .rd-workspace::-webkit-scrollbar-thumb:hover, .rd .t-acc-panel::-webkit-scrollbar-thumb:hover, .rd .rd-utility-body::-webkit-scrollbar-thumb:hover, .rd .rv-panel::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--rd-ink) 42%, transparent) padding-box; }
 }
 /* ----------------------------------------------------------------- no space going to waste
-   The views and the days share a row unless a selection needs the room; the empty selection slot holds no column open. */
+   The views and the days share a row, selected or not: a selection never takes room in it (selection.css hangs it over
+   the row). Asking the row whether its selection slot was empty switched it to a grid with a selection area, so the row,
+   the desk and every theme's band grew and shrank with each selection (owner, 2026-11-16). */
 .rd[data-workspace] .rd-workspace-heading { margin-bottom: 8px; }
-.rd[data-workspace=work] .rd-desk-toolbar:has(.rd-selection-slot:empty) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 8px; }
-.rd[data-workspace=work] .rd-desk-toolbar:has(.rd-selection-slot:empty) > .rd-selection-slot { display: none; }
+.rd[data-workspace=work] .rd-desk-toolbar.rd-desk-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 8px; }
 .rd[data-workspace=work] .rd-desk-toolbar > .rd-week { justify-self: start; }
 .rd .rd-desk-toolbar > .rd-arrange-guide { flex: 0 1 auto; min-height: 0; margin: 0 0 0 auto; }
 .rd[data-workspace=work]:not([data-panel-frame=none]) .ch-band-host:not(:has(.ch-band-panel[hidden])) { padding: 6px 14px 10px !important; }
@@ -2751,7 +2752,7 @@
 .rd[data-rv-drawer=open]::after { display: none; }
 .rd[data-rv-drawer=open] .rd-dock { translate: -50% calc(100% - var(--rd-dock-headroom,80px) + 22px); transition: translate .24s var(--rd-settle, cubic-bezier(.3,.7,.25,1)); }
 /* Grades: on a wide window the short list of courses stays beside the long list of scored work */
-@media (min-width: 1401px) { .rd .rd-grade-layout > .rd-grade-sheet:first-child { position: sticky; top: 8px; } }
+@media (min-width: 1401px) { .rd .rd-grade-layout:not(.rd-grade-layout--with-strips) > .rd-grade-sheet:first-child { position: sticky; top: 8px; } }
 /* ----------------------------------------------------------------- one type scale
    A page's title, its section titles and their sub-titles read the same on every page. */
 .rd.rd .rd-plan-head h1, .rd.rd .rd-page-heading h1, .rd.rd .rd-hub > .rd-page-heading h2, .rd.rd .rd-materials-header h2, .rd.rd .gi-head h1, .rd.rd .rv-head h2 { font: 550 clamp(25px, 1.1vw + 12px, 30px)/1.16 var(--rd-display); letter-spacing: -.02em; }

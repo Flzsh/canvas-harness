@@ -173,8 +173,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const operation=(queues.get(key)||Promise.resolve()).catch(()=>{}).then(fn);
     queues.set(key,operation);operation.finally(()=>{if(queues.get(key)===operation)queues.delete(key);}).catch(()=>{});return operation;
   }
+  // Deep enough for a real Home layout and its undo copy (settings.workspaceUndo.layout: each nested level of modules is
+  // two levels here, up to 16 levels of modules; workspace-arrange.js cleanLayout bounds the tree itself). At 12, a
+  // layout five levels deep made every later move fail to save, and Home snapped back.
   function safeKeys(value,depth=0) {
-    if (depth > 12) throw Error('Backup nesting is too deep.');
+    if (depth > 40) throw Error('Backup nesting is too deep.');
     if (value && typeof value === 'object') for(const key of Object.keys(value)) {
       if (['__proto__','constructor','prototype'].includes(key)) throw Error('Backup contains an unsafe key.');
       safeKeys(value[key],depth+1);
@@ -352,7 +355,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       days.add(entry.d);
       return {d:entry.d,n:integer(entry.n,0,100000,0),r:integer(entry.r,0,100000,0),w:integer(entry.w,0,100000,0),done:entry.done===true};
     }).sort((a,b)=>a.d.localeCompare(b.d)),prefs=value.settings||{};
-    return {version:1,cards,settings:{newPerDay:integer(prefs.newPerDay,0,50,10),maxReviews:integer(prefs.maxReviews,10,500,100)},testDates,log};
+    return {
+      version:1,
+      cards,
+      settings:{newPerDay:integer(prefs.newPerDay,0,50,10),maxReviews:integer(prefs.maxReviews,10,500,100),...(prefs.bigCard===true?{bigCard:true}:{})},
+      testDates,
+      log
+    };
   }
   function cleanData(value,previous) {
     if (!isRecord(value)) throw Error('Backup data must be an object.');
@@ -444,7 +453,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(taskEntries.length>10000)throw Error('Backup contains too many task records.');
     for(const [id,item] of taskEntries) {
       if(previous&&Object.hasOwn(previous.tasks,id)&&same(item,previous.tasks[id])){out.tasks[id]=previous.tasks[id];continue;}
-      if(!/^(\d+|local-[\w-]+)$/.test(id)||!isRecord(item))throw Error('Invalid task record in backup.');
+      if(!/^(\d+|quiz-\d+|local-[\w-]+)$/.test(id)||!isRecord(item))throw Error('Invalid task record in backup.');
       if(item.plannedDate && !validDay(item.plannedDate))throw Error('Invalid planned date in backup.');
       if(item.plannedTime!==undefined&&(typeof item.plannedTime!=='string'||item.plannedTime!==''&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(item.plannedTime)))throw Error('Invalid planned time in backup.');
       if(typeof item.notes==='string' && item.notes.length>20000)throw Error('A task note exceeds the 20,000 character limit.');
@@ -978,6 +987,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     },exportBackup,exportBackupWithPacks,importBackup,readCache:async()=>{
       const v=await adapter.read(`${key}:cache`);
       return validCache(v)?v:null;
+    },readStartupRecord:async()=>{
+      const v=await adapter.read('reserve:startup-record');
+      return Array.isArray(v)?v.slice(-8):[];
     },writeCache:async snapshot=>{
       if(!validCache(snapshot))throw Error('Cache owner, origin, or account is invalid.');
       if(bytes(snapshot)>4000000)throw Error('Canvas snapshot is too large to cache. Live data is still available.');

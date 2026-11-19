@@ -300,7 +300,7 @@
  .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-spark { animation:fr-spark 2.8s var(--rd-settle,cubic-bezier(.2,.5,.5,1)) calc(var(--i) * -.4s) infinite; }
  .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live] .fr-firelight { animation:fr-firelight 3.3s linear infinite; }
  .rd:not([data-living-art="off"]) .fr-room[data-motion="gentle"][data-fr-live]:is([data-night="true"],[data-fr-after="end"]) .fr-lantern .fr-flame { animation:fr-flick 1.9s ease-in-out infinite; }
- .fr-room[data-motion="gentle"][data-hidden="true"] *,.fr-room[data-hidden="true"] * { animation-play-state:paused!important; }
+ .fr-room[data-hidden="true"] * { animation-play-state:paused!important; }
 
  /* acting once: the start of a session. The sun dips and rises (JS); a fish jumps, a ring spreads, embers burst. */
  .fr-room[data-motion="gentle"]:is([data-fr-moment="start"],[data-fr-moment="wake-start"]) .fr-start-life { animation:fr-show 2.2s linear both; }
@@ -358,8 +358,11 @@
  .fr-room[data-motion="gentle"] .fr-paused.fr-rub { opacity:1;animation:fr-rub .7s ease-in both; }
  :is(.fr-room[data-motion="gentle"],.rd:not([data-motion-style="off"]):not([data-motion-style="still"]) .fr-mod) .fr-tally-new svg path:last-child { animation:fr-draw .55s var(--rd-settle,cubic-bezier(.3,.7,.3,1)) both; }
 }
-/* Motion off and Still: nothing travels; the end shows its rest at once (JS sets data-fr-after straight away). */
-.fr-room:not([data-motion="gentle"]) *,.rd[data-motion-style="off"] .fr-mod *,.rd[data-motion-style="still"] .fr-mod * { animation:none!important;transition:none!important; }
+/* Motion off and Still: nothing travels; the end shows its rest at once (JS sets data-fr-after straight away).
+   Keyed on data-fr-gentle, the room's own mark written beside its data-motion (focus-room.js): a universal subject after a
+   [data-motion] compound would make every data-motion change anywhere in the dashboard (the page's reveal writes two a
+   click, motion.js) restyle that element's whole subtree. */
+.fr-room:not([data-fr-gentle]) *,.rd[data-motion-style="off"] .fr-mod *,.rd[data-motion-style="still"] .fr-mod * { animation:none!important;transition:none!important; }
 @media (prefers-reduced-motion:reduce) { .fr-room *,.fr-mod * { animation:none!important;transition:none!important; } }
 
 /* ---------------------------------------------------------------- keyframes */

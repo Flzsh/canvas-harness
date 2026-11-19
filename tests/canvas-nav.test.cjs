@@ -28,7 +28,7 @@ test('every school’s logo is shown well: light marks on nothing turn to ink, a
  // A logo that cannot be read (no CORS) falls back to the plate in the school's own menu colour.
  assert.match(read('canvas-nav.js'),/catch\{done\('plate'\);\}/);
  const css=read('canvas-nav.css');
- assert.match(css,/\[data-chn-logo=plate\] \.ic-app-header__logomark \{ background-color: var\(--chn-school-logo, var\(--chn-school, #394B58\)\) !important; \}/);
+ assert.match(css,/\[data-chn-logo=plate\] \.ic-app-header__logomark \{ background-color: var\(--chn-school-logo, var\(--chn-school, #394B58\)\) !important;/);
  assert.match(css,/\[data-chn-logo=ink\] \.ic-app-header__logomark \{ filter: brightness\(0\);/);
 });
 
@@ -59,7 +59,8 @@ test('the bar sits against the window’s edge with its pen line on three sides,
  assert.ok(!js.includes(''),'no control characters in the matchers');
  const link=(id,label)=>({id,querySelector:()=>({textContent:label})});
  assert.equal(Nav.kindOf(link('context_external_tool_3_menu_item','Canvas Studio')),'studio');assert.equal(Nav.kindOf(link('x','Studios of Art')),'');
- assert.match(js,/class="chn-logo-art"/,'a kept logo hangs in a drawn frame');
+ assert.doesNotMatch(js,/<span class="chn-logo-art"/,'a kept logo keeps its own picture: no drawn frame, no nail (2026-11-16)');
+ assert.match(css,/\.ic-app-header__logomark \{\n display: block;[^}]*width: min\(100%, calc\(var\(--chn-logo-h\) \* var\(--chn-logo-aspect, 1\)\)\) !important; aspect-ratio: var\(--chn-logo-aspect, 1\);[^}]*border-radius: 9px 11px 8px 10px;/,'the logo sits at the items\' height in its own shape, with the bar\'s rounding');
  assert.match(css,/\.ic-app-header__secondary-navigation \{ background: none !important; padding-bottom: calc\(var\(--chn-bottom, 12px\) \+ 10px\); \}/,'the collapse arrow stays above the bar’s bottom line');
 });
 
@@ -77,12 +78,13 @@ test('the layouts: drawer by default (it moves the page aside), full height, or 
  assert.match(js,/html\.style\.setProperty\('--chn-push',by\+'px'\);/);
  assert.doesNotMatch(js,/page\.style\.transform/,'the page is never shifted past the window\u2019s edge');
  for(const hook of ["edge.addEventListener('pointerenter',open,{signal})","header.addEventListener('pointerleave',()=>close(),{signal})","header.addEventListener('focusin',open,{signal})",'trayOpen()'])assert.ok(js.includes(hook),hook);
- // across the top: in the toolbar while it fits (names, then drawings alone, then without the logo), else a strip
- assert.match(js,/for\(const kind of \['full','icons','bare'\]\)/);
+ // across the top: in the toolbar while it fits (names beside, then under), else a strip that folds the last items
+ // into More (2026-11-16: one bar, one height; the logo is never dropped, a name only at the narrowest)
+ assert.match(js,/for\(const kind of \['full','stack'\]\)/);assert.match(js,/for\(const kind of \['stack','icons'\]\)/);
  assert.match(js,/html\.dataset\.chnPlace='toolbar';/);assert.match(js,/html\.dataset\.chnPlace='strip';/);
- assert.match(css,/html\.chn-nav\[data-chn-layout=top\]\[data-chn-place=strip\] #wrapper \{ margin-top: 58px !important; \}/);
+ assert.match(css,/html\.chn-nav\[data-chn-layout=top\]\[data-chn-place=strip\] #wrapper \{ margin-top: 62px !important; \}/);
  assert.match(css,/html\.chn-nav\[data-chn-layout=top\] #header \{[^}]*flex-direction: row !important;[^}]*transform: none !important;/,'its own row, none of the column\u2019s slide');
- assert.match(css,/#header\[data-chn-fit=bare\] \.ic-app-header__logomark-container \{ display: none !important; \}/);
+ assert.doesNotMatch(css,/data-chn-fit=bare/,'the school\u2019s logo stays in every fit');
 });
 
 // The user (2026-10-15) could not find the choice in the toolbar popup: it is in Make it yours too, and any change
@@ -103,7 +105,7 @@ test('across the top, the logo and the navigation take only their own width, and
  const css=read('canvas-nav.css'),js=read('canvas-nav.js');
  assert.match(css,/html\.chn-nav\[data-chn-layout=top\] #header \.ic-app-header__main-navigation \{[^}]*width: auto !important; flex: none !important;/);
  assert.match(css,/html\.chn-nav\[data-chn-layout=top\] #header \.ic-app-header__logomark-container \{ flex: none !important; width: auto !important;/);
- assert.match(js,/if\(Math\.max\(header\.offsetWidth,header\.scrollWidth\)<=width\)return true;/);
+ assert.match(js,/const wide=\(\)=>Math\.max\(header\.offsetWidth,header\.scrollWidth\);/);assert.match(js,/if\(wide\(\)<=width\)return true;/);
 });
 
 function storageFixture(){
@@ -138,7 +140,7 @@ test('on the dashboard the bar’s two edges are both read before either is writ
  const run=({top=62,bottom=786,scrollY=0,innerHeight=800,shown=true}={})=>{
   const log=[],box=(name,rect)=>({getClientRects:()=>{log.push('read '+name);return shown?[rect]:[];},getBoundingClientRect:()=>{log.push('read '+name);return rect;}});
   const parts={'.rd-toolbar':box('bar',{top,bottom:top+40}),'.rd-course-rail':box('rail',{top:120,bottom})};
-  const html={style:{setProperty:(k,v)=>log.push('write '+k+' '+v)}};
+  const html={dataset:{},style:{setProperty:(k,v)=>log.push('write '+k+' '+v)}};
   make({querySelector:q=>parts[q]||null},{scrollY,innerHeight},html,false,()=>({}),()=>{},{set:()=>Promise.resolve()},{},'p','{}')();
   return log;
  };
@@ -164,7 +166,7 @@ test('on the dashboard the bar follows the workspace’s font, surface, scene an
  class MO{constructor(fn){this.fn=fn;observers.push(this);}observe(el,options){this.el=el;this.options=options;}disconnect(){}}
  const make=new Function('root','workspace','MutationObserver','listen','readPalette','applyPalette','store','saved','PALETTE','html',
   'let stopped=false,lastPalette="",workspaceTimer,workspaceObserver,workspaceSizes=null,workspaceQueued=0;'+src.slice(from,to)+'return followWorkspace;');
- make(root,()=>rd,MO,(target,type,fn)=>{events[type]=fn;},()=>({font}),p=>applied.push(p.font),{set:()=>Promise.resolve()},{},'p',{style:{setProperty:(k,v)=>writes.push(k+' '+v)}})();
+ make(root,()=>rd,MO,(target,type,fn)=>{events[type]=fn;},()=>({font}),p=>applied.push(p.font),{set:()=>Promise.resolve()},{},'p',{dataset:{},style:{setProperty:(k,v)=>writes.push(k+' '+v)}})();
  const flush=()=>{while(timers.length)timers.shift()();};
  intervals[0]();assert.deepEqual(applied,['Segoe UI']);assert.deepEqual(writes,[],'a hidden host has nothing to measure yet');
  const filter=observers[0].options.attributeFilter;
@@ -176,3 +178,82 @@ test('on the dashboard the bar follows the workspace’s font, surface, scene an
  assert.ok(watcher.off&&sizes.at(-1).els.includes(rail),'a replaced rail is watched instead of the old one');assert.equal(writes.at(-1),'--chn-bottom 20px');
  root.scrollY=300;events.scroll();assert.equal(timers.length,0,'scrolling down does nothing');root.scrollY=0;events.scroll();assert.equal(timers.length,1,'back at the top it measures again');
 });
+
+// Diagnosis of 4.0.164 (problem 6): with the drawer open beside a scene, Canvas's whole page was pushed right and a plain column
+// showed where the scene could not reach. Now <html> is marked while the dashboard wears a theme kit; then the drawer leaves
+// Canvas's page where it is and the dashboard's own content moves aside instead, the scene running on under the menu card.
+test('beside a scene the drawer moves only the dashboard\'s content, and the scene runs on under the menu card',()=>{
+ const src=read('canvas-nav.js'),from=src.indexOf('const sync=()=>{',src.indexOf('function followWorkspace'));
+ const body=src.slice(from,src.indexOf('const later=',from));
+ const make=new Function('rd','root','html','stopped','readPalette','applyPalette','store','saved','PALETTE','lastPalette',body+'return sync;');
+ const html={dataset:{},style:{setProperty(){}}},writes=[];let kit='train';
+ const marks=new Proxy(html.dataset,{set:(o,k,v)=>{writes.push('set '+k);o[k]=v;return true;},deleteProperty:(o,k)=>{writes.push('delete '+k);delete o[k];return true;}});html.dataset=marks;
+ const rd={get dataset(){return kit?{themeKit:kit}:{};},querySelector:()=>null};
+ const sync=make(rd,{scrollY:0,innerHeight:800},html,false,()=>({}),()=>{},{set:()=>Promise.resolve()},{},'p','{}');
+ sync();assert.equal(html.dataset.chnScene,'','a dashboard in a scene marks the page');sync();assert.deepEqual(writes,['set chnScene'],'written once, not again while it stays');
+ kit='';sync();assert.equal('chnScene' in html.dataset,false,'no scene, no mark');assert.deepEqual(writes,['set chnScene','delete chnScene']);
+ // the stylesheets: Canvas's page stays when marked; the push reaches the dashboard's content, never the scene's layers
+ const nav=read('canvas-nav.css').replace(/\s+/g,' '),scene=read('scene-themes.css').replace(/\/\*[\s\S]*?\*\//g,'').replace(/\s+/g,' ');
+ assert.match(nav,/html\.chn-nav\[data-chn-layout=drawer\] #wrapper \{ margin-left: var\(--chn-push, 0px\) !important;/,'without a scene the page is pushed as before');
+ assert.match(nav,/html\.chn-nav\[data-chn-layout=drawer\]\[data-chn-scene\] #wrapper \{ margin-left: 0 !important; \}/);
+ assert.match(nav,/html\.chn-nav\[data-chn-layout=drawer\]\[data-chn-scene\] #header \{ z-index: 1000 !important; \}/,'the menu card lies over the scene, not under it');
+ const rule=scene.match(/([^{}]*) \{ margin-left:var\(--chn-push,0px\);/);assert.ok(rule,'the dashboard content takes the push');
+ const parts=rule[1].split(',').map(s=>s.trim());assert.ok(parts.every(p=>p.startsWith('.rd[data-theme-kit] > .rd-')),'only the dashboard\'s own parts, and only in a scene');
+ for(const part of ['.rd-toolbar','.rd-shell'])assert.ok(parts.includes('.rd[data-theme-kit] > '+part),part+' moves aside');
+ for(const part of parts)assert.doesNotMatch(part,/tk-|sky|page/,'the scene\'s layers stay under the card');
+ assert.ok(!parts.some(part=>part.includes('rd-appearance')),'Make it yours is a fixed side panel: the push never moved it');
+ assert.match(scene,/@media \(prefers-reduced-motion: reduce\) \{ \.rd\[data-theme-kit\] > \.rd-toolbar,[^{]* \{ transition:none; \} \}/);
+});
+
+// 2026-11-16 (owner: "fix the aesthetic issue of top sidebar, and also other form of sidebar, in different display
+// resolution it easily bugged out"): one bar, one height; nothing leaves its outline; the current page is a pad and a
+// stroke inside its item; a badge sits inside its item; items that do not fit fold into More.
+test('the current page is a tinted pad and a drawn stroke inside its item, and a badge sits inside its item',()=>{
+ const css=read('canvas-nav.css'),js=read('canvas-nav.js');
+ assert.doesNotMatch(js,/insertAdjacentHTML\('afterbegin',frame\)|class="chn-frames"/,'no frame is added to Canvas\'s links');
+ assert.match(js,/for\(const old of header\.querySelectorAll\('\.chn-frames'\)\)old\.remove\(\);/,'a frame left by an older build is taken off');
+ const px=v=>Number((/(-?[\d.]+)px/.exec(v)||[])[1]);
+ const rail=/data-chn-current] > \.chn-more-link\)::after \{\n content: ""; position: absolute; z-index: -1; pointer-events: none; left: (\S+); top: (\S+); bottom: (\S+); width: (\S+);/.exec(css);
+ assert.ok(rail,'the rail\'s stroke rule');for(const v of rail.slice(1))assert.ok(px(v)>=0,'the rail\'s stroke stays inside its item: '+v);
+ const top=/\[data-chn-layout=top\] #header :is\([^)]*\)::after \{\n left: (\S+); right: (\S+); top: auto; bottom: (\S+);/.exec(css);
+ assert.ok(top,'the top bar\'s stroke rule');for(const v of top.slice(1))assert.ok(px(v)>=0,'the top bar\'s stroke stays inside its item: '+v);
+ assert.match(css,/#header :is\(\.ic-app-header__menu-list-item--active > \.ic-app-header__menu-list-link, \.chn-more\[data-chn-current\] > \.chn-more-link\) \{ background: var\(--chn-pad\) !important; \}/,'the pad');
+ const badge=/#header \.menu-item__badge \{\n position: absolute !important; z-index: 2; top: (\S+) !important; right: (\S+) !important;/.exec(css);
+ assert.ok(badge&&px(badge[1])>=0&&px(badge[2])>=0,'the badge is placed inside the item\'s box');
+ assert.match(css,/#header \.menu-item-icon-container \{ position: static !important;/,'so it is placed against the item, not against the drawing');
+ assert.doesNotMatch(css.slice(0,css.indexOf('frame rules copied')),/\.chn-frames > \.rd-frame/,'no rule draws the old frames');
+});
+
+test('across the top the bar is one height in every fit, and a narrower one folds the last items into More',()=>{
+ const css=read('canvas-nav.css'),js=read('canvas-nav.js');
+ assert.match(css,/html\.chn-nav\[data-chn-layout=top\] #header \{\n --chn-top: 0px; --chn-bottom: 0px; --chn-logo-h: 36px;\n position: absolute !important;[^}]* height: 48px !important;/);
+ for(const rule of css.split('}'))if(/\[data-chn-fit=/.test(rule)&&/(^|\s)#header\s*\{/.test(rule))assert.doesNotMatch(rule,/height:/,'no fit changes the bar\'s height');
+ assert.match(js,/for\(const kind of \['full','stack'\]\)\{header\.dataset\.chnFit=kind;fold\(header,0\);if\(wide\(\)<=width\)return true;\}/,'names beside, then names under');
+ assert.match(js,/for\(const kind of \['stack','icons'\]\)\{header\.dataset\.chnFit=kind;for\(let k=1;k<=n-2;k\+\+\)\{fold\(header,k\);/,'then More, names dropped only at the narrowest');
+ assert.match(js,/html\.dataset\.chnPlace='strip';fit\(root\.innerWidth-32,true\);/,'the strip may fold; the toolbar place never does');
+ assert.match(css,/\[data-chn-place=strip\] #wrapper \{ margin-top: 62px !important; \}/,'the page starts under the 48 px strip set 7 px down');
+});
+
+test('More: the last items fold into it, it carries the current page\'s mark when that page is folded, and unfolds',()=>{
+ const made=[];
+ const node=(tag,cls='')=>{const n={tagName:tag.toUpperCase(),className:cls,dataset:{},hidden:false,style:{},attrs:{},children:[],
+  classList:{contains:c=>String(n.className).split(' ').includes(c)},hasAttribute:k=>k in n.attrs,toggleAttribute(k,on){if(on)n.attrs[k]='';else delete n.attrs[k];},
+  setAttribute(k,v){n.attrs[k]=String(v);},getAttribute:k=>n.attrs[k]??null,append(...k){n.children.push(...k);},set innerHTML(v){n.html=v;},
+  querySelector:sel=>sel===':scope > .chn-more'?n.children.find(c=>c.className==='chn-more')||null:null};made.push(n);return n;};
+ const list=node('ul','ic-app-header__menu-list'),nav=node('div','ic-app-header__main-navigation');
+ list.children=['Account','Dashboard','Courses','Calendar','Inbox','History','Studio','Help'].map((name,i)=>{const li=node('li','ic-app-header__menu-list-item'+(name==='Help'?' ic-app-header__menu-list-item--active':''));li.name=name;return li;});
+ const header={dataset:{},querySelector:sel=>sel==='.ic-app-header__main-navigation .ic-app-header__menu-list'?list:sel==='.ic-app-header__main-navigation'?nav:sel==='.chn-more'?nav.children.find(c=>c.className==='chn-more')||null:null};
+ const before=globalThis.document;globalThis.document={createElement:tag=>node(tag),documentElement:{dataset:{}}};
+ try{
+  assert.equal(Nav.fold(header,3),3);
+  assert.deepEqual(list.children.filter(li=>'chnFolded' in li.dataset).map(li=>li.name),['History','Studio','Help'],'the last three fold');
+  const more=nav.children.find(c=>c.className==='chn-more');assert.ok(more&&!more.hidden,'More shows');assert.match(more.html,/class="chn-more-link"[^>]*aria-haspopup="menu" aria-expanded="false"[^>]*title="More"/);
+  assert.match(more.html,/<svg class="chn-ic"[^>]*aria-hidden="true"[\s\S]*<span class="chn-more-text">More<\/span>/,'a drawing and its name');
+  assert.ok(more.hasAttribute('data-chn-current'),'the current page (Help) is folded, so More wears the selected mark');assert.equal(header.dataset.chnFolded,'3');
+  assert.equal(Nav.fold(header,1),1);assert.equal(more.hasAttribute('data-chn-current'),true);
+  assert.equal(Nav.fold(header,99),7,'one item always stays beside More');
+  assert.equal(Nav.fold(header,0),0);assert.ok(more.hidden&&!more.hasAttribute('data-chn-current'),'unfolded: More hides');
+  assert.equal(list.children.some(li=>'chnFolded' in li.dataset),false);assert.equal('chnFolded' in header.dataset,false);
+ }finally{globalThis.document=before;}
+});
+

@@ -400,3 +400,14 @@ test('each supplied hover/focus action has a current-page opening action with a 
  }
  for(const rule of all)assert.doesNotMatch(declaration(rule.body,'animation')+' '+declaration(rule.body,'animation-iteration-count'),/\binfinite\b/,'No looping icon actions: '+rule.selector);
 });
+
+// Audit B1-08 (2026-11-14): a link that becomes current after the art stylesheet has loaded (Canvas redraws its menu or
+// marks another tab current) kept cn-opening for good: the code waited for a second stylesheet that no longer exists.
+test('B1-08 a link that becomes current after the art stylesheet loaded still finishes its opening action',async()=>{
+ const f=fixture();f.addItem({className:'modules'});await f.start();
+ const [sheet]=[...f.document.head.children];sheet.onload();await f.flush();
+ const later=f.addItem({className:'grades',active:true});await f.flush();
+ assert.ok(later.anchor.classList.contains('is-current'));
+ await f.finishTimers();
+ assert.equal(later.anchor.classList.contains('cn-opening'),false);
+});

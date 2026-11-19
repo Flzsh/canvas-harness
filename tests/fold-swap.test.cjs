@@ -1,8 +1,86 @@
 'use strict';
 // Room folds and opens (fold-freeze fix, 2026-10-28): the render that swaps a room's page for Home (or Home for a room)
-// was one long task, 1.4-2.7 s at 4x CPU. These pin the parts of the fix that need no browser: the page swap hides the
+// was one long task, 1.4-2.7 s at 4x CPU. These pin the parts of the fix that need no browser: the Help band's ink read
+// waits while a room's move plays, a desk drawn again starts from the last desk's sizes, and the page swap hides the
 // outgoing page at once and removes it later, with every other render unchanged.
 const {test}=require('node:test'),assert=require('node:assert/strict');
+const Band=require('../extension/study-band.js'),UI=require('../extension/study-ui.js');
+const {dom,storage}=require('./study-fixture.cjs');
+const scope='https://school.instructure.com|7';
+const ask=headline=>({kind:'ask',title:headline,data:{v:1,kind:'ask',title:headline,headline,size:'s',grid:4,importance:1,points:[{text:headline+' first.',src:'Canvas'}],next:'Open it.',gaps:[]},savedAt:100,progress:{}});
+
+function bandIn({moving=0,color='rgb(20, 20, 20)',theme=''}={}){
+ const d=dom(),rd=new d.Element('div'),host=new d.Element('div');rd.className='rd';rd.dataset.theme=theme;if(moving)rd.dataset.chMoving=String(Date.now()+moving);rd.append(host);
+ // a browser's closest(): the band asks its dashboard (.rd) whether a room's move is playing
+ if(!d.Element.prototype.closest)d.Element.prototype.closest=function(sel){for(let n=this;n;n=n.parentNode)if(sel==='.rd'&&String(n.className).split(' ').includes('rd'))return n;return null;};
+ const reads=[],timers=[],idles=[];
+ const env={document:d.document,chrome:{storage:{local:storage()}},matchMedia:()=>({matches:false}),getComputedStyle:el=>{reads.push(el);return {color,transform:'none',opacity:'1'};},
+  setTimeout:(fn,ms)=>{timers.push({fn,ms});return timers.length;},clearTimeout:id=>{if(timers[id-1])timers[id-1].fn=null;},requestIdleCallback:fn=>{idles.push(fn);return idles.length;}};
+ const view=Band.renderBand(host,{'a:1':ask('Lab report')},{env,scope,store:UI.createStore(env)});
+ const band=host.children[0];
+ return {view,band,reads,timers,idles,rd};
+}
+const inkReads=b=>b.reads.length;
+
+test('the Help band reads its ink at once when no room is moving',()=>{
+ const b=bandIn({color:'rgb(240, 240, 240)'});
+ assert.ok(inkReads(b)>0,'the day tag colour is read in the render');assert.equal(b.band.dataset.ink,'light');b.view.destroy();
+});
+
+test('while a room\'s move plays the Help band waits to read its ink, starts with the last band\'s, and reads it after',()=>{
+ // a band drawn earlier read light ink (the last band's ink is what a band made in a move starts with)
+ const first=bandIn({color:'rgb(240, 240, 240)'});assert.equal(first.band.dataset.ink,'light');first.view.destroy();
+ const b=bandIn({moving:600,color:'rgb(20, 20, 20)',theme:'dark'});
+ assert.equal(inkReads(b),0,'no style read in the render that swapped the page');
+ assert.equal(b.band.dataset.ink,'light','the last ink is kept meanwhile (no flash of the other washes)');
+ const wait=b.timers.find(t=>t.fn&&t.ms>=600&&t.ms<=700);assert.ok(wait,'one timer waits for the move to land');
+ assert.equal(b.timers.filter(t=>t.fn&&t.ms>=600&&t.ms<=700).length,1);
+ // the move has landed: the read goes to the browser's idle time
+ b.rd.dataset.chMoving=String(Date.now()-1);wait.fn();assert.equal(inkReads(b),0,'still not read until the browser is idle');
+ assert.equal(b.idles.length,1);b.idles[0]();
+ assert.ok(inkReads(b)>0,'read once idle');assert.equal(b.band.dataset.ink,'dark','and the ink follows the page');
+ b.view.destroy();
+});
+
+test('a band destroyed while its ink read waits never reads it',()=>{
+ const b=bandIn({moving:500});const wait=b.timers.find(t=>t.fn&&t.ms>=500&&t.ms<=600);b.view.destroy();
+ assert.equal(wait.fn,null,'the timer is cleared with the band');assert.equal(inkReads(b),0);
+});
+
+// ---- the desk drawn again (workspace-gestures.js applyLayout)
+const {fixture}=require('./gesture-fixture.cjs'),M=require('../extension/workspace-arrange.js'),G=require('../extension/workspace-gestures.js');
+function desks(){
+ const f=fixture();f.controller.destroy();const observers=[],reads={width:0,height:0},writes=[];
+ const win=f.container.ownerDocument.defaultView;
+ win.ResizeObserver=class{constructor(fn){this.fn=fn;this.nodes=new Set();observers.push(this);}observe(n){this.nodes.add(n);}unobserve(n){this.nodes.delete(n);}disconnect(){this.nodes.clear();}};
+ const count=(desk,panels)=>{Object.defineProperty(desk,'clientWidth',{configurable:true,get(){reads.width++;return desk.rect.width;}});for(const node of panels)Object.defineProperty(node,'offsetHeight',{configurable:true,get(){reads.height++;return node.rect.height;}});
+  for(const node of [desk,...panels]){node.style.getPropertyValue=k=>node.style[k]||'';const put=node.style.setProperty;node.style.setProperty=(k,v)=>{writes.push([node,k,v]);put(k,v);};}};
+ const desk=f.container.querySelector('.rd-main');count(desk,Object.values(f.panels));
+ const controller=G.create({container:f.container,getSettings:()=>f.settings,onChange:c=>{M.change(f.settings,c);return true;}},M);
+ const sizes=()=>{for(const o of observers){const entries=[...o.nodes].map(target=>({target,contentRect:{width:target.rect.width,height:target.rect.height},borderBoxSize:[{inlineSize:target.rect.width,blockSize:target.rect.height}]}));if(entries.length)o.fn(entries);}};
+ // Home drawn again: a new desk with new modules under the same keys (what the dashboard inserts when a room folds back)
+ const redraw=()=>{const old=f.container.querySelector('.rd-main'),next=old.cloneNode();const panels=next.children;count(next,panels);old.parentNode.insertBefore(next,old);old.remove();return {desk:next,panels:Object.fromEntries(panels.map(n=>[n.dataset.arrangeKey,n]))};};
+ return {f,controller,reads,writes,sizes,redraw,desk};
+}
+test('a desk drawn again starts from the last desk\'s sizes: no layout read in the render, the same placement',()=>{
+ const t=desks();t.controller.sync();t.sizes();
+ const placed=Object.fromEntries(Object.entries(t.f.panels).map(([k,n])=>[k,[n.style['--rd-panel-column'],n.style['--rd-panel-row'],n.style['--rd-panel-grow']]])),columns=t.desk.style['--rd-layout-columns'];
+ const before={...t.reads},again=t.redraw();t.controller.sync();
+ assert.deepEqual(t.reads,before,'neither the desk width nor a module height is read in the render that draws Home again');
+ assert.equal(again.desk.style['--rd-layout-columns'],columns);
+ for(const [k,n] of Object.entries(again.panels))assert.deepEqual([n.style['--rd-panel-column'],n.style['--rd-panel-row'],n.style['--rd-panel-grow']],placed[k],k+' keeps its place');
+ // the frame's own layout then reports the real sizes: the same ones write nothing
+ const written=t.writes.length;t.sizes();assert.equal(t.writes.length,written,'unchanged sizes lay nothing out again');
+ t.controller.destroy();
+});
+test('a desk drawn again whose modules changed size is corrected by the observer in the same frame',()=>{
+ const t=desks();t.controller.sync();t.sizes();const again=t.redraw();t.controller.sync();
+ const row=again.panels.work.style['--rd-panel-row'];again.panels.work.rect.height=820;t.sizes();
+ assert.notEqual(again.panels.work.style['--rd-panel-row'],row,'the taller module moves the rows');t.controller.destroy();
+});
+test('the first desk of all is still measured in the render',()=>{
+ const t=desks();t.controller.sync();assert.ok(t.reads.width>0||t.reads.height>0);t.controller.destroy();
+});
 
 // ---- the page swap (dashboard.js renderNow): focus on the outgoing page is let go, and the column's scroll reset,
 // before the new page goes in; every other render is untouched

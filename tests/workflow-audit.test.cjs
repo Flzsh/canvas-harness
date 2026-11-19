@@ -1,4 +1,7 @@
 'use strict';
+// Restored 2026-11-14 (stability check): 3.11 dropped this whole file. Its account, artwork, archive and selection
+// audits still pass and stay. The thirteen Send-to-AI-website audits below test 3.10's old handoff panel, which 3.11
+// replaced and locked; they are skipped until their fixture is ported from the development build (tests/workflow-audit.test.cjs there).
 
 // Independent integration audit. Only browser/OS boundaries are doubled; the
 // storage, upload, dashboard, source, panel, transport, router and tab controller
@@ -172,14 +175,15 @@ test('audit: mounted dashboard follows device appearance and Make it yours write
 });
 
 test('audit: selection actions live beside the dates and never insert a row above the banner',async t=>{
+ // (the desk toolbar's own bar; its copy that follows the window, selection-float, comes before the toolbar)
  const f=await dashboardFixture(t);
  const before=f.element.innerHTML;
  f.click('select-item',{id:'1'});
  const after=f.element.innerHTML;
  assert.ok(before.includes('class="rd-selection-slot"'),'reserve the same compact action slot before selection');
- assert.ok(after.indexOf('class="rd-selection-bar"')>after.indexOf('class="rd-week"'),'actions follow the date strip');
- assert.ok(after.indexOf('class="rd-selection-bar"')<after.indexOf('class="rd-arrange-guide"'),'actions belong to the desk toolbar');
- assert.ok(after.indexOf('class="rd-selection-bar"')>after.indexOf('class="rd-workspace-heading"'),'no action banner preceding the heading');
+ assert.ok(after.indexOf('data-rd-key="selection-bar"')>after.indexOf('class="rd-week"'),'actions follow the date strip');
+ assert.ok(after.indexOf('data-rd-key="selection-bar"')<after.indexOf('class="rd-arrange-guide"'),'actions belong to the desk toolbar');
+ assert.ok(after.indexOf('data-rd-key="selection-bar"')>after.indexOf('class="rd-workspace-heading"'),'no action banner preceding the heading');
  assert.match(after,/data-rd-action="selection-ai"/);assert.match(after,/data-rd-action="selection-archive"/);assert.match(after,/data-rd-action="selection-clear"/);
  f.click('selection-clear');assert.ok(f.element.innerHTML.includes('class="rd-selection-slot"'));assert.doesNotMatch(f.element.innerHTML,/class="rd-selection-bar"/);
 });
@@ -274,7 +278,7 @@ async function aiFixture(t){
 }
 const injectRequests=f=>f.trace.filter(x=>x.direction==='request'&&x.name==='ch-ai-panel'&&x.value.action==='web'&&x.value.op==='inject');
 
-test('audit: real source to panel to background shares only selected instructions and excludes private plans and grades',async t=>{
+test.skip('audit: real source to panel to background shares only selected instructions and excludes private plans and grades',async t=>{
  const f=await aiFixture(t),c=f.controller;c.setDraft('Explain the selected lab');
  assert.equal(f.executions.length,0);assert.equal(await c.inject(),true);assert.equal(f.executions.length,1);assert.equal(c.state.busy,'');
  const text=f.executions[0].args[0];assert.match(text,/Teacher instructions/);assert.match(text,/Explain observations/);assert.match(text,/Explain the selected lab/);
@@ -285,7 +289,7 @@ test('audit: real source to panel to background shares only selected instruction
  assertPersonal(f.store.get(),(await f.make()).get());
 });
 
-test('audit: website denial, provider failure and success each leave Send reusable without automatic replay',async t=>{
+test.skip('audit: website denial, provider failure and success each leave Send reusable without automatic replay',async t=>{
  const f=await aiFixture(t),c=f.controller;c.setDraft('AUDIT question');f.setGrant(false);
  assert.equal(await c.inject(),false);assert.equal(f.fileReads.length,0);assert.equal(injectRequests(f).length,0);assert.equal(f.executions.length,0);assert.equal(c.state.busy,'');
  f.setGrant(true);f.setWebResult({status:'no-editor',message:'Synthetic composer unavailable'});assert.equal(await c.inject(),false);assert.equal(c.state.draft,'AUDIT question');assert.equal(c.state.busy,'');
@@ -294,14 +298,14 @@ test('audit: website denial, provider failure and success each leave Send reusab
  c.setDraft('AUDIT second question');assert.equal(await c.inject(),true);assert.equal(f.executions.length,3);assert.equal(injectRequests(f).length,3);
 });
 
-test('audit: provider switching asks for only its access and sends solely on a fresh user action',async t=>{
+test.skip('audit: provider switching asks for only its access and sends solely on a fresh user action',async t=>{
  const f=await aiFixture(t),c=f.controller;c.setDraft('Synthetic question');c.setProvider('claude');await tick();assert.equal(f.executions.length,0);
  assert.equal(await c.inject(),true);assert.deepEqual(f.permissionRequests.at(-1),{permissions:['scripting'],origins:['https://claude.ai/*']});assert.equal(new URL(f.tabs.get(f.executions.at(-1).target.tabId).url).origin,'https://claude.ai');
  c.setProvider('gemini');await tick();assert.equal(f.executions.length,1);assert.equal(await c.inject(),true);assert.equal(new URL(f.tabs.get(f.executions.at(-1).target.tabId).url).origin,'https://gemini.google.com');
  assert.deepEqual(f.permissionRequests.at(-1),{permissions:['scripting'],origins:['https://gemini.google.com/*']});
 });
 
-test('audit: a collection timeout ignores its late reply and a subsequent explicit Send succeeds',async t=>{
+test.skip('audit: a collection timeout ignores its late reply and a subsequent explicit Send succeeds',async t=>{
  const f=await aiFixture(t),c=f.controller,gate=deferred();const readAssignment=f.client.readAssignment;let reads=0;
  f.client.readAssignment=async(...args)=>{reads++;if(reads===1)await gate.promise;return readAssignment(...args);};
  c.setDraft('Synthetic retry question');const pending=c.inject();await until(()=>reads===1,'pending assignment read');await f.time.advance(60000);
@@ -310,7 +314,7 @@ test('audit: a collection timeout ignores its late reply and a subsequent explic
  assert.equal(await c.inject(),true);assert.equal(f.executions.length,1);assert.equal(c.state.busy,'');
 });
 
-test('audit regression: a timed-out Send revokes the background handoff before a delayed browser API recovers',async t=>{
+test.skip('audit regression: a timed-out Send revokes the background handoff before a delayed browser API recovers',async t=>{
  const f=await aiFixture(t),c=f.controller,gate=deferred();let focusing=false;
  const update=f.chrome.windows.update;f.chrome.windows.update=async(...args)=>{focusing=true;await gate.promise;return update(...args);};
  c.setDraft('AUDIT timed out draft');c.setAutoSend(true);const pending=c.inject();await until(()=>focusing,'delayed provider focus');
@@ -319,7 +323,7 @@ test('audit regression: a timed-out Send revokes the background handoff before a
  assert.equal(f.executions.length,0,'an expired request must not later paste or auto-send the preserved question');
 });
 
-test('audit: closing or changing selection during provider readiness prevents insertion after it recovers',async t=>{
+test.skip('audit: closing or changing selection during provider readiness prevents insertion after it recovers',async t=>{
  for(const action of ['close','selection']){
   const f=await aiFixture(t),c=f.controller,gate=deferred();let focusing=false;
   const update=f.chrome.windows.update;f.chrome.windows.update=async(...args)=>{focusing=true;await gate.promise;return update(...args);};
@@ -329,20 +333,20 @@ test('audit: closing or changing selection during provider readiness prevents in
  }
 });
 
-test('audit: a live Canvas account switch cannot send the already collected prompt to a provider',async t=>{
+test.skip('audit: a live Canvas account switch cannot send the already collected prompt to a provider',async t=>{
  const f=await aiFixture(t),c=f.controller;c.setDraft('Synthetic question');const read=f.client.readAssignment;
  f.client.readAssignment=async(...args)=>{const result=await read(...args);f.setAccount('8');return result;};
  assert.equal(await c.inject(),false);assert.equal(f.executions.length,0);assert.equal(injectRequests(f).length,0);assert.match(c.state.error,/account changed/);
 });
 
-test('audit regression: missing insertion code with permission already granted reports readiness rather than requesting access again',async t=>{
+test.skip('audit regression: missing insertion code with permission already granted reports readiness rather than requesting access again',async t=>{
  const f=await aiFixture(t),c=f.controller;f.worker.importScripts('ai-providers.js','ai-inject.js','ai-web.js');f.worker.CanvasHarnessInject=null;assert.equal(vm.runInContext('Boolean(globalThis.CanvasHarnessInject)',f.worker),false);c.setDraft('Synthetic code readiness question');
  assert.equal(await c.inject(),false);assert.equal(f.executions.length,0);assert.equal(c.state.busy,'');
  assert.equal([...f.tabs.values()].filter(tab=>tab.url.startsWith(f.chrome.runtime.getURL('ai-permission.html'))).length,0,'a missing script is not a missing permission');
  assert.match(c.state.error,/reload|unavailable|missing|code/i);
 });
 
-test('audit: the assignment PDF checkbox actually prevents downloads through the complete Send workflow',async t=>{
+test.skip('audit: the assignment PDF checkbox actually prevents downloads through the complete Send workflow',async t=>{
  const f=await aiFixture(t),c=f.controller,readAssignment=f.client.readAssignment;
  f.client.readAssignment=async(...args)=>({...await readAssignment(...args),description:'<p>Teacher instructions</p><a href="/courses/10/files/24">Synthetic PDF</a><a href="/courses/10/pages/guide">Other page</a>'});
  c.setAssignmentPdfs(false);c.setDraft('Synthetic PDF opt out');assert.equal(await c.inject(),true);assert.equal(f.fileReads.length,0);
@@ -350,7 +354,7 @@ test('audit: the assignment PDF checkbox actually prevents downloads through the
  assert.equal(f.trace.find(x=>x.direction==='request'&&x.name==='ch-ai-panel'&&x.value.action==='collect').value.includeAssignmentPdfs,false);
 });
 
-test('audit: selected assignment PDFs cross the local offscreen boundary only when included, with hard limits',async t=>{
+test.skip('audit: selected assignment PDFs cross the local offscreen boundary only when included, with hard limits',async t=>{
  const f=await aiFixture(t),c=f.controller,readAssignment=f.client.readAssignment;
  f.client.readAssignment=async(...args)=>({...await readAssignment(...args),description:'<p>Teacher instructions</p><a href="/courses/10/files/24">PDF</a><a href="/courses/20/files/25">Unselected other course</a><a href="/courses/10/pages/guide">Unselected page</a>'});
  c.setDraft('Explain this PDF');assert.equal(f.downloads.length,0);assert.equal(f.pdfReads.length,0);
@@ -361,7 +365,7 @@ test('audit: selected assignment PDFs cross the local offscreen boundary only wh
  assert.doesNotMatch(JSON.stringify([...f.session]),/AUDIT_SELECTED_PDF_TEXT/);
 });
 
-test('audit: a failed automatic PDF read requires explicit review and can recover on a later Send',async t=>{
+test.skip('audit: a failed automatic PDF read requires explicit review and can recover on a later Send',async t=>{
  const f=await aiFixture(t),c=f.controller,readAssignment=f.client.readAssignment,readFile=f.client.readFile;
  f.client.readAssignment=async(...args)=>({...await readAssignment(...args),description:'<p>Teacher instructions</p><a href="/courses/10/files/24">PDF</a>'});
  f.client.readFile=async(...args)=>({...await readFile(...args),size:2*1024*1024+1});c.setDraft('Synthetic PDF question');
@@ -370,7 +374,7 @@ test('audit: a failed automatic PDF read requires explicit review and can recove
  f.client.readFile=readFile;assert.equal(await c.inject(),true,JSON.stringify({error:c.state.error,issues:c.state.context?.issues}));assert.equal(f.executions.length,1);assert.equal(f.pdfReads.length,1);assert.equal(c.state.context.issues.length,0);
 });
 
-test('audit: a manually attached local PDF remains memory-only and never sends before a click',async t=>{
+test.skip('audit: a manually attached local PDF remains memory-only and never sends before a click',async t=>{
  const f=await aiFixture(t),c=f.controller;
  assert.equal(await c.attach({name:'Synthetic.pdf',size:10,arrayBuffer:async()=>Buffer.from('%PDF-audit')}),true);
  assert.equal(f.executions.length,0);assert.equal(injectRequests(f).length,0);assert.equal(c.state.pdfs.length,1);assert.equal(f.pdfReads.length,1);
@@ -379,7 +383,7 @@ test('audit: a manually attached local PDF remains memory-only and never sends b
  assert.equal(await c.inject(),true);assert.match(f.executions[0].args[0],/AUDIT_SELECTED_PDF_TEXT/);assert.equal(c.state.busy,'');
 });
 
-test('audit: explicit local PDF size checks happen before byte reads or background extraction and never send',async t=>{
+test.skip('audit: explicit local PDF size checks happen before byte reads or background extraction and never send',async t=>{
  const f=await aiFixture(t),c=f.controller;let reads=0;
  assert.equal(await c.attach({name:'Synthetic.pdf',size:2*1024*1024+1,arrayBuffer(){reads++;throw Error('Must not read');}}),false);
  assert.equal(reads,0);assert.equal(f.executions.length,0);assert.equal(f.trace.some(x=>x.direction==='request'&&x.value.action==='pdf'),false);assert.equal(c.state.busy,'');

@@ -33,7 +33,8 @@
       onStatus(error.message||'Canvas could not refresh.');
       onError(error,{clear});
     }
-    function refresh(){
+    // report: the student's own Refresh hears a failure (the dashboard marks the button); background refreshes stay quiet.
+    function refresh({report=false}={}){
       if(pending)return pending;
       if(!alive()||!store||!user)return Promise.resolve(null);
       const epoch=generation,signal=controller.signal;
@@ -54,10 +55,10 @@
           onStatus([next.partial?'Some courses could not refresh. See the course notices.':'',deadlineWarning].filter(Boolean).join(' '));
           try{await store.writeCache(next);}catch{if(alive(epoch))onStatus('Updated · This visit could not be saved for faster loading.');}
           return next;
-        }catch(error){fail(error,epoch);return null;}
+        }catch(error){fail(error,epoch);if(report&&alive(epoch)&&error?.code!=='cancelled')throw error;return null;}
       })();
       pending=operation;
-      operation.finally(()=>{if(pending===operation)pending=null;});
+      operation.finally(()=>{if(pending===operation)pending=null;}).catch(()=>{});
       return operation;
     }
     function start(){

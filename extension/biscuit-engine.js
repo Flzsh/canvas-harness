@@ -2,7 +2,8 @@
    Training rounds 7 and 8 (short and normal requests, the sealed set of 600 lines) by DorjieQ, issue #68. */
 (function(root){
  'use strict';
- const load=(name,file)=>root[name]||(typeof module==='object'&&module.exports?(()=>{try{return require(file);}catch{return null;}})():null),
+ const load=(name,file)=>root[name]||(typeof module==='object'&&module.exports?require(file):null),
+ aiFiles=()=>!!(load('CanvasHarnessStudy','./study-prompts.js')&&load('CanvasHarnessContext','./ai-context.js')),
    Registry=load('ReserveBiscuitRegistry','./biscuit-registry.js'),
    Parse=()=>load('ReserveBiscuitParse','./biscuit-parse.js'),
    Clock=()=>load('CanvasHarnessAgentClock','./agent-clock.js');
@@ -124,7 +125,7 @@
  }
  const timeText=(at,s)=>new Date(at).toLocaleTimeString('en-US',{timeZone:s.timeZone||'America/New_York',hour:'numeric',minute:'2-digit'}),
    dayText=day=>new Date(day+'T12:00Z').toLocaleDateString('en-US',{timeZone:'UTC',weekday:'short'});
- function create({parse,tier,pack}={}){
+ function build({parse,tier,pack}={}){
   let cached=null,revision=-1,index=[],matchCache=new Map(),learnedSnapshot=null,learnedRevision=-1,learnedRows=[];
   function modelFor(s){
     const selected=s.pet?.knowledge||s.settings?.pet?.knowledge;
@@ -366,9 +367,8 @@
          if(v.id!==chosen.id&&String(v.assignmentId||v.parentId||'')===target.id&&/rubric|criteria/i.test(v.title+' '+v.kind))
            sources.push({id:v.id,label:v.title,text:String(v.aiText??v.text??''),kind:v.kind,courseId:v.courseId});
    }
-   // 3.9 ships no 4.0 Help instructions: then Biscuit hands the line and its sources to the AI as written
-   const Study=root.CanvasHarnessStudy||null;
-   let left=kinds.length&&Study?Study.LIMITS.material:100000;
+   const Study=load('CanvasHarnessStudy','./study-prompts.js');
+   let left=kinds.length?Study.LIMITS.material:100000;
    for(let i=0;i<sources.length;i++){
      const budget=Math.ceil(left/(sources.length-i));
      if(sources[i].text.length>budget){sources[i].text=sources[i].text.slice(0,budget);sources[i].truncated=true;}
@@ -384,8 +384,8 @@
        wishes:String(line),
        sources
      },
-     kind=!Study?'ask':kinds.length===1?kinds[0]:kinds.length?null:'ask',
-     mode=!Study?'ask':kinds.length===1?'build':kinds.length?'choice':'ask',
+     kind=kinds.length===1?kinds[0]:kinds.length?null:'ask',
+     mode=kinds.length===1?'build':kinds.length?'choice':'ask',
      prompt=mode==='build'?Study.build(kind,ctx):mode==='choice'?Study.buildChoice(kinds,ctx):[String(line),...sources.map(v=>'<<<SOURCE: '+v.label+'>>>\n'+v.text+'\n<<<END SOURCE>>>')].join('\n\n');
    return {
      contextIds:sources.map(v=>v.id),
@@ -524,7 +524,8 @@
       score:result.understanding?.reason==='generative-help'?.98:result.action==='none'?.5:.95,
       reason:result.understanding?.reason||(route==='ai'?'generative-help':'workspace-action')
     };
-    if(route==='ai'){
+    // no hand-off to build when AI help is off: its files (study-prompts.js, ai-context.js) are not on the page then
+    if(route==='ai'&&s?.ai!==false){
       const named=result.understanding?.reason==='named-source',
         data=handoff(String(input),s,session,result.items[0],named?result.items[0]:null,named?result.understanding.helpKinds:null);
       result.handoff=data;
@@ -533,7 +534,7 @@
         (data.mode==='build'?'Prepare '+data.kind+' help.':data.mode==='choice'?'Choose between '+data.kinds.join(' and ')+'.':'Ask your question with the selected material.')+
         ' Review what is sent in the AI panel.';
     }
-    else if(result.ai){const data=handoff(String(input),s,session,result.items[0]);result.ai.fields={text:data.prompt,handoff:data};}
+    else if(result.ai&&s?.ai!==false){const data=handoff(String(input),s,session,result.items[0]);result.ai.fields={text:data.prompt,handoff:data};}
     return result;
   }
   function evaluateRules(input,s={},session={}){
@@ -796,7 +797,11 @@
      rows.sort((a,b)=>stamp(a.dueAt)-stamp(b.dueAt));
      items=rows.slice(0,3);
      const today=Clock().calendar(s.timeZone)(s.now).day,
-       when=has('missing','late')?'overdue':date===today?'today':date===new Date(Date.parse(today+'T12:00Z')+DAY).toISOString().slice(0,10)?'tomorrow':dayText(date),
+       when=has('missing','late')?
+         'overdue':
+         date===today?
+           'today':
+           date===new Date(Date.parse(today+'T12:00Z')+DAY).toISOString().slice(0,10)?'tomorrow':(date&&Date.parse(date+'T12:00Z')-Date.parse(today+'T12:00Z')>=7*DAY?'next ':'')+dayText(date),
        describe=v=>{
        const c=list(s.courses).find(c=>String(c.id)===v.courseId),at=stamp(v.dueAt||v.due_at);
        return v.title+((c?.name||Number.isFinite(at))?' ('+[c?.name,Number.isFinite(at)?timeText(at,s):''].filter(Boolean).join(', ')+')':'');
@@ -813,7 +818,7 @@
          items.map(describe).join(' and ')+
          (rows.length>items.length?' and '+(rows.length-items.length)+' more':'')+
          '.':
-       'Nothing due '+when+'.'+(next?' Next up: '+next.title+' on '+dayText(Clock().calendar(s.timeZone)(stamp(next.dueAt)).day)+'.':'');
+       'Nothing due '+when+'.'+(next?' Next up: '+next.title+(d=>d===today?' today':' on '+dayText(d))(Clock().calendar(s.timeZone)(stamp(next.dueAt)).day)+'.':'');
      return card('find',items,items[0]?.fields,message,{answerKind:'due',total:rows.length});
    }
    if((has('grade','grades')&&!/\b(?:no|without|not)\s+grades\b/i.test(line)&&!has('feedback','comment','comments','mark','wrong'))||has('how')&&has('doing')){
@@ -928,6 +933,12 @@
    if(candidates.length>=2){
     const choices=likeliest(candidates).slice(0,3);
     return routed(card('none',[],{},'Which '+scope.noun+' in that course do you mean?',{clarify:true,choices,understanding:{reason:'course-alias-scope'},courseAlias:scope}),input,s,session);
+   }
+   // "calc hw" when no title says "homework" is still the course's open work ("No matching homework" was said while Problem
+   // Set 7 was due that day): nothing is picked, its likeliest open work is offered to tap
+   if(!candidates.length&&scope.noun==='homework'){
+     const open=likeliest(Language.courseAliasCandidates({...scope,work:null},rows).filter(row=>!row.done&&!row.completed)).slice(0,3);
+     if(open.length)return routed(card('none',[],{},'Which homework in that course do you mean?',{clarify:true,choices:open,understanding:{reason:'course-alias-scope'},courseAlias:scope}),input,s,session);
    }
    if(candidates.length!==1)return stop('No matching '+scope.noun+' is loaded for that course.');
    if(scope.status==='exact')return null;
@@ -1182,7 +1193,7 @@
  })?norm(original):'';
  const control=load('ReserveBiscuitControls','./biscuit-controls.js')?.propose(original,s,session,{knownCommands:['unfreeze','freeze','continue','break','rest','note','undo','cancel',knownWord]});
  if(control&&!(control.clarify&&(/\u63d0\u9192|\u8bb0\u7b14\u8bb0/u.test(input)||/[;.]\s*(?:please )?(?:open|find|show|plan|save|bookmark|focus)\b/i.test(input))))return control;
- if(!guarded&&!control&&!GREETING_ONLY.test(String(original))){
+ if(!guarded&&!control&&!GREETING_ONLY.test(String(original))&&!catalogueNamed(original,s)){
    const matched=controlMatch(original,s,session);
    if((matched?.strong||matched?.full&&!loadedWord(original,s))&&
      !matched.ambiguous&&
@@ -1211,8 +1222,18 @@
      return routed(card('none',[],{},'That installed choice is not available. Open Market to inspect your installed items.'),input,s,session);
  }
  const model=modelFor(s);
- if(model){const result=load('ReserveBiscuitInference','./biscuit-inference.js')?.evaluate(input,s,session,model,prepareLearned(s),evaluateRules);if(result)return result;}
+ if(model){
+   const result=load('ReserveBiscuitInference','./biscuit-inference.js')?.evaluate(input,s,session,model,prepareLearned(s),evaluateRules);
+   if(result&&!misreadLayout(original,result))return result;
+ }
  return evaluateRules(input,s,session);
+  }
+  // The trained pack sometimes reads a plain line as a Home layout change: "focus" made the Timer module wide, "paddock" hid
+  // it, "move it to friday" (after an item) put Notes at the top. A layout change the line does not ask for goes to the rules.
+  function misreadLayout(line,result){
+    if(result?.action!=='module'||!result.understanding?.learned)return false;
+    const text=String(line),what=result.next?.fields?.action;
+    return /\b(?:today|tonight|tomorrow|tmrw|tmr|mon|monday|tue|tues|tuesday|wed|weds|wednesday|thu|thur|thurs|thursday|fri|friday|sat|saturday|sun|sunday)\b/i.test(text)&&!/\b(?:module|modules|widget|widgets|card|cards|panel|home)\b/i.test(text)||what!=='show'&&!/\b(?:module|modules|widget|widgets|card|cards|panel|panels|home|wide|wider|narrow|narrower|small|smaller|big|bigger|large|larger|size|top|bottom|first|last|up|down|left|right|move|hide|remove|add|pin|unpin|reset|off|away|close)\b/i.test(text);
   }
   // shorthand for schoolwork ("calculus hw", "calc ws", "eng proj") reads as the work it names so it matches item titles;
   // chat shorthand (rn, pls, tmrw) is left to the parser, plain English words ("assign", "discuss") stay as typed, and
@@ -1223,16 +1244,25 @@
   const BARE_TIMER=/^\s*(start\s+(?:a\s+)?)?(?:focus|timer|pomodoro|countdown)\s+(?:for\s+)?(\d{1,4})\s*[.!?]*$/i,FOCUS_ON=/^\s*(start\s+(?:a\s+)?)?focus\s+(?:for\s+)?(\d{1,3})\s+(?!(?:min|mins|minutes?|m|h|hr|hrs|hours?|sec|secs|seconds?|x|times|cycles?|rounds?|pomodoros?|blocks?|sessions?|pm|am|percent)\b|[%:.])(\S.*)$/i;
   // "tmrw", "whats due tomorrow", "tmrw hw", "hw due tmrw" all mean the list "due tmrw" gives (they picked one
   // unrelated item before). Bare "today" keeps its own meaning; only "due today" phrasings join it.
-  const DUE_ON=/^\s*(?:what\s+about|how\s+about|and|what\s+of|anything|anything\s+for|what\s+do\s+i\s+have|what\s+have\s+i\s+got|what\s+do\s+i\s+have\s+on)(?:\s+(?:on|for|due))?\s+(today|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s*[.!?]*$/i,DUE_NOW=/^\s*(?:what(?:'?s|\s+is)\s+due|anything\s+due(?:\s+soon)?|do\s+i\s+have\s+anything\s+due|is\s+anything\s+due)\s*[.!?]*$/i;
+  const DUE_ON=/^\s*(?:what\s+about|how\s+about|and|what\s+of|anything|anything\s+for|what\s+do\s+i\s+have|what\s+have\s+i\s+got|what\s+do\s+i\s+have\s+on|what(?:'?s|\s+is)\s+due|what(?:'?s|\s+is)\s+on|anything\s+due|any\s+(?:hw|homework|work)\s+due|(?:hw|homework|work|stuff|assignments?)\s+due|due|wat\s+is\s+due)(?:\s+(?:on|for|due|this|next))?\s+(today|tomorrow|tmrw|tmr|tmw|2moro|2morrow|sun(?:day)?|mon(?:day)?|tues?(?:day)?|wed(?:s|nesday)?|thu(?:rs?(?:day)?)?|fri(?:day)?|sat(?:urday)?)\s*[.!?]*$/i,DUE_NOW=/^\s*(?:what(?:'?s|\s+is)\s+due|anything\s+due(?:\s+soon)?|do\s+i\s+have\s+anything\s+due|is\s+anything\s+due)\s*[.!?]*$/i;
   const DUE_TOMORROW=/^\s*(?:(?:what(?:'?s|\s+is)|anything|any)\s+)?(?:(?:hw|homework|assignments?|work)\s+)?(?:due\s+)?(?:for\s+)?(?:tomorrow|tmrw|tmr|tmw|2moro|2morrow)(?:'?s)?(?:\s+(?:hw|homework|assignments?|work))?(?:\s+due)?\s*[.!?]*$/i;
   const FOCUS_WORK=/^\s*(?:(?:i\s+(?:want|need)\s+to|let\s+me|lets|let's)\s+)?(?:start\s+(?:a\s+)?)?focus(?:ing)?\s+(?:on\s+|time\s+(?:for\s+|on\s+)?)?(?:the\s+|my\s+)?((?:[a-z&]+\s+){1,3}(?:hw|homework|lab|essay|quiz|test|exam|project|reading|paper|worksheet|report))(?:\s+(?:now|pls|please|rn))?\s*[.!]*$/i,DUE_TODAY=/^\s*(?:(?:what(?:'?s|\s+is)|anything|any)\s+)?(?:(?:hw|homework|assignments?|work)\s+)?due\s+(?:for\s+)?(?:today|tdy|tonight)\s*[.!?]*$/i;
+  // "whats due fri", "hw due friday", "what do i have fri" mean the list "due friday" gives (the trained pack picked an
+  // October item that was due on a Friday): a weekday, short or long, is written out in full
+  const DUE_DAY=/^\s*(?:(?:what(?:'?s|\s+is)|anything|any)\s+)?(?:(?:hw|homework|assignments?|work)\s+)?due\s+(?:on\s+|for\s+|this\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tue|tues|wed|weds|thu|thur|thurs|fri|sat)\s*[.!?]*$/i,
+    FULL_DAY={sun:'sunday',mon:'monday',tue:'tuesday',tues:'tuesday',wed:'wednesday',weds:'wednesday',thu:'thursday',thur:'thursday',thurs:'thursday',fri:'friday',sat:'saturday'};
   function everyday(input){
     if(BARE_TIMER.test(String(input)))return String(input).replace(BARE_TIMER,(m,start,n)=>(start||'')+'focus '+n+' min');
     {/* "focus 25 anatomy hw": a bare number right after focus is minutes */const m=FOCUS_ON.exec(String(input));if(m&&Number(m[2])>=5&&Number(m[2])<=180)input=(m[1]||'')+'focus '+m[2]+' min '+m[3];}
     {const m=FOCUS_WORK.exec(String(input));if(m&&!/\d/.test(m[1]))input='focus 25 min '+m[1];}
     if(DUE_TOMORROW.test(String(input)))return 'due tmrw';
     if(DUE_TODAY.test(String(input)))return 'due today';
-    {const m=DUE_ON.exec(String(input));if(m)return 'due '+m[1].toLowerCase().replace(/^tomorrow$/,'tmrw');if(DUE_NOW.test(String(input)))return 'due today';}
+    {const d=DUE_DAY.exec(String(input));if(d)return 'due '+(FULL_DAY[d[1].toLowerCase()]||d[1].toLowerCase());}
+    {
+      const m=DUE_ON.exec(String(input));
+      if(m){const day=m[1].toLowerCase();return 'due '+(FULL_DAY[day]||day.replace(/^(?:tomorrow|tmr|tmw|2moro|2morrow)$/,'tmrw'));}
+      if(DUE_NOW.test(String(input)))return 'due today';
+    }
     if(load('ReserveBiscuitIntent','./biscuit-intent.js')?.literalNoteRequest(input))return String(input);
     const L=load('ReserveBiscuitLanguage','./biscuit-language.js');
     if(typeof L?.everydayTokens!=='function'||typeof L?.words!=='function')return input;
@@ -2137,10 +2167,11 @@
   // The rule list reads what the student means before anything searches; a line it does not know goes on as before.
   function mind(input,s,session){
     const M=load('ReserveBiscuitMind','./biscuit-mind.js');
-    if(!M)return null;
+    if(!M||/;/.test(String(input))||/\s>\s/.test(String(input))||/["“”]/.test(String(input))&&/\b(?:where|how|help me use|help me find|show me)\b/i.test(String(input)))return null;
     let r;
     try{r=M.think(input,s,session,{card,controlMatch:line=>controlMatch(line,s,session)?.result||null});}catch{return null;}
     if(!r)return null;
+    {const better=sayItBetter(r,input,s);if(better)return better;}
     if(r.routing)return r;
     if(r.action==='plan'&&!r.message){const plan=load('ReserveBiscuitPlanner','./biscuit-planner.js')?.build(s,r.next.fields);if(plan)r.message=(r.lead||'')+plan.message;}
     const said=r.message;
@@ -2148,7 +2179,175 @@
     if(said)out.message=said;
     return readableTimes(Registry.sanitize(out,s),s);
   }
-  function evaluate(input,s={},session={}){const minded=mind(input,s,session);if(minded)return minded;let original=input;input=everyday(input);
+  /* Round 9: "where is X" / "how do I X" naming an app control in full is answered with that control's place before any rule or ranking. */
+  const WHERE_Q=/^\s*(?:(?:how|where)\s+(?:do|can|could|would|should)\s+(?:i|we)\b|where(?:'?s|\s+is|\s+are|\s+do\s+i|\s+can\s+i)?\b|how\s+to\b|is\s+there\s+(?:a|an)\b|which\s+(?:button|tab|setting|page)\b|show\s+me\s+where\b)/i;
+  /* T2: 4.0.169's control reading (Controls.propose), and its answer shaped like every local one */
+  function proposed(input,s){let p=null;try{p=load('ReserveBiscuitControls','./biscuit-controls.js')?.propose?.(String(input),s);}catch{p=null;}return p&&typeof p==='object'&&p.next?p:null;}
+  function placed(p,s){
+    return readableTimes(Registry.sanitize({...p,route:'local',routing:{route:'local',score:.95,reason:'control-proposal'},understanding:{step:'understanding',reason:'control-proposal'}},s),s);
+  }
+  function sayItBetter(r,input,s){
+    const p=proposed(input,s);
+    if(!p)return null;
+    const mp=list(r.ui?.path).map(v=>String(v).toLowerCase()),pp=list(p.ui?.path).map(v=>String(v).toLowerCase()),tab=r.next?.fields?.tab&&!r.next?.fields?.itemId;
+   if(p.action==='none'&&
+     pp.length&&
+     (r.action==='none'&&mp.length&&pp.length>mp.length&&mp.every((v,i)=>pp[i]===v)||tab&&['make-it-yours','find','navigate'].includes(r.action)&&pp[0]==='make it yours'&&pp.length>=3))
+     return placed(p,s);
+   const said=/ to (true|false|on|off|yes|no|shown|hidden)[.!?]*$/i.test(String(input)),flips=/\b(?:hide|off|reset|restore|default|disable|show|unhide|enable|on|true|false)\b/i.test(String(input));
+   if(p.action==='setting'&&
+     r.action==='setting'&&
+     r.next?.fields?.key===p.next?.fields?.key&&
+     typeof p.next?.fields?.value==='boolean'&&
+     r.next?.fields?.value!==p.next?.fields?.value&&
+     (said||flips))
+     return placed(p,s);
+   if(said&&p.action==='setting'&&(r.action==='none'||r.action==='chat'))return placed(p,s);
+   return null;
+  }
+  /* T2: the line names the companion or an installed pack by its name ("give Maple a treat", "use Maple") */
+  function catalogueNamed(line,s){
+    const said=' '+norm(line)+' ';
+    return [s?.companion?.name,s?.pet?.name,...list(s?.catalogue).map(v=>v?.name)].filter(Boolean).map(norm).some(n=>n.length>=3&&said.includes(' '+n+' '));
+  }
+  function whereFirst(input,s,session){
+    if(!WHERE_Q.test(String(input))||/["“”]|\s>\s/.test(String(input)))return null;
+    {const p=proposed(input,s);if(p&&p.action==='none'&&list(p.ui?.path).length)return placed(p,s);}
+    const m=controlMatch(input,s,session);
+    if(!m||
+      m.ambiguous||
+      !(m.strong||m.full)||
+      m.result?.action!=='none'||
+      titledItem(input,s)||
+      String(m.controlId||'').startsWith('feature:')&&!/\b(?:turn|switch|enable|disable|on|off)\b/i.test(String(input)))
+      return null;
+    return readableTimes(Registry.sanitize(m.result,s),s);
+  }
+  /* Round 9: a learned change (setting, Home module, feature) is made only when the line names it (the setting, its value, the module or the feature); otherwise the control the line names, or a question. */
+  const GROUND_SYN={
+    showGrades:'grade grades score scores marks percent percentage',
+    theme:'dark light night bright day mode theme',
+    sceneTheme:'scene theme background wallpaper starry night sea ocean stars starfield space blueprint maple wind autumn walls wisteria thanksgiving train cabin none plain',
+    pageTint:'tint page color colour background paper accent sky sage lilac blush sand snow',
+    accent:'accent color colour clay forest iris indigo rose ocean amber',
+    motion:'motion animation animations moving move still gentle fades fade',
+    livingArt:'living drawings drawing moving animation',
+    density:'spacing compact roomy rows density dense squeeze tight cramped',
+    font:'font letters typeface serif humanist modern bookish',
+    textSize:'text size bigger larger smaller big small',
+    readingFont:'reading font easy book',
+    bedtime:'bedtime bed sleep',
+    courseNavigation:'course courses sidebar side top topbar dock bottom navigation strip rail',
+    surfaceStyle:'page style contrast clean paper surface',
+    panelFrame:'outline frame frames stitched stitch pen card rule line',
+    courseCardStyle:'card cards rounded minimal sketch hand drawn',
+    bannerSize:'banner small medium tall large compact',
+    nightArt:'night art artwork chalk paper',
+    graphics:'graphics quality lag laggy slow low medium high extra',
+    greeting:'greeting hello',
+    showBookmarks:'bookmark bookmarks shelf',
+    showHelp:'help band',
+    showCourseIcons:'icon icons drawings drawing',
+    showDeadlinePreview:'deadline deadlines preview',
+    showCourseInformation:'course information info',
+    showCourseStrip:'course list strip',
+    showRecentGrades:'recent scored grades',
+    biscuitOffers:'offer offers biscuit',
+    dockSize:'dock size',
+    dockShelf:'dock shelf',
+    dockStyle:'dock cards icons tiles',
+    dockNamesAlways:'dock names',
+    dockCounts:'dock counts',
+    dockLively:'dock lively',
+    dockHide:'dock hide',
+    deskOrder:'order panels column stacked work first course first',
+    dashboardLayout:'layout split list',
+    'pet.enabled':'pet biscuit companion horse pony buddy away gone come back hide show',
+    'pet.nudges':'nudge nudges reminders reminder quiet helpful annoying',
+    'pet.knowledge':'lite full knowledge rules',
+    'pet.quietUntil':'quiet mute silence silent hush snooze reminders reminder alerts alert nudges pings notifications'
+  };
+  const HIDE_WORDS=/\b(?:hide|remove|off|close|get rid|lose|away|gone|tuck|without|drop|delete|disable|no more|stop showing)\b/i,SHOW_WORDS=/\b(?:show|add|back|restore|bring|reveal|put|unhide|want|need|give|widget|module|box|panel|enable|on)\b/i;
+  function groundWords(text){return new Set(norm(text).split(' ').filter(w=>w.length>=3).map(w=>w.slice(0,5)));}
+  function grounded(original,result){const said=groundWords(original),f=result?.next?.fields||{},hit=text=>[...groundWords(text)].some(w=>said.has(w));
+   if(result.action==='setting'){
+     if(f.preset)return true;
+     const key=String(f.key||''),value=typeof f.value==='string'?f.value:'';
+     if(!key)return true;
+     return hit(key.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/[.]/g,' ')+' '+(GROUND_SYN[key]||''))||value.length>=3&&hit(value);
+   }
+   if(result.action==='module'){const M=load('ReserveBiscuitControls','./biscuit-controls.js')?.MODULES||{},key=String(f.key||'');return hit(key+' '+(M[key]||''));}
+   if(result.action==='feature'){const row=list(load('ReserveFeatures','./features.js')?.catalogue).find(v=>v.id===f.id);return !f.id||hit(String(f.id).replace(/-/g,' ')+' '+(row?.name||''));}
+   return true;}
+  /* Round 10: an answer about one item names the field the line asked for (points, due date); a course page is the course tab */
+  /* Round 10: the AI gets a line only when it asks for help, practice, explanation, writing or reassurance */
+  const AI_REASON=/\b(?:help|helper|explain|explained|explanation|understand|confus\w*|stuck|lost|dont get|don't get|do not get|no idea|makes no sense|practi[cs]e|drills?|mock|quiz me|test me|flash ?cards?|cards|summar\w*|sum up|tldr|gist|notes?|outline|structure|organi[sz]e|polish|proofread|edit|fix|improve|feedback|rubric|rate|check|walk|walkthrough|step|steps|start|draft|write|reply|respond|email|message|msg|dm|panic\w*|anxious|nervous|scared|worried|stress\w*|freak\w*|study|prep|prepare|review|teach|define|meaning|mean|what is|whats|what's|how does|how do|why|break down|simple|simply|ready|go over|tips?|example|examples|questions?|ques|qs|guide|guidance|hints?|tutor|coach|show me how|how to|go through|run through|work through|solve)\b/i;
+  function aiNeedsReason(original,result,s){
+    if(!result||result.requests||result.action!=='ai'||!result.understanding?.learned)return result;
+    if(AI_REASON.test(String(original)))return result;
+    const id=result.next?.fields?.itemId||result.items?.[0]?.id,row=id&&prepare(s).find(v=>String(v.id)===String(id));
+    if(!row)return result;
+    return routed(card('find',[row],{itemId:row.id,...(row.courseId?{courseId:row.courseId}:{})},row.title+'.',{understanding:{step:'understanding',reason:'ai-needs-reason'}}),original,s,{});
+  }
+  function askedField(original,result,s){
+    if(!result||result.requests)return result;
+    const f=result.next?.fields;
+    if(['navigate'].includes(result.action)&&f?.courseId&&!f.tab){const fixed={...f,tab:'course'};return {...result,next:{...result.next,fields:fixed}};}
+    if(!['find','open'].includes(result.action)||!f?.itemId||f.answerField)return result;
+    const line=String(original).toLowerCase(),row=prepare(s).find(v=>String(v.id)===String(f.itemId));
+    if(!row)return result;
+    const pts=/\b(?:points?|pts|worth|how many points|out of)\b/.test(line),due=/\b(?:when|due date|what day|which day|what date|day\?|date\?|deadline)\b/.test(line)||/\bday\s*\?*$/.test(line);
+    if(pts&&Number.isFinite(Number(row.pointsPossible??row.points))){
+      const fixed={...f,answerField:'pointsPossible',pointsPossible:Number(row.pointsPossible??row.points)};
+      return {...result,next:{...result.next,fields:fixed}};
+    }
+    if(due&&!pts&&row.dueAt!=null){const fixed={...f,answerField:'dueAt',dueAt:row.dueAt};return {...result,next:{...result.next,fields:fixed}};}
+    return result;
+  }
+  function groundLearned(original,result,s,session){
+   if(!result||result.requests||!result.understanding?.learned||!['setting','module','feature'].includes(result.action))return result;
+   if(grounded(original,result)){
+     const f=result.next?.fields;
+     if(result.action==='feature'&&typeof f?.on==='boolean'){
+       const o=String(original),
+         off=/\b(?:mute|off|disable|disabled|away|stop|no more|kill|hide|remove|get rid|without|deactivate|pause)\b/i.test(o),
+         on=/\b(?:on|enable|enabled|unmute|show|bring back|activate|active|allow|allowed|back|start|work again|working again)\b/i.test(o),
+         want=off&&!on?false:on&&!off?true:null;
+       if(want!==null&&f.on!==want)
+         return {
+           ...result,
+           next:{...result.next,fields:{...f,on:want}},
+           message:want?String(result.message||'').replace(/^(?:Disable|Turn off)\b/i,'Enable'):String(result.message||'').replace(/^(?:Enable|Turn on)\b/i,'Disable')
+         };
+     }
+     if(result.action==='setting'&&f?.key&&/\b(?:original|default|reset|restore|back to normal)\b/i.test(String(original))){
+       const D=load('ReserveBiscuitControls','./biscuit-controls.js')?.DEFAULTS;
+       if(D&&Object.hasOwn(D,f.key)&&JSON.stringify(D[f.key])!==JSON.stringify(f.value))
+         return {...result,next:{...result.next,fields:{...f,value:D[f.key]}},message:'Set '+f.key+' back to '+String(D[f.key])+'.'};
+     }
+     if(result.action==='module'&&f?.key){
+       const o=String(original),move=/\b(?:above everything|to the top|on top|at the top|first)\b/i.test(o)?'top':/\b(?:stretch|wider|widen|wide|full width|bigger)\b/i.test(o)?'wide':null;
+       if(move&&f.action!==move)return {...result,next:{...result.next,fields:{...f,action:move}},message:move+' '+f.key+'.'};
+     }
+     if(result.action==='module'&&f?.action==='hide'&&!HIDE_WORDS.test(String(original))&&SHOW_WORDS.test(String(original))){
+       const fixed={...f,action:'show'};
+       return {...result,next:{...result.next,fields:fixed},message:String(result.message||'').replace(/^hide\b/i,'Show')};
+     }
+     return result;
+   }
+   const m=controlMatch(original,s,session);if(m&&!m.ambiguous&&(m.full||m.names>=2))return m.result;
+   {
+     const id=session?.lastItemId||session?.itemId,
+       row=id&&/\b(?:that|this|it|that one|this one|the one|same one)\b/i.test(String(original))&&String(original).trim().split(/\s+/).length<=4?prepare(s).find(v=>String(v.id)===String(id)):null;
+     if(row)return routed(card('find',[row],{itemId:row.id,...(row.courseId?{courseId:row.courseId}:{})},row.title+'.',{understanding:{step:'understanding',reason:'session-item'}}),original,s,session);
+   }
+   return routed(card('none',[],{},'I am not sure about that one. Name the item and what to change.',{clarify:true,understanding:{step:'understanding',reason:'ungrounded-change'}}),original,s,session);}
+  function evaluate(input,s={},session={}){
+    {const placed=whereFirst(input,s,session);if(placed)return placed;}
+    const minded=mind(input,s,session);
+    if(minded)return minded;
+    let original=input;
+    input=everyday(input);
    // A date question rewritten to "due tmrw"/"due today" is routed as that line, not by its original words.
    if(input!==original&&(/^due (?:today|tmrw|sunday|monday|tuesday|wednesday|thursday|friday|saturday)$/.test(input)||FOCUS_ON.test(String(original))))original=input;
    let result=dispatch(input,s,session,original);
@@ -2219,7 +2418,14 @@
      !mentionedCourses(norm(original).split(' ').filter(Boolean),s).size&&
      !namedCourse(original,s,session))
      result=routed(card('chat',[],{},'That sounds like a lot. I am here. If it helps, I can show what is due next or start a short break.',{understanding:{step:'understanding',reason:'feeling'}}),input,s,session);
+  if(result?.understanding?.learned&&!result.requests&&['focus-control','break','focus'].includes(result.action)&&/\bbreak\s+(?:it\s+|this\s+|that\s+)?down\b/i.test(String(original))){
+    const g=aiGround(original,original,s,session,null);
+    if(g)result=g;
+  }
   {const timed=timerCue(original,s,result);if(timed)result=timed;}
+  result=groundLearned(original,result,s,session);
+  result=aiNeedsReason(original,result,s);
+  result=askedField(original,result,s);
   if(!result.requests&&NEVER_MIND.test(String(original)))result=routed(card('none',[],{},'Okay, nothing changed.',{understanding:{step:'understanding',reason:'never-mind'}}),input,s,session);
   if(!result.requests&&answerAsk(String(original)))
     result=routed(card('none',[],{},'I can\u2019t give you the answer, but I can help you understand the question or practise one like it.',{understanding:{step:'understanding',reason:'answer-request'}}),input,s,session);
@@ -2357,6 +2563,75 @@
   }
 
   return {register:Registry.register,prepare,search,evaluate,offer,normalizeInput:everyday};
+ }
+ // Every engine's replies pass the AI help check below.
+ function create(options){
+  const engine=build(options);
+  // AI help off or locked: its files (study-prompts.js, ai-context.js) are not on the page, so the reply is the AI-off one
+  return {...engine,evaluate:(input,s={},session={})=>{
+    if(s&&s.ai!==false&&!aiFiles())s={...s,ai:false};
+    return askChangesNothing(quietAI(engine.evaluate(input,s,session),s),input,s);
+  }};
+ }
+ // AI help locked or off (s.ai===false): no reply offers the AI, names it or points at one of its controls; a line that
+ // would need it gets what Biscuit can do instead.
+ const AI_TEXT=/\b(?:your ai|ask ai|ai panel|ai workspace|ai help|help band|study aids?)\b/i,
+   AI_HOME=new Set(['Help','Help with this','Help with…','Ask','Check my work','Choose an option','Choose {title}','Done','More','Next card','Next day',
+     'Next page','Open chat','Paste','Previous card','Previous day','Previous page','Push Help up','Read','Remember','Remembered','Remove','Save and redo',
+     'Show all','Test','Undo','Choose folder','Copy','Allow the prep folder']);
+ function aiPlace(path){
+  const p=Array.isArray(path)?path.map(v=>String(v)):[];
+  return p.some(v=>/^(?:AI|Ask AI|Your AI|AI help|AI workspace)$/i.test(v))||p[0]==='Home'&&AI_HOME.has(p[1]);
+ }
+ // A question (a wh-word or "is / did / do i" at the start, no verb of doing or changing) never writes the planner,
+ // marks, bookmarks, adds a task or hides: what it found is shown and nothing changes
+ const QUESTION=/^\s*(?:what|whats|what's|wat|wut|which|when|whens|where|who|whose|why|how|is|are|am i|was|were|did i|do i|does|has|have i)\b/i,DOING=/\b(?:plan|planning|schedule|mark|marked|done|finish|finished|complete|completed|hide|show|turn|set|change|add|remove|delete|bookmark|save|pin|remind|note|start|stop|pause|resume|focus|move|make|put|use|switch|enable|disable|mute|archive|undo|reset|open|do|doing|work|study|tackle|begin|clear|drop|give|get)\b/i,CHANGES=new Set(['plan','complete','bookmark','task','move','remove']);
+ function askChangesNothing(result,input,s){
+   if(!result||typeof result!=='object'||result.requests||!QUESTION.test(String(input))||DOING.test(String(input).replace(QUESTION,'')))return result;
+   const act=result.next?.action||result.action,f=result.next?.fields||{},hide=act==='module'&&f.action==='hide'||act==='setting'&&f.value===false||act==='feature'&&f.on===false;
+   if(!CHANGES.has(act)&&!hide)return result;
+  if(act==='plan'){
+    const M=load('ReserveBiscuitMind','./biscuit-mind.js'),
+      card=(a,items,fields,message,extra={})=>({action:a,items:list(items).slice(0,3),message,next:{action:a,fields:fields||{},label:'Open'},...extra});
+    let r=null;
+    try{r=M?.nextUp?.(s,{s,card});}catch{r=null;}
+    if(r)return {...r,route:'local',routing:{route:'local',reason:'mind:next-up'},understanding:{step:'understanding',reason:'mind:next-up'}};
+  }
+  const item=list(result.items)[0];
+  return item?
+    {
+      action:'find',
+      items:[item],
+      message:String(item.title||item.name||'')+'.',
+      next:{action:'find',fields:{itemId:String(item.id),...(item.courseId?{courseId:String(item.courseId)}:{})},label:'Open'},
+      route:'local',
+      routing:{route:'local',reason:'question-changes-nothing'},
+      understanding:{step:'understanding',reason:'question-changes-nothing'}
+    }:
+    {
+      action:'none',
+      items:[],
+      message:'Nothing changed. Say it as a request to change it.',
+      next:{action:'none',fields:{},label:'Continue'},
+      route:'local',
+      routing:{route:'local',reason:'question-changes-nothing'},
+      understanding:{step:'understanding',reason:'question-changes-nothing'}
+    };
+ }
+ function quietAI(result,s){
+  if(s?.ai!==false||!result||typeof result!=='object')return result;
+  const fields=result.next?.fields||{},
+    ai=result.action==='ai'||
+      result.next?.action==='ai'||
+      AI_TEXT.test(String(result.message||''))||
+      aiPlace(result.ui?.path)||
+      (Array.isArray(result.items)?result.items:[]).some(v=>aiPlace(v?.ui?.path))||
+      ['module','setting'].includes(result.action)&&(fields.key==='help'||fields.key==='showHelp')||
+      result.action==='feature'&&fields.id==='ai';
+  const out=Object.hasOwn(result,'ai')?{...result,ai:null}:result;
+  if(!ai)return out;
+  const message=result.ui||['module','setting','feature'].includes(result.action)?'I could not find that here.':'I can find and open your Canvas work, but not write or explain it.';
+  return {action:'none',items:[],message,next:{action:'none',fields:{},label:'Continue'},route:'local',understanding:result.understanding,routing:result.routing,execution:result.execution};
  }
  Parse();Clock();
  const shared=create(),

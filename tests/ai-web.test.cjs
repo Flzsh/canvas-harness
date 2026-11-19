@@ -52,10 +52,11 @@ function dom(nodes=[],url='https://chatgpt.com/'){
   const pieces=selector.trim().match(/(?:\[[^\]]+\]|[^\s[])+/g);if(!node.matches(pieces.pop()))return false;
   let ancestor=node.parentElement;for(let i=pieces.length-1;i>=0;i--){while(ancestor&&!ancestor.matches(pieces[i]))ancestor=ancestor.parentElement;if(!ancestor)return false;ancestor=ancestor.parentElement;}return true;
  }));},createTextNode(text){return {nodeType:3,textContent:text};}};
- let rangeTarget;
- document.createRange=()=>({selectNodeContents(node){rangeTarget=node;},collapse(){}});
+ let rangeTarget,collapsed=true;
+ document.createRange=()=>({selectNodeContents(node){rangeTarget=node;collapsed=false;},collapse(){collapsed=true;}});
  view.getSelection=()=>({removeAllRanges(){},addRange(){}});
- document.execCommand=(command,ui,text)=>{assert.equal(command,'insertText');assert.equal(ui,false);rangeTarget.appendChild(document.createTextNode(text));return true;};
+ // An uncollapsed range over the whole editor is replaced, as insertText does in a browser.
+ document.execCommand=(command,ui,text)=>{assert.equal(command,'insertText');assert.equal(ui,false);if(!collapsed)rangeTarget.textContent='';rangeTarget.appendChild(document.createTextNode(text));return true;};
  for(const node of nodes)node.ownerDocument=document;
  const self={};return {document,location,URL,InputEvent:DraftInputEvent,Event:DraftInputEvent,HTMLTextAreaElement:Textarea,window:view,self,top:self};
 }
@@ -223,7 +224,7 @@ test('cancelled beforeinput or a draft/navigation change during focus aborts wit
 });
 test('injection rejects oversized or empty text and a changed execution document',()=>{
  const editor=new Textarea({id:'prompt-textarea'});const insert=injector(dom([editor]));
- for(const text of ['',null,' '.repeat(3),'x'.repeat(140001)])assert.equal(insert(text).status,'error');
+ for(const text of ['',null,' '.repeat(3),'x'.repeat(2100001)])assert.equal(insert(text).status,'error');
  assert.equal(insert('context',{id:'chatgpt',origin:'https://evil.test',expectedURL:'https://chatgpt.com/'}).status,'error');
  assert.equal(insert('context',{id:'chatgpt',origin:'https://chatgpt.com',expectedURL:'https://chatgpt.com/c/another'}).status,'error');
  assert.equal(editor.nativeWrites,0);
@@ -257,9 +258,15 @@ function webHarness({granted=true,failPopup=false,clock}={}){
  };
  const context=vm.createContext({chrome,URL,...(clock?{setTimeout:clock}:{})});context.importScripts=(...files)=>{for(const file of files)vm.runInContext(source(file),context);};
  vm.runInContext(source('ai-web.js'),context);
- const handle=(action,provider='chatgpt',text,customSender=sender)=>context.CanvasHarnessWeb.handle({type:'ch-ai-web',action,provider,text},customSender);
+ const handle=(action,provider='chatgpt',text,customSender=sender,extra={},options={})=>context.CanvasHarnessWeb.handle({type:'ch-ai-web',action,provider,text,...extra},customSender,options);
  return {handle,chrome,calls,stored,tabs,sender,windows,sourceTabs,grant(value){granted=value;}};
 }
+
+test('automatic web insertion creates and navigates a background tab without activating a window',async()=>{const h=webHarness();assert.equal((await h.handle('inject','chatgpt','Automatic question',h.sender,{automatic:true})).status,'injected');assert.equal(h.calls.find(c=>c[0]==='tab-create')[1].active,false);assert.equal(h.calls.some(c=>c[0]==='update'&&c[2].active===true),false);assert.equal(h.calls.some(c=>c[0]==='window-update'),false);});
+test('automatic insertion into an existing provider tab preserves foreground focus',async()=>{const h=webHarness();await h.handle('open');h.calls.length=0;assert.equal((await h.handle('inject','chatgpt','Automatic follow-up',h.sender,{automatic:true})).status,'injected');assert.equal(h.calls.some(c=>c[0]==='tab-create'||c[0]==='window-update'||c[0]==='update'&&c[2].active===true),false);});
+test('an automatic run from an app opens its browser window without focusing it',async()=>{const h=webHarness();h.sourceTabs.get(12).windowId=9;assert.equal((await h.handle('inject','chatgpt','Automatic question',h.sender,{automatic:true})).status,'injected');assert.equal(h.calls.find(c=>c[0]==='window-create')[1].focused,false);assert.equal(h.calls.some(c=>c[0]==='window-update'),false);});
+test('requested web insertion still activates its provider tab and window',async()=>{const h=webHarness();assert.equal((await h.handle('inject','chatgpt','Requested question',h.sender,{automatic:false})).status,'injected');assert.equal(h.calls.find(c=>c[0]==='tab-create')[1].active,true);assert.ok(h.calls.some(c=>c[0]==='window-update'&&c[2].focused===true));});
+test('the final asynchronous consent gate runs before provider insertion',async()=>{const h=webHarness();const result=await h.handle('inject','chatgpt','Private context',h.sender,{}, {beforeSend:async()=>{throw Error('Consent changed');}});assert.equal(result.status,'error');assert.equal(h.calls.some(c=>c[0]==='execute'),false);});
 
 test('website launch stays in the live Canvas window even when an app was last focused',async()=>{
  const h=webHarness();h.sourceTabs.get(12).windowId=6;h.windows.set(6,{id:6,type:'normal',incognito:false});
@@ -409,8 +416,8 @@ test('navigation during executeScript is blocked by the serialized function itse
   assert.equal((await h.handle('inject','chatgpt','Private context')).status,'error');assert.equal(editor.value,'Keep this draft');assert.equal(editor.nativeWrites,0);
  }
 });
-test('web entry rejects text beyond 140000 characters before any browser side effect',async()=>{
- const h=webHarness();assert.equal((await h.handle('inject','chatgpt','x'.repeat(140001))).status,'error');assert.equal(h.calls.length,0);
+test('web entry rejects text beyond 2100000 characters before any browser side effect',async()=>{
+ const h=webHarness();assert.equal((await h.handle('inject','chatgpt','x'.repeat(2100001))).status,'error');assert.equal(h.calls.length,0);
  for(const value of [undefined,null,{},'','   '])assert.equal((await h.handle('inject','chatgpt',value)).status,'error');
  assert.equal(h.calls.length,0);
 });
@@ -459,6 +466,41 @@ test('automatic send protects existing drafts, disabled buttons and ambiguous se
   const result=await injector(dom(nodes))('Question',{...provider,autoSend:mode!=='off'});
   assert.equal(result.status,'injected',mode);assert.equal(clicks,0,mode);assert.ok(editor.value.includes('Question'));
  }
+});
+test('a draft left over from earlier Canvas Harness questions is replaced and sent; student text still blocks auto-send',async()=>{
+ const provider={id:'chatgpt',origin:'https://chatgpt.com',expectedURL:'https://chatgpt.com/',autoSend:true};
+ const old='\n\n\n[[Canvas Harness agent 1c92487e-b0]]\n[[Canvas Harness context 9a1f-12-1c92487e-b0]]\nOld question\n[[End Canvas Harness context 9a1f-12-1c92487e-b0]]\n\n[[Canvas Harness context 77b-3]]\nOld\n[[End Canvas Harness context 77b-3]]';
+ for(const kind of ['textarea','rich']){
+  const editor=kind==='textarea'?new Textarea({id:'prompt-textarea'},old):new Element('div',{contenteditable:'true',role:'textbox','data-composer-markdown':''},old);
+  if(kind==='rich')new Element('div',{'data-composer-body':''}).appendChild(editor);
+  const read=()=>kind==='textarea'?editor.value:editor.innerText,clear=()=>{if(kind==='textarea')editor._value='';else editor.textContent='';};
+  const button=new Element('button',{'aria-label':'Send',type:'submit'});let clicks=0;button.click=()=>{clicks++;clear();};
+  const result=await injector(dom([editor,button]))('New question',provider);
+  assert.equal(result.status,'sent',kind);assert.equal(clicks,1,kind);
+ }
+ for(const draft of [old+'\nmy own note','my own note '+old]){
+  const editor=new Textarea({id:'prompt-textarea'},draft),button=new Element('button',{'aria-label':'Send',type:'submit'});let clicks=0;button.click=()=>{clicks++;};
+  const result=await injector(dom([editor,button]))('New question',provider);
+  assert.equal(result.status,'injected');assert.equal(clicks,0);assert.ok(editor.value.startsWith(draft));assert.ok(editor.value.includes('New question'));
+ }
+ const editor=new Textarea({id:'prompt-textarea'},old);await injector(dom([editor]))('New question',{...provider,autoSend:false});
+ assert.ok(!editor.value.includes('Old question'));assert.ok(editor.value.includes('New question'));
+});
+test('a composer that turns links into separate lines still counts as keeping the draft and auto-sends it',async()=>{
+ const editor=new Element('div',{contenteditable:'true',role:'textbox','data-composer-markdown':''});new Element('div',{'data-composer-body':''}).appendChild(editor);
+ const raw=()=>editor._text+editor.children.map(n=>n.textContent).join('');
+ Object.defineProperty(editor,'innerText',{get(){return raw().replace(/\(https:/g,'(\nhttps:').replace(/\n/g,'\n\n');}});
+ const button=new Element('button',{'aria-label':'Send',type:'submit'});let clicks=0;button.click=()=>{clicks++;editor.textContent='';};
+ const result=await injector(dom([editor,button]))('Read [the handout](https://school.instructure.com/courses/1/files/2) first',{id:'chatgpt',origin:'https://chatgpt.com',expectedURL:'https://chatgpt.com/',autoSend:true});
+ assert.equal(result.status,'sent',result.message);assert.equal(clicks,1);
+});
+test('a long sent message that the site shows cut short and formatted still confirms the send, but only for the same text',async()=>{
+ const text='Plan **this week**\n- read chapter 2\n'+'Course material line. '.repeat(4000);let hash=2166136261;for(let i=0;i<text.length;i++)hash=Math.imul(hash^text.charCodeAt(i),16777619)>>>0;
+ const turnId='turn-1234abcd',key=hash.toString(16)+'-'+text.length+'-'+turnId,shown='[[Canvas Harness agent '+turnId+']] [[Canvas Harness context '+key+']] Plan this week read chapter 2 '+text.slice(40,9000);
+ const run=bubbleText=>{const bubble=new Element('div',{'data-user-message-bubble':'true'},bubbleText);const fixture=dom([bubble]);const context=vm.createContext(fixture);vm.runInContext(source('ai-inject.js'),context);
+  return vm.runInContext('('+String(context.CanvasHarnessInject.inspectTurn)+')(__g)',vm.createContext({...fixture,__g:{id:'chatgpt',origin:'https://chatgpt.com',expectedURL:'https://chatgpt.com/',turnId,text,kind:'agent'}}));};
+ assert.equal(run(shown).status,'sent');
+ assert.notEqual(run(shown.replace(key,'0badf00d-'+text.length+'-'+turnId)).status,'sent','a different text with the same turn id is not this send');
 });
 test('a click with unconfirmed delivery is never automatically retried',async()=>{
  const editor=new Textarea({id:'prompt-textarea'}),button=new Element('button',{'aria-label':'Send',type:'submit'});let clicks=0;button.click=()=>clicks++;

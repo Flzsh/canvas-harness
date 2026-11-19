@@ -35,9 +35,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   const View=root.ReserveDashboardView||(typeof module==='object'&&module.exports?require('./dashboard-view.js'):null);
   const Work=root.ReserveWorkModel||(typeof module==='object'&&module.exports?require('./work-model.js'):null);
   const Arrange=root.ReserveWorkspaceArrange||(typeof module==='object'&&module.exports?require('./workspace-arrange.js'):null);
-  // 3.9 ships no 4.0 Help: both stay null and Home has no Help band
-  const StudyUI=root.CanvasHarnessStudyUI||null;
-  const Band=root.CanvasHarnessStudyBand||null;
+  const StudyUI=root.CanvasHarnessStudyUI||(typeof module==='object'&&module.exports?require('./study-ui.js'):null);
+  const Band=root.CanvasHarnessStudyBand||(typeof module==='object'&&module.exports?require('./study-band.js'):null);
 
   const enabled=id=>!globalThis.ReserveFeatures||globalThis.ReserveFeatures.enabled(id);
   const workspaceEnabled=name=>View.workspaceEnabled(name);
@@ -53,8 +52,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     for(const key of keys)if(Arrange.isKey(key))pins.add(key);
     data.toolbox={...data.toolbox,agentPins:[...pins]};
   }
-  // Reconcile owned UI in place: focus, selection, scrolling and CSS transitions
   const dateMs=value=>{if(value==null||value==='')return null;const ms=typeof value==='number'?value:Date.parse(value);return Number.isFinite(ms)?ms:null;};
+  // dayKey answers by zone and instant (see dayKey in create)
+  const DAY_KEYS=new Map();
+  // Reconcile owned UI in place: focus, selection, scrolling and CSS transitions
   // belong to the existing nodes. Teacher HTML is an opaque, sanitized fragment.
   // Inside a preserved heading only the search field and the at-a-glance chips follow the state.
   function patchLive(heading,next){
@@ -80,7 +81,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     if(kind!=='[object Object]'&&kind!=='[object Array]')return JSON.stringify(a)===JSON.stringify(b);
     const keys=Object.keys(a);return keys.length===Object.keys(b).length&&keys.every(key=>Object.hasOwn(b,key)&&sameData(a[key],b[key]));
   }
-  // The AI engine rewrites the Prepare status on every visit (4.0's Prepare), often changing only its revision
+  // The AI engine rewrites the Prepare status on every visit (ai-prepare.js notify), often changing only its revision
   // counter. Nothing the dashboard draws reads that status, so a change confined to the counter needs no render
   // (perf interaction-2). Progress, state, phase or step changes differ here and go to prepareStatusOnly below; any
   // other change renders.
@@ -91,7 +92,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     return sameData(mask(before),mask(after));
   }
   // A running Prepare or Help question saves its progress, state, phase and step in the account record at every step
-  // (4.0's Prepare). Only the AI panel's status line shows it (4.0's agent client, refreshed by
+  // (ai-prepare.js notify). Only the AI panel's status line shows it (agent-client.js state(), refreshed by
   // toolbox.update()); the Help band follows the run through 'ch-ai-run'. So a change confined to that status refreshes
   // the toolbox instead of redrawing the whole dashboard (perf leaks-2). Keys may come back in any order.
   function prepareStatusOnly(before,after){
@@ -299,6 +300,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       dock=null;
       items=[];
     }
+    // The dock centres on the content column (.rd-shell, room()); it is re-measured when the dashboard's width changes and
+    // when the column's does alone (the Canvas menu drawer beside a scene moves only the content aside, scene-themes.css).
     function sync(){
       const next=container.querySelector('.rd-dock');
       if(next!==dock){
@@ -310,9 +313,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           for(const [name,fn] of Object.entries(docListeners))container.addEventListener(name,fn,true);
           env.addEventListener?.('resize',resize);
           if(typeof env.ResizeObserver==='function'){
-            let last='';
-            observer=new env.ResizeObserver(entries=>{const size=entries.map(e=>e.contentRect?.width).join(',');if(size!==last){last=size;resize();}});
+            const widths=new Map();
+            observer=new env.ResizeObserver(entries=>{
+              let moved=false;
+              for(const e of entries){const w=e.contentRect?.width;if(widths.get(e.target)!==w){widths.set(e.target,w);moved=true;}}
+              if(moved)resize();
+            });
             observer.observe(container);
+            const column=container.querySelector('.rd-shell');
+            if(column)observer.observe(column);
           }
           layout();
         }
@@ -957,8 +966,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }
       return out;
     }
-    function markSeen(items){
-      const ids=items.filter(x=>!x.personal).map(x=>String(x.id)).slice(0,3000),graded=items.filter(gradedBack).map(x=>String(x.id)).slice(0,3000);
+    // Marks the given work seen and keeps every earlier mark (another course's, or work this refresh could not load);
+    // when the record is full the new marks and the work Canvas still lists are kept first.
+    function markSeen(marked,items=marked){
+      const old=readSeen(),
+        listed=new Set(items.map(x=>String(x.id))),
+        merge=(now,before)=>[...new Set([...now,...[...before||[]].filter(id=>listed.has(id)),...(before||[])])].slice(0,3000),
+        ids=merge(marked.filter(x=>!x.personal).map(x=>String(x.id)),old?.ids),
+        graded=merge(marked.filter(gradedBack).map(x=>String(x.id)),old?.graded);
       seenCache={ids:new Set(ids),graded:new Set(graded)};
       try{root.localStorage?.setItem(seenKey(),JSON.stringify({ids,graded}));}catch{}
     }
@@ -970,6 +985,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     const checkingOff=new Set();
     const selectionIds=new Set();let archiveUndo=null,archiving=false;
+    // The change note (selection.css): what Canvas Harness just changed on the list and how to take it back. Its own node at the
+    // dashboard's root (kept through renders, like Biscuit's layer), so it never moves the page.
+    const note={entries:[],phase:'',folded:false,putBack:0,node:null,live:null,body:null,foldTimer:0,leaveTimer:0,drawn:'',bump:0,returnTo:null,count:0};
     const selectionOptions={isSelected:id=>selectionIds.has(id)};
     const contentCache=new Map();
     const drafts=new Map();
@@ -1133,6 +1151,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         (materials?.getCourse(course.id)?.raw?.modules||[]).flatMap(m=>
           [{...m,courseId:course.id,text:(m.items||[]).map(i=>i.title).join(' ')},...(m.items||[]).map(i=>({...i,courseId:course.id}))])),
       announcements:c.courses.flatMap(course=>(hub?.getCourse(course.id)?.announcements||[]).map(a=>({...a,courseId:course.id}))),
+      assignmentGroups:c.courses.flatMap(course=>
+        (materials?.getCourse(course.id)?.raw?.assignmentGroups||[]).map(g=>({id:String(g.id),name:String(g.name||''),courseId:String(course.id)}))),
       messages:hub?.getMessages?.()||[]
         },
       unreadAnnouncements:c.courses.reduce((n,course)=>n+(hub?.getCourse(course.id)?.announcements||[]).filter(x=>x.unread).length,0)
@@ -1183,6 +1203,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           }
           return;
         }
+        // (the Review room still growing out of its tab is taken back: another page was chosen before it opened)
+        reviewDeck?.retreat?.();
         if(room){if(button?.dataset?.rvGo&&room.kind==='review'){foldRoom();return;}dropRoom();}
         const nextPage=action==='workspace'&&nextWorkspace==='work'?(button.dataset.tab==='assignments'?'assignments':'home'):workPage;
         if(action==='workspace'&&workspace===nextWorkspace&&workPage===nextPage)return;
@@ -1192,7 +1214,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         savedWorkspace=null;captureCourseView();workspace=nextWorkspace;workPage=nextPage;fitPageMode();if(workPage==='assignments')board?.close();
         if(workspace==='inbox')hub?.setCourse?.('all');
         if(workspace==='materials'||workspace==='hub'){
-          const ctx=buildContext();switchCourse(button.dataset.id||(state.courseId==='all'?String(ctx.selected?.courseId||ctx.courses[0]?.id||'all'):state.courseId));
+          const ctx=buildContext();
+          switchCourse(button.dataset.id||
+            (state.courseId==='all'?String(ctx.courses.find(course=>course.id===String(ctx.selected?.courseId))?.id||ctx.courses[0]?.id||'all'):state.courseId));
           materials?.activate(state.courseId);
           render({tabMotion,motionTarget:'.rd-workspace',direction,snapshot,resetWorkspaceScroll:true});
           if(workspace==='materials')materials?.load(state.courseId);else hub?.loadCourse(state.courseId);
@@ -1207,7 +1231,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function selectDashboardCourse(id,event={},snapshot){
         // The snapshot only reads, so an early return needs no undo.
         // A switch from deep in a long list starts the new course at its heading.
-        if(room)dropRoom();
+        reviewDeck?.retreat?.();if(room)dropRoom();
         if(!switchCourse(id))return;
         if(state.courseId==='all'&&!['home','grades','inbox','review'].includes(workspace))workspace='work';
         if(workspace==='inbox')hub?.setCourse?.(state.courseId);
@@ -1311,6 +1335,41 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       return {ok:true,message:'Using '+row.name+'.'};
     }
     function navigateBiscuit(request){
+      /* T2: Biscuit opens a tool in the Tools drawer; nothing of the student's changes, so there is nothing to undo */
+      if(request.tool){
+        const names={calculator:{graphing:'the graphing calculator',scientific:'the scientific calculator','':'the calculator'},gpa:{'':'the GPA calculator'},quick:{'':'Quick open'}}[request.tool];
+        if(!names||!toolbox?.openTool)return false;
+        const opened=toolbox.openTool(request.tool,{mode:request.mode});
+        return opened?{ok:true,message:'Opened '+(names[request.mode||'']||names[''])+' in Tools.'}:{ok:false,message:'Tools could not open here.'};
+      }
+      /* Round 9: Biscuit opens the Review deck room, Grade impact for a course, and the Assignments views; each undo puts the page back */
+      if(request.tab==='review'){
+        if(!workspaceEnabled('review'))return false;
+        const had=room&&room.kind!=='review'?{kind:room.kind,course:room.course}:null;
+        if(room?.kind!=='review'){if(!openRoom('review','',{fade:true}))return false;reviewDeck?.shown?.();}
+        return {ok:true,undo:()=>{if(room?.kind==='review')dropRoom();if(had)openRoom(had.kind,had.course,{fade:true});return true;}};
+      }
+      if(request.tab==='impact'&&request.courseId){
+        const had=room&&room.kind!=='impact'?{kind:room.kind,course:room.course}:null;
+        if(!gradeImpactNavigate({to:'room',courseId:request.courseId}))return false;
+        return {ok:true,undo:()=>{if(room?.kind==='impact')dropRoom();if(had)openRoom(had.kind,had.course,{fade:true});return true;}};
+      }
+      if(request.tab==='assignments'&&request.view){
+        const mode={next:'actionable',all:'all',week:'week',today:'today',plan:'planned',late:'overdue',tomorrow:'tomorrow',new:'new'}[request.view];
+        if(!mode||!workspaceEnabled('work'))return false;
+        const undo=rememberBiscuitView();
+        if(room)dropRoom();
+        captureCourseView();
+        workspace='work';
+        workPage='assignments';
+        board?.close();
+        readerOpen=false;
+        state.mode=mode;
+        state.day='';
+        visibleLimit=60;
+        render();
+        return {ok:true,undo};
+      }
       const tab={planner:'plan',messages:'inbox','course-hub':'hub',assignments:'work',home:'work',materials:'materials',grades:'grades'}[request.tab];
       if(!request.courseId&&!tab||tab&&!workspaceEnabled(tab))return false;
       if(request.courseId&&!buildContext().courses.some(course=>String(course.id)===String(request.courseId)))return false;
@@ -1353,12 +1412,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function goWorkspace(tab){
       if(!workspaceEnabled(tab))return;
       if(tab==='review'){if(room?.kind!=='review'&&openRoom('review','',{fade:true}))reviewDeck?.shown?.();return;}
+      reviewDeck?.retreat?.();
       if(room)dropRoom();
       savedWorkspace=null;
       if(destroyed||workspace===tab&&(tab!=='work'||workPage==='home'))return;
       captureCourseView();
       workspace=tab;
       if(tab==='work')workPage='home';
+      fitPageMode();
       render({motionTarget:'.rd-workspace'});
       container.querySelector('.rd-workspace-tab[aria-selected="true"]')?.focus({preventScroll:true});
     }
@@ -1371,7 +1432,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         agentCourses:currentSnapshot.courses,
         courseId:hereCourse(),
         aiAssignmentId:!room&&workspace==='work'&&readerOpen?selectedId:null,
-        aiSelectedIds:selectionIds.size?[...selectionIds]:undefined,
+        aiSelectedIds:selectionIds.size?[...selectionIds].slice(0,30):undefined,
         biscuitContext:board?.biscuitContext?.(),
         pageKind:room?here():readerOpen?readerTab==='plan'?'notes':'assignment':workspace,
         now:Date.now(),
@@ -1388,7 +1449,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       onNavigate:next=>{
         if(!workspaceEnabled(next))return;savedWorkspace=null;
         captureCourseView();workspace=next;
-        if(['hub','materials'].includes(next)&&state.courseId==='all'){const ctx=buildContext();switchCourse(String(ctx.selected?.courseId||ctx.courses[0]?.id||'all'));}
+        if(['hub','materials'].includes(next)&&state.courseId==='all'){
+          const ctx=buildContext();
+          switchCourse(String(ctx.courses.find(course=>course.id===String(ctx.selected?.courseId))?.id||ctx.courses[0]?.id||'all'));
+        }
         materials?.activate(state.courseId);render();
         if(next==='materials')materials?.load(state.courseId);if(next==='hub')hub?.loadCourse(state.courseId);if(next==='inbox')hub?.loadInbox();
       },
@@ -1608,9 +1672,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const local=personal.tasks||{};
       // The New view only lives while it is open: a saved or restored view never comes back to it.
       if(state.mode==='new'&&!newShown)state.mode='actionable';if(state.mode!=='new')newShown=null;
-      const newIds=newWorkIds(items,s);
+      const newIds=newWorkIds(items,s),
+        workCourse=state.courseId==='all'?null:new Map(items.map(x=>[String(x.id),String(x.courseId)])),
+        here=id=>!workCourse||workCourse.get(String(id))===state.courseId;
       if(!seenStarted&&!readSeen()&&items.length&&currentSnapshot.partial!==true&&!demo){seenStarted=true;markSeen(items);}
       const filtered=Model.filterAssignments(items,{...state,now,timeZone:s.timeZone,local,prioritizePins:false,newIds:newShown||new Set(newIds)});
+      // The New view moves the mark for what it shows: the chosen course's work only, so other courses' new work stays new.
+      if(state.mode==='new'&&newShown?.size&&filtered.items.some(x=>newIds.includes(String(x.id))))markSeen(items.filter(x=>here(x.id)),items);
       const palette=effectiveTheme(s)==='dark'?DARK_ACCENTS:ACCENTS;
       const accent=/^#[\da-f]{6}$/i.test(s.accent)?s.accent:palette[s.accent]||palette.clay;
       const retained=readerOpen?items.find(x=>x.id===selectedId&&x.personal&&(state.courseId==='all'||state.courseId===x.courseId)):null;
@@ -1638,7 +1706,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         {};
       return {
         newWorkIds:newIds,
-        newCount:state.mode==='new'?(newShown||new Set(newIds)).size:newIds.length,
+        newCount:[...(state.mode==='new'&&newShown||newIds)].filter(here).length,
         machineNotice:enabled('motion')&&root.ReserveMotion?.art?.weakMachine===true&&enabled('customization')&&!personal.settings?.graphics&&!personal.settings?.graphicsTold,
         dockMenu,
         s,
@@ -1808,9 +1876,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       catch{return new Intl.DateTimeFormat('en-US',options).format(new Date(ms));}
     }
 
+    // One answer per instant and zone (bounded, as ReserveCore.dayKey; the map is the module's DAY_KEYS: a render can run
+    // before this line): a render asks for many items' days, and each answer built a JSON key and formatted a date
+    // (2026-11-09: ~13 ms of opening Tools at 2x CPU).
     function dayKey(value,timeZone){
-      if(dateMs(value)===null)return null;
-      return formatDate(value,timeZone,{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/(\d{2})\/(\d{2})\/(\d{4})/,'$3-$1-$2');
+      const ms=dateMs(value);if(ms===null)return null;
+      const memo=String(timeZone)+'|'+ms;let key=DAY_KEYS.get(memo);
+      if(key===undefined){
+        key=formatDate(value,timeZone,{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/(\d{2})\/(\d{2})\/(\d{4})/,'$3-$1-$2');
+        if(DAY_KEYS.size>=5000)DAY_KEYS.clear();
+        DAY_KEYS.set(memo,key);
+      }
+      return key;
     }
 
     function dayDistance(value,now,timeZone){
@@ -2223,7 +2300,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         bandFactsMemo=[items,tasks,out];
         return out;
       };
-      if(bandHost&&Band){
+      if(bandHost&&Band&&enabled('ai')){
         const agent=personal.toolbox?.agent,grades=ctx.s.showGrades===true&&agent?.settings?.grades===true;
         // The band's signature: the study read's (made once per read), whether grade cards show, and the agent runs' ids,
         // states and action outcomes. Card bodies are not stringified on every render.
@@ -2265,7 +2342,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
          })).catch(error=>
            ({ok:false,error:String(error?.message||error)}));
          return reply?.ok?{ok:true,status:'Asking your AI',run:reply.result||null}:{ok:false,message:reply?.error||'Help is unavailable here. Your question is kept.'};};
-        if(bandHost!==helpBandHost){
+        // the band kept from the last Home moves into this one (study-band.js rehost) instead of being built again
+        if(bandHost!==helpBandHost&&helpBand?.rehost&&helpBandHost?.isConnected===false&&helpBand.rehost(bandHost)){
+          helpBandHost=bandHost;
+          if(signature!==helpBandSignature){helpBandSignature=signature;helpBand.update(cards);}else helpBand.refresh?.();
+        }
+        else if(bandHost!==helpBandHost){
           helpBand?.destroy();
           helpBandHost=bandHost;
           helpBandSignature=signature;
@@ -2315,7 +2397,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           }});
         }
         else if(signature!==helpBandSignature){helpBandSignature=signature;helpBand.update(cards);}else helpBand.refresh?.();
-      }else if(helpBand){helpBand.destroy();helpBand=null;helpBandHost=null;helpBandSignature='';}
+      // a page without the band (another tab) keeps it aside for the next Home; with Help gone it is destroyed
+      }else if(helpBand&&(!Band||!helpBand.rehost||!enabled('ai'))){helpBand.destroy();helpBand=null;helpBandHost=null;helpBandSignature='';}
       // Reset before motion measures the shared column.
       gradeImpact?.ensure({...ctx,workspace,workPage:workspace==='work'?workPage:'',state,user:currentSnapshot.user,gradeImpactRevision:currentSnapshot.fetchedAt});
       if(resetWorkspaceScroll&&!scrollReset){const column=container.querySelector('.rd-shell > .rd-workspace');if(column?.scrollTop)column.scrollTop=0;}
@@ -2583,7 +2666,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }
       if(field?.startsWith('hub-')){hub?.input(field,field==='hub-unread'?event.target.checked:event.target.value,event.target.dataset);return;}
       if(field?.startsWith('material-')){materials?.input(field,event.target.value);return;}
-      if(field==='new-step'&&/^(?:\d+|local-[\w-]+)$/.test(event.target.dataset.id||'')){stepDrafts.set(event.target.dataset.id,event.target.value.slice(0,300));return;}
+      if(field==='new-step'&&/^(?:\d+|quiz-\d+|local-[\w-]+)$/.test(event.target.dataset.id||'')){stepDrafts.set(event.target.dataset.id,event.target.value.slice(0,300));return;}
       // A search keeps its query at once and draws the list before the next paint (focus and caret are restored then),
       // so keys that queued behind a long render share one render instead of one each (perf interaction-3).
       if(field==='overview-query'){overviewQuery=event.target.value.slice(0,200);scheduleRender();return;}
@@ -2697,7 +2780,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
               key==='dockScale'?Math.max(.7,Math.min(1.5,Math.round((Number(event.target.value)||1)*100)/100)):event.target.value;
         void saveAppearance(key,value);return;
       }
-      if(/^(?:\d+|local-[\w-]+)$/.test(id||'')){
+      if(/^(?:\d+|quiz-\d+|local-[\w-]+)$/.test(id||'')){
         if(['course-name','planned-date','estimate','notes','personal-name','personal-due'].includes(field)){const draft=stageDraft(event.target);if(draft)persistDraft(draft);return;}
         if(field==='course-color'&&/^\d+$/.test(id)){
           const value=event.target.value;
@@ -2748,7 +2831,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     function stageDraft(target){
       const field=target?.dataset?.rdField,id=target?.dataset?.id;
-      if(!['course-name','planned-date','estimate','notes','personal-name','personal-due'].includes(field)||!/^(?:\d+|local-[\w-]+)$/.test(id||''))return null;
+      if(!['course-name','planned-date','estimate','notes','personal-name','personal-due'].includes(field)||!/^(?:\d+|quiz-\d+|local-[\w-]+)$/.test(id||''))return null;
       if(field==='course-name'&&!/^\d+$/.test(id))return null;
       if(field.startsWith('personal-')&&!personal.customTasks?.some(x=>x.id===id))return null;
       const value=String(target.value||'').slice(0,field==='notes'?20000:field==='course-name'?100:field==='personal-name'?200:30),key=`${field}:${id}`,previous=drafts.get(key);
@@ -2792,7 +2875,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function flushDrafts(){clearTimeout(draftTimer);return Promise.all([...drafts.values()].map(persistDraft));}
 
     async function addStep(id){
-      if(!/^(?:\d+|local-[\w-]+)$/.test(id||''))return;
+      if(!/^(?:\d+|quiz-\d+|local-[\w-]+)$/.test(id||''))return;
       const input=container.querySelector(`[data-rd-field="new-step"][data-id="${id}"]`),text=input?.value.trim().slice(0,300);
       if(!text)return;
       stepDrafts.set(id,input.value);
@@ -2806,9 +2889,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
 
     function showPreview(id,event,snapshot=null){
-      const ctx=buildContext(),item=ctx.items.find(x=>x.id===String(id));
+      let ctx=buildContext();const item=ctx.items.find(x=>x.id===String(id));
       if(!item)return;
       if(selectedId===String(id)&&readerOpen&&container.dataset.workspace==='work')return;
+      // Work of another course (a Planner card, the clock's next due) opens under All courses, as Quick open's does.
+      if(state.courseId!=='all'&&state.courseId!==String(item.courseId)&&switchCourse('all'))ctx=buildContext();
       if(!ctx.filtered.items.some(x=>x.id===item.id)){
         state.query='';
         state.day='';
@@ -2827,25 +2912,174 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function toggleSelection(id){
       if(archiving)return;
       if(selectionIds.has(id))selectionIds.delete(id);
-      else if(selectionIds.size<30)selectionIds.add(id);
-      else {transientStatus='Select up to 30 items at a time.';}
-      render();toolbox?.update();
+      else if(selectionIds.size<200)selectionIds.add(id);
+      else {transientStatus='Select up to 200 items at a time.';}
+      render();toolbox?.update();syncSelectionDock();
     }
+    // The bar with Archive sits in the desk's toolbar. Far down a long list that toolbar is out of sight, so a copy of the
+    // bar follows the window instead (selection.css: .rd-selection-float).
+    function syncSelectionDock(){
+      if(destroyed)return;
+      try{
+        const slot=selectionIds.size?container.querySelector?.('.rd-selection-slot'):null,box=slot?.getBoundingClientRect?.();
+        const away=!!box&&(box.bottom<56||box.top>(root.innerHeight||0)),had=typeof container.getAttribute?.('data-selection-away')==='string';
+        if(away&&!had)container.setAttribute?.('data-selection-away','');else if(!away&&had)container.removeAttribute?.('data-selection-away');
+      }catch{}
+    }
+    let selectionDockFrame=0;
+    container.addEventListener?.('scroll',()=>{
+      if(selectionDockFrame||!selectionIds.size)return;
+      selectionDockFrame=root.requestAnimationFrame?.(()=>{selectionDockFrame=0;syncSelectionDock();})||0;
+    },{capture:true,passive:true});
+    // Archive puts the chosen work away in Canvas Harness only (checkedOff, never Canvas). The note lists each thing with its course;
+    // Undo all puts every one back (each to the value it had, read inside the same save); Put back takes one.
     async function archiveSelection(undo=false){
+      if(undo)return putBack(note.entries.map(x=>x.id));
       if(archiving)return;const ctx=buildContext();
-      const chosen=undo?archiveUndo:ctx.items.filter(x=>selectionIds.has('assignment:'+x.courseId+':'+x.id)).map(x=>({id:x.id,key:'assignment:'+x.courseId+':'+x.id,previous:undefined}));
-      if(!chosen?.length)return;archiving=true;render();
-      const saved=await savePersonal(data=>{
-        for(const x of chosen){
-          const task={...data.tasks[x.id]};
-          if(!undo)x.previous=task.checkedOff;
-          if(undo&&x.previous===undefined)delete task.checkedOff;else task.checkedOff=undo?x.previous:true;
-          data.tasks[x.id]=task;
+      const chosen=ctx.items.filter(x=>selectionIds.has('assignment:'+x.courseId+':'+x.id)).map(x=>
+        ({id:String(x.id),key:'assignment:'+x.courseId+':'+x.id,previous:undefined,kind:'archive',...noteFacts(x,ctx)}));
+      if(!chosen.length)return;
+      // (Archive goes away with the selection: focus that was on it moves to the note's Undo, not to the page's start)
+      const fromArchive=container.getRootNode?.()?.activeElement?.dataset?.rdAction==='selection-archive';
+      archiving=true;render();drawNote();
+      let saved=false;
+      try{
+        saved=await savePersonal(data=>{for(const x of chosen){const task={...data.tasks[x.id]};x.previous=task.checkedOff;task.checkedOff=true;data.tasks[x.id]=task;}});
+      }
+      catch{saved=false;}
+      finally{archiving=false;}
+      if(!saved||destroyed){render();syncSelectionDock();drawNote();return;}
+      for(const x of chosen)selectionIds.delete(x.key);
+      noteAdd(chosen);
+      render();toolbox?.update();syncSelectionDock();drawNote();
+      if(fromArchive&&note.node)note.node.querySelector?.('[data-rd-action="selection-undo"]')?.focus?.({preventScroll:true});
+    }
+    // What the note says about one item: its name, its course and the course's colour, and the day it is due.
+    function noteFacts(item,ctx=buildContext()){
+      const course=ctx.courseMap?.get?.(String(item.courseId)),due=dateMs(item.dueAt);
+      return {
+        name:String(item.name||'Untitled'),
+        course:String(course?.name||''),
+        color:/^#[0-9a-f]{6}$/i.test(course?.color||'')?course.color:'',
+        due:due===null?'':formatDate(due,ctx.s.timeZone,{weekday:'short',month:'short',day:'numeric'})
+      };
+    }
+    // A second change while the note shows joins it, newest first; a thing already listed keeps the value it had first.
+    function noteAdd(list){
+      const old=new Map(note.entries.map(x=>[x.id,x]));
+      const fresh=list.map(x=>old.has(x.id)?{...x,previous:old.get(x.id).previous}:x);
+      note.entries=[...fresh,...note.entries.filter(x=>!fresh.some(y=>y.id===x.id))].slice(0,200);
+      // It comes as one line: open, its list lay over the reader's buttons (function check, 2026-11-16). Show opens the list;
+      // a change while the list is open joins it there, a change while it is folded leaves it folded (its count ticks).
+      const showing=note.phase==='open';note.phase='open';if(!showing)note.folded=true;note.putBack=0;note.bump++;
+      clearTimeout(note.leaveTimer);note.leaveTimer=0;if(!note.folded)armFold();
+      archiveUndo=note.entries.filter(x=>x.kind==='archive');if(!archiveUndo.length)archiveUndo=null;
+    }
+    async function putBack(ids){
+      if(archiving)return;const chosen=note.entries.filter(x=>ids.includes(x.id));if(!chosen.length)return;
+      archiving=true;render();drawNote();
+      let saved=false;
+      try{
+        saved=await savePersonal(data=>{
+          for(const x of chosen){
+            const task={...data.tasks[x.id]};
+            if(x.kind==='done')task.checkedOff=false;else if(x.previous===undefined)delete task.checkedOff;else task.checkedOff=x.previous;
+            data.tasks[x.id]=task;
+          }
+        });
+      }
+      catch{saved=false;}
+      finally{archiving=false;}
+      if(!saved||destroyed){render();drawNote();return;}
+      note.entries=note.entries.filter(x=>!ids.includes(x.id));archiveUndo=note.entries.filter(x=>x.kind==='archive');if(!archiveUndo.length)archiveUndo=null;
+      if(!note.entries.length){note.phase='done';note.putBack=chosen.length;clearTimeout(note.foldTimer);note.leaveTimer=setTimeout(noteLeave,1800);note.leaveTimer?.unref?.();}
+      else note.bump++;
+      render();toolbox?.update();syncSelectionDock();drawNote();
+    }
+    // After a few quiet seconds the note folds to its head line (Undo all stays on it); a pointer or focus on it waits.
+    function armFold(){
+      clearTimeout(note.foldTimer);
+      note.foldTimer=setTimeout(()=>{
+        note.foldTimer=0;
+        if(destroyed||note.phase!=='open'||note.folded)return;
+        const n=note.node||null,active=container.getRootNode?.()?.activeElement;
+        if(n&&(n.matches?.(':hover')||n.contains?.(active))){armFold();return;}
+        note.folded=true;
+        drawNote();
+      },8000);
+      note.foldTimer?.unref?.();
+    }
+    function noteLeave(){
+      clearTimeout(note.foldTimer);clearTimeout(note.leaveTimer);note.foldTimer=note.leaveTimer=0;
+      if(!note.phase)return;const n=note.node||null,hadFocus=!!n?.contains?.(container.getRootNode?.()?.activeElement);
+      note.phase='';note.entries=[];note.putBack=0;note.folded=false;note.count=0;archiveUndo=null;
+      if(n){
+        n.setAttribute('data-state','leaving');
+        n.removeAttribute('data-enter');
+        const off=container.dataset.motionStyle==='off'||container.hasAttribute?.('data-kb')||!!root.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+        note.leaveTimer=setTimeout(()=>{note.leaveTimer=0;if(!note.phase){n.hidden=true;note.body.replaceChildren();note.drawn='';container.removeAttribute?.('data-note-on');}},off?0:240);
+      }
+      // focus goes back where it came from (or, when that has gone with the change, to the list's heading)
+      if(hadFocus){
+        const back=note.returnTo;
+        note.returnTo=null;
+        (back?.isConnected&&back.getClientRects?.().length?back:container.querySelector('#rd-work-title'))?.focus?.({preventScroll:true});
+      }
+    }
+    function drawNote(){try{drawNoteNow();}catch{}}
+    function drawNoteNow(){
+      if(destroyed||note.node===false)return;
+      if(!note.phase){
+        if(note.node&&!note.leaveTimer&&!note.node.hidden){
+          note.node.hidden=true;
+          note.body.replaceChildren();
+          note.live.textContent='';
+          note.drawn='';
+          container.removeAttribute?.('data-note-on');
         }
-      });
-      archiving=false;if(!saved||destroyed){render();return;}
-      if(undo)archiveUndo=null;else {archiveUndo=chosen;for(const x of chosen)selectionIds.delete(x.key);}
-      render();toolbox?.update();
+        return;
+      }
+      let n=note.node;
+      if(!n){
+        n=document.createElement('section');
+        if(n===container||typeof n?.append!=='function'){note.node=false;return;}
+        note.node=n;
+        n.className='rd-note';
+        n.setAttribute('data-rd-keep','');
+        n.setAttribute('aria-label','Recent change');
+        n.addEventListener('keydown',event=>{if(event.key==='Escape'){event.stopPropagation();noteLeave();}});
+        n.addEventListener('focusin',event=>{if(event.relatedTarget&&!n.contains(event.relatedTarget))note.returnTo=event.relatedTarget;});
+        // one polite live line that stays while the drawing under it is redrawn, so each change is read out once
+        note.live=document.createElement('p');
+        note.live.className='rd-sr-only';
+        note.live.setAttribute('role','status');
+        note.live.setAttribute('aria-live','polite');
+        note.body=document.createElement('div');
+        note.body.className='rd-note-body';
+        n.append(note.live,note.body);
+      }
+      if(n.parentNode!==container)container.append(n);
+      const state=note.phase==='done'?'done':note.folded?'folded':'open',key=JSON.stringify([state,note.entries.map(x=>x.id),note.putBack,archiving,note.bump]);
+      if(note.drawn===key&&!n.hidden)return;
+      const firstDraw=!note.drawn||n.hidden||n.getAttribute('data-state')==='leaving';
+      const before=new Set(Array.from(n.querySelectorAll('[data-note-id]'),el=>el.getAttribute('data-note-id')));
+      const focused=n.contains(container.getRootNode?.()?.activeElement)?container.getRootNode().activeElement:null,
+        focusKey=focused?(focused.dataset.rdAction||'')+'|'+(focused.dataset.id||''):'';
+      // (data-turn: it has just folded or opened, the one time the paper settles; a redraw in the same state stays still)
+      // (data-note-on on the dashboard while the slip shows: Biscuit's layer then lies under it, selection.css)
+      const was=n.getAttribute('data-state');n.hidden=false;n.setAttribute('data-state',state);if(!container.hasAttribute?.('data-note-on'))container.setAttribute?.('data-note-on','');
+      if(!firstDraw&&was&&was!==state&&was!=='leaving'&&state!=='done')n.setAttribute('data-turn','');else n.removeAttribute('data-turn');
+      const drawn=View.noteHTML?.({entries:note.entries,state,putBack:note.putBack,busy:archiving},{E,icon})||{said:'',html:''};
+      note.body.innerHTML=drawn.html;if(note.live.textContent!==drawn.said)note.live.textContent=drawn.said;
+      if(!firstDraw)for(const el of n.querySelectorAll('[data-note-id]'))if(!before.has(el.getAttribute('data-note-id')))el.setAttribute('data-new','');
+      if(firstDraw)n.setAttribute('data-enter','');else n.removeAttribute('data-enter');
+      if(!firstDraw&&state!=='done'&&note.count>0&&note.entries.length>note.count)n.querySelector('.rd-note-count')?.setAttribute('data-bump','');
+      note.count=note.entries.length;
+      if(focusKey){
+        const [a,id]=focusKey.split('|');
+        (n.querySelector(`[data-rd-action="${a}"]${id?`[data-id="${CSS.escape(id)}"]`:''}`)||n.querySelector('[data-rd-action="selection-undo"],[data-rd-action="note-close"]'))?.focus({preventScroll:true});
+      }
+      note.drawn=key;
     }
     async function checkOff(id,done,event,snapshot=null){
       const item=buildContext().items.find(item=>item.id===id);
@@ -2864,13 +3098,28 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const saved=await savePersonal(data=>{data.tasks[id]={...data.tasks[id],checkedOff:done};});
       checkingOff.delete(id);
       if(!saved||destroyed){exit?.cancel();return;}
-      checkOffNotice=done?{id,name:item.name}:null;
+      // Marked done joins the change note (it used to be a toast of its own); putting it back anywhere takes it off.
+      checkOffNotice=null;
+      if(done)noteAdd([{id:String(id),key:'assignment:'+item.courseId+':'+item.id,previous:undefined,kind:'done',...noteFacts(item,ctx)}]);
+      else if(note.entries.some(x=>x.id===String(id))){
+        note.entries=note.entries.filter(x=>x.id!==String(id));
+        archiveUndo=note.entries.filter(x=>x.kind==='archive');
+        if(!archiveUndo.length)archiveUndo=null;
+        if(note.entries.length)note.bump++;else noteLeave();
+      }
+      drawNote();
       // A departed row already closed its gap; a row that stays or returns
       if(done)board?.finished('done',id);
       // gets a short entrance of its own instead of replaying the whole list.
       render(exit?{}:{tabMotion:event.detail>0,motionTarget:`.rd-assignment[data-preview-id="${id}"]`,motionKind:'filter',snapshot});
       exit?.cancel();
-      const next=done?container.querySelector('[data-rd-action="undo-check-off"][data-id="'+id+'"]'):container.querySelector('[data-rd-action="check-off"][data-id="'+id+'"]');
+      // (from the keyboard, focus goes to what takes this one back: the row's own Undo where the row stays, else the note's
+      //  Put back for it, or its Undo when it is the only thing; it used to be the Marked done toast's Undo)
+      //  (folded with more than one thing: Show, which opens the list with this thing's Put back)
+      const back=note.node?
+        note.node.querySelector?.('[data-rd-action="note-undo"][data-id="'+id+'"]')||note.node.querySelector?.(note.entries.length===1?'[data-rd-action="selection-undo"]':'[data-rd-action="note-open"]'):
+        null;
+      const next=done?container.querySelector('[data-rd-action="undo-check-off"][data-id="'+id+'"]')||back:container.querySelector('[data-rd-action="check-off"][data-id="'+id+'"]');
       if(!event.detail)next?.focus({preventScroll:true});
     }
 
@@ -2997,12 +3246,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(action.startsWith('material-')){materials?.handle(action,button.dataset);return;}
       if(action==='select-item'){const item=buildContext().items.find(x=>x.id===String(button.dataset.id));if(item)toggleSelection('assignment:'+item.courseId+':'+item.id);return;}
       if(action==='select-source'){const id=button.dataset.source;if(typeof id==='string'&&/^(?:assignment|page|file|home|syllabus|announcement):/.test(id))toggleSelection(id);return;}
-      if(action==='selection-clear'){selectionIds.clear();render();toolbox?.update();return;}
+      if(action==='selection-clear'){selectionIds.clear();render();toolbox?.update();syncSelectionDock();return;}
       if(action==='selection-ai'){toolbox?.open('ai',button);return;}
       if(action==='deadline-changes'){deadlineChanges?.open(button);return;}
       if(action==='help-this'){helpWithItem({itemId:button.dataset.id,page:readerTab==='plan'?'notes':'assignment',selectedText:root.getSelection?.()?.toString()||''});return;}
       if(action==='open-aid'){toolbox?.openAid(button.dataset.aidKey);return;}
       if(action==='selection-archive'||action==='selection-undo'){void archiveSelection(action==='selection-undo');return;}
+      if(action==='note-undo'){void putBack([String(button.dataset.id)]);return;}
+      if(action==='note-close'){noteLeave();return;}
+      if(action==='note-open'){note.folded=false;drawNote();armFold();return;}
       if(action==='machine-low'||action==='machine-keep'){
         void savePersonal(data=>{data.settings.graphicsTold=true;if(action==='machine-low'){data.settings.graphics='low';delete data.settings.graphicsDetail;data.pet.knowledge='lite';}});
         return;
@@ -3046,7 +3298,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(action==='add-step'){addStep(button.dataset.id);return;}
       if(action==='remove-step'){
         const id=button.dataset.id,step=button.dataset.step;
-        if(/^(?:\d+|local-[\w-]+)$/.test(id||''))savePersonal(data=>{const task=data.tasks[id];if(task)task.checklist=(task.checklist||[]).filter(x=>x.id!==step);});
+        if(/^(?:\d+|quiz-\d+|local-[\w-]+)$/.test(id||''))savePersonal(data=>{const task=data.tasks[id];if(task)task.checklist=(task.checklist||[]).filter(x=>x.id!==step);});
         return;
       }
       if(action==='planner'){openPlanner({page:'week'});return;}
@@ -3088,7 +3340,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }
       if(action==='close-preview'){closePreview();return;}
       if(action==='schedule'){
-        const id=button.dataset.id,day=button.dataset.day;if(!/^(?:\d+|local-[\w-]+)$/.test(id||''))return;
+        const id=button.dataset.id,day=button.dataset.day;if(!/^(?:\d+|quiz-\d+|local-[\w-]+)$/.test(id||''))return;
         if(day&&Model.cleanState({day}).day!==day)return;
         savePersonal(data=>{data.tasks[id]={...data.tasks[id],plannedDate:day};});return;
       }
@@ -3105,7 +3357,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }
       if(action==='pin'){
         const id=String(button.dataset.id);
-        if(!/^(?:\d+|local-[\w-]+)$/.test(id))return;
+        if(!/^(?:\d+|quiz-\d+|local-[\w-]+)$/.test(id))return;
         void bookmarkItem(id);return;
       }
       if(action==='reset'){
@@ -3125,14 +3377,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const fromOtherWorkspace=workspace!=='work';
         if(fromOtherWorkspace){captureCourseView();workspace='work';workPage='assignments';board?.close();}
         readerOpen=false;state.mode=!fromOtherWorkspace&&state.mode===mode&&!state.day?pageDefault():mode;state.day='';visibleLimit=60;
-        if(state.mode==='new'){newShown=new Set();const c=buildContext();newShown=new Set(c.newWorkIds);markSeen(c.items);}
+        if(state.mode==='new'){newShown=new Set();const c=buildContext();newShown=new Set(c.newWorkIds);}
         render({tabMotion:event.detail>0,motionTarget:fromOtherWorkspace?'.rd-workspace':'.rd-work',motionKind:fromOtherWorkspace?'workspace':'filter',snapshot,resetWorkspaceScroll:fromOtherWorkspace});
         return;
       }
       if(action==='view'||action==='day'){readerOpen=false;
         if(action==='view'&&state.mode===button.dataset.mode&&!state.day)return;
         state.day=action==='day'?(state.day===button.dataset.day?'':button.dataset.day):'';
-        state.mode=action==='view'?button.dataset.mode:'actionable';visibleLimit=60;render({tabMotion:event.detail>0,motionTarget:'.rd-work',motionKind:'filter',snapshot});
+        state.mode=action==='view'?button.dataset.mode:pageDefault();visibleLimit=60;render({tabMotion:event.detail>0,motionTarget:'.rd-work',motionKind:'filter',snapshot});
         return;
       }
       if(action==='show-dated'){state.mode='dated';state.day='';visibleLimit=60;render();return;}
@@ -3413,7 +3665,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       }
       const look=lookSelection();
       if(key==='accent'&&look.key){
-        const color=Object.hasOwn(ACCENTS,value)?ACCENTS[value]:value,mode=settings().theme==='dark'?'dark':'light';
+        const mode=settings().theme==='dark'?'dark':'light',color=Object.hasOwn(ACCENTS,value)?(mode==='dark'?DARK_ACCENTS:ACCENTS)[value]:value;
         makeWrites=makeWrites.catch(()=>{}).then(()=>makeOwn?.action('adjust',look.key,{patch:{colors:{[mode]:{accent:color}}}}));
         return makeWrites;
       }
@@ -3744,6 +3996,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         destroyed=true;
         consumeSources();
         pendingRender=null;
+        clearTimeout(note.foldTimer);
+        clearTimeout(note.leaveTimer);
         root.chrome?.storage?.onChanged?.removeListener?.(navChanged);
         root.chrome?.storage?.onChanged?.removeListener?.(studyChanged);
         if(sceneActive){root.ReserveSceneThemes?.remove(container);sceneActive=false;}

@@ -110,6 +110,8 @@
    row.className='setting-row switch feature-switch';label.textContent=feature.label||feature.name;name.append(label);
    input.type='checkbox';input.id='feature-'+feature.id;input.dataset.feature=feature.id;input.setAttribute('role','switch');input.disabled=true;
    track.className='switch-track';track.setAttribute('aria-hidden','true');row.append(name,input,track);rows.append(row);featureControls.set(feature.id,input);
+   // AI help shows only once its add-on is in and agreed to
+   if(feature.id==='ai')row.hidden=true;
    input.addEventListener('change',()=>toggleFeature(feature.id,input.checked));
   }
  }
@@ -119,7 +121,11 @@
   $('features-panel').setAttribute('aria-busy',String(featureLoading||featurePending>0));
   $('features-value').textContent=featureReady?({full:'Full',lite:'Lite',custom:'Custom'}[featurePrefs.preset]):featureLoading?'Loading…':'Unavailable';
   for(const input of all('[data-feature-preset]')){input.disabled=!featureReady;input.checked=featureReady&&input.value===featurePrefs.preset;}
-  for(const [id,input]of featureControls){input.disabled=!featureReady;input.checked=effective.has(id);}
+  for(const [id,input]of featureControls){
+    input.disabled=!featureReady;
+    input.checked=effective.has(id);
+    if(id==='ai'&&input.parentElement)input.parentElement.hidden=!(featureReady&&Features.aiUnlocked?.(featurePrefs));
+  }
  }
  async function loadFeatures(){
   if(popupClosed)return;

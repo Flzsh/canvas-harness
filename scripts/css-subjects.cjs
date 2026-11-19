@@ -15,7 +15,7 @@
 // selector it would rewrite (npm run check).
 const fs = require('node:fs'), path = require('node:path');
 const ext = path.join(__dirname, '..', 'extension');
-const FILES = ['app.css', 'dashboard.css', 'workspace.css', 'refresh.css', 'customize.css', 'settings-dock.css', 'gpa.css', 'selection.css', 'responsive-layout.css', 'widgets.css', 'pet.css', 'subject-art.css', 'review-deck.css', 'focus-room.css', 'grade-impact.css', 'scene-themes.css', 'agent.css', 'addons-panel.css', 'course-links.css', 'media-frame.css', 'frame-editor.css'];
+const FILES = ['app.css', 'dashboard.css', 'workspace.css', 'refresh.css', 'customize.css', 'settings-dock.css', 'gpa.css', 'selection.css', 'responsive-layout.css', 'widgets.css', 'pet.css', 'subject-art.css', 'study-band.css', 'review-deck.css', 'focus-room.css', 'grade-impact.css', 'scene-themes.css', 'agent.css', 'addons-panel.css', 'course-links.css', 'media-frame.css', 'frame-editor.css'];
 
 // Split on a separator at depth 0 (outside (), [] and strings).
 function splitTop(text, sep) {

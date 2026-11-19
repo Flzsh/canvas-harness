@@ -1,10 +1,10 @@
 /* Linear decisions select actions and source rows; exact parsers still own values and gates. */
 (function(root){
  'use strict';
- const load=(name,file)=>root[name]||(typeof module==='object'&&module.exports?(()=>{try{return require(file);}catch{return null;}})():null),
+ const load=(name,file)=>root[name]||(typeof module==='object'&&module.exports?require(file):null),
    L=()=>load('ReserveBiscuitLearn','./biscuit-learn.js'),
    P=()=>load('ReserveBiscuitParse','./biscuit-parse.js'),
-   Study=()=>root.CanvasHarnessStudy||null,
+   Study=()=>load('CanvasHarnessStudy','./study-prompts.js'),
    Ctx=()=>load('CanvasHarnessContext','./ai-context.js'),
    list=v=>Array.isArray(v)?v:[],
    mutate=new Set(['complete','setting','feature','module','focus','focus-control','reminder','plan','note','bookmark']),
@@ -147,9 +147,8 @@
         owned.rank(pack.models.item,featureInput,targets,s,session,'ai',selection.featureRows):
         Lrn.rank(pack.models.item,featureInput,targets,s,session,'ai',selection.featureRows))[0]:
       null;
-  // 3.9 ships no 4.0 Help instructions: then Biscuit hands the line and its sources to the AI as written
   const study=Study();
-  let left=study?.LIMITS?.material||100000;
+  let left=study.LIMITS.material;
   for(let i=0;i<sources.length;i++){
     const budget=Math.floor(left/(sources.length-i));
     if(sources[i].text.length>budget){sources[i].text=sources[i].text.slice(0,budget);sources[i].truncated=true;}
@@ -168,7 +167,7 @@
       wishes:String(input),
       sources
     },
-    mode=!study?'ask':kinds.length===1?'build':kinds.length?'choice':'ask',
+    mode=kinds.length===1?'build':kinds.length?'choice':'ask',
     prompt=mode==='build'?study.build(kind,ctx):mode==='choice'?study.buildChoice(kinds,ctx):[String(input),...sources.map(v=>'<<<SOURCE: '+v.label+'>>>\n'+v.text+'\n<<<END SOURCE>>>')].join('\n\n'),
     result={
       contextIds:sources.map(v=>v.id),
@@ -241,9 +240,8 @@
       courseId:row.courseId,
       text:['feedback','grade'].includes(row.kind)?Ctx().withoutScores(String(row.feedback||row.teacherComments||row.text||'')):String(row.aiText??row.text??'')
     }));
-  // 3.9 ships no 4.0 Help instructions: then Biscuit hands the line and its sources to the AI as written
   const study=Study();
-  let left=study?.LIMITS?.material||100000;
+  let left=study.LIMITS.material;
   for(let i=0;i<sources.length;i++){
     const budget=Math.floor(left/(sources.length-i));
     if(sources[i].text.length>budget){sources[i].text=sources[i].text.slice(0,budget);sources[i].truncated=true;}
@@ -258,7 +256,7 @@
       wishes:String(input),
       sources
     },
-    mode=!study?'ask':kinds.length===1?'build':kinds.length?'choice':'ask',
+    mode=kinds.length===1?'build':kinds.length?'choice':'ask',
     prompt=mode==='build'?study.build(kind,ctx):mode==='choice'?study.buildChoice(kinds,ctx):[String(input),...sources.map(v=>'<<<SOURCE: '+v.label+'>>>\n'+v.text+'\n<<<END SOURCE>>>')].join('\n\n');
   return {
     contextIds:sources.map(v=>v.id),

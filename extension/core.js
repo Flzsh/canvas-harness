@@ -313,6 +313,25 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     var topic=raw.discussion_topic&&typeof raw.discussion_topic==='object'?raw.discussion_topic:raw;
     var replyCount=raw.reply_to_entry_required_count??topic.reply_to_entry_required_count;
     var count=function(value){return Number.isInteger(value)&&value>=0?value:null;};
+    var checkpoints=(Array.isArray(raw.sub_assignments)?
+      raw.sub_assignments:
+      Array.isArray(raw.checkpoints)?raw.checkpoints:Array.isArray(topic.checkpoints)?topic.checkpoints:[]).map(function(c){
+      return {
+        id:stringValue(c.id),
+        tag:stringValue(c.sub_assignment_tag||c.tag),
+        name:stringValue(c.name),
+        requiredCount:count(c.required_count??((c.sub_assignment_tag||c.tag)==='reply_to_entry'?replyCount:null)),
+        dueAt:normalizedDateString(c.due_at),
+        unlockAt:normalizedDateString(c.unlock_at),
+        lockAt:normalizedDateString(c.lock_at),
+        points:finiteNumber(c.points_possible),
+        done:!!(c.submission&&/^(submitted|graded)$/.test(c.submission.workflow_state))
+      };
+    });
+    // A discussion with checkpoints has no due date of its own: its next open checkpoint dates it (as ai-canvas.js does).
+    var dueAt=normalizedDateString(raw.due_at!==undefined?raw.due_at:quiz&&quiz.due_at)||checkpoints.filter(function(c){return c.dueAt&&!c.done;}).map(function(c){
+      return c.dueAt;
+    }).sort()[0]||null;
 
     return {
       id: id,
@@ -320,7 +339,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       courseName: stringValue(course.name),
       name: stringValue(raw.name),
       description: typeof raw.description === 'string' && raw.description.trim() ? raw.description : typeof topic.message==='string'?topic.message:'',
-      dueAt: normalizedDateString(raw.due_at!==undefined?raw.due_at:quiz&&quiz.due_at),
+      dueAt: dueAt,
       unlockAt: normalizedDateString(raw.unlock_at!==undefined?raw.unlock_at:quiz&&quiz.unlock_at),
       lockAt: normalizedDateString(raw.lock_at!==undefined?raw.lock_at:quiz&&quiz.lock_at),
       url: safeCanvasAssignmentUrl(raw.html_url, courseId, id),
@@ -358,21 +377,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       replyToEntryRequiredCount:count(replyCount),
       requireInitialPost:typeof raw.require_initial_post==='boolean'?raw.require_initial_post:typeof topic.require_initial_post==='boolean'?topic.require_initial_post:null,
       userCanSeePosts:typeof raw.user_can_see_posts==='boolean'?raw.user_can_see_posts:typeof topic.user_can_see_posts==='boolean'?topic.user_can_see_posts:null,
-      checkpoints:(Array.isArray(raw.sub_assignments)?
-        raw.sub_assignments:
-        Array.isArray(raw.checkpoints)?raw.checkpoints:Array.isArray(topic.checkpoints)?topic.checkpoints:[]).map(function(c){
-        return {
-          id:stringValue(c.id),
-          tag:stringValue(c.sub_assignment_tag||c.tag),
-          name:stringValue(c.name),
-          requiredCount:count(c.required_count??((c.sub_assignment_tag||c.tag)==='reply_to_entry'?replyCount:null)),
-          dueAt:normalizedDateString(c.due_at),
-          unlockAt:normalizedDateString(c.unlock_at),
-          lockAt:normalizedDateString(c.lock_at),
-          points:finiteNumber(c.points_possible),
-          done:!!(c.submission&&/^(submitted|graded)$/.test(c.submission.workflow_state))
-        };
-      }),
+      checkpoints:checkpoints,
       quizId:nullableString(raw.quiz_id||quiz&&quiz.id),
       quiz: quiz ?
         {

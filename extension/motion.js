@@ -1507,10 +1507,17 @@
     })();
 
     // ---- Ghosts: what is leaving lets go where it was ------------------------
+    // Inside one reveal pass the shell's box is read once (ghostPass) and kept: the settle layer is absolute (refresh.css),
+    // so the ghosts it gains never move the shell, and a read after the first ghost's writes was a style pass of its own
+    // (2026-11-09: ~8 ms of an All courses click at 2x CPU).
+    let ghostPass=null;
     function ghostLayer(){
       const shell=shellOf();if(!shell)return null;
       if(!layer||layer.parentNode!==shell){layer?.remove?.();layer=shell.ownerDocument.createElement('div');layer.className='rd-settle-layer';layer.setAttribute('aria-hidden','true');shell.append(layer);}
-      const box=shell.getBoundingClientRect();return {layer,left:box.left+(shell.clientLeft||0),top:box.top+(shell.clientTop||0)};
+      if(ghostPass?.shell===shell)return {layer,left:ghostPass.left,top:ghostPass.top};
+      const box=shell.getBoundingClientRect(),frame={layer,left:box.left+(shell.clientLeft||0),top:box.top+(shell.clientTop||0)};
+      if(ghostPass)ghostPass={shell,left:frame.left,top:frame.top};
+      return frame;
     }
     function clearGhosts(){for(const entry of ghosts){entry[0].cancel?.();entry[1].remove?.();}ghosts.clear();}
     function ghost(rect,build,{duration=90,easing=LETGO,frames=[{opacity:1},{opacity:0}]}={}){
@@ -1608,24 +1615,35 @@
     // Late content fades in once by CSS (rd-fade) when its node is created; inside
     // a unit the wave already sets down, that fade is finished so nothing fades twice.
     function quiet(node){for(const animation of node.getAnimations?.({subtree:true})||[])if(animation.animationName==='rd-fade')animation.finish?.();}
+    // (for a group: every node's fades are read before any is finished or any entrance is made, so the page is restyled
+    // once for the reads and not once per node; finishing them after the entrances changes nothing on screen: the
+    // entrances are WAAPI opacity effects on the nodes themselves, never rd-fade)
+    function fadesOf(nodes){
+      const out=[];
+      for(const node of nodes)for(const animation of node.getAnimations?.({subtree:true})||[])if(animation.animationName==='rd-fade')out.push(animation);
+      return out;
+    }
     // A changed title hands over: the old words let go where they stood (90ms)
     // while the same node, with its new text, fades in place.
     // A title that is only there for assistive technology (clipped to 1px while the course name stands beside it
     // as artwork: refresh.css 4.2) takes no entrance; the words it replaces still let go where they stood.
-    function roll(node,old,{kind='title',list}){
-      const rect=node?.getBoundingClientRect?.();if(!inView(rect))return false;
+    function roll(node,old,{kind='title',list,rect=node?.getBoundingClientRect?.()}){
+      if(!inView(rect))return false;
       if(clipped(rect)){if(old&&old.text.trim())ghost(old.rect,g=>{g.innerHTML=old.html;Object.assign(g.style,old.style);});return true;}
       if(old&&old.text===node.textContent)return false;
       if(old&&old.text.trim()&&Math.abs(old.rect.top-rect.top)<=28)ghost(old.rect,g=>{g.innerHTML=old.html;Object.assign(g.style,old.style);});
       enter(node,{kind,list});
       return true;
     }
+    // (every title's box is read before the first ghost or entrance is written: one style pass, not one per title)
     function titles(scope,snap,roles,list){
+      const todo=[];
       for(const [role,selector] of TITLES){
         if(!roles[role])continue;
         const node=scope.querySelector?.(selector)||(scope.matches?.(selector)?scope:null);if(!node)continue;
-        roll(node,snap?.titles.get(role),{...roles[role],list});
+        todo.push([node,snap?.titles.get(role),roles[role],node.getBoundingClientRect?.()]);
       }
+      for(const [node,old,options,rect] of todo)roll(node,old,{...options,list,rect});
     }
     // Counts update in place only when their displayed number changes.
     function counts(snap,skip,list){
@@ -1637,8 +1655,10 @@
     }
     // Stable content stays still even if layout changes. New nodes or changed
     // text/markup fade in place; list order/layout updates immediately.
+    // (all boxes and words are read first, then the entrances are made in the same order: an entrance between two
+    // reads made the next read restyle the page again; 2026-11-09)
     function wave(scope,snap,groups,list,handled=new Set()){
-      const entered=[];
+      const entered=[],todo=[];
       for(const [selector,kind] of groups){
         for(const node of scope.querySelectorAll?.(selector)||[]){
           if(handled.has(node))continue;
@@ -1648,11 +1668,16 @@
           handled.add(node);
           const was=snap?.units.get(node);
           if(was&&was.text===node.textContent&&was.html===node.innerHTML)continue;
-          enter(node,{kind,list});quiet(node);entered.push(node);
-          // The list's selection card fades where it rests, beside its row.
-          if(node.classList?.contains('rd-assignment--selected')&&node.parentElement)play(node.parentElement,[{opacity:0},{opacity:1}],{pseudoElement:'::before',duration:190,easing:FADE,fill:'backwards'},list);
+          todo.push([node,kind]);
         }
       }
+      const fades=fadesOf(todo.map(([node])=>node));
+      for(const [node,kind] of todo){
+        enter(node,{kind,list});entered.push(node);
+        // The list's selection card fades where it rests, beside its row.
+        if(node.classList?.contains('rd-assignment--selected')&&node.parentElement)play(node.parentElement,[{opacity:0},{opacity:1}],{pseudoElement:'::before',duration:190,easing:FADE,fill:'backwards'},list);
+      }
+      for(const animation of fades)animation.finish?.();
       return entered;
     }
     // The old course art lets go where it stood (90ms; 120ms when no art follows,
@@ -1699,7 +1724,9 @@
         const rect=node.getBoundingClientRect();
         if(inView(rect))regions.push({node,rect});
       }
-      regions.forEach(({node})=>{const head=HEADINGS.test(node.className||'');enter(node,{kind:head?'region':'content',list});quiet(node);});
+      const fades=fadesOf(regions.map(({node})=>node));
+      regions.forEach(({node})=>{const head=HEADINGS.test(node.className||'');enter(node,{kind:head?'region':'content',list});});
+      for(const animation of fades)animation.finish?.();
     }
     // A new view of the list; the reader follows only if its assignment changed.
     function filter(element,snap,list){
@@ -1765,7 +1792,7 @@
       if(!animate||reduced()||!pointer()||typeof element.animate!=='function'||(snap&&!fresh(snap))||(needs&&!snap)){element.dataset.motion='settled';return;}
       const around=(kind==='filter'||kind==='reader')&&element.closest?.('.rd-workspace'),scopes=around&&around!==element?[around]:[];
       mark([element,...scopes],'entering');
-      const list=[];
+      const list=[];ghostPass={};
       try{
         if(kind==='course')course(element,snap,list);
         else if(kind==='filter')filter(element,snap,list);
@@ -1773,6 +1800,7 @@
         else if(kind==='section')enter(element,{kind:'section',list});
         else workspace(element,snap,list);
       }catch(error){for(const animation of list)animation?.cancel?.();list.length=0;clearGhosts();}
+      finally{ghostPass=null;}
       track(element,list,scopes);
       // The art film runs beside the UI and never holds up data-motion=settled.
       try{art.claim(element,kind);}catch{}

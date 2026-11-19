@@ -395,7 +395,8 @@
        if(info.animated)asset.firstFrame=rasterStill(original,info);
      }
      const blob=new Blob([original],{type:asset.type}),selected=support.media||codec();
-    if(support.media||root.document&&typeof root.createImageBitmap==='function'){
+    // media:false (a pack already checked and decoded when it was added): the container check above is enough
+    if(support.media!==false&&(support.media||root.document&&typeof root.createImageBitmap==='function')){
       if(typeof selected.prepare!=='function')throw Error('Media codec must expose prepare');
       const prepared=await selected.prepare(blob,'banner',key.trim().slice(0,160),options);
       if(!prepared||!(prepared.blob instanceof Blob))throw Error('Media codec returned no prepared blob');

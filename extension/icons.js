@@ -36,7 +36,9 @@
   upload:'M12 16V4M7 9l5-5 5 5M4 17v4h16v-4',
   warning:'m12 3 10 18H2L12 3ZM12 9v5M12 17h.01',
   copy:'M8 8h13v13H8zM16 8V3H3v13h5',
-  grid:'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'
+  grid:'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+  undo:'M8.5 5 4 9.3l4.6 4.3M4.3 9.3h10.2Q20.2 9.4 20 14.6 19.7 19.6 14.3 19.8H9.5',
+  archive:'M3.4 4.6Q12 4.1 20.6 4.7V9H3.4ZM4.8 9.2 5.1 19.6Q12 20.1 18.9 19.5L19.2 9.2M9.6 12.6Q12 13 14.4 12.5'
  };
  root.ReserveIcon=(name,cls='')=>`<svg class="icon ${cls}" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name]||paths.book}"/></svg>`;
 })(globalThis);

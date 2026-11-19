@@ -74,9 +74,40 @@ test('speed: median, worst, a 200 render cap, and open fixed at the first render
 
 test('works with and without the study features: Full, Lite, Custom with and without them',()=>{
  for(const prefs of [{preset:'full'},{preset:'lite'},{preset:'custom',custom:['tools','developer','ai']},{preset:'custom',custom:['tools','developer']}]){
-  const r=F.resolve(prefs),f=D.facts(input({features:{preset:r.preset,enabled:r.enabled,full:fullIds}}));assert.equal(D.rows(f).length,7);assert.ok(D.report(f).includes('Features'));
+  const r=F.resolve(prefs),f=D.facts(input({features:{preset:r.preset,enabled:r.enabled,full:fullIds}}));assert.equal(D.rows(f).length,8,'seven rows and Start-up');assert.ok(D.report(f).includes('Features'));
  }
  assert.ok(D.rows(D.facts(input({features:{preset:'custom',enabled:[...fullIds.filter(id=>id!=='pony'),'developer'],full:fullIds}}))).find(([n])=>n==='Features')[1].join(' ').includes('Full +developer -pony'));
+});
+
+// The start-up record (content.js) comes in through the store, is shown as a summary row plus the steps of the start that
+// matters, and only known words, step codes and numbers pass: nothing a page could have written reaches a row.
+test('start-up record: a summary row, the steps of the latest start that did not open, and nothing but codes and numbers',()=>{
+ const start=(at,outcome,steps,more={})=>({id:'x',at,nav:'navigate',via:'',order:'normal',seen:'visible',outcome,steps,...more});
+ const ok=start('2026-11-14 07:40','shown',[[12,'enabledPreference'],[40,'initialize'],[310,'profileEnd'],[820,'shown']]);
+ const failed=start('2026-11-14 08:02','canvas',[[30,'initialize'],[300,'fail signed-out'],[301,'retry signed-out'],[1810,'restart'],[2000,'fail signed-out'],[2001,'canvas']],{via:'sign-in',order:'add-ons-first'});
+ const later=start('2026-11-14 08:03','shown',[[20,'initialize'],[640,'shown']],{nav:'reload'});
+ const hostile=start('<b>'+MARK,MARK,[[1,MARK+' '+MARK+' '+MARK],[2,'ok'],['3','x'],[4,'<script>']],{nav:MARK,via:MARK,order:MARK,seen:MARK,user:{name:MARK}});
+ const f=D.facts(input({startup:[ok,failed,later,hostile]}));
+ for(const text of [JSON.stringify(f),JSON.stringify(D.rows(f)),D.report(f)])assert.ok(!text.includes(MARK)&&!text.includes('<'),text);
+ const rows=D.rows(f),summary=rows.find(([n])=>n==='Start-up')[1];
+ assert.equal(summary[1],'11-14 08:03 shown 0.6 s','newest first');assert.equal(summary[2],'11-14 08:02 canvas after sign-in add-ons-first 1 try (signed-out)','a try is one fresh start, not its retry step too');
+ const detail=rows.find(([n])=>n.startsWith('Start '));assert.equal(detail[0],'Start 08:02','the panel spells out the start that ended on Canvas');assert.ok(detail[1].includes('300 fail signed-out'));
+ assert.equal(D.report(f).split('\n').filter(l=>/^Start /.test(l)).length,3,'the copied report carries the last three starts');
+ assert.deepEqual(D.rows(D.facts(input({}))).find(([n])=>n==='Start-up')[1],['no record yet']);
+ const orders=D.facts(input({startup:['add-ons-first+swapped','swapped','worker','swapped+'+MARK,'normal+x'].map(order=>start('2026-11-14 09:00','shown',[[5,'shown']],{order}))})).startup.map(x=>x.order);
+ assert.deepEqual(JSON.parse(JSON.stringify(orders)),['add-ons-first+swapped','swapped','worker','',''],'the order Edge ran the scripts in: known words only');
+});
+
+// A page that opened and later fell back to Canvas's page (its session lost for good) must not read as a plain "shown";
+// one that came back, or where the student chose Canvas's dashboard, reads as shown.
+test('start-up record: a page that opened and then fell back to Canvas says so',()=>{
+ const start=(at,steps)=>({id:'x',at,nav:'navigate',via:'',order:'normal',seen:'visible',outcome:'shown',steps});
+ const fell=start('2026-11-14 08:10',[[20,'initialize'],[400,'shown'],[9000,'fail signed-out'],[9001,'retry signed-out'],[10500,'restart'],[10600,'fail signed-out'],[10601,'canvas']]);
+ const back=start('2026-11-14 08:20',[[20,'initialize'],[400,'shown'],[9000,'fail signed-out'],[9001,'canvas'],[40000,'recheck online'],[40001,'restart'],[41000,'shown']]);
+ const chose=start('2026-11-14 08:30',[[20,'initialize'],[400,'shown'],[5000,'student'],[5001,'canvas']]);
+ const rows=D.rows(D.facts(input({startup:[fell,back,chose]})));
+ assert.deepEqual(rows.find(([n])=>n==='Start-up')[1],['11-14 08:30 shown 0.4 s','11-14 08:20 shown 0.4 s 1 try (signed-out)','11-14 08:10 shown 0.4 s, then canvas 1 try (signed-out)']);
+ assert.equal(rows.find(([n])=>n.startsWith('Start '))[0],'Start 08:10','the panel spells out the start that fell back to Canvas');
 });
 
 test('the file reaches nothing beyond four shared globals and has nothing of the newer study features in it',()=>{

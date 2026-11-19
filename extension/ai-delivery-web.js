@@ -1,0 +1,421 @@
+/* Prepare delivery: persist evidence before clicks; reconciliation never resends an uncertain turn. */
+(function(root,factory){
+  const api=factory(root);
+  if(typeof module==='object'&&module.exports)module.exports=api;else root.CanvasHarnessDeliveryWeb=api;
+})(globalThis,function(root){
+ 'use strict';
+ // ChatGPT keeps every finished turn in its chat record. Read it with the signed-in session from the extension itself
+ // (no page script), so the answer is found even while the chat tab sleeps. Only the text of the assistant's final
+ // answer after this turn's marker is returned; the session token is used for these reads and never kept.
+ function answerAfter(mapping,turnId){
+  const text=m=>(m?.content?.parts||[]).filter(p=>typeof p==='string').join(''),marker='[[Canvas Harness agent '+turnId+']]',nodes=mapping&&typeof mapping==='object'?mapping:{};
+  let node=Object.values(nodes).find(n=>n?.message?.author?.role==='user'&&text(n.message).includes(marker)),answer='';
+  for(let i=0;i<40&&node;i++){
+    const next=(node.children||[]).map(c=>nodes[c]).filter(Boolean).at(-1);
+    if(!next||next.message?.author?.role==='user')break;
+    const m=next.message;
+    if(m?.author?.role==='assistant'&&m.content?.content_type==='text'&&m.status==='finished_successfully'&&m.end_turn!==false&&text(m).trim())answer=text(m);
+    node=next;
+  }
+  return answer.replace(/<\/?escape>/g,'').trim().slice(0,60000);
+ }
+ // The AI's turn has begun once anything (thinking, a tool call) follows this turn's marker.
+ function replyBegun(mapping,turnId){
+   const text=m=>(m?.content?.parts||[]).filter(p=>typeof p==='string').join(''),
+     marker='[[Canvas Harness agent '+turnId+']]',
+     nodes=mapping&&typeof mapping==='object'?mapping:{},
+     node=Object.values(nodes).find(n=>n?.message?.author?.role==='user'&&text(n.message).includes(marker));
+   return !!node&&(node.children||[]).some(c=>nodes[c]?.message&&nodes[c].message.author?.role!=='user');
+ }
+ // detail: {reply} when the answer is there, {stopped:true} when ChatGPT finished the turn without one (thinking only).
+ async function chatRecord({fetch=root.fetch?.bind(root),conversationURL,turnId,since=0,opened=since,timeout=10000,detail=false}){
+  const origin='https://chatgpt.com',get=async(pathname,token)=>{
+    const res=await Promise.race([
+      fetch(origin+pathname,{credentials:'include',headers:token?{authorization:'Bearer '+token}:{}}).catch(()=>null),
+      new Promise(r=>setTimeout(()=>r(null),timeout))
+    ]);
+    return res?.ok?res.json().catch(()=>null):null;
+  };
+  const none=detail?{}:'';if(typeof fetch!=='function'||!/^turn-[\w-]+$/.test(String(turnId||'')))return none;
+  const session=await get('/api/auth/session'),token=session?.accessToken;if(typeof token!=='string'||!token)return none;
+  let id='';try{id=/^\/c\/([\w-]{8,80})\/?$/.exec(new URL(conversationURL||origin).pathname)?.[1]||'';}catch{}
+  const stamp=t=>typeof t==='number'?t*1000:Date.parse(t)||0;
+  // A chat seen only at its temporary local address: the list of the newest chats (ids and times, no messages) names the
+  // one created when this chat was sent (opened), and only that chat is read. With no chat created then, nothing is read.
+  let ids=id&&!id.startsWith('local-')?[id]:[];
+  if(!ids.length){
+    const at=Number(opened)||0,
+      near=((await get('/backend-api/conversations?offset=0&limit=6&order=updated',token))?.items||[]).filter(c=>
+        /^[\w-]{8,80}$/.test(String(c?.id||''))&&stamp(c.update_time)>=since-60000&&stamp(c.create_time)>=at-120000&&stamp(c.create_time)<=at+600000);
+    if(at&&near.length)ids=[String(near.sort((a,b)=>Math.abs(stamp(a.create_time)-at)-Math.abs(stamp(b.create_time)-at))[0].id)];
+  }
+  for(const conversation of ids){
+    const read=async()=>(await get('/backend-api/conversation/'+encodeURIComponent(conversation),token))?.mapping,mapping=await read(),answer=answerAfter(mapping,turnId);
+    if(answer)return detail?{reply:answer}:answer;
+   // begun: the AI is still at work on this turn, so a closed or sleeping tab is worth waiting for a while longer
+   if(detail&&replyBegun(mapping,turnId)){
+     if((await get('/backend-api/conversation/'+encodeURIComponent(conversation)+'/stream_status',token))?.status==='COMPLETE'){
+       const late=answerAfter(await read(),turnId);
+       return late?{reply:late}:{stopped:true};
+     }
+     return {begun:true};
+   }}
+  return none;
+ }
+ // Claude keeps its chat record behind its own API: the reply after this turn's marker, read with the signed-in
+ // session from the extension, so the answer is found even while the Claude tab sleeps.
+ async function claudeRecord({fetch=root.fetch?.bind(root),conversationURL,turnId,timeout=10000}){
+  const origin='https://claude.ai',get=async pathname=>{
+    const res=await Promise.race([fetch(origin+pathname,{credentials:'include'}).catch(()=>null),new Promise(r=>setTimeout(()=>r(null),timeout))]);
+    return res?.ok?res.json().catch(()=>null):null;
+  };
+  if(typeof fetch!=='function'||!/^turn-[\w-]+$/.test(String(turnId||'')))return {};
+  let id='';try{id=/^\/chat\/([\w-]{8,80})\/?$/.exec(new URL(conversationURL||origin).pathname)?.[1]||'';}catch{}if(!id)return {};
+  const marker='[[Canvas Harness agent '+turnId+']]',
+    said=m=>(Array.isArray(m?.content)?m.content.filter(c=>c?.type==='text'&&typeof c.text==='string').map(c=>c.text).join(''):'')||(typeof m?.text==='string'?m.text:''),
+    orgs=await get('/api/organizations');
+  for(const org of (Array.isArray(orgs)?orgs:[]).slice(0,4)){
+   if(!/^[\w-]{8,80}$/.test(String(org?.uuid||'')))continue;
+   const messages=(await get('/api/organizations/'+org.uuid+'/chat_conversations/'+id+'?tree=True&rendering_mode=messages'))?.chat_messages;
+   if(!Array.isArray(messages))continue;
+   const asked=messages.find(m=>m?.sender==='human'&&said(m).includes(marker));if(!asked)return {};
+   const reply=messages.filter(m=>m?.sender==='assistant'&&(m.parent_message_uuid===asked.uuid||Number(m.index)>Number(asked.index))).sort((a,b)=>
+     Number(a.index)-Number(b.index))[0];
+   if(!reply?.stop_reason)return reply?{begun:true}:{};const answer=said(reply).replace(/<\/?escape>/g,'').trim().slice(0,60000);return answer?{reply:answer}:{stopped:true};
+  }
+  return {};
+ }
+ // Signed out of the AI website? One read before a new chat opens: ChatGPT's session (no token = signed out), Claude's
+ // organizations (401 = signed out). true, false, or null when it cannot tell (then the run goes on as before).
+ async function signedOut({fetch=root.fetch?.bind(root),provider,timeout=10000}={}){
+  const url={chatgpt:'https://chatgpt.com/api/auth/session',claude:'https://claude.ai/api/organizations'}[provider];
+  if(!url||typeof fetch!=='function')return null;
+  const res=await Promise.race([fetch(url,{credentials:'include'}).catch(()=>null),new Promise(r=>setTimeout(()=>r(null),timeout))]);
+  if(!res)return null;
+  if(provider==='claude')return res.status===401?true:res.ok?false:null;
+  if(!res.ok)return null;
+  const body=await res.json().catch(()=>null);
+  // Signed out, ChatGPT's session is an empty object; anything else that is not its session cannot tell.
+  if(!body||typeof body!=='object'||Array.isArray(body))return null;
+  return !(typeof body.accessToken==='string'&&body.accessToken);
+ }
+ // When each message's chat record was last read (ai-guard.js recordReadEvery), across the worker's runs.
+ const recordReads=new Map();
+ function create({
+   chrome=root.chrome,
+   inject=root.CanvasHarnessInject,
+   providers=root.CanvasHarnessProviders,
+   now=()=>Date.now(),
+   fetch=root.fetch?.bind(root),
+   scriptTimeout=20000,
+   // ai-guard.js (the worker passes one): fewer record reads, a sign-in check, a cap on messages sent.
+   aiGuard=null
+ }={}){
+  const blocked=(receipt,message,action='Open chat')=>({status:'needs-you',receipt,needsYou:{reason:message,action}});
+  // Every AI website by its own name: signed out, or at its usage limit, it is said plainly, with a way back to it (Open
+  // chat) and to another AI (Your AI). Nothing switches the student's AI for them.
+  const outWords=name=>'You are signed out of '+name+'. Sign in there in this browser, then come back: this carries on. Or choose another AI in Your AI.';
+  const limitWords=(name,said,sent)=>
+    (said?name+' says: '+String(said).replace(/\s+/g,' ').trim().slice(0,160).replace(/[.!?。！]?$/,'.'):name+' is at its usage limit.')+(sent?' Nothing more was sent.':' Nothing was sent.')+' Try again later, or choose another AI in Your AI.';
+  async function step(turn,checkpoint,{run,guard,claimProvider}={}){
+   await guard();
+   const provider=providers.get(run.provider);
+   if(!provider||!await chrome.permissions.contains({permissions:['scripting'],origins:Array.from(provider.origins)}))
+     return blocked(turn.deliveryReceipt,'Allow access to your AI website','Review settings');
+   let receipt=turn.deliveryReceipt;
+   // A sent (or being sent) Prepare or Ask on ChatGPT: the chat record answers first, whatever state the tab is in.
+   const sentAt=Number(receipt?.sentAt||receipt?.intentAt||0);
+   let record=null;
+   const recordDue=!aiGuard||now()-(recordReads.get(turn.id)||0)>=aiGuard.limits.recordReadEvery;
+   if(recordDue&&['send-intent','sent'].includes(receipt?.status)&&turn.expectedKind==='prepare'&&['chatgpt','claude'].includes(run.provider)&&sentAt&&now()-sentAt>15000){
+    if(aiGuard){recordReads.set(turn.id,now());if(recordReads.size>200)recordReads.delete(recordReads.keys().next().value);}
+    // A tab frozen before the send was confirmed still shows, in its address, which chat the message went to.
+    let where=receipt.conversationURL;
+    if(receipt.status==='send-intent'&&receipt.tabId!=null){
+      const open=await chrome.tabs.get(receipt.tabId).catch(()=>null);
+      try{const u=new URL(open?.url||'');if(u.origin===receipt.origin&&/^\/(?:c|chat)\/[\w-]{8,}/.test(u.pathname))where=open.url;}catch{}
+    }
+    // The chat this turn went to was opened by the run's latest turn that started a new chat (this one, or the one this
+    // follow-up continues); that send time picks the chat out of the newest chats when its address is not known yet.
+    let first=run.turnIndex;
+    while(first>0&&!run.turns[first]?.fresh)first--;
+    const openedBy=first===run.turnIndex?receipt:run.turns[first]?.deliveryReceipt,opened=Number(openedBy?.intentAt||openedBy?.sentAt||sentAt);
+    record=run.provider==='claude'?
+      await claudeRecord({fetch,conversationURL:where,turnId:turn.id}):
+      await chatRecord({fetch,conversationURL:where,turnId:turn.id,since:sentAt,opened,detail:true});
+    await guard();
+    if(record.reply)return {status:'reply',receipt:{...receipt,conversationURL:where},reply:record.reply};
+    if(record.stopped)return blocked(receipt,'Your AI stopped without an answer','Try again');
+    if(record.begun&&!receipt.begunAt){receipt={...receipt,begunAt:now()};await checkpoint(receipt);}}
+   const initial=url=>{const p=new URL(url).pathname;return ['','/','/new','/app'].includes(p.replace(/\/$/,''));};
+   // A chat with its own address (not the start page, not ChatGPT's temporary local one) whose record CH can read.
+   const realChat=url=>{try{return /^\/(?:c|chat)\/(?!local-)[\w-]{8,}/.test(new URL(url).pathname);}catch{return false;}};
+   const recorded=['chatgpt','claude'].includes(run.provider)&&turn.expectedKind==='prepare';
+   // The student decides after a closed or sleeping tab: nothing is sent again on its own (manual).
+   const stuck=(reason,extra={})=>({status:'needs-you',receipt,needsYou:{reason,action:'Try again',manual:true,...extra}});
+   if(!receipt&&aiGuard){
+    // Signed out: one plain message and nothing else until the student is back (Open chat, then this carries on).
+    const out=await signedOut({fetch,provider:run.provider});
+    if(out!==null)await aiGuard[out?'signedOut':'signedIn'](run.provider).catch(()=>{});
+    if(out===true)return blocked(null,outWords(provider.label));
+   }
+   if(!receipt){
+    // CH's chats stay out of the student's chat history: ChatGPT's temporary chat, Claude's incognito chat (the local
+    // switch ch-ai-temporary-chat set to false turns this off).
+    const away={chatgpt:'?temporary-chat=true',claude:'?incognito'}[run.provider];
+    let temp=!!away;
+    try{if(away&&(await chrome.storage.local.get('ch-ai-temporary-chat'))['ch-ai-temporary-chat']===false)temp=false;}catch{}
+    // The local test switch ch-ai-test-model opens ChatGPT chats on that model (for checking weaker models).
+    let model='';
+    try{if(run.provider==='chatgpt')model=String((await chrome.storage.local.get('ch-ai-test-model'))['ch-ai-test-model']||'');}catch{}
+    const base=temp?provider.url+away:provider.url,chatURL=/^[\w.-]{2,40}$/.test(model)?base+(base.includes('?')?'&':'?')+'model='+model:base;
+    // A fresh turn (a retry after the AI stopped) starts a new chat in the same tab instead of following the last one.
+    const previous=turn.fresh?null:run.turns.slice(0,run.turnIndex).at(-1)?.deliveryReceipt;let tab,bound=previous?.conversationURL;
+    if(previous){
+      receipt={v:1,tabId:previous.tabId,origin:previous.origin,conversationURL:bound,status:'target',at:now()};
+      await checkpoint(receipt);
+      try{tab=await chrome.tabs.get(previous.tabId);}catch{return blocked(receipt,'Open the original chat');}
+     // A new chat gets its own address only after the first message is sent; follow it once the earlier turn is found there.
+     if(tab?.url&&tab.url!==bound&&initial(bound)&&!initial(tab.url)&&new URL(tab.url).origin===previous.origin&&!tab.pendingUrl){
+       const prior=run.turns[run.turnIndex-1];
+       await guard();
+       const seen=await Promise.race([
+         chrome.scripting.executeScript({
+           target:{tabId:tab.id,frameIds:[0]},
+           world:'ISOLATED',
+           func:inject.inspectTurn,
+           args:[{id:run.provider,origin:previous.origin,expectedURL:tab.url,turnId:prior.id,text:prior.text,kind:prior.expectedKind,after:0,answerId:prior.id}]
+         }),
+         new Promise(r=>setTimeout(()=>r(null),scriptTimeout))
+       ]);
+       await guard();
+       if(seen?.[0]?.result?.status==='sent'){bound=tab.url;receipt={...receipt,conversationURL:bound};await checkpoint(receipt);}
+     }
+     if(!tab||tab.url!==bound||tab.pendingUrl&&tab.pendingUrl!==bound)return blocked(receipt,'Return to the original chat');}
+    else{
+     const key=(run.kind==='ask'?'ch-ai-ask:v1:':'ch-ai-prepare:v1:')+run.scope+':'+run.provider,saved=(await chrome.storage.session.get(key))[key];
+     if(saved?.origin===new URL(provider.url).origin)try{tab=await chrome.tabs.get(saved.tabId);}catch{}
+     // Each run starts its own new chat. A tab another unfinished run still holds keeps its chat; this run opens its own.
+     if(tab)try{await guard();await claimProvider(tab.id);}catch(error){if(!/in use by another run/i.test(String(error?.message||error)))throw error;tab=null;}
+     if(tab&&(turn.fresh||temp?tab.url!==chatURL:!(tab.url&&initial(tab.url)))){tab=await chrome.tabs.update(tab.id,{url:chatURL});bound=chatURL;}
+     else if(tab)bound=tab.url;
+     if(!tab){
+       const canvas=await chrome.tabs.get(run.sourceTab).catch(()=>null);
+       if(!canvas)return blocked(null,'The Canvas tab that asked was closed. Open Canvas, then try again','Try again');
+       const window=await chrome.windows.get(canvas.windowId);
+       if(window.type!=='normal')return blocked(null,'Open a normal browser window');
+       tab=await chrome.tabs.create({url:chatURL,active:false,windowId:canvas.windowId,openerTabId:run.sourceTab});
+       bound=chatURL;
+       await chrome.storage.session.set({[key]:{sourceTab:run.sourceTab,provider:run.provider,tabId:tab.id,origin:new URL(provider.url).origin}});
+     }
+    }
+    await guard();
+    await claimProvider(tab.id);
+    receipt={v:1,tabId:tab.id,origin:new URL(provider.url).origin,conversationURL:bound||tab.url,status:'target',at:now()};
+    await checkpoint(receipt);
+   }
+   // The chat tab was closed. Before the send, the runner's one fresh chat applies (Try again). After it, the AI's own
+   // record answers for a while (5 minutes, or 30 once the AI has begun); otherwise the student decides.
+   let tab;try{tab=await chrome.tabs.get(receipt.tabId);}catch{
+    if(['target','staged'].includes(receipt.status))return blocked(receipt,'The AI tab was closed','Try again');
+    if(receipt.status==='sent'&&recorded&&realChat(receipt.conversationURL)&&now()-Number(receipt.sentAt||receipt.intentAt||0)<(receipt.begunAt?30:5)*60000)
+      return {status:'waiting',receipt};
+    return stuck('The AI tab was closed');}
+   // A tab that is still loading its chat page gets up to a minute before it counts as moved away.
+   const pending=tab.pendingUrl||'',loading=tab.status==='loading'||!tab.url||pending&&pending!==tab.url;
+   let pendingOrigin='';
+   try{pendingOrigin=pending?new URL(pending).origin:'';}catch{}
+   if(loading&&receipt.status==='target'&&now()-Number(receipt.at||0)<60000&&(!pending||pendingOrigin===receipt.origin))return {status:'waiting',receipt};
+   // Sent on to Google's, OpenAI's or X's sign-in page before anything was typed: that AI website is signed out.
+   const signInHost=url=>{try{return /^(?:accounts\.google\.com|auth\.openai\.com|auth0\.openai\.com|accounts\.x\.ai)$/.test(new URL(url).hostname);}catch{return false;}};
+   if(['target','staged'].includes(receipt.status)&&(signInHost(tab.url)||signInHost(pending))){
+     receipt={...receipt,signedOutAt:now()};
+     await checkpoint(receipt);
+     if(aiGuard)await aiGuard.signedOut(run.provider).catch(()=>{});
+     return blocked(receipt,outWords(provider.label));
+   }
+   if(!tab?.url||new URL(tab.url).origin!==receipt.origin||tab.pendingUrl&&tab.pendingUrl!==tab.url)return blocked(receipt,'Open the original chat');
+   // A temporary local chat address ("/c/local-…") is replaced by the real one; the turn check below confirms it.
+   const temporary=url=>{try{return new URL(url).pathname.startsWith('/c/local-');}catch{return false;}};
+   // ChatGPT drops the test switch's ?model= once the chat opens; the address is the same chat without it.
+   const same=(a,b)=>{try{const x=new URL(a),y=new URL(b);x.searchParams.delete('model');y.searchParams.delete('model');return x.href===y.href;}catch{return a===b;}};
+   if(!same(tab.url,receipt.conversationURL)&&!initial(receipt.conversationURL)&&!temporary(receipt.conversationURL))return blocked(receipt,'Return to the original chat');
+   const args={id:run.provider,origin:receipt.origin,expectedURL:tab.url,turnId:turn.id,text:turn.text,kind:turn.expectedKind,after:0,answerId:turn.id};
+   // A sleeping tab (frozen or discarded by the browser, or a page script that never answers) is waited for while the
+   // AI's own record can still bring the answer (up to 30 minutes after the send). Without one it is not waited for: a
+   // frozen or discarded tab stops the run at once, a silent page after 60 s (120 s once sent), asking the student to
+   // open it. Nothing is sent again on its own.
+   const sleepy=tab.frozen===true||tab.discarded===true;
+   async function asleepNow(){
+    const since=Number(receipt.sentAt||receipt.intentAt||0),sent=['send-intent','sent'].includes(receipt.status);
+    if(!receipt.asleepSince){receipt={...receipt,asleepSince:now()};await checkpoint(receipt);}
+    if(sent&&recorded&&realChat(receipt.conversationURL||tab.url)){
+      if(since&&now()-since>30*60000)return blocked(receipt,'The AI reply is taking longer than expected','Read reply');
+      return {status:'waiting',receipt};
+    }
+    const words='Your AI\'s tab is asleep. Open it and this carries on.';
+    if(sleepy||now()-receipt.asleepSince>(sent?120000:60000))return {status:'needs-you',receipt,needsYou:{reason:words,action:'Open chat',asleep:true}};
+    return {status:'waiting',receipt};
+   }
+   if(sleepy)return asleepNow();
+   const asleep={asleep:true},unloaded={unloaded:true},execute=async(func,arg)=>{
+     await guard();
+     const result=await Promise.race([
+       // A browser error page (offline, no DNS) or a tab closed mid-call refuses page scripts: said below, not thrown.
+       chrome.scripting.executeScript({target:{tabId:receipt.tabId,frameIds:[0]},world:'ISOLATED',func,args:[arg]}).catch(()=>unloaded),
+       new Promise(r=>setTimeout(()=>r(asleep),scriptTimeout))
+     ]);
+     await guard();
+     return result===asleep||result===unloaded?result:result?.[0]?.result;
+   };
+   const notLoaded=()=>blocked(receipt,'Your AI\'s page did not load. Check your connection, then open the chat','Open chat');
+   const moved=async()=>{
+     const latest=await chrome.tabs.get(receipt.tabId).catch(()=>null);
+     try{return !!latest?.url&&latest.url!==args.expectedURL&&new URL(latest.url).origin===receipt.origin;}catch{return false;}
+   };
+   let evidence=await execute(inject.inspectTurn,args);if(evidence?.asleep)return asleepNow();if(evidence?.unloaded)return notLoaded();
+   // Awake again: the composer's own time limits start over from now.
+   if(receipt.asleepSince){receipt={...receipt,asleepSince:0,at:now()};await checkpoint(receipt);}
+   if(evidence?.status==='needs-you'&&evidence.message==='Open the original chat'&&await moved())return {status:'waiting',receipt};
+   // Signed out, or at its usage limit, on whichever AI website: said plainly before anything is typed, while a typed
+   // message waits for Send, behind a sign-in dialog, and while a sent one waits for its reply; never left as a hang.
+   // (Read before the address check below: Claude, DeepSeek and Qwen move a signed-out tab to their own sign-in page,
+   // and a limit can show after a send has given the chat its new address.)
+   // A Log in button alone must still show a moment later, so a page that is only starting is not taken for signed out.
+   async function noticed(page,{sent=false}={}){
+    if(page?.state==='signed-out'){
+     if(page.by==='control'&&!(receipt.outSeenAt&&now()-receipt.outSeenAt>=2000)){
+       if(!receipt.outSeenAt){receipt={...receipt,outSeenAt:now()};await checkpoint(receipt);}
+       return {status:'waiting',receipt};
+     }
+     receipt={...receipt,signedOutAt:now()};await checkpoint(receipt);if(aiGuard)await aiGuard.signedOut(run.provider).catch(()=>{});
+     return blocked(receipt,outWords(provider.label));
+    }
+    if(page?.state==='limit')
+      return {status:'needs-you',receipt,needsYou:{reason:limitWords(provider.label,page.said,sent),action:'Try again',manual:true,limit:true,said:String(page.said||'').slice(0,300)}};
+    // Signed in again (or never out): the composer's own time limits start over from the sign-in.
+    if(page?.state==='ready'&&(receipt.outSeenAt||receipt.signedOutAt)){
+      receipt={...receipt,outSeenAt:0,signedOutAt:0,...(receipt.signedOutAt&&!sent?{at:now()}:{})};
+      await checkpoint(receipt);
+    }
+    if(page?.state==='ready'&&aiGuard&&!sent)await aiGuard.signedIn(run.provider).catch(()=>{});
+    return null;
+   }
+   // (a page this cannot read is no answer: the run goes on as before)
+   const look=async()=>{
+     if(typeof inject.pageState!=='function')return null;
+     await guard();
+     let page=null;
+     try{
+       page=await Promise.race([
+         chrome.scripting.executeScript({target:{tabId:receipt.tabId,frameIds:[0]},world:'ISOLATED',func:inject.pageState,args:[{id:run.provider}]}),
+         new Promise(r=>setTimeout(()=>r(asleep),scriptTimeout))
+       ]);
+     }catch{}
+     await guard();
+     return page===asleep?asleep:page?.[0]?.result||null;
+   };
+   if(typeof inject.pageState==='function'&&
+     (['target','staged'].includes(receipt.status)&&evidence?.status!=='ready'||
+       evidence?.status==='needs-you'&&/^(?:Sign in or review the chat dialog|The AI website needs your attention)$/.test(evidence.message))){
+    const page=await look();if(page?.asleep)return asleepNow();
+    const told=await noticed(page,{sent:['send-intent','sent'].includes(receipt.status)});if(told)return told;
+   }
+   if(!same(tab.url,receipt.conversationURL)&&evidence?.status!=='sent')return blocked(receipt,'Return to the original chat');
+   if(evidence?.status==='needs-you'&&!(receipt.status==='target'&&evidence.message==='Review the existing draft'))
+     return blocked(receipt,evidence.message,/draft/i.test(evidence.message)?'Review draft':'Open chat');
+   if(evidence?.status==='sent'){
+    receipt={...receipt,status:'sent',conversationURL:tab.url,sentAt:receipt.sentAt||now()};await checkpoint(receipt);
+    if(receipt.effortBefore!=null){
+      await execute(inject.setEffort,{
+        id:run.provider,
+        ...(Number.isInteger(receipt.effortBefore)?{index:receipt.effortBefore}:{value:receipt.effortBefore})
+      }).catch(()=>{});
+      receipt={...receipt,effortBefore:null};
+      await checkpoint(receipt);
+    }
+    const reply=await execute(inject.readStudyBlock,args);if(reply?.asleep)return asleepNow();if(reply?.unloaded)return notLoaded();
+    const cards=value=>{
+      try{
+        const raw=String(value||'').replace(/<\/?escape>/g,''),open=raw.indexOf('{'),close=raw.lastIndexOf('}');
+        return open>=0&&close>open&&Array.isArray(JSON.parse(raw.slice(open,close+1))?.cards);
+      }catch{return false;}
+    };
+    if(reply?.status==='answer'&&(args.kind!=='prepare'||cards(reply.text)))return {status:'reply',receipt,reply:reply.text};
+    if(reply?.status==='answer')return {status:'reply',receipt,reply:reply.text};
+    if(reply?.status==='stopped'&&await moved())return {status:'waiting',receipt};
+    // The AI site's own words: a usage limit stops the run with what is made (said in the AI's words); a passing fault
+    // (a dropped connection, "something went wrong", too many requests) gets the runner's one fresh try.
+    if(reply?.status==='provider-error'&&(reply.limit||/You['’]ve reached|usage limit/i.test(reply.message||'')||aiGuard&&/Too many requests/i.test(reply.message||'')))
+      return {
+        status:'needs-you',
+        receipt,
+        needsYou:{
+          reason:limitWords(provider.label,reply.text||reply.message,true),
+          action:'Try again',
+          manual:true,
+          limit:true,
+          said:String(reply.text||reply.message||'').replace(/\s+/g,' ').trim().slice(0,300)
+        }
+      };
+    // No reply yet: a limit or a sign-out the site shows instead of one is said now, not after 30 minutes.
+    if(reply?.status==='waiting'&&typeof inject.pageState==='function'){
+      const page=await look();
+      if(page?.asleep)return asleepNow();
+      if(page?.state!=='ready'){const told=await noticed(page,{sent:true});if(told)return told;}
+    }
+    if(reply?.status==='provider-error'&&/^The AI stopped before answering$|Connection interrupted|Something went wrong|network error|An error occurred|There was an error generating a response|Too many requests/i.test(reply.message||''))
+      return blocked(receipt,reply.message,'Try again');
+    if(['provider-error','stopped','unreadable'].includes(reply?.status))return blocked(receipt,reply.message||'The reply could not be read','Read reply');
+    if(now()-receipt.sentAt>30*60*1000)return blocked(receipt,'The AI reply is taking longer than expected','Read reply');
+    return {status:'waiting',receipt};
+   }
+   // Even if Send threw or the worker vanished before it clicked, never replay this intent.
+   if(['send-intent','sent'].includes(receipt.status)){
+    if(now()-(receipt.intentAt||receipt.sentAt)>15000)return blocked(receipt,'Send could not be confirmed. Review the chat','Review draft');
+    return {status:'waiting',receipt};
+   }
+   // A fresh chat in a background tab can take a while to show its composer (and longer while ChatGPT is busy).
+   if(evidence?.status!=='ready'&&now()-receipt.at>(receipt.status==='staged'?90000:45000))return blocked(receipt,evidence?.message||'Review the chat composer','Review draft');
+   if(receipt.status!=='staged'){
+    // With no effort chosen, a site left on its slowest setting (ChatGPT's Pro, Claude's Max: a quarter of an hour on one
+    // card) is brought down to High for this send and put back after it, like a chosen effort
+    if(receipt.effortBefore===undefined&&(run.settings?.effort||['chatgpt','claude'].includes(run.provider))){
+      const set=await execute(inject.setEffort,run.settings?.effort?{id:run.provider,value:run.settings.effort}:{id:run.provider,value:'high',above:'extra'});
+      receipt={...receipt,effortBefore:set?.ok===true&&(Number.isInteger(set.before)||set.before)?set.before:null};
+      await checkpoint(receipt);
+    }
+    await guard();
+    const staged=await chrome.scripting.executeScript({
+      target:{tabId:receipt.tabId,frameIds:[0]},
+      world:'ISOLATED',
+      func:inject.insertDraft,
+      args:[turn.text,{...args,autoSend:false,consent:run.consent}]
+    }).catch(()=>null);
+    if(!staged)return notLoaded();
+    await guard();
+    const result=staged?.[0]?.result;
+    if(result?.status==='needs-you')return blocked(receipt,result.message,'Review draft');
+    // The insertion itself found the site signed out or at its limit (nothing typed): said as that, never a fresh chat.
+    if(result?.status==='no-editor'&&(result.limit===true||result.signedOut&&!result.retryable)){
+      const told=await noticed(result.limit===true?{state:'limit',said:result.said}:{state:'signed-out',by:result.signedOut});
+      if(told)return told;
+    }
+    if(result?.status==='no-editor'&&result.retryable&&!/did not keep the inserted text/i.test(result.message||''))return {status:'waiting',receipt};
+    if(result?.status!=='injected')return blocked(receipt,result?.message||'Review the chat composer','Review draft');
+    receipt={...receipt,status:'staged'};await checkpoint(receipt);return {status:'waiting',receipt};
+   }
+   if(evidence?.status!=='ready')return {status:'waiting',receipt};
+   // A cap on messages into each AI website and into all of them, all runs and tabs together (ai-guard.js): past it,
+   // nothing is sent.
+   const allowed=aiGuard?await aiGuard.takeSend(run.provider):{ok:true};
+   if(!allowed.ok)return {status:'needs-you',receipt,needsYou:{reason:allowed.message,action:'Try again',manual:true,limit:true,said:allowed.message}};
+   receipt={...receipt,status:'send-intent',intentAt:now()};await checkpoint(receipt);await guard();
+   const clicked=await execute(inject.inspectTurn,{...args,mode:'click',consent:run.consent,runId:run.id,epoch:run.lease.epoch});
+   if(clicked?.status==='needs-you')return blocked(receipt,clicked.message,'Review draft');
+   return {status:'waiting',receipt};
+  }
+  return {deliver:step,observe:step,recover:step,cancel:async()=>({stoppedLocally:true,remoteMayContinue:true})};
+ }
+ return {create,chatRecord,claudeRecord,answerAfter,replyBegun,signedOut};
+});

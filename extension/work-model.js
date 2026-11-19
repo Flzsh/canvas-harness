@@ -7,7 +7,9 @@
     Core = require('./core.js');
   }
 
-  var api = factory(Core || {});
+  // Edge can run this file before core.js (a registration it kept across a restart runs first): then the helpers are looked
+  // up when used, so complete() and dayKey() still follow ReserveCore (personal tasks too) once core.js has run.
+  var api = factory(Core || { get isComplete() { return root.ReserveCore && root.ReserveCore.isComplete; }, get dayKey() { return root.ReserveCore && root.ReserveCore.dayKey; } });
   root.ReserveWorkModel = api;
 
   if (typeof module === 'object' && module.exports) {

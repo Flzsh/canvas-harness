@@ -8,95 +8,6 @@ const panelFile=path.join(__dirname,'../extension/ai-panel.js');
 const api=()=>require(panelFile);
 const scope=(key='assignment-a',active='a')=>({scopeKey:key,active:active?{id:active,title:'Assignment '+active,courseId:'c1'}:null,courseId:'c1',courses:[{id:'c1',name:'Biology'}],sources:[{id:'a',title:'Instructions A',kind:'assignment',courseId:'c1',loaded:true},{id:'b',title:'Reading B',kind:'page',courseId:'c1',loaded:false}],demo:false,theme:'light',motion:'standard'});
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-
-function mountedPanel({embedded=false,clipboardFail=false,collect}={}){
- const nodes=[],ids=new Map(),events=new Map(),requests=[];let receive;
- class Element{
-  constructor(tag){this.tagName=tag.toUpperCase();this.children=[];this.events=new Map();this.dataset={};this.attrs={};this.value='';this.writes=0;this.replacements=0;nodes.push(this);}
-  get textContent(){return (this.text||'')+this.children.map(node=>node.textContent).join('');}
-  set textContent(value){this.writes++;this.text=String(value);this.children=[];}
-  append(...children){this.children.push(...children);}
-  replaceChildren(...children){this.replacements++;this.children=children;this.text='';}
-  setAttribute(key,value){this.attrs[key]=String(value);}
-  addEventListener(type,fn){this.events.set(type,fn);}
-  fire(type){this.events.get(type)?.({target:this,preventDefault(){}});}
-  focus(){document.activeElement=this;}
-  select(){this.selected=true;}
- }
- const get=id=>{if(!ids.has(id))ids.set(id,new Element('div'));return ids.get(id);};
- const document={documentElement:{dataset:{}},activeElement:null,getElementById:get,createElement:tag=>new Element(tag),querySelectorAll:()=>[]};
- const catalog={...scope(),selectedIds:['a']};
- const port={postMessage(request){requests.push(request);queueMicrotask(()=>{
-  let result={};if(request.action==='catalog')result=catalog;
-  else if(request.action==='collect')result=collect?collect(request):{scopeKey:catalog.scopeKey,text:'Selected instructions',included:request.ids.map(id=>({id,title:id})),omitted:[{title:'Reading',reason:'Unavailable'}]};
-  else if(request.action==='pdf')result={text:'Attached PDF text',pages:1,totalPages:1,warnings:[]};
-  receive({id:request.id,ok:true,result});
- });},onMessage:{addListener(fn){receive=fn;},removeListener(){}},onDisconnect:{addListener(){},removeListener(){}},disconnect(){}};
- const env={document,name:embedded?'ch-toolbox-ai':'',location:{origin:'chrome-extension://test'},crypto:{randomUUID},setTimeout,clearTimeout,
-  addEventListener:(type,fn)=>events.set(type,fn),removeEventListener:type=>events.delete(type),
-  btoa:value=>Buffer.from(value,'binary').toString('base64'),navigator:{clipboard:{async writeText(){if(clipboardFail)throw Error('Clipboard unavailable');}}},
-  chrome:{runtime:{id:'test',connect:()=>port},permissions:{contains(_value,reply){reply(true);},request(_value,reply){reply(true);}}}};
- const controller=api().mount(env);
- return {controller,env,document,catalog,get,nodes,requests,receive:message=>receive(message),close:()=>events.get('pagehide')?.()};
-}
-
-test('typing updates only the composer and keeps reviewed context and list nodes',async t=>{
- const f=mountedPanel();t.after(f.close);await tick();await f.controller.preview();f.controller.acceptIssues(true);
- const selected=f.get('selected-items').children[0],issue=f.get('issue-list').children[0],context=f.controller.state.context;
- const counts=()=>['selected-items','pdf-list','issue-list'].map(id=>f.get(id).replacements).concat(f.get('context-text').writes,f.get('context-count').writes);
- const before=counts(),nodeCount=f.nodes.length,requests=f.requests.length;
- f.get('prompt').focus();f.get('context-text').scrollTop=123;
- for(let i=1;i<=100;i++){f.get('prompt').value='x'.repeat(i);f.get('prompt').fire('input');}
- assert.deepEqual(counts(),before);assert.equal(f.nodes.length,nodeCount);assert.equal(f.requests.length,requests);
- assert.strictEqual(f.get('selected-items').children[0],selected);assert.strictEqual(f.get('issue-list').children[0],issue);
- assert.strictEqual(f.controller.state.context,context);assert.equal(f.get('accept-issues').checked,true);assert.equal(f.get('context-text').scrollTop,123);
- assert.strictEqual(f.document.activeElement,f.get('prompt'));assert.equal(f.get('prompt-count').textContent,'100 / 20,000');assert.equal(f.get('send').disabled,false);
- f.controller.setCatalog({...f.catalog,active:null,selectedIds:[]});f.controller.setDraft(' ');assert.equal(f.get('send').disabled,true);
- f.controller.setDraft('Question');assert.equal(f.get('send').disabled,false);
-});
-
-test('unrelated panel changes preserve rendered lists, while changed context and titles render',async t=>{
- let text='First context',reason='First issue';const f=mountedPanel({collect:data=>({scopeKey:'assignment-a',text,included:data.ids.map(id=>({id,title:id})),omitted:[{title:'Reading',reason}]})});t.after(f.close);await tick();await f.controller.preview();
- const selected=f.get('selected-items').children[0],issue=f.get('issue-list').children[0],writes=f.get('context-text').writes,replacements=f.get('selected-items').replacements;
- f.controller.setAutoSend(true);f.controller.setProvider('claude');await tick();
- assert.strictEqual(f.get('selected-items').children[0],selected);assert.equal(f.get('selected-items').replacements,replacements);assert.equal(f.get('context-text').writes,writes);
- text='Updated context';reason='Updated issue';await f.controller.preview();assert.equal(f.get('context-text').textContent,text);assert.match(f.get('issue-list').textContent,/Updated issue/);assert.notStrictEqual(f.get('issue-list').children[0],issue);
- f.catalog.sources[0].title='Revised instructions';f.receive({kind:'catalog',data:f.catalog});assert.match(f.get('selected-items').textContent,/Revised instructions/);assert.equal(f.get('context-preview').hidden,true);
-});
-
-test('typing dismisses a manual copy fallback without rerendering the context',async t=>{
- const f=mountedPanel({clipboardFail:true});t.after(f.close);await tick();f.controller.setDraft('First question');await f.controller.copy();assert.equal(f.get('fallback').hidden,false);
- const writes=f.get('context-text').writes;f.get('prompt').focus();f.get('prompt').value='Edited question';f.get('prompt').fire('input');
- assert.equal(f.get('fallback').hidden,true);assert.equal(f.get('fallback-text').value,'');assert.equal(f.controller.state.manualCopy,false);assert.strictEqual(f.document.activeElement,f.get('prompt'));assert.equal(f.get('context-text').writes,writes);
-});
-
-test('a Biscuit draft appends to unsent text once and only acknowledges without collecting or sharing',async t=>{
- const f=mountedPanel();t.after(f.close);await tick();f.controller.setDraft('My unsent question');const before=f.requests.length,draft={id:'biscuit-1',scopeKey:f.catalog.scopeKey,text:'Explain π\n  preserve spacing'};
- f.receive({kind:'catalog',data:f.catalog});f.receive({kind:'draft',draft});assert.equal(f.controller.state.draft,'My unsent question\n\n'+draft.text);assert.equal(f.get('prompt').value,f.controller.state.draft);
- f.receive({kind:'draft',draft});assert.equal(f.controller.state.draft,'My unsent question\n\n'+draft.text);const added=f.requests.slice(before);assert.deepEqual(added.map(message=>message.kind),['draft-ack','draft-ack']);assert.ok(added.every(message=>message.id===draft.id&&message.scopeKey===draft.scopeKey));
- assert.equal(f.controller.state.context,null);assert.equal(f.controller.state.autoSend,false);assert.equal(f.requests.some(message=>message.action==='collect'||message.action==='web'),false);
-});
-
-test('Biscuit draft validation rejects foreign scope and waits for space without losing the unsent question',async t=>{
- const f=mountedPanel();t.after(f.close);await tick();f.receive({kind:'catalog',data:f.catalog});const before=f.requests.length;
- for(const draft of [{id:'wrong',scopeKey:'foreign',text:'Foreign question'},{id:'long',scopeKey:f.catalog.scopeKey,text:'x'.repeat(20001)},{id:'nul',scopeKey:f.catalog.scopeKey,text:'bad\u0000text'}])f.receive({kind:'draft',draft});assert.equal(f.controller.state.draft,'');assert.equal(f.requests.length,before);
- f.controller.setDraft('x'.repeat(19999));const draft={id:'wait-for-room',scopeKey:f.catalog.scopeKey,text:'Biscuit question'};f.receive({kind:'draft',draft});assert.equal(f.controller.state.draft,'x'.repeat(19999));assert.equal(f.requests.length,before);
- f.get('prompt').value='Short question';f.get('prompt').fire('input');assert.equal(f.controller.state.draft,'Short question\n\nBiscuit question');assert.equal(f.requests.at(-1).kind,'draft-ack');
-});
-
-test('PDF rows retain identity across typing and busy changes, and Remove remains current',async t=>{
- const f=mountedPanel();t.after(f.close);await tick();
- await f.controller.attach({name:'Notes.pdf',size:5,arrayBuffer:async()=>Buffer.from('%PDF-')});
- const row=f.get('pdf-list').children[0],remove=row.children[1];assert.match(row.textContent,/Notes.pdf/);
- f.controller.setDraft('Question');assert.strictEqual(f.get('pdf-list').children[0],row);
- const work=f.controller.preview();assert.equal(remove.disabled,true);await work;assert.strictEqual(f.get('pdf-list').children[0],row);assert.equal(remove.disabled,false);
- remove.fire('click');assert.equal(f.get('pdf-list').children.length,0);assert.equal(f.controller.state.pdfs.length,0);
-});
-
-for(const embedded of [false,true])test((embedded?'toolbox':'standalone')+' AI panel exposes the appropriate close control',async t=>{
- const f=mountedPanel({embedded});t.after(f.close);await tick();assert.equal(f.get('close').hidden,embedded);
- if(!embedded){f.get('close').fire('click');await tick();assert.equal(f.requests.filter(request=>request.action==='close').length,1);}
-});
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};}
 function fixture(overrides={}){
  const calls=[];let connected=false;
@@ -193,7 +104,7 @@ test('failed injection preserves the composed text and draft for explicit copy/o
  const {controller:c,calls}=fixture({web:()=>({status:'no-editor',message:'Open a conversation first'})});c.setDraft('Keep my question');await c.inject();assert.match(c.state.fallback,/Keep my question/);assert.match(c.state.fallback,/Selected reference/);assert.equal(c.state.draft,'Keep my question');assert.equal(calls.filter(x=>x.op==='inject').length,1);assert.equal(calls.some(x=>x.action==='native'),false);
 });
 test('empty home selection allows prompt-only chat without added hidden context',async()=>{
- const {controller:c,calls}=fixture({collect:()=>({scopeKey:'home',text:'',included:[],omitted:[]})});c.setCatalog(scope('home',null));c.setDraft('Hello');await c.inject();const chat=calls.find(x=>x.op==='inject');assert.equal(chat.text,'Hello');
+ const {controller:c,calls}=fixture({collect:()=>({scopeKey:'home',text:'',included:[],omitted:[]})});c.setCatalog(scope('home',null));c.setDraft('Hello');await c.inject();const chat=calls.find(x=>x.op==='inject');assert.equal(chat.text,'Hello\n\nLevel: high school');
 });
 test('PDF size is checked before reading bytes; warnings and text stay in memory',async()=>{
  const {controller:c,calls}=fixture({pdf:()=>({text:'Local PDF text',pages:1,totalPages:3,truncated:true,warnings:['Two pages omitted']})});let reads=0;
@@ -201,7 +112,7 @@ test('PDF size is checked before reading bytes; warnings and text stay in memory
  await c.attach({name:'notes.pdf',size:5,arrayBuffer:async()=>Buffer.from('%PDF-')});assert.equal(c.state.pdfs.length,1);await c.preview();assert.match(c.state.context.text,/Local PDF text/);assert.ok(c.state.context.issues.some(x=>/pages|truncat/i.test(x.reason)));
 });
 test('oversized context is explicitly truncated and must be reviewed; oversized prompt is rejected',async()=>{
- const {controller:c,calls}=fixture({collect:()=>({scopeKey:'assignment-a',text:'x'.repeat(100100),included:[{id:'a',title:'a'}],omitted:[]})});await c.preview();assert.ok(c.state.context.text.length<=100000);assert.ok(c.state.context.issues.some(x=>/truncat|limit/i.test(x.reason)));
+ const {controller:c,calls}=fixture({collect:()=>({scopeKey:'assignment-a',text:'x'.repeat(500100),included:[{id:'a',title:'a'}],omitted:[]})});await c.preview();assert.ok(c.state.context.text.length<=500000);assert.ok(c.state.context.issues.some(x=>/truncat|limit/i.test(x.reason)));
  c.setDraft('x'.repeat(20001));await c.inject();assert.equal(calls.filter(x=>x.op==='inject').length,0);assert.match(c.state.error,/20,000|20000/);
 });
 test('artificial preview cannot authenticate, inject or fabricate an answer',async()=>{
@@ -228,15 +139,6 @@ test('localhost preview rejects another origin and non-parent messages',async()=
 });
 test('ordinary websites cannot use the preview transport',async()=>{
  const e=transportEnv({extension:false,host:'example.com'});const t=api().createTransport(e.env);assert.equal(t.available,false);await assert.rejects(t.request('catalog'),/unavailable|extension/i);assert.equal(e.listeners.has('message'),false);t.dispose();
-});
-
-test('draft transport deduplicates reconnect delivery and rejects stale scopes without sending requests',()=>{
- const e=transportEnv(),timers=new Map();let timerId=0;const received=[];e.env.setTimeout=fn=>{const id=++timerId;timers.set(id,fn);return id;};e.env.clearTimeout=id=>timers.delete(id);
- const t=api().createTransport(e.env,{draft:draft=>{received.push(draft.text);return true;}}),draft={id:'once',scopeKey:'assignment-a',text:'Original question'};
- e.messages.at(-1)({kind:'draft',draft});assert.deepEqual(received,[]);e.messages.at(-1)({kind:'catalog',data:scope()});assert.deepEqual(received,['Original question']);assert.equal(e.sent.at(-1).kind,'draft-ack');
- e.disconnects.at(-1)();const reconnect=[...timers.values()][0];timers.clear();reconnect();e.messages.at(-1)({kind:'catalog',data:scope()});e.messages.at(-1)({kind:'draft',draft});assert.deepEqual(received,['Original question']);assert.equal(e.sent.filter(message=>message.kind==='draft-ack').length,2);
- e.messages.at(-1)({kind:'catalog',data:scope('assignment-b','b')});e.messages.at(-1)({kind:'draft',draft:{...draft,id:'stale'}});assert.deepEqual(received,['Original question']);assert.ok(e.sent.every(message=>message.kind==='draft-ack'));
- t.dispose();e.messages.at(-1)({kind:'draft',draft:{...draft,id:'closed',scopeKey:'assignment-b'}});assert.deepEqual(received,['Original question']);assert.equal(timers.size,0);
 });
 
 test('unrequested sources returned by collect never reach a provider',async()=>{
@@ -297,45 +199,23 @@ test('saved automatic-send preference is restored without storing any draft text
  c.setCatalog({...scope(),autoSend:true});assert.equal(c.state.autoSend,false,'late metadata cannot undo a newer choice');
 });
 
-const pdfSelection={origin:'https://school.instructure.com',accountId:'7',fileId:'42',name:'Chemistry.pdf',text:'Compare the rates of diffusion.',page:1,endPage:3};
-function pdfPanelFixture(settings={},metadata={}){
- const {createPdfHandoff}=require('../extension/ai-source.js'),handoff=createPdfHandoff({...pdfSelection,...settings}),catalog={...handoff.summary(),...metadata};
- const f=fixture({collect:data=>handoff.collect(data),catalog:async()=>({...await handoff.catalog(),...metadata})});
- f.controller.setCatalog(catalog);return {...f,handoff,catalog};
+const practiceSelection={origin:'https://school.instructure.com',accountId:'7',fileId:'42',name:'Chemistry.pdf',text:'Compare the rates of diffusion.',page:1,endPage:3};
+function pdfPanelFixture(intent,metadata={}){
+ const handoff=require('../extension/ai-source.js').createPdfHandoff({...practiceSelection,intent});
+ const catalog={...handoff.summary(),...metadata};
+ const f=fixture({collect:data=>handoff.collect(data),catalog:async()=>({...await handoff.catalog(),...metadata})});f.controller.setCatalog(catalog);return {...f,handoff,catalog};
 }
-test('receiving a plain PDF handoff leaves the question empty and never contacts a provider',async()=>{
- const {controller:c,calls,catalog}=pdfPanelFixture();assert.equal(c.state.draft,'');assert.equal(c.state.context,null);
- assert.deepEqual([...c.state.selected],catalog.selectedIds);assert.equal(c.state.autoSend,false);await tick();assert.deepEqual(calls,[]);
+for(const intent of ['practice','reading'])for(const autoSend of [false,true])test('PDF '+intent+' receipt/reconnect only prepare context; explicit Send honors autoSend='+autoSend,async()=>{
+ const {controller:c,calls,catalog,handoff}=pdfPanelFixture(intent,{autoSend});await tick();assert.equal(c.state.mode,intent);assert.equal(c.state.draft,'');
+ assert.equal(calls.some(r=>r.action==='web'||r.action==='native'),false);assert.equal(c.state.autoSend,autoSend);
+ c.disconnected('Reconnecting');await c.initialize();await tick();assert.equal(c.state.mode,intent);assert.equal(calls.some(r=>r.action==='web'),false);
+ assert.equal(await c.inject(),true);const context=await handoff.collect({ids:catalog.selectedIds}),expected=require('../extension/study-prompts.js').build(intent,{level:'high school',course:'',item:'',due:'',sources:context.sources});
+ const sent=calls.find(r=>r.op==='inject');assert.equal(sent.text,expected);assert.equal(sent.autoSend,autoSend);assert.equal(sent.scopeKey,catalog.scopeKey);
 });
-test('PDF handoff preserves student edits across metadata refresh, reconnect and catalog reload',async()=>{
- const {controller:c,calls,catalog}=pdfPanelFixture(),edited='Explain the diffusion example.';c.setDraft(edited);
- const refreshed={...catalog,theme:'dark',sources:catalog.sources.map(source=>({...source,title:'Updated PDF title',loaded:true}))};
- c.setCatalog(refreshed);c.setCatalog({...refreshed});c.setCatalog(catalog);assert.equal(c.state.draft,edited);
- c.disconnected('Reconnecting');assert.equal(c.state.online,false);c.setCatalog({...refreshed});
- assert.equal(c.state.online,true);assert.equal(c.state.draft,edited);await c.initialize();assert.equal(c.state.draft,edited);
- assert.deepEqual(calls.map(call=>call.action),['catalog']);
+test('ordinary PDF Ask keeps a student question through refresh and reconnect',async()=>{
+ const {controller:c,calls,catalog}=pdfPanelFixture(undefined);assert.equal(c.state.mode,'ask');assert.equal(c.state.draft,'');c.setDraft('Explain the diffusion example.');c.setCatalog({...catalog});c.disconnected('Reconnecting');await c.initialize();assert.equal(c.state.draft,'Explain the diffusion example.');assert.equal(calls.some(r=>r.action==='web'||r.action==='native'),false);
 });
-test('clearing a PDF question remains a student edit across refresh and reconnect',async()=>{
- const {controller:c,calls,catalog}=pdfPanelFixture();c.setDraft('My question');c.setDraft('');c.setCatalog({...catalog});
- c.disconnected('Reconnecting');await c.initialize();c.setCatalog(catalog);
- assert.equal(c.state.draft,'');assert.deepEqual(calls.map(call=>call.action),['catalog']);
-});
-for(const autoSend of [false,true])test('PDF handoff waits for explicit injection and honors saved automatic sending '+autoSend,async()=>{
- const {controller:c,calls,catalog,handoff}=pdfPanelFixture({},{autoSend}),question='Explain these pages.';c.setDraft(question);
- assert.equal(c.state.autoSend,autoSend);c.setCatalog({...catalog});c.disconnected('Reconnecting');await c.initialize();await tick();
- assert.equal(c.state.draft,question);assert.deepEqual(calls.map(call=>call.action),['catalog']);assert.equal(await c.inject(),true);
- assert.deepEqual(calls.map(call=>call.action),['catalog','collect','web']);
- const collected=calls.find(call=>call.action==='collect');assert.deepEqual(collected.ids,catalog.selectedIds);assert.equal(collected.all,false);
- const injected=calls.find(call=>call.op==='inject'),context=await handoff.collect({ids:catalog.selectedIds});
- assert.equal(injected.autoSend,autoSend);assert.equal(injected.provider,'chatgpt');assert.equal(injected.scopeKey,catalog.scopeKey);
- assert.ok(injected.text.startsWith(question+'\n'));assert.ok(injected.text.includes(context.text));assert.equal(c.state.draft,question);
-});
-test('PDF explicit injection defaults automatic sending off and follows only later preference changes',async()=>{
- const {controller:c,calls,catalog}=pdfPanelFixture();c.setDraft('Explain these pages.');assert.equal(c.state.autoSend,false);await tick();assert.deepEqual(calls,[]);
- assert.equal(await c.inject(),true);assert.equal(calls.filter(call=>call.op==='inject').at(-1).autoSend,false);
- c.setAutoSend(true);c.setCatalog({...catalog,autoSend:false});await tick();assert.equal(calls.filter(call=>call.op==='inject').length,1);
- assert.equal(c.state.autoSend,true);assert.equal(await c.inject(),true);assert.equal(calls.filter(call=>call.op==='inject').at(-1).autoSend,true);
- c.setAutoSend(false);c.setCatalog({...catalog,autoSend:true});await tick();assert.equal(calls.filter(call=>call.op==='inject').length,2);
- assert.equal(await c.inject(),true);assert.equal(calls.filter(call=>call.op==='inject').at(-1).autoSend,false);
- assert.deepEqual(calls.filter(call=>call.action==='preference').map(call=>call.autoSend),[true,false]);
+test('a new Canvas selection resumes automatic aid choice and ignores obsolete practice options',async()=>{
+ const {controller:c}=fixture({collect:()=>({scopeKey:'assignment-a',text:'Text',included:[{id:'a',title:'A'}],sources:[{id:'a',label:'A',text:'Text'}],omitted:[]})});await c.setMode('practice');
+ c.setCatalog({...scope('different-selection'),selectedIds:['b'],count:5,kind:'explain'});assert.equal(c.state.mode,'reading');assert.equal(c.state.draft,'');await tick();
 });

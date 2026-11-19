@@ -106,7 +106,7 @@
     if(row.kind==='planner')row.kind='assignment';
     if(row.kind==='material')row.kind='file';
     const key=row.kind+':'+row.courseId+':'+row.id,previous=rows.get(key);
-    rows.set(key,previous?{...previous,...row,text:[previous.text,row.text].filter(Boolean).join(' ')}:row);
+    rows.set(key,previous?{...previous,...row,text:previous.text===row.text?row.text:[previous.text,row.text].filter(Boolean).join(' ')}:row);
    }
   }
   return [...rows.values()];

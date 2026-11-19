@@ -208,6 +208,13 @@
   const undoChanges=[];
   const offered=new Set(),newId=()=>`pony-${now()}-${root.crypto?.randomUUID?.()||Math.random().toString(36).slice(2)}`;
   const engine=root.ReserveBiscuitEngine?.create(),engineMemory={items:[],lastOffer:0},engineSession={};let engineCard=null,previewTimer=0;
+  // the answer drawn in the bubble, what the student opened in it, and what changed this visit (newest last)
+  const Answer=()=>root.ReserveBiscuitAnswer,
+    View=()=>root.ReserveBiscuitView,
+    freshAnswerState=()=>({open:{},filter:'',all:false,step:null,picking:null,picked:{},left:false,historyOpen:false});
+  let answer=null,answerState=freshAnswerState(),answerHistory=[],answerSize='s',actedOn=null,lastAct=null,retryAct=null;
+  const recentAnswers=[],list=v=>Array.isArray(v)?v:[];
+  const viewState=()=>({...answerState,size:answerSize,history:answerHistory,zone:snapshot?.timeZone||'America/New_York',rowActs:Answer()?.rowActs});
   let catalogueRows=null,catalogueLoad=null,catalogueTurn=0,submitTurn=0,knowledgeTier='',knowledgeLoad=null,knowledgeTurn=0,knowledgeWanted=false;
   // One sync reads the workspace's context once: choosing the knowledge tier and refreshing the brain each built all of
   // it on every dashboard render. The store only changes asynchronously, so both readers see the same data.
@@ -560,7 +567,8 @@
   const framed=()=>container.dataset.panelFrame!=='none';
   const cosmeticAttributes=new Set(['aria-label','aria-labelledby','aria-describedby','aria-controls','aria-activedescendant','aria-live','aria-atomic','aria-busy','title','tabindex']);
   function clockTick(r){
-   const el=r.type==='characterData'?r.target.parentElement:r.target;if(!el?.closest?.('[data-rd-focus-clock]'))return false;
+   // (the Home Timer module's dial counts the same seconds: it re-measured the whole page every second of a session)
+   const el=r.type==='characterData'?r.target.parentElement:r.target;if(!el?.closest?.('[data-rd-focus-clock],[data-rd-timer-text]'))return false;
    let before,after;
    if(r.type==='characterData'){before=r.oldValue;after=r.target.textContent;}
    else if(r.type==='childList'){
@@ -613,7 +621,13 @@
     sides.set(el,top?'top':'bottom');places.delete(el);add(el);found++;
    }
    out.push(floor);read(spot.ledge);if(goal?.type==='jump')read(goal.target.el);
-   geometry={width,height,rects,places,all:out,floor};dirty=false;
+   // (where the change slip lies, for the bubble: read here with the rest, never on a frame)
+   let slip=null;
+   try{
+     const el=container.querySelector?.('.rd-note'),r=el&&!el.hidden&&typeof el.getBoundingClientRect==='function'?el.getBoundingClientRect():null;
+     if(r&&r.width>0&&r.height>0)slip={left:r.left,top:r.top,right:r.right,bottom:r.bottom};
+   }catch{}
+   geometry={width,height,rects,places,all:out,floor,slip};dirty=false;
    if(resizeWatch){
      const live=new Set([container,...rects.keys(),...(bubble?[bubble]:[])]);
      for(const el of watched)if(!live.has(el)){resizeWatch.unobserve(el);watched.delete(el);}
@@ -703,10 +717,11 @@
     measurePlaces();
     if(menuOpen){place();placeBubble();return;}
     if(decisionPending){decisionPending=false;decide(true);}
-    if(!grab&&!goal&&Number.isFinite(node._x)&&Number.isFinite(node._y)){const here=current();if(!free(here,spot.u))moveOff(here);}
-    place();
-    if(bubble)placeBubble();
-  }
+    if(!grab&&goal?.type==='walk'&&geometry?.slip){
+      const here=current(),sl=geometry.slip,s0=size(),xt=here.x0+goal.to;
+      if(node._y>sl.top-4&&node._y-height()<sl.bottom&&xt>sl.left-s0*.5&&xt<sl.right+s0*.5){goal=null;moveOff(here);}
+    }   /* a walk begun before the slip came, ending under it: off instead */
+   if(!grab&&!goal&&Number.isFinite(node._x)&&Number.isFinite(node._y)){const here=current();if(!free(here,spot.u))moveOff(here);}place();if(bubble)placeBubble();}
   // Over a room the companion keeps still, but the ground under it can still move: a page that opens straight into a room
   // drew the strip after the companion stood down, and it stayed on the window's edge in front of the course names. One read.
   function settleFloor(){
@@ -735,6 +750,8 @@
    for(const el of at){
     // the pony stands on the drawn outlines round modules and cards: those are its ground, not something it covers
     if(layer?.contains(el)||el.closest?.('.rd-frame, .chn-frames'))continue;if(++looked>4)break;
+    // (the change slip, dashboard.js: a notice with its own controls; the pony stood on its title, 2026-11-16)
+    if(el.closest?.('.rd-note'))return true;
     if(el.matches?.(USED)||el.closest?.('svg'))return true;
     for(const n of el.childNodes||[]){
      if(n.nodeType!==3||!n.textContent.trim())continue;
@@ -863,7 +880,25 @@
   }
   // Off whatever it is standing on: the nearest free place on this ledge, else a free place on another one in view.
   function moveOff(here){
-   const u=freeOn(here,spot.u);if(u!=null){if(reduced()){spot.u=u;return;}goal={type:'walk',to:u,max:26};rest='stand';run();return;}
+   const u=freeOn(here,spot.u),
+     far=u!=null&&Math.abs(u-spot.u)>110,
+     sl=geometry?.slip,
+     s0=size(),
+     onSlip=!!sl&&node._x>sl.left-s0*.5&&node._x<sl.right+s0*.5&&node._y>sl.top-4&&node._y-height()<sl.bottom;
+   // (the change slip has come where it stands: it does not amble across the slip's words for many seconds: a hop to another
+   //  place in reach if there is one, else a trot; anything else it steps off at a walk, as before)
+   if(onSlip&&far&&!reduced()&&pet.roam==='page'){
+     const near=ledges().filter(l=>l.el!==here.el&&!l.paddock&&Math.abs(l.y-here.y)<360&&l.x0<node._x+420&&l.x1>node._x-420);
+     for(const other of near){const to=freeOn(other);if(to!=null){jumpTo(other,to);return;}}
+   }
+   // (else off the slip by the nearer of its two ends, just clear of it)
+   if(onSlip&&!reduced()){
+     const span=here.x1-here.x0,
+       ends=[sl.left-here.x0-s0*.7,sl.right-here.x0+s0*.7].filter(v=>v>14&&v<span-14).sort((a,b)=>Math.abs(a-spot.u)-Math.abs(b-spot.u)),
+       to=ends.find(v=>free(here,v));
+     if(to!==undefined){goal={type:'walk',to,max:58};rest='stand';run();return;}
+   }
+   if(u!=null){if(reduced()){spot.u=u;return;}goal={type:'walk',to:u,max:onSlip?58:26};rest='stand';run();return;}
    for(const other of ledges())if(other.el!==here.el){const to=freeOn(other);if(to!=null){jumpTo(other,to);return;}}settle('stand',6000);
   }
   function walk(){
@@ -1021,11 +1056,16 @@
      wall=Math.max(10,cards.length?Math.min(...cards.map(l=>l.x0))-26:(geometry?.floor?.x0??14)-4),
      x=clamp(node._x-w/2,wall,Math.max(wall,vw-w-10)),
      above=node._y-(custom?ground():s)-h-6;
-   bubble.style.transform=`translate(${x.toFixed(0)}px,${(above>70?above:node._y+(custom?height()-ground():0)+10).toFixed(0)}px)`;
-   bubble.style.setProperty('--pet-tail-x',clamp(node._x-x,22,w-22).toFixed(0)+'px');bubble.dataset.below=String(above<=70);
+   // (clear of the change slip: left of it when the two would overlap and there is room)
+   const y=above>70?above:node._y+(custom?height()-ground():0)+10,
+     slip=geometry?.slip,
+     bx=slip&&y<slip.bottom&&y+h>slip.top&&x<slip.right&&x+w>slip.left&&slip.left-w-8>=wall?slip.left-w-8:x;
+   bubble.style.transform=`translate(${bx.toFixed(0)}px,${y.toFixed(0)}px)`;
+   bubble.style.setProperty('--pet-tail-x',clamp(node._x-bx,22,w-22).toFixed(0)+'px');bubble.dataset.below=String(above<=70);
   }
    function closeBubble(){
      bubbleVersion++;
+     answerSize='s';
      clearTimeout(sayTimer);
      clearTimeout(previewTimer);
      previewTimer=0;
@@ -1069,7 +1109,7 @@
    else{bubble.setAttribute('role','status');bubble.setAttribute('aria-live','polite');}
    layer.append(bubble);measureBubble();if(resizeWatch){resizeWatch.observe(bubble);watched.add(bubble);}placeBubble();
    bubble.addEventListener('click',onBubble);
-    bubble.addEventListener('submit',submitAsk);bubble.addEventListener('keydown',askKey);bubble.addEventListener('input',previewAsk);
+    bubble.addEventListener('submit',submitAsk);bubble.addEventListener('change',answerChange);bubble.addEventListener('keydown',askKey);bubble.addEventListener('input',previewAsk);
    if(ms)sayTimer=setTimeout(()=>{if(bubble&&!menuOpen)closeBubble();},ms);
   }
   function say(text,ms=5200){if(now()>=quietUntil&&visible()&&layer)show(`<p class="pet-say">${E(text)}</p>`,{ms});}
@@ -1246,6 +1286,7 @@
        rows.innerHTML=engineRows(engineCard).map((v,i)=>`<button type="button" class="pet-item biscuit-row" data-pet-action="engine-row" data-pet-choice="${i}">${E(v.title)}${v.subtitle?`<small>${E(v.subtitle)}</small>`:''}</button>`).join('')+(engineCard.ai?`<button type="button" class="pet-item" data-pet-action="engine-ai">Ask AI</button>`:'');
        rows.hidden=!askText;
      }
+     paintAnswer(askText&&Answer()?Answer().build(engineCard,world,engineSession,{line:askText,previous:threadFor(askText)}):null);
    }
    function companionDrawing(){
      const markup=art.drawing(personal||pet,custom);
@@ -1292,6 +1333,7 @@
    }
    function askKey(event){
      if(!menuOpen||event.isComposing)return;
+     if(answerKey(event))return;
      const target=event.composedPath?.()[0]||event.target;
      if(event.key==='Escape'){event.preventDefault();event.stopPropagation?.();closeBubble();node?.focus({preventScroll:true});return;}
      const isInput=target?.hasAttribute?.('data-pet-question');
@@ -1303,7 +1345,7 @@
        return;
      }
      if(['ArrowDown','ArrowUp','Tab'].includes(event.key)){
-       if(askChoices.length){
+       if(askChoices.length>1||askChoices.length&&event.key!=='Tab'){
          event.preventDefault();
          event.stopPropagation?.();
          askSelected=(askSelected+(event.key==='ArrowUp'||event.key==='Tab'&&event.shiftKey?-1:1)+askChoices.length)%askChoices.length;
@@ -1345,9 +1387,12 @@
      closeBubble();
      void runAsk(result);
    }
-   function afterSlip(message,{undo=false,reload=false,suggestions=[],choices=[]}={}){
-    show(`<div class="biscuit-preview" role="status">${E(message)}</div><div class="pet-items">${choices.map((v,i)=>`<button type="button" class="pet-item biscuit-row" data-pet-action="engine-row" data-pet-choice="${i}">${E(v.title)}${v.subtitle?`<small>${E(v.subtitle)}</small>`:''}</button>`).join('')}${undo?'<button type="button" class="pet-item" data-pet-action="undo">Undo</button>':''}${reload?'<button type="button" class="pet-item" data-pet-action="reload">Reload</button>':''}${suggestions.map((line,i)=>`<button type="button" class="pet-item biscuit-suggestion" data-pet-action="example" data-pet-choice="${i}">${E(line)}</button>`).join('')}<button type="button" class="pet-item" data-pet-action="ask" data-companion-ask>Ask ${E(companionName())}</button></div>`,{menu:true});
-    askChoices=suggestions.map(line=>({line}));bubble?.querySelector('.pet-item')?.focus({preventScroll:true});
+   function afterSlip(message,{undo=false,reload=false,suggestions=[],choices=[],intent='',ok=true}={}){
+    const A=Answer(),V=View(),done=A&&V&&!choices.length&&!suggestions.length?A.result(intent,{},{ok,message},{...snapshot,now:now()},ok?actedOn:null):null;
+    actedOn=null;
+    if(done){answer=done;answerState={...freshAnswerState(),historyOpen:false};}
+    show(`${done?`<div class="biscuit-answer" data-biscuit-answer>${V.render(done,viewState())}</div>`:''}<div class="biscuit-preview" role="status">${E(message)}</div><div class="pet-items">${choices.map((v,i)=>`<button type="button" class="pet-item biscuit-row" data-pet-action="engine-row" data-pet-choice="${i}">${E(v.title)}${v.subtitle?`<small>${E(v.subtitle)}</small>`:''}</button>`).join('')}${undo?'<button type="button" class="pet-item" data-pet-action="undo">Undo</button>':''}${reload?'<button type="button" class="pet-item" data-pet-action="reload">Reload</button>':''}${suggestions.map((line,i)=>`<button type="button" class="pet-item biscuit-suggestion" data-pet-action="example" data-pet-choice="${i}">${E(line)}</button>`).join('')}<button type="button" class="pet-item" data-pet-action="ask" data-companion-ask>Ask ${E(companionName())}</button></div>`,{menu:true});
+    askChoices=suggestions.map(line=>({line}));(bubble?.querySelector('.ba-acts .ba-btn')||bubble?.querySelector('.pet-item'))?.focus({preventScroll:true});
    }
    async function undoChange(){
     if(commandBusy)return;const entry=undoChanges.at(-1);if(!entry){afterSlip('Nothing to undo.');return;}
@@ -1356,6 +1401,7 @@
       const result=await entry();
       if(result===false||result?.ok===false){afterSlip(result?.message||'Could not undo. Try again.',{undo:true});return;}
       undoChanges.pop();
+      for(let i=answerHistory.length-1;i>=0;i--)if(!answerHistory[i].undone){answerHistory[i].undone=true;break;}
       if(Object.hasOwn(result||{},'plan'))rememberAction(engineSession,'plan',{operation:'undo'},result);
       afterSlip(result?.message||'Undone.',{undo:!!undoChanges.length,reload:result?.reload});
     }catch{afterSlip('Could not undo. Try again.',{undo:true});}finally{commandBusy=false;}
@@ -1364,6 +1410,8 @@
     async function useCandidate(choice){
     if(commandBusy)return;
     const fields=choice.fields||{};
+    if(['find','open'].includes(choice.intent)&&!fields.itemId&&!fields.entryId&&!fields.courseId&&!fields.url&&answer&&list(answer.rows).length)return;
+    if(!actedOn)actedOn=answer;
     if(['none','chat'].includes(choice.intent)){if(choice.engine)engineCard=choice.engine;afterSlip(choice.preview,{choices:engineRows(choice.engine)});return;}
     if(choice.engine){
       engineSession.items=choice.engine.items;
@@ -1390,9 +1438,11 @@
     commandBusy=true;
     try{
      const checkpoint=actions.checkpoint?.(choice.intent);before=checkpoint?.then?await checkpoint:checkpoint;
-     if(choice.intent==='quiet'){
-      if(Number.isFinite(fields.minutes)&&fields.minutes>0&&fields.minutes<=1440){
-        const old=quietUntil,until=now()+fields.minutes*60000;
+     if(choice.intent==='quiet'||choice.intent==='setting'&&fields.key==='pet.quietUntil'){
+      // "mute reminders for 30 min" arrives as a setting no store keeps: it is the same quiet time as "quiet for 30 min"
+      const minutes=choice.intent==='quiet'?fields.minutes:Math.ceil((Number(fields.until??fields.value)-now())/60000);
+      if(Number.isFinite(minutes)&&minutes>0&&minutes<=1440){
+        const old=quietUntil,until=now()+minutes*60000;
         quietUntil=until;
         const change=current=>({...current,brain:{...Brain().cleanLearning(current.brain),quietUntil:until}});
         const saved=await save(change(pet),change);
@@ -1414,7 +1464,9 @@
           choice.intent==='focus'||choice.intent==='break'?
             {...fields,explicit:true}:
             choice.intent==='plan'?{...fields,mode:fields.endDate?'week':fields.date&&fields.date!==Ask()?.calendar(snapshot.timeZone)(now()).day?'tomorrow':'tonight'}:fields;
-      result=action?await action(data):false;ok=!!action&&result!==false&&result?.ok!==false;
+      const slow=Answer()&&View()?setTimeout(()=>{if(!dead&&!bubble)show(`<div class="biscuit-answer" data-biscuit-answer>${View().render(Answer().progress(choice.preview||'Working'),viewState())}</div>`);},300):0;
+      try{result=action?await action(data):false;}finally{clearTimeout(slow);}
+      ok=!!action&&result!==false&&result?.ok!==false;
      }
      if(ok){
       undo=result?.undo||(before&&actions.changed?.(before));
@@ -1423,17 +1475,19 @@
         if(keys.length)
           undo=()=>save({...pet,...Object.fromEntries(keys.map(key=>[key,previous[key]]))},value=>({...value,...Object.fromEntries(keys.map(key=>[key,previous[key]]))}));
       }
-      if(undo){undoChanges.push(undo);if(undoChanges.length>20)undoChanges.shift();}
+      if(undo){undoChanges.push(undo);if(undoChanges.length>20)undoChanges.shift();if(Answer())remember(result?.message||choice.preview);}
        rememberLocalAction(choice.intent,fields,result);
      }
     }catch{ok=false;}finally{commandBusy=false;}
     if(!dead)learn([[kind,ok?'used':'ignored']]);
     if(dead||version!==bubbleVersion&&menuOpen)return;
     if(choice.intent==='focus-status'&&ok&&typeof result==='string'){say(result);return;}
-    if(ok&&undo)afterSlip(result?.message||choice.preview,{undo:true,reload:result?.reload});
-    else if(result?.message)afterSlip(result.message,{reload:result.reload,suggestions:result.suggestions});
+    if(ok&&undo)afterSlip(result?.message||choice.preview,{undo:true,reload:result?.reload,intent:choice.intent});
+    else if(result?.message)afterSlip(result.message,{reload:result.reload,suggestions:result.suggestions,intent:choice.intent,ok});
     else if(!ok&&choice.intent!=='ai')
-      afterSlip(['setting','preset','navigate','bookmark','study','installed'].includes(choice.intent)?'That feature is off or unavailable. Check Make it yours \u2192 More.':choice.intent==='break'?'No break started: a break comes after a focus session ends.':'Unavailable');
+      afterSlip(
+        ['setting','preset','navigate','bookmark','study','installed'].includes(choice.intent)?'That feature is off or unavailable. Check Make it yours \u2192 More.':choice.intent==='break'?'No break started: a break comes after a focus session ends.':'Unavailable',
+        {intent:choice.intent,ok:false});
    }
    async function runPet(fields){
      if(fields.action==='treat')return treat();
@@ -1492,7 +1546,7 @@
    void loadKnowledge();
    refreshBrain();
    const offer=engine?.offer({...snapshot,now:now()},{},{brain:pet.brain}),list=engine?(offer&&offer.kind!=='reminder'?[offer]:[]):thought.suggestions.slice(0,2);
-    show(`${askForm()}<button type="button" id="biscuit-preview" class="biscuit-preview" data-pet-preview data-pet-action="ask-choice" data-pet-choice="0" aria-live="polite" style="display:none" hidden></button>${engine?'<div class="biscuit-rows" data-biscuit-rows hidden></div>':''}<div class="pet-items biscuit-suggestions" data-pet-suggestions>${suggestionItems(list)}</div>`,{menu:true});expose(list);
+    show(`${askForm()}<button type="button" id="biscuit-preview" class="biscuit-preview" data-pet-preview data-pet-action="ask-choice" data-pet-choice="0" aria-live="polite" style="display:none" hidden></button><div class="biscuit-answer" data-biscuit-answer aria-live="polite" hidden></div>${engine?'<div class="biscuit-rows" data-biscuit-rows hidden></div>':''}<div class="pet-items biscuit-suggestions" data-pet-suggestions>${suggestionItems(list)}</div>`,{menu:true});expose(list);
    (bubble.querySelector('[data-pet-question]')||bubble.querySelector('.pet-item:not([disabled])'))?.focus({preventScroll:true});
    void loadCatalogue(true);
   }
@@ -1514,12 +1568,218 @@
     clearTimeout(node._cheer);
     node._cheer=setTimeout(()=>{if(node&&pose==='cheer')setPose('stand');},ms);
   }
+   // ---- Biscuit's answers drawn from data (biscuit-answer.js + biscuit-view.js, 2026-11-14). Without those two files the
+   // bubble keeps the sentence on the slip, as before. Every control in an answer carries data-ba-*; the acts run through
+   // useCandidate (the same path Enter takes), so Undo, learning and the session's follow-up memory stay one path.
+   function paintAnswer(next){
+    const box=bubble?.querySelector?.('[data-biscuit-answer]'),V=View();if(!box)return;
+    if(!V||!next){answer=null;box.hidden=true;if(box.innerHTML)box.innerHTML='';delete bubble.dataset.baSize;return;}
+    const same=answer&&answer.kind===next.kind&&answer.source?.line===next.source?.line&&answer.title===next.title;
+    answer=next;if(!same)answerState=freshAnswerState();if(next.narrowed&&next.kind!=='plan')answerState.filter=next.narrowed;if(next.widened)answerState.all=true;
+    if(list(next.rows).length&&!next.source?.thread){
+      recentAnswers.push({line:String(next.source?.line||''),answer:next});
+      if(recentAnswers.length>30)recentAnswers.shift();
+    }
+    box.innerHTML=V.render(answer,viewState());box.hidden=false;bubble.dataset.baSize=answerSize;
+   }
+   // the answer a follow-up line works on: the newest one for a line that is not this one being typed
+   function threadFor(line){
+     for(let i=recentAnswers.length-1;i>=0;i--){const v=recentAnswers[i];if(!line.startsWith(v.line)&&!v.line.startsWith(line))return v.answer;}
+     return null;
+   }
+   function redraw(animate=true){
+    const box=bubble?.querySelector?.('[data-biscuit-answer]'),V=View();if(!box||!answer||!V)return;
+    const go=()=>{
+      const body=box.querySelector('.ba-body'),top=body?.scrollTop||0;
+      box.innerHTML=V.render(answer,viewState());
+      const next=box.querySelector('.ba-body');
+      if(next)next.scrollTop=top;
+      bubble.dataset.baSize=answerSize;
+    };
+    if(animate&&V.flip&&!answerStill())V.flip(box,go,{win});else go();
+   }
+   const cssKey=v=>String(v).replace(/["\\]/g,'\\$&');
+   function focusIn(selector){const el=bubble?.querySelector?.('[data-biscuit-answer] '+selector);el?.focus?.({preventScroll:true});}
+   function allRows(){return [...(answer?.rows||[]),...(answer?.also||[]),...(answer?.left||[]),...(answer?.before||[])];}
+   function findAct(id){
+    const top=(answer?.acts||[]).find(v=>v.id===id);if(top)return top;
+    const key=String(id).slice(String(id).indexOf(':')+1),row=allRows().find(r=>String(r.itemId||r.id)===key);
+    return row?(Answer()?.rowActs?.(row)||[]).find(v=>v.id===id)||null:null;
+   }
+   function followLine(line){
+    if(!line)return;if(!bubble?.querySelector?.('[data-pet-question]'))openMenu();
+    const input=bubble?.querySelector?.('[data-pet-question]');if(!input)return;
+    input.value=line;previewAsk({target:input,flush:true});input.focus?.({preventScroll:true});
+   }
+   async function runIntent(intent,fields,label,{collect=null}={}){
+    const checkpoint=actions.checkpoint?.(intent),before=checkpoint?.then?await checkpoint:checkpoint;
+    const action=actions[intent]||(root.ReserveBiscuitRegistry?.execute?data=>root.ReserveBiscuitRegistry.execute(intent,data,{snapshot,actions,now:now()}):null);
+    let result=false;try{result=action?await action(fields):false;}catch{result=false;}
+    const ok=!!action&&result!==false&&result?.ok!==false;
+    if(ok){
+      const undo=result?.undo||(before&&actions.changed?.(before));
+      if(undo&&collect)collect.push(undo);else if(undo){undoChanges.push(undo);if(undoChanges.length>20)undoChanges.shift();remember(result?.message||label);}
+      rememberLocalAction(intent,fields,result);
+    }
+    return {ok,result};
+   }
+   function remember(label){
+     label=Answer()?.tidy?.(label)||label;
+     answerHistory.push({label:String(label||'Changed').replace(/\.$/,'').slice(0,90),at:now()});
+     if(answerHistory.length>20)answerHistory.shift();
+   }
+   // several picked rows: one act per row, then one answer with what changed
+   async function runPicked(act,ids){
+    if(act.intent==='plan'){await useCandidate({intent:'plan',fields:{...act.fields,itemIds:ids},preview:act.label,engine:engineCard,line:askText});return;}
+    const shown=answer,results=[],undos=[];
+    for(const id of ids){
+      const row=(shown?.rows||[]).find(r=>String(r.itemId||r.id)===id);
+      const out=await runIntent(act.intent,{...act.fields,itemId:id,...(row?.course?.id?{courseId:row.course.id}:{})},act.label,{collect:undos});
+      results.push(out);
+    }
+    if(undos.length){
+      const all=async()=>{let last;for(const u of undos.slice().reverse())last=await u();return last?.ok===false?last:{ok:true,message:'Undone.'};};
+      undoChanges.push(all);
+      if(undoChanges.length>20)undoChanges.shift();
+      remember(act.label+' · '+undos.length);
+    }
+    const okIds=ids.filter((id,i)=>results[i].ok);actedOn={...shown,rows:(shown?.rows||[]).filter(r=>okIds.includes(String(r.itemId||r.id)))};
+    afterSlip(okIds.length===ids.length?act.label+': '+okIds.length+' done.':okIds.length+' of '+ids.length+' done.',{undo:okIds.length>0,intent:act.intent,ok:okIds.length>0});
+   }
+   async function runAct(act){
+    const it=act.intent;lastAct=act;
+    if(it==='details'){const k=String(act.fields.itemId);answerState.open={...answerState.open,[k]:!answerState.open[k]};redraw();return;}
+    if(it==='step'){answerState.step=0;redraw();return;}
+    if(it==='follow'){followLine(act.fields.line);return;}
+    if(it==='point'){await pointAt(act.fields);return;}
+    if(it==='retry'){const again=retryAct;if(again)await runAct(again);return;}
+    retryAct=act;
+    if(answerState.picking&&act.picked||answer?.kind==='change'&&(answer.rows||[]).length>1){
+      const ids=(answer.rows||[]).filter(r=>answerState.picked[r.id]!==false&&(r.itemId||r.type==='work')).map(r=>String(r.itemId||r.id));
+      answerState.picking=null;
+      if(ids.length)await runPicked(act,ids);
+      return;
+    }
+    actedOn=answer;
+    await useCandidate({intent:it,fields:act.fields,preview:act.label,engine:engineCard,line:askText});
+   }
+   async function runStep(row){
+    row.state='running';redraw(false);const {ok,result}=await runIntent(row.intent,row.fields,row.name);
+    row.state=ok?'done':'failed';if(!ok)row.error=result?.message||'Did not work';redraw();
+   }
+   // help about a CH feature: open where it lives and mark the control for a moment
+   async function pointAt({path=[],tab='look'}={}){
+    closeBubble();const open=actions['make-it-yours'];if(open){try{await open({tab});}catch{}}
+    await new Promise(resolve=>setTimeout(resolve,180));
+    const label=String(path[path.length-1]||'').trim().toLowerCase(),scopes=[container,container?.getRootNode?.()].filter(Boolean);let hit=null;
+    for(const scope of scopes){
+      for(const el of scope.querySelectorAll?.('button,label,[role=radio],[role=switch],[role=tab],[role=menuitemradio],summary,legend,h3,h4,a')||[]){
+        const text=String(el.getAttribute?.('aria-label')||el.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+        if(label&&(text===label||text.startsWith(label+' ')||text.startsWith(label))&&el.getClientRects?.().length){hit=el;break;}
+      }
+      if(hit)break;
+    }
+    if(!hit){say(path.join(' \u203a '),5200);return false;}
+    hit.scrollIntoView?.({block:'center',behavior:answerStill()?'auto':'smooth'});hit.setAttribute('data-biscuit-point','');setTimeout(()=>hit.removeAttribute?.('data-biscuit-point'),2600);return true;
+   }
+   function answerClick(event){
+    const t=event.target?.closest?.('[data-ba-row],[data-ba-act],[data-ba-follow],[data-ba-filter],[data-ba-more],[data-ba-left],[data-ba-step],[data-ba-pick-start],[data-ba-pick-cancel],[data-ba-plan],[data-ba-choice],[data-ba-undo],[data-ba-run],[data-ba-size]');
+    if(!t||!answer||!bubble?.contains?.(t))return false;const d=t.dataset;
+    if(d.baRow!==undefined){
+      const opening=!answerState.open[d.baRow];
+      answerState.open={...answerState.open,[d.baRow]:opening};
+      redraw();
+      focusIn('[data-ba-row="'+cssKey(d.baRow)+'"]');
+      if(opening){
+        const body=bubble?.querySelector?.('[data-biscuit-answer] .ba-body'),li=bubble?.querySelector?.('[data-biscuit-answer] [data-ba-id="'+cssKey(d.baRow)+'"]');
+        if(body&&li){
+          const b=body.getBoundingClientRect(),r=li.getBoundingClientRect();
+          if(r.bottom>b.bottom+1||r.top<b.top-1)body.scrollTo?.({top:body.scrollTop+(r.top-b.top)-4,behavior:answerStill()?'auto':'smooth'});
+        }
+      }
+      return true;
+    }
+    if(d.baSize!==undefined){answerSize=answerSize==='l'?'s':'l';redraw(false);measureBubble();placeBubble();focusIn('[data-ba-size]');return true;}
+    if(d.baFilter!==undefined){answerState.filter=d.baFilter;answerState.all=false;redraw();focusIn('[data-ba-filter="'+cssKey(d.baFilter)+'"]');return true;}
+    if(d.baMore!==undefined){answerState.all=true;redraw();return true;}
+    if(d.baLeft!==undefined){answerState.left=!answerState.left;redraw();return true;}
+    if(d.baStep!==undefined){
+      answerState.step=d.baStep==='done'?null:Math.max(0,(answerState.step||0)+Number(d.baStep));
+      redraw();
+      focusIn(d.baStep==='done'?'[data-ba-row]':'[data-ba-step="'+cssKey(d.baStep)+'"]:not([disabled])');
+      return true;
+    }
+    if(d.baPickStart!==undefined){answerState.picking=d.baPickStart;answerState.picked={};redraw();return true;}
+    if(d.baPickCancel!==undefined){answerState.picking=null;redraw();return true;}
+    if(d.baPlan!==undefined){
+      const next=Answer()?.edit?.(answer,{...snapshot,now:now()},{op:d.baPlan,itemId:d.baItem});
+      if(next){
+        const open=answerState.open;
+        answer=next;
+        answerState={...answerState,open};
+        if(next.plan&&askChoices[0])askChoices[0]={...askChoices[0],intent:next.kind==='plan'?'plan':'none',fields:next.plan.fields};
+        redraw();
+      }
+      return true;
+    }
+    if(d.baFollow!==undefined){followLine(d.baFollow);return true;}
+    if(d.baUndo!==undefined){void undoChange();return true;}
+    if(d.baChoice!==undefined){
+      const row=(answer.rows||[]).find(r=>String(r.choice)===d.baChoice),
+        choice=(answer.choices||[]).find(c=>c.id===d.baChoice),
+        pick=row?.pick||(choice?{intent:choice.intent,fields:choice.fields}:null);
+      if(pick?.intent&&pick.intent!=='none'){
+        actedOn=answer;
+        void useCandidate({intent:pick.intent,fields:pick.fields,preview:row?.name||choice?.label,engine:engineCard,line:askText});
+      }
+      return true;
+    }
+    if(d.baRun!==undefined){const row=(answer.rows||[]).find(r=>r.id===d.baRun);if(row&&row.state!=='running')void runStep(row);return true;}
+    if(d.baAct!==undefined){const act=findAct(d.baAct);if(act?.link)return true;event.preventDefault?.();if(act&&!act.disabled)void runAct(act);return true;}
+    return false;
+   }
+   function answerChange(event){
+     const t=event.target;
+     if(!t?.dataset||t.dataset.baPick===undefined||!answer)return;
+     answerState.picked={...answerState.picked,[t.dataset.baPick]:!!t.checked};
+     redraw(false);
+     focusIn('[data-ba-pick="'+cssKey(t.dataset.baPick)+'"]');
+   }
+   function answerKey(event){
+    const box=bubble?.querySelector?.('[data-biscuit-answer]');if(!box||box.hidden||!answer)return false;
+    const target=event.composedPath?.()[0]||event.target,inside=box.contains?.(target),isInput=target?.hasAttribute?.('data-pet-question');
+    const stops=()=>[...box.querySelectorAll('button:not([disabled]),a[href],input[type=checkbox],summary')];
+    if(isInput&&event.key==='ArrowDown'){
+      const first=stops().find(n=>!n.matches?.('.ba-size'));
+      if(first){event.preventDefault();event.stopPropagation?.();first.focus({preventScroll:false});return true;}
+      return false;
+    }
+    if(!inside)return false;
+    if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+      const list=stops(),i=list.indexOf(target),n=i+(event.key==='ArrowUp'?-1:1);
+      event.preventDefault();
+      event.stopPropagation?.();
+      if(n<0)bubble.querySelector('[data-pet-question]')?.focus({preventScroll:true});else list[Math.min(n,list.length-1)]?.focus({preventScroll:false});
+      return true;
+    }
+    if(event.key==='Escape'&&Object.values(answerState.open).some(Boolean)){event.preventDefault();event.stopPropagation?.();answerState.open={};redraw();return true;}
+    if(/^[1-9]$/.test(event.key)&&answer.kind==='choose'){const b=box.querySelector('[data-ba-choice="'+event.key+'"]');if(b){event.preventDefault();b.click();return true;}}
+    return false;
+   }
+   const answerStill=()=>['off','still'].includes(container?.dataset?.motionStyle)||!!motionMedia?.matches;
   function onBubble(event){
-   const b=event.target.closest?.('[data-pet-action]');if(!b||b.disabled)return;
+   if(answerClick(event))return;const b=event.target.closest?.('[data-pet-action]');if(!b||b.disabled)return;
    const what=b.dataset.petAction;
    if(what==='engine-row'){
      const list=engineRows(engineCard),row=list[Number(b.dataset.petChoice)];
-     if(row)void useCandidate({intent:row.action||'open',fields:row.fields,preview:'Open '+row.title,engine:{...engineCard,items:[row,...list.filter(v=>v!==row)]},line:askText});
+     if(row)
+       void useCandidate({
+         intent:row.action||'open',
+         fields:row.fields||(row.kind==='course'?{courseId:String(row.courseId??row.id)}:{itemId:row.id,...(row.courseId!=null?{courseId:row.courseId}:{})}),
+         preview:'Open '+row.title,
+         engine:{...engineCard,items:[row,...list.filter(v=>v!==row)]},
+         line:askText
+       });
      return;
    }
    if(what==='engine-ai'){if(engineCard?.ai)void useCandidate({intent:'ai',fields:engineCard.ai.fields,preview:'Ask AI'});return;}

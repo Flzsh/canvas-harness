@@ -77,8 +77,8 @@ test('motion and idle rest changes pause a live scene and resume with a fresh cl
 test('remove restores a previous theme and pause attribute; stale dashboards cannot remove the current scene',()=>{
  const h=fixture();h.rd.dataset.themeKit='previous';h.rd.setAttribute('data-scene-paused','');const before=h.shadow.innerHTML;h.apply('sea');h.api.remove({});h.api.apply(h.shadow,{},'');assert.equal(h.rd.dataset.themeKit,'sea');h.api.remove(h.rd);assert.equal(h.shadow.innerHTML,before);
 });
-test('Starfield pointer reach stays small and its optional document shares the local renderer',()=>{
- const source=read('scene-themes.js');assert.equal((source.match(/REACH\s*=\s*20\b/g)||[]).length,2);assert.doesNotMatch(source,/postMessage|sky\.html|sky\.js|data-ch-media/);
+test('Starfield pointer reach is 46 px in both skies (2026-11-09) and its optional document shares the local renderer',()=>{
+ const source=read('scene-themes.js');assert.equal((source.match(/REACH\s*=\s*46\b/g)||[]).length,2);assert.equal((source.match(/REACH\s*=\s*20\b/g)||[]).length,0);assert.doesNotMatch(source,/postMessage|sky\.html|sky\.js|data-ch-media/);
  assert.match(read('themes/stars/sky.html'),/<title>Starfield<\/title>/);assert.match(read('themes/stars/sky.html'),/src="\.\.\/\.\.\/scene-themes\.js"/);
  assert.match(read('themes/stars/sky.js'),/ReserveSceneThemes\?\.createStarSky/);assert.doesNotMatch(read('themes/stars/sky.js'),/fetch\(|https?:\/\//);
 });

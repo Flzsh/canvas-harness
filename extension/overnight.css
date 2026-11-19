@@ -1,0 +1,26 @@
+/* Overnight, drawn. In the panel: rows like the API settings, the time on a hand-drawn line, quiet pen links, and the
+   panel's own send button is the one Prepare now (the copy in the menu is hidden). On its own page: dashboard paper,
+   the house serif heading with a clay underline, the folder button as a manila tag, the path on a hand-drawn line, and
+   the scheduled-task text on a ruled slip with Copy beside it. */
+@font-face{font-family:Literata;src:url('fonts/literata-latin.woff2') format('woff2');font-style:normal;font-weight:200 900;font-display:swap}
+.ch-overnight-settings[hidden],.ch-overnight-task[hidden],.ch-overnight-button[hidden]{display:none}
+.ch-overnight-settings{display:grid;grid-template-columns:1fr auto;gap:5px 10px;margin:4px 0 6px;padding:8px 0 4px;border-top:1px dashed var(--line)}
+.ch-overnight-field{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;font:600 12.5px var(--display);color:var(--ink)}
+#ch-overnight-prepare{display:none}
+.ch-overnight-button{padding:2px 0;border:0;background:none;color:var(--muted);font:600 12.5px var(--display);text-decoration:underline wavy rgb(20 20 19 / .3);text-underline-offset:3px;cursor:pointer}
+#ch-overnight-allow,#ch-overnight-choose,#ch-overnight-grant{justify-self:start;padding:4px 14px;background:var(--hs-tag);color:#141413;text-decoration:none;border-radius:2px;rotate:-1deg;box-shadow:1px 2px 0 rgb(20 20 19 / .15)}
+.ch-overnight-input{min-width:0;width:150px;padding:3px 2px 5px;border:0;border-radius:0;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='4' viewBox='0 0 120 4' preserveAspectRatio='none'%3E%3Cpath d='M1 2.2C20 1.4 40 2.8 60 2C80 1.3 100 2.7 119 1.9' fill='none' stroke='%232B2A27' stroke-width='1.3' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") left bottom/100% 4px no-repeat;font:13px var(--ui);color:var(--ink)}
+.ch-overnight-input:focus-visible{outline:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='4' viewBox='0 0 120 4' preserveAspectRatio='none'%3E%3Cpath d='M1 2.2C20 1.4 40 2.8 60 2C80 1.3 100 2.7 119 1.9' fill='none' stroke='%23C96442' stroke-width='1.8' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E")}
+:root[data-theme="dark"] .ch-overnight-input{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='4' viewBox='0 0 120 4' preserveAspectRatio='none'%3E%3Cpath d='M1 2.2C20 1.4 40 2.8 60 2C80 1.3 100 2.7 119 1.9' fill='none' stroke='%23D2C8B2' stroke-width='1.3' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E")}
+.ch-overnight-task{grid-column:1/-1;display:grid;grid-template-columns:1fr auto;align-items:end;gap:4px 10px;margin:6px 0 2px;padding:8px 10px;border:10px solid transparent;border-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'%3E%3Cpath d='M9 1.7 C15 1.3 22 2.1 27.4 1.6 Q34.2 1.9 34.4 8.6 C34.7 15 33.9 21 34.3 27.2 Q34.1 34.3 27 34.4 C21 34.8 14.6 33.9 8.8 34.3 Q1.8 34.2 1.6 27.4 C1.3 21 2.1 14.8 1.7 8.9 Q1.8 1.9 9 1.7 Z' fill='none' stroke='%232B2A27' stroke-width='1.6' stroke-linejoin='round'/%3E%3C/svg%3E") 12 stretch;background:#FFF8E6 repeating-linear-gradient(transparent 0 21px,#E8DFC9 21px 22px) padding-box}
+.ch-overnight-schedule{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:italic 13px/22px var(--display);color:var(--ink)}
+.ch-overnight-errors{grid-column:1/-1;margin:4px 0;padding-inline-start:18px;font:12.5px/1.4 var(--ui);color:var(--muted)}
+/* the page on its own */
+.ch-overnight-page{--ink:#141413;--muted:#5E5D59;--line:#E2DED3;--hs-tag:#F6DE9A;--display:Literata,Georgia,serif;--ui:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;min-height:100vh;background:#FAF9F5;color:var(--ink);font:14px/1.5 var(--ui)}
+.ch-overnight-main{max-width:560px;margin:0 auto;padding:56px 24px}
+.ch-overnight-page h1{display:inline-block;margin:0 0 22px;padding-bottom:6px;font:600 30px/1.15 var(--display);letter-spacing:-.01em;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='8' viewBox='0 0 160 8' preserveAspectRatio='none'%3E%3Cpath d='M2 5.2C30 3.1 62 6.4 96 4.2C118 2.9 140 4.8 158 3.6' fill='none' stroke='%23C96442' stroke-width='2.2' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") left bottom/100% 8px no-repeat}
+.ch-overnight-page .ch-overnight-field{margin:14px 0;font-size:14px}
+.ch-overnight-page .ch-overnight-input{flex:1;width:auto;font-size:14px}
+.ch-overnight-page .ch-overnight-task{margin-top:18px}
+.ch-overnight-status{margin:16px 0 0;font:italic 13px/1.45 var(--display);color:var(--muted)}
+.ch-overnight-status:empty{display:none}

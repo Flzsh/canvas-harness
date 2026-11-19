@@ -2139,7 +2139,8 @@
   container.addEventListener('pointerdown',down,true);
   container.addEventListener('pointermove',move,true);
   container.addEventListener('pointerup',up,true);
-  container.addEventListener('pointercancel',e=>up(e,true),true);
+  const cancel=e=>up(e,true);
+  container.addEventListener('pointercancel',cancel,true);
   container.addEventListener('click',click,true);container.addEventListener('input',input,true);doc.addEventListener('keydown',keydown,true);doc.addEventListener('visibilitychange',visibility);
   // A taller or shorter window changes the room's height without changing its box: read it once the frame is laid out.
   let resizeFrame=0;
@@ -2161,6 +2162,7 @@
     container.removeEventListener('pointerdown',down,true);
     container.removeEventListener('pointermove',move,true);
     container.removeEventListener('pointerup',up,true);
+    container.removeEventListener('pointercancel',cancel,true);
     container.removeEventListener('click',click,true);
     container.removeEventListener('input',input,true);
     doc.removeEventListener('keydown',keydown,true);

@@ -55,10 +55,13 @@
   children=children.filter(Boolean).flatMap(node=>node?.axis===axis?node.children:[node]);
   return children.length===1?children[0]:children.length?{axis,children}:null;
  }
+ // Each move beside or below another module can nest the layout one level, so a real arrangement of every module
+ // (14, plus 3 AI modules) can be 16 levels deep; 40 nodes in all bounds any backup. (A limit of 5 levels refused
+ // real arrangements: the drop was not saved and Home snapped back.)
  function cleanLayout(tree){
   let count=0;
   function visit(node,depth=0){
-   if(++count>40||depth>5)throw Error('Invalid workspaceLayout setting in backup.');
+   if(++count>40||depth>20)throw Error('Invalid workspaceLayout setting in backup.');
    if(node==='today')return null; // Retired Home module; collapse its split without moving its neighbours.
    if(typeof node==='string'&&isKey(node))return node;
    if(!isObject(node)||!['x','y'].includes(node.axis)||!Array.isArray(node.children)||node.children.length<2||node.children.length>ALL.length+4)throw Error('Invalid workspaceLayout setting in backup.');
@@ -213,7 +216,8 @@
     showCourseInformation:value.showCourseInformation,
     showCourseStrip:value.showCourseStrip,
     showHelp:value.showHelp!==false,
-    ...(Array.isArray(value.courseOrder)?{courseOrder:value.courseOrder.filter(x=>typeof x==='string').slice(0,500)}:{})
+    ...(Array.isArray(value.courseOrder)?{courseOrder:value.courseOrder.filter(x=>typeof x==='string').slice(0,500)}:{}),
+    ...(value.moduleSize!=null?{moduleSize:cleanSizes(value.moduleSize)}:{})
   };
  }
  function cleanSizes(value){
@@ -285,6 +289,14 @@
   settings.workspaceOrder=core(state.order);settings.workspaceMode=state.mode;
   settings.workspaceLayout=state.layout;
   if(state.courseOrder)settings.courseOrder=[...state.courseOrder];
+  // Widths (Narrow / Normal / Wide) come back with the places, for the modules in the layout given back. A module not in
+  // it keeps whatever width it has now (a removed module's remembered width, an expired AI module's none).
+  if(state.moduleSize){
+    const kept=new Set(leaves(state.layout)),out={};
+    for(const [key,size] of Object.entries(settings.moduleSize||{}))if(!kept.has(key))out[key]=size;
+    for(const [key,size] of Object.entries(state.moduleSize))if(kept.has(key))out[key]=size;
+    settings.moduleSize=out;
+  }
   settings.courseNavigation=state.courseNavigation;
   settings.dockSize=state.dockSize;
   settings.showCourseInformation=state.showCourseInformation;
@@ -303,7 +315,7 @@
    if(key===target||!order.includes(key)||!order.includes(target)||!['before','after'].includes(command.position))return false;
    const next=order.filter(id=>id!==key);next.splice(next.indexOf(target)+(command.position==='after'?1:0),0,key);
    if(same(order,next))return false;
-   settings.workspaceUndo={...before,courseOrder:[...(settings.courseOrder||[])]};settings.courseOrder=next;return true;
+   settings.workspaceUndo={...before,courseOrder:[...(settings.courseOrder||[])],moduleSize:{...(settings.moduleSize||{})}};settings.courseOrder=next;return true;
   }
   if(command?.type==='undo'){
    if(!settings.workspaceUndo)return false;
@@ -311,7 +323,8 @@
   }
   const after=nextState(before,command);
   if(same(before,after))return false;
-  writeSnapshot(settings,after);settings.workspaceUndo=before;
+  // The undo copy holds the widths as they are now, so Undo move gives back the whole earlier arrangement.
+  const sizes={...(settings.moduleSize||{})};writeSnapshot(settings,after);settings.workspaceUndo={...before,moduleSize:sizes};
   return true;
  }
  function createController(options){

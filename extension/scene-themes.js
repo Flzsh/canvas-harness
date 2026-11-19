@@ -1,7 +1,14 @@
 /*! Canvas Harness — packaged dashboard scenes. Original creator: Flzsh. */
 (function(global){
  'use strict';
- const motifs={starry:['moon','star','swirl','cypress','cottage','sunflower'],sea:['turtle','fish','coral','jelly','shell','ray'],stars:['giant','binary','galaxy','redgiant','cluster','nebula'],blueprint:['gear','divider','pendulum','rocket','orbit','bulb'],maple:['maple','acorn','pumpkin','pinecone','oak','apple'],thanksgiving:['turkey','horn','pie','lantern','corn','squash']};
+ const motifs={
+   starry:['moon','star','swirl','cypress','cottage','sunflower'],
+   sea:['turtle','fish','coral','jelly','shell','ray'],
+   stars:['giant','binary','galaxy','redgiant','cluster','nebula'],
+   blueprint:['gear','divider','pendulum','rocket','orbit','bulb'],
+   maple:['maple','acorn','pumpkin','pinecone','oak','apple'],
+   thanksgiving:['turkey','horn','pie','lantern','corn','squash']
+ };
  const names=Object.freeze({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving'});
  let active=null;
  // The dashboard draws Starfield directly; its packaged document reuses the same renderer.
@@ -133,12 +140,13 @@ backdrop();
 // it has moved on they drift slowly back to their places (no spring, no wobble: most of the way back in about 3 x
 // EASE_BACK seconds). A grid of offsets (CELL px) is stepped at 60 Hz; only the cells near a moving pointer or still
 // settling are visited, and nothing at all is computed once everything is still. A star is drawn at its place plus the
-// offset there. The dashboard supplies normalized pointer coordinates; the reach remains small.
+// offset there. The dashboard supplies normalized pointer coordinates. The reach is 46 px (2026-11-09: the stars are
+// pulled from further away; it was 20): the pull falls off smoothly, so stars far from the pointer barely move.
 const CELL = 10, GOX = 4400, GW = Math.ceil((W + GOX) / CELL) + 2, GH = Math.ceil(H / CELL) + 2, FX = new Float32Array(GW * GH), FY = new Float32Array(GW * GH);
-const DRAG = .38, REACH = 20, MAXOFF = 12, EASE_BACK = 1.2, SETTLE = 1 - Math.exp(-1 / (60 * EASE_BACK));   // how much of the pointer's step a star follows, its reach (px), the most a star is moved, and how slowly it returns
+const DRAG = .38, REACH = 46, MAXOFF = 22, EASE_BACK = 1.2, SETTLE = 1 - Math.exp(-1 / (60 * EASE_BACK));   // how much of the pointer's step a star follows, its reach (px), the most a star is moved, and how slowly it returns
 let QX = null, QY = null, LX = null, LY = null, live = false, lastT = -1, A0 = 1e9, A1 = -1, B0 = 1e9, B1 = -1;   // the pointer's place and where the field last saw it, the cells still settling
 function spring() {
-  const s2 = 2 * REACH * REACH, far = 9 * REACH * REACH, R = Math.ceil(3 * REACH / CELL); let a0 = A0, a1 = A1, b0 = B0, b1 = B1;
+  const s2 = 2 * REACH * REACH, far = 4.84 * REACH * REACH, R = Math.ceil(2.2 * REACH / CELL); let a0 = A0, a1 = A1, b0 = B0, b1 = B1;
   const mx = QX !== null && LX !== null ? QX - LX : 0, my = QX !== null && LY !== null ? QY - LY : 0, moved = Math.abs(mx) + Math.abs(my) > .01; LX = QX; LY = QY;
   if (moved) { const ci = Math.round((QX + GOX) / CELL), cj = Math.round(QY / CELL); a0 = Math.min(a0, ci - R); a1 = Math.max(a1, ci + R); b0 = Math.min(b0, cj - R); b1 = Math.max(b1, cj + R); }
   a0 = Math.max(0, a0); b0 = Math.max(0, b0); a1 = Math.min(GW - 1, a1); b1 = Math.min(GH - 1, b1); A0 = B0 = 1e9; A1 = B1 = -1;
@@ -297,7 +305,7 @@ function frame(t, advance = true) {
   // and a pointer that stays still moves nothing (no ring round it); once it has moved on they drift slowly back, with
   // no spring and no wobble. Stepped at 60 Hz over only the cells near a moving pointer or still settling; a star there
   // is drawn at its place plus the offset. Rings away from it stay their cached strips; nothing runs once all is still.
-  const CELL=10,DRAG=.34,REACH=20,MAXOFF=7,EASE_BACK=1.2,SETTLE=1-Math.exp(-1/(60*EASE_BACK));
+  const CELL=10,DRAG=.34,REACH=46,MAXOFF=12,EASE_BACK=1.2,SETTLE=1-Math.exp(-1/(60*EASE_BACK));
   let GW=0,GH=0,FX=new Float32Array(0),FY=new Float32Array(0),live=false,box=null,px=null,py=null,lx=null,ly=null,last=0,A0=1e9,A1=-1,B0=1e9,B1=-1;
   function grid(){
     const gw=Math.ceil(W/CELL)+2,gh=Math.ceil(H/CELL)+2;
@@ -313,7 +321,7 @@ function frame(t, advance = true) {
     live=px!==null;
   }
   function spring(){
-   const s2=2*REACH*REACH,far=9*REACH*REACH,R=Math.ceil(3*REACH/CELL);let a0=A0,a1=A1,b0=B0,b1=B1;
+   const s2=2*REACH*REACH,far=4.84*REACH*REACH,R=Math.ceil(2.2*REACH/CELL);let a0=A0,a1=A1,b0=B0,b1=B1;
    const mx=px!==null&&lx!==null?px-lx:0,my=px!==null&&ly!==null?py-ly:0,moved=Math.abs(mx)+Math.abs(my)>.01;lx=px;ly=py;
    if(moved){const ci=Math.round(px/CELL),cj=Math.round(py/CELL);a0=Math.min(a0,ci-R);a1=Math.max(a1,ci+R);b0=Math.min(b0,cj-R);b1=Math.max(b1,cj+R);}
    a0=Math.max(0,a0);b0=Math.max(0,b0);a1=Math.min(GW-1,a1);b1=Math.min(GH-1,b1);A0=B0=1e9;A1=B1=-1;let moving=false;
@@ -542,12 +550,14 @@ function frame(t, advance = true) {
   if(id==='stars')media.setAttribute('aria-hidden','true');
   else{media.muted=true;media.loop=true;media.playsInline=true;media.autoplay=false;media.preload='none';media.poster=base+'poster.jpg';}
   sky.append(media,poster);
-  // The band: the strip of sky above the widgets. Home's header is taller or shorter with Edit Home and the window's width,
-  // so the sky is sized to reach just where the first widget starts (theme.css: --tk-band) and a scene is painted to be seen
-  // whole in that strip. Written on the sky alone: a variable on the root would restyle the whole dashboard. Measured on each
-  // sync (DOM changes, debounced) and when the window's size changes. The desk (.rd-main) starts exactly where its first
-  // widget does; its panels themselves are never read.
-  const BAND='.rd-main';
+  // The band: the strip of sky above the widgets. Home's header is taller or shorter with the Help band, Edit Home moves
+  // and the window's width, so the sky is sized to reach just where the first widget starts (theme.css: --tk-band) and a
+  // scene is painted to be seen whole in that strip. Written on the sky alone: a variable on the root would restyle the
+  // whole dashboard. Measured on each sync (DOM changes, debounced) and when the window's size changes. The desk (.rd-main)
+  // starts exactly where its first widget does, below the Help band when that is on; its panels themselves are never read.
+  // The Help band counts as the band's floor too: with Help open the desk moves down, and sizing the sky to it re-fitted
+  // the scene (it zoomed and slid left), so the scene now stops where Help starts, the same as without it.
+  const BAND='.rd-main, .ch-band-host';
   let bandPx=0;
   function measureBand(){
    let px=0;
@@ -556,7 +566,16 @@ function frame(t, advance = true) {
     if(Number.isFinite(top)){
      let first=Infinity;
      const scope=rd.getRootNode?.(),within=scope&&typeof scope.querySelectorAll==='function'?scope:rd;
-     for(const el of within.querySelectorAll(BAND)){const r=el.getBoundingClientRect?.();if(r&&r.width>200&&r.top-top>80)first=Math.min(first,r.top-top);}
+     // (where the desk starts in the page, not on the screen: with the courses as the dock or across the top, Home scrolls
+     //  inside its work area under a band that stays; read while scrolled, the band shrank by the scroll at the next
+     //  render, e.g. on selecting a row further down, and grew back on the next render at the top, owner 2026-11-16)
+     for(const el of within.querySelectorAll(BAND)){
+       const r=el.getBoundingClientRect?.();
+       if(!r||!(r.width>200))continue;
+       let y=r.top-top;
+       for(let p=el.parentElement;p&&p!==rd;p=p.parentElement)y+=p.scrollTop||0;
+       if(y>80)first=Math.min(first,y);
+     }
      if(Number.isFinite(first))px=Math.round(Math.max(200,Math.min(560,first)));
     }
    }catch{px=0;}

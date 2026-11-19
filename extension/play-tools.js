@@ -552,6 +552,13 @@ function lettersNear(x, y, rad, test, kept = false, { near, cap = 0, rank, lette
     for (const w of words) w.type = typeIn(w.node.parentElement);
     wrapPieces(words);
     for (const { s, r } of words) { const cx = r.left + r.width / 2, cy = r.top + r.height / 2, d = Math.hypot(cx - x, cy - y); if (test ? test(cx, cy, r) : d <= rad) out.push({ s, r, d, cx, cy }); }
+    // (letters another tool already opened are no longer plain text: they are found among the splits, as on High)
+    const fresh = new Set(words.map(w => w.s));
+    for (const s of splitNear(x, y, rad, '.chb-ch')) {
+      if (fresh.has(s) || moved.has(s)) continue;
+      const r = s.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, d = Math.hypot(cx - x, cy - y);
+      if (test ? test(cx, cy, r) : d <= rad) out.push({ s, r, d, cx, cy });
+    }
   }
   else { splitWords(words, flat);
   for (const s of splitNear(x, y, rad, '.chb-ch')) {
@@ -775,6 +782,8 @@ function bordersNear(x, y, rad, ready = false) {
 function takeLine(L, c0, c1) {
   let sides = lines.get(L.el); if (!sides) lines.set(L.el, sides = {}); let rec = sides[L.side];
   if (!rec) { rec = sides[L.side] = { ...L, keepRanges: [[L.a, L.b]], inline: L.el.style['border' + L.side + 'Color'], svg: sheet() }; L.el.style['border' + L.side + 'Color'] = 'transparent'; }
+  // (a line taken whole, by gravity or the black hole's sweep, has nothing left to cut and no drawing of what is left)
+  if (!rec.svg) return { rec, gone: [] };
   const next = [], gone = [];
   for (const [a, b] of rec.keepRanges) {
     if (b <= c0 || a >= c1) { next.push([a, b]); continue; }
@@ -1007,11 +1016,12 @@ function ourAnimations() {
   ];
 }
 // hit-stop: everything holds still for a beat on impact, which is what makes a hit feel heavy
+// (only what is still held is let go: an effect cancelled in the beat, by Put it back, stays cancelled)
 function hitStop(ms) {
   if (reduce) return;
   const list = ourAnimations().filter(a => a.playState === 'running');
   for (const a of list) a.pause();
-  setTimeout(() => { for (const a of list) a.play(); }, ms);
+  setTimeout(() => { for (const a of list) if (a.playState === 'paused') a.play(); }, ms);
 }
 // ---------------------------------------------------------------- things thrown to the floor: real falls, bounces and a pile that grows
 // A thrown letter, chip or shard is simulated once (gravity, the sides of the screen, a floor it bounces on and comes to
@@ -1550,7 +1560,8 @@ function strike(x, y, n) {
     for (let i = 0; i < 4 + n * 3; i++) {
       const a = -Math.PI / 2 + J(1.4), v = 260 + rnd() * 260 * n, ch = mark(place(shardSVG(), x + J(8), y + J(6), [-16, -16, 32, 32])), [k, dur] = toss(x, y, Math.cos(a) * v, Math.sin(a) * v, J(900), 8);
       ch.style.transform = 'scale(.45)';
-      ch.animate(k.map(f => ({ transform: f.transform + ' scale(.45)' })), { duration: dur, easing: 'linear', fill: 'forwards' });
+      // a first frame of 'none' cannot take another function after it ('none scale(.45)' is not a transform)
+      ch.animate(k.map(f => ({ transform: (f.transform === 'none' ? '' : f.transform + ' ') + 'scale(.45)' })), { duration: dur, easing: 'linear', fill: 'forwards' });
     }
   if (!SPX()?.dent) { dent(x, y, 58 + n * 14); stain(x, y + 2, 66 + n * 14, 54 + n * 10, '90,80,66', .2 + n * .05, J(30)); }
   light(x, y, 64 + n * 16, '255,250,236', 240, .8);
@@ -1584,7 +1595,7 @@ function shatter(x, y) {
   if (!reduce)
     for (let i = 0; i < 14; i++) {
       const sx = x + J(60), sy = y + J(36), sc = .7 + rnd() * .7, sd = mark(place(shardSVG(), sx, sy, [-16, -16, 32, 32])), [k, dur] = toss(sx, sy, J(220), -80 - rnd() * 200, J(700), 10);
-    sd.animate(k.map(f => ({ transform: f.transform + ` scale(${R(sc)})` })), { duration: dur, delay: 60 + rnd() * 160, easing: 'linear', fill: 'both' }); }
+    sd.animate(k.map(f => ({ transform: (f.transform === 'none' ? '' : f.transform + ' ') + `scale(${R(sc)})` })), { duration: dur, delay: 60 + rnd() * 160, easing: 'linear', fill: 'both' }); }
 }
 // ---------------------------------------------------------------- laser cutter: drag; it cuts letters in half and lines through
 // The cut and its glow are drawn a stretch at a time (play-space.js), so nothing on the page repaints with the length of the cut.
@@ -3480,8 +3491,10 @@ function returnFold(f, duration, easing) {
 undo.addEventListener('click', () => {
   if (restoring) return;
   // nothing still pending may land after the page is restored; drawings caught mid-way (not marks) go at once
-  for (const id of timers) clearTimeout(id);
-  timers.clear();
+  for (const id of timers) clearTimeout(id); timers.clear();
+  // (a shake still running would go on moving the restored page: the black hole's rumble lasts twelve seconds)
+  for (const a of pageAnimations) a.cancel();
+  pageAnimations.clear();
   restoring = true;
   unwatch();
   mendAt = 0;
@@ -3503,7 +3516,9 @@ undo.addEventListener('click', () => {
   }
   if (tool) pick(tool); letGo(); laserOff(); paintOff(); let longest = 400;
   for (const [w, st] of painted) w.classList.remove('chb-painted', st); painted.clear();
-  for (const f of folds.splice(0)) { returnFold(f, 1100, 'cubic-bezier(.2,.9,.3,1)'); longest = Math.max(longest, 1100); }
+  // (a block moved twice, pulled and then blown, recorded its style the second time after the first move had changed it: the first record is the page's own)
+  const firstPrev = new Map(); for (const f of folds) if (!firstPrev.has(f.el)) firstPrev.set(f.el, f.prev);
+  for (const f of folds.splice(0)) { returnFold({ ...f, prev: firstPrev.get(f.el) }, 1100, 'cubic-bezier(.2,.9,.3,1)'); longest = Math.max(longest, 1100); }
   const held = new Map(); for (const s of moved) if (s._c && !s._physicsPath) held.set(s, [getComputedStyle(s._c).transform, s._c.getAnimations()]);
   for (const s of moved) try {
     // (taken off the page by the host: its own text stands, there is nowhere to fly home to)

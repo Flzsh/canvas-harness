@@ -1,5 +1,11 @@
 # Reviewer testing notes
 
+## 4.0.0 changes
+
+4.0.0 is 3.10.0 with AI help added as an optional add-on, Biscuit's larger rule set (answers as cards and lists), Canvas's menu bar in one bar at every size, a slip after Archive and Mark done, Home modules that keep their shape, the Maple Wind page ground, faster pages and many fixes. It adds no remote code and no network requests beyond 3.10.0 except those of AI help once the student turns it on. AI help is packaged but off: no AI control appears anywhere (no Help band, no Help with this, no AI tab in Tools, no AI tile in Edit Home, no AI replies from Biscuit) until the student opens the Market from the popup (the Market row), adds "AI help" and accepts the packaged notice (`ai-notice.html`, "Before you turn on AI help": use it to learn, follow the school's rules on AI, the student is responsible for academic honesty). The Market add-on is a data file (`{"feature":"ai"}`) that only switches packaged code on; it turns nothing on by itself. Removing the add-on, switching AI help off or choosing Lite locks it again, stops a run in progress and clears its alarm.
+
+With AI help on, the student picks an AI chat site they are signed in to (ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Qwen or Z.ai; each site is asked for separately as an optional host permission) or saves their own API key (Anthropic, OpenAI, Google, or an HTTPS address they enter). On ChatGPT and Claude it reads the reply to its own message from the site's record of that chat, using the student's signed-in session; the token stays in memory for that read and is never saved or sent anywhere else. New since 3.10.0: the `alarms` permission (one alarm only while an AI help run is unfinished) and the optional API hosts for Anthropic, OpenAI and Google. All JavaScript is packaged; there is no remote code.
+
 ## 3.10.0 changes
 
 3.10.0 adds two packaged scene themes (Thanksgiving and Maple Wind: a looping video, a poster, frames and icons each, inside the package), sizes every scene to the strip above Home's first widget with repainted Under the Sea, Starry Night and Blueprint videos, redraws the Deadline changes panel and the top bar's right side, and makes clicks faster. It adds no permissions, no network requests and no remote code, and the 4.0 daily AI is not in it.

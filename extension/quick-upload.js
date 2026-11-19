@@ -25,7 +25,9 @@
  'use strict';
  const common=typeof module==='object'&&module.exports;
  const Pack=root.CanvasHarnessPack||(common?require('./quick-pack.js'):null);
- const Art=root.ReserveCustomArt||(common?require('./custom-art.js'):null);
+ // custom-art.js is a page-start file: Edge can run this one first (a registration it kept across a restart), so the art
+ // model is looked up when used.
+ const art=()=>root.ReserveCustomArt||(common?require('./custom-art.js'):null);
  const Custom=root.ReserveCustomization||(common?require('./customization-model.js'):null);
  const clone=value=>structuredClone(value);
  const own=(value,key)=>value!=null&&Object.hasOwn(value,key);
@@ -91,8 +93,8 @@
   const total=[settings.overviewArt,...Object.values(settings.coursePrefs||{})].reduce(
     (sum,pref)=>sum+Custom.artKeys.reduce((n,key)=>n+bytes(pref?.[key]?.svg||''),0),
     0);
-  try{Custom.checkBudget(settings);return {ok:true,bytes:total,limit:Art.limits.totalBytes};}
-  catch(error){return {ok:false,bytes:total,limit:Art.limits.totalBytes,error:issue('budget-exceeded',error.message)};}
+  try{Custom.checkBudget(settings);return {ok:true,bytes:total,limit:art().limits.totalBytes};}
+  catch(error){return {ok:false,bytes:total,limit:art().limits.totalBytes,error:issue('budget-exceeded',error.message)};}
  }
  // Pure candidate construction: all-course parts first, other parts in pack
  // order. Record the final owner of EACH field (including banner options), so
@@ -183,7 +185,7 @@
    return {settings:candidate,changes,inventoryChanges,applied,notApplied,unresolved,unassigned,budget:budget(candidate)};
  }
  function create({store,getCourses,onChange}={}){
-  if(!Pack||!Art||!Custom)throw Error('Quick upload modules are unavailable. Reload Canvas Harness.');
+  if(!Pack||!art()||!Custom)throw Error('Quick upload modules are unavailable. Reload Canvas Harness.');
   if(typeof store?.get!=='function'||typeof store?.update!=='function'||typeof getCourses!=='function')throw Error('Quick upload requires an account store and a current course getter.');
   let revision=0,destroyed=false,busy=false,receipt=null,baseSettings=null,reviewFingerprint=null,invalidated=null;
   const blank=()=>
@@ -249,7 +251,7 @@
     baseSettings=clone(store.get().settings);state.courses=normalizeCourses(rawCourses,baseSettings);reviewFingerprint=fingerprint(state.courses);
     state.parts=state.parsed.parts.map(parsedPart=>{
      const part={...clone(parsedPart),included:true,asset:null};
-     if(part.svg!==null){try{part.asset=Art.importSVG(part.svg,part.name);}catch(error){part.errors.push(issue('invalid-svg',error.message));}}
+     if(part.svg!==null){try{part.asset=art().importSVG(part.svg,part.name);}catch(error){part.errors.push(issue('invalid-svg',error.message));}}
      return part;
     });
     state.groups=grouped(state.parts,state.courses);state.phase='review';recompute();emit();

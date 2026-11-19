@@ -1227,6 +1227,12 @@
     $('note-editor').showModal();
     $('note-text').focus();
   }
+  // A note being typed is saved as the tab hides, as a text box being typed is (commitText); the dialog then closes.
+  function keepNote(){
+    const text=$('note-text').value;
+    if(!$('note-editor').open||!noteDraft||!text.trim()||!storageWritable||noteDraft.id&&text===noteDraft.text)return;
+    try{if(noteDraft.id)annotations.update(noteDraft.id,{text});else annotations.add({...noteDraft,text});changed();}catch(error){notice(error.message);}
+  }
   async function copySelection(){if(!selection)return;if(await copyText(selection.text))$('selection-menu').hidden=true;else notice('Copy was unavailable. Use Ctrl or Command C on the selection.');}
   function ask(text,page,endPage=page,intent){
     if(!canAI())return;
@@ -1703,7 +1709,7 @@
        }catch(error){if(target===session){storageWritable=false;syncAnnotationAccess();notice('Saved annotations could not be restored. Editing is disabled to protect the existing record. '+error.message);}}
   }
   async function close(requestId){
-   commitText();await savePlace();
+   commitText();keepNote();await savePlace();
    for(const target of sessions.values())await flush(target);
    if(editing||[...sessions.values()].some(s=>s.pending.length)){
      if(!editing&&!session?.pending.length)notice('Your annotations have not been saved. Free storage or undo recent marks before closing.');
@@ -1841,6 +1847,7 @@
    doc.documentElement.dataset.hidden=String(doc.hidden);
    if(doc.hidden){
      commitText();
+     keepNote();
      void savePlace();
      if(range){rangeTurn++;range.go.disabled=false;range.note.textContent='';}
      if(stroke)endPen({pointerId:stroke.id},true);
@@ -1856,7 +1863,7 @@
    }
    else{void verifyAnnotations();queue.pause(false);schedule();idleThumbnails();if(searchQuery&&!searchComplete)void searchStep();}
   });
-  listen(env,'pagehide',()=>{commitText();void savePlace();void flush();destroy();},{once:true});
+  listen(env,'pagehide',()=>{commitText();keepNote();void savePlace();void flush();destroy();},{once:true});
   env.chrome.storage.onChanged.addListener(storageChanged);
   send('reserve-pdf-ready');
   return {destroy,close,initialise,queue,get state(){return {currentPage,zoom,visible:[...visible],slots,sideOpen,matches,annotations};}};

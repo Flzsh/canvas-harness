@@ -1560,7 +1560,9 @@
     redrawModule,
     shown,
     growFromTab,
-    takeQuietSave(){
+    retreat(){
+    return retreatSheet();
+  },takeQuietSave(){
     const q=quietSave;
     quietSave=false;
     return q;

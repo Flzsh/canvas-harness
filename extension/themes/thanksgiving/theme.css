@@ -31,8 +31,17 @@
 .rd[data-theme-kit] .rd-course-heading h1::before{background:none!important}
 .rd[data-theme-kit] .rd-course-heading{position:relative}
 .rd[data-theme-kit] .rd-course-heading::before{position:absolute!important;inset:-30px auto -20px -50px!important;width:640px!important;height:auto!important;z-index:-1!important;background:radial-gradient(closest-side,rgba(244,233,211,.7),rgba(244,233,211,0))!important}
-/* the rows over the scene's lower edge read on paper, never on the carved field */
+/* the Help band and the rows over the scene's lower edge read on paper, never on the carved field */
+.rd[data-theme-kit] .ch-help-band{background:rgba(251,244,228,.94)!important}
 .rd[data-theme-kit] :is(.rd-bookmarks,.rd-heading-links){background:rgba(244,233,211,.82);border-radius:8px}
+/* the date and a course's links lie across the print at most widths (at 1024, across the barn and the fence): each on a
+   slip of the paper; a spread, not padding, so nothing in the row moves */
+.rd[data-theme-kit] .rd-course-heading > p > :is(.rd-heading-detail,.rd-heading-date),.rd[data-theme-kit] .rd-heading-links > a{background:rgba(244,233,211,.88);box-shadow:0 0 0 4px rgba(244,233,211,.88);border-radius:3px}
+/* More views ends the filter strip with no pane of its own, over the lawn and the table's legs: the same paper strip, and
+   its list on paper too */
+.rd[data-theme-kit] .rd-more-views > select{background:rgba(251,244,228,.9);box-shadow:inset 0 0 0 1.5px rgba(43,30,23,.32);color:#45322A}
+.rd[data-theme-kit] .rd-more-views > select:hover{background:#FBF4E4;color:#2B1E17}
+.rd[data-theme-kit] .rd-more-views option{background:#FBF4E4;color:#2B1E17}
 /* Edit Home and Undo move end the row, over the print's lower corner: on paper */
 .rd[data-theme-kit] .rd-arrange-guide > div:not(:empty){padding:0 8px;border-radius:8px;background:rgba(244,233,211,.9);box-shadow:inset 0 0 0 1px rgba(43,30,23,.18)}
 /* bars and choices: paper strips with a carved edge; the chosen one in rust ink */

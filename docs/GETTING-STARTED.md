@@ -1,6 +1,6 @@
 # Get started with Canvas Harness
 
-Canvas Harness 3.10.0: use Features in the popup for Full, Lite or Custom. The optional Market asks for its own site access on first use; Make it yours → More → Add from a file imports artwork, kits, themes, pets and presets. Modules progress and To hand in are included; Focus room, Review deck and Grade impact are on in Full. Your school's own Canvas address is still added through the popup.
+Canvas Harness 4.0.0: use Features in the popup for Full, Lite or Custom. The optional Market asks for its own site access on first use; Make it yours → More → Add from a file imports artwork, kits, themes, pets and presets. Modules progress and To hand in are included; Focus room, Review deck and Grade impact are on in Full. AI help is in the package but off, and nothing of it shows, until you add it from the Market and agree to its notice; see [Study with AI](../AI.md). Your school's own Canvas address is still added through the popup.
 
 Use this guide after [installing in Chrome or Edge](../INSTALL.md). Canvas Harness uses your signed-in school Canvas account, so there is no separate Canvas Harness login or Canvas API token to enter.
 
@@ -58,12 +58,14 @@ For keyboard moving, focus a panel's move grip and press **Space**. Use **Tab** 
 
 Open **Appearance settings** for layout presets and smaller adjustments. Studio puts course information first; Study puts assignments first; Focus starts with a stacked layout. You can keep using the main page while the settings dock is open. See [Themes and artwork](THEMES.md) for surface, type, and motion choices.
 
+On a slower computer, choose a lower **Graphics** level in **Make it yours → Look**: Low, Medium, High or Extra high. Each step down leaves out the detail that is seen least; **Advanced** under it tunes one kind of detail at a time.
+
 ## Focus room, Review deck and Grade impact
 
-These three are off until you switch them on: **Features** in the popup, then **Custom**. Add their modules from **Edit Home**.
+These three are on in Full. Lite leaves them out, and **Custom** in the popup's **Features** can switch any of them off. Add their modules from **Edit Home**.
 
-- **Focus room**: a focus session with four drawn places. It grows out of its Home module and folds back.
-- **Review deck**: your cards, in a reading room that grows out of its Home module.
+- **Focus room**: a focus session with five drawn places. It opens as a room over Home and folds back into its module.
+- **Review deck**: your cards, in a reading room over Home.
 - **Grade impact**: opens from a course on **Grades** or its Home module and shows what the work coming up can do to that course. Pretend assignments stay in this browser.
 
 ## Developer tools
@@ -93,6 +95,8 @@ Choose **Tools** in the toolbar. The dock opens beside the main workspace, which
 **GPA** compares 4.0 and 4.3 estimates using your chosen courses and rules. Adjust credits, grade cutoffs and points, weighting bonuses, caps, or included courses. Use what-if grades to explore a scenario without changing Canvas. Missing grades are excluded. Revealing GPA in this tool does not turn on **Show grades** in the main workspace.
 
 ### Send selected text to an AI website
+
+This needs AI help, which stays off and out of sight until you add it from the Market and agree to its notice; see [Study with AI](../AI.md#turn-it-on).
 
 1. Select assignments or materials with their circles, then choose **Use in AI**, or open **Tools → AI**. An opened assignment starts selected by default, so check the selected sources.
 2. Choose a provider. Use **Open website / sign in** to finish signing in on its website. Opening that website alone does not transfer your coursework.

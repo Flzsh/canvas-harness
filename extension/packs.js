@@ -55,7 +55,13 @@
    if(!record(p)||!printable(p.id,100)||!printable(p.name,120)||!MARKET_KINDS.includes(p.kind))return false;
    const r=receipts[p.id];return r?.kind==='feature'&&!r.owner||identity&&(r?.owner&&same(r.owner,identity)||r?.key===accountKey(identity));
   }).map(({id,name,kind,installedAt,catalogueId})=>
-   ({id:options.marketOnly?catalogueId||id:id,name,kind,...(Number.isSafeInteger(installedAt)?{installedAt}:{})}));
+   ({
+     id:options.marketOnly?catalogueId||id:id,
+     name,
+     kind,
+     ...(Number.isSafeInteger(installedAt)?{installedAt}:{}),
+     ...(kind==='feature'&&typeof receipts[id]?.feature==='string'?{feature:receipts[id].feature}:{})
+   }));
   if(!identity)return legacy;const pool=root.ReserveMedia.createPackStore(identity);
   try{
    const portable=[];
@@ -98,7 +104,11 @@
      selection=same(current,featureAction.expected)?enableFeature(current,featureAction.feature):current;
      featureAction.receipt.previous=F.resolve(current.value).enabled.includes(featureAction.feature);
      featureAction.receipt.preferences={before:clone(current),after:clone(selection),...(!same(current,featureAction.expected)?{skipped:true}:{})};
-    }else selection=featureUndo(featureAction.receipt,featureAction.later,saved);
+    }else{
+     selection=featureUndo(featureAction.receipt,featureAction.later,saved);
+     // Removing the AI help add-on locks AI help again in this same write: its record goes, and 'ai' with it.
+     if(featureAction.receipt?.feature==='ai'&&selection.present)selection={present:true,value:F.lockAI(selection.value)};
+    }
     if(!same(selection,current)){if(selection.present)values[F.KEY]=selection.value;else removed.push(F.KEY);}
    }
    const change={values:clone(values),drop:[...new Set(removed)],previous:saved,features};
@@ -114,8 +124,9 @@
  const preferenceState=(saved,key)=>({present:own(saved,key),...(own(saved,key)?{value:clone(saved[key])}:{})});
  function enableFeature(state,feature){
   const F=root.ReserveFeatures,prefs=F.normalize(state.value),enabled=F.resolve(prefs).enabled;
-  if(enabled.includes(feature))return clone(state);
-  return {present:true,value:{preset:'custom',custom:[...new Set([...(prefs.preset==='custom'?prefs.custom:enabled),feature])]}};
+  // The AI help add-on turns nothing on by itself: its notice (ai-notice.html) does, once the student agrees.
+  if(feature==='ai'||enabled.includes(feature))return clone(state);
+  return {present:true,value:F.carry({preset:'custom',custom:[...new Set([...(prefs.preset==='custom'?prefs.custom:enabled),feature])]},prefs)};
  }
  function featureUndo(receipt,later,saved){
   const F=root.ReserveFeatures,current=preferenceState(saved,F.KEY);if(receipt.devicePreferences===false)return current;
@@ -123,7 +134,7 @@
    // Compatibility for older receipts: avoid overriding a later preset choice.
    const prefs=F.normalize(current.value),next=later.find(p=>p.kind==='feature'&&p.feature===receipt.feature);if(next)next.previous=receipt.previous;
    if(next||receipt.previous||prefs.preset!=='custom')return current;
-   return {present:true,value:{preset:'custom',custom:prefs.custom.filter(id=>id!==receipt.feature)}};
+   return {present:true,value:F.carry({preset:'custom',custom:prefs.custom.filter(id=>id!==receipt.feature)},prefs)};
   }
   let old=clone(receipt.preferences.after),next=clone(receipt.preferences.before);
   // Replay only a continuous chain of extension-owned choices. A different
@@ -218,6 +229,15 @@
   return exclusive(async()=>{
    const entry=metadata(value),source=await verified(entry,input);let feature,beforeFeature;if(entry.kind==='feature'){
     try{feature=JSON.parse(source);}catch{fail('Invalid feature pack.');}const F=root.ReserveFeatures;
+    // A well-formed feature or scene this version does not have yet comes from a newer Canvas Harness: say so, as for a new kind.
+    const name=v=>typeof v==='string'&&/^[a-z][a-z0-9-]{0,40}$/.test(v);
+    if(record(feature)&&
+     name(feature.feature)&&
+     feature.feature!=='developer'&&
+     Object.keys(feature).every(k=>k==='feature'||k==='sceneTheme')&&
+     (!F.catalogue.some(f=>f.id===feature.feature)||
+       feature.feature==='scene-themes'&&name(feature.sceneTheme)&&!root.ReserveCustomization.enums.sceneTheme.includes(feature.sceneTheme)))
+     fail(UPDATE);
     if(!record(feature)||
      !own(feature,'feature')||
      typeof feature.feature!=='string'||
@@ -274,6 +294,8 @@
      });
     }
     else{if(bound)await confirmOwner(bound);await publish(r,{},[],featureAction);}
+    // AI help: the add-on is in, still off; its notice opens for the student to read and agree (or not now)
+    if(doc.feature==='ai')await Promise.resolve(root.ReserveOpenAINotice?.()).catch(()=>{});
    }else if(entry.kind==='kit'){
     const imported=await root.ReserveCustomKits.importKit({name:'market.chkit',size:entry.size,text:async()=>source},{media:{prepare:importMedia}}),
      store=root.ReserveMedia.createPackStore(identity);
@@ -384,12 +406,13 @@
   if(!api?.validate)fail('Pack validation is unavailable. Reload Canvas Harness.');
   return api;
  }
- async function validateSource(source,kind){
+ // stored: a pack this account already added (its media were decoded then); reading it again checks it without decoding again
+ async function validateSource(source,kind,stored=false){
   if(typeof source!=='string'||sizeOf(source)>MAX)fail('Pack exceeds 40 MB.');
   let wire;
   try{wire=JSON.parse(source);}catch{fail('Invalid pack JSON.');}
   if(!kind||formats[wire?.format]!==kind)fail('Pack format does not match its kind.');
-  return validator(kind).validate(source,{media:{prepare:importMedia}});
+  return validator(kind).validate(source,{media:stored?false:{prepare:importMedia}});
  }
  async function target(options){
   const identity=optionsOwner(options);
@@ -732,7 +755,7 @@
    const before=await documents(t.pool),docs=clone(before),r=await registry(),doc=docs.find(p=>p.id===id);
    if(!doc)fail('Unknown pack.');
    docs.forEach(d=>cleanReceipt(d.receipt,d.kind));
-   const imported=await validateSource(doc.source,doc.kind),previous=t.store.get();
+   const imported=await validateSource(doc.source,doc.kind,true),previous=t.store.get();
    let data=applyPack(previous,doc,imported.pack,{...options,modules:options.modules||await availableModules(previous)},history(docs,r,t.identity));
    makeState(data).installed[id]=rowOf(doc);
    await publishLocal(t,before,docs,data);
@@ -776,7 +799,7 @@
   if(!validId(id))fail('Invalid pack id.');
   if(!await root.ReserveMarketSite.allowed(identity.origin))fail('Canvas site is not allowed.');
   const pool=root.ReserveMedia.createPackStore(identity);
-  try{const doc=await pool.getPack(id);if(!doc)fail('Unknown pack.');return {...rowOf(doc),pack:(await validateSource(doc.source,doc.kind)).pack};}finally{pool.close();}
+  try{const doc=await pool.getPack(id);if(!doc)fail('Unknown pack.');return {...rowOf(doc),pack:(await validateSource(doc.source,doc.kind,true)).pack};}finally{pool.close();}
  }
  const accountReceipt=(receipt,identity)=>record(receipt)&&(receipt.key===accountKey(identity)||record(receipt.owner)&&same(receipt.owner,identity));
  function fields(value,allowed,label){if(!record(value)||Object.keys(value).some(key=>!allowed.includes(key)))fail('Invalid '+label+'.');}

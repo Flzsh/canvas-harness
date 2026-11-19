@@ -1,5 +1,6 @@
 // Adapted from Gary Wu's pull request #47 to Canvas Harness.
 'use strict';
+const Unlocked=require('./ai-unlocked.cjs'),AI_FILES=['ai-context.js','ai-source.js'];
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const ext=path.join(__dirname,'../extension'),read=file=>fs.readFileSync(path.join(ext,file),'utf8');
 const F=require('../extension/features.js'),original=require('./fixtures/addons-original-manifest.json');
@@ -21,9 +22,12 @@ test('media banners use the Appearance selection and Lite retains only pure back
 function catalogue(){const env=vm.createContext({TextEncoder,TextDecoder,structuredClone,});vm.runInContext(read('features.js'),env);return env.ReserveFeatures;}
 test('Full preserves the complete original main declaration and defaults to Full',()=>{
  for(const [before,after]of [['deadline-model.js','deadline-changes.js'],['deadline-changes.js','session.js']])assert.ok(F.resolve().js.indexOf(before)<F.resolve().js.indexOf(after));
- assert.deepEqual(F.resolve().js.filter(file=>original.content_scripts[1].js.includes(file)),original.content_scripts[1].js);
+ // AI help (the old handoff included) is locked until its add-on is agreed to; agreed, the original declaration is whole
+ assert.deepEqual(F.resolve().js.filter(file=>original.content_scripts[1].js.includes(file)),original.content_scripts[1].js.filter(file=>!AI_FILES.includes(file)));
+ assert.deepEqual(F.resolve(Unlocked.prefs()).js.filter(file=>original.content_scripts[1].js.includes(file)),original.content_scripts[1].js);
  for(const file of F.resolve().js)assert.ok(fs.existsSync(path.join(ext,file)),file);
- assert.deepEqual(F.resolve({preset:'full'}).enabled,F.presets.full);
+ assert.deepEqual(F.resolve({preset:'full'}).enabled,F.presets.full.filter(id=>id!=='ai'));
+ assert.deepEqual(F.resolve(Unlocked.prefs()).enabled,F.presets.full);
  for(const id of ['focus-room','review-deck','grade-impact'])assert.ok(F.presets.full.includes(id)&&!F.presets.lite.includes(id));
  assert.deepEqual(F.startupCSS,original.content_scripts[0].css);
 });
@@ -93,7 +97,7 @@ test('Full worker excludes early-paint files and preserves the remaining origina
  const staticMain=main.js.filter(file=>original.content_scripts[1].js.includes(file));
  assert.deepEqual(staticMain,original.content_scripts[1].js.filter(file=>staticMain.includes(file)));
  assert.deepEqual(loaded,F.resolve().js.filter(file=>!staticMain.includes(file)));
- assert.deepEqual(loaded.filter(file=>original.content_scripts[1].js.includes(file)),original.content_scripts[1].js.filter(file=>!staticMain.includes(file)));
+ assert.deepEqual(loaded.filter(file=>original.content_scripts[1].js.includes(file)),original.content_scripts[1].js.filter(file=>!staticMain.includes(file)&&!AI_FILES.includes(file)));
  const full=[...staticMain,...loaded];
  assert.equal(new Set(full).size,full.length);assert.deepEqual(full.slice().sort(),F.resolve().js.slice().sort());
  assert.equal(manifest.content_scripts.flatMap(entry=>entry.js).filter(file=>file==='features.js').length,1,'the shared early-selection state is not reset by the main entry');
@@ -165,7 +169,7 @@ function canvasPage(hint,{lateLayout=false}={}){
  const badge={textContent:'',dataset:{}};
  const link={id:'global_nav_dashboard_link',querySelector:selector=>selector==='.menu-item-icon-container'?box:selector==='.chn-ic'?nodes.find(node=>node.markup.includes('chn-ic')):selector===':scope > .chn-frames'?nodes.find(node=>node.markup.includes('chn-frames')):null,
   querySelectorAll:selector=>selector==='.menu-item__badge'?[badge]:[],insertAdjacentHTML:(_position,markup)=>insert(markup)};
- const header={dataset:{},style:{setProperty(){}},querySelector:selector=>selector==='.ic-app-header__menu-list-link'?link:null,
+ const header={dataset:{},style:{setProperty(){}},addEventListener(){},removeEventListener(){},getBoundingClientRect:()=>({left:0,top:0,right:84,bottom:600,width:84,height:600}),querySelector:selector=>selector==='.ic-app-header__menu-list-link'?link:null,
   querySelectorAll:selector=>selector==='.ic-app-header__menu-list-link'?[link]:selector==='.chn-ic, .chn-frames, .chn-logo-art'?[...nodes]:selector==='.chn-drawn'&&boxClasses.has('chn-drawn')?[box]:selector==='[data-chn-empty]'&&'chnEmpty' in badge.dataset?[badge]:[]};
  f.env.document.getElementById=id=>id==='header'?header:null;
  Object.assign(f.env,{addEventListener:(_type,fn)=>windowListeners.add(fn),removeEventListener:(_type,fn)=>windowListeners.delete(fn),
@@ -270,9 +274,9 @@ test('equivalent worker replies leave already-confirmed early objects intact',as
 test('stale Canvas bar hints reconcile actual decorations, including a late layout reply',async()=>{
  for(const [hint,truth,lateLayout] of [['lite','full',false],['full','lite',false],['full','lite',true]]){
   const f=canvasPage(hint,{lateLayout});f.run('canvas-nav.js');await new Promise(setImmediate);
-  assert.equal(f.nodes.length,hint==='full'&&!lateLayout?2:0,'frames and icon follow the first guess');
+  assert.equal(f.nodes.length,hint==='full'&&!lateLayout?1:0,'the drawing follows the first guess (no frame: the selected mark is drawn by CSS)');
   f.finish({preset:truth});await new Promise(setImmediate);f.layout();await new Promise(setImmediate);
-  assert.equal(f.classes.has('chn-nav'),truth==='full');assert.equal(f.nodes.length,truth==='full'?2:0);
+  assert.equal(f.classes.has('chn-nav'),truth==='full');assert.equal(f.nodes.length,truth==='full'?1:0);
   assert.equal(f.boxClasses.has('chn-drawn'),truth==='full');assert.equal('chnEmpty' in f.badge.dataset,truth==='full');
   if(truth==='lite'){
    assert.equal(f.env.ReserveCanvasNav,undefined);assert.deepEqual(Object.keys(f.header.dataset),[]);
@@ -315,15 +319,15 @@ test('content loader mirrors the received selection in page localStorage on ever
  }
 });
 
-test('Full adds frames to every menu link when course art arrives after static Canvas navigation',async()=>{
+test('the menu bar adds no frames to Canvas\'s links, before or after course art arrives (the current page is drawn by CSS)',async()=>{
  for(const choice of ['shown','original']){
   const f=earlyPage(JSON.stringify({preset:'full'})),links=Array.from({length:5},(_,index)=>({
    id:'canvas-link-'+index,markup:[],
    querySelector(selector){return selector===':scope > .chn-frames'&&this.markup.length?this.markup[0]:null;},
    querySelectorAll:()=>[],insertAdjacentHTML(position,markup){assert.equal(position,'afterbegin');this.markup.push(markup);}
   }));
-  const header={dataset:{},style:{setProperty(){}},querySelector:selector=>selector==='.ic-app-header__menu-list-link'?links[0]:null,querySelectorAll:selector=>{
-   assert.equal(selector,'.ic-app-header__menu-list-link');return links;
+  const header={dataset:{},style:{setProperty(){}},addEventListener(){},removeEventListener(){},getBoundingClientRect:()=>({left:0,top:0,right:84,bottom:600,width:84,height:600}),querySelector:selector=>selector==='.ic-app-header__menu-list-link'?links[0]:null,querySelectorAll:selector=>{
+   assert.ok(['.ic-app-header__menu-list-link','.chn-frames','.chn-logo-art','.chn-ic, .chn-frames, .chn-logo-art','.chn-drawn','.chn-drawn-link','[data-chn-empty]','.chn-more, .chn-more-menu'].includes(selector),selector);return selector==='.ic-app-header__menu-list-link'?links:[];
   }};
   f.env.document.getElementById=id=>id==='header'?header:null;
   Object.assign(f.env,{addEventListener(){},setInterval(){},requestAnimationFrame:fn=>fn(),getComputedStyle:()=>({position:'fixed',backgroundColor:'rgb(255, 255, 255)',getPropertyValue:()=>''})});
@@ -340,11 +344,11 @@ test('Full adds frames to every menu link when course art arrives after static C
   f.run('feature-loader.js');await new Promise(setImmediate);assert.equal(ready,0);
   inject();await f.env.ReserveFeatureLoad;
   const counts=()=>links.map(link=>(link.markup.join('').match(/class="(?:[^"]*\s)?rd-frame(?:\s|")/g)||[]).length);
-  assert.deepEqual(counts(),choice==='shown'?[2,2,2,2,2]:[0,0,0,0,0]);
+  assert.deepEqual(counts(),[0,0,0,0,0],'no frames');
   assert.equal(ready,1,'completion is announced after deferred scripts finish');
   f.run('feature-loader.js');await f.env.ReserveFeatureLoad;assert.equal(ready,1,'bootstrap announces once');
   f.env.document.dispatchEvent(new Event('reserve:features-ready'));
-  assert.deepEqual(counts(),choice==='shown'?[2,2,2,2,2]:[0,0,0,0,0],'no duplicate frames or activation of the original bar');
+  assert.deepEqual(counts(),[0,0,0,0,0],'still no frames, and the original bar is never decorated');
  }
 });
 
@@ -356,7 +360,7 @@ test('feature storage changes immediately resolve the hint for the very next sta
  f.change({'reserve:features':{newValue:{preset:'lite'}}},'sync');
  f.change({'reserve:unrelated':{newValue:{preset:'lite'}}});
  assert.equal(f.values.get('reserve:features-hint'),initial);
- for(const [prefs,preset,enabled]of [[{preset:'lite'},'lite',liteEnabled],[{preset:'custom',custom:['pony']},'custom',['dashboard','planner','pony']],[undefined,'full',F.presets.full]]){
+ for(const [prefs,preset,enabled]of [[{preset:'lite'},'lite',liteEnabled],[{preset:'custom',custom:['pony']},'custom',['dashboard','planner','pony']],[undefined,'full',F.presets.full.filter(id=>id!=='ai')]]){
   f.change({'reserve:features':{newValue:prefs}});
   const hint=f.values.get('reserve:features-hint');assert.deepEqual(JSON.parse(hint),{preset,enabled});
   assert.equal(f.env.ReserveFeatures.current.preset,'full','active document keeps its feature snapshot');
@@ -496,4 +500,10 @@ test('course file codecs load only for an explicit backup request in a trusted t
  const before=w.executions.length;
  for(const bad of [{...w.sender,id:'other'},{...w.sender,frameId:1},{...w.sender,url:'https://attacker.test/'},{...w.sender,tab:undefined}])assert.equal((await w.request({target:'ch-course-files',op:'load'},bad)).ok,false);
  assert.equal((await w.request({target:'ch-course-files',op:'other'})).ok,false);assert.equal(w.executions.length,before);
+});
+
+test('every feature script has a place in the load order, so none is listed and silently never loaded',()=>{
+ const missing=F.catalogue.flatMap(f=>f.files.js).filter(file=>!F.order.includes(file)&&file!=='startup-art.js');
+ assert.deepEqual(missing,[]);
+ assert.ok(F.resolve({preset:'full'}).js.includes('biscuit-mind.js'));
 });

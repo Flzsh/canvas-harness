@@ -59,6 +59,43 @@
  }
  function browserOf(ua){const s=String(ua||''),edge=/Edg\/(\d{1,4})/.exec(s),chrome=edge?null:/Chrome\/(\d{1,4})/.exec(s);return edge?`Edge ${edge[1]}`:chrome?`Chrome ${chrome[1]}`:'other';}
  function median(list){if(!list.length)return null;const s=[...list].sort((a,b)=>a-b),i=s.length>>1;return s.length%2?s[i]:Math.round((s[i-1]+s[i])/2);}
+ // The start-up record (content.js keeps the last eight Dashboard starts on this device): only known words, step codes
+ // made of letters, digits, spaces and dashes, and numbers pass. A start reads e.g. "08:02 canvas 3 tries (signed-out)".
+ const START={outcome:['shown','canvas','reload','student','left','off'],nav:['navigate','reload','back_forward','prerender'],via:['sign-in','other-site']};
+ function cleanStart(s){
+  const pick=(v,list)=>list.includes(v)?v:'',at=/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(String(s?.at||''))?s.at:'',order=String(s?.order||'');
+  const steps=(Array.isArray(s?.steps)?s.steps:[]).slice(0,48).filter(x=>Array.isArray(x)&&Number.isFinite(x[0])&&/^[a-z][a-z0-9 -]{0,23}$/i.test(String(x[1]))).map(([t,c])=>
+   [Math.max(0,Math.round(t)),String(c)]);
+  const shown=steps.find(([,c])=>c==='shown'),codes=steps.map(([,c])=>c),last=codes.lastIndexOf('shown'),after=last<0?[]:codes.slice(last+1);
+  // a try is one fresh start ('restart', or the 20 s watch's 'stall'); 'fell': it opened, then ended on Canvas's page
+  // without the student choosing it (its session lost for good)
+  return {
+   at,
+   nav:pick(s?.nav,START.nav),
+   via:pick(s?.via,START.via),
+   order:/^(normal|(add-ons-first|swapped|worker)(\+(add-ons-first|swapped|worker)){0,2})$/.test(order)?order:'',
+   seen:s?.seen==='hidden'?'hidden':'visible',
+   outcome:pick(s?.outcome,START.outcome),
+   steps,
+   shownAt:shown?shown[0]:null,
+   fell:after.includes('canvas')&&!after.includes('student'),
+   tries:steps.filter(([,c])=>/^(restart|stall)\b/.test(c)).length,
+   fails:[...new Set(steps.filter(([,c])=>c.startsWith('fail ')).map(([,c])=>c.slice(5)))]
+  };
+ }
+ const secs=ms=>`${(ms/1000).toFixed(ms<10000?1:0)} s`;
+ function startText(s){
+  return [
+   s.at.slice(5)||'?',
+   s.outcome||'running',
+   s.shownAt!=null?secs(s.shownAt)+(s.fell?', then canvas':''):null,
+   s.via?'after '+s.via:null,
+   s.order&&s.order!=='normal'?s.order:null,
+   s.seen==='hidden'?'opened hidden':null,
+   s.tries?`${s.tries} ${s.tries>1?'tries':'try'}`:null,
+   s.fails.length?'('+s.fails.join(', ')+')':null
+  ].filter(Boolean).join(' ');
+ }
  function facts(input={}){
   const m=input.manifest||{},f=input.features||{},cfg=input.settings||{},cache=input.cache||null,speed=input.speed||{},sizes=input.storage||{};
   const on=new Set(Array.isArray(f.enabled)?f.enabled:[]),full=new Set(Array.isArray(f.full)?f.full:[]);
@@ -92,13 +129,17 @@
    storage:Object.fromEntries(AREAS.map(a=>[a,Number.isFinite(sizes[a])?sizes[a]:null])),
    errors:(Array.isArray(input.errors)?input.errors:[]).map(e=>
     ({type:typeOf(e.type),file:String(e.file).replace(/[^\w./-]/g,'').slice(0,80),line:Number.isInteger(e.line)?e.line:0,count:Number.isInteger(e.count)?e.count:1})),
-   dropped:Number.isInteger(input.dropped)?input.dropped:0
+   dropped:Number.isInteger(input.dropped)?input.dropped:0,
+   startup:(Array.isArray(input.startup)?input.startup:[]).slice(-8).map(cleanStart)
   };
  }
  const ago=n=>n==null?'not synced':n<1?'synced just now':n<120?`synced ${n} min ago`:`synced ${Math.round(n/60)} h ago`;
  const size=n=>n==null?'?':n<MB?`${Math.round(n/1000)} KB`:`${(n/MB).toFixed(n<MB*10?1:0)} MB`;
- function rows(f,{errorRows=MAX_ERRORS}={}){
+ function rows(f,{errorRows=MAX_ERRORS,startRows=1}={}){
   const b=f.build,fe=f.features,c=f.canvas,s=f.speed,codes=Object.entries(c.codes).sort((a,z)=>z[1]-a[1]).map(([k,n])=>`${k} x${n}`);
+  // newest first; the panel spells out the latest start that did not open (or else the latest), the report the last three
+  const starts=[...(f.startup||[])].reverse(),
+   detail=startRows>1?starts.slice(0,startRows):[starts.find(x=>(x.outcome&&x.outcome!=='shown')||x.fell)||starts[0]].filter(Boolean);
   const diff=[...fe.added.map(id=>'+'+id),...fe.removed.map(id=>'-'+id)].join(' ');
   const errorText=f.errors.slice(0,errorRows).map(e=>`${e.type} ${e.file}:${e.line} x${e.count}`),more=f.errors.length-errorText.length+f.dropped;
   return [
@@ -107,12 +148,14 @@
    ['Settings',f.settings.length?f.settings.map(x=>'value' in x?`${x.name}=${x.value}`:x.name):['defaults']],
    ['Canvas',[ago(c.synced),c.courses==null?null:`${c.courses} courses`,c.items==null?null:`${c.items} items`,c.partial?'partial':null,...codes].filter(Boolean)],
    ['Speed',s.renders?[s.open==null?null:`open ${s.open} ms`,`render ${s.median} ms`,`worst ${s.worst} ms`,`${s.renders} renders`].filter(Boolean):['no renders yet']],
+   ['Start-up',starts.length?starts.slice(0,4).map(startText):['no record yet']],
+   ...detail.map(x=>['Start '+(x.at.slice(11)||'?'),x.steps.length?x.steps.map(([t,code])=>`${t} ${code}`):['no steps']]),
    ['Storage',AREAS.map(a=>`${a} ${size(f.storage[a])} of ${BUDGET[a]} MB`)],
    ['Errors',errorText.length?[...errorText,...(more>0?[`+${more} more`]:[])]:['none']]
   ];
  }
  function report(f){
-  const list=rows(f,{errorRows:REPORT_ERRORS}),w=Math.max(...list.map(([n])=>n.length))+2;
+  const list=rows(f,{errorRows:REPORT_ERRORS,startRows:3}),w=Math.max(...list.map(([n])=>n.length))+2;
   return '### Canvas Harness report\n\n```text\n'+list.map(([n,v])=>n.padEnd(w)+v.join(' · ')).join('\n')+'\n```\n';
  }
 
@@ -154,6 +197,7 @@
    }catch{cacheFacts=null;}
    if(!dead)schedule();
   }
+  let starts=[];async function readStarts(){if(!store?.readStartupRecord)return;try{starts=await store.readStartupRecord()||[];}catch{starts=[];}if(!dead)schedule();}
   function input(){
    const F=root.ReserveFeatures,C=root.ReserveCustomization,ctx=(()=>{try{return getContext?.()||null;}catch{return null;}})();
    let values={};
@@ -165,10 +209,10 @@
     cache:cacheFacts,
     courses:Array.isArray(ctx?.courses)?ctx.courses.length:null,
     items:Array.isArray(ctx?.items)?ctx.items.length:null,
-    speed:{open:opened,renders},storage:sizes,errors:errorList(),dropped,ctx};
+    speed:{open:opened,renders},storage:sizes,errors:errorList(),dropped,startup:starts,ctx};
   }
   function paint(){
-   if(!shown())return;const now=Date.now();if(now-cacheAt>30000){cacheAt=now;readCache();readSizes();}
+   if(!shown())return;const now=Date.now();if(now-cacheAt>30000){cacheAt=now;readCache();readSizes();readStarts();}
    const inp=input(),f=facts(inp),list=rows(f),item=itemOf({reader:page?.querySelector?.('.rd-reader[data-id]')?.dataset?.id,items:inp.ctx?.items,pathname:root.location?.pathname});
    const piece=v=>`<span class="ch-dev-v"${String(v).length>32?' data-long':''}>${E(v)}</span>`;
    const html=`<div class="ch-dev-head"><h3>Developer</h3><span class="ch-dev-build">${list[0][1].map(piece).join('')}</span></div>

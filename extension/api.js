@@ -4,6 +4,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 (function (root) {
   'use strict';
   class CanvasError extends Error { constructor(message, code = 'network') { super(message); this.name = 'CanvasError'; this.code = code; } }
+  // "Not signed in" answers (Canvas's 401, a page where JSON was asked for, a profile without an id) carry signedOut, so
+  // the page start can tell them from an account that changed: right after a sign-in they can pass (content.js).
+  const signedOutError = message => Object.assign(new CanvasError(message, 'auth'), {signedOut: true});
   // Canvas may throttle with a 403 rate-limit response or a 429.
   // Wait and retry those twice before reporting them; other errors fail at once.
   const throttleRetries = [1000, 4000];
@@ -143,13 +146,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if (response?.redirected || response?.type === 'opaqueredirect') throw new CanvasError('Canvas redirected this read request unexpectedly.', 'redirect');
         if (signal?.aborted) throw new CanvasError('Refresh cancelled.', 'cancelled');
         if (response.status === 401) {
-          if (await signedOut(url,response,controller.signal)) throw new CanvasError('Sign in to Canvas, then refresh Canvas Harness.', 'auth');
+          if (await signedOut(url,response,controller.signal)) throw signedOutError('Sign in to Canvas, then refresh Canvas Harness.');
           throw new CanvasError('Canvas did not allow this course to be read.', '403');
         }
         if (await throttled(response)) throw Object.assign(new CanvasError('Canvas is receiving too many requests. Wait a minute, then refresh.', 'rate'), {retryAfter: retryAfter(response)});
         if (!response.ok)
           throw new CanvasError(response.status === 403 ? 'Canvas did not allow this course to be read.' : `Canvas could not load this information (${response.status}).`, String(response.status));
-        if (!(response.headers.get('content-type') || '').includes('json')) throw new CanvasError('Your Canvas session needs attention. Open Canvas and sign in again.', 'auth');
+        if (!(response.headers.get('content-type') || '').includes('json')) throw signedOutError('Your Canvas session needs attention. Open Canvas and sign in again.');
         let data;
         try { data = await response.json(); } catch (error) { if(controller.signal.aborted) throw error; throw new CanvasError('Canvas returned unreadable data. Try refreshing.', 'data'); }
         if (signal?.aborted) throw new CanvasError('Refresh cancelled.', 'cancelled');
@@ -177,7 +180,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const verifiedProfiles=new WeakMap(),authScopes=new WeakMap();
     async function profile(options) {
       const {data} = await request('/api/v1/users/self/profile', options);
-      if (!data || data.id == null) throw new CanvasError('Could not identify the signed-in Canvas account.', 'auth');
+      if (!data || data.id == null) throw signedOutError('Could not identify the signed-in Canvas account.');
       // Only the account ID and the name for the greeting are kept. Email, login and SIS IDs, the picture and the
       // private calendar feed address are dropped here, so they never reach a saved snapshot.
       const user = {id:data.id};
@@ -231,6 +234,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       return op;
     }
     // Account-scoped instructional lists are shared by refresh and Help, never one GET per assignment.
+    // A refusal (403, 404: a late policy students may not read) is kept as an empty answer; a failure that may pass (Canvas
+    // busy, a timeout) answers empty this time only, so the next refresh asks again.
     async function instructions(path,user,signal,single=false){
       return cachedRead(
         instructionCache,
@@ -238,9 +243,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         String(user.id)+'|'+path,
         signal,
         ()=> (single?request(path,{signal}).then(r=>r.data):list(path,{signal})).catch(error=>{
+        if(fatalSourceError(error)||!['403','404'].includes(String(error?.code)))throw error;
+        return single?null:[];
+      })).catch(error=>{
         if(fatalSourceError(error))throw error;
         return single?null:[];
-      }));
+      });
     }
     function withQuizzes(rows,quizzes,id){
       const byId=new Map(quizzes.map(q=>[String(q.id),q])),assigned=new Set(rows.map(a=>String(a.quiz_id||'')));

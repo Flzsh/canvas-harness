@@ -2,6 +2,8 @@
 (function(root){
  'use strict';
  const HOLD_MS=420,HOLD_DELAY_MS=250,RING_DELAY_MS=130,SLOP=8,ROW_GAP=18,ROW_UNIT=2;
+ // The gap between stacked modules with the course dock or the top bar: the desk's own gap there (customize.css gap:32px).
+ const FIT_GAP=32;
  // The circle drawn round the pointer while a hold runs, as a hand would draw it: a pencil goes round once in ink
  // and overshoots where it began, a second looser pass follows in the accent colour, and three small marks fly
  // off when the thing lifts.
@@ -49,6 +51,13 @@
    const fixed=container.dataset.workPage==='assignments';if(fixed)layout={axis:'x',children:['work','reader']};
    // While dragging, a hidden course-information panel keeps its place only if it is actually drawn (Lite never draws it).
    if(getSettings().showCourseInformation===false&&(!drag||!panels().some(node=>node.dataset.arrangeKey==='context')))layout=M.prune(layout,'context');
+   // A module the saved layout names but this page does not draw (its feature is off, an AI module that has gone) is
+   // left out of this layout only, so the drawn ones share the width instead of standing beside an empty column. The
+   // saved layout keeps it, and it comes back in its place when it is drawn again.
+   {
+     const drawn=new Set(panels().map(node=>node.dataset.arrangeKey));
+     if(drawn.size)for(const key of M.leaves(layout))if(!drawn.has(key))layout=M.prune(layout,key)||layout;
+   }
    // Home drawn again (a room folded back into its module, a page swapped for Home): the new desk and its modules have
    // no sizes yet, and reading them here laid the whole new page out inside the render, before the frame laid it out
    // again. They start from the sizes the last desk had (the same window, the same modules), so the writes below go in
@@ -75,8 +84,14 @@
    put(desk,'--rd-layout-columns',spec.columns);
    for(const node of list){const cell=spec.cells[node.dataset.arrangeKey];if(cell)put(node,'--rd-panel-column',cell.column);}
    // Column rewraps deliver fresh heights through ResizeObserver before paint, without a read-after-write flush.
-   if(measured&&M.rows&&!fits){
-    const placed=M.rows(spec.resolved,heights,{gap:ROW_GAP,unit:ROW_UNIT});
+   // The course dock and the top bar use the same measured rows when a stack stands beside other modules: their CSS turns
+   // the fitted fraction rows into automatic ones (responsive-layout.css), where a module stacked under a short one waited
+   // for the tall module beside them. Without such a stack automatic rows already place every module right, and they keep
+   // the fitted path of 4.0.164 (measured rows lay the desk out again whenever a module's height changes). They keep their
+   // own look: the desk's 32 px gap between stacked modules, no outline drawn down to a row's end.
+   const stacked=node=>!!node&&typeof node!=='string'&&(node.axis==='x'&&node.children.some(child=>child?.axis==='y')||node.children.some(stacked));
+   if(measured&&M.rows&&(!fits||stacked(spec.resolved))){
+    const placed=M.rows(spec.resolved,heights,fits?{gap:FIT_GAP,unit:ROW_UNIT,slack:0}:{gap:ROW_GAP,unit:ROW_UNIT});
     put(desk,'--rd-layout-rows','none');if(desk.dataset.rows!=='measured')desk.dataset.rows='measured';
     // A module drawn down to its row's bottom edge keeps its own height; only its outline grows (widgets.css).
     for(const node of list){
@@ -321,7 +336,10 @@
    preview(candidate);
    // Scroll the course list or page gently when the held object reaches its edge.
    const rail=railNode(),horizontal=drag.kind==='course'&&drag.originalNavigation==='topbar';
-   const scroller=horizontal?rail:drag.kind==='course'&&rail.scrollHeight>rail.clientHeight+2?rail:doc.scrollingElement;
+   // With the course dock or the top bar the Canvas page does not scroll (startup.css reserve-fit): Home scrolls inside
+   // its work area (dock) or its shell (top bar), so that is what a module held at the edge scrolls.
+   const nav=container.dataset.courseNavigation,area=drag.kind==='course'?null:nav==='dock'?container.querySelector('.rd-shell > .rd-workspace'):nav==='topbar'?container.querySelector('.rd-shell'):null;
+   const scroller=horizontal?rail:drag.kind==='course'&&rail.scrollHeight>rail.clientHeight+2?rail:area&&area.scrollHeight>area.clientHeight+2?area:doc.scrollingElement;
    const r=scroller===doc.scrollingElement?{top:0,bottom:win.innerHeight,left:0,right:win.innerWidth}:scroller?.getBoundingClientRect();
    if(!r)return;
    const p=horizontal?drag.x:drag.y,low=horizontal?r.left:r.top,high=horizontal?r.right:r.bottom;
@@ -441,7 +459,10 @@
   function action(button){
    const kind=button?.dataset?.rdAction;
    const type={'arrange-undo':'undo','arrange-reset':'reset','arrange-restore':'restore-context','arrange-hide':'hide-context'}[kind];
-   if(!type)return false;cancel({quiet:true});void commit({type},type==='undo'?'Previous arrangement restored.':'Arrangement saved.');return true;
+   if(!type)return false;cancel({quiet:true});
+   // A width picked a moment ago (previewSize) must not stay drawn over the widths Undo move gives back.
+   if(type==='undo'&&sizeOverride){clearTimeout(overrideTimer);sizeOverride=null;layoutMemo=null;}
+   void commit({type},type==='undo'?'Previous arrangement restored.':'Arrangement saved.');return true;
   }
   function contextmenu(event){if(!drag)return false;event.preventDefault();return true;}
   // A module's width (Narrow, Normal, Wide) is laid out the moment it is chosen: the press glides the modules at once

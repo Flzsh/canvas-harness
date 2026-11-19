@@ -50,3 +50,9 @@
  .rd[data-theme-kit] .rd-toolbar .rd-tools > :is(.rd-button,.rd-icon-button,.rd-grade-switch,.rd-demo,.rd-focus-indicator:has(> .rd-focus-clock:not([hidden]))),
  .rd[data-theme-kit] .rd-toolbar > .rd-drawer-button { border-radius:999px!important; }
 }
+/* The Canvas menu drawer beside a scene (canvas-nav.js --chn-push, canvas-nav.css data-chn-scene): the dashboard's own
+   content moves aside by the card's width, easing as Canvas's page did; the scene's layers (absolute children of .rd) stay
+   under the card. */
+.rd[data-theme-kit] > .rd-toolbar, .rd[data-theme-kit] > .rd-warning, .rd[data-theme-kit] > .rd-shell, .rd[data-theme-kit] > .rd-status { margin-left:var(--chn-push,0px); transition:margin-left 260ms cubic-bezier(.25,.8,.3,1); }
+.rd[data-theme-kit]:is([data-motion-style=off],[data-motion-style=still]) > .rd-toolbar, .rd[data-theme-kit]:is([data-motion-style=off],[data-motion-style=still]) > .rd-warning, .rd[data-theme-kit]:is([data-motion-style=off],[data-motion-style=still]) > .rd-shell, .rd[data-theme-kit]:is([data-motion-style=off],[data-motion-style=still]) > .rd-status { transition:none; }
+@media (prefers-reduced-motion: reduce) { .rd[data-theme-kit] > .rd-toolbar, .rd[data-theme-kit] > .rd-warning, .rd[data-theme-kit] > .rd-shell, .rd[data-theme-kit] > .rd-status { transition:none; } }

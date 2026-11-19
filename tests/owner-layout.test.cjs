@@ -73,7 +73,9 @@ test('topbar scrolls the heading, the strip and Home as one page, never inside a
   assert.match(css, /data-course-navigation=dock/, 'dock rules are added while the existing topbar assertions remain');
 });
 
-test('topbar keeps stacked Home cells stable as content grows and cleans up its observers', () => {
+// 4.0.165 (job A): dock and top bar lay rows out from the modules' measured heights, as the sidebar does. Their CSS had
+// already made the fitted fraction rows automatic (responsive-layout.css), where a stacked module waited for its tall neighbour.
+test('topbar keeps a stacked Home arrangement in place as content grows and cleans up its observers', () => {
   const f = fixture();
   f.controller.destroy();
   f.container.dataset.courseNavigation = 'topbar';
@@ -110,22 +112,24 @@ test('topbar keeps stacked Home cells stable as content grows and cleans up its 
     observe();
     const rows = desk.style['--rd-layout-rows'];
     const cells = Object.fromEntries(Object.entries(f.panels).map(([key, node]) => [key, node.style['--rd-panel-row']]));
-    assert.equal(rows, 'minmax(0,0.5fr) minmax(0,0.5fr)');
-    assert.deepEqual(cells, {context: '1 / 3', work: '1 / 2', reader: '2 / 3'});
-    assert.notEqual(desk.dataset.rows, 'measured');
+    assert.equal(rows, 'none');
+    assert.deepEqual(cells, {context: '1 / span 200', work: '1 / span 200', reader: '217 / span 200'}, 'the stack keeps the 32 px desk gap there');
+    assert.equal(desk.dataset.rows, 'measured');
     const before = {...counts};
     f.panels.work.rect.height = 4000;
     observe();
     assert.equal(counts.reads, before.reads, 'observed changes add no synchronous layout reads');
-    assert.equal(counts.writes, before.writes, 'long content cannot enlarge the allocated cells');
     assert.equal(desk.style['--rd-layout-rows'], rows);
-    assert.deepEqual(Object.fromEntries(Object.entries(f.panels).map(([key, node]) => [key, node.style['--rd-panel-row']])), cells);
+    assert.deepEqual(Object.fromEntries(Object.entries(f.panels).map(([key, node]) => [key, node.style['--rd-panel-row']])),
+      {context: '1 / span 200', work: '1 / span 2000', reader: '2017 / span 200'}, 'longer content moves the module below it, and nothing else');
     f.container.dataset.courseNavigation = 'sidebar';
     controller.sync();
     assert.equal(desk.dataset.rows, 'measured');
+    assert.equal(f.panels.reader.style['--rd-panel-row'], '2010 / span 200', 'the sidebar keeps its 18 px gap');
     f.container.dataset.courseNavigation = 'topbar';
     controller.sync();
     assert.equal(desk.style['--rd-layout-rows'], rows);
+    assert.equal(f.panels.reader.style['--rd-panel-row'], '2017 / span 200', 'returning to the top bar restores its gap');
     assert.ok(Object.values(f.panels).every(node => node.style['--rd-panel-grow'] === '0px'));
   } finally {
     controller.destroy();

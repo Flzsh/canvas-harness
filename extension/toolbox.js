@@ -245,20 +245,23 @@
     });
   }
   // Due labels stay short: the row already names the assignment and course.
-  function when(value){
-   const C=root.ReserveCore,
-     tz=getContext().s?.timeZone||'America/New_York',
-     at=Date.parse(value),
-     now=Date.now(),
-     day=C.dayKey(at,tz),
-     time=new Intl.DateTimeFormat('en-US',{timeZone:tz,hour:'numeric',minute:'2-digit'}).format(at);
-   if(at<now)return ['Past due · '+new Intl.DateTimeFormat('en-US',{timeZone:tz,month:'short',day:'numeric'}).format(at),'danger'];
-   return day===C.dayKey(now,tz)?
-     ['Today · '+time,'warn']:
-     day===C.dayKey(now+864e5,tz)?['Tomorrow · '+time,'info']:[new Intl.DateTimeFormat('en-US',{timeZone:tz,weekday:'short',month:'short',day:'numeric'}).format(at),''];
+  // (The list passes its time zone, read once from the context it already built, and each zone keeps one formatter per
+  // kind: building the whole page context and three Intl formatters for every due row was ~50 ms of opening Tools at
+  // 2x CPU, 2026-11-09. A zone that is not valid still throws as before: a formatter is kept only once it is built.)
+  const whenFormats=new Map(),WHEN_OPTIONS={time:{hour:'numeric',minute:'2-digit'},past:{month:'short',day:'numeric'},day:{weekday:'short',month:'short',day:'numeric'}};
+  const whenFormat=(tz,kind)=>{
+    const key=tz+'|'+kind;
+    let format=whenFormats.get(key);
+    if(!format){format=new Intl.DateTimeFormat('en-US',{timeZone:tz,...WHEN_OPTIONS[kind]});if(whenFormats.size>=24)whenFormats.clear();whenFormats.set(key,format);}
+    return format;
+  };
+  function when(value,tz=getContext().s?.timeZone||'America/New_York'){
+   const C=root.ReserveCore,at=Date.parse(value),now=Date.now(),day=C.dayKey(at,tz),time=whenFormat(tz,'time').format(at);
+   if(at<now)return ['Past due · '+whenFormat(tz,'past').format(at),'danger'];
+   return day===C.dayKey(now,tz)?['Today · '+time,'warn']:day===C.dayKey(now+864e5,tz)?['Tomorrow · '+time,'info']:[whenFormat(tz,'day').format(at),''];
   }
   function renderResults(){
-   if(tool!=='quick'||!dialog?.open&& !body())return;const old=results[index]?.id,c=getContext(),recent=personal.toolbox?.recent||[];
+   if(tool!=='quick'||!dialog?.open&& !body())return;const old=results[index]?.id,c=getContext(),recent=personal.toolbox?.recent||[],zone=c.s?.timeZone||'America/New_York';
    results=query.trim()?
      root.ReserveQuickOpen.search(pool(),query,{courseId:c.courseId,recent,limit:50}):
      root.ReserveQuickOpen.suggest(pool(),{courseId:c.courseId,recent});
@@ -285,7 +288,7 @@
        [
          label,
          tone_
-       ]=entry.dueAt&&!entry.done&&(entry.group==='Due soon'||entry.group==='Assignments'||entry.group==='Personal tasks')?when(entry.dueAt):!entry.group||entry.group==='Recent'?[entry.kind,'']:['',''];
+       ]=entry.dueAt&&!entry.done&&(entry.group==='Due soon'||entry.group==='Assignments'||entry.group==='Personal tasks')?when(entry.dueAt,zone):!entry.group||entry.group==='Recent'?[entry.kind,'']:['',''];
      const text=entry.courseGroup?String(entry.label).replace(new RegExp('^'+String(courseNames(course).short).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'( · )?'),'')||'Course home':entry.label;
      return `<div class="rd-quick-row" role="option" id="rd-quick-${i}" aria-selected="${i===index}" data-quick-index="${i}"${tone(course)}>${entry.url?`<a class="rd-quick-main" href="${E(entry.url)}" data-ui-link="${i}" tabindex="-1">`:`<button class="rd-quick-main" type="button" data-ui-action="run" data-index="${i}" tabindex="-1">`}${entry.courseGroup?`<span class="rd-quick-art" aria-hidden="true">${enabled('course-art')&&first&&course?root.ReserveCourseArt?.mini?.(course,{place:'quick'})||'':''}</span>`:''}<span><strong>${E(text)}</strong>${entry.courseGroup?'':`<small>${E(entry.detail)}</small>`}</span>${label?`<span class="rd-quick-kind"${tone_?` data-tone="${tone_}"`:''}>${E(label)}</span>`:''}${entry.url?`<span class="rd-quick-go" aria-hidden="true">Open in Canvas ${I('external')}</span></a>`:'</button>'}${entry.assignmentId&&enabled('dashboard')?button('preview-result',I('book'),`data-index="${i}" aria-label="Preview ${E(entry.label)}" tabindex="-1"`,'rd-icon-button'):''}</div>`;
    };
@@ -494,7 +497,15 @@
    }
   }
   const unsubscribe=store.subscribe(data=>{personal=data;poolCache=null;if(dialog?.open&&tool==='quick')renderResults();});
-   return {open:(next,source)=>open(next,source),helpWith(context={}){
+   // Biscuit: open one tool by id, the calculator on the mode the student named; false when it is not available here
+   function openTool(id,{mode}={}){
+     if(dead||!toolEnabled(id))return false;
+     if(id==='calculator'&&['graphing','scientific'].includes(mode))calculatorMode=mode;
+     open(id);
+     if(id==='calculator'&&mode)selectCalculatorMode(calculatorMode);
+     return !!dialog?.open&&tool===id;
+   }
+   return {open:(next,source)=>open(next,source),openTool,helpWith(context={}){
      if(dead||!toolEnabled('ai'))return false;
      open('ai');
      if(context.itemId&&context.page==='assignment'&&!String(context.selectedText||'').trim()&&aiPanel?.helpItem)return aiPanel.helpItem(context)===true;

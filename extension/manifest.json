@@ -2,14 +2,15 @@
   "manifest_version": 3,
   "name": "Canvas Harness",
   "short_name": "Canvas Harness",
-  "version": "3.10.0",
+  "version": "4.0.0",
   "description": "For students on Canvas LMS: every course, assignment and deadline on one calm page, with a planner, study rooms and themes.",
   "minimum_chrome_version": "126",
   "permissions": [
     "storage",
     "unlimitedStorage",
     "offscreen",
-    "scripting"
+    "scripting",
+    "alarms"
   ],
   "optional_host_permissions": [
     "https://chatgpt.com/*",
@@ -20,6 +21,9 @@
     "https://www.kimi.com/*",
     "https://chat.qwen.ai/*",
     "https://chat.z.ai/*",
+    "https://api.anthropic.com/*",
+    "https://api.openai.com/*",
+    "https://generativelanguage.googleapis.com/*",
     "https://flzsh.github.io/*",
     "https://*/*"
   ],
@@ -123,6 +127,7 @@
         "themes/blueprint/icon-rocket.png",
         "themes/blueprint/poster.jpg",
         "themes/blueprint/sky.mp4",
+        "themes/maple/ground.jpg",
         "themes/maple/icon-acorn.png",
         "themes/maple/icon-apple.png",
         "themes/maple/icon-maple.png",
@@ -190,6 +195,8 @@
         "biscuit-rules/most.json",
         "biscuit-rules/school-language.json",
         "addons-panel.css",
+        "agent.css",
+        "study-band.css",
         "focus-room.css",
         "review-deck.css",
         "grade-impact.css"
@@ -237,6 +244,7 @@
         "themes/blueprint/icon-rocket.png",
         "themes/blueprint/poster.jpg",
         "themes/blueprint/sky.mp4",
+        "themes/maple/ground.jpg",
         "themes/maple/icon-acorn.png",
         "themes/maple/icon-apple.png",
         "themes/maple/icon-maple.png",
@@ -304,6 +312,8 @@
         "biscuit-rules/most.json",
         "biscuit-rules/school-language.json",
         "addons-panel.css",
+        "agent.css",
+        "study-band.css",
         "focus-room.css",
         "review-deck.css",
         "grade-impact.css"
@@ -317,5 +327,5 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'; worker-src 'self'"
   },
-  "version_name": "3.10.0"
+  "version_name": "4.0.0"
 }

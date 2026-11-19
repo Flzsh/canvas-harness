@@ -4,11 +4,13 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),asse
 const root=path.resolve(__dirname,'..'),extension=path.join(root,'extension');
 const manifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json'),'utf8'));
 assert.equal(manifest.manifest_version,3);
-assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen','scripting']);
+// alarms: Your AI keeps one alarm while a run is unfinished, so the run can continue after the worker sleeps; it never starts a run.
+assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen','scripting','alarms']);
 assert.equal(manifest.optional_permissions,undefined);
 const providers=require('../extension/ai-providers.js');
-// AI provider sites, plus a school's own Canvas address: optional, asked for one site at a time.
-assert.deepEqual(manifest.optional_host_permissions,[...providers.list.flatMap(p=>p.origins),'https://flzsh.github.io/*','https://*/*']);
+// AI provider sites and their API hosts (a key the student adds), plus a school's own Canvas address: optional, asked for one site at a time.
+const apiHosts=['https://api.anthropic.com/*','https://api.openai.com/*','https://generativelanguage.googleapis.com/*'];
+assert.deepEqual(manifest.optional_host_permissions,[...providers.list.flatMap(p=>p.origins),...apiHosts,'https://flzsh.github.io/*','https://*/*']);
 // The reader entry and host sheet also use randomized URLs for local PDFs on
 // granted custom Canvas sites. Executable reader internals remain private.
 {const [fixed,dynamic,...rest]=manifest.web_accessible_resources;assert.equal(rest.length,0);assert.deepEqual(fixed.matches,['https://*.instructure.com/*']);

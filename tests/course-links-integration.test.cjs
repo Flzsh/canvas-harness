@@ -14,7 +14,7 @@ test('My links & files is owned, ordered and enabled only in selected workspace 
  }
 });
 test('course links remain packaged without permissions, external writes or separate manager pages',()=>{
- const manifest=JSON.parse(read('manifest.json'));assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen','scripting']);
+ const manifest=JSON.parse(read('manifest.json'));assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen','scripting','alarms']);
  assert.ok(!manifest.content_scripts.flatMap(s=>s.js).some(f=>/^course-(?:files|links|file-open)/.test(f)));
  assert.ok(!manifest.web_accessible_resources.some(r=>r.resources.some(f=>/^course-(?:files|links|file-open).*\.js$/.test(f))),'feature scripts stay internal');
  assert.match(read('background.js'),/target==='ch-course-files'/,'explicit backups can load the packaged codec through the worker');

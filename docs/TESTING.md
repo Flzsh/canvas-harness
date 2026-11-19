@@ -1,14 +1,22 @@
-# Release checks — Canvas Harness 3.10.0
+# Release checks — Canvas Harness 4.0.0
 
-## 3.10.0 Chrome Web Store submission scope
+One package for the Chrome Web Store and GitHub releases. The build writes `dist/Canvas-Harness-4.0.0.zip`; the same file is uploaded to the store and attached to the GitHub release.
 
-3.9.2, November 4, 2026: `node scripts/test.cjs` ran 5,347 tests, 5,336 passed and 11 were skipped; `npm run check` passed, and the release audit of the extracted ZIP passed.
+4.0.0, November 17, 2026: `node scripts/test.cjs` ran 7,074 tests, 7,046 passed, 0 failed and 28 were skipped (9 as before; 13 workflow audits of the old AI handoff, skipped by that file; 6 browser-only layout tests of the Canvas menu bar and the Help band, which skip in Node); `npm run check` passed, and the release audit of the extracted ZIP passed with 330 files and the AI help lock checks.
 
-The PDF reader loads PDF.js 6.4.299's unmodified modern build through `pdf-library.mjs` and `pdf-worker.mjs`, which first load the readable `pdf-polyfills.js`; `minimum_chrome_version` is 126. `tests/store-readability.test.cjs` keeps the packaged source readable. It also carries Biscuit's round-8 language rules, PDF reader fixes for issues #58, #59, #60 and #61, the reader-frame origin fix from 3.7.0 on GitHub and the speed work described in [perf-3.8.md](perf-3.8.md). Everything in 3.7.0 stays: the course dock and Cards look, the 3.6.0 Make it yours and top-bar redraws, and the 3.5.0 contributions: #47 My links & files, #51 PDF study-sheet export, #52 deadline changes, and issue #53 PDF tools and icons. Existing public feature choices and handoff modules remain; no new AI runtime modules are included.
+Preview 7, November 9, 2026: `npm test` ran 6,769 tests, 6,760 passed and 9 were skipped; `npm run check` passed, and the release audit of the extracted ZIP passed with 323 files.
 
-Run `npm.cmd run check`, `node scripts/test.cjs` and `npm.cmd run build` one at a time. Extract with `Expand-Archive -LiteralPath dist/Canvas-Harness-3.10.0.zip -DestinationPath dist/unpacked-3.10.0`, then run `node scripts/release-audit.cjs dist/unpacked-3.10.0`. The build writes entry sizes and SHA-256 hashes to `dist/release-manifest.json`; the audit writes `dist/audit-3.10.0.json`. Nothing is pushed or submitted by these local checks.
+Preview 5, November 4, 2026: `npm test` ran 6,740 tests, 6,731 passed and 9 were skipped; `npm run check` passed, and the release audit of the extracted ZIP passed.
 
-The suite covers account and site isolation, local course-file backup/restore and limits, literal-safe study sheets, account changes before download, deadline retention/partial refreshes/storage failures, PDF tools, settings routing and selection motion. Full includes Deadline changes and My links & files; Lite leaves them out. Focus room, Review deck and Grade impact remain opt-in Custom features.
+Preview 4, November 4, 2026: `npm test` ran 6,737 tests, 6,728 passed and 9 were skipped; `npm run check` passed, and the release audit of the extracted ZIP passed with 301 files.
+
+## 3.8.1 Chrome Web Store submission scope
+
+This Chrome Web Store submission takes the place of 3.7.0, which the store did not publish. The PDF reader loads PDF.js 6.4.299's unmodified modern build through `pdf-library.mjs` and `pdf-worker.mjs`, which first load the readable `pdf-polyfills.js`; `minimum_chrome_version` is 126. `tests/store-readability.test.cjs` keeps the packaged source readable. It also carries Biscuit's round-8 language rules, PDF reader fixes for issues #58, #59, #60 and #61, the reader-frame origin fix from 3.7.0 on GitHub and the speed work described in [perf-3.8.md](perf-3.8.md). Everything in 3.7.0 stays: the course dock and Cards look, the 3.6.0 Make it yours and top-bar redraws, and the 3.5.0 contributions: #47 My links & files, #51 PDF study-sheet export, #52 deadline changes, and issue #53 PDF tools and icons. Existing public feature choices and handoff modules remain; no new AI runtime modules are included.
+
+Run `npm.cmd run check`, `node scripts/test.cjs` and `npm.cmd run build` one at a time. Extract with `Expand-Archive -LiteralPath dist/Canvas-Harness-4.0.0.zip -DestinationPath dist/unpacked-4.0.0`, then run `node scripts/release-audit.cjs dist/unpacked-4.0.0`. The build writes entry sizes and SHA-256 hashes to `dist/release-manifest.json`; the audit writes `dist/audit-4.0.0.json`. Nothing is pushed or submitted by these local checks.
+
+The suite covers account and site isolation, local course-file backup/restore and limits, literal-safe study sheets, account changes before download, deadline retention/partial refreshes/storage failures, PDF tools, settings routing and selection motion. Full includes Deadline changes and My links & files; Lite leaves them out. Focus room, Review deck and Grade impact are on in Full since 3.9.3; Lite leaves them out. AI help is in no preset: it loads only after its add-on is added and its notice agreed to.
 
 For historical comparison, the 3.5.0 suite passed 3,089 tests with three pre-existing browser-only skips (3,092 total). The 3.5.0 artificial Edge preview verified all five settings tabs, last-tab reopening, import/reset controls, group order and the open-dock heading at 901, 1200 and 1400 px, with no new console errors. For 3.6.0, the serial suite passed 4,660 tests with three skips (4,663 total), and `npm run check` passed. A local artificial Edge preview checked the drawn toolbar, regular tab weight, the dock at 16 px from the top, Look and Pony artwork, and all seven public skills. The packaged build and extracted ZIP audit were not run in this preparation.
 

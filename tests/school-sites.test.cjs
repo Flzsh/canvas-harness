@@ -36,7 +36,7 @@ test('custom-site.js trusts only the page it runs on',()=>{
 });
 
 function background({saved=[],granted=[]}={}){
- const store={'reserve:sites':saved},perms=new Set(granted),registered=new Map(),opened=[];
+ const store={'reserve:sites':saved,...require('./ai-unlocked.cjs').storage()},perms=new Set(granted),registered=new Map(),opened=[];
  const runtime={id:'a'.repeat(32),onConnect:event(),onMessage:event(),onInstalled:event(),onStartup:event(),getURL:f=>'chrome-extension://'+'a'.repeat(32)+'/'+f,getManifest:()=>manifest};
  const chrome={runtime,
   storage:{onChanged:event(),local:{get:async k=>({[k]:store[k]}),set:async o=>{Object.assign(store,o);},remove:async k=>{delete store[k];}}},
