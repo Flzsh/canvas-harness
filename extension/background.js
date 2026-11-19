@@ -3,7 +3,7 @@
 importScripts('features.js','site.js','core.js','market-site.js','ai-providers.js','ai-inject.js','ai-web.js','page-preferences.js',
  'custom-art.js','media-reference.js','media-store.js','workspace-arrange.js','customization-model.js','backup-media.js','custom-kits.js','quick-pack.js',
  'gpa-model.js','personal-work.js','storage.js','planner-model.js','pet-art.js','agent-clock.js','pony-ask.js',
- 'pack-common.js','theme-pack.js','pet-pack.js','preset-pack.js','account-writes.js','market-holds.js','packs.js','market.js','market-media.js',
+ 'pack-common.js','band-kit.js','theme-pack.js','pet-pack.js','preset-pack.js','account-writes.js','market-holds.js','packs.js','market.js','market-media.js',
  // Your AI (4.0): providers by API key, Google Docs text, study aids, the Today and overnight runs and their records.
  'ai-api-provider.js','ai-api.js','google-docs.js','study-kind.js','study-prompts.js','study-writes.js','study-ui.js','overnight.js','api.js','study-band.js','ai-context.js',
  'agent-prompts.js','agent-data.js','agent-actions.js','agent-runtime.js','agent-client.js','ai-run-store.js','study-tools.js','prepare-brief.js','ai-canvas-bridge.js','ai-canvas.js',

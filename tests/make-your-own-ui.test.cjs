@@ -5,7 +5,7 @@ const colors={bg:'#ffffff',surface:'#ffffff',ink:'#111111',muted:'#555555',line:
 const theme={format:'chtheme',version:1,name:'Garden <look>',colors:{light:colors},assets:{}};
 test('customization includes the pure preset dependencies without enabling optional controllers',()=>{
  const F=require('../extension/features.js'),selection=F.resolve({preset:'custom',custom:['customization']});
- for(const file of ['planner-model.js','pet-art.js','agent-clock.js','pony-ask.js','custom-kits.js','pack-common.js','theme-pack.js','pet-pack.js','preset-pack.js','packs.js','data-theme.js','make-your-own.js'])assert.ok(selection.js.includes(file),file);
+ for(const file of ['planner-model.js','pet-art.js','agent-clock.js','pony-ask.js','custom-kits.js','pack-common.js','band-kit.js','theme-pack.js','pet-pack.js','preset-pack.js','packs.js','band-pieces.js','data-theme.js','make-your-own.js'])assert.ok(selection.js.includes(file),file);
  assert.ok(!selection.enabled.includes('pony'));assert.ok(!selection.enabled.includes('planner'));assert.ok(!selection.js.includes('pets.js'));assert.ok(!selection.js.includes('widgets.js'));assert.ok(selection.js.indexOf('pony-ask.js')<selection.js.indexOf('preset-pack.js'));
 });
 function fixture(){

@@ -148,7 +148,7 @@
    return {svg:clean.svg,still,width,height,animated:animatedSVG(clean.svg)};
  }
  const ascii=(b,at,n)=>String.fromCharCode(...b.subarray(at,at+n));
- function inspectMedia(b,type,options={}){return codec().inspectPortable(b,type,options);}
+ function inspectMedia(b,type,options={},slot){return codec().inspectPortable(b,type,options,slot);}
  function dataURL(b,type){let text='';for(let at=0;at<b.length;at+=8192)text+=String.fromCharCode(...b.subarray(at,at+8192));return 'data:'+type+';base64,'+btoa(text);}
  function rasterStill(b,info){
   const join=parts=>{const out=new Uint8Array(parts.reduce((n,p)=>n+p.length,0));let at=0;for(const p of parts){out.set(p,at);at+=p.length;}return out;};
@@ -382,9 +382,11 @@
    }
    else if(asset.type==='font/woff2'){await inspectFont(original);infos[key]={animated:false};}
    else{
-     const frame=pack.format==='chtheme'?[pack.banner,pack.background].find(value=>value?.asset===key):null,
+     const bands=pack.format!=='chtheme'?[]:c.band?.frames?.length?c.band.frames.map(item=>item.value):[pack.band,pack.band?.dark],
+       frame=pack.format==='chtheme'?[...bands,pack.banner,pack.background].find(value=>value?.asset===key):null,
+       slot=bands.some(value=>value?.asset===key)?'band':'banner',
        options=frame?{...(frame.loop?{loop:frame.loop}:{}),...(typeof frame.still==='number'?{still:frame.still}:{})}:{},
-       info=inspectMedia(original,asset.type,options);
+       info=inspectMedia(original,asset.type,options,slot);
      infos[key]=info;
      asset.width=info.width;
      asset.height=info.height;
@@ -398,9 +400,9 @@
     // media:false (a pack already checked and decoded when it was added): the container check above is enough
     if(support.media!==false&&(support.media||root.document&&typeof root.createImageBitmap==='function')){
       if(typeof selected.prepare!=='function')throw Error('Media codec must expose prepare');
-      const prepared=await selected.prepare(blob,'banner',key.trim().slice(0,160),options);
+      const prepared=await selected.prepare(blob,slot,key.trim().slice(0,160),options);
       if(!prepared||!(prepared.blob instanceof Blob))throw Error('Media codec returned no prepared blob');
-      const ref=codec().cleanReference(prepared.asset,'banner'),max=ref.kind==='video'?codec().limits.videoBytes:codec().limits.imageBytes;
+      const ref=codec().cleanReference(prepared.asset,slot),max=ref.kind==='video'?codec().limits.videoBytes:codec().limits.imageBytes;
       if(prepared.blob.type!==ref.type||
         !prepared.blob.size||
         prepared.blob.size>max||

@@ -13,6 +13,8 @@
    imageWidth:2400,
    backgroundWidth:3840,
    videoWidth:1920,
+   bandVideoWidth:4096,
+   bandVideoPixels:2359296,
    duration:60,
    sourceDuration:3600,
    animationFrames:300,
@@ -27,6 +29,13 @@
  function nameOf(value,max=160){if(typeof value!=='string'||!value.trim()||value.length>max||/[\p{C}\u2028\u2029]/u.test(value))fail('Choose a valid file name.');return value.trim();}
  function dimensions(width,height,maxWidth){
    if(!Number.isInteger(width)||!Number.isInteger(height)||width<1||height<1||width>maxWidth||height>16000||width*height>48000000)fail('Media dimensions are too large.');
+ }
+ // A theme's band (theme-pack.js band) is painted at 8:1 across the top of Home, like the packaged scenes' 4096 x 512
+ // skies: its video may be as wide as theirs (at most 4096 px and 4096 x 576 px of picture, about a 1080p frame).
+ function videoBounds(width,height,slot){
+   if(slot!=='band')return dimensions(width,height,limits.videoWidth);
+   dimensions(width,height,limits.bandVideoWidth);
+   if(width*height>limits.bandVideoPixels)fail('Media dimensions are too large.');
  }
  const nativeObject=Function.prototype.toString.call(Object);
  function dataRecord(value,allowed,label='media framing'){
@@ -43,8 +52,8 @@
   }
   return out;
  }
- function videoSource({size,width,height,duration},input=false){
-  if(!Number.isSafeInteger(size)||size<=0||size>limits.videoBytes)fail('Video must be at most 30 MB.');dimensions(width,height,input?16000:limits.videoWidth);
+ function videoSource({size,width,height,duration},input=false,slot){
+  if(!Number.isSafeInteger(size)||size<=0||size>limits.videoBytes)fail('Video must be at most 30 MB.');if(input)dimensions(width,height,16000);else videoBounds(width,height,slot);
   if(!Number.isFinite(duration)||duration<=0||duration>limits.sourceDuration)fail('Video must be at most 3600 s.');
  }
  function videoTiming(duration,options={}){
@@ -54,8 +63,8 @@
   if(end-start<.05||end-start>limits.duration)fail('Video loop must be from 0.05 s to 60 s.');
   const still=input.still===undefined?start+(end-start>1.5?Math.min(1,(end-start)/3):0):time(input.still);return {loop:{start,end},still};
  }
- function validateVideo(value,options={}){
-   videoSource(value);
+ function validateVideo(value,options={},slot){
+   videoSource(value,false,slot);
    const input=dataRecord(options,['loop','still']);
    if(input.loop===undefined&&value.duration>limits.duration)fail('Video must be at most 60 s.');
    videoTiming(value.duration,input);
@@ -87,13 +96,13 @@
  }
  function cleanReference(value,slot='banner'){
   value=dataRecord(value,['mediaId','name','type','kind','width','height','duration','palette','animated'],'media reference');
-  if(!['banner','card','background','title'].includes(slot)||typeof value.mediaId!=='string'||!uuid.test(value.mediaId))fail('Invalid media reference.');
+  if(!['banner','card','background','title','band'].includes(slot)||typeof value.mediaId!=='string'||!uuid.test(value.mediaId))fail('Invalid media reference.');
   const video=['video/mp4','video/webm'].includes(value.type);
   if(value.kind!==(video?'video':'image')||!video&&!['image/webp','image/png'].includes(value.type)&&!(value.type==='image/gif'&&value.animated===true&&slot!=='title')||video&&slot==='title')
     fail('Invalid artwork type.');
   if(own(value,'animated')&&(typeof value.animated!=='boolean'||value.animated&&!['image/gif','image/webp'].includes(value.type)))fail('Invalid media animation setting.');
-  dimensions(value.width,value.height,video?limits.videoWidth:slot==='background'?limits.backgroundWidth:limits.imageWidth);
-  if(video)videoSource({size:1,width:value.width,height:value.height,duration:value.duration});else if(own(value,'duration'))fail('Invalid photo duration.');
+  if(video)videoBounds(value.width,value.height,slot);else dimensions(value.width,value.height,slot==='background'?limits.backgroundWidth:limits.imageWidth);
+  if(video)videoSource({size:1,width:value.width,height:value.height,duration:value.duration},false,slot);else if(own(value,'duration'))fail('Invalid photo duration.');
   if(!Array.isArray(value.palette)||![0,3].includes(value.palette.length)||value.palette.some(value=>typeof value!=='string'||!color.test(value)))fail('Invalid artwork colours.');
   return {
     mediaId:value.mediaId,
@@ -238,6 +247,7 @@
    referenced,
    undoMediaReferences,
    undoReferences,
+   videoBounds,
    videoSource,
    videoTiming,
    validateVideo,
