@@ -1262,11 +1262,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function syncCompanion(){
       const A=root.ReservePetArt;
       if(!enabled('pony')||!A?.identity||!A?.hydrate||container.dataset.chLinksPending)return;
-      const selected=A.identity(personal),key=JSON.stringify([selected.id,selected.name]);
+      // A theme pack may bring its own companion: it walks while that theme is in use, no scene is on and the student
+      // has not chosen a companion of their own (pet-art.js themePack).
+      const selected=A.identity(personal),
+        scene=personal.settings?.sceneTheme,
+        themeId=personal.settings?.makeYourOwn?.theme?.id,
+        gift=!selected.id&&!scene&&themeId&&enabled('customization')&&makeOwn?.state.theme?.companion||null,
+        key=JSON.stringify(gift?['theme',themeId,gift.name]:[selected.id,selected.name]);
       if(key===companionKey)return;
       companionKey=key;
       companionPack=null;
       const turn=++companionTurn;
+      if(gift){companionPack=A.themePack?.(themeId,gift)||null;if(companionPack)scheduleRender();return;}
       if(!selected.id||A.identity(personal,makeOwn?.state.pet).pack)return;
       Promise.resolve(A.hydrate(personal,{store})).then(pack=>{
         if(destroyed||turn!==companionTurn||container.dataset.chLinksPending)return;

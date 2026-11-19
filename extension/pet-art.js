@@ -68,7 +68,8 @@
    media=new WeakMap(),
    hydrations=new WeakMap(),
    effective=new WeakMap(),
-   originals=new WeakMap();
+   originals=new WeakMap(),
+   themePacks=new WeakMap();
  const original=pack=>originals.get(pack)||pack;
  function selectedLayer(own,id){const layers=object(own.adjustments),key='pack:'+id;return Object.hasOwn(layers,key)?object(layers[key]):{};}
  function effectivePack(pack,layer){
@@ -91,11 +92,13 @@
     wrapped=object(hydratedPack),
     candidate=object(original(object(wrapped.pack||hydratedPack))),
     scoped=Object.hasOwn(d,'settings'),
-    layer=scoped?selectedLayer(own,active.id):{};
+    layer=scoped?selectedLayer(own,active.id):{},
+    gift=themePacks.get(candidate);
   const selected=scoped?
     typeof active.id==='string'&&/^[a-z0-9][a-z0-9._-]{0,99}$/i.test(active.id)&&!['__proto__','constructor','prototype'].includes(active.id)&&row.kind==='pet'&&row.id===active.id&&!!text(row.name):
-    candidate.format==='chpet',
+    candidate.format==='chpet'&&!gift,
     valid=selected&&
+      !gift&&
       candidate.format==='chpet'&&
       Array.isArray(candidate.size)&&
       candidate.size.length===2&&
@@ -111,7 +114,11 @@
     id:selected&&scoped?row.id:null,
     kind:selected?'companion':'pony',
     custom:!!pack,
-    pack:pack?effectivePack(pack,layer):null,
+    pack:pack?
+      effectivePack(pack,layer):
+      !selected&&gift&&!settings.sceneTheme&&gift===object(own.theme).id&&Array.isArray(candidate.size)&&!!object(candidate.assets)[object(candidate.poses).stand]?
+        candidate:
+        null,
     motion:selected&&['gentle','still','off'].includes(layer.motion)?layer.motion:'gentle',
     enabled:pet.enabled!==false,
     coat:Object.hasOwn(COATS,pet.coat)?pet.coat:'oat',
@@ -239,6 +246,10 @@
   events?.addListener(changed);runtime?.onMessage?.addListener(message);void refresh();
   return {refresh,destroy(){dead=true;revision++;events?.removeListener(changed);runtime?.onMessage?.removeListener(message);}};
  }
- const api={COATS,HARNESS,POSES,svg,identity,drawing,placeholder,lookMode,customPose,customDrawing,hydrate,clearHydration,observe};
+ // A theme pack's own companion (the `companion` of a .chtheme, checked by the pet reader when the theme was installed).
+ // It dresses Biscuit, and only while that theme is the one in use, no scene is on and the student has not chosen a
+ // companion of their own. Switching or removing the theme drops it with the theme.
+ function themePack(id,pack){if(typeof id!=='string'||!id||!pack||typeof pack!=='object'||pack.format!=='chpet')return null;themePacks.set(pack,id);return pack;}
+ const api={COATS,HARNESS,POSES,svg,identity,drawing,placeholder,lookMode,customPose,customDrawing,hydrate,clearHydration,themePack,observe};
  root.ReservePetArt=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);
