@@ -16,7 +16,9 @@
       // document editors never become an insertion target; labels can localize.
       chatgpt: {origin: 'https://chatgpt.com', selectors: ['#prompt-textarea', 'textarea[data-testid="prompt-textarea"]', '[contenteditable="true"][data-testid="prompt-textarea"]', '[data-composer-body] [data-composer-markdown][role="textbox"][contenteditable="true"]']},
       claude: {origin: 'https://claude.ai', selectors: ['.ProseMirror[contenteditable="true"][data-placeholder="Reply to Claude"]', '.ProseMirror[contenteditable="true"][data-placeholder="Reply to Claude..."]', '.ProseMirror[contenteditable="true"][data-placeholder="Reply to Claude…"]', '.ProseMirror[contenteditable="true"][data-placeholder="How can I help you today?"]', '.ProseMirror[contenteditable="true"][data-placeholder="What can I help you with?"]', '[contenteditable="true"][data-testid="chat-input"]', '[contenteditable="true"][aria-label="Write your prompt to Claude"]', 'textarea[placeholder="Message Claude"]']},
-      gemini: {origin: 'https://gemini.google.com', selectors: ['rich-textarea .ql-editor[contenteditable="true"]']},
+      // box: the most characters the site's chat box keeps (Gemini's: the first 32,000, the rest dropped without a
+      // word; measured on the real page 2026-11-18). Kept equal to ai-providers.js; a test holds the two together.
+      gemini: {origin: 'https://gemini.google.com', selectors: ['rich-textarea .ql-editor[contenteditable="true"]'], box: 32000},
       grok: {origin: 'https://grok.com', selectors: ['textarea[aria-label="Ask Grok"]', 'textarea[placeholder="Ask anything"]', 'textarea[placeholder="What do you want to know?"]', '[contenteditable="true"][data-testid="grok-composer"]']},
       deepseek: {origin: 'https://chat.deepseek.com', selectors: ['textarea#chat-input', 'textarea[placeholder="Message DeepSeek"]']},
       kimi: {origin: 'https://www.kimi.com', selectors: ['.chat-input-editor[contenteditable="true"]', '.chat-input [contenteditable="true"]', 'textarea[placeholder="Ask anything..."]']},
@@ -226,6 +228,11 @@
       if (textarea && editor.maxLength >= 0 && (stale ? 0 : current.length) + addition.length > editor.maxLength) {
         return reply('no-editor', 'The context exceeds this composer’s text limit. Shorten it and try again.');
       }
+      // A chat box that keeps only so many characters: a longer message is not typed at all, so no cut-off draft is
+      // left in the box for the student to find, or to send by mistake.
+      if (site.box && (stale ? 0 : current.length) + addition.length > site.box) {
+        return {...reply('no-editor', 'This is longer than this AI website\u2019s chat box holds (' + site.box.toLocaleString('en-US') + ' characters), so nothing was typed. Send less, or choose another AI.'), tooLong: true, box: site.box};
+      }
       const options = {bubbles: true, composed: true, inputType: 'insertText', data: addition};
       const before = new view.InputEvent('beforeinput', {...options, cancelable: true});
       if (!editor.dispatchEvent(before)) return reply('no-editor', 'The provider declined draft insertion. Paste the context manually.');
@@ -248,6 +255,28 @@
       editor.dispatchEvent(new view.InputEvent('input', options));
       const verify = () => {
         if (!correctDocument() || !usable(editor) || !normalize(read()).includes(normalize(block))) {
+          // The site kept only the start of the message (its chat box holds less than this). When the box holds nothing
+          // else, what was typed is taken out again, so no cut-off draft waits there, and it is said as that.
+          const kept = correctDocument() && usable(editor) && !authenticationForm() ? normalize(read()) : '';
+          if (kept.length >= 200 && (stale || !current.trim()) && normalize(block).startsWith(kept)) {
+            let cleared = false;
+            try {
+              if (textarea) {
+                Object.getOwnPropertyDescriptor(view.HTMLTextAreaElement.prototype, 'value').set.call(editor, '');
+                editor.dispatchEvent(new view.InputEvent('input', {bubbles: true, composed: true, inputType: 'deleteContentBackward'}));
+              }
+              else {
+                const selection = view.getSelection(), range = document.createRange();
+                range.selectNodeContents(editor);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                document.execCommand('delete', false);
+              }
+              cleared = !normalize(read());
+            } catch (_) { /* The box keeps what it kept; the words below say so. */ }
+            if (cleared) editor.removeAttribute('data-canvas-harness-context');
+            return {...reply('no-editor', 'This AI website kept only the start of the message: its chat box holds less than this. ' + (cleared ? 'Nothing is left in the box. Send less, or choose another AI.' : 'Clear the chat box there before trying again.')), tooLong: true, cut: true};
+          }
           // Retry only a proven framework reset to the exact original draft.
           // Partial edits, navigation and an uncertain Send are never replayed.
           return {
@@ -412,8 +441,13 @@
       // Prepare replies come as one JSON code block (told to avoid code blocks, ChatGPT wraps the JSON in <escape>,
       // which its page does not show); take the first complete cards object.
       const raw=String(text||'').replace(/<\/?escape>/g,''),open=raw.indexOf('{'),close=raw.lastIndexOf('}');
+      // (Daily AI help's first reply is its picks: read as finished at once too. A site with no chat record to read, such
+      // as Gemini, otherwise waited four unchanged looks for it, up to a minute.)
       if(open>=0&&close>open){
-        try{const data=JSON.parse(raw.slice(open,close+1));if(Array.isArray(data?.cards))return {status:'answer',text:raw.slice(open,close+1),...meta};}catch{}
+        try{
+          const data=JSON.parse(raw.slice(open,close+1));
+          if(Array.isArray(data?.cards)||Array.isArray(data?.picks))return {status:'answer',text:raw.slice(open,close+1),...meta};
+        }catch{}
       }
       // (every site's words: Claude's "out of free messages", DeepSeek's "server is busy", the Chinese sites' 上限 too)
       const problem=String(text||'').length<=300?String(text||'').match(/Connection interrupted|Something went wrong|network error|An error occurred|There was an error generating a response|Too many requests|server is busy|You['’]ve reached|usage limit|out of free messages|limit (?:reached|exceeded)|服务器繁忙|已达(?:到)?上限/i):null;
