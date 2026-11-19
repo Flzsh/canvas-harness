@@ -2,7 +2,7 @@
 
 Canvas Harness 4.0 has **AI help**, an optional add-on. It reads your Canvas the way the rest of Canvas Harness does, writes a message for an AI, and turns the reply into Help cards, a Today list and study aids on your page. Canvas Harness has no AI of its own and no server. The answer comes from an AI you choose, reached in one of three ways:
 
-- **Web AI** (the default): the AI's own website, in a browser tab where you are signed in. ChatGPT, Claude and Gemini are listed first; Grok, DeepSeek, Kimi, Qwen and Z.ai (GLM) are under **More**.
+- **Web AI** (the default): the AI's own website, in a browser tab where you are signed in. ChatGPT, Claude and Gemini are listed first; Grok, DeepSeek, Kimi, Qwen and Z.ai (GLM) are under **More**. Gemini's chat box holds at most 32,000 characters, so from 4.1.0 each message to Gemini is fitted to it (the AI is told what had to be left out); a message that still cannot fit is not typed, and AI help says so.
 - **API**: your own API key for Anthropic, OpenAI, Google or an OpenAI-compatible service. The provider bills you for each request.
 - **Overnight**: Canvas Harness writes the message as a file in a folder you pick, and an AI tool that you run yourself writes its answer into the same folder.
 

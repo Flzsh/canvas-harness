@@ -1,5 +1,9 @@
 # Reviewer testing notes
 
+## 4.1.0 changes
+
+4.1.0 is 4.0.0 with one more packaged scene theme (Christmas: a looping video, a poster, frames, a page ground and icons, inside the package), band support for theme packs (a theme pack, a data file, can carry a band picture or short video with drawn moving pieces and a companion; the extension draws them with packaged code), the Market's choice of a theme's band copy (the same Market host and the same size and SHA-256 checks as before), and AI help messages fitted to Gemini's chat box. It adds no permissions, no new kind of network request and no remote code. AI help stays packaged but off, exactly as in 4.0.0, until the student adds it from the Market and accepts its notice.
+
 ## 4.0.0 changes
 
 4.0.0 is 3.10.0 with AI help added as an optional add-on, Biscuit's larger rule set (answers as cards and lists), Canvas's menu bar in one bar at every size, a slip after Archive and Mark done, Home modules that keep their shape, the Maple Wind page ground, faster pages and many fixes. It adds no remote code and no network requests beyond 3.10.0 except those of AI help once the student turns it on. AI help is packaged but off: no AI control appears anywhere (no Help band, no Help with this, no AI tab in Tools, no AI tile in Edit Home, no AI replies from Biscuit) until the student opens the Market from the popup (the Market row), adds "AI help" and accepts the packaged notice (`ai-notice.html`, "Before you turn on AI help": use it to learn, follow the school's rules on AI, the student is responsible for academic honesty). The Market add-on is a data file (`{"feature":"ai"}`) that only switches packaged code on; it turns nothing on by itself. Removing the add-on, switching AI help off or choosing Lite locks it again, stops a run in progress and clears its alarm.

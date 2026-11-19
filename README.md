@@ -40,6 +40,12 @@
 
 <p align="center"><sub>Every demo is Canvas with Canvas Harness switched on, using made-up courses and assignments.</sub></p>
 
+## New in 4.1
+
+- **Christmas**, a new scene in the Holiday pack: a market town on Christmas Eve in pixel art, with falling snow.
+- **Theme packs with a band**: a theme from the Market or a file can paint a moving band across the top of Home and bring a companion of its own.
+- **AI help fits Gemini's chat box**, and says so plainly when a message is too long for it.
+
 ## New in 4.0
 
 - **AI help, an optional add-on.** It is in the package but off, and nothing of it shows, until you add it from the Market and agree to a short notice. Then: Help cards for an assignment, a PDF or a selection (practice tests, reading breakdowns, worked examples, writing outlines), Daily AI help, a Today list and study aids, from the AI website you pick or your own API key. Biscuit can hand it a question. Switch it off, or remove the add-on, and it locks again. [How it works](AI.md)
