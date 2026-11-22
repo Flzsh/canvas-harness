@@ -169,6 +169,8 @@
    const settings=clone(consent.settings||input.settings);
    if(settings?.on!==true||typeof settings.wishes!=='string'||settings.wishes.length>600)throw Error('Review Prepare settings.');
    if(input.kind!=='ask'&&input.entry!=='manual'&&settings.everyDay!==true)return {skipped:'not-chosen'};
+   // Help switched off in Edit Home: nothing starts on its own.
+   if(input.kind!=='ask'&&input.entry!=='manual'&&consent.helpOff===true)return {skipped:'help-off'};
    const wishes=consent.perKindWishes||{};
    if(Object.values(wishes).some(v=>typeof v!=='string'||v.length>600))throw Error('Review your study instructions.');
    const notes=(Array.isArray(consent.notes)?consent.notes:[]).filter(n=>n&&typeof n.text==='string'&&n.text.length<=400&&['card','kind','all'].includes(n.scope)).slice(-40).map(n=>

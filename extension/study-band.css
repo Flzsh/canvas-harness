@@ -807,3 +807,7 @@
 @media (prefers-reduced-motion:reduce){.rd .ch-help-band .ch-prepare-action,.rd .ch-help-band .ch-prepare-action *{transition:none!important;transform:none!important}}
 .ch-help-band[data-reduced-motion=true] .ch-prepare-action,.ch-help-band[data-reduced-motion=true] .ch-prepare-action *{transition:none!important;transform:none!important}
 /* ---- end of the run strip ---- */
+/* How Daily AI help runs, beside its button: a quiet drawn button; a press shows the two choices again. */
+.ch-help-band .ch-band-mode{color:var(--rd-muted,#73726C)}
+.ch-help-band .ch-band-mode[aria-expanded=true]{color:var(--rd-ink,#141413)}
+.ch-help-band .ch-band-mode[hidden]{display:none!important}

@@ -407,7 +407,7 @@ globalThis.ReservePagePreferences?.serve();
  async function agentConsent(scope,expected){
    const key=agentAccountKey(scope),saved=(await chrome.storage.local.get(key))[key],settings=saved?.toolbox?.agent?.settings,settingsKey=agentSettingsKey(settings);
    if(settings?.on!==true||!['web','api','overnight'].includes(settings.way)||expected&&settingsKey!==expected){stopAgent(scope);throw Error('Agent settings changed. Start a new run.');}
-   return {key,settings,settingsKey};
+   return {key,settings,settingsKey,helpOff:saved?.settings?.showHelp===false};
  }
  chrome.storage.onChanged?.addListener((changes,area)=>{
    if(area!=='local')return;
@@ -461,6 +461,8 @@ globalThis.ReservePagePreferences?.serve();
    const existing=agentJobs.get(scope);if(existing)return {skipped:'running'};
    const consent=await agentConsent(scope),settings=consent.settings,way=settings.way,provider=settings.provider||'chatgpt';
    if(message.automatic===true&&settings.everyDay!==true)return {skipped:'not-chosen'};
+   // Help switched off in Edit Home: nothing begins on its own (a run the student asked for still does).
+   if(message.automatic===true&&consent.helpOff===true)return {skipped:'help-off'};
    let revision;
    if(way==='web'){
      const site=CanvasHarnessProviders.get(provider);

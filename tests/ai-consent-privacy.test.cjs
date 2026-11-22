@@ -118,7 +118,7 @@ test('the Help band asks once: one sentence on what is sent and how often, then 
 
 test('Home passes the one-time choice to the Help band and saves it as Prepare every day',()=>{
  const src=read('extension/dashboard.js').replace(/\s+/g,'');
- assert.match(src,/prepareChoice:\(\)=>\{consta=personal\?\.toolbox\?\.agent;return\{show:!!agentController&&!demo&&a\?\.settings\?\.on!==false&&a\?\.everyDayChosen!==true,cap:a\?\.settings\?\.dailyCap\?\?3\};\}/);
+ assert.match(src,/prepareChoice:\(\)=>\{consta=personal\?\.toolbox\?\.agent,can=!!agentController&&!demo&&a\?\.settings\?\.on!==false;return\{show:can&&a\?\.everyDayChosen!==true,cap:a\?\.settings\?\.dailyCap\?\?3,chosen:can&&a\?\.everyDayChosen===true,everyDay:a\?\.settings\?\.everyDay===true\};\}/);
  assert.match(src,/onPrepareChoice:everyDay=>\{[^}]*returnagentController\.settings\(\{everyDay\}\);\}/);
 });
 
@@ -130,6 +130,78 @@ test('Tools → AI keeps the choice changeable as Prepare every day',async t=>{
  f.get('ch-agent-everyday').checked=true;await f.get('ch-agent-everyday').fire('change');await tick();
  assert.deepEqual(f.requests.filter(r=>r.action==='agent'&&r.op==='settings').map(r=>r.settings),[{everyDay:true}]);
  assert.match(read('extension/ai-panel.html'),/<input id="ch-agent-everyday" class="ch-agent-input" type="checkbox">Prepare every day<\/label>/);
+});
+
+// 2026-11-22: "when I turn it off from widget it should not be enabled and should not send request, and I should have the
+// option for manual request instead of automatically requesting". The widget switch is Edit Home's Help card (showHelp).
+test('Help switched off in Edit Home: a Canvas visit sends nothing even after Every day; a press is still the student\'s own; on again it starts',async t=>{
+ const store=await account(),{c,sent}=client(store);t.after(()=>{c.destroy();store.destroy();});
+ await c.settings({everyDay:true});await c.visit();
+ assert.equal(starts(sent).length,1,'Every day with Help on: a visit starts Prepare');
+ await store.update(d=>{d.settings.showHelp=false;});
+ const before=sent.length;await c.visit();await c.visit();
+ assert.equal(starts(sent).length,1,'Help off: no start on its own');assert.equal(sent.length,before,'and nothing at all leaves the page');
+ await c.prepareNow();
+ assert.equal(starts(sent).length,2);assert.equal(starts(sent)[1].entry,'manual','a press is a request');
+ await store.update(d=>{d.settings.showHelp=true;});await c.visit();
+ assert.ok(starts(sent).length>=2,'Help on again: visits may start it again');
+ assert.equal(store.get().toolbox.agent.settings.everyDay,true,'the choice itself is kept');
+});
+
+test('Help switched off: with the Overnight way a Canvas visit begins no automatic run either',async t=>{
+ const store=await account({way:'overnight'}),{c,sent}=client(store,{engine:false});t.after(()=>{c.destroy();store.destroy();});
+ await c.settings({everyDay:true});await store.update(d=>{d.settings.showHelp=false;});await c.visit();
+ assert.equal(sent.filter(m=>['begin','turn'].includes(m.op)).length,0);
+ await store.update(d=>{d.settings.showHelp=true;});await c.visit();
+ assert.ok(sent.some(m=>m.op==='begin'&&m.automatic===true),'Help on: the automatic run begins');
+});
+
+test('Help switched off: the Prepare worker starts nothing on its own, and a run that started on its own stops at its next step',async()=>{
+ const Engine=require('../extension/ai-engine.js'),had=Object.hasOwn(globalThis,'ReserveSite');
+ if(!had)globalThis.ReserveSite=require('../extension/site.js');
+ try{
+  let helpOff=true,n=0;const settings={on:true,way:'web',grades:false,everyDay:true,dailyCap:3,wishes:''},accepted=[];
+  const engine=Engine.create({store:{all:async()=>[],get:async()=>null,acquire:async()=>null,start:async input=>{accepted.push(input.entry);return {...structuredClone(input),state:'queued',lease:{epoch:1,expiresAt:0}};}},
+   authorize:async()=>({settings:structuredClone(settings),helpOff}),runnerFor:async()=>{throw Error('No runner in this test.');},uuid:()=>'u'+(++n)});
+  const start=extra=>engine.start({id:'run-test-'+(++n),scope,day:'2026-10-21',sourceTab:1,triggerKey:'2026-10-21:visit:'+n,...extra});
+  assert.deepEqual(await start(),{skipped:'help-off'});assert.deepEqual(accepted,[]);
+  const press=await start({entry:'manual',triggerKey:'2026-10-21:manual:1'});
+  assert.equal(press.skipped,undefined);assert.deepEqual(accepted,['manual']);
+  helpOff=false;await start();assert.deepEqual(accepted,['manual','visit'],'Help on: Every day runs again');
+  engine.dispose?.();
+ }finally{if(!had)delete globalThis.ReserveSite;}
+ const src=read('extension/ai-prepare.js').replace(/\s+/g,'');
+ assert.match(src,/if\(saved\.settings\?\.showHelp===false&&run\.state&&run\.kind!=='ask'&&run\.entry==='visit'\)throwObject\.assign\(Error\('Helpisswitchedoff,soDailyAIhelpstopped\.'\),\{code:'help-off'\}\);/,'a stored automatic run is refused at its next step');
+ assert.match(src,/helpOff:saved\.settings\?\.showHelp===false/,'the engine is told');
+});
+
+test('after the choice the band names how Daily AI help runs, and a press brings the two choices back',async()=>{
+ const d=dom(),host=new d.Element('div'),picks=[],env={document:d.document,chrome:{storage:{local:storage()}},matchMedia:()=>({matches:false})};
+ let state={show:true,cap:3,chosen:false,everyDay:false};
+ const view=Band.renderBand(host,{},{env,scope,store:UI.createStore(env),onPrepare:async()=>({}),prepareChoice:()=>state,onPrepareChoice:async everyDay=>{picks.push(everyDay);state={show:false,cap:3,chosen:true,everyDay};}});
+ await view.loaded;
+ const all=()=>descendants(host),has=(n,c)=>String(n.className).split(' ').includes(c),line=all().find(n=>has(n,'ch-band-choice')),mode=all().find(n=>has(n,'ch-band-mode'));
+ assert.ok(mode,'the button is in the band');assert.equal(mode.hidden,true,'not before the first choice: the question itself is showing');assert.equal(line.hidden,false);
+ await button(line,'Only when I ask').fire('click');await tick();
+ assert.deepEqual(picks,[false]);assert.equal(line.hidden,true);
+ assert.equal(mode.hidden,false);assert.equal(mode.textContent,'When I ask');assert.equal(mode.dataset.act,'run-mode');assert.equal(mode.dataset.mode,'asked');
+ assert.deepEqual(String(mode.className).split(' '),['ch-band-act','ch-band-bar-act','ch-band-mode'],'the band bar\'s own drawn button');
+ assert.ok(descendants(mode).some(n=>has(n,'ch-band-ico')),'it carries a drawing');assert.equal(mode.getAttribute('aria-expanded'),'false');
+ await mode.fire('click');await tick();
+ assert.equal(line.hidden,false,'the same two choices again');assert.equal(line.children.length,3);assert.equal(mode.getAttribute('aria-expanded'),'true');
+ await button(line,'Every day').fire('click');await tick();
+ assert.deepEqual(picks,[false,true]);assert.equal(line.hidden,true);assert.equal(mode.textContent,'Every day');assert.equal(mode.dataset.mode,'every');assert.equal(mode.getAttribute('aria-expanded'),'false');
+ await mode.fire('click');await tick();assert.equal(line.hidden,false);await mode.fire('click');await tick();assert.equal(line.hidden,true,'a second press puts them away');
+ state={show:false,cap:3,chosen:false,everyDay:true};view.refresh();assert.equal(mode.hidden,true,'Your AI off or a demo: no button');
+ view.destroy();
+});
+
+test('the run-mode button never shows through its hidden state, and Home tells the band the saved mode',()=>{
+ const css=read('extension/study-band.css');
+ assert.match(css,/\.ch-help-band \.ch-band-mode\[hidden\]\{display:none!important\}/);
+ const client=read('extension/agent-client.js').replace(/\s+/g,'');
+ assert.match(client,/everyDay===true&&store\.get\(\)\.settings\?\.showHelp!==false&&\(s\.lastVisitDay!==today\|\|changed\)\)awaitruntime\.run\(\{automatic:true/);
+ assert.match(client,/raw\(\)\.settings\?\.everyDay!==true\|\|store\.get\(\)\.settings\?\.showHelp===false\)return;/);
 });
 
 // One account with one teacher (4), the student (7) and a classmate (11) in a course, as the worker's scan sees it.

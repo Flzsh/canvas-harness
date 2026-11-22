@@ -2378,8 +2378,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
             if(!reply?.ok)throw Error(reply?.error||'The test could not start.');
             return reply.result;
           },prepareChoice:()=>{
-            const a=personal?.toolbox?.agent;
-            return {show:!!agentController&&!demo&&a?.settings?.on!==false&&a?.everyDayChosen!==true,cap:a?.settings?.dailyCap??3};
+            const a=personal?.toolbox?.agent,can=!!agentController&&!demo&&a?.settings?.on!==false;
+            return {show:can&&a?.everyDayChosen!==true,cap:a?.settings?.dailyCap??3,chosen:can&&a?.everyDayChosen===true,everyDay:a?.settings?.everyDay===true};
           },onPrepareChoice:everyDay=>{
             if(!agentController?.settings)throw Error('Turn on Your AI in Tools first.');
             return agentController.settings({everyDay});

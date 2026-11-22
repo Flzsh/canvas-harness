@@ -95,6 +95,9 @@
   }
   async function authorize(run){
    const {saved,settings,policy,tab}=await checkLocal(run);if(tab)await requireFeature('ai',{id:chrome.runtime.id,frameId:0,tab:{id:tab.id},url:tab.url});
+   // Help switched off in Edit Home: a run that started on its own stops here, at its next step (a start is refused in the engine).
+   if(saved.settings?.showHelp===false&&run.state&&run.kind!=='ask'&&run.entry==='visit')
+     throw Object.assign(Error('Help is switched off, so Daily AI help stopped.'),{code:'help-off'});
    // Sending and waiting only touch the AI chat; scanning and publishing check the Canvas account first. Another account
    // stops the run; a sign-out asks for Canvas again; Canvas not answering is waited for (a while, then the same ask).
    if(!['asking','awaiting-reply'].includes(run.state)){
@@ -120,6 +123,7 @@
      notes:Array.isArray(study.$notes)?study.$notes.slice(-40):[],
      connectionRevision,
      sourcePolicy:policy,
+     helpOff:saved.settings?.showHelp===false,
      daily:saved.toolbox.agent.daily,
      publishedRunIds:(saved.toolbox.agent.runs||[]).filter(r=>r.publishedAt).map(r=>r.id)
    };
