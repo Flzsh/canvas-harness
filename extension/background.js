@@ -17,17 +17,22 @@ globalThis.ReservePagePreferences?.serve();
  const featureLoads=new Map(),featureTabs=new Map(),featureCurrent=new Map(),tabFeatureKey=(id,documentId)=>'reserve:features:tab:'+id+':'+(documentId||'frame-0');
  const featureTarget=sender=>({tabId:sender.tab.id,...(sender.documentId?{documentIds:[sender.documentId]}:{frameIds:[sender.frameId??0]})});
  async function featurePrefs(){return (await chrome.storage.local.get(ReserveFeatures.KEY))[ReserveFeatures.KEY];}
+ // "On Canvas" off in the popup: a Canvas page gets the saved choice marked off, which selects nothing (features.js).
+ const switchedOff=async()=>(await chrome.storage.local.get(ReserveFeatures.ON))?.[ReserveFeatures.ON]===false;
+ async function canvasPrefs(){const prefs=await featurePrefs();return await switchedOff()?ReserveFeatures.forSwitch(prefs,false):prefs;}
  async function documentPrefs(sender){
   const tab=sender?.tab?.id,documentId=sender?.frameId===0?sender.documentId:channels.get(tab)?.port.sender.documentId,key=tabFeatureKey(tab,documentId);
   let prefs=featureTabs.get(key);
   if(!featureTabs.has(key)){
    const session=Number.isInteger(tab)?await chrome.storage.session?.get(key):null;
-   prefs=session&&Object.hasOwn(session,key)?session[key]:await featurePrefs();
+   prefs=session&&Object.hasOwn(session,key)?session[key]:await canvasPrefs();
   }
   return prefs;
  }
  async function requireFeature(id,sender){
   const prefs=await documentPrefs(sender);
+  // Switched off: no add-on work for a Canvas page, also for one that loaded before the switch went off and kept its page.
+  if(prefs?.off===true||await switchedOff())throw Error('Canvas Harness is off on Canvas. Turn "On Canvas" on in its popup.');
   if(!ReserveFeatures.resolve(prefs).enabled.includes(id))throw Error('This add-on is off. Reload Canvas to apply your add-ons.');
   // AI help also answers to the saved choice now: a page loaded before it was locked again gets no AI work done.
   if(id==='ai'&&!ReserveFeatures.resolve(await featurePrefs()).enabled.includes('ai'))throw Error('This add-on is off. Reload Canvas to apply your add-ons.');
@@ -54,10 +59,11 @@ globalThis.ReservePagePreferences?.serve();
      globalThis.ReserveFeatures.apply(value);
      globalThis.ReserveStartup?.setFeatures?.(value,true);
    },args:[prefs??null]});
-   // Prepaint JS/CSS already belongs to document_start; never evaluate it twice.
+   // Prepaint JS/CSS already belongs to document_start; never evaluate it twice. Switched off, there is nothing to load.
    const files=[...selection.startupJS,...selection.js].filter(file=>!ReserveFeatures.staticJS.includes(file));
-   await chrome.scripting.executeScript({target,world:'ISOLATED',injectImmediately:true,files});
-   return {ok:true,preset:selection.preset,enabled:selection.enabled,...(selection.aiUnlocked?{aiUnlock:ReserveFeatures.normalize(prefs).aiUnlock}:{})};
+   if(files.length)await chrome.scripting.executeScript({target,world:'ISOLATED',injectImmediately:true,files});
+   return {ok:true,preset:selection.preset,enabled:selection.enabled,...(selection.off?{off:true}:{}),
+     ...(selection.aiUnlocked?{aiUnlock:ReserveFeatures.normalize(prefs).aiUnlock}:{})};
   })();
   featureLoads.set(key,task);
   if(featureLoads.size>300)featureLoads.delete(featureLoads.keys().next().value);

@@ -143,7 +143,7 @@ class Element extends Events{
  get outerHTML(){return '<'+this.tagName.toLowerCase()+[...this.attrs].map(([key,value])=>' '+key+'="'+value+'"').join('')+'>'+this.innerHTML+'</'+this.tagName.toLowerCase()+'>';}
 }
 
-function fixture({menu='left',readyState='complete',appearance,osDark=false,storageRead}={}){
+function fixture({menu='left',readyState='complete',appearance,osDark=false,storageRead,featureHint,featureRead,hints={}}={}){
  const observers=[],observations=[],storageReads=[],storageWrites=[],storageListeners=new Set(),mediaQueries=[],requestedURLs=[],timers=new Map();let timerId=0;
  const document=new Events();document.nodeType=9;document.readyState=readyState;
  document.mutation=record=>{record={addedNodes:[],removedNodes:[],...record};for(const observer of observers)for(const {target,options}of observer.targets){
@@ -176,7 +176,7 @@ function fixture({menu='left',readyState='complete',appearance,osDark=false,stor
    takeRecords(){return this.records.splice(0);}
   },
   chrome:{runtime:{getURL:name=>{requestedURLs.push(name);return 'chrome-extension://test/'+name;}},storage:{
-   local:{get(keys,callback){storageReads.push(keys);const result=storageRead?storageRead():structuredClone(data);if(callback)Promise.resolve(result).then(callback);return Promise.resolve(result);},set(values){storageWrites.push(values);return Promise.resolve();}},
+   local:{get(keys,callback){storageReads.push(keys);const result=featureRead&&['reserve:features','reserve:enabled'].includes(keys)?featureRead():storageRead?storageRead():structuredClone(data);if(callback)Promise.resolve(result).then(callback);return Promise.resolve(result);},set(values){storageWrites.push(values);return Promise.resolve();}},
    onChanged:{addListener:fn=>storageListeners.add(fn),removeListener:fn=>storageListeners.delete(fn)}
   }},
   matchMedia(query){mediaQueries.push(query);return {matches:query.includes('prefers-reduced-motion')?false:osDark,media:query,addEventListener(){},removeEventListener(){},addListener(){},removeListener(){}};},
@@ -185,6 +185,13 @@ function fixture({menu='left',readyState='complete',appearance,osDark=false,stor
  };
  const windowEvents=new Events();sandbox.addEventListener=windowEvents.addEventListener.bind(windowEvents);sandbox.removeEventListener=windowEvents.removeEventListener.bind(windowEvents);sandbox.window=sandbox;sandbox.self=sandbox;sandbox.top=sandbox;
  const context=vm.createContext(sandbox);
+ // With a feature hint the page has the add-on selection too (features.js first, as the manifest loads it), with this
+ // origin's synchronous hints in localStorage.
+ const hintValues=new Map([...(featureHint?[['reserve:features-hint',JSON.stringify(featureHint)]]:[]),...Object.entries(hints)]);
+ if(featureHint){
+  context.localStorage={getItem:key=>hintValues.get(key)??null,setItem:(key,value)=>hintValues.set(key,String(value)),removeItem:key=>hintValues.delete(key)};
+  vm.runInContext(read('features.js'),context,{filename:'features.js'});
+ }
  vm.runInContext(read('site.js'),context,{filename:'site.js',timeout:1000});
  vm.runInContext(read('course-nav-art.js'),context,{filename:'course-nav-art.js',timeout:1000});
  const run=()=>vm.runInContext(read('course-nav.js'),context,{filename:'course-nav.js',timeout:1000});
@@ -202,7 +209,7 @@ function fixture({menu='left',readyState='complete',appearance,osDark=false,stor
  async function start(){run();await flush();}
  async function changeAppearance(value,area='local',key=APPEARANCE){data[key]=value;for(const listener of storageListeners)listener({[key]:{newValue:value}},area);await flush();}
  async function finishTimers(){for(let round=0;round<20;round++){if(!timers.size)return;for(const [id,timer]of [...timers]){timers.delete(id);timer.fn();}await flush();}assert.fail('Course-menu timers did not settle');}
- return {context,document,html:document.documentElement,list,wrapper,outside,addItem,el,observers,observations,storageReads,storageWrites,storageListeners,mediaQueries,requestedURLs,run,start,flush,changeAppearance,finishTimers,pendingTimers:()=>timers.size};
+ return {context,document,html:document.documentElement,list,wrapper,outside,addItem,el,observers,observations,storageReads,storageWrites,storageListeners,mediaQueries,requestedURLs,run,start,flush,changeAppearance,finishTimers,hintValues,pendingTimers:()=>timers.size};
 }
 
 function assertIcon(anchor,kind){
@@ -410,4 +417,46 @@ test('B1-08 a link that becomes current after the art stylesheet loaded still fi
  assert.ok(later.anchor.classList.contains('is-current'));
  await f.finishTimers();
  assert.equal(later.anchor.classList.contains('cn-opening'),false);
+});
+
+// "On Canvas" off in the popup (2026-11-22: a course page kept the drawn course menu after the switch was turned off).
+test('On Canvas off: the saved switch takes the course menu back to Canvas, leaves a hint for the next page, and on again draws it',async()=>{
+ let confirm;const truth=new Promise(resolve=>confirm=resolve);
+ const f=fixture({featureHint:{preset:'full'},featureRead:()=>truth});
+ const item=f.addItem({className:'home',active:true,badge:'2'}),before=item.anchor.outerHTML;
+ f.run();await f.flush();assertIcon(item.anchor,'home');
+ confirm({'reserve:features':{preset:'full'},'reserve:enabled':false});await f.flush();await f.finishTimers();
+ assert.equal(f.html.classList.contains('reserve-course-nav'),false);
+ assert.equal(f.document.querySelectorAll('.cn-icon, .cn-tab, .cn-seal, .cn-i, .cn-opening, .is-current').length,0);
+ assert.equal(item.anchor.outerHTML,before,'Canvas labels and badges are as Canvas made them');
+ assert.equal(f.context.ReserveCourseNav,undefined);assert.equal(f.document.head.children.length,0);
+ assert.equal(f.hintValues.get('reserve:off'),'1','the next page is plain from its first frame');
+ assert.equal(JSON.parse(f.hintValues.get('reserve:features-hint')).preset,'full','the add-on hint keeps what the student chose');
+ assert.equal(f.context.ReserveFeatures.enabled('course-nav'),false);assert.equal(f.context.ReserveFeatures.current.enabled.length,0);
+ f.context.ReserveFeatures.setSwitch(true);await f.flush();
+ assert.ok(f.html.classList.contains('reserve-course-nav'));assertIcon(item.anchor,'home');
+ assert.equal(f.hintValues.get('reserve:off'),undefined);
+ f.context.ReserveFeatures.setSwitch(false);await f.flush();await f.finishTimers();
+ assert.equal(f.html.classList.contains('reserve-course-nav'),false);assert.equal(item.anchor.outerHTML,before);
+});
+
+test('On Canvas off: with the hint in place a course page is never touched, not for one frame',async()=>{
+ for(const readyState of ['complete','loading']){
+  const f=fixture({readyState,featureHint:{preset:'full'},hints:{'reserve:off':'1'},featureRead:()=>({'reserve:features':{preset:'full'},'reserve:enabled':false})});
+  const item=f.addItem({className:'home',active:true,badge:'2'}),before=item.anchor.outerHTML;
+  f.run();assert.equal(f.html.classList.contains('reserve-course-nav'),false,'no early class');
+  await f.flush();f.document.readyState='interactive';f.document.dispatchEvent({type:'DOMContentLoaded'});await f.flush();await f.finishTimers();
+  assert.equal(f.html.classList.contains('reserve-course-nav'),false);assert.equal(item.anchor.outerHTML,before);
+  assert.equal(f.document.head.children.length,0);assert.equal(f.storageListeners.size,0);assert.ok(f.observers.every(observer=>observer.targets.length===0));
+  assert.equal(f.context.ReserveCourseNavArt,undefined,'the drawings are not handed out either');
+ }
+});
+
+test('On Canvas on again after an off hint: the saved switch wins over the stale hint and the menu is drawn',async()=>{
+ const f=fixture({featureHint:{preset:'full'},hints:{'reserve:off':'1'},featureRead:()=>({'reserve:features':{preset:'full'},'reserve:enabled':true})});
+ const item=f.addItem({className:'home',active:true});
+ f.run();assert.equal(f.html.classList.contains('reserve-course-nav'),false);
+ await f.flush();await f.flush();
+ assert.ok(f.html.classList.contains('reserve-course-nav'));assertIcon(item.anchor,'home');
+ assert.equal(f.hintValues.get('reserve:off'),undefined,'the stale hint is cleared');
 });
