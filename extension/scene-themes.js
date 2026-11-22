@@ -7,9 +7,10 @@
    stars:['giant','binary','galaxy','redgiant','cluster','nebula'],
    blueprint:['gear','divider','pendulum','rocket','orbit','bulb'],
    maple:['maple','acorn','pumpkin','pinecone','oak','apple'],
-   thanksgiving:['turkey','horn','pie','lantern','corn','squash']
+   thanksgiving:['turkey','horn','pie','lantern','corn','squash'],
+   christmas:['tree','gift','stocking','cane','flake','mug']
  };
- const names=Object.freeze({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving'});
+ const names=Object.freeze({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving',christmas:'Christmas'});
  let active=null;
  // The dashboard draws Starfield directly; its packaged document reuses the same renderer.
  function starSky(cv,doc,win){

@@ -670,11 +670,36 @@
   // it stays changeable in Tools → AI (Prepare every day). Until the student picks, Prepare runs only on a press.
   const choice=make('div',undefined,'ch-band-choice'),choiceText=make('span');
   choice.hidden=true;
+  // After the choice it stays at hand (2026-11-22): a small drawn button beside Daily AI help names how it runs now,
+  // "Every day" or "When I ask"; a press brings the same two choices back. Nothing else changes it here.
+  // (its words come from MODES, as the two choices' come from choose(): Biscuit's catalogue of Home controls, which leaves
+  // AI help out, does not list it)
+  const MODES={every:['Every day','sun'],asked:['When I ask','ask']};
+  let mode=null,modeOpen=false,modeDrawn='';
+  function showMode(value){
+    if(!mode||disposed)return;
+    if(value===undefined){try{value=prepareChoice();}catch{value=null;}}
+    const can=value?.chosen===true;mode.hidden=!can;
+    if(!can){modeOpen=false;return;}
+    const now=value.everyDay===true?'every':'asked';
+    if(now!==modeDrawn){
+      modeDrawn=now;mode.textContent=MODES[now][0];
+      drawn(mode,MODES[now][1]);mode.dataset.act='run-mode';mode.dataset.mode=now;
+    }
+    mode.setAttribute('aria-expanded',String(modeOpen));
+  }
+  if(typeof prepareChoice==='function'&&typeof onPrepareChoice==='function'&&daily){
+    mode=button(MODES.asked[0],()=>{if(disposed||choice.dataset.busy)return;modeOpen=!modeOpen;showChoice();},'ch-band-act ch-band-bar-act ch-band-mode');
+    mode.hidden=true;toolbar.append(mode);
+  }
   if(typeof prepareChoice==='function'&&typeof onPrepareChoice==='function'){
     const pick=everyDay=>async()=>{
       if(disposed||choice.dataset.busy)return;
       choice.dataset.busy='true';
-      try{await onPrepareChoice(everyDay);if(!disposed)choice.hidden=true;}catch(error){if(!disposed)onError(error);}finally{delete choice.dataset.busy;}
+      try{
+        await onPrepareChoice(everyDay);
+        if(!disposed){modeOpen=false;choice.hidden=true;showMode();}
+      }catch(error){if(!disposed)onError(error);}finally{delete choice.dataset.busy;}
     };
     const choose=(label,everyDay,drawing)=>{
       const b=drawn(button(label,pick(everyDay),'ch-band-act ch-band-bar-act'),drawing);
@@ -689,7 +714,8 @@
     try{value=prepareChoice();}catch{}
     const cap=Number(value?.cap),times=Number.isInteger(cap)&&cap>1?'up to '+cap+' times a day':'once a day';
     choiceText.textContent='Daily AI help can run on its own: it sends your AI a summary of your Canvas work (courses, due work, announcements, teacher messages) when you open Canvas and when that work changes, '+times+'.';
-    choice.hidden=value?.show!==true;
+    showMode(value);
+    choice.hidden=!(value?.show===true||modeOpen&&value?.chosen===true);
   }
   // The bar: Help with… (pick items and the kind of help) and Remembered (every note), each opening a sheet under it.
   const sheet=make('div',undefined,'ch-band-sheet');sheet.hidden=true;let helpWith=null,remembered=null;

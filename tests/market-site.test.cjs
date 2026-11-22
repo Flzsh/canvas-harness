@@ -8,7 +8,7 @@ function fixture({worker=false,registered=true,granted=true,permissions=worker}=
  const chrome={runtime:{id:'test'},storage:{local:{get:async key=>structuredClone(Object.hasOwn(data,key)?{[key]:data[key]}:{}),set:async()=>{throw Error('Reads must not mutate');}}}},permissionsCalls=[];
  if(permissions)chrome.permissions={contains:async value=>{permissionsCalls.push(value);return granted;}};
  const env=vm.createContext({URL,Blob,TextEncoder,TextDecoder,Uint8Array,ArrayBuffer,structuredClone,location:new URL(SITE+'/dashboard'),chrome,...(worker?{importScripts(){}}:{})});
- for(const file of ['site.js','market-site.js','media-reference.js','media-store.js','custom-art.js','custom-kits.js','pack-common.js','theme-pack.js','pet-pack.js','preset-pack.js','packs.js'])vm.runInContext(read(file),env,{filename:file});
+ for(const file of ['site.js','market-site.js','media-reference.js','media-store.js','custom-art.js','custom-kits.js','pack-common.js','band-kit.js','theme-pack.js','pet-pack.js','preset-pack.js','packs.js'])vm.runInContext(read(file),env,{filename:file});
  if(registered)env.ReserveSite.trustSites([SITE,OTHER]);return {env,data,permissionsCalls};
 }
 test('a registered custom-school page without chrome.permissions can hydrate only its own packs',async()=>{

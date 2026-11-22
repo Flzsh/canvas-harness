@@ -1262,11 +1262,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     function syncCompanion(){
       const A=root.ReservePetArt;
       if(!enabled('pony')||!A?.identity||!A?.hydrate||container.dataset.chLinksPending)return;
-      const selected=A.identity(personal),key=JSON.stringify([selected.id,selected.name]);
+      // A theme pack may bring its own companion: it walks while that theme is in use, no scene is on and the student
+      // has not chosen a companion of their own (pet-art.js themePack).
+      const selected=A.identity(personal),
+        scene=personal.settings?.sceneTheme,
+        themeId=personal.settings?.makeYourOwn?.theme?.id,
+        gift=!selected.id&&!scene&&themeId&&enabled('customization')&&makeOwn?.state.theme?.companion||null,
+        key=JSON.stringify(gift?['theme',themeId,gift.name]:[selected.id,selected.name]);
       if(key===companionKey)return;
       companionKey=key;
       companionPack=null;
       const turn=++companionTurn;
+      if(gift){companionPack=A.themePack?.(themeId,gift)||null;if(companionPack)scheduleRender();return;}
       if(!selected.id||A.identity(personal,makeOwn?.state.pet).pack)return;
       Promise.resolve(A.hydrate(personal,{store})).then(pack=>{
         if(destroyed||turn!==companionTurn||container.dataset.chLinksPending)return;
@@ -1288,10 +1295,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const builtins=[
         {id:'builtin:pet',name:personal.pet?.name||'Biscuit',kind:'pet',current:!s.makeYourOwn?.pet},
         ...['light','dark'].map(id=>({id:'builtin:mode:'+id,name:({light:'Light',dark:'Dark'})[id],kind:'theme',current:!s.makeYourOwn?.theme&&!s.sceneTheme&&(s.theme==='dark'?'dark':'light')===id})),
-        ...['starry','sea','stars','blueprint','maple','thanksgiving'].map(id=>
+        ...['starry','sea','stars','blueprint','maple','thanksgiving','christmas'].map(id=>
           ({
             id:'builtin:scene:'+id,
-            name:({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving'})[id],
+            name:({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving',christmas:'Christmas'})[id],
             kind:'scene',
             current:!s.makeYourOwn?.theme&&s.sceneTheme===id
           })),
@@ -1485,7 +1492,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         ...(!enabled('grades')?{showGrades:false}:{}),
         ...(!enabled('motion')?{motion:'off',livingArt:'off'}:{}),
         ...(!enabled('course-hub')?{showCourseInformation:false}:{}),
-        ...(!enabled('course-art')&&!(enabled('scene-themes')&&['starry','sea','stars','blueprint','maple','thanksgiving'].includes(personal.settings.sceneTheme))?
+        ...(!enabled('course-art')&&!(enabled('scene-themes')&&['starry','sea','stars','blueprint','maple','thanksgiving','christmas'].includes(personal.settings.sceneTheme))?
           {courseCardStyle:'rounded',showCourseIcons:false}:
           {})
       };
@@ -2126,7 +2133,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       consumeSources();
       setData('featureMotion',enabled('motion')?'on':'off');setData('arrange',arrange?'on':'off');
       const dataTheme=enabled('customization')&&!ctx.s.sceneTheme?makeOwn?.state.theme:null;
-      const scene=!dataTheme&&enabled('scene-themes')&&root.ReserveSceneThemes&&['starry','sea','stars','blueprint','maple','thanksgiving'].includes(ctx.s.sceneTheme)?ctx.s.sceneTheme:'';
+      const scene=!dataTheme&&enabled('scene-themes')&&root.ReserveSceneThemes&&['starry','sea','stars','blueprint','maple','thanksgiving','christmas'].includes(ctx.s.sceneTheme)?ctx.s.sceneTheme:'';
       setData('theme',ctx.theme);applyNight(ctx.s.nightArt);
       setData('density',ctx.s.density==='compact'?'compact':'comfortable');
       setData('font',['humanist','serif'].includes(ctx.s.font)?ctx.s.font:'system');
@@ -2371,8 +2378,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
             if(!reply?.ok)throw Error(reply?.error||'The test could not start.');
             return reply.result;
           },prepareChoice:()=>{
-            const a=personal?.toolbox?.agent;
-            return {show:!!agentController&&!demo&&a?.settings?.on!==false&&a?.everyDayChosen!==true,cap:a?.settings?.dailyCap??3};
+            const a=personal?.toolbox?.agent,can=!!agentController&&!demo&&a?.settings?.on!==false;
+            return {show:can&&a?.everyDayChosen!==true,cap:a?.settings?.dailyCap??3,chosen:can&&a?.everyDayChosen===true,everyDay:a?.settings?.everyDay===true};
           },onPrepareChoice:everyDay=>{
             if(!agentController?.settings)throw Error('Turn on Your AI in Tools first.');
             return agentController.settings({everyDay});

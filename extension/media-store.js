@@ -4,13 +4,16 @@
  'use strict';
  const refs=root.ReserveMediaReference||(typeof module==='object'&&module.exports?require('./media-reference.js'):null);
  if(!refs)throw Error('Load media-reference.js before media-store.js.');
- const {limits,cleanReference,referenced,cleanPackDocument,validateVideo,videoTiming}=refs;
+ const {limits,cleanReference,referenced,cleanPackDocument,validateVideo,videoTiming,videoBounds}=refs;
  const slots=Object.freeze({
    banner:Object.freeze({width:2400,height:1600}),
    card:Object.freeze({width:1200,height:1200}),
    background:Object.freeze({width:3840,height:2400}),
-   title:Object.freeze({width:1440,height:800})
+   title:Object.freeze({width:1440,height:800}),
+   band:Object.freeze({width:2400,height:1600})
  });
+ // A theme's band (theme-pack.js band) is painted at 8:1 across the top of Home, like the packaged scenes' 4096 x 512
+ // skies: its video may be as wide as theirs (media-reference.js videoBounds: at most 4096 px and 4096 x 576 px of picture).
  const images=['image/png','image/jpeg','image/webp','image/gif','image/avif'],videos=['video/mp4','video/webm'],uuid=/^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i,color=/^#[\da-f]{6}$/i;
  const E=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const fail=message=>{throw Error(message);},record=v=>v&&typeof v==='object'&&!Array.isArray(v);
@@ -18,17 +21,17 @@
  function dimensions(width,height,maxWidth){
    if(!Number.isInteger(width)||!Number.isInteger(height)||width<1||height<1||width>maxWidth||height>16000||width*height>48000000)fail('Media dimensions are too large.');
  }
- function videoSource({size,width,height,duration},input=false){
+ function videoSource({size,width,height,duration},input=false,slot){
    if(!Number.isSafeInteger(size)||size<=0||size>limits.videoBytes)fail(input?'This video is too large to shrink here. Try one under 30 MB.':'Video must be at most 30 MB.');
    if(input){
      if(!Number.isInteger(width)||!Number.isInteger(height)||width<1||height<1||width>16000||height>16000||width*height>48000000)
        fail('This video is too large to shrink here. Try one under 1920 pixels wide.');
    }
-   else dimensions(width,height,limits.videoWidth);
+   else videoBounds(width,height,slot);
    if(!Number.isFinite(duration)||duration<=0||duration>limits.sourceDuration)fail(input?'This video is too long to shrink here. Try one no longer than 3600 s.':'Video must be at most 3600 s.');
  }
  const ascii=(b,at,n)=>String.fromCharCode(...b.subarray(at,at+n));
- function inspectPortable(b,type,options={}){
+ function inspectPortable(b,type,options={},slot){
   if(!ArrayBuffer.isView(b)||b.BYTES_PER_ELEMENT!==1||!b.byteLength||b.byteLength>limits.inputBytes)fail('Media exceeds the input byte limit.');
   const view=new DataView(b.buffer,b.byteOffset,b.byteLength),need=(at,n)=>{
     if(at<0||n<0||at+n>b.length)throw Error('Truncated '+type+' container');
@@ -251,7 +254,7 @@
    animated=true;
   }else throw Error('Unsupported media type');
   const video=videos.includes(type);
-  if(video)validateVideo({size:b.length,width,height,duration},options);else dimensions(width,height,100000);
+  if(video)validateVideo({size:b.length,width,height,duration},options,slot);else dimensions(width,height,100000);
   return {type,kind:video?'video':'image',width,height,...(video?{duration}:{}),animated};
  }
  // Deterministic k-means on a 64px sample; transparent pixels contribute no colour.
@@ -372,13 +375,13 @@
   const timing=wrap([0x15,0x49,0xa9,0x66],join(fields));
   return join([b.subarray(0,header.last),wrap([0x18,0x53,0x80,0x67],join(parts.map(row=>row===info?timing:b.subarray(row.start,row.last))))]);
  }
- async function recordedVideo(blob,width,height,duration){
+ async function recordedVideo(blob,width,height,duration,slot){
   let b=new Uint8Array(await bounded(Blob.prototype.arrayBuffer.call(blob),'This video could not be read.')),info;
-  try{info=inspectPortable(b,blob.type);}catch(error){if(blob.type!=='video/webm')throw error;b=timedWebM(b,duration);info=inspectPortable(b,blob.type);}
+  try{info=inspectPortable(b,blob.type,{},slot);}catch(error){if(blob.type!=='video/webm')throw error;b=timedWebM(b,duration);info=inspectPortable(b,blob.type,{},slot);}
   if(info.width!==width||info.height!==height||Math.abs(info.duration-duration)>.5||b.length>limits.videoBytes)fail('This video could not be trimmed.');
   return {blob:new Blob([b],{type:blob.type}),duration:info.duration};
  }
- async function trimVideo(video,loop,size){
+ async function trimVideo(video,loop,size,slot){
   const capture=size?null:video.captureStream||video.mozCaptureStream,Recorder=root.MediaRecorder;
   if(!size&&typeof capture!=='function'||typeof Recorder!=='function'||typeof root.MediaStream!=='function')return null;
   let stream,output,recorder;try{
@@ -437,7 +440,7 @@
       if(c){wall=setTimeout(last,Math.min(limits.duration,loop.end-loop.start)*1000);frame=setTimeout(draw,1000/30);}
       video.play()?.catch?.(bad);
     }catch{finish(null);}
-   });return recorded?await recordedVideo(recorded,size?.width||video.videoWidth,size?.height||video.videoHeight,loop.end-loop.start):null;
+   });return recorded?await recordedVideo(recorded,size?.width||video.videoWidth,size?.height||video.videoHeight,loop.end-loop.start,slot):null;
   }catch{return null;}finally{for(const track of new Set([...(stream?.getTracks()||[]),...(output?.getTracks()||[])])){try{track.stop();}catch{}}}
  }
  async function prepare(blob,slot='banner',name=blob?.name||'Artwork',options={}){
@@ -487,7 +490,9 @@
     videoSource({size:blob.size,width,height,duration},true);
     const framing=videoTiming(duration,options),
       box=slots[slot],
-      fit=Math.min(1,box.width/width,box.height/height,limits.videoWidth/width,limits.videoWidth/height),
+      fit=slot==='band'?
+        Math.min(1,limits.bandVideoWidth/width,Math.sqrt(limits.bandVideoPixels/(width*height))):
+        Math.min(1,box.width/width,box.height/height,limits.videoWidth/width,limits.videoWidth/height),
       size={width:Math.max(1,Math.round(width*fit)),height:Math.max(1,Math.round(height*fit))};
     shrinking=fit<1;
    if(video.readyState<2)await waitMedia(video,'loadeddata',()=>{video.preload='auto';});
@@ -496,7 +501,7 @@
    c.getContext('2d').drawImage(video,0,0,c.width,c.height);
    const poster=await encoded(c),
      trim=shrinking||options.loop!==undefined&&framing.still>=framing.loop.start&&framing.still<=framing.loop.end&&(framing.loop.start>0||framing.loop.end<duration)?
-       await trimVideo(video,framing.loop,shrinking?size:undefined):
+       await trimVideo(video,framing.loop,shrinking?size:undefined,slot):
        null;
    if(shrinking&&!trim)fail(shrinkError);
    const length=trim?.duration||framing.loop.end-framing.loop.start;

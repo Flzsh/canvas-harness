@@ -1,0 +1,148 @@
+/* Christmas: the dashboard on Christmas Eve, in pixel art. Across the top, a market town at blue hour under northern
+   lights (1024 x 128 placed pixels shown at 4x): the bakery under its striped awning, the town clock, the inn, a toy shop,
+   two stalls, the great tree with presents round it, a sleigh; a log cabin among firs, two deer and a frozen lake in the
+   middle; calm sky and snow at the left where the greeting sits. Snow falls in three depths, the lights wave, the tree's
+   bulbs chase, the star breathes, two chimneys smoke (an 18 s loop that joins itself). Below, snow paper where you read,
+   in night-blue ink; cards and panels framed in timber with snow lying on top, holly in a corner, a string of bulbs
+   under a panel's top beam; the small pictures are the season's things (a tree, a present, a stocking, a candy cane, a
+   snowflake, a mug of cocoa). Its red is Christmas red, its second colour pine. The frames are drawn 2 px to the placed
+   pixel and shown 1:1 (cut = border width) with image-rendering: pixelated, so nothing in them is blurred; that is set
+   only on the theme's own pictures, never on the dashboard as a whole (it would reach every photo on the page). */
+.rd.rd.rd.rd[data-theme-kit]{--rd-bg:#EEF3FB;--rd-surface:#F8FBFF;--rd-surface-2:#E3EBF8;--rd-ink:#1B1E45;--rd-muted:#56608F;--rd-ink-2:#2E3466;--rd-faint:#8C96BE;--rd-line:rgba(27,30,69,.2);--rd-accent:#B4283A;--rd-soft:rgba(180,40,58,.1);--rd-course:#B4283A;--rd-danger:#9B1F2E;
+  background:url(ground.png) 0 0/256px 128px repeat,linear-gradient(180deg,#E6EEFA 0,#EAF0FB 22%,#EEF3FB 44%,#EEF3FB 100%)!important;color:var(--rd-ink)!important;position:relative;isolation:isolate;overflow:hidden}
+.rd[data-theme-kit] :is(h1,h2,h3,.rd-rail-name,.rd-rail-heading){font-family:Literata,Georgia,"Palatino Linotype",serif!important;font-weight:700!important;letter-spacing:0;color:#1B1E45!important}
+.rd[data-theme-kit] h1{font-weight:800!important;font-size:44px!important;text-shadow:0 1px 0 rgba(248,251,255,.85),0 0 20px rgba(234,241,252,.95)}
+.rd[data-theme-kit] .rd-rail-heading,.rd[data-theme-kit] .rd-heading-date,.rd[data-theme-kit] .rd-bookmarks :is(p,small,h2){text-shadow:0 1px 0 rgba(248,251,255,.85)}
+.rd[data-theme-kit] :is(button,label,span,b,strong,small,em,time,li,td,th,dt,dd){color:inherit}
+.rd[data-theme-kit] :is(small,p,.rd-heading-date,.rd-rail-next){color:var(--rd-muted)!important}
+.rd[data-theme-kit] .rd-heading-date,.rd[data-theme-kit] .rd-bookmarks :is(p,small){color:#3A4270!important}
+.rd[data-theme-kit] :is(.rd-text-button,.rd-grade-switch,.rd-board-edit,.rd-toolbox-trigger){color:var(--rd-ink)!important}
+.rd[data-theme-kit] :is(.rd-rail-next b,.rd-reader-facts span:first-child,[class*=due]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-]),[class*=time]:not([class*=fr-]):not([class*=rv-]):not([class*=gi-])){color:#B4283A!important}
+.rd[data-theme-kit] .rd-reader-facts span:not(:first-child){color:var(--rd-muted)!important}
+.rd[data-theme-kit] .rd-rich-text,.rd[data-theme-kit] .rd-rich-text :is(p,li,ol,ul,span,em,strong,b,td,th,h4,h5,h6){color:var(--rd-ink)!important}
+/* the scene: the market town (an 8:1 picture, 4096 x 512) across the whole top, as tall as the band (the strip above the
+   widgets, --tk-band from scene-themes.js), so the whole picture shows; a narrower window crops it from the left, where the
+   picture is calm sky and snow; it fades into the paper just under the widgets' top edge */
+.rd[data-theme-kit] > .tk-sky{position:absolute;left:0;right:0;top:0;height:calc(var(--tk-band,330px) + 28px);z-index:0;pointer-events:none;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.5) 8%,#000 25%,#000 97%,transparent 100%),linear-gradient(180deg,#000 0,#000 calc(100% - 56px),rgba(0,0,0,.4) calc(100% - 26px),transparent 100%);-webkit-mask-composite:source-in;
+  mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.5) 8%,#000 25%,#000 97%,transparent 100%),linear-gradient(180deg,#000 0,#000 calc(100% - 56px),rgba(0,0,0,.4) calc(100% - 26px),transparent 100%);mask-composite:intersect}
+.rd[data-theme-kit] > .tk-sky video,.rd[data-theme-kit] > .tk-sky .tk-poster{width:100%;height:100%;object-fit:cover;object-position:100% 50%;display:block;image-rendering:pixelated}
+.rd[data-theme-kit] > .rd-shell{position:relative;z-index:1}
+.rd[data-theme-kit] .rd-heading-art{display:none!important}
+.rd[data-theme-kit] .rd-course-heading h1::before{background:none!important}
+.rd[data-theme-kit] .rd-course-heading{position:relative}
+.rd[data-theme-kit] .rd-course-heading::before{position:absolute!important;inset:-30px auto -20px -50px!important;width:640px!important;height:auto!important;z-index:-1!important;background:radial-gradient(closest-side,rgba(234,241,252,.7),rgba(234,241,252,0))!important}
+/* the Help band and the rows over the scene's lower edge read on paper, never on the picture's snow */
+.rd[data-theme-kit] .ch-help-band{background:rgba(248,251,255,.94)!important}
+.rd[data-theme-kit] :is(.rd-bookmarks,.rd-heading-links){background:rgba(234,241,252,.82);border-radius:8px}
+/* the date and a course's links lie across the picture at most widths (at 1024, across the town): each on a
+   slip of the paper; a spread, not padding, so nothing in the row moves */
+.rd[data-theme-kit] .rd-course-heading > p > :is(.rd-heading-detail,.rd-heading-date),.rd[data-theme-kit] .rd-heading-links > a{background:rgba(234,241,252,.88);box-shadow:0 0 0 4px rgba(234,241,252,.88);border-radius:3px}
+/* More views ends the filter strip with no pane of its own, over the snow in front of the town: the same paper strip, and
+   its list on paper too */
+.rd[data-theme-kit] .rd-more-views > select{background:rgba(248,251,255,.9);box-shadow:inset 0 0 0 1.5px rgba(27,30,69,.32);color:#2E3466}
+.rd[data-theme-kit] .rd-more-views > select:hover{background:#F8FBFF;color:#1B1E45}
+.rd[data-theme-kit] .rd-more-views option{background:#F8FBFF;color:#1B1E45}
+/* Edit Home and Undo move end the row, over the picture's lower corner: on paper */
+.rd[data-theme-kit] .rd-arrange-guide > div:not(:empty){padding:0 8px;border-radius:8px;background:rgba(234,241,252,.9);box-shadow:inset 0 0 0 1px rgba(27,30,69,.18)}
+/* bars and choices: snow-paper strips with an inked edge; the chosen one in Christmas red */
+.rd[data-theme-kit] .rd-toolbar{background:transparent!important}
+.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-tools,.rd-filter-group,.rd-week,.rd-reader-tabs){background:rgba(248,251,255,.9)!important;box-shadow:inset 0 0 0 1.5px rgba(27,30,69,.32)!important;backdrop-filter:none}
+.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter,.rd-reader-tab){color:#2E3466!important}
+.rd[data-theme-kit] :is(.rd-workspace-tab[aria-selected=true],.rd-filter[aria-pressed=true],.rd-day-filter[aria-pressed=true],.rd-reader-tab[aria-pressed=true],.rd-reader-tab[aria-selected=true]),.rd[data-theme-kit] .rd-glance-chip{background:#B4283A!important;color:#F8FBFF!important;font-weight:700;box-shadow:inset 0 -2px 0 rgba(27,30,69,.28)!important}
+.rd[data-theme-kit] :is(.rd-workspace-tab,.rd-filter,.rd-day-filter)::before,.rd[data-theme-kit] :is(.rd-workspace-tabs,.rd-tools,.rd-filter-group,.rd-week,.rd-reader-tabs)::before{background:transparent!important;box-shadow:none!important}
+.rd[data-theme-kit] .rd-search input{background:#FFFFFF!important;color:var(--rd-ink)!important;border:1.5px solid rgba(27,30,69,.35)!important}
+.rd[data-theme-kit] .rd-search input::placeholder{color:#8C96BE}
+/* Behind the timber frame lie flat strips of its own colours (paper, the inner ink line, the beams, the posts, the
+   outline, the snow's lowest row), each wholly under opaque pixels of the picture. A frame picture is drawn in nine
+   pieces, and at a 150 % screen scale their edges fall on half pixels and let a quarter of what is behind show through
+   as hairlines; with the same colour behind, nothing shows. */
+/* the course cards, in each of the three card styles, the scene's own way. A card keeps its whole room for its words:
+   - Hand-drawn (the default): a thin timber frame, snow lying along its top, holly in a corner. The frame stands 12 px
+     above the card and 2 px outside its other edges (border 18 12 12, cut the same), so the beam's inner line ends 2 px
+     inside the card and the course name starts under it; the cards stand 16 px apart so one card's snow clears the next.
+     Its edge tiles are short (32 px along, 4 px down), so stretching them to fit ("round") keeps the pixels nearly even.
+   - Rounded: the card's own paper, a pixel outline one step outside it, snow on its top edge, a hard shadow under it.
+   - Minimal: the card's own paper and a string of lights for its bottom edge.
+   Rounded and Minimal are painted on the card itself (a border picture with an outset; no layout changes), not on
+   .rd-frame, so the card's own colours for hover and for the chosen course stay, and "card frames off" puts the plain
+   card back (the scene script's rule sets the card's border again, which drops the picture). Their two small pictures
+   are written here, not kept as files. */
+.rd[data-theme-kit] .rd-frame > *{display:none!important}
+.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course,.rd-course-name){background:transparent!important;box-shadow:none!important;outline:none!important}
+.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::before,.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course)::after,.rd[data-theme-kit] .rd-rail-art::after{display:none!important}
+.rd[data-theme-kit] .rd-rail-art > svg{display:none!important}
+.rd[data-theme-kit] .tk-icon{width:116%;height:116%;margin:-8%;object-fit:contain;image-rendering:pixelated}
+.rd[data-theme-kit] .rd-frame{border:solid transparent!important;border-width:18px 12px 12px!important;border-image:url(christmas-card.png) 18 12 12 fill round!important;image-rendering:pixelated;background:linear-gradient(#171532,#171532) left 6px top 12px/calc(100% - 12px) 2px no-repeat,linear-gradient(#171532,#171532) left 6px bottom 6px/calc(100% - 12px) 2px no-repeat,linear-gradient(#171532,#171532) left 6px top 12px/2px calc(100% - 18px) no-repeat,linear-gradient(#171532,#171532) right 6px top 12px/2px calc(100% - 18px) no-repeat,linear-gradient(#CB8E57,#CB8E57) left 2px top 8px/calc(100% - 4px) 2px no-repeat,linear-gradient(#9C5E3D,#9C5E3D) left 2px top 10px/calc(100% - 4px) 2px no-repeat,linear-gradient(#9C5E3D,#9C5E3D) left 2px bottom 4px/calc(100% - 4px) 2px no-repeat,linear-gradient(#703D35,#703D35) left 2px bottom 2px/calc(100% - 4px) 2px no-repeat,linear-gradient(#CB8E57,#CB8E57) left 2px top 8px/2px calc(100% - 10px) no-repeat,linear-gradient(#9C5E3D,#9C5E3D) left 4px top 10px/2px calc(100% - 14px) no-repeat,linear-gradient(#CB8E57,#CB8E57) right 4px top 10px/2px calc(100% - 14px) no-repeat,linear-gradient(#9C5E3D,#9C5E3D) right 2px top 8px/2px calc(100% - 10px) no-repeat,linear-gradient(#171532,#171532) left 0 top 8px/2px calc(100% - 10px) no-repeat,linear-gradient(#171532,#171532) right 0 top 8px/2px calc(100% - 10px) no-repeat,linear-gradient(#171532,#171532) left 2px bottom 0/calc(100% - 4px) 2px no-repeat,linear-gradient(#FFFFFF,#FFFFFF) left 2px top 6px/calc(100% - 4px) 2px no-repeat,linear-gradient(#F8FBFF,#F8FBFF) left 8px top 14px/calc(100% - 16px) calc(100% - 22px) no-repeat!important;background-origin:border-box!important;background-clip:border-box!important;box-shadow:none!important;border-radius:0!important}
+.rd[data-theme-kit] .rd-course-rail .rd-frame:not(.ch-custom-frame){inset:-12px -2px -2px!important}
+/* across the top the bar's own 10 px of room above the cards is 2 short of the snow */
+.rd[data-theme-kit][data-course-navigation=topbar] .rd-course-rail{padding-top:12px!important}
+.rd[data-theme-kit]:not([data-course-navigation=topbar]) .rd-course-rail :is(.rd-rail-all,.rd-rail-course){margin-top:8px!important;margin-bottom:8px!important}
+/* a card is never shorter than its small picture and the frame need (when one very long course name stops the rows
+   sharing a height, the app lets a one-line row fall to about 30 px) */
+.rd[data-theme-kit] .rd-course-rail .rd-rail-course:has(> .rd-frame){min-height:56px!important}
+/* the small picture stands inside the frame, clear of the bottom beam (and of the lights in Minimal); on a short window the
+   grade keeps clear of it too */
+.rd[data-theme-kit] .rd-course-rail .rd-rail-course:has(> .rd-frame) .rd-course-name > .rd-rail-art{left:8px!important;bottom:7px!important}
+.rd[data-theme-kit] .rd-course-rail .rd-rail-course:has(> .rd-frame) > .rd-grade{bottom:7px!important}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame{filter:none}
+.rd[data-theme-kit] .rd-rail-all[aria-pressed=true] .rd-frame::after,.rd[data-theme-kit] .rd-rail-course:has([aria-pressed=true]) .rd-frame::after{content:"";position:absolute;inset:-4px;background:rgba(255,191,85,.2);animation:tk-warm 8s ease-in-out infinite;will-change:opacity;pointer-events:none}
+@media (hover:hover){.rd[data-theme-kit] :is(.rd-rail-all,.rd-rail-course):not(:has([aria-pressed=true])):not([aria-pressed=true]):hover .rd-frame::after{content:"";position:absolute;inset:-4px;background:rgba(255,191,85,.1);pointer-events:none}}
+.rd[data-theme-kit][data-course-card-style=rounded] .rd-course-rail :is(.rd-rail-all,.rd-rail-course){border:1px solid transparent!important;border-radius:0!important;border-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAiCAYAAAAKyxrjAAABPUlEQVR42mNkQAPiokb/kfkvX59jZMAC0NWhA1z6iDWHkH5i3cnEMMwBC3qIKBTpMjAwMDC8vvkOIr6V4T9yCMHUvXh1Fq/BEmLG/7GFLHrI4zKHkH50fbjUD/sYZISFCLe3NIrEXW45BgYGBgYLmS8MDAwMDA/6LjMQE3NYYoKBmBijVD9M3YiLQXge/Hr/IySEdCB5cP/pc5C8+FWEATlvooOP31D5z97+ROHffHAWqzguc0jVj27/iCtFGTFKNy0eBgYGBgZuRX4UhbAYZrj2ZVB7aOSVosS2TEhtoQwUgPkD5s6RUw8O9pghNyaHfQyOenDUg6MeHPXgqAdHPTjqwVEPjnpw1IOjHhz1IJV69EO9Xwjzx9yNe0ZYDJI6NjNYASzmfKyEGEfWyDYD2qjZlmPv/jOMlqKDHwAAuR6KTZJMNrsAAAAASUVORK5CYII=) 16 12 14 / 16px 12px 14px / 10px 2px 4px round!important;image-rendering:pixelated}
+.rd[data-theme-kit][data-course-card-style=minimal] .rd-course-rail :is(.rd-rail-all,.rd-rail-course){background:#F8FBFF!important;border:solid transparent!important;border-width:0 0 1px!important;border-radius:0!important;border-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAICAYAAAC/K3xHAAAAVklEQVR42mO0to/7z4AEjh5cxMiAB6CrRwf01s/EMMQB42APYUL6h18MwMA+M0uUkHA6dZyRFIOVEnxR9N9bsJkk/Z82eaHo5/PbhlX/kI+BUQ8MNAAAV3cl5T0TfDQAAAAASUVORK5CYII=) 0 0 8 / 0 0 8px / 0 0 4px round!important;image-rendering:pixelated}
+.rd[data-theme-kit]:not([data-course-navigation=topbar])[data-course-card-style=minimal] .rd-course-rail :is(.rd-rail-all,.rd-rail-course){margin-top:3px!important;margin-bottom:3px!important}
+.rd[data-theme-kit]:not([data-course-navigation=topbar])[data-course-card-style=rounded] .rd-course-rail :is(.rd-rail-all,.rd-rail-course){margin-top:8px!important;margin-bottom:8px!important}
+.rd[data-theme-kit] :where([data-course-card-style] .rd-course-rail :is(.rd-rail-all,.rd-rail-course)) > *{image-rendering:auto}
+.rd[data-theme-kit][data-course-card-style=rounded] .rd-shell .rd-course-rail > :is(.rd-rail-all,.rd-rail-course):is([aria-current],[aria-pressed=true],[data-selected=true],:has([aria-current],[aria-pressed=true])){box-shadow:inset 0 0 0 2px var(--rd-accent)!important}
+.rd[data-theme-kit][data-course-card-style=minimal] .rd-shell .rd-course-rail > :is(.rd-rail-all,.rd-rail-course):is([aria-current],[aria-pressed=true],[data-selected=true],:has([aria-current],[aria-pressed=true])){box-shadow:inset 4px 0 0 var(--rd-accent)!important}
+/* the dock: its shelf is the same timber frame with snow along its top (the tiles and their course drawings are the
+   courses' own and stay); in the card look each card wears the frame, level (a turned pixel picture breaks up), and the
+   shelf is plain paper with the string of lights. "No shelf" still hides it. */
+.rd[data-theme-kit] .rd-dock{padding-bottom:19px!important}
+.rd[data-theme-kit] .rd-dock::after{background:linear-gradient(#171532,#171532) left 6px top 12px/calc(100% - 12px) 2px no-repeat,linear-gradient(#171532,#171532) left 6px bottom 6px/calc(100% - 12px) 2px no-repeat,linear-gradient(#171532,#171532) left 6px top 12px/2px calc(100% - 18px) no-repeat,linear-gradient(#171532,#171532) right 6px top 12px/2px calc(100% - 18px) no-repeat,linear-gradient(#CB8E57,#CB8E57) left 2px top 8px/calc(100% - 4px) 2px no-repeat,linear-gradient(#9C5E3D,#9C5E3D) left 2px top 10px/calc(100% - 4px) 2px no-repeat,linear-gradient(#9C5E3D,#9C5E3D) left 2px bottom 4px/calc(100% - 4px) 2px no-repeat,linear-gradient(#703D35,#703D35) left 2px bottom 2px/calc(100% - 4px) 2px no-repeat,linear-gradient(#CB8E57,#CB8E57) left 2px top 8px/2px calc(100% - 10px) no-repeat,linear-gradient(#9C5E3D,#9C5E3D) left 4px top 10px/2px calc(100% - 14px) no-repeat,linear-gradient(#CB8E57,#CB8E57) right 4px top 10px/2px calc(100% - 14px) no-repeat,linear-gradient(#9C5E3D,#9C5E3D) right 2px top 8px/2px calc(100% - 10px) no-repeat,linear-gradient(#171532,#171532) left 0 top 8px/2px calc(100% - 10px) no-repeat,linear-gradient(#171532,#171532) right 0 top 8px/2px calc(100% - 10px) no-repeat,linear-gradient(#171532,#171532) left 2px bottom 0/calc(100% - 4px) 2px no-repeat,linear-gradient(#FFFFFF,#FFFFFF) left 2px top 6px/calc(100% - 4px) 2px no-repeat,linear-gradient(#F8FBFF,#F8FBFF) left 8px top 14px/calc(100% - 16px) calc(100% - 22px) no-repeat!important;background-origin:border-box!important;background-clip:border-box!important;-webkit-mask-box-image:none!important;mask-border:none!important;border:solid transparent!important;border-width:18px 12px 12px!important;border-image:url(christmas-card.png) 18 12 12 fill round!important;image-rendering:pixelated;inset:calc(var(--rd-dock-headroom) - 12px) 0 0 0!important}
+.rd[data-theme-kit] .rd-dock::before,.rd[data-theme-kit] .rd-dock .rd-dock-ink{opacity:0!important}
+.rd[data-theme-kit] .rd-dock[data-look=cards]::after{background:#F8FBFF!important;background-clip:border-box!important;border-width:0 0 1px!important;border-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAICAYAAAC/K3xHAAAAVklEQVR42mO0to/7z4AEjh5cxMiAB6CrRwf01s/EMMQB42APYUL6h18MwMA+M0uUkHA6dZyRFIOVEnxR9N9bsJkk/Z82eaHo5/PbhlX/kI+BUQ8MNAAAV3cl5T0TfDQAAAAASUVORK5CYII=) 0 0 8 / 0 0 8px / 0 round!important;inset:calc(var(--rd-dock-headroom) - 4px) 0 0 0!important}
+.rd[data-theme-kit] .rd-dock-card{rotate:none!important}
+.rd[data-theme-kit] .rd-dock-card>.rd-frame{inset:-12px -4px -4px!important}
+.rd[data-theme-kit] .rd-dock-card>.rd-frame::before{inset:-4px!important;border-radius:0!important;background:transparent!important}
+.rd[data-theme-kit] .rd-dock .rd-dock-it.on .rd-dock-card>.rd-frame::before{background:rgba(255,191,85,.2)!important}
+@keyframes tk-warm{0%,100%{opacity:.55}50%{opacity:1}}
+/* a course's drawn title lies on the night sky. Most are a paper tag with dark lettering; a few are bare line drawings in
+   the course's colour, faint on the sky. So the piece gets a soft slip of the page's paper behind it, as it has on the
+   plain page (a student's own title picture is left as it is). */
+.rd[data-theme-kit] .rd-title-art:not(:has(.ch-custom-title)){background:rgba(244,247,253,.92);box-shadow:0 0 14px 10px rgba(244,247,253,.92);border-radius:14px}
+/* panels: snow paper inside the heavier timber frame; no rectangle of background inside or outside it */
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail){background:transparent!important;backdrop-filter:none!important;isolation:isolate;border-radius:0!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-course-rail)::after{display:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget)::before{display:block!important;content:""!important;position:absolute!important;inset:-18px!important;z-index:-1!important;border:40px solid transparent!important;border-image:url(christmas-panel.png) 40 fill round!important;image-rendering:pixelated;background:none!important;pointer-events:none!important;-webkit-mask-box-image:none!important;-webkit-mask:none!important;mask:none!important;opacity:1!important;filter:none!important;box-shadow:none!important;outline:none!important;border-radius:0!important}
+.rd[data-theme-kit] .rd-course-rail::before{display:none!important}
+.rd[data-theme-kit] .rd-course-rail{box-shadow:none!important}
+.rd[data-theme-kit] :is(.rd-course-information,.rd-work-column,.rd-information,.rd-widget,.rd-reader,.rd-work,.rd-course-deck,.rd-course-rail){border-color:transparent!important;box-shadow:none!important;outline:none!important}
+.rd[data-theme-kit] :is(.rd-announcement,.rd-reader,.rd-work-item,.rd-deck-section){background:transparent!important}
+.rd[data-theme-kit] .rd-bookmarks{border-bottom:1px solid rgba(27,30,69,.2)!important}
+.rd[data-theme-kit] .rd-assignment-list::before,.rd[data-theme-kit] .rd-assignment-list::after{background:rgba(255,191,85,.12)!important;box-shadow:inset 0 0 0 1px rgba(27,30,69,.32)!important}
+.rd[data-theme-kit] .rd-assignment--selected{background:transparent!important;box-shadow:none!important}
+.rd[data-theme-kit] .rd-button--primary{background:#B4283A!important;color:#F8FBFF!important;border:0!important;font-weight:700;box-shadow:inset 0 -2px 0 rgba(27,30,69,.3)!important}
+.rd[data-theme-kit] .rd-button:not(.rd-button--primary){background:#F8FBFF!important;color:var(--rd-ink)!important;border:1.5px solid rgba(27,30,69,.35)!important}
+.rd[data-theme-kit] a{color:#B4283A}
+/* small things in the theme's language: tick circles are inked rings, section headings sit on a string of lights */
+.rd[data-theme-kit] .rd-check-off{border:0!important;background:radial-gradient(circle at 50% 50%,#F8FBFF 0 46%,#2E3466 50% 60%,transparent 64%)!important;box-shadow:none!important}
+.rd[data-theme-kit] .rd-check-off:hover{background:radial-gradient(circle at 50% 50%,rgba(255,191,85,.3) 0 46%,#2E3466 50% 60%,transparent 64%)!important}
+.rd[data-theme-kit] :is(.rd-sheet-heading h3,.rd-deck-header h2,.rd-work-heading h2){padding-bottom:8px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='10' shape-rendering='crispEdges'%3E%3Crect y='2' width='48' height='2' fill='%231b1e45' fill-opacity='.7'/%3E%3Crect x='6' y='4' width='4' height='4' fill='%23b4283a'/%3E%3Crect x='22' y='4' width='4' height='4' fill='%2323684e'/%3E%3Crect x='38' y='4' width='4' height='4' fill='%23f2b24a'/%3E%3C/svg%3E") 0 100%/48px 10px repeat-x}
+/* the small pictures move a little, by transform only (the compositor carries it; the page does not repaint) */
+@keyframes tk-sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+@keyframes tk-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.rd[data-theme-kit] .tk-icon:is([data-motif=cane],[data-motif=stocking]){transform-origin:50% 8%;animation:tk-sway 8s ease-in-out infinite}
+.rd[data-theme-kit] .tk-icon:is([data-motif=gift],[data-motif=mug],[data-motif=tree]){animation:tk-bob 6s ease-in-out infinite}
+@keyframes tk-turn{to{transform:rotate(360deg)}}
+.rd[data-theme-kit] .tk-icon[data-motif=flake]{animation:tk-turn 40s linear infinite}
+@media (prefers-reduced-motion:reduce){.rd[data-theme-kit] *,.rd[data-theme-kit] *::before,.rd[data-theme-kit] *::after{animation:none!important}}
+/* the last labels in the original serif follow the theme title face */
+.rd[data-theme-kit] :is(.rd-rail-heading,.rd-rail-heading *,.rd-rail-all > span,.rd-day-filter strong,.rd-day-filter b){font-family:Literata,Georgia,serif!important;font-weight:700!important}
+/* room for the frames: the workspace clips what spills past its sides, so widen its box without moving anything in it */
+.rd[data-theme-kit] .rd-workspace{padding-inline:26px!important;margin-inline:-26px!important}
+/* every colour the interface uses, so nothing falls back (beats page tint and page style) */
+.rd.rd.rd.rd[data-theme-kit]{--rd-control:#A9B8DC;--rd-control-line:rgba(27,30,69,.35);--rd-line-strong:rgba(27,30,69,.36);--rd-tint:rgba(255,191,85,.12);--rd-row-hover:rgba(255,191,85,.10);--rd-sidebar:#E3EBF8;--rd-sidebar-hover:#D9E3F5;--rd-sidebar-sel:#CBD8F0;--rd-surface-3:#DCE6F6;--rd-mark:#F2B24A;--rd-deadline-soon:#B4283A;--rd-danger-soft:rgb(155 31 46/.12);--rd-info:#23684E;--rd-info-soft:rgb(35 104 78/.14)}
+/* A Home module shorter than its row is drawn down to the row's foot like every other panel (the dashboard extends a
+   panel's frame by --rd-panel-grow), so a row of modules reads as one row of panels */
+.rd[data-theme-kit] .rd-main.rd-desk > .rd-widget::before{bottom:calc(-18px - var(--rd-panel-grow,0px))!important}

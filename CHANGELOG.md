@@ -1,5 +1,17 @@
 # Changelog
 
+## 4.1.0 - 2026-11-19
+
+A Christmas scene, theme packs that can bring a moving band and a companion of their own, and AI help that fits Gemini's chat box.
+
+- A new scene in Make it yours → Look → Scene, in the Holiday pack after Thanksgiving: **Christmas**, a market town on Christmas Eve in pixel art. Northern lights over the bakery, the town clock and a toy shop, the great tree with presents round it, a cabin among firs, deer by a frozen lake and falling snow, in an 18-second loop; below it, snow paper with frames of timber and snow. Biscuit knows it too: "christmas theme" or "xmas" switches to it.
+- Theme packs can paint a band across the top of Home: one picture or short video with small moving pieces (snow, rain, leaves, lights and more), a picture of its own for Dark, one for narrow windows, and a companion of the theme's own that walks on Home while the theme is on. A pack made for a later version still installs, without its band.
+- The Market installs a theme's band copy when it has one this version can show, and the plain theme otherwise.
+- **Use default theme** in Make it yours → Look, and the built-in companion in Make it yours → Companion, now take you back from a theme or companion pack; before, they did nothing. The pack stays installed, ready to use again.
+- AI help on Gemini: Gemini's chat box keeps only 32,000 characters, so Canvas Harness now fits each message to it. A message that still cannot fit is never typed, and you are told so plainly. Daily AI help's first reply is read as soon as it arrives, and a slow page gets longer to show a sent message.
+- **On Canvas** off in the popup now takes Canvas Harness off every Canvas page; before, course pages kept the drawn course menu and the add-ons. An open Canvas tab reloads as plain Canvas, unless you have typed something in it. Switched on again, your add-ons come back as you chose them.
+- AI help: with **Help** switched off in Edit Home, nothing is sent on its own, even after you chose **Every day**; what you ask for still runs. In the Help band, a small button beside **Daily AI help** shows how it runs, **Every day** or **When I ask**, and brings the two choices back.
+
 ## 4.0.0 - 2026-11-17
 
 The first 4.0 release. From now on the Chrome Web Store and GitHub get the same package. Everything in 3.10.0 is in it, with a much smarter Biscuit, Canvas's menu bar redrawn for every window, a slip that undoes Archive and Mark done, Home modules that keep their shape, faster pages and many fixes, and AI help, which stays off and out of sight until you add it.

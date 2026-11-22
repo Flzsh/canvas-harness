@@ -20,6 +20,17 @@
    }).join('\n').slice(0,Math.floor(max/2)):'';
    return text.slice(0,max-own.length-1)+'\n'+own;
  };
+ // An AI website's chat box may hold less than a full message (ai-providers.js box: Gemini's keeps 32,000 characters and
+ // drops the rest without a word). A run that types into the website fits each message to the box, less the room for
+ // Canvas Harness's own marker lines around it; a run with the student's own API key has no box. Infinity = any length.
+ const boxRoom=run=>{const box=run?.way==='api'?0:Number(load('CanvasHarnessProviders','./ai-providers.js')?.get?.(run?.provider)?.box)||0;return box>0?box-400:Infinity;};
+ // A message written around the Canvas brief, fitted to the box: the brief loses its end (its least pressing lines)
+ // and closes with the brief's own line for that.
+ const fitBrief=(build,brief,room=Infinity)=>{
+   let text=String(brief||''),content=build(text);
+   for(let i=0;i<3&&content.length>room&&text.length;i++){text=text.slice(0,Math.max(0,text.length-(content.length-room)-60)).trimEnd()+'\n[brief cut short to fit]';content=build(text);}
+   return content;
+ };
  // Help's materials fitted to the prompt's room (budget under material()'s 42,000: marking a source can lengthen it), so
  // nothing that matters is lost without a word. In order of claim: notes on what could not be read (never cut; the caller
  // keeps their room); the item's instructions (warnings, the body cut by requirement and never under about 6,000, then the
@@ -91,6 +102,22 @@
     if(s.text)left-=cost(s);
   }
   return {sources:list.filter(s=>s.text.trim()||s.role==='brief'),cuts};
+ }
+ // Help's deliverable message, fitted twice: its materials to the prompt's room (fitSources), then the whole message to
+ // the AI website's chat box (room; Infinity when the site takes any length): while the message is longer than the box,
+ // the materials are fitted again, smaller, three times at most. What is cut is said in "Could not be read", as always.
+ // build(list) writes the message from the fitted list. Pure.
+ function fitMessage({sources,brief,notes=[],title='',room=Infinity,build,fit=fitSources}){
+  const gathered=[...(sources||[]),...(brief?[brief]:[])],plain=({label,text})=>({label,text});
+  const fitted=budget=>{const got=fit(gathered,{budget,title}),lines=[...notes,...got.cuts];
+   return [
+     ...got.sources.filter(s=>s.role!=='brief').map(plain),
+     ...(lines.length?[{label:'Could not be read',text:lines.join('\n')+'\nTheir text is not in these materials. Do not guess what they say; name them in gaps.'}]:[]),
+     ...got.sources.filter(s=>s.role==='brief').map(plain)
+   ];};
+  let budget=41000-notes.join('\n').length-2000,list=fitted(budget),content=build(list);
+  for(let i=0;i<3&&content.length>room&&budget>3000;i++){budget=Math.max(3000,budget-(content.length-room)-300);list=fitted(budget);content=build(list);}
+  return {list,content,budget};
  }
  function create({canvas,results,account,adapter,docs=load('CanvasHarnessGoogleDocs','./google-docs.js'),now=()=>Date.now(),uuid=()=>root.crypto.randomUUID()}={}){
   async function step(run,{save,guard,signal,claimProvider,limits=null}){
@@ -186,16 +213,16 @@
      run.messages=[
        {
          role:'user',
-         content:Study.buildAsk({
+         content:fitBrief(text=>Study.buildAsk({
            now:now(),
            timeZone:data.settings.timeZone,
            level:data.toolbox?.aiLevel,
            question:run.question,
            focus:focus+(!ref&&run.itemId&&run.itemTitle?' (ref Q1)':''),
            card:run.card,
-           brief:brief.text,
+           brief:text,
            wishes:run.instructions.standingText
-         })
+         }),brief.text,boxRoom(run))
        }
      ];
      run.state='asking';run.progress='Asking your AI';return save(run);}
@@ -212,13 +239,13 @@
     run.messages=[
       {
         role:'user',
-        content:Study.buildPrepare({
+        content:fitBrief(text=>Study.buildPrepare({
           now:now(),
           timeZone:data.settings.timeZone,
           level:data.toolbox?.aiLevel,
-          brief:run.snapshot.brief?.text||'',
+          brief:text,
           wishes:run.instructions.standingText
-        })
+        }),run.snapshot.brief?.text||'',boxRoom(run))
       }
     ];
     run.state='asking';run.progress='Asking your AI';return save(run);
@@ -495,35 +522,33 @@
       });
     // Fitted to the prompt's room. What the item names but could not be read, and what had to be cut, is said aloud, so
     // the AI cannot fill it in from the title. The brief is the item's course's own when the scan made one.
-    const notes=[...new Set(unreadable)],
-      fit=fitSources(
-        [...sources,{label:'Canvas brief (dates, other work, teacher messages)',role:'brief',text:run.snapshot.courseBriefs?.[String(ref.courseId)]??run.snapshot.brief?.text??''}],
-        {budget:41000-notes.join('\n').length-2000,title:ref.title}),
-      lines=[...notes,...fit.cuts];
-    sources.length=0;sources.push(...fit.sources.filter(s=>s.role!=='brief').map(({label,text})=>({label,text})));
-    if(lines.length)sources.push({label:'Could not be read',text:lines.join('\n')+'\nTheir text is not in these materials. Do not guess what they say; name them in gaps.'});
-    sources.push(...fit.sources.filter(s=>s.role==='brief').map(({label,text})=>({label,text})));
+    const notes=[...new Set(unreadable)];
     const names={test:'a practice test',reading:'a reading breakdown',translate:'translation help',examples:'worked examples',outline:'an outline',auto:'help for this item'};
     run.progress='Making '+(names[pick.make]||'help')+' · '+(run.pickIndex+1)+' of '+run.picks.length;
-    run.messages=[
-      {
-        role:'user',
-        content:Study.buildDeliver(pick.make,{
-          now:now(),
-          timeZone:data.settings.timeZone,
-          level:data.toolbox?.aiLevel,
-          item:(row?.item?.courseName?row.item.courseName+' · ':'')+ref.title,
-          due:row?.item?.dueAt?new Date(row.item.dueAt).toLocaleString('en-US',{timeZone:data.settings.timeZone||'UTC',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'',
-          focus:pick.focus,
-          sources,
-          library:library.map(([,r])=>({title:r.title||'file',where:r.folderPath||''})),
-          maxChars:42000,
-          wishes:Study.noteText(run.instructions,pick.make,ref.id),
-          fix:pick.fix,
-          avoid:run.more?run.card:''
-        })
-      }
-    ];
+    // The message is fitted to the AI website's chat box too (fitMessage): Gemini's holds less than a full message.
+    const made=fitMessage({
+      sources,
+      brief:{label:'Canvas brief (dates, other work, teacher messages)',role:'brief',text:run.snapshot.courseBriefs?.[String(ref.courseId)]??run.snapshot.brief?.text??''},
+      notes,
+      title:ref.title,
+      room:boxRoom(run),
+      build:list=>Study.buildDeliver(pick.make,{
+        now:now(),
+        timeZone:data.settings.timeZone,
+        level:data.toolbox?.aiLevel,
+        item:(row?.item?.courseName?row.item.courseName+' · ':'')+ref.title,
+        due:row?.item?.dueAt?new Date(row.item.dueAt).toLocaleString('en-US',{timeZone:data.settings.timeZone||'UTC',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'',
+        focus:pick.focus,
+        sources:list,
+        library:library.map(([,r])=>({title:r.title||'file',where:r.folderPath||''})),
+        maxChars:42000,
+        wishes:Study.noteText(run.instructions,pick.make,ref.id),
+        fix:pick.fix,
+        avoid:run.more?run.card:''
+      })
+    });
+    sources.length=0;sources.push(...made.list);
+    run.messages=[{role:'user',content:made.content}];
     run.state='asking';return save(run);
    }
    if(run.state==='applying'){
@@ -556,23 +581,27 @@
       sources.push({id,label:row?.title||id,text:result.text});
     }
     const data=account.get();run.progress='Making your '+(action.kind==='reading'?'reading guide':action.kind==='practice'?'practice set':action.kind);
-    run.messages.push({
-      role:'user',
-      content:Study.build(action.kind,{
-        now:now(),
-        timeZone:data.settings.timeZone,
-        level:data.toolbox?.aiLevel,
-        course:item?.item?.courseName||'',
-        item:item?.title||'',
-        due:item?.item?.dueAt||'',
-        sources,
-        privacy:item?.privacy,
-        showGrades:run.settings.grades===true,
-        wishes:run.instructions.perKindWishes[action.kind]||''
-      })+
-        '\nTask metadata: '+
-        JSON.stringify({focus:action.focus||'',precedence:'Safety/privacy and access restrictions first; current request and Prepare standing instructions next; per-kind preferences next; defaults last.'})
-    });
+    const aid=maxChars=>Study.build(action.kind,{
+      now:now(),
+      timeZone:data.settings.timeZone,
+      level:data.toolbox?.aiLevel,
+      course:item?.item?.courseName||'',
+      item:item?.title||'',
+      due:item?.item?.dueAt||'',
+      sources,
+      privacy:item?.privacy,
+      showGrades:run.settings.grades===true,
+      wishes:run.instructions.perKindWishes[action.kind]||'',
+      ...(maxChars?{maxChars}:{})
+    })+
+      '\nTask metadata: '+
+      JSON.stringify({focus:action.focus||'',precedence:'Safety/privacy and access restrictions first; current request and Prepare standing instructions next; per-kind preferences next; defaults last.'});
+    let content=aid(0);
+    for(let i=0,room=boxRoom(run),max=sources.reduce((n,x)=>n+String(x.text||'').length,0);i<3&&content.length>room&&max>2000;i++){
+      max=Math.max(2000,max-(content.length-room)-500);
+      content=aid(max);
+    }
+    run.messages.push({role:'user',content});
     run.state='asking';
     return save(run);
    }
@@ -608,5 +637,5 @@
   }
   return {step,archive:run=>results.expire(run)};
  }
- return {create,fitSources};
+ return {create,fitSources,fitMessage,fitBrief,boxRoom};
 });

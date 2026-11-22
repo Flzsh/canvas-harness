@@ -3,7 +3,7 @@
 importScripts('features.js','site.js','core.js','market-site.js','ai-providers.js','ai-inject.js','ai-web.js','page-preferences.js',
  'custom-art.js','media-reference.js','media-store.js','workspace-arrange.js','customization-model.js','backup-media.js','custom-kits.js','quick-pack.js',
  'gpa-model.js','personal-work.js','storage.js','planner-model.js','pet-art.js','agent-clock.js','pony-ask.js',
- 'pack-common.js','theme-pack.js','pet-pack.js','preset-pack.js','account-writes.js','market-holds.js','packs.js','market.js','market-media.js',
+ 'pack-common.js','band-kit.js','theme-pack.js','pet-pack.js','preset-pack.js','account-writes.js','market-holds.js','packs.js','market.js','market-media.js',
  // Your AI (4.0): providers by API key, Google Docs text, study aids, the Today and overnight runs and their records.
  'ai-api-provider.js','ai-api.js','google-docs.js','study-kind.js','study-prompts.js','study-writes.js','study-ui.js','overnight.js','api.js','study-band.js','ai-context.js',
  'agent-prompts.js','agent-data.js','agent-actions.js','agent-runtime.js','agent-client.js','ai-run-store.js','study-tools.js','prepare-brief.js','ai-canvas-bridge.js','ai-canvas.js',
@@ -17,17 +17,22 @@ globalThis.ReservePagePreferences?.serve();
  const featureLoads=new Map(),featureTabs=new Map(),featureCurrent=new Map(),tabFeatureKey=(id,documentId)=>'reserve:features:tab:'+id+':'+(documentId||'frame-0');
  const featureTarget=sender=>({tabId:sender.tab.id,...(sender.documentId?{documentIds:[sender.documentId]}:{frameIds:[sender.frameId??0]})});
  async function featurePrefs(){return (await chrome.storage.local.get(ReserveFeatures.KEY))[ReserveFeatures.KEY];}
+ // "On Canvas" off in the popup: a Canvas page gets the saved choice marked off, which selects nothing (features.js).
+ const switchedOff=async()=>(await chrome.storage.local.get(ReserveFeatures.ON))?.[ReserveFeatures.ON]===false;
+ async function canvasPrefs(){const prefs=await featurePrefs();return await switchedOff()?ReserveFeatures.forSwitch(prefs,false):prefs;}
  async function documentPrefs(sender){
   const tab=sender?.tab?.id,documentId=sender?.frameId===0?sender.documentId:channels.get(tab)?.port.sender.documentId,key=tabFeatureKey(tab,documentId);
   let prefs=featureTabs.get(key);
   if(!featureTabs.has(key)){
    const session=Number.isInteger(tab)?await chrome.storage.session?.get(key):null;
-   prefs=session&&Object.hasOwn(session,key)?session[key]:await featurePrefs();
+   prefs=session&&Object.hasOwn(session,key)?session[key]:await canvasPrefs();
   }
   return prefs;
  }
  async function requireFeature(id,sender){
   const prefs=await documentPrefs(sender);
+  // Switched off: no add-on work for a Canvas page, also for one that loaded before the switch went off and kept its page.
+  if(prefs?.off===true||await switchedOff())throw Error('Canvas Harness is off on Canvas. Turn "On Canvas" on in its popup.');
   if(!ReserveFeatures.resolve(prefs).enabled.includes(id))throw Error('This add-on is off. Reload Canvas to apply your add-ons.');
   // AI help also answers to the saved choice now: a page loaded before it was locked again gets no AI work done.
   if(id==='ai'&&!ReserveFeatures.resolve(await featurePrefs()).enabled.includes('ai'))throw Error('This add-on is off. Reload Canvas to apply your add-ons.');
@@ -54,10 +59,11 @@ globalThis.ReservePagePreferences?.serve();
      globalThis.ReserveFeatures.apply(value);
      globalThis.ReserveStartup?.setFeatures?.(value,true);
    },args:[prefs??null]});
-   // Prepaint JS/CSS already belongs to document_start; never evaluate it twice.
+   // Prepaint JS/CSS already belongs to document_start; never evaluate it twice. Switched off, there is nothing to load.
    const files=[...selection.startupJS,...selection.js].filter(file=>!ReserveFeatures.staticJS.includes(file));
-   await chrome.scripting.executeScript({target,world:'ISOLATED',injectImmediately:true,files});
-   return {ok:true,preset:selection.preset,enabled:selection.enabled,...(selection.aiUnlocked?{aiUnlock:ReserveFeatures.normalize(prefs).aiUnlock}:{})};
+   if(files.length)await chrome.scripting.executeScript({target,world:'ISOLATED',injectImmediately:true,files});
+   return {ok:true,preset:selection.preset,enabled:selection.enabled,...(selection.off?{off:true}:{}),
+     ...(selection.aiUnlocked?{aiUnlock:ReserveFeatures.normalize(prefs).aiUnlock}:{})};
   })();
   featureLoads.set(key,task);
   if(featureLoads.size>300)featureLoads.delete(featureLoads.keys().next().value);
@@ -401,7 +407,7 @@ globalThis.ReservePagePreferences?.serve();
  async function agentConsent(scope,expected){
    const key=agentAccountKey(scope),saved=(await chrome.storage.local.get(key))[key],settings=saved?.toolbox?.agent?.settings,settingsKey=agentSettingsKey(settings);
    if(settings?.on!==true||!['web','api','overnight'].includes(settings.way)||expected&&settingsKey!==expected){stopAgent(scope);throw Error('Agent settings changed. Start a new run.');}
-   return {key,settings,settingsKey};
+   return {key,settings,settingsKey,helpOff:saved?.settings?.showHelp===false};
  }
  chrome.storage.onChanged?.addListener((changes,area)=>{
    if(area!=='local')return;
@@ -455,6 +461,8 @@ globalThis.ReservePagePreferences?.serve();
    const existing=agentJobs.get(scope);if(existing)return {skipped:'running'};
    const consent=await agentConsent(scope),settings=consent.settings,way=settings.way,provider=settings.provider||'chatgpt';
    if(message.automatic===true&&settings.everyDay!==true)return {skipped:'not-chosen'};
+   // Help switched off in Edit Home: nothing begins on its own (a run the student asked for still does).
+   if(message.automatic===true&&consent.helpOff===true)return {skipped:'help-off'};
    let revision;
    if(way==='web'){
      const site=CanvasHarnessProviders.get(provider);

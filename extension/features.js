@@ -3,6 +3,9 @@
 (function(root){
  'use strict';
  const KEY='reserve:features',HINT='reserve:features-hint';
+ // The popup's "On Canvas" switch. Off = no add-on at all on Canvas, not only no dashboard (forSwitch, resolve, setSwitch);
+ // OFFHINT is its synchronous copy in the Canvas origin's localStorage, so a page opened while off is plain from its first frame.
+ const ON='reserve:enabled',OFFHINT='reserve:off';
  const feature=(id,name,group,js=[],css=[],needs=[])=>({id,name,label:name,group,files:{js,css},needs});
  const catalogue=[
   feature('dashboard','Dashboard & assignments','Study',['views.js','app.js','dashboard-model.js','work-model.js','dashboard-view.js','dashboard.js']),
@@ -15,7 +18,7 @@
   feature('math','Math tools','Study',['math.js']),
   feature('gpa','GPA calculator','Study',['gpa-ui.js'],['gpa.css'],['tools']),
   feature('tools','Quick open & study tools','Study',['quick-open.js','toolbox-resize.js','toolbox.js','toolbox-session.js','native-tools.js']),
-  feature('customization','Appearance editor','Personalize',['market-site.js','media-store.js','media-frame.js','frame-editor.js','custom-kits.js','pack-common.js','theme-pack.js','pet-pack.js','preset-pack.js','data-theme.js','packs.js','make-your-own.js','customize-ui.js'],['media-frame.css','frame-editor.css'],['dashboard']),
+  feature('customization','Appearance editor','Personalize',['market-site.js','media-store.js','media-frame.js','frame-editor.js','custom-kits.js','pack-common.js','band-kit.js','theme-pack.js','pet-pack.js','preset-pack.js','band-pieces.js','data-theme.js','packs.js','make-your-own.js','customize-ui.js'],['media-frame.css','frame-editor.css'],['dashboard']),
   feature('scene-themes','Scene themes','Personalize',['scene-themes.js'],['scene-themes.css'],['dashboard']),
   feature('arrange','Arrange the workspace','Personalize',['workspace-gestures.js'],[],['dashboard']),
   feature('course-art','Course artwork','Drawings',['subject-art-data.js','subject-art.js','generic-art.js','course-art.js'],['subject-art.css']),
@@ -88,9 +91,11 @@
    "pony-ask.js",
    "custom-kits.js",
    "pack-common.js",
+   "band-kit.js",
    "theme-pack.js",
    "pet-pack.js",
    "preset-pack.js",
+   "band-pieces.js",
    "data-theme.js",
    "packs.js",
    "make-your-own.js",
@@ -193,6 +198,18 @@
    "themes/blueprint/poster.jpg",
    "themes/blueprint/sky.mp4",
    "themes/blueprint/theme.css",
+   "themes/christmas/christmas-card.png",
+   "themes/christmas/christmas-panel.png",
+   "themes/christmas/ground.png",
+   "themes/christmas/icon-cane.png",
+   "themes/christmas/icon-flake.png",
+   "themes/christmas/icon-gift.png",
+   "themes/christmas/icon-mug.png",
+   "themes/christmas/icon-stocking.png",
+   "themes/christmas/icon-tree.png",
+   "themes/christmas/poster.jpg",
+   "themes/christmas/sky.mp4",
+   "themes/christmas/theme.css",
    "themes/maple/ground.jpg","themes/maple/icon-acorn.png",
    "themes/maple/icon-apple.png",
    "themes/maple/icon-maple.png",
@@ -316,7 +333,17 @@
   do{size=out.size;for(const row of catalogue)if(row.needs.some(id=>out.has(id)))out.add(row.id);}while(size!==out.size);
   return out;
  }
+ // The preferences as they hold while Canvas Harness is switched off on Canvas (on===false), or as they are. The mark
+ // keeps the student's choice (and the AI help record) underneath, for the day it is switched on again.
+ function forSwitch(prefs,on){
+  const own=prefs&&typeof prefs==='object'&&!Array.isArray(prefs)?{...prefs}:{...normalize(prefs)};
+  if(on===false)own.off=true;else delete own.off;
+  return own;
+ }
+ const marked=prefs=>!!prefs&&typeof prefs==='object'&&prefs.off===true;
  function resolve(prefs){
+  // Switched off on Canvas: nothing is selected, not even the core files.
+  if(marked(prefs))return {preset:normalize(prefs).preset,enabled:[],aiUnlocked:false,js:[],css:[],startupJS:[],off:true};
   const clean=normalize(prefs),selected=new Set(),visit=id=>{
    if(selected.has(id)||!known.has(id))return;
    selected.add(id);for(const dep of catalogue.find(f=>f.id===id).needs)visit(dep);
@@ -337,19 +364,33 @@
    if(value&&(typeof value==='object'||typeof value==='string'))return value;
   }catch{} // Unavailable, absent or malformed hints use extension storage instead.
  }
- const hint=readHint();let current=resolve(hint),earlySelection,revision=0;
+ const hint=readHint();
+ // This page's switch: from its hint until the storage read (or the worker) says otherwise. lastPrefs is the add-on
+ // choice the page was last given, never marked off: switched on again, it is what comes back.
+ let switchedOff=false;try{switchedOff=root.localStorage?.getItem(OFFHINT)==='1';}catch{}
+ let current=resolve(switchedOff?forSwitch(hint,false):hint),earlySelection,revision=0,lastPrefs=hint;
  const earlyEffects=[];
  function clearNavHint(){if(!current.enabled.includes('canvas-nav'))try{root.localStorage?.removeItem('reserve:navEarly');}catch{}}
  clearNavHint();
+ function mirrorSwitch(){
+  try{if(switchedOff)root.localStorage?.setItem(OFFHINT,'1');else if(root.localStorage?.getItem(OFFHINT)!==null)root.localStorage.removeItem(OFFHINT);}catch{}
+ }
+ // Preferences marked off switch this page off; unmarked ones change only the choice, never the switch (the start-up's
+ // own read of the saved choice cannot turn a switched-off page back on).
  function apply(prefs){
+  if(marked(prefs)){if(!switchedOff){switchedOff=true;mirrorSwitch();}prefs=forSwitch(prefs,true);}
+  lastPrefs=prefs;
   const motionWasEnabled=current.enabled.includes('motion');
-  revision++;current=resolve(prefs);clearNavHint();
+  revision++;current=resolve(switchedOff?forSwitch(prefs,false):prefs);clearNavHint();
   const motionChanged=motionWasEnabled!==current.enabled.includes('motion');
   // The stored hint can differ from the worker's document-specific selection.
   // Revisit all prepaint effects in registration order (art before course menu).
   for(const effect of earlyEffects)effect(current,motionChanged);
   return current;
  }
+ // The switch changed (the loader hears it; the storage read and the worker's reply confirm it): what was started early
+ // stops, or starts, at once, with the last choice this page was given.
+ function setSwitch(on,prefs=lastPrefs){switchedOff=on===false;mirrorSwitch();return apply(prefs);}
  function enabled(id){return current.enabled.includes(id);}
  // The features a student may see: AI help only once it is unlocked (by the saved choice given, else this page's).
  function aiUnlocked(prefs){return prefs===undefined?current.aiUnlocked===true:unlocked(normalize(prefs));}
@@ -375,11 +416,15 @@
   if(!earlySelection){
    const reading=revision;
    let previousHint;try{previousHint=root.localStorage.getItem(HINT);}catch{}
-   earlySelection=Promise.resolve().then(()=>root.chrome.storage.local.get(KEY)).then(saved=>{
-    const selection=revision===reading?apply(saved?.[KEY]):current;
-    // An onChanged listener may already have mirrored a newer preference.
+   // The saved choice and the "On Canvas" switch (a switch that cannot be read leaves this page as its hint said).
+   const local=()=>root.chrome.storage.local,both=()=>Promise.all([local().get(KEY),Promise.resolve().then(()=>local().get(ON)).catch(()=>null)]);
+   earlySelection=Promise.resolve().then(both).then(([saved,switched])=>{
+    const selection=revision!==reading?current:switched?setSwitch(switched[ON]!==false,saved?.[KEY]):apply(saved?.[KEY]);
+    // An onChanged listener may already have mirrored a newer preference. While switched off the selection is empty:
+    // the hint keeps what the student chose, for the day Canvas Harness is on again.
     try{
-      if(root.localStorage.getItem(HINT)===previousHint)root.localStorage.setItem(HINT,JSON.stringify({preset:selection.preset,enabled:selection.enabled}));
+      if(!selection.off&&root.localStorage.getItem(HINT)===previousHint)
+        root.localStorage.setItem(HINT,JSON.stringify({preset:selection.preset,enabled:selection.enabled}));
     }catch{}
     return selection;
    },()=>current);
@@ -396,8 +441,10 @@
   if(!load||load===confirmedLoad)return;
   confirmedLoad=load;
   Promise.resolve(load).then(reply=>{
-   if(reply?.ok&&typeof reply.preset==='string'&&Array.isArray(reply.enabled))
-     apply({preset:reply.preset,enabled:reply.enabled,...(reply.aiUnlock?{aiUnlock:reply.aiUnlock}:{})});
+   if(!reply?.ok||typeof reply.preset!=='string'||!Array.isArray(reply.enabled))return;
+   // Switched off: the reply's empty list is not the student's choice, which stays for the day it is on again.
+   if(reply.off===true)setSwitch(false);
+   else setSwitch(true,{preset:reply.preset,enabled:reply.enabled,...(reply.aiUnlock?{aiUnlock:reply.aiUnlock}:{})});
   }).catch(()=>{});
   });
  }
@@ -470,6 +517,10 @@
  const api={
    KEY,
    HINT,
+   ON,
+   OFFHINT,
+   forSwitch,
+   setSwitch,
    catalogue,
    presets,
    core,

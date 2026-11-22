@@ -324,7 +324,9 @@
         today=Actions.day(now(),store.get().settings?.timeZone),
         changeKey=built.baseline?.fingerprint||fingerprint(built.baseline),
         changed=Object.keys(s.baseline||{}).length&&changeKey!==(s.baseline?.fingerprint||fingerprint(s.baseline));
-      if(s.settings?.everyDay===true&&(s.lastVisitDay!==today||changed))await runtime.run({automatic:true,changeKey:today+':'+changeKey});
+      // Every day starts it on a visit, never while Help is switched off in Edit Home: then it waits for a press.
+      if(s.settings?.everyDay===true&&store.get().settings?.showHelp!==false&&(s.lastVisitDay!==today||changed))
+        await runtime.run({automatic:true,changeKey:today+':'+changeKey});
       await store.update(data=>{
         const state=Actions.state(data);
         for(const run of state.runs||[])
@@ -352,8 +354,9 @@
       triggerKey=day+
         ':'+
         fingerprint([ctx.courses,ctx.agentAssignments||ctx.items,ctx.aiResources,ctx.aiUpdates,ctx.calendarEvents,ctx.conversations,ctx.sourceRevision]);
-    // A Canvas visit starts Prepare only for a student who chose Every day; otherwise it waits for a press.
-    if(!guard()||raw().settings?.on!==true||raw().settings?.everyDay!==true)return;
+    // A Canvas visit starts Prepare only for a student who chose Every day; otherwise it waits for a press. And never while
+    // Help is switched off in Edit Home: off sends nothing on its own.
+    if(!guard()||raw().settings?.on!==true||raw().settings?.everyDay!==true||store.get().settings?.showHelp===false)return;
     if(engineAttempt?.triggerKey!==triggerKey)engineAttempt={triggerKey,id:'run-'+(opts.uuid?.()||root.crypto.randomUUID())};
     const reply=await (opts.request||
       root.chrome.runtime.sendMessage.bind(root.chrome.runtime))({target:'ch-ai-engine',op:'start',scopeKey:scope,requestId:engineAttempt.id,triggerKey,day});

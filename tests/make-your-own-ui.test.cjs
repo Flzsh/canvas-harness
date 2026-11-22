@@ -5,7 +5,7 @@ const colors={bg:'#ffffff',surface:'#ffffff',ink:'#111111',muted:'#555555',line:
 const theme={format:'chtheme',version:1,name:'Garden <look>',colors:{light:colors},assets:{}};
 test('customization includes the pure preset dependencies without enabling optional controllers',()=>{
  const F=require('../extension/features.js'),selection=F.resolve({preset:'custom',custom:['customization']});
- for(const file of ['planner-model.js','pet-art.js','agent-clock.js','pony-ask.js','custom-kits.js','pack-common.js','theme-pack.js','pet-pack.js','preset-pack.js','packs.js','data-theme.js','make-your-own.js'])assert.ok(selection.js.includes(file),file);
+ for(const file of ['planner-model.js','pet-art.js','agent-clock.js','pony-ask.js','custom-kits.js','pack-common.js','band-kit.js','theme-pack.js','pet-pack.js','preset-pack.js','packs.js','band-pieces.js','data-theme.js','make-your-own.js'])assert.ok(selection.js.includes(file),file);
  assert.ok(!selection.enabled.includes('pony'));assert.ok(!selection.enabled.includes('planner'));assert.ok(!selection.js.includes('pets.js'));assert.ok(!selection.js.includes('widgets.js'));assert.ok(selection.js.indexOf('pony-ask.js')<selection.js.indexOf('preset-pack.js'));
 });
 function fixture(){
@@ -39,6 +39,22 @@ test('preset review carries the chosen week, cancellation is inert and removing 
 test('using an installed file reviews it and reuses its receipt instead of duplicating the install',async()=>{
  const h=fixture();h.saved={settings:{makeYourOwn:{installed:{one:{id:'one',name:'Garden',kind:'theme',pack:theme}}}}};
  const html=h.api.render(h.controller.state,h.store.get().settings);assert.match(html,/data-rd-action="make-remove"/);await h.controller.action('use','one');assert.equal(h.calls.length,0);assert.equal(h.controller.state.draft.id,'one');await h.controller.action('apply');assert.deepEqual(h.calls[0],['use','one','']);
+});
+// 4.1.0: "Use default theme" (Look) and the Companion's built-in button send make-clear, which reached no branch before
+test('Use default theme and the built-in companion go back to the built-in choices and keep the packs installed',async()=>{
+ const read=file=>fs.readFileSync(path.join(__dirname,'../extension',file),'utf8');
+ assert.match(read('customize-ui.js'),/button\('make-clear','Use default theme','data-id="theme"'/);assert.match(read('customize-ui.js'),/button\('make-clear',[^\n]*data-id="pet"/);
+ assert.match(read('dashboard.js'),/if\(action\.startsWith\('make-'\)\)\{\s*void makeOwn\?\.action\(action\.slice\(5\),button\.dataset\.id/);
+ const h=fixture(),installed={one:{id:'one',name:'Garden',kind:'theme'},two:{id:'two',name:'Pip',kind:'pet'}};let updates=0;
+ h.saved={settings:{theme:'dark',sceneTheme:'christmas',makeYourOwn:{theme:{id:'one',name:'Garden'},pet:{id:'two',name:'Pip'},installed}}};
+ h.store.update=async mutator=>{const next=structuredClone(h.store.get());mutator(next);h.saved=next;updates++;return next;};
+ await h.controller.action('clear','theme');
+ let s=h.store.get().settings;assert.equal(s.makeYourOwn.theme,null);assert.equal(s.sceneTheme,'');assert.equal(s.theme,'dark');assert.deepEqual(s.makeYourOwn.pet,{id:'two',name:'Pip'});
+ assert.deepEqual(s.makeYourOwn.installed,installed);assert.equal(h.controller.state.status,'Selected');assert.equal(h.controller.state.busy,false);
+ await h.controller.action('clear','pet');
+ s=h.store.get().settings;assert.equal(s.makeYourOwn.pet,null);assert.deepEqual(s.makeYourOwn.installed,installed);assert.equal(updates,2);
+ await h.controller.action('clear','installed');assert.equal(updates,2,'only the theme and the companion can be cleared');
+ assert.deepEqual(h.calls,[],'nothing is installed, used or removed');
 });
 test('destroying during validation discards the result without scheduling more work',async()=>{
  const h=fixture();let resolve;h.env.ReserveThemePack.importPack=()=>new Promise(r=>resolve=r);const waiting=h.controller.choose({name:'garden.chtheme'}),before=h.changes;h.controller.destroy();resolve({pack:theme});await waiting;assert.equal(h.controller.state.draft,null);assert.equal(h.changes,before);assert.deepEqual(h.calls,[]);

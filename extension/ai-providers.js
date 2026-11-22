@@ -15,7 +15,9 @@
   const list = Object.freeze([
     {id: 'chatgpt', label: 'ChatGPT', url: 'https://chatgpt.com/', primary: true},
     {id: 'claude', label: 'Claude', url: 'https://claude.ai/new', primary: true},
-    {id: 'gemini', label: 'Gemini', url: 'https://gemini.google.com/app', primary: true},
+    // box: the most characters the site's chat box keeps. Gemini's keeps the first 32,000 and drops the rest without a
+    // word (measured on the real page, signed out and signed in, 2026-11-18). ai-inject.js holds the same number.
+    {id: 'gemini', label: 'Gemini', url: 'https://gemini.google.com/app', primary: true, box: 32000},
     {id: 'grok', label: 'Grok', url: 'https://grok.com/', primary: false},
     {id: 'deepseek', label: 'DeepSeek', url: 'https://chat.deepseek.com/', primary: false},
     {id: 'kimi', label: 'Kimi', url: 'https://www.kimi.com/', primary: false},

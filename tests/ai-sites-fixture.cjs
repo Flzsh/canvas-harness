@@ -127,7 +127,8 @@ const SITES={
   stop:'<button aria-label="Stop response">Stop</button>',account:'<button data-testid="user-menu-button">S</button>',
   out:{url:'https://claude.ai/login',page:'<main><h1>Log in or sign up</h1><form><input type="email" autocomplete="email" placeholder="Enter your email"><button>Continue with email</button></form></main>'},
   limit:{notice:'<div class="text-sm">You are out of free messages until 4:00 PM</div>',where:'composer'},look:true},
- gemini:{label:'Gemini',start:'https://gemini.google.com/app',chat:'https://gemini.google.com/app/1a2b3c4d5e6f7a8b',
+ // box: the real page keeps the first 32,000 characters typed into its chat box (measured 2026-11-18, signed out and in)
+ gemini:{label:'Gemini',start:'https://gemini.google.com/app',chat:'https://gemini.google.com/app/1a2b3c4d5e6f7a8b',box:32000,
   composer:'<rich-textarea><div class="ql-editor" contenteditable="true" role="textbox"></div></rich-textarea>',send:'<button class="send-button" aria-label="Send message">Send</button>',
   user:t=>'<user-query><div class="query-text">'+t+'</div></user-query>',assistant:t=>'<model-response><message-content>'+t+'</message-content></model-response>',
   stop:'<button class="stop" aria-label="Stop response">Stop</button>',account:'<a href="https://accounts.google.com/SignOutOptions?hl=en" aria-label="Google Account">S</a>',
@@ -169,14 +170,15 @@ const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'
 // A side bar with chat titles that only look like trouble, so a page is never read by its titles.
 const SIDEBAR='<nav><a href="/c/aaaaaaaa1111">You\'ve reached the summit: essay notes</a><a href="/c/bbbbbbbb2222">Too many requests? HTTP 429 homework</a><a href="/c/cccccccc3333">Log in</a></nav>';
 // One page of one site. state: 'in' (signed in), 'out' (signed out), 'limit' (at its usage limit).
-function page(id,{state='in',url}={}){
+function page(id,{state='in',url,box}={}){
  const s=SITES[id];if(!s)throw Error('No such site: '+id);
  const view={getComputedStyle:n=>n.style(),HTMLTextAreaElement:Textarea,InputEvent:DraftEvent,Event:DraftEvent,getSelection:()=>selection};
  let range=null;const selection={removeAllRanges(){range=null;},addRange(r){range=r;}};
  const doc={defaultView:view,activeElement:null,location:null,
   createRange:()=>({node:null,collapsed:true,selectNodeContents(n){this.node=n;this.collapsed=false;},collapse(){this.collapsed=true;}}),
   createTextNode:t=>new Text(t),
-  execCommand(command,ui,text){if(command!=='insertText'||!range?.node)return false;if(!range.collapsed)range.node.textContent='';range.node.appendChild(new Text(text));return true;},
+  // (a site's chat box keeps only its first `box` characters; delete empties a selected box)
+  execCommand(command,ui,text){if(command==='delete'&&range?.node&&!range.collapsed){range.node.textContent='';return true;}if(command!=='insertText'||!range?.node)return false;if(!range.collapsed)range.node.textContent='';range.node.appendChild(new Text(text));const keep=box??s.box;if(keep&&range.node.textContent.length>keep)range.node.textContent=range.node.textContent.slice(0,keep);return true;},
   querySelectorAll:selector=>doc.documentElement.querySelectorAll(selector),querySelector:selector=>doc.documentElement.querySelector(selector)};
  const out=state==='out'&&s.out.url;
  const where=new URL(out?s.out.url:url||s.start);

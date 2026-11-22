@@ -2,7 +2,7 @@
 
 Canvas Harness 4.0 has **AI help**, an optional add-on. It reads your Canvas the way the rest of Canvas Harness does, writes a message for an AI, and turns the reply into Help cards, a Today list and study aids on your page. Canvas Harness has no AI of its own and no server. The answer comes from an AI you choose, reached in one of three ways:
 
-- **Web AI** (the default): the AI's own website, in a browser tab where you are signed in. ChatGPT, Claude and Gemini are listed first; Grok, DeepSeek, Kimi, Qwen and Z.ai (GLM) are under **More**.
+- **Web AI** (the default): the AI's own website, in a browser tab where you are signed in. ChatGPT, Claude and Gemini are listed first; Grok, DeepSeek, Kimi, Qwen and Z.ai (GLM) are under **More**. Gemini's chat box holds at most 32,000 characters, so from 4.1.0 each message to Gemini is fitted to it (the AI is told what had to be left out); a message that still cannot fit is not typed, and AI help says so.
 - **API**: your own API key for Anthropic, OpenAI, Google or an OpenAI-compatible service. The provider bills you for each request.
 - **Overnight**: Canvas Harness writes the message as a file in a folder you pick, and an AI tool that you run yourself writes its answer into the same folder.
 
@@ -29,19 +29,19 @@ Choose the way in **Tools → AI → ··· → Way**. Its main switch, **Your A
 
 ## When something is sent
 
-The first time the Help band shows on Home, it asks once whether Daily AI help may run on its own, in one sentence that says what is sent and how often, with two choices: **Every day** or **Only when I ask**. Until you choose, and after **Only when I ask**, Prepare runs only when you press **Daily AI help**. You can change it later with **Prepare every day** in **Tools → AI → ···**.
+The first time the Help band shows on Home, it asks once whether Daily AI help may run on its own, in one sentence that says what is sent and how often, with two choices: **Every day** or **Only when I ask**. Until you choose, and after **Only when I ask**, Prepare runs only when you press **Daily AI help**. You can change it later with the small button beside **Daily AI help**, which shows the choice (**Every day** or **When I ask**) and brings the two choices back, or with **Prepare every day** in **Tools → AI → ···**.
 
 | You do | What happens | Sent without another click? |
 | --- | --- | --- |
-| Open Canvas after choosing **Every day** (**Prepare every day** on) | Prepare checks Canvas on the first visit of the day, and again when your assignments, files, announcements, Inbox or calendar change, up to **Daily cap** runs a day (3 unless you change it; 0 stops automatic runs). | Yes, once the way is ready (below) |
-| Open Canvas without choosing **Every day** | Nothing is sent. | Nothing is sent |
+| Open Canvas after choosing **Every day** (**Prepare every day** on), with **Help** on in **Edit Home** | Prepare checks Canvas on the first visit of the day, and again when your assignments, files, announcements, Inbox or calendar change, up to **Daily cap** runs a day (3 unless you change it; 0 stops automatic runs). | Yes, once the way is ready (below) |
+| Open Canvas without choosing **Every day**, or with **Help** switched off in **Edit Home** | Nothing is sent. | Nothing is sent |
 | **Daily AI help** | A Prepare run now. It runs even when the daily cap is reached, and it counts toward the cap. | Yes |
 | **Help with this**, **Help with…**, or **Ask**, **More** or **Check my work** on a card | A run about that item or card: one or more requests. | Yes |
 | **Ask your AI** in Tools → AI | One run about your coming days. It can take a few rounds. | Yes |
 | **Send** in Tools → AI for a study aid, a PDF's pages or a question from Biscuit | Web AI: the text is put in the website's chat box. API: it is sent with your key. | Web AI: no, unless **Send automatically** is on. API: yes |
 | **Prepare now** with the Overnight way | Today's prep file is written to your folder. | Written to the folder |
 
-"Ready" means: for Web AI, you have already allowed Canvas Harness on that AI website; for API, you saved a key and allowed that API address; for Overnight, you chose a folder and allowed it. Until then, the Prepare scan stays on this device and the Help band says what is missing, for example **Allow access to your AI website**. After that, if you chose **Every day**, the automatic run sends on its own each day. Allowing a website once, for example to send one question, does not turn it on. To stop it, choose **Only when I ask** (turn **Prepare every day** off), turn **Your AI** off, or set **Daily cap** to 0.
+"Ready" means: for Web AI, you have already allowed Canvas Harness on that AI website; for API, you saved a key and allowed that API address; for Overnight, you chose a folder and allowed it. Until then, the Prepare scan stays on this device and the Help band says what is missing, for example **Allow access to your AI website**. After that, if you chose **Every day** and **Help** is on in **Edit Home**, the automatic run sends on its own each day. Allowing a website once, for example to send one question, does not turn it on. To stop it, choose **Only when I ask** (turn **Prepare every day** off), switch **Help** off in **Edit Home**, turn **Your AI** off, or set **Daily cap** to 0.
 
 Your AI does not run on a quiz-taking page. Changing any Your AI setting, **Show grades** or **Teacher feedback** stops a run that is in progress. **Stop** in Tools → AI or in the Help band stops one too: the run ends everywhere, and Daily AI help does not start by itself again that day (a click still runs it).
 
@@ -133,6 +133,7 @@ In **Tools → AI → ···**:
 ## Turn it off
 
 - Choose **Only when I ask**, or turn **Prepare every day** off. Nothing runs on its own; the buttons still work.
+- Switch **Help** off in **Edit Home**. The Help band goes and nothing runs on its own, even after **Every day**; a run already going stops at its next step. What you ask for still runs.
 - Switch **Your AI** off. Nothing runs and Help cards stop.
 - Set **Daily cap** to 0 to keep only the requests you click.
 - Switch **AI help** off in Features (Make it yours → More, or the popup), choose Lite, or remove the AI help add-on. Each locks it again: runs stop, and its code is not loaded after you reload Canvas.

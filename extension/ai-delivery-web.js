@@ -372,7 +372,9 @@
    }
    // Even if Send threw or the worker vanished before it clicked, never replay this intent.
    if(['send-intent','sent'].includes(receipt.status)){
-    if(now()-(receipt.intentAt||receipt.sentAt)>15000)return blocked(receipt,'Send could not be confirmed. Review the chat','Review draft');
+    // A site can take a while to show a message it has taken (Gemini's first message of a chat once took 14 s on the
+    // real page): while the page shows the message still staged, or already gone from the box, it gets 45 s, not 15.
+    if(now()-(receipt.intentAt||receipt.sentAt)>(['ready','waiting'].includes(evidence?.status)?45000:15000))return blocked(receipt,'Send could not be confirmed. Review the chat','Review draft');
     return {status:'waiting',receipt};
    }
    // A fresh chat in a background tab can take a while to show its composer (and longer while ChatGPT is busy).
@@ -401,6 +403,18 @@
       const told=await noticed(result.limit===true?{state:'limit',said:result.said}:{state:'signed-out',by:result.signedOut});
       if(told)return told;
     }
+    // Longer than the site's chat box holds (Gemini's keeps 32,000 characters): nothing is in the box. Said plainly, with
+    // the ways on. The runner fits its own messages to the box first, so this is one it could not make fit.
+    if(result?.status==='no-editor'&&result.tooLong)
+      return {
+        status:'needs-you',
+        receipt,
+        needsYou:{
+          reason:'This is longer than '+provider.label+'\'s chat box holds'+(result.box?' ('+Number(result.box).toLocaleString('en-US')+' characters)':'')+'. Nothing was sent. Ask about less, or choose another AI in Your AI.',
+          action:'Try again',
+          manual:true
+        }
+      };
     if(result?.status==='no-editor'&&result.retryable&&!/did not keep the inserted text/i.test(result.message||''))return {status:'waiting',receipt};
     if(result?.status!=='injected')return blocked(receipt,result?.message||'Review the chat composer','Review draft');
     receipt={...receipt,status:'staged'};await checkpoint(receipt);return {status:'waiting',receipt};

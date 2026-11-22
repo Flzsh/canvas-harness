@@ -161,14 +161,14 @@
       button('board-frame',`<i data-frame="${value}"></i>${E(name)}`,`role="radio" data-value="${value}" aria-checked="${!(ownTheme?.frames?.panel||sceneActive)||layer.parts?.frames===false||layer.parts?.panel===false?(s.panelFrame||'pen')===value:false}" title="${E(hint)}"`,'rd-frame-choice')).join('');
 
   const night=Math.max(0,Math.min(100,Math.round(Number(s.nightArt)||0))),
-    sceneActive=enabled('scene-themes')&&['starry','sea','stars','blueprint','maple','thanksgiving'].includes(s.sceneTheme),
+    sceneActive=enabled('scene-themes')&&['starry','sea','stars','blueprint','maple','thanksgiving','christmas'].includes(s.sceneTheme),
     installedScene=(c.makeOwn?.catalogue||[]).find(row=>
       row.kind==='feature'&&row.sceneTheme!==undefined&&(root.ReservePacks?.isCurrent?root.ReservePacks.isCurrent(row,{settings:s}):row.current));
   const ownTheme=!sceneActive&&s.makeYourOwn?.theme?c.makeOwn?.theme:null,
     ownedPalette=sceneActive||!!s.makeYourOwn?.theme,
     ownerName=s.makeYourOwn?.theme?.name||
       installedScene?.name||
-      ({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving'})[s.sceneTheme]||
+      ({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving',christmas:'Christmas'})[s.sceneTheme]||
       'The selected theme',
     // (the look the dashboard saves into, dashboard.js lookSelection: an own theme's pack, else the scene's built-in key)
     look=root.ReserveMakeYourOwn?.activeLook?.(c.makeOwn,s)||(key=>({key,layer:key?s.makeYourOwn?.adjustments?.[key]||{}:{}}))(
@@ -183,7 +183,8 @@
     stars:{bg:'#04060c',accent:'#a9c2ff'},
     blueprint:{bg:'#174a88',accent:'#cfe6ff'},
     maple:{bg:'#FBF3E4',accent:'#B9432A'},
-    thanksgiving:{bg:'#F7EFDF',accent:'#8A2433'}
+    thanksgiving:{bg:'#F7EFDF',accent:'#8A2433'},
+    christmas:{bg:'#EEF3FB',accent:'#B4283A'}
   })[s.sceneTheme];
   const colorFields=key=>`<div class="cz-pair">${['light','dark'].map(mode=>{
     // a colour box takes only #rrggbb: a saved Page colour name ("paper", "accent") falls back to the scene's or the default colour
@@ -205,6 +206,7 @@
    // still one radio group; new holidays (Christmas, New Year...) join the Holiday pack
    {head:'Holiday pack'},
    ['thanksgiving','Thanksgiving','',poster('thanksgiving')],
+   ['christmas','Christmas','',poster('christmas')],
    {head:'Seasonal pack'},
    ['maple','Maple Wind','',poster('maple')],
    {head:'Everyday pack'},

@@ -4,9 +4,36 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const storage=require('../extension/storage.js');
 const {createDOM}=require('./addons-fixture.cjs');
 const read=file=>fs.readFileSync(path.join(__dirname,'../extension',file),'utf8');
-const ids=['','starry','sea','stars','blueprint','maple','thanksgiving'];
+const ids=['','starry','sea','stars','blueprint','maple','thanksgiving','christmas'];
 // Look shows them sorted into packs (None, Holiday, Seasonal, Everyday), still one radio group (owner 2026-11-09).
-const shown=['','thanksgiving','maple','starry','sea','stars','blueprint'];
+// Christmas (4.1.0) joins the Holiday pack after Thanksgiving.
+const shown=['','thanksgiving','christmas','maple','starry','sea','stars','blueprint'];
+// Christmas (4.1.0): a built-in scene like Thanksgiving, in every list of scenes, the Holiday pack and Biscuit's words
+test('Christmas is registered like the other built-in scenes, in every list of scenes',()=>{
+ const S=require('../extension/scene-themes.js');assert.equal(S.names.christmas,'Christmas');
+ const motifs=read('scene-themes.js').match(/christmas:\[([^\]]*)\]/);assert.ok(motifs,'its six small pictures');
+ assert.deepEqual(motifs[1].split(',').map(v=>v.replace(/'/g,'')),['tree','gift','stocking','cane','flake','mug']);
+ for(const motif of ['tree','gift','stocking','cane','flake','mug'])assert.ok(fs.statSync(path.join(__dirname,'../extension/themes/christmas/icon-'+motif+'.png')).isFile(),motif);
+ const all=/'starry','sea','stars','blueprint','maple','thanksgiving'(,'christmas')?\]/g,named=/maple:'Maple Wind',thanksgiving:'Thanksgiving'(,christmas:'Christmas')?\}/g;
+ for(const file of ['customize-ui.js','customization-model.js','dashboard-view.js','dashboard.js','page-preferences.js','biscuit-parse.js','scene-themes.js']){
+  const source=read(file),arrays=[...source.matchAll(all)],names=[...source.matchAll(named)];
+  assert.ok(arrays.length+names.length,file+' lists the scenes');
+  for(const m of arrays)assert.equal(m[1],",'christmas'",file+' lists Christmas with the others');
+  for(const m of names)assert.equal(m[1],",christmas:'Christmas'",file+' names it Christmas');
+ }
+ assert.match(read('biscuit-controls.js'),/"sceneTheme":\["","starry","sea","stars","blueprint","maple","thanksgiving","christmas"\]/,'a scene Biscuit may set');
+ assert.match(read('biscuit-controls.js'),/\['Thanksgiving','thanksgiving'\],\['Christmas','christmas'\]\]/,'a choice when Biscuit asks which scene');
+ const ui=read('customize-ui.js');
+ assert.match(ui,/\{head:'Holiday pack'\},\s*\['thanksgiving','Thanksgiving','',poster\('thanksgiving'\)\],\s*\['christmas','Christmas','',poster\('christmas'\)\],\s*\{head:'Seasonal pack'\}/,'in the Holiday pack after Thanksgiving, its poster and its name, no description');
+ assert.match(ui,/christmas:\{bg:'#EEF3FB',accent:'#B4283A'\}/,'scene colours from its theme.css');
+ assert.match(read('themes/christmas/theme.css'),/--rd-bg:#EEF3FB;[^}]*--rd-accent:#B4283A/,'the same colours as its stylesheet');
+ const resources=JSON.parse(read('manifest.json')).web_accessible_resources.map(group=>group.resources),assets=require('../extension/features.js').catalogue.find(f=>f.id==='scene-themes').files.assets;
+ const files=fs.readdirSync(path.join(__dirname,'../extension/themes/christmas')).map(f=>'themes/christmas/'+f);
+ assert.deepEqual(files.sort(),['christmas-card.png','christmas-panel.png','ground.png','icon-cane.png','icon-flake.png','icon-gift.png','icon-mug.png','icon-stocking.png','icon-tree.png','poster.jpg','sky.mp4','theme.css'].map(f=>'themes/christmas/'+f));
+ for(const file of files){for(const group of resources.filter(list=>list.some(f=>f.startsWith('themes/thanksgiving/'))))assert.ok(group.includes(file),'Canvas may load '+file);assert.ok(assets.includes(file),'the scene feature owns '+file);}
+ const refs=[...read('themes/christmas/theme.css').matchAll(/url\(\s*(['"]?)(.*?)\1\s*\)/g)].map(m=>m[2]).filter(ref=>!ref.startsWith('data:'));
+ assert.deepEqual([...new Set(refs)].sort(),['christmas-card.png','christmas-panel.png','ground.png'],'every picture its stylesheet names is in its folder');
+});
 function makeStore(){
  const data={};return storage.createStore({accountId:'42',origin:'https://school.instructure.com',adapter:{read:async key=>structuredClone(data[key]),write:async(key,value)=>{data[key]=structuredClone(value);}}});
 }
@@ -48,12 +75,12 @@ test('unknown or malformed scenes reject backups and saves without changing exis
  }
 });
 
-test('Look offers seven named native radio choices and only packaged decorative poster thumbnails',()=>{
+test('Look offers eight named native radio choices and only packaged decorative poster thumbnails',()=>{
  const {document,urls}=editor(),group=document.querySelector('[role="radiogroup"][aria-label="Scene"]');
  assert.ok(group,'Scene is a labeled radio group in Look');
  const radios=group.querySelectorAll('input');
  assert.deepEqual(radios.map(input=>input.value),shown);assert.deepEqual(group.querySelectorAll('h4').map(h=>h.textContent),['Holiday pack','Seasonal pack','Everyday pack']);
- assert.deepEqual(radios.map(input=>input.closest('label').querySelector('strong').textContent),['None','Thanksgiving','Maple Wind','Starry Night','Under the Sea','Starfield','Blueprint']);
+ assert.deepEqual(radios.map(input=>input.closest('label').querySelector('strong').textContent),['None','Thanksgiving','Christmas','Maple Wind','Starry Night','Under the Sea','Starfield','Blueprint']);
  for(const input of radios){
   assert.equal(input.type,'radio');assert.equal(input.getAttribute('name'),'cz-sceneTheme');
   assert.equal(input.dataset.rdField,'setting');assert.equal(input.dataset.setting,'sceneTheme');
@@ -63,7 +90,7 @@ test('Look offers seven named native radio choices and only packaged decorative 
  assert.deepEqual(radios.filter(input=>input.checked).map(input=>input.value),['']);
  assert.equal(radios[0].closest('label').querySelector('img'),null,'None keeps the plain page illustration');
  assert.deepEqual(urls,shown.slice(1).map(id=>'themes/'+id+'/poster.jpg'));
- const images=group.querySelectorAll('img');assert.equal(images.length,6);
+ const images=group.querySelectorAll('img');assert.equal(images.length,7);
  for(const [index,img]of images.entries()){
   assert.equal(img.getAttribute('src'),'chrome-extension://test/'+urls[index]);
   assert.equal(img.getAttribute('alt'),'');assert.equal(img.getAttribute('aria-hidden'),'true');
@@ -99,6 +126,6 @@ test('disabled scenes are absent and do not lock saved appearance or resolve pos
 
 test('the picker remains usable without an extension runtime and avoids school-relative image requests',()=>{
  const {document}=editor({runtime:false}),group=document.querySelector('[aria-label="Scene"]');
- assert.ok(group);assert.equal(group.querySelectorAll('input[type="radio"]').length,7);
+ assert.ok(group);assert.equal(group.querySelectorAll('input[type="radio"]').length,8);
  assert.equal(group.querySelector('img'),null);
 });

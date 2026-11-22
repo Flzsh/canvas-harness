@@ -12,6 +12,11 @@
   if(!/^image\/(?:png|jpeg|webp|gif|svg\+xml)$/.test(asset.type)||typeof asset.data!=='string'||!/^[A-Za-z0-9+/]*={0,2}$/.test(asset.data))return '';
   return `<img alt="${E(label)}" src="data:${asset.type};base64,${asset.data}" width="${dimensions[0]}" height="${dimensions[1]}">`;
  }
+ // the band's picture for a mode (band.dark in dark mode when the pack has one), as its still
+ function bandStill(pack,mode){
+   const band=mode==='dark'&&pack.band?.dark||pack.band;
+   return band?pack.assets?.[band.stillAsset||(typeof band.still==='string'?band.still:band.asset)]:null;
+ }
  function preview(pack){
   if(!pack)return '';
   if(pack.format==='chpet')
@@ -28,7 +33,7 @@
   if(pack.format!=='chtheme')return '';
   return Object.entries(pack.colors).map(([mode,colors])=>{
    const valid=Object.values(colors).every(c=>/^#[a-f\d]{6}$/i.test(c));if(!valid)return '';
-   return `<section class="ch-make-preview" style="background:${colors.bg};color:${colors.ink}"><h4>${E(mode)}</h4>${pack.background?`<figure>${image(pack.assets?.[pack.background.still||pack.background.asset])}<figcaption>Background</figcaption></figure>`:''}${image(pack.assets?.[pack.banner?.still||pack.banner?.asset])}<div style="background:${colors.surface};color:${colors.ink};border:1px solid ${colors.line}"><h5>${E(pack.name)}</h5>${pack.title?`<span>${E(pack.title.family)}</span>`:''}<span style="color:${colors.muted}">Planner</span> <span style="color:${colors.accent}">Courses</span>${(pack.icons||[]).map(id=>image(pack.assets?.[id])).join('')}</div>${Object.entries(pack.frames||{}).map(([kind,frame])=>`<figure>${image(pack.assets?.[frame.asset])}<figcaption>${E(kind)}</figcaption></figure>`).join('')}</section>`;
+   return `<section class="ch-make-preview" style="background:${colors.bg};color:${colors.ink}"><h4>${E(mode)}</h4>${pack.background?`<figure>${image(pack.assets?.[pack.background.still||pack.background.asset])}<figcaption>Background</figcaption></figure>`:''}${pack.band?`<figure>${image(bandStill(pack,mode),'',[320,40])}<figcaption>Band</figcaption></figure>`:''}${image(pack.assets?.[pack.banner?.still||pack.banner?.asset])}<div style="background:${colors.surface};color:${colors.ink};border:1px solid ${colors.line}"><h5>${E(pack.name)}</h5>${pack.title?`<span>${E(pack.title.family)}</span>`:''}<span style="color:${colors.muted}">Planner</span> <span style="color:${colors.accent}">Courses</span>${(pack.icons||[]).map(id=>image(pack.assets?.[id])).join('')}</div>${Object.entries(pack.frames||{}).map(([kind,frame])=>`<figure>${image(pack.assets?.[frame.asset])}<figcaption>${E(kind)}</figcaption></figure>`).join('')}</section>`;
   }).join('');
  }
  // Show each installed item where it belongs. Preset kinds are read from their
@@ -96,8 +101,17 @@
       if(state.draft.id&&P.useLocal)await P.useLocal(state.draft.id,{store,week:state.week});else await P.installLocal(state.draft.file,{store,week:state.week});
       state.draft=null;
     }
+    // "Use default theme" (Look) and the built-in companion (Companion): back to the built-in look or Biscuit; the
+    // pack stays installed. The theme's choice also clears a scene, as the built-in looks in Biscuit's list do.
+    else if(name==='clear'){
+      if(!['theme','pet'].includes(id))return;
+      await store.update(data=>{
+        if(data.settings.makeYourOwn)data.settings.makeYourOwn[id]=null;
+        if(id==='theme')data.settings.sceneTheme='';
+      });
+    }
     else return;
-    state.status=name==='remove'?'Removed':'Added';
+    state.status=({remove:'Removed',clear:'Selected'})[name]||'Added';
    }catch(error){state.status=error?.message||'Could not save';}
    finally{state.busy=false;notify();}
   }

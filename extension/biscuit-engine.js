@@ -2227,7 +2227,7 @@
   const GROUND_SYN={
     showGrades:'grade grades score scores marks percent percentage',
     theme:'dark light night bright day mode theme',
-    sceneTheme:'scene theme background wallpaper starry night sea ocean stars starfield space blueprint maple wind autumn walls wisteria thanksgiving train cabin none plain',
+    sceneTheme:'scene theme background wallpaper starry night sea ocean stars starfield space blueprint maple wind autumn walls wisteria thanksgiving christmas xmas none plain',
     pageTint:'tint page color colour background paper accent sky sage lilac blush sand snow',
     accent:'accent color colour clay forest iris indigo rose ocean amber',
     motion:'motion animation animations moving move still gentle fades fade',
