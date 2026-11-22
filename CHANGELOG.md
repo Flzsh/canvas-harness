@@ -9,6 +9,8 @@ A Christmas scene, theme packs that can bring a moving band and a companion of t
 - The Market installs a theme's band copy when it has one this version can show, and the plain theme otherwise.
 - **Use default theme** in Make it yours → Look, and the built-in companion in Make it yours → Companion, now take you back from a theme or companion pack; before, they did nothing. The pack stays installed, ready to use again.
 - AI help on Gemini: Gemini's chat box keeps only 32,000 characters, so Canvas Harness now fits each message to it. A message that still cannot fit is never typed, and you are told so plainly. Daily AI help's first reply is read as soon as it arrives, and a slow page gets longer to show a sent message.
+- **On Canvas** off in the popup now takes Canvas Harness off every Canvas page; before, course pages kept the drawn course menu and the add-ons. An open Canvas tab reloads as plain Canvas, unless you have typed something in it. Switched on again, your add-ons come back as you chose them.
+- AI help: with **Help** switched off in Edit Home, nothing is sent on its own, even after you chose **Every day**; what you ask for still runs. In the Help band, a small button beside **Daily AI help** shows how it runs, **Every day** or **When I ask**, and brings the two choices back.
 
 ## 4.0.0 - 2026-11-17
 
