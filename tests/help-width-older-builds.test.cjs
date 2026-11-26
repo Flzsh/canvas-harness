@@ -1,14 +1,14 @@
 'use strict';
 require('../extension/site.js');
 // fix-42 (review-42 finding 2): Help's width is kept on its own (settings.helpSize), beside the layout as Help's place is,
-// never in moduleSize: CH+ 4.0.194 refuses a whole record whose moduleSize names a module it does not know, so rolling
+// never in moduleSize: Canvas Harness 4.0.194 refuses a whole record whose moduleSize names a module it does not know, so rolling
 // back, or restoring a 4.2 backup into an older build, failed on the whole record. Records a 4.2 preview already wrote
 // with Help in moduleSize load and are moved over. The older build here is 4.0.194's own storage code, byte for byte
-// (tests/fixtures/chp-194/extension, the files storage.js loads to read a record), run as Canvas runs it: page scripts in
+// (tests/fixtures/older-4.0.194/extension, the files storage.js loads to read a record), run as Canvas runs it: page scripts in
 // one world of their own, so nothing of this build's modules is seen by it. (Sample data only.)
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),{createHash}=require('node:crypto');
 const A=require('../extension/workspace-arrange.js'),Storage=require('../extension/storage.js'),Core=require('../extension/core.js');
-const OLD=path.join(__dirname,'fixtures','chp-194','extension');
+const OLD=path.join(__dirname,'fixtures','older-4.0.194','extension');
 const OLD_FILES={'gpa-model.js':'b7c60c1b57ac03ba54198d8e508ff04babfe1da455db84432bd6a780d728e5b6','personal-work.js':'9ca9058a0bd4699b1e94b9cc41f9313c745a1ce6ff7f95cb3a11add8f8af5ba4','page-preferences.js':'1e23ad1a33cf5f75af241fc2701212f4f059e2ebb6598e8b73aaedef3c454ebe','workspace-arrange.js':'b1164b5bbdb93567d488fccffc981ee76f73f03938110d4c0801f1e27c4f84e8','customization-model.js':'a0302883dc53d89cd8a2bfe08eb893d0fa98aacd933242e9709e25db30badc4f','storage.js':'4e04a178a5288d46c2a2ce671204601f49956f71a50d5651d756280c21d59e5c'};
 const json=v=>JSON.parse(JSON.stringify(v));
 function memory(){const data={};return {data,read:async k=>structuredClone(data[k]),write:async(k,v)=>{data[k]=structuredClone(v);}};}

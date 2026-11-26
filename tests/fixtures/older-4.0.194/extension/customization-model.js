@@ -18,7 +18,7 @@
   if(typeof value.subjectArt==='string'&&/^[a-z][a-z-]{1,30}[a-z]$/.test(value.subjectArt))out.subjectArt=value.subjectArt;
   for(const key of artKeys)if(value[key]!=null){
    const art=root.ReserveCustomArt||(typeof module==='object'&&module.exports?require('./custom-art.js'):null);
-   if(!art)throw Error('Artwork support is unavailable. Reload CH+ and try again.');
+   if(!art)throw Error('Artwork support is unavailable. Reload Canvas Harness and try again.');
    const frame=root.ReserveMediaFrame||(typeof module==='object'&&module.exports?require('./media-frame.js'):null),slot=key.replace('Art',''),clean=asset=>{if(asset?.mediaId){const media=root.ReserveMedia||(typeof module==='object'&&module.exports?require('./media-store.js'):null);return media.cleanReference(asset,slot);}return art.cleanAsset(asset);};
    if(frame?.framed(value[key])){if(!['banner','card','background'].includes(slot))throw Error('Invalid framed artwork slot.');out[key]=frame.clean(value[key],clean);}
    else out[key]=clean(value[key]);
@@ -40,7 +40,7 @@
   // The dock's size (a factor of its tile) and its place (-1 at the left edge, 0 in the middle, 1 at the right).
   for(const [key,min,max] of [['dockScale',.7,1.5],['dockShift',-1,1]])if(settings[key]!==undefined){const n=Number(settings[key]);if(!Number.isFinite(n)||n<min||n>max)throw Error(`Invalid ${key} setting in backup.`);out[key]=Math.round(n*100)/100;}
   if(settings.nightArt!==undefined){const n=Number(settings.nightArt);if(!Number.isFinite(n)||n<0||n>100)throw Error('Invalid nightArt setting in backup.');out.nightArt=Math.round(n);}
-  if(!arrange)throw Error('Workspace arrangement is unavailable. Reload CH+ and try again.');
+  if(!arrange)throw Error('Workspace arrangement is unavailable. Reload Canvas Harness and try again.');
   Object.assign(out,arrange.cleanSaved(settings));
   out.overviewArt=cleanAppearance(settings.overviewArt);out.themeArt=cleanAppearance(settings.themeArt);
   return out;

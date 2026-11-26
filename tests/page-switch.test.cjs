@@ -1,6 +1,6 @@
 'use strict';
 // Roadmap item 8, its safety part (4.2): on an assignment's own pages (instructions, submitting, submission details,
-// feedback) a switch turns CH+ off there. Off means off on that page: nothing of ours drawn but the switch itself, nothing
+// feedback) a switch turns Canvas Harness off there. Off means off on that page: nothing of ours drawn but the switch itself, nothing
 // asked of the worker, nothing reloads; back on, it comes back at once. Kept per assignment in Canvas's own site storage.
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const read=file=>fs.readFileSync(path.join(__dirname,'../extension',file),'utf8');
@@ -81,7 +81,7 @@ test('switched off live, the menu comes off at once and leaves Canvas\'s bar as 
  let told=0;f.env.ReserveFeatures.onApply(()=>told++);
  assert.equal(f.env.ReserveSite.setPageOff(true),true);f.env.ReserveFeatures.refresh();await tick();
  assert.equal(f.classes.size,0);assert.deepEqual(Object.keys(f.html.dataset),[]);assert.equal(f.nodes.length,0);assert.equal(f.env.ReserveCanvasNav,undefined);
- assert.equal(f.header.style.position,'','the position CH+ gave the bar comes off');assert.equal(f.link.title,'','and the titles it gave its links');assert.deepEqual([...f.header.style.props.keys()].filter(k=>k.startsWith('--chn-')),[]);
+ assert.equal(f.header.style.position,'','the position Canvas Harness gave the bar comes off');assert.equal(f.link.title,'','and the titles it gave its links');assert.deepEqual([...f.header.style.props.keys()].filter(k=>k.startsWith('--chn-')),[]);
  assert.equal(f.windowListeners.size,0);assert.equal(f.intervals.size,0);assert.equal(f.edges.size,0,'the drawer\'s edge is gone');
  assert.equal(f.local.data.get('reserve:navEarly'),'drawer','the first-frame hint for every other page is kept');
  assert.equal(told,1,'the page switch is told');
@@ -125,12 +125,12 @@ function loader({route='/courses/7/assignments/12/submissions/new',off=false,ran
  return {calls,timers,docListeners,context,change:(newValue,oldValue)=>listeners.forEach(fn=>fn({'reserve:enabled':{newValue,oldValue}},'local')),registered:value=>listeners.forEach(fn=>fn({'reserve:features:registered':{newValue:value}},'local'))};
 }
 
-test('an assignment or submission page is never reloaded by CH+: not for "On Canvas", not for a silent worker',async()=>{
+test('an assignment or submission page is never reloaded by Canvas Harness: not for "On Canvas", not for a silent worker',async()=>{
  let p=loader();await p.context.ReserveFeatureLoad;
  assert.equal(p.docListeners.has('input'),false,'nothing watches the typing there');
  assert.equal(p.timers.filter(t=>t.ms===25000).length,0,'no 25 s stall reload armed');
  p.change(false,true);p.change(true,false);p.registered({ok:true,preset:'full',enabled:['pdf']});p.timers.forEach(t=>t.live&&t.fn());
- assert.equal(p.calls.reload,0);assert.deepEqual(p.calls.setSwitch,[false,true],'what CH+ draws there follows the switch at once instead');
+ assert.equal(p.calls.reload,0);assert.deepEqual(p.calls.setSwitch,[false,true],'what Canvas Harness draws there follows the switch at once instead');
  assert.equal(p.calls.events||0,0,'no page event either');
  // an ordinary course page still reloads as before
  const q=loader({route:'/courses/7/grades'});q.change(false,true);assert.equal(q.calls.reload,1);assert.equal(q.docListeners.has('input'),true);
@@ -166,7 +166,7 @@ function page({route='/courses/7/assignments/12',crumbs=true,local=storage(),fea
  const winListeners={};
  const ctx={URL,JSON,Date,Object,Number,location:new URL(route,ORIGIN),localStorage:local,
   document:{readyState:'complete',body:{},createElement:el,querySelector:s=>s==='.ic-app-nav-toggle-and-crumbs'?row:null,getElementById:id=>id==='content'?content:null,addEventListener(){}},
-  addEventListener:(t,fn)=>{winListeners[t]=fn;},chrome:{runtime:{getManifest:()=>({short_name:'CH+'})}}};
+  addEventListener:(t,fn)=>{winListeners[t]=fn;},chrome:{runtime:{getManifest:()=>({short_name:'Canvas Harness'})}}};
  ctx.window=ctx;ctx.top=frame?{}:ctx;
  vm.runInNewContext(read('site.js'),ctx,{filename:'site.js'});
  if(features!==false)ctx.ReserveFeatures=features||{OFFHINT:'reserve:off',chosen:{enabled:['canvas-nav','pdf','play']},refresh(){refreshed++;},onApply(fn){ctx.told=fn;}};
@@ -177,8 +177,8 @@ function page({route='/courses/7/assignments/12',crumbs=true,local=storage(),fea
 test('the switch sits at the end of Canvas\'s breadcrumb row, in the page\'s flow, a drawing and a name, role switch',()=>{
  const p=page();assert.equal(p.placed.length,1);assert.equal(p.placed[0][0],'crumbs');
  const host=p.host(),html=host.shadow.html;
- assert.equal(host.hidden,false);assert.equal(p.button.getAttribute('aria-checked'),'true');assert.equal(p.title.textContent,'CH+ on this page');
- assert.match(html,/role="switch"/);assert.match(html,/<svg class="ic"/,'the CH+ drawing (the dock button\'s books)');assert.match(html,/<svg class="kn"/,'the drawn knob');
+ assert.equal(host.hidden,false);assert.equal(p.button.getAttribute('aria-checked'),'true');assert.equal(p.title.textContent,'Canvas Harness on this page');
+ assert.match(html,/role="switch"/);assert.match(html,/<svg class="ic"/,'the Canvas Harness drawing (the dock button\'s books)');assert.match(html,/<svg class="kn"/,'the drawn knob');
  assert.doesNotMatch(html,/position:\s*(fixed|sticky|absolute)[^;]*;[^}]*}\s*\.sw\{/,'');assert.doesNotMatch(html.replace(/\.sw::after\{[^}]*\}/,''),/position:\s*(fixed|sticky)/,'never fixed or sticky: it cannot cover Submit');
  const note=html.match(/<span class="note"[^>]*>([^<]*)</)[1];assert.ok(note.length<=60,note);assert.match(note,/Submitting/);
  // a window without the breadcrumb row: the top of the page's content
@@ -193,7 +193,7 @@ test('pressing it switches this assignment off and the page follows at once; pre
  p.local.setItem(KEY,JSON.stringify({'7/12':5}));p.winListeners.storage({key:KEY});assert.equal(p.button.getAttribute('aria-checked'),'false');assert.equal(p.refreshed,3);
 });
 
-test('not shown while "On Canvas" is off everywhere, or where CH+ has nothing of its own on the page; never off a hand-in page or in a frame',()=>{
+test('not shown while "On Canvas" is off everywhere, or where Canvas Harness has nothing of its own on the page; never off a hand-in page or in a frame',()=>{
  const off=page({local:storage([['reserve:off','1']])});assert.equal(off.host().hidden,true);
  const lite=page({features:{OFFHINT:'reserve:off',chosen:{enabled:['dashboard','planner']},refresh(){},onApply(){}}});assert.equal(lite.host().hidden,true);
  const offHere=page({local:storage([[KEY,JSON.stringify({'7/12':1})]]),features:{OFFHINT:'reserve:off',chosen:{enabled:['dashboard']},refresh(){},onApply(){}}});assert.equal(offHere.host().hidden,false,'while off here it is always the way back');assert.equal(offHere.button.getAttribute('aria-checked'),'false');

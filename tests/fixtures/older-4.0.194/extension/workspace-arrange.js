@@ -1,4 +1,4 @@
-/* CH+'s personal workspace arrangement; no Canvas data or artwork is changed here. */
+/* Canvas Harness's personal workspace arrangement; no Canvas data or artwork is changed here. */
 (function(root){
  'use strict';
  // The three panels every workspace has, and the modules a student may add beside them. The layout is one tree:

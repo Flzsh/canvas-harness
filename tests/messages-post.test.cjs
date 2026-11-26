@@ -21,7 +21,7 @@ function setup({conversations,read}={}){
  const ui=context.ReserveCourseHubUI.create({store,user:{id:'5'},client,onChange:()=>calls.changes++});
  return {ui,calls,data,raw};
 }
-const courses=[{id:'7',name:'CL Chemistry',shortName:'Chemistry',color:'#a05252'},{id:'8',name:'CL Calculus',shortName:'Calculus',color:'#35608f'}];
+const courses=[{id:'7',name:'Chemistry',shortName:'Chemistry',color:'#a05252'},{id:'8',name:'CL Calculus',shortName:'Calculus',color:'#35608f'}];
 const settle=()=>new Promise(setImmediate);
 const pos=(html,s)=>html.indexOf(s);
 
@@ -37,12 +37,12 @@ test('unread first, then each course under its drawing (the newest course first)
  const groups=[...html.matchAll(/<section class="rd-post-group" data-group="([^"]+)"/g)].map(m=>m[1]);
  assert.deepEqual(groups,['unread','8','7','other']);
  assert.match(html,/<h2 class="rd-post-group-head" id="rd-post-unread"><span class="rd-message-dot" data-unread="true" aria-hidden="true"><\/span>Unread <span class="rd-n">2<\/span><\/h2>/);
- assert.match(html,/<section class="rd-post-group" data-group="7" data-rd-key="post-group-7" aria-labelledby="rd-post-7" style="--rd-course:#a05252;--rd-course-ink:[^"]+"><h2 class="rd-post-group-head" id="rd-post-7"><svg class="rd-mini" data-place="row" data-course="7"><\/svg><span title="CL Chemistry">Chemistry<\/span> <span class="rd-n">2<\/span><\/h2>/);
+ assert.match(html,/<section class="rd-post-group" data-group="7" data-rd-key="post-group-7" aria-labelledby="rd-post-7" style="--rd-course:#a05252;--rd-course-ink:[^"]+"><h2 class="rd-post-group-head" id="rd-post-7"><svg class="rd-mini" data-place="row" data-course="7"><\/svg><span title="Chemistry">Chemistry<\/span> <span class="rd-n">2<\/span><\/h2>/);
  assert.match(html,/<h2 class="rd-post-group-head" id="rd-post-other"><svg class="rd-mini" data-place="row" data-course="folio-home"><\/svg><span>Not from a course<\/span> <span class="rd-n">1<\/span><\/h2>/);
  assert.ok(pos(html,'Lab goggles')<pos(html,'Office hours')&&pos(html,'Office hours')<pos(html,'Quiz moved')&&pos(html,'Quiz moved')<pos(html,'Reading')&&pos(html,'Reading')<pos(html,'Welcome')&&pos(html,'Welcome')<pos(html,'Advisory'));
  const unreadRow=html.slice(pos(html,'data-message="1"'),html.indexOf('</li>',pos(html,'data-message="1"')));
  assert.match(unreadRow,/<span class="rd-post-mark" aria-hidden="true"><svg class="rd-mini" data-place="row" data-course="7"><\/svg><\/span>/,'an unread row shows its course');
- assert.match(unreadRow,/<span class="rd-announcement-meta" title="CL Chemistry">Chemistry<\/span><span aria-hidden="true"> · <\/span><span class="rd-post-people">Course Teacher<\/span><span aria-hidden="true"> · <\/span><span class="rd-post-count">3 messages<\/span><span aria-hidden="true"> · <\/span><span class="rd-file-tag rd-file-tag--mini" data-paper="doc">File<\/span>/);
+ assert.match(unreadRow,/<span class="rd-announcement-meta" title="Chemistry">Chemistry<\/span><span aria-hidden="true"> · <\/span><span class="rd-post-people">Course Teacher<\/span><span aria-hidden="true"> · <\/span><span class="rd-post-count">3 messages<\/span><span aria-hidden="true"> · <\/span><span class="rd-file-tag rd-file-tag--mini" data-paper="doc">File<\/span>/);
  const readRow=html.slice(pos(html,'data-message="3"'),html.indexOf('</li>',pos(html,'data-message="3"')));
  assert.match(readRow,/<span class="rd-post-mark" aria-hidden="true"><\/span>/,'a course group\'s rows need no course of their own');assert.doesNotMatch(readRow,/rd-announcement-meta/);
  assert.match(html,/<p class="rd-post-facts">2 unread<span aria-hidden="true"> · <\/span>6 conversations<\/p>/);
@@ -66,7 +66,7 @@ test('opening a row reads it into the pane: oldest to newest, your own lines mar
  await settle();html=f.ui.renderInbox(courses);assert.deepEqual(f.calls.read,['1']);
  const pane=html.slice(pos(html,'<article class="rd-thread-pane"'),html.indexOf('</article><p class="rd-message-disclaimer"')>0?html.indexOf('<p class="rd-message-disclaimer"'):undefined);
  assert.match(pane,/^<article class="rd-thread-pane" id="rd-thread-pane" aria-labelledby="rd-thread-title" data-message="1" data-rd-key="thread-1" style="--rd-course:#a05252;--rd-course-ink:[^"]+"><header class="rd-thread-head">/);
- assert.match(pane,/<p class="rd-thread-course"><svg class="rd-mini" data-place="row" data-course="7"><\/svg><span class="rd-thread-who"><b title="CL Chemistry">Chemistry<\/b><span aria-hidden="true"> · <\/span>Course Teacher<span aria-hidden="true"> · <\/span>3 messages<\/span><\/p><h2 id="rd-thread-title" tabindex="-1"><span class="rd-sr-only">Unread: <\/span>Lab goggles<\/h2>/);
+ assert.match(pane,/<p class="rd-thread-course"><svg class="rd-mini" data-place="row" data-course="7"><\/svg><span class="rd-thread-who"><b title="Chemistry">Chemistry<\/b><span aria-hidden="true"> · <\/span>Course Teacher<span aria-hidden="true"> · <\/span>3 messages<\/span><\/p><h2 id="rd-thread-title" tabindex="-1"><span class="rd-sr-only">Unread: <\/span>Lab goggles<\/h2>/);
  assert.match(pane,/<div class="rd-thread-actions"><a class="rd-button rd-button--primary rd-thread-reply" href="https:\/\/school.instructure.com\/conversations\/1">Reply in Canvas <span aria-hidden="true">↗<\/span><\/a><div class="rd-message-save">/,'Reply in Canvas leads the pane\'s head');
  assert.match(pane,/data-rd-action="hub-capture-message"[^>]*>Add to my plan<\/button>/);assert.match(pane,/data-rd-action="hub-save-message"[^>]*>Bookmark message<\/button>/);
  assert.ok(pos(pane,'First line')<pos(pane,'My reply')&&pos(pane,'My reply')<pos(pane,'Third line'),'oldest to newest');

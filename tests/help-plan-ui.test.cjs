@@ -10,9 +10,9 @@ const {dom,descendants,tick}=require('./study-fixture.cjs');
 delete globalThis.ReserveHelpPlan;
 const ext=f=>path.join(__dirname,'..','extension',f);
 const ZONE='America/New_York',NOW=Date.parse('2026-11-22T15:00:00Z');   // Sunday 22 November 2026, 10:00 AM
-const COURSES=[{id:'101',name:'CL Chemistry'},{id:'102',name:'CL English'}];
+const COURSES=[{id:'101',name:'Chemistry'},{id:'102',name:'English'}];
 const dayIn=v=>new Intl.DateTimeFormat('en-CA',{timeZone:ZONE,year:'numeric',month:'2-digit',day:'2-digit'}).format(typeof v==='number'?v:Date.parse(v));
-const canvas=(id,name,dueAt,extra={})=>({id,name,courseId:'101',courseName:'CL Chemistry',courseColor:'#286452',dueAt,personal:false,points:20,submissionTypes:['online_upload'],...extra});
+const canvas=(id,name,dueAt,extra={})=>({id,name,courseId:'101',courseName:'Chemistry',courseColor:'#286452',dueAt,personal:false,points:20,submissionTypes:['online_upload'],...extra});
 const STUDY={v:1,kind:'study',title:'Unit 4 Test',size:'xl',grid:4,headline:'Unit 4 Test',importance:1,minutes:80,sheet:[{heading:'Mole ratios',facts:[{text:'Use the balanced equation'}]},{heading:'Limiting reagent',facts:[{text:'Compare ratios'}]},{heading:'Percent yield',facts:[{text:'actual over theoretical'}]}],tip:'',practice:[{q:'How many moles?',answer:'2 mol',why:'1:1'}],gaps:[]};
 const ASK={v:1,kind:'ask',title:'Answer',headline:'Start here',size:'s',grid:4,importance:1,points:[{text:'Read the question.'}],next:'Go on.',gaps:[]};
 const aid=(data,extra={})=>({v:1,kind:data.kind,itemId:'501',courseId:'101',item:'Unit 4 Test: Stoichiometry',dueAt:'2026-11-27T17:00:00Z',title:data.title,savedAt:NOW-60000,day:'2026-11-22',data,progress:{},prepare:true,...extra});
@@ -106,7 +106,7 @@ test('This week in Help: the findings under the bar, each with its one action an
 function page({withHelp=true}={}){
  const sandbox={console,Intl,Date,Math,JSON,Number,String,Object,Array,Set,Map,RegExp,Error,Promise};sandbox.globalThis=sandbox;vm.createContext(sandbox);
  for(const file of ['site.js','core.js','personal-work.js','planner-model.js',...(withHelp?['help-plan.js']:[]),'widgets.js','planner-ui.js'])vm.runInContext(fs.readFileSync(ext(file),'utf8'),sandbox,{filename:file});
- const Core=sandbox.ReserveCore,course={id:'101',name:'CL Chemistry',color:'#286452'};
+ const Core=sandbox.ReserveCore,course={id:'101',name:'Chemistry',color:'#286452'};
  const h={E:v=>String(v??'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';'),dayKey:(v,tz)=>Core.dayKey(v,tz),complete:Core.isComplete,formatDate:(v,tz,o)=>new Intl.DateTimeFormat('en-US',{timeZone:tz,...o}).format(new Date(v))};
  const test=Core.normalizeAssignment({id:'17',name:'Unit 4 Test',due_at:'2026-11-27T17:00:00Z',submission_types:['online_quiz'],submission:{workflow_state:'unsubmitted'}},course);
  const data={customTasks:[],tasks:{},toolbox:{}};

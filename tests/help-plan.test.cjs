@@ -8,9 +8,9 @@ const H=require('../extension/help-plan.js'),P=require('../extension/planner-mod
 // (the module stays out of the suite's shared global: other files draw the Planner in sandboxes of their own)
 delete globalThis.ReserveHelpPlan;
 const ZONE='America/New_York',NOW=Date.parse('2026-11-22T15:00:00Z');   // Sunday 22 November 2026, 10:00 AM in New York
-const COURSES=[{id:'101',name:'CL Chemistry'},{id:'102',name:'CL English: American Lit'},{id:'103',name:'Chinese III'}];
+const COURSES=[{id:'101',name:'Chemistry'},{id:'102',name:'English: Modern Lit'},{id:'103',name:'Chinese III'}];
 const dayIn=(v,zone=ZONE)=>new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).format(typeof v==='number'?v:Date.parse(v));
-const canvas=(id,name,dueAt,extra={})=>({id,name,courseId:'101',courseName:'CL Chemistry',courseColor:'#286452',dueAt,personal:false,points:20,submissionTypes:['online_upload'],...extra});
+const canvas=(id,name,dueAt,extra={})=>({id,name,courseId:'101',courseName:'Chemistry',courseColor:'#286452',dueAt,personal:false,points:20,submissionTypes:['online_upload'],...extra});
 // The planner's list for saved data, as the dashboard builds it (personal tasks through personal-work.js, like the page).
 function listOf(data,{zone=ZONE,now=NOW,items=[]}={}){const own=Personal.normalize(data,COURSES);return P.entries([...items,...own],data.tasks||{},{dayOf:v=>dayIn(v,zone),isDone:(i,m)=>m.checkedOff===true||m.progress==='done',today:dayIn(now,zone)});}
 const empty=()=>({customTasks:[],tasks:{},toolbox:{}});

@@ -6,13 +6,13 @@
 //   course: the course id; rep: the repeat (planner-model repeatKey); pri: marked important.
 const TODAY='2026-11-18',NOW=14*60;
 const COURSES=[
- {id:'101',name:'CL Chemistry-Section A',code:'CHEM 101'},
- {id:'102',name:'CL Multivariable Calculus',code:'MATH 102'},
- {id:'103',name:'CL Ethics',code:'ETH 103'},
- {id:'104',name:'CL Latin Literature Sem 1',code:'LAT 104'},
- {id:'105',name:'CL Engineering',code:'ENGR 105'},
- {id:'106',name:'CL English: American Lit',code:'ENG 106'},
- {id:'107',name:'SynBio 2',code:'BIO 107'},
+ {id:'101',name:'Chemistry-Section A',code:'CHEM 101'},
+ {id:'102',name:'Multivariable Calculus',code:'MATH 102'},
+ {id:'103',name:'Ethics',code:'ETH 103'},
+ {id:'104',name:'Latin Literature Sem 1',code:'LAT 104'},
+ {id:'105',name:'Engineering',code:'ENGR 105'},
+ {id:'106',name:'English: Modern Lit',code:'ENG 106'},
+ {id:'107',name:'Microbio 2',code:'BIO 107'},
  {id:'108',name:'AP US History',code:'HIST 108'},
  {id:'109',name:'Spanish III',code:'SPAN 109'},
  {id:'110',name:'Physics Honors',code:'PHYS 110'}
@@ -176,8 +176,8 @@ const C=[
  ['engr sketch','engr sketch','',{course:'105'}],
  ['english essay','english essay','',{course:'106'}],
  ['eng essay draft','eng essay draft','',{course:'106'}],
- ['american lit reading','american lit reading','',{course:'106'}],
- ['synbio plate counts','synbio plate counts','',{course:'107'}],
+ ['modern lit reading','modern lit reading','',{course:'106'}],
+ ['microbio plate counts','microbio plate counts','',{course:'107'}],
  ['biology test review','biology test review','',{course:'107'}],
  ['apush dbq','apush dbq','',{course:'108'}],
  ['us history notes','us history notes','',{course:'108'}],

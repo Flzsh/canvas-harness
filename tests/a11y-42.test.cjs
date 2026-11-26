@@ -1,6 +1,6 @@
 'use strict';
 require('../extension/site.js');
-// Accessibility pass on 4.2 (a11y-42, 2026-11-22). Students use CH+ all day with keyboards, screen readers, 150-200 %
+// Accessibility pass on 4.2 (a11y-42, 2026-11-22). Students use Canvas Harness all day with keyboards, screen readers, 150-200 %
 // zoom and Windows high-contrast themes; nothing the app adds may lock any of them out.
 // Part 1: an automated check per area (the markup each area draws, linted by tests/a11y-lint.cjs; the focus rings the
 // stylesheets keep for keyboard users, read by tests/a11y-css.cjs). Part 2: one test per fix. (Sample data only.)

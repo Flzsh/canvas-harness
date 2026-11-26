@@ -23,10 +23,10 @@ const ordinaryRoutes=[
  '/courses/7/pages/assignments/12','/courses/7/modules?next=/courses/7/assignments/12',
  '/courses/7/files/12#submission','/dashboard?module_item_id=25'
 ];
-// (off: CH+ switched off on this assignment's pages, as the page switch leaves it)
+// (off: Canvas Harness switched off on this assignment's pages, as the page switch leaves it)
 // (4.2, Multitask: multitask.js reads its saved place, reserve:beside, and waits for the page to draw its two chips; with
 // nothing open there it does nothing else; switched off on the page it does not even that)
-const SITE_KEYS=['reserve:features-hint','reserve:off','reserve:dev30-off','reserve:page-off','reserve:beside'],FEATURE_READ=JSON.stringify(['reserve:features','reserve:dev30','reserve:features:registered','reserve:enabled']);
+const SITE_KEYS=['reserve:features-hint','reserve:off','reserve:page-off','reserve:beside'],FEATURE_READ=JSON.stringify(['reserve:features','reserve:dev30','reserve:features:registered','reserve:enabled']);
 function context(route,{off=false}={}){
  const attempts=[],allowedClicks=[],switchWaits=[],besideWaits=[],forbidden=label=>(...args)=>{attempts.push([label,...args]);throw Error('Unexpected page effect: '+label);};
  const site=new Map(off?[['reserve:page-off',JSON.stringify({[decodeURIComponent(new URL(route,'https://school.instructure.com').pathname).match(/\d+/g).slice(0,2).join('/')]:1})]]:[]);

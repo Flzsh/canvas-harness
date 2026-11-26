@@ -4,7 +4,7 @@
 // 2026-11-23, in 4.0.199 too). The heading stays the list's own; the sentence is still what is read out.
 const test=require('node:test'),assert=require('node:assert/strict');
 const A=require('../extension/biscuit-answer.js');
-const rows=['Translate lines 1-20','Reaction rates: lab preparation','Partial derivatives: practice set','Close reading: chapter three','Reading quiz: Nicomachean Ethics II'].map((name,i)=>({type:'work',id:'1'+i,name}));
+const rows=['Translate lines 1-20','Reaction rates: lab preparation','Partial derivatives: practice set','Close reading: chapter three','Reading quiz: Ethics II'].map((name,i)=>({type:'work',id:'1'+i,name}));
 const list={v:1,kind:'list',title:'Due tomorrow',summary:'5 things · about 3 h',rows,notes:[],acts:[],follow:[]};
 const sentence='5 things due tomorrow: Translate lines 1-20 (Latin Literature Sem 1, 12:59 AM) and Reaction rates: lab preparation (Chemistry-Section A, 1:59 AM) and Partial derivatives: practice set (Multivariable Calculus, 2:59 AM) and 2 more.';
 test('an action on a list keeps the list\'s heading when its message says the list again',()=>{

@@ -816,7 +816,7 @@ test('the look at another day and hour (reserve:train-preview): the band and the
  heard({'reserve:train-preview':{}},'local');await h.load();await h.minute();await h.load();assert.deepEqual(h.layers(),[['land-metro-noon',1],[cab('metro','noon'),1]]);
  h.api.remove();assert.equal(gone,2,'it stops listening when the scene goes');assert.equal(all.size,0);
 });
-// (4.2.2) The deep sea is gone. A look at it kept from before (CH+'s Scenery "Drowned sea" or Make it yours > Adjust > Land
+// (4.2.2) The deep sea is gone. A look at it kept from before (Canvas Harness's Scenery "Drowned sea" or Make it yours > Adjust > Land
 // "Deep sea": {day:4, week:1}) is no day chosen: today's own land, the light it names kept; nothing of the deep sea is asked for, the
 // band is whole, nothing falls back to the poster. The glass city's record (week 2) is Thursday's land, as it was.
 test('a look at the deep sea kept from before 4.2.2 is today\'s own land with its light; no error, no missing picture',async t=>{

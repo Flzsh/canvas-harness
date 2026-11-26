@@ -7,9 +7,9 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const H=require('../extension/help-plan.js'),P=require('../extension/planner-model.js'),Personal=require('../extension/personal-work.js');
 delete globalThis.ReserveHelpPlan;
 const ZONE='America/New_York',NOW=Date.parse('2026-11-22T15:00:00Z');   // Sunday 22 November 2026, 10:00 AM in New York
-const COURSES=[{id:'101',name:'CL Chemistry'}];
+const COURSES=[{id:'101',name:'Chemistry'}];
 const dayIn=v=>new Intl.DateTimeFormat('en-CA',{timeZone:ZONE,year:'numeric',month:'2-digit',day:'2-digit'}).format(typeof v==='number'?v:Date.parse(v));
-const canvas=(id,name,dueAt,extra={})=>({id,name,courseId:'101',courseName:'CL Chemistry',courseColor:'#286452',dueAt,personal:false,points:20,submissionTypes:['online_upload'],...extra});
+const canvas=(id,name,dueAt,extra={})=>({id,name,courseId:'101',courseName:'Chemistry',courseColor:'#286452',dueAt,personal:false,points:20,submissionTypes:['online_upload'],...extra});
 const listOf=(data,items=[])=>P.entries([...items,...Personal.normalize(data,COURSES)],data.tasks||{},{dayOf:dayIn,isDone:(i,m)=>m.checkedOff===true||m.progress==='done',today:dayIn(NOW)});
 function planner(rows){const d={customTasks:[],tasks:{},toolbox:{}};rows.forEach(([name,day,minutes],i)=>{const id='local-p'+i;d.customTasks.push({id,name,courseId:'personal',dueAt:null,createdAt:'2026-11-20T12:00:00.000Z'});d.tasks[id]={pinned:false,checkedOff:false,progress:'not-started',notes:'',estimate:minutes,plannedDate:day,checklist:[]};});return d;}
 const check=(data,items=[])=>H.weekCheck(listOf(data,items),{now:NOW,zone:ZONE,items,toolbox:data.toolbox});

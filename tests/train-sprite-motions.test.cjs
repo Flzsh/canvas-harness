@@ -3,7 +3,7 @@
 // second), `swing` ([degrees, hz]) about a `pivot` (fractions of the cell), `squash` laid on after the turn, and `pulse`
 // ([least, most, hz] of its light). scene-themes.js liveOf reads and bounds them; painter.js draws a turned sprite with its own
 // program in a quad that holds the cell at any angle, and takes each pixel back through the turn into the cell. A sprite without
-// the words is read and drawn exactly as before (checked against the painter of CH+ 4.2.2: tests/fixtures/sprite-motions-before.json).
+// the words is read and drawn exactly as before (checked against the painter of Canvas Harness 4.2.2: tests/fixtures/sprite-motions-before.json).
 // A sprite with frames may also have a `hit` ({frame, shake, flash, burst}): each time its loop reaches that frame, while it is in
 // view and the land moves, the whole land jolts and flashes and specks fly from its middle; nothing of it at rest.
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
@@ -99,7 +99,7 @@ test('the quad holds the turned cell at every angle, and only that much: a turne
 test('a sprite without the words is drawn exactly as before: the same quad, the same cell, every uniform, moving and at rest',async()=>{
  for(const [moving,want] of [[1,BEFORE.moving],[0,BEFORE.resting]]){
   const r=await H.paint(painterSrc,H.sceneOf(copy(liveOf(H.PLAIN)),{moving}),H.MOMENTS);
-  assert.deepEqual(H.drawsOf(r.calls,'sprite'),want,'moving '+moving+': every sprite draw as CH+ 4.2.2 made it');
+  assert.deepEqual(H.drawsOf(r.calls,'sprite'),want,'moving '+moving+': every sprite draw as Canvas Harness 4.2.2 made it');
   assert.equal(r.calls.some(c=>c[0]==='use'&&c[1]==='spriteT'),false,'the turned program is never put in use');
   assert.equal(r.shaders.sprite,BEFORE.shader,'the plain sprite\'s shader is as it was');
  }

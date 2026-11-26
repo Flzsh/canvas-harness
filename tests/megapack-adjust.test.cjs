@@ -6,7 +6,7 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),fs=requir
 const {createDOM}=require('./addons-fixture.cjs');
 const read=file=>fs.readFileSync(path.join(__dirname,'../extension',file),'utf8'),dense=s=>s.replace(/\n[ \t]*/g,'')/* (the public file spreads long lines: the source checks read it joined again) */,plain=value=>JSON.parse(JSON.stringify(value));
 const sha=text=>crypto.createHash('sha256').update(text,'utf8').digest('hex');
-// the lead's drawings (claude-safe\2026-11-19\megapack-art\adjust-art.json): the hash of each group's strings, in order
+// the lead's drawings: the hash of each group's strings, in order
 // (4.2.2: land is 4.2.1's drawings without the deep sea's, which went with its land)
 const ART={speed:'027293c903a91874540d4d51783904d6063b31b2645c4c8f7e0b7a4a74869d6f',land:'ba9666b7c778fb58c24a8dfbb4b147016a645e919a55ed8dc2fa49c8cfbfe1ef',time:'a8aef6fd7c124fcb5ea793999da778658b0bbbd3e6fbb7c4ad8eb91ca0341d03'};
 const SPEED=[['0','Stopped'],['1','Slow'],['2','Cruise'],['3','Fast']];

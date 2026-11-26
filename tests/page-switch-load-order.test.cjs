@@ -1,5 +1,5 @@
 'use strict';
-// fix-42 (review-42 findings 1, 5 and 8): "CH+ on this page" switched off means nothing of CH+ on the page in both orders
+// fix-42 (review-42 findings 1, 5 and 8): "Canvas Harness on this page" switched off means nothing of Canvas Harness on the page in both orders
 // Edge runs the content-script groups in (the drawn menu started before features.js is handed over as running, so the
 // selection stops it), also when "On Canvas" changes while the page is open; switched back on, the page gets the
 // student's own preset, never a made-up Full; and the switch waits a few seconds for its place when Canvas draws it late,
@@ -85,8 +85,8 @@ async function loader({saved={},route='/courses/7/assignments/12'}){
  const back=()=>{ctx.ReserveSite.setPageOff(false);ctx.ReserveFeatures.refresh();return ctx.ReserveFeatures.current;};
  return {ctx,sent,reply,back,local};
 }
-// what the worker registers from the same saved data (background.js featurePrefs + featureSelection)
-const worker=saved=>F.resolve(F.forSwitch(F.forDev30(saved['reserve:features'],saved['reserve:dev30']),saved['reserve:enabled']===false?false:true));
+// what the worker selects from the same saved data (background.js canvasPrefs)
+const worker=saved=>F.resolve(F.forSwitch(saved['reserve:features'],saved['reserve:enabled']===false?false:true));
 
 
 // The switch itself on a page whose breadcrumb row and content Canvas draws after the page is ready.
@@ -99,7 +99,7 @@ function late({crumbs=false,content=false}={}){
  const ctx={URL,JSON,Date,Object,Number,location:new URL('/courses/7/assignments/12/submissions/new',ORIGIN),localStorage:local,
   document:{readyState:'complete',body:{},documentElement:{},createElement:el,querySelector:s=>s==='.ic-app-nav-toggle-and-crumbs'&&state.crumbs?row:null,getElementById:id=>id==='content'&&state.content?box:null,addEventListener(){}},
   addEventListener:(t,fn)=>{winListeners[t]=fn;},setTimeout:(fn,ms)=>{timers.set(++tid,{fn,ms});return tid;},clearTimeout:id=>timers.delete(id),
-  MutationObserver:class{constructor(fn){this.fn=fn;this.on=false;observers.push(this);}observe(){this.on=true;}disconnect(){this.on=false;}},chrome:{runtime:{getManifest:()=>({short_name:'CH+'})}}};
+  MutationObserver:class{constructor(fn){this.fn=fn;this.on=false;observers.push(this);}observe(){this.on=true;}disconnect(){this.on=false;}},chrome:{runtime:{getManifest:()=>({short_name:'Canvas Harness'})}}};
  ctx.window=ctx;ctx.top=ctx;
  vm.runInNewContext(read('site.js'),ctx,{filename:'site.js'});
  ctx.ReserveFeatures={OFFHINT:'reserve:off',chosen:{enabled:['canvas-nav','pdf','play']},refresh(){refreshed++;},onApply(){}};

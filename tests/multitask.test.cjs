@@ -95,7 +95,7 @@ test('the timer here is the Home focus timer: the same record and the same chang
 test('the finder is Quick open\'s own list: assignments only, this one left out, this course first, then what is due soon',()=>{
  const Q=require('../extension/quick-open.js'),now=Date.parse('2026-11-22T12:00:00Z');
  const items=[['10100','7','Lab report',2],['10101','7','Worksheet',-1],['10102','7','Old quiz',-60],['20100','8','Essay draft',3],['20101','8','Far away',60]].map(([id,courseId,name,days])=>({id,courseId,name,url:`${ORIGIN}/courses/${courseId}/assignments/${id}`,dueAt:new Date(now+days*864e5).toISOString()}));
- const courses=[{id:'7',name:'CL Chemistry',shortName:'Chemistry'},{id:'8',name:'CL English',shortName:'English'}];
+ const courses=[{id:'7',name:'Chemistry',shortName:'Chemistry'},{id:'8',name:'English',shortName:'English'}];
  const pool=Q.entries({courses,items});
  const rows=M.finderRows(pool,{courseId:'7',current:'7/10100',now,QuickOpen:Q});
  assert.deepEqual(rows.map(r=>[r.group,r.assignmentId]),[['This course','10101'],['This course','10102'],['Due soon','20100']]);
@@ -175,7 +175,7 @@ function page({route='/courses/101/assignments/10100',off=false,saved=null,prefs
   readAssignment:async(cid,aid)=>{requests.push('assignment '+cid+'/'+aid);return {id:aid,course_id:cid,name:'Equilibrium worksheet',description:'<p>Balance each equation.</p>',due_at:'2026-11-24T04:59:00Z',points_possible:15,submission_types:['online_upload'],rubric:[{description:'Method',points:10}],html_url:`${ORIGIN}/courses/${cid}/assignments/${aid}`};},
   list:async path=>{requests.push('list '+path);return [];}};
  let data={settings:{timeZone:'America/New_York'},toolbox:{scratchpad:'old note'},tasks:{},focus:{}};
- const cache={origin:ORIGIN,user:{id:'7'},courses:[{id:'101',name:'CL Chemistry-Section A',course_code:'CHEM 101'}],assignments:[{id:'10100',course_id:'101',name:'Reaction rates',due_at:'2026-11-23T03:00:00Z'},{id:'10101',course_id:'101',name:'Equilibrium worksheet',due_at:'2026-11-24T04:59:00Z'}],fetchedAt:'2026-11-22T12:00:00Z'};
+ const cache={origin:ORIGIN,user:{id:'7'},courses:[{id:'101',name:'Chemistry-Section A',course_code:'CHEM 101'}],assignments:[{id:'10100',course_id:'101',name:'Reaction rates',due_at:'2026-11-23T03:00:00Z'},{id:'10101',course_id:'101',name:'Equilibrium worksheet',due_at:'2026-11-24T04:59:00Z'}],fetchedAt:'2026-11-22T12:00:00Z'};
  const env=vm.createContext({URL,Intl,Date,JSON,Math,Object,Number,String,Array,Map,Set,Promise,Error,AbortController,console,structuredClone,
   location:new URL(route,ORIGIN),document:doc,localStorage:local,innerWidth:1366,innerHeight:768,
   addEventListener:(type,fn,options)=>win.listeners.push([type,fn,options]),removeEventListener:(type,fn)=>{win.listeners=win.listeners.filter(l=>!(l[0]===type&&l[1]===fn));},
@@ -183,7 +183,7 @@ function page({route='/courses/101/assignments/10100',off=false,saved=null,prefs
   setTimeout:(fn,ms)=>{const id=++ids;timers.set(id,{fn,ms,repeat:false});return id;},setInterval:(fn,ms)=>{const id=++ids;timers.set(id,{fn,ms,repeat:true});return id;},clearTimeout:id=>timers.delete(id),clearInterval:id=>timers.delete(id),
   requestAnimationFrame:fn=>{const id=++ids;frames.set(id,fn);return id;},cancelAnimationFrame:id=>frames.delete(id),
   fetch:(...args)=>{requests.push(['fetch',...args]);throw Error('no fetch of its own');},MutationObserver:class{observe(){}disconnect(){}},FontFace:class{},
-  chrome:{runtime:{getURL:p=>'chrome-extension://x/'+p,getManifest:()=>({short_name:'CH+'})},storage:{local:{get:async()=>({'reserve:features':prefs,...stored})},onChanged:{addListener(){}}}},
+  chrome:{runtime:{getURL:p=>'chrome-extension://x/'+p,getManifest:()=>({short_name:'Canvas Harness'})},storage:{local:{get:async()=>({'reserve:features':prefs,...stored})},onChanged:{addListener(){}}}},
   ReserveAPI:{createClient:()=>client},
   ReserveStorage:{createStore:()=>{const listeners=new Set(),store={destroyed:false,updates:0,load:async()=>{},get:()=>structuredClone(data),readCache:async()=>snapshot?structuredClone(cache):null,subscribe:fn=>{listeners.add(fn);return ()=>listeners.delete(fn);},
    update:async change=>{store.updates++;const next=structuredClone(data);change(next);data=next;for(const fn of listeners)fn(structuredClone(data));return structuredClone(data);},destroy(){store.destroyed=true;listeners.clear();}};stores.push(store);return store;}},

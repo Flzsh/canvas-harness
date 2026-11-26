@@ -10,7 +10,7 @@ const NOW=Date.parse('2026-11-22T06:30:00Z');
 class Clock extends Date{constructor(...a){super(...(a.length?a:[NOW]));}static now(){return NOW;}}
 const settle=()=>new Promise(setImmediate);
 const base={ReserveSite:{...require('../extension/site.js'),origin:()=>'https://school.instructure.com'},URL,Map,Set,AbortController,Date:Clock,document:{createElement:()=>({content:{querySelectorAll:()=>[]}})},ReserveCourseArt:{mini:(course,{place})=>`<svg class="rd-mini" data-place="${place}" data-course="${course.id}"></svg>`}};
-const courses=[{id:'7',name:'CL Chemistry',shortName:'Chemistry',color:'#a05252'}];
+const courses=[{id:'7',name:'Chemistry',shortName:'Chemistry',color:'#a05252'}];
 function messages(zone){
  const raw={origin:'https://school.instructure.com',accountId:'5',errors:[],conversations:[{id:'1',subject:'Lab goggles',workflow_state:'read',last_message:'Bring goggles',last_message_at:'2026-11-21T23:00:00Z',context_code:'course_7',context_name:'Course 7',message_count:2,properties:[],participants:[{id:'5',name:'Sample Student'},{id:'t7',name:'Course Teacher'}]}]};
  const client={listInbox:async()=>structuredClone(raw),readConversation:async id=>({origin:raw.origin,accountId:'5',conversation:{id,participants:[{id:'5',name:'Sample Student'},{id:'t7',name:'Course Teacher'}],messages:[{id:'b',author_id:'t7',created_at:'2026-11-21T13:05:00Z',body:'See you in lab'},{id:'a',author_id:'5',created_at:'2025-12-31T23:30:00Z',body:'Happy new year'}]}})};

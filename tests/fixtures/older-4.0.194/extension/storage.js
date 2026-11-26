@@ -9,10 +9,10 @@
   const customization=root.ReserveCustomization||(typeof module==='object'&&module.exports?require('./customization-model.js'):null);
   const layoutDefaults=customization?.defaults||{};
   const appearance=root.ReservePagePreferences||(typeof module==='object'&&module.exports?require('./page-preferences.js'):null);
-  // appearanceVersion 2 (CH+ 2.15) made Clay the default accent; see cleanData.
+  // appearanceVersion 2 (Canvas Harness 2.15) made Clay the default accent; see cleanData.
   // readingFont: teacher text in the book serif or the interface sans; greeting: the time-of-day heading.
   // hiddenCourses: hidden by hand. shownCourses (2.17): shown by hand, which keeps a course that is hidden
-  // by default (NameCoach, College Counseling: ReserveCore.hiddenCourseIds) on screen. An id is in one list at most.
+  // by default (ReserveCore.hiddenCourseIds) on screen. An id is in one list at most.
   const defaults = () => ({version:1,settings:{...layoutDefaults,bedtime:'22:30',biscuitOffers:true,makeYourOwn:{theme:null,pet:null,installed:{}},theme:'system',accent:'clay',appearanceVersion:2,motion:'gentle',livingArt:'on',readingFont:'book',greeting:'on',quickOpen:'off',density:'comfortable',font:'system',textSize:'standard',dashboardLayout:'split',showCourseStrip:true,showGrades:false,showRecentGrades:false,timeZone:'America/New_York',courseOrder:[],hiddenCourses:[],shownCourses:[],coursePrefs:{},overviewArt:{}},tasks:{},moduleProgress:{},resourcePins:[],courseFiles:{},customTasks:[],gpa:gpaModel().defaults(),gradeImpact:{pretend:{}},toolbox:{scratchpad:'',recent:[],dockSize:{width:0,height:0}},focus:{minutes:25,remaining:1500,endsAt:null,itemId:null,sessions:0,elapsed:0,pausedAt:0,stoppedAt:0},pet:{knowledge:'most',skills:petSkills(),reminders:[],routines:[]}});
   const text = (value,max=20000) => typeof value === 'string' ? value.slice(0,max) : '';
   const isRecord = v => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -166,7 +166,7 @@
     out.gradeImpact=previous&&same(value.gradeImpact,previous.gradeImpact)?previous.gradeImpact:cleanGradeImpact(value.gradeImpact);
     if (!isRecord(settings) || (value.tasks && !isRecord(value.tasks)) || (value.customTasks && !Array.isArray(value.customTasks))) throw Error('Backup data has an invalid structure.');
     // Validate every restored SVG before returning data or committing a save.
-    if(!customization)throw Error('CH+ customization modules are missing. Reload the extension.');
+    if(!customization)throw Error('Canvas Harness customization modules are missing. Reload the extension.');
     Object.assign(out.settings,sameSettings?previous.settings:customization.cleanSettings(settings));
     out.settings.makeYourOwn=sameSettings?previous.settings.makeYourOwn:cleanMakeYourOwn(settings.makeYourOwn);
     if(settings.reviewDecks!==undefined)out.settings.reviewDecks=sameSettings?previous.settings.reviewDecks:cleanReviewDeck(settings.reviewDecks);
@@ -176,7 +176,7 @@
     }
     const detail=customization?.graphicsDetail?.(settings.graphicsDetail);if(detail&&Object.keys(detail).length)out.settings.graphicsDetail=detail;
     if(settings.graphicsTold===true)out.settings.graphicsTold=true;
-    // Older private CH+ only had split/list. Keep its chosen layout on first load.
+    // Older private Canvas Harness only had split/list. Keep its chosen layout on first load.
     if(settings.deskOrder===undefined&&out.settings.dashboardLayout==='list')out.settings.deskOrder='stacked';
     out.settings.dashboardLayout=out.settings.deskOrder==='stacked'?'list':'split';
     // One-time move to the Clay default. Every profile saved before 2.15 holds
@@ -312,8 +312,8 @@
   }
   function validateBackup(input,owner) {
     const inputBytes=bytes(input);if(inputBytes>90000000)throw Error('Backup is too large.');
-    if(typeof input==='string') {try{input=JSON.parse(input);}catch{throw Error('Choose a valid CH+ JSON backup.');}}
-    if(!isRecord(input)||input.format!=='reserve-backup'||input.version!==1)throw Error('This is not a supported CH+ backup format.');
+    if(typeof input==='string') {try{input=JSON.parse(input);}catch{throw Error('Choose a valid Canvas Harness JSON backup.');}}
+    if(!isRecord(input)||input.format!=='reserve-backup'||input.version!==1)throw Error('This is not a supported Canvas Harness backup format.');
     const withFiles=Array.isArray(input.courseFileBytes)&&input.courseFileBytes.length>0;
     if(withFiles&&inputBytes>66500000)throw Error('Backup is too large.');
     if(input.packs===undefined&&!withFiles&&bytes(input)>6500000||input.packs!==undefined&&(!Array.isArray(input.packs)||input.packs.length>50))throw Error('Backup is too large or contains invalid packs.');
@@ -389,7 +389,7 @@
         const media=root.ReserveMedia||(typeof module==='object'&&module.exports?require('./media-store.js'):null),oldMedia=media?.referenced(next.settings)||new Set();
         const oldLayout=next.settings.dashboardLayout,oldOrder=next.settings.deskOrder;
         if(changesToRetry)rebase(next,changesToRetry);else mutator(next);
-        // Older CH+ settings controls still write dashboardLayout alone.
+        // Older Canvas Harness settings controls still write dashboardLayout alone.
         // Accept those updates without overwriting an explicit newer deskOrder.
         if(next.settings?.dashboardLayout!==oldLayout&&next.settings?.deskOrder===oldOrder&&['split','list'].includes(next.settings.dashboardLayout))next.settings.deskOrder=next.settings.dashboardLayout==='list'?'stacked':'context-first';
         const clean=cleanData(next,savedClean?draftBefore:undefined),after=appearance.fromData(clean),changes={};cleanInstalledAdjustments(clean.settings.makeYourOwn.adjustments,owner);if(adapter.compareWrite&&!changesToRetry)changesToRetry=edits(draftBefore,clean);
