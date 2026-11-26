@@ -1766,7 +1766,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       },again);
     }
     // Adjust (Make it yours > Look > Use from Soul Passage): the speed is written where the scene hears it (it moves the lever and
-    // the ride itself); the land and the light write the record the popup's Scenery keeps too (the scene hears it at once)
+    // the ride itself); the land and the light write the scene's own record of them, reserve:train-preview (the scene hears it at once)
     function megaSpeed(n){if(Mega?.speed(n))megaPace=n;}
     function megaAdjust(kind,value){
       if(!Mega)return;if(kind==='pace'){megaSpeed(Number(value));return;}

@@ -166,7 +166,7 @@
    try{root.chrome?.storage?.local?.set?.({[MEGAPACK.pace]:n})?.catch?.(()=>{});}catch{}
    return true;
   },
-  // The land and the light (the popup's Scenery keeps the same record, reserve:train-preview: {day 0-6, hour}; none = today's
+  // The land and the light (the scene's own record of them, reserve:train-preview: {day 0-6, hour}; none = today's
   // land at the clock's hour). In the picker's values: land '' (Today) or '0'-'6'; time '' (Now) or the hour ('8', '12.5', '17',
   // '21', '1'). sight() reads a record, view() writes one. A record from before 4.2.2 may also say week 1|2 for Thursday: week 1
   // was the deep sea, which is gone, so it reads as Today (its light is kept); week 2 was the glass city, Thursday's land now.

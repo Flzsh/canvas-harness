@@ -1,8 +1,10 @@
 /*! Canvas Harness: the switch on an assignment's own pages (instructions, submitting, submission details, feedback). */
 // Off: Canvas Harness lets go of this assignment's pages at once and on every visit until it is switched back on: the drawn menu
-// bar, the PDF reader and the after-submit scene and tray stop, nothing is asked of the worker or Canvas, and nothing
-// reloads the page (site.js pageOff, read by features.js before the first frame). The switch itself is the one thing of
-// ours left there, in the page's own flow at the top (never fixed, never near Submit), so it can be turned on again.
+// bar, the PDF reader and the after-submit scene and tray stop, nothing of Canvas Harness is drawn there but this switch, nothing
+// is asked of Canvas, and nothing reloads the page (site.js pageOff, read by features.js before the first frame). The worker is still asked
+// once, as on every Canvas page: the add-ons' files come and stay asleep, so switching back on needs no reload. The switch
+// itself is the one thing of ours left there, in the page's own flow at the top (never fixed, never near Submit), so it can be
+// turned on again.
 // Static and on its own: it works when an add-on, the worker or the loader does not.
 (function(root){
  'use strict';
@@ -26,7 +28,7 @@
   +'.sw[aria-checked=true] .wash{fill:var(--chn-accent,#C96442)}.sw[aria-checked=true] .knob{transform:translateX(17px)}.sw[aria-checked=false] .ic{opacity:.62;filter:grayscale(1)}'
   +'.note{flex:0 1 auto;min-width:0;max-width:27ch;color:#5E5D59}.sw[aria-checked=false]+.note{display:none}'
   +'@media(prefers-reduced-motion:reduce){*{transition:none!important}}';
- let host=null,shadow=null,button=null;
+ let host=null,shadow=null,button=null,out=false,stopWaiting=null;
  const features=()=>root.ReserveFeatures;
  const off=()=>{try{return site.pageOff(root.location);}catch{return false;}};
  // Shown while Canvas Harness has something of its own here (the drawn menu, the PDF reader or the after-submit scene), or while it
@@ -40,6 +42,10 @@
  }
  function render(){
   if(!host)return;
+  // "On Canvas" switched off while the page is open: the switch leaves the page with everything else of ours (not kept there
+  // hidden); switched on again, it is put back in its place, with no reload either way
+  if(everywhereOff()){takeOut();return;}
+  if(out){out=false;if(!place()){wait();return;}}
   const show=wanted();host.hidden=!show;if(!show)return;
   const on=!off();
   if(button.getAttribute('aria-checked')!==String(on))button.setAttribute('aria-checked',String(on));
@@ -52,6 +58,11 @@
   if(content){host.setAttribute('data-place','content');content.prepend(host);return true;}
   return false;
  }
+ function takeOut(){
+  if(out)return;
+  out=true;stopWaiting?.();
+  try{host.remove();}catch{}
+ }
  function press(){
   const now=!off();
   try{site.setPageOff(now,root.location);}catch{}
@@ -63,10 +74,11 @@
  const WAIT=8000;
  function wait(){
   let observer=null,timer=0;
-  const done=()=>{observer?.disconnect();observer=null;root.clearTimeout?.(timer);timer=0;};
+  stopWaiting?.();
+  const done=()=>{observer?.disconnect();observer=null;root.clearTimeout?.(timer);timer=0;if(stopWaiting===done)stopWaiting=null;};
   const look=()=>{if(!doc.querySelector('.ic-app-nav-toggle-and-crumbs')&&!doc.getElementById('content'))return;if(place()){done();render();}};
   try{observer=new root.MutationObserver(look);observer.observe(doc.documentElement||doc.body,{childList:true,subtree:true});}catch{observer=null;}
-  if(observer)timer=root.setTimeout?.(done,WAIT)||0;
+  if(observer){timer=root.setTimeout?.(done,WAIT)||0;stopWaiting=done;}
  }
  let waiting=false;
  function mount(){

@@ -1,7 +1,8 @@
 'use strict';
 // Roadmap item 8, its safety part (4.2): on an assignment's own pages (instructions, submitting, submission details,
 // feedback) a switch turns Canvas Harness off there. Off means off on that page: nothing of ours drawn but the switch itself, nothing
-// asked of the worker, nothing reloads; back on, it comes back at once. Kept per assignment in Canvas's own site storage.
+// asked of Canvas, nothing reloads (the worker is still asked once: the add-ons' files come and stay asleep); back on, it comes back
+// at once. Kept per assignment in Canvas's own site storage.
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const read=file=>fs.readFileSync(path.join(__dirname,'../extension',file),'utf8');
 const Site=require('../extension/site.js'),F=require('../extension/features.js');
@@ -158,11 +159,11 @@ test('the PDF reader follows the selection on the page: off closes it and gives 
 // The switch itself, in a small stand-in for Canvas's page.
 function page({route='/courses/7/assignments/12',crumbs=true,local=storage(),features,frame=false}={}){
  const placed=[];let refreshed=0;
- const el=tag=>{const e={tagName:tag.toUpperCase(),attrs:{},hidden:false,setAttribute(k,v){this.attrs[k]=String(v);},getAttribute(k){return this.attrs[k]??null;},removeAttribute(k){delete this.attrs[k];},
-  attachShadow(){const shadow={html:'',set innerHTML(v){this.html=v;},get innerHTML(){return this.html;},querySelector:s=>s==='.sw'?button:s==='.t'?title:null};e.shadow=shadow;return shadow;}};return e;};
+ const el=tag=>{const e={tagName:tag.toUpperCase(),attrs:{},hidden:false,inPage:false,setAttribute(k,v){this.attrs[k]=String(v);},getAttribute(k){return this.attrs[k]??null;},removeAttribute(k){delete this.attrs[k];},
+  remove(){this.inPage=false;},attachShadow(){const shadow={html:'',set innerHTML(v){this.html=v;},get innerHTML(){return this.html;},querySelector:s=>s==='.sw'?button:s==='.t'?title:null};e.shadow=shadow;return shadow;}};return e;};
  const button={attrs:{'aria-checked':'true'},listeners:{},setAttribute(k,v){this.attrs[k]=String(v);},getAttribute(k){return this.attrs[k]??null;},addEventListener(t,fn){this.listeners[t]=fn;},querySelector:s=>s==='.t'?title:null};
  const title={textContent:''};
- const row={append:x=>placed.push(['crumbs',x]),getClientRects:()=>crumbs?[{}]:[]},content={prepend:x=>placed.push(['content',x])};
+ const row={append:x=>{x.inPage=true;placed.push(['crumbs',x]);},getClientRects:()=>crumbs?[{}]:[]},content={prepend:x=>{x.inPage=true;placed.push(['content',x]);}};
  const winListeners={};
  const ctx={URL,JSON,Date,Object,Number,location:new URL(route,ORIGIN),localStorage:local,
   document:{readyState:'complete',body:{},createElement:el,querySelector:s=>s==='.ic-app-nav-toggle-and-crumbs'?row:null,getElementById:id=>id==='content'?content:null,addEventListener(){}},
@@ -203,6 +204,17 @@ test('not shown while "On Canvas" is off everywhere, or where Canvas Harness has
  const framed=page({frame:true});assert.equal(framed.placed.length,0);
  // On Canvas switched on again while the page is open: the selection tells the switch
  const p=page({local:storage([['reserve:off','1']])});assert.equal(p.host(),null);p.local.removeItem('reserve:off');p.ctx.told();assert.equal(p.host()?.hidden,false,'mounted and shown once the page is on again');
+ // On Canvas switched off while the page is open: the switch leaves the page (not kept there hidden), and comes back in its
+ // place, shown, when it is on again; no reload either way
+ const live=page();const shown=live.host();assert.equal(shown.inPage,true);assert.equal(live.placed.length,1);
+ live.local.setItem('reserve:off','1');live.ctx.told();assert.equal(shown.inPage,false,'out of the page with everything else of ours');
+ live.ctx.told();assert.equal(live.placed.length,1,'and stays out while off');
+ live.local.removeItem('reserve:off');live.ctx.told();assert.equal(live.host(),shown,'the same switch');assert.equal(shown.inPage,true,'back in the page');
+ assert.equal(live.placed.length,2);assert.equal(live.placed[1][0],'crumbs','in its place at the end of the breadcrumb row');assert.equal(shown.hidden,false);
+ assert.equal(live.button.getAttribute('aria-checked'),'true');
+ // the same while switched off on this assignment: out while On Canvas is off, back as the way to turn it on
+ const offHere2=page({local:storage([[KEY,JSON.stringify({'7/12':1})]])});offHere2.local.setItem('reserve:off','1');offHere2.ctx.told();assert.equal(offHere2.host().inPage,false);
+ offHere2.local.removeItem('reserve:off');offHere2.ctx.told();assert.equal(offHere2.host().inPage,true);assert.equal(offHere2.host().hidden,false);assert.equal(offHere2.button.getAttribute('aria-checked'),'false');
 });
 
 test('the manifest loads the switch with the page-start group, in the top frame only, and site.js before the selection',()=>{

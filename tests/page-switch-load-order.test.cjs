@@ -70,7 +70,7 @@ test('Edge\'s order with "On Canvas" off everywhere: the menu that started first
  f.finish({preset:'full'},{'reserve:enabled':false});await tick();assert.deepEqual(f.left(),NOTHING);assert.equal(f.env.ReserveFeatures.current.off,true);
 });
 
-// The loader on a page switched off here (real site.js, features.js and feature-loader.js; nothing asked of the worker).
+// The loader on a page switched off here (real site.js, features.js and feature-loader.js; the worker is asked once, its add-ons stay asleep).
 async function loader({saved={},route='/courses/7/assignments/12'}){
  const local=storage([[KEY,JSON.stringify({'7/12':1})],['reserve:features-hint',JSON.stringify({preset:'lite',enabled:['dashboard']})]]),sent=[];
  const ctx={URL,JSON,Date,Object,Number,Promise,Error,console:{warn(){},log(){}},Event,location:Object.assign(new URL(route,ORIGIN),{reload(){throw Error('reloaded');}}),

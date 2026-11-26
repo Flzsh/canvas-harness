@@ -1667,8 +1667,15 @@ const use=live=>{if(railFor!==name)return;const next=live?.ride||RAIL;if(JSON.st
   // the smeared pictures of a layer: its columns halved again and again (so every row keeps its own height); the last four
   // halvings are its four smears, each twice as long as the one before
   // (a picture of the land as CSS: the package's address at once; the store's bytes as a blob address once read, when the store has
-  // them; one blob address a file, kept while this page lives)
-  function lay(el,name,moved){el.style.backgroundImage='url("'+base+name+'")';blobOf(name)?.then(to=>{if(!to||gone)return;el.style.backgroundImage='url("'+to+'")';moved?.(to);});}
+  // them; one blob address a file, kept while this page lives. A build that does not carry the megapack's files (they are downloaded)
+  // does not ask the package for them first: the picture waits for the store's blob, and only a file the store turns out not to have
+  // takes the package's address, as before. What lay returns then is that wait, for the smears; otherwise null)
+  const scene=/\/themes\/([a-z]+)\/$/.exec(String(base))?.[1];
+  function lay(el,name,moved){
+    const store=blobOf(name),pack='url("'+base+name+'")';
+    if(!store||packaged(scene)){el.style.backgroundImage=pack;store?.then(to=>{if(!to||gone)return;el.style.backgroundImage='url("'+to+'")';moved?.(to);});return null;}
+    return store.then(to=>{if(gone)return;el.style.backgroundImage=to?'url("'+to+'")':pack;if(to)moved?.(to);});
+  }
   function blobOf(name){
     const mp=MEGAPACK[/\/themes\/([a-z]+)\/$/.exec(String(base))?.[1]];
     if(!mp||!mp.kind.test(name)||String(global.location?.protocol)!=='chrome-extension:'||typeof global.caches?.open!=='function'||typeof URLs?.createObjectURL!=='function')return null;
@@ -1706,7 +1713,8 @@ const use=live=>{if(railFor!==name)return;const next=live?.ride||RAIL;if(JSON.st
      if(last)api.show(...last);
     }));
    }catch{}};
-   img.setAttribute('src',L.url);
+   // (a layer still waiting for the store's blob: its smears wait for it too)
+   if(L.ready)L.ready.then(()=>{if(!mine.dead&&!gone)img.setAttribute('src',L.url);});else img.setAttribute('src',L.url);
   }
   function blur(g,now){
    const moving=!!now.moving,pace=Number(now.pace)||0,most=Number(now.most)||0,wide=4096*g.k;
@@ -1752,8 +1760,8 @@ const use=live=>{if(railFor!==name)return;const next=live?.ride||RAIL;if(JSON.st
       if(!n){n=doc.createElement('i');lay(n,'page-'+land+'-'+stage+'.webp');n.tkLayers=[];
        for(const m of Array.isArray(info.move)?info.move:[]){
         if(!(Number(m?.[1])>0)||!/^[0-9]$/.test(String(m[0])))continue;const u=doc.createElement('u'),bar=doc.createElement('b'),url=base+'page-'+land+'-'+stage+'-'+m[0]+'.webp';
-        const L={u,b:bar,s:null,cells:null,n:Number(m[0]),speed:Number(m[1]),url,smear:null};
-        lay(bar,url.slice(base.length),to=>{L.url=to;});
+        const L={u,b:bar,s:null,cells:null,n:Number(m[0]),speed:Number(m[1]),url,smear:null,ready:null};
+        L.ready=lay(bar,url.slice(base.length),to=>{L.url=to;});
         u.append(bar);
         n.append(u);
         n.tkLayers.push(L);
