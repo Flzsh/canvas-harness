@@ -71,6 +71,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     var courseId=text(raw.courseId);
     if(!/^\d+$/.test(courseId))return [];
     var result=[],seen=new Set();
+    // When each item last changed (pages-42: Materials lists recent first): a file's or page's own date; a module item
+    // borrows the date of the file or page it points to. Links, tools, quizzes and discussions carry none (null).
+    var fileDates=new Map(),pageDates=new Map();
+    (Array.isArray(raw.files)?raw.files:[]).forEach(function(file){
+      if(file&&file.id!=null)fileDates.set(text(file.id),stamp(file.updated_at||file.modified_at||file.created_at));
+    });
+    (Array.isArray(raw.pages)?raw.pages:[]).concat(raw.frontPage?[raw.frontPage]:[]).forEach(function(page){
+      if(!page)return;
+      var at=stamp(page.updated_at||page.created_at);
+      if(page.url||page.page_url)pageDates.set('slug:'+text(page.url||page.page_url),at);
+      if(page.page_id!=null)pageDates.set('id:'+text(page.page_id),at);
+    });
     function add(item,key,force){
       if(!force&&key&&seen.has(key)){
         var original=result.find(x=>x._contentKey===key);
@@ -101,7 +113,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         else direct=safeURL(entry.html_url);
         var url=isLocked?moduleLink(courseId,itemId):(direct||moduleLink(courseId,itemId));
         var key=contentKey(kind,contentId,pageUrl,direct,itemId);
-        add({id:'module:'+moduleId+':'+itemId,courseId,title,kind,category:classify(title,kind),url,moduleId,moduleName,contentId,pageUrl,locked:isLocked},key,false);
+        var updatedAt=kind==='File'&&contentId?fileDates.get(contentId)||null:kind==='Page'?pageDates.get('slug:'+pageUrl)||(contentId?pageDates.get('id:'+contentId):null)||null:null;
+        add({id:'module:'+moduleId+':'+itemId,courseId,title,kind,category:classify(title,kind),url,moduleId,moduleName,contentId,pageUrl,locked:isLocked,updatedAt},key,false);
       });
     });
     if(visible(raw.frontPage)){
@@ -120,7 +133,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           moduleName:'',
           contentId:null,
           pageUrl:frontSlug||'front_page',
-          locked:frontLocked
+          locked:frontLocked,
+          updatedAt:stamp(front.updated_at||front.created_at)
         },
         frontSlug?'page:'+frontSlug:null,
         false);
@@ -145,7 +159,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           moduleName:'',
           contentId:pageId,
           pageUrl:slug||null,
-          locked:isLocked
+          locked:isLocked,
+          updatedAt:stamp(page.updated_at||page.created_at)
         },
         key,
         false);
@@ -160,7 +175,20 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       var direct=safeURL(file.url||file.html_url||file.preview_url);
       var url=isLocked?fileLink(courseId,fileId):(direct||fileLink(courseId,fileId));
       add(
-        {id:'file:'+courseId+':'+fileId,courseId,title,kind:'File',category:classify(title,'File'),url,moduleId:null,moduleName:'',contentId:fileId,pageUrl:null,locked:isLocked},
+        {
+          id:'file:'+courseId+':'+fileId,
+          courseId,
+          title,
+          kind:'File',
+          category:classify(title,'File'),
+          url,
+          moduleId:null,
+          moduleName:'',
+          contentId:fileId,
+          pageUrl:null,
+          locked:isLocked,
+          updatedAt:fileDates.get(fileId)||null
+        },
         key,
         false);
     });
@@ -177,12 +205,36 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           moduleName:'',
           contentId:null,
           pageUrl:'__syllabus__',
-          locked:false
+          locked:false,
+          updatedAt:null
         },
         null,
         true);
     return result;
   }
+  function stamp(value){if(value==null||value==='')return null;var ms=Date.parse(value);return Number.isFinite(ms)?new Date(ms).toISOString():null;}
+  // The shelves of Materials (pages-42): Files, Pages and Links are what an item is; quizzes and discussions are
+  // Canvas activities and stand only under Recent and Modules. Assignments never show in Materials.
+  function shelfOf(item){
+    var kind=text(item?.kind);
+    if(kind==='File')return 'files';
+    if(kind==='Page'||kind==='FrontPage'||kind==='Syllabus')return 'pages';
+    if(kind==='ExternalUrl'||kind==='ExternalTool')return 'links';
+    return '';
+  }
+  // Recent first: newest date first; undated items keep Canvas order after them (a stable sort over the given order).
+  function byRecent(items){
+    return (Array.isArray(items)?items:[]).map(function(item,index){return {item,index,at:Date.parse(item?.updatedAt||'')};}).sort(function(a,b){
+      var x=Number.isFinite(a.at),y=Number.isFinite(b.at);
+      if(x&&y&&a.at!==b.at)return b.at-a.at;
+      if(x!==y)return x?-1:1;
+      return a.index-b.index;
+    }).map(function(entry){
+      return entry.item;
+    });
+  }
+  // A recent list's groups by age, in the student's own days: This week (7 days), This month (30 days), Earlier, No date.
+  function ageGroup(value,now){var at=Date.parse(value||'');if(!Number.isFinite(at))return 'undated';var days=((now==null?Date.now():now)-at)/864e5;return days<7?'week':days<30?'month':'earlier';}
   var STOP=new Set(['assignment','homework','worksheet','practice','review','writeup','project','odds','evens','unit','lesson','chapter','page','problem','problems','question','questions','daily','work','with','answer','answers','the','and','for','from','this','that','your']);
   function terms(value){
     var tokens=normalized(value).replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(Boolean),out=[];
@@ -390,5 +442,5 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     });
     return chapters.filter(function(c){return c.items.length;});
   }
-  return {normalizeCatalog,safeURL,classify,suggestions,filter,displayTitle,formatOf,kindOf,searchText,present,outline,chapterKey};
+  return {normalizeCatalog,safeURL,classify,suggestions,filter,displayTitle,formatOf,kindOf,searchText,present,outline,chapterKey,shelfOf,byRecent,ageGroup};
 });

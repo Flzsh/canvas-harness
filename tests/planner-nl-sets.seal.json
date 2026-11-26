@@ -1,0 +1,14 @@
+{
+ "note": "Sets T and U of the Planner quick-add reading, sealed before the parser was run on them. sha256 of each file with CRLF folded to LF. Set T may be read while improving the parser; set U only to measure.",
+ "sealedAt": "2026-11-23T05:46:44.300Z",
+ "t": {
+  "file": "planner-nl-set-t.cjs",
+  "lines": 200,
+  "sha256": "6281e435f13adb9cc8232723bf828d52d091a348472e8ae47d53eaf3b839868b"
+ },
+ "u": {
+  "file": "planner-nl-set-u.cjs",
+  "lines": 150,
+  "sha256": "9550c587cf715378e928ee3a0c69f8cb5c3536093054d366b98d4af5bafb7557"
+ }
+}

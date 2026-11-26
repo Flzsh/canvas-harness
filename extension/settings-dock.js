@@ -274,7 +274,7 @@
    }
    const catalog=shown(),state={
      catalog:catalog.map(row=>row.id==='pony'&&data&&A?.drawing?{...row,preview:A.drawing(data,pack)}:row),
-     installed:packRows,
+     installed:megaRow?[...packRows,{...megaRow,current:megaCurrent()}]:packRows,
      packPending:[...packPending],
      prefs:{preset:prefs.preset,on:Object.fromEntries(catalog.map(({id})=>[id,effective.includes(id)]))},
      changed
@@ -285,6 +285,37 @@
    else instance=root.ReserveAddonsPanel.mount($('features-panel'),{view:'features',...state,onOpen:openFeature,onPreset:preset=>{
      if(ready&&!dead)save({...prefs,preset});
    },onToggle:toggle,...(store?.owner?{onUse:id=>packAction('use',id),onReset:id=>packAction('reset',id),onRemove:id=>packAction('remove',id),onMarket:()=>openMarket()}: {})});
+  }
+  // (4.2) Soul Passage, once its files were downloaded from the Market, is one of the installed things here too, in the same
+  // row: Use (on, and pressed again off: the scene none, the files kept), Reset to how it came (Cruise, Today, Now, the parts back) and
+  // Remove (the files go). While the package holds its files there is nothing installed, so no row.
+  const Mega=enabled('scene-themes')&&root.ReserveMakeYourOwn?.megapack||null;let megaRow=null,megaTurn=0;
+  const megaCurrent=()=>{const s=store?.get?.()?.settings||{};return s.sceneTheme===Mega?.scene&&!s.makeYourOwn?.theme;};
+  async function loadMega(){
+   if(dead||!Mega||!store?.owner||typeof root.chrome?.runtime?.getURL!=='function')return;const turn=++megaTurn;
+   const now=await Mega.state();if(dead||turn!==megaTurn)return;
+   const next=now?.state==='here'&&!now.bundled?
+     {id:Mega.key,name:Mega.name,kind:'megapack',source:'market',preview:`<img alt="" src="${E(root.chrome.runtime.getURL('themes/'+Mega.scene+'/poster.jpg'))}" width="96" height="54" style="width:100%;height:100%;object-fit:cover" loading="lazy">`}:
+     null;
+   if(JSON.stringify(next)!==JSON.stringify(megaRow)){megaRow=next;draw();}
+  }
+  async function megaAction(op){
+   if(dead||!Mega||packPending.has(Mega.key))return;packPending.add(Mega.key);error();draw();
+   try{
+    // (Use: on as a choice of the scene in Look is; pressed again, off as "Use default theme" is: the files stay)
+    if(op==='use'){
+      const on=megaCurrent();
+      await store.update(data=>{
+        if(on)data.settings.sceneTheme='';else{if(data.settings.makeYourOwn)delete data.settings.makeYourOwn.theme;data.settings.sceneTheme=Mega.scene;}
+      });
+    }
+    // (the lever lies on the dashboard itself: the train eases back to Cruise as under the student's hand)
+    // (Reset: the train eases back to Cruise as under the student's hand, and the land and time go back to Today and Now)
+    else if(op==='reset'){Mega.speed(Mega.cruise);Mega.view('','');}
+    else if(op==='remove'){const reply=await Mega.remove();if(reply?.ok!==true)throw Error(reply?.reason||'Could not remove Soul Passage.');}
+    if(!dead)await store.sync?.();
+   }catch(e){if(!dead)error(e.message||'Could not change Soul Passage.');}
+   finally{packPending.delete(Mega.key);if(!dead){await loadMega();draw();}}
   }
   async function loadPacks(){
    if(dead||!store?.owner||typeof root.chrome?.runtime?.sendMessage!=='function')return;const turn=++packTurn;
@@ -306,11 +337,12 @@
   }
   async function openMarket(){
     try{
-      const reply=await root.chrome.runtime.sendMessage({type:'open-market'});
+      const reply=await root.chrome.runtime.sendMessage({type:'open-market',owner:store.owner});
       if(reply?.ok!==true)throw Error(reply?.reason||'Open the Canvas Harness extension popup and choose Add-ons.');
     }catch(e){if(!dead){error(e.message);draw();}}
   }
   async function packAction(op,id){
+   if(megaRow&&id===megaRow.id)return megaAction(op);
    if(dead||packPending.has(id)||!packRows.some(row=>row.id===id))return;packPending.add(id);error();draw();
    try{
      // AI help: "Use" opens its notice again (it turns on only from there); Remove locks it again
@@ -364,13 +396,14 @@
   function changed(changes,area){
    if(dead||area!=='local'||!F)return;
    if(changes['reserve:packs']||changes['reserve:packs:receipts']||changes[F.KEY])void loadPacks();
+   if(Mega&&changes[Mega.key])void loadMega();
    if(!changes[F.KEY])return;
    if(pending){refreshAfterSave=true;return;}
    revision++;prefs=F.normalize(changes[F.KEY].newValue);saved=prefs;ready=true;loading=false;error();$('features-retry').hidden=true;$('features-status').textContent='';draw();
   }
   $('features-status').setAttribute('role','status');$('features-status').setAttribute('aria-live','polite');
   const retry=()=>load(),reload=()=>{if(ready&&!pending&&!dead)root.location.reload();};
-  $('features-retry').addEventListener('click',retry);$('features-reload').addEventListener('click',reload);root.chrome?.storage?.onChanged?.addListener(changed);load();void loadPacks();
+  $('features-retry').addEventListener('click',retry);$('features-reload').addEventListener('click',reload);root.chrome?.storage?.onChanged?.addListener(changed);load();void loadPacks();void loadMega();
   return {sync:draw,destroy(){
     dead=true;
     revision++;

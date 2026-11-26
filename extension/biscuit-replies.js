@@ -19,10 +19,14 @@
   let label,value;
   if(/\b(?:grades?|average|total|percent|marks?)\b/i.test(query)&&grades(s)&&['course-grade','grade','course'].includes(row.kind)){
    const raw=row.currentPercent??row.percent??row.value??row.grade??row.score,
-    possible=Number(row.pointsPossible??row.possible),
+    possible=Number(row.pointsPossible??row.possible??row.points),
     earned=Number(raw),
+    own=row.kind==='grade'&&!/^course-grade-/.test(String(row.id||''))&&row.currentPercent==null&&row.percent==null,
     percent=row.currentPercent??row.percent??(row.kind==='grade'&&possible>0&&Number.isFinite(earned)?Math.round(earned/possible*10000)/100:raw);
-   if(raw!==undefined){label=short+' grade';value=String(percent)+(/^\s*\d+(?:\.\d+)?\s*$/.test(String(percent))?'%':'');}
+   if(raw!==undefined){/* biscuit-42: one piece of work's score is its points (31 / 40, 77.5%), named by the work, never a course percent */
+    if(own){label=String(row.title||row.name||short+' score');value=possible>0&&Number.isFinite(earned)?earned+' / '+possible+' ('+Math.round(earned/possible*1000)/10+'%)':String(raw);}
+    else{label=short+' grade';value=String(percent)+(/^\s*\d+(?:\.\d+)?\s*$/.test(String(percent))?'%':'');}
+   }
   }
   if(!value&&/\b(?:score|points earned|got|out of)\b/i.test(query)&&grades(s)){
    const raw=row.score??row.value??row.grade;

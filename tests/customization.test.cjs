@@ -98,7 +98,8 @@ test('editor exposes archived artwork removal and templates alongside existing u
  const icon=art.importSVG(art.template('icon'),'icon.svg');
  await store.update(d=>{d.settings.coursePrefs['101']={iconArt:icon};d.settings.coursePrefs['999']={name:'Archived <course>',iconArt:icon,color:'#123456'};});
  const course={id:'101',name:'Current course',color:'#123456'},html=ui.render({s:store.get().settings,allCourses:[course],courses:[course],customizeCourseId:'101',customizeOpen:true,customizeTab:'courses'});
- assert.match(html,/data-pane="courses"/);assert.doesNotMatch(html,/data-pane="look"/);assert.match(html,/data-setting="bannerSize"/);assert.match(html,/data-setting="courseCardStyle"/);
+ // (4.2: banner size and course cards are on Look now, beside your own banner)
+ assert.match(html,/data-pane="courses"/);assert.doesNotMatch(html,/data-pane="look"/);assert.doesNotMatch(html,/data-setting="bannerSize"/);assert.doesNotMatch(html,/data-setting="courseCardStyle"/);
  assert.match(html,/Artwork from other courses \(1\)/);assert.match(html,/Archived &lt;course&gt;/);
  assert.match(html,/data-rd-action="art-remove" data-id="999" data-kind="icon"/);
  assert.equal((html.match(/data-rd-action="art-template"/g)||[]).length,4);

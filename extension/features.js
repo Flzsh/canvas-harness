@@ -10,14 +10,14 @@
  const catalogue=[
   feature('dashboard','Dashboard & assignments','Study',['views.js','app.js','dashboard-model.js','work-model.js','dashboard-view.js','dashboard.js']),
   feature('deadline-changes','Deadline changes','Study',['deadline-model.js','deadline-changes.js'],[],['dashboard']),
-  feature('planner','Planner & home widgets','Study',['planner-model.js','planner-ui.js','hand-in.js','widgets.js','agent-home.js'],[],['dashboard']),
+  feature('planner','Planner & home widgets','Study',['planner-model.js','help-plan.js','planner-ui.js','hand-in.js','widgets.js','agent-home.js'],[],['dashboard']),
   feature('grades','Grades','Study',['grades-view.js'],[],['dashboard']),
   feature('materials','Materials library','Study',['materials-ui.js'],[],['dashboard']),
   feature('course-hub','Course hub & inbox','Study',['course-hub-model.js','course-hub-ui.js'],[],['dashboard','materials']),
   feature('course-files','My links & files','Study',['course-files.js','course-file-open.js','course-links-ui.js'],['course-links.css'],['course-hub','pdf']),
   feature('math','Math tools','Study',['math.js']),
   feature('gpa','GPA calculator','Study',['gpa-ui.js'],['gpa.css'],['tools']),
-  feature('tools','Quick open & study tools','Study',['quick-open.js','toolbox-resize.js','toolbox.js','toolbox-session.js','native-tools.js']),
+  feature('tools','Quick open & study tools','Study',['quick-open.js','toolbox-resize.js','toolbox.js','toolbox-session.js','native-tools.js','multitask.js']),
   feature('customization','Appearance editor','Personalize',['market-site.js','media-store.js','media-frame.js','frame-editor.js','custom-kits.js','pack-common.js','band-kit.js','theme-pack.js','pet-pack.js','preset-pack.js','band-pieces.js','data-theme.js','packs.js','make-your-own.js','customize-ui.js'],['media-frame.css','frame-editor.css'],['dashboard']),
   feature('scene-themes','Scene themes','Personalize',['scene-themes.js'],['scene-themes.css'],['dashboard']),
   feature('arrange','Arrange the workspace','Personalize',['workspace-gestures.js'],[],['dashboard']),
@@ -58,6 +58,7 @@
    "math.js",
    "ui-utils.js",
    "icons.js",
+   "home-bits.js",
    "subject-art-data.js",
    "subject-art.js",
    "generic-art.js",
@@ -126,7 +127,9 @@
    "native-appearance.js",
    "native-page.js",
    "native-tools.js",
+   "multitask.js",
    "planner-model.js",
+   "help-plan.js",
    "pet-art.js",
    "biscuit-registry.js",
    "biscuit-workflow.js",
@@ -178,7 +181,7 @@
  const nativeCSS=['app.css','dashboard.css','workspace.css','refresh.css','gpa.css'];
  // customize.css and widgets.css are core: besides the editor and the widgets they hold the dashboard's setting-driven layout (hidden columns, card styles,
  // arrange grips), which every preset needs. Only the editor's scripts belong to the Appearance editor.
- const core={js:['features.js','site.js','agent-clock.js','core.js','api.js','study-kind.js','personal-work.js','custom-art.js','workspace-arrange.js','media-reference.js','customization-model.js','backup-media.js','gpa-model.js','page-preferences.js','storage.js','ui-utils.js','icons.js','session.js','material-model.js','content.js','startup.js','feature-loader.js','addons-art.js','addons-panel.js','settings-dock.js'],css:['startup.css','app.css','dashboard.css','workspace.css','refresh.css','customize.css','addons-panel.css','settings-dock.css','selection.css','responsive-layout.css','widgets.css']};
+ const core={js:['features.js','site.js','agent-clock.js','core.js','api.js','study-kind.js','personal-work.js','custom-art.js','workspace-arrange.js','media-reference.js','customization-model.js','backup-media.js','gpa-model.js','page-preferences.js','storage.js','ui-utils.js','icons.js','home-bits.js','session.js','material-model.js','content.js','startup.js','page-switch.js','feature-loader.js','addons-art.js','addons-panel.js','settings-dock.js'],css:['startup.css','app.css','dashboard.css','workspace.css','refresh.css','customize.css','addons-panel.css','settings-dock.css','selection.css','responsive-layout.css','widgets.css']};
  // Prepaint drawings must not wait for the worker. Other mandatory files stay
  // interleaved with optional files in the original main declaration's order.
  const staticJS=['startup-art.js','site.js','core.js','api.js','personal-work.js','custom-art.js','workspace-arrange.js','canvas-nav.js','course-nav-art.js','course-nav.js'];
@@ -272,6 +275,184 @@
    "themes/thanksgiving/thanksgiving-card.png",
    "themes/thanksgiving/thanksgiving-panel.png",
    "themes/thanksgiving/theme.css",
+   "themes/train/band.html",
+   "themes/train/band.js",
+   "themes/train/page.html",
+   "themes/train/page.js",
+   "themes/train/painter.js",
+   "themes/train/icon-bear.png",
+   "themes/train/icon-cat.png",
+   "themes/train/icon-kettle.png",
+   "themes/train/icon-lamp.png",
+   "themes/train/icon-mug.png",
+   "themes/train/icon-plant.png",
+   "themes/train/kit-metro-rug-peri.png",
+   "themes/train/kit-metro-rug-rose.png",
+   "themes/train/kit-metro-rug-gold.png",
+   "themes/train/kit-metro-rug-runner.png",
+   "themes/train/kit-metro-mat-peri.png",
+   "themes/train/kit-metro-mat-rose.png",
+   "themes/train/kit-metro-mat-gold.png",
+   "themes/train/kit-metro-mat-sage.png",
+   "themes/train/kit-metro-pad-peri.png",
+   "themes/train/kit-metro-pad-sage.png",
+   "themes/train/kit-metro-pad-rose.png",
+   "themes/train/kit-metro-pad-gold.png",
+   "themes/train/kit-metro-chip-teal.png",
+   "themes/train/kit-metro-chip-peri.png",
+   "themes/train/kit-metro-chip-rose.png",
+   "themes/train/kit-metro-chip-gold.png",
+   "themes/train/kit-metro-chip-sage.png",
+   "themes/train/kit-metro-label.png",
+   "themes/train/kit-metro-patch-hover.png",
+   "themes/train/kit-metro-patch-sel.png",
+   "themes/train/kit-metro-ring.png",
+   "themes/train/kit-metro-ring-on.png",
+   "themes/train/kit-clouds-rug-peri.png",
+   "themes/train/kit-clouds-rug-rose.png",
+   "themes/train/kit-clouds-rug-gold.png",
+   "themes/train/kit-clouds-rug-runner.png",
+   "themes/train/kit-clouds-mat-peri.png",
+   "themes/train/kit-clouds-mat-rose.png",
+   "themes/train/kit-clouds-mat-gold.png",
+   "themes/train/kit-clouds-mat-sage.png",
+   "themes/train/kit-clouds-pad-peri.png",
+   "themes/train/kit-clouds-pad-sage.png",
+   "themes/train/kit-clouds-pad-rose.png",
+   "themes/train/kit-clouds-pad-gold.png",
+   "themes/train/kit-clouds-chip-teal.png",
+   "themes/train/kit-clouds-chip-peri.png",
+   "themes/train/kit-clouds-chip-rose.png",
+   "themes/train/kit-clouds-chip-gold.png",
+   "themes/train/kit-clouds-chip-sage.png",
+   "themes/train/kit-clouds-label.png",
+   "themes/train/kit-clouds-patch-hover.png",
+   "themes/train/kit-clouds-patch-sel.png",
+   "themes/train/kit-clouds-ring.png",
+   "themes/train/kit-clouds-ring-on.png",
+   "themes/train/kit-citadel-rug-peri.png",
+   "themes/train/kit-citadel-rug-rose.png",
+   "themes/train/kit-citadel-rug-gold.png",
+   "themes/train/kit-citadel-rug-runner.png",
+   "themes/train/kit-citadel-mat-peri.png",
+   "themes/train/kit-citadel-mat-rose.png",
+   "themes/train/kit-citadel-mat-gold.png",
+   "themes/train/kit-citadel-mat-sage.png",
+   "themes/train/kit-citadel-pad-peri.png",
+   "themes/train/kit-citadel-pad-sage.png",
+   "themes/train/kit-citadel-pad-rose.png",
+   "themes/train/kit-citadel-pad-gold.png",
+   "themes/train/kit-citadel-chip-teal.png",
+   "themes/train/kit-citadel-chip-peri.png",
+   "themes/train/kit-citadel-chip-rose.png",
+   "themes/train/kit-citadel-chip-gold.png",
+   "themes/train/kit-citadel-chip-sage.png",
+   "themes/train/kit-citadel-label.png",
+   "themes/train/kit-citadel-patch-hover.png",
+   "themes/train/kit-citadel-patch-sel.png",
+   "themes/train/kit-citadel-ring.png",
+   "themes/train/kit-citadel-ring-on.png",
+   "themes/train/kit-mesa-rug-peri.png",
+   "themes/train/kit-mesa-rug-rose.png",
+   "themes/train/kit-mesa-rug-gold.png",
+   "themes/train/kit-mesa-rug-runner.png",
+   "themes/train/kit-mesa-mat-peri.png",
+   "themes/train/kit-mesa-mat-rose.png",
+   "themes/train/kit-mesa-mat-gold.png",
+   "themes/train/kit-mesa-mat-sage.png",
+   "themes/train/kit-mesa-pad-peri.png",
+   "themes/train/kit-mesa-pad-sage.png",
+   "themes/train/kit-mesa-pad-rose.png",
+   "themes/train/kit-mesa-pad-gold.png",
+   "themes/train/kit-mesa-chip-teal.png",
+   "themes/train/kit-mesa-chip-peri.png",
+   "themes/train/kit-mesa-chip-rose.png",
+   "themes/train/kit-mesa-chip-gold.png",
+   "themes/train/kit-mesa-chip-sage.png",
+   "themes/train/kit-mesa-label.png",
+   "themes/train/kit-mesa-patch-hover.png",
+   "themes/train/kit-mesa-patch-sel.png",
+   "themes/train/kit-mesa-ring.png",
+   "themes/train/kit-mesa-ring-on.png",
+   "themes/train/kit-grove-rug-peri.png",
+   "themes/train/kit-grove-rug-rose.png",
+   "themes/train/kit-grove-rug-gold.png",
+   "themes/train/kit-grove-rug-runner.png",
+   "themes/train/kit-grove-mat-peri.png",
+   "themes/train/kit-grove-mat-rose.png",
+   "themes/train/kit-grove-mat-gold.png",
+   "themes/train/kit-grove-mat-sage.png",
+   "themes/train/kit-grove-pad-peri.png",
+   "themes/train/kit-grove-pad-sage.png",
+   "themes/train/kit-grove-pad-rose.png",
+   "themes/train/kit-grove-pad-gold.png",
+   "themes/train/kit-grove-chip-teal.png",
+   "themes/train/kit-grove-chip-peri.png",
+   "themes/train/kit-grove-chip-rose.png",
+   "themes/train/kit-grove-chip-gold.png",
+   "themes/train/kit-grove-chip-sage.png",
+   "themes/train/kit-grove-label.png",
+   "themes/train/kit-grove-patch-hover.png",
+   "themes/train/kit-grove-patch-sel.png",
+   "themes/train/kit-grove-ring.png",
+   "themes/train/kit-grove-ring-on.png",
+   "themes/train/kit-sea-rug-peri.png",
+   "themes/train/kit-sea-rug-rose.png",
+   "themes/train/kit-sea-rug-gold.png",
+   "themes/train/kit-sea-rug-runner.png",
+   "themes/train/kit-sea-mat-peri.png",
+   "themes/train/kit-sea-mat-rose.png",
+   "themes/train/kit-sea-mat-gold.png",
+   "themes/train/kit-sea-mat-sage.png",
+   "themes/train/kit-sea-pad-peri.png",
+   "themes/train/kit-sea-pad-sage.png",
+   "themes/train/kit-sea-pad-rose.png",
+   "themes/train/kit-sea-pad-gold.png",
+   "themes/train/kit-sea-chip-teal.png",
+   "themes/train/kit-sea-chip-peri.png",
+   "themes/train/kit-sea-chip-rose.png",
+   "themes/train/kit-sea-chip-gold.png",
+   "themes/train/kit-sea-chip-sage.png",
+   "themes/train/kit-sea-label.png",
+   "themes/train/kit-sea-patch-hover.png",
+   "themes/train/kit-sea-patch-sel.png",
+   "themes/train/kit-sea-ring.png",
+   "themes/train/kit-sea-ring-on.png",
+   "themes/train/kit-peaks-rug-peri.png",
+   "themes/train/kit-peaks-rug-rose.png",
+   "themes/train/kit-peaks-rug-gold.png",
+   "themes/train/kit-peaks-rug-runner.png",
+   "themes/train/kit-peaks-mat-peri.png",
+   "themes/train/kit-peaks-mat-rose.png",
+   "themes/train/kit-peaks-mat-gold.png",
+   "themes/train/kit-peaks-mat-sage.png",
+   "themes/train/kit-peaks-pad-peri.png",
+   "themes/train/kit-peaks-pad-sage.png",
+   "themes/train/kit-peaks-pad-rose.png",
+   "themes/train/kit-peaks-pad-gold.png",
+   "themes/train/kit-peaks-chip-teal.png",
+   "themes/train/kit-peaks-chip-peri.png",
+   "themes/train/kit-peaks-chip-rose.png",
+   "themes/train/kit-peaks-chip-gold.png",
+   "themes/train/kit-peaks-chip-sage.png",
+   "themes/train/kit-peaks-label.png",
+   "themes/train/kit-peaks-patch-hover.png",
+   "themes/train/kit-peaks-patch-sel.png",
+   "themes/train/kit-peaks-ring.png",
+   "themes/train/kit-peaks-ring-on.png",
+   "themes/train/lever.webp",
+   "themes/train/kit-peaks-lamp.png",
+   "themes/train/kit-clouds-lamp.png",
+   "themes/train/kit-citadel-lamp.png",
+   "themes/train/kit-mesa-lamp.png",
+   "themes/train/kit-grove-lamp.png",
+   "themes/train/kit-sea-lamp.png",
+   "themes/train/kit-metro-lamp.png",
+   "themes/train/poster.jpg",
+   "themes/train/ride.json",
+   "themes/train/theme.css",
+   "themes/train/train-card-dark.png",
+   "themes/train/train-panel-dark.png",
  ];
  const ids=catalogue.map(f=>f.id),known=new Set(ids);
  catalogue.find(f=>f.id==='pony').files.assets=['biscuit-rules/basic.json','biscuit-rules/more.json','biscuit-rules/most.json','biscuit-rules/school-language.json'];
@@ -368,9 +549,16 @@
  // This page's switch: from its hint until the storage read (or the worker) says otherwise. lastPrefs is the add-on
  // choice the page was last given, never marked off: switched on again, it is what comes back.
  let switchedOff=false;try{switchedOff=root.localStorage?.getItem(OFFHINT)==='1';}catch{}
- let current=resolve(switchedOff?forSwitch(hint,false):hint),earlySelection,revision=0,lastPrefs=hint;
- const earlyEffects=[];
- function clearNavHint(){if(!current.enabled.includes('canvas-nav'))try{root.localStorage?.removeItem('reserve:navEarly');}catch{}}
+ // Switched off on this assignment's pages only (site.js pageOff, the switch on those pages): this document selects
+ // nothing, as when switched off everywhere, while what the student chose stays as it is for every other page.
+ function here(){try{return root.ReserveSite?.pageOff?.(root.location)===true;}catch{return false;}}
+ const forPage=prefs=>switchedOff||here()?forSwitch(prefs,false):prefs;
+ let current=resolve(forPage(hint)),earlySelection,revision=0,lastPrefs=hint;
+ const earlyEffects=[],applied=new Set();
+ // What this page would select with its own switch on (the page switch shows itself by it).
+ const chosenNow=()=>here()?resolve(switchedOff?forSwitch(lastPrefs,false):lastPrefs):current;
+ // (the menu's first-frame hint belongs to every page: off on one page keeps it)
+ function clearNavHint(){if(!chosenNow().enabled.includes('canvas-nav'))try{root.localStorage?.removeItem('reserve:navEarly');}catch{}}
  clearNavHint();
  function mirrorSwitch(){
   try{if(switchedOff)root.localStorage?.setItem(OFFHINT,'1');else if(root.localStorage?.getItem(OFFHINT)!==null)root.localStorage.removeItem(OFFHINT);}catch{}
@@ -381,13 +569,18 @@
   if(marked(prefs)){if(!switchedOff){switchedOff=true;mirrorSwitch();}prefs=forSwitch(prefs,true);}
   lastPrefs=prefs;
   const motionWasEnabled=current.enabled.includes('motion');
-  revision++;current=resolve(switchedOff?forSwitch(prefs,false):prefs);clearNavHint();
+  revision++;current=resolve(forPage(prefs));clearNavHint();
   const motionChanged=motionWasEnabled!==current.enabled.includes('motion');
   // The stored hint can differ from the worker's document-specific selection.
   // Revisit all prepaint effects in registration order (art before course menu).
   for(const effect of earlyEffects)effect(current,motionChanged);
+  for(const fn of applied)try{fn(current);}catch{}
   return current;
  }
+ // The page switch was pressed (here or in another tab): the same preferences again, for this page as it now stands.
+ function refresh(){return apply(lastPrefs);}
+ // (told after every change of this document's selection: the page switch follows "On Canvas" with it)
+ function onApply(fn){applied.add(fn);return ()=>applied.delete(fn);}
  // The switch changed (the loader hears it; the storage read and the worker's reply confirm it): what was started early
  // stops, or starts, at once, with the last choice this page was given.
  function setSwitch(on,prefs=lastPrefs){switchedOff=on===false;mirrorSwitch();return apply(prefs);}
@@ -395,8 +588,10 @@
  // The features a student may see: AI help only once it is unlocked (by the saved choice given, else this page's).
  function aiUnlocked(prefs){return prefs===undefined?current.aiUnlocked===true:unlocked(normalize(prefs));}
  function listed(prefs){const open=aiUnlocked(prefs);return catalogue.filter(f=>open||!lockedIds().has(f.id));}
- function early(id,start,stop){
-  let started=false;
+ // `running`: the effect was already started before it was handed over (Edge ran its file first), so a selection without
+ // it stops it at once (a page switched off here, or "On Canvas" off) instead of taking it for not yet started.
+ function early(id,start,stop,{running=false}={}){
+  let started=running===true;
   const reconcile=(selection,motionChanged=false)=>{
    if(selection.enabled.includes(id)){
     if(!started){started=true;start();}
@@ -521,6 +716,9 @@
    OFFHINT,
    forSwitch,
    setSwitch,
+   refresh,
+   onApply,
+   here,
    catalogue,
    presets,
    core,
@@ -548,7 +746,12 @@
    serveWrites,
    get earlyReady(){
    return earlySelection;
- },get current(){return current;}};
+ },get current(){return current;},get chosen(){return chosenNow();}};
  if(typeof module==='object'&&module.exports)module.exports=api;
- else root.ReserveFeatures=api;
+ else{
+  root.ReserveFeatures=api;
+  // Edge ran canvas-nav.js (second group) first: its menu, already started, enters the selection here as running, so a
+  // page switched off here or "On Canvas" off stops it now and whenever either changes later.
+  const late=root.ReserveCanvasNavLate;if(late){delete root.ReserveCanvasNavLate;early('canvas-nav',late.load,late.stop,{running:true});}
+ }
 })(globalThis);

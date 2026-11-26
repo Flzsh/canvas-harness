@@ -57,6 +57,13 @@
   if(missing)return {when:days===0?'Today · '+time:days===1?'Tomorrow · '+time:when,chip:missing,tone:'danger'};
   return days===0?{when,chip:'Today',tone:'warn'}:days===1?{when,chip:'Tomorrow',tone:'info'}:{when,chip:'',tone:''};
  }
+ // The chip is Home's one chip component (home-bits.js, 4.2 roadmap item 6): late and missing are the Overdue kind,
+ // Today and Tomorrow their own; the words stay the row's own. Without home-bits.js, the plain chip of before.
+ const bits=()=>root.ReserveHomeBits||(typeof module==='object'&&module.exports?require('./home-bits.js'):null);
+ function chip(d){
+  const B=bits();
+  return B?B.chip(d.tone,d.chip,{cls:'ch-handin-chip',tone:d.tone}):`<span class="ch-handin-chip" data-tone="${d.tone}">${String(d.chip).replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]))}</span>`;
+ }
  function render(c,h,{action}){
   const {E}=h,l=lists(c,{dayOf:value=>h.dayKey(value,c.s.timeZone),complete:h.complete});
   const row=(item,group)=>{
@@ -65,7 +72,7 @@
     ink=core()?.courseInk?.(color)||color,
     d=due(item,group,c,h),
     name=course?.shortName||course?.name||'';
-   return `<li class="ch-handin-row" data-rd-key="handin-${E(item.id)}" style="--rd-course:${E(color)};--rd-course-ink:${E(ink)}">${action('preview',`${courseArt(course)||DOT}<strong>${E(item.name)}</strong><small>${name?`<span>${E(name)}</span>`:''}<span>${E(d.when)}</span></small>${d.chip?`<span class="ch-handin-chip" data-tone="${d.tone}">${E(d.chip)}</span>`:''}`,`data-id="${E(item.id)}"`,'ch-handin-open')}<details class="ch-handin-menu"><summary>Done another way</summary><div class="ch-handin-reasons" role="group" aria-label="Done another way">${REASONS.map(([key,label])=>action('handin-dismiss',`<span class="ch-handin-glyph" aria-hidden="true"></span>${E(label)}`,`data-id="${E(item.id)}" data-value="${key}"`,'ch-handin-reason')).join('')}</div></details></li>`;};
+   return `<li class="ch-handin-row" data-rd-key="handin-${E(item.id)}" style="--rd-course:${E(color)};--rd-course-ink:${E(ink)}">${action('preview',`${courseArt(course)||DOT}<strong>${E(item.name)}</strong><small>${name?`<span>${E(name)}</span>`:''}<span>${E(d.when)}</span></small>${d.chip?chip(d):''}`,`data-id="${E(item.id)}"`,'ch-handin-open')}<details class="ch-handin-menu"><summary>Done another way</summary><div class="ch-handin-reasons" role="group" aria-label="Done another way">${REASONS.map(([key,label])=>action('handin-dismiss',`<span class="ch-handin-glyph" aria-hidden="true"></span>${E(label)}`,`data-id="${E(item.id)}" data-value="${key}"`,'ch-handin-reason')).join('')}</div></details></li>`;};
   const group=(key,label)=>l[key].length?`<section class="ch-handin-group" data-group="${key}" data-rd-key="handin-group-${key}"><h3 class="ch-handin-label"><span>${label}</span> <b>${l[key].length}</b></h3><ul class="ch-handin-list">${l[key].map(item=>row(item,key)).join('')}</ul></section>`:'';
   const open=GROUPS.map(([key,label])=>group(key,label)).join('');
   return `<div class="ch-handin">${open||'<div class="ch-handin-empty" role="img" aria-label="Nothing to hand in">'+EMPTY+'</div>'}${l.hidden.length?`<details class="ch-handin-hidden"><summary>${l.hidden.length} done another way</summary><ul class="ch-handin-done-list">${l.hidden.map(({item,reason})=>`<li class="ch-handin-done" data-rd-key="handin-done-${E(item.id)}"><span class="ch-handin-done-mark" aria-hidden="true"></span><span class="ch-handin-done-text"><strong>${E(item.name)}</strong><small>${E(reasonText(reason))}</small></span>${action('handin-undo','Undo',`data-id="${E(item.id)}"`,'rd-text-button ch-handin-undo')}</li>`).join('')}</ul></details>`:''}</div>`;

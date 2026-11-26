@@ -1,9 +1,12 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const P=require('../extension/planner-model.js');
 const T='2026-10-12';   // a Monday
+// (4.2: the quick add also returns the course id, a time, a due mark, a repeat, a priority and the words' spans; these tests
+// check the four fields they always checked)
+const four=r=>({name:r.name,day:r.day,estimate:r.estimate,course:r.course});
 test('quick add reads a day, a length and a course hint, and leaves the rest as the name',()=>{
- assert.deepEqual(P.parseQuick('Read chapter 3 fri 45m #chem',T),{name:'Read chapter 3',day:'2026-10-16',estimate:45,course:'chem'});
- assert.deepEqual(P.parseQuick('  essay   outline tomorrow 1.5h ',T),{name:'essay outline',day:'2026-10-13',estimate:90,course:''});
+ assert.deepEqual(four(P.parseQuick('Read chapter 3 fri 45m #chem',T)),{name:'Read chapter 3',day:'2026-10-16',estimate:45,course:'chem'});
+ assert.deepEqual(four(P.parseQuick('  essay   outline tomorrow 1.5h ',T)),{name:'essay outline',day:'2026-10-13',estimate:90,course:''});
  assert.equal(P.parseQuick('Lab report today',T).day,T);
  assert.equal(P.parseQuick('Flashcards monday',T).day,'2026-10-19','the same weekday means next week');
  assert.equal(P.parseQuick('Flashcards next wed',T).day,'2026-10-21');
@@ -12,10 +15,10 @@ test('quick add reads a day, a length and a course hint, and leaves the rest as 
  assert.equal(P.parseQuick('Form 2/30',T).day,'','an impossible date is not a date');assert.equal(P.parseQuick('Form 2/30',T).name,'Form 2/30');
 });
 test('quick add does not mistake ordinary words or numbers for dates and lengths',()=>{
- assert.deepEqual(P.parseQuick('Buy a sun hat for 3 friends',T),{name:'Buy a sun hat for 3 friends',day:'',estimate:0,course:''});
+ assert.deepEqual(four(P.parseQuick('Buy a sun hat for 3 friends',T)),{name:'Buy a sun hat for 3 friends',day:'',estimate:0,course:''});
  assert.equal(P.parseQuick('Monitor the reaction',T).day,'');assert.equal(P.parseQuick('Chapter 12 problems',T).estimate,0);
  assert.equal(P.parseQuick('Read 30 pages 30 min',T).name,'Read 30 pages');
- assert.equal(P.parseQuick('x'.repeat(400),T).name.length,200);assert.equal(P.parseQuick('study 99h',T).estimate,1440);
+ assert.equal(P.parseQuick('x'.repeat(400),T).name.length,200);assert.equal(P.parseQuick('study 20h',T).estimate,1200);assert.equal(P.parseQuick('study 99h',T).estimate,0,'4.2: a length over a day is not read as one (it stays in the name)');
 });
 test('a course hint matches a whole word, then the start of a word',()=>{
  const courses=[{id:'1',name:'AP Biology',shortName:'Bio',code:'APBIO'},{id:'2',name:'Chemistry',code:'CHEM101'},{id:'3',name:'Biochemistry Club',code:'BC'}];

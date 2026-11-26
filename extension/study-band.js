@@ -337,7 +337,7 @@
    onProgress=()=>{},
    onTool=()=>{
    throw Error('That control is unavailable.');
- },onError=()=>{},selectedKey='',missed=false,expanded=false,timeZone,itemFacts,now:clock}={}){
+ },onError=()=>{},selectedKey='',missed=false,expanded=false,timeZone,itemFacts,now:clock,arrange=null,planner=null}={}){
   const UI=load('CanvasHarnessStudyUI','./study-ui.js'),d=env.document;
   // stackAt: the card in front of each lapped stack. raised: sizes the band raised so a card's content fits, each with
   // the band width it was measured at (a much wider band measures again).
@@ -539,7 +539,9 @@
    top:[['wash','M5.6 4.2c3.2-1.2 5.6 1.4 9-.1-.6 2.4-.5 4.5.3 6.5-3.4 1.3-5.8-1.3-9 .1z','#DE9A7C'],['ink','M5 19.2c.2-5 .1-10.2-.3-15.2M5.2 4.4c3.2-1.3 5.7 1.3 9.1-.2-.6 2.4-.5 4.6.3 6.6-3.4 1.4-5.8-1.3-9.1 0',1.5]],
    stop:[['wash','M6.2 6.2h9.8v9.8H6.2z','#E8B4A0'],['ink stop-edge','M5.6 5.9c3.6-.4 7.3-.3 10.9 0 .3 3.6.3 7.1 0 10.6-3.6.4-7.3.3-10.9 0-.3-3.5-.3-7 0-10.6z',1.6]],
    again:[['wash','M11 4.6c3.6 0 6.4 2.9 6.4 6.4s-2.8 6.4-6.4 6.4-6.4-2.8-6.4-6.4','#F6DE9A'],['ink','M16.6 8.2c-1.1-2.4-3.2-3.8-5.7-3.8-3.6.1-6.4 2.9-6.4 6.6.1 3.6 2.9 6.5 6.5 6.5 2.7 0 4.9-1.6 5.9-4',1.6],['ink','M16.9 4.4l-.2 4-3.9-.4',1.6]],
-   sun:[['wash','M11 5.4a5.4 5.4 0 1 1 0 10.8 5.4 5.4 0 0 1 0-10.8z','#F6C94A'],['ink','M11 6.6c2.5-.1 4.5 2 4.4 4.5-.1 2.4-2.1 4.4-4.5 4.3-2.4 0-4.3-2-4.3-4.4.1-2.4 2-4.3 4.4-4.4z'],['ink rays','M11 1.8v2.3M11.1 17.9v2.3M1.8 11h2.3M17.9 11.1h2.3M4.5 4.6l1.6 1.6M15.9 15.9l1.6 1.6M4.6 17.5l1.6-1.6M15.9 6.1l1.6-1.6']]};
+   sun:[['wash','M11 5.4a5.4 5.4 0 1 1 0 10.8 5.4 5.4 0 0 1 0-10.8z','#F6C94A'],['ink','M11 6.6c2.5-.1 4.5 2 4.4 4.5-.1 2.4-2.1 4.4-4.5 4.3-2.4 0-4.3-2-4.3-4.4.1-2.4 2-4.3 4.4-4.4z'],['ink rays','M11 1.8v2.3M11.1 17.9v2.3M1.8 11h2.3M17.9 11.1h2.3M4.5 4.6l1.6 1.6M15.9 15.9l1.6 1.6M4.6 17.5l1.6-1.6M15.9 6.1l1.6-1.6']],
+   // (4.2) the planner: Home's Week module calendar (widgets.js ART.week), brought to this 22-unit grid, with the wash
+   plan:[['wash','M3.3 5.9c5.1-.5 10.3-.5 15.4 0l.1 11.4c-5.2.5-10.4.5-15.6 0z','#DE9A7C'],['ink','M3.3 5.9c5.1-.5 10.3-.5 15.4 0l.1 11.4c-5.2.5-10.4.5-15.6 0z'],['ink','M3.5 9.4h15M7.3 3.3v3.7M14.7 3.3v3.7',1.5],['ink faint','M6.8 12.3v2.6M11 12.3v2.6M15.2 12.3v2.6',1.3]]};
   function icon(name){
    if(!svg)return make('span','','ch-band-ico');const g=svg('svg',{class:'ch-band-ico ch-band-ico-'+name,viewBox:'0 0 22 22','aria-hidden':'true',focusable:'false'});
    for(const [kind,dd,extra] of ICONS[name]||[])
@@ -643,6 +645,48 @@
    if(h0)easeHeight(h0);
    if(items.length&&!still())notMadeRow.animate?.([{opacity:0,transform:'translateY(-3px)'},{opacity:1,transform:'none'}],{duration:220,easing:SETTLE});
   }
+  // Your week (4.2, help-plan.js): what the student's own planner says about the coming days, read by rules (too much on
+  // a day, a test with nothing planned, big work with no day), each with its one action and a Dismiss; a done action says
+  // what it did and can be undone. It reads and changes only the planner; nothing is sent.
+  const weekRow=make('div',undefined,'ch-band-week');weekRow.hidden=true;let weekList=[],weekDone=null,weekKey='',weekBusy=false;
+  function showWeek(){
+   if(!planner){weekRow.hidden=true;return;}if(weekDone&&Date.now()-weekDone.at>90000)weekDone=null;
+   const list=weekList.filter(f=>f&&f.key&&f.key!==weekDone?.key).slice(0,weekDone?2:3),
+     key=JSON.stringify([list.map(f=>[f.key,f.text,f.action?.label||'']),weekDone?.key||'',weekDone?.text||'']);
+   if(key===weekKey)return;
+   weekKey=key;
+   const h0=drawing?0:holdHeight();
+   const items=[];
+   if(weekDone){
+     const line=make('p',undefined,'ch-band-week-item');
+     line.dataset.done='true';
+     line.append(make('span',weekDone.text,'ch-band-week-text'));
+     if(weekDone.undo){
+       const back=drawn(button('Undo',async()=>{
+         if(weekBusy)return;
+         weekBusy=true;
+         back.disabled=true;
+         try{await weekDone?.undo?.();weekDone=null;weekKey='';showWeek();}catch(error){onError(error);}finally{weekBusy=false;back.disabled=false;}
+       },'ch-band-act ch-band-chip ch-band-week-act'),'back');
+       line.append(back);
+     }
+     items.push(line);
+   }
+   for(const f of list){const line=make('p',undefined,'ch-band-week-item');line.dataset.kind=String(f.kind||'');line.append(make('span',String(f.text||''),'ch-band-week-text'));
+    if(f.action?.label){const go=drawn(button(String(f.action.label),()=>weekAct(f,go),'ch-band-act ch-band-chip ch-band-week-act'),'plan');line.append(go);}
+    const no=button('Dismiss',()=>weekAct(f,no,true),'ch-band-week-dismiss');no.setAttribute('aria-label','Dismiss: '+String(f.text||''));line.append(no);items.push(line);}
+   // (the findings as slips beside their tag, the way the Planner shows the same thing: one look for one thing)
+   const slips=make('div',undefined,'ch-band-week-list');slips.append(...items);
+   weekRow.replaceChildren(...(items.length?[make('span','Your week','ch-band-week-label'),slips]:[]));weekRow.hidden=!items.length;measure();if(h0)easeHeight(h0);}
+  async function weekAct(f,b,drop=false){if(weekBusy||disposed)return;weekBusy=true;if(b)b.disabled=true;
+   try{
+     const r=drop?await planner.dismiss?.(f):await planner.act?.(f);
+     if(disposed)return;
+     if(r?.ok){weekDone={key:f.key,text:drop?'Dismissed.':String(f.action?.done||r.message||'Done.'),undo:typeof r.undo==='function'?r.undo:null,at:Date.now()};weekKey='';showWeek();}
+     else if(b){b.disabled=false;status.textContent=askStatus=String(r?.message||'That cannot be done now.');}
+   }
+   catch(error){if(b)b.disabled=false;onError(error);}finally{weekBusy=false;}}
+  function setWeek(list){weekList=Array.isArray(list)?list:[];showWeek();}
   const receive=(message,sender)=>{if(message?.target==='ch-ai-run'&&message.scope===ownerScope&&(!sender?.id||sender.id===env.chrome?.runtime?.id))prepare(message.run);};
   env.chrome?.runtime?.onMessage?.addListener(receive);
   if(env.chrome?.runtime?.sendMessage&&UI.storageKey(ownerScope))
@@ -772,10 +816,17 @@
      },'ch-band-act ch-band-bar-act');
      toolbar.append(test);
    }}
-  const undo=button('Undo',restore,'ch-band-undo');
-  undo.hidden=true;
-  toolbar.append(prepareLine,status,undo,dots,prev,next);
-  panel.append(toolbar,choice,notMadeRow,sheet,stage);
+  const undo=button('Undo',restore,'ch-band-undo');undo.hidden=true;toolbar.append(prepareLine,status,undo,dots,prev,next);
+  // Help as a Home module (4.2): its bar is the heading a student holds to move it, and it carries the module's grip,
+  // size-and-place menu and remove button at its end (workspace-arrange.js controls), like every other module's heading.
+  // (the tools come made, as one element: no HTML is parsed here)
+  if(arrange?.head){
+    toolbar.dataset.arrangeHead=arrange.head;
+    let tools=null;
+    try{tools=typeof arrange.tools==='function'?arrange.tools(d):arrange.tools;}catch{}
+    if(tools&&typeof tools==='object'&&tools.nodeType===1)toolbar.append(tools);
+  }
+  panel.append(toolbar,choice,notMadeRow,weekRow,sheet,stage);
   showChoice();
   band.append(panel,tab);
   container.replaceChildren(band);
@@ -922,7 +973,7 @@
   function toggleDrawer(id,kind){
     drawerFor=drawerFor?.id===id&&drawerFor.kind===kind?null:{id,kind,text:''};
     redraw();
-    if(drawerFor)viewport.querySelector?.('.ch-band-drawer input, .ch-band-drawer textarea')?.focus?.({preventScroll:true});
+    if(drawerFor)viewport.querySelector?.(kind==='plan'?'.ch-band-plan-add':'.ch-band-drawer input, .ch-band-drawer textarea')?.focus?.({preventScroll:true});
   }
   function drawerNode(entry,kind){
    const {data,aid,key}=entry,
@@ -1018,6 +1069,78 @@
    }
    catch(error){status.textContent=askStatus=String(error.message||error);onError(error);}finally{asking=false;delete acts.dataset.busy;}}
 
+  // Put it in my planner (4.2, help-plan.js): the card's plan shown as planner tasks first (a day before the due date with
+  // room on it, a length, a name); the student changes or removes rows and only Add puts them in the planner. Undo takes
+  // back exactly those. The names are CH's few words around the plan's topics or actions, never an answer or a sentence
+  // to hand in. Nothing is sent: it works the same with Help off or no AI at all.
+  function planHolds(data){try{return typeof planner?.holds==='function'?planner.holds(data)===true:false;}catch{return false;}}
+  function planDrawer(entry){
+   const {data,aid,key,index}=entry,cardKey=key+'#'+index,HP=load('ReserveHelpPlan','./help-plan.js'),box=make('div',undefined,'ch-band-drawer ch-band-plan');box.dataset.kind='plan';
+   const st=drawerFor.plan||(drawerFor.plan={}),status=make('span',st.status||'','ch-band-drawer-status'),say=t=>{st.status=t;status.textContent=t;};status.setAttribute('role','status');
+   const dayText=d=>HP?.dateLabel?HP.dateLabel(d):d,length=n=>HP?.minutesLabel?HP.minutesLabel(n):n+' min';
+   if(!st.proposal&&!st.receipt){
+     let have=[];
+     try{have=planner.placed?.(cardKey)||[];}catch{}
+     if(have.length)
+       st.receipt={ids:have,key:cardKey,already:true};
+     else{
+       try{
+         st.proposal=planner.propose({aid,data,key:cardKey,dueAt:Number.isFinite(entry.due)?entry.due:undefined});
+       }catch(error){st.proposal={ok:false};onError(error);}
+       st.rows=(st.proposal?.tasks||[]).map(t=>({title:t.title,minutes:t.minutes,day:t.day}));
+     }
+   }
+   const esc=field=>{keep(field);field.addEventListener('keydown',event=>{event.stopPropagation?.();if(event.key==='Escape'){event.preventDefault?.();drawerFor=null;redraw();}});};
+   // added (now or on an earlier day): how many are in the planner, and the way to take them back out
+   if(st.receipt){
+     const n=st.receipt.ids.length,line=make('p',undefined,'ch-band-plan-head');
+     line.append(icon('plan'),make('span',st.receipt.already?'In your planner: '+n+' task'+(n===1?'':'s')+'.':String(st.receipt.message||'Added '+n+' to your planner.')));
+    const back=drawn(button(st.receipt.already?'Take them out':'Undo',async()=>{
+      if(st.busy)return;
+      st.busy=true;
+      back.disabled=true;
+      try{
+        const r=await planner.undo(st.receipt);
+        if(disposed)return;
+        if(r?.ok){delete st.receipt;delete st.proposal;st.status=String(r.message||'Taken out of your planner.');redraw();}else say(String(r?.message||'Not saved. Try again.'));
+      }catch(error){say(String(error.message||error));onError(error);}finally{st.busy=false;back.disabled=false;}
+    },'ch-band-act ch-band-chip'),'back');
+    const row=make('div',undefined,'ch-band-drawer-row');row.append(back,status);box.append(line,row);return box;}
+   const p=st.proposal;if(!p?.ok){box.append(make('p','This card has no plan for the planner.','ch-band-plan-head'));return box;}
+   const rows=st.rows,head=make('p',undefined,'ch-band-plan-head'),total=rows.reduce((n,r)=>n+(Number(r.minutes)||0),0);
+   head.append(icon('plan'),make('span',[p.dueDay?'Before '+dayText(p.dueDay):'',rows.length+' session'+(rows.length===1?'':'s'),total?length(total):''].filter(Boolean).join(' · ')));box.append(head);
+   const list=make('ol',undefined,'ch-band-plan-rows'),LENGTHS=HP?.LENGTHS||[10,15,20,25,30,45,60,90,120];
+   rows.forEach((r,i)=>{
+    const li=make('li',undefined,'ch-band-plan-row'),
+      day=make('select',undefined,'ch-band-plan-day'),
+      title=make('input',undefined,'ch-band-drawer-input ch-band-plan-title'),
+      len=make('select',undefined,'ch-band-plan-len');
+    const days=[['','No day'],...(p.days||[]).map(d=>[d,dayText(d)+(p.before?.[d]?.room===false?' · full':'')])];if(r.day&&!days.some(([d])=>d===r.day))days.push([r.day,dayText(r.day)]);
+    for(const [value,label] of days){const o=make('option',label);o.value=value;day.append(o);}day.value=r.day||'';day.setAttribute('aria-label','Day for '+r.title);day.dataset.n=String(i+1);
+    day.addEventListener('change',event=>{event?.stopPropagation?.();r.day=day.value;});esc(day);
+    title.type='text';title.maxLength=80;title.value=r.title;title.setAttribute('aria-label','Name');keep(title);
+    title.addEventListener('input',event=>{event?.stopPropagation?.();r.title=title.value;});
+    title.addEventListener('keydown',event=>{
+      event.stopPropagation?.();
+      if(event.isComposing||event.keyCode===229)return;
+      if(event.key==='Escape'){event.preventDefault?.();drawerFor=null;redraw();}else if(event.key==='Enter'){event.preventDefault?.();void add();}
+    });
+    const lengths=LENGTHS.includes(r.minutes)?LENGTHS:[...LENGTHS,r.minutes].filter(Number.isFinite).sort((a,b)=>a-b);
+    for(const n of lengths){const o=make('option',length(n));o.value=String(n);len.append(o);}len.value=String(r.minutes);len.setAttribute('aria-label','Length');
+    len.addEventListener('change',event=>{event?.stopPropagation?.();r.minutes=Number(len.value)||r.minutes;});esc(len);
+    const drop=button('Remove',()=>{rows.splice(i,1);say('');redraw();},'ch-band-plan-remove');drop.setAttribute('aria-label','Remove '+r.title);
+    li.append(day,title,len,drop);list.append(li);});
+   if(rows.length)box.append(list);
+   for(const n of p.notes||[])box.append(make('p',String(n.text||''),'ch-band-plan-note'));
+   const go=drawn(button(rows.length?'Add '+rows.length+' to my planner':'Nothing to add',()=>add(),'ch-band-act ch-band-plan-add'),'plan');go.disabled=!rows.length;
+   async function add(){if(st.busy||!rows.length)return;st.busy=true;go.disabled=true;say('Adding…');
+    try{
+      const r=await planner.add(p,rows.map(x=>({title:x.title,minutes:x.minutes,day:x.day})));
+      if(disposed)return;
+      if(r?.ok){st.receipt={ids:r.ids,key:r.key||p.key,message:r.message};st.status='';redraw();}else say(String(r?.message||'Not saved. Try again.'));
+    }
+    catch(error){say(String(error.message||error));onError(error);}finally{st.busy=false;if(!disposed)go.disabled=!rows.length;}}
+   const row=make('div',undefined,'ch-band-drawer-row');row.append(go,status);box.append(row);return box;}
   function persist(){
     if(!ready||!store?.setBandState)return;
     const value={open,page:dayAt===0?page:homePage};
@@ -1137,7 +1260,21 @@
   function drawNow(){
    // An open drawer keeps what is typed in it, however the band redraws.
    if(drawerFor?.field)drawerFor.text=drawerFor.field.value;
-   const focusedDot=Array.from(dots.children).indexOf(d.activeElement),focusedTab=String(d.activeElement?.dataset?.lapTab||'');
+   let was=d.activeElement;
+   while(was?.shadowRoot?.activeElement)was=was.shadowRoot.activeElement;
+   const holds=(n,x)=>{if(n===x)return true;for(const c of Array.from(n?.children||[]))if(holds(c,x))return true;return false;},wasIn=!!was&&holds(viewport,was);
+   let wasSlot='',wasAct='',wasField=false;
+   if(wasIn){
+     let x=was;
+     while(x&&!Array.from(viewport.children).includes(x))x=x.parentNode;
+     wasSlot=String(x?.dataset?.slot||'');
+     wasField=/(^| )ch-band-drawer-input( |$)/.test(String(was.className));
+     let b=was;
+     while(wasField&&b&&!/(^| )ch-band-drawer( |$)/.test(String(b.className)))b=b.parentNode;
+     wasAct=wasField?({ask:'ask',check:'check',remember:'pin',paste:'paste'}[b?.dataset?.kind]||''):String(was.dataset?.act||'');
+   }
+   const focusedDot=Array.from(dots.children).indexOf(was),
+     focusedTab=String(was?.dataset?.lapTab||'');/* (a11y-42) focus looked up through the companion's shadow root (on Home d.activeElement is its host); the card control it was on, or the open drawer's field, gets it back after the redraw (below) */
    const empty=pages.length===0;band.dataset.empty=String(empty);prev.hidden=next.hidden=dots.hidden=viewport.hidden=tab.hidden=empty;panel.hidden=!empty&&!open;
    band.dataset.reducedMotion=String(reduced());page=Math.max(0,Math.min(Math.max(0,pages.length-1),page));
    const today=dayKey(timeNow(),zoneNow()),day=model.days[dayAt]||'';
@@ -1169,7 +1306,20 @@
      dots.append(dot);
    }
    if(focusedDot>=0)dots.children[focusedDot]?.focus({preventScroll:true});
-   if(focusedTab)for(const slot of Array.from(viewport.children))lapsOf.get(slot)?.tabs.find(t=>t.dataset.lapTab===focusedTab)?.focus?.({preventScroll:true});
+   if(focusedTab)
+     for(const slot of Array.from(viewport.children))lapsOf.get(slot)?.tabs.find(t=>t.dataset.lapTab===focusedTab)?.focus?.({preventScroll:true});
+   else if(wasIn&&!holds(viewport,was)){
+     if(wasField&&drawerFor?.field&&holds(viewport,drawerFor.field))
+       drawerFor.field.focus?.({preventScroll:true});
+     else if(wasSlot&&wasAct){
+       const slot=Array.from(viewport.children).find(s=>s.dataset?.slot===wasSlot),find=n=>{
+         if(n?.dataset?.act===wasAct)return n;
+         for(const c of Array.from(n?.children||[])){const r=find(c);if(r)return r;}
+         return null;
+       };
+       find(slot)?.focus?.({preventScroll:true});
+     }
+   }
    // Nothing opens on its own; a card the student opened stays open.
    // A card with a drawer open grows to show it with its rows.
    const shown=visibleCards(),full=shown.find(c=>c.dataset.drawer)||shown.find(c=>opened.has(c.dataset.aidKey+'#'+c.dataset.kind))||(expanded?shown[0]:null);
@@ -1225,12 +1375,14 @@
      if(help)acts.append(drawn(button('Check my work',()=>toggleDrawer(id,'check'),'ch-band-act'),'check'));
    }
    if(store?.addNote)acts.append(drawn(button('Remember',()=>toggleDrawer(id,'remember'),'ch-band-act'),'pin'));
+   // (4.2) a card that holds a plan (a study sheet, a practice test, steps, an outline) can go into the planner
+   if(planner&&!entry.done&&planHolds(data))acts.append(drawn(button('Put it in my planner',()=>toggleDrawer(id,'plan'),'ch-band-act'),'plan'));
    const done=button('Done',()=>archive(entry),'ch-band-act ch-band-done');
    done.dataset.act='done';
    done.setAttribute('aria-pressed',String(entry.done===true));
    done.replaceChildren(icon('done'),make('span','Done','ch-band-act-label'));
    acts.append(done);
-   if(drawerFor?.id===id)slot.append(drawerNode(entry,drawerFor.kind));
+   if(drawerFor?.id===id)slot.append(drawerFor.kind==='plan'?planDrawer(entry):drawerNode(entry,drawerFor.kind));
    head.append(acts);if(drawerFor?.id===id)card.dataset.drawer=drawerFor.kind;
    return card;
   }
@@ -1717,7 +1869,11 @@
   });
   // The entrance plays once, on the cards that stay: the saved state (open, page, the card asked for) may draw again, so
   // the first cards wait unseen until it is read.
-  draw();setOpen(true,false);const entrance=!still();if(entrance&&stage.style)stage.style.opacity='0';
+  draw();
+  setOpen(true,false);
+  if(planner?.findings)try{setWeek(planner.findings());}catch(error){onError(error);}
+  const entrance=!still();
+  if(entrance&&stage.style)stage.style.opacity='0';
   const release=()=>{if(stage.style)stage.style.opacity='';if(entrance&&!disposed&&!still())settleIn(Array.from(viewport.children));};
   // Once the fonts are in, every card is fitted again.
   Promise.resolve(env.document?.fonts?.ready).then(()=>{checks=new WeakMap();measure();},()=>{});
@@ -1754,7 +1910,7 @@
     release();
     onError(error);
   });
-  return {element:band,loaded,setOpen,flip,prepare,get state(){
+  return {element:band,loaded,setOpen,flip,prepare,setWeek,get state(){
     return {open,page,pages:pages.length,reducedMotion:reduced(),day:model.days[dayAt]||'',days:model.days.slice()};
   },get pages(){return pages;},stepDay,update(values){showChoice();const wasEmpty=!model.days.length;observer?.disconnect();
     // Help cards arrive one at a time while a run goes on. A card whose saved content did not change keeps its object,

@@ -49,6 +49,16 @@
 .rd .rd-mm-pick[aria-checked=true] {border-color:var(--rd-accent);background:color-mix(in srgb,var(--rd-accent) 10%,transparent);color:var(--rd-ink);}
 .rd .rd-mm-remove {display:block;width:100%;margin-top:11px;padding:8px 9px;border:0;border-top:1px solid var(--rd-line);border-radius:0 0 9px 9px;background:none;color:var(--rd-danger,#B5333A);font:inherit;text-align:left;cursor:pointer;}
 .rd .rd-mm-remove:is(:hover,:focus-visible) {background:color-mix(in srgb,var(--rd-danger,#B5333A) 9%,transparent);outline:none;}
+/* (4.2) Pin and "Reset this widget": one plain row each, in ink, above Remove */
+.rd .rd-module-menu .ch-agent-pin, .rd .rd-mm-reset {display:block;width:100%;margin-top:6px;padding:7px 9px;border:0;border-radius:9px;background:none;color:var(--rd-ink-2);font:inherit;text-align:left;cursor:pointer;}
+.rd .rd-module-menu .ch-agent-pin + .rd-mm-reset {margin-top:0;}
+/* (2026-11-23) each row of the menu is a drawing and its name: a pin, a module going back to its place, a module taken
+   off. Pen lines in the row's own colour (a mask), so they hold in every theme. */
+.rd .rd-module-menu .ch-agent-pin::before, .rd .rd-mm-reset::before, .rd .rd-mm-remove::before {content:"";display:inline-block;width:20px;height:20px;margin-right:9px;vertical-align:-5px;background:currentColor;-webkit-mask:var(--rd-mm-art) center/contain no-repeat;mask:var(--rd-mm-art) center/contain no-repeat;}
+.rd .rd-module-menu .ch-agent-pin {--rd-mm-art:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.1 3.5c2.2 2 4.3 4.2 6.4 6.4M15.7 5.1c-1.2 1.4-2.5 2.7-3.9 3.9M18.9 8.3c-1.2 1.4-2.5 2.7-3.9 3.9M9.9 7.1c1.6 3 4 5.4 7 7M12.6 11.4c-2.4 2.5-4.9 5-7.4 7.4'/%3E%3C/svg%3E");}
+.rd .rd-mm-reset {--rd-mm-art:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.6 8.4c1.8-2.9 5-4.5 8.3-3.9 3.9.8 6.5 4.3 6.1 8.3-.5 4.1-4.1 7.1-8.3 6.7-2.6-.3-4.7-1.7-5.9-3.8'/%3E%3Cpath d='M4.7 3.7c.1 1.7.3 3.3.6 4.9 1.6-.2 3.2-.5 4.8-.9'/%3E%3Cpath d='M9.8 10.3c1.5-.2 3-.2 4.5 0 .2 1.2.2 2.3 0 3.5-1.5.2-3 .2-4.5 0-.2-1.2-.2-2.3 0-3.5z'/%3E%3C/svg%3E");}
+.rd .rd-mm-remove {--rd-mm-art:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 5.6c4.6-.4 9.3-.4 14 0 .4 4.2.4 8.5 0 12.8-4.7.4-9.4.4-14 0-.4-4.3-.4-8.6 0-12.8z'/%3E%3Cpath d='M9.5 9.4c1.7 1.8 3.4 3.6 5.2 5.3M14.6 9.3c-1.7 1.8-3.5 3.6-5.2 5.4'/%3E%3C/svg%3E");}
+.rd .rd-module-menu .ch-agent-pin:hover, .rd .rd-module-menu .ch-agent-pin:focus-visible, .rd .rd-mm-reset:hover, .rd .rd-mm-reset:focus-visible {background:var(--rd-tint);color:var(--rd-ink);outline:none;}
 @media (prefers-reduced-motion:reduce){.rd .rd-module-menu {animation:none;}}
 .rd .rd-arrange-remove {display:grid;place-items:center;width:32px;height:38px;border:0;border-radius:9px;background:none;color:var(--rd-faint);cursor:pointer;opacity:0;transition:opacity 140ms,background-color 140ms,color 140ms;}
 .rd .rd-widget:is(:hover,:focus-within) .rd-arrange-remove,.rd[data-board-editing=true] .rd-arrange-remove {opacity:1;}
@@ -56,8 +66,6 @@
 .rd .rd-widget-note {margin:8px 0 0;color:var(--rd-muted);font-size:12.5px;}
 .rd .rd-widget-label {margin:12px 0 4px;color:var(--rd-muted);font-size:12px;font-weight:600;letter-spacing:.02em;}
 .rd .rd-widget-empty {margin:2px 0 10px;color:var(--rd-muted);font-size:13.5px;max-width:44ch;}
-.rd .rd-progress {display:block;height:6px;border-radius:9px;background:var(--rd-tint);overflow:hidden;}
-.rd .rd-progress i {display:block;height:100%;min-width:0;border-radius:9px;background:var(--rd-accent);transition:width 320ms cubic-bezier(.2,.8,.2,1);}
 
 /* Planner completion and quick add */
 .rd .rd-todo-check {display:grid;place-items:center;width:38px;height:38px;padding:0;border:0;background:none;cursor:pointer;border-radius:50%;}
@@ -161,7 +169,6 @@
 .rd .rd-pet-card p strong {font:600 16px/1.3 var(--rd-display,Georgia,serif);}
 .rd .rd-pet-card p span {color:var(--rd-muted);font-size:12.5px;}
 .rd .rd-pet-actions {display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-.rd .rd-pet-actions b {display:inline-block;min-width:20px;margin-left:4px;padding:0 6px;border-radius:99px;background:var(--rd-tint);font-size:12px;text-align:center;}
 
 /* ---- Edit Home ---- */
 .rd .rd-board-edit[aria-pressed=true] {color:var(--rd-accent);font-weight:600;}
@@ -194,76 +201,388 @@
 .rd .rd-frame-choice:is(:hover,:focus-visible) {border-color:var(--rd-accent);outline:none;}
 .rd .rd-frame-choice[aria-checked=true] {border-color:var(--rd-accent);box-shadow:0 0 0 1px var(--rd-accent);color:var(--rd-ink);}
 @media (max-width:600px){.rd .rd-gallery {padding:14px}.rd .rd-gallery > header {flex-direction:column}.rd .rd-quick-add {flex-wrap:wrap}}
-@media (prefers-reduced-motion:reduce){.rd .rd-progress i,.rd .rd-timer-arc,.rd .rd-gswitch i,.rd .rd-gallery {transition:none;animation:none}}
+@media (prefers-reduced-motion:reduce){.rd .rd-timer-arc,.rd .rd-gswitch i,.rd .rd-gallery {transition:none;animation:none}}
 
-/* ---- the Planner: a week of cards ---- */
-.rd .rd-plan {color:var(--rd-ink);font:400 14px/1.5 var(--rd-ui-font);}
-.rd .rd-plan-head {display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:6px 0 16px;}
-.rd .rd-plan-head h1 {margin:0;font:500 34px/1.15 var(--rd-display,Georgia,serif);letter-spacing:-.01em;}
-.rd .rd-plan-head p {margin:4px 0 0;color:var(--rd-muted);}
-.rd .rd-plan-nav {display:flex;align-items:center;gap:4px;}
-.rd .rd-plan-nav .rd-icon-button {width:38px;height:38px;font-size:22px;line-height:1;}
-.rd .rd-plan-quick {margin:0 0 6px;max-width:760px;}
-.rd .rd-plan-quick input {height:44px;font-size:15px;border-radius:12px;}
-.rd .rd-plan-quick .rd-quick-add-button {min-height:44px;padding-inline:20px;}
-.rd .rd-plan-tip {margin:0 0 18px;color:var(--rd-muted);font-size:12.5px;}
-.rd .rd-plan-trays {display:grid;gap:10px;margin-bottom:18px;}
-.rd .rd-plan-trays:empty {display:none;}
-.rd .rd-plan-tray {padding:12px 14px 14px;border:1.5px dashed var(--rd-line-strong);border-radius:15px;transition:background-color 140ms,border-color 140ms;}
-.rd .rd-plan-tray > header {display:flex;align-items:baseline;gap:4px 12px;flex-wrap:wrap;margin-bottom:10px;}
-.rd .rd-plan-tray h2 {margin:0;font:600 14px/1.4 var(--rd-ui-font);}
-.rd .rd-plan-tray h2 span {margin-left:4px;padding:0 7px;border-radius:99px;background:var(--rd-tint);color:var(--rd-muted);font-size:12px;font-weight:600;}
-.rd .rd-plan-tray header p {margin:0;color:var(--rd-muted);font-size:12.5px;}
-.rd .rd-plan-tray header .rd-text-button {margin-left:auto;font-size:12.5px;}
-.rd .rd-plan-tray .rd-plan-cards {display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:8px;}
-.rd .rd-plan-week {display:grid;grid-template-columns:repeat(7,minmax(148px,1fr));gap:8px;align-items:start;overflow-x:auto;padding:2px 2px 14px;margin:0 -2px;scroll-snap-type:x proximity;}
-.rd .rd-plan-day {display:grid;grid-template-rows:auto 1fr auto;min-width:0;min-height:300px;padding:10px 8px 8px;border-radius:15px;background:var(--rd-surface-2);scroll-snap-align:start;transition:background-color 140ms,box-shadow 140ms;}
-.rd .rd-plan-day[data-today=true] {background:color-mix(in srgb,var(--rd-accent) 8%,var(--rd-surface));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--rd-accent) 45%,transparent);}
-.rd .rd-plan-day[data-past=true] > header {opacity:.6;}
-.rd .rd-plan-day > header {display:grid;grid-template-columns:auto auto 1fr;align-items:baseline;gap:0 6px;padding:0 4px 8px;}
-.rd .rd-plan-day > header span {color:var(--rd-muted);font-size:12.5px;}
-.rd .rd-plan-day > header strong {font:600 19px/1.2 var(--rd-display,Georgia,serif);}
-.rd .rd-plan-day > header em {justify-self:end;padding:1px 8px;border-radius:99px;background:var(--rd-accent);color:#fff;font-size:11px;font-style:normal;font-weight:600;}
-.rd .rd-plan-day > header small {grid-column:1/-1;min-height:17px;color:var(--rd-muted);font-size:11.5px;}
-.rd :is(.rd-plan-day,.rd-plan-tray)[data-over=true] {background:color-mix(in srgb,var(--rd-accent) 14%,var(--rd-surface));border-color:var(--rd-accent);box-shadow:inset 0 0 0 2px var(--rd-accent);}
-.rd .rd-plan-day .rd-plan-cards {display:grid;align-content:start;gap:6px;min-height:40px;}
-.rd .rd-plan-empty {margin:0;height:34px;border-radius:10px;border:1.5px dashed transparent;}
-.rd[data-plan-dragging=true] .rd-plan-empty {border-color:var(--rd-line-strong);}
-.rd .rd-plan-card {position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;padding:2px 0;border-radius:11px;background:var(--rd-surface);border:1px solid var(--rd-line);border-left:3px solid var(--rd-course,var(--rd-accent));box-shadow:0 1px 2px #30281908;cursor:grab;touch-action:pan-y;user-select:none;}
-.rd .rd-plan-card:hover {border-color:var(--rd-line-strong);border-left-color:var(--rd-course,var(--rd-accent));box-shadow:0 2px 8px #30281914;}
-.rd .rd-plan-card .rd-todo-check {width:34px;height:36px;}
-.rd .rd-plan-open {display:grid;min-width:0;padding:7px 2px 7px 0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit;border-radius:8px;}
-.rd .rd-plan-open strong {display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;font-weight:550;font-size:13.5px;line-height:1.35;overflow-wrap:anywhere;}
-.rd .rd-plan-open small {color:var(--rd-muted);font-size:11.5px;line-height:1.4;}
-.rd .rd-plan-open:focus-visible {outline:2px solid var(--rd-accent);outline-offset:1px;}
-.rd .rd-plan-card[data-menu=true] {box-shadow:0 0 0 1.5px var(--rd-accent),0 6px 18px #3028191f;z-index:2;}
-.rd .rd-plan-card[data-done=true] {background:none;box-shadow:none;border-style:dashed;border-left-style:solid;}
-.rd .rd-plan-card[data-done=true] .rd-todo-check svg {background:var(--rd-accent);box-shadow:none;stroke:#fff;}
-.rd .rd-plan-card[data-done=true] .rd-plan-open strong {color:var(--rd-muted);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--rd-muted) 55%,transparent);}
-.rd .rd-plan-card[data-late=true] .rd-plan-open small {color:var(--rd-danger,#B5333A);}
-.rd .rd-plan-card[data-dragging=true] {opacity:.32;}
-.rd .rd-plan-more {position:absolute;top:3px;right:3px;display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:8px;background:var(--rd-surface);color:var(--rd-faint);cursor:pointer;opacity:0;transition:opacity 120ms;}
-.rd .rd-plan-card:is(:hover,:focus-within,[data-menu=true]) .rd-plan-more {opacity:1;}
-.rd .rd-plan-more:is(:hover,:focus-visible) {background:var(--rd-tint);color:var(--rd-ink);outline:none;}
-@media (hover:none){.rd .rd-plan-more {opacity:1}}
-.rd .rd-plan-ghost {position:fixed;left:0;top:0;z-index:1700;pointer-events:none;box-shadow:0 14px 34px #30281938;cursor:grabbing;will-change:transform;}
-/* The card's menu opens inside the card, so nothing can clip it and it reads the same on a phone. */
-.rd .rd-plan-menu {grid-column:1/-1;margin:4px 0 0;padding:10px 10px 11px;border-top:1.5px dashed var(--rd-line-strong);cursor:default;animation:rd-enter 120ms ease-out;}
-.rd .rd-plan-menu p {margin:0 0 5px;color:var(--rd-muted);font-size:12px;font-weight:600;}
-.rd .rd-plan-menu p:not(:first-child) {margin-top:11px;}
-.rd .rd-plan-menu-days {display:grid;gap:1px;}
-.rd .rd-plan-menu-item {display:block;width:100%;min-height:32px;padding:5px 9px;border:0;border-radius:8px;background:none;color:inherit;font:inherit;font-size:13.5px;text-align:left;cursor:pointer;}
-.rd .rd-plan-menu-item:is(:hover,:focus-visible) {background:var(--rd-tint);outline:none;}
-.rd .rd-plan-menu-item[aria-checked=true] {background:color-mix(in srgb,var(--rd-accent) 13%,transparent);font-weight:600;}
-.rd .rd-plan-menu-lengths {display:flex;flex-wrap:wrap;gap:5px;}
-.rd .rd-plan-menu-lengths .rd-chip[aria-checked=true] {border-color:transparent;background:var(--rd-accent);color:#fff;}
-.rd .rd-plan-menu-danger {margin-top:9px;color:var(--rd-danger,#B5333A);}
-.rd .rd-plan-add {margin-top:6px;}
-.rd .rd-plan-add input {height:32px;padding:0 9px;border-color:transparent;background:none;font-size:13px;}
-.rd .rd-plan-add input:hover {background:var(--rd-surface);}
-.rd .rd-plan-add input:focus {background:var(--rd-surface);}
-@media (max-width:760px){.rd .rd-plan-week {grid-template-columns:repeat(7,minmax(72vw,1fr))}.rd .rd-plan-head h1 {font-size:28px}}
-@media (prefers-reduced-motion:reduce){.rd .rd-plan-menu {animation:none}}
+/* ---- the Planner (4.2.13): the chosen day's page at the left, the calendar at the right, one card for a task ----------
+   The calm form of the house look: the paper ground; the day's page has no frame and its rows are divided by hairlines;
+   the calendar is one pen-framed sheet with hairline cells; a task in it is a flat wash of its course's colour; buttons
+   are the house's small pen-framed buttons. No stamps, no shadow under a row or a chip. The colours are the page's own
+   variables, so a scene theme and the dark page recolour it; Rounded and Minimal course cards plain it down at the end.
+   The Planner is as tall as the window below its own top (--rd-plan-h, measured by planner-ui.js), so the page never
+   scrolls; the calendar takes as many weeks as fit. */
+.rd .rd-plan {--rd-plan-kraft:color-mix(in srgb,#D4A27F 34%,var(--rd-surface));--rd-plan-kraft-ink:color-mix(in srgb,#6B4A2E 72%,var(--rd-ink));--rd-plan-shadow:rgb(43 42 39 / .12);--rd-plan-hair:color-mix(in srgb,var(--rd-ink) 12%,transparent);--rd-plan-hair-2:color-mix(in srgb,var(--rd-ink) 22%,transparent);position:relative;container:rd-plan / inline-size;color:var(--rd-ink);font:400 14px/1.5 var(--rd-ui-font);}
+.rd[data-theme=dark] .rd-plan {--rd-plan-kraft:color-mix(in srgb,#D4A27F 22%,var(--rd-surface));--rd-plan-kraft-ink:color-mix(in srgb,#E8C9A6 80%,var(--rd-ink));--rd-plan-shadow:rgb(0 0 0 / .32);--rd-plan-hair:color-mix(in srgb,var(--rd-ink) 16%,transparent);--rd-plan-hair-2:color-mix(in srgb,var(--rd-ink) 28%,transparent);}
+.rd .rd-plan-home, .rd .rd-plan-picker, .rd .rd-plan-addpop, .rd .rd-plan-ghost, .rd .rd-assignment, .rd .rd-reader {--rd-plan-hair:color-mix(in srgb,var(--rd-ink) 12%,transparent);--rd-plan-hair-2:color-mix(in srgb,var(--rd-ink) 22%,transparent);}
+.rd .rd-plan-ic {width:15px;height:15px;flex:none;overflow:visible;}
+.rd :is(.rd-plan-ic,.rd-plan-tick-art) .k {fill:none;stroke:var(--rd-ink);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
+.rd .rd-plan-ic .h {fill:none;stroke:var(--rd-ink);stroke-width:.9;stroke-linecap:round;opacity:.7;}
+.rd[data-theme=dark] .rd-plan-ic .w, .rd[data-theme=dark] .rd-plan-ic [fill="#FFFDF6"] {opacity:.85;}
+.rd .rd-plan-read {display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0;}
+.rd .rd-plan-read-main {margin:2px 0 8px 4px;}
+.rd .rd-plan-read-main:empty {display:none;}
+.rd .rd-plan-chip {display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px 0 6px;border:0;border-radius:4px 7px 5px 8px;background:var(--rd-plan-kraft);color:var(--rd-plan-kraft-ink);font:600 12.5px/1 var(--rd-ui-font);white-space:nowrap;rotate:-1deg;box-shadow:1.5px 2px 0 var(--rd-plan-shadow);cursor:pointer;transition:opacity .16s,translate .16s,box-shadow .16s;}
+.rd .rd-plan-chip:nth-child(even) {rotate:.7deg;}
+.rd .rd-plan-chip .rd-plan-ic,.rd .rd-plan-chip .rd-plan-blob {width:17px;height:17px;}
+.rd .rd-plan-chip > i {width:9px;height:9px;margin-left:1px;background:currentColor;opacity:0;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1.6 1.8c2.2 2 4.3 4.1 6.6 6.4M8.3 1.6C6 3.9 3.9 6 1.7 8.4' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round'/%3E%3C/svg%3E") center/100% no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1.6 1.8c2.2 2 4.3 4.1 6.6 6.4M8.3 1.6C6 3.9 3.9 6 1.7 8.4' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round'/%3E%3C/svg%3E") center/100% no-repeat;transition:opacity .14s;}
+.rd .rd-plan-chip:is(:hover,:focus-visible) {translate:0 -1px;box-shadow:2px 3px 0 var(--rd-plan-shadow);outline:none;}
+.rd .rd-plan-chip:is(:hover,:focus-visible) > i {opacity:.75;}
+.rd .rd-plan-chip:focus-visible {outline:2px solid var(--rd-accent);outline-offset:2px;}
+.rd .rd-plan-chip[data-off=true] {background:none;box-shadow:none;color:var(--rd-muted);opacity:.7;rotate:0deg;text-decoration:line-through;text-decoration-color:color-mix(in srgb,currentColor 60%,transparent);}
+.rd .rd-plan-chip[data-off=true] > i {display:none;}
+.rd .rd-plan-chip[data-late=true] {color:var(--rd-danger);}
+.rd .rd-plan-chip[data-quiet=true] {background:none;box-shadow:none;rotate:0deg;color:var(--rd-muted);cursor:default;padding-inline:2px 4px;}
+.rd .rd-plan-chip[data-pop=true] {animation:rd-plan-pop .2s var(--rd-settle,cubic-bezier(.2,.8,.2,1)) both;}
+.rd .rd-plan-blob {color:var(--rd-ink);}
+.rd .rd-plan-chip .rd-mini {width:auto;height:19px;margin:-2px 0;flex:none;}
+.rd :is(.rd-plan-day,.rd-plan-row) .rd-plan-read .rd-plan-chip .rd-mini {height:16px;}
+/* a reading that is a guess: a pen "?" after it and a dotted line under it; pressed, it takes the other reading */
+.rd .rd-plan-chip .rd-plan-q {width:8px;height:12px;flex:none;margin:0 -2px 0 -1px;color:color-mix(in srgb,#A9522F 72%,currentColor);}
+.rd .rd-plan-chip[data-guess=true] > span {text-decoration:underline dotted color-mix(in srgb,currentColor 55%,transparent);text-decoration-thickness:1.5px;text-underline-offset:3px;}
+.rd .rd-plan-chip[data-alt=true] > i {display:none;}
+.rd :is(.rd-plan-day,.rd-plan-row) .rd-plan-read .rd-plan-chip .rd-plan-q {width:7px;height:10px;}
+@keyframes rd-plan-pop {from {opacity:0;transform:translateY(3px) scale(.9);}}
+/* a small pen cross: Close, Dismiss, a step taken out, Show everything */
+.rd .rd-plan-x {display:inline-grid;place-items:center;flex:none;width:24px;height:24px;padding:0;border:0;border-radius:7px;background:none;color:var(--rd-muted);cursor:pointer;}
+.rd .rd-plan-x-art {width:10px;height:10px;}
+.rd .rd-plan-x:hover {background:var(--rd-tint);color:var(--rd-ink);}
+.rd .rd-plan-x:focus-visible {outline:2px solid var(--rd-mark);outline-offset:0;color:var(--rd-ink);}
+/* the two panes: the day's page (30 % of the width, 380 to 520 px) and the calendar; as tall as the room below the top */
+.rd .rd-plan-body {display:grid;grid-template-columns:clamp(380px,30%,520px) minmax(0,1fr);gap:0 30px;height:var(--rd-plan-h,auto);min-height:300px;align-items:stretch;min-width:0;}
+.rd .rd-plan-page,.rd .rd-plan-cal {display:flex;flex-direction:column;min-width:0;min-height:0;}
+/* ---- the day's page: no frame. Its heading: back, the day, "Today", forward. */
+.rd .rd-plan-page-head,.rd .rd-plan-cal-head {display:flex;align-items:center;gap:10px;flex:none;min-height:52px;margin:0 0 8px;min-width:0;}
+.rd.rd .rd-plan-page-head h2 {min-width:0;margin:0;font:600 28px/1.15 var(--rd-display,Georgia,serif);letter-spacing:-.012em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;outline:none;}
+.rd .rd-plan-page-head > .rd-plan-arrow:last-child {margin-left:auto;}
+.rd .rd-plan-today {flex:none;padding:2px 8px 3px;border-radius:5px 6px 5px 7px;background:var(--rd-accent);color:var(--rd-surface);font:700 12px/1.3 var(--rd-ui-font);font-style:normal;}
+.rd .rd-plan-arrow {display:grid;place-items:center;flex:none;width:34px;height:34px;min-height:34px;padding:0;color:var(--rd-ink);}
+.rd .rd-plan-count {flex:none;min-width:22px;padding:0 7px;border-radius:5px;background:var(--rd-tint);color:var(--rd-ink-2,var(--rd-ink));font:700 13px/24px var(--rd-ui-font);text-align:center;}
+/* a row: the tick, the time when it has one (a column only when the day has a timed row), the title, and at the right one
+   quiet line; hairlines between rows, nothing round them */
+.rd .rd-plan-rows {display:flex;flex-direction:column;min-width:0;margin:0;padding:0;}
+.rd .rd-plan-day-rows {flex:0 1 auto;min-height:44px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;}
+.rd .rd-plan-item {position:relative;display:flex;align-items:center;gap:4px;flex:none;min-width:0;min-height:44px;padding:0 4px 0 0;border-bottom:1px solid var(--rd-plan-hair);cursor:grab;touch-action:pan-y;user-select:none;}
+.rd .rd-plan-item:hover {background:color-mix(in srgb,var(--rd-ink) 3%,transparent);}
+.rd .rd-plan-item[data-sheet=true] {background:color-mix(in srgb,var(--rd-accent) 8%,transparent);}
+.rd .rd-plan-item > .rd-plan-tick {flex:none;width:34px;height:42px;}
+.rd .rd-plan-at {flex:none;width:0;overflow:hidden;color:var(--rd-muted);font:500 13px/1 var(--rd-ui-font);font-variant-numeric:lining-nums tabular-nums;white-space:nowrap;}
+.rd .rd-plan-rows[data-timed=true] > .rd-plan-item > .rd-plan-at {width:62px;}
+.rd .rd-plan-title {display:flex;align-items:center;gap:2px;flex:1 1 auto;min-width:0;padding:11px 6px 11px 2px;border:0;border-radius:6px;background:none;color:var(--rd-ink);font:500 15.5px/1.3 var(--rd-ui-font);text-align:left;cursor:inherit;}
+.rd .rd-plan-title > span {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rd .rd-plan-title:focus-visible {outline:2px solid var(--rd-accent);outline-offset:-2px;}
+.rd .rd-plan-title-still {cursor:default;}
+.rd .rd-plan-meta {display:flex;align-items:center;justify-content:flex-start;gap:0 6px;flex:0 1 auto;min-width:0;max-width:58%;margin-left:auto;overflow:hidden;color:var(--rd-muted);font-size:12.5px;line-height:1.3;white-space:nowrap;font-variant-numeric:lining-nums tabular-nums;}
+.rd .rd-plan-meta > * {flex:none;}
+.rd .rd-plan-meta > * + *::before {content:"\00B7";margin-right:6px;color:var(--rd-faint);}
+.rd .rd-plan-meta > .rd-plan-course {flex:0 1 auto;min-width:3.4em;}
+.rd .rd-plan-course {display:inline-flex;align-items:center;gap:5px;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rd .rd-plan-cname {min-width:0;max-width:15ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rd .rd-plan-dot {display:inline-block;flex:none;width:7px;height:7px;border-radius:50%;background:var(--rd-course,var(--rd-accent));}
+.rd .rd-plan-rep .rd-plan-ic,.rd .rd-plan-stepsbit .rd-plan-ic {width:15px;height:15px;vertical-align:-3px;}
+.rd .rd-plan-stepsbit {display:inline-flex;align-items:center;gap:2px;}
+.rd .rd-plan-late {color:var(--rd-danger);}
+.rd .rd-plan-bang {display:inline-grid;place-items:center;flex:none;width:15px;height:16px;margin-right:5px;border-radius:3px 4px 3px 5px;background:var(--rd-accent);color:var(--rd-surface);font:800 11px/1 var(--rd-ui-font);}
+.rd .rd-plan-item[data-done=true] .rd-plan-title {color:var(--rd-muted);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--rd-muted) 60%,transparent);}
+.rd .rd-plan-item[data-echo=true] {cursor:default;opacity:.6;}
+.rd .rd-plan-item[data-dragging=true],.rd .rd-plan-entry[data-dragging=true] {opacity:.3;}
+.rd .rd-plan-item[data-block] {cursor:default;}
+.rd .rd-plan-blockmark {display:block;flex:none;width:18px;height:18px;margin:0 8px;border:1.5px dashed color-mix(in srgb,var(--rd-accent) 65%,transparent);border-radius:5px;background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--rd-accent) 18%,transparent) 0 3px,transparent 3px 6px);}
+.rd .rd-plan-item[data-block=break] .rd-plan-blockmark {border-color:var(--rd-plan-hair-2);background:repeating-linear-gradient(135deg,var(--rd-plan-hair) 0 3px,transparent 3px 6px);}
+.rd .rd-plan-nothing {flex:none;margin:0;padding:11px 6px 11px 40px;border-bottom:1px solid var(--rd-plan-hair);color:var(--rd-muted);font:500 15px/1.3 var(--rd-ui-font);}
+/* the tick: the pen's ring; ticked, the ring fills and the tick draws itself */
+.rd .rd-plan-tick,.rd .rd-plan-etick {display:grid;place-items:center;padding:0;border:0;background:none;cursor:pointer;}
+.rd .rd-plan-tick-art,.rd .rd-todo-check.rd-plan-tick svg,.rd .rd-todo-check.rd-plan-tick:is(:hover,:focus-visible) svg,.rd .rd-todo-check.rd-plan-tick[data-done=true] svg {width:21px;height:21px;overflow:visible;border-radius:0;box-shadow:none;background:none;stroke:none;}
+.rd .rd-plan-tick-art .w {fill:transparent;stroke:none;transition:fill .2s;}
+.rd .rd-plan-tick-art .o {fill:none;stroke:color-mix(in srgb,var(--rd-ink) 62%,transparent);stroke-width:1.5;stroke-linecap:round;}
+.rd .rd-plan-tick-art .t {fill:none;stroke:var(--rd-ink);stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset .26s var(--rd-pen,cubic-bezier(.45,.05,.25,1)),stroke .2s;}
+.rd :is(button.rd-plan-tick,button.rd-plan-etick):is(:hover,:focus-visible) .t {stroke:var(--rd-muted);stroke-dashoffset:.35;}
+.rd button.rd-plan-tick:focus-visible, .rd button.rd-plan-etick:focus-visible {outline:2px solid var(--rd-accent);outline-offset:-4px;border-radius:50%;}
+.rd :is(.rd-plan-tick,.rd-plan-etick)[data-done=true] .w,.rd :is(.rd-plan-item,.rd-plan-entry)[data-done=true] :is(.rd-plan-tick,.rd-plan-etick) .w {fill:color-mix(in srgb,var(--rd-accent) 88%,transparent);}
+.rd :is(.rd-plan-tick,.rd-plan-etick)[data-done=true] .t,.rd :is(.rd-plan-item,.rd-plan-entry)[data-done=true] :is(.rd-plan-tick,.rd-plan-etick) .t {stroke:var(--rd-surface);stroke-dashoffset:0;}
+.rd .rd-plan-tick[data-still=true]:not([data-done=true]) .o {stroke-dasharray:2.2 2.6;}
+/* "Add a task": the line right under the list IS the field; the tick's ring drawn dashed with a plus; Add only while typing */
+.rd .rd-plan-add.rd-quick-add {position:relative;display:flex;align-items:center;gap:4px;flex:none;min-height:44px;margin:0;padding:0 4px 0 0;border-bottom:1px solid var(--rd-plan-hair);}
+.rd .rd-plan-plus-art {display:block;flex:none;width:22px;height:22px;margin:0 6px;overflow:visible;}
+.rd .rd-plan-plus-art .o {fill:none;stroke:var(--rd-muted);stroke-width:1.4;stroke-dasharray:2.3 2.5;stroke-linecap:round;}
+.rd .rd-plan-plus-art .p {fill:none;stroke:var(--rd-muted);stroke-width:1.6;stroke-linecap:round;}
+.rd.rd.rd .rd-plan-add.rd-quick-add input {flex:1;border-image:none;min-width:0;height:42px;padding:0 4px;border:0;border-radius:0;background:none;box-shadow:none;outline:none;color:var(--rd-ink);font:500 15.5px/1.3 var(--rd-ui-font);}
+.rd .rd-plan-add.rd-quick-add input::placeholder {color:var(--rd-muted);opacity:1;}
+.rd .rd-plan-add.rd-quick-add:focus-within {border-bottom-color:var(--rd-accent);}
+.rd .rd-plan-add.rd-quick-add:focus-within .rd-plan-plus-art .o, .rd .rd-plan-add.rd-quick-add:focus-within .rd-plan-plus-art .p {stroke:var(--rd-accent);}
+.rd .rd-plan-add .rd-plan-add-go {display:none;}
+.rd .rd-plan-add input:not(:placeholder-shown) ~ .rd-plan-add-go {display:inline-flex;align-items:center;min-height:30px;height:30px;padding:0 12px;font-size:13px;}
+.rd :is(.rd-plan-page,.rd-plan-home,.rd-plan-addpop) > .rd-plan-read {flex:none;gap:5px;padding:7px 2px 2px 38px;}
+.rd :is(.rd-plan-page,.rd-plan-home,.rd-plan-addpop) > .rd-plan-read:empty {display:none;}
+/* No date (the student's own tasks with no day at all), then Overdue folded to one quiet line at the foot */
+.rd .rd-plan-label {display:flex;align-items:center;gap:7px;margin:0 0 2px;padding:0 2px;color:var(--rd-muted);font:600 13px/1.6 var(--rd-ui-font);}
+.rd .rd-plan-label > b {min-width:20px;padding:0 6px;border-radius:5px;background:var(--rd-tint);color:var(--rd-ink-2,var(--rd-ink));font:700 12px/20px var(--rd-ui-font);text-align:center;}
+.rd .rd-plan-nodate {display:flex;flex-direction:column;flex:0 0 auto;min-height:0;max-height:46%;margin:18px 0 0;}
+.rd .rd-plan-nodate > .rd-plan-rows {min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;}
+.rd .rd-plan-more-link {align-self:flex-start;min-height:0;margin-top:4px;padding:2px 4px;font-size:13px;}
+.rd .rd-plan-overdue {display:flex;align-items:center;gap:8px;flex:none;width:100%;min-height:42px;margin:auto 0 0;padding:0 10px 0 14px;border:1px solid var(--rd-plan-hair-2);border-radius:9px;background:color-mix(in srgb,var(--rd-surface) 72%,transparent);color:var(--rd-ink-2,var(--rd-ink));font:600 14px/1 var(--rd-ui-font);cursor:pointer;box-sizing:border-box;}
+.rd .rd-plan-page > .rd-plan-overdue {margin-top:auto;}
+.rd .rd-plan-page > :has(+ .rd-plan-overdue) {margin-bottom:14px;}
+.rd .rd-plan-overdue > b {min-width:22px;padding:0 6px;border-radius:5px;background:var(--rd-tint);font:700 12.5px/22px var(--rd-ui-font);text-align:center;}
+.rd .rd-plan-overdue > svg {margin-left:auto;color:var(--rd-muted);}
+.rd .rd-plan-overdue:hover {background:var(--rd-tint);}
+.rd .rd-plan-overdue:focus-visible {outline:2px solid var(--rd-accent);outline-offset:1px;}
+/* the overdue list in the page's place: back, its count, the two bulk actions, and every row with its day button */
+.rd .rd-plan-page[data-view=overdue] > .rd-plan-day-rows {flex:1 1 auto;}
+.rd .rd-plan-page[data-view=overdue] .rd-plan-item > .rd-plan-daybtn {margin-left:6px;}
+.rd .rd-plan-page[data-view=overdue] .rd-plan-meta {max-width:46%;}
+.rd .rd-plan-bulk {display:flex;flex-wrap:wrap;gap:8px;flex:none;margin:0 0 8px;}
+.rd .rd-plan-bulk .rd-button {display:inline-flex;align-items:center;gap:6px;min-height:34px;height:34px;padding:0 13px 0 9px;font-size:13.5px;font-weight:600;}
+.rd .rd-plan-bulk .rd-plan-ic,.rd .rd-plan-bulk .rd-plan-tick-art {width:19px;height:19px;}
+.rd .rd-plan-advice[data-done=true] {display:flex;align-items:center;gap:8px;flex:none;margin:0 0 8px;color:var(--rd-muted);font-size:13px;}
+.rd .rd-plan-advice[data-done=true] .rd-text-button {min-height:0;padding:0 2px;font-size:13px;}
+/* the day button: one small pill on every piece of work anywhere: the calendar drawing and the short day, or "Plan" */
+.rd .rd-plan-daybtn {display:inline-flex;align-items:center;gap:4px;flex:none;height:28px;padding:0 10px 0 6px;border:1px solid var(--rd-control-line,var(--rd-plan-hair-2,#CFCBBE));border-radius:999px;background:var(--rd-surface);color:var(--rd-ink);font:600 12.5px/1 var(--rd-ui-font);white-space:nowrap;cursor:pointer;}
+.rd .rd-plan-daybtn .rd-plan-ic {width:17px;height:17px;}
+.rd .rd-plan-daybtn[data-planned=false] {border-style:dashed;color:var(--rd-muted);}
+.rd .rd-plan-daybtn:hover {background:var(--rd-tint);}
+.rd .rd-plan-daybtn[aria-expanded=true] {border-color:var(--rd-accent);box-shadow:inset 0 0 0 1px var(--rd-accent);}
+.rd .rd-plan-daybtn:focus-visible {outline:2px solid var(--rd-accent);outline-offset:2px;}
+.rd .rd-row-actions .rd-plan-daybtn {align-self:center;}
+/* ---- floating cards: the day picker and the top bar's "Add a task" (each one card over the page, beside its button) */
+.rd .rd-plan-picker,.rd .rd-plan-addpop {position:fixed;z-index:1660;box-sizing:border-box;max-width:calc(100vw - 16px);padding:11px 12px 12px;border:1.5px solid var(--rd-ink);border-radius:13px 11px 14px 12px/12px 14px 11px 13px;background:var(--rd-surface);color:var(--rd-ink);box-shadow:0 12px 30px rgb(0 0 0 / .14);font:400 14px/1.4 var(--rd-ui-font);}
+.rd .rd-plan-addpop {width:min(460px,calc(100vw - 16px));padding:4px 12px 8px;}
+.rd .rd-plan-addpop .rd-plan-add.rd-quick-add {border-bottom:0;}
+.rd .rd-plan-picker-title {max-width:262px;margin:0 0 8px;color:var(--rd-muted);font:600 12.5px/1.3 var(--rd-ui-font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rd .rd-plan-quickdays {display:flex;flex-wrap:wrap;gap:5px;max-width:262px;margin:0 0 10px;}
+.rd .rd-plan-pick {position:relative;display:inline-flex;align-items:center;justify-content:center;min-height:28px;padding:0 10px;border:1px solid var(--rd-control-line,var(--rd-plan-hair-2));border-radius:7px;background:var(--rd-surface);color:var(--rd-ink);font:600 13px/1 var(--rd-ui-font);white-space:nowrap;cursor:pointer;}
+.rd .rd-plan-pick:hover {background:var(--rd-tint);}
+.rd .rd-plan-pick[aria-pressed=true] {border-color:var(--rd-accent);background:color-mix(in srgb,var(--rd-accent) 16%,var(--rd-surface));}
+.rd .rd-plan-pick:focus-visible,.rd .rd-plan-mday:focus-visible {outline:2px solid var(--rd-accent);outline-offset:1px;}
+.rd .rd-plan-pick-none {color:var(--rd-muted);}
+.rd :is(.rd-plan-pick,.rd-plan-mday)[data-suggest=true]::after {content:"";position:absolute;right:3px;top:3px;width:5px;height:5px;border-radius:50%;background:var(--rd-accent);}
+.rd .rd-plan-month {width:252px;}
+.rd .rd-plan-month-head {display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 2px;}
+.rd .rd-plan-month-head strong {font:600 14px/1 var(--rd-display,Georgia,serif);}
+.rd .rd-plan-month-arrow {width:28px;height:28px;}
+.rd .rd-plan-mnames,.rd .rd-plan-mgrid {display:grid;grid-template-columns:repeat(7,34px);gap:2px 2px;}
+.rd .rd-plan-mnames > span {color:var(--rd-muted);font:600 11px/22px var(--rd-ui-font);text-align:center;}
+.rd .rd-plan-mday {position:relative;width:34px;height:30px;padding:0;border:0;border-radius:8px;background:none;color:var(--rd-ink);font:500 13px/1 var(--rd-ui-font);font-variant-numeric:lining-nums tabular-nums;cursor:pointer;}
+.rd .rd-plan-mday:hover {background:var(--rd-tint);}
+.rd .rd-plan-mday[data-past=true] {color:var(--rd-muted);}
+.rd .rd-plan-mday[data-out=true] {color:var(--rd-faint);opacity:.55;}
+.rd .rd-plan-mday[data-today=true] {background:var(--rd-accent);color:var(--rd-surface);font-weight:700;}
+.rd .rd-plan-mday[aria-pressed=true] {box-shadow:inset 0 0 0 2px var(--rd-ink);}
+.rd .rd-plan-mday[data-today=true][aria-pressed=true] {box-shadow:inset 0 0 0 2px var(--rd-ink),inset 0 0 0 4px var(--rd-surface);}
+/* ---- the calendar: its heading (the months shown; back, Today, forward; Your week, Show, Week | Month) and one sheet */
+.rd.rd .rd-plan-months {flex:none;min-width:0;margin:0 4px 0 0;font:600 25px/1.15 var(--rd-display,Georgia,serif);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rd .rd-plan-arrows {display:flex;align-items:center;gap:6px;flex:none;}
+.rd .rd-plan-now {min-height:34px;height:34px;padding:0 13px;font-size:13.5px;font-weight:600;white-space:nowrap;}
+.rd .rd-plan-sub {flex:0 1 auto;min-width:0;margin:0 0 0 4px;color:var(--rd-muted);font-size:13px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:lining-nums tabular-nums;}
+.rd .rd-plan-tools {display:flex;align-items:center;gap:8px;flex:none;margin-left:auto;}
+.rd .rd-plan-tool {display:inline-flex;align-items:center;gap:6px;min-height:32px;height:32px;padding:0 11px 0 7px;font-size:13px;font-weight:600;white-space:nowrap;}
+.rd .rd-plan-tool .rd-plan-ic {width:19px;height:19px;}
+.rd .rd-plan-tool b {min-width:18px;padding:0 5px;border-radius:5px;background:var(--rd-tint);font:700 12px/18px var(--rd-ui-font);text-align:center;}
+.rd .rd-plan[data-filtered=true] .rd-plan-show-btn {color:var(--rd-accent);}
+.rd .rd-plan-show,.rd .rd-plan-weekbox {position:relative;display:flex;align-items:center;gap:2px;flex:none;}
+/* Week | Month: two words on one strip; the chosen one sits on a paper tag that slides across */
+.rd .rd-plan-modes {position:relative;display:grid;grid-template-columns:1fr 1fr;flex:none;padding:2px;border-radius:10px;background:color-mix(in srgb,var(--rd-ink) 7%,var(--rd-surface));}
+.rd .rd-plan-modes::before {content:"";position:absolute;top:2px;bottom:2px;left:2px;width:calc(50% - 2px);box-sizing:border-box;border:2px solid transparent;border-image:var(--rd-pen-line) 30 / 10px / 0 stretch;border-radius:8px;background:var(--rd-surface) padding-box;transition:translate .28s var(--rd-settle,cubic-bezier(.2,.8,.2,1));}
+.rd .rd-plan-modes[data-mode=month]::before {translate:100% 0;}
+.rd .rd-plan-mode {position:relative;z-index:1;min-width:62px;height:30px;padding:0 12px;border:0;background:none;color:var(--rd-muted);font:600 13.5px/1 var(--rd-ui-font);cursor:pointer;transition:color .2s;}
+.rd .rd-plan-mode[aria-checked=true] {color:var(--rd-ink);}
+.rd .rd-plan-mode:focus-visible {outline:2px solid var(--rd-accent);outline-offset:1px;border-radius:7px;}
+/* Show and Your week: a small paper card under their button */
+.rd .rd-plan-pop {position:absolute;right:0;top:calc(100% + 6px);z-index:70;display:grid;gap:2px;width:max-content;min-width:210px;max-width:300px;max-height:min(70vh,var(--rd-plan-h,70vh));box-sizing:border-box;padding:7px;border:1.5px solid var(--rd-ink);border-radius:12px 10px 13px 11px/11px 13px 10px 12px;background:var(--rd-surface);box-shadow:0 12px 28px rgb(0 0 0 / .13);overflow:auto;animation:rd-plan-open .16s var(--rd-settle,ease-out) both;}
+.rd .rd-plan-show-pick,.rd .rd-plan-show-every {display:flex;align-items:center;gap:8px;min-height:32px;padding:3px 8px;border:0;border-radius:7px;background:none;color:var(--rd-ink);font:500 13.5px/1.2 var(--rd-ui-font);text-align:left;cursor:pointer;}
+.rd .rd-plan-show-pick > span {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rd .rd-plan-show-pick .rd-mini,.rd .rd-plan-show-pick .rd-plan-blob {width:auto;height:20px;flex:none;}
+.rd .rd-plan-show-pick .rd-plan-blob {width:18px;}
+.rd .rd-plan-show-pick:hover,.rd .rd-plan-show-every:hover {background:var(--rd-tint);}
+.rd .rd-plan-show-pick:focus-visible,.rd .rd-plan-show-every:focus-visible {outline:2px solid var(--rd-mark);outline-offset:-2px;}
+.rd .rd-plan-show-pick[aria-pressed=true] {background:color-mix(in srgb,var(--rd-course,var(--rd-accent)) 17%,var(--rd-surface));font-weight:650;}
+.rd .rd-plan-show-every {margin-top:3px;padding-top:6px;border-top:1px solid var(--rd-plan-hair);border-radius:0 0 7px 7px;color:var(--rd-muted);}
+.rd .rd-plan-show-every[aria-pressed=true] {color:var(--rd-ink);font-weight:650;}
+.rd .rd-plan-done {justify-content:flex-start;}
+.rd .rd-plan-done .rd-plan-tick-art {width:17px;height:17px;}
+.rd .rd-plan-done .rd-n {margin-left:auto;color:var(--rd-muted);}
+.rd .rd-plan-done[aria-pressed=true] .rd-plan-tick-art .w {fill:var(--rd-accent);opacity:.85;}
+.rd .rd-plan-done[aria-pressed=true] .rd-plan-tick-art .t {stroke:var(--rd-surface);stroke-dashoffset:0;}
+@keyframes rd-plan-open {from {opacity:0;transform:translateY(-3px);}}
+.rd .rd-plan-weekpop {width:340px;max-width:min(340px,calc(100vw - 40px));padding:8px 10px 10px;}
+.rd .rd-plan-findings {display:grid;gap:0;margin:0;padding:0;list-style:none;}
+.rd .rd-plan-finding {display:grid;gap:6px;padding:9px 2px;border-top:1px solid var(--rd-plan-hair);}
+.rd .rd-plan-finding:first-child {border-top:0;}
+.rd .rd-plan-finding > p {margin:0;font:500 13.5px/1.4 var(--rd-ui-font);}
+.rd .rd-plan-advice {display:inline-flex;align-items:center;gap:4px;min-width:0;max-width:100%;}
+.rd .rd-plan-check-act {display:inline-flex;align-items:center;gap:5px;min-width:0;min-height:28px;padding:1px 10px 1px 6px;font-size:13px;}
+.rd .rd-plan-check-act > span {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rd .rd-plan-check-act .rd-plan-ic {width:18px;height:18px;}
+/* the sheet: as many week rows as fit (Month), or one tall row (Week); hairlines between the days */
+.rd .rd-plan-grid {display:grid;grid-template-rows:auto repeat(var(--rd-plan-rows,4),minmax(0,1fr));flex:1 1 auto;min-height:0;min-width:0;border:2px solid transparent;border-image:var(--rd-pen-line) 30 / 12px / 0 stretch;background:var(--rd-surface) padding-box;}
+.rd .rd-plan-names,.rd .rd-plan-wrow {display:grid;grid-template-columns:repeat(7,minmax(0,1fr));min-width:0;min-height:0;}
+.rd .rd-plan-names {border-bottom:1px solid var(--rd-plan-hair);}
+.rd .rd-plan-names > span {padding:3px 9px;color:var(--rd-muted);font:600 12.5px/20px var(--rd-ui-font);white-space:nowrap;overflow:hidden;}
+.rd .rd-plan-wrow + .rd-plan-wrow {border-top:1px solid var(--rd-plan-hair);}
+.rd .rd-plan-cell {position:relative;display:flex;flex-direction:column;gap:3px;min-width:0;min-height:0;padding:5px 5px 4px;overflow:hidden;outline:none;cursor:pointer;}
+.rd .rd-plan-cell + .rd-plan-cell {border-left:1px solid var(--rd-plan-hair);}
+.rd .rd-plan-cell:focus-visible {box-shadow:inset 0 0 0 2px var(--rd-mark,var(--rd-accent));}
+.rd .rd-plan-num {align-self:flex-start;flex:none;min-width:26px;height:26px;padding:0 5px;box-sizing:border-box;border-radius:13px;color:var(--rd-ink);font:600 15px/26px var(--rd-display,Georgia,serif);font-variant-numeric:lining-nums;text-align:center;white-space:nowrap;}
+.rd .rd-plan-cell[data-today=true] > .rd-plan-num {background:var(--rd-accent);color:var(--rd-surface);}
+.rd .rd-plan-cell[data-chosen=true] {background:color-mix(in srgb,var(--rd-accent) 7%,var(--rd-surface));box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--rd-accent) 78%,transparent);}
+.rd .rd-plan-cell[data-past=true]:not([data-chosen=true]) {background:color-mix(in srgb,var(--rd-ink) 2.5%,transparent);}
+.rd .rd-plan-cell[data-past=true] > .rd-plan-num {color:var(--rd-faint);}
+.rd .rd-plan-cell[data-past=true] .rd-plan-chips {opacity:.62;}
+.rd .rd-plan-cell[data-heavy=true] > .rd-plan-num {position:relative;}
+.rd .rd-plan-cell-add {position:absolute;top:4px;right:4px;display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:50%;background:none;opacity:0;cursor:pointer;}
+.rd .rd-plan-cell-add .rd-plan-plus-art {width:21px;height:21px;margin:0;}
+.rd .rd-plan-cell:is(:hover,:focus,:focus-within) > .rd-plan-cell-add {opacity:1;}
+.rd .rd-plan-cell-add:hover .rd-plan-plus-art .o, .rd .rd-plan-cell-add:hover .rd-plan-plus-art .p, .rd .rd-plan-cell-add:focus-visible .rd-plan-plus-art .o, .rd .rd-plan-cell-add:focus-visible .rd-plan-plus-art .p {stroke:var(--rd-accent);}
+.rd .rd-plan-cell-add:focus-visible {outline:2px solid var(--rd-accent);outline-offset:-2px;}
+/* a task in a day: one line, a flat wash of its course's colour (Canvas work due that day with no day chosen: the same,
+   dashed; a "due" mark where work planned for another day is due; a repeat's coming day: faint) */
+.rd .rd-plan-chips {display:flex;flex-direction:column;gap:3px;min-width:0;min-height:0;}
+.rd .rd-plan-entry {position:relative;display:flex;align-items:center;gap:2px;flex:none;min-width:0;height:22px;box-sizing:border-box;padding:0 6px 0 2px;border-radius:5px;background:color-mix(in srgb,var(--rd-course,var(--rd-accent)) 18%,var(--rd-surface));color:var(--rd-ink);font:500 12.5px/1.2 var(--rd-ui-font);cursor:grab;touch-action:pan-y;user-select:none;}
+.rd .rd-plan-eopen {display:flex;align-items:center;gap:4px;flex:1 1 auto;min-width:0;height:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit;}
+.rd .rd-plan-etitle {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rd .rd-plan-etick {flex:none;width:18px;height:20px;}
+.rd .rd-plan-etick .rd-plan-tick-art {width:14px;height:14px;}
+.rd span.rd-plan-etick[data-still=true]:not(:has(svg)) {width:6px;}
+.rd .rd-plan-entry[data-kind=due] {background:color-mix(in srgb,var(--rd-course,var(--rd-accent)) 8%,var(--rd-surface));outline:1px dashed color-mix(in srgb,var(--rd-course,var(--rd-accent)) 70%,var(--rd-ink));outline-offset:-1px;}
+.rd .rd-plan-entry[data-done=true] .rd-plan-etitle {color:var(--rd-muted);text-decoration:line-through;}
+.rd .rd-plan-entry[data-done=true] {opacity:.7;}
+.rd .rd-plan-entry[data-kind=echo] {background:none;outline:1px solid color-mix(in srgb,var(--rd-course,var(--rd-accent)) 30%,transparent);outline-offset:-1px;opacity:.6;cursor:pointer;}
+.rd .rd-plan-entry.rd-plan-mark {gap:4px;padding:0 6px;border:0;background:none;outline:1px dashed var(--rd-plan-hair-2);outline-offset:-1px;color:var(--rd-ink-2,var(--rd-ink));font:500 12px/1.2 var(--rd-ui-font);text-align:left;cursor:pointer;}
+.rd .rd-plan-due-word {flex:none;color:var(--rd-muted);}
+.rd .rd-plan-entry[data-sheet=true] {box-shadow:inset 0 0 0 1.5px var(--rd-accent);}
+.rd .rd-plan-entry:hover {background:color-mix(in srgb,var(--rd-course,var(--rd-accent)) 26%,var(--rd-surface));}
+.rd .rd-plan-entry.rd-plan-mark:hover,.rd .rd-plan-entry[data-kind=echo]:hover {background:var(--rd-tint);}
+.rd .rd-plan-more {align-self:flex-start;flex:none;padding:0 6px;border:0;border-radius:5px;background:none;color:var(--rd-muted);font:650 12.5px/20px var(--rd-ui-font);cursor:pointer;}
+.rd .rd-plan-more:hover {background:var(--rd-tint);color:var(--rd-ink);}
+/* Week: one row of seven tall days; a task may take two lines and shows its time */
+.rd .rd-plan[data-mode=week] .rd-plan-cell {gap:4px;padding:6px 6px 5px;}
+.rd .rd-plan[data-mode=week] .rd-plan-entry {align-items:flex-start;height:auto;min-height:24px;padding:3px 7px 3px 2px;}
+.rd .rd-plan[data-mode=week] .rd-plan-eopen {display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;height:auto;overflow:hidden;line-height:1.3;white-space:normal;overflow-wrap:anywhere;}
+.rd .rd-plan[data-mode=week] .rd-plan-etitle {display:inline;white-space:normal;}
+.rd .rd-plan[data-mode=week] .rd-plan-etime {display:inline;margin-right:4px;color:var(--rd-muted);font-size:11.5px;font-weight:650;font-variant-numeric:lining-nums tabular-nums;}
+.rd .rd-plan[data-mode=week] .rd-plan-etick {height:18px;}
+.rd .rd-plan[data-mode=week] .rd-plan-num {font-size:17px;}
+/* where a dragged task would land: the day, the page or No date, washed and ringed (no transition: nothing restyles on the way) */
+.rd .rd-plan :is(.rd-plan-cell,.rd-plan-day-rows,.rd-plan-nodate,.rd-plan-sday)[data-over=true] {background:color-mix(in srgb,var(--rd-accent) 10%,var(--rd-surface));box-shadow:inset 0 0 0 2px var(--rd-accent);}
+.rd[data-plan-dragging=true] .rd-plan .rd-plan-item, .rd[data-plan-dragging=true] .rd-plan .rd-plan-entry, .rd[data-plan-dragging=true] .rd-plan .rd-plan-cell-add {pointer-events:none;}
+.rd[data-plan-dragging=true] .rd-plan {cursor:grabbing;}
+.rd .rd-plan-ghost {position:fixed;left:0;top:0;z-index:1700;margin:0;border-radius:6px;background:var(--rd-surface);box-shadow:0 8px 22px rgb(0 0 0 / .18);pointer-events:none;cursor:grabbing;will-change:transform;}
+.rd .rd-plan-ghost.rd-plan-entry {background:color-mix(in srgb,var(--rd-course,var(--rd-accent)) 22%,var(--rd-surface));}
+/* ---- the sheet: everything a task can have, one card over the page beside what was pressed, its own scroll when short */
+.rd .rd-plan-sheet {position:absolute;z-index:80;display:grid;gap:8px;width:min(420px,calc(100vw - 24px));box-sizing:border-box;padding:12px 15px 14px;border:1.5px solid var(--rd-ink);border-radius:14px 12px 15px 13px/13px 15px 12px 14px;background:var(--rd-surface);box-shadow:0 16px 38px rgb(0 0 0 / .17);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;outline:none;}
+.rd .rd-plan-sheet[data-placing=true] {left:0;top:0;visibility:hidden;}
+.rd .rd-plan-sheet-top {display:flex;align-items:center;gap:6px;}
+.rd .rd-plan-sheet-top > .rd-plan-sheet-open {margin:0 auto 0 0;}
+.rd .rd-plan-sheet-name-row {display:flex;align-items:flex-start;gap:4px;min-width:0;}
+.rd .rd-plan .rd-plan-sheet-name {flex:1;min-width:0;height:auto;padding:3px 6px;border:0;border-bottom:1px solid transparent;border-radius:0;background:none;color:var(--rd-ink);font:600 19px/1.3 var(--rd-display,Georgia,serif);}
+.rd .rd-plan .rd-plan-sheet-name:hover {border-bottom-color:var(--rd-plan-hair-2);}
+.rd .rd-plan .rd-plan-sheet-name:focus-visible {border-bottom-color:var(--rd-accent);outline:2px solid transparent;}
+.rd.rd .rd-plan-sheet-title {flex:1;min-width:0;margin:0;padding:3px 0 0;font:600 19px/1.3 var(--rd-display,Georgia,serif);overflow-wrap:anywhere;}
+.rd .rd-plan-sheet-open {display:inline-flex;align-items:center;gap:4px;flex:none;min-height:0;padding:2px 5px;font-size:13px;white-space:nowrap;}
+.rd .rd-plan-sheet-open .rd-plan-ic {width:18px;height:18px;}
+.rd .rd-plan-sheet-row {display:grid;gap:6px;min-width:0;padding-top:9px;border-top:1px solid var(--rd-plan-hair);}
+.rd .rd-plan-sheet-label {color:var(--rd-muted);font:600 12px/1.2 var(--rd-ui-font);}
+.rd .rd-plan-sheet-label b {color:var(--rd-ink);font-weight:650;}
+.rd .rd-plan-picker-inline .rd-plan-quickdays {max-width:none;margin-bottom:6px;}
+.rd .rd-plan-picker-inline .rd-plan-month {width:252px;}
+.rd .rd-plan-picks {display:flex;flex-wrap:wrap;align-items:center;gap:5px;min-width:0;}
+.rd .rd-plan .rd-plan-picks .rd-plan-pick {min-height:28px;padding:0 10px;font-size:13px;}
+.rd.rd .rd-plan-sheet .rd-plan-pick[aria-pressed=true] {border-color:var(--rd-accent);background:color-mix(in srgb,var(--rd-accent) 16%,var(--rd-surface));color:var(--rd-ink);}
+.rd .rd-plan .rd-plan-pick .rd-plan-bang {margin-right:2px;}
+.rd .rd-plan .rd-plan-field {height:30px;padding:0 8px;border:1px solid var(--rd-control-line,var(--rd-plan-hair-2));border-radius:7px;background:var(--rd-surface);color:var(--rd-ink);font:500 13px/1.2 var(--rd-ui-font);color-scheme:light;}
+.rd[data-theme=dark] .rd-plan .rd-plan-field {color-scheme:dark;}
+.rd .rd-plan .rd-plan-field:focus-visible {border-color:var(--rd-accent);outline:1px solid var(--rd-accent);outline-offset:0;}
+.rd .rd-plan .rd-plan-field:disabled {opacity:.45;}
+.rd .rd-plan select.rd-plan-field {max-width:100%;padding-right:4px;}
+.rd .rd-plan .rd-plan-note {width:100%;box-sizing:border-box;height:auto;min-height:64px;padding:6px 8px;resize:vertical;line-height:1.45;}
+.rd .rd-plan .rd-plan-field[data-rd-field="plan-sheet-due-day"] {width:132px;}
+.rd .rd-plan .rd-plan-field[data-rd-field="plan-sheet-due-time"] {width:104px;}
+.rd .rd-plan-sheet-fixed {margin:0;font-size:13.5px;}
+.rd .rd-plan-steps {display:grid;gap:1px;margin:0;padding:0;list-style:none;}
+.rd .rd-plan-steps:empty {display:none;}
+.rd .rd-plan-step {display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:2px;min-width:0;}
+.rd .rd-plan-step-tick {display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:50%;background:none;cursor:pointer;}
+.rd .rd-plan-step-tick .rd-plan-tick-art {width:17px;height:17px;}
+.rd .rd-plan-step-tick:focus-visible {outline:2px solid var(--rd-mark);outline-offset:-3px;}
+.rd .rd-plan-step[data-done=true] .rd-plan-tick-art .w {fill:color-mix(in srgb,var(--rd-accent) 88%,transparent);}
+.rd .rd-plan-step[data-done=true] .rd-plan-tick-art .t {stroke:var(--rd-surface);stroke-dashoffset:0;}
+.rd .rd-plan .rd-plan-step-text {min-width:0;height:28px;padding:0 4px;border:0;border-radius:5px;background:none;color:var(--rd-ink);font:500 13.5px/1.2 var(--rd-ui-font);}
+.rd .rd-plan .rd-plan-step-text:hover {background:color-mix(in srgb,var(--rd-ink) 4%,transparent);}
+.rd .rd-plan .rd-plan-step-text:focus-visible {background:var(--rd-surface);box-shadow:inset 0 -2px 0 var(--rd-accent);outline:2px solid transparent;}
+.rd .rd-plan-step[data-done=true] .rd-plan-step-text {color:var(--rd-muted);text-decoration:line-through;}
+.rd .rd-plan-step .rd-plan-x {opacity:.5;}
+.rd .rd-plan-step:is(:hover,:focus-within) .rd-plan-x {opacity:1;}
+.rd .rd-plan .rd-plan-step-new {width:100%;box-sizing:border-box;height:30px;padding:0 6px;border:0;border-bottom:1px solid var(--rd-plan-hair);border-radius:0;background:none;color:var(--rd-ink);font:500 13px/1.2 var(--rd-ui-font);}
+.rd .rd-plan .rd-plan-step-new::placeholder {color:var(--rd-faint);}
+.rd .rd-plan .rd-plan-step-new:focus-visible {border-bottom-color:var(--rd-accent);outline:2px solid transparent;}
+.rd .rd-plan-sheet-foot {display:flex;justify-content:flex-end;padding-top:2px;}
+.rd .rd-plan-sheet-delete {min-height:0;padding:2px 4px;color:var(--rd-danger);font-size:13px;}
+/* ---- Home's "My plan": the day's page for today, inside Home's list */
+.rd .rd-plan-home {display:flex;flex-direction:column;min-width:0;padding:2px 16px 12px;}
+.rd .rd-plan-home > .rd-plan-day-rows {overflow:visible;}
+/* the top bar's "Add a task" (a plus) */
+.rd .rd-toolbar .rd-plan-add-pop[aria-expanded=true] {background:var(--rd-tint);}
+.rd .rd-toolbar .rd-plan-add-pop .rd-plan-plus-art {width:24px;height:24px;margin:0;}
+.rd .rd-toolbar .rd-plan-add-pop .rd-plan-plus-art .o, .rd .rd-toolbar .rd-plan-add-pop .rd-plan-plus-art .p {stroke:var(--rd-ink);stroke-width:1.6;}
+.rd .rd-toolbar .rd-plan-add-pop:is(:hover,[aria-expanded=true]) .rd-plan-plus-art .o {stroke-dasharray:none;}
+/* ---- narrower: the page narrows to 320 px and the chips shorten; under 760 px the day's page comes first with its week
+   as a strip of seven days over it (a dot a task), and the month behind its own switch */
+.rd .rd-plan-strip {display:none;}
+@container rd-plan (max-width: 1099.98px) {
+ .rd .rd-plan-body {grid-template-columns:320px minmax(0,1fr);gap:0 18px;}
+ .rd .rd-plan-entry {font-size:12px;}
+ .rd .rd-plan-cal-head {gap:7px;}
+ .rd.rd .rd-plan-months {font-size:21px;}
+ .rd .rd-plan-tool > span {display:none;}
+ .rd .rd-plan-tool {padding:0 7px;}
+ .rd .rd-plan-meta {max-width:42%;}
+ /* (the 320 px page: the course is its dot; the title keeps the room) */
+ .rd .rd-plan-meta .rd-plan-cname {display:none;}
+ .rd .rd-plan-meta .rd-plan-course {gap:0;min-width:0;}
+ .rd .rd-plan-meta > .rd-plan-course {min-width:7px;}
+ .rd .rd-plan-rows[data-timed=true] > .rd-plan-item > .rd-plan-at {width:60px;font-size:12.5px;}
+ .rd.rd .rd-plan-page-head h2 {font-size:24px;}
+}
+@container rd-plan (max-width: 759.98px) {
+ .rd .rd-plan-body {display:block;height:var(--rd-plan-h,auto);min-height:300px;}
+ .rd .rd-plan-page,.rd .rd-plan-cal {height:100%;}
+ .rd .rd-plan-cal {display:none;}
+ .rd .rd-plan[data-cal=open] .rd-plan-cal {display:flex;}
+ .rd .rd-plan[data-cal=open] .rd-plan-page {display:none;}
+ .rd .rd-plan-grid {grid-template-rows:auto repeat(var(--rd-plan-rows,4),minmax(0,1fr));}
+ .rd .rd-plan-cal-head {flex-wrap:wrap;}
+ .rd .rd-plan-tools {margin-left:0;}
+ .rd .rd-plan-meta .rd-plan-cname {display:inline;}
+ .rd .rd-plan-meta .rd-plan-course {gap:5px;}
+ .rd .rd-plan-strip {display:flex;align-items:stretch;gap:3px;margin:0 0 8px;}
+ .rd .rd-plan-sday {display:grid;justify-items:center;gap:1px;flex:1 1 0;min-width:0;padding:5px 1px 4px;border:0;border-radius:9px;background:none;color:var(--rd-ink-2,var(--rd-ink));font:inherit;cursor:pointer;}
+ .rd .rd-plan-sday > span:first-child {color:var(--rd-muted);font-size:11.5px;}
+ .rd .rd-plan-sday strong {font:600 17px/1.2 var(--rd-display,Georgia,serif);}
+ .rd .rd-plan-sday[data-today=true] strong {color:var(--rd-accent);}
+ .rd .rd-plan-sday[aria-pressed=true] {box-shadow:inset 0 0 0 2px var(--rd-accent);background:color-mix(in srgb,var(--rd-accent) 7%,var(--rd-surface));}
+ .rd .rd-plan-sdots {display:flex;gap:2px;min-height:7px;}
+ .rd .rd-plan-sdots .rd-plan-dot {width:6px;height:6px;}
+ .rd .rd-plan-cal-open {align-self:center;flex:none;min-height:34px;margin-left:4px;padding:0 12px;font-size:13px;}
+ .rd .rd-plan-meta {max-width:44%;}
+}
+/* ---- Rounded and Minimal course cards: the calendar's sheet and the pills plain to match */
+.rd[data-course-card-style=rounded] .rd-plan-grid {border:1px solid var(--rd-line-strong);border-image:none;border-radius:14px;overflow:hidden;}
+.rd[data-course-card-style=rounded] .rd-plan-entry, .rd[data-course-card-style=rounded] .rd-plan-more {border-radius:999px;}
+.rd[data-course-card-style=rounded] .rd-plan-entry {padding-right:9px;}
+.rd[data-course-card-style=rounded] .rd-plan-sheet, .rd[data-course-card-style=rounded] .rd-plan-pop, .rd[data-course-card-style=rounded] .rd-plan-picker, .rd[data-course-card-style=rounded] .rd-plan-addpop {border:1px solid var(--rd-line-strong);border-radius:16px;}
+.rd[data-course-card-style=rounded] .rd-plan-overdue {border-radius:999px;}
+.rd[data-course-card-style=rounded] .rd-plan-modes::before {border:1px solid var(--rd-line-strong);border-image:none;}
+.rd[data-course-card-style=rounded] .rd-plan-cell[data-chosen=true] {border-radius:12px;}
+.rd[data-course-card-style=minimal] .rd-plan-grid {border:0;border-image:none;border-top:2px solid var(--rd-line-strong);background:none;}
+.rd[data-course-card-style=minimal] .rd-plan-entry {border-radius:0;background:linear-gradient(90deg,var(--rd-course,var(--rd-accent)) 0 3px,color-mix(in srgb,var(--rd-course,var(--rd-accent)) 9%,transparent) 3px);}
+.rd[data-course-card-style=minimal] .rd-plan-entry[data-kind=due] {background:linear-gradient(90deg,transparent 0 3px,transparent 3px);}
+.rd[data-course-card-style=minimal] .rd-plan-sheet, .rd[data-course-card-style=minimal] .rd-plan-pop, .rd[data-course-card-style=minimal] .rd-plan-picker, .rd[data-course-card-style=minimal] .rd-plan-addpop {border:1px solid var(--rd-line-strong);border-radius:2px;box-shadow:0 8px 22px rgb(0 0 0 / .12);}
+.rd[data-course-card-style=minimal] .rd-plan-overdue {border:0;border-top:1px solid var(--rd-line-strong);border-radius:0;background:none;}
+.rd[data-course-card-style=minimal] .rd-plan-modes::before {border:0;border-image:none;border-bottom:2px solid var(--rd-accent);border-radius:0;background:none;}
+.rd[data-course-card-style=minimal] .rd-plan-daybtn {border-radius:3px;}
+/* motion: Off, Still and reduced motion keep every state and drop the travel */
+.rd:is([data-motion-style=off],[data-motion-style=still]) :is(.rd-plan,.rd-plan-picker,.rd-plan-addpop) :is(*,*::before,*::after) {animation:none!important;transition:none!important;}
+@media (prefers-reduced-motion:reduce){.rd :is(.rd-plan,.rd-plan-picker,.rd-plan-addpop) :is(*,*::before,*::after) {animation:none!important;transition:none!important;}}
+.rd:is([data-motion-style=off],[data-motion-style=still]) .rd-plan .x-circle {stroke-dashoffset:0;}
+@media (prefers-reduced-motion:reduce){.rd .rd-plan .x-circle {stroke-dashoffset:0;}}
 
 /* ---- Make it yours: tabs, picture choices, switches ---- */
 .rd .cz {font:400 14px/1.5 var(--rd-ui-font);color:var(--rd-ink);}
@@ -383,16 +702,10 @@
 .rd .rd-grade-ink {stroke:var(--rd-course,var(--rd-accent));stroke-width:2.6;transition:stroke-dasharray .5s ease-out;}
 .rd .rd-rail-course > .rd-grade:hover .rd-grade-ink {stroke-width:3.2;}
 
-.rd .rd-plan-done {margin-left:6px;white-space:nowrap;}
-.rd .rd-plan-done .rd-n {margin-left:4px;}
 
 /* ---- the Assignments tab: the list beside the reader, nothing to arrange ---- */
 .rd[data-work-page=assignments] .rd-arrange-tools, .rd[data-work-page=assignments] .rd-arrange-guide, .rd[data-work-page=assignments] .rd-gallery {display:none!important;}
 .rd[data-work-page=assignments] [data-arrange-head] {cursor:default;}
-/* a day's cards never spill over the next day */
-.rd .rd-plan-day {grid-template-columns:minmax(0,1fr);}
-.rd .rd-plan-day > .rd-plan-cards {min-width:0;}
-.rd .rd-plan-card {min-width:0;overflow-wrap:anywhere;}
 
 /* A module a little shorter than its row: its outline is drawn down to the row's bottom edge, the module itself
    keeps its height (workspace-gestures.js measures that height and must not change it). */
@@ -574,3 +887,120 @@
 .rd[data-motion-style=off] .ch-handin *,.rd[data-motion-style=still] .ch-handin *,.rd[data-feature-motion=off] .ch-handin *,.rd[data-motion-style=off] .ch-handin *::before,.rd[data-motion-style=still] .ch-handin *::before,.rd[data-feature-motion=off] .ch-handin *::before,.rd[data-motion-style=off] .ch-handin *::after,.rd[data-motion-style=still] .ch-handin *::after,.rd[data-feature-motion=off] .ch-handin *::after,.rd[data-motion-style=off] .rd-gallery .rd-gswitch,.rd[data-motion-style=still] .rd-gallery .rd-gswitch,.rd[data-feature-motion=off] .rd-gallery .rd-gswitch,.rd[data-motion-style=off] .rd-gallery .rd-gswitch i,.rd[data-motion-style=still] .rd-gallery .rd-gswitch i,.rd[data-feature-motion=off] .rd-gallery .rd-gswitch i{animation:none!important;transition:none!important}
 @media (prefers-reduced-motion:reduce){.rd .ch-handin *,.rd .ch-handin *::before,.rd .ch-handin *::after,.rd .rd-gallery .rd-gswitch,.rd .rd-gallery .rd-gswitch i{animation:none!important;transition:none!important}}
 /* </x:generated> */
+/* Help as a Home module (4.2): the band's host is the module itself, in the desk grid like the rest (no gap of its own);
+   its bar is the module's heading and carries the grip, the size-and-place menu and the remove button at its end. */
+.rd .rd-main.rd-desk > .ch-band-host{margin-block-end:0}
+.rd .ch-band-toolbar > .rd-arrange-tools{order:99;margin-inline-start:6px}
+.rd .ch-band-toolbar[data-arrange-head]{cursor:grab}.rd .ch-band-toolbar[data-arrange-head] button,.rd .ch-band-toolbar[data-arrange-head] select{cursor:pointer}
+/* ("This week" on the Planner: no standing block since 4.2.12; each finding sits in its place, see the Planner section) */
+/* (a11y-42) Keyboard focus rings these controls lost to their hover look (a tint or a border colour the mouse also sees,
+   too faint to find and gone in Windows high contrast). :focus-visible only, so a click looks as before. */
+.rd .rd-arrange-more:focus-visible,.rd .rd-arrange-remove:focus-visible,.rd .rd-clock-next:focus-visible,.rd .rd-plan-more:focus-visible{outline:2px solid var(--rd-mark);outline-offset:1px}
+.rd .rd-chip:focus-visible:not(:disabled),.rd .rd-frame-choice:focus-visible,.rd .rd-mm-remove:focus-visible{outline:2px solid var(--rd-mark);outline-offset:2px}
+.rd .rd-mm-pick:focus-visible,.rd .rd-wk-day:focus-visible,.rd .rd-link-row:focus-visible,.rd .rd-plan-menu-item:focus-visible,.rd .rd-module-menu .ch-agent-pin:focus-visible,.rd .rd-mm-reset:focus-visible{outline:2px solid var(--rd-mark);outline-offset:-2px}
+/* (a11y-42) Windows high contrast (forced colours) drops box-shadow rings and tints: every focused control in the
+   companion shows the system's highlight outline instead. Only while forced colours are on; nothing changes otherwise. */
+@media (forced-colors: active){
+.rd :focus-visible{outline:2px solid Highlight !important}
+/* drawn switches: their track and knob were background colours and a shadow only, all taken away here, so on and off
+   looked the same (or the switch was gone); system colours keep the edge, the knob and the "on" fill */
+.rd .cz-toggle i{forced-color-adjust:none;background:Canvas!important;outline:1.5px solid CanvasText;outline-offset:-1.5px}
+.rd .rd-gswitch{forced-color-adjust:none;background:Canvas!important;box-shadow:inset 0 0 0 1.5px CanvasText!important}
+.rd .cz-toggle i::after,.rd .rd-gswitch i{forced-color-adjust:none;background:CanvasText!important;box-shadow:none!important}
+.rd .cz-toggle input:checked+i,.rd .rd-gswitch[aria-checked=true]{background:Highlight!important;outline-color:Highlight;box-shadow:none!important}
+.rd .cz-toggle input:checked+i::after,.rd .rd-gswitch[aria-checked=true] i{background:HighlightText!important}
+}
+/* (a11y-42) 1280 px at 200 % zoom (a 640 px page) with the course rail: the command bar was narrower than the 560 px where
+   its words start to go, kept every word, and ran off the right edge (Tools, Make it yours, Refresh, the Canvas switch out
+   of sight, the page scrolling sideways). Below 560 px, and never in the phone layout, it gives up the same words as the
+   next step up, and the tab strip (already a scroller) gives way before the tools do. Wider bars are unchanged. */
+@media (min-width:601px){@container commands (max-width:559.98px){
+.rd .rd-toolbar > .rd-workspace-tabs{flex:1 1 auto;min-width:0}
+.rd .rd-toolbar > .rd-tools{flex:none}
+.rd .rd-toolbar .rd-workspace-tab > span:not(.rd-n):not(.rd-sr-only),.rd .rd-tools .rd-tb-tool > span,.rd .rd-tools .rd-toolbox-trigger > span,.rd .rd-grade-switch > span:not(.rd-switch-track){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.rd .rd-toolbar .rd-workspace-tabs .t-tab{padding:0 6px}
+.rd .rd-toolbox-trigger kbd,.rd .rd-tools .rd-native-switch > span{display:none}
+.rd .rd-tools .rd-button.rd-native-switch{width:32px;min-width:32px;padding:0;justify-content:center;border-radius:999px}
+}}
+/* (4.2.12) the main chat's pass on the redesigned Planner: the suggestion's own pen arrow; in Week a slip's title takes two lines
+   (one line showed about eleven letters in a 125 px column); the sheet's Due day and time on one line; the Too much mark. */
+.rd .rd-plan-suggest svg.rd-plan-ic {width:17px;height:17px;}
+.rd .rd-plan-week .rd-plan-card[data-slip=true] .rd-plan-open strong {display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal;line-height:1.25;}
+.rd .rd-plan .rd-plan-field[data-rd-field="plan-sheet-due-day"] {width:124px;height:28px;min-height:0;box-sizing:border-box;}
+.rd .rd-plan .rd-plan-field[data-rd-field="plan-sheet-due-time"] {width:98px;height:28px;min-height:0;box-sizing:border-box;}
+.rd .rd-plan-advice-tag .rd-plan-ic {width:16px;height:16px;margin-right:3px;vertical-align:-3px;}
+/* (4.2.13) the main chat's pass on the revamped Planner: the months' title is never cut short; the small status line gives way
+   first and shows whole words only (no "3 of 54 done · 17 h 25 min plann..."). */
+.rd.rd .rd-plan-months {flex:0 0 auto;overflow:visible;text-overflow:clip;}
+.rd .rd-plan-sub {flex:1 1 0;min-width:0;height:1.3em;white-space:normal;overflow:hidden;text-overflow:clip;}
+/* (4.2.14) other window sizes (checked from 480 x 800 to 3440 x 1305, work/planner-45-tools): what a smaller or shorter
+   window could not read or reach.
+   - the calendar's heading is never cut: under 1420 px the two months are short ("Nov – Dec"), under 1240 the two tools
+     are their drawings, under 950 the switch is slimmer, and whatever still does not fit goes onto a second line
+   - the count line shows whole pieces only ("3 of 44 done", then "· 14 h 25 min", then "planned": never "14 h")
+   - in a row the name comes first: under 1420 px the course is its dot; the overdue list keeps the due day whole
+   - a narrow day (under about 120 px) drops the tick ring in its chips so the name has the room; Week keeps a time in
+     one piece ("9:30 AM") and breaks a name between words where it can; a day under about 80 px (a phone's width) shows
+     its tasks as bars of their colour: three letters of a name say nothing, the day's list names them
+   - a list that scrolls says so: the house's slim warm bar, always there (the browser's own hides until the pointer is on it)
+   - No date folded to its one line when the day's own rows need the room (planner-ui.js), and opened again by a press
+   - the one-column page: its month has a way back to the day ("Day", as the day's page has "Month") */
+.rd .rd-plan-cal-head {flex-wrap:wrap;row-gap:6px;}
+.rd .rd-plan-months-s {display:none;}
+.rd .rd-plan-cal-back {display:none;align-items:center;gap:1px;flex:none;min-height:34px;height:34px;padding:0 11px 0 4px;font-size:13.5px;font-weight:600;white-space:nowrap;}
+.rd .rd-plan-sub > span {display:inline-block;white-space:nowrap;}
+.rd .rd-plan-sub > i {display:inline-block;width:0;}
+.rd .rd-plan[data-mode=week] .rd-plan-eopen {overflow-wrap:break-word;hyphens:auto;}
+.rd .rd-plan[data-mode=week] .rd-plan-etime {white-space:nowrap;}
+.rd .rd-plan[data-mode=week] .rd-plan-etime + .rd-plan-etitle::before {content:"\200B";}
+@supports selector(::-webkit-scrollbar) {
+ .rd .rd-plan-day-rows,.rd .rd-plan-nodate > .rd-plan-rows,.rd .rd-plan-sheet,.rd .rd-plan-pop {scrollbar-width:auto;scrollbar-color:auto;}
+ .rd .rd-plan-day-rows::-webkit-scrollbar,.rd .rd-plan-nodate > .rd-plan-rows::-webkit-scrollbar,.rd .rd-plan-sheet::-webkit-scrollbar,.rd .rd-plan-pop::-webkit-scrollbar {width:9px;height:9px;}
+ .rd .rd-plan-day-rows::-webkit-scrollbar-button,.rd .rd-plan-nodate > .rd-plan-rows::-webkit-scrollbar-button,.rd .rd-plan-sheet::-webkit-scrollbar-button,.rd .rd-plan-pop::-webkit-scrollbar-button {display:none;}
+ .rd .rd-plan-day-rows::-webkit-scrollbar-track,.rd .rd-plan-nodate > .rd-plan-rows::-webkit-scrollbar-track,.rd .rd-plan-sheet::-webkit-scrollbar-track,.rd .rd-plan-pop::-webkit-scrollbar-track {background:none;}
+ .rd .rd-plan-day-rows::-webkit-scrollbar-thumb,.rd .rd-plan-nodate > .rd-plan-rows::-webkit-scrollbar-thumb,.rd .rd-plan-sheet::-webkit-scrollbar-thumb,.rd .rd-plan-pop::-webkit-scrollbar-thumb {border:2px solid transparent;border-radius:6px;background:color-mix(in srgb,var(--rd-ink) 26%,transparent) padding-box;}
+ .rd .rd-plan-day-rows::-webkit-scrollbar-thumb:hover,.rd .rd-plan-nodate > .rd-plan-rows::-webkit-scrollbar-thumb:hover,.rd .rd-plan-sheet::-webkit-scrollbar-thumb:hover,.rd .rd-plan-pop::-webkit-scrollbar-thumb:hover {background:color-mix(in srgb,var(--rd-ink) 42%,transparent) padding-box;}
+}
+.rd .rd-plan-nodate[data-folded=true] {margin-top:10px;}
+.rd .rd-plan-label:has(> .rd-plan-fold) {margin:0;padding:0;}
+.rd .rd-plan-fold {display:flex;align-items:center;gap:7px;width:100%;min-height:30px;padding:0 6px 0 2px;border:0;border-radius:7px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;}
+.rd .rd-plan-fold > svg {margin-left:auto;color:var(--rd-muted);transition:rotate .16s;}
+.rd .rd-plan-fold[aria-expanded=true] > svg {rotate:90deg;}
+.rd .rd-plan-fold:hover {background:var(--rd-tint);}
+.rd .rd-plan-fold:focus-visible {outline:2px solid var(--rd-accent);outline-offset:1px;}
+@container rd-plan (max-width: 1419.98px) {
+ .rd .rd-plan-months-l {display:none;}
+ .rd .rd-plan-months-s {display:inline;}
+ .rd .rd-plan-page[data-view=overdue] .rd-plan-meta {flex:none;max-width:none;}
+ .rd .rd-plan-page[data-view=overdue] .rd-plan-meta .rd-plan-cname {display:none;}
+ .rd .rd-plan-page[data-view=overdue] .rd-plan-meta .rd-plan-course {gap:0;min-width:7px;}
+}
+@container rd-plan (min-width: 760px) and (max-width: 1419.98px) {
+ .rd .rd-plan-meta .rd-plan-cname {display:none;}
+ .rd .rd-plan-meta .rd-plan-course {gap:0;min-width:0;}
+ .rd .rd-plan-meta > .rd-plan-course {min-width:7px;}
+}
+@container rd-plan (max-width: 1269.98px) {
+ .rd .rd-plan-cal .rd-plan-entry > .rd-plan-etick {display:none;}
+ .rd .rd-plan-cal .rd-plan-entry:not(.rd-plan-mark) {padding-left:6px;}
+}
+@container rd-plan (max-width: 1239.98px) {
+ .rd .rd-plan-tool > span {display:none;}
+ .rd .rd-plan-tool {padding:0 7px;}
+}
+@container rd-plan (max-width: 949.98px) {
+ .rd .rd-plan-mode {min-width:50px;padding:0 8px;}
+ .rd .rd-plan-arrows {gap:4px;}
+ .rd .rd-plan-now {padding:0 10px;}
+}
+@container rd-plan (max-width: 759.98px) {
+ .rd .rd-plan[data-cal=open] .rd-plan-cal-back {display:inline-flex;}
+}
+@container rd-plan (max-width: 559.98px) {
+ .rd .rd-plan-meta .rd-plan-cname {display:none;}
+ .rd .rd-plan-meta .rd-plan-course {gap:0;min-width:7px;}
+ .rd .rd-plan-cal .rd-plan-entry,.rd .rd-plan[data-mode=week] .rd-plan-cal .rd-plan-entry {height:8px;min-height:0;padding:0;border-radius:3px;}
+ .rd .rd-plan-cal .rd-plan-eopen,.rd .rd-plan[data-mode=week] .rd-plan-cal .rd-plan-eopen {display:block;height:100%;width:100%;overflow:hidden;}
+ .rd .rd-plan-cal .rd-plan-eopen > *,.rd .rd-plan-cal .rd-plan-entry.rd-plan-mark > * {visibility:hidden;}
+ .rd .rd-plan-cal .rd-plan-chips,.rd .rd-plan[data-mode=week] .rd-plan-cal .rd-plan-chips {gap:4px;}
+}

@@ -4,11 +4,33 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 (function(root){
   'use strict';
  const enabled=id=>!root.ReserveFeatures||root.ReserveFeatures.enabled(id);
-  function create({isSelected=()=>false,store,user,client,materials,ownFiles=null,onChange=()=>{},onAuthError=()=>{},onCapture=()=>{}}){
+  // Days and times in the student's own zone (settings.timeZone, as Home and the Planner show them), not the laptop's.
+  const FORMATS=new Map();
+  function inZone(zone,options){
+    const key=(zone||'')+'|'+JSON.stringify(options);
+    let f=FORMATS.get(key);
+    if(!f){
+      try{f=new Intl.DateTimeFormat('en-US',zone?{...options,timeZone:zone}:options);}catch{f=new Intl.DateTimeFormat('en-US',options);}
+      if(FORMATS.size>=40)FORMATS.clear();
+      FORMATS.set(key,f);
+    }
+    return f;
+  }
+  function dayIn(ms,zone){const p={};for(const x of inZone(zone,{year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(ms))p[x.type]=x.value;return p.year+'-'+p.month+'-'+p.day;}
+  // "Today", "Yesterday", "Nov 12" (the year only when it is another year), the days counted in the zone.
+  function dayWord(value,now=Date.now(),zone){
+    const ms=new Date(value??'').getTime();
+    if(!Number.isFinite(ms))return '';
+    const d=dayIn(ms,zone),t=dayIn(now,zone),n=Math.round((Date.parse(t+'T12:00:00Z')-Date.parse(d+'T12:00:00Z'))/864e5);
+    return n===0?'Today':n===1?'Yesterday':inZone(zone,{month:'short',day:'numeric',...(d.slice(0,4)!==t.slice(0,4)?{year:'numeric'}:{})}).format(ms);
+  }
+  function create({isSelected=()=>false,store,user,client,materials,ownFiles=null,onChange=()=>{},onAuthError=()=>{},onCapture=()=>{},getTimeZone=()=>undefined}){
+    // (the student's zone from Home's settings; without one, the school's, as the rest of Canvas Harness)
+    const zone=()=>{try{const value=getTimeZone();if(typeof value==='string'&&value)return value;}catch{}return root.ReserveSite?.timeZone?.();};
     if(!enabled('course-hub')||!root.ReserveCourseHubModel)return null;
     const U=root.ReserveUI,E=U.escapeHTML,M=root.ReserveCourseHubModel,origin=(globalThis.ReserveSite.origin());
     const controller=new AbortController(),courses=new Map(),pending=new Map(),richCache=new Map(),threads=new Map(),saveCourses=new Map();
-    let dead=false,inbox=null,inboxPending=null,query='',unreadOnly=false,saveNotice='',availableCourses=[],inboxCourse='all';
+    let dead=false,inbox=null,inboxPending=null,query='',unreadOnly=false,saveNotice='',availableCourses=[],inboxCourse='all',openId='';
     const expanded=new Set();// teacher text opened with "Read more"
     const modulesOpen=new Set();// long modules showing every item ("Show all 42"), as course:module
     let focusRequest=null;
@@ -51,6 +73,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       pending.clear();
       inbox=null;
       inboxPending=null;
+      openId="";
       richCache.clear();
       threads.clear();
       saveCourses.clear();
@@ -93,7 +116,8 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
             loading:false,
             error:raw.errors?.map(e=>e.message).join(' ')||''
           };
-        }
+          // (pages-42) a refresh cleared the threads: the conversation still open is read again, so its pane never waits on nothing.
+          if(openId&&!threads.has(openId)&&inbox.items.some(x=>x.id===openId))readMessage(openId);}
         catch(error){if(dead)return;if(!fail(error))inbox={...inbox,loading:false,error:error.message||'Messages could not load.'};}
         finally{inboxPending=null;change();finish();}
       })();return op;
@@ -114,16 +138,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     const button=(action,label,id='',extra='')=>action.startsWith('capture')&&!enabled('tools')?'':`<button type="button" class="rd-text-button" data-rd-action="hub-${action}" data-course="${E(id)}" ${extra}>${label}</button>`;
     const date=value=>{
       if(value==null||value==='')return 'Date unavailable';
-      const d=new Date(value);
-      return Number.isFinite(d.getTime())?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'Date unavailable';
+      const ms=new Date(value).getTime();
+      return Number.isFinite(ms)?inZone(zone(),{month:'short',day:'numeric',year:'numeric'}).format(ms):'Date unavailable';
     };
     // Relative day for lists: "Today", "Yesterday", "Sep 27" (the year only when it differs).
-    const day=value=>{
-      const d=new Date(value??'');
-      if(!Number.isFinite(d.getTime()))return 'Date unavailable';
-      const at=x=>new Date(x.getFullYear(),x.getMonth(),x.getDate()).getTime(),n=Math.round((at(new Date())-at(d))/864e5);
-      return n===0?'Today':n===1?'Yesterday':d.toLocaleDateString('en-US',{month:'short',day:'numeric',...(d.getFullYear()!==new Date().getFullYear()?{year:'numeric'}:{})});
-    };
+    const day=value=>dayWord(value,Date.now(),zone())||'Date unavailable';
     // The course's small drawing (course-art.js), placed only through its API.
     const mini=(course,place)=>course?.id?enabled('course-art')&&root.ReserveCourseArt?.mini?.(course,{place})||'':'';
     const ring='<span class="rd-sync-ring" aria-hidden="true"></span>';
@@ -287,6 +306,42 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const messages=entry.data.messages||[];
       return messages.slice(0,30).map(m=>`<article class="rd-thread-message"><header><strong>${E(people.get(String(m.author_id))||'Message')}</strong><time>${E(date(m.created_at))}</time></header><p>${T(m.body||'')}</p>${(m.attachments||[]).filter(a=>safe(a.url)).map(a=>`<a class="rd-document-link" href="${E(safe(a.url))}" target="_blank" rel="noopener noreferrer">${E(a.display_name||a.filename||'Attachment')} ↗</a>`).join('')}${m.forwarded_messages?.length||m.media_comment?'<p class="rd-hub-notice">Open the original conversation for forwarded messages or media.</p>':''}</article>`).join('')+(messages.length>30?'<p class="rd-hub-notice">The latest 30 messages are shown. Open the original conversation for earlier messages.</p>':'');
     }
+    // THE POST ROOM (pages-42). Messages: unread first, then by course, each course under its own small drawing and
+    // colour; the conversation opens in a reading pane beside the list (on a narrow page it takes the list's place)
+    // with Reply in Canvas always at its head. A preview never marks a conversation read (auto_mark_as_read=false).
+    const drawn=key=>root.ReserveDashboardView?.drawing?.(key)||'';
+    const homeArt=()=>root.ReserveCourseArt?.mini?.({id:'folio-home',name:'Messages'},{place:'row'})||'';
+    // "Nov 21, 8:05 AM" (the year only when it is another year).
+    const stamp=value=>{
+      const ms=new Date(value??'').getTime();
+      if(!Number.isFinite(ms))return 'Date unavailable';
+      const z=zone();
+      return inZone(z,{month:'short',day:'numeric',...(dayIn(ms,z).slice(0,4)!==dayIn(Date.now(),z).slice(0,4)?{year:'numeric'}:{}),hour:'numeric',minute:'2-digit'}).format(ms);
+    };
+    // The kraft tag that names a file (Materials' tags; the format from the file's own name).
+    const fileTag=name=>{
+      const format=root.ReserveMaterials?.formatOf?.({title:String(name||''),kind:'File'})||'File',
+        paper={PDF:'doc',Word:'doc',Doc:'doc',Text:'doc',Pages:'doc',Slides:'slides',Sheet:'sheet',Image:'media',Video:'media',Audio:'media'}[format]||'doc';
+      return `<span class="rd-file-tag" data-paper="${paper}">${E(format)}</span>`;
+    };
+    function threadLetters(item){
+      // Messages are plain text: escaped, with any TeX between \( \), \[ \] or $$ $$ rendered as mathematics (math.js).
+      const T=value=>root.ReserveMath?.hasMath(value)?root.ReserveMath.renderText(value):E(value);
+      const entry=threads.get(item.id),preview=`<article class="rd-letter rd-letter--preview"><p>${T(item.excerpt||'')}</p></article>`;
+      if(!entry||entry.loading)return `${item.excerpt?preview:''}<p class="rd-hub-notice" role="status" data-loading="true">${ring}Loading the conversation…</p>`;
+      if(entry.error)return `${item.excerpt?preview:''}<p class="rd-hub-notice" role="alert">${E(entry.error)}</p>${button('retry-message','Try again','',`data-message="${E(item.id)}"`)}`;
+      const people=new Map((entry.data.participants||[]).map(p=>[String(p.id),p.name||p.full_name||''])),me=String(user?.id||'');
+      // Canvas sends the newest first; the thread reads oldest to newest, the latest 30.
+      const messages=(entry.data.messages||[]).slice(0,30).reverse();
+      return messages.map(m=>{const own=me&&String(m.author_id)===me,files=(m.attachments||[]).filter(a=>safe(a.url));
+        return `<article class="rd-letter" data-own="${!!own}"><header><strong>${own?'You':E(people.get(String(m.author_id))||'Message')}</strong><time datetime="${E(m.created_at||'')}">${E(stamp(m.created_at))}</time></header><p>${T(m.body||'')}</p>${files.length?`<div class="rd-letter-files">${files.map(a=>`<a class="rd-file-link" href="${E(safe(a.url))}" target="_blank" rel="noopener noreferrer">${fileTag(a.display_name||a.filename)}<span>${E(a.display_name||a.filename||'Attachment')}</span><span aria-hidden="true">↗</span></a>`).join('')}</div>`:''}${m.forwarded_messages?.length||m.media_comment?'<p class="rd-hub-notice">Open the original conversation for forwarded messages or media.</p>':''}</article>`;}).join('')+((entry.data.messages||[]).length>30?'<p class="rd-hub-notice">The latest 30 messages are shown. Open the original conversation for earlier messages.</p>':'');
+    }
+    function threadPane(item,courses,{unread}){
+      if(!item)return `<aside class="rd-thread-pane rd-thread-pane--idle" id="rd-thread-pane" aria-label="Conversation"><span class="rd-post-art rd-post-art--idle" aria-hidden="true">${drawn('inbox')}</span><p class="rd-thread-idle">${unread?`${unread} unread`:'All read'}</p><p class="rd-thread-hint">Pick a message to read it here.</p></aside>`;
+      const course=courses.find(c=>String(c.id)===String(item.courseId)),thread=threads.get(item.id),count=thread?.data?.messages?.length||item.count;
+      const who=[...(item.people||[]),count>1?`${count} messages`:''].filter(Boolean);
+      return `<article class="rd-thread-pane" id="rd-thread-pane" aria-labelledby="rd-thread-title" data-message="${E(item.id)}" data-rd-key="thread-${E(item.id)}"${tone(course)}><header class="rd-thread-head"><button type="button" class="rd-text-button rd-thread-back" data-rd-action="hub-close-message" data-course="" data-message="${E(item.id)}">${root.ReserveIcon?.('back','rd-icon')||''}Messages</button><p class="rd-thread-course">${course?mini(course,'row'):homeArt()}<span class="rd-thread-who"><b${course?` title="${E(full(course))}"`:''}>${E(course?short(course):item.courseName||'Canvas message')}</b>${who.map(x=>'<span aria-hidden="true"> · </span>'+E(x)).join('')}</span></p><h2 id="rd-thread-title" tabindex="-1">${item.unread?'<span class="rd-sr-only">Unread: </span>':''}${E(item.subject||'Untitled conversation')}</h2><div class="rd-thread-actions"><a class="rd-button rd-button--primary rd-thread-reply" href="${E(safe(item.url)||origin+'/conversations')}">Reply in Canvas <span aria-hidden="true">↗</span></a>${messageShortcut(item)}</div></header><div class="rd-thread-body rd-message-body">${threadLetters(item)}</div></article>`;
+    }
     function renderInbox(courses=[]){
       availableCourses=courses;
       if(inboxCourse!=='all'&&!courses.some(course=>String(course.id)===inboxCourse))inboxCourse='all';
@@ -295,17 +350,58 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const list=inbox?.items||[],
         matching=list.filter(x=>
           (inboxCourse==='all'||String(x.courseId)===inboxCourse)&&
-            [x.subject,x.excerpt,x.courseName,courseOf(x)?.name,courseOf(x)?.courseSearch].join(' ').toLowerCase().includes(query.toLowerCase())),
+            [x.subject,x.excerpt,x.courseName,courseOf(x)?.name,courseOf(x)?.courseSearch,...(x.people||[])].join(' ').toLowerCase().includes(query.toLowerCase())),
         visible=matching.filter(x=>!unreadOnly||x.unread);
+      const unread=list.filter(x=>x.unread).length,open=openId?list.find(x=>x.id===openId)||null:null;
       // "All | Unread" is the page's one segmented control (it reuses the view filters' gliding chip).
       const segment=(value,label,count)=>`<button type="button" class="rd-filter" data-rd-action="hub-unread" data-value="${value}" aria-pressed="${unreadOnly===value}">${label} <span class="rd-n">${count}</span></button>`;
-      return `<section class="rd-inbox" aria-label="Canvas message summaries"><header class="rd-page-heading"><div><h1>Messages from class</h1><p>Teacher reminders and instructions, in their own words.</p></div><div class="rd-heading-actions"><a class="rd-button rd-button--outline" href="${origin}/conversations">Full Inbox <span aria-hidden="true">↗</span></a><button type="button" class="rd-icon-button" data-rd-action="hub-inbox-refresh" data-course="" aria-label="Refresh messages" title="Refresh messages" ${inbox?.loading?'aria-disabled="true" aria-busy="true"':''}>${root.ReserveIcon?.('refresh','rd-icon')||''}${ring}</button></div></header><div class="rd-message-filter"><div class="rd-filter-group" role="group" aria-label="Which messages">${segment(false,'All',matching.length)}${segment(true,'Unread',matching.filter(x=>x.unread).length)}</div><span class="rd-inbox-course rd-select-text"><select data-rd-field="hub-course" aria-label="Message course"><option value="all">All courses</option>${courses.map(course=>`<option value="${E(course.id)}" ${inboxCourse===String(course.id)?'selected':''}>${E(option(course))}</option>`).join('')}</select></span><label class="rd-search">${root.ReserveIcon?.('search','rd-icon')||''}<span class="rd-sr-only">Search messages</span><input type="search" data-rd-field="hub-query" aria-label="Search messages" value="${E(query)}" placeholder="Search messages or a course"></label></div>${inbox?.loading?`<p role="status" class="rd-hub-notice" data-loading="true">${ring}Loading message summaries…</p>${list.length?'':ghosts}`:''}${inbox?.error?`<p role="alert" class="rd-hub-notice">${E(inbox.error)} ${button('inbox-refresh','Try again')}</p>`:''}${inbox?.raw?.truncated?'<p class="rd-hub-notice">Showing recent messages. Older conversations remain in the full Canvas Inbox.</p>':''}${saveNotice?`<p class="rd-hub-notice" role="alert">${E(saveNotice)}</p>`:''}<div class="rd-message-list">${visible.map(x=>`<details class="rd-message" data-message="${E(x.id)}" data-rd-section="message-${E(x.id)}" data-unread="${!!x.unread}"${tone(courseOf(x))}><summary><span class="rd-message-dot" data-unread="${!!x.unread}" aria-hidden="true"></span><span class="rd-message-copy"><strong>${x.unread?'<span class="rd-sr-only">Unread: </span>':''}${E(x.subject||'Untitled conversation')}</strong><span class="rd-message-line">${mini(courseOf(x),'row')}<span class="rd-announcement-meta"${courseOf(x)?` title="${E(full(courseOf(x)))}"`:''}>${E(short(courseOf(x))||x.courseName||'Canvas message')}</span><span aria-hidden="true"> · </span><span class="rd-message-excerpt">${E(x.excerpt||'Open the conversation to read this message.')}</span></span></span><time>${E(day(x.updatedAt))}</time></summary><div class="rd-message-body">${messageBody(x)}<div class="rd-message-actions"><a class="rd-button rd-button--primary" href="${E(safe(x.url))}">Reply in Canvas <span aria-hidden="true">↗</span></a>${messageShortcut(x)}</div></div></details>`).join('')||(!inbox?.loading?'<div class="rd-hub-empty"><h2>No messages in this view</h2><p>Try All courses or clear the search and unread filter. Messages Canvas does not associate with a course stay in All courses.</p></div>':'')}</div><p class="rd-message-disclaimer">Previews do not change read status. Open Full Inbox to reply, manage messages, or view forwarded messages and media.</p></section>`;
+      // One row: the unread dot, the course's small drawing (in Unread, where the course is not the group's), the
+      // subject, who and how many, the newest line; the day at the right. The whole row opens the conversation.
+      const row=(x,{course=true}={})=>{
+        const c=courseOf(x),
+          meta=[
+            course?`<span class="rd-announcement-meta"${c?` title="${E(full(c))}"`:''}>${E(short(c)||x.courseName||'Canvas message')}</span>`:'',
+            (x.people||[]).length?`<span class="rd-post-people">${E(x.people.join(', '))}</span>`:'',
+            x.count>1?`<span class="rd-post-count">${x.count} messages</span>`:'',
+            x.files?'<span class="rd-file-tag rd-file-tag--mini" data-paper="doc">File</span>':''
+          ].filter(Boolean).join('<span aria-hidden="true"> · </span>');
+        return `<li class="rd-post-row" data-message="${E(x.id)}" data-rd-key="post-${E(x.id)}" data-unread="${!!x.unread}"${x.id===openId?' data-open="true"':''}${tone(c)}><button type="button" class="rd-post-open" data-rd-action="hub-open-message" data-course="" data-message="${E(x.id)}" aria-controls="rd-thread-pane"${x.id===openId?' aria-current="true"':''}><span class="rd-message-dot" data-unread="${!!x.unread}" aria-hidden="true"></span><span class="rd-post-mark" aria-hidden="true">${course?c?mini(c,'row'):homeArt():''}</span><span class="rd-message-copy"><strong>${x.unread?'<span class="rd-sr-only">Unread: </span>':''}${E(x.subject||'Untitled conversation')}</strong><span class="rd-message-line">${meta}</span><span class="rd-message-excerpt">${E(x.excerpt||'Open the conversation to read this message.')}</span></span><time datetime="${E(x.updatedAt||'')}">${E(day(x.updatedAt))}</time></button></li>`;};
+      // Unread first (newest first, each with its course), then the rest by course (the course with the newest
+      // message first), then the messages Canvas keeps with no course.
+      const groups=[],fresh=visible.filter(x=>x.unread),rest=visible.filter(x=>!x.unread),byCourse=new Map();
+      if(fresh.length)groups.push({key:'unread',name:'Unread',rows:fresh,course:true});
+      for(const x of rest){const key=courseOf(x)?String(x.courseId):'other';if(!byCourse.has(key))byCourse.set(key,[]);byCourse.get(key).push(x);}
+      for(const [key,rows] of [...byCourse].sort(([a],[b])=>(a==='other')-(b==='other')))groups.push({key,rows,course:false,of:key==='other'?null:courseOf(rows[0])});
+      const head=g=>g.key==='unread'?`<h2 class="rd-post-group-head" id="rd-post-${g.key}"><span class="rd-message-dot" data-unread="true" aria-hidden="true"></span>Unread <span class="rd-n">${g.rows.length}</span></h2>`:`<h2 class="rd-post-group-head" id="rd-post-${E(g.key)}">${g.of?mini(g.of,'row'):homeArt()}<span${g.of?` title="${E(full(g.of))}"`:''}>${g.of?E(short(g.of)):'Not from a course'}</span> <span class="rd-n">${g.rows.length}</span></h2>`;
+      const listHTML=groups.map(g=>`<section class="rd-post-group" data-group="${E(g.key)}" data-rd-key="post-group-${E(g.key)}" aria-labelledby="rd-post-${E(g.key)}"${g.of?tone(g.of):''}>${head(g)}<ol class="rd-post-rows">${g.rows.map(x=>row(x,{course:g.course})).join('')}</ol></section>`).join('');
+      const facts=inbox?.raw?[`${unread} unread`,`${list.length} ${list.length===1?'conversation':'conversations'}`].join('<span aria-hidden="true"> · </span>'):'';
+      return `<section class="rd-inbox rd-post" aria-label="Canvas message summaries"${open?' data-open="true"':''}><header class="rd-page-heading rd-post-head"><span class="rd-post-art" aria-hidden="true">${drawn('inbox')}</span><div><h1>Messages</h1><p class="rd-post-facts">${facts}</p></div><div class="rd-heading-actions"><a class="rd-button rd-button--outline" href="${origin}/conversations">Full Inbox <span aria-hidden="true">↗</span></a><button type="button" class="rd-icon-button" data-rd-action="hub-inbox-refresh" data-course="" aria-label="Refresh messages" title="Refresh messages" ${inbox?.loading?'aria-disabled="true" aria-busy="true"':''}>${root.ReserveIcon?.('refresh','rd-icon')||''}${ring}</button></div></header><div class="rd-message-filter"><div class="rd-filter-group" role="group" aria-label="Which messages">${segment(false,'All',matching.length)}${segment(true,'Unread',matching.filter(x=>x.unread).length)}</div><span class="rd-inbox-course rd-select-text"><select data-rd-field="hub-course" aria-label="Message course"><option value="all">All courses</option>${courses.map(course=>`<option value="${E(course.id)}" ${inboxCourse===String(course.id)?'selected':''}>${E(option(course))}</option>`).join('')}</select></span><label class="rd-search">${root.ReserveIcon?.('search','rd-icon')||''}<span class="rd-sr-only">Search messages</span><input type="search" data-rd-field="hub-query" aria-label="Search messages" value="${E(query)}" placeholder="Search messages or a course"></label></div>${inbox?.loading?`<p role="status" class="rd-hub-notice" data-loading="true">${ring}Loading message summaries…</p>`:''}${inbox?.error?`<p role="alert" class="rd-hub-notice">${E(inbox.error)} ${button('inbox-refresh','Try again')}</p>`:''}${inbox?.raw?.truncated?'<p class="rd-hub-notice">Showing recent messages. Older conversations remain in the full Canvas Inbox.</p>':''}${saveNotice?`<p class="rd-hub-notice" role="alert">${E(saveNotice)}</p>`:''}<div class="rd-post-columns"><div class="rd-message-list rd-post-list">${listHTML||(inbox?.loading&&!list.length?ghosts:!inbox?.loading?'<div class="rd-hub-empty rd-post-empty"><h2>No messages in this view</h2><p>Try All courses or clear the search and unread filter. Messages Canvas does not associate with a course stay in All courses.</p></div>':'')}</div>${threadPane(open,courses,{unread:matching.filter(x=>x.unread).length})}</div><p class="rd-message-disclaimer">Previews do not change read status. Open Full Inbox to reply, manage messages, or view forwarded messages and media.</p></section>`;
+    }
+    // The open conversation (pages-42): its pane takes focus at its subject; closing gives focus back to its row.
+    function openMessage(id){
+      if(!/^\d+$/.test(String(id||''))||!inbox?.items.some(x=>x.id===String(id)))return;
+      openId=String(id);
+      focusRequest={type:'thread'};
+      change();
+      readMessage(openId);
+    }
+    function closeMessage(){if(!openId)return;focusRequest={type:'message-row',id:openId};openId='';change();}
+    // Keys inside Messages: Escape closes the open conversation (not while typing); up and down walk the rows.
+    function inboxKeys(event){
+      const target=event.composedPath?.()[0]||event.target,inboxEl=target?.closest?.('.rd-inbox');if(!inboxEl||event.ctrlKey||event.metaKey||event.altKey)return false;
+      if(event.key==='Escape'&&openId&&!/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName||'')){event.preventDefault();closeMessage();return true;}
+      if((event.key==='ArrowDown'||event.key==='ArrowUp')&&target.classList?.contains('rd-post-open')){
+        const rows=[...inboxEl.querySelectorAll('.rd-post-open')].filter(el=>el.getClientRects?.().length),next=rows[rows.indexOf(target)+(event.key==='ArrowDown'?1:-1)];
+        if(next){event.preventDefault();next.focus();next.scrollIntoView?.({block:'nearest'});return true;}
+      }
+      return false;
     }
     return {setCourse(id){
       inboxCourse=/^\d+$/.test(String(id))?String(id):'all';
       query='';
       unreadOnly=false;
-    },loadCourse,loadDeck,loadInbox,renderHub,renderDeck,renderDeckHeader,renderInbox,readMessage,
+      openId='';
+    },loadCourse,loadDeck,loadInbox,renderHub,renderDeck,renderDeckHeader,renderInbox,readMessage,openMessage,closeMessage,
       // Unread Inbox summaries across courses: the muted numeral on the Messages tab.
       unreadCount:()=>(inbox?.items||[]).filter(x=>x.unread).length,
       // After "Show all" the first revealed item takes focus; after "Show fewer" the control keeps it (dashboard.js applies these).
@@ -313,9 +409,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const value=ownFiles?.takeFocusRequest?.()||focusRequest;
         focusRequest=null;
         return value;
-      },keydown(event){return !dead&&enabled('course-files')&&!!ownFiles?.keydown?.(event);},handle(action,data){
+      },keydown(event){return !dead&&enabled('course-files')&&(!!ownFiles?.keydown?.(event)||inboxKeys(event));},handle(action,data){
       if(dead||action.includes('capture')&&!enabled('tools'))return;
       if(action.startsWith('hub-own-'))return enabled('course-files')?ownFiles?.handle(action,data):undefined;
+      if(action==='hub-open-message'){openMessage(data.message);return;}
+      if(action==='hub-close-message'){closeMessage();return;}
       if(action==='hub-module-more'&&/^\d+$/.test(data.course||'')&&data.entry){
         const key=data.course+':'+data.entry;
         if(modulesOpen.has(key)){modulesOpen.delete(key);focusRequest={type:'more',action,courseId:String(data.course),id:String(data.entry)};}

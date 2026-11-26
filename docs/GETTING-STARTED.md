@@ -1,6 +1,6 @@
 # Get started with Canvas Harness
 
-Canvas Harness 4.1.0: use Features in the popup for Full, Lite or Custom. The optional Market asks for its own site access on first use; Make it yours → More → Add from a file imports artwork, kits, themes, pets and presets. Modules progress and To hand in are included; Focus room, Review deck and Grade impact are on in Full. AI help is in the package but off, and nothing of it shows, until you add it from the Market and agree to its notice; see [Study with AI](../AI.md). Your school's own Canvas address is still added through the popup.
+Canvas Harness 4.2.0: use Features in the popup for Full, Lite or Custom. The optional Market asks for its own site access on first use; Make it yours → More → Add from a file imports artwork, kits, themes, pets and presets. Modules progress and To hand in are included; Focus room, Review deck and Grade impact are on in Full. AI help is in the package but off, and nothing of it shows, until you add it from the Market and agree to its notice; see [Study with AI](../AI.md). Your school's own Canvas address is still added through the popup.
 
 Use this guide after [installing in Chrome or Edge](../INSTALL.md). Canvas Harness uses your signed-in school Canvas account, so there is no separate Canvas Harness login or Canvas API token to enter.
 

@@ -33,11 +33,12 @@
  // belong entirely to Canvas. Match the pathname, irrespective of query/hash,
  // and include descendants (submissions/new, submissions/:user, etc.). The
  // assignment index and syllabus are still ordinary enhanced native pages.
+ function pathOf(value){
+  const pathname=typeof value?.pathname==='string'?value.pathname:new URL(value,root.location?.href||'https://school.instructure.com/').pathname;
+  return decodeURIComponent(pathname);
+ }
  function vanillaPage(value=root.location){
-  try{
-   const pathname=typeof value?.pathname==='string'?value.pathname:new URL(value,root.location?.href||'https://school.instructure.com/').pathname;
-   return /^\/courses\/\d+\/assignments\/\d+(?:\/|$)/.test(decodeURIComponent(pathname));
-  }catch{return false;}
+  try{return /^\/courses\/\d+\/assignments\/\d+(?:\/|$)/.test(pathOf(value));}catch{return false;}
  }
  function origin(){
   const value=root.location?.origin;
@@ -47,6 +48,28 @@
   return 'https://school.instructure.com';
  }
  function timeZone(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}catch{return 'UTC';}}
- const api=Object.freeze({supported,customSite,trustSites,canvasPage,vanillaPage,origin,timeZone});root.ReserveSite=api;
+ // Switched off on one assignment's pages (the switch on those pages, page-switch.js): "<course>/<assignment>" -> when,
+ // in this site's own storage, so the next visit's very first frame already knows (chrome.storage answers too late for
+ // that). Until switched back on; the 100 most recent are kept (about 2.5 KB). Storage that throws or holds anything
+ // else means on.
+ const PAGE_OFF='reserve:page-off',PAGE_OFF_CAP=100;
+ function pageKey(value=root.location){
+  try{const m=/^\/courses\/(\d+)\/assignments\/(\d+)(?:\/|$)/.exec(pathOf(value));return m?m[1]+'/'+m[2]:'';}catch{return '';}
+ }
+ function pageOffList(){
+  try{
+   const value=JSON.parse(root.localStorage?.getItem(PAGE_OFF)||'null');if(!value||typeof value!=='object'||Array.isArray(value))return {};
+   const list={};for(const [key,at] of Object.entries(value))if(/^\d+\/\d+$/.test(key)&&Number.isFinite(at))list[key]=at;return list;
+  }catch{return {};}
+ }
+ function pageOff(value=root.location){const key=pageKey(value);return !!key&&Object.hasOwn(pageOffList(),key);}
+ function setPageOff(off,value=root.location,now=Date.now()){
+  const key=pageKey(value);if(!key)return false;
+  const list=pageOffList();if(off)list[key]=now;else delete list[key];
+  const keys=Object.keys(list).sort((a,b)=>list[a]-list[b]);while(keys.length>PAGE_OFF_CAP)delete list[keys.shift()];
+  try{if(keys.length)root.localStorage.setItem(PAGE_OFF,JSON.stringify(list));else root.localStorage.removeItem(PAGE_OFF);}catch{return false;}
+  return pageOff(value)===!!off;
+ }
+ const api=Object.freeze({supported,customSite,trustSites,canvasPage,vanillaPage,origin,timeZone,PAGE_OFF,pageKey,pageOff,setPageOff});root.ReserveSite=api;
  if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

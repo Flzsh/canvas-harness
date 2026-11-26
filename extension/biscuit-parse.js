@@ -101,7 +101,7 @@
    nov:'november',
    dec:'december'
  },
-   KEYWORDS=[...DAYS,...MONTHS,'remind','reminder','remember','note','focus','study','work','stop','end','cancel','pause','resume','break','open','find','show','plan','due','what','whats','quiz','practice','checklist','reading','guide','rubric','treat','home','hide','settings','quiet','today','tonight','tomorrow','morning','afternoon','evening','noon','midnight'];
+   KEYWORDS=[...DAYS,...MONTHS,'remind','reminder','remember','note','focus','study','work','stop','end','cancel','pause','resume','break','open','find','show','plan','due','what','whats','quiz','practice','checklist','reading','guide','rubric','home','hide','settings','quiet','today','tonight','tomorrow','morning','afternoon','evening','noon','midnight'];
  const NUMBERS={
    zero:0,
    one:1,
@@ -606,7 +606,7 @@
  ]);
  const SETTING_ENUMS={
    theme:['dark','light'],
-   sceneTheme:['','starry','sea','stars','blueprint','maple','thanksgiving','christmas'],
+   sceneTheme:['','starry','sea','stars','blueprint','maple','thanksgiving','christmas','train'],
    pageTint:['paper','accent','sky','sage','lilac','blush','sand','snow'],
    courseNavigation:['sidebar','topbar','dock'],
    dockSize:['small','medium','large'],
@@ -655,7 +655,7 @@
      ...APPEARANCE_NAMES.keys(),
      ...Object.values(SETTING_ENUMS).flat(),
      ...SIZE_NAMES.keys(),
-     ...'dark light mode theme scene starfield starry night under sea maple wind thanksgiving christmas xmas match computer courses navigation menu bar strip along bottom across top side left bigger smaller large small compact banner clean look high contrast background page screen tab view homepage rounded minimal stitched frames turn switch enable disable stop start show hide move put bring first position spot make wide wider widen width full go navigate open bookmark save later undo revert previous last change action edit take roll send back help quiet until write down add note self plant garden let paint reset restore layout preset study focus studio full lite everything on off use apply set clear remove no module widget panel to as be it the my a an me of for is bit little much slightly even'.split(' ')
+     ...'dark light mode theme scene starfield starry night under sea maple wind thanksgiving christmas xmas train cabin window seat soul passage match computer courses navigation menu bar strip along bottom across top side left bigger smaller large small compact banner clean look high contrast background page screen tab view homepage rounded minimal stitched frames turn switch enable disable stop start show hide move put bring first position spot make wide wider widen width full go navigate open bookmark save later undo revert previous last change action edit take roll send back help quiet until write down add note self plant garden let paint reset restore layout preset study focus studio full lite everything on off use apply set clear remove no module widget panel to as be it the my a an me of for is bit little much slightly even'.split(' ')
    ].flatMap(value=>
      value.match(/[a-z]+/g)||[]))
  ],
@@ -705,7 +705,7 @@
          'sea':
          /^(?:starfield|stars)$/.test(scene)?
            'stars':
-           /^starry(?:\s+night)?$/.test(scene)?'starry':/^maple(?:\s+wind)?$/.test(scene)?'maple':/^thanksgiving$/.test(scene)?'thanksgiving':/^(?:christmas|xmas)$/.test(scene)?'christmas':scene;
+           /^starry(?:\s+night)?$/.test(scene)?'starry':/^maple(?:\s+wind)?$/.test(scene)?'maple':/^thanksgiving$/.test(scene)?'thanksgiving':/^(?:christmas|xmas)$/.test(scene)?'christmas':/^(?:train(?:\s+cabin)?|window\s+seat|soul\s+passage)$/.test(scene)?'train':scene;
    }
    if(key==='courseNavigation')return {bottom:'dock',top:'topbar',side:'sidebar',left:'sidebar','top bar':'topbar','side bar':'sidebar'}[value]||value;
    if(key==='panelFrame')return {stitched:'stitch',no:'none'}[value]||value;
@@ -729,7 +729,7 @@
   if((m=/^(dark|light)(?:\s+(?:mode|theme))?$/.exec(style)))return setting('theme',m[1],m[1]==='dark'?'Dark mode':'Light mode');
   if(/^(?:system(?:\s+(?:mode|theme))?|match\s+(?:(?:my|the)\s+)?(?:computer|system|device))$/.test(style))return [];
   if(/^(?:no\s+scene(?:\s+theme)?|(?:remove|clear)\s+(?:the\s+)?scene(?:\s+theme)?)$/.test(style))return setting('sceneTheme','','No scene theme');
-  if((m=/^(starfield|stars|starry(?:\s+night)?|(?:under\s+(?:the\s+)?)?sea|blueprint|maple(?:\s+wind)?|thanksgiving|christmas|xmas)(?:\s+(?:scene(?:\s+theme)?|theme))?$/.exec(style)))return setting('sceneTheme',settingValue('sceneTheme',m[1]),'Scene · '+m[1]);
+  if((m=/^(starfield|stars|starry(?:\s+night)?|(?:under\s+(?:the\s+)?)?sea|blueprint|maple(?:\s+wind)?|thanksgiving|christmas|xmas|train(?:\s+cabin)?|window\s+seat|soul\s+passage)(?:\s+(?:scene(?:\s+theme)?|theme))?$/.exec(style)))return setting('sceneTheme',settingValue('sceneTheme',m[1]),'Scene · '+m[1]);
   if((m=/^(?:courses?|course\s+(?:navigation|menu|bar|strip|dock))\s+(?:(?:along|across|on|at|to)\s+)?(?:the\s+)?(bottom|top|side|left)(?:\s+of\s+(?:the\s+)?(?:page|screen))?$/.exec(style)))return setting('courseNavigation',settingValue('courseNavigation',m[1]),'Courses · '+m[1]);
   if((m=/^(?:course\s+)?(dock|topbar|top bar|sidebar|side bar)$/.exec(style)))return setting('courseNavigation',m[1].replace(/ /g,''),'Courses · '+m[1]);
   if((m=SIZE_RE.exec(style))){const key=(m[2]||m[3])+'Size',value=settingValue(key,m[1]||m[4]);return setting(key,value,(key==='dockSize'?'Dock':'Banner')+' · '+value);}
@@ -864,7 +864,6 @@
  function namedPet(input,s){
    const q=catalogueWords(input.replace(/^please\s+/i,'')),names=new Set(['biscuit','pony','companion',catalogueWords(companionName(s))]);
    let m;
-   if((m=/^give (.+?) (?:a )?treat$/.exec(q))&&names.has(m[1]))return [candidate('pet',{action:'treat'},'Treat '+companionName(s))];
    if((m=/^send (.+?) home$/.exec(q))&&names.has(m[1]))return [candidate('pet',{action:'home'},'Send '+companionName(s)+' home')];
    return null;
  }
@@ -1097,13 +1096,11 @@
         {...rangeFields(t),...(minutes!==undefined?{minutes}:{}),...e.fields,...(title?{title}:{})},
         'Plan'+(e.label?' · '+e.label:'')+rangeLabel(t)+(minutes?' · '+minutes+' min':'')));
   }
-  const pet=has('treat','home','hide','settings','quiet','sendhome')&&/^(?:give\s+(?:(?:biscuit|pony|me)\s+)?(?:a\s+)?)?treat\b/.test(text)?'treat':/^(?:home|send\s*(?:(?:biscuit|pony)\s+)?home)\b/.test(text)?'home':/^(hide|settings|quiet)\b/.exec(text)?.[1];
+  const pet=/^(?:home|send\s*(?:(?:biscuit|pony)\s+)?home)\b/.test(text)?'home':/^(hide|settings|quiet)\b/.exec(text)?.[1];
   if(pet){
     const minutes=pet==='hide'?duration(text.replace(/^hide\b/,''),60):null;
     if(pet==='hide'&&minutes===null)return [];
-    return [
-      candidate('pet',{action:pet,...(pet==='hide'?{minutes}:{})},{treat:'Treat '+companionName(s),home:'Send home',hide:'Hide · '+minutes+' min',settings:'Companion settings',quiet:'Quiet mode'}[pet])
-    ];
+    return [candidate('pet',{action:pet,...(pet==='hide'?{minutes}:{})},{home:'Send home',hide:'Hide · '+minutes+' min',settings:'Companion settings',quiet:'Quiet mode'}[pet])];
   }
   const study=has('quiz','practice','lab','checklist','labchecklist','reading','guide','readingguide','rubric','fix','fixlist')&&/^(?:(quiz)(?:\s+me)?|(practice)|lab\s*checklist|reading\s*guide|(rubric)(?:\s+checklist)?|fix\s*list)\b/.exec(text);
   if(study){

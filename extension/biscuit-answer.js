@@ -330,7 +330,11 @@
   if(list(c.requests).length>1||action==='batch'||c.next?.action==='batch')return 'steps';
   if(reason==='privacy'||/^Show grades is off/.test(str(c.message)))return 'blocked';
   if(reason==='mind:tests-ahead'){const n=list(c.listRows).length;return n>1?'list':n===1&&items.length?'fact':'none';}
-  const counted=/^\d+ (?:things?|still|due|new|overdue)/.test(str(c.message));
+  // biscuit-42: a rule that hands its whole list (listRows) is a list answer; the grades page shows the course grades
+  if(c.answerKind==='mind'&&list(c.listRows).length>1&&['find','open','none'].includes(action)&&list(c.listRows).every(v=>!v.kind||['assignment','quiz','discussion','task'].includes(v.kind)))
+    return 'list';
+  if(action==='navigate'&&str(c.next?.fields?.tab)==='grades'&&gradesShown(s))return 'grades';
+  const counted=/^\d+ (?:things?|still|due|new|overdue|late)\b/.test(str(c.message));
   if(counted&&items.length&&items.every(v=>!v.kind||v.kind==='assignment'))return 'list';
   if(c.clarify||list(c.choices).length&&action==='none')return list(c.choices).length||items.length>1?'choose':'unknown';
   if(c.ui?.path)return 'feature';
@@ -352,16 +356,17 @@
    if(stamp(first.dueAt)!==null&&/\b(?:when(?:'?s)?|what time|what day|due date)\b/i.test(line))return 'fact';
    return 'item';
   }
-  if(/^(?:I am not sure|Say a bit more|I do not know that one)/.test(str(c.message)))return 'unknown';
+  if(/^(?:I am not sure|Say a bit more|I do not know that one|I didn\u2019t catch that|I don\u2019t know that one)/.test(str(c.message)))return 'unknown';
   if(['find','none'].includes(action)&&/^(?:Nothing|No )/.test(str(c.message)))return 'none';
   if(action==='none'&&reason==='answer-request')return 'chat';
   return 'chat';
  }
  // Which full list a short list answer was cut from (the rule's own window), so the answer can show all of it.
  const LIST_SCOPE={
-  'due-week':(s,t,c,line)=>{const next=/\bnext week\b/i.test(line),from=next?t.now+7*DAY:t.now;return open(s,t).filter(v=>v.at!==null&&v.at>=from&&v.at<from+7*DAY);},
+  'due-week':(s,t,c,line)=>{const next=/\bnext week\b/i.test(line),w=calendarWeek(t,next);return open(s,t).filter(v=>v.at!==null&&v.at>=w.from&&v.at<w.to);},
   'missed':(s,t)=>open(s,t).filter(v=>v.at!==null&&v.at<t.now),
   'overdue':(s,t)=>open(s,t).filter(v=>v.at!==null&&v.at<t.now),
+  'r9-late':(s,t)=>open(s,t).filter(v=>v.at!==null&&v.at<t.now),'late-count':(s,t)=>open(s,t).filter(v=>v.at!==null&&v.at<t.now),
   'how-much':(s,t)=>open(s,t).filter(v=>v.at!==null&&v.at>=t.now-7*DAY&&v.at<t.now+7*DAY),
   'how-long':(s,t)=>open(s,t).filter(v=>v.at!==null&&v.at>=t.now&&v.at<t.now+7*DAY),
   'course-work':(s,t,c)=>{const id=str(list(c.items)[0]?.courseId);return id?open(s,t).filter(v=>str(v.raw.courseId)===id):[];},
@@ -373,6 +378,22 @@
   'turned-in':(s,t,c)=>list(c.listRows).length>1?list(c.listRows).map(v=>({raw:v,at:stamp(v.dueAt)})):null,
   'graded':(s,t,c)=>list(c.listRows).length>1?list(c.listRows).map(v=>({raw:v,at:stamp(v.dueAt)})):null
  };
+ // biscuit-42: Monday to Sunday; at the weekend "this week" is the coming one (as the tests-ahead reading counts it)
+ function calendarWeek(t,next){
+   const today=t.local(t.now).day,
+     dow=new Date(today+'T12:00Z').getUTCDay(),
+     add=(d,n)=>new Date(Date.parse(d+'T12:00Z')+n*DAY).toISOString().slice(0,10),
+     weekend=dow===0||dow===6,
+     monday=add(today,dow===0?1:dow===6?2:1-dow),
+     start=next?(weekend?monday:add(monday,7)):null,
+     edge=d=>{
+     const at=Date.parse(d+'T12:00Z');
+     let lo=at-36*3600000,hi=at;
+     while(hi-lo>1){const mid=Math.floor((lo+hi)/2);if(t.local(mid).day<d)lo=mid;else hi=mid;}
+     return hi;
+   };
+   return next?{from:edge(start),to:edge(add(start,7))}:{from:t.now,to:edge(add(monday,7))};
+ }
  function open(s,t){
    const mine=obj(s.local?.tasks||s.local),out=[];
    for(const v of index(s).values()){
@@ -423,7 +444,8 @@
  BUILD.list=(c,s,t,o)=>{
   const a=o.base,
     key=o.reason.replace(/^mind:/,''),
-    scoped=LIST_SCOPE[key]?.(s,t,c,o.line),
+    own=list(c.listRows).length>(['turned-in','graded'].includes(key)?1:0)&&key!=='tests-ahead'?list(c.listRows).map(v=>({raw:v,at:stamp(v.dueAt)})):null,
+    scoped=own||LIST_SCOPE[key]?.(s,t,c,o.line),
     idx=index(s),
     base=scoped&&scoped.length?scoped.map(v=>v.raw):list(c.items).map(v=>idx.get(str(v.id))||v);
   const rows=base.map(v=>key==='tests-ahead'?testRow(v,s,t):workRow(v,s,t));if(key!=='turned-in'&&key!=='graded')rows.sort((x,y)=>(x.due.at??Infinity)-(y.due.at??Infinity));a.rows=rows;
@@ -453,11 +475,12 @@
  };
  function listTitle(key,c,rows,line,t){
    const msg=str(c.message);
+   if(/^r42-/.test(key)&&c.listTitle)return cap(str(c.listTitle),60);
    if(key==='tests-ahead')return cap(str(c.listTitle),60)||'Tests ahead';
    if(key==='next-up')return 'Next up';
    if(key==='turned-in'||key==='graded')return cap(str(c.message).split(/(?<=\.)\s/)[0],90)||(key==='graded'?'Graded?':'Turned in?');
    if(key==='due-week')return /next week/i.test(line)?'Due next week':'Due this week';
-   if(key==='missed'||key==='overdue')return 'Still open from before';
+   if(key==='missed'||key==='overdue'||key==='r9-late'||key==='late-count')return 'Still open from before';
    if(key==='how-much')return /^A little/.test(msg)?'A little behind':/^No\./.test(msg)?'Not behind':'Where you stand';
    if(key==='how-long')return 'This week’s work';
    if(key==='course-work')return (rows[0]?.course?.short||'Course')+': what is left';
@@ -495,7 +518,7 @@
    const a=BUILD.item(c,s,t,o),row=a.rows[0],msg=str(c.message);
    delete a.focus;
    let label=c.answer?.label||'',value=c.answer?.value||'';
-   if(/^Not yet/.test(msg)){label='Turned in?';value='Not yet';}else if(/^Yes\b/.test(msg)){label='Turned in?';value='Yes';}
+   if(!c.answer?.label&&/^Not yet/.test(msg)){label='Turned in?';value='Not yet';}else if(!c.answer?.label&&/^Yes\b/.test(msg)){label='Turned in?';value='Yes';}
    if(row&&(/ due$/.test(label)||!value)&&row.due.at!==null){
      label='Due';
      const dd=t.dayDiff(row.due.at);
@@ -699,12 +722,20 @@
        url:''
      };
    });
-   a.title=a.rows.length===1?a.rows[0].name:'Grades';
+   if(str(obj(c.next?.fields).tab)==='grades'&&c.action==='navigate'){const all=courseGrades(s);if(all.length)a.rows=all;}
+   a.title=a.rows.length===1&&str(obj(c.next?.fields).tab)!=='grades'?a.rows[0].name:'Grades';
    if(c.answer?.value){a.value={label:c.answer.label,text:c.answer.value};a.title=c.answer.label;a.rows=a.rows.slice(1);}
    a.acts.push(act('grades','Open grades','navigate',{tab:'grades'},{primary:true}));
    a.follow=['what counts most','my grades'];
    return a;
  };
+ const gradesShown=s=>s.showGrades!==false&&s.settings?.showGrades!==false&&s.privacy?.grades!==false&&(s.showGrades===true||s.settings?.showGrades===true);
+ function courseGrades(s){
+   return list(s.courses).map(v=>{
+     const g=list(s.grades).find(x=>str(x.id)==='course-grade-'+str(v.id)||x.kind==='course-grade'&&str(x.courseId)===str(v.id)),n=Number(g?.value??g?.score??v.score);
+     return Number.isFinite(n)?{id:str(g?.id||'course-grade-'+v.id),type:'grade',name:courseOf(s,v.id)?.short||clean(v.shortName||v.name),course:courseOf(s,v.id),value:n+'%',url:''}:null;
+   }).filter(Boolean);
+ }
  BUILD.messages=(c,s,t,o)=>{
    const a=o.base,idx=index(s),ids=list(c.items).map(v=>str(v.id)),all=[...list(s.announcements).map(v=>({...v,kind:'announcement'})),...list(s.messages).map(v=>({...v,kind:'message'}))];
    const pick=all.filter(v=>ids.includes(str(v.id)));
@@ -900,18 +931,41 @@
          ...(c.next?.fields?.tab?[cap(str(c.next.fields.tab).replace(/^./,x=>x.toUpperCase()),20)]:[]),
          ...str(c.message).replace(/^Make it yours\s*>\s*/,'').replace(/\.$/,'').split(/\s*>\s*/).slice(1)
        ];
-   a.path=path.map(v=>cap(v,24));
+   a.path=path.map((v,i)=>cap(i===1&&path[0]==='Make it yours'&&v==='Features'?'More':v,24));
    a.title=a.path.at(-1)||'Make it yours';
    a.off=/first\.?$|is off|Turn on/i.test(str(c.message));
    a.summary=a.off?'Off right now':'';
-   const tab=(a.path[1]||'').toLowerCase(),
+   const tab=(path[1]||'').toLowerCase(),
      tool=a.path[0]==='Tools'?{Calculator:'calculator',GPA:'gpa','Quick open':'quick'}[a.path[1]]:null,
      mode=tool==='calculator'?{Graphing:'graphing',Scientific:'scientific'}[a.path[2]]:null;
    if(tool)a.title=({calculator:{graphing:'Graphing calculator',scientific:'Scientific calculator'}}[tool]||{})[mode]||a.path[1];
    if(c.open?.fields||tool)
      a.acts.push(act('open',c.open?.label||'Open',c.open?.intent||'navigate',c.open?.fields||{tool,...(mode?{mode}:{})},{primary:true}));
    else if(a.path[0]!=='Tools')
-     a.acts.push(act('show','Show me','point',{path:a.path,tab:['look','layout','courses','pet','settings','features','more'].includes(tab)?(tab==='features'?'settings':tab):'look'},{primary:true}));
+     a.acts.push(act(
+       'show',
+       'Show me',
+       'point',
+       {
+         path:a.path,
+         tab:({
+           look:'look',
+           scenes:'scenes',
+           scene:'scenes',
+           layout:'layout',
+           home:'layout',
+           'course dock':'layout',
+           courses:'courses',
+           artwork:'courses',
+           pet:'pet',
+           companion:'pet',
+           settings:'settings',
+           features:'settings',
+           more:'settings'
+         })[tab]||
+           'look'
+       },
+       {primary:true}));
    if(a.off)a.acts.push(act('turn-on','Turn on','follow',{line:'turn on '+a.title}));
    a.choices=list(c.choices).map((v,i)=>({id:'choice-'+i,label:v.label,intent:v.action,fields:v.fields}));
    return a;
@@ -1038,6 +1092,13 @@
        a.summary=[previous.summary,itemExtra(msg.slice(name.length+1),item,s)].filter(Boolean).join(' \u00b7 ');
        a.rows=[{...item}];
        a.focus=item.id;
+     }/* (2026-11-23) the message of an action on a list says the list again in one sentence ("5 things due tomorrow: A (…) and B (…) and 2 more."); the rows under it already say it, so the heading stays the list's own ("Due tomorrow", "5 things · about 3 h"). The sentence is still the text that is read out. */
+     {
+       const low=msg.toLowerCase(),works=a.rows.filter(r=>r.type==='work'),named=works.filter(r=>{
+         const n=clean(r.rawName||r.name).toLowerCase();
+         return n.length>2&&low.includes(n);
+       }).length;
+       if(previous.kind!=='plan'&&!item&&works.length>=2&&named>=2&&clean(previous.title)){a.title=previous.title;a.summary=clean(previous.summary);}
      }
      a.rows=a.rows.filter(r=>r.type!=='change'||!clean(r.name)||!msg.toLowerCase().includes(clean(r.name).toLowerCase()));
    }

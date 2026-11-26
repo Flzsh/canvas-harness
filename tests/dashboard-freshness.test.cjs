@@ -1,4 +1,5 @@
 'use strict';
+require('../extension/site.js');
 // The minute tick redraws Home and the course pages only when the clock changes what they show.
 // No TZ pin here: the repo runner loads every test file in one process with America/New_York, and a top-level
 // pin would change the zone for the whole suite. The fixtures hold under any zone whose hours turn with UTC's.
@@ -58,13 +59,16 @@ test('work 14 days past due leaves the list on the next minute',t=>{
 });
 
 test('the greeting changes on the hour, not ten minutes later',t=>{
+ // (4.2, roadmap item 6: the greeting is a variant of home-bits.js GREETINGS; this Saturday greets as the weekend until
+ // 22:00, then as late night: that hour is the one that must turn it)
  const h=home();t.after(()=>h.f.dashboard.destroy());
- h.minutes(113);// 11:53
- // Any render (new Canvas data here) restarts the ten-minute count at 11:53.
+ const greet=()=>h.f.container.querySelector('.rd-workspace-heading h1')?.getAttribute('data-greet');
+ h.minutes(713);// 21:53
+ // Any render (new Canvas data here) restarts the ten-minute count at 21:53.
  h.f.dashboard.updateSnapshot({...h.f.snapshot});h.f.tick(0);
- assert.match(h.text('.rd-workspace-heading h1'),/Good morning/);
- assert.deepEqual(h.minutes(10),[120],'12:00, not 12:03');
- assert.match(h.text('.rd-workspace-heading h1'),/Good afternoon/);
+ assert.equal(greet(),'weekend');
+ assert.deepEqual(h.minutes(10),[720],'22:00, not 22:03');
+ assert.equal(greet(),'late');
 });
 
 test('midnight in the account time zone redraws Tomorrow as Today, in a zone a quarter hour off UTC',t=>{

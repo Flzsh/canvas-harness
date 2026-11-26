@@ -4,16 +4,19 @@
 (function(root){
  'use strict';
  const enabled=id=>!globalThis.ReserveFeatures||globalThis.ReserveFeatures.enabled(id);
+ // (Help, the daily AI help band, is a module with Your AI added: placed and sized like the rest since 4.2)
  const available=key=>
-   key!=='today'&&
-     enabled('planner')&&
-     // the modules AI help makes ('ai-…') show only while it is on
-     (!/^ai-/.test(String(key))||enabled('ai'))&&
-     (!['context','messages'].includes(key)||enabled('course-hub'))&&
-     (key!=='grades'||enabled('grades'))&&
-     (key!=='pet'||enabled('pony'))&&
-     (key!=='review'||root.ReserveReviewDeck?.moduleAvailable?.()===true)&&
-     (key!=='impact'||root.ReserveGradeImpact?.moduleAvailable?.()===true);
+   key==='help'?
+     enabled('ai'):
+     key!=='today'&&
+       enabled('planner')&&
+        // the modules AI help makes ('ai-…') show only while it is on
+        (!/^ai-/.test(String(key))||enabled('ai'))&&
+       (!['context','messages'].includes(key)||enabled('course-hub'))&&
+       (key!=='grades'||enabled('grades'))&&
+       (key!=='pet'||enabled('pony'))&&
+       (key!=='review'||root.ReserveReviewDeck?.moduleAvailable?.()===true)&&
+       (key!=='impact'||root.ReserveGradeImpact?.moduleAvailable?.()===true);
  const Arrange=()=>root.ReserveWorkspaceArrange,Plan=()=>root.ReservePlanner,Pets=()=>root.ReservePets;
  // One line each: what the module is for. Shown in the gallery, so it has to be enough to choose by.
  const INFO={
@@ -28,7 +31,7 @@
   bookmarks:{hint:'The assignments and materials you bookmarked.'},
   grades:{hint:'Current course grades. Follows the Show grades switch.'},
   messages:{hint:'How many messages are unread, and a way in.'},
-  pet:{hint:'Home for your companion: treats, level, and where it rests.'}
+  pet:{hint:'Your companion\u2019s own spot on Home.'}
  };
  const FRAMES=[['pen','Pen line','A hand-drawn line round each module.'],['stitch','Stitched','A row of stitches, like a strap.'],['card','Card','A soft card with a little shadow.'],['line','Thin rule','A plain hairline.'],['none','None','No outline: modules sit on the page.']];
  // Small drawings for the gallery and the module headings: one pen, 24 units, no fills that need a theme.
@@ -84,7 +87,7 @@
   if(c.__plan)return c.__plan;
   const tz=c.s.timeZone,dayOf=value=>h.dayKey(value,tz),done=(item,mine)=>h.complete(item)||mine.checkedOff===true;
   // (Canvas work carries no colour of its own: each card, week dot and the clock's next due take its course's)
-  const list=Plan().entries(c.items,c.local,{dayOf,isDone:done,colorOf:item=>c.courseMap?.get?.(String(item.courseId))?.color}),today=h.dayKey(c.now,tz);
+  const today=h.dayKey(c.now,tz),list=Plan().entries(c.items,c.local,{dayOf,isDone:done,colorOf:item=>c.courseMap?.get?.(String(item.courseId))?.color,today});
   return c.__plan={list,today,board:Plan().board(list,today,0)};
  }
  // The next open thing with a due time, for the clock and the pony.
@@ -179,8 +182,8 @@ ${next?action('preview',`<small>Next due in <b data-rd-countdown data-due="${Dat
   }else if(key==='pet'){
    const P=Pets(),pet=P?{...P.clean(mine.pet),name:companion(c)?.name||P.clean(mine.pet).name}:null;
    body=pet?`${paddock(pet.name,E)}
-<div class="rd-pet-card"><p><strong>${E(pet.name)}</strong><span>Level ${P.level(pet.xp)}${pet.streak>1?` · ${pet.streak} days in a row`:''}</span></p><span class="rd-progress" aria-hidden="true"><i style="width:${Math.round(P.levelProgress(pet.xp)*100)}%"></i></span>
-<div class="rd-pet-actions">${action('pet-feed',`Give a treat <b>${pet.treats}</b>`,pet.treats&&pet.enabled&&pet.roam!=='off'?'':'disabled','rd-button')}${action('pet-roam',pet.roam==='home'?'Let it roam':'Keep it here','','rd-text-button')}${action('pet-settings','Change','','rd-text-button')}</div></div>`:'';
+<div class="rd-pet-card"><p><strong>${E(pet.name)}</strong></p>
+<div class="rd-pet-actions">${action('pet-roam',pet.roam==='home'?'Let it roam':'Keep it here','','rd-text-button')}${action('pet-settings','Change','','rd-text-button')}</div></div>`:'';
   }
    const title=key==='timer'&&enabled('focus-room')&&root.ReserveFocusRoom?.module?'Focus':label;
    return `<section class="rd-widget rd-widget-${key}" data-rd-key="widget-${key}" data-arrange-key="${key}" data-widget="${key}" aria-label="${E(label)}"><header class="rd-arrange-heading rd-widget-head" data-arrange-head="${key}">${glyph(key,c)}<h2>${E(title)}</h2>${extra}${enabled('arrange')?A.controls(key):''}</header><div class="rd-widget-body">${body}</div></section>`;
@@ -230,7 +233,10 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
     appearance=null,
     layoutPreset=null,
     navigate=null,
-    bookmark=null
+    bookmark=null,
+    notePlan=null,
+    noteDone=null,
+    noteAdded=null
   }){
   if(!enabled('planner')&&!(enabled('ai')&&enabled('tools'))||root.ReserveSite?.vanillaPage(root.location))return null;
   let dead=false,editing=false,settingsTab='layout',clockTimer=0,timerTick=0,notesTimer=0,pets=null,lastDone=null,focusSettlement=null;
@@ -256,7 +262,7 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
   const on=id=>enabled(id)&&(!requestedFeatures||requestedFeatures.includes(id)),
     // AI help that is locked or off is not named: Biscuit says it found nothing there
     notHere={ok:false,message:'I could not find that here.'},
-    unavailable=name=>/\bAI\b/.test(String(name))&&!on('ai')?notHere:{ok:false,message:name+' is off. Turn it on in Make it yours → Features.'};
+    unavailable=name=>/\bAI\b/.test(String(name))&&!on('ai')?notHere:{ok:false,message:name+' is off. Turn it on in Make it yours, under Settings.'};
    // A navigation answer: a promise settles to its own answer; false or a reply object stays as it is, anything else is done.
    function opened(result){return typeof result?.then==='function'?Promise.resolve(result).then(opened):result===false||record(result)?result:true;}
   // Companion schedule and offers need valid values and the Pony switch.
@@ -460,13 +466,13 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
   async function featureCommand(request){
    const validate=executionValidation;
    const F=root.ReserveFeatures,D=root.ReserveSettingsDock;if(!F||!D?.saveFeatures||!root.chrome?.storage?.local)return {ok:false,message:'Features are unavailable. Reload Canvas.'};
-    if(request.id==='pony'&&!request.on)return {ok:false,message:'The Companion switch is in the extension popup → Companion.'};
+    if(request.id==='pony'&&!request.on)return {ok:false,message:'To turn me off, click the Canvas Harness button at the top of your browser, then Companion.'};
     // AI help is switched on only from its notice; while locked, Biscuit does not know it
     if(request.id==='ai'&&(request.on||!F.aiUnlocked?.()))return request.on&&F.aiUnlocked?.()?{ok:false,message:'AI help is on.'}:notHere;
    const saved=(await root.chrome.storage.local.get(F.KEY))[F.KEY],before=F.normalize(saved);
    let next=request.id?D.toggleFeatures(before,request.id,request.on):F.normalize({preset:request.preset});
    if(!F.resolve(next).enabled.includes('pony')){
-     if(request.id)return {ok:false,message:'That also turns '+(root.ReservePetArt?.identity?.(store.get())?.name||'Biscuit')+' off. Use Make it yours → Features for that switch.'};
+     if(request.id)return {ok:false,message:'That would turn '+(root.ReservePetArt?.identity?.(store.get())?.name||'Biscuit')+' off too. Use its switch in Make it yours, under Settings.'};
     next=F.normalize({preset:'custom',custom:[...F.resolve(next).enabled,'pony']});
    }
    validate?.();next=(await D.saveFeatures(next))||next;requestedFeatures=F.resolve(next).enabled;
@@ -483,14 +489,15 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
     }};
   }
   function moduleCommand({action,key}){
-   if(key==='help'){
-     if(!on('ai'))return notHere;
-     if(!['show','hide'].includes(action))return {ok:false,message:'Help stays above the Home modules; use its switch in Edit Home.'};
-     return Promise.resolve(save(data=>{Arrange().change(data.settings,{type:'help',value:action==='show'});})).then(async ok=>{
-       if(ok===false)return false;
-       return action==='show'?openHelp():true;
-     });
-   }
+   if(key==='help'){if(!on('ai'))return notHere;if(!['show','hide','top','wide'].includes(action))return false;const A=Arrange();
+    return Promise.resolve(save(data=>{
+      A.change(data.settings,{type:'help',value:action!=='hide'});
+      if(action==='top')A.change(data.settings,{type:'dock',key:'help',target:A.ROOT,edge:'top'});
+      if(action==='wide')A.setSize(data.settings,'help','l');
+    })).then(async ok=>{
+      if(ok===false)return false;
+      return action==='hide'?true:openHelp();
+    });}
    const A=Arrange(),feature={context:'course-hub',messages:'course-hub',grades:'grades',pet:'pony'}[key]||'planner';
    if(!on('arrange'))return unavailable('Arrange the workspace');
    if(!on(feature)||!available(key)||!A?.ALL.includes(key))return unavailable(A?.LABELS[key]||'That module');
@@ -501,7 +508,7 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
      else{
        if(key==='context')A.change(data.settings,{type:'restore-context'});else if(A.EXTRA.includes(key))A.change(data.settings,{type:'add',key});
        if(action==='top')A.change(data.settings,{type:'dock',key,target:A.ROOT,edge:'top'});
-       if(action==='wide')data.settings.moduleSize={...data.settings.moduleSize,[key]:'l'};
+       if(action==='wide')A.change(data.settings,{type:'size',key,value:'l'});
      }
    });
   }
@@ -678,7 +685,7 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
   const openWork=(request={},data=store.get())=>
     livePlan(data).filter(e=>!e.done&&(!request.itemId||e.id===String(request.itemId))&&(!request.courseId||e.courseId===String(request.courseId))).sort((a,b)=>
       (Date.parse(a.dueAt)||Infinity)-(Date.parse(b.dueAt)||Infinity));
-  const planner=root.ReservePlannerUI?.create({container,store,save,rerender,getContext,helpers,view:id=>preview(id)})||null;
+  const planner=root.ReservePlannerUI?.create({container,store,save,rerender,getContext,helpers,view:id=>preview(id),notePlan,noteDone,noteAdded})||null;
   const room=enabled('focus-room')?root.ReserveFocusRoom?.create({container,store,task:()=>{
     const c=ctx(),h=helpers();
     return root.ReserveFocusRoom.pickTask(store.get().focus,plan(c,h).list,c.courses,v=>h.formatDate(v,c.s.timeZone,{weekday:'short',hour:'numeric',minute:'2-digit'}),Date.now());
@@ -691,7 +698,7 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
    if(refocus)container.querySelector(`.rd-arrange-more[data-widget="${key}"]`)?.focus({preventScroll:true});
   }
   function openMenu(button,key){
-   const A=Arrange(),size=ctx().s.moduleSize?.[key]||'m',E=helpers().E,label=A.LABELS[key];closeMenu();
+   const A=Arrange(),size=A.sizes(ctx().s)[key]||'m',E=helpers().E,label=A.LABELS[key];closeMenu();
    const box=(x,y,w,h)=>`<svg viewBox="0 0 34 24" aria-hidden="true"><rect x="1.5" y="1.5" width="31" height="21" rx="3.5"/><rect class="on" x="${x}" y="${y}" width="${w}" height="${h}" rx="2"/></svg>`;
    const pick=(action,value,label,art,on)=>`<button type="button" class="rd-mm-pick" role="menuitemradio" aria-checked="${!!on}" data-rd-action="${action}" data-widget="${key}" data-value="${value}">${art}<span>${label}</span></button>`;
    menu=container.ownerDocument.createElement('div');
@@ -701,6 +708,7 @@ ${enabled('customization')?`<div class="rd-gallery-frames" role="radiogroup" ari
    menu.setAttribute('aria-label',`${label}: size and place`);
    menu.innerHTML=`<h3>${E(label)}</h3><p>Width</p><div class="rd-mm-row">${pick('module-size','s','Narrow',box(12,5,10,14),size==='s')}${pick('module-size','m','Normal',box(9,5,16,14),size==='m')}${pick('module-size','l','Wide',box(5,5,24,14),size==='l')}</div>
 <p>Give it a whole row or column</p><div class="rd-mm-row" data-cols="4">${pick('module-dock','top','Top',box(4.5,4.5,25,5))}${pick('module-dock','bottom','Bottom',box(4.5,14.5,25,5))}${pick('module-dock','left','Left',box(4.5,4.5,7,15))}${pick('module-dock','right','Right',box(22.5,4.5,7,15))}</div>
+<button type="button" class="rd-mm-reset" role="menuitem" data-rd-action="module-reset" data-widget="${key}">Reset this widget</button>
 ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" data-rd-action="widget-remove" data-widget="${key}">Remove from Home</button>`:''}`;
    container.append(menu);menuKey=key;button.setAttribute('aria-expanded','true');
    const r=button.getBoundingClientRect(),w=menu.offsetWidth||252,h=menu.offsetHeight||240,below=r.bottom+6+h<=win.innerHeight-8;
@@ -1720,9 +1728,12 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
   async function addOwnTask({name,day='',estimate=0,at}={}){
    const title=String(name||'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,200);
    if(!title||(day&&!validDay(day))||(at!==undefined&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(at)))return false;
+   // (the Planner's reader names the course a word in the title means, as the quick add does: "chem lab" goes under
+   //  Chemistry; Biscuit's own day, length and time stay as it read them, and the title is kept word for word)
+   const courseId=Plan().parseQuick(title,'',{courses:ctx().courses||[],ignore:['notask','move']}).courseId||'personal';
    const ok=await save(Plan().addTask(
      {name:title,day,estimate:Math.max(0,Math.min(1440,Math.round(Number(estimate)||0))),...(at!==undefined?{at}:{})},
-     {courseId:'personal',id:newId(),nowISO:new Date().toISOString()}));
+     {courseId,id:newId(),nowISO:new Date().toISOString()}));
    return ok===false?false:{ok:true,message:'Added to your list.'};
   }
   function addReminder(request={}){
@@ -2145,21 +2156,26 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    // The countdown ticks here too: the dashboard no longer redraws Home every minute (dashboard.js updateFreshness).
    if(container.querySelector('[data-rd-clock],[data-rd-countdown]')){if(!clockTimer)clockTimer=setInterval(clock,15000);}else if(clockTimer){clearInterval(clockTimer);clockTimer=0;}
    room?.sync();agentHome?.sync();ensureExecutor();ensurePets();pets?.sync();pets?.setFocus(running,data.focus);focusControls();
+   // (4.2.13) the Planner measures the room it has (it never makes the page scroll) and places its sheet and cards
+   planner?.sync?.();
    if(data.focus?.phase&&running&&Date.now()>=data.focus.endsAt)void settleTimer().catch(()=>{});
    // Dashboard syncFocus follows sync in the same render. Restore a paused clock after its running-only update.
    Promise.resolve().then(()=>{if(!dead)focusControls();});
   }
+  // A quick add: the words as the Planner read them (the tags the student took back stay words), saved as a task. A
+  // deadline is saved as the task's due time, in the student's time zone.
   async function quickAdd(input){
-   const text=input?.value||'',c=ctx(),h=helpers(),today=h.dayKey(c.now,c.s.timeZone),parsed=Plan().parseQuick(text,today);
-   if(!parsed.name)return;
+   const text=input?.value||'',c=ctx(),h=helpers(),today=h.dayKey(c.now,c.s.timeZone);
+   const parsed=planner?.read?.(input)||Plan().parseQuick(text,today,{courses:c.courses,ignore:['move']});
+   if(!parsed?.name)return;
+   // "move math hw to sat": the task the Planner found there moves; nothing new is added
+   if(parsed.moveId&&parsed.day&&planner?.moveTo){input.value='';planner.adding?.(input,'');planner.moveTo(parsed.moveId,parsed.day,parsed.at);return;}
    if(!parsed.day)parsed.day=input.dataset.day||'';
-   const course=Plan().matchCourse(parsed.course,c.courses);
-   input.value='';
-   const ok=await save(Plan().addTask(parsed,{courseId:course?course.id:'personal',id:newId(),nowISO:new Date().toISOString()}));
-   if(ok){
-     pets?.celebrate&&store.get().pet&&save(data=>{data.pet=Pets().reward(Pets().clean(data.pet),'plan').pet;});
-     container.querySelector(`[data-rd-field="plan-quick"][data-day="${input.dataset.day||''}"]`)?.focus({preventScroll:true});
-   }
+   const courseId=parsed.courseId||Plan().matchCourse(parsed.course,c.courses)?.id,id=newId();
+   const at=input.dataset.at||'';input.value='';planner?.adding?.(input,id);
+   const ok=await save(Plan().addTask(parsed,{courseId:courseId?String(courseId):'personal',id,nowISO:new Date().toISOString(),zone:c.s.timeZone}));
+   // (the caret stays in the line it was typed in; the top bar's card closes and says where the task went)
+   if(ok){if(planner?.added?.(id,at)!==false)container.querySelector(`[data-rd-field="plan-quick"][data-at="${at}"]`)?.focus({preventScroll:true});}
    else input.value=text;
   }
   function click(event){
@@ -2169,7 +2185,7 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    const candidate=event.target.closest?.('[data-rd-action]'),name=candidate?.dataset.rdAction;
    if(name?.startsWith('pet-')&&(!enabled('pony')||!Pets())||
      ['customize-tab','pet-settings','board-frame'].includes(name)&&!enabled('customization')||
-     ['module-menu','module-size','module-dock'].includes(name)&&!enabled('arrange')||
+     ['module-menu','module-size','module-dock','module-reset'].includes(name)&&!enabled('arrange')||
      candidate?.dataset.widget&&!available(candidate.dataset.widget))
      return true;
    if(planner?.click(event))return true;
@@ -2194,14 +2210,10 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    if(action==='module-size'&&A.isKey(key)&&Object.hasOwn(A.SIZES,button.dataset.value)){
     // measured, laid out at its new width in the same press (the glide starts at once), then saved
     const size=button.dataset.value;closeMenu(true);const flip=reflow();flip?.();previewSize(key,size);
-    save(data=>{
-      const sizes={...(data.settings.moduleSize||{})};
-      if(size==='m')delete sizes[key];else sizes[key]=size;
-      data.settings.moduleSize=sizes;
-      pinModule(data,key);
-    });
-    return true;
+    save(data=>{A.setSize(data.settings,key,size);pinModule(data,key);});return true;
    }
+   // "Reset this widget": its own place and Normal width again (one step for Undo move); the modules glide as for a width
+   if(action==='module-reset'&&A.isKey(key)){closeMenu(true);const flip=reflow();flip?.();save(data=>{A.change(data.settings,{type:'reset-module',key});pinModule(data,key);});return true;}
    if(action==='module-dock'&&A.ALL.includes(key)&&['top','bottom','left','right'].includes(button.dataset.value)){
      const edge=button.dataset.value;
      closeMenu(true);
@@ -2262,13 +2274,11 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
      return true;
    }
    if(action==='plan-quick-add'){quickAdd(button.closest('form')?.querySelector('[data-rd-field="plan-quick"]'));return true;}
-   if(action==='plan-carry'){const c=ctx(),h=helpers(),{board,today}=plan(c,h);save(data=>{for(const e of board.overdue)Plan().plan(e.id,today)(data);});return true;}
    if(action==='pet-reset-learning'){
      if(enabled('pony'))save(data=>{const B=root.ReservePonyBrain,p=Pets().clean(data.pet);if(B)data.pet={...p,brain:{...B.cleanLearning(p.brain),kinds:{}}};});
      return true;
    }
    if(action==='pet-routine-remove'){if(enabled('pony'))save(data=>{const p=Pets().clean(data.pet);data.pet={...p,routines:p.routines.filter(r=>r.id!==button.dataset.id)};});return true;}
-   if(action==='pet-feed'){pets?.treat();return true;}
    if(action==='pet-roam'){save(data=>{const pet=Pets().clean(data.pet);data.pet={...pet,enabled:true,roam:pet.roam==='home'?'page':'home'};});return true;}
    if(action==='pet-settings'){settingsTab='pet';openSettings('pet');rerender();return true;}
    return false;
@@ -2279,6 +2289,18 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
    if(room?.keydown(event))return true;
    if(planner?.keydown(event))return true;
    if(event.key==='Escape'&&menu){event.preventDefault();closeMenu(true);return true;}
+   if(menu&&!event.altKey&&!event.ctrlKey&&!event.metaKey){
+     const at=event.composedPath?.()[0]||event.target;
+     if(menu.contains(at)){
+       if(['ArrowDown','ArrowUp','ArrowRight','ArrowLeft','Home','End'].includes(event.key)){
+         const items=[...menu.querySelectorAll('button')],i=items.indexOf(at),n=items.length,next=event.key==='Home'?0:event.key==='End'?n-1:(i+(event.key==='ArrowDown'||event.key==='ArrowRight'?1:-1)+n)%n;
+         event.preventDefault();
+         items[next]?.focus({preventScroll:true});
+         return true;
+       }
+       if(event.key==='Tab'){const items=[...menu.querySelectorAll('button')],i=items.indexOf(at);if(event.shiftKey?i<=0:i>=items.length-1){closeMenu(true);return false;}}
+     }
+   }/* (a11y-42) the size-and-place menu is a menu: arrows move in it; Tab still walks its items, and past either end it closes onto its button and the key goes on from there */
    // Keys are heard on the document, where a shadow root hides the real target.
    const target=event.composedPath?.()[0]||event.target;
    if(event.key==='Enter'&&target?.dataset?.rdField==='plan-quick'){event.preventDefault();quickAdd(target);return true;}
@@ -2292,18 +2314,21 @@ ${A.removable(key)?`<button type="button" class="rd-mm-remove" role="menuitem" d
     const status=container.querySelector('[data-rd-notes-status]');if(status)status.textContent='Saving…';
     notesTimer=setTimeout(flushNotes,700);return true;
    }
-   return field==='plan-quick';
+   // (4.2.12) the quick add and the Planner's sheet: what is typed stays a draft there until the field is left
+   if(field==='plan-quick'){planner?.input?.(event);return true;}
+   if(String(field||'').startsWith('plan-')&&planner?.input?.(event))return true;
+   return false;
   }
   // Switches and choices in "Make it yours" that this file owns: the pony, and the two on/off settings stored as words.
   function change(event){
    if(!enabled('planner'))return false;
+   if(String(event.target?.dataset?.rdField||'').startsWith('plan-')&&planner?.change?.(event))return true;
    const target=event.target,field=target?.dataset?.rdField;
    if(field==='pet-skill'){const B=root.ReservePonyBrain,key=target.dataset.key;if(enabled('pony')&&B&&Object.hasOwn(B.SKILLS,key))saveSkill(key,target.checked===true);return true;}
    if(field==='pet'){
     if(!enabled('pony')||!enabled('customization')||!Pets())return true;
     const key=target.dataset.key,value=target.type==='checkbox'?target.checked:target.value;
-    if(!Object.hasOwn(Pets().DEFAULTS,key)||['treats','fed','xp','streak','best','streakDay','told','brain','skills','reminders','routines'].includes(key))return true;
-    if((key==='coat'||key==='harness')&&!Pets().unlocked(key,value,Pets().clean(store.get().pet).xp))return true;
+    if(!Object.hasOwn(Pets().DEFAULTS,key)||['brain','skills','reminders','routines'].includes(key))return true;
     save(data=>{if(key==='enabled')data.pet.enabled=value;else data.pet={...Pets().clean(data.pet),[key]:value};});return true;
    }
    if(field==='setting'&&target.dataset.onoff==='true'){

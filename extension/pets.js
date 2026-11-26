@@ -4,41 +4,16 @@
    ignoring it. Only the student's own preferences and counters are stored. Creator: Flzsh. */
 (function(root){
  'use strict';
- const DEFAULTS={
-   enabled:true,
-   name:'Biscuit',
-   knowledge:'most',
-   coat:'oat',
-   harness:'red',
-   gear:'full',
-   roam:'page',
-   size:'medium',
-   nudges:'helpful',
-   treats:1,
-   fed:0,
-   xp:0,
-   streakDay:'',
-   streak:0,
-   best:0,
-   told:'',
-   brain:null,
-   skills:{},
-   reminders:[],
-   routines:[]
- };
+ const DEFAULTS={enabled:true,name:'Biscuit',knowledge:'most',coat:'oat',harness:'red',gear:'full',roam:'page',size:'medium',nudges:'helpful',brain:null,skills:{},reminders:[],routines:[]};
+ // 4.1.0's companion game fields, kept as saved (clean below)
+ const RETIRED=Object.freeze(['treats','fed','xp','streak','streakDay','best','told']);
  const Brain=()=>root.ReservePonyBrain,Ask=()=>root.ReservePonyAsk,Parse=()=>root.ReserveBiscuitParse;
  const SIZES={small:46,medium:58,large:74};
- // What a level needs, and what it opens. Levels only go up.
  const ROAM=['page','home','off'],NUDGES=['helpful','quiet','off'],GEAR=['full','collar','none'],KNOWLEDGE=['basic','more','most','lite'];
- const LEVEL_XP=[0,30,80,150,250,380,540,740,980,1260];
- const UNLOCKS={coat:{oat:1,chestnut:1,dapple:2,sage:4,rose:6,ink:8},harness:{red:1,clay:1,gold:3,forest:3,ocean:5,iris:7}};
  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
- const level=xp=>{let n=1;while(n<LEVEL_XP.length&&xp>=LEVEL_XP[n])n++;return n;};
- const levelProgress=xp=>{const n=level(xp),from=LEVEL_XP[n-1],to=LEVEL_XP[n];return to===undefined?1:(xp-from)/(to-from);};
- const unlocked=(kind,key,xp)=>(UNLOCKS[kind]?.[key]||1)<=level(xp);
  function clean(value){
   const v=value&&typeof value==='object'&&!Array.isArray(value)?value:{},art=root.ReservePetArt||(typeof module==='object'&&module.exports?require('./pet-art.js'):null);
-  const out={...DEFAULTS},int=(n,max)=>Number.isInteger(n)?clamp(n,0,max):0;
+  const out={...DEFAULTS};
   if(typeof v.enabled==='boolean')out.enabled=v.enabled;
   if(Object.hasOwn(v,'knowledge')&&KNOWLEDGE.includes(v.knowledge))out.knowledge=v.knowledge;
   if(typeof v.name==='string'&&v.name.trim())out.name=v.name.trim().slice(0,24);
@@ -48,29 +23,31 @@
   if(ROAM.includes(v.roam))out.roam=v.roam;
   if(SIZES[v.size])out.size=v.size;
   if(NUDGES.includes(v.nudges))out.nudges=v.nudges;
-  out.treats=v.treats===undefined?DEFAULTS.treats:int(v.treats,99);
-  out.fed=int(v.fed,1e6);
-  out.xp=int(v.xp,1e6);
-  out.streak=int(v.streak,10000);
-  out.best=Math.max(out.streak,int(v.best,10000));
-  if(typeof v.streakDay==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v.streakDay))out.streakDay=v.streakDay;
-  if(typeof v.told==='string')out.told=v.told.slice(0,140);
+  // Kept, not shown: Canvas Harness 4.1.0's companion game (treats, fed, xp and so the level, streak, best, the streak's day
+  // and the last line told) is gone from 4.2, but a record that holds those fields keeps them exactly as they were, so an
+  // update never loses them (storage.js keeps them on load and in backups too). Nothing in 4.2 reads or changes them.
+  for(const key of RETIRED)if(Object.hasOwn(v,key)){
+    const x=v[key];
+    if(key==='streakDay')out.streakDay=typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)?x:'';
+    else if(key==='told')out.told=typeof x==='string'?x.slice(0,140):'';
+    else out[key]=Number.isInteger(x)?clamp(x,0,key==='treats'?99:key==='streak'||key==='best'?10000:1e6):0;
+  }
+  if(Object.hasOwn(out,'best')||Object.hasOwn(out,'streak'))out.best=Math.max(out.streak||0,out.best||0);
   out.brain=Brain()?.cleanLearning(v.brain)||(v.brain&&typeof v.brain==='object'?v.brain:null);
   out.skills=Brain()?.cleanSkills?.(v.skills)||{};out.reminders=Ask()?.cleanReminders(v.reminders,0)||[];out.routines=Ask()?.cleanRoutines(v.routines)||[];
   return out;
  }
- // Finishing a piece of work: a treat, some experience, and the day counts toward the run of days.
- function reward(pet,kind,today){
-  const next={...pet},gain={done:10,focus:6,plan:2}[kind]||0;
-  next.xp=clamp(next.xp+gain,0,1e6);
-  if(kind==='done'||kind==='focus')next.treats=clamp(next.treats+1,0,99);
-  if((kind==='done'||kind==='focus')&&today&&next.streakDay!==today){
-   const y=new Date(today+'T12:00:00Z');y.setUTCDate(y.getUTCDate()-1);
-   next.streak=next.streakDay===y.toISOString().slice(0,10)?next.streak+1:1;next.streakDay=today;next.best=Math.max(next.best,next.streak);
-  }
-  return {pet:next,leveled:level(next.xp)>level(pet.xp)};
+ /* The seam where finished work reaches the companion (biscuit-42). celebrate() below hands every finished piece of
+    work and every ended focus session to the listeners added here: afterWork(fn) adds one and returns its removal.
+    fn({kind:'done'|'focus', today, left}) may return a short line to say instead of the usual one; nothing is stored.
+    No listener exists in 4.1: the old game (levels, treats, streak) is gone and what replaces it is the owner's choice. */
+ const workListeners=new Set();
+ function afterWork(fn){if(typeof fn!=='function')return ()=>{};workListeners.add(fn);return ()=>{workListeners.delete(fn);};}
+ function heardWork(kind,details){
+   let said='';
+   for(const fn of workListeners){try{const v=fn({kind,...details});if(!said&&typeof v==='string'&&v.trim())said=v.trim().slice(0,140);}catch{}}
+   return said;
  }
- function feed(pet){return pet.treats>0?{...pet,treats:pet.treats-1,fed:pet.fed+1,xp:clamp(pet.xp+1,0,1e6)}:pet;}
  function createActivity({now=()=>Date.now(),storage=()=>root.sessionStorage,hidden=()=>false}={}){
   const key='canvas-harness:activity',gap=600000;let last=null,visibleAt=null,hiddenAt=null,active=0,offered=0,session=0,written=-Infinity,available=true,saved=null;
   const reset=()=>{
@@ -207,7 +184,7 @@
   let askChoices=[],askSelected=0,askText='',bubbleVersion=0,scheduled=null,scheduleClaiming=false,commandBusy=false;
   const undoChanges=[];
   const offered=new Set(),newId=()=>`pony-${now()}-${root.crypto?.randomUUID?.()||Math.random().toString(36).slice(2)}`;
-  const engine=root.ReserveBiscuitEngine?.create(),engineMemory={items:[],lastOffer:0},engineSession={};let engineCard=null,previewTimer=0;
+  const engine=root.ReserveBiscuitEngine?.create(),engineMemory={items:[],lastOffer:0},engineSession={};let engineCard=null,previewTimer=0,saidTimer=0,tellTimer=0;
   // the answer drawn in the bubble, what the student opened in it, and what changed this visit (newest last)
   const Answer=()=>root.ReserveBiscuitAnswer,
     View=()=>root.ReserveBiscuitView,
@@ -316,8 +293,15 @@
   function mount(){
    if(layer||dead)return;
    layer=doc.createElement('div');layer.className='pet-layer';
-   layer.innerHTML=`<button type="button" class="pet" data-pose="stand" data-face="right" aria-haspopup="${Brain()||Parse()?'dialog':'menu'}" aria-expanded="false"></button>`;
-   container.append(layer);node=layer.firstElementChild;
+   layer.innerHTML=`<button type="button" class="pet" data-pose="stand" data-face="right" aria-haspopup="dialog" aria-expanded="false"></button>`;
+   container.append(layer);
+   node=layer.firstElementChild;
+   const reply=doc.createElement('span');
+   reply.className='rd-sr-only';
+   reply.setAttribute('role','status');
+   reply.setAttribute('data-pet-reply','');
+   layer.append(reply);
+   layer._reply=reply;/* (a11y-42) Biscuit's replies are said here: a live bubble inserted already full is not read */
    node.addEventListener('pointerdown',down);node.addEventListener('click',click);node.addEventListener('keydown',key);
     for(const type of ['animationstart','animationend','animationcancel'])node.addEventListener(type,resetReels);
    win.addEventListener('scroll',invalidate,{passive:true,capture:true});win.addEventListener('resize',invalidate,{passive:true});
@@ -627,7 +611,10 @@
      const el=container.querySelector?.('.rd-note'),r=el&&!el.hidden&&typeof el.getBoundingClientRect==='function'?el.getBoundingClientRect():null;
      if(r&&r.width>0&&r.height>0)slip={left:r.left,top:r.top,right:r.right,bottom:r.bottom};
    }catch{}
-   geometry={width,height,rects,places,all:out,floor,slip};dirty=false;
+   // (where the page's own column starts, for the bubble's left limit: the ledges in view may all be far to the right,
+   // a module carried there and the page scrolled, and the bubble then jumped away from the pony, 2026-11-23)
+   let left=null;try{const el=container.querySelector?.('.rd-main'),r=el&&typeof el.getBoundingClientRect==='function'?el.getBoundingClientRect():null;if(r&&r.width>0)left=r.left;}catch{}
+   geometry={width,height,rects,places,all:out,floor,slip,left};dirty=false;
    if(resizeWatch){
      const live=new Set([container,...rects.keys(),...(bubble?[bubble]:[])]);
      for(const el of watched)if(!live.has(el)){resizeWatch.unobserve(el);watched.delete(el);}
@@ -1053,7 +1040,8 @@
    if(!bubble||!node)return;const vw=geometry?.width||win.innerWidth,w=bubbleBox.w,h=bubbleBox.h,s=size();
    // (the left limit is where the page's cards start: a side rail stands over this layer and would hide the bubble's edge)
    const cards=(geometry?.all||[]).filter(l=>!l.floor),
-     wall=Math.max(10,cards.length?Math.min(...cards.map(l=>l.x0))-26:(geometry?.floor?.x0??14)-4),
+     edge=typeof geometry?.left==='number'?[geometry.left+18]:[],
+     wall=Math.max(10,cards.length?Math.min(...cards.map(l=>l.x0),...edge)-26:(geometry?.floor?.x0??14)-4),
      x=clamp(node._x-w/2,wall,Math.max(wall,vw-w-10)),
      above=node._y-(custom?ground():s)-h-6;
    // (clear of the change slip: left of it when the two would overlap and there is room)
@@ -1069,6 +1057,8 @@
      clearTimeout(sayTimer);
      clearTimeout(previewTimer);
      previewTimer=0;
+     clearTimeout(saidTimer);
+     saidTimer=0;
      const ignored=exposed;
      exposed=[];
      nudgeOpen=false;
@@ -1106,11 +1096,23 @@
      reel=0;
      dress();
    }
-   else{bubble.setAttribute('role','status');bubble.setAttribute('aria-live','polite');}
+   else{
+     bubble.setAttribute('role','status');
+     bubble.setAttribute('aria-live','polite');
+     const line=bubble.querySelector?.('.biscuit-preview,.pet-say');
+     tell((line?.matches?.('.biscuit-preview,.pet-say')?line:bubble).textContent??String(html).replace(/<[^>]*>/g,' '));
+   }
    layer.append(bubble);measureBubble();if(resizeWatch){resizeWatch.observe(bubble);watched.add(bubble);}placeBubble();
    bubble.addEventListener('click',onBubble);
     bubble.addEventListener('submit',submitAsk);bubble.addEventListener('change',answerChange);bubble.addEventListener('keydown',askKey);bubble.addEventListener('input',previewAsk);
    if(ms)sayTimer=setTimeout(()=>{if(bubble&&!menuOpen)closeBubble();},ms);
+  }
+  function tell(text){
+    const r=layer?._reply,words=String(text||'').replace(/\s+/g,' ').trim();
+    if(!r)return;
+    clearTimeout(tellTimer);
+    r.textContent='';
+    if(words)tellTimer=setTimeout(()=>{tellTimer=0;r.textContent=words;},60);
   }
   function say(text,ms=5200){if(now()>=quietUntil&&visible()&&layer)show(`<p class="pet-say">${E(text)}</p>`,{ms});}
   function learn(events){
@@ -1136,7 +1138,7 @@
        ...(personal?{settings:personal.settings}:{}),
        companion:{name:companionName()},
        now:now(),
-       pet:{name:companionName(),knowledge:pet.knowledge,treats:pet.treats,roam:pet.roam,nudges:pet.nudges},
+       pet:{name:companionName(),knowledge:pet.knowledge,roam:pet.roam,nudges:pet.nudges},
        skills:pet.skills,
        activity:activeUse.snapshot(now()),
        focus:{...data.focus,running:focusing||!!data.focus?.running}
@@ -1306,6 +1308,13 @@
      }
      const items=bubble?.querySelector('[data-pet-suggestions]');
      if(items){items.hidden=!!askChoices.length;items.style.display=askChoices.length?'none':'';}
+     clearTimeout(saidTimer);
+     const words=choice?.preview||'';
+     saidTimer=setTimeout(()=>{
+       saidTimer=0;
+       const said=bubble?.querySelector('[data-pet-said]');
+       if(said?.hasAttribute?.('data-pet-said')&&said.textContent!==words)said.textContent=words;
+     },900);/* (a11y-42) said once the typing pauses, not at every key */
    }
    function previewAsk(event){
      const input=event?.composedPath?.()[0]||event?.target;
@@ -1391,7 +1400,7 @@
     const A=Answer(),V=View(),done=A&&V&&!choices.length&&!suggestions.length?A.result(intent,{},{ok,message},{...snapshot,now:now()},ok?actedOn:null):null;
     actedOn=null;
     if(done){answer=done;answerState={...freshAnswerState(),historyOpen:false};}
-    show(`${done?`<div class="biscuit-answer" data-biscuit-answer>${V.render(done,viewState())}</div>`:''}<div class="biscuit-preview" role="status">${E(message)}</div><div class="pet-items">${choices.map((v,i)=>`<button type="button" class="pet-item biscuit-row" data-pet-action="engine-row" data-pet-choice="${i}">${E(v.title)}${v.subtitle?`<small>${E(v.subtitle)}</small>`:''}</button>`).join('')}${undo?'<button type="button" class="pet-item" data-pet-action="undo">Undo</button>':''}${reload?'<button type="button" class="pet-item" data-pet-action="reload">Reload</button>':''}${suggestions.map((line,i)=>`<button type="button" class="pet-item biscuit-suggestion" data-pet-action="example" data-pet-choice="${i}">${E(line)}</button>`).join('')}<button type="button" class="pet-item" data-pet-action="ask" data-companion-ask>Ask ${E(companionName())}</button></div>`,{menu:true});
+    show(`${done?`<div class="biscuit-answer" data-biscuit-answer>${V.render(done,viewState())}</div>`:''}<div class="biscuit-preview">${E(message)}</div><div class="pet-items">${choices.map((v,i)=>`<button type="button" class="pet-item biscuit-row" data-pet-action="engine-row" data-pet-choice="${i}">${E(v.title)}${v.subtitle?`<small>${E(v.subtitle)}</small>`:''}</button>`).join('')}${undo?'<button type="button" class="pet-item" data-pet-action="undo">Undo</button>':''}${reload?'<button type="button" class="pet-item" data-pet-action="reload">Reload</button>':''}${suggestions.map((line,i)=>`<button type="button" class="pet-item biscuit-suggestion" data-pet-action="example" data-pet-choice="${i}">${E(line)}</button>`).join('')}<button type="button" class="pet-item" data-pet-action="ask" data-companion-ask>Ask ${E(companionName())}</button></div>`,{menu:true});
     askChoices=suggestions.map(line=>({line}));(bubble?.querySelector('.ba-acts .ba-btn')||bubble?.querySelector('.pet-item'))?.focus({preventScroll:true});
    }
    async function undoChange(){
@@ -1423,7 +1432,7 @@
     if(choice.intent==='help'||
       choice.intent==='navigate'&&['today','tdy','help'].includes(fields.tab)&&Object.keys(fields).every(key=>key==='tab')||
       choice.intent==='module'&&fields.key==='today'&&fields.action==='show'&&Object.keys(fields).every(key=>['key','action'].includes(key))){
-      afterSlip('Try a line:',{suggestions:['Dark mode','Hide the clock','Go to the planner','Note: bring goggles','25 minute focus','Undo']});
+      afterSlip('Things to try:',{suggestions:['Dark mode','Plan tonight','25 minute focus','Go to the planner','Note: bring goggles']});
       return;
     }
     const kind=choice.intent==='study'?
@@ -1486,15 +1495,14 @@
     else if(result?.message)afterSlip(result.message,{reload:result.reload,suggestions:result.suggestions,intent:choice.intent,ok});
     else if(!ok&&choice.intent!=='ai')
       afterSlip(
-        ['setting','preset','navigate','bookmark','study','installed'].includes(choice.intent)?'That feature is off or unavailable. Check Make it yours \u2192 More.':choice.intent==='break'?'No break started: a break comes after a focus session ends.':'Unavailable',
+        ['setting','preset','navigate','bookmark','study','installed'].includes(choice.intent)?'I couldn\u2019t do that here. If it is switched off, turn it on in Make it yours, under Settings.':choice.intent==='break'?'No break started: a break comes after a focus session ends.':'Unavailable',
         {intent:choice.intent,ok:false});
    }
    async function runPet(fields){
-     if(fields.action==='treat')return treat();
      if(fields.action==='home'){const ok=await save({...pet,roam:'home'},current=>({...current,roam:'home'}));if(ok!==false)plan(300);return ok!==false;}
      if(fields.action==='hide'){snooze(fields.minutes);return true;}
      if(fields.action==='quiet'){return (await save({...pet,nudges:'quiet'},current=>({...current,nudges:'quiet'})))!==false;}
-     if(fields.action==='off'){afterSlip('The Companion switch is in the extension popup \u2192 Companion.');return false;}
+     if(fields.action==='off'){afterSlip('To turn me off, click the Canvas Harness button at the top of your browser, then Companion.');return false;}
      if(fields.action==='settings'){if(!actions.settings)return false;return (await actions.settings())!==false;}
      return false;
    }
@@ -1546,14 +1554,9 @@
    void loadKnowledge();
    refreshBrain();
    const offer=engine?.offer({...snapshot,now:now()},{},{brain:pet.brain}),list=engine?(offer&&offer.kind!=='reminder'?[offer]:[]):thought.suggestions.slice(0,2);
-    show(`${askForm()}<button type="button" id="biscuit-preview" class="biscuit-preview" data-pet-preview data-pet-action="ask-choice" data-pet-choice="0" aria-live="polite" style="display:none" hidden></button><div class="biscuit-answer" data-biscuit-answer aria-live="polite" hidden></div>${engine?'<div class="biscuit-rows" data-biscuit-rows hidden></div>':''}<div class="pet-items biscuit-suggestions" data-pet-suggestions>${suggestionItems(list)}</div>`,{menu:true});expose(list);
+    show(`${askForm()}<button type="button" id="biscuit-preview" class="biscuit-preview" data-pet-preview data-pet-action="ask-choice" data-pet-choice="0" style="display:none" hidden></button><span class="rd-sr-only" role="status" data-pet-said></span><div class="biscuit-answer" data-biscuit-answer hidden></div>${engine?'<div class="biscuit-rows" data-biscuit-rows hidden></div>':''}<div class="pet-items biscuit-suggestions" data-pet-suggestions>${suggestionItems(list)}</div>`,{menu:true});expose(list);
    (bubble.querySelector('[data-pet-question]')||bubble.querySelector('.pet-item:not([disabled])'))?.focus({preventScroll:true});
    void loadCatalogue(true);
-  }
-  function treat(){
-   if(!pet.treats||!node)return false;
-   closeBubble();save(feed(pet));goal=null;speed=0;settle('eat',2600);
-   clearTimeout(timer);timer=setTimeout(()=>{cheer();},2500);return true;
   }
   // pleased: two small hops, then back to what it was doing
   function cheer(ms=1300){
@@ -1671,14 +1674,26 @@
    async function pointAt({path=[],tab='look'}={}){
     closeBubble();const open=actions['make-it-yours'];if(open){try{await open({tab});}catch{}}
     await new Promise(resolve=>setTimeout(resolve,180));
-    const label=String(path[path.length-1]||'').trim().toLowerCase(),scopes=[container,container?.getRootNode?.()].filter(Boolean);let hit=null;
-    for(const scope of scopes){
-      for(const el of scope.querySelectorAll?.('button,label,[role=radio],[role=switch],[role=tab],[role=menuitemradio],summary,legend,h3,h4,a')||[]){
-        const text=String(el.getAttribute?.('aria-label')||el.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
-        if(label&&(text===label||text.startsWith(label+' ')||text.startsWith(label))&&el.getClientRects?.().length){hit=el;break;}
+    const label=String(path[path.length-1]||'').trim().toLowerCase(),scopes=[container,container?.getRootNode?.()].filter(Boolean);
+    const find=()=>{
+      for(const scope of scopes){
+        for(const el of scope.querySelectorAll?.('button,label,[role=radio],[role=switch],[role=tab],[role=menuitemradio],summary,legend,h3,h4,a')||[]){
+          const text=String(el.getAttribute?.('aria-label')||el.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+          if(label&&(text===label||text.startsWith(label+' ')||text.startsWith(label))&&el.getClientRects?.().length)return el;
+        }
       }
-      if(hit)break;
-    }
+      return null;
+    };
+    let hit=find();
+    // Not on the tab its path names (Make it yours was put in a new order in 4.2, and a path can be older): the other tabs,
+    // in their order, until the setting shows.
+    if(!hit&&open&&label)
+      for(const [other] of root.ReserveCustomizeUI?.tabs?.()||[]){
+        if(other===tab)continue;
+        try{await open({tab:other});}catch{continue;}
+        await new Promise(resolve=>setTimeout(resolve,120));
+        if((hit=find()))break;
+      }
     if(!hit){say(path.join(' \u203a '),5200);return false;}
     hit.scrollIntoView?.({block:'center',behavior:answerStill()?'auto':'smooth'});hit.setAttribute('data-biscuit-point','');setTimeout(()=>hit.removeAttribute?.('data-biscuit-point'),2600);return true;
    }
@@ -1813,7 +1828,6 @@
        Promise.resolve(action?.(s.data)).then(ok=>{if(!dead)learn([[s.kind,action&&ok!==false?'used':'ignored']]);}).catch(()=>{if(!dead)learn([[s.kind,'ignored']]);});
      }catch{learn([[s.kind,'ignored']]);}
    }
-   else if(what==='feed'){treat();}
    else if(what==='stay'){closeBubble();save({...pet,roam:pet.roam==='home'?'page':'home'});plan(300);}
    else if(what==='settings'){closeBubble();actions.settings?.();}
   }
@@ -1869,14 +1883,14 @@
    offerStretch();
    maybeNudge();
   }
+  // A piece of work finished or a focus session ended: the hop, a short line and the break offer. Nothing is counted or stored.
   function celebrate(kind='done',{today,left}={}){
-   const result=reward(clean(getPet()),kind,today);save(result.pet);
-   if(!visible()||!layer)return result;
-   if(kind==='focus'){closeBubble();pendingBreak=true;focusing=false;setFocus(false);settle('stand',2000);refreshBrain();offerBreak();return result;}
+   const own=heardWork(kind,{today,left});
+   if(!visible()||!layer)return null;
+   if(kind==='focus'){closeBubble();pendingBreak=true;focusing=false;setFocus(false);settle('stand',2000);refreshBrain();offerBreak();return null;}
    closeBubble();cheer(1300);
-   const line=result.leveled?`Level ${level(pet.xp)}! Something new is unlocked.`:kind==='focus'?'Good session. A treat for both of us.':left===0?'That was the last one for today.':left>0?`Done. ${left} left today.`:'Done. Nicely.';
-   say(line,4200);
-   return result;
+   say(own||(left===0?'That was the last one for today.':left>0?`Done. ${left} left today.`:'Done. Nicely.'),4200);
+   return null;
   }
   function setFocus(running,details){
     const was=focusing;
@@ -1901,7 +1915,7 @@
     unmount();
   }
   hydrateCustom();if(visible())mount();else scheduleReturn();
-  return {sync,celebrate,setFocus,say,treat,ask,destroy,get pet(){return pet;}};
+  return {sync,celebrate,setFocus,say,ask,destroy,get pet(){return pet;}};
  }
  function rememberAction(session,intent,fields={},result={},depth=0){
    if(!session||typeof session!=='object'||result?.ok!==true||depth>1)return false;
@@ -1996,14 +2010,9 @@
    NUDGES,
    GEAR,
    KNOWLEDGE,
-   LEVEL_XP,
-   UNLOCKS,
-   level,
-   levelProgress,
-   unlocked,
+   RETIRED,
+   afterWork,
    clean,
-   reward,
-   feed,
    createActivity,
    customPose,
    customDrawing,

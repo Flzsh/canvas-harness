@@ -1,5 +1,14 @@
 # Changelog
 
+## 4.2.0 - 2026-11-19
+
+Soul Passage, a scene that travels, from the Market; a Canvas tab that notices when Canvas Harness was updated; and "Get more" that opens the Market.
+
+- A new scene in Make it yours → Look → Scene, under its own heading, **Megapack**: **Soul Passage**, a train carriage that never stops. A different land passes its windows each weekday, at five times of day that fade into each other, and runs on under Home; a lever on the laptop in the carriage sets the train's speed. Its pictures and data (about 34 MB) are not in the package: pressing Soul Passage downloads them from the Market, a line on its picture shows how far it is, the Market opens at its card beside Canvas, and the scene goes on by itself once everything is here. Make it yours → Use from Soul Passage → Train speed changes the speed; Remove, on its choice or in More → Features, deletes the downloaded files. Biscuit knows it: "soul passage", "train theme".
+- If Canvas Harness is updated while a Canvas tab is open, the tab notices: on Canvas Harness's own page it reloads by itself when nothing is being written; on Canvas's own pages, or with something typed, a slip asks you to reload.
+- Make it yours → More → Features → Get more opens the Market beside Canvas. Before, it only said to use the popup.
+- A Market add interrupted because Canvas Harness was updated under the open page now says so plainly.
+
 ## 4.1.0 - 2026-11-19
 
 A Christmas scene, theme packs that can bring a moving band and a companion of their own, and AI help that fits Gemini's chat box.

@@ -45,7 +45,21 @@
     if(Math.abs(old.left-r.left)+Math.abs(old.top-r.top)>1)animate(node,{x:old.left-r.left,y:old.top-r.top,s:1},{x:0,y:0,s:1});
    }
   }
-  function applyLayout(layout=M.snapshot(getSettings()).layout){
+  // (the layout as drawn: Help on top while it has no place of its own yet)
+  const drawnLayout=()=>M.drawn?M.drawn(getSettings()):M.snapshot(getSettings()).layout;
+  // The desk's own column gap (32 px; 16 px on a phone; a theme may set its own), read when a desk is new and when its width
+  // changes, never on the way in between: the grid works the gaps into every module's width (workspace-arrange.js grid).
+  // (its side padding too, which a theme may give it: the modules share the width inside it)
+  let deskGap=null,deskPad=0;
+  const gapOf=desk=>{
+    if(deskGap===null){
+      const cs=win.getComputedStyle?.(desk),v=parseFloat(cs?.columnGap),pad=(parseFloat(cs?.paddingLeft)||0)+(parseFloat(cs?.paddingRight)||0);
+      deskGap=Number.isFinite(v)&&v>=0?v:0;
+      deskPad=pad>0?pad:0;
+    }
+    return deskGap;
+  };
+  function applyLayout(layout=drawnLayout()){
    const desk=main();if(!desk)return;
    // The Assignments tab is the list beside the reader, whatever Home looks like.
    const fixed=container.dataset.workPage==='assignments';if(fixed)layout={axis:'x',children:['work','reader']};
@@ -63,8 +77,12 @@
    // again. They start from the sizes the last desk had (the same window, the same modules), so the writes below go in
    // before the first layout; the observer reports the real sizes after the frame's own layout and lays out again, in
    // that frame, only what differs. The first desk of all is still measured here.
+   // (a desk drawn again keeps the last desk's gap, as it keeps its width, so nothing is read in the render; the observer reads
+   // both again when the width changes, after the frame's own layout)
    if(desk!==observed){const was=observed;observed=desk;observedWidth=was&&lastWidth?lastWidth:0;layoutMemo=null;}
-   const width=observedWidth||desk.clientWidth||desk.getBoundingClientRect().width,list=panels(),heights={};let measured=false;lastWidth=width;
+   const gap=gapOf(desk),width=Math.max(0,(observedWidth||desk.clientWidth||desk.getBoundingClientRect().width)-deskPad),list=panels(),heights={};
+   let measured=false;
+   lastWidth=width+deskPad;
    // Observer sizes are border-box heights, like offsetHeight. Unknown sizes are read before any style write.
    for(const node of list){
      const key=node.dataset.arrangeKey,h=panelSizes.get(node)??keySizes.get(key)??(Number(node.offsetHeight)||0);
@@ -72,17 +90,21 @@
      if(h>0){measured=true;keySizes.set(key,h);}
    }
    // a width chosen a moment ago (previewSize) is laid out at once, before its save comes back
-   const saved=getSettings().moduleSize||{};
+   const saved=M.sizes?M.sizes(getSettings()):getSettings().moduleSize||{};
    if(sizeOverride){for(const [k,v] of Object.entries(sizeOverride))if((saved[k]||'m')===v)delete sizeOverride[k];if(!Object.keys(sizeOverride).length)sizeOverride=null;}
    const fits=['dock','topbar'].includes(container.dataset.courseNavigation),
      sizes=fixed?{reader:'l'}:sizeOverride?Object.fromEntries(Object.entries({...saved,...sizeOverride}).filter(([,v])=>v!=='m')):saved,
-     signature=JSON.stringify([layout,width,sizes,heights,fits,drag?.key||'']);
+     signature=JSON.stringify([layout,width,sizes,heights,fits,drag?.key||'',gap]);
    if(layoutMemo?.desk===desk&&layoutMemo.signature===signature&&list.length===layoutMemo.list.length&&list.every((node,i)=>node===layoutMemo.list[i]))return;
-   const spec=M.grid(layout,width,sizes);layoutMemo={desk,signature,list};
+   const spec=M.grid(layout,width,sizes,gap);layoutMemo={desk,signature,list};
    // Written only when it changed, so an unchanged layout costs no restyle.
    const put=(node,name,value)=>{if(node.style.getPropertyValue?.(name)!==value)node.style.setProperty(name,value);};
    put(desk,'--rd-layout-columns',spec.columns);
-   for(const node of list){const cell=spec.cells[node.dataset.arrangeKey];if(cell)put(node,'--rd-panel-column',cell.column);}
+   // (each module's own box inside its columns: a few pixels of margin either side, customize.css)
+   for(const node of list){
+     const cell=spec.cells[node.dataset.arrangeKey];
+     if(cell){put(node,'--rd-panel-column',cell.column);put(node,'--rd-panel-inset-l',(cell.inset?.[0]||0)+'px');put(node,'--rd-panel-inset-r',(cell.inset?.[1]||0)+'px');}
+   }
    // Column rewraps deliver fresh heights through ResizeObserver before paint, without a read-after-write flush.
    // The course dock and the top bar use the same measured rows when a stack stands beside other modules: their CSS turns
    // the fitted fraction rows into automatic ones (responsive-layout.css), where a module stacked under a short one waited
@@ -124,7 +146,9 @@
       if(panelSizes.get(node)!==height){panelSizes.set(node,height);if(height>0&&node.dataset?.arrangeKey)keySizes.set(node.dataset.arrangeKey,height);changed=true;}
     }
    }
-   if(changed){if(drag&&!widthChanged)return;if(drag)cancel();applyLayout();}
+   // (the desk's gap and padding are read again here, after the frame's layout, where reading costs nothing: a theme that
+   // changes them changes the modules' sizes too)
+   if(changed){if(drag&&!widthChanged)return;if(drag)cancel();deskGap=null;applyLayout();}
   }):null;
   function watch(list){
    if(!sizeWatch)return;const next=new Set([observed,...list].filter(Boolean));
@@ -208,7 +232,7 @@
      foot:container.querySelector('.rd-rail-foot'),
      originalNavigation:getSettings().courseNavigation||'sidebar'
    };
-   drag.offsetX=drag.x-rect.left;drag.offsetY=drag.y-rect.top;
+   drag.offsetX=drag.x-rect.left;drag.offsetY=drag.y-rect.top;drag.seen=info.kind==='course'?undefined:scrolled();
    // A course card is moved in the DOM while previewing. Capture on the stable
    // workspace, otherwise that move releases capture and cancels the gesture.
    drag.capture=container;
@@ -229,10 +253,6 @@
    announce(`${info.label} lifted. ${keyboard?'Use arrow keys, Tab, and Enter.':'Drag to a highlighted space, then release.'} Escape cancels.`);
    animate(ghost,{x:0,y:0,s:1},{x:0,y:0,s:1.015});
   }
-  function sideCommand(target,edge){
-   const rect=[...drag.stable].find(([node])=>keyOf(node)===target)?.[1];
-   return rect&&Math.abs(rect.left-drag.rect.left)<24?{type:'dock',key:drag.key,target,edge}:{type:'swap',key:drag.key,target};
-  }
   function clearVisuals(){
    if(ghost){stopAnimation(ghost);ghost.remove();}ghost=null;slot?.remove();slot=null;hud?.remove();hud=null;
    for(const node of all('[data-lifted]'))node.removeAttribute('data-lifted');
@@ -247,8 +267,21 @@
    const token=++revision,navigation=getSettings().courseNavigation||'sidebar';
    let saved=false;try{saved=await onChange(command);}catch{}
    if(dead||token!==revision)return false;
-   if(saved===false){applyLayout();announce('The change could not be saved. Your previous layout was restored.');return false;}
+   if(saved===false){
+     if(command?.type==='size'&&sizeOverride){clearTimeout(overrideTimer);sizeOverride=null;layoutMemo=null;}
+     applyLayout();
+     announce('The change could not be saved. Your previous layout was restored.');
+     return false;
+   }
    applyLayout();if(before&&navigation===(getSettings().courseNavigation||'sidebar'))flip(before);announce(message);return true;
+  }
+  // What scrolls Home under a held module: the work area (course dock), the shell (top bar), or with the courses on the left
+  // the work column when it scrolls by itself (dashboard.js reserve-fit, overflow auto). Looked at once per lift.
+  function scrollArea(){
+   if(!drag)return null;
+   if(drag.area===undefined){const nav=container.dataset.courseNavigation,column=container.querySelector('.rd-shell > .rd-workspace');
+    drag.area=drag.kind==='course'?null:nav==='dock'?column:nav==='topbar'?container.querySelector('.rd-shell'):column&&/(auto|scroll)/.test(win.getComputedStyle?.(column)?.overflowY||'')?column:null;}
+   return drag.area;
   }
   function candidateAt(x,y){
    if(!drag)return null;
@@ -261,21 +294,33 @@
    const entries=[...drag.stable].filter(([node])=>node!==drag.node);
    {const desk=main()?.getBoundingClientRect?.();
     if(desk&&desk.width>0&&entries.length>1){
-     const top=Math.max(desk.top,70),bottom=Math.min(desk.bottom,win.innerHeight-8);
+     // (the bottom of what can be seen: the window's, or the scrolling column's when Home scrolls inside one)
+     const area=scrollArea(),view=area&&area.scrollHeight>area.clientHeight+2?Math.min(win.innerHeight,area.getBoundingClientRect().bottom):win.innerHeight;
+     const top=Math.max(desk.top,70),bottom=Math.min(desk.bottom,view-8);
+     // (the desk's own edges begin where the modules end: a module's own edge, even the outermost one's, is the module's;
+     // until 4.0.194 the last 10-12 px inside the outer modules made a whole column or row instead)
      if(x>=desk.left-30&&x<=desk.right+30){
-      if(y<=desk.top+12)return {type:'dock',key:drag.key,target:M.ROOT,edge:'top'};   // anywhere above the modules means a row across the top
-      if(desk.bottom<=win.innerHeight-8&&y>=desk.bottom-10)return {type:'dock',key:drag.key,target:M.ROOT,edge:'bottom'};
+      if(y<=desk.top+2)return {type:'dock',key:drag.key,target:M.ROOT,edge:'top'};   // anywhere above the modules means a row across the top
+      if(desk.bottom<=view+1&&y>=desk.bottom-2)return {type:'dock',key:drag.key,target:M.ROOT,edge:'bottom'};
      }
      if(y>=top&&y<=bottom){
-      if(x>=desk.left-60&&x<=desk.left+10)return {type:'dock',key:drag.key,target:M.ROOT,edge:'left'};
-      if(x>=desk.right-10&&x<=desk.right+60)return {type:'dock',key:drag.key,target:M.ROOT,edge:'right'};
+      if(x>=desk.left-60&&x<=desk.left+2)return {type:'dock',key:drag.key,target:M.ROOT,edge:'left'};
+      if(x>=desk.right-2&&x<=desk.right+60)return {type:'dock',key:drag.key,target:M.ROOT,edge:'right'};
      }
     }}
-   for(const [node,original] of entries){
-    const r={...original,left:original.left,top:original.top,right:original.right,bottom:original.bottom,width:original.width,height:original.height};
+   // The module under the pointer is the target; only in a gap the nearest one within 24 px (until 4.0.194 the first module in the
+   // page's order within 24 px won, so the pointer on the top of a module just below another dropped "below" the one above).
+   const boxOf=original=>{
+     const r={...original,left:original.left,top:original.top,right:original.right,bottom:original.bottom,width:original.width,height:original.height};
+     r.bottom=Math.min(r.bottom,win.innerHeight-40);
+     r.height=r.bottom-r.top;
+     return r;
+   };
+   const away=r=>Math.hypot(Math.max(r.left-x,0,x-r.right),Math.max(r.top-y,0,y-r.bottom));
+   const ranked=entries.map(([node,original])=>[node,original,away(boxOf(original))]).filter(([,,d])=>d<=24).sort((a,b)=>a[2]-b[2]);
+   for(const [node,original] of ranked){
     // Stable targets avoid a moving-target loop while neighbours make room.
-    r.bottom=Math.min(r.bottom,win.innerHeight-40);r.height=r.bottom-r.top;
-    if(x<r.left-24||x>r.right+24||y<r.top-24||y>r.bottom+24)continue;
+    const r=boxOf(original);
     if(drag.kind==='course')
       return {type:'course-move',key:drag.key,target:keyOf(node),position:(drag.originalNavigation==='topbar'?x<r.left+r.width/2:y<r.top+r.height/2)?'before':'after',ids:getCourseIds()};
     // Crossing into a neighbouring column means exchange places, even when
@@ -285,12 +330,17 @@
     // A diagonal trip to a panel's bottom still means "below". Heading-to-
     // heading horizontal movement remains a swap, even near the top edge.
     const band=Math.min(90,Math.max(38,r.height*.22));
-    if(dy>56&&y>=r.bottom-band)return {type:'dock',key:drag.key,target:keyOf(node),edge:'bottom'};
+    // (the bottom band means below, from whichever side the module comes: until 4.0.194 only a module carried DOWN to it did,
+    // and one brought up or across to a module's bottom exchanged places with it)
+    if(y>=r.bottom-band&&(dy>56||Math.abs(dx)<=Math.abs(dy)*1.15||y>=r.bottom-band/2))return {type:'dock',key:drag.key,target:keyOf(node),edge:'bottom'};
     if(dy< -56&&y<=r.top+band)return {type:'dock',key:drag.key,target:keyOf(node),edge:'top'};
     const horizontal=Math.abs(dx)>Math.abs(dy)*1.15;
     if(horizontal||!edge||['left','right'].includes(edge)){
-     const sameColumn=Math.abs(original.left-drag.rect.left)<24;
-     if(sameColumn&&(horizontal||['left','right'].includes(edge)))return {type:'dock',key:drag.key,target:keyOf(node),edge:x<r.left+r.width/2?'left':'right'};
+     // Across: the middle of a module exchanges places with it; its left or right third puts the module beside it, on that
+     // side (until 4.0.194 anywhere across another column exchanged places, so a module carried to the far end of a row sent the one
+     // there back to where it came from).
+     const third=(x-r.left)/Math.max(1,r.width);
+     if(third<.3||third>.7)return {type:'dock',key:drag.key,target:keyOf(node),edge:third<.3?'left':'right'};
      return {type:'swap',key:drag.key,target:keyOf(node)};
     }
     return {type:'dock',key:drag.key,target:keyOf(node),edge};
@@ -303,14 +353,23 @@
       `Swap ${M.LABELS[c.key]} with ${M.LABELS[c.target]}`:
       c.type==='dock'&&c.target===M.ROOT?`${M.LABELS[c.key]} ${({left:'as a column on the left',right:'as a column on the right',top:'as a full row at the top',bottom:'as a full row at the bottom'})[c.edge]}`:c.type==='dock'?`${M.LABELS[c.key]} ${({left:'to the left of',right:'to the right of',top:'above',bottom:'below'})[c.edge]} ${M.LABELS[c.target]}`:c.type==='course-move'?`${drag.label} ${c.position} ${cards().find(n=>keyOf(n)===c.target)?.querySelector('.rd-rail-name')?.textContent||'course'}`:c.type==='hide-context'?'Put course information away':`Courses ${c.value==='topbar'?'across the top':'on the left'}`;
   }
+  // the drop place's own short name, as the tag on it says it: where, never who
+  function placeName(c){
+    const name=k=>M.label?.(k)||M.LABELS[k]||'';
+    return c.type==='swap'?
+      `In place of ${name(c.target)}`:
+      c.type==='dock'&&c.target===M.ROOT?
+        ({left:'A column on the left',right:'A column on the right',top:'A row across the top',bottom:'A row across the bottom'})[c.edge]:
+        c.type==='dock'?`${({left:'Left of',right:'Right of',top:'Above',bottom:'Below'})[c.edge]} ${name(c.target)}`:c.type==='hide-context'?'Put away':c.type==='navigation'?(c.value==='topbar'?'Across the top':'On the left'):'';
+  }
   function preview(c){
    if(!drag||JSON.stringify(c)===JSON.stringify(drag.drop))return;
    const before=measure(drag.kind==='course'?cards():panels());
    for(const node of before.keys())stopAnimation(node);
    restore(false);drag.drop=c;
    if(!c){slot.hidden=true;flip(before);return;}
-   if(c.type==='dock')applyLayout(M.dock(M.snapshot(getSettings()).layout,c.key,c.target,c.edge));
-   if(c.type==='swap')applyLayout(M.swap(M.snapshot(getSettings()).layout,c.key,c.target));
+   if(c.type==='dock')applyLayout(M.dock(drawnLayout(),c.key,c.target,c.edge));
+   if(c.type==='swap')applyLayout(M.swap(drawnLayout(),c.key,c.target));
    if(c.type==='course-move'){
     const target=cards().find(n=>keyOf(n)===c.target);if(target)target.parentNode.insertBefore(drag.node,c.position==='before'?target:target.nextSibling);
    }
@@ -323,12 +382,27 @@
    if(c.type==='hide-context')rect=hud.getBoundingClientRect();
    for(const [prop,value] of Object.entries({left:rect.left,top:rect.top,width:rect.width,height:Math.max(60,Math.min(rect.height,win.innerHeight-rect.top-16))}))
      slot.style[prop]=value+'px';
+   // The drop place is drawn: the pen outline round where the module will land, and its name on a kraft tag (customize.css).
    const label=textFor(c);slot.textContent='';slot.dataset.kind=drag.kind;slot.setAttribute('aria-label',label);
+   if(drag.kind!=='course'){const tag=doc.createElement('span');tag.className='rd-snap-tag';tag.textContent=placeName(c);slot.append(tag);}
    if(drag.keyboard)showHud(`${label} · Enter to place`);announce(label);
+  }
+  // Where Home stands scrolled (its own column and the page): the places a module can go are measured at the lift, so a scroll
+  // that is not the held module's own (the wheel, or the browser keeping its place while a preview changes heights above the
+  // view) moves them by as much (until 4.0.194 they stayed where they had been, and a drop landed on the module that had been
+  // there before the scroll).
+  const scrolled=()=>{
+    const shell=container.querySelector('.rd-shell'),column=container.querySelector('.rd-shell > .rd-workspace'),page=doc.scrollingElement;
+    return (column?.scrollTop||0)+(shell?.scrollTop||0)+(page?.scrollTop||0);
+  };
+  function followScroll(){
+   if(!drag||drag.kind==='course')return;const now=scrolled(),moved=now-(drag.seen??now);drag.seen=now;
+   if(moved)for(const [n,b] of drag.stable)drag.stable.set(n,{...b,left:b.left,right:b.right,width:b.width,height:b.height,top:b.top-moved,bottom:b.bottom-moved});
   }
   function paint(){
    frame=0;if(!drag||drag.keyboard)return;
    stopAnimation(ghost);ghost.style.transform=`translate(${drag.x-drag.startX}px,${drag.y-drag.startY}px) scale(1.015)`;
+   followScroll();
    const candidate=candidateAt(drag.x,drag.y);
    // A small boundary deadband stops the preview oscillating between corners.
    if(JSON.stringify(candidate)!==JSON.stringify(drag.drop)&&drag.drop&&drag.lastSnap&&Math.hypot(drag.x-drag.lastSnap.x,drag.y-drag.lastSnap.y)<20)return;
@@ -338,13 +412,17 @@
    const rail=railNode(),horizontal=drag.kind==='course'&&drag.originalNavigation==='topbar';
    // With the course dock or the top bar the Canvas page does not scroll (startup.css reserve-fit): Home scrolls inside
    // its work area (dock) or its shell (top bar), so that is what a module held at the edge scrolls.
-   const nav=container.dataset.courseNavigation,area=drag.kind==='course'?null:nav==='dock'?container.querySelector('.rd-shell > .rd-workspace'):nav==='topbar'?container.querySelector('.rd-shell'):null;
+   // With the courses on the left, Home's work column scrolls by itself too on a wide window (dashboard.js reserve-fit when
+   // its overflow is auto): it is that column a module held at the edge scrolls (until 4.0.194 the page was scrolled, which
+   // could not move, so a place below the visible part of Home could not be reached). Looked at once per lift.
+   const area=scrollArea();
    const scroller=horizontal?rail:drag.kind==='course'&&rail.scrollHeight>rail.clientHeight+2?rail:area&&area.scrollHeight>area.clientHeight+2?area:doc.scrollingElement;
    const r=scroller===doc.scrollingElement?{top:0,bottom:win.innerHeight,left:0,right:win.innerWidth}:scroller?.getBoundingClientRect();
    if(!r)return;
    const p=horizontal?drag.x:drag.y,low=horizontal?r.left:r.top,high=horizontal?r.right:r.bottom;
    const speed=p<low+52?-Math.ceil((low+52-p)/7):p>high-52?Math.ceil((p-high+52)/7):0;
-   if(speed&&p>=low-15&&p<=high+15){
+   // (a module held anywhere past the edge of Home's scrolling column, down to the window's own edge, scrolls it as well)
+   if(speed&&(p>=low-15&&p<=high+15||drag.kind!=='course'&&scroller===area)){
     const property=horizontal?'scrollLeft':'scrollTop',old=scroller[property];scroller[property]+=Math.max(-14,Math.min(14,speed));const moved=scroller[property]-old;
     if(moved){
       for(const [n,b] of drag.stable){
@@ -357,12 +435,128 @@
           height:b.height
         });
       }
+      if(drag.kind!=='course')drag.seen=scrolled();
       frame=raf(paint);
     }
    }
   }
+  // A module's width, by hand: its right edge (the last 12 px inside it) or its bottom-right corner (24 px) is held and
+  // pulled; the width steps through the three the menu has (Narrow, Normal, Wide), laid out live, its name on a kraft tag
+  // by the pointer, saved when let go. Only the width: a module's height is its content's. Escape puts it back.
+  const EDGE=12,CORNER=24,STEP_NAMES={s:'Narrow',m:'Normal',l:'Wide'};
+  let sizing=null,grab=null,mark=null,sizeTag=null,hoverAt=null,hoverFrame=0;
+  const unmark=()=>{if(grab||mark)showGrab(null);};
+  function sizeZone(event){
+   if(drag||pending||sizing||saving||dead||container.dataset.workspace!=='work'||container.dataset.workPage==='assignments')return null;
+   const target=event.target;if(!target?.closest||target.closest('a,button,input,textarea,select,label,summary,iframe,[contenteditable="true"]'))return null;
+   const node=target.closest('[data-arrange-key]'),desk=main();if(!node||!desk||node.parentNode!==desk||!M.isKey?.(node.dataset.arrangeKey))return null;
+   const r=node.getBoundingClientRect(),x=event.clientX,y=event.clientY;if(!(r.width>0))return null;
+   const corner=x>=r.right-CORNER&&y>=r.bottom-CORNER&&x<=r.right+1&&y<=r.bottom+1,edge=x>=r.right-EDGE&&x<=r.right+1&&y>=r.top+10&&y<=r.bottom+1;
+   return corner||edge?{node,key:node.dataset.arrangeKey,edge:corner?'corner':'edge',rect:r,y}:null;
+  }
+  function showGrab(zone){
+   const node=zone?.node||null,edge=zone?.edge||'';
+   if(grab&&(grab.node!==node||grab.edge!==edge)){delete grab.node.dataset.sizeGrab;grab=null;}
+   if(node&&!grab){node.dataset.sizeGrab=edge;grab={node,edge};}
+   if(!node){mark?.remove();mark=null;return;}
+   if(!mark){mark=make('rd-size-mark');mark.setAttribute('aria-hidden','true');}
+   // (2026-11-23: the edge's mark stands where the pointer is. It stood at the module's middle, which on a tall module is
+   // off the window: the student pointed at the edge and saw no mark at all.)
+   const r=zone.rect,mid=Number.isFinite(zone.y)?zone.y:r.top+r.height/2;
+   mark.dataset.edge=edge;
+   mark.style.left=(r.right-(edge==='corner'?18:7))+'px';
+   mark.style.top=(edge==='corner'?r.bottom-18:Math.max(r.top+12,Math.min(r.bottom-44,mid-14)))+'px';
+  }
+  // the module's width at each step, from the same arithmetic that lays the desk out
+  function stepWidths(key){
+   // (laid out as applyLayout lays it out: only the modules this page draws)
+   let layout=drawnLayout();const here=new Set(panels().map(node=>node.dataset.arrangeKey));if(getSettings().showCourseInformation===false)here.delete('context');
+   for(const k of M.leaves(layout))if(!here.has(k))layout=M.prune(layout,k)||layout;
+   const desk=main(),
+     saved={...(M.sizes?M.sizes(getSettings()):getSettings().moduleSize||{}),...(sizeOverride||{})},
+     width=Math.max(0,(observedWidth||desk?.clientWidth||0)-deskPad),
+     gap=deskGap??0;
+   return Object.fromEntries((M.STEPS||['s','m','l']).map(step=>{
+     const sizes=Object.fromEntries(Object.entries({...saved,[key]:step}).filter(([,v])=>v!=='m'));
+     return [step,M.grid(layout,width,sizes,gap).boxes?.[key]?.w??0];
+   }));
+  }
+  // (the step's name with the menu's own box drawing for it beside the word: widgets.js openMenu, the same three boxes)
+  const SIZE_BOX={Narrow:[12,10],Normal:[9,16],Wide:[5,24]};
+  function showSizeTag(x,y,text){if(!sizeTag){sizeTag=make('rd-size-tag');sizeTag.setAttribute('aria-hidden','true');}
+   if(sizeTag._said!==text){
+     sizeTag._said=text;
+     sizeTag.textContent=text;
+     const box=SIZE_BOX[text];
+     if(box)sizeTag.insertAdjacentHTML?.('afterbegin',`<svg viewBox="0 0 34 24" aria-hidden="true" focusable="false"><rect x="1.5" y="1.5" width="31" height="21" rx="3.5"/><rect class="on" x="${box[0]}" y="5" width="${box[1]}" height="14" rx="2"/></svg>`);
+   }
+   sizeTag.style.left=x+14+'px';sizeTag.style.top=y-34+'px';}
+  function sizeDown(event){
+   const zone=sizeZone(event);if(!zone)return false;
+   event.preventDefault?.();clearPending();
+   const now=(M.sizes?M.sizes(getSettings()):getSettings().moduleSize||{})[zone.key]||'m';
+   sizing={...zone,pointerId:event.pointerId,startX:event.clientX,startW:zone.rect.width,from:now,size:now,widths:stepWidths(zone.key)};
+   try{container.setPointerCapture?.(event.pointerId);}catch{}
+   container.dataset.sizing=zone.edge;
+   showSizeTag(event.clientX,event.clientY,STEP_NAMES[now]);
+   announce(`${M.label?.(zone.key)||M.LABELS[zone.key]}: ${STEP_NAMES[now]}. Move left or right, then let go. Escape cancels.`);
+   return true;
+  }
+  function sizeMove(event){
+   if(!sizing||event.pointerId!==sizing.pointerId)return false;event.preventDefault?.();
+   const want=sizing.startW+(event.clientX-sizing.startX),w=sizing.widths;
+   // the nearest step that really changes the width; among equal widths the one it has now
+   let best=sizing.size,far=Math.abs(w[best]-want);for(const step of Object.keys(w)){const d=Math.abs(w[step]-want);if(d<far-2){best=step;far=d;}}
+   showSizeTag(event.clientX,event.clientY,STEP_NAMES[best]);
+   if(best!==sizing.size){
+     sizing.size=best;
+     const before=measure(panels());
+     previewSize(sizing.key,best,{hold:true});
+     flip(before);
+     showGrab(null);
+     announce(`${M.label?.(sizing.key)||M.LABELS[sizing.key]}: ${STEP_NAMES[best]}`);
+   }
+   return true;
+  }
+  function endSizing(){
+    if(!sizing)return null;
+    const s=sizing;
+    sizing=null;
+    try{if(container.hasPointerCapture?.(s.pointerId))container.releasePointerCapture(s.pointerId);}catch{}
+    delete container.dataset.sizing;
+    sizeTag?.remove();
+    sizeTag=null;
+    showGrab(null);
+    return s;
+  }
+  function sizeUp(event){
+   if(!sizing||event.pointerId!==sizing.pointerId)return false;event.preventDefault?.();suppressUntil=Date.now()+400;
+   const s=endSizing();if(s.size===s.from){previewSize(s.key,s.from);return true;}
+   void commit({type:'size',key:s.key,value:s.size},`${M.label?.(s.key)||M.LABELS[s.key]}: ${STEP_NAMES[s.size]}. Saved.`,null);return true;
+  }
+  function sizeCancel(){
+    const s=endSizing();
+    if(!s)return false;
+    if(s.size!==s.from){const before=measure(panels());previewSize(s.key,s.from);flip(before);}
+    announce('Width unchanged.');
+    return true;
+  }
+  // Shift+Left / Shift+Right on a module's grip or its "..." button: one step narrower or wider.
+  function sizeKey(event){
+   if(drag||sizing||!event.shiftKey||event.altKey||event.ctrlKey||event.metaKey||!['ArrowLeft','ArrowRight'].includes(event.key))return false;
+   // (the page hears keys on the document: the element that has focus is the first in the event's path, not its target)
+   const at=event.composedPath?.()[0]||event.target,tool=at?.closest?.('[data-arrange-grip],.rd-arrange-more'),node=tool?.closest?.('[data-arrange-key]');if(!node||node.parentNode!==main())return false;
+   const key=node.dataset.arrangeKey;if(!M.isKey?.(key))return false;event.preventDefault?.();
+   const steps=M.STEPS||['s','m','l'],
+     now=(M.sizes?M.sizes(getSettings()):getSettings().moduleSize||{})[key]||'m',
+     next=steps[Math.max(0,Math.min(steps.length-1,steps.indexOf(now)+(event.key==='ArrowRight'?1:-1)))];
+   if(next===now){announce(`${M.label?.(key)||M.LABELS[key]} is already ${STEP_NAMES[now]}.`);return true;}
+   const before=measure(panels());previewSize(key,next);flip(before);
+   void commit({type:'size',key,value:next},`${M.label?.(key)||M.LABELS[key]}: ${STEP_NAMES[next]}. Saved.`,null);return true;
+  }
   function pointerdown(event){
-   if(event.isPrimary===false){cancel();return false;}
+   if(event.isPrimary===false){cancel();sizeCancel();return false;}
+   if(event.button===0&&!event.ctrlKey&&!event.metaKey&&sizeDown(event))return true;
    if(saving||event.button!==0||event.ctrlKey||event.metaKey)return false;
    if(drag?.keyboard){cancel();return false;}
    const info=source(event.target);if(!info)return false;
@@ -374,6 +568,12 @@
    pending.timer=setTimeout(()=>{if(pending){lift(info,event);suppressUntil=Date.now()+800;}},HOLD_MS);return true;
   }
   function pointermove(event){
+   if(sizing)return sizeMove(event);
+   // (where the pointer is over a module's edge or corner: looked at once a frame, not on every move)
+   if(!drag&&!pending&&!event.buttons){
+     hoverAt={target:event.target,clientX:event.clientX,clientY:event.clientY};
+     if(!hoverFrame)hoverFrame=raf(()=>{hoverFrame=0;const at=hoverAt;hoverAt=null;if(at&&!drag&&!pending&&!sizing)showGrab(sizeZone(at));});
+   }
    if(pending&&pending.pointerId===event.pointerId){
     const distance=Math.hypot(event.clientX-pending.x,event.clientY-pending.y);
     if(distance>SLOP){clearPending();return false;}
@@ -408,13 +608,19 @@
    target?.querySelector('[data-arrange-grip],.rd-course-name')?.focus?.({preventScroll:true});
   }
   function pointerup(event){
+   if(sizing)return sizeUp(event);
    if(pending&&pending.pointerId===event.pointerId){clearPending();return false;}
    if(!drag||drag.keyboard||drag.pointerId!==event.pointerId)return false;
    suppressUntil=Date.now()+650;event.preventDefault?.();
    if(!drag.moved){cancel({quiet:true});return true;}
    drag.x=event.clientX;drag.y=event.clientY;paint();void place();return true;
   }
-  function pointercancel(event){if(pending?.pointerId===event.pointerId)clearPending();if(drag?.pointerId===event.pointerId){cancel();return true;}return false;}
+  function pointercancel(event){
+    if(sizing?.pointerId===event.pointerId){sizeCancel();return true;}
+    if(pending?.pointerId===event.pointerId)clearPending();
+    if(drag?.pointerId===event.pointerId){cancel();return true;}
+    return false;
+  }
   function click(event){
    if(Date.now()>suppressUntil){if(!drag&&event.target?.closest?.('[data-arrange-grip]')){event.preventDefault?.();return event.detail===0?keyboardStart(event.target):true;}return false;}
    event.preventDefault?.();event.stopImmediatePropagation?.();return true;
@@ -428,27 +634,25 @@
     return true;
   }
   function keydown(event){
+   if(sizing&&event.key==='Escape'){event.preventDefault();sizeCancel();return true;}
    if(drag&&event.key==='Escape'){event.preventDefault();cancel();return true;}
+   if(sizeKey(event))return true;
    if(drag?.keyboard){
     if(event.key==='Enter'||event.key===' '){event.preventDefault();void place();suppressUntil=Date.now()+400;return true;}
     if(event.key==='Tab'){
       event.preventDefault();
       drag.targetIndex=(drag.targetIndex+(event.shiftKey?-1:1)+drag.targets.length)%drag.targets.length;
       const node=drag.targets[drag.targetIndex];
-      if(node){showHud(`Choose an edge of ${node.querySelector('.rd-rail-name')?.textContent||M.LABELS[keyOf(node)]} with the arrow keys`);announce(hud.textContent);}
-      return true;
-    }
+      if(node){showHud(`Choose an edge of ${node.querySelector('.rd-rail-name')?.textContent||M.LABELS[keyOf(node)]} with the arrow keys`);announce(hud.textContent);
+     // (a module chosen with Tab: Enter at once puts it in that module's place, as the middle of a module does by hand)
+     if(drag.kind==='panel'){drag.drop=null;preview({type:'swap',key:drag.key,target:keyOf(node)});showHud(`${textFor(drag.drop)} · arrows for an edge · Enter to place`);}}return true;}
     if(event.key.startsWith('Arrow')){
      event.preventDefault();const edge={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'top',ArrowDown:'bottom'}[event.key];
      if(drag.kind==='rail')preview({type:'navigation',value:edge==='top'||edge==='right'?'topbar':'sidebar'});
      else if(drag.kind==='course'){
       const ordered=cards(),at=ordered.indexOf(drag.node),delta=['left','top'].includes(edge)?-1:1,target=ordered[at+delta];
       if(target)preview({type:'course-move',key:drag.key,target:keyOf(target),position:delta<0?'before':'after',ids:getCourseIds()});
-     }
-     else {
-       const target=drag.targets[drag.targetIndex];
-       if(target)preview(['left','right'].includes(edge)?sideCommand(keyOf(target),edge):{type:'dock',key:drag.key,target:keyOf(target),edge});
-     }
+     }else {const target=drag.targets[drag.targetIndex];if(target)preview({type:'dock',key:drag.key,target:keyOf(target),edge});}
      return true;
     }
    }
@@ -469,10 +673,11 @@
   // instead of waiting for the save and a whole render (widgets.js reflow). The save's settings take over when they
   // come; a save that never comes lets the override go after 3 s.
   let sizeOverride=null,overrideTimer=0;
-  function previewSize(key,size){
+  function previewSize(key,size,{hold=false}={}){
    if(dead||!Object.hasOwn(M.SIZES||{},size)||M.isKey&&!M.isKey(key))return false;
    sizeOverride={...(sizeOverride||{}),[key]:size};layoutMemo=null;if(!drag)applyLayout();
-   clearTimeout(overrideTimer);overrideTimer=setTimeout(()=>{if(dead||!sizeOverride)return;sizeOverride=null;layoutMemo=null;if(!drag)applyLayout();},3000);
+   // (held while an edge is being pulled: nothing is saved until it is let go)
+   clearTimeout(overrideTimer);if(!hold)overrideTimer=setTimeout(()=>{if(dead||!sizeOverride)return;sizeOverride=null;layoutMemo=null;if(!drag)applyLayout();},3000);
    return true;
   }
   function sync(){
@@ -481,13 +686,18 @@
    for(const grip of all('[data-arrange-grip]'))grip.removeAttribute('aria-pressed');
   }
   function outsideUp(event){if(pending?.pointerId===event.pointerId)clearPending();}
-  function lostCapture(event){if(drag&&!drag.keyboard&&drag.pointerId===event.pointerId)cancel();}
-  const blur=()=>cancel();
+  function lostCapture(event){if(drag&&!drag.keyboard&&drag.pointerId===event.pointerId)cancel();if(sizing?.pointerId===event.pointerId)sizeCancel();}
+  const blur=()=>{cancel();sizeCancel();};
   doc.addEventListener?.('pointerup',outsideUp);doc.addEventListener?.('lostpointercapture',lostCapture);win.addEventListener?.('blur',blur);
+  // the edge mark is drawn where the module was: a scroll takes it away until the pointer moves again
+  doc.addEventListener?.('scroll',unmark,{capture:true,passive:true});container.addEventListener?.('pointerleave',unmark);
   function destroy(){
     dead=true;
     revision++;
     cancel({quiet:true});
+    endSizing();
+    mark?.remove();
+    mark=null;
     clearPending();
     clearVisuals();
     for(const animation of animations.values())animation.cancel();
@@ -496,9 +706,28 @@
     doc.removeEventListener?.('pointerup',outsideUp);
     doc.removeEventListener?.('lostpointercapture',lostCapture);
     win.removeEventListener?.('blur',blur);
+    doc.removeEventListener?.('scroll',unmark,{capture:true});
+    container.removeEventListener?.('pointerleave',unmark);
+    caf(hoverFrame);
+    hoverFrame=0;
     live?.remove();
   }
-  return {active:()=>!!drag,dragging:()=>!!drag,pointerdown,pointermove,pointerup,pointercancel,click,contextmenu,action,keydown,sync,previewSize,destroy};
+  return {
+    active:()=>!!drag,
+    dragging:()=>!!drag,
+    sizing:()=>!!sizing,
+    pointerdown,
+    pointermove,
+    pointerup,
+    pointercancel,
+    click,
+    contextmenu,
+    action,
+    keydown,
+    sync,
+    previewSize,
+    destroy
+  };
  }
  const api={HOLD_MS,HOLD_DELAY_MS,SLOP,create};root.ReserveWorkspaceGestures=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

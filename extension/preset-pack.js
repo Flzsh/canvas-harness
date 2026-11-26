@@ -121,7 +121,7 @@
   if(pack.kind==='layout'){
    const m=arrange(),available=modules===undefined?null:new Set(modules),keep=key=>m.PANELS.includes(key)||!available||available.has(key);
    let tree=pack.data.workspaceLayout;
-   for(const key of m.leaves(tree))if(!keep(key))tree=m.prune(tree,key);
+   for(const key of m.leaves(tree))if(!keep(key)||key==='help')tree=m.prune(tree,key);
    out.settings.workspaceLayout=m.cleanLayout(tree);
    out.settings.workspaceOrder=m.leaves(tree).filter(key=>m.PANELS.includes(key));
    out.settings.workspaceMode=tree.axis==='y'&&tree.children.every(n=>typeof n==='string')?'stacked':'side-by-side';

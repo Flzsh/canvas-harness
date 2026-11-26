@@ -1,0 +1,2013 @@
+{
+ "name": "set-a",
+ "note": "Set A: 150 lines for the before measure and for training. Written 2026-11-22 before any change.",
+ "world": "tests/biscuit-42/world.cjs",
+ "lines": [
+  {
+   "id": "A001",
+   "cat": "hw",
+   "line": "hw?",
+   "want": {
+    "items": [
+     "b1",
+     "s1"
+    ]
+   }
+  },
+  {
+   "id": "A002",
+   "cat": "hw",
+   "line": "what hw do i have",
+   "want": {
+    "items": [
+     "b1",
+     "s1"
+    ]
+   }
+  },
+  {
+   "id": "A003",
+   "cat": "hw",
+   "line": "any homework tonight",
+   "want": {
+    "items": [
+     "b1",
+     "s1"
+    ],
+    "none": [
+     "e2",
+     "h2",
+     "s2"
+    ]
+   }
+  },
+  {
+   "id": "A004",
+   "cat": "hw",
+   "line": "hw for bio class",
+   "want": {
+    "items": [
+     "b1"
+    ],
+    "none": [
+     "a1",
+     "a2",
+     "e1",
+     "e2",
+     "e3",
+     "h1",
+     "h2",
+     "s1",
+     "s2",
+     "p1",
+     "r1"
+    ]
+   }
+  },
+  {
+   "id": "A005",
+   "cat": "hw",
+   "line": "math homework",
+   "want": {
+    "items": [
+     "a1"
+    ],
+    "none": [
+     "b1",
+     "b2",
+     "b3",
+     "e1",
+     "e2",
+     "e3",
+     "h1",
+     "h2",
+     "s1",
+     "s2",
+     "p1",
+     "r1"
+    ]
+   }
+  },
+  {
+   "id": "A006",
+   "cat": "hw",
+   "line": "english hw due",
+   "want": {
+    "items": [
+     "e1"
+    ],
+    "none": [
+     "b1",
+     "b2",
+     "b3",
+     "a1",
+     "a2",
+     "h1",
+     "h2",
+     "s1",
+     "s2",
+     "p1",
+     "r1"
+    ]
+   }
+  },
+  {
+   "id": "A007",
+   "cat": "hw",
+   "line": "spanish homework?",
+   "want": {
+    "items": [
+     "s1"
+    ],
+    "none": [
+     "b1",
+     "b2",
+     "b3",
+     "a1",
+     "a2",
+     "e1",
+     "e2",
+     "e3",
+     "h1",
+     "h2",
+     "p1",
+     "r1"
+    ]
+   }
+  },
+  {
+   "id": "A008",
+   "cat": "hw",
+   "line": "physics hw",
+   "want": {
+    "items": [
+     "p1"
+    ],
+    "none": [
+     "b1",
+     "b2",
+     "b3",
+     "a1",
+     "a2",
+     "e1",
+     "e2",
+     "e3",
+     "h1",
+     "h2",
+     "s1",
+     "s2",
+     "r1"
+    ]
+   }
+  },
+  {
+   "id": "A009",
+   "cat": "hw",
+   "line": "apush reading",
+   "want": {
+    "items": [
+     "h1"
+    ],
+    "none": [
+     "b1",
+     "b2",
+     "b3",
+     "a1",
+     "a2",
+     "e1",
+     "e2",
+     "e3",
+     "s1",
+     "s2",
+     "p1",
+     "r1"
+    ]
+   }
+  },
+  {
+   "id": "A010",
+   "cat": "hw",
+   "line": "whats my alg hw",
+   "want": {
+    "items": [
+     "a1"
+    ],
+    "none": [
+     "b1",
+     "b2",
+     "b3",
+     "e1",
+     "e2",
+     "e3",
+     "h1",
+     "h2",
+     "s1",
+     "s2",
+     "p1",
+     "r1"
+    ]
+   }
+  },
+  {
+   "id": "A011",
+   "cat": "hw",
+   "line": "the logarithms problem set",
+   "want": {
+    "items": [
+     "a1"
+    ]
+   }
+  },
+  {
+   "id": "A012",
+   "cat": "hw",
+   "line": "open the photosynthesis lab",
+   "want": {
+    "items": [
+     "b2"
+    ]
+   }
+  },
+  {
+   "id": "A013",
+   "cat": "hw",
+   "line": "where is the lab report",
+   "want": {
+    "items": [
+     "b2"
+    ]
+   }
+  },
+  {
+   "id": "A014",
+   "cat": "hw",
+   "line": "find the essay draft",
+   "want": {
+    "items": [
+     "e2"
+    ]
+   }
+  },
+  {
+   "id": "A015",
+   "cat": "hw",
+   "line": "things fall apart response",
+   "want": {
+    "items": [
+     "e1"
+    ]
+   }
+  },
+  {
+   "id": "A016",
+   "cat": "hw",
+   "line": "dbq",
+   "want": {
+    "items": [
+     "h2"
+    ]
+   }
+  },
+  {
+   "id": "A017",
+   "cat": "hw",
+   "line": "self portrait",
+   "want": {
+    "items": [
+     "r1"
+    ]
+   }
+  },
+  {
+   "id": "A018",
+   "cat": "hw",
+   "line": "momentum problems",
+   "want": {
+    "items": [
+     "p1"
+    ]
+   }
+  },
+  {
+   "id": "A019",
+   "cat": "hw",
+   "line": "preterite practice",
+   "want": {
+    "items": [
+     "s1"
+    ]
+   }
+  },
+  {
+   "id": "A020",
+   "cat": "hw",
+   "line": "do i have any reading",
+   "want": {
+    "any": [
+     "e1",
+     "h1"
+    ]
+   }
+  },
+  {
+   "id": "A021",
+   "cat": "hw",
+   "line": "show me my homework for this week",
+   "want": {
+    "items": [
+     "b1",
+     "s1",
+     "a1",
+     "e1"
+    ],
+    "none": [
+     "e2",
+     "h2",
+     "s2"
+    ]
+   }
+  },
+  {
+   "id": "A022",
+   "cat": "hw",
+   "line": "what assignments are open in spanish",
+   "want": {
+    "items": [
+     "s1",
+     "s2"
+    ],
+    "none": [
+     "b1",
+     "b2",
+     "b3",
+     "a1",
+     "a2",
+     "e1",
+     "e2",
+     "e3",
+     "h1",
+     "h2",
+     "p1",
+     "r1"
+    ]
+   }
+  },
+  {
+   "id": "A023",
+   "cat": "hw",
+   "line": "lab report bio",
+   "want": {
+    "items": [
+     "b2"
+    ]
+   }
+  },
+  {
+   "id": "A024",
+   "cat": "hw",
+   "line": "cell respiration worksheet",
+   "want": {
+    "items": [
+     "b1"
+    ]
+   }
+  },
+  {
+   "id": "A025",
+   "cat": "hw",
+   "line": "the history timeline",
+   "want": {
+    "items": [
+     "h3"
+    ]
+   }
+  },
+  {
+   "id": "A026",
+   "cat": "due",
+   "line": "what do i have due tmrw",
+   "want": {
+    "items": [
+     "a1",
+     "e1"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "A027",
+   "cat": "due",
+   "line": "stuff due today",
+   "want": {
+    "items": [
+     "b1",
+     "s1"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "A028",
+   "cat": "due",
+   "line": "what's due thursday",
+   "want": {
+    "items": [
+     "b2",
+     "a2",
+     "h1",
+     "p1"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "A029",
+   "cat": "due",
+   "line": "anything due friday",
+   "want": {
+    "items": [
+     "b3",
+     "e3"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "A030",
+   "cat": "due",
+   "line": "what all is due this week",
+   "want": {
+    "items": [
+     "b1",
+     "s1",
+     "a1",
+     "e1"
+    ],
+    "none": [
+     "e2",
+     "h2",
+     "s2"
+    ]
+   }
+  },
+  {
+   "id": "A031",
+   "cat": "due",
+   "line": "when is the bio lab report due",
+   "want": {
+    "items": [
+     "b2"
+    ],
+    "says": [
+     "(Thu|Thursday|Dec 10)"
+    ]
+   }
+  },
+  {
+   "id": "A032",
+   "cat": "due",
+   "line": "when's the essay draft due",
+   "want": {
+    "items": [
+     "e2"
+    ],
+    "says": [
+     "(Mon|Monday|Dec 14)"
+    ]
+   }
+  },
+  {
+   "id": "A033",
+   "cat": "due",
+   "line": "when is quiz 7a",
+   "want": {
+    "items": [
+     "a2"
+    ],
+    "says": [
+     "(Thu|Thursday|Dec 10)"
+    ]
+   }
+  },
+  {
+   "id": "A034",
+   "cat": "due",
+   "line": "dbq due date",
+   "want": {
+    "items": [
+     "h2"
+    ],
+    "says": [
+     "(Tue|Tuesday|Dec 15)"
+    ]
+   }
+  },
+  {
+   "id": "A035",
+   "cat": "due",
+   "line": "is the momentum hw due tomorrow",
+   "want": {
+    "items": [
+     "p1"
+    ],
+    "says": [
+     "(Thu|Thursday|Dec 10)"
+    ]
+   }
+  },
+  {
+   "id": "A036",
+   "cat": "due",
+   "line": "when is my spanish presentation",
+   "want": {
+    "items": [
+     "s2"
+    ],
+    "says": [
+     "(Thu|Thursday|Dec 17)"
+    ]
+   }
+  },
+  {
+   "id": "A037",
+   "cat": "due",
+   "line": "what do i have due next week",
+   "want": {
+    "items": [
+     "e2",
+     "h2",
+     "s2"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "A038",
+   "cat": "due",
+   "line": "what's due wed",
+   "want": {
+    "items": [
+     "a1",
+     "e1"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "A039",
+   "cat": "due",
+   "line": "whats due on saturday",
+   "want": {
+    "items": [
+     "r1"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "A040",
+   "cat": "due",
+   "line": "is anything due today",
+   "want": {
+    "items": [
+     "b1",
+     "s1"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "A041",
+   "cat": "due",
+   "line": "due dates for english",
+   "want": {
+    "items": [
+     "e1"
+    ],
+    "none": [
+     "b1",
+     "b2",
+     "b3",
+     "a1",
+     "a2",
+     "h1",
+     "h2",
+     "s1",
+     "s2",
+     "p1",
+     "r1"
+    ]
+   }
+  },
+  {
+   "id": "A042",
+   "cat": "due",
+   "line": "when is vocab quiz 9",
+   "want": {
+    "items": [
+     "e3"
+    ],
+    "says": [
+     "(Fri|Friday|Dec 11)"
+    ]
+   }
+  },
+  {
+   "id": "A043",
+   "cat": "due",
+   "line": "how long until the bio test",
+   "want": {
+    "items": [
+     "b3"
+    ],
+    "says": [
+     "(Fri|Friday|Dec 11)|3 days"
+    ]
+   }
+  },
+  {
+   "id": "A044",
+   "cat": "due",
+   "line": "what's late",
+   "want": {
+    "items": [
+     "b4",
+     "h3"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "A045",
+   "cat": "due",
+   "line": "list my missing assignments",
+   "want": {
+    "items": [
+     "b4",
+     "h3"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "A046",
+   "cat": "due",
+   "line": "did i forget to turn anything in",
+   "want": {
+    "items": [
+     "b4",
+     "h3"
+    ]
+   }
+  },
+  {
+   "id": "A047",
+   "cat": "due",
+   "line": "did i turn in the exponential growth problem set",
+   "want": {
+    "items": [
+     "a3"
+    ],
+    "says": [
+     "(turned in|submitted|handed in|yes)"
+    ]
+   }
+  },
+  {
+   "id": "A048",
+   "cat": "due",
+   "line": "when is the self portrait due",
+   "want": {
+    "items": [
+     "r1"
+    ],
+    "says": [
+     "(Sat|Saturday|Dec 12)"
+    ]
+   }
+  },
+  {
+   "id": "A049",
+   "cat": "due",
+   "line": "next deadline",
+   "want": {
+    "any": [
+     "b1",
+     "s1"
+    ]
+   }
+  },
+  {
+   "id": "A050",
+   "cat": "due",
+   "line": "what's due monday",
+   "want": {
+    "items": [
+     "e2"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "A051",
+   "cat": "course",
+   "line": "open bio",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "301"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "301"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "A052",
+   "cat": "course",
+   "line": "go to algebra",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "302"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "302"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "A053",
+   "cat": "course",
+   "line": "english class",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "303"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "303"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "A054",
+   "cat": "course",
+   "line": "apush",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "304"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "304"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "A055",
+   "cat": "course",
+   "line": "spanish",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "305"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "305"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "A056",
+   "cat": "course",
+   "line": "physics page",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "306"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "306"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "A057",
+   "cat": "course",
+   "line": "art",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "307"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "307"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "A058",
+   "cat": "course",
+   "line": "take me to history",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "304"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "304"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "A059",
+   "cat": "course",
+   "line": "us history",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "304"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "304"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "A060",
+   "cat": "course",
+   "line": "ap bio",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "301"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "301"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "A061",
+   "cat": "course",
+   "line": "alg 2",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "302"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "302"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "A062",
+   "cat": "course",
+   "line": "chem",
+   "want": {
+    "noCourse": true,
+    "noWork": true,
+    "allowUnsure": true
+   }
+  },
+  {
+   "id": "A063",
+   "cat": "course",
+   "line": "whats in my bio course",
+   "want": {
+    "alt": [
+     {
+      "fields": {
+       "courseId": "301"
+      }
+     },
+     {
+      "any": [
+       "b1",
+       "b2",
+       "b3"
+      ],
+      "none": [
+       "a1",
+       "a2",
+       "e1",
+       "e2",
+       "e3",
+       "h1",
+       "h2",
+       "s1",
+       "s2",
+       "p1",
+       "r1"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "A064",
+   "cat": "course",
+   "line": "spanish 3 modules",
+   "want": {
+    "fields": {
+     "courseId": "305"
+    }
+   }
+  },
+  {
+   "id": "A065",
+   "cat": "course",
+   "line": "algebra syllabus",
+   "want": {
+    "items": [
+     "syllabus:302"
+    ]
+   }
+  },
+  {
+   "id": "A066",
+   "cat": "course",
+   "line": "bio files",
+   "want": {
+    "alt": [
+     {
+      "items": [
+       "f1"
+      ]
+     },
+     {
+      "fields": {
+       "courseId": "301"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "A067",
+   "cat": "course",
+   "line": "logarithm rules sheet",
+   "want": {
+    "items": [
+     "f2"
+    ]
+   }
+  },
+  {
+   "id": "A068",
+   "cat": "course",
+   "line": "things fall apart study guide",
+   "want": {
+    "items": [
+     "f3"
+    ]
+   }
+  },
+  {
+   "id": "A069",
+   "cat": "course",
+   "line": "announcements",
+   "want": {
+    "any": [
+     "n1",
+     "n2"
+    ]
+   }
+  },
+  {
+   "id": "A070",
+   "cat": "course",
+   "line": "any new announcements",
+   "want": {
+    "items": [
+     "n1"
+    ]
+   }
+  },
+  {
+   "id": "A071",
+   "cat": "grade",
+   "line": "check my grades",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "tab": "grades"
+      },
+      "notSays": [
+       "1 open"
+      ]
+     },
+     {
+      "any": [
+       "course-grade-301",
+       "course-grade-302"
+      ],
+      "says": [
+       "88\\.6|92\\.1"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "A072",
+   "cat": "grade",
+   "line": "whats my grade in ap bio",
+   "want": {
+    "says": [
+     "88\\.6"
+    ]
+   }
+  },
+  {
+   "id": "A073",
+   "cat": "grade",
+   "line": "whats my math grade",
+   "want": {
+    "says": [
+     "92\\.1"
+    ]
+   }
+  },
+  {
+   "id": "A074",
+   "cat": "grade",
+   "line": "english grade",
+   "want": {
+    "says": [
+     "95\\.3"
+    ]
+   }
+  },
+  {
+   "id": "A075",
+   "cat": "grade",
+   "line": "how am i doing in us history",
+   "want": {
+    "says": [
+     "84"
+    ]
+   }
+  },
+  {
+   "id": "A076",
+   "cat": "grade",
+   "line": "spanish grade?",
+   "want": {
+    "says": [
+     "90\\.7"
+    ]
+   }
+  },
+  {
+   "id": "A077",
+   "cat": "grade",
+   "line": "physics grade",
+   "want": {
+    "says": [
+     "79\\.5"
+    ]
+   }
+  },
+  {
+   "id": "A078",
+   "cat": "grade",
+   "line": "what did i get on the collisions lab",
+   "want": {
+    "says": [
+     "31"
+    ]
+   }
+  },
+  {
+   "id": "A079",
+   "cat": "grade",
+   "line": "what grade do i have in art",
+   "want": {
+    "says": [
+     "98"
+    ]
+   }
+  },
+  {
+   "id": "A080",
+   "cat": "grade",
+   "line": "grades pls",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "tab": "grades"
+      },
+      "notSays": [
+       "1 open"
+      ]
+     },
+     {
+      "any": [
+       "course-grade-301",
+       "course-grade-302"
+      ],
+      "says": [
+       "88\\.6|92\\.1"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "A081",
+   "cat": "grade",
+   "line": "check my gpa",
+   "want": {
+    "says": [
+     "gpa"
+    ]
+   }
+  },
+  {
+   "id": "A082",
+   "cat": "grade",
+   "line": "lowest grade",
+   "want": {
+    "says": [
+     "(Physics|79\\.5)"
+    ]
+   }
+  },
+  {
+   "id": "A083",
+   "cat": "grade",
+   "line": "which class has my best grade",
+   "want": {
+    "says": [
+     "(Studio Art|98)"
+    ]
+   }
+  },
+  {
+   "id": "A084",
+   "cat": "grade",
+   "line": "did the collisions lab get graded",
+   "want": {
+    "alt": [
+     {
+      "says": [
+       "31"
+      ]
+     },
+     {
+      "items": [
+       "p2"
+      ],
+      "says": [
+       "grade"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "A085",
+   "cat": "grade",
+   "line": "bio grade pls",
+   "want": {
+    "says": [
+     "88\\.6"
+    ]
+   }
+  },
+  {
+   "id": "A086",
+   "cat": "plan",
+   "line": "plan out tonight",
+   "want": {
+    "act": "plan"
+   }
+  },
+  {
+   "id": "A087",
+   "cat": "plan",
+   "line": "make me a plan for today",
+   "want": {
+    "act": "plan"
+   }
+  },
+  {
+   "id": "A088",
+   "cat": "plan",
+   "line": "plan my whole week",
+   "want": {
+    "act": "plan"
+   }
+  },
+  {
+   "id": "A089",
+   "cat": "plan",
+   "line": "what should i do first",
+   "want": {
+    "any": [
+     "b1",
+     "s1"
+    ]
+   }
+  },
+  {
+   "id": "A090",
+   "cat": "plan",
+   "line": "help me plan tomorrow",
+   "want": {
+    "act": "plan"
+   }
+  },
+  {
+   "id": "A091",
+   "cat": "plan",
+   "line": "i have soccer at 5, plan around it",
+   "want": {
+    "act": "plan"
+   }
+  },
+  {
+   "id": "A092",
+   "cat": "plan",
+   "line": "start a 25 min focus",
+   "want": {
+    "act": "focus",
+    "fields": {
+     "minutes": 25
+    }
+   }
+  },
+  {
+   "id": "A093",
+   "cat": "plan",
+   "line": "focus 45 mins",
+   "want": {
+    "act": "focus",
+    "fields": {
+     "minutes": 45
+    }
+   }
+  },
+  {
+   "id": "A094",
+   "cat": "plan",
+   "line": "timer 30 min",
+   "want": {
+    "act": "focus",
+    "fields": {
+     "minutes": 30
+    }
+   }
+  },
+  {
+   "id": "A095",
+   "cat": "plan",
+   "line": "start a pomodoro",
+   "want": {
+    "act": "focus"
+   }
+  },
+  {
+   "id": "A096",
+   "cat": "plan",
+   "line": "i need a break",
+   "want": {
+    "act": "break"
+   }
+  },
+  {
+   "id": "A097",
+   "cat": "plan",
+   "line": "remind me to study for the bio test at 7",
+   "want": {
+    "act": "reminder"
+   }
+  },
+  {
+   "id": "A098",
+   "cat": "plan",
+   "line": "remind me tomorrow to bring my sketchbook",
+   "want": {
+    "act": "reminder"
+   }
+  },
+  {
+   "id": "A099",
+   "cat": "plan",
+   "line": "note: bring calculator friday",
+   "want": {
+    "act": "note"
+   }
+  },
+  {
+   "id": "A100",
+   "cat": "plan",
+   "line": "what should i study for friday",
+   "want": {
+    "any": [
+     "b3",
+     "e3"
+    ]
+   }
+  },
+  {
+   "id": "A101",
+   "cat": "plan",
+   "line": "study plan for the bio test",
+   "want": {
+    "any": [
+     "b3"
+    ]
+   }
+  },
+  {
+   "id": "A102",
+   "cat": "plan",
+   "line": "catch up on late work",
+   "want": {
+    "any": [
+     "b4",
+     "h3"
+    ]
+   }
+  },
+  {
+   "id": "A103",
+   "cat": "plan",
+   "line": "how much work do i have tonight",
+   "want": {
+    "any": [
+     "b1",
+     "s1"
+    ]
+   }
+  },
+  {
+   "id": "A104",
+   "cat": "plan",
+   "line": "r u sure im not behind",
+   "want": {
+    "any": [
+     "b4",
+     "h3"
+    ]
+   }
+  },
+  {
+   "id": "A105",
+   "cat": "plan",
+   "line": "what's next",
+   "want": {
+    "any": [
+     "b1",
+     "s1"
+    ]
+   }
+  },
+  {
+   "id": "A106",
+   "cat": "chat",
+   "line": "hiii biscuit",
+   "want": {
+    "act": [
+     "chat"
+    ]
+   }
+  },
+  {
+   "id": "A107",
+   "cat": "chat",
+   "line": "thank u so much",
+   "want": {
+    "act": [
+     "chat"
+    ]
+   }
+  },
+  {
+   "id": "A108",
+   "cat": "chat",
+   "line": "gm biscuit",
+   "want": {
+    "act": [
+     "chat"
+    ]
+   }
+  },
+  {
+   "id": "A109",
+   "cat": "chat",
+   "line": "how are you",
+   "want": {
+    "act": [
+     "chat"
+    ]
+   }
+  },
+  {
+   "id": "A110",
+   "cat": "chat",
+   "line": "who are you",
+   "want": {
+    "alt": [
+     {
+      "act": [
+       "chat"
+      ]
+     },
+     {
+      "act": "installed",
+      "fields": {
+       "action": "name"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "A111",
+   "cat": "chat",
+   "line": "i'm tired",
+   "want": {
+    "noWork": false
+   }
+  },
+  {
+   "id": "A112",
+   "cat": "chat",
+   "line": "im so stressed",
+   "want": {}
+  },
+  {
+   "id": "A113",
+   "cat": "chat",
+   "line": "you're cute",
+   "want": {
+    "act": [
+     "chat"
+    ]
+   }
+  },
+  {
+   "id": "A114",
+   "cat": "chat",
+   "line": "lol",
+   "want": {
+    "act": [
+     "chat"
+    ]
+   }
+  },
+  {
+   "id": "A115",
+   "cat": "chat",
+   "line": "bye",
+   "want": {
+    "act": [
+     "chat"
+    ]
+   }
+  },
+  {
+   "id": "A116",
+   "cat": "chat",
+   "line": "good night",
+   "want": {
+    "act": [
+     "chat"
+    ]
+   }
+  },
+  {
+   "id": "A117",
+   "cat": "chat",
+   "line": "tell me a joke",
+   "want": {
+    "act": [
+     "chat"
+    ]
+   }
+  },
+  {
+   "id": "A118",
+   "cat": "chat",
+   "line": "what are you able to do",
+   "want": {
+    "act": [
+     "chat"
+    ]
+   }
+  },
+  {
+   "id": "A119",
+   "cat": "chat",
+   "line": "i'm bored",
+   "want": {}
+  },
+  {
+   "id": "A120",
+   "cat": "chat",
+   "line": "ok",
+   "want": {}
+  },
+  {
+   "id": "A121",
+   "cat": "typo",
+   "line": "whats du tomorow",
+   "want": {
+    "items": [
+     "a1",
+     "e1"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "A122",
+   "cat": "typo",
+   "line": "homwork for spansih",
+   "want": {
+    "items": [
+     "s1"
+    ],
+    "none": [
+     "b1",
+     "b2",
+     "b3",
+     "a1",
+     "a2",
+     "e1",
+     "e2",
+     "e3",
+     "h1",
+     "h2",
+     "p1",
+     "r1"
+    ]
+   }
+  },
+  {
+   "id": "A123",
+   "cat": "typo",
+   "line": "wen is the bio tset",
+   "want": {
+    "items": [
+     "b3"
+    ],
+    "says": [
+     "(Fri|Friday|Dec 11)"
+    ]
+   }
+  },
+  {
+   "id": "A124",
+   "cat": "typo",
+   "line": "algebr grade",
+   "want": {
+    "says": [
+     "92\\.1"
+    ]
+   }
+  },
+  {
+   "id": "A125",
+   "cat": "typo",
+   "line": "fisics hw",
+   "want": {
+    "items": [
+     "p1"
+    ],
+    "none": [
+     "b1",
+     "b2",
+     "b3",
+     "a1",
+     "a2",
+     "e1",
+     "e2",
+     "e3",
+     "h1",
+     "h2",
+     "s1",
+     "s2",
+     "r1"
+    ]
+   }
+  },
+  {
+   "id": "A126",
+   "cat": "typo",
+   "line": "englsh essay",
+   "want": {
+    "items": [
+     "e2"
+    ]
+   }
+  },
+  {
+   "id": "A127",
+   "cat": "typo",
+   "line": "histroy reading notes",
+   "want": {
+    "items": [
+     "h1"
+    ]
+   }
+  },
+  {
+   "id": "A128",
+   "cat": "typo",
+   "line": "whta is due today",
+   "want": {
+    "items": [
+     "b1",
+     "s1"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "A129",
+   "cat": "typo",
+   "line": "plna tonight",
+   "want": {
+    "act": "plan"
+   }
+  },
+  {
+   "id": "A130",
+   "cat": "typo",
+   "line": "photosyntesis lab",
+   "want": {
+    "items": [
+     "b2"
+    ]
+   }
+  },
+  {
+   "id": "A131",
+   "cat": "typo",
+   "line": "momentom problems due",
+   "want": {
+    "items": [
+     "p1"
+    ],
+    "says": [
+     "(Thu|Thursday|Dec 10)"
+    ]
+   }
+  },
+  {
+   "id": "A132",
+   "cat": "typo",
+   "line": "logarithims",
+   "want": {
+    "items": [
+     "a1"
+    ]
+   }
+  },
+  {
+   "id": "A133",
+   "cat": "typo",
+   "line": "assignmnets due this week",
+   "want": {
+    "items": [
+     "b1",
+     "s1",
+     "a1",
+     "e1"
+    ],
+    "none": [
+     "e2",
+     "h2",
+     "s2"
+    ]
+   }
+  },
+  {
+   "id": "A134",
+   "cat": "typo",
+   "line": "biologyy grade",
+   "want": {
+    "says": [
+     "88\\.6"
+    ]
+   }
+  },
+  {
+   "id": "A135",
+   "cat": "typo",
+   "line": "quizz tomorrow?",
+   "want": {
+    "says": [
+     "\\b(no|none|nothing)\\b"
+    ],
+    "notAct": [
+     "note",
+     "reminder",
+     "task"
+    ],
+    "none": [
+     "b3",
+     "e3"
+    ]
+   }
+  },
+  {
+   "id": "A136",
+   "cat": "short",
+   "line": "math",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "302"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "302"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "A137",
+   "cat": "short",
+   "line": "due",
+   "want": {
+    "any": [
+     "b1",
+     "s1"
+    ]
+   }
+  },
+  {
+   "id": "A138",
+   "cat": "short",
+   "line": "late",
+   "want": {
+    "items": [
+     "b4",
+     "h3"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "A139",
+   "cat": "short",
+   "line": "tmrw",
+   "want": {
+    "any": [
+     "a1",
+     "e1"
+    ]
+   }
+  },
+  {
+   "id": "A140",
+   "cat": "short",
+   "line": "quizzes coming up",
+   "want": {
+    "any": [
+     "a2",
+     "e3"
+    ],
+    "none": [
+     "b1",
+     "s1",
+     "a1",
+     "e1"
+    ]
+   }
+  },
+  {
+   "id": "A141",
+   "cat": "short",
+   "line": "tests",
+   "want": {
+    "items": [
+     "b3"
+    ],
+    "none": [
+     "b1",
+     "s1",
+     "a1",
+     "e1"
+    ]
+   }
+  },
+  {
+   "id": "A142",
+   "cat": "short",
+   "line": "essay",
+   "want": {
+    "items": [
+     "e2"
+    ]
+   }
+  },
+  {
+   "id": "A143",
+   "cat": "short",
+   "line": "focus",
+   "want": {
+    "act": "focus"
+   }
+  },
+  {
+   "id": "A144",
+   "cat": "short",
+   "line": "break",
+   "want": {
+    "act": "break"
+   }
+  },
+  {
+   "id": "A145",
+   "cat": "short",
+   "line": "plan",
+   "want": {
+    "act": "plan"
+   }
+  },
+  {
+   "id": "A146",
+   "cat": "short",
+   "line": "pull up my calendar",
+   "want": {}
+  },
+  {
+   "id": "A147",
+   "cat": "short",
+   "line": "inbox pls",
+   "want": {
+    "act": "navigate",
+    "says": [
+     "(message|inbox)"
+    ]
+   }
+  },
+  {
+   "id": "A148",
+   "cat": "short",
+   "line": "show my notes",
+   "want": {}
+  },
+  {
+   "id": "A149",
+   "cat": "short",
+   "line": "help pls",
+   "want": {}
+  },
+  {
+   "id": "A150",
+   "cat": "short",
+   "line": "bio",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "301"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "301"
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

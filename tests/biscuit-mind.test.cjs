@@ -56,7 +56,7 @@ for(const [line,action,words] of [
  ['yes','chat',/^Okay/],
  ['maybe later','chat',/I am here/],
  ['thanks','chat',/^You are welcome/],
- ['asdfgh','none',/^Say a bit more/],
+ ['asdfgh','none',/^I didn\u2019t catch that/],
  ['study chem','focus',/Equilibrium Worksheet/],
  ['quiz me','ai',/quiz you on Aeneid/],
  ['this is too hard','ai',/^Stuck happens/],

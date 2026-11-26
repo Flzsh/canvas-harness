@@ -46,7 +46,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   function pinHomeCommand(data,command){
     const keys=command?.type==='restore-context'?
       ['context']:
-      ['add','move','shift','dock','swap'].includes(command?.type)?[command.key,...(command.type==='swap'?[command.target]:[])]:command?.type==='mode'?Arrange.PANELS:[];
+      ['add','move','shift','dock','swap','size','reset-module'].includes(command?.type)?[command.key,...(command.type==='swap'?[command.target]:[])]:command?.type==='mode'?Arrange.PANELS:[];
     if(!keys.length)return;
     const pins=new Set(Array.isArray(data.toolbox?.agentPins)?data.toolbox.agentPins:[]);
     for(const key of keys)if(Arrange.isKey(key))pins.add(key);
@@ -887,6 +887,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       try{renderNow(next);renderedAt=started;}finally{rendering=false;}
       // The page has drawn its answer: the film skips its next tick so the frame that shows it carries it alone (motion.js).
       motion?.answered?.();
+      megaSync();
       root.ReserveDeveloper?.rendered(Date.now()-started);
       if(!mounted){mounted=true;onReady();}
       // (the page's patch takes the hiding off the column: it goes back on at once, and the room follows the page)
@@ -931,7 +932,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(scrolls){if(el.dataset.scrolls!=='true')el.dataset.scrolls='true';}else if(el.dataset.scrolls)delete el.dataset.scrolls;
     };
     const scrollBoxes=typeof root.ResizeObserver==='function'?new root.ResizeObserver(entries=>{for(const entry of entries)markScroll(entry.target);}):null;
-    const watchScrollBoxes=()=>{scrollBoxes?.disconnect();for(const el of container.querySelectorAll?.('.rd-reader-content,.rd-material-page')||[]){markScroll(el);scrollBoxes?.observe(el);}};
+    const watchScrollBoxes=()=>{
+      scrollBoxes?.disconnect();
+      for(const el of container.querySelectorAll?.('.rd-reader-content,.rd-material-page,.rd-thread-pane')||[]){markScroll(el);scrollBoxes?.observe(el);}
+    };
     const explicitWorkspace=initialState?.workspace||savedState?.workspace;
     // Keep an unavailable saved destination until the student chooses a different workspace.
     let workspace=resolveWorkspace(explicitWorkspace==='assignments'?'work':explicitWorkspace),workPage=explicitWorkspace==='assignments'?'assignments':'home';
@@ -1026,6 +1030,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         user:snapshot.user,
         client:resourceClient,
         getAssignments:()=>currentSnapshot.assignments,
+        getTimeZone:()=>personal.settings?.timeZone,
         ...selectionOptions,
         onChange:sourceChange,
         onAuthError,
@@ -1045,6 +1050,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         ...selectionOptions,
         materials,
         ownFiles,
+        getTimeZone:()=>personal.settings?.timeZone,
         onChange:sourceChange,
         onAuthError,
         onCapture:draft=>toolbox?.capture(draft,container.querySelector(':focus'))
@@ -1128,7 +1134,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       helpBand?.setOpen(true);
       container.querySelector('[data-help-band]')?.scrollIntoView?.({block:'nearest'});
       return !!helpBand;
-    },save:change=>savePersonal(change),rerender:()=>render(),getContext:()=>{
+    },
+    notePlan:list=>notePlanned(list),
+    noteDone:ids=>noteDone(ids),
+    noteAdded:list=>noteAdded(list),
+    save:change=>savePersonal(change),
+    rerender:()=>render(),
+    getContext:()=>{
       const c=buildContext();
       return {
         ...c,
@@ -1295,10 +1307,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const builtins=[
         {id:'builtin:pet',name:personal.pet?.name||'Biscuit',kind:'pet',current:!s.makeYourOwn?.pet},
         ...['light','dark'].map(id=>({id:'builtin:mode:'+id,name:({light:'Light',dark:'Dark'})[id],kind:'theme',current:!s.makeYourOwn?.theme&&!s.sceneTheme&&(s.theme==='dark'?'dark':'light')===id})),
-        ...['starry','sea','stars','blueprint','maple','thanksgiving','christmas'].map(id=>
+        ...['starry','sea','stars','blueprint','maple','thanksgiving','christmas','train'].map(id=>
           ({
             id:'builtin:scene:'+id,
-            name:({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving',christmas:'Christmas'})[id],
+            name:({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving',christmas:'Christmas',train:'Soul Passage'})[id],
             kind:'scene',
             current:!s.makeYourOwn?.theme&&s.sceneTheme===id
           })),
@@ -1316,9 +1328,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         const active=rows.filter(row=>row.current&&fits(row));
         return {ok:true,message:request.kind==='pet'?(root.ReservePetArt?.identity?.(store.get(),makeOwn?.state.pet)?.name||'Biscuit'):active.map(row=>row.name).join(', ')||'The built-in choice is active.'};
       }
-      if(!enabled('customization'))return {ok:false,message:'Appearance editor is off. Turn it on in Make it yours → Features.'};
+      if(!enabled('customization'))return {ok:false,message:'Appearance editor is off. Turn it on in Make it yours, under Settings.'};
       const row=rows.find(row=>row.id===request.id&&fits(row));if(request.action!=='use'||!row)return {ok:false,message:'That choice is no longer installed.'};
-      const builtin=async pending=>{const ok=await pending;return {ok:!!ok,message:ok?'Using '+row.name+'.':'Could not change '+row.name+'.'};};
+      const builtin=async pending=>{
+        const ok=await pending;
+        if(ok&&typeof ok==='object'&&typeof ok.message==='string')return ok;
+        return {ok:!!ok,message:ok?'Using '+row.name+'.':'Could not change '+row.name+'.'};
+      };
       if(row.id==='builtin:pet')return builtin(savePersonal(data=>{data.settings.makeYourOwn.pet=null;}));
       if(row.id.startsWith('builtin:mode:')){
         if(root.ReservePacks?.useInstalled)await root.ReservePacks.useInstalled('builtin:theme',{store});
@@ -1492,7 +1508,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         ...(!enabled('grades')?{showGrades:false}:{}),
         ...(!enabled('motion')?{motion:'off',livingArt:'off'}:{}),
         ...(!enabled('course-hub')?{showCourseInformation:false}:{}),
-        ...(!enabled('course-art')&&!(enabled('scene-themes')&&['starry','sea','stars','blueprint','maple','thanksgiving','christmas'].includes(personal.settings.sceneTheme))?
+        ...(!enabled('course-art')&&!(enabled('scene-themes')&&['starry','sea','stars','blueprint','maple','thanksgiving','christmas','train'].includes(personal.settings.sceneTheme))?
           {courseCardStyle:'rounded',showCourseIcons:false}:
           {})
       };
@@ -1670,6 +1686,121 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       root.chrome?.storage?.local?.get?.('reserve:canvasNav')?.then?.(saved=>navChanged({'reserve:canvasNav':{newValue:saved?.['reserve:canvasNav']??'drawn'}},'local'))?.catch?.(()=>{});
       root.chrome?.storage?.onChanged?.addListener?.(navChanged);
     }catch{}
+    // (4.2) Soul Passage is a megapack (megapack engine 1): its pictures and data come down from the Market; the worker
+    // fetches them (megapack.js). Make it yours shows where they are from the worker's answer to megapack-state: asked when
+    // Scenes opens and twice a second while files come down, never while the panel is shut (megaSync, after every render).
+    // A press on the choice sends megapack-get; a failed download is said on the status line a failed Market add uses.
+    const Mega=enabled('scene-themes')&&root.ReserveMakeYourOwn?.megapack||null;
+    let mega=null,megaPace=2,megaSight={land:'',time:''},megaTimer=0,megaTurn=0,megaLooked=false,megaSaid='',megaBusy=false,megaSince=-Infinity;
+    const megaPercent=()=>mega?.state==='getting'&&mega.total>0?Math.max(0,Math.min(100,Math.floor(mega.done/mega.total*100))):0;
+    const megaShape=v=>!v?'':v.state==='getting'?'getting':v.state==='here'?(v.bundled?'packaged':'here'):'none';
+    function megaLooking(){
+      if(!Mega||!customizeOpen||!enabled('customization')||destroyed)return false;
+      const tab={all:'look',art:'courses',features:'settings'}[customizeTab]||customizeTab||'look';
+      // (the scenes, Soul Passage among them, are on Scenes since 4.2)
+      return tab==='scenes';
+    }
+    function megaView(){return Mega?{...(mega||{}),pace:megaPace,land:megaSight.land,time:megaSight.time,busy:megaBusy}:null;}
+    // the panel alone is drawn again when the choice changes shape (focus stays on Soul Passage); while the line fills,
+    // only the line and the name move
+    function megaRedraw(){
+      if(!customizeOpen||destroyed)return;const held=!!container.querySelector('.cz-mega:focus,.cz-mega :focus');
+      if(!renderPanel()){scheduleRender();return;}
+      if(held&&
+        !container.querySelector('.cz-mega:focus,.cz-mega :focus'))(container.querySelector('button.cz-mega')||container.querySelector('input[data-setting="sceneTheme"][value="train"]'))?.focus({
+          preventScroll:true
+        });
+    }
+    function megaPaint(){
+      const el=container.querySelector('.cz-mega[data-mp="getting"]');if(!el)return;const p=megaPercent();
+      el.querySelector('.mp-line')?.style.setProperty('--mp-p',String(p));if(p>=100)el.setAttribute('data-mp-full','');
+      // (its name carries the number, but is not rewritten while it has focus: a screen reader is not told every step)
+      if(!el.matches(':focus'))el.setAttribute('aria-label','Soul Passage, '+p+' percent');
+    }
+    function megaTake(next){
+      if(!next||destroyed)return;const was=mega;
+      // (a download asked for here a moment ago may not have written its progress yet: "none" then is not believed for 3 s)
+      if(next.state==='none'&&was?.state==='getting'&&Date.now()-megaSince<3000){
+        root.clearTimeout(megaTimer);
+        megaTimer=megaLooking()?root.setTimeout(()=>{megaTimer=0;void megaAsk();},500):0;
+        return;
+      }
+      mega={state:next.state,done:Number(next.done)||0,total:Number(next.total)||0,bundled:next.bundled===true,reason:next.reason||'',at:next.at||0};
+      // a failed download goes back to "not on this computer"; its reason is said once
+      if(mega.state==='failed'&&mega.reason){const said=mega.at+'|'+mega.reason;if(said!==megaSaid){megaSaid=said;makeOwn?.say?.(mega.reason);}}
+      if(megaShape(was)!==megaShape(mega))megaRedraw();else if(mega.state==='getting')megaPaint();
+      root.clearTimeout(megaTimer);megaTimer=0;
+      if(mega.state==='getting'&&megaLooking())megaTimer=root.setTimeout(()=>{megaTimer=0;void megaAsk();},500);
+    }
+    async function megaAsk(){
+      if(!Mega||destroyed)return;const turn=++megaTurn;root.clearTimeout(megaTimer);megaTimer=0;
+      const next=await Mega.state();if(destroyed||turn!==megaTurn)return;megaTake(next);
+    }
+    function megaSync(){
+      const looking=megaLooking();if(looking&&!megaLooked)void megaAsk();
+      if(!looking&&megaLooked){root.clearTimeout(megaTimer);megaTimer=0;megaTurn++;}
+      megaLooked=looking;
+    }
+    async function megaGet(){
+      if(!Mega||megaBusy||mega?.state==='getting'||container.dataset.chLinksPending)return;
+      makeOwn?.say?.('');megaTake({state:'getting',done:0,total:0});megaSince=Date.now();
+      const reply=await Mega.get(store.owner);if(destroyed)return;
+      if(!reply||reply.ok!==true){megaSince=-Infinity;megaTake({state:'failed',reason:reply?.reason||'Could not reach the Market.',at:Date.now()});return;}
+      megaSince=Date.now();void megaAsk();
+    }
+    // Remove: the files and their record go (the worker); every account wearing the scene goes to none
+    async function megaRemove(){
+      if(!Mega||megaBusy||container.dataset.chLinksPending)return;megaBusy=true;megaRedraw();let said='';
+      try{const reply=await Mega.remove();said=!reply||reply.ok!==true?reply?.reason||'Could not remove Soul Passage.':'Removed';}
+      finally{megaBusy=false;if(!destroyed){await megaAsk();if(!destroyed){makeOwn?.say?.(said);megaRedraw();}}}
+    }
+    // A scene asked for by name while its files are not here: the worker starts the download (it puts the scene on when it
+    // ends) and the answer says so; when they are here after all, saveAppearance goes on as before (megaPass)
+    let megaPass=false;
+    const megaWanted=value=>!!Mega&&value===Mega.scene&&!megaPass&&mega?.state!=='here';
+    function megaChoose(value){
+      const again=()=>{megaPass=true;try{return saveAppearance('sceneTheme',value);}finally{megaPass=false;}};
+      return Mega.choose(value,{owner:store.owner}).then(result=>{
+        if(destroyed)return false;if(!result)return again();
+        if(result.state==='getting'&&mega?.state!=='getting'){megaSince=Date.now();megaTake({state:'getting',done:0,total:0});}return result;
+      },again);
+    }
+    // Adjust (Make it yours > Look > Use from Soul Passage): the speed is written where the scene hears it (it moves the lever and
+    // the ride itself); the land and the light write the record the popup's Scenery keeps too (the scene hears it at once)
+    function megaSpeed(n){if(Mega?.speed(n))megaPace=n;}
+    function megaAdjust(kind,value){
+      if(!Mega)return;if(kind==='pace'){megaSpeed(Number(value));return;}
+      if(!['land','time'].includes(kind))return;const next={...megaSight,[kind]:value};megaSight=Mega.sight(Mega.view(next.land,next.time));
+    }
+    // Reset ("Reset to how it came" and the choice's Reset chip, make-reset): the parts back as they came, Cruise, Today and Now
+    function megaResetLook(){megaSpeed(Mega.cruise);if(megaSight.land||megaSight.time){Mega.view('','');megaSight={land:'',time:''};}}
+    function megaResetting(id){if(!Mega||!id)return false;const s=settings();return id===Mega.look||s.sceneTheme===Mega.scene&&id===lookSelection(s).key;}
+    function megaChanged(changes,area){
+      if(area!=='local'||!Mega||!changes||destroyed)return;
+      if(Object.hasOwn(changes,Mega.pace)){
+        const n=Number(changes[Mega.pace].newValue);
+        megaPace=Number.isInteger(n)&&n>=0&&n<=3?n:Mega.cruise;
+        if(customizeOpen)scheduleRender();
+      }
+      if(Object.hasOwn(changes,Mega.preview)){megaSight=Mega.sight(changes[Mega.preview].newValue);if(customizeOpen)scheduleRender();}
+      // the record came or went (a download ended, Remove from another page): asked again while Look shows, else noted
+      if(Object.hasOwn(changes,Mega.key)){if(megaLooking())void megaAsk();else if(mega)mega={...mega,state:changes[Mega.key].newValue||mega.bundled?'here':'none',done:0,total:0};}
+    }
+    if(Mega){
+      try{
+        root.chrome?.storage?.local?.get?.([Mega.pace,Mega.preview])?.then?.(saved=>
+          megaChanged({[Mega.pace]:{newValue:saved?.[Mega.pace]},[Mega.preview]:{newValue:saved?.[Mega.preview]}},'local'))?.catch?.(()=>{});
+        root.chrome?.storage?.onChanged?.addListener?.(megaChanged);
+      }catch{}
+      // a first guess from this page alone (the engine: packaged, here or none), so the picker opens in its right shape
+      try{
+        Promise.resolve(root.ReserveSceneThemes?.megapack?.(Mega.scene)).then(at=>{
+          if(destroyed||mega||!['packaged','here','none'].includes(at))return;
+          mega={state:at==='none'?'none':'here',done:0,total:0,bundled:at==='packaged',reason:'',at:0};
+          if(customizeOpen)scheduleRender();
+        }).catch(()=>{});
+      }catch{}
+    }
     function buildContext(){
       const s=settings();
       const {courses,allCourses,courseMap,items}=normalizeData(s);
@@ -1694,7 +1825,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       // Rail badges and the heading summary reuse the Up next rules, so every
       const insights=Work.insights(items,local,{now,timeZone:s.timeZone,courseId:state.courseId});
       // number matches the list a student sees after choosing it.
-      const courseLoad=new Map(),glance={overdue:0,today:0,tomorrow:0};
+      // (4.2, roadmap item 6: the greeting reads the same counts, and two more: open work gone overdue today or yesterday,
+      // and an open test, quiz or exam due tomorrow; home-bits.js greeting)
+      const courseLoad=new Map(),glance={overdue:0,today:0,tomorrow:0,slipped:0,testTomorrow:0},Bits=root.ReserveHomeBits||(typeof module==='object'&&module.exports?require('./home-bits.js'):null);
       for(const item of Model.filterAssignments(items,{mode:'actionable',courseId:'all',now,timeZone:s.timeZone,local}).items){
         const id=String(item.courseId),due=dateMs(item.dueAt),load=courseLoad.get(id)||{open:0,overdue:0,next:null,then:null};
         // The rail's two earliest items come from the same list, so they agree with the count.
@@ -1704,6 +1837,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(due===null||(state.courseId!=='all'&&state.courseId!==id))continue;
         const distance=dayDistance(due,now,s.timeZone);
         if(due<now)glance.overdue++;if(distance===0)glance.today++;if(distance===1)glance.tomorrow++;
+        if(due<now&&distance!==null&&distance>=-1)glance.slipped++;if(distance===1&&Bits?.isTest(item))glance.testTomorrow++;
       }
       const overviewItems=workspace==='home'?Model.filterAssignments(items,{mode:overviewMode,query:overviewQuery,courseId:'all',now,timeZone:s.timeZone,local}).items:[];
       // Each view filter shows the count its list would show once chosen (the same rules, the same search).
@@ -2014,6 +2148,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         customizeDrafts,
         customKits,
         kitName,
+        megapack:megaView(),
         preferences:preferences?.state,
         makeOwn:makeOwn?{...makeOwn.state,pet:makeOwn.state.pet||companionPack}:companionPack?{pet:companionPack}:null,
         quickUpload:quickUpload?.state,
@@ -2058,6 +2193,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       for(const draft of drafts.values()){const field=container.querySelector(`[data-rd-field="${draft.field}"][data-id="${draft.id}"]`);if(field)field.value=draft.value;}
       for(const [id,value] of stepDrafts){const field=container.querySelector(`[data-rd-field="new-step"][data-id="${id}"]`);if(field)field.value=value;}
       for(const el of inner.querySelectorAll?.('details[data-rd-section]')||[])if(sections.has(el.dataset.rdSection))setProp(el,'open',sections.get(el.dataset.rdSection));
+      megaSync();
       return true;
     }
     // A page swap (a room growing out of its module or folding back into it, Home and Assignments, a tab's page): the
@@ -2133,7 +2269,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       consumeSources();
       setData('featureMotion',enabled('motion')?'on':'off');setData('arrange',arrange?'on':'off');
       const dataTheme=enabled('customization')&&!ctx.s.sceneTheme?makeOwn?.state.theme:null;
-      const scene=!dataTheme&&enabled('scene-themes')&&root.ReserveSceneThemes&&['starry','sea','stars','blueprint','maple','thanksgiving','christmas'].includes(ctx.s.sceneTheme)?ctx.s.sceneTheme:'';
+      const scene=!dataTheme&&enabled('scene-themes')&&root.ReserveSceneThemes&&['starry','sea','stars','blueprint','maple','thanksgiving','christmas','train'].includes(ctx.s.sceneTheme)?
+        ctx.s.sceneTheme:
+        '';
       setData('theme',ctx.theme);applyNight(ctx.s.nightArt);
       setData('density',ctx.s.density==='compact'?'compact':'comfortable');
       setData('font',['humanist','serif'].includes(ctx.s.font)?ctx.s.font:'system');
@@ -2358,7 +2496,16 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           helpBand?.destroy();
           helpBandHost=bandHost;
           helpBandSignature=signature;
-          helpBand=Band.renderBand(bandHost,cards,{env:root,scope:studyScope,store:studyStore,timeZone:()=>settings().timeZone,itemFacts:bandFacts,onPrepare:()=>{
+          helpBand=Band.renderBand(bandHost,cards,{
+            env:root,
+            scope:studyScope,
+            store:studyStore,
+            planner:helpPlanner(),
+            arrange:enabled('arrange')&&Arrange?.controls?{head:'help',tools:doc=>{
+            const t=doc.createElement('template');
+            t.innerHTML=Arrange.controls('help',Arrange.label?.('help')||'Help');
+            return t.content?.firstElementChild||null;
+          }}:null,timeZone:()=>settings().timeZone,itemFacts:bandFacts,onPrepare:()=>{
             if(!agentController?.prepareNow)throw Error('Turn on Your AI in Tools first.');
             return agentController.prepareNow();
           },onPrepareSettings:()=>toolbox?.open('ai'),aiChoice:()=>{
@@ -2404,6 +2551,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           }});
         }
         else if(signature!==helpBandSignature){helpBandSignature=signature;helpBand.update(cards);}else helpBand.refresh?.();
+        helpBand?.setWeek?.(weekFindings(ctx));
       // a page without the band (another tab) keeps it aside for the next Home; with Help gone it is destroyed
       }else if(helpBand&&(!Band||!helpBand.rehost||!enabled('ai'))){helpBand.destroy();helpBand=null;helpBandHost=null;helpBandSignature='';}
       // Reset before motion measures the shared column.
@@ -2494,6 +2642,12 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(list?.type==='own')
         materialFocus=Array.from(container.querySelectorAll?.(list.field?`[data-rd-field="${list.field}"]`:`[data-rd-action="${list.action}"]`)||[]).find(el=>
           el.dataset.course===list.courseId&&el.dataset.place===list.place&&(!list.file||el.dataset.file===list.file));
+      // Messages (pages-42): an opened conversation takes focus at its subject (its pane in view); a closed one gives it back to its row.
+      if(hubRequest?.type==='thread'){materialFocus=container.querySelector('#rd-thread-title');materialFocus?.closest?.('.rd-thread-pane')?.scrollIntoView?.({block:'nearest',behavior:'instant'});}
+      if(hubRequest?.type==='message-row'){
+        materialFocus=Array.from(container.querySelectorAll?.('[data-rd-action="hub-open-message"]')||[]).find(el=>el.dataset.message===hubRequest.id);
+        materialFocus?.scrollIntoView?.({block:'nearest',behavior:'instant'});
+      }
       // The page glides to a chapter only for a pointer under Gentle motion; keyboard, Still, Off and reduced motion jump at once.
       if(materialFocus){
         materialFocus.focus({preventScroll:true});
@@ -2512,7 +2666,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
 
     function updateStatus(){
       const text=statusLabel(currentSnapshot,externalStatus,transientStatus),line=container.querySelector('.rd-status [role="status"]');
-      if(line&&line.textContent!==text){line.textContent=text;if(railStatusInline)queueRail();}
+      if(line&&line.textContent!==text){
+        if(/^Updated (?!just now)/.test(text))line.setAttribute('aria-live','off');else line.removeAttribute('aria-live');
+        line.textContent=text;
+        if(railStatusInline)queueRail();
+      }
       const button=container.querySelector('[data-rd-action="refresh"]'),
         synced=/^Updated (.+)$/.exec(text),
         failed=/^Refresh failed/.test(text),
@@ -2621,6 +2779,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(container.dataset.chLinksPending&&(field?.startsWith('preferences-')||field?.startsWith('make-')))return false;
       if(field?.startsWith('hub-own-'))return !container.dataset.chLinksPending&&enabled('course-files')&&enabled('course-hub');
       if(field?.startsWith('make-'))return enabled('customization');
+      if(field==='megapack-adjust')return !container.dataset.chLinksPending&&enabled('customization')&&enabled('scene-themes');
       if(field==='legacy-image')return !container.dataset.chLinksPending&&enabled('customization')&&enabled('course-art');
       if(field==='setting'){if(key==='showGrades')return enabled('grades');if(!enabled('customization'))return false;
         const feature={
@@ -2699,6 +2858,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(field==='hub-own-files'){const files=Array.from(event.target.files||[]);event.target.value='';void hub?.input(field,files,event.target.dataset);return;}
       if(field==='make-file'){const file=event.target.files?.[0];event.target.value='';void makeOwn?.choose(file);return;}
       if(field==='make-week'){makeOwn?.week(event.target.value);return;}
+      if(field==='megapack-adjust'){megaAdjust(event.target.dataset.adjust,event.target.value);return;}
       if(field==='legacy-image'){const file=event.target.files?.[0];event.target.value='';void replaceLegacyImage(event.target.dataset.id,file);return;}
       if(['make-color','make-part','make-motion','make-pose'].includes(field)){
         const node=event.target,
@@ -2982,6 +3142,52 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       clearTimeout(note.leaveTimer);note.leaveTimer=0;if(!note.folded)armFold();
       archiveUndo=note.entries.filter(x=>x.kind==='archive');if(!archiveUndo.length)archiveUndo=null;
     }
+    // (4.2.12) work the Planner gave days at once (a suggestion pressed, or Plan all): one note, one Undo for all of it; Undo
+    // puts each back where it was, unless it has been moved again since
+    function notePlanned(list){
+      try{
+        const ctx=buildContext(),byId=new Map(ctx.items.map(x=>[String(x.id),x])),rows=(Array.isArray(list)?list:[]).map(x=>{
+          const item=byId.get(String(x?.id));
+          const day=typeof x.day==='string'?x.day:'';
+          if(!item||day&&!/^\d{4}-\d{2}-\d{2}$/.test(day))return null;
+          return {
+            ...noteFacts(item,ctx),
+            id:'plan:'+String(x.id),
+            taskId:String(x.id),
+            kind:'plan',
+            day,
+            previous:x.previous&&typeof x.previous==='object'?{...x.previous}:{plannedDate:''},
+            due:day?formatDate(Date.parse(day+'T12:00:00Z'),'UTC',{weekday:'short',month:'short',day:'numeric'}):'No date'
+          };
+        }).filter(Boolean);
+        if(!rows.length)return false;noteAdd(rows);render();drawNote();return true;}catch{return false;}
+    }
+    // (4.2.13) the Planner's Tick all on its overdue list: every one marked done (the Planner has saved it), one note, one Undo
+    function noteDone(ids){
+      try{
+        const ctx=buildContext(),byId=new Map(ctx.items.map(x=>[String(x.id),x])),rows=(Array.isArray(ids)?ids:[]).map(id=>{
+          const item=byId.get(String(id));
+          return item?{id:String(id),key:'assignment:'+item.courseId+':'+item.id,previous:undefined,kind:'done',...noteFacts(item,ctx)}:null;
+        }).filter(Boolean);
+        if(!rows.length)return false;noteAdd(rows);render();drawNote();return true;}catch{return false;}
+    }
+    // (4.2.13) a task added from the top bar on any tab: the note says where it went; its Undo takes the new task out again
+    function noteAdded(list){
+      try{
+        const ctx=buildContext(),byId=new Map(ctx.items.map(x=>[String(x.id),x])),today=dayKey(Date.now(),ctx.s.timeZone),rows=(Array.isArray(list)?list:[]).map(x=>{
+          const item=byId.get(String(x?.id));
+          if(!item)return null;
+          const day=typeof x.day==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x.day)?x.day:'';
+          return {
+            ...noteFacts(item,ctx),
+            id:'add:'+String(x.id),
+            taskId:String(x.id),
+            kind:'add',
+            due:!day?'No date':day===today?'Today':formatDate(Date.parse(day+'T12:00:00Z'),'UTC',{weekday:'short',month:'short',day:'numeric'})
+          };
+        }).filter(Boolean);
+        if(!rows.length)return false;noteAdd(rows);render();drawNote();return true;}catch{return false;}
+    }
     async function putBack(ids){
       if(archiving)return;const chosen=note.entries.filter(x=>ids.includes(x.id));if(!chosen.length)return;
       archiving=true;render();drawNote();
@@ -2989,6 +3195,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       try{
         saved=await savePersonal(data=>{
           for(const x of chosen){
+            if(x.kind==='add'){if(/^local-[\w-]+$/.test(x.taskId||'')){data.customTasks=(data.customTasks||[]).filter(t=>t&&t.id!==x.taskId);delete data.tasks[x.taskId];}continue;}
+            if(x.kind==='plan'){
+              const t=data.tasks?.[x.taskId];
+              if(t&&(t.plannedDate||'')===(x.day||'')){
+                t.plannedDate=x.previous?.plannedDate||'';
+                if(x.previous&&Object.hasOwn(x.previous,'plannedTime'))t.plannedTime=x.previous.plannedTime;else delete t.plannedTime;
+              }
+              continue;
+            }
             const task={...data.tasks[x.id]};
             if(x.kind==='done')task.checkedOff=false;else if(x.previous===undefined)delete task.checkedOff;else task.checkedOff=x.previous;
             data.tasks[x.id]=task;
@@ -3079,7 +3294,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const drawn=View.noteHTML?.({entries:note.entries,state,putBack:note.putBack,busy:archiving},{E,icon})||{said:'',html:''};
       note.body.innerHTML=drawn.html;if(note.live.textContent!==drawn.said)note.live.textContent=drawn.said;
       if(!firstDraw)for(const el of n.querySelectorAll('[data-note-id]'))if(!before.has(el.getAttribute('data-note-id')))el.setAttribute('data-new','');
-      if(firstDraw)n.setAttribute('data-enter','');else n.removeAttribute('data-enter');
+      // (4.2.13: the entrance mark goes once it has played, so a later switch from the keyboard to the mouse never replays it
+      //  under a press: the first click on Undo after a task added by Enter slid the slip away and missed)
+      if(firstDraw){
+        n.setAttribute('data-enter','');
+        clearTimeout(note.enterTimer);
+        note.enterTimer=setTimeout(()=>{if(n.hasAttribute?.('data-enter'))n.removeAttribute('data-enter');},320);
+        note.enterTimer?.unref?.();
+      }
+      else n.removeAttribute('data-enter');
       if(!firstDraw&&state!=='done'&&note.count>0&&note.entries.length>note.count)n.querySelector('.rd-note-count')?.setAttribute('data-bump','');
       note.count=note.entries.length;
       if(focusKey){
@@ -3163,6 +3386,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(container.dataset.chLinksPending&&(action?.startsWith('preferences-')||action?.startsWith('make-')))return false;
       if(action?.startsWith('hub-own-'))return !container.dataset.chLinksPending&&enabled('course-files')&&enabled('course-hub');
       if(action?.startsWith('make-'))return enabled('customization');
+      if(action?.startsWith('megapack-'))return !container.dataset.chLinksPending&&enabled('customization')&&enabled('scene-themes');
       const feature={
         'deadline-changes':'deadline-changes',
         planner:'planner',
@@ -3201,10 +3425,13 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const candidate=event.target.closest?.('[data-rd-action]');
       if(candidate&&!actionEnabled(candidate.dataset.rdAction,candidate))return;
       if(candidate?.dataset.rdAction?.startsWith('preferences-')){void preferences?.action(candidate.dataset.rdAction.slice(12));return;}
+      // (a tab press can also pick the artwork it opens on, and the slot to show: Look's "Adjust" on your own banner)
       if(candidate?.dataset.rdAction==='customize-tab'){
         customizeTab=candidate.dataset.value||'layout';
+        if(candidate.dataset.course&&validArtTarget(candidate.dataset.course))customizeCourseId=candidate.dataset.course;
         if(!renderPanel())render();
-        container.querySelector('.cz-tab[aria-selected="true"]')?.focus({preventScroll:true});
+        const slot=['banner','card','background'].includes(candidate.dataset.slot)?container.querySelector(`.ch-art-slot[data-kind="${candidate.dataset.slot}"]`):null;
+        if(slot){slot.scrollIntoView?.({block:'center'});slot.focus?.({preventScroll:true});}else container.querySelector('.cz-tab[aria-selected="true"]')?.focus({preventScroll:true});
         return;
       }
       if(candidate?.dataset.rdAction==='hidden-courses')customizeTab='courses';
@@ -3605,6 +3832,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           void savePersonal(data=>{delete appearanceFor(data,button.dataset.id).image;});
         return true;
       }
+      if(action==='megapack-get'){void megaGet();return true;}
+      if(action==='megapack-remove'){void megaRemove();return true;}
+      if(action==='make-reset'&&megaResetting(button.dataset.id))megaResetLook();
       if(action.startsWith('make-')){
         void makeOwn?.action(action.slice(5),button.dataset.id,{target:button.dataset.target,piece:button.dataset.piece,slot:button.dataset.slot});
         return true;
@@ -3660,6 +3890,9 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     }
     function saveAppearance(key,value){
       if(!fieldEnabled({dataset:{rdField:'setting',setting:key}}))return Promise.resolve(false);
+      // (4.2) Soul Passage asked for while its files are not on this computer (Biscuit, a Home module): the download
+      // starts instead of a scene that could not show (megaChoose); with the files here, as before
+      if(key==='sceneTheme'&&megaWanted(value))return megaChoose(value);
       if(key==='theme'&&['light','dark'].includes(value)&&makeOwn?.state.theme&&!makeOwn.state.theme.colors?.[value]){
         if(!makeOwn.action)return Promise.resolve(false);
         const look=lookSelection();
@@ -3707,7 +3940,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
             data.settings.dashboardLayout=data.settings.deskOrder==='stacked'?'list':'split';
             Arrange.resetCore(data.settings,before.layout);
             pinHomeCommand(data,{type:'mode'});
-            if(JSON.stringify(Arrange.snapshot(data.settings))!==JSON.stringify(before))data.settings.workspaceUndo=before;
+            if(JSON.stringify(Arrange.snapshot(data.settings))!==JSON.stringify(before))data.settings.workspaceUndo=Arrange.undoCopy?Arrange.undoCopy(before):before;
           }
         });
     }
@@ -3725,11 +3958,36 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           if(Arrange){
             Arrange.resetCore(data.settings,before.layout);
             pinHomeCommand(data,{type:'mode'});
-            if(JSON.stringify(Arrange.snapshot(data.settings))!==JSON.stringify(before))data.settings.workspaceUndo=before;
+            if(JSON.stringify(Arrange.snapshot(data.settings))!==JSON.stringify(before))data.settings.workspaceUndo=Arrange.undoCopy?Arrange.undoCopy(before):before;
           }
         });return Promise.resolve(false);
     }
 
+    // Help and the planner (4.2, help-plan.js): "Put it in my planner" on a help card and the check of the week read the
+    // student's own planner and save like the Planner's own changes. Nothing is sent anywhere.
+    function helpPlanner(){
+      const HP=root.ReserveHelpPlan,W=root.ReserveWidgets;if(!enabled('planner')||!HP?.bridge||!W?.plan)return null;
+      return HP.bridge({read:()=>{
+        const c=buildContext();
+        return {
+          list:W.plan({...c,__plan:null},{dayKey,complete}).list,
+          items:c.items,
+          toolbox:personal.toolbox||{},
+          customTasks:personal.customTasks||[],
+          courses:c.courses,
+          now:Date.now(),
+          zone:c.s.timeZone
+        };
+      },
+        save:change=>savePersonal(change),newId:()=>'local-'+(root.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`)});
+    }
+    function weekFindings(ctx){
+      const HP=root.ReserveHelpPlan,W=root.ReserveWidgets;
+      if(!enabled('planner')||!HP?.weekCheck||!W?.plan)return [];
+      try{
+        return HP.weekCheck(W.plan({...ctx,__plan:null},{dayKey,complete}).list,{now:ctx.now,zone:ctx.s.timeZone,items:ctx.items,toolbox:personal.toolbox});
+      }catch{return [];}
+    }
     async function savePersonal(change,petField){
       // The store stays silent when a save leaves the data as it was (storage.js update), so a control the store
       // cleaned back to the saved value still gets its redraw here: a fresh notify replaces `personal`.
@@ -4007,6 +4265,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         clearTimeout(note.leaveTimer);
         root.chrome?.storage?.onChanged?.removeListener?.(navChanged);
         root.chrome?.storage?.onChanged?.removeListener?.(studyChanged);
+        root.clearTimeout(megaTimer);megaTimer=0;megaTurn++;root.chrome?.storage?.onChanged?.removeListener?.(megaChanged);
         if(sceneActive){root.ReserveSceneThemes?.remove(container);sceneActive=false;}
         personalRevision++;companionTurn++;root.ReserveDataTheme?.remove(container);makeOwn?.destroy();preferences?.destroy();
         readerLayout?.disconnect();

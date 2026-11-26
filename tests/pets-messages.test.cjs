@@ -19,8 +19,8 @@ async function messages(scope){
  let html;
  try{ui.setCourse(scope);await ui.loadInbox();html=ui.renderInbox(courses);}
  finally{ui.destroy();}
- assert.match(html,/class="rd-inbox"/);
- assert.match(html,/<details class="rd-message"/);
+ assert.match(html,/class="rd-inbox rd-post"/);
+ assert.match(html,/<li class="rd-post-row"/);
  assert.doesNotMatch(html,/class="rd-main/);
 
  const f=fixture({frame:'none'});
@@ -35,8 +35,8 @@ async function messages(scope){
    stack.at(-1).append(el);nodes.push(el);
    if(!['input','br','hr','img','path'].includes(tag))stack.push(el);
   }
-  const summary=nodes.find(node=>node.tagName==='SUMMARY');
-  const list=nodes.find(node=>node.className==='rd-message-list');
+  const summary=nodes.find(node=>node.tagName==='BUTTON'&&node.className==='rd-post-open');
+  const list=nodes.find(node=>node.className==='rd-message-list rd-post-list');
   assert.ok(summary&&list);
   summary.rect=f.box(0,935,1800,65);f.blockers.push(summary);
   return {base:f,summary,list};

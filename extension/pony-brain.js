@@ -284,8 +284,8 @@
   const p=object(snapshot.pet),
    Art=root.ReservePetArt||(typeof module==='object'&&module.exports?require('./pet-art.js'):null),
    name=Art?.identity(snapshot).name||(typeof p.name==='string'?p.name:'Biscuit'),
-   rows=[['treat','Treat '+name,10],['home','Send '+name+' home',9],['hide','Hide for an hour',8],['settings','Companion settings',7],['quiet','Quiet',6]];
-  return rows.filter(([kind])=>(kind!=='treat'||p.treats!==0)&&(kind!=='home'||p.roam!=='home')&&(kind!=='quiet'||p.nudges!=='quiet'&&p.nudges!=='off')).map(([kind,label,score])=>
+   rows=[['home','Send '+name+' home',9],['hide','Hide for an hour',8],['settings','Companion settings',7],['quiet','Quiet',6]];
+  return rows.filter(([kind])=>(kind!=='home'||p.roam!=='home')&&(kind!=='quiet'||p.nudges!=='quiet'&&p.nudges!=='off')).map(([kind,label,score])=>
    ({id:'pet:'+kind,kind,label,action:'pet',data:{action:kind,...(kind==='hide'?{minutes:60}:{})},score:score+adjustment(l.kinds[kind])})).sort((a,b)=>
    b.score-a.score||compare(a.id,b.id)).slice(
    0,

@@ -40,6 +40,12 @@
 
 <p align="center"><sub>Every demo is Canvas with Canvas Harness switched on, using made-up courses and assignments.</sub></p>
 
+## New in 4.2
+
+- **Soul Passage**, a train carriage that never stops, with a different land outside each weekday and a speed lever on its laptop. It is the first **Megapack**: its pictures come down from the Market when you choose it, and Remove deletes them.
+- **An open Canvas tab notices an update** and reloads, or asks first when you are writing.
+- **Get more** in Make it yours opens the Market.
+
 ## New in 4.1
 
 - **Christmas**, a new scene in the Holiday pack: a market town on Christmas Eve in pixel art, with falling snow.

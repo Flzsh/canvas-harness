@@ -1,0 +1,1337 @@
+{
+ "name": "set-c",
+ "note": "Set C (round 2): 100 new lines on world-c, sealed before any round 2 change, never tuned on.",
+ "world": "tests/biscuit-42/world-c.cjs",
+ "lines": [
+  {
+   "id": "C001",
+   "cat": "hw",
+   "line": "any HW tonight??",
+   "want": {
+    "items": [
+     "c1",
+     "f1"
+    ]
+   }
+  },
+  {
+   "id": "C002",
+   "cat": "hw",
+   "line": "homework tonite",
+   "want": {
+    "items": [
+     "c1",
+     "f1"
+    ],
+    "none": [
+     "c3",
+     "l2",
+     "w2",
+     "s2"
+    ]
+   }
+  },
+  {
+   "id": "C003",
+   "cat": "hw",
+   "line": "got any hw",
+   "want": {
+    "items": [
+     "c1",
+     "f1"
+    ]
+   }
+  },
+  {
+   "id": "C004",
+   "cat": "hw",
+   "line": "do i have any homework tomorrow",
+   "want": {
+    "items": [
+     "m1",
+     "l1"
+    ],
+    "none": [
+     "c1",
+     "f1",
+     "c2",
+     "w1",
+     "f2",
+     "h1",
+     "s1",
+     "c3",
+     "l2",
+     "w2",
+     "s2"
+    ]
+   }
+  },
+  {
+   "id": "C005",
+   "cat": "hw",
+   "line": "what's my chem homework",
+   "want": {
+    "items": [
+     "c1"
+    ],
+    "none": [
+     "m1",
+     "m2",
+     "l1",
+     "l2",
+     "w1",
+     "w2",
+     "f1",
+     "f2",
+     "s1",
+     "s2",
+     "h1"
+    ]
+   }
+  },
+  {
+   "id": "C006",
+   "cat": "hw",
+   "line": "what's my calc hw",
+   "want": {
+    "items": [
+     "m1"
+    ],
+    "none": [
+     "c1",
+     "c2",
+     "c3",
+     "l1",
+     "l2",
+     "w1",
+     "w2",
+     "f1",
+     "f2",
+     "s1",
+     "s2",
+     "h1"
+    ]
+   }
+  },
+  {
+   "id": "C007",
+   "cat": "hw",
+   "line": "french hw rn",
+   "want": {
+    "items": [
+     "f1"
+    ],
+    "none": [
+     "c1",
+     "c2",
+     "c3",
+     "m1",
+     "m2",
+     "l1",
+     "l2",
+     "w1",
+     "w2",
+     "s1",
+     "s2",
+     "h1"
+    ]
+   }
+  },
+  {
+   "id": "C008",
+   "cat": "hw",
+   "line": "do i have CSP homework",
+   "want": {
+    "items": [
+     "s1"
+    ],
+    "none": [
+     "c1",
+     "c2",
+     "c3",
+     "m1",
+     "m2",
+     "l1",
+     "l2",
+     "w1",
+     "w2",
+     "f1",
+     "f2",
+     "h1"
+    ]
+   }
+  },
+  {
+   "id": "C009",
+   "cat": "hw",
+   "line": "where are the gatsby questions",
+   "want": {
+    "items": [
+     "l1"
+    ]
+   }
+  },
+  {
+   "id": "C010",
+   "cat": "hw",
+   "line": "open the gas laws lab",
+   "want": {
+    "items": [
+     "c2"
+    ]
+   }
+  },
+  {
+   "id": "C011",
+   "cat": "hw",
+   "line": "where is the nutrition log",
+   "want": {
+    "items": [
+     "h1"
+    ]
+   }
+  },
+  {
+   "id": "C012",
+   "cat": "hw",
+   "line": "open the industrial revolution notes",
+   "want": {
+    "items": [
+     "w1"
+    ]
+   }
+  },
+  {
+   "id": "C013",
+   "cat": "hw",
+   "line": "what homework is left for this week",
+   "want": {
+    "items": [
+     "c1",
+     "f1",
+     "m1",
+     "l1"
+    ],
+    "none": [
+     "c3",
+     "l2",
+     "w2",
+     "s2"
+    ]
+   }
+  },
+  {
+   "id": "C014",
+   "cat": "hw",
+   "line": "find the python loops exercise",
+   "want": {
+    "items": [
+     "s1"
+    ]
+   }
+  },
+  {
+   "id": "C015",
+   "cat": "hw",
+   "line": "show me the argument essay",
+   "want": {
+    "items": [
+     "l2"
+    ]
+   }
+  },
+  {
+   "id": "C016",
+   "cat": "due",
+   "line": "tmrw due stuff",
+   "want": {
+    "items": [
+     "m1",
+     "m2",
+     "l1"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "C017",
+   "cat": "due",
+   "line": "fridays deadlines",
+   "want": {
+    "items": [
+     "c2",
+     "w1",
+     "f2",
+     "h1"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "C018",
+   "cat": "due",
+   "line": "anything due sat",
+   "want": {
+    "items": [
+     "s1"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "C019",
+   "cat": "due",
+   "line": "due on mon",
+   "want": {
+    "items": [
+     "c3"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "C020",
+   "cat": "due",
+   "line": "when is the gatsby thing due",
+   "want": {
+    "items": [
+     "l1"
+    ],
+    "says": [
+     "(Thu|Thursday|Dec 17)"
+    ]
+   }
+  },
+  {
+   "id": "C021",
+   "cat": "due",
+   "line": "when's the argument essay due",
+   "want": {
+    "items": [
+     "l2"
+    ],
+    "says": [
+     "(Tue|Tuesday|Dec 22)"
+    ]
+   }
+  },
+  {
+   "id": "C022",
+   "cat": "due",
+   "line": "when's my chem H test",
+   "want": {
+    "items": [
+     "c3"
+    ],
+    "says": [
+     "(Mon|Monday|Dec 21)"
+    ]
+   }
+  },
+  {
+   "id": "C023",
+   "cat": "due",
+   "line": "is the map project due this week",
+   "want": {
+    "items": [
+     "w2"
+    ],
+    "says": [
+     "(Wed|Wednesday|Dec 23)"
+    ]
+   }
+  },
+  {
+   "id": "C024",
+   "cat": "due",
+   "line": "what's due next week",
+   "want": {
+    "items": [
+     "c3",
+     "l2",
+     "w2",
+     "s2"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "C025",
+   "cat": "due",
+   "line": "whats overdue rn",
+   "want": {
+    "items": [
+     "m3",
+     "f3"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "C026",
+   "cat": "due",
+   "line": "what did i not turn in",
+   "want": {
+    "items": [
+     "m3",
+     "f3"
+    ]
+   }
+  },
+  {
+   "id": "C027",
+   "cat": "due",
+   "line": "do i have upcoming quizzes",
+   "want": {
+    "any": [
+     "m2",
+     "f2"
+    ],
+    "none": [
+     "c1",
+     "f1",
+     "m1",
+     "l1",
+     "c2",
+     "w1",
+     "h1",
+     "s1"
+    ]
+   }
+  },
+  {
+   "id": "C028",
+   "cat": "due",
+   "line": "next test",
+   "want": {
+    "any": [
+     "m2",
+     "c3"
+    ],
+    "none": [
+     "c1",
+     "f1",
+     "m1",
+     "l1"
+    ]
+   }
+  },
+  {
+   "id": "C029",
+   "cat": "due",
+   "line": "when is the french quiz",
+   "want": {
+    "items": [
+     "f2"
+    ],
+    "says": [
+     "(Fri|Friday|Dec 18)"
+    ]
+   }
+  },
+  {
+   "id": "C030",
+   "cat": "due",
+   "line": "what's due this weekend",
+   "want": {
+    "items": [
+     "s1"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "C031",
+   "cat": "due",
+   "line": "due dates for history",
+   "want": {
+    "items": [
+     "w1",
+     "w2"
+    ],
+    "none": [
+     "c1",
+     "c2",
+     "c3",
+     "m1",
+     "m2",
+     "l1",
+     "l2",
+     "f1",
+     "f2",
+     "s1",
+     "s2",
+     "h1"
+    ]
+   }
+  },
+  {
+   "id": "C032",
+   "cat": "due",
+   "line": "how many days until the create task draft",
+   "want": {
+    "items": [
+     "s2"
+    ],
+    "says": [
+     "(8 days|Thu|Thursday|Dec 24)"
+    ]
+   }
+  },
+  {
+   "id": "C033",
+   "cat": "due",
+   "line": "did i submit the poetry annotation",
+   "want": {
+    "items": [
+     "l3"
+    ],
+    "says": [
+     "(turned in|submitted|handed in|yes)"
+    ]
+   }
+  },
+  {
+   "id": "C034",
+   "cat": "course",
+   "line": "chem class pls",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "401"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "401"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "C035",
+   "cat": "course",
+   "line": "open calc",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "402"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "402"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "C036",
+   "cat": "course",
+   "line": "go to american lit",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "403"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "403"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "C037",
+   "cat": "course",
+   "line": "go to world history",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "404"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "404"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "C038",
+   "cat": "course",
+   "line": "FRENCH",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "405"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "405"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "C039",
+   "cat": "course",
+   "line": "open my csp class",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "406"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "406"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "C040",
+   "cat": "course",
+   "line": "health",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "407"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "407"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "C041",
+   "cat": "course",
+   "line": "take me to my french class",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "courseId": "405"
+      }
+     },
+     {
+      "act": [
+       "find",
+       "open"
+      ],
+      "fields": {
+       "courseId": "405"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "C042",
+   "cat": "course",
+   "line": "open biology",
+   "want": {
+    "noCourse": true,
+    "noWork": true,
+    "allowUnsure": true
+   }
+  },
+  {
+   "id": "C043",
+   "cat": "course",
+   "line": "find the derivative rules pdf",
+   "want": {
+    "items": [
+     "fc2"
+    ]
+   }
+  },
+  {
+   "id": "C044",
+   "cat": "course",
+   "line": "open the gatsby reading guide",
+   "want": {
+    "items": [
+     "fc3"
+    ]
+   }
+  },
+  {
+   "id": "C045",
+   "cat": "course",
+   "line": "any announcements in calc",
+   "want": {
+    "items": [
+     "nc1"
+    ]
+   }
+  },
+  {
+   "id": "C046",
+   "cat": "grade",
+   "line": "chem H grade",
+   "want": {
+    "says": [
+     "82\\.3"
+    ]
+   }
+  },
+  {
+   "id": "C047",
+   "cat": "grade",
+   "line": "how am i doing in french 2",
+   "want": {
+    "says": [
+     "76\\.2"
+    ]
+   }
+  },
+  {
+   "id": "C048",
+   "cat": "grade",
+   "line": "whats my grade in csp",
+   "want": {
+    "says": [
+     "99\\.1"
+    ]
+   }
+  },
+  {
+   "id": "C049",
+   "cat": "grade",
+   "line": "calc AB grade",
+   "want": {
+    "says": [
+     "91"
+    ]
+   }
+  },
+  {
+   "id": "C050",
+   "cat": "grade",
+   "line": "my grades pls",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "tab": "grades"
+      },
+      "says": [
+       "82\\.3|99\\.1"
+      ]
+     },
+     {
+      "any": [
+       "course-grade-401",
+       "course-grade-406"
+      ],
+      "says": [
+       "82\\.3|99\\.1"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "C051",
+   "cat": "grade",
+   "line": "what did i get on the cpr skills check",
+   "want": {
+    "says": [
+     "18"
+    ]
+   }
+  },
+  {
+   "id": "C052",
+   "cat": "grade",
+   "line": "worst grade rn",
+   "want": {
+    "says": [
+     "(French|76\\.2)"
+    ]
+   }
+  },
+  {
+   "id": "C053",
+   "cat": "grade",
+   "line": "best class grade wise",
+   "want": {
+    "says": [
+     "(CSP|Computer Science|99\\.1)"
+    ]
+   }
+  },
+  {
+   "id": "C054",
+   "cat": "grade",
+   "line": "grade in world hist",
+   "want": {
+    "says": [
+     "93\\.5"
+    ]
+   }
+  },
+  {
+   "id": "C055",
+   "cat": "grade",
+   "line": "what's my health class grade",
+   "want": {
+    "says": [
+     "95"
+    ]
+   }
+  },
+  {
+   "id": "C056",
+   "cat": "grade",
+   "line": "my score on the algorithms quiz",
+   "want": {
+    "says": [
+     "27"
+    ]
+   }
+  },
+  {
+   "id": "C057",
+   "cat": "grade",
+   "line": "am i passing french",
+   "want": {
+    "says": [
+     "76\\.2"
+    ]
+   }
+  },
+  {
+   "id": "C058",
+   "cat": "plan",
+   "line": "plan tonight pls",
+   "want": {
+    "act": "plan"
+   }
+  },
+  {
+   "id": "C059",
+   "cat": "plan",
+   "line": "make a plan for tmrw",
+   "want": {
+    "act": "plan"
+   }
+  },
+  {
+   "id": "C060",
+   "cat": "plan",
+   "line": "help me plan my weekend",
+   "want": {
+    "act": "plan"
+   }
+  },
+  {
+   "id": "C061",
+   "cat": "plan",
+   "line": "what should i start with",
+   "want": {
+    "any": [
+     "c1",
+     "f1"
+    ]
+   }
+  },
+  {
+   "id": "C062",
+   "cat": "plan",
+   "line": "start a 30 min timer",
+   "want": {
+    "act": "focus",
+    "fields": {
+     "minutes": 30
+    }
+   }
+  },
+  {
+   "id": "C063",
+   "cat": "plan",
+   "line": "focus 50",
+   "want": {
+    "act": "focus",
+    "fields": {
+     "minutes": 50
+    }
+   }
+  },
+  {
+   "id": "C064",
+   "cat": "plan",
+   "line": "10 min break pls",
+   "want": {
+    "act": "break",
+    "fields": {
+     "minutes": 10
+    }
+   }
+  },
+  {
+   "id": "C065",
+   "cat": "plan",
+   "line": "remind me at 9 to email my french teacher",
+   "want": {
+    "act": "reminder"
+   }
+  },
+  {
+   "id": "C066",
+   "cat": "plan",
+   "line": "note: lab goggles friday",
+   "want": {
+    "act": "note"
+   }
+  },
+  {
+   "id": "C067",
+   "cat": "plan",
+   "line": "i have basketball 5-7 tomorrow plan around it",
+   "want": {
+    "act": "plan"
+   }
+  },
+  {
+   "id": "C068",
+   "cat": "plan",
+   "line": "im behind arent i",
+   "want": {
+    "any": [
+     "m3",
+     "f3"
+    ]
+   }
+  },
+  {
+   "id": "C069",
+   "cat": "plan",
+   "line": "which one do i start w tonight",
+   "want": {
+    "any": [
+     "c1",
+     "f1"
+    ]
+   }
+  },
+  {
+   "id": "C070",
+   "cat": "plan",
+   "line": "catch me up on missing work",
+   "want": {
+    "any": [
+     "m3",
+     "f3"
+    ]
+   }
+  },
+  {
+   "id": "C071",
+   "cat": "chat",
+   "line": "yo biscuit",
+   "want": {
+    "act": [
+     "chat"
+    ]
+   }
+  },
+  {
+   "id": "C072",
+   "cat": "chat",
+   "line": "ty!!",
+   "want": {
+    "act": [
+     "chat"
+    ]
+   }
+  },
+  {
+   "id": "C073",
+   "cat": "chat",
+   "line": "ur so helpful fr",
+   "want": {
+    "act": [
+     "chat"
+    ]
+   }
+  },
+  {
+   "id": "C074",
+   "cat": "chat",
+   "line": "night night",
+   "want": {
+    "act": [
+     "chat"
+    ]
+   }
+  },
+  {
+   "id": "C075",
+   "cat": "chat",
+   "line": "sup",
+   "want": {
+    "act": [
+     "chat"
+    ]
+   }
+  },
+  {
+   "id": "C076",
+   "cat": "chat",
+   "line": "i'm so tired rn",
+   "want": {}
+  },
+  {
+   "id": "C077",
+   "cat": "chat",
+   "line": "this is too much",
+   "want": {}
+  },
+  {
+   "id": "C078",
+   "cat": "chat",
+   "line": "do you like horses",
+   "want": {
+    "act": [
+     "chat"
+    ]
+   }
+  },
+  {
+   "id": "C079",
+   "cat": "chat",
+   "line": "who made you biscuit",
+   "want": {}
+  },
+  {
+   "id": "C080",
+   "cat": "chat",
+   "line": "lol ok",
+   "want": {}
+  },
+  {
+   "id": "C081",
+   "cat": "typo",
+   "line": "DUE TMRW PLS",
+   "want": {
+    "items": [
+     "m1",
+     "m2",
+     "l1"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "C082",
+   "cat": "typo",
+   "line": "chem hw plz",
+   "want": {
+    "items": [
+     "c1"
+    ],
+    "none": [
+     "m1",
+     "m2",
+     "l1",
+     "l2",
+     "w1",
+     "w2",
+     "f1",
+     "f2",
+     "s1",
+     "s2",
+     "h1"
+    ]
+   }
+  },
+  {
+   "id": "C083",
+   "cat": "typo",
+   "line": "wat do i hav tonite",
+   "want": {
+    "items": [
+     "c1",
+     "f1"
+    ]
+   }
+  },
+  {
+   "id": "C084",
+   "cat": "typo",
+   "line": "calcuuls quiz",
+   "want": {
+    "items": [
+     "m2"
+    ]
+   }
+  },
+  {
+   "id": "C085",
+   "cat": "typo",
+   "line": "frnech grade",
+   "want": {
+    "says": [
+     "76\\.2"
+    ]
+   }
+  },
+  {
+   "id": "C086",
+   "cat": "typo",
+   "line": "hw 4 tmrw",
+   "want": {
+    "items": [
+     "m1",
+     "m2",
+     "l1"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "C087",
+   "cat": "typo",
+   "line": "where r the Gatsy questions",
+   "want": {
+    "items": [
+     "l1"
+    ]
+   }
+  },
+  {
+   "id": "C088",
+   "cat": "typo",
+   "line": "histroy notes",
+   "want": {
+    "items": [
+     "w1"
+    ]
+   }
+  },
+  {
+   "id": "C089",
+   "cat": "typo",
+   "line": "algorythms quiz grade",
+   "want": {
+    "says": [
+     "27"
+    ]
+   }
+  },
+  {
+   "id": "C090",
+   "cat": "typo",
+   "line": "Whens The Chem Test",
+   "want": {
+    "items": [
+     "c3"
+    ],
+    "says": [
+     "(Mon|Monday|Dec 21)"
+    ]
+   }
+  },
+  {
+   "id": "C091",
+   "cat": "typo",
+   "line": "open stoichiometry pratice pls",
+   "want": {
+    "items": [
+     "c1"
+    ]
+   }
+  },
+  {
+   "id": "C092",
+   "cat": "typo",
+   "line": "when is nutrtion log due",
+   "want": {
+    "items": [
+     "h1"
+    ],
+    "says": [
+     "(Fri|Friday|Dec 18)"
+    ]
+   }
+  },
+  {
+   "id": "C093",
+   "cat": "short",
+   "line": "due rn",
+   "want": {
+    "items": [
+     "c1",
+     "f1"
+    ]
+   }
+  },
+  {
+   "id": "C094",
+   "cat": "short",
+   "line": "quizes",
+   "want": {
+    "any": [
+     "m2",
+     "f2"
+    ],
+    "none": [
+     "c1",
+     "f1",
+     "m1",
+     "l1"
+    ]
+   }
+  },
+  {
+   "id": "C095",
+   "cat": "short",
+   "line": "late stuff",
+   "want": {
+    "items": [
+     "m3",
+     "f3"
+    ],
+    "only": true
+   }
+  },
+  {
+   "id": "C096",
+   "cat": "short",
+   "line": "tomorrows hw",
+   "want": {
+    "items": [
+     "m1",
+     "l1"
+    ],
+    "none": [
+     "c1",
+     "f1"
+    ]
+   }
+  },
+  {
+   "id": "C097",
+   "cat": "short",
+   "line": "grades rn",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "tab": "grades"
+      },
+      "says": [
+       "82\\.3|99\\.1"
+      ]
+     },
+     {
+      "any": [
+       "course-grade-401",
+       "course-grade-406"
+      ],
+      "says": [
+       "82\\.3|99\\.1"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "C098",
+   "cat": "short",
+   "line": "open the essay pls",
+   "want": {
+    "items": [
+     "l2"
+    ]
+   }
+  },
+  {
+   "id": "C099",
+   "cat": "short",
+   "line": "breakk",
+   "want": {
+    "act": "break"
+   }
+  },
+  {
+   "id": "C100",
+   "cat": "short",
+   "line": "open planner pls",
+   "want": {
+    "alt": [
+     {
+      "act": "navigate",
+      "fields": {
+       "tab": "planner"
+      }
+     },
+     {
+      "act": "plan"
+     }
+    ]
+   }
+  }
+ ]
+}

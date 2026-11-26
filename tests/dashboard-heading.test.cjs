@@ -1,4 +1,5 @@
 'use strict';
+require('../extension/site.js');
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const {fixture}=require('./dashboard-heading-fixture.cjs');
@@ -61,8 +62,11 @@ test('All courses keeps its heading across tabs and refreshes the greeting and d
  const f=fixture({courseId:'all'});t.after(()=>f.dashboard.destroy());await flush();
  const original=f.container.querySelector('.rd-workspace-heading');
  for(const tab of ['assignments','plan','inbox','grades','work']){f.click('workspace',{tab});assert.strictEqual(f.container.querySelector('.rd-workspace-heading'),original);}
- f.tick(3*3600000);f.dashboard.setStatus('New greeting');
- const afternoon=f.container.querySelector('.rd-workspace-heading');assert.notStrictEqual(afternoon,original);assert.match(afternoon.querySelector('h1').textContent,/Good afternoon/);
+ // (4.2, roadmap item 6: one greeting line per visit while its variant holds; the fixture's Saturday greets as the weekend
+ // until 22:00, when the late-night variant takes over: that is the greeting changing)
+ assert.equal(original.querySelector('h1').getAttribute('data-greet'),'weekend');
+ f.tick(12*3600000);f.dashboard.setStatus('New greeting');
+ const afternoon=f.container.querySelector('.rd-workspace-heading');assert.notStrictEqual(afternoon,original);assert.equal(afternoon.querySelector('h1').getAttribute('data-greet'),'late');
  f.tick(86400000);f.dashboard.setStatus('New date');
  const tomorrow=f.container.querySelector('.rd-workspace-heading');assert.notStrictEqual(tomorrow,afternoon);assert.notEqual(tomorrow.querySelector('.rd-heading-date').textContent,afternoon.querySelector('.rd-heading-date').textContent);
 });

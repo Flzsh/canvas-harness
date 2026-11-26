@@ -811,3 +811,40 @@
 .ch-help-band .ch-band-mode{color:var(--rd-muted,#73726C)}
 .ch-help-band .ch-band-mode[aria-expanded=true]{color:var(--rd-ink,#141413)}
 .ch-help-band .ch-band-mode[hidden]{display:none!important}
+/* ---- Put it in my planner and This week (4.2, help-plan.js) ----
+   The plan drawer is a kraft notecard like the Planner's tags: one row per task (its day, its name, its length, Remove),
+   the notes in the band's quiet grey, and the Add button with the planner's calendar. The week's findings sit under the
+   bar like the "Not made" row, each with its one drawn action and a quiet Dismiss. */
+.ch-help-band .ch-band-drawer[data-kind=plan]{border-color:color-mix(in srgb,#B98A5E 55%,transparent);background:color-mix(in srgb,#D4A27F 16%,var(--rd-surface,#FFFDF8))}
+.ch-help-band .ch-band-plan-head{display:flex;align-items:center;gap:6px;margin:0;color:var(--rd-ink,#141413);font:600 12.5px/1.35 system-ui,"Segoe UI",sans-serif}
+.ch-help-band .ch-band-plan-head .ch-band-ico{flex:none;width:20px;height:20px}
+.ch-help-band .ch-band-plan-rows{display:grid;gap:5px;margin:0;padding:0;list-style:none}
+.ch-help-band .ch-band-plan-row{display:flex;flex-wrap:wrap;align-items:center;gap:5px 6px;min-width:0}
+.ch-help-band .ch-band-plan-row .ch-band-plan-title{flex:1 1 190px;min-height:28px;padding:3px 9px;font-size:12.5px}
+.ch-help-band .ch-band-plan-day,.ch-help-band .ch-band-plan-len{flex:none;min-height:28px;max-width:100%;padding:2px 6px;border:1.3px solid var(--rd-ink,#141413);border-radius:7px 9px 7px 8px;background:var(--rd-surface,#FFFDF8);color:var(--rd-ink,#141413);font:600 12px/1.2 system-ui,"Segoe UI",sans-serif;cursor:pointer}
+.ch-help-band .ch-band-plan-day{width:10.5em}
+.ch-help-band .ch-band-plan-day:focus-visible,.ch-help-band .ch-band-plan-len:focus-visible{outline:2px solid var(--rd-accent,#A9522F);outline-offset:1px}
+.ch-help-band .ch-band-plan-remove{flex:none;min-height:24px;padding:0 4px;border:0;background:none;color:var(--rd-muted,#73726C);font:500 12px/1.2 system-ui,"Segoe UI",sans-serif;text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 40%,transparent);text-underline-offset:3px;cursor:pointer}
+.ch-help-band .ch-band-plan-remove:hover,.ch-help-band .ch-band-plan-remove:focus-visible{color:var(--rd-ink,#141413)}
+.ch-help-band .ch-band-plan-note{margin:0;color:var(--rd-muted,#73726C);font-size:12px;line-height:17px}
+.ch-help-band .ch-band-plan-add{font-weight:650}
+.ch-help-band .ch-band-plan-add:disabled{opacity:.45;cursor:default;transform:none;box-shadow:none}
+/* Your week: the tag, then each finding as a slip with a coloured edge for its kind (the Planner's own look for the same
+   findings, widgets.css .rd-plan-finding), two across when the band is wide enough. */
+.ch-help-band .ch-band-week{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px 12px;margin:0;padding:0 2px 6px;color:var(--rd-ink,#141413)}
+.ch-help-band .ch-band-week[hidden]{display:none}
+.ch-help-band .ch-band-week-label{flex:none;align-self:flex-start;margin-top:5px;padding:1px 8px;border-radius:3px 6px 4px 7px;background:color-mix(in srgb,#D4A27F 30%,var(--rd-surface,#FFFDF8));color:color-mix(in srgb,#6B4A2E 80%,var(--rd-ink,#141413));font:600 11.5px/1.35 system-ui,"Segoe UI",sans-serif;rotate:-1.5deg;box-shadow:1px 1.5px 0 color-mix(in srgb,var(--rd-ink,#141413) 14%,transparent)}
+.ch-help-band .ch-band-week-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,400px),1fr));gap:4px 8px;flex:1 1 400px;min-width:0}
+.ch-help-band .ch-band-week-item{display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;min-height:30px;margin:0;min-width:0;padding:1px 6px 1px 10px;border-left:3px solid color-mix(in srgb,#D4A27F 70%,var(--rd-surface,#FFFDF8));border-radius:2px 7px 6px 2px;background:color-mix(in srgb,var(--rd-surface,#FFFDF8) 86%,transparent);font:500 13px/1.35 var(--rd-ui-font,system-ui,"Segoe UI",sans-serif)}
+.ch-help-band .ch-band-week-item[data-kind=heavy]{border-left-color:color-mix(in srgb,var(--rd-danger,#B3261E) 70%,var(--rd-surface,#FFFDF8))}
+.ch-help-band .ch-band-week-item[data-kind=prep]{border-left-color:color-mix(in srgb,var(--rd-accent,#A9522F) 70%,var(--rd-surface,#FFFDF8))}
+.ch-help-band .ch-band-week-item[data-done=true]{border-left-color:color-mix(in srgb,var(--rd-muted,#73726C) 45%,var(--rd-surface,#FFFDF8))}
+.ch-help-band .ch-band-week-item[data-done=true] .ch-band-week-text{color:var(--rd-muted,#73726C)}
+.ch-help-band .ch-band-week-text{min-width:0;overflow-wrap:anywhere}
+.ch-help-band .ch-band-week-act .ch-band-ico{width:18px;height:18px}
+.ch-help-band .ch-band-week-act{min-height:26px}
+.ch-help-band .ch-band-week-dismiss{min-height:22px;padding:0 3px;white-space:nowrap;border:0;background:none;color:var(--rd-muted,#73726C);font:500 12px/1.2 system-ui,"Segoe UI",sans-serif;text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 40%,transparent);text-underline-offset:3px;cursor:pointer}
+.ch-help-band .ch-band-week-dismiss:hover,.ch-help-band .ch-band-week-dismiss:focus-visible{color:var(--rd-ink,#141413)}
+.ch-help-band[data-ink=light] .ch-band-week-label{color:var(--rd-ink);background:color-mix(in srgb,#D4A27F 18%,var(--rd-surface));box-shadow:1px 1.5px 0 color-mix(in srgb,#000 40%,transparent)}
+.ch-help-band[data-ink=light] .ch-band-drawer[data-kind=plan]{background:color-mix(in srgb,#D4A27F 9%,var(--rd-surface))}
+/* ---- end Put it in my planner ---- */

@@ -1,7 +1,7 @@
 {
   "name": "canvas-harness",
-  "version": "4.1.0",
-  "versionName": "4.1.0",
+  "version": "4.2.0",
+  "versionName": "4.2.0",
   "license": "GPL-3.0-only",
   "private": true,
   "description": "For students on Canvas LMS: your courses, assignments, planner and PDFs redrawn as one calm page you arrange yourself.",
@@ -13,6 +13,7 @@
     "test": "node scripts/test.cjs",
     "check": "node scripts/check.cjs",
     "build": "node scripts/build.cjs",
-    "preview": "node scripts/serve.cjs"
+    "preview": "node scripts/serve.cjs",
+    "bits-art": "node scripts/bits-art.cjs"
   }
 }

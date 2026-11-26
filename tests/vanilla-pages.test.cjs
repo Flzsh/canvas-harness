@@ -23,8 +23,13 @@ const ordinaryRoutes=[
  '/courses/7/pages/assignments/12','/courses/7/modules?next=/courses/7/assignments/12',
  '/courses/7/files/12#submission','/dashboard?module_item_id=25'
 ];
-function context(route){
- const attempts=[],allowedClicks=[],forbidden=label=>(...args)=>{attempts.push([label,...args]);throw Error('Unexpected page effect: '+label);};
+// (off: CH+ switched off on this assignment's pages, as the page switch leaves it)
+// (4.2, Multitask: multitask.js reads its saved place, reserve:beside, and waits for the page to draw its two chips; with
+// nothing open there it does nothing else; switched off on the page it does not even that)
+const SITE_KEYS=['reserve:features-hint','reserve:off','reserve:dev30-off','reserve:page-off','reserve:beside'],FEATURE_READ=JSON.stringify(['reserve:features','reserve:dev30','reserve:features:registered','reserve:enabled']);
+function context(route,{off=false}={}){
+ const attempts=[],allowedClicks=[],switchWaits=[],besideWaits=[],forbidden=label=>(...args)=>{attempts.push([label,...args]);throw Error('Unexpected page effect: '+label);};
+ const site=new Map(off?[['reserve:page-off',JSON.stringify({[decodeURIComponent(new URL(route,'https://school.instructure.com').pathname).match(/\d+/g).slice(0,2).join('/')]:1})]]:[]);
  let executing='';
  const document=new Proxy({}, {get:(_target,key)=>{
   if(key==='addEventListener'&&executing==='pdf-host.js')return (type,handler,capture)=>{
@@ -43,7 +48,7 @@ function context(route){
   chrome:{runtime:{getURL:forbidden('runtime.getURL'),onMessage:{addListener:forbidden('runtime.addListener')}},storage:{local:{get:forbidden('storage.get'),set:forbidden('storage.set')},onChanged:{addListener:forbidden('storage.addListener')}}}});
  vm.runInContext('window=globalThis; top=globalThis;',env);
  vm.runInContext(read('site.js'),env,{filename:'site.js'});
- return {env,attempts,allowedClicks,run:file=>{executing=file;try{return vm.runInContext(read(file),env,{filename:file});}finally{executing='';}}};
+ return {env,site,attempts,allowedClicks,switchWaits,besideWaits,run:file=>{executing=file;try{return vm.runInContext(read(file),env,{filename:file});}finally{executing='';}}};
 }
 
 test('vanillaPage recognizes assignment, feedback and submit/upload URLs independently of query/hash and host',()=>{
@@ -58,7 +63,7 @@ test('vanillaPage recognizes assignment, feedback and submit/upload URLs indepen
 });
 
 test('workspace scripts stay dormant on vanilla pages; menu, PDF and submission watcher have separate guards',()=>{
- const scripts=[...new Set(manifest.content_scripts.flatMap(entry=>entry.js||[]).concat(require('../extension/features.js').resolve().js))].filter(file=>!['features.js','feature-loader.js','canvas-nav.js','submit-celebrate.js'].includes(file));
+ const scripts=[...new Set(manifest.content_scripts.flatMap(entry=>entry.js||[]).concat(require('../extension/features.js').resolve().js))].filter(file=>!['features.js','feature-loader.js','canvas-nav.js','submit-celebrate.js','page-switch.js','multitask.js'].includes(file));/* (page-switch.js and multitask.js are meant for these pages: tests/page-switch.test.cjs, tests/multitask.test.cjs) */
  for(const route of protectedRoutes){
   const h=context(route);
   for(const file of scripts)assert.doesNotThrow(()=>h.run(file),route+' '+file);
@@ -66,6 +71,7 @@ test('workspace scripts stay dormant on vanilla pages; menu, PDF and submission 
   assert.equal(h.env.ReserveContentStarted,undefined);assert.equal(h.env.ReserveStartup,undefined);
  }
 });
+
 
 test('native appearance/tools, toolbox, resize, settings, widgets and pony cannot mount directly on vanilla pages',()=>{
  for(const route of protectedRoutes){

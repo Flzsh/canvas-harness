@@ -35,7 +35,7 @@ test('every script the manifest puts on Canvas by itself is either gated by the 
  const how={'features.js':'the selection itself','site.js':'no page effect','startup-art.js':'drawings only, handed out through the selection',
   'startup.js':'reads the switch','core.js':'no page effect','api.js':'no page effect','personal-work.js':'no page effect','custom-art.js':'no page effect',
   'workspace-arrange.js':'no page effect','canvas-nav.js':'starts through the selection and reads the switch',
-  'course-nav-art.js':'drawings only, handed out through the selection','course-nav.js':'starts through the selection',
+  'page-switch.js':'hidden while switched off (the On Canvas hint), shown only on hand-in pages','course-nav-art.js':'drawings only, handed out through the selection','course-nav.js':'starts through the selection',
   'feature-loader.js':'asks the worker for the selection'};
  assert.deepEqual(always.filter(file=>!how[file]),[],'a script that always runs on Canvas must say how it obeys the switch');
  assert.match(read('startup.js'),/saved\['reserve:enabled'\]===false/);

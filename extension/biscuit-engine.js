@@ -2205,7 +2205,7 @@
    if(said&&p.action==='setting'&&(r.action==='none'||r.action==='chat'))return placed(p,s);
    return null;
   }
-  /* T2: the line names the companion or an installed pack by its name ("give Maple a treat", "use Maple") */
+  /* T2: the line names the companion or an installed pack by its name ("send Maple home", "use Maple") */
   function catalogueNamed(line,s){
     const said=' '+norm(line)+' ';
     return [s?.companion?.name,s?.pet?.name,...list(s?.catalogue).map(v=>v?.name)].filter(Boolean).map(norm).some(n=>n.length>=3&&said.includes(' '+n+' '));
@@ -2227,7 +2227,7 @@
   const GROUND_SYN={
     showGrades:'grade grades score scores marks percent percentage',
     theme:'dark light night bright day mode theme',
-    sceneTheme:'scene theme background wallpaper starry night sea ocean stars starfield space blueprint maple wind autumn walls wisteria thanksgiving christmas xmas none plain',
+    sceneTheme:'scene theme background wallpaper starry night sea ocean stars starfield space blueprint maple wind autumn walls wisteria thanksgiving christmas xmas train cabin seat soul none plain',
     pageTint:'tint page color colour background paper accent sky sage lilac blush sand snow',
     accent:'accent color colour clay forest iris indigo rose ocean amber',
     motion:'motion animation animations moving move still gentle fades fade',
@@ -2445,13 +2445,13 @@
       ', missing').replace(
       /\bsubmitted at:\s*/g,
       'submitted ');
-    result.message=result.message.replace('I couldn’t find that in the loaded workspace. Try a course or item name.','I do not know that one yet. Try "plan tonight", "what should I do", or a course name.').replace('Choose one unambiguous loaded source.','Which one do you mean?').replace('Which loaded course do you mean? Name its course or code.','Which course?').replace(
+    result.message=result.message.replace('I couldn’t find that in the loaded workspace. Try a course or item name.','I don\u2019t know that one yet. Try a course name, "what\u2019s due" or "plan tonight".').replace('Choose one unambiguous loaded source.','Which one do you mean?').replace('Which loaded course do you mean? Name its course or code.','Which course?').replace(
       'I cannot safely choose that from the loaded workspace. Open Canvas or name the item and the change you want.',
       'I am not sure about that one. Name the item and what to change.').replace(
       'What would you like to change or find?',
-      'Say a bit more? Try "plan tonight" or a course name.').replace(
+      'I didn\u2019t catch that. Try a course name, "hw" or "plan tonight".').replace(
       /Make it yours > Features/g,
-      'Make it yours > More').replace(
+      'Make it yours > Settings').replace(
       /^(.+?: )?Mark (.+) done locally\.?$/,
       '$1Mark $2 done on your list.').replace(
       /^Remind you (?!to |about )(.+)$/,
@@ -2568,9 +2568,19 @@
  function create(options){
   const engine=build(options);
   // AI help off or locked: its files (study-prompts.js, ai-context.js) are not on the page, so the reply is the AI-off one
+  // biscuit-42: typed slips are mended first (biscuit-mind.js mend), and r42Repair mends two slips of the engine's own after it answers
   return {...engine,evaluate:(input,s={},session={})=>{
     if(s&&s.ai!==false&&!aiFiles())s={...s,ai:false};
-    return askChangesNothing(quietAI(engine.evaluate(input,s,session),s),input,s);
+    let line=input;
+    if(typeof input==='string'){try{line=load('ReserveBiscuitMind','./biscuit-mind.js')?.mend?.(input,s)??input;}catch{line=input;}}
+    let out=r42Repair(askChangesNothing(quietAI(engine.evaluate(line,s,session),s),line,s),line,s);
+    if(typeof input==='string'&&line!==input&&out&&typeof out==='object'){
+      const act=out.next?.action||out.action;
+      if(['reminder','note','task','routine'].includes(act))
+        out=r42Repair(askChangesNothing(quietAI(engine.evaluate(input,s,session),s),input,s),input,s);
+      else if(act==='ai')out=r42Original(out,line,input);
+    }
+    return out;
   }};
  }
  // AI help locked or off (s.ai===false): no reply offers the AI, names it or points at one of its controls; a line that
@@ -2582,6 +2592,129 @@
  function aiPlace(path){
   const p=Array.isArray(path)?path.map(v=>String(v)):[];
   return p.some(v=>/^(?:AI|Ask AI|Your AI|AI help|AI workspace)$/i.test(v))||p[0]==='Home'&&AI_HOME.has(p[1]);
+ }
+ // the AI is handed what the student typed, not the mended reading
+ function r42Original(value,from,to){
+   if(typeof value==='string')return value.split(from).join(to);
+   if(Array.isArray(value))return value.map(v=>r42Original(v,from,to));
+   if(value&&typeof value==='object'){const out={};for(const [k,v] of Object.entries(value))out[k]=r42Original(v,from,to);return out;}
+   return value;
+ }
+ const r42Grades=s=>s.showGrades!==false&&s.settings?.showGrades!==false&&s.privacy?.grades!==false&&(s.showGrades===true||s.settings?.showGrades===true);
+ const R42_WHEN=/^\s*(?:when(?:'?s|\s+is|\s+are|\s+do\s+i|\s+does)?|what\s+day\s+is|what\s+date\s+is)\b/i,R42_WHEN_STOP=/^(?:when|whens|what|which|where|wheres|find|open|show|pull|day|date|does|have|due|time|this|that|with|from|your|mine|class|course|please|until|till|before|next|turn|hand|week|weekend|today|tonight|tomorrow|tmrw|days|many|long|much|still|there|then)$/;
+ // the line's own words (not question words, not the course it names) and the one piece of work whose title they all
+ // fit ("present" fits "Oral Presentation"); null when none or more than one fits
+ function r42Said(text,s){
+   const L=load('ReserveBiscuitLanguage','./biscuit-language.js');
+   let r=null;
+   try{r=L?.resolveCourses?.(text,s);}catch{r=null;}
+   const course=r&&!r.ambiguous&&r.courseId?String(r.courseId):'',
+     row=course?list(s.courses).find(v=>String(v.id)===course)||{}:{},
+     cw=new Set([
+       ...String(row.name||'').toLowerCase().split(/[^a-z0-9]+/),
+       ...String(row.shortName||'').toLowerCase().split(/[^a-z0-9]+/),
+       ...String(row.nickname||'').toLowerCase().split(/[^a-z0-9]+/)
+     ].filter(Boolean));
+  const said=String(text).toLowerCase().replace(/[^a-z0-9 ]+/g,' ').split(/\s+/).filter(w=>w.length>=4&&!R42_WHEN_STOP.test(w)&&!cw.has(w)&&!(course&&(()=>{
+    try{
+      const x=L.resolveCourses(w,s),m=list(x?.matches).find(y=>String(y.courseId??y.id)===course);
+      return !!x&&String(x.courseId)===course&&!!m&&(m.nameMatch>0||m.abbreviation>0||m.subject>0);
+    }catch{return false;}
+  })()));
+  return {said,course};
+ }
+ const r42FitsWord=(w,t)=>t.length>=4&&(t.startsWith(w.slice(0,5))||w.startsWith(t.slice(0,5)));
+ const r42Titled=(v,said)=>{const words=String(v.title||v.name||'').toLowerCase().split(/[^a-z0-9]+/);return said.filter(w=>words.some(t=>r42FitsWord(w,t))).length;};
+ const r42At=v=>{const d=v?.dueAt;return typeof d==='number'?d:Date.parse(d);};
+ function r42Work(s){return [...list(s.assignments),...list(s.workItems)].filter((v,i,a)=>v&&v.id!=null&&a.findIndex(w=>String(w.id)===String(v.id))===i);}
+ function r42Fit(text,s){
+   const {said,course}=r42Said(text,s);
+   if(!said.length)return null;
+   const hits=r42Work(s).filter(v=>Number.isFinite(r42At(v))&&(!course||String(v.courseId)===course)&&r42Titled(v,said)===said.length);
+   return hits.length===1?{v:hits[0],said}:null;
+ }
+ function r42DueCard(result,v,s){
+   const at=r42At(v),
+     zone=s.timeZone||'America/New_York',
+     day=new Date(at).toLocaleDateString('en-US',{timeZone:zone,weekday:'long',month:'short',day:'numeric'}),
+     time=new Date(at).toLocaleTimeString('en-US',{timeZone:zone,hour:'numeric',minute:'2-digit'});
+   return {
+     ...result,
+     action:'open',
+     items:[{...v,id:String(v.id)}],
+     message:String(v.title||v.name)+' is due '+day+' at '+time+'.',
+     next:{action:'open',fields:{itemId:String(v.id),...(v.courseId?{courseId:String(v.courseId)}:{}),answerField:'dueAt',dueAt:v.dueAt},label:'Open'},
+     clarify:false,
+     understanding:{...(result.understanding||{}),step:'understanding',reason:'r42-named-work'}
+   };
+ }
+ function r42Repair(result,line,s){
+  if(!result||typeof result!=='object'||result.requests||!s||typeof s!=='object')return result;
+  const f=result.next?.fields||{},act=result.next?.action||result.action,text=String(line||'');
+  // "go to algebra" opened the course page with no course: the course the line names, else the question
+  if(act==='navigate'&&f.tab==='course'&&!f.courseId){
+    const L=load('ReserveBiscuitLanguage','./biscuit-language.js');
+    let r=null;
+    try{r=L?.resolveCourses?.(text,s);}catch{r=null;}
+    const c=r&&!r.ambiguous&&r.courseId?list(s.courses).find(v=>String(v.id)===String(r.courseId)):null;
+    return c?
+      {
+        ...result,
+        items:[{id:String(c.id),title:c.name,kind:'course',courseId:String(c.id)}],
+        message:'Open '+(c.shortName||c.name)+'.',
+        next:{...result.next,fields:{...f,courseId:String(c.id)}}
+      }:
+      {...result,action:'none',items:[],message:'Which course?',next:{action:'none',fields:{},label:'Continue'},clarify:true};
+  }
+  // a grade found but its value not said: say it
+  if(['find','open'].includes(act)&&f.kind==='grade'&&f.itemId&&r42Grades(s)){
+    const g=list(s.grades).find(v=>String(v.id)===String(f.itemId)),score=Number(g?.score??g?.value),points=Number(g?.points??g?.pointsPossible);
+    if(g&&Number.isFinite(score)&&!String(result.message||'').includes(String(score))){
+      const value=Number.isFinite(points)&&points>0?score+' / '+points:String(score);
+      return {...result,message:String(g.title||g.name||'Grade')+': '+value+'.',answer:{label:String(g.title||g.name||'Grade'),value}};
+    }
+  }
+  const picked=['find','open'].includes(act)?r42Work(s).find(v=>String(v.id)===String(f.itemId||list(result.items)[0]?.id||'')):null;
+  // a "when" question answered with a page, a file, a grade or another piece of work than the one its words name
+  // ("when do i present in spanish" opened the Spanish practice): the dated work whose title the words fit (a plain "none found" stays)
+  if(R42_WHEN.test(text)&&['find','open'].includes(act)&&(f.itemId||list(result.items).length)){
+    const fit=r42Fit(text,s);
+    if(fit&&(!picked||!Number.isFinite(r42At(picked))||String(fit.v.id)!==String(picked.id)&&r42Titled(picked,fit.said)<fit.said.length))
+      return r42DueCard(result,fit.v,s);
+  }
+  // round 2: a line that names a day or a week answered (by the learned guesser) with one piece of work due on another day
+  // ("fri due" opened Sunday's late pre-lab) or with a page for a work question ("todays work" opened a syllabus): that
+  // day's list instead, unless the line names that piece of work
+  const learned=!/^(?:mind:|r42-)/.test(String(result.understanding?.reason||'')),
+    any=['find','open'].includes(act)&&(f.itemId||list(result.items).length),
+    notWork=any&&!picked&&/\b(?:work|hw|homework|assignments?|stuff|due)\b/i.test(text);
+  if(learned&&!result.relation&&(picked||notWork)&&!list(result.listRows).length){
+    const M=load('ReserveBiscuitMind','./biscuit-mind.js'),w=M?.dueWindow?.(text,s);
+    if(w){
+      const at=picked?r42At(picked):NaN,{said}=r42Said(text,s);
+      if(!(Number.isFinite(at)&&at>=w.from&&at<w.to)&&!(picked&&said.length&&r42Titled(picked,said)===said.length)){
+        const r=M.dueList?.(text,s);
+        if(r)return {...r,route:'local',understanding:{step:'understanding',reason:'mind:r42-work-list'}};
+      }
+    }
+  }
+  // round 2: "where's my spanish practice" sent to the AI because "practice" can mean practice help; a where / find /
+  // open line that names one piece of work by its title finds it
+  if(act==='ai'&&/^\s*(?:where(?:'?s|\s+is|\s+are|\s+r)|find|open|show me|pull up|get me|go to)\b/i.test(text)){
+    const fit=r42Fit(text,s);
+    if(fit)
+      return {
+        ...result,
+        action:'find',
+        items:[{...fit.v,id:String(fit.v.id)}],
+        message:String(fit.v.title||fit.v.name)+'.',
+        next:{action:'find',fields:{itemId:String(fit.v.id),...(fit.v.courseId?{courseId:String(fit.v.courseId)}:{})},label:'Open'},
+        ai:null,
+        route:'local',
+        understanding:{step:'understanding',reason:'r42-named-work'}
+      };
+  }
+  return result;
  }
  // A question (a wh-word or "is / did / do i" at the start, no verb of doing or changing) never writes the planner,
  // marks, bookmarks, adds a task or hides: what it found is shown and nothing changes

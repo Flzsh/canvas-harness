@@ -35,7 +35,7 @@ test('None and a disabled Scene feature create no scene assets or observers',()=
  h.env.ReserveFeatures={enabled:()=>false};h.apply('sea');assert.equal(h.shadow.innerHTML,before);assert.equal(h.observers.length,0);
 });
 test('visible names are exact and the seven packaged styles and motifs are independent',()=>{
- const h=fixture();assert.deepEqual(plain(h.api.names),{starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving',christmas:'Christmas'});
+ const h=fixture();assert.deepEqual(plain(h.api.names),{starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving',christmas:'Christmas',train:'Soul Passage'});
  for(const [id,motifs]of Object.entries({starry:['moon','star','swirl','cypress','cottage','sunflower'],sea:['turtle','fish','coral','jelly','shell','ray'],stars:['giant','binary','galaxy','redgiant','cluster','nebula'],blueprint:['gear','divider','pendulum','rocket','orbit','bulb'],maple:['maple','acorn','pumpkin','pinecone','oak','apple'],thanksgiving:['turkey','horn','pie','lantern','corn','squash'],christmas:['tree','gift','stocking','cane','flake','mug']})){
   h.rd.innerHTML=Array.from({length:6},()=>'<span class="rd-rail-art"><svg></svg></span>').join('');h.apply(id);h.apply(id);
   assert.equal(h.shadow.querySelectorAll('link').length,1);assert.equal(h.shadow.querySelector('link').getAttribute('href'),'chrome-extension://scene-test/themes/'+id+'/theme.css');
@@ -78,7 +78,10 @@ test('remove restores a previous theme and pause attribute; stale dashboards can
  const h=fixture();h.rd.dataset.themeKit='previous';h.rd.setAttribute('data-scene-paused','');const before=h.shadow.innerHTML;h.apply('sea');h.api.remove({});h.api.apply(h.shadow,{},'');assert.equal(h.rd.dataset.themeKit,'sea');h.api.remove(h.rd);assert.equal(h.shadow.innerHTML,before);
 });
 test('Starfield pointer reach is 46 px in both skies (2026-11-09) and its optional document shares the local renderer',()=>{
- const source=read('scene-themes.js');assert.equal((source.match(/REACH\s*=\s*46\b/g)||[]).length,2);assert.equal((source.match(/REACH\s*=\s*20\b/g)||[]).length,0);assert.doesNotMatch(source,/postMessage|sky\.html|sky\.js|data-ch-media/);
+ const source=read('scene-themes.js');assert.equal((source.match(/REACH\s*=\s*46\b/g)||[]).length,2);assert.equal((source.match(/REACH\s*=\s*20\b/g)||[]).length,0);assert.doesNotMatch(source,/sky\.html|sky\.js|data-ch-media/);
+ // (4.2: only the band's own pages (Soul Passage's band and land, frameBand and framePage) are spoken to by message; Starfield never is)
+ const framed=['function frameBand(','function framePage('].map(head=>{const at=source.indexOf(head);return source.slice(at,source.indexOf('\n }\n',at));});
+ assert.equal(framed.every(Boolean),true);assert.doesNotMatch(framed.reduce((rest,body)=>rest.replace(body,''),source),/postMessage/);
  assert.match(read('themes/stars/sky.html'),/<title>Starfield<\/title>/);assert.match(read('themes/stars/sky.html'),/src="\.\.\/\.\.\/scene-themes\.js"/);
  assert.match(read('themes/stars/sky.js'),/ReserveSceneThemes\?\.createStarSky/);assert.doesNotMatch(read('themes/stars/sky.js'),/fetch\(|https?:\/\//);
 });
