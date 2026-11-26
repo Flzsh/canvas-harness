@@ -12,6 +12,7 @@ const cases=(name,list,intent)=>{for(const [q,fields] of list)test(name+': '+q,(
 cases('setting',[
  ['dark mode',{key:'theme',value:'dark'}],['turn on dark mode',{key:'theme',value:'dark'}],['light mode',{key:'theme',value:'light'}],['make it light',{key:'theme',value:'light'}],
  ['christmas theme',{key:'sceneTheme',value:'christmas'}],['christmas',{key:'sceneTheme',value:'christmas'}],['xmas theme',{key:'sceneTheme',value:'christmas'}],['switch to the christmas scene',{key:'sceneTheme',value:'christmas'}],['thanksgiving theme',{key:'sceneTheme',value:'thanksgiving'}],
+ ['winter theme',{key:'sceneTheme',value:'winter'}],['maple frost',{key:'sceneTheme',value:'winter'}],['frost theme',{key:'sceneTheme',value:'winter'}],['snow theme',{key:'sceneTheme',value:'winter'}],['winter',{key:'sceneTheme',value:'winter'}],['switch to the maple frost scene',{key:'sceneTheme',value:'winter'}],
  ['starfield theme',{key:'sceneTheme',value:'stars'}],['switch to the starfield',{key:'sceneTheme',value:'stars'}],['under the sea',{key:'sceneTheme',value:'sea'}],['sea theme',{key:'sceneTheme',value:'sea'}],['starry night theme',{key:'sceneTheme',value:'starry'}],['blueprint theme',{key:'sceneTheme',value:'blueprint'}],['no scene theme',{key:'sceneTheme',value:''}],
  ['courses along the bottom',{key:'courseNavigation',value:'dock'}],['use the dock',{key:'courseNavigation',value:'dock'}],['courses across the top',{key:'courseNavigation',value:'topbar'}],['courses on the side',{key:'courseNavigation',value:'sidebar'}],
  ['bigger dock',{key:'dockSize',value:'large'}],['small dock',{key:'dockSize',value:'small'}],
@@ -54,3 +55,16 @@ cases('help',[['what can you do',{}],['help',{}]],'help');
 
 // the earlier intents still win where they apply
 test('older intents keep working',()=>{expect('open chemistry','open',{courseId:'chem'});expect('open titration lab','open');expect('25 minute focus','focus',{minutes:25});expect('remind me at 9 to pack my bag','reminder');});
+
+// Maple Frost (4.2.0, id winter): its names switch it, as Christmas's do; the season itself and the Focus room's Winter
+// place answer as before ("switch to winter" is still Home > Focus room > Place > Winter)
+test('winter words that are not the scene stay as they were',()=>{
+ const E=require(path.resolve(__dirname,'../extension/biscuit-engine.js'));
+ const world=knowledge=>({now,timeZone:'America/New_York',pet:{knowledge},settings:{showGrades:false,timeZone:'America/New_York'},courses,assignments:[],workItems:[],personalTasks:[],files:[],pageKind:'dashboard'});
+ for(const knowledge of ['lite','most']){
+  for(const q of ['winter theme','maple frost','frost theme','snow theme','winter','use the winter theme']){const r=E.evaluate(q,world(knowledge),{});assert.equal(r.action,'setting',q);assert.deepEqual([r.next.fields.key,r.next.fields.value],['sceneTheme','winter'],q);}
+  const place=E.evaluate('switch to winter',world(knowledge),{});assert.deepEqual(place.ui?.path||place.next?.ui?.path,['Home','Focus room','Place','Winter'],'switch to winter');
+  for(const q of ['winter break','when does winter term start','winter formal','i love winter','snow tint','maple wind']){const r=E.evaluate(q,world(knowledge),{});assert.ok(!(r.action==='setting'&&r.next.fields.key==='sceneTheme'&&r.next.fields.value==='winter'),q);}
+ }
+ for(const q of ['winter break','when does winter term start','winter formal','switch to winter','snow tint','snow'])assert.ok(!P.parse(q,ctx()).some(c=>c.intent==='setting'&&c.fields.key==='sceneTheme'),q);
+});

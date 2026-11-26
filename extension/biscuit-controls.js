@@ -26,7 +26,7 @@
    "panelFrame":["pen","stitch","card","line","none"],
    "quickOpen":["on","off"],
    "readingFont":["book","interface","easy"],
-   "sceneTheme":["","starry","sea","stars","blueprint","maple","thanksgiving","christmas","train"],
+   "sceneTheme":["","starry","sea","stars","blueprint","maple","thanksgiving","christmas","train","winter"],
    "surfaceStyle":["paper","clean","contrast"],
    "textSize":["standard","large"],
    "theme":["light","dark"]
@@ -90,7 +90,7 @@
    "livingArt":["living art","living drawings"]
  };
  const VALUES={
-   "sceneTheme":{"none":"","off":"","default":"","starfield":"stars","ocean":"sea","xmas":"christmas"},
+   "sceneTheme":{"none":"","off":"","default":"","starfield":"stars","ocean":"sea","xmas":"christmas","frost":"winter"},
    "courseNavigation":{"left":"sidebar","side":"sidebar","top":"topbar","bottom":"dock"},
    "panelFrame":{"stitched":"stitch","off":"none"},
    "surfaceStyle":{},
@@ -832,7 +832,7 @@
      choices=rows.length?
        rows.map(v=>({label:v.label,action:scene?'setting':'none',fields:scene&&ENUMS.sceneTheme.includes(v.value)?{key:'sceneTheme',value:v.value}:{}})):
        scene?
-         [['None',''],['Starry Night','starry'],['Under the Sea','sea'],['Starfield','stars'],['Blueprint','blueprint'],['Maple Wind','maple'],['Thanksgiving','thanksgiving'],['Christmas','christmas'],['Soul Passage','train']].map(([label,value])=>
+         [['None',''],['Starry Night','starry'],['Under the Sea','sea'],['Starfield','stars'],['Blueprint','blueprint'],['Maple Wind','maple'],['Thanksgiving','thanksgiving'],['Christmas','christmas'],['Soul Passage','train'],['Maple Frost','winter']].map(([label,value])=>
            ({label,action:'setting',fields:{key:'sceneTheme',value}})):
          [{label:'Default theme',action:'none',fields:{}}];
    return ui(['Make it yours','Look',scene?'Scene':'Theme'],'Which '+(scene?'scene':'theme')+' would you like? Choose None or another choice.',{clarify:true,choices});

@@ -33,7 +33,7 @@ test('Megapack is a heading after the Everyday pack, with Soul Passage alone und
  assert.equal(mega.length,1);assert.equal(mega[0].querySelector('input').value,'train');assert.equal(mega[0].querySelector('strong').textContent,'Soul Passage');
  assert.equal(mega[0].querySelector('small'),null,'a name, no description');
  assert.equal(mega[0].querySelector('img').getAttribute('src'),'chrome-extension://test/themes/train/poster.jpg','its packaged poster');
- assert.deepEqual(group.querySelectorAll('input').map(i=>i.value),['','thanksgiving','christmas','maple','starry','sea','stars','blueprint','train'],'one radio group, the same order');
+ assert.deepEqual(group.querySelectorAll('input').map(i=>i.value),['','thanksgiving','christmas','maple','winter','starry','sea','stars','blueprint','train'],'one radio group, the same order');
 });
 
 test('here (packaged, or not asked yet): an ordinary choice exactly like the other scenes, no tag, no Remove',()=>{
@@ -54,7 +54,7 @@ test('not on this machine (and failed): a button, not a radio, with the lead\'s 
   const {group,tile}=look(megapack);
   assert.equal(tile.tagName,'BUTTON');assert.equal(tile.getAttribute('type'),'button');assert.equal(tile.dataset.rdAction,'megapack-get');assert.equal(tile.dataset.mp,'none');
   assert.equal(tile.getAttribute('aria-label'),'Soul Passage, download');assert.equal(tile.hasAttribute('aria-disabled'),false);
-  assert.equal(group.querySelector('input[value="train"]'),null,'not a radio');assert.equal(group.querySelectorAll('input').length,8);
+  assert.equal(group.querySelector('input[value="train"]'),null,'not a radio');assert.equal(group.querySelectorAll('input').length,9);
   assert.equal(tile.querySelector('img.cz-scene-poster').getAttribute('src'),'chrome-extension://test/themes/train/poster.jpg');
   const mark=tile.querySelector('.cz-mega-mark');assert.equal(mark.getAttribute('aria-hidden'),'true');assert.ok(mark.querySelector('svg'),'the tag at its top right');
   assert.equal(tile.querySelector('strong').textContent,'Soul Passage');assert.equal(tile.querySelector('.mp-line'),null);

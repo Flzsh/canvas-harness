@@ -7,7 +7,7 @@
  const KEY='reserve:appearance',
   TARGET='ch-appearance',
   FIELDS=['theme','motion','nightArt','pet','sceneTheme'],
-  SCENES=['','starry','sea','stars','blueprint','maple','thanksgiving','christmas','train'],
+  SCENES=['','starry','sea','stars','blueprint','maple','thanksgiving','christmas','train','winter'],
   clone=value=>structuredClone(value);
  const defaults=()=>({theme:'light',motion:'gentle',nightArt:0,pet:true,sceneTheme:''});
  let pending=Promise.resolve();

@@ -1027,12 +1027,12 @@
     when:q=>/ (?:the train|train cabin|window seat|soul passage|train speed|train (?:faster|slower|speed|go faster|go slower)|(?:faster|slower) train) /.test(q)&&/ (?:faster|slower|speed|fast|slow|stop|stopped|pause|go|cruise|moving|brake) /.test(q.replace(/ window seat | soul passage /g,' '))&&!/ (?:(?:use|turn on|switch to|set|choose|pick) (?:the )?(?:train cabin|window seat|soul passage)|(?:train cabin|window seat|soul passage) (?:theme|scene)|no scene) /.test(q),
     answer:(m,c)=>c.card('none',[],{},'Open Soul Passage > laptop screen > Train speed.',{ui:{path:['Soul Passage','Laptop screen','Train speed']}})
   },
-  {id:'r9-scene-names',when:q=>/^ (?:use |switch to |turn on |put on )?(?:the )?(?:starfield|starry night|under the sea|blueprint|maple wind|thanksgiving|christmas|xmas|train cabin|window seat|soul passage)(?: theme| scene)?(?: please)? $/.test(q),answer:(m,c)=>{
+  {id:'r9-scene-names',when:q=>/^ (?:use |switch to |turn on |put on )?(?:the )?(?:starfield|starry night|under the sea|blueprint|maple wind|maple frost|thanksgiving|christmas|xmas|train cabin|window seat|soul passage|(?:winter|frost|snow) (?:theme|scene))(?: theme| scene)?(?: please)? $/.test(q)||/^ winter(?: please)? $/.test(q),answer:(m,c)=>{
     const v=/ starfield /.test(c.q)?
       'stars':
       / starry /.test(c.q)?
         'starry':
-        / sea /.test(c.q)?'sea':/ blueprint /.test(c.q)?'blueprint':/ maple /.test(c.q)?'maple':/ christmas | xmas /.test(c.q)?'christmas':/ train | window seat | soul passage /.test(c.q)?'train':'thanksgiving';
+        / sea /.test(c.q)?'sea':/ blueprint /.test(c.q)?'blueprint':/ winter | maple frost | frost | snow /.test(c.q)?'winter':/ maple /.test(c.q)?'maple':/ christmas | xmas /.test(c.q)?'christmas':/ train | window seat | soul passage /.test(c.q)?'train':'thanksgiving';
     return c.card('setting',[],{key:'sceneTheme',value:v},'Scene · '+c.q.trim().replace(/^(?:use|switch to|turn on|put on) /,'').replace(/^the /,'').replace(/ (?:theme|scene|please)$/,''));
   }},
   {

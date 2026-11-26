@@ -9,7 +9,8 @@
    maple:['maple','acorn','pumpkin','pinecone','oak','apple'],
    thanksgiving:['turkey','horn','pie','lantern','corn','squash'],
    christmas:['tree','gift','stocking','cane','flake','mug'],
-   train:['cat','kettle','lamp','mug','plant','bear']
+   train:['cat','kettle','lamp','mug','plant','bear'],
+   winter:['maple','acorn','pumpkin','pinecone','oak','apple']
  };
  const names=Object.freeze({
    starry:'Starry Night',
@@ -19,7 +20,8 @@
    maple:'Maple Wind',
    thanksgiving:'Thanksgiving',
    christmas:'Christmas',
-   train:'Soul Passage'
+   train:'Soul Passage',
+   winter:'Maple Frost'
  });
  /* A scene's sky may be a band in the band's own words (band-kit.js) instead of a video: pictures
     laid over each other that follow the student's clock (the clock the band reads for "time"). Soul Passage: the land

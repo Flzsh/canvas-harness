@@ -44,6 +44,7 @@
 
 - **A new Home and Planner**: modules you drag and size, a Planner with a day page and a week or month calendar, and a day button on every assignment.
 - **On assignment pages**: a switch that turns Canvas Harness off there (nothing of it drawn but the switch, nothing asked of Canvas), and "Open beside" to read another assignment next to the one you are on.
+- **Maple Frost**, a new scene in the Seasonal pack: Maple Wind's hillside a season on, under snow.
 - **Soul Passage**, a train carriage that never stops, with a different land outside each weekday. It is the first **Megapack**: its pictures come down from the Market when you choose it, and Remove deletes them.
 - **Make it yours** in a new order: Scenes, Look, Home, Courses, Companion, Settings.
 

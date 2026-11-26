@@ -453,6 +453,18 @@
    "themes/train/theme.css",
    "themes/train/train-card-dark.png",
    "themes/train/train-panel-dark.png",
+   "themes/winter/ground.jpg",
+   "themes/winter/icon-acorn.png",
+   "themes/winter/icon-apple.png",
+   "themes/winter/icon-maple.png",
+   "themes/winter/icon-oak.png",
+   "themes/winter/icon-pinecone.png",
+   "themes/winter/icon-pumpkin.png",
+   "themes/winter/poster.jpg",
+   "themes/winter/sky.mp4",
+   "themes/winter/theme.css",
+   "themes/winter/winter-card.png",
+   "themes/winter/winter-panel.png",
  ];
  const ids=catalogue.map(f=>f.id),known=new Set(ids);
  catalogue.find(f=>f.id==='pony').files.assets=['biscuit-rules/basic.json','biscuit-rules/more.json','biscuit-rules/most.json','biscuit-rules/school-language.json'];

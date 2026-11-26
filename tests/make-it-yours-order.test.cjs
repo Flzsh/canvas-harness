@@ -4,8 +4,8 @@
 // for each thing; every control of 4.0.193 is still there (tests/fixtures/make-it-yours-controls-4.0.193.json).
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const read=file=>fs.readFileSync(path.join(__dirname,'../extension',file),'utf8');
-// (public: the private build's own scenes and its Make-your-own "Get more" were never in Canvas Harness)
-const NEVER_PUBLIC=new Set(['action:make-get-more','field:setting setting:sceneTheme value:walls','field:setting setting:sceneTheme value:wisteria','field:setting setting:sceneTheme value:winter']);
+// (public: two scenes and a Make-your-own "Get more" that were never in Canvas Harness; Maple Frost, the scene winter, is)
+const NEVER_PUBLIC=new Set(['action:make-get-more','field:setting setting:sceneTheme value:walls','field:setting setting:sceneTheme value:wisteria']);
 const OLD=require('./fixtures/make-it-yours-controls-4.0.193.json').controls.filter(id=>!NEVER_PUBLIC.has(id));
 const dense=s=>s.replace(/\n[ \t]*/g,'');
 function ui(enabled=()=>true){
@@ -32,7 +32,7 @@ test('every control of 4.0.193 is still in Make it yours, each in one tab of the
   for(const [tab] of env.ReserveCustomizeUI.tabs())for(const id of ids(render(env,tab,s)))found.set(id,(found.get(id)||new Set()).add(tab));
  assert.deepEqual(OLD.filter(id=>!found.has(id)),[],'nothing lost');
  const one=id=>[...found.get(id)];
- for(const v of ['','sea','train','christmas'])assert.deepEqual(one('field:setting setting:sceneTheme value:'+v),['scenes']);
+ for(const v of ['','sea','train','christmas','winter'])assert.deepEqual(one('field:setting setting:sceneTheme value:'+v),['scenes']);
  for(const v of ['drawn','shown','top','original'])assert.deepEqual(one('field:canvas-nav setting:canvasNav value:'+v),['settings']);
  for(const id of ['field:setting setting:bannerSize value:large','field:setting setting:courseCardStyle value:minimal'])assert.deepEqual(one(id),['look']);
  assert.deepEqual(one('field:make-part'),['scenes']);

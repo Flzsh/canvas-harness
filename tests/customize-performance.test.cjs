@@ -73,7 +73,7 @@ test('opening and switching named tabs builds only the selected content and its 
   if(tab==='pet'){const locked=document.querySelectorAll('.cz-choice[data-locked="true"]');assert.equal(locked.length,0,'no locked coats or harnesses since the levels left (biscuit-42)');for(const choice of document.querySelectorAll('.cz-choice')){if(choice.dataset.locked==='true'){assert.equal(choice.querySelector('input').disabled,true);assert.match(choice.querySelector('small').textContent,/^Level \d+$/);}else assert.equal(choice.querySelector('small'),null);}assert.equal(document.querySelector('[data-pane="pet"]').querySelectorAll('h3').at(-1).textContent,'Size','what it does first, how it looks last');}
   assert.equal(f.work.archivedScans,tab==='courses'?1:0,'only Courses scans archived course preferences');
   assert.equal(f.work.frames,tab==='look'?1:0,'only Look builds module frame choices');
-  assert.equal(f.work.posters.length,tab==='scenes'?8:0,'only Scenes resolves scene posters (eight scenes, one poster each)');
+  assert.equal(f.work.posters.length,tab==='scenes'?9:0,'only Scenes resolves scene posters (nine scenes with Maple Frost, one poster each)');
   assert.deepEqual(f.work.previews,tab==='courses'?['render','scene','mini','frame','title']:tab==='pet'?['drawing','drawing','svg']:[]);
  }
 });

@@ -212,14 +212,14 @@
       button('board-frame',`<i data-frame="${value}"></i>${E(name)}`,`role="radio" data-value="${value}" aria-checked="${!(ownTheme?.frames?.panel||sceneActive)||layer.parts?.frames===false||layer.parts?.panel===false?(s.panelFrame||'pen')===value:false}" title="${E(hint)}"`,'rd-frame-choice')).join('');
 
   const night=Math.max(0,Math.min(100,Math.round(Number(s.nightArt)||0))),
-    sceneActive=enabled('scene-themes')&&['starry','sea','stars','blueprint','maple','thanksgiving','christmas','train'].includes(s.sceneTheme),
+    sceneActive=enabled('scene-themes')&&['starry','sea','stars','blueprint','maple','thanksgiving','christmas','train','winter'].includes(s.sceneTheme),
     installedScene=(c.makeOwn?.catalogue||[]).find(row=>
       row.kind==='feature'&&row.sceneTheme!==undefined&&(root.ReservePacks?.isCurrent?root.ReservePacks.isCurrent(row,{settings:s}):row.current));
   const ownTheme=!sceneActive&&s.makeYourOwn?.theme?c.makeOwn?.theme:null,
     ownedPalette=sceneActive||!!s.makeYourOwn?.theme,
     ownerName=s.makeYourOwn?.theme?.name||
       installedScene?.name||
-      ({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving',christmas:'Christmas',train:'Soul Passage'})[s.sceneTheme]||
+      ({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving',christmas:'Christmas',train:'Soul Passage',winter:'Maple Frost'})[s.sceneTheme]||
       'The selected theme',
     // (the look the dashboard saves into, dashboard.js lookSelection: an own theme's pack, else the scene's built-in key)
     look=root.ReserveMakeYourOwn?.activeLook?.(c.makeOwn,s)||(key=>({key,layer:key?s.makeYourOwn?.adjustments?.[key]||{}:{}}))(
@@ -236,7 +236,8 @@
     maple:{bg:'#FBF3E4',accent:'#B9432A'},
     thanksgiving:{bg:'#F7EFDF',accent:'#8A2433'},
     christmas:{bg:'#EEF3FB',accent:'#B4283A'},
-    train:{bg:'#F7EEE6',accent:'#2F7F86',dark:{bg:'#1A1C4A',accent:'#FFB870'}}
+    train:{bg:'#F7EEE6',accent:'#2F7F86',dark:{bg:'#1A1C4A',accent:'#FFB870'}},
+    winter:{bg:'#F3F6FB',accent:'#2F5E97'}
   })[s.sceneTheme];
   const colorFields=key=>`<div class="cz-pair">${['light','dark'].map(mode=>{
     // a colour box takes only #rrggbb: a saved Page colour name ("paper", "accent") falls back to the scene's or the default colour
@@ -300,6 +301,7 @@
    ['christmas','Christmas','',poster('christmas')],
    {head:'Seasonal pack'},
    ['maple','Maple Wind','',poster('maple')],
+   ['winter','Maple Frost','',poster('winter')],
    {head:'Everyday pack'},
    ['starry','Starry Night','',poster('starry')],
    ['sea','Under the Sea','',poster('sea')],

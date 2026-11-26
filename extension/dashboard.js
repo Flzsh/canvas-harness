@@ -1307,10 +1307,10 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const builtins=[
         {id:'builtin:pet',name:personal.pet?.name||'Biscuit',kind:'pet',current:!s.makeYourOwn?.pet},
         ...['light','dark'].map(id=>({id:'builtin:mode:'+id,name:({light:'Light',dark:'Dark'})[id],kind:'theme',current:!s.makeYourOwn?.theme&&!s.sceneTheme&&(s.theme==='dark'?'dark':'light')===id})),
-        ...['starry','sea','stars','blueprint','maple','thanksgiving','christmas','train'].map(id=>
+        ...['starry','sea','stars','blueprint','maple','thanksgiving','christmas','train','winter'].map(id=>
           ({
             id:'builtin:scene:'+id,
-            name:({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving',christmas:'Christmas',train:'Soul Passage'})[id],
+            name:({starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving',christmas:'Christmas',train:'Soul Passage',winter:'Maple Frost'})[id],
             kind:'scene',
             current:!s.makeYourOwn?.theme&&s.sceneTheme===id
           })),
@@ -1508,7 +1508,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         ...(!enabled('grades')?{showGrades:false}:{}),
         ...(!enabled('motion')?{motion:'off',livingArt:'off'}:{}),
         ...(!enabled('course-hub')?{showCourseInformation:false}:{}),
-        ...(!enabled('course-art')&&!(enabled('scene-themes')&&['starry','sea','stars','blueprint','maple','thanksgiving','christmas','train'].includes(personal.settings.sceneTheme))?
+        ...(!enabled('course-art')&&!(enabled('scene-themes')&&['starry','sea','stars','blueprint','maple','thanksgiving','christmas','train','winter'].includes(personal.settings.sceneTheme))?
           {courseCardStyle:'rounded',showCourseIcons:false}:
           {})
       };
@@ -2269,7 +2269,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       consumeSources();
       setData('featureMotion',enabled('motion')?'on':'off');setData('arrange',arrange?'on':'off');
       const dataTheme=enabled('customization')&&!ctx.s.sceneTheme?makeOwn?.state.theme:null;
-      const scene=!dataTheme&&enabled('scene-themes')&&root.ReserveSceneThemes&&['starry','sea','stars','blueprint','maple','thanksgiving','christmas','train'].includes(ctx.s.sceneTheme)?
+      const scene=!dataTheme&&enabled('scene-themes')&&root.ReserveSceneThemes&&['starry','sea','stars','blueprint','maple','thanksgiving','christmas','train','winter'].includes(ctx.s.sceneTheme)?
         ctx.s.sceneTheme:
         '';
       setData('theme',ctx.theme);applyNight(ctx.s.nightArt);

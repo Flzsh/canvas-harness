@@ -116,14 +116,14 @@ test('Soul Passage is registered like the other built-in scenes; its kit is spli
  assert.ok(require('../extension/customization-model.js').enums.sceneTheme.includes('train'));
  const lists=['customize-ui.js','customization-model.js','dashboard-view.js','dashboard.js','page-preferences.js','biscuit-parse.js'];
  for(const file of lists){
-  const source=read(file),arrays=[...source.matchAll(/'starry','sea','stars','blueprint','maple','thanksgiving','christmas'(,'train')?\]/g)],names=[...source.matchAll(/thanksgiving:'Thanksgiving',christmas:'Christmas'(,train:'Soul Passage')?\}/g)];
+  const source=read(file),arrays=[...source.matchAll(/'starry','sea','stars','blueprint','maple','thanksgiving','christmas'(,'train')?(?:,'winter')?\]/g)],names=[...source.matchAll(/thanksgiving:'Thanksgiving',christmas:'Christmas'(,train:'Soul Passage')?(?:,winter:'Maple Frost')?\}/g)];
   assert.ok(arrays.length+names.length,file+' lists the scenes');
   for(const m of arrays)assert.equal(m[1],",'train'",file+' lists Soul Passage (the scene train) with the others');for(const m of names)assert.equal(m[1],",train:'Soul Passage'",file+' names it');
  }
  assert.equal(require('../extension/scene-themes.js').names.train,'Soul Passage');
  // (4.2) a megapack: under its own heading after the Everyday pack, its packaged poster and its name, no description
  const ui=read('customize-ui.js');assert.match(ui,/\['blueprint','Blueprint','',poster\('blueprint'\)\],\s*(?:\/\/[^\n]*\n\s*)?\{head:'Megapack'\},\s*megaChoice\(\)\s*\]/,'under Megapack, out of the Everyday pack');assert.match(ui,/return \['train','Soul Passage','',poster\('train'\)\];/,'an ordinary choice when here, no description');
- assert.match(read('biscuit-controls.js'),/\['Thanksgiving','thanksgiving'\],\['Christmas','christmas'\],\['Soul Passage','train'\]\]/,'a choice when Biscuit asks which scene');
+ assert.match(read('biscuit-controls.js'),/\['Thanksgiving','thanksgiving'\],\['Christmas','christmas'\],\['Soul Passage','train'\](?:,\['Maple Frost','winter'\])?\]/,'a choice when Biscuit asks which scene');
  // (shown as Soul Passage: the page titles say so, and nothing a person reads says Train Cabin or Window Seat)
  assert.match(read('themes/train/band.html'),/<title>Soul Passage band<\/title>/);assert.match(read('themes/train/page.html'),/<title>Soul Passage land<\/title>/);
  for(const file of lists)assert.doesNotMatch(read(file).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g,''),/'(?:Train Cabin|Window Seat)'/,file+' no longer shows an old name');

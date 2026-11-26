@@ -34,9 +34,9 @@ test('None and a disabled Scene feature create no scene assets or observers',()=
  const h=fixture(),before=h.shadow.innerHTML;h.apply('');assert.equal(h.shadow.innerHTML,before);assert.equal(h.observers.length,0);assert.equal(h.frames.size,0);assert.equal(h.timers.size,0);
  h.env.ReserveFeatures={enabled:()=>false};h.apply('sea');assert.equal(h.shadow.innerHTML,before);assert.equal(h.observers.length,0);
 });
-test('visible names are exact and the seven packaged styles and motifs are independent',()=>{
- const h=fixture();assert.deepEqual(plain(h.api.names),{starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving',christmas:'Christmas',train:'Soul Passage'});
- for(const [id,motifs]of Object.entries({starry:['moon','star','swirl','cypress','cottage','sunflower'],sea:['turtle','fish','coral','jelly','shell','ray'],stars:['giant','binary','galaxy','redgiant','cluster','nebula'],blueprint:['gear','divider','pendulum','rocket','orbit','bulb'],maple:['maple','acorn','pumpkin','pinecone','oak','apple'],thanksgiving:['turkey','horn','pie','lantern','corn','squash'],christmas:['tree','gift','stocking','cane','flake','mug']})){
+test('visible names are exact and the eight packaged styles and motifs are independent',()=>{
+ const h=fixture();assert.deepEqual(plain(h.api.names),{starry:'Starry Night',sea:'Under the Sea',stars:'Starfield',blueprint:'Blueprint',maple:'Maple Wind',thanksgiving:'Thanksgiving',christmas:'Christmas',train:'Soul Passage',winter:'Maple Frost'});
+ for(const [id,motifs]of Object.entries({starry:['moon','star','swirl','cypress','cottage','sunflower'],sea:['turtle','fish','coral','jelly','shell','ray'],stars:['giant','binary','galaxy','redgiant','cluster','nebula'],blueprint:['gear','divider','pendulum','rocket','orbit','bulb'],maple:['maple','acorn','pumpkin','pinecone','oak','apple'],thanksgiving:['turkey','horn','pie','lantern','corn','squash'],christmas:['tree','gift','stocking','cane','flake','mug'],winter:['maple','acorn','pumpkin','pinecone','oak','apple']})){
   h.rd.innerHTML=Array.from({length:6},()=>'<span class="rd-rail-art"><svg></svg></span>').join('');h.apply(id);h.apply(id);
   assert.equal(h.shadow.querySelectorAll('link').length,1);assert.equal(h.shadow.querySelector('link').getAttribute('href'),'chrome-extension://scene-test/themes/'+id+'/theme.css');
   assert.equal(h.rd.firstChild.className,'tk-sky');assert.deepEqual(h.rd.querySelectorAll('.tk-icon').map(icon=>icon.dataset.motif),motifs);
@@ -44,7 +44,7 @@ test('visible names are exact and the seven packaged styles and motifs are indep
  }
  h.api.remove();assert.equal(h.listeners.size,0);assert.equal(h.frames.size,0);assert.ok(h.observers.every(o=>o.disconnected));
 });
-for(const id of ['starry','sea','blueprint','maple','thanksgiving','christmas'])test(id+' video is local, muted and lazy; hidden and reduced motion show the poster',()=>{
+for(const id of ['starry','sea','blueprint','maple','thanksgiving','christmas','winter'])test(id+' video is local, muted and lazy; hidden and reduced motion show the poster',()=>{
  const h=fixture({hidden:true});h.apply(id);const video=h.rd.querySelector('video'),poster=h.rd.querySelector('.tk-poster');
  assert.equal(video.muted,true);assert.equal(video.loop,true);assert.equal(video.playsInline,true);assert.equal(video.getAttribute('src'),null);assert.equal(h.plays,0);assert.equal(poster.hidden,false);
  h.host.hidden=false;h.mutate();h.settle();assert.equal(video.getAttribute('src'),'chrome-extension://scene-test/themes/'+id+'/sky.mp4');assert.equal(h.plays,1);assert.equal(poster.hidden,true);

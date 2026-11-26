@@ -405,6 +405,8 @@
 .rd .cz-scenes .cz-scene-poster {display:block;width:100%;height:100%;object-fit:cover;}
 /* Christmas: the picker shows the town and its tree (the poster's right end), not the quiet middle of the band */
 .rd .cz-scenes .cz-scene-poster[src*="themes/christmas/"] {object-position:88% 50%;}
+/* Maple Frost: the picker shows the great maple and the low sun (the poster's right end) */
+.rd .cz-scenes .cz-scene-poster[src*="themes/winter/"] {object-position:95% 50%;}
 
 /* Local photos share the existing artwork frames. */
 .rd .ch-media { display: block; width: 100%; height: 100%; pointer-events: none; }

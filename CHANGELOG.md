@@ -2,9 +2,10 @@
 
 ## 4.2.0 - 2026-11-25
 
-A new Home and Planner, a switch and a side view on assignment pages, and Soul Passage, the first scene that comes from the Market.
+A new Home and Planner, a switch and a side view on assignment pages, a winter scene, and Soul Passage, the first scene that comes from the Market.
 
 - **Make it yours** has six tabs in a new order: Scenes, Look, Home, Courses, Companion and Settings (what was under More is under Settings).
+- **Maple Frost**, a new scene in the Seasonal pack after Maple Wind (Make it yours → Scenes): the same painted hillside a season on, under snow, the great maple white with frost and snow on the wind; below, snow paper in blue-black ink, frames of the drawn twig with snow along the top, and six small pictures (a snow-capped acorn, a winter apple, a frozen maple leaf, a dry oak leaf, a pinecone, a pumpkin under snow). It comes with the package. Biscuit knows it: "maple frost", "winter scene".
 - **Soul Passage** (Make it yours → Scenes → Megapack): a train carriage that never stops, with a different land outside on each weekday and five times of day. Its pictures and data (about 67 MB) are not in the package: choosing it downloads them from the Market, a line on its picture shows how far it is, and the scene goes on by itself once every file is here. "Use from Soul Passage" sets its Speed, Land and Time; Remove deletes the downloaded files. Biscuit knows it: "soul passage", "train theme".
 - **Home**: modules can be dragged, made narrower or wider (also with Shift and the arrow keys), and put back with Reset this widget; the greeting, the chips and Edit Home / Undo move are drawn.
 - **The Planner**: the chosen day as a page with "Add a task" under it, and a calendar of the week or the month beside it. Every assignment row has a day button that plans it with one press; Home's "My plan" is today's page; "Add a task" is on the top bar (and the n key) on every tab. Overdue work stays on its own day and is counted in one line, with All to today and Tick all. "Your week" lists what the planner's own data says about the coming days (a day too full, a test with nothing planned), each with one action.
