@@ -194,7 +194,7 @@ test('pressing it switches this assignment off and the page follows at once; pre
 });
 
 test('not shown while "On Canvas" is off everywhere, or where Canvas Harness has nothing of its own on the page; never off a hand-in page or in a frame',()=>{
- const off=page({local:storage([['reserve:off','1']])});assert.equal(off.host().hidden,true);
+ const off=page({local:storage([['reserve:off','1']])});assert.equal(off.host(),null,'On Canvas off: nothing of Canvas Harness on the page, not even the switch hidden (4.1.0: off leaves Canvas pages alone)');
  const lite=page({features:{OFFHINT:'reserve:off',chosen:{enabled:['dashboard','planner']},refresh(){},onApply(){}}});assert.equal(lite.host().hidden,true);
  const offHere=page({local:storage([[KEY,JSON.stringify({'7/12':1})]]),features:{OFFHINT:'reserve:off',chosen:{enabled:['dashboard']},refresh(){},onApply(){}}});assert.equal(offHere.host().hidden,false,'while off here it is always the way back');assert.equal(offHere.button.getAttribute('aria-checked'),'false');
  const broken=page({features:false});assert.equal(broken.host().hidden,false,'with the selection missing (something broke) the switch still works');
@@ -202,7 +202,7 @@ test('not shown while "On Canvas" is off everywhere, or where Canvas Harness has
  for(const route of ['/','/courses/7/modules','/courses/7/quizzes/3/take','/courses/7/discussion_topics/4']){const q=page({route});assert.equal(q.placed.length,0,route);assert.equal(q.ctx.ReservePageSwitch,undefined,route);}
  const framed=page({frame:true});assert.equal(framed.placed.length,0);
  // On Canvas switched on again while the page is open: the selection tells the switch
- const p=page({local:storage([['reserve:off','1']])});assert.equal(p.host().hidden,true);p.local.removeItem('reserve:off');p.ctx.told();assert.equal(p.host().hidden,false);
+ const p=page({local:storage([['reserve:off','1']])});assert.equal(p.host(),null);p.local.removeItem('reserve:off');p.ctx.told();assert.equal(p.host()?.hidden,false,'mounted and shown once the page is on again');
 });
 
 test('the manifest loads the switch with the page-start group, in the top frame only, and site.js before the selection',()=>{

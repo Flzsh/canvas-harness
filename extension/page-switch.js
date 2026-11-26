@@ -31,9 +31,9 @@
  const off=()=>{try{return site.pageOff(root.location);}catch{return false;}};
  // Shown while Canvas Harness has something of its own here (the drawn menu, the PDF reader or the after-submit scene), or while it
  // is off here (the way back). Not while "On Canvas" is off everywhere: then nothing of ours belongs on Canvas at all.
+ const everywhereOff=()=>{try{return root.localStorage?.getItem(features()?.OFFHINT||'reserve:off')==='1';}catch{return false;}};
  function wanted(){
-  let everywhereOff=false;try{everywhereOff=root.localStorage?.getItem(features()?.OFFHINT||'reserve:off')==='1';}catch{}
-  if(everywhereOff)return false;
+  if(everywhereOff())return false;
   if(off())return true;
   const chosen=features()?.chosen;
   return !chosen||!chosen.off&&PARTS.some(id=>chosen.enabled.includes(id));
@@ -68,8 +68,11 @@
   try{observer=new root.MutationObserver(look);observer.observe(doc.documentElement||doc.body,{childList:true,subtree:true});}catch{observer=null;}
   if(observer)timer=root.setTimeout?.(done,WAIT)||0;
  }
+ let waiting=false;
  function mount(){
   if(host||!doc.body)return;
+  // "On Canvas" off: nothing of ours on this page at all, not even this switch hidden; it comes once the page is on again
+  if(everywhereOff()){if(!waiting){waiting=true;try{features()?.onApply?.(()=>{if(waiting&&!everywhereOff()){waiting=false;mount();}});}catch{}}return;}
   host=doc.createElement('reserve-page-switch');host.hidden=true;
   shadow=host.attachShadow({mode:'open'});
   shadow.innerHTML='<style>'+CSS+'</style><button type="button" class="sw" role="switch" aria-checked="true" aria-describedby="ps-note">'+BOOKS+'<span class="t"></span>'+KNOB+'</button><span class="note" id="ps-note">Submitting, or the page acting up? Switch this off.</span>';
