@@ -2,7 +2,7 @@
 
 One package for the Chrome Web Store and GitHub releases. The build writes `dist/Canvas-Harness-4.2.0.zip`; the same file is uploaded to the store and attached to the GitHub release.
 
-4.2.0, November 25, 2026: `node scripts/test.cjs` ran 7,580 tests, 7,552 passed, 0 failed and 28 were skipped (the same 28 as 4.1.0); `npm run check` passed. Soul Passage's 398 pictures and data are not in the package: the tests read the Market's manifest of them (`tests/fixtures/megapack-soul-passage-4.json`, version 4) and check that none is in the extension folder, the manifest or the scene feature.
+4.2.0, November 25, 2026: `node scripts/test.cjs` ran 7,594 tests, 7,566 passed, 0 failed and 28 were skipped (the same 28 as 4.1.0); `npm run check` passed, and the release audit of the extracted ZIP passed with 539 files. Soul Passage's 398 pictures and data are not in the package: the tests read the Market's manifest of them (`tests/fixtures/megapack-soul-passage-4.json`, version 4) and check that none is in the extension folder, the manifest or the scene feature.
 
 4.1.0, November 19, 2026: `node scripts/test.cjs` ran 7,141 tests, 7,113 passed, 0 failed and 28 were skipped (the same 28 as 4.0.0); `npm run check` passed, and the release audit of the extracted ZIP passed with 344 files and the AI help lock checks.
 
