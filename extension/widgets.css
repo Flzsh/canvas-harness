@@ -1004,3 +1004,9 @@
  .rd .rd-plan-cal .rd-plan-eopen > *,.rd .rd-plan-cal .rd-plan-entry.rd-plan-mark > * {visibility:hidden;}
  .rd .rd-plan-cal .rd-plan-chips,.rd .rd-plan[data-mode=week] .rd-plan-cal .rd-plan-chips {gap:4px;}
 }
+/* Under a scene the Planner begins where the scene's picture still is: the picture runs down to the calendar's box,
+   so the day's page and the calendar's heading row stood on the barn, the sleigh or the fence, and the date could not be
+   read. Each lies on a slip of that scene's own paper (its --rd-surface), as Home's date does. A spread, not padding:
+   nothing in the row moves. Soul Passage lays the whole Planner on its rug and needs none. */
+.rd[data-theme-kit]:not([data-theme-kit=train]) .rd-plan-page {background:color-mix(in srgb,var(--rd-surface) 90%,transparent);box-shadow:0 0 0 8px color-mix(in srgb,var(--rd-surface) 90%,transparent);border-radius:4px;}
+.rd[data-theme-kit]:not([data-theme-kit=train]) .rd-plan-cal-head {background:color-mix(in srgb,var(--rd-surface) 90%,transparent);box-shadow:0 0 0 6px color-mix(in srgb,var(--rd-surface) 90%,transparent);border-radius:4px;}
