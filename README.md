@@ -42,11 +42,12 @@
 
 ## New in 4.2
 
-- **A new Home and Planner**: modules you drag and size, a Planner with a day page and a week or month calendar, and a day button on every assignment.
-- **On assignment pages**: a switch that turns Canvas Harness off there (nothing of it drawn but the switch, nothing asked of Canvas), and "Open beside" to read another assignment next to the one you are on.
+- **A new Planner**: the day as a tick list, the week or the month beside it, a day button on every assignment, and "Add a task" from any tab.
+- **Home you can arrange**: drag a module, make it wider or narrower, and put it back with one press.
+- **Soul Passage**, a study carriage on a train that never stops, with a different land outside on each day of the week. It is the first **Megapack**: its pictures come down from the Market when you choose it, and Remove deletes them.
 - **Maple Frost**, a new scene in the Seasonal pack: Maple Wind's hillside a season on, under snow.
-- **Soul Passage**, a train carriage that never stops, with a different land outside each weekday. It is the first **Megapack**: its pictures come down from the Market when you choose it, and Remove deletes them.
-- **Make it yours** in a new order: Scenes, Look, Home, Courses, Companion, Settings.
+- **On assignment pages**: "Open beside" to read another assignment next to the one you are on, and a switch that turns Canvas Harness off there (nothing of it drawn but the switch, nothing asked of Canvas).
+- **Make it yours** in a clearer order: Scenes, Look, Home, Courses, Companion, Settings.
 
 ## New in 4.1
 
