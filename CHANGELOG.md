@@ -1,13 +1,19 @@
 # Changelog
 
-## 4.2.0 - 2026-11-19
+## 4.2.0 - 2026-11-25
 
-Soul Passage, a scene that travels, from the Market; a Canvas tab that notices when Canvas Harness was updated; and "Get more" that opens the Market.
+A new Home and Planner, a switch and a side view on assignment pages, and Soul Passage, the first scene that comes from the Market.
 
-- A new scene in Make it yours → Look → Scene, under its own heading, **Megapack**: **Soul Passage**, a train carriage that never stops. A different land passes its windows each weekday, at five times of day that fade into each other, and runs on under Home; a lever on the laptop in the carriage sets the train's speed. Its pictures and data (about 34 MB) are not in the package: pressing Soul Passage downloads them from the Market, a line on its picture shows how far it is, the Market opens at its card beside Canvas, and the scene goes on by itself once everything is here. Make it yours → Use from Soul Passage → Train speed changes the speed; Remove, on its choice or in More → Features, deletes the downloaded files. Biscuit knows it: "soul passage", "train theme".
-- If Canvas Harness is updated while a Canvas tab is open, the tab notices: on Canvas Harness's own page it reloads by itself when nothing is being written; on Canvas's own pages, or with something typed, a slip asks you to reload.
-- Make it yours → More → Features → Get more opens the Market beside Canvas. Before, it only said to use the popup.
-- A Market add interrupted because Canvas Harness was updated under the open page now says so plainly.
+- **Make it yours** has six tabs in a new order: Scenes, Look, Home, Courses, Companion and Settings (what was under More is under Settings).
+- **Soul Passage** (Make it yours → Scenes → Megapack): a train carriage that never stops, with a different land outside on each weekday and five times of day. Its pictures and data (about 67 MB) are not in the package: choosing it downloads them from the Market, a line on its picture shows how far it is, and the scene goes on by itself once every file is here. "Use from Soul Passage" sets its Speed, Land and Time; Remove deletes the downloaded files. Biscuit knows it: "soul passage", "train theme".
+- **Home**: modules can be dragged, made narrower or wider (also with Shift and the arrow keys), and put back with Reset this widget; the greeting, the chips and Edit Home / Undo move are drawn.
+- **The Planner**: the chosen day as a page with "Add a task" under it, and a calendar of the week or the month beside it. Every assignment row has a day button that plans it with one press; Home's "My plan" is today's page; "Add a task" is on the top bar (and the n key) on every tab. Overdue work stays on its own day and is counted in one line, with All to today and Tick all. "Your week" lists what the planner's own data says about the coming days (a day too full, a test with nothing planned), each with one action.
+- **Assignment pages**: a switch, "Canvas Harness on this page", leaves that assignment's pages alone until it is switched back on; "Open beside" shows another assignment beside the one you are on, and "Tools" opens the focus timer and your notes there.
+- **Materials** is the course's shelf (Recent, Modules, Files, Pages, Links, Saved), and **Messages** are shown as posts with a reply.
+- Accessibility: keyboard focus rings on every control, Biscuit's chat announced as a dialog, his replies read aloud.
+- Biscuit: typing slips are mended, a question about when something is due names the work it fits, and his directions name the new tabs.
+- If Canvas Harness is updated while a Canvas tab is open, the tab notices: on Canvas Harness's own page it reloads by itself when nothing is being written; elsewhere, or with something typed, a slip asks you to reload. Make it yours → Settings → Features → Get more opens the Market.
+- The companion's game of 4.1.0 (treats, levels, streak) is gone from what you see; if your saved companion has those values, they are kept as they were.
 
 ## 4.1.0 - 2026-11-19
 

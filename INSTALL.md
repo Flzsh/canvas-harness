@@ -1,6 +1,6 @@
 # Install Canvas Harness
 
-Canvas Harness 4.2.0: use Features in the popup for Full, Lite or Custom. The optional Market asks for its own site access on first use; Make it yours → More → Add from a file imports artwork, kits, themes, pets and presets. Modules progress and To hand in are included; Focus room, Review deck and Grade impact are on in Full. AI help is in the package but off, and nothing of it shows, until you add it from the Market and agree to its notice; see [Study with AI](AI.md). Your school's own Canvas address is still added through the popup.
+Canvas Harness 4.2.0: use Features in the popup for Full, Lite or Custom. The optional Market asks for its own site access on first use; Make it yours → Settings → Add from a file imports artwork, kits, themes, pets and presets. Modules progress and To hand in are included; Focus room, Review deck and Grade impact are on in Full. AI help is in the package but off, and nothing of it shows, until you add it from the Market and agree to its notice; see [Study with AI](AI.md). Your school's own Canvas address is still added through the popup.
 
 Canvas Harness is a browser extension for your signed-in Canvas courses, assignments, bookmarks, artwork and study tools. It is designed for desktop Chrome and Edge, version 126 or newer.
 
