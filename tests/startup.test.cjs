@@ -236,7 +236,7 @@ test('manifest starts the small guard before the early controller with optional 
   const manifest=JSON.parse(fs.readFileSync(path.join(extension,'manifest.json')));
   const startup=manifest.content_scripts.find(x=>x.js.includes('startup.js'));
   assert.ok(startup,'a document_start bootstrap must be registered');
-  assert.equal(manifest.content_scripts[0],startup);assert.equal(startup.run_at,'document_start');assert.deepEqual(startup.js,['features.js','site.js','startup-art.js','startup.js']);assert.deepEqual(startup.css,['startup.css','startup-art.css','canvas-nav.css','course-nav.css']);assert.equal(startup.all_frames,false);
+  assert.equal(manifest.content_scripts[0],startup);assert.equal(startup.run_at,'document_start');assert.deepEqual(startup.js,['site.js','features.js','startup-art.js','startup.js','page-switch.js']);assert.deepEqual(startup.css,['startup.css','startup-art.css','canvas-nav.css','course-nav.css']);assert.equal(startup.all_frames,false);
  assert.equal(manifest.content_scripts.find(x=>x.js.includes('feature-loader.js')).run_at,'document_start');assert.ok(manifest.content_scripts.indexOf(startup)<manifest.content_scripts.findIndex(x=>x.js.includes('feature-loader.js')));assert.deepEqual(manifest.permissions,['storage','unlimitedStorage','offscreen','scripting','alarms']);
 });
 

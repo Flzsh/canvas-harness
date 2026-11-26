@@ -46,7 +46,10 @@ test('handin rows read like Up next: course drawing and colour, name, course · 
  assert.equal(rows.length,6);assert.match(html,/^<div class="ch-handin">/);
  // Section labels: the name and the count apart (no "·" glued into one bold line), in the order of urgency.
  assert.deepEqual([...html.matchAll(/<h3 class="ch-handin-label"><span>([^<]+)<\/span> <b>(\d+)<\/b><\/h3>/g)].map(m=>m[1]+' '+m[2]),['Missing in Canvas 1','Overdue 1','Due this week 3','Due next week 1']);
- const row=id=>rows.find(r=>r.includes(`data-rd-key="handin-${id}"`)),chip=id=>row(id).match(/<span class="ch-handin-chip" data-tone="(\w+)">([^<]+)<\/span>/)?.slice(1)||null;
+ // (4.2, roadmap item 6: the chip is Home's one chip component, home-bits.js: the same tone and words, plus its kind;
+ // late and missing are the Overdue kind)
+ const kinds={danger:'overdue',warn:'today',info:'tomorrow'};
+ const row=id=>rows.find(r=>r.includes(`data-rd-key="handin-${id}"`)),chip=id=>{const m=row(id).match(/<span class="ch-handin-chip rd-bit-chip" data-tone="(\w+)" data-chip="(\w+)">([^<]+)<\/span>/);if(!m)return null;assert.equal(m[2],kinds[m[1]],'the chip kind follows its tone');return [m[1],m[3]];};
  for(const r of rows){assert.match(r,/style="--rd-course:#2E7D5B;--rd-course-ink:#[0-9A-Fa-f]{6}"/);assert.match(r,/<svg class="ch-handin-dot"/);assert.match(r,/<small><span>BioDesign<\/span><span>[^<]+<\/span><\/small>/);}
  assert.deepEqual(chip(1),['danger','3 days late']);assert.match(row(1),/<span>Sun 11:59 PM<\/span>/);
  assert.deepEqual(chip(2),['warn','Today']);assert.match(row(2),/<span>11:59 PM<\/span>/);

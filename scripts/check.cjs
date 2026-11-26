@@ -28,7 +28,7 @@ for(const file of files.filter(f=>f.endsWith('.js')))new vm.Script(fs.readFileSy
 const references=[manifest.background.service_worker,...manifest.content_scripts.flatMap(c=>[...(c.js||[]),...(c.css||[])]),...Object.values(manifest.icons),manifest.action.default_popup,'custom-site.js','welcome.html','school-address.js',...Object.values(manifest.action.default_icon),...manifest.web_accessible_resources.flatMap(r=>r.resources)];
 for(const ref of references)assert.ok(files.includes(ref.replaceAll('/',path.sep)),`Missing manifest resource: ${ref}`);
 const bootstrap=manifest.content_scripts.find(c=>c.js.includes('startup.js')),controller=manifest.content_scripts.find(c=>c.js.includes('feature-loader.js'));
-assert.deepEqual(bootstrap.js,['features.js','site.js','startup-art.js','startup.js']);
+assert.deepEqual(bootstrap.js,['site.js','features.js','startup-art.js','startup.js','page-switch.js']);
 assert.deepEqual(bootstrap.css,['startup.css','startup-art.css','canvas-nav.css','course-nav.css']);
 assert.ok(manifest.content_scripts.indexOf(bootstrap)<manifest.content_scripts.indexOf(controller));
 for(const entry of [bootstrap,controller]){assert.deepEqual(entry.matches,['https://*.instructure.com/*']);assert.equal(entry.all_frames,false);assert.equal(entry.run_at,'document_start');}

@@ -9,21 +9,84 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   // kind's place as a secondary link. The original file name stays in the title's tooltip (and so
   // its accessible description). `open` is the title control; the whole row answers to it.
   const tip=entry=>entry.original&&entry.original!==entry.title?` title="${root.ReserveUI.escapeHTML(entry.original)}"`:'';
-  function teacherRow(entry,{open,actions='',tag='li',rowClass='',key='',newTab=()=>true,pdfAttrs=()=>''}={}){
+  // (pages-42) Materials' shelf rows pass `lead` (the kraft tag that names the format, first in the row) and `meta`
+  // (where the item lives and when it last changed); the format then stands only in the tag. The Course hub and the
+  // deck pass neither, and their rows are exactly what they were.
+  function teacherRow(entry,{open,actions='',tag='li',rowClass='',key='',newTab=()=>true,pdfAttrs=()=>'',lead='',meta='',after=''}={}){
     const E=root.ReserveUI.escapeHTML,item=entry.item,href=value=>root.ReserveMaterials.safeURL(value);
     const answer=entry.key?(url=>`<a class="rd-row-key" href="${E(url)}"${newTab(url)?' target="_blank" rel="noopener noreferrer"':''}${tip(entry.key)||` title="${E(entry.key.title)}"`}${pdfAttrs(entry.key.item)} aria-label="Answer key for ${E(entry.title)}">Answer key${newTab(url)?' <span aria-hidden="true">↗</span>':''}</a>`)(href(entry.key.item.url)):'';
     const kind=[entry.kind,item.locked?'Locked in Canvas':''].filter(Boolean).join(' · ');
-    return `<${tag} class="rd-teacher-row${rowClass?' '+rowClass:''}"${key?` data-rd-key="${E(key)}"`:''} data-rd-row="${E(item.id)}">${open}${actions}<span class="rd-row-kind">${E(kind)}${kind&&answer?'<span aria-hidden="true"> · </span>':''}${answer}</span><span class="rd-row-format">${entry.format?`<span>${E(entry.format)}</span>`:''}</span></${tag}>`;
+    return `<${tag} class="rd-teacher-row${rowClass?' '+rowClass:''}"${key?` data-rd-key="${E(key)}"`:''} data-rd-row="${E(item.id)}">${lead}${open}${actions}<span class="rd-row-kind">${E(kind)}${kind&&answer?'<span aria-hidden="true"> · </span>':''}${answer}${after&&(kind||answer)?'<span aria-hidden="true"> · </span>':''}${after}</span>${lead?meta:`<span class="rd-row-format">${entry.format?`<span>${E(entry.format)}</span>`:''}</span>`}</${tag}>`;
   }
-  function create({isSelected=()=>false,store,user,client,getAssignments=()=>undefined,onChange=()=>{},onAuthError=()=>{},onCapture=()=>{}}){
+  // THE SHELF (pages-42). Materials is the course's shelf: its drawing and colour at the head, the kind of each item as a
+  // kraft paper tag, and one row of shelves: Recent (newest first, by age), Modules (the teacher's chapters in Canvas
+  // order), Files, Pages, Links (newest first), Saved (your bookmarks and own links).
+  const SHELVES=[['recent','Recent'],['modules','Modules'],['files','Files'],['pages','Pages'],['links','Links'],['saved','Saved']];
+  const AGES=[['week','This week'],['month','This month'],['earlier','Earlier'],['undated','No date']];
+  // The tag's paper for a format (the punched study tags' washes, refresh.css "Saved study aids"): documents on kraft,
+  // slides on yellow, sheets on green, media on blue, Canvas pages on the paper itself, links on lilac.
+  const PAPER={
+    PDF:'doc',
+    Word:'doc',
+    Doc:'doc',
+    Text:'doc',
+    Pages:'doc',
+    Slides:'slides',
+    Sheet:'sheet',
+    Form:'sheet',
+    Image:'media',
+    Video:'media',
+    Audio:'media',
+    Page:'page',
+    'Web page':'page',
+    Link:'link',
+    ZIP:'doc'
+  };
+  // Days and times in the student's own zone (settings.timeZone, as Home and the Planner show them), not the laptop's.
+  const FORMATS=new Map();
+  function inZone(zone,options){
+    const key=(zone||'')+'|'+JSON.stringify(options);
+    let f=FORMATS.get(key);
+    if(!f){
+      try{f=new Intl.DateTimeFormat('en-US',zone?{...options,timeZone:zone}:options);}catch{f=new Intl.DateTimeFormat('en-US',options);}
+      if(FORMATS.size>=40)FORMATS.clear();
+      FORMATS.set(key,f);
+    }
+    return f;
+  }
+  function dayIn(ms,zone){const p={};for(const x of inZone(zone,{year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(ms))p[x.type]=x.value;return p.year+'-'+p.month+'-'+p.day;}
+  // "Today", "Yesterday", "Nov 12" (the year only when it is another year), the days counted in the zone: the same words as Messages.
+  function dayWord(value,now=Date.now(),zone){
+    const ms=new Date(value??'').getTime();
+    if(!Number.isFinite(ms))return '';
+    const d=dayIn(ms,zone),t=dayIn(now,zone),n=Math.round((Date.parse(t+'T12:00:00Z')-Date.parse(d+'T12:00:00Z'))/864e5);
+    return n===0?'Today':n===1?'Yesterday':inZone(zone,{month:'short',day:'numeric',...(d.slice(0,4)!==t.slice(0,4)?{year:'numeric'}:{})}).format(ms);
+  }
+  function create({
+    isSelected=()=>false,
+    store,
+    user,
+    client,
+    getAssignments=()=>undefined,
+    onChange=()=>{},
+    onAuthError=()=>{},
+    onCapture=()=>{},
+    getTimeZone=()=>undefined
+  }){
     if(!enabled('materials')||!root.ReserveMaterials)return null;
+    // (the student's zone from Home's settings; without one, the school's, as the rest of Canvas Harness)
+    const zone=()=>{try{const value=getTimeZone();if(typeof value==='string'&&value)return value;}catch{}return root.ReserveSite?.timeZone?.();};
+    const stamp=value=>{const ms=new Date(value??'').getTime();return Number.isFinite(ms)?inZone(zone(),{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}).format(ms):'';};
     const M=root.ReserveMaterials,U=root.ReserveUI,E=U.escapeHTML;
     const courses=new Map(),pages=new Map(),pending=new Map(),versions=new Map(),controller=new AbortController();
     let dead=false,activeCourse='',focusRequest=null;
     const views=new Map();
+    // The shelf a course opens on: Recent when its materials carry dates (Canvas gave its files or pages), else Modules; a
+    // shelf the student chose stays chosen for that course.
+    function shelfOfView(id){const chosen=view(id).kind;return chosen||((courses.get(String(id))?.items||[]).some(x=>x.updatedAt)?'recent':'modules');}
     function view(id=activeCourse){
       const key=String(id);
-      if(!views.has(key))views.set(key,{query:'',category:'all',selected:null,message:'',custom:{title:'',url:''},pageScroll:0,open:new Set()});
+      if(!views.has(key))views.set(key,{query:'',category:'all',kind:'',selected:null,message:'',custom:{title:'',url:''},pageScroll:0,open:new Set()});
       return views.get(key);
     }
     function activate(id){id=String(id||'');if(!/^\d+$/.test(id)&&id!=='all')return;if(id!==activeCourse){activeCourse=id;focusRequest=null;}}
@@ -134,34 +197,60 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const key=selected.courseId+':'+selected.id,page=pages.get(key);if(!page)return '';
       return `<aside class="rd-material-page" aria-label="Course page preview" data-material-course="${E(courseId)}" data-material-resource="${E(selected.id)}"><div class="rd-section-heading"><div class="rd-material-title-block"><h2 tabindex="-1" id="rd-material-title">${E(page.title)}</h2>${page.url?`<a class="rd-text-button" href="${E(page.url)}" target="_blank" rel="noopener noreferrer">Open original in Canvas ↗</a>`:''}</div>${button('close','Close')}</div>${page.loading?'<p role="status" class="rd-material-notice">Loading this page…</p>':page.error?`<p role="alert">${E(page.error)}</p>${button('retry-page','Try again',selected.id,courseId)}`:`${page.embeds?.length?`<div class="rd-saved-links">${links(page.embeds.map(e=>({...e,category:'Embedded document'})))}</div>`:''}<div class="rd-rich-text">${page.html||'<p>This page has no readable text. Open the original for embedded content.</p>'}</div>`}</aside>`;
     }
-    // One line per item (the shared teacher-material row, below): a readable page opens here (its
-    // title is the Read control; the original stays one quiet "Canvas ↗" away), anything else opens
-    // in Canvas. Plan and Save wait for hover or focus; the tags stand at the right.
-    function materialRow(entry,courseId,{head=null,tag='li'}={}){
+    // One line per item on the shelf (the shared teacher-material row): first the kraft tag that names what it is
+    // (PDF, Slides, Page, Link…), then the title in the reading face: a readable page opens here (its title is the
+    // Read control; the original stays one quiet "Canvas ↗" away), anything else opens in Canvas or its own site. Plan
+    // and Bookmark wait for hover or focus; the kind word and the answer key, then where it lives and when it changed.
+    function tagOf(entry){
+      const item=entry.item,format=entry.format||({Quiz:'Quiz',Discussion:'Discussion',ExternalTool:'Tool'})[item.kind]||'File';
+      return `<span class="rd-file-tag" data-paper="${E(item.locked?'locked':PAPER[format]||'doc')}">${E(format)}</span>`;
+    }
+    function materialRow(entry,courseId,{head=null,tag='li',where=false}={}){
       const item=entry.item,saved=pins(courseId).some(p=>p.id===item.id),readable=!!item.pageUrl&&!item.locked,reading=readable&&view(courseId).selected?.id===item.id;
       const open=readable?`<button type="button" class="rd-row-open" data-rd-action="material-read" data-resource="${E(item.id)}" data-course="${E(courseId)}" aria-label="Read ${E(entry.title)}" data-read-row="true"${reading?' aria-current="true"':''}${tip(entry)}>${E(entry.title)}</button>`:`<a class="rd-row-open" href="${E(safe(item.url))}" target="_blank" rel="noopener noreferrer"${tip(entry)}${pdfAttributes(item,courseId)}>${E(entry.title)}&nbsp;<span aria-hidden="true">↗</span></a>`;
       const actions=`<span class="rd-material-actions">${root.CanvasHarnessContext?.selectButton(item,courseId,isSelected)||''}${readable?`<a class="rd-text-button" href="${E(safe(item.url))}" target="_blank" rel="noopener noreferrer" aria-label="Open ${E(entry.title)} in Canvas">Canvas <span aria-hidden="true">↗</span></a>`:''}${!item.locked?button('capture','Plan',item.id,courseId,`aria-label="Plan work from ${E(entry.title)}"`):''}${button('pin',saved?'Bookmarked':'Bookmark',item.id,courseId,`aria-label="${saved?'Remove bookmark:':'Bookmark'} ${E(entry.title)}" aria-pressed="${saved}"`)}</span>`;
+      // Where it lives rides in the kind's line (a recent shelf's rows come from every module); the day stands apart.
+      const day=dayWord(item.updatedAt,Date.now(),zone()),
+        after=where&&item.moduleName?`<span class="rd-row-where" title="${E(item.moduleName)}">${E(item.moduleName)}</span>`:'',
+        meta=`<span class="rd-row-date">${day?`<time datetime="${E(item.updatedAt)}" title="${E(inZone(zone(),{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}).format(new Date(item.updatedAt)))}">${E(day)}</time>`:''}</span>`;
       // The page open in the reader beside the list keeps its row on the tint.
       return teacherRow(entry,{
         open:head?head(open):open,
         actions,
         tag,
-        rowClass:[head?'rd-chapter-row':'',reading?'rd-teacher-row--open':''].filter(Boolean).join(' '),
+        rowClass:['rd-shelf-row',head?'rd-chapter-row':'',reading?'rd-teacher-row--open':''].filter(Boolean).join(' '),
         key:`material-row-${courseId}-${item.id}`,
-        pdfAttrs:item=>pdfAttributes(item,courseId)
+        pdfAttrs:item=>pdfAttributes(item,courseId),
+        lead:tagOf(entry),
+        meta,
+        after
       });
     }
-    // Teacher materials read as the chapters of a book: the course's modules in Canvas order (numbered
-    // unless the teacher's names already are), then its loose pages and files. Long chapters open on
-    // their first few items; a search keeps the chapters of its matches, whole.
+    // What a shelf holds. Modules and Saved read as the chapters of a book: the course's modules in Canvas order
+    // (numbered unless the teacher's names already are), then its loose pages and files. Recent, Files, Pages and
+    // Links list newest first in groups by age (This week, This month, Earlier, No date). A search keeps the chapters
+    // (or groups) of its matches; with no title match it falls back to the module names. Long blocks open on their
+    // first few items.
     const LONG=8,PREVIEW=5;
     function listing(id){
-      const {query,category}=view(id),entry=courses.get(id),saved=pins(id),items=entry?.items||[],q=String(query||'').trim().toLowerCase();
-      const all=category==='saved'?saved:items.filter(x=>x.kind!=='Assignment');
-      const pool=all.filter(x=>category==='all'||category==='saved'||x.category===category);
+      const {query,category}=view(id),kind=shelfOfView(id),entry=courses.get(id),saved=pins(id),items=entry?.items||[],q=String(query||'').trim().toLowerCase();
+      const all=kind==='saved'?saved:items.filter(x=>x.kind!=='Assignment');
+      const shelf=['files','pages','links'].includes(kind)?all.filter(x=>M.shelfOf(x)===kind):all;
+      const pool=shelf.filter(x=>category==='all'||kind==='saved'||x.category===category);
       const matches=pool.filter(x=>M.searchText(x).toLowerCase().includes(q));
       const visible=!q?pool:matches.length?matches:pool.filter(x=>(x.moduleName||'').toLowerCase().includes(q));
-      return {q,visible,chapters:M.outline(all,visible.slice(0,400),{numbers:category!=='saved'})};
+      const book=kind==='modules'||kind==='saved',now=Date.now(),shown=visible.slice(0,400);
+      const chapters=book?M.outline(all,shown,{numbers:kind!=='saved'}):[];
+      const groups=book?[]:AGES.map(([key,name])=>{
+        const list=M.byRecent(shown).filter(x=>M.ageGroup(x.updatedAt,now)===key);
+        return {key:'age-'+key,name,items:list,rows:M.present(list)};
+      }).filter(g=>g.items.length);
+      return {q,visible,book,chapters,groups,blocks:book?chapters:groups};
+    }
+    // The shelves' counts never follow the search or the type filter, so the tabs hold still while the student types.
+    function shelfCounts(id){
+      const items=(courses.get(id)?.items||[]).filter(x=>x.kind!=='Assignment'),now=Date.now(),count=k=>items.filter(x=>M.shelfOf(x)===k).length;
+      return {recent:items.filter(x=>M.ageGroup(x.updatedAt,now)==='week').length,modules:null,files:count('files'),pages:count('pages'),links:count('links'),saved:pins(id).length};
     }
     function chapterBlock(ch,courseId,{collapse}){
       const id=`rd-chapter-${courseId}-${ch.key}`,count=ch.items.length,no=ch.number?`<span class="rd-chapter-no" aria-hidden="true">${ch.number}</span>`:'';
@@ -172,32 +261,52 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const more=collapse!==null&&ch.rows.length>LONG?`<button type="button" class="rd-chapter-more" data-rd-action="material-more" data-resource="${E(ch.key)}" data-course="${E(courseId)}" aria-expanded="${!folded}" aria-controls="${E(id)}-items">${folded?`Show all ${count}`:'Show fewer'}${root.ReserveIcon?.('chevron','rd-icon')||''}</button>`:'';
       return `<section class="rd-material-group rd-chapter" data-rd-key="${E(key)}" aria-labelledby="${E(id)}"><h3 ${head}>${no}<span class="rd-chapter-name">${E(ch.name)}</span> <span class="rd-chapter-count">${count} ${count===1?'item':'items'}</span></h3><ul class="rd-chapter-items" id="${E(id)}-items">${rows.map(row=>materialRow(row,courseId)).join('')}</ul>${more}</section>`;
     }
+    // A group by age on a recent shelf: a quiet sans head with its count (like the work list's groups), then rows that
+    // say which module each item lives in.
+    function ageBlock(group,courseId,{collapse}){
+      const id=`rd-chapter-${courseId}-${group.key}`,count=group.items.length,key=`shelf-${courseId}-${group.key}`;
+      const folded=collapse&&group.rows.length>LONG,rows=folded?group.rows.slice(0,PREVIEW):group.rows;
+      const more=collapse!==null&&group.rows.length>LONG?`<button type="button" class="rd-chapter-more" data-rd-action="material-more" data-resource="${E(group.key)}" data-course="${E(courseId)}" aria-expanded="${!folded}" aria-controls="${E(id)}-items">${folded?`Show all ${count}`:'Show fewer'}${root.ReserveIcon?.('chevron','rd-icon')||''}</button>`:'';
+      return `<section class="rd-material-group rd-shelf-group" data-age="${E(group.key.slice(4))}" data-rd-key="${E(key)}" aria-labelledby="${E(id)}"><h3 class="rd-shelf-age" id="${E(id)}" tabindex="-1" data-chapter="${E(group.key)}" data-course="${E(courseId)}"><span class="rd-shelf-age-name">${E(group.name)}</span> <span class="rd-chapter-count">${count}</span></h3><ul class="rd-chapter-items rd-shelf-items" id="${E(id)}-items">${rows.map(row=>materialRow(row,courseId,{where:true})).join('')}</ul>${more}</section>`;
+    }
     // "Saved just now", "Saved 5 min ago", then a date.
     function savedAt(value){
       const ms=Date.parse(value||'');
       if(!Number.isFinite(ms))return '';
       const diff=Math.max(0,Date.now()-ms);
-      return diff<60000?'Saved just now':diff<3600000?`Saved ${Math.floor(diff/60000)} min ago`:`Saved ${new Date(ms).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}`;
+      return diff<60000?'Saved just now':diff<3600000?`Saved ${Math.floor(diff/60000)} min ago`:`Saved ${inZone(zone(),{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}).format(ms)}`;
+    }
+    // The empty shelf: the course's small drawing, one serif sentence, one plain one.
+    function emptyShelf(course,{loading,query,kind}){
+      if(loading)return '<div class="rd-ghost-rows" aria-hidden="true"><i></i><i></i><i></i></div>';
+      const name={recent:'materials',modules:'materials',files:'files',pages:'pages',links:'links',saved:'saved materials'}[kind]||'materials';
+      return `<div class="rd-empty rd-shelf-empty"><span class="rd-empty-art" aria-hidden="true">${root.ReserveCourseArt?.mini?.(course,{place:'empty'})||''}</span><div><h3>${query?`No ${E(name)} match “${E(query)}”`:kind==='saved'?'Nothing saved yet':`No ${E(name)} in this course`}</h3><p>${kind==='saved'?'Bookmark an item, or add your own link above.':'Assignments and external class schedules can hold more.'}</p></div></div>`;
     }
     function renderLibrary(course,{sharedHeading=false}={}){
       if(dead)return '';
       if(!course)return '<section class="rd-work"><div class="rd-empty"><h2>Choose a course</h2><p>Select a course to see its worksheets, pages and schedules.</p></div></section>';
-      const id=String(course.id);activate(id);const {query,category,selected,message,custom,open}=view(id),entry=courses.get(id),saved=pins(id),items=entry?.items||[];
+      const id=String(course.id);
+      activate(id);
+      const {query,category,selected,message,custom,open}=view(id),kind=shelfOfView(id),entry=courses.get(id),items=entry?.items||[];
       const categories=[...new Set(items.map(x=>x.category).filter(Boolean))].sort();
-      const {q,visible,chapters}=listing(id),numbered=chapters.some(ch=>ch.number);
-      const rows=chapters.map(ch=>chapterBlock(ch,id,{collapse:q?null:!open.has(ch.key)})).join('');
-      // Under the search, the chapters as one quiet line: each jumps to its chapter.
-      const jump=chapters.length>2?`<nav class="rd-chapter-jump" aria-label="Chapters"><span class="rd-chapter-jump-label" aria-hidden="true">Chapters</span>${chapters.map(ch=>`<button type="button" class="rd-chapter-link" data-rd-action="material-jump" data-resource="${E(ch.key)}" data-course="${E(id)}">${E(ch.name)}${ch.items.length>1?` <span class="rd-n">${ch.items.length}<span class="rd-sr-only"> items</span></span>`:''}</button>`).join('<span class="rd-chapter-dot" aria-hidden="true">·</span>')}</nav>`:'';
+      const {q,visible,book,chapters,blocks}=listing(id),numbered=chapters.some(ch=>ch.number),counts=shelfCounts(id);
+      const rows=blocks.map(block=>
+        book?chapterBlock(block,id,{collapse:q?null:!open.has(block.key)}):ageBlock(block,id,{collapse:q?null:!open.has(block.key)})).join('');
+      // Under the shelves (Modules only), the chapters as kraft index tabs: each jumps to its chapter.
+      const jump=book&&kind==='modules'&&chapters.length>2?`<nav class="rd-chapter-jump" aria-label="Chapters"><span class="rd-chapter-jump-label" aria-hidden="true">Chapters</span>${chapters.map(ch=>`<button type="button" class="rd-chapter-link" data-rd-action="material-jump" data-resource="${E(ch.key)}" data-course="${E(id)}">${ch.number?`<b aria-hidden="true">${ch.number}</b>`:''}${E(ch.name)}${ch.items.length>1?` <span class="rd-n">${ch.items.length}<span class="rd-sr-only"> items</span></span>`:''}</button>`).join('<span class="rd-chapter-dot" aria-hidden="true">·</span>')}</nav>`:'';
       const raw=entry?.raw,tone=/^#[0-9a-f]{6}$/i.test(course.color||'')?` style="--rd-course:${course.color};--rd-course-ink:${root.ReserveCore?.courseInk?.(course.color)||course.color}"`:'',ring='<span class="rd-sync-ring" aria-hidden="true"></span>';
-      // A card-less banner with the course's wide scene; the search is shaped like a composer with the
-      // type filter as text inside it and an attached tray for your own shortcuts.
+      // The banner (a course page of its own): the course's wide scene and its name as artwork. On the dashboard the
+      // course heading above already carries both, so the shelf's own head is its small drawing and "Materials".
       const named=sharedHeading||!enabled('course-art')?'':root.ReserveCourseArt?.titleFrame?.(course,{place:'banner'})||'';// the course name as artwork (course-art.js; refresh.css 9), last in the banner
       // The banner's own style carries the piece's width (the room's box starts where the piece ends), beside the course colour.
       const nameW=named?root.ReserveCourseArt.titleStyle?.(course)||'':'',look=!nameW?tone:tone?tone.replace(/"$/,`;${nameW}"`):` style="${nameW}"`;
-      return `<section class="rd-materials" aria-label="Course materials"><header class="rd-materials-header${sharedHeading?'':' rd-course-banner'}"${named?' data-titled="true"':''}${look}>${sharedHeading?'':`<div class="rd-banner-art" aria-hidden="true">${enabled('course-art')&&root.ReserveCourseArt?.scene?.(course,{crop:'wide'})||''}</div>`}<div><h2 title="${E(course.originalName&&course.originalName!==course.name?`${course.name} · ${course.originalName}`:course.name)}">${sharedHeading?'Materials':E(course.shortName||course.name)}</h2><p>${course.subject||course.teacher||course.sub?`<strong class="rd-course-detail">${E([course.subject,course.teacher,course.sub].filter(Boolean).join(' · '))}</strong> · `:''}Worksheets, pages & schedules</p></div><div class="rd-heading-actions"><a class="rd-button rd-button--outline" href="${globalThis.ReserveSite.origin()}/courses/${id}">Course home <span aria-hidden="true">↗</span></a><button type="button" class="rd-icon-button" data-rd-action="material-refresh" data-resource="" data-course="${E(id)}" aria-label="Refresh materials" title="Refresh materials" ${entry?.loading?'aria-disabled="true" aria-busy="true"':''}>${root.ReserveIcon?.('refresh','rd-icon')||''}${ring}</button></div>${named}</header><div class="rd-material-search"><div class="rd-composer-field"><label class="rd-search">${root.ReserveIcon?.('search','rd-icon')||''}<span class="rd-sr-only">Search course materials</span><input type="search" data-rd-field="material-query" placeholder="Find a worksheet, lesson or schedule" value="${E(query)}"></label><span class="rd-select-text"><select data-rd-field="material-category" aria-label="Material type"><option value="all">All materials</option><option value="saved" ${category==='saved'?'selected':''}>Saved shortcuts</option>${categories.map(cat=>`<option ${category===cat?'selected':''}>${E(cat)}</option>`).join('')}</select></span></div><div class="rd-composer-tray"><details class="rd-add-shortcut" data-rd-section="shortcut-${E(id)}" ${custom.title||custom.url?'open':''}><summary>${root.ReserveIcon?.('plus','rd-icon')||''}${
-      custom.title||custom.url?'Finish your shortcut':'Add your own shortcut'}</summary><p>A class document or your own work file.</p><div><input data-rd-field="material-title" maxlength="300" aria-label="Shortcut name" placeholder="Name" value="${E(custom.title)}"><input data-rd-field="material-url" type="url" maxlength="2000" aria-label="Shortcut URL" placeholder="https://…" value="${E(custom.url)}">${button('add','Save shortcut','',id)}</div></details></div>${jump}</div>${message?`<p role="alert" class="rd-material-notice">${E(message)}</p>`:''}${entry?.loading?`<p class="rd-material-notice" role="status" data-loading="true">${ring}Loading course materials… You can keep using your saved links.</p>`:''}${entry?.error?`<p class="rd-material-notice" role="alert">${E(entry.error)} ${button('refresh','Try again','',id)}</p>`:''}${
-      faults(raw).length?`<details class="rd-material-notice"><summary>Some sources could not load (${faults(raw).length})</summary>${faults(raw).map(e=>`<p>${E(e.source)}: ${E(e.message)}</p>`).join('')}</details>`:''}${!entry?button('refresh','Load course materials','',id):''}${
-      saved.length&&category!=='saved'&&!query?`<div class="rd-saved"><h3>Saved shortcuts</h3><div class="rd-saved-links">${links(saved)}</div></div>`:''}<div class="rd-material-columns${selected?.courseId===id?' rd-material-columns--reading':''}"><div class="rd-material-list${numbered?' rd-chapters--numbered':''}">${rows?`<div class="rd-chapter-flow">${rows}</div>`:(entry?.loading?'<div class="rd-ghost-rows" aria-hidden="true"><i></i><i></i><i></i></div>':'<div class="rd-empty"><h3>'+ (query?'No matching materials':'No materials in this view')+'</h3><p>Assignments and external class schedules can contain additional work.</p></div>')}${visible.length>400?'<p class="rd-material-notice">Showing the first 400 matches. Use search to narrow the list.</p>':''}</div>${pagePanel(id)}</div>${raw?`<p class="rd-material-footnote">${items.length} resources · <span title="${E(new Date(raw.fetchedAt).toLocaleString())}">${E(savedAt(raw.fetchedAt)||'Saved '+new Date(raw.fetchedAt).toLocaleString())}</span>. Open external schedules for current homework.</p>`:''}</section>`;
+      const all=items.filter(x=>x.kind!=='Assignment').length;
+      const facts=[raw||all?`${all} ${all===1?'item':'items'}`:'',counts.recent?`${counts.recent} new this week`:'',raw?`<span title="${E(stamp(raw.fetchedAt))}">${E(savedAt(raw.fetchedAt)||'Saved '+stamp(raw.fetchedAt))}</span>`:''].filter(Boolean).join('<span aria-hidden="true"> · </span>');
+      const detail=course.subject||course.teacher||course.sub?`<strong class="rd-course-detail">${E([course.subject,course.teacher,course.sub].filter(Boolean).join(' · '))}</strong>${facts?' · ':''}`:'';
+      const shelves=`<div class="rd-filter-group rd-shelf-tabs" role="group" aria-label="Which materials">${SHELVES.map(([value,label])=>`<button type="button" class="rd-filter" data-rd-action="material-kind" data-value="${value}" data-course="${E(id)}" aria-pressed="${kind===value}">${label}${counts[value]!=null?` <span class="rd-n">${counts[value]}</span>`:''}</button>`).join('')}</div>`;
+      return `<section class="rd-materials rd-shelf" aria-label="Course materials" data-shelf="${E(kind)}"${tone}><header class="rd-materials-header${sharedHeading?' rd-shelf-head':' rd-course-banner'}"${named?' data-titled="true"':''}${look}>${sharedHeading?`<span class="rd-shelf-art" aria-hidden="true">${root.ReserveCourseArt?.mini?.(course,{place:'shelf'})||''}</span>`:`<div class="rd-banner-art" aria-hidden="true">${enabled('course-art')&&root.ReserveCourseArt?.scene?.(course,{crop:'wide'})||''}</div>`}<div><h2 title="${E(course.originalName&&course.originalName!==course.name?`${course.name} · ${course.originalName}`:course.name)}">${sharedHeading?'Materials':E(course.shortName||course.name)}</h2><p class="rd-shelf-facts">${detail}${facts}</p></div><div class="rd-heading-actions"><a class="rd-button rd-button--outline" href="${globalThis.ReserveSite.origin()}/courses/${id}">Course home <span aria-hidden="true">↗</span></a><button type="button" class="rd-icon-button" data-rd-action="material-refresh" data-resource="" data-course="${E(id)}" aria-label="Refresh materials" title="Refresh materials" ${entry?.loading?'aria-disabled="true" aria-busy="true"':''}>${root.ReserveIcon?.('refresh','rd-icon')||''}${ring}</button></div>${named}</header><div class="rd-material-search"><div class="rd-composer-field"><label class="rd-search">${root.ReserveIcon?.('search','rd-icon')||''}<span class="rd-sr-only">Search course materials</span><input type="search" data-rd-field="material-query" placeholder="Find a worksheet, lesson or schedule" value="${E(query)}"></label><span class="rd-select-text"><select data-rd-field="material-category" aria-label="Material type"><option value="all">All materials</option>${categories.map(cat=>`<option ${category===cat?'selected':''}>${E(cat)}</option>`).join('')}</select></span></div><div class="rd-composer-tray">${shelves}<details class="rd-add-shortcut" data-rd-section="shortcut-${E(id)}" ${custom.title||custom.url?'open':''}><summary>${root.ReserveIcon?.('plus','rd-icon')||''}${
+      custom.title||custom.url?'Finish your shortcut':'Add your own shortcut'}</summary><div><input data-rd-field="material-title" maxlength="300" aria-label="Shortcut name" placeholder="Name" value="${E(custom.title)}"><input data-rd-field="material-url" type="url" maxlength="2000" aria-label="Shortcut URL" placeholder="https://…" value="${E(custom.url)}">${button('add','Save shortcut','',id)}</div></details></div>${jump}</div>${message?`<p role="alert" class="rd-material-notice">${E(message)}</p>`:''}${entry?.loading?`<p class="rd-material-notice" role="status" data-loading="true">${ring}Loading course materials… You can keep using your saved links.</p>`:''}${entry?.error?`<p class="rd-material-notice" role="alert">${E(entry.error)} ${button('refresh','Try again','',id)}</p>`:''}${
+      faults(raw).length?`<details class="rd-material-notice"><summary>Some sources could not load (${faults(raw).length})</summary>${faults(raw).map(e=>`<p>${E(e.source)}: ${E(e.message)}</p>`).join('')}</details>`:''}${!entry?button('refresh','Load course materials','',id):''}<div class="rd-material-columns${selected?.courseId===id?' rd-material-columns--reading':''}"><div class="rd-material-list rd-shelf-sheet${numbered?' rd-chapters--numbered':''}">${rows?`<div class="rd-chapter-flow">${rows}</div>`:entry?emptyShelf(course,{loading:entry.loading,query:q?query:'',kind}):''}${visible.length>400?'<p class="rd-material-notice">Showing the first 400 matches. Use search to narrow the list.</p>':''}</div>${pagePanel(id)}</div></section>`;
     }
     function renderRelated(item,directLinks=[]){
       if(dead)return '';
@@ -221,10 +330,19 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         if(current.open.has(key)){current.open.delete(key);focusRequest={type:'more',action,courseId:course,id:key};}
         else{
           current.open.add(key);
-          const first=listing(course).chapters.find(ch=>ch.key===key)?.rows[PREVIEW]?.item.id;
+          const first=listing(course).blocks.find(ch=>ch.key===key)?.rows[PREVIEW]?.item.id;
           focusRequest=first?{type:'row',courseId:course,id:first}:null;
         }
         change();return;
+      }
+      // A shelf (Recent, Modules, Files, Pages, Links, Saved): the search, the type filter and the open page stay; its
+      // long blocks start folded again.
+      if(action==='material-kind'&&/^\d+$/.test(courseId||'')&&SHELVES.some(([value])=>value===data.value)){
+        const current=view(courseId);
+        if(shelfOfView(courseId)!==data.value)current.open.clear();
+        current.kind=data.value;
+        change();
+        return;
       }
       // A chapter link moves focus to its chapter's head (dashboard.js scrolls it into view).
       if(action==='material-jump'&&/^\d+$/.test(courseId||'')){focusRequest={type:'chapter',courseId:String(courseId),id:String(id||'')};change();return;}
@@ -258,7 +376,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(dead)return;
       const current=view();
       if(field==='material-query')current.query=String(value).slice(0,200);
-      if(field==='material-category')current.category=value;
+      if(field==='material-category'){if(value==='saved'){current.kind='saved';current.category='all';}else current.category=value;}
       if(field==='material-title'){current.custom.title=String(value).slice(0,300);return;}
       if(field==='material-url'){current.custom.url=String(value).slice(0,2000);return;}
       change();
@@ -272,6 +390,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       const current=view();
       current.query='';
       current.category='all';
+      current.kind='';
       current.selected=null;
       current.pageScroll=0;
       focusRequest=null;

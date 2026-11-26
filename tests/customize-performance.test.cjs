@@ -5,7 +5,8 @@ const {createDOM}=require('./addons-fixture.cjs');
 const {fixture:dashboardFixture}=require('./dashboard-heading-fixture.cjs');
 const read=file=>fs.readFileSync(path.join(__dirname,'../extension',file),'utf8');
 const load=(env,...files)=>{for(const file of files)vm.runInContext(read(file),env,{filename:file});};
-const paneNames=['look','layout','courses','pet','settings'];
+// (4.2, roadmap item 5: Scenes beside Look; Settings, once More, opens with Canvas's menu bar and the preferences)
+const paneNames=['scenes','look','layout','courses','pet','settings'];
 const documentFor=html=>createDOM('<html><body>'+html+'</body></html>');
 const shownPanes=document=>document.querySelectorAll('.cz-pane').filter(node=>!node.hidden).map(node=>node.dataset.pane);
 
@@ -59,20 +60,20 @@ test('opening and switching named tabs builds only the selected content and its 
  for(const tab of paneNames){
   f.reset();f.context.customizeTab=tab;
   const document=documentFor(f.render());
-  assert.deepEqual(shownPanes(document),tab==='settings'?['features','settings']:[tab]);
+  assert.deepEqual(shownPanes(document),tab==='settings'?['canvas-pages','settings','features']:[tab]);
   assert.equal(document.querySelector('.cz-tab[aria-selected="true"]').dataset.value,tab);
-  assert.deepEqual(document.querySelectorAll('.cz-tab').map(node=>[node.dataset.value,node.textContent]),[['look','Look'],['layout','Home'],['courses','Courses'],['pet','Companion'],['settings','More']]);
-  assert.equal(document.querySelectorAll('.cz-pane').length,2,'only the selected pane and persistent Features anchor are built');
+  assert.deepEqual(document.querySelectorAll('.cz-tab').map(node=>[node.dataset.value,node.textContent]),[['scenes','Scenes'],['look','Look'],['layout','Home'],['courses','Courses'],['pet','Companion'],['settings','Settings']]);
+  assert.equal(document.querySelectorAll('.cz-pane').length,tab==='settings'?3:2,'only the selected pane (on Settings with Canvas\'s menu bar) and persistent Features anchor are built');
   assert.equal(document.querySelector('[data-pane="features"]').hidden,tab!=='settings');assert.equal(f.work.features,1);
   assert.equal(document.querySelectorAll('.ch-course-setting').length,tab==='courses'?2:0);
   assert.equal(document.querySelectorAll('.ch-art-slot').length,tab==='courses'?4:0);
   assert.equal(document.querySelectorAll('[data-rd-action="art-template"]').length,tab==='courses'?4:0);
-  for(const key of ['bannerSize','courseCardStyle'])assert.equal(document.querySelectorAll('input[data-setting="'+key+'"]').length,tab==='courses'?3:0);
+  for(const key of ['bannerSize','courseCardStyle'])assert.equal(document.querySelectorAll('input[data-setting="'+key+'"]').length,tab==='look'?3:0);
   assert.equal(document.querySelectorAll('[data-rd-field="pet"][data-key="name"]').length,tab==='pet'?1:0);
-  if(tab==='pet'){const locked=document.querySelectorAll('.cz-choice[data-locked="true"]');assert.ok(locked.length);for(const choice of document.querySelectorAll('.cz-choice')){if(choice.dataset.locked==='true'){assert.equal(choice.querySelector('input').disabled,true);assert.match(choice.querySelector('small').textContent,/^Level \d+$/);}else assert.equal(choice.querySelector('small'),null);}assert.equal(document.querySelector('[data-pane="pet"]').querySelectorAll('h3').at(-1).textContent,'Saved routines');}
+  if(tab==='pet'){const locked=document.querySelectorAll('.cz-choice[data-locked="true"]');assert.equal(locked.length,0,'no locked coats or harnesses since the levels left (biscuit-42)');for(const choice of document.querySelectorAll('.cz-choice')){if(choice.dataset.locked==='true'){assert.equal(choice.querySelector('input').disabled,true);assert.match(choice.querySelector('small').textContent,/^Level \d+$/);}else assert.equal(choice.querySelector('small'),null);}assert.equal(document.querySelector('[data-pane="pet"]').querySelectorAll('h3').at(-1).textContent,'Size','what it does first, how it looks last');}
   assert.equal(f.work.archivedScans,tab==='courses'?1:0,'only Courses scans archived course preferences');
   assert.equal(f.work.frames,tab==='look'?1:0,'only Look builds module frame choices');
-  assert.equal(f.work.posters.length,tab==='look'?7:0,'only Look resolves scene posters (seven scenes, one poster each)');
+  assert.equal(f.work.posters.length,tab==='scenes'?9:0,'only Scenes resolves scene posters (nine scenes with Maple Frost, one poster each)');
   assert.deepEqual(f.work.previews,tab==='courses'?['render','scene','mini','frame','title']:tab==='pet'?['drawing','drawing','svg']:[]);
  }
 });
@@ -86,7 +87,7 @@ test('open defaults, legacy aliases and unavailable tabs select only their desti
   assert.equal(document.querySelector('.cz-tab[aria-selected="true"]').dataset.value,'look');
   assert.equal(document.querySelectorAll('.ch-course-setting,.ch-art-slot').length,0);
  }
- for(const [legacy,tab]of [['art','courses'],['features','settings']]){f.context.customizeTab=legacy;const document=documentFor(f.render());assert.deepEqual(shownPanes(document),tab==='settings'?['features','settings']:[tab]);assert.equal(document.querySelector('.cz-tab[aria-selected="true"]').dataset.value,tab);}
+ for(const [legacy,tab]of [['art','courses'],['features','settings']]){f.context.customizeTab=legacy;const document=documentFor(f.render());assert.deepEqual(shownPanes(document),tab==='settings'?['canvas-pages','settings','features']:[tab]);assert.equal(document.querySelector('.cz-tab[aria-selected="true"]').dataset.value,tab);}
  f.context.customizeTab='missing';
  assert.deepEqual(shownPanes(documentFor(f.render())),['look'],'unavailable named tabs fall back to Look');
 });

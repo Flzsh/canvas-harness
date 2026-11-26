@@ -183,6 +183,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       safeKeys(value[key],depth+1);
     }
   }
+  // A personal task's repeat (4.2 planner): every day, every weekday, every month, or on chosen weekdays, every n of them.
+  // A shape this build does not know is dropped, never a reason to refuse the save: the task itself is kept.
+  function taskRepeat(value) {
+    if(!isRecord(value)||!['day','week','weekdays','month'].includes(value.every))return null;
+    const interval=Number.isInteger(value.interval)&&value.interval>=1&&value.interval<=12?value.interval:1;
+    if(value.every!=='week')return {every:value.every,interval:value.every==='weekdays'?1:interval};
+    const days=[...new Set((Array.isArray(value.days)?value.days:[]).filter(d=>Number.isInteger(d)&&d>=0&&d<=6))].sort((a,b)=>a-b);
+    return days.length?{every:'week',interval,days}:null;
+  }
   function taskSource(value) {
     if(value==null)return null;
     const clean=personalWork()?.safeSource?.(value);
@@ -195,7 +204,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       t=x=>Number.isFinite(x)?Math.max(0,Math.min(8640000000000000,x)):0,
       b=isRecord(v.nudges)?v.nudges:{};
     return {
-      kinds:Object.fromEntries(Object.entries(isRecord(v.kinds)?v.kinds:{}).filter(([k,x])=>/^[a-z][a-z0-9_-]{0,47}$/.test(k)&&isRecord(x)).slice(0,64).map(([k,x])=>
+      kinds:Object.fromEntries(Object.entries(isRecord(v.kinds)?v.kinds:{}).filter(([k,x])=>/^[a-z][a-z0-9_-]{0,47}$/.test(k)&&k!=='treat'&&isRecord(x)).slice(0,64).map(([k,x])=>
         [k,{shown:n(x.shown),used:n(x.used),ignored:n(x.ignored),streak:n(x.streak)}])),
       nudges:{
         day:petDay(b.day)?b.day:'',
@@ -458,9 +467,18 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(item.plannedTime!==undefined&&(typeof item.plannedTime!=='string'||item.plannedTime!==''&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(item.plannedTime)))throw Error('Invalid planned time in backup.');
       if(typeof item.notes==='string' && item.notes.length>20000)throw Error('A task note exceeds the 20,000 character limit.');
       if(Array.isArray(item.checklist)&&item.checklist.length>100)throw Error('A checklist contains too many steps (maximum 100).');
+      // (4.2 planner: a task marked important, a repeating task's log of the days it was done or skipped, and the day its
+      // series began; a day that is not a real date is dropped, never a reason to refuse the record)
+      const realDay=v=>typeof v==='string'&&Number.isFinite(Date.parse(v+'T00:00:00Z'))&&validDay(v);
+      const repeatLog=Array.isArray(item.repeatLog)?
+        item.repeatLog.filter(x=>isRecord(x)&&realDay(x.day)).slice(-30).map(x=>({day:x.day,...(x.skip===true?{skip:true}:{})})):
+        [];
       out.tasks[id]={
         ...(item.plannedTime!==undefined?{plannedTime:item.plannedTime}:{}),
         ...(['class','paper','none','teacher'].includes(item.doneReason)?{doneReason:item.doneReason}:{}),
+        ...(item.priority==='high'?{priority:'high'}:{}),
+        ...(repeatLog.length?{repeatLog}:{}),
+        ...(realDay(item.repeatFrom)?{repeatFrom:item.repeatFrom}:{}),
         pinned:item.pinned===true,
         checkedOff:item.checkedOff===true,
         progress:['not-started','in-progress','done'].includes(item.progress)?item.progress:'not-started',
@@ -477,6 +495,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(ids.has(item.id))throw Error('Duplicate personal task identifier in backup.');ids.add(item.id);
       const custom={id:item.id,name:text(item.name,200),courseId:/^\d+$/.test(item.courseId)?item.courseId:'personal',dueAt:instant(item.dueAt),createdAt:instant(item.createdAt)};
       const source=taskSource(item.source);if(source)custom.source=source;
+      const repeat=taskRepeat(item.repeat);if(repeat)custom.repeat=repeat;
       out.customTasks.push(custom);
     }
     if(value.toolbox!==undefined){
@@ -541,6 +560,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
       if(isRecord(value.pet.brain))out.pet.brain=petBrain(value.pet.brain);
       out.pet.skills=petSkills(value.pet.skills);out.pet.reminders=petReminders(value.pet.reminders);out.pet.routines=petRoutines(value.pet.routines);
       for(const [key,item] of Object.entries(value.pet).slice(0,32)){
+        // (treats, fed, xp, streak, streakDay, best and told belong to 4.1.0's companion game: no longer shown, kept as saved)
         if(!/^[a-zA-Z]{1,24}$/.test(key)||['brain','skills','reminders','routines','knowledge'].includes(key))continue;
         if(typeof item==='boolean')out.pet[key]=item;
         else if(typeof item==='string')out.pet[key]=item.slice(0,140);

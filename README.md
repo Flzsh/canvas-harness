@@ -40,6 +40,15 @@
 
 <p align="center"><sub>Every demo is Canvas with Canvas Harness switched on, using made-up courses and assignments.</sub></p>
 
+## New in 4.2
+
+- **A new Planner**: the day as a tick list, the week or the month beside it, a day button on every assignment, and "Add a task" from any tab.
+- **Home you can arrange**: drag a module, make it wider or narrower, and put it back with one press.
+- **Soul Passage**, a study carriage on a train that never stops, with a different land outside on each day of the week. It is the first **Megapack**: its pictures come down from the Market when you choose it, and Remove deletes them.
+- **Maple Frost**, a new scene in the Seasonal pack: Maple Wind's hillside a season on, under snow.
+- **On assignment pages**: "Open beside" to read another assignment next to the one you are on, and a switch that turns Canvas Harness off there (nothing of it drawn but the switch, nothing asked of Canvas).
+- **Make it yours** in a clearer order: Scenes, Look, Home, Courses, Companion, Settings.
+
 ## New in 4.1
 
 - **Christmas**, a new scene in the Holiday pack: a market town on Christmas Eve in pixel art, with falling snow.

@@ -52,8 +52,8 @@ for(const [faces,destination,face,mirror]of [['right',.02,'left',true],['left',.
 test('focus and resting keep their behavior while missing drawings use stand and sleep',t=>{
  const f=customFixture();t.after(()=>f.controller.destroy());f.controller.setFocus(true,{endsAt:f.epoch+1500000,fromPony:true});assert.equal(f.node.dataset.pose,'read');assert.match(svg(f.image),/stand moving/);assert.equal(f.node.dataset.timeLeft,'25:00');f.controller.setFocus(false);f.advance(32000);assert.equal(f.node.dataset.pose,'sleep');assert.match(svg(f.image),/sleep moving/);
 });
-test('optional reading, eating and cheering keep Biscuit rewards and Ask menu',t=>{
- const f=customFixture({custom:pack({poses:{stand:'stand',walk:'walk',sleep:'sleep',read:'read',eat:'eat',cheer:'cheer'}})});t.after(()=>f.controller.destroy());f.controller.setFocus(true,{endsAt:f.epoch+1500000});assert.match(svg(f.image),/read moving/);assert.equal(f.controller.treat(),true);assert.equal(f.pet.treats,0);assert.equal(f.pet.fed,1);assert.match(svg(f.image),/eat moving/);f.advance(2500);assert.match(svg(f.image),/cheer moving/);
+test('optional reading and cheering keep the hop and the Ask menu (no treats since 4.1)',t=>{
+ const f=customFixture({custom:pack({poses:{stand:'stand',walk:'walk',sleep:'sleep',read:'read',eat:'eat',cheer:'cheer'}})});t.after(()=>f.controller.destroy());f.controller.setFocus(true,{endsAt:f.epoch+1500000});assert.match(svg(f.image),/read moving/);assert.equal(f.controller.treat,undefined);f.controller.setFocus(false);f.controller.celebrate('done',{left:1});assert.match(svg(f.image),/cheer moving/);assert.equal(f.pet.treats,undefined);
  f.node.emit('click');assert.match(f.bubble.html,/Ask Moth/);assert.equal(f.bubble.attrs['aria-label'],'Moth');assert.equal(f.node.attrs['aria-expanded'],'true');assert.match(svg(f.image),/cheer still/);f.node.emit('keydown',{key:'Escape',preventDefault(){}});assert.equal(f.bubble,undefined);assert.match(svg(f.image),/cheer moving/);
 });
 for(const motion of ['off','still','media','hidden'])test('custom artwork uses its still copy while '+motion,t=>{

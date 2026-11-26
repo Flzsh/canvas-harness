@@ -273,7 +273,7 @@
     for(const id of a.show||[])if(id==='context')data.settings.showCourseInformation=true;else Arrange.change(data.settings,{type:'add',key:id});
     for(const id of a.hide||[])if(id==='context')data.settings.showCourseInformation=false;else Arrange.change(data.settings,{type:'remove',key:id});
     for(const key of (a.order||[]).slice().reverse())Arrange.change(data.settings,{type:'dock',key,target:Arrange.ROOT,edge:'top'});
-    if(a.wide)data.settings.moduleSize={...data.settings.moduleSize,...Object.fromEntries(a.wide.map(id=>[id,'l']))};
+    if(a.wide)for(const id of a.wide){if(Arrange.setSize)Arrange.setSize(data.settings,id,'l');else data.settings.moduleSize={...data.settings.moduleSize,[id]:'l'};}
    }
    if(a.tool==='module'){
     if(runOf(data,runId).actions.filter(e=>e.action?.tool==='module'&&e.outcome!=='rejected').length>=Agent.LIMITS.modules)throw Error('Module limit reached for this run.');

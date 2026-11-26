@@ -1,0 +1,48 @@
+{
+  "about": "Home arrangements as older builds saved them (made-up records, no real data). Each must load in 4.2 exactly as saved and be drawn in the same places at a wide desk.",
+  "records": [
+    {
+      "from": "4.0.150 (no tree yet: the panel order and a mode)",
+      "settings": {"workspaceOrder": ["work", "reader", "context"], "workspaceMode": "side-by-side", "deskOrder": "work-first", "dashboardLayout": "split"}
+    },
+    {
+      "from": "4.0.150 (stacked)",
+      "settings": {"workspaceOrder": ["context", "work", "reader"], "workspaceMode": "stacked", "deskOrder": "stacked", "dashboardLayout": "list"}
+    },
+    {
+      "from": "4.0.160 (added modules in a row above, a width, an undo copy without widths)",
+      "settings": {
+        "workspaceOrder": ["context", "work", "reader"], "workspaceMode": "side-by-side",
+        "workspaceLayout": {"axis": "y", "children": [{"axis": "x", "children": ["week", "timer", "notes"]}, {"axis": "x", "children": ["context", "work", "reader"]}]},
+        "moduleSize": {"week": "l", "timer": "s"},
+        "workspaceUndo": {"order": ["context", "work", "reader", "week", "timer"], "mode": "side-by-side", "layout": {"axis": "y", "children": [{"axis": "x", "children": ["week", "timer"]}, {"axis": "x", "children": ["context", "work", "reader"]}]}, "courseNavigation": "sidebar", "dockSize": "medium", "showCourseInformation": true, "showCourseStrip": true}
+      }
+    },
+    {
+      "from": "4.0.165 (a stack beside a column, six levels of moves, undo copy with widths)",
+      "settings": {
+        "workspaceOrder": ["context", "work", "reader"], "workspaceMode": "side-by-side",
+        "workspaceLayout": {"axis": "x", "children": ["context", "work", {"axis": "y", "children": ["reader", {"axis": "x", "children": ["notes", {"axis": "y", "children": ["clock", {"axis": "x", "children": ["timer", {"axis": "y", "children": ["week", {"axis": "x", "children": ["grades", "bookmarks"]}]}]}]}]}]}]},
+        "moduleSize": {"reader": "l", "notes": "s"},
+        "workspaceUndo": {"order": ["context", "work", "reader", "notes", "clock", "timer", "week", "grades"], "mode": "side-by-side", "layout": {"axis": "x", "children": ["context", "work", {"axis": "y", "children": ["reader", {"axis": "x", "children": ["notes", {"axis": "y", "children": ["clock", {"axis": "x", "children": ["timer", {"axis": "y", "children": ["week", "grades"]}]}]}]}]}]}, "courseNavigation": "sidebar", "dockSize": "medium", "showCourseInformation": true, "showCourseStrip": true, "moduleSize": {"reader": "l"}}
+      }
+    },
+    {
+      "from": "4.0.170 (course dock, every module, the retired Today module still in it)",
+      "settings": {
+        "courseNavigation": "dock", "workspaceOrder": ["context", "work", "reader"], "workspaceMode": "side-by-side",
+        "workspaceLayout": {"axis": "y", "children": [{"axis": "x", "children": ["week", "timer", "clock", "notes"]}, {"axis": "x", "children": ["context", "work", "reader"]}, {"axis": "x", "children": ["handin", "bookmarks", "grades", "messages"]}, {"axis": "x", "children": ["pet", "review", "impact", "today"]}]},
+        "moduleSize": {"week": "l", "grades": "s", "review": "l"}
+      }
+    },
+    {
+      "from": "4.2 preview (Help placed below Assignment details, kept beside the layout)",
+      "settings": {
+        "workspaceOrder": ["context", "work", "reader"], "workspaceMode": "side-by-side",
+        "workspaceLayout": {"axis": "y", "children": [{"axis": "x", "children": ["week", "clock"]}, {"axis": "x", "children": ["context", "work", "reader"]}]},
+        "helpLayout": {"axis": "y", "children": [{"axis": "x", "children": ["week", "clock"]}, {"axis": "x", "children": ["context", "work", {"axis": "y", "children": ["reader", "help"]}]}]},
+        "moduleSize": {"help": "l", "clock": "s"}
+      }
+    }
+  ]
+}

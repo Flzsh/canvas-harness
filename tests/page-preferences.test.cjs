@@ -37,7 +37,7 @@ test('existing device choices override legacy values and follow external edits l
  await store.load();assert.equal(store.get().settings.theme,'light');assert.equal(store.get().pet.enabled,false);assert.equal(h.writes.length,0);
  const received=[];store.subscribe(data=>received.push(data));const page=Preferences.create({origin,...h});await page.load();await page.set({theme:'dark',motion:'off'});await settle();
  assert.equal(store.get().settings.theme,'dark');assert.equal(store.get().settings.motion,'off');assert.equal(store.get().settings.nightArt,20);assert.ok(received.some(data=>data.settings.theme==='dark'));
- assert.equal(store.get().pet.name,'Maple');assert.equal(store.get().pet.xp,90);assert.deepEqual(h.data[key],legacy);
+ assert.equal(store.get().pet.name,'Maple');assert.equal(store.get().pet.xp,90,'4.1.0\'s game field is kept as saved when the record loads (4.2.0)');assert.deepEqual(h.data[key],legacy);
  await store.update(data=>{data.settings.nightArt=95;data.pet.enabled=true;});await settle();assert.equal(page.get().nightArt,95);assert.equal(page.get().pet,true);assert.deepEqual(h.data[key],legacy);
  page.destroy();store.destroy();assert.equal(h.count(),0);
 });

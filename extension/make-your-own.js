@@ -116,9 +116,82 @@
    finally{state.busy=false;notify();}
   }
   const unsubscribe=store.subscribe?.(sync);sync();
+  // say(text): a line on the same status line a pick or a failed add uses (the megapack's download, dashboard.js)
   return {state,choose,action,sync,week(value){
     state.week=value;
+  },say(text){
+    if(dead)return;
+    const next=String(text||'').slice(0,240);
+    if(next===state.status)return;
+    state.status=next;
+    notify();
   },destroy(){dead=true;++revision;++hydration;unsubscribe?.();state.draft=null;state.theme=state.pet=null;}};
  }
- const api={render,preview,picker,create};root.ReserveMakeYourOwn=api;if(typeof module==='object'&&module.exports)module.exports=api;
+ /* Megapacks (4.2, megapack engine 1): a scene whose pictures and data come down from the Market. The worker downloads
+    them (megapack.js); a Canvas page only asks it: megapack-state, megapack-get (which also opens the Market at the card's
+    own page) and megapack-remove. Soul Passage (the scene train) is the one there is. state(), get() and remove() answer
+    null where there is no extension runtime (a preview, a test), else the worker's answer ({ok:false, reason} when it refused). */
+ const MEGAPACK=Object.freeze({
+   id:'soul-passage',
+   scene:'train',
+   name:'Soul Passage',
+   key:'megapack:soul-passage',
+   look:'builtin:scene:train',
+   pace:'reserve:train-pace',
+   preview:'reserve:train-preview',
+   cruise:2,
+   speeds:Object.freeze(['Stopped','Slow','Cruise','Fast']),
+   lands:Object.freeze(['','1','2','3','4','5','6','0']),
+   times:Object.freeze(['','8','12.5','17','21','1'])
+ });
+ async function megaSend(message){
+  if(typeof root.chrome?.runtime?.sendMessage!=='function')return null;
+  try{const reply=await root.chrome.runtime.sendMessage(message);return reply&&typeof reply==='object'?reply:{ok:false,reason:'Could not reach the Market.'};}
+  catch(error){return {ok:false,reason:String(error?.message||'Could not reach the Market.').slice(0,240)};}
+ }
+ const megapack=Object.freeze({...MEGAPACK,
+  // {state:'here'|'none'|'getting'|'failed', done, total, bundled, reason, at}; null: no answer
+  async state(){
+   const r=await megaSend({type:'megapack-state',id:MEGAPACK.id});if(!r||r.ok!==true||!['here','none','getting','failed'].includes(r.state))return null;
+   const n=v=>Number.isSafeInteger(v)&&v>=0?v:0;
+   return {state:r.state,done:n(r.done),total:n(r.total),bundled:r.bundled===true,reason:typeof r.reason==='string'?r.reason.slice(0,240):'',at:n(r.at)};
+  },
+  // (the student's own account goes with the ask: the scene goes on for it when the files are here)
+  get(owner){return megaSend({type:'megapack-get',id:MEGAPACK.id,...(owner&&typeof owner==='object'?{owner:{origin:owner.origin,accountId:owner.accountId}}:{})});},
+  remove(){return megaSend({type:'megapack-remove',id:MEGAPACK.id});},
+  // The speed stop (0 Stopped, 1 Slow, 2 Cruise, 3 Fast), kept where the theme reads it (reserve:train-pace): the scene hears it
+  // change and moves the lever on the laptop in the room and the ride itself, eased as under a hand (scene-themes.js, 4.2).
+  speed(n){
+   if(!Number.isInteger(n)||n<0||n>=MEGAPACK.speeds.length)return false;
+   try{root.chrome?.storage?.local?.set?.({[MEGAPACK.pace]:n})?.catch?.(()=>{});}catch{}
+   return true;
+  },
+  // The land and the light (the scene's own record of them, reserve:train-preview: {day 0-6, hour}; none = today's
+  // land at the clock's hour). In the picker's values: land '' (Today) or '0'-'6'; time '' (Now) or the hour ('8', '12.5', '17',
+  // '21', '1'). sight() reads a record, view() writes one. A record from before 4.2.2 may also say week 1|2 for Thursday: week 1
+  // was the deep sea, which is gone, so it reads as Today (its light is kept); week 2 was the glass city, Thursday's land now.
+  sight(record){
+   const r=record&&typeof record==='object'?record:{},day=Number.isInteger(r.day)&&r.day>=0&&r.day<=6?r.day:null,hour=Number.isFinite(r.hour)&&r.hour>=0&&r.hour<24?r.hour:null;
+   const land=day===null||day===4&&r.week===1?'':String(day),time=hour===null?'':String(hour);
+   return {land:MEGAPACK.lands.includes(land)?land:'',time:MEGAPACK.times.includes(time)?time:''};
+  },
+  view(land,time){
+   const d=MEGAPACK.lands.includes(land)?land:'',h=MEGAPACK.times.includes(time)?time:'',v={};
+   if(d)v.day=parseInt(d,10);if(h)v.hour=Number(h);
+   try{const local=root.chrome?.storage?.local,done=d||h?local?.set?.({[MEGAPACK.preview]:v}):local?.remove?.(MEGAPACK.preview);done?.catch?.(()=>{});}catch{}
+   return d||h?v:null;
+  },
+  // A scene asked for by name (Biscuit, a Home module): null = go on as today (its files are here, or nothing answered);
+  // else the download is started, or is still running, instead of a scene that could not show, and the answer says so.
+  async choose(scene,{owner}={}){
+   if(scene!==MEGAPACK.scene)return null;
+   const now=await megapack.state();if(!now||now.state==='here')return null;
+   if(now.state==='getting')return {ok:true,state:'getting',message:'Soul Passage is still coming down.'};
+   const r=await megapack.get(owner);if(!r)return null;
+   if(r.ok!==true)return {ok:false,message:r.reason||'Could not reach the Market.'};
+   if(r.state==='here')return null;
+   return {ok:true,state:'getting',message:'Getting Soul Passage from the Market. It goes on once it is here.'};
+  }
+ });
+ const api={render,preview,picker,create,megapack};root.ReserveMakeYourOwn=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

@@ -52,8 +52,10 @@ test('normalizeInbox uses only explicit course context metadata, sorts recent su
     {id:'12',subject:'No explicit context',last_message:'Hello',last_message_at:'2026-09-12T20:00:00Z',workflow_state:'read',context_name:'Biology',audience_contexts:{courses:{'9':['StudentEnrollment']}}},
   ]});
   assert.deepEqual(rows.map(x=>x.id),['11','10','12']);
+  // (pages-42) a summary also says who else is in it, how many messages and whether it carries files (none given here)
   assert.deepEqual(rows[1],{
     id:'10',subject:'Lab reminder',excerpt:'Bring goggles',updatedAt:'2026-09-13T19:00:00.000Z',url:'https://school.instructure.com/conversations/10',unread:true,courseId:'7',courseName:'Chemistry',
+    people:[],count:null,files:false,
   });
   assert.equal(rows[0].courseId,null);
   assert.equal(rows[0].courseName,'Lab group');

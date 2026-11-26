@@ -12,10 +12,74 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   if(!globalThis.ReserveSite){ranFirst=true;if(++tries<=80)setTimeout(boot,tries<4?0:25);else console.warn('Canvas Harness: its page scripts did not load; reload Canvas.');return;}
   if(globalThis.ReserveSite.vanillaPage(location)||globalThis.ReserveContentStarted||document.getElementById('reserve-companion-dock'))return;
   globalThis.ReserveContentStarted=true;
+  // AN UPDATE UNDER AN OPEN TAB. When Canvas Harness is updated or reloaded while a Canvas tab stays open, this copy keeps running
+  // in the page but has lost its extension (chrome.runtime.id is gone): what lives in the extension's own frames (Soul Passage's
+  // band and land) stands still or is gone, and nothing can be read or saved. As soon as that is seen (a look every 10 s while the
+  // tab is in view, the tab shown again, a press or a key), the tab loads the new version: by itself on Canvas Harness's own page
+  // when nothing is being written there; a slip asks first where something is (text typed on this page, a field being written in)
+  // and on Canvas's own pages (a quiz, a discussion, a video or an embedded tool may be under way there, which a reload would
+  // lose). UPDATE_REFRESH 'auto' is that; 'ask' puts the slip everywhere.
+  const UPDATE_REFRESH='auto';
+  (function updateWatch(){
+   const had=(()=>{try{return !!globalThis.chrome?.runtime?.id;}catch{return false;}})();if(!had)return;
+   const gone=()=>{try{return !globalThis.chrome?.runtime?.id;}catch{return true;}};
+   let typed=false,asked=false,slip=null,timer=0;
+   const field=el=>
+     !!el&&
+       (el.isContentEditable||
+         el.tagName==='TEXTAREA'||
+         el.tagName==='SELECT'||
+         el.tagName==='IFRAME'||
+         el.tagName==='INPUT'&&!/^(button|submit|reset|checkbox|radio|range|color|file|image|hidden)$/i.test(el.type||''));
+   document.addEventListener?.('input',event=>{const at=event.composedPath?.()[0]||event.target;if(field(at))typed=true;},true);
+   const own=location.pathname==='/'||/^\/dashboard\/?$/.test(location.pathname);
+   const writing=()=>{if(typed||!own)return true;let el=document.activeElement;while(el?.shadowRoot?.activeElement)el=el.shadowRoot.activeElement;return field(el);};
+   function ask(){
+    if(asked)return;asked=true;
+    const host=document.createElement('div');host.id='reserve-update-slip';const root=host.attachShadow({mode:'open'});
+    root.innerHTML=[
+     '<style>:host{all:initial}',
+     '.s{position:fixed;right:22px;bottom:22px;z-index:2147483646;box-sizing:border-box;max-width:300px;padding:18px 20px 15px;color:#141413;font:13.5px/1.45 "Segoe UI",system-ui,sans-serif;isolation:isolate;transform:rotate(-.6deg)}',
+     '.s::before,.s::after,.s>i{content:"";position:absolute;inset:0;box-sizing:border-box;border:18px solid transparent;pointer-events:none}',
+     '.s>i{z-index:-3;translate:3px 4px;background:rgb(20 20 19/.12);-webkit-mask-box-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2790%27%20height%3D%2790%27%20viewBox%3D%270%200%2090%2090%27%3E%3Cpath%20d%3D%27M20%202%20C27%201.2%2062.99999999999999%202.4%2070%201.5%20Q88.5%201.7%2088.7%2020%20C88.8%2031.499999999999996%2088%2062.99999999999999%2088.5%2070%20Q88.4%2088.4%2070%2088.19999999999999%20C59.400000000000006%2088.1%2029.700000000000003%2088.9%2020%2088.4%20Q1.6%2088.5%201.9%2070%20C1.9%2059.400000000000006%201.2%2029.700000000000003%201.6%2020%20Q1.7%201.5%2020%202%20Z%27%20fill%3D%27%23000%27%2F%3E%3C%2Fsvg%3E") 30 stretch;mask-border:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2790%27%20height%3D%2790%27%20viewBox%3D%270%200%2090%2090%27%3E%3Cpath%20d%3D%27M20%202%20C27%201.2%2062.99999999999999%202.4%2070%201.5%20Q88.5%201.7%2088.7%2020%20C88.8%2031.499999999999996%2088%2062.99999999999999%2088.5%2070%20Q88.4%2088.4%2070%2088.19999999999999%20C59.400000000000006%2088.1%2029.700000000000003%2088.9%2020%2088.4%20Q1.6%2088.5%201.9%2070%20C1.9%2059.400000000000006%201.2%2029.700000000000003%201.6%2020%20Q1.7%201.5%2020%202%20Z%27%20fill%3D%27%23000%27%2F%3E%3C%2Fsvg%3E") 30 stretch}',
+     '.s::before{z-index:-2;background:#FFFDF8;-webkit-mask-box-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2790%27%20height%3D%2790%27%20viewBox%3D%270%200%2090%2090%27%3E%3Cpath%20d%3D%27M20%202%20C27%201.2%2062.99999999999999%202.4%2070%201.5%20Q88.5%201.7%2088.7%2020%20C88.8%2031.499999999999996%2088%2062.99999999999999%2088.5%2070%20Q88.4%2088.4%2070%2088.19999999999999%20C59.400000000000006%2088.1%2029.700000000000003%2088.9%2020%2088.4%20Q1.6%2088.5%201.9%2070%20C1.9%2059.400000000000006%201.2%2029.700000000000003%201.6%2020%20Q1.7%201.5%2020%202%20Z%27%20fill%3D%27%23000%27%2F%3E%3C%2Fsvg%3E") 30 stretch;mask-border:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2790%27%20height%3D%2790%27%20viewBox%3D%270%200%2090%2090%27%3E%3Cpath%20d%3D%27M20%202%20C27%201.2%2062.99999999999999%202.4%2070%201.5%20Q88.5%201.7%2088.7%2020%20C88.8%2031.499999999999996%2088%2062.99999999999999%2088.5%2070%20Q88.4%2088.4%2070%2088.19999999999999%20C59.400000000000006%2088.1%2029.700000000000003%2088.9%2020%2088.4%20Q1.6%2088.5%201.9%2070%20C1.9%2059.400000000000006%201.2%2029.700000000000003%201.6%2020%20Q1.7%201.5%2020%202%20Z%27%20fill%3D%27%23000%27%2F%3E%3C%2Fsvg%3E") 30 stretch}',
+     '.s::after{z-index:-1;background:#141413;-webkit-mask-box-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2790%27%20height%3D%2790%27%20viewBox%3D%270%200%2090%2090%27%3E%3Cpath%20d%3D%27M20%202%20C27%201.2%2062.99999999999999%202.4%2070%201.5%20Q88.5%201.7%2088.7%2020%20C88.8%2031.499999999999996%2088%2062.99999999999999%2088.5%2070%20Q88.4%2088.4%2070%2088.19999999999999%20C59.400000000000006%2088.1%2029.700000000000003%2088.9%2020%2088.4%20Q1.6%2088.5%201.9%2070%20C1.9%2059.400000000000006%201.2%2029.700000000000003%201.6%2020%20Q1.7%201.5%2020%202%20Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.7%27%20stroke-linejoin%3D%27round%27%2F%3E%3C%2Fsvg%3E") 30 stretch;mask-border:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2790%27%20height%3D%2790%27%20viewBox%3D%270%200%2090%2090%27%3E%3Cpath%20d%3D%27M20%202%20C27%201.2%2062.99999999999999%202.4%2070%201.5%20Q88.5%201.7%2088.7%2020%20C88.8%2031.499999999999996%2088%2062.99999999999999%2088.5%2070%20Q88.4%2088.4%2070%2088.19999999999999%20C59.400000000000006%2088.1%2029.700000000000003%2088.9%2020%2088.4%20Q1.6%2088.5%201.9%2070%20C1.9%2059.400000000000006%201.2%2029.700000000000003%201.6%2020%20Q1.7%201.5%2020%202%20Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.7%27%20stroke-linejoin%3D%27round%27%2F%3E%3C%2Fsvg%3E") 30 stretch}',
+     '.s>u{position:absolute;left:50%;top:-8px;width:62px;height:17px;margin-left:-31px;background:rgb(212 162 127/.82);transform:rotate(2deg)}',
+     'b{display:block;font:700 16px/1.25 Literata,Georgia,"Palatino Linotype",serif;margin-bottom:4px}',
+     'p{margin:0 0 12px;color:#5E5D59}',
+     '.r{display:flex;gap:10px;justify-content:flex-end}',
+     'button{font:600 13px/1 "Segoe UI",system-ui,sans-serif;padding:8px 13px;border-radius:9px 7px 10px 6px/7px 10px 6px 9px;cursor:pointer}',
+     '.go{background:#A9522F;color:#FFFDF8;border:1.5px solid #141413;box-shadow:2px 2.5px 0 rgb(20 20 19/.16)}',
+     '.no{background:transparent;color:#141413;border:1.5px dashed rgb(20 20 19/.45)}',
+     'button:focus-visible{outline:2px solid #A9522F;outline-offset:2px}',
+     '</style><div class="s" role="status" aria-live="polite"><i></i><u></u><b>Canvas Harness was updated</b><p>Reload this page to use the new version. Save what you are writing first.</p><div class="r"></div></div>'
+    ].join('');
+    // (its two keys made here, not written in the markup: they belong to this notice, not to the dashboard Biscuit can press)
+    const row=root.querySelector('.r'),knob=(cls,text,fn)=>{
+      const k=document.createElement('button');
+      k.type='button';
+      k.className=cls;
+      k.textContent=text;
+      k.addEventListener?.('click',fn);
+      row?.append(k);
+      return k;
+    };
+    knob('no','Later',()=>{host.remove();slip=null;});knob('go','Reload',()=>location.reload());
+    slip=host;document.documentElement.append(host);
+   }
+   function look(){
+    if(!gone()||document.visibilityState==='hidden')return;
+    if(UPDATE_REFRESH==='auto'&&!writing()){location.reload();return;}
+    ask();
+   }
+   timer=globalThis.setInterval?.(look,10000)||0;
+   document.addEventListener?.('visibilitychange',()=>{if(document.visibilityState==='visible'){asked=asked&&!!slip;look();}});
+   for(const name of ['pointerdown','keydown','focus'])window.addEventListener?.(name,look,true);
+  })();
   const isDashboard=location.pathname==='/'||/^\/dashboard\/?$/.test(location.pathname);
   const params=new URLSearchParams(location.search);
   const startup=globalThis.ReserveStartup;
-  const build='4.1.0';
+  const build='4.2.0';
   // Local timings contain only milliseconds, never account or course data.
   // They make real startup measurable without delaying or storing the page.
   const stamp=()=>Math.round(globalThis.performance?.now?.()||0);

@@ -14,12 +14,15 @@
  // "On Canvas" switched in the popup while this tab is open: the page in front of the student becomes the one they asked
  // for. Not while something has been typed here (a reply, a submission comment), nor while the focus is in a frame (Canvas's
  // text editor types in one, out of this page's hearing): then the page holds until its next load.
+ // An assignment or submission page is never reloaded by Canvas Harness (typing there can sit inside Canvas's editor
+ // frame, where this page cannot see it, and a chosen file would be lost): what it draws there follows the switch at once.
+ const handIn=globalThis.ReserveSite?.vanillaPage?.(location)===true;
  let typed=false;
- document.addEventListener?.('input',event=>{
+ if(!handIn)document.addEventListener?.('input',event=>{
   const at=event.composedPath?.()[0]||event.target;
   if(at&&(at.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(at.tagName||'')))typed=true;
  },true);
- const holding=()=>typed||document.activeElement?.tagName==='IFRAME';
+ const holding=()=>handIn||typed||document.activeElement?.tagName==='IFRAME';
  // Keep the next document's prepaint selection current without changing this
  // document's snapshot. A pending worker reply must not restore an older hint.
  globalThis.chrome?.storage?.onChanged?.addListener((changes,area)=>{

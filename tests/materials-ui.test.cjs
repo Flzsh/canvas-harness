@@ -118,23 +118,27 @@ test('refreshing a removed material category falls back to all instead of an inv
 test('the materials banner uses the short course title with the teacher before its description',async()=>{
  const f=setup();await f.ui.load('7');
  const html=f.ui.renderLibrary({id:'7',name:'Honors Chemistry-Rivera-Patel',shortName:'Chemistry',teacher:'Rivera-Patel',sub:''});
- assert.match(html,/<h2 title="Honors Chemistry-Rivera-Patel">Chemistry<\/h2><p><strong class="rd-course-detail">Rivera-Patel<\/strong> · Worksheets, pages & schedules<\/p>/);
- assert.match(f.ui.renderLibrary({id:'7',name:'Chemistry'}),/<h2 title="Chemistry">Chemistry<\/h2><p>Worksheets, pages & schedules<\/p>/);
+ // (pages-42) the teacher, then the shelf's facts (how many items, how fresh); no standing description
+ assert.match(html,/<h2 title="Honors Chemistry-Rivera-Patel">Chemistry<\/h2><p class="rd-shelf-facts"><strong class="rd-course-detail">Rivera-Patel<\/strong> · 3 items<span aria-hidden="true"> · <\/span><span title="[^"]+">Saved just now<\/span><\/p>/);
+ assert.match(f.ui.renderLibrary({id:'7',name:'Chemistry'}),/<h2 title="Chemistry">Chemistry<\/h2><p class="rd-shelf-facts">3 items<span aria-hidden="true"> · <\/span><span title="[^"]+">Saved just now<\/span><\/p>/);
  f.ui.destroy();
 });
 
 test('Materials: a card-less banner, a composer-shaped search with the type as text and a tray for your own shortcut, and bare grouped rows whose title reads the page',async()=>{
- const f=setup();await f.ui.load('7');const html=f.ui.renderLibrary({id:'7',name:'Chemistry',color:'#a05252'});
+ const f=setup();await f.ui.load('7');let html=f.ui.renderLibrary({id:'7',name:'Chemistry',color:'#a05252'});
  assert.match(html,/<header class="rd-materials-header rd-course-banner" style="--rd-course:#a05252;--rd-course-ink:#a05252"><div class="rd-banner-art" aria-hidden="true"><\/div>/);
  assert.match(html,/<div class="rd-material-search"><div class="rd-composer-field"><label class="rd-search">[\s\S]*?<input type="search" data-rd-field="material-query" placeholder="Find a worksheet, lesson or schedule"[^>]*><\/label><span class="rd-select-text"><select data-rd-field="material-category" aria-label="Material type">/);
- assert.match(html,/<div class="rd-composer-tray"><details class="rd-add-shortcut" data-rd-section="shortcut-7" ><summary>(?:<svg[\s\S]*?<\/svg>)?Add your own shortcut<\/summary>/,'the existing disclosure lives in the tray');
+ // (pages-42) the tray holds the shelves (the pen-chip segment) and then the own-shortcut disclosure
+ assert.match(html,/<div class="rd-composer-tray"><div class="rd-filter-group rd-shelf-tabs" role="group" aria-label="Which materials">[\s\S]*?<\/div><details class="rd-add-shortcut" data-rd-section="shortcut-7" ><summary>(?:<svg[\s\S]*?<\/svg>)?Add your own shortcut<\/summary>/,'the existing disclosure lives in the tray');
+ f.ui.handle('material-kind',{course:'7',value:'modules'});html=f.ui.renderLibrary({id:'7',name:'Chemistry',color:'#a05252'});
  assert.match(html,/<section class="rd-material-group rd-chapter" data-rd-key="chapter-7-module-10" aria-labelledby="rd-chapter-7-module-10"><h3 class="rd-chapter-head" id="rd-chapter-7-module-10" tabindex="-1" data-chapter="module-10" data-course="7"><span class="rd-chapter-name">Unit 1 · gases<\/span> <span class="rd-chapter-count">3 items<\/span><\/h3><ul class="rd-chapter-items" id="rd-chapter-7-module-10-items">/,'each module is a chapter: a serif head with its count, its items inside it');
- assert.match(html,/<li class="rd-teacher-row" data-rd-key="material-row-7-module:10:13" data-rd-row="module:10:13"><button type="button" class="rd-row-open" data-rd-action="material-read" data-resource="module:10:13" data-course="7" aria-label="Read Lesson notes" data-read-row="true">Lesson notes<\/button>/,'a readable page opens here from its title (a real control)');
+ assert.match(html,/<li class="rd-teacher-row rd-shelf-row" data-rd-key="material-row-7-module:10:13" data-rd-row="module:10:13"><span class="rd-file-tag" data-paper="page">Page<\/span><button type="button" class="rd-row-open" data-rd-action="material-read" data-resource="module:10:13" data-course="7" aria-label="Read Lesson notes" data-read-row="true">Lesson notes<\/button>/,'a readable page opens here from its title (a real control), behind its kraft tag');
  assert.match(html,/<a class="rd-text-button" href="https:\/\/school\.instructure\.com\/courses\/7\/pages\/lesson" target="_blank" rel="noopener noreferrer" aria-label="Open Lesson notes in Canvas">Canvas <span aria-hidden="true">↗<\/span><\/a>/,'the original stays one quiet link away');
-  assert.match(html,/<a class="rd-row-open" href="https:\/\/school\.instructure\.com\/courses\/7\/files\/21" target="_blank" rel="noopener noreferrer" title="Gas worksheet\.pdf"(?: data-pdf-[\w-]+="[^"]*")*>Gas worksheet&nbsp;<span aria-hidden="true">↗<\/span><\/a><span class="rd-material-actions">[\s\S]*?<\/span><span class="rd-row-kind"><\/span><span class="rd-row-format"><span>PDF<\/span><\/span><\/li>/,'one line: the clean title (the file name in its tooltip), Plan · Save, then the format tag; never "File"');
+ assert.match(html,/<span class="rd-file-tag" data-paper="doc">PDF<\/span><a class="rd-row-open" href="https:\/\/school\.instructure\.com\/courses\/7\/files\/21" target="_blank" rel="noopener noreferrer" title="Gas worksheet\.pdf"(?: data-pdf-[\w-]+="[^"]*")*>Gas worksheet&nbsp;<span aria-hidden="true">↗<\/span><\/a><span class="rd-material-actions">[\s\S]*?<\/span><span class="rd-row-kind"><\/span><span class="rd-row-date"><\/span><\/li>/,'one line: the kraft tag names the format, the clean title (the file name in its tooltip), Plan · Save, the day; never "File"');
  assert.doesNotMatch(html,/>File</,'no vague "File" tag when the format is known');
+ assert.doesNotMatch(html,/rd-row-format/,'the format stands only in the tag');
  assert.doesNotMatch(html,/rd-chapter-jump/,'two or fewer chapters need no chapter line');
- assert.match(html,/<p class="rd-material-footnote">3 resources · <span title="[^"]+">Saved just now<\/span>\./);
+ assert.match(html,/<p class="rd-shelf-facts">3 items<span aria-hidden="true"> · <\/span><span title="[^"]+">Saved just now<\/span><\/p>/,'the old footnote is the head\'s facts line');
  assert.match(html,/data-rd-action="material-refresh" data-resource="" data-course="7" aria-label="Refresh materials"/);
  f.ui.destroy();
 });
@@ -151,27 +155,29 @@ function engineering(){
  return setup({loadCourseResources:async()=>structuredClone(raw)});
 }
 test('Materials chapters: Canvas-order numerals, a one-item chapter of its own name reads as one row, clear kinds and formats, and a paired answer key',async()=>{
- const f=engineering();await f.ui.load('7');const html=f.ui.renderLibrary({id:'7',name:'Engineering'});
- assert.match(html,/<div class="rd-material-list rd-chapters--numbered">/,'modules without numbers of their own are numbered in Canvas order');
+ // (pages-42) the chapters are the Modules shelf; the format stands in each row's kraft tag
+ const f=engineering();await f.ui.load('7');f.ui.handle('material-kind',{course:'7',value:'modules'});const html=f.ui.renderLibrary({id:'7',name:'Engineering'});
+ assert.match(html,/<div class="rd-material-list rd-shelf-sheet rd-chapters--numbered">/,'modules without numbers of their own are numbered in Canvas order');
  assert.match(html,/<span class="rd-chapter-no" aria-hidden="true">2<\/span><span class="rd-chapter-name">Final Project<\/span> <span class="rd-chapter-count">1 item<\/span>/);
- assert.match(html,/<section class="rd-material-group rd-chapter rd-chapter--single" data-rd-key="chapter-7-module-1" aria-labelledby="rd-chapter-7-module-1"><div class="rd-teacher-row rd-chapter-row" data-rd-key="material-row-7-module:1:11" data-rd-row="module:1:11"><h3 class="rd-chapter-head" id="rd-chapter-7-module-1" tabindex="-1" data-chapter="module-1" data-course="7"><span class="rd-chapter-no" aria-hidden="true">1<\/span><button type="button" class="rd-row-open" data-rd-action="material-read" data-resource="module:1:11" data-course="7" aria-label="Read Magic 8-Ball" data-read-row="true">Magic 8-Ball<\/button><\/h3><span class="rd-material-actions">/,'Magic 8-Ball › Magic 8-Ball is one chapter row whose head reads the page');
+ assert.match(html,/<section class="rd-material-group rd-chapter rd-chapter--single" data-rd-key="chapter-7-module-1" aria-labelledby="rd-chapter-7-module-1"><div class="rd-teacher-row rd-shelf-row rd-chapter-row" data-rd-key="material-row-7-module:1:11" data-rd-row="module:1:11"><span class="rd-file-tag" data-paper="page">Page<\/span><h3 class="rd-chapter-head" id="rd-chapter-7-module-1" tabindex="-1" data-chapter="module-1" data-course="7"><span class="rd-chapter-no" aria-hidden="true">1<\/span><button type="button" class="rd-row-open" data-rd-action="material-read" data-resource="module:1:11" data-course="7" aria-label="Read Magic 8-Ball" data-read-row="true">Magic 8-Ball<\/button><\/h3><span class="rd-material-actions">/,'Magic 8-Ball › Magic 8-Ball is one chapter row whose head reads the page');
  assert.doesNotMatch(html,/rd-chapter-name">Magic 8-Ball/,'no duplicate line under it');
-  assert.match(html,/title="Engineering Syllabus\.pdf"(?: data-pdf-[\w-]+="[^"]*")*>Engineering Syllabus&nbsp;<span aria-hidden="true">↗<\/span><\/a>[\s\S]*?<span class="rd-row-kind">Syllabus<\/span><span class="rd-row-format"><span>PDF<\/span><\/span>/);
- assert.match(html,/>2026 Daily Syllabus&nbsp;<span aria-hidden="true">↗<\/span><\/a>[\s\S]*?<span class="rd-row-kind">Schedule<\/span><span class="rd-row-format"><span>Doc<\/span><\/span>/,'a Google Doc link says Doc, not Link');
+ assert.match(html,/<span class="rd-file-tag" data-paper="doc">PDF<\/span><a class="rd-row-open"[^>]*title="Engineering Syllabus\.pdf"(?: data-pdf-[\w-]+="[^"]*")*>Engineering Syllabus&nbsp;<span aria-hidden="true">↗<\/span><\/a>[\s\S]*?<span class="rd-row-kind">Syllabus<\/span>/);
+ assert.match(html,/<span class="rd-file-tag" data-paper="doc">Doc<\/span><a class="rd-row-open"[^>]*>2026 Daily Syllabus&nbsp;<span aria-hidden="true">↗<\/span><\/a>[\s\S]*?<span class="rd-row-kind">Schedule<\/span>/,'a Google Doc link says Doc, not Link');
   assert.match(html,/title="Truss WS\.pdf"(?: data-pdf-[\w-]+="[^"]*")*>Truss WS&nbsp;<span aria-hidden="true">↗<\/span><\/a>[\s\S]*?<span class="rd-row-kind"><a class="rd-row-key" href="https:\/\/school\.instructure\.com\/files\/501" target="_blank" rel="noopener noreferrer" title="Truss WS-ANSWER KEY\.pdf"(?: data-pdf-[\w-]+="[^"]*")* aria-label="Answer key for Truss WS">Answer key <span aria-hidden="true">↗<\/span><\/a><\/span>/,'the matching key joins its worksheet as a secondary link');
  assert.doesNotMatch(html,/>Truss WS — Answer key</,'and is not a row of its own');
  assert.match(html,/<span class="rd-chapter-no" aria-hidden="true">3<\/span><span class="rd-chapter-name">Course Description and Syllabus<\/span>[\s\S]*?<span class="rd-chapter-name">Course resources<\/span> <span class="rd-chapter-count">12 items<\/span>/,'loose pages and files close the book, unnumbered');
  f.ui.destroy();
 });
 test('Materials chapters: a long chapter opens on its first five items, Show all moves focus to the first it revealed, the chapter line jumps, and search keeps the chapters of its matches',async()=>{
- const f=engineering();await f.ui.load('7');let html=f.ui.renderLibrary({id:'7',name:'Engineering'});
- assert.match(html,/<nav class="rd-chapter-jump" aria-label="Chapters"><span class="rd-chapter-jump-label" aria-hidden="true">Chapters<\/span><button type="button" class="rd-chapter-link" data-rd-action="material-jump" data-resource="module-1" data-course="7">Magic 8-Ball<\/button>/);
+ // (pages-42) the Modules shelf; the chapter links are kraft index tabs carrying the chapter's numeral
+ const f=engineering();await f.ui.load('7');f.ui.handle('material-kind',{course:'7',value:'modules'});let html=f.ui.renderLibrary({id:'7',name:'Engineering'});
+ assert.match(html,/<nav class="rd-chapter-jump" aria-label="Chapters"><span class="rd-chapter-jump-label" aria-hidden="true">Chapters<\/span><button type="button" class="rd-chapter-link" data-rd-action="material-jump" data-resource="module-1" data-course="7"><b aria-hidden="true">1<\/b>Magic 8-Ball<\/button>/);
  assert.match(html,/data-resource="resources" data-course="7">Course resources <span class="rd-n">12<span class="rd-sr-only"> items<\/span><\/span><\/button><\/nav>/);
  const resources=()=>{const at=html.indexOf('data-rd-key="chapter-7-resources"');return html.slice(at,html.indexOf('</section>',at));};
- assert.equal((resources().match(/class="rd-teacher-row"/g)||[]).length,5,'folded to its first five rows');
+ assert.equal((resources().match(/class="rd-teacher-row rd-shelf-row"/g)||[]).length,5,'folded to its first five rows');
  assert.match(resources(),/<button type="button" class="rd-chapter-more" data-rd-action="material-more" data-resource="resources" data-course="7" aria-expanded="false" aria-controls="rd-chapter-7-resources-items">Show all 12<\/button>/);
  f.ui.handle('material-more',{resource:'resources',course:'7'});assert.deepEqual({...f.ui.takeFocusRequest()},{type:'row',courseId:'7',id:'file:7:506'},'focus moves to the first revealed item');
- html=f.ui.renderLibrary({id:'7',name:'Engineering'});assert.equal((resources().match(/class="rd-teacher-row"/g)||[]).length,11,'every row (the key rides with its worksheet)');
+ html=f.ui.renderLibrary({id:'7',name:'Engineering'});assert.equal((resources().match(/class="rd-teacher-row rd-shelf-row"/g)||[]).length,11,'every row (the key rides with its worksheet)');
  assert.match(resources(),/aria-expanded="true" aria-controls="rd-chapter-7-resources-items">Show fewer<\/button>/);
  f.ui.handle('material-more',{resource:'resources',course:'7'});assert.deepEqual({...f.ui.takeFocusRequest()},{type:'more',action:'material-more',courseId:'7',id:'resources'},'closing keeps focus on the control');
  f.ui.handle('material-jump',{resource:'module-3',course:'7'});assert.deepEqual({...f.ui.takeFocusRequest()},{type:'chapter',courseId:'7',id:'module-3'});

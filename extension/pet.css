@@ -9,7 +9,7 @@
 .pet[data-face=left] .pet-svg{transform:scaleX(-1)}
 .pet-svg :where(g,path,rect,circle,ellipse,polygon,line,polyline,use){transform-box:view-box}
 /* parts that only some poses show */
-.pet-book,.pet-oats,.pet-zz,.pet-sparks,.pet-flag,.pet-lid{display:none}
+.pet-book,.pet-zz,.pet-sparks,.pet-flag,.pet-lid{display:none}
 .pet[data-gear=none] .pet-collar, .pet[data-gear=none] .pet-blanket{display:none}
 .pet[data-gear=collar] .pet-blanket{display:none}
 
@@ -55,8 +55,7 @@
 @keyframes pet-read{0%,42%{rotate:-2deg}50%,92%{rotate:2deg}100%{rotate:-2deg}}
 @keyframes pet-show{from{opacity:0}to{opacity:1}}
 
-/* eating a treat */
-.pet[data-pose=eat] .pet-oats{display:block;animation:pet-show .3s ease-out}
+/* the eat pose: installed packs may draw one; nothing plays it since 4.1 */
 .pet[data-pose=eat] .pet-head{animation:none}
 
 /* pleased: a hop, tail up, a few sparks */
@@ -316,3 +315,6 @@ button.ba-name:focus-visible{outline:2px solid var(--ba-clay);outline-offset:2px
 .ba-name .ba-lead{font-weight:700}
 .ba-ranked .ba-key{margin-top:1px}
 .ba-ranked>li:first-child .ba-key{background:var(--ba-clay);border-color:var(--ba-ink);color:#FFFDF8}
+/* (a11y-42) Keyboard focus rings in the chat that its hover look had taken away; :focus-visible only, a click looks as before */
+.pet-item:focus-visible{outline:2px solid var(--rd-mark,#C96442);outline-offset:-2px}
+.ba-size:focus-visible,button.ba-note:focus-visible,.ba-text-act:focus-visible,.ba-more:focus-visible,.ba-chip:focus-visible{outline:2px solid var(--rd-mark,#C96442);outline-offset:2px}

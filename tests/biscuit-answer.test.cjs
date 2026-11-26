@@ -38,9 +38,10 @@ test('a week plan groups work by day',()=>{
  const {a}=ask('plan my week');assert.equal(a.kind,'week');assert.ok(a.groups.length>=3);for(const g of a.groups)assert.ok(g.label&&g.rows.length);
 });
 test('a list shows the whole list the sentence cut to three, grouped by when, with course filters',()=>{
- const {a,c}=ask('what is due this week');assert.equal(a.kind,'list');assert.equal(c.items.length,3);assert.equal(a.rows.length,8);
+ // biscuit-42: "this week" runs to Sunday (Wednesday 11 Nov: the Monday item is next week), so 7 rows, not 8
+ const {a,c}=ask('what is due this week');assert.equal(a.kind,'list');assert.equal(c.items.length,3);assert.equal(a.rows.length,7);
  assert.deepEqual(a.groups.map(g=>g.label),['Today','Tomorrow','This week']);assert.ok(a.filters.length>=4);
- assert.equal(a.acts[0].label,'Plan these');assert.equal(a.acts[0].fields.itemIds.length,8);
+ assert.equal(a.acts[0].label,'Plan these');assert.equal(a.acts[0].fields.itemIds.length,7);
 });
 test('late work: every one named, with its course, even when two share a date-only title',()=>{
  const {a}=ask('what did i forget');assert.equal(a.kind,'list');assert.equal(a.rows.length,5);

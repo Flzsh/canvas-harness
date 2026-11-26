@@ -136,7 +136,7 @@ In **Tools → AI → ···**:
 - Switch **Help** off in **Edit Home**. The Help band goes and nothing runs on its own, even after **Every day**; a run already going stops at its next step. What you ask for still runs.
 - Switch **Your AI** off. Nothing runs and Help cards stop.
 - Set **Daily cap** to 0 to keep only the requests you click.
-- Switch **AI help** off in Features (Make it yours → More, or the popup), choose Lite, or remove the AI help add-on. Each locks it again: runs stop, and its code is not loaded after you reload Canvas.
+- Switch **AI help** off in Features (Make it yours → Settings, or the popup), choose Lite, or remove the AI help add-on. Each locks it again: runs stop, and its code is not loaded after you reload Canvas.
 - Remove a website's or API address's access in your browser's extension site settings. Without it, nothing is sent there. Use **Remove key** to delete an API key.
 - For Overnight, change **Way** back to Web AI or API, or turn **Your AI** off; no more files are written. Files already in the folder stay until you delete them.
 

@@ -376,7 +376,7 @@ globalThis.ReservePagePreferences?.serve();
  let ready=loadSites().catch(()=>[]);
  // Pack requests share the same registered-school trust list and account checks.
  globalThis.ReserveMarketReady=()=>ready;
- importScripts('market-worker.js');
+ importScripts('megapack.js','market-worker.js');
  // Serialize account writes across origins after the current school registration settles.
  globalThis.ReserveStorage?.serveAccountWrites({ready:()=>ready});
  globalThis.ReserveFeatures.serveWrites({ready:()=>ready});

@@ -473,3 +473,39 @@
 .rd .ch-settings-dock .cz-advanced-rows select{width:100%;text-overflow:ellipsis}
 /* Scenes sorted into packs: a small heading across the grid before each pack (Holiday, Seasonal, Everyday). */
 .rd .ch-settings-dock .cz-choice-head{grid-column:1/-1;justify-self:stretch;margin:12px 2px 0;padding:0 0 3px;font:600 12px/1.3 var(--rd-ui-font,system-ui,sans-serif);letter-spacing:.04em;text-transform:uppercase;color:var(--rd-muted)}
+/* Megapack (4.2): Soul Passage, whose pictures come down from the Market, in the scene picker. Not on this computer: a
+   button, the poster dimmed (as in the lead's sample), the tag with the arrow at its top right. Coming down: the filling line
+   on a paper strip along the poster's foot (the lead's drawing and its own rules, below); a press does nothing then. Here:
+   an ordinary choice; it carries its Reset and Remove chips once there is something to do. */
+.rd .ch-settings-dock button.cz-mega{width:100%;margin:0;font:inherit;color:inherit;text-align:center;cursor:pointer;-webkit-appearance:none;appearance:none}
+.rd .ch-settings-dock button.cz-mega[aria-disabled=true]{opacity:1;cursor:progress} /* (not the faded look of a busy button: the line is the news) */
+.rd .ch-settings-dock button.cz-mega:focus-visible{outline:2px solid var(--rd-accent);outline-offset:2px}
+.rd .ch-settings-dock .cz-mega .cz-choice-art{position:relative}
+.rd .ch-settings-dock .cz-mega .cz-choice-art img{transition:filter .3s ease-out,opacity .3s ease-out}
+.rd .ch-settings-dock .cz-mega:is([data-mp=none],[data-mp=getting]:not([data-mp-full])) .cz-choice-art img{filter:saturate(.55) brightness(1.04);opacity:.86}
+.rd .ch-settings-dock .cz-mega-mark{position:absolute;z-index:2;top:5px;right:5px;width:16%;min-width:22px;max-width:34px;aspect-ratio:1}
+.rd .ch-settings-dock .cz-mega-mark svg{display:block;width:100%;height:100%}
+.rd .ch-settings-dock button.cz-mega:hover .cz-mega-mark{translate:0 -1px}
+.rd .ch-settings-dock .cz-mega-line{position:absolute;z-index:2;left:7px;right:7px;bottom:5px;box-sizing:content-box;height:9px;padding:2px 4px;background:rgb(255 253 248/.9);border-radius:6px}
+.rd .cz-mega-line .mp-line{position:relative;display:block;height:9px;container-type:inline-size}
+.rd .cz-mega-line .mp-line svg{position:absolute;left:0;top:0;width:100cqw;height:100%;display:block}
+.rd .cz-mega-line .mp-done{position:absolute;left:0;top:0;height:100%;width:calc(var(--mp-p,0) * 1%);overflow:hidden;transition:width .4s ease-out}
+.rd .ch-settings-dock .cz-mega-here .cz-mega-pick{display:grid;justify-items:center;gap:1px;width:100%;min-width:0;cursor:pointer}
+.rd .ch-settings-dock .cz-mega-here .ch-make-actions{position:relative;z-index:2;display:flex;flex-wrap:wrap;justify-content:center;gap:4px 6px;margin-top:3px}
+/* its chips: Reset and Remove in pen on paper, each with its drawn sign */
+.rd .ch-settings-dock .cz-mega-here .ch-make-chip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px 0 8px;border:2px solid transparent;border-image:var(--rd-pen-soft) 30 / 10px / 0 stretch;border-radius:8px;background:var(--rd-surface) padding-box;font:500 12px/1 var(--rd-ui-font,system-ui,sans-serif);color:var(--rd-ink-2,var(--rd-ink));text-decoration:none;cursor:pointer}
+.rd .ch-settings-dock .cz-mega-here .ch-make-chip:hover{background:color-mix(in srgb,var(--rd-accent,#A9522F) 9%,var(--rd-surface)) padding-box;color:var(--rd-ink)}
+.rd .ch-settings-dock .cz-mega-here .ch-make-chip[data-rd-action=megapack-remove]:hover{color:var(--rd-deadline-soon,#A9522F)}
+.rd .ch-settings-dock .cz-mega-here .ch-make-chip-ic{flex:none;width:13px;height:13px;background:currentColor}
+.rd .ch-settings-dock .cz-mega-here .ch-make-chip-ic[data-ic=undo]{-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' d='M5.6 9.4C7.4 5.8 11.6 4.4 15.2 5.8C19 7.4 20.6 11.8 18.8 15.4C17 19 12.4 20.2 8.8 18.2M4.8 4.8L5.4 9.8L10.2 9'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' d='M5.6 9.4C7.4 5.8 11.6 4.4 15.2 5.8C19 7.4 20.6 11.8 18.8 15.4C17 19 12.4 20.2 8.8 18.2M4.8 4.8L5.4 9.8L10.2 9'/%3E%3C/svg%3E") center/contain no-repeat}
+.rd .ch-settings-dock .cz-mega-here .ch-make-chip-ic[data-ic=remove]{-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' d='M4.6 6.6C9.4 6.2 14.6 6.2 19.4 6.8M9.4 6.4C9.4 4.8 10.2 4 12 4C13.8 4 14.6 4.8 14.6 6.4M6.6 7.2L7.6 19C7.7 19.8 8.3 20.2 9 20.2L15 20.2C15.8 20.2 16.3 19.8 16.4 19L17.4 7.4M10.2 10.4L10.4 16.8M13.8 10.4L13.6 16.8'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' d='M4.6 6.6C9.4 6.2 14.6 6.2 19.4 6.8M9.4 6.4C9.4 4.8 10.2 4 12 4C13.8 4 14.6 4.8 14.6 6.4M6.6 7.2L7.6 19C7.7 19.8 8.3 20.2 9 20.2L15 20.2C15.8 20.2 16.3 19.8 16.4 19L17.4 7.4M10.2 10.4L10.4 16.8M13.8 10.4L13.6 16.8'/%3E%3C/svg%3E") center/contain no-repeat}
+/* Soul Passage's Adjust (Speed, Land, Time): the picker's own drawn choices (as Graphics). A name that wraps (Above the clouds,
+   Forest of giants) keeps its drawing on its neighbours' line and its first line level with theirs; Reset sits clear below. */
+.rd .ch-settings-dock .cz-mega-adjust .cz-choice{align-content:start}
+.rd .ch-settings-dock .cz-mega-adjust strong{text-wrap:balance}
+.rd .ch-settings-dock .cz-mega-adjust+.rd-text-button{margin-top:12px}
+/* An installed thing's row in More > Features (Use, Reset to how it came, Remove; Soul Passage once downloaded): its name keeps
+   a readable width and the three controls go under it when the column is narrow, instead of the name breaking letter by letter. */
+.rd .ch-settings-dock .ap-row:has([data-remove-pack]){flex-wrap:wrap;row-gap:2px}
+.rd .ch-settings-dock .ap-row:has([data-remove-pack]) .ap-t{flex:1 1 150px;min-width:150px;overflow-wrap:normal}
+@media (prefers-reduced-motion:reduce){.rd .cz-mega-line .mp-done,.rd .ch-settings-dock .cz-mega .cz-choice-art img{transition:none!important}}

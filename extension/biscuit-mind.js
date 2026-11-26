@@ -25,6 +25,7 @@
    [/ (?:hows|how s) /g,' how is '],
    [/ (?:ive|i ve) /g,' i have '],
    [/ (?:tmrw|tmr|tmw|tomo|2moro|2mrw) /g,' tomorrow '],
+   [/ (today|tonight|tomorrow|tmrw)s /g,' $1 '],
    [/ (?:tn|2nite|tonite) /g,' tonight '],
    [/ (?:hw|hmwk|homewrk) /g,' homework '],
    [/ (?:rn|atm) /g,' right now '],
@@ -307,7 +308,7 @@
    ['inbox',c=>c.card('navigate',[],{tab:'messages'},'Inbox.')],
    ['calculator',c=>c.card('none',[],{},'Open Tools > Calculator.',{ui:{path:['Tools','Calculator']}})]
  ];
- const R10_REFUSE=/^ (?:(?:can|could|will|would) (?:you|u) (?:just |please )?|please |pls |just |(?:i need|i want) (?:you|u) to )?(?:write|do|finish|fill (?:in|out)|complete|take|answer|solve) (?:the |my |this |all (?:the |my )?)?(?:\S+ ){0,3}?(?:for me|essay|dbq|write ?up|lab report|report|worksheet|discussion post|quiz|test|exam|hw|homework|problems?|questions?|assignment|paper|project)(?: for me)?(?: please| pls| now)? $| (?:if you just|can you just|just) (?:write|do|finish) (?:the |my |this )?/;
+ const R10_REFUSE=/^ (?:(?:can|could|will|would) (?:you|u) (?:just |please )?|please |pls |just |(?:i need|i want) (?:you|u) to )?(?:write|do(?! (?:i|we|you|u) )|finish|fill (?:in|out)|complete|take|answer|solve) (?:the |my |this |all (?:the |my )?)?(?:\S+ ){0,3}?(?:for me|essay|dbq|write ?up|lab report|report|worksheet|discussion post|quiz|test|exam|hw|homework|problems?|questions?|assignment|paper|project)(?: for me)?(?: please| pls| now)? $| (?:if you just|can you just|just) (?:write|do|finish) (?:the |my |this )?/;
  const R10_ERRAND=/ (?:post (?:this|it|that) (?:on|to) (?:my )?(?:insta|instagram|tiktok|snap|snapchat|twitter|x|facebook)|book (?:a |an |me a |me an )?(?:dentist|doctor|haircut|appointment|table|flight)|order (?:me )?(?:an? )?(?:uber|lyft|ride|food|pizza|coffee)|score of the (?:game|match)|who won the (?:game|match)|weather (?:today|tomorrow|tonight)) /;
  const R10_RULES=/ (?:(?:give|add) me (?:\d+ )?(?:extra credit|free) points|extra credit points|make my (?:late|missing) \S+ (?:say|look|show) (?:on time|submitted|done)|(?:delete|remove|erase|hide) (?:all )?my (?:missing|late|zero) (?:assignments|work|grades)|change (?:my )?(?:late|missing) .* to on time) /;
  // T2 (2026-11-16): a tool by its name, and the tests ahead. General readings over the words a line is made of; the
@@ -341,7 +342,7 @@
     fields={tool:t.tool,...(t.mode?{mode:t.mode}:{})};
   const fname=id=>String((Array.isArray(c.s.features)?c.s.features.find(f=>f?.id===id)?.name:'')||{tools:'Quick open & study tools',gpa:'GPA calculator'}[id]),
     off=!t2On(c.s,'tools')?fname('tools'):t.tool==='gpa'&&!t2On(c.s,'gpa')?fname('gpa'):'';
-  if(off)return c.card('none',[],{},label+' is in '+path.join(' > ')+', and '+off+' is off. Turn it on in Make it yours > More.',{ui:{path:['Make it yours','More',off]}});
+  if(off)return c.card('none',[],{},label+' is in '+path.join(' > ')+', but '+off+' is off. Turn it on in Make it yours, under Settings.',{ui:{path:['Make it yours','Settings',off]}});
   if(where)return c.card('none',[],{},path.join(' > ')+'. Open it from the Tools button, or press Open.',{ui:{path},open:{label:'Open',intent:'navigate',fields}});
   return c.card('navigate',[],fields,(t.tool==='calculator'?'Open the '+label.toLowerCase():'Open '+label)+'.',{tool:{...fields,label}});
  }
@@ -686,6 +687,315 @@
     w&&!T2_SWITCH_FILLER.has(w));
   return rest.length?null:{...best,on};
  }
+ // biscuit-42: Monday to Sunday for "this week" in due-week and how-much (t2Window)
+ /* biscuit-42 (2026-11-22): typed slips mended before anything reads the line. A word Biscuit does not know that is one
+    slip from a school word or a word of the student's own course names and work titles (a letter dropped, added or two
+    swapped; any one letter in a 7-letter word, two in a longer one; "ph" typed as "f") becomes that word, when exactly one
+    word fits best and it starts the same; a known word with an ending (graded, plans) stays. Notes, reminders, tasks and quoted names keep what was typed. */
+ const MEND_CORE='homework assignment assignments worksheet project projects reading readings essay essays quiz quizzes test tests exam exams midterm midterms final finals report reports presentation presentations notes grade grades score scores points today tonight tomorrow yesterday week weekend weekly what when where which whats monday tuesday wednesday thursday friday saturday sunday announcement announcements missing late overdue upcoming schedule plan planner focus timer break remind reminder calendar inbox message messages teacher class classes course courses syllabus module modules files problems practice chapter vocab history english spanish french german latin chinese physics biology chemistry algebra geometry calculus statistics economics psychology government literature science math deadline deadlines tasks task lesson lessons discussion discussions turned submit submitted minutes hours study review due'.split(' ');
+ const MEND_KNOWN=new Set(('lab labs due hw tmrw pls thx about after again also always another anything around because before being better between both bring came come could does doing done down each even every first from give going good great have help here into just keep know last later left like little long look made make many maybe more most much must need never only other over please really right said same should show since some something still such sure take tell than thank thanks that their them then there these they thing things think those though through time took turn very want wants well were while will with work would year your yours form forms open ones once lets says start stop stay pass past best rest text wear hear near dear yeah okay hello hiii heyy name game home hope note vote less loss lost list cast fast paste taste team teams meet meat mean means mind kind find fine line lines life live love move mode fade face fact fair farm free tree three white write wrote right light night might fight sight tight dark mode theme clock hide shows sound sounds quiet volume today dont cant wont isnt didnt havent tasks done told tells else away sick tired bored hungry stressed cute joke horse pony biscuit companion mins hour hours days date dates were mark marks marked fail failing pass passing class '+MEND_CORE.join(' ')).split(' '));
+ // (a 4-letter slip only ever becomes a school word, and not when it could also be one of the student's own words: "gemo"
+ // may be geometry or geography, "sore" may be score or the course called Sorel, so neither is guessed)
+ const CORE_SET=new Set(MEND_CORE);
+ const MEND_FIX={du:'due',wen:'when',whn:'when',wht:'what',tmrow:'tomorrow',tmmrw:'tomorrow',todays:"today's",tonights:"tonight's",tomorrows:"tomorrow's",tmrws:"tmrw's"};
+ // (round 2) slips only read as one word in context: "whats dew today", "lat assignments" (when no course is called lat),
+ // and a day before "due" ("fri due" is "due fri")
+ const MEND_DAY='today|tonight|tomorrow|tmrw|tmr|mon|monday|tue|tues|tuesday|wed|weds|wednesday|thu|thur|thurs|thursday|fri|friday|sat|saturday|sun|sunday';
+ function mendContext(text,s){
+   let t=text;
+   t=t.replace(new RegExp('^(\\s*)('+MEND_DAY+')(\\s+)due\\b(?=\\s*[?!.]*\\s*$)','i'),'$1due$3$2');
+   if(/\bdew\b/i.test(t)&&new RegExp('\\b(?:what\\s*s|whats|what|when|whens|is|are|anything|stuff|'+MEND_DAY+'|this week|next week)\\b','i').test(t))t=t.replace(/\bdew\b/gi,'due');
+   if(/\blat\b(?=\s+(?:assignments?|work|hw|homework|stuff|things|ones|items|tasks)\b)/i.test(t)){
+     const L=load('ReserveBiscuitLanguage','./biscuit-language.js');
+     let r=null;
+     try{r=L?.resolveCourses?.('lat',s);}catch{r=null;}
+     if(!list(r?.matches).length)t=t.replace(/\blat\b(?=\s+(?:assignments?|work|hw|homework|stuff|things|ones|items|tasks)\b)/gi,'late');
+   }
+   return t;
+ }
+ const MEND_SKIP=/^\s*(?:note|notes|remind|reminder|add|task|todo|to do|write down|put|save|keep|rename|call|name|nickname)\b|[:"“”]|\b(?:remind|reminder|reminders|jot|write down|to do list|todo|to-do)\b|\b(?:make|take|add|write|save|keep|jot)\s+(?:me\s+)?(?:a\s+|this\s+|that\s+|the\s+)?(?:quick\s+)?notes?\b|\bnote\s+(?:that|to self|down)\b|\badd\b.*\b(?:to\s+(?:my\s+)?(?:list|todo|to do|tasks?|planner))\b/i;
+ const mendSquash=w=>w.replace(/ph/g,'f').replace(/ck/g,'k').replace(/y/g,'i').replace(/(.)\1+/g,'$1');
+ function mendDistance(a,b){
+   const m=a.length,n=b.length;
+   if(Math.abs(m-n)>2)return 9;
+   const d=[];
+   for(let i=0;i<=m;i++){d[i]=[i];for(let j=1;j<=n;j++)d[i][j]=i?0:j;}
+   for(let i=1;i<=m;i++)
+     for(let j=1;j<=n;j++){
+       const cost=a[i-1]===b[j-1]?0:1;
+       d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+cost);
+       if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])d[i][j]=Math.min(d[i][j],d[i-2][j-2]+1);
+     }
+   return d[m][n];
+ }
+ function mendEnding(typed,word){
+   if(typed.startsWith(word))return typed!==word&&typed.slice(word.length).split('').every(ch=>ch===word.at(-1));
+   if(word.startsWith(typed))return typed.length>=6;
+   if(typed.length===word.length&&typed.slice(0,-1)===word.slice(0,-1))return false;
+   return true;
+ }
+ function mendFits(typed,word){
+   if(!mendEnding(typed,word)||typed.endsWith('s')&&word.endsWith('s')&&!mendEnding(typed.slice(0,-1),word.slice(0,-1)))return false;
+   if(mendSquash(typed)===mendSquash(word))return true;
+   if(typed[0]!==word[0])return false;
+   const len=typed.length,dist=mendDistance(typed,word);
+   if(len<=6)return dist===1&&(Math.abs(len-word.length)===1||len===word.length&&[...typed].sort().join('')===[...word].sort().join(''));
+   return dist<=(len>=8?2:1);
+ }
+ const mendCache=new WeakMap();
+ function mendWords(s){
+   if(s&&typeof s==='object'&&mendCache.has(s))return mendCache.get(s);
+   const own=new Set(),add=t=>{for(const w of String(t||'').toLowerCase().normalize('NFKD').replace(/[^a-z\s]+/g,' ').split(/\s+/))if(w.length>=4)own.add(w);};
+   for(const v of list(s?.courses)){add(v.name);add(v.shortName);add(v.nickname);}
+   for(const k of ['assignments','workItems','files','pages','announcements'])for(const v of list(s?.[k]))add(v.title||v.name);
+   const out={targets:[...new Set([...MEND_CORE.filter(w=>w.length>=4),...own])],known:new Set([...MEND_KNOWN,...own])};
+   if(s&&typeof s==='object')mendCache.set(s,out);
+   return out;
+ }
+ function mend(line,s){
+   const raw=String(line??'');
+   if(!raw.trim()||raw.length>160||MEND_SKIP.test(raw))return raw;
+   const text=mendContext(raw,s);
+   const {targets,known}=mendWords(s);
+   let changed=false;
+   const out=text.replace(/[A-Za-z]+/g,w=>{
+     const low=w.toLowerCase();
+     if(Object.hasOwn(MEND_FIX,low)){changed=true;return MEND_FIX[low];}
+     if(low.length<4||
+       known.has(low)||
+       [low.replace(/s$/,''),low.replace(/es$/,''),low.replace(/d$/,''),low.replace(/ed$/,''),low.replace(/ing$/,''),low.replace(/ing$/,'e'),low.replace(/er$/,''),low.replace(/ly$/,'')].some(x=>
+         x!==low&&known.has(x)))
+       return w;
+     const fit=targets.filter(t=>Math.abs(t.length-low.length)<=2&&mendFits(low,t));
+     if(low.length===4&&(fit.some(t=>!CORE_SET.has(t))||fit.some(t=>t.length!==4||[...t].sort().join('')!==[...low].sort().join(''))))return w;
+     const hits=fit.map(t=>[t,mendSquash(t)===mendSquash(low)?0:mendDistance(low,t)]),best=Math.min(...hits.map(h=>h[1])),top=hits.filter(h=>h[1]===best);
+     if(top.length!==1)return w;
+     changed=true;
+     return top[0][0];
+   });
+   return changed||text!==raw?out:raw;
+ }
+ /* biscuit-42: readings the job's student lines found missing. Each is a kind of thing students say, read from its
+    words; every rule above them still answers first. */
+ const gradesOn=s=>s.showGrades!==false&&s.settings?.showGrades!==false&&s.privacy?.grades!==false&&(s.showGrades===true||s.settings?.showGrades===true);
+ const GRADES_OFF='Show grades is off.';
+ // a word of the line that belongs to the named course (its name, short name, code, a start of one, or an alias of it)
+ function r42CourseWord(course,w,s){
+   if(/^(?:ap|ib|cp|h|hon|honors|\d+|i|ii|iii|iv|v|class|course)$/.test(w))return true;
+   const names=[course.name,course.shortName,course.nickname,course.course_code].filter(Boolean).join(' ').toLowerCase().replace(/[^a-z0-9]+/g,' ').split(' ').filter(Boolean);
+   if(names.includes(w))return true;
+   if(w.length>=3&&names.some(n=>n.length>=4&&n.startsWith(w)))return true;
+   const L=load('ReserveBiscuitLanguage','./biscuit-language.js');
+   let r=null;
+   try{r=L?.resolveCourses?.(w,s);}catch{r=null;}
+   return !!r&&!r.ambiguous&&String(r.courseId)===String(course.id)&&byName(r);
+ }
+ // the course is named (its name, an abbreviation or its subject), not only found through words in its work's titles
+ const byName=r=>{const m=list(r?.matches).find(x=>String(x.courseId??x.id)===String(r.courseId));return !!m&&(m.nameMatch>0||m.abbreviation>0||m.subject>0);};
+ // a course named alone, with or without "open", "go to", "class", "page" or "modules"
+ const R42_NOT_COURSE=/ (?:homework|hw|assignments?|work|stuff|tasks?|due|grades?|score|tests?|quiz|quizzes|exams?|essays?|labs?|projects?|reading|notes?|syllabus|teacher|files?|slides|announcements?|anncs?|discussion|rubric|plan|focus|timer|when|what|how|why|did|is|are|do|does|can|should|remind|mark|done|finished|help|study|review|practice|explain|hide|unhide|rename|colou?r|nickname|scene|theme|dark|light|mode|wallpaper|banner) /;
+ // subject words said alone; with no such course Biscuit says so instead of opening another one
+ const R42_SUBJECTS=new Set('chem chemistry bio biology physics phys calc calculus precalc algebra alg geometry geom stats statistics history hist apush english eng lit literature spanish span french german latin chinese mandarin japanese econ economics psych psychology gov government civics art music band choir orchestra drama theater theatre health cs compsci coding programming engineering robotics anatomy anat astronomy astro apes apbio apchem philosophy religion theology sociology journalism photography ceramics'.split(' '));
+ function r42Course(q,line,s){
+  const m=/^ (?:(?:open|go to|take me to|show me|show|pull up|bring up|switch to|get me to|jump to|head to) )?(?:my |the )?(.+?)(?: (?:class|course|page|homepage|home page|modules|module page|tab))?(?: please)? $/.exec(q);
+  if(!m)return null;const rest=' '+m[1].trim()+' ',words=rest.trim().split(' ');if(R42_NOT_COURSE.test(rest)||words.length>4)return null;
+  const L=load('ReserveBiscuitLanguage','./biscuit-language.js');let r=null;try{r=L?.resolveCourses?.(rest.trim(),s);}catch{r=null;}
+  if(r&&!r.ambiguous&&r.courseId){
+    const course=list(s.courses).find(v=>String(v.id)===String(r.courseId));
+    return course&&byName(r)&&words.every(w=>r42CourseWord(course,w,s))?{course}:null;
+  }
+  // a subject the student does not take ("chem" with no chemistry course): said plainly, no other course opened
+  if(r&&r.recognized&&!list(r.matches).length&&words.length===1&&R42_SUBJECTS.has(words[0])&&!misspeltCourse(rest,s))return {missing:rest.trim()};
+  return null;
+ }
+ function r42CourseAnswer(m,c){
+  if(m.missing)return say(c,'I do not see a '+m.missing+' course in your Canvas courses.');
+  const course=m.course,
+    now=stamp(c.s.now)||Date.now(),
+    rows=open(c.s).filter(v=>String(v.courseId)===String(course.id)&&(v.dueAt===null||v.dueAt>=now-7*DAY)).sort((a,b)=>(a.dueAt??Infinity)-(b.dueAt??Infinity)),
+    name=course.shortName||course.name,
+    first=rows[0],
+    when=first&&first.dueAt!==null?whyNow(first,c.s).replace(/^it /,'').replace(/^is /,''):'';
+  const said=first?name+': '+first.title+(when?', '+when:'')+'.'+(rows.length>1?' '+(rows.length-1)+' more after that.':''):'Nothing open in '+name+'.';
+  return c.card('navigate',[{id:String(course.id),title:course.name,kind:'course',courseId:String(course.id)},...rows.slice(0,2)],{tab:'course',courseId:String(course.id)},said);
+ }
+ // the days a line names: today, tomorrow, a weekday, this or next week (Monday to Sunday), the weekend
+ function r42Window(q,s){
+  if(/ (?:this |the )?weekend /.test(q)){
+    const cal=local(s),now=stamp(s.now)||Date.now();
+    if(!cal)return null;
+    const today=cal(now).day,
+      dow=new Date(today+'T12:00Z').getUTCDay(),
+      wall=(day,minute)=>load('CanvasHarnessAgentClock','./agent-clock.js')?.wall?.(day,minute,s.timeZone||'America/New_York'),
+      sat=dow===0?today:addDays(today,(6-dow+7)%7),
+      sun=dow===0?today:addDays(sat,1);
+    return {from:dow===6||dow===0?now:wall(sat,0),to:wall(addDays(sun,1),0),label:'this weekend',span:'weekend'};
+  }
+  if(!/ (?:today|tonight|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tue|tues|wed|weds|thu|thur|thurs|fri|sat|week|wk) /.test(q))return null;
+  const w=t2Window(q,s);return w.span==='ahead'?null:w;
+ }
+ const r42Day=(v,s)=>{
+   const now=stamp(s.now)||Date.now(),cal=local(s);
+   if(v.dueAt===null)return 'no due date';
+   const zone=s.timeZone||'America/New_York',
+     d=cal?Math.round((Date.parse(cal(v.dueAt).day+'T12:00Z')-Date.parse(cal(now).day+'T12:00Z'))/DAY):null,
+     day=v.dueAt<now?
+       'was due '+new Date(v.dueAt).toLocaleDateString('en-US',{timeZone:zone,weekday:'short',month:'short',day:'numeric'}):
+       d===0?'today':d===1?'tomorrow':new Date(v.dueAt).toLocaleDateString('en-US',{timeZone:zone,weekday:'short'});
+   return day+' '+clockText(v.dueAt,s);
+ };
+ const r42Name=(v,s)=>v.title+' ('+[courseName(v,s),r42Day(v,s)].filter(Boolean).join(', ')+')';
+ // one list answer: every row goes with the card (listRows), the sentence names the first three
+ function r42List(c,rows,lead,title,extra=''){
+   const three=rows.slice(0,3).map(v=>r42Name(v,c.s));
+   return c.card(
+     'find',
+     rows.slice(0,3),
+     rows.length===1?{itemId:rows[0].id,...(rows[0].courseId?{courseId:String(rows[0].courseId)}:{})}:{},
+     rows.length+
+       ' thing'+
+       (rows.length===1?'':'s')+
+       ' '+
+       lead+
+       ': '+
+       (three.length>1?three.slice(0,-1).join(', ')+(rows.length>3?', ':' and ')+three.at(-1):three[0])+
+       (rows.length>3?', and '+(rows.length-3)+' more':'')+
+       '.'+
+       extra,
+     {answerKind:'mind',listRows:rows,listTitle:title});
+ }
+ // work asked about as a list ("what hw do i have", "any homework tonight", "spanish assignments", "is anything due fri", "due dates for english")
+ const R42_WORK=/ (?:homework|assignments?|work|stuff|tasks?|things|to do|todo|deadlines?|due dates?|anything due|anything else due) /,R42_NOT_LIST=/ (?:plan|planning|schedule|mark|marked|done|finish|finished|complete|completed|remind|reminder|note|add|focus|timer|start|move|push|bookmark|hide|explain|help|study|catch up|submit|submitted|turn in|turned in|hand in|handed in|upload|grade|grades|score|late|missing|overdue|behind|how much|how many|how long|first|should|forget|forgot|miss|missed|why|where|policy|count|counts|group|partner|partners|calendar|new|stressed|hate|can not|lot|too) /,R42_ASK=/ (?:what|which|any|anything|show|list|see|all|got|have|left|pending|remaining|due dates?|deadlines?|anything due) /,R42_LIST_CUE=/ (?:what|which|any|anything|show|list|all|pending|left|remaining|due dates?|deadlines?|tonight|today|tomorrow|week|wk|weekend|sunday|monday|tuesday|wednesday|thursday|friday|saturday) /;
+ const R42_FILLER=new Set('what which have show list that this with from left open pending remaining tonight today tomorrow week weekend homework assignment assignments work stuff tasks task things thing there anything else about please class course classes courses sunday monday tuesday wednesday thursday friday saturday next still need right does dates date deadline deadlines your mine all for my the in on do i is are any due got some todo you see me up'.split(' '));
+ function r42WorkList(q,line,c){
+  if(!R42_WORK.test(q)||R42_NOT_LIST.test(q))return null;const course=courseOfLine(line,c.s);if(!R42_ASK.test(q))return null; // ("tmrw hw", "hw tonight": the engine's day answer; a list is asked for)
+  // "geom hw", "bio hw pls", "chem hw due": a course's homework named short opens that homework (the round 6 reading); a list needs a list word
+  if(course&&!R42_LIST_CUE.test(q))return null;
+  // "hw due fri", "whats due tmrw": the day's due list stays the engine's (all work due that day, tests too)
+  if(/ due /.test(q)&&/ (?:today|tonight|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tue|tues|wed|weds|thu|thur|thurs|fri|sat) /.test(q)&&!/ (?:anything due|anything else due|due dates?) /.test(q))return null;
+  if(q.trim().split(' ').some(w=>w.length>=3&&!R42_FILLER.has(w)&&!/^\d+$/.test(w)&&!(course&&r42CourseWord(course,w,c.s))))return null;
+  // the line is a title ("homework for wednesday" when an item is called that): that item, not a list
+  const core=q.replace(/^ (?:(?:what is|what are|which|show me|show|open|find|any|is there|do i have|what|my|the) )+/,' ').trim();
+  if(core.split(' ').length>=2&&open(c.s).some(v=>(' '+v.title.toLowerCase().replace(/[^a-z0-9]+/g,' ')+' ').includes(' '+core+' ')))return null;
+  return {course,win:r42Window(q,c.s)};
+ }
+ function r42WorkAnswer(m,c){
+  const now=stamp(c.s.now)||Date.now(),w=m.win,course=m.course,where=course?' in '+(course.shortName||course.name):'';
+  let rows=open(c.s).filter(v=>!course||String(v.courseId)===String(course.id));
+  // ("homework" means all of it, tests and quizzes too, as the due lists count it)
+  const late=rows.filter(v=>v.dueAt!==null&&v.dueAt<now);
+  rows=w?
+    rows.filter(v=>v.dueAt!==null&&v.dueAt>=w.from&&v.dueAt<w.to):
+    course?rows.filter(v=>v.dueAt===null||v.dueAt>=now-7*DAY):rows.filter(v=>v.dueAt!==null&&v.dueAt>=now&&v.dueAt<now+7*DAY);
+  rows.sort((a,b)=>(a.dueAt??Infinity)-(b.dueAt??Infinity));
+  const span=w?(w.span==='day'?(w.label==='today'?(/ tonight /.test(c.q)?' tonight':' today'):w.label==='tomorrow'?' tomorrow':' on '+w.label):' '+w.label):course?'':' in the next 7 days',
+    lateNote=!w&&!course&&late.length?' Also '+late.length+' late.':'';
+  if(!rows.length){
+    const next=open(c.s).filter(v=>(!course||String(v.courseId)===String(course.id))&&v.dueAt!==null&&v.dueAt>=(w?w.to:now)).sort((a,b)=>a.dueAt-b.dueAt)[0];
+    return next?
+      c.card('find',[next],{itemId:next.id,...(next.courseId?{courseId:String(next.courseId)}:{})},'Nothing due'+span+where+'. Next: '+r42Name(next,c.s)+'.',{answerKind:'mind'}):
+      say(c,'Nothing due'+span+where+'.');
+  }
+  return r42List(c,rows,course&&!w?'open'+where:'due'+span+where,course&&!w?(course.shortName||course.name)+': what is left':'Due'+span+where,lateNote);
+ }
+ // what one piece of work got: "what did i get on the collisions lab", "my score on quiz 7a"
+ function r42GradeOf(q,line,s){
+  if(!/ (?:what did i get|what i got|what grade did i get|what score did i get|my score|my grade|my mark|how did i do|how many points did i get|score|grade|points) (?:on|for) /.test(q)&&!/ did i get on /.test(q))return null;
+  const words=q.replace(/^.*? (?:on|for) /,' ').trim().split(' ').filter(w=>w.length>=3&&!/^(?:the|my|this|last|that)$/.test(w));if(!words.length)return null;
+  const rows=list(s.grades).filter(g=>!/^course-grade-/.test(String(g.id))&&g.kind!=='course-grade'&&Number.isFinite(Number(g.score??g.value))),
+    title=g=>' '+String(g.title||g.name||'').toLowerCase().replace(/[^a-z0-9]+/g,' ')+' ',
+    hits=rows.filter(g=>words.every(w=>title(g).includes(' '+w)));
+  return hits.length===1?{row:hits[0]}:null;
+ }
+ function r42GradeAnswer(m,c){
+   if(!gradesOn(c.s))return c.card('none',[],{},GRADES_OFF);
+   const g=m.row,
+     score=Number(g.score??g.value),
+     points=Number(g.points??g.pointsPossible),
+     name=String(g.title||g.name||''),
+     value=Number.isFinite(points)&&points>0?score+' / '+points+' ('+Math.round(1000*score/points)/10+'%)':String(score);
+   return c.card(
+     'find',
+     [{...g,kind:'grade'}],
+     {entryId:String(g.id),itemId:String(g.id),kind:'grade',...(g.courseId?{courseId:String(g.courseId)}:{})},
+     name+': '+value+'.',
+     {answer:{label:name,value}});
+ }
+ // which course has the best or the lowest grade
+ const R42_MISSED=/ (?:did i (?:forget|miss|skip|not) (?:to )?(?:turn|hand|submit|do)|(?:havent|have not|did not|didnt|not yet|never) (?:turned|handed|submitted|turn|hand|submit) |(?:what|which|anything) (?:did i|have i) (?:not |never )?(?:forget|forgot|forgotten|miss|missed|skip|skipped) |what (?:havent|have not|did not|didnt) i (?:turned|turn|handed|hand|submitted|submit|done|do) )/,R42_MISSED_WORDS=new Set('did i forget forgot forgotten miss missed skip skipped not to turn hand submit do in anything everything something stuff work homework assignments assignment what which have havent didnt never yet turned handed submitted done is are there any yet'.split(' '));
+ const R42_RANK=/ (?:lowest|highest|best|worst|top|weakest|strongest|bottom) (?:grade|grades|class|classes|course|courses|subject|score|mark|marks) | (?:which|what) (?:class|course|subject) (?:is|has|am i|do i have|s|have i got) .*(?:best|worst|lowest|highest|weakest|strongest|top|bottom) | (?:doing|do) (?:the )?(?:best|worst|lowest|highest) (?:in|at) /;
+ function r42Ranked(s){
+   return list(s.courses).map(v=>{
+     const g=list(s.grades).find(x=>String(x.id)==='course-grade-'+v.id||x.kind==='course-grade'&&String(x.courseId)===String(v.id)),n=Number(g?.value??g?.score??v.score);
+     return Number.isFinite(n)?{v,n,g}:null;
+   }).filter(Boolean).sort((a,b)=>a.n-b.n);
+ }
+ function r42RankAnswer(m,c){
+   if(!gradesOn(c.s))return c.card('none',[],{},GRADES_OFF);
+   const all=r42Ranked(c.s);
+   if(!all.length)return say(c,'I do not have course grades to compare yet.');
+   const low=/ (?:lowest|worst|weakest|bottom) /.test(c.q),
+     pick=low?all[0]:all.at(-1),
+     name=pick.v.shortName||pick.v.name,
+     item=pick.g?{...pick.g,kind:'course-grade'}:{id:'course-grade-'+pick.v.id,title:pick.v.name,courseId:String(pick.v.id),value:pick.n,kind:'course-grade'};
+   return c.card(
+     'find',
+     [item],
+     {entryId:String(item.id),itemId:String(item.id),kind:'grade',courseId:String(pick.v.id)},
+     (low?'Lowest':'Highest')+': '+name+', '+pick.n+'%.',
+     {answer:{label:(low?'Lowest: ':'Highest: ')+name,value:pick.n+'%'}});
+ }
+ // the tests and quizzes on a day: "what should i study for friday"
+ function r42StudyFor(q){const m=/ (?:what|which) (?:should|do|must|have) i (?:need to |have to )?(?:study|prep|prepare|review|revise) (?:for )?(?:on )?(today|tonight|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat|this week|next week) /.exec(q);return m?{when:' '+m[1]+' '}:null;}
+ function r42StudyAnswer(m,c){
+   const w=t2Window(m.when,c.s),
+     tests=t2Tests(c.s).filter(v=>v.dueAt!==null&&v.dueAt>=w.from&&v.dueAt<w.to).sort((a,b)=>a.dueAt-b.dueAt),
+     span=w.span==='day'?(w.label==='today'||w.label==='tomorrow'?' '+w.label:' on '+w.label):' '+w.label;
+   if(tests.length)
+     return c.card(
+       'find',
+       tests.slice(0,3),
+       tests.length===1?{itemId:tests[0].id}:{},
+       (tests.length===1?'1 test':tests.length+' tests')+span+': '+tests.slice(0,3).map(v=>r42Name(v,c.s)).join(' and ')+'.',
+       {answerKind:'mind',listRows:tests,listTitle:'Tests'+span});
+   const due=open(c.s).filter(v=>v.dueAt!==null&&v.dueAt>=w.from&&v.dueAt<w.to).sort((a,b)=>a.dueAt-b.dueAt);
+   return due.length?r42List(c,due,'due'+span,'Due'+span,' No tests'+span+'.'):say(c,'No tests and nothing due'+span+'.');
+ }
+ // announcements, all of them or one course's
+ function r42Annc(q,line,s){
+   if(!/ (?:announcements|anncs|announcments|annoucements) /.test(q)||/ (?:hide|turn|off|setting|settings|module|widget|mark|delete|remove|reply|post|write|how|where|count|new|unread|latest|recent) /.test(q))return null;
+   const course=courseOfLine(line,s);
+   return q.trim().split(' ').every(w=>/^(?:show|me|open|check|see|read|any|get|my|the|all|course|class|from|in|for|please|announcements?|anncs?|announcments?|annoucements?|are|there|what|is)$/.test(w)||!!course&&r42CourseWord(course,w,s))?
+     {course}:
+     null;
+ }
+ function r42AnncAnswer(m,c){
+   const now=stamp(c.s.now)||Date.now(),
+     all=list(c.s.announcements).filter(v=>!m.course||String(v.courseId)===String(m.course.id)).sort((a,b)=>(stamp(b.postedAt)||0)-(stamp(a.postedAt)||0)),
+     recent=all.filter(v=>(stamp(v.postedAt)||0)>=now-30*DAY),
+     rows=(recent.length?recent:all).slice(0,8).map(v=>({...v,kind:'announcement'})),
+     where=m.course?' in '+(m.course.shortName||m.course.name):'';
+   if(!rows.length)return say(c,'No announcements'+where+'.');
+   return c.card('find',rows.slice(0,5),rows.length===1?{itemId:String(rows[0].id)}:{},rows.length+' announcement'+(rows.length===1?'':'s')+where+'. Newest: '+rows[0].title+'.',{answerKind:'mind'});
+ }
+
+ // round 2: one piece of work a yes/no question names ("is the dbq due this week"): its title holds every other word
+ const R42_ASKED_STOP=new Set('is are was will be it its the my a an due this next week wk weekend today tonight tomorrow monday tuesday wednesday thursday friday saturday sunday on for by still yet already'.split(' '));
+ function r42AskedItem(q,s){
+   const words=q.trim().split(' ').filter(w=>w.length>=3&&!R42_ASKED_STOP.has(w));
+   if(!words.length)return null;
+   const fit=(w,t)=>w===t||w.length>=4&&t.length>=4&&(t.startsWith(w.slice(0,5))||w.startsWith(t.slice(0,5)));
+   const hits=open(s).filter(v=>v.dueAt!==null&&words.every(w=>v.title.toLowerCase().split(/[^a-z0-9]+/).some(t=>fit(w,t))));
+   return hits.length===1?hits[0]:null;
+ }
+ // the engine's repair of a wrong single pick: the days a line names, and that window's due list
+ function dueWindow(line,s){try{return r42Window(spell(mend(line,s)),s);}catch{return null;}}
+ function dueList(line,s){
+   const q=spell(mend(line,s)),w=r42Window(q,s);
+   if(!w)return null;
+   const mk=(action,items,fields,message,extra={})=>({action,items:list(items).slice(0,3),message,next:{action,fields:fields||{},label:'Open'},...extra});
+   return r42WorkAnswer({win:w,course:null},{card:mk,s,q,line:String(line)});
+ }
  const RULES=[
   {id:'crisis',when:q=>/ (?:kill myself|want to die|wanna die|end my life|end it all|hurt myself|harm myself|suicid|do not want to (?:be here|live|exist)|no reason to live) /.test(q),answer:(m,c)=>say(c,'I am really glad you told me. Please talk to someone right now: a parent, a counselor, or call or text 988 (Suicide and Crisis Lifeline, US). You matter, and you do not have to carry this alone.')},
   // T2: a tool named alone or with open / show / use opens it; "where is" / "how do i open" says its place first.
@@ -709,14 +1019,20 @@
     const [skill]=R9_SKILLS.find(([,re])=>re.test(c.q)),on=!/ (?:off|disable|stop|mute|no more) /.test(c.q);
     return c.card('skill',[],{skill,on},(on?'Turn on ':'Turn off ')+c.q.match(R9_SKILLS.find(([k])=>k===skill)[1])[0].trim()+'.');
   }},
-  {id:'r9-inbox',when:q=>/^ (?:open |go to |show (?:me )?|check )?(?:my |the )?(?:inbox|messages|msgs|conversations|canvas inbox|canvas messages)(?: page| tab)?(?: please)? $/.test(q)&&!/^ open (?:the )?messages /.test(q),answer:(m,c)=>c.card('navigate',[],{tab:'messages'},'Inbox.')},
+  {id:'r9-inbox',when:q=>/^ (?:open |go to |show (?:me )?|check |any |any new |got any |do i have any |new |unread )?(?:my |the |new |unread )?(?:inbox|messages|msgs|conversations|canvas inbox|canvas messages)(?: page| tab)?(?: please)? $/.test(q)&&!/^ open (?:the )?messages /.test(q),answer:(m,c)=>c.card('navigate',[],{tab:'messages'},'Inbox.')},
   {id:'r9-materials',when:q=>/^ (?:open |go to |show (?:me )?)?(?:the |my )?(?:materials|materials (?:tab|page|library)|files (?:tab|page)|class files|course files tab)(?: please)? $/.test(q),answer:(m,c)=>c.card('navigate',[],{tab:'materials'},'Materials.')},
-  {id:'r9-scene-names',when:q=>/^ (?:use |switch to |turn on |put on )?(?:the )?(?:starfield|starry night|under the sea|blueprint|maple wind|thanksgiving|christmas|xmas)(?: theme| scene)?(?: please)? $/.test(q),answer:(m,c)=>{
+  // Soul Passage's speed: the lever on the laptop's screen in the room (also Make it yours > Use from Soul Passage > Train speed)
+  {
+    id:'r9-train',
+    when:q=>/ (?:the train|train cabin|window seat|soul passage|train speed|train (?:faster|slower|speed|go faster|go slower)|(?:faster|slower) train) /.test(q)&&/ (?:faster|slower|speed|fast|slow|stop|stopped|pause|go|cruise|moving|brake) /.test(q.replace(/ window seat | soul passage /g,' '))&&!/ (?:(?:use|turn on|switch to|set|choose|pick) (?:the )?(?:train cabin|window seat|soul passage)|(?:train cabin|window seat|soul passage) (?:theme|scene)|no scene) /.test(q),
+    answer:(m,c)=>c.card('none',[],{},'Open Soul Passage > laptop screen > Train speed.',{ui:{path:['Soul Passage','Laptop screen','Train speed']}})
+  },
+  {id:'r9-scene-names',when:q=>/^ (?:use |switch to |turn on |put on )?(?:the )?(?:starfield|starry night|under the sea|blueprint|maple wind|maple frost|thanksgiving|christmas|xmas|train cabin|window seat|soul passage|(?:winter|frost|snow) (?:theme|scene))(?: theme| scene)?(?: please)? $/.test(q)||/^ winter(?: please)? $/.test(q),answer:(m,c)=>{
     const v=/ starfield /.test(c.q)?
       'stars':
       / starry /.test(c.q)?
         'starry':
-        / sea /.test(c.q)?'sea':/ blueprint /.test(c.q)?'blueprint':/ maple /.test(c.q)?'maple':/ christmas | xmas /.test(c.q)?'christmas':'thanksgiving';
+        / sea /.test(c.q)?'sea':/ blueprint /.test(c.q)?'blueprint':/ winter | maple frost | frost | snow /.test(c.q)?'winter':/ maple /.test(c.q)?'maple':/ christmas | xmas /.test(c.q)?'christmas':/ train | window seat | soul passage /.test(c.q)?'train':'thanksgiving';
     return c.card('setting',[],{key:'sceneTheme',value:v},'Scene · '+c.q.trim().replace(/^(?:use|switch to|turn on|put on) /,'').replace(/^the /,'').replace(/ (?:theme|scene|please)$/,''));
   }},
   {
@@ -820,7 +1136,7 @@
     const preset=/ lite /.test(c.q)?'lite':'full';
     return c.card('features',[],{preset},'Features · '+preset);
   }},
-  {id:'r10-commands',when:q=>/ (?:what are you (?:even )?for|(?:your|ur) commands|what commands|list (?:your|ur|you are) commands|you are commands|what do you even do|what are your commands) /.test(q),answer:(m,c)=>say(c,'Try "plan tonight", "I have to read 30 pages tomorrow", "what should I do first", "soccer at 5 tomorrow, plan around it", or a course name.')},
+  {id:'r10-commands',when:q=>/ (?:what are you (?:even )?for|(?:your|ur) commands|what commands|list (?:your|ur|you are) commands|you are commands|what do you even do|what are your commands) /.test(q),answer:(m,c)=>say(c,'Try "hw?", "what\u2019s due tmrw", "plan tonight" or a course name.')},
   {id:'r10-undo',when:q=>/^ (?:wait |oops |no |ugh )?(?:undo|take (?:that|it) back|reverse (?:that|it)|revert(?: that)?|go back)(?: that| it| the| last| thing| my| change)*(?: please| pls)? $/.test(q),answer:(m,c)=>c.card('undo',[],{},'Undo last change')},
   {id:'r10-it-done',when:q=>/^ (?:ok |okay |yeah )?(?:i am|im) (?:done|finished) with (?:it|that|this)(?: one)? $/.test(q),answer:(m,c)=>{
     const v=lastOf(c);
@@ -1004,7 +1320,7 @@
   }},
   {id:'small-talk',when:q=>/^ (?:how (?:are you|is it going)|what is up|sup|hows life|you good|how you doing) $/.test(q),answer:(m,c)=>say(c,['Doing well. What are you working on?','Good, thanks. Anything on your mind?'][c.turn%2])},
   {id:'who',when:q=>/^ (?:what are you|are you (?:a )?(?:horse|pony|ai|real)) $/.test(q),answer:(m,c)=>say(c,'I am '+c.name+'. I plan your time, keep your list, and find anything in Canvas.')},
-  {id:'can-do',when:q=>/^ (?:what can you do|what do you do|how do you work|how do i use you|what can i ask(?: you)?) $/.test(q),answer:(m,c)=>say(c,'Try "plan tonight", "I have to read 30 pages tomorrow", "what should I do first", "soccer at 5 tomorrow, plan around it", or a course name.')},
+  {id:'can-do',when:q=>/^ (?:what can you do|what do you do|how do you work|how do i use you|what can i ask(?: you)?) $/.test(q),answer:(m,c)=>say(c,'Try "hw?", "what\u2019s due tmrw", "plan tonight" or a course name.')},
   {id:'good-night',when:q=>/^ (?:good ?night|gn|night|going to bed|bye|goodbye|see you|cya) $/.test(q),answer:(m,c)=>say(c,/night|gn|bed/.test(m[0]||c.q)?'Good night. Sleep well.':'See you.')},
   {id:'good-morning',when:q=>/^ (?:good morning|morning|gm) $/.test(q),answer:(m,c)=>{const top=ranked(c.s)[0];return say(c,'Good morning.'+(top?' First up: '+top.title+'.':''));}},
   {id:'joke',when:q=>/ (?:tell me a joke|say something funny|make me laugh|joke) $/.test(q),answer:(m,c)=>say(c,['Why did the student eat their homework? The teacher said it was a piece of cake.','I would tell you a chemistry joke, but I know I would get no reaction.','Parallel lines have so much in common. It is a shame they will never meet.','I tried to study on a horse once. It was a stable environment.'][c.turn%4])},
@@ -1037,8 +1353,8 @@
       c.card('focus',[],{minutes:10},'Try ten minutes on anything. Starting is the hard part.');
   }},
   // one word lines: what a student types when they are in a hurry
-  {id:'bare-next',when:(q,line,c)=>/^ (?:next|todo|to do|to-do|my list|list|homework|assignments|work|tasks|stuff|hw) $/.test(q)&&fresh(c)&&open(c.s).length>1,answer:(m,c)=>{
-    if(c.q===' next ')return nextUp(c.s,c);
+  {id:'bare-next',when:(q,line,c)=>/^ (?:my |any )?(?:next|todo|to do|to-do|my list|list|homework|assignments|work|tasks|stuff|hw)(?: please| now| right now| again)? $/.test(q)&&fresh(c)&&open(c.s).length>1,answer:(m,c)=>{
+    if(/^ (?:my |any )?next(?: please| now| right now| again)? $/.test(c.q))return nextUp(c.s,c);
     const rows=ranked(c.s),top=rows[0];
     if(!top)return say(c,'Nothing on your list right now.');
     return c.card('plan',rows.slice(0,3),{local:true,line:'plan tonight'},top.title+' is next, because '+whyNow(top,c.s)+'.'+(rows[1]?' Then '+rows.slice(1,3).map(v=>v.title).join(', then ')+'.':''));
@@ -1268,15 +1584,29 @@
       hit=open(c.s).map(v=>({v,n:words.filter(w=>v.title.toLowerCase().includes(w)).length})).sort((a,b)=>b.n-a.n)[0];
     return hit?.n?c.card('open',[hit.v],{itemId:hit.v.id},'About '+length(hit.v.minutes)+', my guess. Tell me if yours takes longer and I will remember.'):null;
   }},
-  {id:'due-week',when:q=>/ (?:what is )?due (?:this|next) week /.test(q)||/ what do i have (?:this|next) week /.test(q),answer:(m,c)=>{
+  {id:'r42-is-due',when:(q,line,c)=>/^ (?:is|are|was|will) /.test(q)&&/ due /.test(q)&&!!r42Window(q,c.s)&&r42AskedItem(q,c.s),answer:(m,c)=>{
+    const w=r42Window(c.q,c.s),
+      v=m,
+      inside=v.dueAt>=w.from&&v.dueAt<w.to,
+      zone=c.s.timeZone||'America/New_York',
+      day=new Date(v.dueAt).toLocaleDateString('en-US',{timeZone:zone,weekday:'long',month:'short',day:'numeric'});
+    return c.card(
+      'open',
+      [v],
+      {itemId:v.id,...(v.courseId?{courseId:String(v.courseId)}:{}),answerField:'dueAt',dueAt:v.dueAt},
+      (inside?'Yes. ':'No. ')+v.title+' is due '+day+' at '+clockText(v.dueAt,c.s)+'.',
+      {answer:{label:w.span==='week'?(w.label==='next week'?'Due next week?':'Due this week?'):w.span==='weekend'?'Due this weekend?':'Due '+w.label+'?',value:inside?'Yes':'No'}});
+  }},
+  {id:'due-week',when:q=>/ (?:what is )?due (?:this|next) week /.test(q)||/ what do i have (?:this|next) week /.test(q),answer:(m,c)=>{/* biscuit-42: Monday to Sunday (t2Window), not seven days from now */
     const now=stamp(c.s.now)||Date.now(),
       next=/ next week /.test(c.q),
-      from=next?now+7*DAY:now,
-      to=from+7*DAY,
+      w=t2Window(next?' next week ':' this week ',c.s),
+      from=w.span==='week'?w.from:next?now+7*DAY:now,
+      to=w.span==='week'?w.to:from+7*DAY,
       rows=open(c.s).filter(v=>v.dueAt!==null&&v.dueAt>=from&&v.dueAt<to).sort((a,b)=>a.dueAt-b.dueAt),
       day=v=>new Date(v.dueAt).toLocaleDateString('en-US',{timeZone:c.s.timeZone||'America/New_York',weekday:'short'});
     return rows.length?
-      c.card('find',rows.slice(0,3),{},rows.slice(0,5).map(v=>day(v)+': '+v.title).join('. ')+'.'+(rows.length>5?' And '+(rows.length-5)+' more.':''),{answerKind:'mind'}):
+      c.card('find',rows.slice(0,3),{},rows.slice(0,5).map(v=>day(v)+': '+v.title).join('. ')+'.'+(rows.length>5?' And '+(rows.length-5)+' more.':''),{answerKind:'mind',listRows:rows}):
       say(c,'Nothing due '+(next?'next':'this')+' week.');
   }},
   {id:'late-count',when:q=>/ (?:how many|is anything|anything|what is) .*(?:overdue|late|missing) /.test(q)&&!/ (?:policy|penalty|rules|accept|allowed|lose points) /.test(q),answer:(m,c)=>{
@@ -1408,7 +1738,7 @@
   }},
   {id:'wake',when:q=>/ wake me /.test(q),answer:(m,c)=>say(c,'I can not wake you from a browser tab. A phone alarm will do it.')},
   {id:'bigger',when:q=>/^ (?:make (?:it|this|everything|the text|text) (?:bigger|larger|smaller)|bigger text|smaller text|text size) $/.test(q),answer:(m,c)=>c.card('make-it-yours',[],{tab:'look'},'Text size is in Make it yours > Look.')},
-  {id:'go-away',when:q=>/^ (?:go away|hide|hide yourself|stop talking|be quiet|shut up|leave me alone) $/.test(q),answer:(m,c)=>c.card('setting',[],{key:'pet.enabled',value:false},'Hide the companion. Treats and level are kept.')},
+  {id:'go-away',when:q=>/^ (?:go away|hide|hide yourself|stop talking|be quiet|shut up|leave me alone) $/.test(q),answer:(m,c)=>c.card('setting',[],{key:'pet.enabled',value:false},'Hide the companion.')},
   {id:'it-how-long',when:q=>/^ how long (?:will|would|does|is|do) (?:it|that|this)(?: take| be)? $/.test(q),answer:(m,c)=>{
     const v=lastOf(c);
     return v?c.card('open',[v],{itemId:v.id},'About '+length(v.minutes)+', my guess.'):say(c,'Which one?');
@@ -1434,15 +1764,18 @@
   {id:'yes',when:q=>/^ (?:yes|yeah|yep|yup|sure|k|sounds good|ok fine|okay fine|fine) $/.test(q),answer:(m,c)=>say(c,'Okay. What do you want to do?')},
   {id:'no',when:q=>/^ (?:no|nope|nah|not now|maybe later|later|no thanks) $/.test(q),answer:(m,c)=>say(c,'Okay. I am here when you need me.')},
   {id:'thanks',when:q=>/^ (?:thanks|thank you|thx|ty|tysm|thanks biscuit|thank you so much) $/.test(q),answer:(m,c)=>say(c,'You are welcome.')},
-  {id:'huh',when:q=>/^ (?:what|huh|why|how|when|hmm|hm|idk|i do not know|ok then|umm|um|uh) $/.test(q),answer:(m,c)=>say(c,'Say a bit more? Try "plan tonight" or a course name.')},
+  {id:'huh',when:q=>/^ (?:what|huh|why|how|when|hmm|hm|idk|i do not know|ok then|umm|um|uh) $/.test(q),answer:(m,c)=>say(c,'I didn\u2019t catch that. Try a course name, "hw" or "plan tonight".')},
   // what should I do
   {id:'long-overdue',when:q=>/ (?:ignore|skip|forget|hide) (?:the |all |my )*(?:old|missing|overdue|late) /.test(q),answer:(m,c)=>say(c,'Older missing work already stays out of your plans. Say "catch up" when you want it back.')},
   {
     id:'catch-up',
-    when:q=>/ (?:catch(?:ing)? up|old homework|missing work|overdue work|late work) /.test(q)&&!/ (?:what|how many|how much) /.test(q),
+    when:q=>/ (?:catch(?:ing)? up|catch me up|caught up|old homework|missing work|overdue work|late work) /.test(q)&&!/ (?:what|how many|how much) /.test(q),
     answer:(m,c)=>c.card('plan',[],{local:true,line:c.line+' catch up',...(dayIn(c.q,c.s)?{date:dayIn(c.q,c.s)}:{})},'Plan your missing work.')
   },
-  {id:'hardest',when:q=>(/ (?:hardest|biggest|toughest|longest|worst|most important|heaviest|main) (?:thing|one|task|assignment|work|homework)?/.test(q)||/ (?:worth the most|worth most|most points) /.test(q))&&(/ (?:what|which|whats) /.test(q)||/^ (?:my |the )?(?:biggest|hardest|heaviest|longest|toughest) /.test(q)),answer:(m,c)=>{
+  {
+    id:'hardest',
+    when:q=>!R42_RANK.test(q)&&(/ (?:hardest|biggest|toughest|longest|worst|most important|heaviest|main) (?:thing|one|task|assignment|work|homework)?/.test(q)||/ (?:worth the most|worth most|most points) /.test(q))&&(/ (?:what|which|whats) /.test(q)||/^ (?:my |the )?(?:biggest|hardest|heaviest|longest|toughest) /.test(q)),
+    answer:(m,c)=>{
     const now=stamp(c.s.now)||Date.now(),
       soon=open(c.s).filter(v=>v.dueAt===null||v.dueAt>=now&&v.dueAt-now<=8*DAY),
       pts=v=>Number(v.points??v.pointsPossible)||0,
@@ -1456,7 +1789,8 @@
       week=c.q.includes('week')?7:c.q.includes('tomorrow')||c.q.includes('today')||c.q.includes('tonight')?2:7,
       cal=local(c.s),
       rows=open(c.s),
-      soon=rows.filter(v=>v.dueAt!==null&&v.dueAt>=now&&(week===2&&cal?cal(v.dueAt).day<=addDays(c.today,1):v.dueAt-now<=7*DAY)),
+      wk=t2Window(' this week ',c.s),
+      soon=rows.filter(v=>v.dueAt!==null&&v.dueAt>=now&&(week===2&&cal?cal(v.dueAt).day<=addDays(c.today,1):wk.span==='week'?v.dueAt<wk.to:v.dueAt-now<=7*DAY)),
       late=rows.filter(v=>v.dueAt!==null&&v.dueAt<now&&v.dueAt>=now-7*DAY),
       total=soon.reduce((n,v)=>n+v.minutes,0),
       span=week===7?'this week':'by tomorrow';
@@ -1468,7 +1802,7 @@
       (/ am i behind /.test(c.q)?(late.length?'A little. ':'No. '):/ (?:am i doing|how am i doing) /.test(c.q)?(late.length?'Mostly. ':'You are on track. '):'')+
         (soon.length?soon.length+' thing'+(soon.length===1?'':'s')+' due '+span+', about '+length(total)+' of work.':'Nothing due '+span+'.')+
         (late.length?' '+late.length+' from this past week still open.':''),
-      {answerKind:'mind'});
+      {answerKind:'mind',listRows:[...late,...soon]});
   }},
   {
     id:'have-time',
@@ -1489,7 +1823,7 @@
     }
     return c.card('focus',[fit[0]],{itemId:fit[0].id,minutes:fit[0].minutes},fit[0].title+' fits, about '+length(fit[0].minutes)+'.'+(fit[1]?' Or '+fit[1].title+'.':''));
   }},
-  {id:'what-now',when:q=>/ (?:what should i (?:do|work on|start)|what do i (?:do|work on|start)|what (?:is |to do )?next|where (?:do|should) i start|i do not know (?:where to start|what to do)|what first|help me (?:start|get started|decide)|what now|where to start|what is first|what should i (?:do )?(?:next|first|now)|what is worth doing|what is worth doing first|(?:which one|what) matters most|what is most urgent) /.test(q),answer:(m,c)=>{
+  {id:'what-now',when:q=>/ (?:what to do(?: now| next| first| tonight| today)?|what (?:can|could) i (?:do|work on|start)|what should i (?:do|work on|start)|what do i (?:do|work on|start)|what (?:is |to do )?next|where (?:do|should) i start|i do not know (?:where to start|what to do)|what first|help me (?:start|get started|decide)|what now|where to start|what is first|what should i (?:do )?(?:next|first|now)|what is worth doing|what is worth doing first|(?:which one|what) matters most|what is most urgent) /.test(q),answer:(m,c)=>{
     if(!/ (?:do|doing|work|start|begin|tackle|plan|schedule|study|focus|get started|decide) /.test(c.q))return nextUp(c.s,c);
     const when=dayIn(c.q,c.s);
     if(when&&when!==c.today)return c.card('plan',[],{local:true,line:'plan',date:when},'');
@@ -1619,6 +1953,30 @@
       c.card('navigate',[{id:String(course.id),title:course.name,kind:'course',courseId:String(course.id)},...rows.slice(0,2)],{tab:'course',courseId:String(course.id)},line):
       c.card('open',rows.slice(0,3),kind&&/ (?:when|due) /.test(c.q)&&first.dueAt!==null?{itemId:first.id,answerField:'dueAt',dueAt:first.dueAt}:{itemId:first.id},line);
   }},
+  // biscuit-42: the readings above, after every older rule
+  {id:'r42-course',when:(q,line,c)=>r42Course(q,line,c.s),answer:(m,c)=>r42CourseAnswer(m,c)},
+  {id:'r42-next-due',when:q=>/^ (?:what is |when is )?(?:my |the )?(?:very )?next (?:deadline|due date|thing due|due|assignment due|thing i have due)(?: please)? $/.test(q),answer:(m,c)=>nextUp(c.s,c)},
+  {id:'r42-missing',when:q=>R42_MISSED.test(q)&&q.trim().split(' ').every(w=>R42_MISSED_WORDS.has(w)),answer:(m,c)=>{
+    const now=stamp(c.s.now)||Date.now(),late=open(c.s).filter(v=>v.dueAt!==null&&v.dueAt<now).sort((a,b)=>b.dueAt-a.dueAt);
+    return late.length?r42List(c,late,'not turned in yet','Not turned in yet'):say(c,'Nothing missing. Everything due so far is in.');
+  }},
+  {id:'r42-behind',when:q=>/ (?:am i|i am|are you sure i am|you sure i am) (?:not |really |falling |getting |so |too |way )*behind /.test(q),answer:(m,c)=>{
+    const r=RULES.find(x=>x.id==='how-much').answer(m,{...c,q:' am i behind '});
+    if(r)r.understanding={step:'understanding',reason:'mind:how-much'};
+    return r;
+  }},
+  {
+    id:'r42-plan-make',
+    when:q=>/^ (?:(?:can you|could you|please) )?(?:make|give|build|create|write|set up|do) (?:me )?(?:a |my |the )?(?:study )?plan (?:for )?(?:my |the )?(?:today|tonight|tomorrow|this evening|this afternoon|week|this week|whole week)?(?: please)? $/.test(q),
+    answer:(m,c)=>/ week /.test(c.q)?RULES.find(r=>r.id==='plan-week').answer(m,{...c,q:' plan my week '}):(()=>{
+    const word=/ (today|tonight|tomorrow) /.exec(c.q)?.[1]||(/ (?:evening|afternoon) /.test(c.q)?'tonight':'today'),day=dayIn(' '+word+' ',c.s);
+    return c.card('plan',[],{local:true,line:'plan '+word,...(day?{date:day}:{})},'');
+  })()},
+  {id:'r42-work-list',when:(q,line,c)=>r42WorkList(q,line,c),answer:(m,c)=>r42WorkAnswer(m,c)},
+  {id:'r42-grade-of',when:(q,line,c)=>r42GradeOf(q,line,c.s),answer:(m,c)=>r42GradeAnswer(m,c)},
+  {id:'r42-grade-rank',when:q=>R42_RANK.test(q),answer:(m,c)=>r42RankAnswer(m,c)},
+  {id:'r42-study-for',when:q=>r42StudyFor(q),answer:(m,c)=>r42StudyAnswer(m,c)},
+  {id:'r42-annc',when:(q,line,c)=>r42Annc(q,line,c.s),answer:(m,c)=>r42AnncAnswer(m,c)},
  ];
 
  function think(line,s,session={},tools={}){KIND_GROUPS=new Map(list(s?.assignmentGroups).map(g=>[String(g.id),String(g.name||'')]));
@@ -1689,5 +2047,5 @@
     {},
     'Next: '+nm(top[0])+', '+when(top[0])+'.'+(top.length>1?' Then '+top.slice(1).map(v=>nm(v)+', '+when(v)).join('; ')+'.':'')+(late.length?' Also still open: '+late.length+' from the past week.':''),
     {answerKind:'mind',listRows:top,listTitle:'Next up',understanding:{step:'understanding',reason:'mind:next-up'}});}
- const api={think,spell,ranked,RULES,nextUp};root.ReserveBiscuitMind=api;if(typeof module==='object'&&module.exports)module.exports=api;
+ const api={think,spell,ranked,RULES,nextUp,mend,dueWindow,dueList};root.ReserveBiscuitMind=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

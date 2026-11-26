@@ -188,7 +188,7 @@ test('generic lettering is stable across renders and motion off keeps the label 
 });
 
 function dashboard(env,{course=null,overviewArt={},greeting='off',timeZone='UTC',now=Date.parse('2026-10-11T12:00:00Z'),user=null}={}){
- load(['ui-utils.js','icons.js','workspace-arrange.js','customization-model.js','customize-ui.js','dashboard-view.js'],env);
+ load(['ui-utils.js','icons.js','home-bits.js','workspace-arrange.js','customization-model.js','customize-ui.js','dashboard-view.js'],env);
  const courses=course?[course]:[],c={
   s:{timeZone,motion:'off',livingArt:'off',greeting,showGrades:false,showBookmarks:false,overviewArt},
   state:{courseId:course?course.id:'all',mode:'actionable',query:'',day:null},
@@ -215,11 +215,15 @@ test('All courses keeps its original text heading and stacked rail frame when gr
 });
 
 test('All courses shows a personal greeting for the student time zone instead of an illustrated All courses label',()=>{
- const cases=[['2026-10-11T11:00:00Z','Good morning'],['2026-10-11T17:00:00Z','Good afternoon'],
-  ['2026-10-11T23:00:00Z','Good evening'],['2026-10-12T03:00:00Z','Working late']];
- for(const [at,words] of cases){
-  const {heading}=dashboard(runtime(),{greeting:'on',timeZone:'America/New_York',now:Date.parse(at),user:{short_name:'Learner Example'}});
-  assert.ok(heading.includes('<h1>'+words+', Learner<span class="rd-sr-only">'),at);
+ // (4.2, roadmap item 6) 2026-10-11 is a Sunday: 7 AM, 1 PM and 7 PM in New York greet as the weekend, 11 PM as late night;
+ // each greeting is a line of its variant (home-bits.js GREETINGS) with the first name, and the h1 names the variant.
+ const cases=[['2026-10-11T11:00:00Z','weekend'],['2026-10-11T17:00:00Z','weekend'],
+  ['2026-10-11T23:00:00Z','weekend'],['2026-10-12T03:00:00Z','late']];
+ for(const [at,id] of cases){
+  const env=runtime(),{heading}=dashboard(env,{greeting:'on',timeZone:'America/New_York',now:Date.parse(at),user:{short_name:'Learner Example'}});
+  const said=heading.match(/<h1 data-greet="([a-z]+)">([^<]+), Learner<span class="rd-sr-only">/);
+  assert.ok(said,at);assert.equal(said[1],id,at);
+  assert.ok(env.ReserveHomeBits.GREETINGS.find(g=>g.id===id).lines.map(line=>line.replace('{day}','Sunday')).includes(said[2]),at+': '+said[2]);
   assert.doesNotMatch(heading,/data-titled|rd-title-art|rd-generic-title/);
   assert.match(heading,/rd-heading-art/,'the overview keeps its scene');
  }

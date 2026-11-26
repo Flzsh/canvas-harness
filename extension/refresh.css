@@ -809,9 +809,9 @@
 .rd .rd-study-tag[data-kind=rubric] { --tag-wash: #F7D6CF; }
 .rd .rd-study-tag[data-kind=fixes] { --tag-wash: #E6DDF0; }
 .rd .rd-study-tag[data-kind=notes] { --tag-wash: #EBD5B3; }
-.rd .rd-study-tag::before, .rd .rd-study-tag::after, .rd .rd-help-tag::before, .rd .rd-help-tag::after { content: ""; position: absolute; inset: 0; z-index: -1; box-sizing: border-box; border: solid transparent; border-width: 11px 8px 11px 12px; pointer-events: none; }
-.rd .rd-study-tag::before, .rd .rd-help-tag::before { background: var(--tag-wash); translate: 1.1px 1.3px; -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2760%27%20height%3D%2722%27%20viewBox%3D%270%200%2060%2022%27%3E%3Cpath%20d%3D%27M1.7%2011.1%20L7.7%202.4%20Q30%201.6%2054.5%202.2%20Q58.2%202.4%2058.4%205.7%20L58.5%2016.5%20Q58.2%2019.7%2054.7%2019.9%20Q30%2020.5%207.8%2019.7%20Z%20M9.4%2011%20a2%202%200%201%200%20-4%200%20a2%202%200%201%200%204%200%20Z%27%20fill%3D%27%23000%27%20fill-rule%3D%27evenodd%27%2F%3E%3C%2Fsvg%3E") 11 8 11 12 stretch; mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2760%27%20height%3D%2722%27%20viewBox%3D%270%200%2060%2022%27%3E%3Cpath%20d%3D%27M1.7%2011.1%20L7.7%202.4%20Q30%201.6%2054.5%202.2%20Q58.2%202.4%2058.4%205.7%20L58.5%2016.5%20Q58.2%2019.7%2054.7%2019.9%20Q30%2020.5%207.8%2019.7%20Z%20M9.4%2011%20a2%202%200%201%200%20-4%200%20a2%202%200%201%200%204%200%20Z%27%20fill%3D%27%23000%27%20fill-rule%3D%27evenodd%27%2F%3E%3C%2Fsvg%3E") 11 8 11 12 stretch; }
-.rd .rd-study-tag::after, .rd .rd-help-tag::after { background: var(--rd-ink); -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2760%27%20height%3D%2722%27%20viewBox%3D%270%200%2060%2022%27%3E%3Cpath%20d%3D%27M1.7%2011.1%20L7.7%202.4%20Q30%201.6%2054.5%202.2%20Q58.2%202.4%2058.4%205.7%20L58.5%2016.5%20Q58.2%2019.7%2054.7%2019.9%20Q30%2020.5%207.8%2019.7%20Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.4%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cpath%20d%3D%27M9.4%2011%20a2%202%200%201%200%20-4%200%20a2%202%200%201%200%204%200%20Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.2%27%2F%3E%3Cpath%20d%3D%27M52.6%2017.6%20L54.4%2015.2%20M54.6%2017.8%20L56.4%2015.4%20M56.5%2017.9%20L57.6%2016.4%27%20stroke%3D%27%23000%27%20stroke-opacity%3D%27.45%27%20stroke-width%3D%27.8%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E") 11 8 11 12 stretch; mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2760%27%20height%3D%2722%27%20viewBox%3D%270%200%2060%2022%27%3E%3Cpath%20d%3D%27M1.7%2011.1%20L7.7%202.4%20Q30%201.6%2054.5%202.2%20Q58.2%202.4%2058.4%205.7%20L58.5%2016.5%20Q58.2%2019.7%2054.7%2019.9%20Q30%2020.5%207.8%2019.7%20Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.4%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cpath%20d%3D%27M9.4%2011%20a2%202%200%201%200%20-4%200%20a2%202%200%201%200%204%200%20Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.2%27%2F%3E%3Cpath%20d%3D%27M52.6%2017.6%20L54.4%2015.2%20M54.6%2017.8%20L56.4%2015.4%20M56.5%2017.9%20L57.6%2016.4%27%20stroke%3D%27%23000%27%20stroke-opacity%3D%27.45%27%20stroke-width%3D%27.8%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E") 11 8 11 12 stretch; }
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bit-chip::before, .rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bit-chip::after, .rd .rd-study-tag::before, .rd .rd-study-tag::after, .rd .rd-help-tag::before, .rd .rd-help-tag::after, .rd .rd-file-tag::before, .rd .rd-file-tag::after { content: ""; position: absolute; inset: 0; z-index: -1; box-sizing: border-box; border: solid transparent; border-width: 11px 8px 11px 12px; pointer-events: none; }
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bit-chip::before, .rd .rd-study-tag::before, .rd .rd-help-tag::before, .rd .rd-file-tag::before { background: var(--tag-wash); translate: 1.1px 1.3px; -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2760%27%20height%3D%2722%27%20viewBox%3D%270%200%2060%2022%27%3E%3Cpath%20d%3D%27M1.7%2011.1%20L7.7%202.4%20Q30%201.6%2054.5%202.2%20Q58.2%202.4%2058.4%205.7%20L58.5%2016.5%20Q58.2%2019.7%2054.7%2019.9%20Q30%2020.5%207.8%2019.7%20Z%20M9.4%2011%20a2%202%200%201%200%20-4%200%20a2%202%200%201%200%204%200%20Z%27%20fill%3D%27%23000%27%20fill-rule%3D%27evenodd%27%2F%3E%3C%2Fsvg%3E") 11 8 11 12 stretch; mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2760%27%20height%3D%2722%27%20viewBox%3D%270%200%2060%2022%27%3E%3Cpath%20d%3D%27M1.7%2011.1%20L7.7%202.4%20Q30%201.6%2054.5%202.2%20Q58.2%202.4%2058.4%205.7%20L58.5%2016.5%20Q58.2%2019.7%2054.7%2019.9%20Q30%2020.5%207.8%2019.7%20Z%20M9.4%2011%20a2%202%200%201%200%20-4%200%20a2%202%200%201%200%204%200%20Z%27%20fill%3D%27%23000%27%20fill-rule%3D%27evenodd%27%2F%3E%3C%2Fsvg%3E") 11 8 11 12 stretch; }
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bit-chip::after, .rd .rd-study-tag::after, .rd .rd-help-tag::after, .rd .rd-file-tag::after { background: var(--rd-ink); -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2760%27%20height%3D%2722%27%20viewBox%3D%270%200%2060%2022%27%3E%3Cpath%20d%3D%27M1.7%2011.1%20L7.7%202.4%20Q30%201.6%2054.5%202.2%20Q58.2%202.4%2058.4%205.7%20L58.5%2016.5%20Q58.2%2019.7%2054.7%2019.9%20Q30%2020.5%207.8%2019.7%20Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.4%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cpath%20d%3D%27M9.4%2011%20a2%202%200%201%200%20-4%200%20a2%202%200%201%200%204%200%20Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.2%27%2F%3E%3Cpath%20d%3D%27M52.6%2017.6%20L54.4%2015.2%20M54.6%2017.8%20L56.4%2015.4%20M56.5%2017.9%20L57.6%2016.4%27%20stroke%3D%27%23000%27%20stroke-opacity%3D%27.45%27%20stroke-width%3D%27.8%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E") 11 8 11 12 stretch; mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2760%27%20height%3D%2722%27%20viewBox%3D%270%200%2060%2022%27%3E%3Cpath%20d%3D%27M1.7%2011.1%20L7.7%202.4%20Q30%201.6%2054.5%202.2%20Q58.2%202.4%2058.4%205.7%20L58.5%2016.5%20Q58.2%2019.7%2054.7%2019.9%20Q30%2020.5%207.8%2019.7%20Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.4%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cpath%20d%3D%27M9.4%2011%20a2%202%200%201%200%20-4%200%20a2%202%200%201%200%204%200%20Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.2%27%2F%3E%3Cpath%20d%3D%27M52.6%2017.6%20L54.4%2015.2%20M54.6%2017.8%20L56.4%2015.4%20M56.5%2017.9%20L57.6%2016.4%27%20stroke%3D%27%23000%27%20stroke-opacity%3D%27.45%27%20stroke-width%3D%27.8%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E") 11 8 11 12 stretch; }
 .rd .rd-study-glyph { width: 12px; height: 12px; flex: none; background: currentColor; -webkit-mask: var(--glyph) center / 12px no-repeat; mask: var(--glyph) center / 12px no-repeat; }
 .rd .rd-study-tag[data-kind=practice] .rd-study-glyph { --glyph: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2712%27%20height%3D%2712%27%20viewBox%3D%270%200%2012%2012%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.25%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M2.2%209.8%20L8.6%203.4%20L10.1%204.9%20L3.7%2011.3%20L1.7%2011.8%20Z%27%2F%3E%3Cpath%20d%3D%27M7.5%204.5%20L9%206%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"); }
 .rd .rd-study-tag[data-kind=reading] .rd-study-glyph { --glyph: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2712%27%20height%3D%2712%27%20viewBox%3D%270%200%2012%2012%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.25%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M1.4%203.1%20Q3.9%202.3%206%203.6%20Q8.1%202.3%2010.6%203.1%20V10%20Q8.1%209.3%206%2010.5%20Q3.9%209.3%201.4%2010%20Z%27%2F%3E%3Cpath%20d%3D%27M6%203.7%20V10.3%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"); }
@@ -827,7 +827,7 @@
 .rd[data-theme=dark] .rd-study-tag[data-kind=rubric] { --tag-wash: #5C3A35; }
 .rd[data-theme=dark] .rd-study-tag[data-kind=fixes] { --tag-wash: #463D57; }
 .rd[data-theme=dark] .rd-study-tag[data-kind=notes] { --tag-wash: #574631; }
-.rd[data-theme=dark] .rd-study-tag::after, .rd[data-theme=dark] .rd-help-tag::after { background: #D2C8B2; }
+.rd:not([data-theme-kit]):not([data-rd-data-theme])[data-theme=dark] .rd-bit-chip::after, .rd[data-theme=dark] .rd-study-tag::after, .rd[data-theme=dark] .rd-help-tag::after, .rd[data-theme=dark] .rd-file-tag::after { background: #D2C8B2; }
 .rd .rd-glance-chip {
   display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px;
   border: 0; border-radius: 999px; background: var(--tone-soft); color: var(--tone);
@@ -903,12 +903,14 @@
 .rd .rd-week .rd-day-filter[data-heavy=true] { position: relative; }
 .rd .rd-week .rd-day-filter[data-heavy=true] small { color: var(--rd-danger); }
 .rd .rd-week .rd-day-filter[data-heavy=true]::after,
-.rd .rd-plan-day[data-heavy=true] > header > small::after {
+.rd :is(.rd-plan-day,.rd-plan-row)[data-heavy=true] > header > small::after,
+.rd .rd-plan-cell[data-heavy=true] > .rd-plan-num::after {
   content: ""; position: absolute; left: 10px; right: 10px; bottom: 2px; height: 4px; background: var(--rd-danger);
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 5' preserveAspectRatio='none'%3E%3Cpath d='M1 3c3.400-1.900 6-.2 9.200-.1 3.300 0 5.800-1.900 9.100-1.300 3 .5 5.500 2.300 8.800 1.800 3.200-.4 5.800-1.800 9-1.100 2.300.5 4 1 5.900.6' fill='none' stroke='%23000' stroke-width='1.800' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 5' preserveAspectRatio='none'%3E%3Cpath d='M1 3c3.400-1.900 6-.2 9.200-.1 3.300 0 5.800-1.900 9.100-1.300 3 .5 5.500 2.300 8.800 1.800 3.200-.4 5.800-1.800 9-1.100 2.300.5 4 1 5.900.6' fill='none' stroke='%23000' stroke-width='1.800' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
 }
-.rd .rd-plan-day[data-heavy=true] > header > small { position: relative; width: fit-content; padding-bottom: 5px; color: var(--rd-danger); }
-.rd .rd-plan-day[data-heavy=true] > header > small::after { left: 0; right: 0; bottom: 0; }
+.rd :is(.rd-plan-day,.rd-plan-row)[data-heavy=true] > header > small { position: relative; width: fit-content; padding-bottom: 5px; color: var(--rd-danger); }
+.rd :is(.rd-plan-day,.rd-plan-row)[data-heavy=true] > header > small::after { left: 0; right: 0; bottom: 0; }
+.rd .rd-plan-cell[data-heavy=true] > .rd-plan-num::after { left: 3px; right: 3px; bottom: -3px; }
 .rd .rd-week .rd-day-filter:first-child > span { color: var(--rd-ink); font-weight: var(--rd-bold); }
 .rd .rd-week .rd-day-filter:hover { color: var(--rd-ink); }
 .rd .rd-week .rd-day-filter[aria-pressed=true] { background: var(--rd-surface); color: var(--rd-ink); box-shadow: var(--rd-chip); }
@@ -1382,7 +1384,7 @@
 .rd .rd-materials-header h2 { font-size: clamp(25px, 1.1vw + 12px, 30px); line-height: 1.16; }
 .rd .rd-course-banner > div:not(.rd-banner-art) > p { margin-top: 8px; font-size: 14px; line-height: 1.5; color: var(--rd-muted); }
 
-.rd .rd-message-body :is(button, a.rd-button, .rd-text-button, select, input, .rd-message-save, .rd-message-actions, .rd-hub-notice) { font-family: var(--rd-ui-font); }
+.rd .rd-message-body :is(button, a.rd-button, .rd-text-button, select, input, .rd-message-save, .rd-hub-notice) { font-family: var(--rd-ui-font); }
 
 
 .rd .rd-home-sheet { border: 0; border-radius: var(--rd-r-paper); background: var(--rd-surface); box-shadow: var(--rd-paper); }
@@ -1455,9 +1457,6 @@
   .rd .rd-message-line > .rd-message-excerpt { flex: 1 1 100%; }
 }
 .rd .rd-message-list .rd-message-body { margin: 0 12px 18px 26px; padding: 4px 0 0; border-top: 0; font-size: 15.5px; line-height: 1.6; }
-.rd .rd-message-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 14px; }
-.rd .rd-message-actions .rd-message-save { margin: 0; }
-.rd .rd-message-actions .rd-button--primary { height: 34px; padding: 0 14px; border-radius: var(--rd-r-control); font-size: 13px; font-weight: 600; }
 .rd .rd-message-disclaimer { margin: 16px 0 0 !important; font-size: 12px; line-height: 1.5; color: var(--rd-faint); }
 
 .rd .rd-message-body .rd-thread-message { padding: 12px 0; border-bottom: 1px solid var(--rd-line); }
@@ -1519,7 +1518,6 @@
 .rd .rd-composer-tray .rd-add-shortcut > p { margin: 8px 6px; }
 .rd .rd-composer-tray .rd-add-shortcut > div { padding: 0 6px 6px; }
 .rd .rd-material-list { overflow: visible; border: 0; border-radius: 0; background: none; box-shadow: none; }
-.rd .rd-material-footnote { font-size: 12px; color: var(--rd-faint); }
 
 
 .rd .rd-material-list { --rd-ch-inset: 22px; container: material-list / inline-size; }
@@ -1650,7 +1648,6 @@
 .rd .rd-home-module > summary small,
 .rd .rd-home-module > div > a small,
 .rd .rd-announcement-body .rd-text-button,
-.rd .rd-material-footnote,
 .rd .rd-message > summary time,
 .rd .rd-desmos-links a,
 .rd .rd-desmos-help > summary { font-size: 11.5px; }
@@ -2615,19 +2612,13 @@
 .rd { --rd-pen-line: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%232B2A27' stroke-width='3.6' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E"); --rd-pen-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23B9B5A8' stroke-width='2.8' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E"); }
 .rd[data-theme=dark] { --rd-pen-line: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%23D2C8B2' stroke-width='3.6' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E"); --rd-pen-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cpath fill='none' stroke='%235F5D55' stroke-width='2.8' stroke-linecap='round' d='M24 6.2C34 5.4 56 6.6 66 5.8C77 5.6 84.6 12 84.4 24C85 36 83.8 54 84.6 66C84.8 77.6 78 84.6 66 84.4C54 85 36 83.8 24 84.6C12.4 84.8 5.4 78 5.6 66C5 54 6.2 36 5.4 24C5.2 12.6 11.6 6 21.4 6.4C24 6.3 27 5.6 29.6 4.8'/%3E%3C/svg%3E"); }
 .rd .rd-workspace :is(.rd-button:not(.rd-text-button), .rd-preview-button, .rd-source-select, .ch-band-prev, .ch-band-next, .ch-band-more),
-.rd .rd-workspace select.ch-band-ai,
-.rd .rd-workspace .rd-plan-nav .rd-icon-button {
+.rd .rd-workspace select.ch-band-ai {
   border: 2px solid transparent; border-image: var(--rd-pen-line) 30 / 11px / 0 stretch; border-radius: 9px; background-clip: padding-box; box-shadow: none;
 }
 .rd .rd-workspace :is(.rd-button:not(.rd-text-button), .rd-preview-button, .rd-source-select, .ch-band-prev, .ch-band-next, .ch-band-more):is(:hover, :focus-visible) { box-shadow: none; }
 .rd[data-workspace] .rd-workspace .rd-quick-add input, .rd .rd-workspace .rd-search:not(.rd-bar-search) {
   border: 2px solid transparent; border-image: var(--rd-pen-line) 30 / 12px / 0 stretch; border-radius: 10px; background-clip: padding-box; box-shadow: none;
 }
-/* a planner card: the course's colour as a wash, a soft pen edge; the offset is drawn, not a blur */
-.rd[data-workspace] .rd-plan-card { border: 2px solid transparent; border-image: var(--rd-pen-soft) 30 / 11px / 0 stretch; background: linear-gradient(90deg, color-mix(in srgb, var(--rd-course, var(--rd-accent)) 38%, var(--rd-surface)) 0 6px, var(--rd-surface) 6px) padding-box; }
-.rd[data-workspace] .rd-plan-card:hover { border-color: transparent; box-shadow: 2px 3px 0 rgb(43 42 39 / .1); }
-/* a tray and an empty day: a loose pen outline, not a ruled dash */
-.rd[data-workspace] .rd-plan-tray, .rd[data-workspace] .rd-plan-empty { border: 2px solid transparent; border-image: var(--rd-pen-soft) 30 / 13px / 0 stretch; }
 /* (the pen is drawn inside the box: the field's own input must not paint over it) */
 .rd .rd-workspace .rd-search:not(.rd-bar-search) input { background: none; }
 /* Course hub: a drawn sheet, and its heading the same as every other page's */
@@ -2650,12 +2641,6 @@
 .rd .rd-desk-toolbar > .rd-bookmarks { flex: none; width: auto; min-width: max-content; }
 /* a day's count stands apart from the date, not as a second digit of it (still a muted numeral: clay is for the one main action) */
 .rd .rd-week .rd-day-filter small:not(:empty)::before { content: "·"; margin-right: 3px; }
-/* Planner: an empty day is empty, not a box that looks like a field; a narrow window shows all seven days in rows, so today is never off the edge */
-.rd[data-workspace] .rd-plan-empty { border: 0; border-image: none; background: none; }
-@container work-area (max-width: 1099.98px) {
-  .rd.rd .rd-plan-week { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); overflow-x: visible; }
-  .rd .rd-plan-day { min-height: 0; }
-}
 /* the Help row: every control one height */
 .rd .ch-band-toolbar :is(.ch-band-act, .ch-band-bar-act, .ch-band-daily, select.ch-band-ai, .ch-band-tab) { box-sizing: border-box; height: 30px; min-height: 30px; }
 /* one page needs no pager */
@@ -2700,11 +2685,6 @@
   .rd[data-workspace] .rd-workspace-heading > .rd-course-heading { align-items: baseline !important; }
   .rd[data-workspace] .rd-workspace-heading > .rd-course-heading > h1 { flex: 0 1 auto !important; align-self: baseline !important; width: auto !important; max-width: 100% !important; min-width: 0 !important; }
 }
-/* the Planner heading starts at the left when it stacks */
-@media (max-width: 800px) { .rd .rd-plan-head.rd-page-heading { align-items: flex-start; } }
-/* Planner says what things are by being them: the sentences stay for screen readers only */
-.rd .rd-plan-tip { position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.rd .rd-plan-tray header p { display: none; }
 /* scrollbars: thin and warm, no arrows */
 @supports selector(::-webkit-scrollbar) {
   .rd:is([data-course-navigation=dock],[data-course-navigation=topbar]) .rd-shell > .rd-workspace { scrollbar-width: auto; scrollbar-color: auto; }
@@ -2730,12 +2710,8 @@
   .rd[data-course-navigation=dock][data-courses=true]:not([data-dock-hide=true]):is([data-scene-theme=""], :not([data-scene-theme])) > .rd-shell:not([data-in-room])::before { content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: 122px; z-index: 15; pointer-events: none; background: linear-gradient(to top, var(--rd-bg) 62%, transparent); }
 }
 /* every page's title the same size and weight; the buttons beside it centred on it */
-.rd .rd-plan-head h1, .rd .rd-page-heading h1, .rd .rd-materials-header h2 { font: 550 clamp(25px, 1.1vw + 12px, 30px)/1.16 var(--rd-display); letter-spacing: -.02em; }
+.rd .rd-page-heading h1, .rd .rd-materials-header h2 { font: 550 clamp(25px, 1.1vw + 12px, 30px)/1.16 var(--rd-display); letter-spacing: -.02em; }
 .rd .rd-page-heading, .rd .rd-materials-header { align-items: center; }
-/* Planner: the days are drawn sheets, today on a wash, as flat as the rest */
-.rd[data-workspace] .rd-plan-day { border: 2px solid transparent; border-image: var(--rd-pen-soft) 30 / 13px / 0 stretch; background: var(--rd-surface) padding-box; }
-.rd[data-workspace] .rd-plan-day[data-today=true] { border-image: var(--rd-pen-line) 30 / 13px / 0 stretch; background: color-mix(in srgb, var(--rd-accent) 8%, var(--rd-surface)) padding-box; box-shadow: none; }
-.rd[data-workspace] .rd-plan-card { box-shadow: none; }
 /* the panels: a drawn sheet with a drawn offset, not a soft web box; Help's own button in the same hand */
 .rd .rd-utility-dialog:is([data-docked=true], :not([data-docked])), .rd .rd-appearance.ch-settings-dock.ch-settings-dock { border: 2px solid transparent; border-image: var(--rd-pen-line) 30 / 14px / 0 stretch; border-radius: 14px; padding: 3px; background-clip: padding-box; box-shadow: 3px 4px 0 rgb(43 42 39 / .1); }
 .rd[data-theme=dark] .rd-utility-dialog:is([data-docked=true], :not([data-docked])), .rd[data-theme=dark] .rd-appearance.ch-settings-dock.ch-settings-dock { box-shadow: 3px 4px 0 rgb(0 0 0 / .35); }
@@ -2744,8 +2720,6 @@
 /* the panel's size control looks like a control */
 .rd .rd-utility-dialog select.rd-dock-size, .rd .rd-utility-dialog select.rd-dock-size:hover { appearance: none; -webkit-appearance: none; padding: 0 20px 0 8px; border: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%232B2A27' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 5px center/9px; cursor: pointer; }
 /* Make it yours keeps its tabs in reach while a long tab scrolls */
-/* an empty day is no taller than it needs to be */
-.rd[data-workspace] .rd-plan-day { min-height: 170px; }
 /* the reader's course line stays one line, its words cut with dots, so a separator is never stranded on a row of its own */
 .rd[data-workspace=work] .rd-reader-course { flex-wrap: nowrap; white-space: nowrap; overflow: hidden; }
 /* an open Review drawer has the whole height: the strip steps down out of its way */
@@ -2755,9 +2729,9 @@
 @media (min-width: 1401px) { .rd .rd-grade-layout:not(.rd-grade-layout--with-strips) > .rd-grade-sheet:first-child { position: sticky; top: 8px; } }
 /* ----------------------------------------------------------------- one type scale
    A page's title, its section titles and their sub-titles read the same on every page. */
-.rd.rd .rd-plan-head h1, .rd.rd .rd-page-heading h1, .rd.rd .rd-hub > .rd-page-heading h2, .rd.rd .rd-materials-header h2, .rd.rd .gi-head h1, .rd.rd .rv-head h2 { font: 550 clamp(25px, 1.1vw + 12px, 30px)/1.16 var(--rd-display); letter-spacing: -.02em; }
+.rd.rd .rd-page-heading h1, .rd.rd .rd-hub > .rd-page-heading h2, .rd.rd .rd-materials-header h2, .rd.rd .gi-head h1, .rd.rd .rv-head h2 { font: 550 clamp(25px, 1.1vw + 12px, 30px)/1.16 var(--rd-display); letter-spacing: -.02em; }
 .rd.rd .rd-deck-header h2, .rd.rd .rd-work-heading h2, .rd.rd .rd-sheet-heading h2, .rd.rd .rd-material-group > h3 { font: 600 18px/1.25 var(--rd-display); letter-spacing: -.01em; }
-.rd.rd .rd-sheet-heading h3, .rd.rd .rd-hub-empty h3, .rd.rd .rd-plan-tray h2, .rd.rd .rd-bookmarks-heading h2 { font: 600 15.5px/1.3 var(--rd-display); letter-spacing: -.005em; }
+.rd.rd .rd-sheet-heading h3, .rd.rd .rd-hub-empty h3, .rd.rd .rd-bookmarks-heading h2 { font: 600 15.5px/1.3 var(--rd-display); letter-spacing: -.005em; }
 /* words that act are one size */
 .rd .rd-desk-toolbar .rd-text-button, .rd .rd-deck-header .rd-text-button { font-size: 12.5px; }
 /* the Help row is one family: the same outline, corners, paper offset and height */
@@ -2850,3 +2824,270 @@
 .rd .rd-toolbar .rd-refresh-button[aria-busy=true] > .rd-tb-ic { animation: rd-spin 1.1s linear infinite; transform-origin: 50% 50%; }
 .rd:is([data-input=keyboard], [data-motion-style=still]) .rd-toolbar .rd-refresh-button[aria-busy=true] > .rd-tb-ic { animation: none; }
 @media (prefers-reduced-motion: reduce) { .rd .rd-toolbar .rd-refresh-button[aria-busy=true] > .rd-tb-ic { animation: none; } }
+
+/* ----------------------------------------------------------------- Home bits (4.2, roadmap item 6)
+   The owner: "Bring the plain bits into the art". Home's plain bits in the house look, built from pieces already drawn;
+   each names an art slot (home-bits.js SLOTS) that a drawing fills later without a code change. A scene or a Market theme
+   keeps the look it gives the chips and the Bookmarks bar (the rules that begin with the paper-look selector); the drawn controls are drawings
+   in every look, as the top bar's are.
+   1. Edit Home / Done editing, Undo move, Show course information: a drawing and a name, no box, like the top bar's Focus
+   room and Tools; the word stays the control's name. Undo move is there only while a move can be undone (dashboard-view.js). */
+.rd .rd-bit-ctl { display: inline-flex; align-items: center; gap: 6px; height: 32px; min-height: 32px; padding: 0 8px 0 6px; border: 0; border-radius: 6px 9px 5px 8px; background: none; box-shadow: none; color: var(--rd-ink); font-size: 13px; font-weight: 450; line-height: 1; white-space: nowrap; text-decoration: none; }
+.rd .rd-bit-ctl:hover { text-decoration: none; }
+.rd .rd-arrange-guide > div > .rd-bit-ctl { font-size: 13px; }
+.rd .rd-bit-ctl > .rd-bit-art { flex: none; width: 20px; height: 20px; overflow: visible; }
+.rd .rd-bit-ctl > .rd-bit-glyph { width: 18px; height: 18px; }
+.rd .rd-bit-ctl .rd-bit-art .k { fill: none; stroke: currentColor; stroke-width: 1.35; stroke-linecap: round; stroke-linejoin: round; }
+@media (hover: hover) and (pointer: fine) {
+  .rd .rd-bit-ctl:hover { background: color-mix(in srgb, #F6DE9A 38%, transparent); }
+  .rd[data-theme=dark] .rd-bit-ctl:hover { background: color-mix(in srgb, #F6DE9A 14%, transparent); }
+}
+/* the feature drawing (and a drawn slot) keeps its inks: after dark it sits on paper, as in Make it yours > Settings */
+.rd[data-theme=dark] .rd-bit-ctl > .rd-bit-paper, .rd[data-theme=dark] .rd-bit-ctl > .rd-bit-art[data-slot] { border-radius: 5px; background: #E9E3D4; box-shadow: 0 0 0 2px #E9E3D4; }
+/* 2. The chips New, Overdue, Due today and Tomorrow are ONE component (home-bits.js chipAttrs / chip) wherever they show:
+   under the Home heading, and in To hand in's rows (late and missing are the Overdue kind). A kraft punched tag, the study
+   tags' own shape (above: ink outline, an offset wash, the hole), its kraft tinted by the kind's tone. The words say what
+   it is (the colour is never the only signal); the chosen chip is also bold. A kind's slot (chip-new, chip-overdue,
+   chip-today, chip-tomorrow), once drawn, is the whole label instead (--chip-art, cut 11 8 11 12). */
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bit-chip { --tag-wash: color-mix(in srgb, var(--tone, #9A8F7A) 18%, #EBDBBC); position: relative; isolation: isolate; border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0 10px 0 17px; color: var(--rd-ink); rotate: -1deg; }
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bit-chip:nth-child(2n) { rotate: .8deg; }
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bit-chip > b { color: color-mix(in srgb, var(--tone, #9A8F7A) 82%, var(--rd-ink)); }
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bit-chip[aria-pressed=true] { --tag-wash: color-mix(in srgb, var(--tone, #9A8F7A) 40%, #EBDBBC); box-shadow: none; font-weight: 650; }
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bit-chip:hover { background: none; }
+@media (hover: hover) and (pointer: fine) {
+  .rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bit-chip:hover { --tag-wash: color-mix(in srgb, var(--tone, #9A8F7A) 30%, #EBDBBC); }
+  .rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bit-chip:hover::before { translate: 0 0; }
+}
+.rd:not([data-theme-kit]):not([data-rd-data-theme])[data-theme=dark] .rd-bit-chip { --tag-wash: color-mix(in srgb, var(--tone, #9A8F7A) 26%, #4E4233); }
+.rd:not([data-theme-kit]):not([data-rd-data-theme])[data-theme=dark] .rd-bit-chip[aria-pressed=true] { --tag-wash: color-mix(in srgb, var(--tone, #9A8F7A) 46%, #4E4233); }
+.rd:not([data-theme-kit]):not([data-rd-data-theme])[data-theme=dark] .rd-bit-chip > b { color: color-mix(in srgb, var(--tone, #9A8F7A) 55%, var(--rd-ink)); }
+/* the tag's edges are half the chip's height each (the mask's own widths too: the -webkit- shorthand sets them to the cut),
+   so no band is left in the middle and the point and the hole are never split (the tag is drawn 22 tall) */
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-glance-chip.rd-bit-chip::before, .rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-glance-chip.rd-bit-chip::after { border-width: 13px 8px 13px 12px; -webkit-mask-box-image-width: 13px 8px 13px 12px; mask-border-width: 13px 8px 13px 12px; }
+@media (max-width: 800px) { .rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-glance-chip.rd-bit-chip::before, .rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-glance-chip.rd-bit-chip::after { border-width: 16px 8px 16px 12px; -webkit-mask-box-image-width: 16px 8px 16px 12px; mask-border-width: 16px 8px 16px 12px; } }
+@media (max-width: 600px) { .rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-glance-chip.rd-bit-chip::before, .rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-glance-chip.rd-bit-chip::after { border-width: 15px 8px 15px 12px; -webkit-mask-box-image-width: 15px 8px 15px 12px; mask-border-width: 15px 8px 15px 12px; } }
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bit-chip[data-chip-art]::before { background: none; translate: none; -webkit-mask-box-image: none; mask-border: none; border-image: var(--chip-art) 11 8 11 12 fill / 13px 8px 13px 12px stretch; }
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bit-chip[data-chip-art]::after { content: none; }
+/* in To hand in's rows the tag is a size smaller (the row's first line) */
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .ch-handin-chip.rd-bit-chip { height: 20px; padding: 0 8px 0 15px; font-weight: 600; }
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .ch-handin-chip.rd-bit-chip::before, .rd:not([data-theme-kit]):not([data-rd-data-theme]) .ch-handin-chip.rd-bit-chip::after { border-width: 10px 7px 10px 11px; -webkit-mask-box-image-width: 10px 7px 10px 11px; mask-border-width: 10px 7px 10px 11px; }
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .ch-handin-chip.rd-bit-chip[data-chip-art]::before { border-image-width: 10px 7px 10px 11px; }
+/* 3. The Bookmarks bar keeps what it is and does (a revamp waits for the owner's details); its look: each bookmark a paper
+   slip with the planner card's soft pen edge and its course's wash at the left (the bookmark-slip slot, once drawn, gives
+   the edges: cut 12, the middle stays paper), the count a kraft tag in the top bar's count shape, and a pen line for the
+   divider after it (the top bar search's pen line, stood upright). */
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bookmark { border: 1px solid transparent; border-image: var(--rd-pen-soft) 30 / 11px / 0 stretch; border-radius: 10px; background: linear-gradient(90deg, color-mix(in srgb, var(--rd-course, var(--rd-accent)) 30%, var(--rd-surface)) 0 5px, var(--rd-surface) 5px) padding-box; }
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bookmark:hover, .rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bookmark:focus-within { border-color: transparent; background: linear-gradient(90deg, color-mix(in srgb, var(--rd-course, var(--rd-accent)) 42%, var(--rd-surface)) 0 5px, var(--rd-surface-2) 5px) padding-box; box-shadow: 2px 3px 0 rgb(43 42 39 / .1); }
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bookmarks[data-slip-art] .rd-bookmark { border-image: var(--bit-slip) 12 / 12px / 0 stretch; }
+.rd:not([data-theme-kit]):not([data-rd-data-theme]) .rd-bookmarks-count { display: inline-grid; place-items: center; min-width: 15px; height: 16px; margin-inline: -2px; padding: 0 4px; background: #EBDBBC; color: #141413; font-size: 10.5px; font-weight: 700; line-height: 1; rotate: -6deg; clip-path: polygon(0 12%, 100% 0, 96% 100%, 4% 90%); }
+.rd:not([data-theme-kit]):not([data-rd-data-theme])[data-theme=dark] .rd-bookmarks-count { background: color-mix(in srgb, #EBDBBC 34%, var(--rd-surface)); color: var(--rd-ink); }
+.rd:not([data-theme-kit]):not([data-rd-data-theme])[data-workspace=work] .rd-desk-toolbar > .rd-bookmarks { position: relative; border-right-color: transparent; }
+.rd:not([data-theme-kit]):not([data-rd-data-theme])[data-workspace=work] .rd-desk-toolbar > .rd-bookmarks::after { content: ""; position: absolute; top: 50%; right: 0; width: 30px; height: 5px; translate: 50% -50%; rotate: 90deg; background: var(--rd-ink); opacity: .5; pointer-events: none; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 270 5' preserveAspectRatio='none'%3E%3Cpath d='M1 3c40-1.6 90 .6 134-.4s100 1.2 134-.6' fill='none' stroke='%23000' stroke-width='1.1' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 270 5' preserveAspectRatio='none'%3E%3Cpath d='M1 3c40-1.6 90 .6 134-.4s100 1.2 134-.6' fill='none' stroke='%23000' stroke-width='1.1' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
+@media (max-width: 859.98px) { .rd:not([data-theme-kit]):not([data-rd-data-theme])[data-workspace=work] .rd-desk-toolbar > .rd-bookmarks::after { content: none; } }
+
+/* ----------------------------------------------------------------- pages-42: Materials and Messages, drawn (2026-11-22)
+   Materials is the course's shelf: its small drawing and colour at the head, every item named by a kraft paper tag (the
+   punched study tags' drawing, section "Saved study aids"), the list on a drawn sheet with the course's colour as its
+   offset wash, the shelves as the pen-chip segment. Messages is the post room: the Messages tab's own drawing at the
+   head, unread first and then each course under its drawing and colour, the conversation on a drawn sheet beside the
+   list with Reply in Canvas always at its head. Only existing drawings; no new art. */
+
+/* The kraft tag: one word on a punched paper tag (the drawing is the study tags'), its paper by kind. */
+.rd .rd-file-tag { --tag-wash: #EBD5B3; position: relative; isolation: isolate; display: inline-flex; flex: none; align-items: center; justify-content: center; box-sizing: border-box; width: 80px; height: 22px; padding: 0 4px 0 13px; color: var(--rd-ink); font: 600 11px/1 var(--rd-ui-font, system-ui); letter-spacing: 0; white-space: nowrap; rotate: -.8deg; }
+.rd .rd-file-tag[data-paper=slides] { --tag-wash: #F6DE9A; }
+.rd .rd-file-tag[data-paper=sheet] { --tag-wash: #CFE5C4; }
+.rd .rd-file-tag[data-paper=media] { --tag-wash: #CFE4EE; }
+.rd .rd-file-tag[data-paper=link] { --tag-wash: #E6DDF0; }
+/* a Canvas page is the course's own paper: its colour soaked into the sheet */
+.rd .rd-file-tag[data-paper=page] { --tag-wash: color-mix(in srgb, var(--rd-course, #C9A46A) 26%, #FFFDF6); }
+/* locked in Canvas: the paper is hatched, not coloured */
+.rd .rd-file-tag[data-paper=locked] { --tag-wash: #E4DFD3; color: var(--rd-muted); }
+.rd .rd-file-tag[data-paper=locked]::before { background: repeating-linear-gradient(-45deg, #CFC8B8 0 1.4px, #EFEBE2 1.4px 4.6px); }
+.rd .rd-teacher-row:nth-child(2n) > .rd-file-tag { rotate: .6deg; }
+.rd .rd-file-tag--mini { width: auto; height: 18px; padding: 0 6px 0 11px; font-size: 11px; rotate: 0deg; }
+.rd .rd-file-tag--mini::before, .rd .rd-file-tag--mini::after { border-width: 9px 6px 9px 10px; }
+.rd[data-theme=dark] .rd-file-tag { --tag-wash: #574631; }
+.rd[data-theme=dark] .rd-file-tag[data-paper=slides] { --tag-wash: #5A4E2C; }
+.rd[data-theme=dark] .rd-file-tag[data-paper=sheet] { --tag-wash: #36503A; }
+.rd[data-theme=dark] .rd-file-tag[data-paper=media] { --tag-wash: #2F4A57; }
+.rd[data-theme=dark] .rd-file-tag[data-paper=link] { --tag-wash: #463D57; }
+.rd[data-theme=dark] .rd-file-tag[data-paper=page] { --tag-wash: color-mix(in srgb, var(--rd-course, #8A6A3A) 34%, #2B2A28); }
+.rd[data-theme=dark] .rd-file-tag[data-paper=locked]::before { background: repeating-linear-gradient(-45deg, #4A4844 0 1.4px, #2B2A28 1.4px 4.6px); }
+
+/* A page's own drawing at its head: the course's small drawing (Materials) or the Messages tab's mailbox. */
+.rd .rd-shelf-head, .rd .rd-post-head { display: flex; flex-wrap: nowrap; align-items: center; gap: 14px; margin: 2px 0 14px; }
+.rd .rd-shelf-head > div:not(.rd-heading-actions), .rd .rd-post-head > div:not(.rd-heading-actions) { flex: 1 1 auto; min-width: 0; }
+.rd .rd-shelf-head > .rd-heading-actions, .rd .rd-post-head > .rd-heading-actions { flex: none; margin-left: auto; }
+.rd .rd-shelf-art, .rd .rd-post-art { flex: none; display: block; width: 52px; height: 52px; line-height: 0; }
+.rd .rd-shelf-art .rd-mini { width: 52px; height: 52px; }
+.rd .rd-post-art .rd-tb-ic { width: 52px; height: 52px; overflow: visible; }
+.rd :is(.rd-post-art, .rd-post-group-head) .rd-tb-ic .k { fill: none; stroke: var(--rd-ink); stroke-width: 1.35; stroke-linecap: round; stroke-linejoin: round; }
+.rd :is(.rd-post-art, .rd-post-group-head) .rd-tb-ic .h { fill: none; stroke: var(--rd-ink); stroke-width: .8; stroke-linecap: round; opacity: .7; }
+.rd :is(.rd-post-art, .rd-post-group-head) .rd-tb-ic .d { fill: var(--rd-ink); }
+.rd[data-theme=dark] :is(.rd-post-art, .rd-post-group-head) .rd-tb-ic .w { opacity: .82; }
+.rd .rd-shelf-head h2, .rd .rd-post-head h1 { margin: 0; }
+.rd .rd-shelf-head p.rd-shelf-facts, .rd .rd-post-head p.rd-post-facts, .rd .rd-course-banner p.rd-shelf-facts { margin: 5px 0 0; font-size: 13px; line-height: 1.4; color: var(--rd-muted); font-variant-numeric: lining-nums tabular-nums; }
+.rd .rd-post-facts:empty { display: none; }
+
+/* The shelves: the pen-chip segment (the view filters' gliding chip), with the own-link tray beside them. */
+.rd .rd-materials .rd-composer-tray { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 20px 10px 10px; }
+.rd[data-workspace=materials] .rd-shelf-tabs { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 3px; border: 0; border-radius: 12px; background: var(--rd-tint); }
+.rd[data-workspace=materials] .rd-shelf-tabs > .rd-filter { display: inline-flex; align-items: center; gap: 5px; height: 30px; min-height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; box-shadow: none; color: var(--rd-muted); font-size: 13px; font-weight: 450; transition: color 200ms var(--rd-warm); }
+.rd[data-workspace=materials] .rd-shelf-tabs > .rd-filter:hover, .rd[data-workspace=materials] .rd-shelf-tabs > .rd-filter[aria-pressed=true] { color: var(--rd-ink); }
+.rd[data-workspace=materials] .rd-shelf-tabs > .rd-filter[aria-pressed=true] { font-weight: 600; }
+.rd .rd-materials .rd-composer-tray .rd-add-shortcut { flex: 0 1 auto; margin-left: auto; }
+.rd .rd-materials .rd-composer-tray .rd-add-shortcut[open] { flex: 1 1 100%; order: 2; }
+.rd .rd-materials .rd-composer-tray .rd-add-shortcut > div { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0 2px; }
+
+/* The chapters as kraft index tabs under the search (Modules). */
+.rd .rd-shelf .rd-chapter-jump { gap: 6px 4px; margin-top: 12px; }
+.rd .rd-shelf .rd-chapter-jump .rd-chapter-dot { display: none; }
+.rd .rd-shelf .rd-chapter-link { padding: 3px 9px 3px 8px; border-radius: 8px 10px 3px 3px; background: color-mix(in srgb, #EBD5B3 55%, var(--rd-surface)); box-shadow: inset 0 -1.5px 0 color-mix(in srgb, #8E6A3A 30%, transparent); }
+.rd .rd-shelf .rd-chapter-link:hover { background: #EBD5B3; }
+.rd .rd-shelf .rd-chapter-link > b { margin-right: 6px; font-weight: 650; color: var(--rd-muted); font-variant-numeric: lining-nums tabular-nums; }
+.rd[data-theme=dark] .rd-shelf .rd-chapter-link { background: #3A3328; }
+.rd[data-theme=dark] .rd-shelf .rd-chapter-link:hover { background: #574631; }
+
+/* The shelf itself: a drawn sheet (pen line), the course's colour as its offset wash; the page reader beside it the same. */
+.rd .rd-materials .rd-material-list.rd-shelf-sheet, .rd .rd-materials .rd-material-page { box-sizing: border-box; border: 2px solid transparent; border-image: var(--rd-pen-soft) 30 / 13px / 0 stretch; border-radius: 13px; background: var(--rd-surface) padding-box; box-shadow: 4px 5px 0 color-mix(in srgb, var(--rd-course, var(--rd-accent)) 24%, transparent); }
+.rd .rd-materials .rd-material-list.rd-shelf-sheet { padding: 12px 18px 10px; }
+.rd .rd-materials .rd-material-page { border-image-source: var(--rd-pen-line); }
+.rd[data-theme=dark] .rd-materials :is(.rd-material-list.rd-shelf-sheet, .rd-material-page) { box-shadow: 4px 5px 0 color-mix(in srgb, var(--rd-course, var(--rd-accent)) 30%, #000); }
+.rd .rd-materials .rd-chapter-flow > .rd-chapter:first-child, .rd .rd-materials .rd-chapter-flow > .rd-shelf-group:first-child { padding-top: 6px; border-top: 0; }
+/* a chapter's name wears the course's colour as a soft offset wash, like a highlighter drawn under it */
+.rd .rd-shelf .rd-chapter-head .rd-chapter-name { padding: 0 3px; background: linear-gradient(transparent 56%, color-mix(in srgb, var(--rd-course, var(--rd-accent)) 26%, transparent) 56% 94%, transparent 94%) no-repeat; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.rd .rd-shelf .rd-chapter-no { color: var(--rd-course-ink, var(--rd-faint)); }
+
+/* A recent shelf's groups by age: a sans head with its count; the rows start at the sheet's edge, each with its tag. */
+.rd .rd-shelf-group { margin: 0; padding: 14px 0 8px; border-top: 1px solid var(--rd-line); }
+.rd .rd-shelf-age { display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; font: 650 13px/1.3 var(--rd-ui-font); letter-spacing: 0; color: var(--rd-ink); }
+.rd .rd-shelf-group[data-age=week] .rd-shelf-age-name { padding: 0 3px; background: linear-gradient(transparent 52%, color-mix(in srgb, var(--rd-course, var(--rd-accent)) 30%, transparent) 52% 96%, transparent 96%) no-repeat; }
+.rd .rd-shelf-age > .rd-chapter-count { font-size: 12.5px; }
+.rd .rd-shelf-group > .rd-chapter-items { margin-left: 0; }
+.rd .rd-shelf-group > .rd-chapter-more { margin-left: 0; }
+
+/* A shelf row: the tag stands at the left of both lines; the title and the day on the first; the kind word, the answer
+   key and where it lives, then the quiet controls, on the second. The title keeps the row's width (the controls, always
+   shown beside Canvas items for the AI selection, never squeeze it into a wrap). A one-item chapter's head row stays one line. */
+.rd .rd-shelf-row { gap: 4px 12px; min-height: 44px; padding-block: 6px; }
+.rd .rd-shelf-row:not(.rd-chapter-row) { display: grid; grid-template-columns: 80px minmax(0, 1fr) auto auto; align-items: center; gap: 0 12px; min-height: 50px; }
+.rd .rd-shelf-row:not(.rd-chapter-row) > .rd-file-tag { grid-column: 1; grid-row: 1 / span 2; }
+.rd .rd-shelf-row:not(.rd-chapter-row) > .rd-row-open { grid-column: 2 / 4; grid-row: 1; }
+.rd .rd-shelf-row:not(.rd-chapter-row) > .rd-row-date { grid-column: 4; grid-row: 1; }
+.rd .rd-shelf-row:not(.rd-chapter-row) > .rd-row-kind { grid-column: 2; grid-row: 2; justify-self: start; max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; line-height: 20px; }
+.rd .rd-shelf-row:not(.rd-chapter-row) > .rd-material-actions { grid-column: 3 / 5; grid-row: 2; justify-self: end; margin-right: -6px; }
+.rd .rd-shelf-row:not(.rd-chapter-row) > .rd-material-actions button, .rd .rd-shelf-row:not(.rd-chapter-row) > .rd-material-actions a { min-height: 24px; }
+.rd .rd-shelf-row > .rd-file-tag { margin-right: 2px; }
+.rd .rd-shelf-row .rd-row-where { color: var(--rd-faint); }
+.rd .rd-shelf-row .rd-row-date { flex: none; min-width: 48px; text-align: right; font-size: 12px; color: var(--rd-faint); font-variant-numeric: lining-nums tabular-nums; white-space: nowrap; }
+.rd .rd-shelf-row .rd-row-date:empty { min-width: 0; }
+.rd .rd-shelf-row.rd-chapter-row > .rd-file-tag { align-self: center; }
+/* the two-page spread (1180px lists and up, section 9.1): a row or a short group never breaks across the columns */
+.rd .rd-materials .rd-chapter-flow .rd-shelf-row, .rd .rd-materials .rd-chapter-flow > .rd-shelf-group { break-inside: avoid; }
+@container material-list (max-width: 620px) {
+  .rd .rd-shelf-row:not(.rd-chapter-row) { grid-template-columns: 70px minmax(0, 1fr) auto auto; }
+  .rd .rd-shelf-row:not(.rd-chapter-row) > .rd-file-tag { width: 70px; }
+  .rd .rd-shelf-row .rd-row-where, .rd .rd-shelf-row .rd-row-kind > span[aria-hidden]:has(+ .rd-row-where) { display: none; }
+}
+
+/* An empty shelf: the course's small drawing, a serif sentence, a plain one. */
+.rd .rd-shelf-empty { display: flex; align-items: flex-start; gap: 18px; margin: 0; padding: 22px 6px 18px; border: 0; background: none; text-align: left; }
+.rd .rd-shelf-empty h3 { margin: 4px 0 6px; font-family: var(--rd-display); font-size: 19px; font-weight: var(--rd-title-w, 550); line-height: 1.22; letter-spacing: -.018em; color: var(--rd-ink); }
+.rd .rd-shelf-empty p { max-width: 48ch; margin: 0; font-size: 13px; line-height: 1.5; color: var(--rd-muted); }
+
+/* Messages: the list and the conversation side by side where the work area has room. */
+.rd .rd-post-columns { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+@container work-area (min-width: 820px) { .rd .rd-post-columns { grid-template-columns: minmax(300px, .92fr) minmax(0, 1.22fr); gap: 22px; } }
+.rd .rd-post-list { min-width: 0; }
+.rd .rd-post-group { margin: 0 0 6px; }
+.rd .rd-post-group-head { display: flex; align-items: center; gap: 8px; margin: 10px 0 2px; padding: 0 6px; font: 600 15.5px/1.3 var(--rd-display); letter-spacing: -.005em; color: var(--rd-ink); }
+.rd .rd-post-group:first-child > .rd-post-group-head { margin-top: 2px; }
+.rd .rd-post-group-head > .rd-mini { flex: none; width: 26px; height: 26px; margin-block: -4px; }
+.rd .rd-post-group-head > span[title], .rd .rd-post-group-head > span:not(.rd-n, .rd-message-dot) { padding: 0 3px; color: var(--rd-course-ink, var(--rd-ink)); background: linear-gradient(transparent 56%, color-mix(in srgb, var(--rd-course, var(--rd-accent)) 26%, transparent) 56% 94%, transparent 94%) no-repeat; }
+.rd .rd-post-group-head > .rd-n { font-family: var(--rd-ui-font); font-size: 12.5px; font-weight: 600; color: var(--rd-muted); }
+.rd .rd-post-group-head > .rd-message-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--rd-mark); }
+.rd .rd-post-rows { margin: 0; padding: 0; list-style: none; }
+.rd .rd-post-row { position: relative; list-style: none; }
+.rd .rd-post-row + .rd-post-row::before { content: ""; position: absolute; top: 0; left: 10px; right: 10px; border-top: 1px solid var(--rd-line); pointer-events: none; }
+.rd .rd-post-row:is(:hover, [data-open=true])::before, .rd .rd-post-row:is(:hover, [data-open=true]) + .rd-post-row::before { border-top-color: transparent; }
+.rd .rd-post-open { display: grid; grid-template-columns: 7px 26px minmax(0, 1fr) auto; align-items: start; gap: 0 9px; width: 100%; min-height: 58px; box-sizing: border-box; margin: 0; padding: 9px 10px 9px 6px; border: 0; border-radius: 11px; background: none; box-shadow: none; color: inherit; text-align: left; font: inherit; cursor: pointer; transition: background-color 160ms var(--rd-release, ease); }
+.rd .rd-post-group:not([data-group=unread]) .rd-post-open { grid-template-columns: 7px minmax(0, 1fr) auto; }
+.rd .rd-post-group:not([data-group=unread]) .rd-post-mark { display: none; }
+.rd .rd-post-open:hover { background: var(--rd-row-hover); }
+.rd .rd-post-row[data-open=true] > .rd-post-open { background: color-mix(in srgb, var(--rd-course, var(--rd-accent)) 12%, var(--rd-surface)); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--rd-course, var(--rd-accent)) 34%, transparent); }
+.rd .rd-post-open:focus-visible { outline: 2px solid var(--rd-mark); outline-offset: -2px; }
+.rd .rd-post-open > .rd-message-dot { width: 7px; height: 7px; margin: 7px 0 0; border-radius: 50%; background: transparent; }
+.rd .rd-post-open > .rd-message-dot[data-unread=true] { background: var(--rd-mark); }
+.rd .rd-post-mark { width: 26px; height: 26px; line-height: 0; }
+.rd .rd-post-mark .rd-mini { width: 26px; height: 26px; }
+.rd .rd-post-open .rd-message-copy { display: grid; gap: 2px; min-width: 0; }
+.rd .rd-post-open .rd-message-copy > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; font-weight: 450; line-height: 1.4; color: var(--rd-ink); }
+.rd .rd-post-row[data-unread=true] .rd-message-copy > strong { font-weight: var(--rd-strong, 650); }
+.rd .rd-post-open .rd-message-line { display: flex; flex-wrap: nowrap; align-items: center; gap: 0 5px; min-width: 0; overflow: hidden; white-space: nowrap; font-size: 12.5px; line-height: 18px; color: var(--rd-muted); }
+.rd .rd-post-open .rd-message-line > .rd-announcement-meta { flex: none; color: var(--rd-course-ink, var(--rd-muted)); font-weight: 550; }
+.rd .rd-post-open .rd-message-line > .rd-post-people { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.rd .rd-post-open .rd-message-line > .rd-post-count { flex: none; font-variant-numeric: lining-nums tabular-nums; }
+
+.rd .rd-post-open .rd-message-line:empty { display: none; }
+.rd .rd-post-open .rd-message-copy > .rd-message-excerpt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; line-height: 18px; color: var(--rd-faint); }
+.rd .rd-post-open > time { padding-top: 2px; font-size: 12px; color: var(--rd-faint); white-space: nowrap; font-variant-numeric: lining-nums tabular-nums; }
+.rd .rd-post-empty { padding: 26px 8px; }
+
+/* The conversation: a drawn sheet with the course's offset wash; its head (course, subject, Reply) stays at the top. */
+.rd .rd-thread-pane { position: sticky; top: 0; box-sizing: border-box; min-width: 0; max-height: calc(100dvh - min(var(--rd-rail-top, 150px), 45dvh) - var(--rd-status-h, 56px) - 16px); overflow: auto; overscroll-behavior: auto; padding: 0 22px 16px; border: 2px solid transparent; border-image: var(--rd-pen-line) 30 / 14px / 0 stretch; border-radius: 14px; background: var(--rd-surface) padding-box; box-shadow: 4px 5px 0 color-mix(in srgb, var(--rd-course, var(--rd-accent)) 24%, transparent); scrollbar-width: thin; }
+.rd .rd-thread-pane[data-scrolls=true] { overscroll-behavior: contain; }
+.rd[data-theme=dark] .rd-thread-pane { box-shadow: 4px 5px 0 color-mix(in srgb, var(--rd-course, var(--rd-accent)) 30%, #000); }
+.rd .rd-thread-head { position: sticky; top: 0; z-index: 2; margin: 0 -4px; padding: 16px 4px 12px; border-bottom: 1px solid var(--rd-line); background: var(--rd-surface); }
+.rd .rd-thread-course { display: flex; align-items: center; gap: 8px; min-width: 0; margin: 0 0 6px; font-size: 12.5px; line-height: 1.4; color: var(--rd-muted); }
+.rd .rd-thread-course > .rd-mini { flex: none; width: 30px; height: 30px; margin-block: -5px; }
+.rd .rd-thread-course > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rd .rd-thread-who > b { font-weight: 600; color: var(--rd-course-ink, var(--rd-ink-2)); }
+.rd .rd-thread-head h2 { margin: 0 0 12px; font: 600 21px/1.25 var(--rd-display); letter-spacing: -.012em; color: var(--rd-ink); overflow-wrap: anywhere; }
+.rd .rd-thread-head h2:focus-visible { outline: 2px solid var(--rd-mark); outline-offset: 3px; border-radius: 4px; }
+.rd .rd-thread-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.rd .rd-thread-actions .rd-thread-reply { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; font-size: 13px; font-weight: 600; text-decoration: none; }
+.rd .rd-thread-actions .rd-message-save { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0; }
+.rd .rd-thread-actions .rd-message-save .rd-text-button { min-height: 30px; padding: 0 8px; font-size: 12.5px; }
+.rd .rd-thread-actions .rd-message-save select { max-width: 210px; font-size: 12.5px; }
+.rd .rd-thread-back { display: none; align-items: center; gap: 4px; margin: 0 0 8px -6px; padding: 0 6px; min-height: 28px; font-size: 12.5px; }
+.rd .rd-thread-back .rd-icon { width: 14px; height: 14px; }
+.rd .rd-thread-pane .rd-thread-body { margin: 0; padding: 4px 0 0; border: 0; }
+/* a letter: who and when in the sans, the words in the reading face; your own lines sit to the right on a soft wash */
+.rd .rd-letter { padding: 14px 0 12px; border-bottom: 1px solid var(--rd-line); }
+.rd .rd-letter:last-child { border-bottom: 0; }
+.rd .rd-letter > header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 6px; font-family: var(--rd-ui-font); font-size: 12.5px; color: var(--rd-faint); }
+.rd .rd-letter > header strong { font-weight: 650; color: var(--rd-ink-2); }
+.rd .rd-letter > p { margin: 0; white-space: pre-wrap; font-family: var(--rd-read); font-size: 15px; line-height: 1.6; color: var(--rd-ink-2); overflow-wrap: anywhere; }
+.rd[data-text-size=large] .rd-letter > p { font-size: 16.5px; }
+.rd .rd-letter[data-own=true] { margin: 10px 0 10px 16%; padding: 10px 14px; border: 0; border-radius: 12px 12px 4px 12px; background: var(--rd-soft); }
+.rd .rd-letter--preview > p { color: var(--rd-muted); }
+.rd .rd-letter-files { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; }
+.rd .rd-file-link { display: inline-flex; align-items: center; gap: 8px; min-height: 28px; font-family: var(--rd-ui-font); font-size: 13px; color: var(--rd-ink-2); text-decoration: none; }
+.rd .rd-file-link:hover > span:not(.rd-file-tag) { color: var(--rd-ink); text-decoration: underline; text-underline-offset: 3px; }
+.rd .rd-file-link > span[aria-hidden=true] { font-size: 12px; color: var(--rd-muted); }
+.rd .rd-thread-body > .rd-hub-notice { margin: 12px 0 0; }
+/* no conversation open: the mailbox, how many are unread, one line */
+.rd .rd-thread-pane--idle { display: grid; justify-items: center; align-content: center; gap: 4px; min-height: 260px; padding: 28px 22px; text-align: center; border-image-source: var(--rd-pen-soft); box-shadow: 4px 5px 0 color-mix(in srgb, var(--rd-accent) 14%, transparent); }
+.rd .rd-thread-pane--idle .rd-post-art { width: 76px; height: 76px; }
+.rd .rd-thread-pane--idle .rd-post-art .rd-tb-ic { width: 76px; height: 76px; }
+.rd .rd-thread-idle { margin: 8px 0 0; font: 600 19px/1.25 var(--rd-display); color: var(--rd-ink); }
+.rd .rd-thread-hint { margin: 0; font-size: 13px; color: var(--rd-muted); }
+/* a narrow page: the open conversation takes the list's place, with the way back at its head */
+@container work-area (max-width: 819.98px) {
+  .rd .rd-inbox[data-open=true] .rd-post-list { display: none; }
+  .rd .rd-thread-pane--idle { display: none; }
+  .rd .rd-thread-pane { position: static; max-height: none; overflow: visible; }
+  .rd .rd-thread-back { display: inline-flex; }
+}
+/* motion: new rows, groups, letters and a newly opened conversation fade where they rest (11.3); keys and Off are immediate */
+.rd .rd-thread-pane, .rd .rd-letter, .rd .rd-post-row, .rd .rd-post-group { animation: rd-fade 190ms var(--rd-fade) backwards; }
+.rd[data-kb] .rd-thread-pane, .rd[data-kb] .rd-letter, .rd[data-kb] .rd-post-row, .rd[data-kb] .rd-post-group { animation: none !important; }
+/* (pages-42) A tag is paper: its words and outline stay in dark ink on its light paper in every light look, scenes included
+   (a scene may lighten --rd-ink for its dark sky); the chosen Dark keeps its own dark papers and light ink. */
+.rd:not([data-theme=dark]) .rd-file-tag { color: #2B2A27; }
+.rd:not([data-theme=dark]) .rd-file-tag::after { background: #2B2A27; }
+/* A message or a group with no course of its own never borrows the course the page is on. */
+.rd .rd-post-row:not([style]), .rd .rd-post-group:not([style]), .rd .rd-thread-pane:not([style]) { --rd-course: initial; --rd-course-ink: initial; }
+/* The course's ink is made for paper: on the chosen Dark and on a scene's sky a course's name reads in the light ink; its colour stays in its drawing and wash. */
+.rd[data-theme=dark] .rd-post-open .rd-message-line > .rd-announcement-meta, .rd[data-theme=dark] .rd-post-group-head > span[title], .rd[data-theme=dark] .rd-thread-who > b, .rd[data-theme=dark] .rd-shelf .rd-chapter-no,
+.rd[data-scene-theme]:not([data-scene-theme=""]) .rd-post-open .rd-message-line > .rd-announcement-meta, .rd[data-scene-theme]:not([data-scene-theme=""]) .rd-post-group-head > span[title], .rd[data-scene-theme]:not([data-scene-theme=""]) .rd-thread-who > b, .rd[data-scene-theme]:not([data-scene-theme=""]) .rd-shelf .rd-chapter-no { color: var(--rd-ink-2); }

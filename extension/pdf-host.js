@@ -772,6 +772,11 @@
   const api=Object.freeze({create,matchPdfClick,matchCanvasFile,readVerifiedPdf,remoteFileId,MAX_BYTES});
  root.ReservePdfHost=api;
  if(typeof module==='object'&&module.exports)module.exports=api;
- if(root.document&&pdfPage(root.location)&&root.ReserveSite?.supported?.(root.location?.href)&&!root.ReservePdfHostController)
-  root.ReservePdfHostController=create({root});
+ // Stopped and started again with this page's selection (the switch on an assignment's pages, "On Canvas" while the page
+ // is open): an open reader closes and every click is Canvas's again; back on, it starts afresh.
+ if(root.document&&pdfPage(root.location)&&root.ReserveSite?.supported?.(root.location?.href)&&!root.ReservePdfHostController){
+  const start=()=>{if(!root.ReservePdfHostController)root.ReservePdfHostController=create({root});};
+  const stop=()=>{const host=root.ReservePdfHostController;root.ReservePdfHostController=null;host?.destroy?.();};
+  if(root.ReserveFeatures?.early)root.ReserveFeatures.early('pdf',start,stop);else start();
+ }
 })(globalThis);

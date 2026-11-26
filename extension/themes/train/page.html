@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Soul Passage land</title>
+<!-- The land under the Train Cabin's room, as a page of its own. The dashboard shows it in a frame where the land goes on
+     under the band (scene-themes.js framePage), so its travelling layers, their ride against the room and their smears run
+     here, in the extension's own process, and cost the dashboard's frames nothing. The engine is the dashboard's own
+     (scene-themes.js roomPage and bandRide); page.js only passes on what the dashboard says (the moment) and what the land
+     answers (ready, placed, failure). Nothing is stored, nothing is read but this folder's pictures. -->
+<meta name="color-scheme" content="normal">
+<link rel="stylesheet" href="theme.css">
+<style>
+html,body{margin:0;padding:0;background:transparent;overflow:hidden}
+.rd[data-tk-still] *{transition:none!important;animation:none!important}
+.tk-host{position:fixed;left:0;top:0;width:100vw;height:100vh;overflow:hidden;pointer-events:none}
+.tk-paint{position:fixed;left:0;top:0;width:100vw;height:100vh;display:block;pointer-events:none}
+</style></head>
+<body><div class="rd" data-theme-kit="train" data-theme-kit-ready style="position:fixed;left:0;top:0;width:100vw;height:100vh;margin:0!important;padding:0!important;background:none!important;overflow:hidden"><div class="tk-host" aria-hidden="true"></div></div>
+<script src="../../scene-themes.js"></script>
+<script src="painter.js"></script>
+<script src="page.js"></script></body></html>

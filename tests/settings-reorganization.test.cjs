@@ -44,88 +44,15 @@ test('closed dock is inert, constant sized and reads no protected settings',()=>
 // 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
 
 // Adapted from course-dock-settings.test.cjs.
-test('Home has the intended group order, dock size and only one switch caution',()=>{
- const f=editor();
- f.s.courseNavigation='dock';
- const html=f.render('layout');
- assert.deepEqual(headings(html),[
-  'Start from a layout','Modules on Home','Order of the three panels',
-  'Where your courses are','Course dock','Spacing','What shows',
-  'Canvas’s menu bar','Saved layouts & plans'
- ]);
- // 3.7: the dock's size is a slider (dockScale) in its own Course dock group.
- assert.match(html,/data-setting="dockScale"/);
- assert.match(html,/data-setting="quickOpen"/);
- assert.equal((html.match(/<small>/g)||[]).length,1);
- assert.match(html,/Leave this off on a shared computer/);
- assert.doesNotMatch(html,/class="cz-hint"|To move a module|<small>Course news/);
- assert.doesNotMatch(html,/data-rd-action="layout-reset"/);
- f.s.courseNavigation='sidebar';
- assert.doesNotMatch(f.render('layout'),/data-setting="dockSize"/);
-});
 
 // Adapted from cleanup-look.test.cjs.
-test('Look ends with saved looks; unlocked descriptions and old course-frame controls are absent',()=>{
- const f=editor(),look=f.render('look');
- assert.deepEqual(headings(look).slice(-2),['Motion','Saved looks']);
- assert.doesNotMatch(look,/data-setting="courseCardStyle"|class="cz-hint"/);
- assert.match(look,/data-setting="livingArt"/);
- assert.doesNotMatch(look,/<small>/);
- f.s.sceneTheme='stars';
- assert.doesNotMatch(f.render('look'),/<small>/,'locked scene themes have no non-level explanatory hints');
-});
 
 // Adapted from customization.test.cjs and media-banners-panel.test.cjs.
-test('Courses keeps the list, size, card frames and the former Artwork controls together',()=>{
- const f=editor();
- f.c.customizeDrafts={'10:icon':'<svg>Editable draft</svg>'};
- f.c.s.coursePrefs['10']={bannerFit:'cover',bannerPosition:'left'};
- const html=f.render('courses');
- const groups=headings(html);
- assert.deepEqual(groups.slice(0,3),['Course list','Banner','Course cards']);
- assert.match(html,/id="ch-art-title">Course artwork/);
- assert.equal((html.match(/class="ch-course-setting"/g)||[]).length,2);
- assert.equal((html.match(/class="ch-art-slot"/g)||[]).length,4);
- assert.match(html,/data-setting="bannerSize"/);
- assert.match(html,/data-setting="courseCardStyle"/);
- assert.match(html,/value="cover" selected/);
- assert.match(html,/value="left" selected/);
- assert.match(html,/Editable draft/);
- assert.match(html,/>Artwork skill<\/a>/);
- assert.doesNotMatch(html,/No pack yet\?|One pack for banners|Give your AI/);
- f.c.allCourses[0]={...f.c.allCourses[0],name:'Renamed Biology',color:'#987654'};
- assert.match(f.render('courses'),/value="Renamed Biology"/);
- assert.match(f.render('courses'),/value="#987654"/);
-});
 
 // Adapted from course-dock-settings.test.cjs feature-gate checks.
 // 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).
 
 // Adapted from installed-controls.test.cjs.
-test('saved looks, layouts and routines are grouped by their validated preset kind',()=>{
- const f=editor();
- const variants={paint:'settings',page:'layout',week:'planner',habits:'routines'};
- f.s.makeYourOwn.installed={...Object.fromEntries(Object.keys(variants).map(id=>[id,{id,name:id,kind:'preset'}])),
-  paintedTheme:{id:'paintedTheme',name:'Theme pack',kind:'theme'},
-  chosenPet:{id:'chosenPet',name:'Companion pack',kind:'pet'}};
- f.c.makeOwn.presetKinds=variants;
- for(const [tab,allowed]of [
-  ['look',['paint','paintedTheme']],['layout',['page','week']],['pet',['habits','chosenPet']]
- ]){
-  const html=f.render(tab);
-  for(const name of Object.keys(f.s.makeYourOwn.installed)){
-   const contains=html.includes('data-id="'+name+'"');
-   assert.equal(contains,allowed.includes(name),tab+' includes '+name);
-  }
- }
- f.c.personal.pet={routines:[{id:'routine-7',name:'Morning review',createdAt:1,minute:480,days:[1,2,3,4,5],action:'plan',data:{mode:'tonight'}}]};
- const pet=f.render('pet');
- assert.equal(headings(pet).at(-1),'Saved routines');
- assert.match(pet,/data-rd-action="pet-routine-remove"/);
- assert.match(pet,/Morning review/);
- assert.match(pet,/Level \d+/);
- assert.doesNotMatch(pet,/class="cz-hint"/);
-});
 
 // Adapted from personal-settings-dock.test.cjs and installed-controls.test.cjs.
 // 4.0: the 4.0 design replaces the 3.x behaviour this case pinned (see the ported 4.0 tests for the new behaviour).

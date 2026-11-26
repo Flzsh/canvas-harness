@@ -217,8 +217,9 @@
   return foot<=Math.min(secondTop,hb.bottom-inset,hb.top+root.innerHeight)-4;
  }
  // Where a name is not shown (the narrowest forms) each link still says it: its title, and the hidden name for screen readers.
- function named(header){
-   for(const link of header.querySelectorAll('.ic-app-header__menu-list-link'))if(!link.title){const name=link.querySelector('.menu-item__text')?.textContent.trim();if(name)link.title=name;}
+ function named(header,titled){
+   for(const link of header.querySelectorAll('.ic-app-header__menu-list-link'))
+     if(!link.title){const name=link.querySelector('.menu-item__text')?.textContent.trim();if(name){link.title=name;titled?.add(link);}}
  }
  function fitRail(header){
   const n=items(header).length;let k=0;fold(header,0);
@@ -254,20 +255,43 @@
  }
 
  function start(){
-  if(root.top!==root||root.ReserveCanvasNav||!root.ReserveSite?.supported?.(root.location?.href))return;
+  // (a page switched off here never gets the menu, not even its first-frame layout, in either order Edge runs the groups)
+  if(root.top!==root||root.ReserveCanvasNav||!root.ReserveSite?.supported?.(root.location?.href)||root.ReserveSite?.pageOff?.(root.location)===true)return;
   const html=root.document.documentElement;
-  let saved={},header=null,observer=null,lastPalette='',stopped=false,pending=null,workspaceTimer,workspaceObserver,workspaceSizes=null,workspaceQueued=0,undo=[];
-  const listeners=[];
+  let saved={},
+    header=null,
+    observer=null,
+    lastPalette='',
+    stopped=false,
+    pending=null,
+    workspaceTimer,
+    workspaceObserver,
+    workspaceSizes=null,
+    workspaceQueued=0,
+    undo=[],
+    keepHint=false,
+    positioned=false;
+  const listeners=[],titled=new Set();
   const listen=(target,type,fn,options)=>{target.addEventListener(type,fn,options);listeners.push(()=>target.removeEventListener?.(type,fn,options));};
   const api=root.ReserveCanvasNav={kindOf,logoKind};
   stop=()=>{
-   if(stopped)return;stopped=true;apply('original');
+   if(stopped)return;
+   // Off on this page only (the page switch): the first-frame hint stays for every other page, and Canvas's bar gets back
+   // what it had before (the position, the colours lent to it and the titles given to its links come off too).
+   keepHint=root.ReserveSite?.pageOff?.(root.location)===true;
+   stopped=true;apply('original');
    observer?.disconnect();pending?.disconnect();workspaceObserver?.disconnect();workspaceSizes?.disconnect();
    root.clearInterval?.(workspaceTimer);root.clearTimeout?.(workspaceQueued);
    for(const remove of listeners)remove();
    for(const name of Object.keys(html.dataset))if(name.startsWith('chn'))delete html.dataset[name];
    for(const name of [...Object.values(NAMES),'--chn-top','--chn-bottom','--chn-push','--chn-bar-x','--chn-bar-y'])html.style.removeProperty(name);
    if(header)for(const name of Object.keys(header.dataset))if(name.startsWith('chn'))delete header.dataset[name];
+   if(header){
+    for(const name of ['--chn-page','--chn-school','--chn-school-logo','--chn-logo-aspect'])header.style.removeProperty?.(name);
+    if(positioned)header.style.removeProperty?.('position');
+   }
+   for(const link of titled)link.removeAttribute?.('title');
+   titled.clear();
    if(root.ReserveCanvasNav===api)delete root.ReserveCanvasNav;
   };
   let page;try{page=root.localStorage;}catch{}
@@ -298,7 +322,7 @@
   function apply(choice){
    if(stopped&&choice!=='original')return;
    if(choice==='original'){
-    rememberLayout(html,page,'');
+    if(!keepHint)rememberLayout(html,page,'');
     if(!html.classList?.contains?.('chn-nav'))return;
     for(const step of undo.splice(0))try{step();}catch{}
     if(header)undecorate(header);html.classList.remove('chn-nav');delete html.dataset.chnLayout;return;
@@ -324,7 +348,7 @@
    listen(root,'DOMContentLoaded',()=>{found();},{once:true});
   }
   function setup(){
-   if(root.getComputedStyle(header).position==='static')header.style.position='relative';
+   if(root.getComputedStyle(header).position==='static'){header.style.position='relative';positioned=true;}
    // The bar's column takes the page's own background, so it reads as part of whichever page it is on.
    const page=()=>{const bg=root.getComputedStyle(root.document.body||html).backgroundColor;if(safe(bg)&&!/rgba\(0, 0, 0, 0\)|transparent/.test(bg))header.style.setProperty('--chn-page',bg);};
    page();listen(root,'load',page,{once:true});
@@ -388,7 +412,7 @@
    if(html.dataset.chnLayout!=='top'||header.dataset.chnTop)return;header.dataset.chnTop='true';
    // Wait for the workspace only where Dashboard is enabled and requested.
    const dashboard=/^\/?$/.test(root.location?.pathname||'')&&root.ReserveFeatures?.enabled?.('dashboard')!==false&&new URLSearchParams(root.location?.search||'').get('reserve')!=='native';
-   named(header);
+   named(header,titled);
    const waitUntil=Date.now()+(dashboard?9000:0),set=(name,value)=>html.style.setProperty(name,value);
    let queued=0,watched=null,sizes=null;
    const visible=node=>!!node&&node.getClientRects().length>0&&node.getBoundingClientRect().width>0;
@@ -520,5 +544,7 @@
  if(typeof module==='object'&&module.exports)module.exports={kindOf,logoKind,DRAWINGS,rememberLayout,earlyLayout,fold,items,fitRail};
  else start();
  }
- if(root.ReserveFeatures)root.ReserveFeatures.early('canvas-nav',load,()=>stop());else load();
+ // (Edge can run this group before features.js: started at once, and handed to the selection when it arrives, so the
+ // page switch and "On Canvas" can still stop it live)
+ if(root.ReserveFeatures)root.ReserveFeatures.early('canvas-nav',load,()=>stop());else{load();root.ReserveCanvasNavLate={load,stop:()=>stop()};}
 })(globalThis);

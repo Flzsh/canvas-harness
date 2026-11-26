@@ -35,6 +35,15 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
     return {kind,title,url:url.href};
   }
 
+  // A repeating personal task (4.2 planner); an unknown shape reads as a one-off task.
+  function safeRepeat(value){
+    if(!record(value)||!['day','week','weekdays','month'].includes(value.every))return null;
+    const interval=Number.isInteger(value.interval)&&value.interval>=1&&value.interval<=12?value.interval:1;
+    if(value.every!=='week')return {every:value.every,interval:value.every==='weekdays'?1:interval};
+    const days=[...new Set((Array.isArray(value.days)?value.days:[]).filter(d=>Number.isInteger(d)&&d>=0&&d<=6))].sort((a,b)=>a-b);
+    return days.length?{every:'week',interval,days}:null;
+  }
+
   function optionalDate(value){
     if(value===null||value===undefined||value==='')return null;
     if(typeof value!=='string'||!Number.isFinite(Date.parse(value)))return null;
@@ -90,6 +99,7 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
           submittedAt:null,
         };
         if(source)normalized.source=source;
+        const repeat=safeRepeat(item.repeat);if(repeat)normalized.repeat=repeat;
         out.push(normalized);
       }catch{}
     }

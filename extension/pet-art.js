@@ -56,7 +56,6 @@
   </g>
  </g>
  <g class="pet-book"><path d="M52 55.6L59 53.6L66 55.6L66 59.4L59 57.6L52 59.4z" fill="#FBF6EA" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/><path d="M59 53.6V57.6M54 56.6l3.4-.9M61 55.8l3.4.9" fill="none" stroke="${INK}" stroke-width="1" stroke-linecap="round"/></g>
- <g class="pet-oats"><path d="M54 57.4C54 54.6 64 54.6 64 57.4L62.6 60H55.4z" fill="#D4A27F" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/><path d="M56 55.4c1.4-1.4 4.6-1.4 6 0" fill="none" stroke="#E2B865" stroke-width="1.8" stroke-linecap="round"/></g>
  <g class="pet-zz" fill="none" stroke="${INK}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="z1" d="M60 40h4l-4 4.4h4"/><path class="z2" d="M65.4 31.4h3l-3 3.4h3"/></g>
  <g class="pet-sparks" fill="#E2B865" stroke="${INK}" stroke-width="1.1" stroke-linejoin="round"><path class="s1" d="M10 14l1.6 3.4L15 19l-3.4 1.6L10 24l-1.6-3.4L5 19l3.4-1.6z"/><path class="s2" d="M66 26l1.1 2.3L69.4 29.4L67.1 30.5L66 32.8L64.9 30.5L62.6 29.4L64.9 28.3z"/><path class="s3" d="M30 6l1 2.1L33.1 9.1L31 10.1L30 12.2L29 10.1L26.9 9.1L29 8.1z"/></g>
 </g></svg>`;

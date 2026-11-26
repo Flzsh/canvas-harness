@@ -93,11 +93,14 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
   }
   function normalizeInbox(raw){
     var source=Array.isArray(raw)?raw:Array.isArray(raw?.conversations)?raw.conversations:[];
+    // (pages-42) who else is in the conversation (never the student: raw.accountId), how many messages, and whether
+    // any carries a file, so a row can say "Course Teacher · 3 messages" before the thread is read.
+    var self=text(raw?.accountId);
     return source.map(function(item){
       var id=text(item?.id);
       if(!/^\d+$/.test(id))return null;
       var context=text(item.context_code),match=/^course_(\d+)$/.exec(context);
-      var courseId=match?match[1]:null;
+      var courseId=match?match[1]:null,count=Number(item.message_count);
       return {
         id,
         subject:text(item.subject),
@@ -107,6 +110,11 @@ if(typeof module==='object'&&module.exports&&!globalThis.ReserveSite)require('./
         unread:item.workflow_state==='unread',
         courseId,
         courseName:text(item.context_name),
+        people:(Array.isArray(item.participants)?item.participants:[]).filter(function(p){return p&&(!self||text(p.id)!==self);}).map(function(p){
+          return text(p.name||p.full_name).trim();
+        }).filter(Boolean).slice(0,3),
+        count:Number.isFinite(count)&&count>0?Math.floor(count):null,
+        files:Array.isArray(item.properties)&&item.properties.includes('attachments'),
       };
     }).filter(Boolean).sort(function(a,b){return compareRecent(a,b,'updatedAt');});
   }
